@@ -189,16 +189,12 @@ if(ENABLE_COVERAGE_TESTING)
   find_program( GENHTML_PATH NAMES genhtml)
 endif()
 
-add_subdirectory( externals )
-
-include(wasm)
-
 add_subdirectory( libraries )
-add_subdirectory( contracts )
+# add_subdirectory( contracts )
 add_subdirectory( plugins )
 add_subdirectory( programs )
 add_subdirectory( scripts )
-add_subdirectory( tests )
+# add_subdirectory( tests )
 add_subdirectory( tools )
 add_subdirectory( debian )
 

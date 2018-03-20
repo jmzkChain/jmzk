@@ -22,7 +22,7 @@ set(sources
 add_library( eos_utilities
              ${sources}
              ${HEADERS} )
-target_link_libraries( eos_utilities fc WAST WASM )
+target_link_libraries( eos_utilities fc )
 target_include_directories( eos_utilities
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
                                    "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include" )
