@@ -17,7 +17,6 @@
 #include <eosio/chain/contracts/eos_contract.hpp>
 
 #include <eosio/utilities/key_conversion.hpp>
-#include <eosio/chain/wast_to_wasm.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
@@ -447,10 +446,11 @@ read_only::get_code_results read_only::get_code( const get_code_params& params )
    const auto& d = db.get_database();
    const auto& accnt  = d.get<account_object,by_name>( params.account_name );
 
-   if( accnt.code.size() ) {
-      result.wast = wasm_to_wast( (const uint8_t*)accnt.code.data(), accnt.code.size() );
-      result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
-   }
+  //  uses wasm, comment out now
+  //  if( accnt.code.size() ) {
+  //     result.wast = wasm_to_wast( (const uint8_t*)accnt.code.data(), accnt.code.size() );
+  //     result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
+  //  }
 
    abi_def abi;
    if( abi_serializer::to_abi(accnt.abi, abi) ) {

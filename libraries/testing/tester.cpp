@@ -1,21 +1,12 @@
 #include <boost/test/unit_test.hpp>
 #include <eosio/testing/tester.hpp>
 #include <eosio/chain/asset.hpp>
-#include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/chain/contracts/types.hpp>
 #include <eosio/chain/contracts/eos_contract.hpp>
 #include <eosio/chain/contracts/contract_table_objects.hpp>
 
-#include <test.system/test.system.wast.hpp>
-#include <test.system/test.system.abi.hpp>
-
 #include <fc/utility.hpp>
 #include <fc/io/json.hpp>
-
-#include "WAST/WAST.h"
-#include "WASM/WASM.h"
-#include "IR/Module.h"
-#include "IR/Validate.h"
 
 namespace eosio { namespace testing {
 
@@ -347,22 +338,22 @@ namespace eosio { namespace testing {
       delete_authority(account, perm, { permission_level{ account, config::owner_name } }, { get_private_key( account, "owner" ) });
    }
 
-   void base_tester::set_code( account_name account, const char* wast ) try {
-      auto wasm = wast_to_wasm(wast);
+//    void base_tester::set_code( account_name account, const char* wast ) try {
+//       auto wasm = wast_to_wasm(wast);
 
-      signed_transaction trx;
-      trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
-                                contracts::setcode{
-                                   .account    = account,
-                                   .vmtype     = 0,
-                                   .vmversion  = 0,
-                                   .code       = bytes(wasm.begin(), wasm.end())
-                                });
+//       signed_transaction trx;
+//       trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
+//                                 contracts::setcode{
+//                                    .account    = account,
+//                                    .vmtype     = 0,
+//                                    .vmversion  = 0,
+//                                    .code       = bytes(wasm.begin(), wasm.end())
+//                                 });
 
-      set_tapos( trx );
-      trx.sign( get_private_key( account, "active" ), chain_id_type()  );
-      push_transaction( trx );
-   } FC_CAPTURE_AND_RETHROW( (account)(wast) )
+//       set_tapos( trx );
+//       trx.sign( get_private_key( account, "active" ), chain_id_type()  );
+//       push_transaction( trx );
+//    } FC_CAPTURE_AND_RETHROW( (account)(wast) )
 
    void base_tester::set_abi( account_name account, const char* abi_json) {
       auto abi = fc::json::from_string(abi_json).template as<contracts::abi_def>();
@@ -465,8 +456,8 @@ namespace eosio { namespace testing {
    tester::tester(chain_controller::controller_config config): base_tester(config) {};
 
    void tester::push_genesis_block() {
-      set_code(config::system_account_name, test_system_wast);
-      set_abi(config::system_account_name, test_system_abi);
+    //   set_code(config::system_account_name, test_system_wast);
+    //   set_abi(config::system_account_name, test_system_abi);
    }
 
    void tester::set_producers(const vector<account_name>& producer_names) {
