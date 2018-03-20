@@ -18,8 +18,6 @@
 #include <eosio/chain/scope_sequence_object.hpp>
 #include <eosio/chain/merkle.hpp>
 
-#include <eosio/chain/wasm_interface.hpp>
-
 #include <eosio/utilities/rand.hpp>
 
 #include <fc/smart_ref_impl.hpp>

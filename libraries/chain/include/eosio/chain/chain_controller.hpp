@@ -18,7 +18,6 @@
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/exceptions.hpp>
 #include <eosio/chain/contracts/genesis_state.hpp>
-#include <eosio/chain/wasm_interface.hpp>
 
 #include <fc/log/logger.hpp>
 
@@ -271,11 +270,6 @@ namespace eosio { namespace chain {
          const chainbase::database& get_database() const { return _db; }
          chainbase::database&       get_mutable_database() { return _db; }
 
-         wasm_cache& get_wasm_cache() {
-            return _wasm_cache;
-         }
-
-
          /**
           * @param actions - the actions to check authorization across
           * @param provided_keys - the set of public keys which have authorized the transaction
@@ -428,8 +422,6 @@ namespace eosio { namespace chain {
 
          typedef pair<scope_name,action_name>                   handler_key;
          map< account_name, map<handler_key, apply_handler> >   _apply_handlers;
-
-         wasm_cache                       _wasm_cache;
 
          runtime_limits                   _limits;
    };

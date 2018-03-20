@@ -1,7 +1,6 @@
 #include <algorithm>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/chain_controller.hpp>
-#include <eosio/chain/wasm_interface.hpp>
 #include <eosio/chain/generated_transaction_object.hpp>
 #include <eosio/chain/scope_sequence_object.hpp>
 #include <boost/container/flat_set.hpp>
@@ -17,16 +16,10 @@ void apply_context::exec_one()
 
       auto native = mutable_controller.find_apply_handler(receiver, act.account, act.name);
       if (native) {
-         (*native)(*this);
+        (*native)(*this);
       } else {
-         if (a.code.size() > 0) {
-            // get code from cache
-            auto code = mutable_controller.get_wasm_cache().checkout_scoped(a.code_version, a.code.data(),
-                                                                            a.code.size());
-            // get wasm_interface
-            auto &wasm = wasm_interface::get();
-            wasm.apply(code, *this);
-      }
+        // Removed WASM executing path
+        assert(false);
       }
    } FC_CAPTURE_AND_RETHROW((_pending_console_output.str()));
 
