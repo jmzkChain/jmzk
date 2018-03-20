@@ -77,3 +77,8 @@ build-debug/*
 tn_data_*
 .vscode
 .DS_Store
+
+.vscode/
+.idea/
+cmake-build-debug/
+cmake-build-release/
