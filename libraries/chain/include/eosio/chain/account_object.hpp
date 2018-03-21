@@ -17,8 +17,6 @@ namespace eosio { namespace chain {
 
       id_type              id;
       account_name         name;
-      uint8_t              vm_type      = 0;
-      uint8_t              vm_version   = 0;
       bool                 privileged   = false;
       bool                 frozen       = false;
 
@@ -57,4 +55,4 @@ namespace eosio { namespace chain {
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::account_object, eosio::chain::account_index)
 
 
-FC_REFLECT(eosio::chain::account_object, (name)(vm_type)(vm_version)(creation_date))
+FC_REFLECT(eosio::chain::account_object, (name)(creation_date))
