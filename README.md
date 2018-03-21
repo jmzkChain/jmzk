@@ -1,3 +1,11 @@
+## EVT.IO - Tokenize Everything
+Development phases:
+| Content | Status  | Assigner | Latest Updated |
+|---|---|---|---|---|
+| Remove Web Assembly | Done | Harry | 3/21/18  |
+| Add new token-based database and Apis | Development | Harry | 3/21/18 |
+| Add tests | Not started | Unknown | 3/21/18 |
+
 ## EOS.IO - The Most Powerful Infrastructure for Decentralized Applications
 
 [![Build Status](https://jenkins.eos.io/buildStatus/icon?job=eosio/master)](https://jenkins.eos.io/job/eosio/job/master/)
