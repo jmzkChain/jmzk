@@ -291,73 +291,15 @@ abi_def get_abi( const chain_controller& db, const name& account ) {
    return abi;
 }
 
-string get_table_type( const abi_def& abi, const name& table_name ) {
-   for( const auto& t : abi.tables ) {
-      if( t.name == table_name ){
-         return t.index_type;
-      }
-   }
-   FC_ASSERT( !"ABI does not define table", "Table ${table} not specified in ABI", ("table",table_name) );
-}
-
-read_only::get_table_rows_result read_only::get_table_rows( const read_only::get_table_rows_params& p )const {
-   const abi_def abi = get_abi( db, p.code );
-   auto table_type = get_table_type( abi, p.table );
-   auto table_key = PRIMARY;
-
-   if( table_type == KEYi64 ) {
-      return get_table_rows_ex<contracts::key_value_index, contracts::by_scope_primary>(p,abi);
-   } else if( table_type == KEYstr ) {
-      return get_table_rows_ex<contracts::keystr_value_index, contracts::by_scope_primary>(p,abi);
-   } else if( table_type == KEYi128i128 ) {
-      if( table_key == PRIMARY )
-         return get_table_rows_ex<contracts::key128x128_value_index, contracts::by_scope_primary>(p,abi);
-      if( table_key == SECONDARY )
-         return get_table_rows_ex<contracts::key128x128_value_index, contracts::by_scope_secondary>(p,abi);
-   } else if( table_type == KEYi64i64i64 ) {
-      if( table_key == PRIMARY )
-         return get_table_rows_ex<contracts::key64x64x64_value_index, contracts::by_scope_primary>(p,abi);
-      if( table_key == SECONDARY )
-         return get_table_rows_ex<contracts::key64x64x64_value_index, contracts::by_scope_secondary>(p,abi);
-      if( table_key == TERTIARY )
-         return get_table_rows_ex<contracts::key64x64x64_value_index, contracts::by_scope_tertiary>(p,abi);
-   }
-   FC_ASSERT( false, "invalid table type/key ${type}/${key}", ("type",table_type)("key",table_key)("abi",abi));
-}
-
 vector<asset> read_only::get_currency_balance( const read_only::get_currency_balance_params& p )const {
+   // TODO: Replace with our own logic
    vector<asset> results;
-   walk_table<contracts::key_value_index, contracts::by_scope_primary>(p.code, p.account, N(account), [&](const contracts::key_value_object& obj){
-      share_type balance;
-      fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
-      fc::raw::unpack(ds, balance);
-      auto cursor = asset(balance, symbol(obj.primary_key));
-
-      if( !p.symbol || cursor.symbol_name().compare(*p.symbol) == 0 ) {
-         results.emplace_back(balance, symbol(obj.primary_key));
-      }
-
-      // return false if we are looking for one and found it, true otherwise
-      return !p.symbol || cursor.symbol_name().compare(*p.symbol) != 0;
-   });
-
    return results;
 }
 
 fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_params& p )const {
+   // TODO: Replace with our own logic
    fc::mutable_variant_object results;
-   walk_table<contracts::key_value_index, contracts::by_scope_primary>(p.code, p.code, N(stat), [&](const contracts::key_value_object& obj){
-      share_type balance;
-      fc::datastream<const char *> ds(obj.value.data(), obj.value.size());
-      fc::raw::unpack(ds, balance);
-      auto cursor = asset(balance, symbol(obj.primary_key));
-
-      read_only::get_currency_stats_result result;
-      result.supply = cursor;
-      results[cursor.symbol_name()] = result;
-      return true;
-   });
-
    return results;
 }
 
@@ -437,26 +379,6 @@ read_write::push_transactions_results read_write::push_transactions(const read_w
                           fc::mutable_variant_object( "error", e.to_detail_string() ) } );
       }
    }
-   return result;
-}
-
-read_only::get_code_results read_only::get_code( const get_code_params& params )const {
-   get_code_results result;
-   result.account_name = params.account_name;
-   const auto& d = db.get_database();
-   const auto& accnt  = d.get<account_object,by_name>( params.account_name );
-
-  //  uses wasm, comment out now
-  //  if( accnt.code.size() ) {
-  //     result.wast = wasm_to_wast( (const uint8_t*)accnt.code.data(), accnt.code.size() );
-  //     result.code_hash = fc::sha256::hash( accnt.code.data(), accnt.code.size() );
-  //  }
-
-   abi_def abi;
-   if( abi_serializer::to_abi(accnt.abi, abi) ) {
-      result.abi = std::move(abi);
-   }
-
    return result;
 }
 

@@ -36,7 +36,6 @@ void chain_initializer::register_types(chain_controller& chain, chainbase::datab
    chain._set_apply_handler( #contract, #scope, #action, &BOOST_PP_CAT(contracts::apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
 
    SET_APP_HANDLER( eosio, eosio, newaccount, eosio );
-   SET_APP_HANDLER( eosio, eosio, setcode, eosio );
    SET_APP_HANDLER( eosio, eosio, setabi, eosio );
    SET_APP_HANDLER( eosio, eosio, updateauth, eosio );
    SET_APP_HANDLER( eosio, eosio, deleteauth, eosio );
@@ -166,15 +165,6 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
       }
    });
 
-   eos_abi.tables.emplace_back( table_def {
-      "recovery", "i64", {
-         "account",
-      }, {
-         "name"
-      },
-      "pending_recovery"
-   });
-
    // abi_def fields
 
    eos_abi.structs.emplace_back( struct_def {
@@ -284,16 +274,6 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.structs.emplace_back( struct_def {
       "action_def", "", {
          {"name", "action_name"},
-         {"type", "type_name"}
-      }
-   });
-
-   eos_abi.structs.emplace_back( struct_def {
-      "table_def", "", {
-         {"name", "table_name"},
-         {"index_type", "type_name"},
-         {"key_names", "field_name[]"},
-         {"key_types", "type_name[]"},
          {"type", "type_name"}
       }
    });

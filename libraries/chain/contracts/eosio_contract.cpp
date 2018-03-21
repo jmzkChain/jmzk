@@ -76,41 +76,6 @@ void apply_eosio_newaccount(apply_context& context) {
 
 } FC_CAPTURE_AND_RETHROW( (create) ) }
 
-
-void apply_eosio_setcode(apply_context& context) {
-//    Below code uses wasm, so comment out here first
-
-//    auto& db = context.mutable_db;
-//    auto  act = context.act.data_as<setcode>();
-
-//    context.require_authorization(act.account);
-//    context.require_write_lock( config::eosio_auth_scope );
-
-//    FC_ASSERT( act.vmtype == 0 );
-//    FC_ASSERT( act.vmversion == 0 );
-
-//    auto code_id = fc::sha256::hash( act.code.data(), act.code.size() );
-
-//    // TODO: remove this compilation step in favor of validation without compilation
-//    auto& code = context.mutable_controller.get_wasm_cache().checkout(code_id, act.code.data(), act.code.size());
-//    context.mutable_controller.get_wasm_cache().checkin(code_id, code);
-
-//    const auto& account = db.get<account_object,by_name>(act.account);
-// //   wlog( "set code: ${size}", ("size",act.code.size()));
-//    db.modify( account, [&]( auto& a ) {
-//       /** TODO: consider whether a microsecond level local timestamp is sufficient to detect code version changes*/
-//       #warning TODO: update setcode message to include the hash, then validate it in validate 
-//       a.code_version = code_id;
-//       // Added resize(0) here to avoid bug in boost vector container
-//       a.code.resize( 0 );
-//       a.code.resize( act.code.size() );
-//       a.last_code_update = context.controller.head_block_time();
-//       memcpy( a.code.data(), act.code.data(), act.code.size() );
-
-//    });
-
-}
-
 void apply_eosio_setabi(apply_context& context) {
    auto& db = context.mutable_db;
    auto  act = context.act.data_as<setabi>();

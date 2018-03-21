@@ -77,29 +77,15 @@ struct action_def {
    type_name type;
 };
 
-struct table_def {
-   table_def() = default;
-   table_def(const table_name& name, const type_name& index_type, const vector<field_name>& key_names, const vector<type_name>& key_types, const type_name& type)
-   :name(name), index_type(index_type), key_names(key_names), key_types(key_types), type(type)
-   {}
-
-   table_name         name;        // the name of the table
-   type_name          index_type;  // the kind of index, i64, i128i128, etc
-   vector<field_name> key_names;   // names for the keys defined by key_types
-   vector<type_name>  key_types;   // the type of key parameters
-   type_name          type;        // type of binary data stored in this table
-};
-
 struct abi_def {
    abi_def() = default;
-   abi_def(const vector<type_def>& types, const vector<struct_def>& structs, const vector<action_def>& actions, const vector<table_def>& tables)
-   :types(types), structs(structs), actions(actions), tables(tables)
+   abi_def(const vector<type_def>& types, const vector<struct_def>& structs, const vector<action_def>& actions)
+   :types(types), structs(structs), actions(actions)
    {}
 
    vector<type_def>     types;
    vector<struct_def>   structs;
    vector<action_def>   actions;
-   vector<table_def>    tables;
 };
 
 struct newaccount {
@@ -115,21 +101,6 @@ struct newaccount {
 
    static action_name get_name() {
       return N(newaccount);
-   }
-};
-
-struct setcode {
-   account_name                     account;
-   uint8                            vmtype;
-   uint8                            vmversion;
-   bytes                            code;
-
-   static account_name get_account() {
-      return config::system_account_name;
-   }
-
-   static action_name get_name() {
-      return N(setcode);
    }
 };
 
@@ -277,11 +248,9 @@ FC_REFLECT( eosio::chain::contracts::type_def                         , (new_typ
 FC_REFLECT( eosio::chain::contracts::field_def                        , (name)(type) )
 FC_REFLECT( eosio::chain::contracts::struct_def                       , (name)(base)(fields) )
 FC_REFLECT( eosio::chain::contracts::action_def                       , (name)(type) )
-FC_REFLECT( eosio::chain::contracts::table_def                        , (name)(index_type)(key_names)(key_types)(type) )
-FC_REFLECT( eosio::chain::contracts::abi_def                          , (types)(structs)(actions)(tables) )
+FC_REFLECT( eosio::chain::contracts::abi_def                          , (types)(structs)(actions) )
 
 FC_REFLECT( eosio::chain::contracts::newaccount                       , (creator)(name)(owner)(active)(recovery) )
-FC_REFLECT( eosio::chain::contracts::setcode                          , (account)(vmtype)(vmversion)(code) ) //abi
 FC_REFLECT( eosio::chain::contracts::setabi                           , (account)(abi) )
 FC_REFLECT( eosio::chain::contracts::updateauth                       , (account)(permission)(parent)(data) )
 FC_REFLECT( eosio::chain::contracts::deleteauth                       , (account)(permission) )

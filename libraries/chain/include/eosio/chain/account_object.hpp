@@ -13,7 +13,7 @@
 namespace eosio { namespace chain {
 
    class account_object : public chainbase::object<account_object_type, account_object> {
-      OBJECT_CTOR(account_object,(code)(abi))
+      OBJECT_CTOR(account_object,(abi))
 
       id_type              id;
       account_name         name;
@@ -22,11 +22,8 @@ namespace eosio { namespace chain {
       bool                 privileged   = false;
       bool                 frozen       = false;
 
-      time_point_sec       last_code_update;
-      digest_type          code_version;
       block_timestamp_type creation_date;
 
-      shared_vector<char>  code;
       shared_vector<char>  abi;
 
       void set_abi( const eosio::chain::contracts::abi_def& a ) {
@@ -60,4 +57,4 @@ namespace eosio { namespace chain {
 CHAINBASE_SET_INDEX_TYPE(eosio::chain::account_object, eosio::chain::account_index)
 
 
-FC_REFLECT(eosio::chain::account_object, (name)(vm_type)(vm_version)(code_version)(code)(creation_date))
+FC_REFLECT(eosio::chain::account_object, (name)(vm_type)(vm_version)(creation_date))

@@ -25,7 +25,6 @@ namespace eosio { namespace chain { namespace contracts {
    void apply_eosio_passrecovery(apply_context&);
    void apply_eosio_vetorecovery(apply_context&);
 
-   void apply_eosio_setcode(apply_context&);
    void apply_eosio_setabi(apply_context&);
 
    void apply_eosio_onerror(apply_context&);
