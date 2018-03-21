@@ -1,7 +1,8 @@
 ## EVT.IO - Tokenize Everything
 Development phases:
+
 | Content | Status  | Assigner | Latest Updated |
-|---|---|---|---|---|
+|---------|---------|----------|----------------|
 | Remove Web Assembly | Done | Harry | 3/21/18  |
 | Add new token-based database and Apis | Development | Harry | 3/21/18 |
 | Add tests | Not started | Unknown | 3/21/18 |
