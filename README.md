@@ -1,4 +1,4 @@
-## EVT.IO - Tokenize Everything
+## everiToken - Tokenize Everything
 Development phases:
 
 | Content | Status  | Assigner | Latest Updated |
