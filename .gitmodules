@@ -12,3 +12,7 @@
 [submodule "libraries/softfloat"]
 	path = libraries/softfloat
 	url = https://github.com/eosio/berkeley-softfloat-3
+[submodule "libraries/rocksdb"]
+	path = libraries/rocksdb
+	url = https://github.com/facebook/rocksdb.git
+	branch = 5.11.fb
