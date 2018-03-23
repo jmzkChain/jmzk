@@ -190,7 +190,6 @@ if(ENABLE_COVERAGE_TESTING)
 endif()
 
 add_subdirectory( libraries )
-# add_subdirectory( contracts )
 add_subdirectory( plugins )
 add_subdirectory( programs )
 add_subdirectory( scripts )
