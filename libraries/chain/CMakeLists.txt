@@ -1,4 +1,7 @@
 file(GLOB HEADERS "include/eosio/chain/*.hpp" "include/eosio/chain/contracts/*.hpp")
+include_directories(
+        ../rocksdb/include
+)
 
 ## SORT .cpp by most likely to change / break compile
 add_library( eosio_chain
@@ -13,8 +16,8 @@ add_library( eosio_chain
              fork_database.cpp
              get_config.cpp
              block_log.cpp
+             tokendb.cpp
              asset.cpp
-
 
              global_property_object.cpp
              chain_controller.cpp
@@ -27,7 +30,7 @@ add_library( eosio_chain
              ${HEADERS}
              transaction_metadata.cpp)
 
-target_link_libraries( eosio_chain eos_utilities fc chainbase softfloat )
+target_link_libraries( eosio_chain eos_utilities fc chainbase softfloat rocksdb )
 target_include_directories( eosio_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"
                             )

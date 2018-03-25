@@ -21,12 +21,20 @@ using uint16    = uint_t<16>;
 using uint32    = uint_t<32>;
 using uint64    = uint_t<64>;
 
-using fixed_string32 = fc::fixed_string<fc::array<uint64,4>>;
-using fixed_string16 = fc::fixed_string<>;
-using type_name      = string;
-using field_name     = string;
-using table_name     = name;
-using action_name    = eosio::chain::action_name;
+using fixed_string32    = fc::fixed_string<fc::array<uint64,4>>;
+using fixed_string16    = fc::fixed_string<>;
+using type_name         = string;
+using field_name        = string;
+using table_name        = name;
+using action_name       = eosio::chain::action_name;
+using token_type_name   = name;
+using token_id          = uint64;
+using user_id           = fc::crypto::public_key;
+using user_list         = std::vector<fc::crypto::public_key>;
+using group_key         = fc::crypto::public_key;
+using group_name        = name;
+using permission_name   = name;
+
 
 struct type_def {
    type_def() = default;
@@ -86,6 +94,72 @@ struct abi_def {
    vector<type_def>     types;
    vector<struct_def>   structs;
    vector<action_def>   actions;
+};
+
+struct token_def {
+    token_def() = default;
+    token_def(token_type_name type, token_id id, user_list owner)
+    : type(type), id(id), owner(owner)
+    {}
+
+    token_type_name         type;
+    token_id                id;
+    user_list               owner;
+};
+
+struct group_def {
+    group_def() = default;
+
+    group_key               key;
+    uint32                  threshold;
+    vector<key_weight>      keys;
+};
+
+enum group_ref_type {
+    owner,
+    key
+};
+
+struct group_weight {
+    group_weight() = default;
+    group_weight(group_ref_type type, group_key key, weight_type weight)
+    : type(type), key(key), weight(weight)
+    {}
+    group_weight(group_ref_type type, weight_type weight)
+    : type(type), key(), weight(weight)
+    {
+        FC_ASSERT(type == group_ref_type::owner);
+    }
+
+    group_ref_type          type;
+    group_key               key;
+    weight_type             weight;
+};
+
+struct permission_def {
+    permission_def() = default;
+    permission_def(permission_name name, uint32 threshold, const vector<group_weight>& groups)
+    : name(name), threshold(threshold), groups(groups)
+    {}
+
+    permission_name         name;
+    uint32                  threshold;
+    vector<group_weight>    groups;
+};
+
+struct token_type_def {
+    token_type_def() = default;
+    token_type_def(const token_type_name& name)
+    :name(name)
+    {}
+
+    token_type_name         name;
+    user_id                 issuer;
+    time_point_sec          issue_time;
+
+    permission_def          issue;
+    permission_def          transfer;
+    permission_def          manage;
 };
 
 struct newaccount {
@@ -228,7 +302,6 @@ struct passrecovery {
    }
 };
 
-
 struct vetorecovery {
    account_name   account;
 
@@ -241,6 +314,27 @@ struct vetorecovery {
    }
 };
 
+struct newtokentype {
+    token_type_name         type;
+
+    permission_def          issue;
+    permission_def          transfer;
+    permission_def          manage;
+
+    std::vector<group_def>  groups;
+};
+
+struct issuetoken {
+    token_type_name         type;
+    std::vector<token_id>   ids;
+    user_list               owner;
+};
+
+struct transfertoken {
+    token_type_name         type;
+    token_id                id;
+    user_list               to;
+};
 
 } } } /// namespace eosio::chain::contracts
 
@@ -249,6 +343,12 @@ FC_REFLECT( eosio::chain::contracts::field_def                        , (name)(t
 FC_REFLECT( eosio::chain::contracts::struct_def                       , (name)(base)(fields) )
 FC_REFLECT( eosio::chain::contracts::action_def                       , (name)(type) )
 FC_REFLECT( eosio::chain::contracts::abi_def                          , (types)(structs)(actions) )
+FC_REFLECT( eosio::chain::contracts::token_def                        , (type)(id)(owner) )
+FC_REFLECT( eosio::chain::contracts::group_def                        , (key)(threshold)(keys) )
+FC_REFLECT_ENUM( eosio::chain::contracts::group_ref_type              , (owner)(key) )
+FC_REFLECT( eosio::chain::contracts::group_weight                     , (type)(key)(weight) )
+FC_REFLECT( eosio::chain::contracts::permission_def                   , (name)(threshold)(groups) )
+FC_REFLECT( eosio::chain::contracts::token_type_def                   , (name)(issuer)(issue_time)(issue)(transfer)(manage) )
 
 FC_REFLECT( eosio::chain::contracts::newaccount                       , (creator)(name)(owner)(active)(recovery) )
 FC_REFLECT( eosio::chain::contracts::setabi                           , (account)(abi) )
@@ -259,3 +359,6 @@ FC_REFLECT( eosio::chain::contracts::unlinkauth                       , (account
 FC_REFLECT( eosio::chain::contracts::postrecovery                     , (account)(data)(memo) )
 FC_REFLECT( eosio::chain::contracts::passrecovery                     , (account) )
 FC_REFLECT( eosio::chain::contracts::vetorecovery                     , (account) )
+FC_REFLECT( eosio::chain::contracts::newtokentype                     , (type)(issue)(transfer)(manage)(groups))
+FC_REFLECT( eosio::chain::contracts::issuetoken                       , (type)(ids)(owner) )
+FC_REFLECT( eosio::chain::contracts::transfertoken                    , (type)(id)(to) )
