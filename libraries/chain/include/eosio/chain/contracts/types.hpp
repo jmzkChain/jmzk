@@ -28,7 +28,7 @@ using field_name        = string;
 using table_name        = name;
 using action_name       = eosio::chain::action_name;
 using domain_name       = name128;
-using token_id          = name128;
+using token_name        = name128;
 using user_id           = fc::crypto::public_key;
 using user_list         = std::vector<fc::crypto::public_key>;
 using group_key         = fc::crypto::public_key;
@@ -98,12 +98,12 @@ struct abi_def {
 
 struct token_def {
     token_def() = default;
-    token_def(domain_name domain, token_id id, user_list owner)
-    : domain(domain), id(id), owner(owner)
+    token_def(domain_name domain, token_name name, user_list owner)
+    : domain(domain), name(name), owner(owner)
     {}
 
     domain_name             domain;
-    token_id                id;
+    token_name              name;
     user_list               owner;
 };
 
@@ -317,13 +317,13 @@ struct newdomain {
 
 struct issuetoken {
     domain_name             domain;
-    std::vector<token_id>   ids;
+    std::vector<token_name> names;
     user_list               owner;
 };
 
 struct transfertoken {
     domain_name             domain;
-    token_id                id;
+    token_name              name;
     user_list               to;
 };
 
@@ -340,7 +340,7 @@ FC_REFLECT( eosio::chain::contracts::field_def                        , (name)(t
 FC_REFLECT( eosio::chain::contracts::struct_def                       , (name)(base)(fields) )
 FC_REFLECT( eosio::chain::contracts::action_def                       , (name)(type) )
 FC_REFLECT( eosio::chain::contracts::abi_def                          , (types)(structs)(actions) )
-FC_REFLECT( eosio::chain::contracts::token_def                        , (domain)(id)(owner) )
+FC_REFLECT( eosio::chain::contracts::token_def                        , (domain)(name)(owner) )
 FC_REFLECT( eosio::chain::contracts::group_def                        , (key)(threshold)(keys) )
 FC_REFLECT( eosio::chain::contracts::group_weight                     , (id)(weight) )
 FC_REFLECT( eosio::chain::contracts::permission_def                   , (name)(threshold)(groups) )
@@ -356,6 +356,6 @@ FC_REFLECT( eosio::chain::contracts::postrecovery                     , (account
 FC_REFLECT( eosio::chain::contracts::passrecovery                     , (account) )
 FC_REFLECT( eosio::chain::contracts::vetorecovery                     , (account) )
 FC_REFLECT( eosio::chain::contracts::newdomain                        , (name)(issue)(transfer)(manage)(groups))
-FC_REFLECT( eosio::chain::contracts::issuetoken                       , (domain)(ids)(owner) )
-FC_REFLECT( eosio::chain::contracts::transfertoken                    , (domain)(id)(to) )
+FC_REFLECT( eosio::chain::contracts::issuetoken                       , (domain)(names)(owner) )
+FC_REFLECT( eosio::chain::contracts::transfertoken                    , (domain)(name)(to) )
 FC_REFLECT( eosio::chain::contracts::updategroup                      , (id)(threshold)(keys) )

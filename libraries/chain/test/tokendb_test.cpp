@@ -46,7 +46,7 @@ BOOST_AUTO_TEST_CASE(tokendb_default_test)
     issuetoken issuetoken;
     issuetoken.domain = "test";
     issuetoken.owner = { issuer };
-    issuetoken.ids = { "TEST-A", "TEST-B", "TEST-C" };
+    issuetoken.names = { "TEST-A", "TEST-B", "TEST-C" };
     auto r3 = db.issue_tokens(issuetoken);
     BOOST_CHECK_EQUAL(0, r3);
 

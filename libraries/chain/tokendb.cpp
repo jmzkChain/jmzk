@@ -69,9 +69,9 @@ get_domain_key(const domain_name name) {
     return db_key<domain_name>("domain", name);
 }
 
-db_key<token_id>
-get_token_key(const domain_name domain, const token_id id) {
-    return db_key<token_id>(domain, id);
+db_key<token_name>
+get_token_key(const domain_name domain, const token_name name) {
+    return db_key<token_name>(domain, name);
 }
 
 db_key<group_id>
@@ -132,9 +132,9 @@ token_db::issue_tokens(const issuetoken& issue) {
         return tokendb_error::not_found_domain;
     }
     rocksdb::WriteBatch batch;
-    for(auto id : issue.ids) {
-        auto key = get_token_key(issue.domain, id);
-        auto value = get_value(token_def(issue.domain, id, issue.owner));
+    for(auto name : issue.names) {
+        auto key = get_token_key(issue.domain, name);
+        auto value = get_value(token_def(issue.domain, name, issue.owner));
         batch.Put(key.as_slice(), value);
     }
     auto status = db_->Write(rocksdb::WriteOptions(), &batch);
@@ -145,9 +145,9 @@ token_db::issue_tokens(const issuetoken& issue) {
 }
 
 int
-token_db::exists_token(const domain_name type, const token_id id) {
+token_db::exists_token(const domain_name type, const token_name name) {
     using namespace __internal;
-    auto key = get_token_key(type, id);
+    auto key = get_token_key(type, name);
     std::string value;
     auto status = db_->Get(rocksdb::ReadOptions(), key.as_slice(), &value);
     return status.ok();
@@ -211,10 +211,10 @@ token_db::read_domain(const domain_name type, const read_domain_func& func) {
 }
 
 int
-token_db::update_token(const domain_name type, const token_id id, const update_token_func& func) {
+token_db::update_token(const domain_name type, const token_name name, const update_token_func& func) {
     using namespace __internal;
     std::string value;
-    auto key = get_token_key(type, id);
+    auto key = get_token_key(type, name);
     auto status = db_->Get(rocksdb::ReadOptions(), key.as_slice(), &value);
     if(!status.ok()) {
         return tokendb_error::not_found_token_id;
@@ -230,10 +230,10 @@ token_db::update_token(const domain_name type, const token_id id, const update_t
 }
 
 int
-token_db::read_token(const domain_name type, const token_id id, const read_token_func& func) {
+token_db::read_token(const domain_name type, const token_name name, const read_token_func& func) {
     using namespace __internal;
     std::string value;
-    auto key = get_token_key(type, id);
+    auto key = get_token_key(type, name);
     auto status = db_->Get(rocksdb::ReadOptions(), key.as_slice(), &value);
     if(!status.ok()) {
         return tokendb_error::not_found_token_id;
