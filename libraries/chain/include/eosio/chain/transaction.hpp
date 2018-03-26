@@ -9,11 +9,6 @@
 
 namespace eosio { namespace chain {
 
-   struct permission_level {
-      account_name    actor;
-      permission_name permission;
-   };
-
    /**
     *  An action is performed by an actor, aka an account. It may
     *  be created explicitly and authorized by signatures or might be
@@ -36,35 +31,25 @@ namespace eosio { namespace chain {
    struct action {
       account_name               account;
       action_name                name;
-      vector<permission_level>   authorization;
+      domain_name                domain;
+      domain_key                 key;
       bytes                      data;
 
       action(){}
 
-      template<typename T, std::enable_if_t<std::is_base_of<bytes, T>::value, int> = 1>
-      action( vector<permission_level> auth, const T& value ) {
-         account     = T::get_account();
-         name        = T::get_name();
-         authorization = move(auth);
-         data.assign(value.data(), value.data() + value.size());
+      template<typename T>
+      action( action_name name, domain_name& domain, domain_key& key, const T& value ) 
+            : account("evt"), name(name), domain(domain), key(key) 
+      {
+         data = fc::raw::pack(value);
       }
 
-      template<typename T, std::enable_if_t<!std::is_base_of<bytes, T>::value, int> = 1>
-      action( vector<permission_level> auth, const T& value ) {
-         account     = T::get_account();
-         name        = T::get_name();
-         authorization = move(auth);
-         data        = fc::raw::pack(value);
-      }
-
-      action( vector<permission_level> auth, account_name account, action_name name, const bytes& data )
-            : account(account), name(name), authorization(move(auth)), data(data) {
+      action( account_name account, action_name name, domain_name& domain, domain_key& key, const bytes& data )
+            : account(account), name(name), domain(domain), key(key), data(data) {
       }
 
       template<typename T>
       T data_as()const {
-         FC_ASSERT( account == T::get_account() );
-         FC_ASSERT( name == T::get_name()  );
          return fc::raw::unpack<T>(data);
       }
    };
@@ -259,7 +244,7 @@ namespace eosio { namespace chain {
 } } // eosio::chain
 
 FC_REFLECT( eosio::chain::permission_level, (actor)(permission) )
-FC_REFLECT( eosio::chain::action, (account)(name)(authorization)(data) )
+FC_REFLECT( eosio::chain::action, (account)(name)(domain)(key)(data) )
 FC_REFLECT( eosio::chain::transaction_header, (expiration)(region)(ref_block_num)(ref_block_prefix)(packed_bandwidth_words)(context_free_cpu_bandwidth) )
 FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header), (context_free_actions)(actions) )
 FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction), (signatures)(context_free_data) )

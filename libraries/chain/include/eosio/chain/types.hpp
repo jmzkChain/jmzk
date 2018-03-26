@@ -100,6 +100,9 @@ namespace eosio { namespace chain {
    using scope_name       = name;
    using account_name     = name;
    using permission_name  = name;
+   using domain_name      = name128;
+   using domain_key       = uint128_t;
+   using token_name       = name128;
 
 
    /**
