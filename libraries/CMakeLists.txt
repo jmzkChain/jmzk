@@ -12,4 +12,3 @@ add_subdirectory( rocksdb )
 
 add_subdirectory( chain )
 add_subdirectory( testing )
-add_subdirectory( abi_generator )
