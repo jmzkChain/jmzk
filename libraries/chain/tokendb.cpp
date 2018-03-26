@@ -23,23 +23,20 @@ token_db::initialize(const std::string& dbpath) {
     options.compression = CompressionType::kLZ4Compression;
     options.bottommost_compression = CompressionType::kZSTD;
     options.table_factory.reset(NewPlainTableFactory());
-    options.prefix_extractor.reset(NewFixedPrefixTransform(sizeof(int64_t)));
+    options.prefix_extractor.reset(NewFixedPrefixTransform(sizeof(uint128_t)));
 
     auto status = DB::Open(options, dbpath, &db_);
     if(!status.ok()) {
         return status.code();
     }
 
-    // add system reservered types perfix
-    if(!exists_token_type("type")) {
-        add_new_token_type(token_type_def("type"));
+    // add system reservered domain
+    if(!exists_domain("domain")) {
+        add_new_domain(domain_def("domain"));
     }
-    if(!exists_token_type("group")) {
-        add_new_token_type(token_type_def("group"));
+    if(!exists_domain("group")) {
+        add_new_domain(domain_def("group"));
     }
-
-    static_assert(sizeof(group_key) <= 64);
-    static_assert(sizeof(token_type_name) == 8);
 
     return 0;
 }
@@ -48,37 +45,38 @@ namespace __internal {
 
 template<typename T, int N = sizeof(T)>
 struct db_key {
-    db_key(const char* prefix, const T& t) : prefix(prefix) {
+    db_key(const char* prefix, const T& t) : prefix(prefix), slice((const char*)this, 16 + N) {
+        static_assert(sizeof(domain_name) == 16);
         memcpy(data, &t, N);
-        static_assert(sizeof(*this) ==  8 + N);
     }
 
-    db_key(token_type_name prefix, const T& t) : prefix(prefix) {
+    db_key(domain_name prefix, const T& t) : prefix(prefix), slice((const char*)this, 16 + N) {
         memcpy(data, &t, N);
-        static_assert(sizeof(*this) ==  8 + N);
     }
 
-    rocksdb::Slice as_slice() {
-        return rocksdb::Slice((const char*)this, sizeof(*this));
+    const rocksdb::Slice& as_slice() const {
+        return slice;
     }
 
-    token_type_name prefix;
+    domain_name     prefix;
     char            data[N];
+
+    rocksdb::Slice  slice;
 };
 
-db_key<token_type_name>
-get_token_type_key(const token_type_name name) {
-    return db_key<token_type_name>("type", name);
+db_key<domain_name>
+get_domain_key(const domain_name name) {
+    return db_key<domain_name>("domain", name);
 }
 
 db_key<token_id>
-get_token_key(const token_type_name name, const token_id id) {
-    return db_key<token_id>(name, id);
+get_token_key(const domain_name domain, const token_id id) {
+    return db_key<token_id>(domain, id);
 }
 
-db_key<group_key>
-get_group_key(const group_key& key) {
-    return db_key<group_key>("group", key);
+db_key<group_id>
+get_group_key(const group_id& id) {
+    return db_key<group_id>("group", id);
 }
 
 template<typename T>
@@ -104,13 +102,13 @@ read_value(const std::string& value) {
 } // namespace __internal
 
 int
-token_db::add_new_token_type(const token_type_def& ttype) {
+token_db::add_new_domain(const domain_def& domain) {
     using namespace __internal;
-    if(exists_token_type(ttype.name)) {
-        return tokendb_error::token_type_existed;
+    if(exists_domain(domain.name)) {
+        return tokendb_error::domain_existed;
     }
-    auto key = get_token_type_key(ttype.name);
-    auto value = get_value(ttype);
+    auto key = get_domain_key(domain.name);
+    auto value = get_value(domain);
     auto status = db_->Put(rocksdb::WriteOptions(), key.as_slice(), value);
     if(!status.ok()) {
         return tokendb_error::rocksdb_err;
@@ -119,9 +117,9 @@ token_db::add_new_token_type(const token_type_def& ttype) {
 }
 
 int
-token_db::exists_token_type(const token_type_name name) {
+token_db::exists_domain(const domain_name name) {
     using namespace __internal;
-    auto key = get_token_type_key(name);
+    auto key = get_domain_key(name);
     std::string value;
     auto status = db_->Get(rocksdb::ReadOptions(), key.as_slice(), &value);
     return status.ok();
@@ -130,13 +128,13 @@ token_db::exists_token_type(const token_type_name name) {
 int
 token_db::issue_tokens(const issuetoken& issue) {
     using namespace __internal;
-    if(!exists_token_type(issue.type)) {
-        return tokendb_error::not_found_token_type;
+    if(!exists_domain(issue.domain)) {
+        return tokendb_error::not_found_domain;
     }
     rocksdb::WriteBatch batch;
     for(auto id : issue.ids) {
-        auto key = get_token_key(issue.type, id);
-        auto value = get_value(token_def(issue.type, id, issue.owner));
+        auto key = get_token_key(issue.domain, id);
+        auto value = get_value(token_def(issue.domain, id, issue.owner));
         batch.Put(key.as_slice(), value);
     }
     auto status = db_->Write(rocksdb::WriteOptions(), &batch);
@@ -147,7 +145,7 @@ token_db::issue_tokens(const issuetoken& issue) {
 }
 
 int
-token_db::exists_token(const token_type_name type, const token_id id) {
+token_db::exists_token(const domain_name type, const token_id id) {
     using namespace __internal;
     auto key = get_token_key(type, id);
     std::string value;
@@ -158,10 +156,10 @@ token_db::exists_token(const token_type_name type, const token_id id) {
 int
 token_db::add_group(const group_def& group) {
     using namespace __internal;
-    if(exists_group(group.key)) {
+    if(exists_group(group.id)) {
         return tokendb_error::group_existed;
     }
-    auto key = get_group_key(group.key);
+    auto key = get_group_key(group.id);
     auto value = get_value(group);
     auto status = db_->Put(rocksdb::WriteOptions(), key.as_slice(), value);
     if(!status.ok()) {
@@ -171,24 +169,24 @@ token_db::add_group(const group_def& group) {
 }
 
 int
-token_db::exists_group(const group_key& gkey) {
+token_db::exists_group(const group_id& id) {
     using namespace __internal;
-    auto key = get_group_key(gkey);
+    auto key = get_group_key(id);
     std::string value;
     auto status = db_->Get(rocksdb::ReadOptions(), key.as_slice(), &value);
     return status.ok();
 }
 
 int
-token_db::update_token_type(const token_type_name type, const update_token_type_func& func) {
+token_db::update_domain(const domain_name type, const update_domain_func& func) {
     using namespace __internal;
     std::string value;
-    auto key = get_token_type_key(type);
+    auto key = get_domain_key(type);
     auto status = db_->Get(rocksdb::ReadOptions(), key.as_slice(), &value);
     if(!status.ok()) {
-        return tokendb_error::not_found_token_type;
+        return tokendb_error::not_found_domain;
     }
-    auto v = read_value<token_type_def>(value);
+    auto v = read_value<domain_def>(value);
     func(v);
     auto new_value = get_value(v);
     auto new_status = db_->Put(rocksdb::WriteOptions(), key.as_slice(), new_value);
@@ -199,21 +197,21 @@ token_db::update_token_type(const token_type_name type, const update_token_type_
 }
 
 int
-token_db::read_token_type(const token_type_name type, const read_token_type_func& func) {
+token_db::read_domain(const domain_name type, const read_domain_func& func) {
     using namespace __internal;
     std::string value;
-    auto key = get_token_type_key(type);
+    auto key = get_domain_key(type);
     auto status = db_->Get(rocksdb::ReadOptions(), key.as_slice(), &value);
     if(!status.ok()) {
-        return tokendb_error::not_found_token_type;
+        return tokendb_error::not_found_domain;
     }
-    auto v = read_value<token_type_def>(value);
+    auto v = read_value<domain_def>(value);
     func(v);
     return 0;
 }
 
 int
-token_db::update_token(const token_type_name type, const token_id id, const update_token_func& func) {
+token_db::update_token(const domain_name type, const token_id id, const update_token_func& func) {
     using namespace __internal;
     std::string value;
     auto key = get_token_key(type, id);
@@ -232,7 +230,7 @@ token_db::update_token(const token_type_name type, const token_id id, const upda
 }
 
 int
-token_db::read_token(const token_type_name type, const token_id id, const read_token_func& func) {
+token_db::read_token(const domain_name type, const token_id id, const read_token_func& func) {
     using namespace __internal;
     std::string value;
     auto key = get_token_key(type, id);
@@ -246,10 +244,10 @@ token_db::read_token(const token_type_name type, const token_id id, const read_t
 }
 
 int
-token_db::update_group(const group_key& gkey, const update_group_func& func) {
+token_db::update_group(const group_id& id, const update_group_func& func) {
     using namespace __internal;
     std::string value;
-    auto key = get_group_key(gkey);
+    auto key = get_group_key(id);
     auto status = db_->Get(rocksdb::ReadOptions(), key.as_slice(), &value);
     if(!status.ok()) {
         return tokendb_error::not_found_group;
@@ -265,10 +263,10 @@ token_db::update_group(const group_key& gkey, const update_group_func& func) {
 }
 
 int
-token_db::read_group(const group_key& gkey, const read_group_func& func) {
+token_db::read_group(const group_id& id, const read_group_func& func) {
     using namespace __internal;
     std::string value;
-    auto key = get_group_key(gkey);
+    auto key = get_group_key(id);
     auto status = db_->Get(rocksdb::ReadOptions(), key.as_slice(), &value);
     if(!status.ok()) {
         return tokendb_error::not_found_group;

@@ -27,12 +27,12 @@ using type_name         = string;
 using field_name        = string;
 using table_name        = name;
 using action_name       = eosio::chain::action_name;
-using token_type_name   = name;
-using token_id          = uint64;
+using domain_name       = name128;
+using token_id          = name128;
 using user_id           = fc::crypto::public_key;
 using user_list         = std::vector<fc::crypto::public_key>;
 using group_key         = fc::crypto::public_key;
-using group_name        = name;
+using group_id          = uint128_t;
 using permission_name   = name;
 
 
@@ -98,11 +98,11 @@ struct abi_def {
 
 struct token_def {
     token_def() = default;
-    token_def(token_type_name type, token_id id, user_list owner)
-    : type(type), id(id), owner(owner)
+    token_def(domain_name domain, token_id id, user_list owner)
+    : domain(domain), id(id), owner(owner)
     {}
 
-    token_type_name         type;
+    domain_name             domain;
     token_id                id;
     user_list               owner;
 };
@@ -110,29 +110,20 @@ struct token_def {
 struct group_def {
     group_def() = default;
 
+    group_id                id;
     group_key               key;
     uint32                  threshold;
     vector<key_weight>      keys;
 };
 
-enum group_ref_type {
-    owner,
-    key
-};
-
+// Special: id == 0 means owner
 struct group_weight {
     group_weight() = default;
-    group_weight(group_ref_type type, group_key key, weight_type weight)
-    : type(type), key(key), weight(weight)
+    group_weight(group_id id, weight_type weight)
+    : id(id), weight(weight)
     {}
-    group_weight(group_ref_type type, weight_type weight)
-    : type(type), key(), weight(weight)
-    {
-        FC_ASSERT(type == group_ref_type::owner);
-    }
 
-    group_ref_type          type;
-    group_key               key;
+    group_id                id;
     weight_type             weight;
 };
 
@@ -147,13 +138,13 @@ struct permission_def {
     vector<group_weight>    groups;
 };
 
-struct token_type_def {
-    token_type_def() = default;
-    token_type_def(const token_type_name& name)
+struct domain_def {
+    domain_def() = default;
+    domain_def(const domain_name& name)
     :name(name)
     {}
 
-    token_type_name         name;
+    domain_name             name;
     user_id                 issuer;
     time_point_sec          issue_time;
 
@@ -314,8 +305,8 @@ struct vetorecovery {
    }
 };
 
-struct newtokentype {
-    token_type_name         type;
+struct newdomain {
+    domain_name             name;
 
     permission_def          issue;
     permission_def          transfer;
@@ -325,15 +316,21 @@ struct newtokentype {
 };
 
 struct issuetoken {
-    token_type_name         type;
+    domain_name             domain;
     std::vector<token_id>   ids;
     user_list               owner;
 };
 
 struct transfertoken {
-    token_type_name         type;
+    domain_name             domain;
     token_id                id;
     user_list               to;
+};
+
+struct updategroup {
+    group_id                id;
+    uint32                  threshold;
+    vector<key_weight>      keys;
 };
 
 } } } /// namespace eosio::chain::contracts
@@ -343,12 +340,11 @@ FC_REFLECT( eosio::chain::contracts::field_def                        , (name)(t
 FC_REFLECT( eosio::chain::contracts::struct_def                       , (name)(base)(fields) )
 FC_REFLECT( eosio::chain::contracts::action_def                       , (name)(type) )
 FC_REFLECT( eosio::chain::contracts::abi_def                          , (types)(structs)(actions) )
-FC_REFLECT( eosio::chain::contracts::token_def                        , (type)(id)(owner) )
+FC_REFLECT( eosio::chain::contracts::token_def                        , (domain)(id)(owner) )
 FC_REFLECT( eosio::chain::contracts::group_def                        , (key)(threshold)(keys) )
-FC_REFLECT_ENUM( eosio::chain::contracts::group_ref_type              , (owner)(key) )
-FC_REFLECT( eosio::chain::contracts::group_weight                     , (type)(key)(weight) )
+FC_REFLECT( eosio::chain::contracts::group_weight                     , (id)(weight) )
 FC_REFLECT( eosio::chain::contracts::permission_def                   , (name)(threshold)(groups) )
-FC_REFLECT( eosio::chain::contracts::token_type_def                   , (name)(issuer)(issue_time)(issue)(transfer)(manage) )
+FC_REFLECT( eosio::chain::contracts::domain_def                       , (name)(issuer)(issue_time)(issue)(transfer)(manage) )
 
 FC_REFLECT( eosio::chain::contracts::newaccount                       , (creator)(name)(owner)(active)(recovery) )
 FC_REFLECT( eosio::chain::contracts::setabi                           , (account)(abi) )
@@ -359,6 +355,7 @@ FC_REFLECT( eosio::chain::contracts::unlinkauth                       , (account
 FC_REFLECT( eosio::chain::contracts::postrecovery                     , (account)(data)(memo) )
 FC_REFLECT( eosio::chain::contracts::passrecovery                     , (account) )
 FC_REFLECT( eosio::chain::contracts::vetorecovery                     , (account) )
-FC_REFLECT( eosio::chain::contracts::newtokentype                     , (type)(issue)(transfer)(manage)(groups))
-FC_REFLECT( eosio::chain::contracts::issuetoken                       , (type)(ids)(owner) )
-FC_REFLECT( eosio::chain::contracts::transfertoken                    , (type)(id)(to) )
+FC_REFLECT( eosio::chain::contracts::newdomain                        , (name)(issue)(transfer)(manage)(groups))
+FC_REFLECT( eosio::chain::contracts::issuetoken                       , (domain)(ids)(owner) )
+FC_REFLECT( eosio::chain::contracts::transfertoken                    , (domain)(id)(to) )
+FC_REFLECT( eosio::chain::contracts::updategroup                      , (id)(threshold)(keys) )

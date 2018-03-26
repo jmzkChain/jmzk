@@ -54,7 +54,7 @@ namespace eosio { namespace chain {
         return value;
     }
 
-    static uint128_t string_to_name128( const char* str ) {
+    static constexpr uint128_t string_to_name128( const char* str ) {
         uint32_t len = 0;
         while( str[len] ) ++len;
 
@@ -205,3 +205,4 @@ namespace fc {
 
 
 FC_REFLECT( eosio::chain::name, (value) )
+FC_REFLECT( eosio::chain::name128, (value) )
