@@ -17,6 +17,7 @@
 #include <eosio/chain/protocol.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/exceptions.hpp>
+#include <eosio/chain/tokendb.hpp>
 #include <eosio/chain/contracts/genesis_state.hpp>
 
 #include <fc/log/logger.hpp>
@@ -280,8 +281,7 @@ namespace eosio { namespace chain {
           */
          void check_authorization( const vector<action>& actions,
                                    const flat_set<public_key_type>& provided_keys,
-                                   bool                             allow_unused_signatures = false,
-                                   flat_set<account_name>           provided_accounts = flat_set<account_name>()
+                                   bool                             allow_unused_signatures = false
                                    )const;
 
 
@@ -407,6 +407,7 @@ namespace eosio { namespace chain {
          database                         _db;
          fork_database                    _fork_db;
          block_log                        _block_log;
+         evt::chain::token_db             _token_db;
 
          optional<database::session>      _pending_block_session;
          optional<signed_block>           _pending_block;

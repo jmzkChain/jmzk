@@ -197,7 +197,7 @@ token_db::update_domain(const domain_name type, const update_domain_func& func) 
 }
 
 int
-token_db::read_domain(const domain_name type, const read_domain_func& func) {
+token_db::read_domain(const domain_name type, const read_domain_func& func) const {
     using namespace __internal;
     std::string value;
     auto key = get_domain_key(type);
@@ -230,7 +230,7 @@ token_db::update_token(const domain_name type, const token_name name, const upda
 }
 
 int
-token_db::read_token(const domain_name type, const token_name name, const read_token_func& func) {
+token_db::read_token(const domain_name type, const token_name name, const read_token_func& func) const {
     using namespace __internal;
     std::string value;
     auto key = get_token_key(type, name);
@@ -263,7 +263,7 @@ token_db::update_group(const group_id& id, const update_group_func& func) {
 }
 
 int
-token_db::read_group(const group_id& id, const read_group_func& func) {
+token_db::read_group(const group_id& id, const read_group_func& func) const {
     using namespace __internal;
     std::string value;
     auto key = get_group_key(id);

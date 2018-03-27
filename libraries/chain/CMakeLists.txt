@@ -22,7 +22,7 @@ add_library( eosio_chain
              global_property_object.cpp
              chain_controller.cpp
 
-             contracts/eosio_contract.cpp
+             # contracts/eosio_contract.cpp
              contracts/chain_initializer.cpp
              contracts/genesis_state.cpp
              contracts/abi_serializer.cpp

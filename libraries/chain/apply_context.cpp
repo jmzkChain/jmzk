@@ -105,25 +105,6 @@ bool apply_context::is_account( const account_name& account )const {
    return nullptr != db.find<account_object,by_name>( account );
 }
 
-void apply_context::require_authorization( const account_name& account )const {
-  EOS_ASSERT( has_authorization(account), tx_missing_auth, "missing authority of ${account}", ("account",account));
-}
-bool apply_context::has_authorization( const account_name& account )const {
-  for( const auto& auth : act.authorization )
-     if( auth.actor == account ) return true;
-  return false;
-}
-
-void apply_context::require_authorization(const account_name& account,
-                                          const permission_name& permission)const {
-  for( const auto& auth : act.authorization )
-     if( auth.actor == account ) {
-        if( auth.permission == permission ) return;
-     }
-  EOS_ASSERT( false, tx_missing_auth, "missing authority of ${account}/${permission}",
-              ("account",account)("permission",permission) );
-}
-
 static bool scopes_contain(const vector<scope_name>& scopes, const scope_name& scope) {
    return std::find(scopes.begin(), scopes.end(), scope) != scopes.end();
 }
@@ -184,9 +165,10 @@ void apply_context::require_recipient( account_name code ) {
  *   ask the user for permission to take certain actions rather than making it implicit. This way users
  *   can better understand the security risk.
  */
+// TODO: (EVT) Need to rethink functions below for our cases
 void apply_context::execute_inline( action&& a ) {
    if ( !privileged ) { 
-      controller.check_authorization({a}, flat_set<public_key_type>(), false, {receiver}); 
+      controller.check_authorization({a}, flat_set<public_key_type>(), false); 
    }
    _inline_actions.emplace_back( move(a) );
 }
@@ -205,7 +187,7 @@ void apply_context::execute_deferred( deferred_transaction&& trx ) {
 
       // todo: rethink this special case
       if (receiver != config::system_account_name) {
-         controller.check_authorization(trx.actions, flat_set<public_key_type>(), false, {receiver});
+         controller.check_authorization(trx.actions, flat_set<public_key_type>(), false);
       }
 
       trx.sender = receiver; //  "Attempting to send from another account"
@@ -308,10 +290,11 @@ void apply_context::validate_or_add_table_key( const table_id_object& t_id, cont
 }
 
 void apply_context::update_db_usage( const account_name& payer, int64_t delta ) {
-   require_write_lock( payer );
-   if( (delta > 0) && payer != account_name(receiver) ) {
-      require_authorization( payer );
-   }
+//    TODO: Need to write our logic
+//    require_write_lock( payer );
+//    if( (delta > 0) && payer != account_name(receiver) ) {
+//       require_authorization( payer );
+//    }
 }
 
 
@@ -319,12 +302,7 @@ int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size
 {
    const transaction& trx = trx_meta.trx();
    const action* act = nullptr;
-   if( type == 0 ) {
-      if( index >= trx.context_free_actions.size() )
-         return -1;
-      act = &trx.context_free_actions[index];
-   }
-   else if( type == 1 ) {
+   if( type == 1 ) {
       if( index >= trx.actions.size() )
          return -1;
       act = &trx.actions[index];
@@ -337,22 +315,6 @@ int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size
    }
    return ps;
 }
-
-int apply_context::get_context_free_data( uint32_t index, char* buffer, size_t buffer_size )const {
-   if( index >= trx_meta.context_free_data.size() ) return -1;
-
-   auto s = trx_meta.context_free_data[index].size();
-
-   if( buffer_size == 0 ) return s;
-
-   if( buffer_size < s )
-      memcpy( buffer, trx_meta.context_free_data[index].data(), buffer_size );
-   else
-      memcpy( buffer, trx_meta.context_free_data[index].data(), s );
-
-   return s;
-}
-
 
 int apply_context::db_store_i64( uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size ) {
    require_write_lock( scope );

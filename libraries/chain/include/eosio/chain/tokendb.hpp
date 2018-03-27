@@ -48,11 +48,11 @@ public:
     int exists_group(const group_id&);
 
     int update_domain(const domain_name, const update_domain_func&);
-    int read_domain(const domain_name, const read_domain_func&);
+    int read_domain(const domain_name, const read_domain_func&) const;
     int update_token(const domain_name, const token_name, const update_token_func&);
-    int read_token(const domain_name, const token_name, const read_token_func&);
+    int read_token(const domain_name, const token_name, const read_token_func&) const;
     int update_group(const group_id&, const update_group_func&);
-    int read_group(const group_id&, const read_group_func&);
+    int read_group(const group_id&, const read_group_func&) const;
 
 private:
     rocksdb::DB*    db_;

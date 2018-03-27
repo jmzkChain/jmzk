@@ -450,7 +450,6 @@ class apply_context {
        act(a),
        mutable_controller(con),
        mutable_db(db),
-       used_authorizations(act.authorization.size(), false),
        trx_meta(trx_meta),
        idx64(*this),
        idx128(*this),
@@ -500,23 +499,11 @@ class apply_context {
 
       template <typename IndexType, typename Scope>
       int32_t upper_bound_record( const table_id_object& t_id, typename IndexType::value_type::key_type* keys, char* value, size_t valuelen );
-
-      /**
-       * @brief Require @ref account to have approved of this message
-       * @param account The account whose approval is required
-       *
-       * This method will check that @ref account is listed in the message's declared authorizations, and marks the
-       * authorization as used. Note that all authorizations on a message must be used, or the message is invalid.
-       *
-       * @throws tx_missing_auth If no sufficient permission was found
-       */
-      void require_authorization(const account_name& account)const;
-      bool has_authorization(const account_name& account)const;
-      void require_authorization(const account_name& account, const permission_name& permission)const;
+      
       void require_write_lock(const scope_name& scope);
       void require_read_lock(const account_name& account, const scope_name& scope);
 
-      /**
+    /**
        * @return true if account exists, false if it does not
        */
       bool is_account(const account_name& account)const;
@@ -532,9 +519,6 @@ class apply_context {
        */
       bool has_recipient(account_name account)const;
 
-      bool                     all_authorizations_used()const;
-      vector<permission_level> unused_authorizations()const;
-
       vector<account_name> get_active_producers() const;
 
       const bytes&         get_packed_transaction();
@@ -544,15 +528,10 @@ class apply_context {
       const action&                 act; ///< message being applied
       account_name                  receiver; ///< the code that is currently running
       bool                          privileged   = false;
-      bool                          context_free = false;
-      bool                          used_context_free_api = false;
 
       chain_controller&             mutable_controller;
       chainbase::database&          mutable_db;
 
-
-      ///< Parallel to act.authorization; tracks which permissions have been used while processing the message
-      vector<bool> used_authorizations;
 
       const transaction_metadata&   trx_meta;
 
@@ -582,7 +561,6 @@ class apply_context {
       void checktime(uint32_t instruction_count) const;
 
       int get_action( uint32_t type, uint32_t index, char* buffer, size_t buffer_size )const;
-      int get_context_free_data( uint32_t index, char* buffer, size_t buffer_size )const;
 
       void update_db_usage( const account_name& payer, int64_t delta );
       int  db_store_i64( uint64_t scope, uint64_t table, const account_name& payer, uint64_t id, const char* buffer, size_t buffer_size );

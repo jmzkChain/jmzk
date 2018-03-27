@@ -9,6 +9,11 @@
 
 namespace eosio { namespace chain {
 
+    struct permission_level {
+        account_name    actor;
+        permission_name permission;
+    };
+
    /**
     *  An action is performed by an actor, aka an account. It may
     *  be created explicitly and authorized by signatures or might be
@@ -119,8 +124,7 @@ namespace eosio { namespace chain {
     *  read and write scopes.
     */
    struct transaction : public transaction_header {
-      vector<action>         context_free_actions;
-      vector<action>         actions;
+      vector<action>             actions;
 
       transaction_id_type        id()const;
       digest_type                sig_digest( const chain_id_type& chain_id )const;
@@ -133,15 +137,13 @@ namespace eosio { namespace chain {
       signed_transaction() = default;
 //      signed_transaction( const signed_transaction& ) = default;
 //      signed_transaction( signed_transaction&& ) = default;
-      signed_transaction( transaction&& trx, const vector<signature_type>& signatures, const vector<bytes>& context_free_data)
+      signed_transaction( transaction&& trx, const vector<signature_type>& signatures)
       : transaction(std::forward<transaction>(trx))
       , signatures(signatures)
-      , context_free_data(context_free_data)
       {
       }
 
       vector<signature_type>    signatures;
-      vector<bytes>             context_free_data; ///< for each context-free action, there is an entry here
 
       const signature_type&     sign(const private_key_type& key, const chain_id_type& chain_id);
       signature_type            sign(const private_key_type& key, const chain_id_type& chain_id)const;
@@ -163,20 +165,17 @@ namespace eosio { namespace chain {
 
       explicit packed_transaction(const signed_transaction& t, compression_type _compression = none)
       :signatures(t.signatures)
-      ,context_free_data(t.context_free_data)
       {
          set_transaction(t, _compression);
       }
 
       explicit packed_transaction(signed_transaction&& t, compression_type _compression = none)
       :signatures(std::move(t.signatures))
-      ,context_free_data(std::move(t.context_free_data))
       {
          set_transaction(t, _compression);
       }
 
       vector<signature_type>    signatures;
-      vector<bytes>             context_free_data;
       compression_type          compression;
       bytes                     data;
 
@@ -246,8 +245,8 @@ namespace eosio { namespace chain {
 FC_REFLECT( eosio::chain::permission_level, (actor)(permission) )
 FC_REFLECT( eosio::chain::action, (account)(name)(domain)(key)(data) )
 FC_REFLECT( eosio::chain::transaction_header, (expiration)(region)(ref_block_num)(ref_block_prefix)(packed_bandwidth_words)(context_free_cpu_bandwidth) )
-FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header), (context_free_actions)(actions) )
-FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction), (signatures)(context_free_data) )
+FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header), (actions) )
+FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction), (signatures) )
 FC_REFLECT_ENUM( eosio::chain::packed_transaction::compression_type, (none)(zlib))
 FC_REFLECT( eosio::chain::packed_transaction, (signatures)(compression)(data) )
 FC_REFLECT_DERIVED( eosio::chain::deferred_transaction, (eosio::chain::transaction), (sender_id)(sender)(execute_after) )

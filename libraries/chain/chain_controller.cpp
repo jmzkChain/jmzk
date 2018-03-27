@@ -719,56 +719,71 @@ void chain_controller::__apply_block(const signed_block& next_block)
 flat_set<public_key_type> chain_controller::get_required_keys(const transaction& trx,
                                                               const flat_set<public_key_type>& candidate_keys)const
 {
-   auto checker = make_auth_checker( [&](const permission_level& p){ return get_permission(p).auth; },
-                                     get_global_properties().configuration.max_authority_depth,
-                                     candidate_keys);
+   auto checker = make_auth_checker( candidate_keys, 
+        [&](const auto& domain, const auto name, const auto& cb) {
+            _token_db.read_domain(domain, [&](const auto& domain) {
+                if(name == "issue") {
+                    cb(domain.issue);
+                }
+                else if(name == "transfer") {
+                    cb(domain.transfer);
+                }
+                else if(name == "manage") {
+                    cb(domain.manage);
+                }
+            });
+        },
+        [&](const auto& id, const auto& cb) {
+            _token_db.read_group(id, cb);
+        },
+        [&](const auto& domain, const auto& name, const auto& cb) {
+            _token_db.read_token(domain, name, [&](const auto& token) {
+                cb(token.owner);
+            });
+        });
 
-   for (const auto& act : trx.actions ) {
-      for (const auto& declared_auth : act.authorization) {
-         if (!checker.satisfied(declared_auth)) {
-            EOS_ASSERT(checker.satisfied(declared_auth), tx_missing_sigs,
-                       "transaction declares authority '${auth}', but does not have signatures for it.",
-                       ("auth", declared_auth));
-         }
-      }
-   }
+    for(const auto& act : trx.actions) {
+        EOS_ASSERT(checker.satisfied(act), tx_missing_sigs,
+            "${domain}-${key} action declares permission '${name}', but does not have signatures for it.",
+            ("domain", act.domain)("key", act.key)("name", act.name));
+    }
 
    return checker.used_keys();
 }
 
 void chain_controller::check_authorization( const vector<action>& actions,
                                             const flat_set<public_key_type>& provided_keys,
-                                            bool allow_unused_signatures,
-                                            flat_set<account_name> provided_accounts )const
+                                            bool allow_unused_signatures) const
 {
-   auto checker = make_auth_checker( [&](const permission_level& p){ return get_permission(p).auth; },
-                                     get_global_properties().configuration.max_authority_depth,
-                                     provided_keys, provided_accounts );
-
+   auto checker = make_auth_checker( provided_keys, 
+        [&](const auto& domain, const auto name, const auto& cb) {
+            _token_db.read_domain(domain, [&](const auto& domain) {
+                if(name == "issue") {
+                    cb(domain.issue);
+                }
+                else if(name == "transfer") {
+                    cb(domain.transfer);
+                }
+                else if(name == "manage") {
+                    cb(domain.manage);
+                }
+            });
+        },
+        [&](const auto& id, const auto& cb) {
+            _token_db.read_group(id, cb);
+        },
+        [&](const auto& domain, const auto& name, const auto& cb) {
+            _token_db.read_token(domain, name, [&](const auto& token) {
+                cb(token.owner);
+            });
+        });
 
    for( const auto& act : actions ) {
-      for( const auto& declared_auth : act.authorization ) {
-
-         // check a minimum permission if one is set, otherwise assume the contract code will validate
-         auto min_permission_name = lookup_minimum_permission(declared_auth.actor, act.account, act.name);
-         if (min_permission_name) {
-            const auto& min_permission = _db.get<permission_object, by_owner>(boost::make_tuple(declared_auth.actor, *min_permission_name));
-
-
-            if ((_skip_flags & skip_authority_check) == false) {
-               const auto &index = _db.get_index<permission_index>().indices();
-               EOS_ASSERT(get_permission(declared_auth).satisfies(min_permission, index),
-                          tx_irrelevant_auth,
-                          "action declares irrelevant authority '${auth}'; minimum authority is ${min}",
-                          ("auth", declared_auth)("min", min_permission.name));
-            }
-         }
-         if ((_skip_flags & skip_transaction_signatures) == false) {
-            EOS_ASSERT(checker.satisfied(declared_auth), tx_missing_sigs,
-                       "transaction declares authority '${auth}', but does not have signatures for it.",
-                       ("auth", declared_auth));
-         }
-      }
+       if((_skip_flags & skip_transaction_signatures) == false) {
+            EOS_ASSERT(checker.satisfied(act), tx_missing_sigs,
+                "${domain}-${key} action declares permission '${name}', but does not have signatures for it.",
+                ("domain", act.domain)("key", act.key)("name", act.name));
+       }
    }
 
    if (!allow_unused_signatures && (_skip_flags & skip_transaction_signatures) == false)
@@ -838,12 +853,11 @@ void chain_controller::validate_tapos(const transaction& trx)const {
               ("tapos_summary", tapos_block_summary));
 }
 
+// TODO: [EVT] We don't need this validate
 void chain_controller::validate_referenced_accounts( const transaction& trx )const
 { try {
    for( const auto& act : trx.actions ) {
       require_account(act.account);
-      for (const auto& auth : act.authorization )
-         require_account(auth.actor);
    }
 } FC_CAPTURE_AND_RETHROW() }
 
@@ -1421,22 +1435,10 @@ static void log_handled_exceptions(const transaction& trx) {
 transaction_trace chain_controller::__apply_transaction( transaction_metadata& meta ) {
    transaction_trace result(meta.id);
 
-   for (const auto &act : meta.trx().context_free_actions) {
-      FC_ASSERT( act.authorization.size() == 0, "context free actions cannot require authorization" );
-      apply_context context(*this, _db, act, meta);
-      context.context_free = true;
-      context.exec();
-      fc::move_append(result.action_traces, std::move(context.results.applied_actions));
-      FC_ASSERT( result.deferred_transactions.size() == 0 );
-      FC_ASSERT( result.canceled_deferred.size() == 0 );
-   }
-
    for (const auto &act : meta.trx().actions) {
       apply_context context(*this, _db, act, meta);
       context.exec();
-      context.used_context_free_api |= act.authorization.size();
 
-      FC_ASSERT( context.used_context_free_api, "action did not reference database state, it should be moved to context_free_actions", ("act",act) );
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
       fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));
       fc::move_append(result.canceled_deferred, std::move(context.results.canceled_deferred));
@@ -1480,38 +1482,39 @@ transaction_trace chain_controller::_apply_transaction( transaction_metadata& me
 transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
    transaction_trace result(meta.id);
    result.status = transaction_trace::soft_fail;
+   // TODO [EVT] We need to rewrite this logic
 
-   transaction etrx;
-   etrx.actions.emplace_back(vector<permission_level>{{meta.sender_id,config::active_name}},
-                             contracts::onerror(meta.raw_data, meta.raw_data + meta.raw_size) );
+//    transaction etrx;
+//    etrx.actions.emplace_back(vector<permission_level>{{meta.sender_id,config::active_name}},
+//                              contracts::onerror(meta.raw_data, meta.raw_data + meta.raw_size) );
 
-   try {
-      auto temp_session = _db.start_undo_session(true);
+//    try {
+//       auto temp_session = _db.start_undo_session(true);
 
-      apply_context context(*this, _db, etrx.actions.front(), meta);
-      context.exec();
-      fc::move_append(result.action_traces, std::move(context.results.applied_actions));
-      fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));
+//       apply_context context(*this, _db, etrx.actions.front(), meta);
+//       context.exec();
+//       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
+//       fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));
 
-      uint32_t act_usage = result.action_traces.size();
+//       uint32_t act_usage = result.action_traces.size();
 
-      for (auto &at: result.action_traces) {
-         at.region_id = meta.region_id;
-         at.cycle_index = meta.cycle_index;
-      }
+//       for (auto &at: result.action_traces) {
+//          at.region_id = meta.region_id;
+//          at.cycle_index = meta.cycle_index;
+//       }
 
-      update_usage(meta, act_usage);
-      record_transaction(meta.trx());
+//       update_usage(meta, act_usage);
+//       record_transaction(meta.trx());
 
-      temp_session.squash();
-      return result;
+//       temp_session.squash();
+//       return result;
 
-   } catch (...) {
-      // log exceptions we can handle with the error handle, throws otherwise
-      log_handled_exceptions(etrx);
+//    } catch (...) {
+//       // log exceptions we can handle with the error handle, throws otherwise
+//       log_handled_exceptions(etrx);
 
-      // fall through to marking this tx as hard-failing
-   }
+//       // fall through to marking this tx as hard-failing
+//    }
 
    // if we have an objective error, on an error handler, we return hard fail for the trx
    result.status = transaction_trace::hard_fail;
@@ -1568,13 +1571,14 @@ void chain_controller::push_deferred_transactions( bool flush )
 /**
  *  @param act_usage The number of "actions" delivered directly or indirectly by applying meta.trx
  */
+// TODO: [EVT] Need to rewrite this logic
 void chain_controller::update_usage( transaction_metadata& meta, uint32_t act_usage )
 {
    set<std::pair<account_name, permission_name>> authorizing_accounts;
 
-   for( const auto& act : meta.trx().actions )
-      for( const auto& auth : act.authorization )
-         authorizing_accounts.emplace( auth.actor, auth.permission );
+//    for( const auto& act : meta.trx().actions )
+//       for( const auto& auth : act.authorization )
+//          authorizing_accounts.emplace( auth.actor, auth.permission );
 
    auto trx_size = meta.bandwidth_usage + config::fixed_bandwidth_overhead_per_transaction;
 
