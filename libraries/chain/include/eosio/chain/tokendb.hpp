@@ -32,9 +32,9 @@ enum tokendb_error {
     rocksdb_err = -7
 };
 
-class token_db {
+class tokendb {
 public:
-    token_db() : db_(nullptr) {}
+    tokendb() : db_(nullptr) {}
 
 public:
     int initialize(const std::string& dbpath);

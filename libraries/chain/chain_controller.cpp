@@ -721,7 +721,7 @@ flat_set<public_key_type> chain_controller::get_required_keys(const transaction&
 {
    auto checker = make_auth_checker( candidate_keys, 
         [&](const auto& domain, const auto name, const auto& cb) {
-            _token_db.read_domain(domain, [&](const auto& domain) {
+            _tokendb.read_domain(domain, [&](const auto& domain) {
                 if(name == "issue") {
                     cb(domain.issue);
                 }
@@ -734,10 +734,10 @@ flat_set<public_key_type> chain_controller::get_required_keys(const transaction&
             });
         },
         [&](const auto& id, const auto& cb) {
-            _token_db.read_group(id, cb);
+            _tokendb.read_group(id, cb);
         },
         [&](const auto& domain, const auto& name, const auto& cb) {
-            _token_db.read_token(domain, name, [&](const auto& token) {
+            _tokendb.read_token(domain, name, [&](const auto& token) {
                 cb(token.owner);
             });
         });
@@ -757,7 +757,7 @@ void chain_controller::check_authorization( const vector<action>& actions,
 {
    auto checker = make_auth_checker( provided_keys, 
         [&](const auto& domain, const auto name, const auto& cb) {
-            _token_db.read_domain(domain, [&](const auto& domain) {
+            _tokendb.read_domain(domain, [&](const auto& domain) {
                 if(name == "issue") {
                     cb(domain.issue);
                 }
@@ -770,10 +770,10 @@ void chain_controller::check_authorization( const vector<action>& actions,
             });
         },
         [&](const auto& id, const auto& cb) {
-            _token_db.read_group(id, cb);
+            _tokendb.read_group(id, cb);
         },
         [&](const auto& domain, const auto& name, const auto& cb) {
-            _token_db.read_token(domain, name, [&](const auto& token) {
+            _tokendb.read_token(domain, name, [&](const auto& token) {
                 cb(token.owner);
             });
         });
@@ -1436,7 +1436,7 @@ transaction_trace chain_controller::__apply_transaction( transaction_metadata& m
    transaction_trace result(meta.id);
 
    for (const auto &act : meta.trx().actions) {
-      apply_context context(*this, _db, act, meta);
+      apply_context context(*this, _db, _tokendb, act, meta);
       context.exec();
 
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));

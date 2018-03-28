@@ -6,6 +6,7 @@
 #include <eosio/chain/block.hpp>
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/transaction_metadata.hpp>
+#include <eosio/chain/tokendb.hpp>
 #include <eosio/chain/contracts/contract_table_objects.hpp>
 #include <fc/utility.hpp>
 #include <sstream>
@@ -443,13 +444,14 @@ class apply_context {
 
 
 
-      apply_context(chain_controller& con, chainbase::database& db, const action& a, const transaction_metadata& trx_meta, uint32_t depth=0)
+      apply_context(chain_controller& con, chainbase::database& db, evt::chain::tokendb& tokendb, const action& a, const transaction_metadata& trx_meta, uint32_t depth=0)
 
       :controller(con),
        db(db),
        act(a),
        mutable_controller(con),
        mutable_db(db),
+       mutable_tokendb(tokendb),
        trx_meta(trx_meta),
        idx64(*this),
        idx128(*this),
@@ -531,6 +533,7 @@ class apply_context {
 
       chain_controller&             mutable_controller;
       chainbase::database&          mutable_db;
+      evt::chain::tokendb           mutable_tokendb;
 
 
       const transaction_metadata&   trx_meta;

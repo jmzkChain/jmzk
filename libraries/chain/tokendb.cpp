@@ -14,7 +14,7 @@
 namespace evt { namespace chain {
 
 int
-token_db::initialize(const std::string& dbpath) {
+tokendb::initialize(const std::string& dbpath) {
     using namespace rocksdb;
 
     assert(db_ == nullptr);
@@ -102,7 +102,7 @@ read_value(const std::string& value) {
 } // namespace __internal
 
 int
-token_db::add_new_domain(const domain_def& domain) {
+tokendb::add_new_domain(const domain_def& domain) {
     using namespace __internal;
     if(exists_domain(domain.name)) {
         return tokendb_error::domain_existed;
@@ -117,7 +117,7 @@ token_db::add_new_domain(const domain_def& domain) {
 }
 
 int
-token_db::exists_domain(const domain_name name) {
+tokendb::exists_domain(const domain_name name) {
     using namespace __internal;
     auto key = get_domain_key(name);
     std::string value;
@@ -126,7 +126,7 @@ token_db::exists_domain(const domain_name name) {
 }
 
 int
-token_db::issue_tokens(const issuetoken& issue) {
+tokendb::issue_tokens(const issuetoken& issue) {
     using namespace __internal;
     if(!exists_domain(issue.domain)) {
         return tokendb_error::not_found_domain;
@@ -145,7 +145,7 @@ token_db::issue_tokens(const issuetoken& issue) {
 }
 
 int
-token_db::exists_token(const domain_name type, const token_name name) {
+tokendb::exists_token(const domain_name type, const token_name name) {
     using namespace __internal;
     auto key = get_token_key(type, name);
     std::string value;
@@ -154,7 +154,7 @@ token_db::exists_token(const domain_name type, const token_name name) {
 }
 
 int
-token_db::add_group(const group_def& group) {
+tokendb::add_group(const group_def& group) {
     using namespace __internal;
     if(exists_group(group.id)) {
         return tokendb_error::group_existed;
@@ -169,7 +169,7 @@ token_db::add_group(const group_def& group) {
 }
 
 int
-token_db::exists_group(const group_id& id) {
+tokendb::exists_group(const group_id& id) {
     using namespace __internal;
     auto key = get_group_key(id);
     std::string value;
@@ -178,7 +178,7 @@ token_db::exists_group(const group_id& id) {
 }
 
 int
-token_db::update_domain(const domain_name type, const update_domain_func& func) {
+tokendb::update_domain(const domain_name type, const update_domain_func& func) {
     using namespace __internal;
     std::string value;
     auto key = get_domain_key(type);
@@ -197,7 +197,7 @@ token_db::update_domain(const domain_name type, const update_domain_func& func) 
 }
 
 int
-token_db::read_domain(const domain_name type, const read_domain_func& func) const {
+tokendb::read_domain(const domain_name type, const read_domain_func& func) const {
     using namespace __internal;
     std::string value;
     auto key = get_domain_key(type);
@@ -211,7 +211,7 @@ token_db::read_domain(const domain_name type, const read_domain_func& func) cons
 }
 
 int
-token_db::update_token(const domain_name type, const token_name name, const update_token_func& func) {
+tokendb::update_token(const domain_name type, const token_name name, const update_token_func& func) {
     using namespace __internal;
     std::string value;
     auto key = get_token_key(type, name);
@@ -230,7 +230,7 @@ token_db::update_token(const domain_name type, const token_name name, const upda
 }
 
 int
-token_db::read_token(const domain_name type, const token_name name, const read_token_func& func) const {
+tokendb::read_token(const domain_name type, const token_name name, const read_token_func& func) const {
     using namespace __internal;
     std::string value;
     auto key = get_token_key(type, name);
@@ -244,7 +244,7 @@ token_db::read_token(const domain_name type, const token_name name, const read_t
 }
 
 int
-token_db::update_group(const group_id& id, const update_group_func& func) {
+tokendb::update_group(const group_id& id, const update_group_func& func) {
     using namespace __internal;
     std::string value;
     auto key = get_group_key(id);
@@ -263,7 +263,7 @@ token_db::update_group(const group_id& id, const update_group_func& func) {
 }
 
 int
-token_db::read_group(const group_id& id, const read_group_func& func) const {
+tokendb::read_group(const group_id& id, const read_group_func& func) const {
     using namespace __internal;
     std::string value;
     auto key = get_group_key(id);

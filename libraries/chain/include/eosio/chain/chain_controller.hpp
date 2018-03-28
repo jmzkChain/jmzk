@@ -407,7 +407,7 @@ namespace eosio { namespace chain {
          database                         _db;
          fork_database                    _fork_db;
          block_log                        _block_log;
-         evt::chain::token_db             _token_db;
+         evt::chain::tokendb              _tokendb;
 
          optional<database::session>      _pending_block_session;
          optional<signed_block>           _pending_block;
