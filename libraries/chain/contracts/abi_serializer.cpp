@@ -87,6 +87,9 @@ namespace eosio { namespace chain { namespace contracts {
       built_in_types.emplace("permission_name",           pack_unpack<permission_name>());
       built_in_types.emplace("action_name",               pack_unpack<action_name>());
       built_in_types.emplace("scope_name",                pack_unpack<scope_name>());
+      built_in_types.emplace("domain_name",               pack_unpack<domain_name>());
+      built_in_types.emplace("domain_key",                pack_unpack<domain_key>());
+      built_in_types.emplace("token_name",                pack_unpack<token_name>());
    }
 
    void abi_serializer::set_abi(const abi_def& abi) {

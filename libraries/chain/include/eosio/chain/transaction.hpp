@@ -4,6 +4,7 @@
  */
 #pragma once
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/config.hpp>
 
 #include <numeric>
 
@@ -43,10 +44,11 @@ namespace eosio { namespace chain {
       action(){}
 
       template<typename T>
-      action( action_name name, domain_name& domain, domain_key& key, const T& value ) 
-            : account("evt"), name(name), domain(domain), key(key) 
+      action( domain_name& domain, domain_key& key, const T& value ) 
+            : account(config::system_account_name), domain(domain), key(key) 
       {
-         data = fc::raw::pack(value);
+          name = T::get_name();
+          data = fc::raw::pack(value);
       }
 
       action( account_name account, action_name name, domain_name& domain, domain_key& key, const bytes& data )
@@ -55,6 +57,8 @@ namespace eosio { namespace chain {
 
       template<typename T>
       T data_as()const {
+         FC_ASSERT( account == T::get_account() ); 
+         FC_ASSERT( name == T::get_name()  ); 
          return fc::raw::unpack<T>(data);
       }
    };

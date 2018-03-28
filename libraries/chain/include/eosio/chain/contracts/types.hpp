@@ -153,157 +153,6 @@ struct domain_def {
     permission_def          manage;
 };
 
-struct newaccount {
-   account_name                     creator;
-   account_name                     name;
-   authority                        owner;
-   authority                        active;
-   authority                        recovery;
-
-   static account_name get_account() {
-      return config::system_account_name;
-   }
-
-   static action_name get_name() {
-      return N(newaccount);
-   }
-};
-
-struct setabi {
-   account_name                     account;
-   abi_def                          abi;
-
-   static account_name get_account() {
-      return config::system_account_name;
-   }
-
-   static action_name get_name() {
-      return N(setabi);
-   }
-};
-
-
-struct updateauth {
-   account_name                      account;
-   permission_name                   permission;
-   permission_name                   parent;
-   authority                         data;
-
-   static account_name get_account() {
-      return config::system_account_name;
-   }
-
-   static action_name get_name() {
-      return N(updateauth);
-   }
-};
-
-struct deleteauth {
-   deleteauth() = default;
-   deleteauth(const account_name& account, const permission_name& permission)
-   :account(account), permission(permission)
-   {}
-
-   account_name                      account;
-   permission_name                   permission;
-
-   static account_name get_account() {
-      return config::system_account_name;
-   }
-
-   static action_name get_name() {
-      return N(deleteauth);
-   }
-};
-
-struct linkauth {
-   linkauth() = default;
-   linkauth(const account_name& account, const account_name& code, const action_name& type, const permission_name& requirement)
-   :account(account), code(code), type(type), requirement(requirement)
-   {}
-
-   account_name                      account;
-   account_name                      code;
-   action_name                       type;
-   permission_name                   requirement;
-
-   static account_name get_account() {
-      return config::system_account_name;
-   }
-
-   static action_name get_name() {
-      return N(linkauth);
-   }
-};
-
-struct unlinkauth {
-   unlinkauth() = default;
-   unlinkauth(const account_name& account, const account_name& code, const action_name& type)
-   :account(account), code(code), type(type)
-   {}
-
-   account_name                      account;
-   account_name                      code;
-   action_name                       type;
-
-   static account_name get_account() {
-      return config::system_account_name;
-   }
-
-   static action_name get_name() {
-      return N(unlinkauth);
-   }
-};
-
-struct onerror : bytes {
-   using bytes::bytes;
-
-   static account_name get_account() {
-      return config::system_account_name;
-   }
-
-   static action_name get_name() {
-      return N(onerror);
-   }
-};
-
-struct postrecovery {
-   account_name       account;
-   authority          data;
-   string             memo;
-
-   static account_name get_account() {
-      return config::system_account_name;
-   }
-
-   static action_name get_name() {
-      return N(postrecovery);
-   }
-};
-
-struct passrecovery {
-   account_name   account;
-
-   static account_name get_account() {
-      return config::system_account_name;
-   }
-
-   static action_name get_name() {
-      return N(passrecovery);
-   }
-};
-
-struct vetorecovery {
-   account_name   account;
-
-   static account_name get_account() {
-      return config::system_account_name;
-   }
-
-   static action_name get_name() {
-      return N(vetorecovery);
-   }
-};
 
 struct newdomain {
     domain_name             name;
@@ -313,24 +162,56 @@ struct newdomain {
     permission_def          manage;
 
     std::vector<group_def>  groups;
+
+    static account_name get_account() {
+        return config::system_account_name;
+    }
+
+    static action_name get_name() {
+        return N(newdomain);
+    }
 };
 
 struct issuetoken {
     domain_name             domain;
     std::vector<token_name> names;
     user_list               owner;
+
+    static account_name get_account() {
+        return config::system_account_name;
+    }
+
+    static action_name get_name() {
+        return N(issuetoken);
+    }
 };
 
 struct transfertoken {
     domain_name             domain;
     token_name              name;
     user_list               to;
+
+    static account_name get_account() {
+        return config::system_account_name;
+    }
+
+    static action_name get_name() {
+        return N(transfertoken);
+    }
 };
 
 struct updategroup {
     group_id                id;
     uint32                  threshold;
     vector<key_weight>      keys;
+
+    static account_name get_account() {
+        return config::system_account_name;
+    }
+
+    static action_name get_name() {
+        return N(updategroup);
+    }
 };
 
 } } } /// namespace eosio::chain::contracts
@@ -346,15 +227,6 @@ FC_REFLECT( eosio::chain::contracts::group_weight                     , (id)(wei
 FC_REFLECT( eosio::chain::contracts::permission_def                   , (name)(threshold)(groups) )
 FC_REFLECT( eosio::chain::contracts::domain_def                       , (name)(issuer)(issue_time)(issue)(transfer)(manage) )
 
-FC_REFLECT( eosio::chain::contracts::newaccount                       , (creator)(name)(owner)(active)(recovery) )
-FC_REFLECT( eosio::chain::contracts::setabi                           , (account)(abi) )
-FC_REFLECT( eosio::chain::contracts::updateauth                       , (account)(permission)(parent)(data) )
-FC_REFLECT( eosio::chain::contracts::deleteauth                       , (account)(permission) )
-FC_REFLECT( eosio::chain::contracts::linkauth                         , (account)(code)(type)(requirement) )
-FC_REFLECT( eosio::chain::contracts::unlinkauth                       , (account)(code)(type) )
-FC_REFLECT( eosio::chain::contracts::postrecovery                     , (account)(data)(memo) )
-FC_REFLECT( eosio::chain::contracts::passrecovery                     , (account) )
-FC_REFLECT( eosio::chain::contracts::vetorecovery                     , (account) )
 FC_REFLECT( eosio::chain::contracts::newdomain                        , (name)(issue)(transfer)(manage)(groups))
 FC_REFLECT( eosio::chain::contracts::issuetoken                       , (domain)(names)(owner) )
 FC_REFLECT( eosio::chain::contracts::transfertoken                    , (domain)(name)(to) )
