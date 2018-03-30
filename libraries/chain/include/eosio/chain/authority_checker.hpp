@@ -74,6 +74,15 @@ namespace eosio { namespace chain {
                _used_keys = keys;
             });
             
+            if(action.domain == "domain") {
+                // newdomain action
+                if(action.name != "newdomain") {
+                    return false;
+                }
+                // will check later
+                return true;
+            }
+
             bool result = false;
             _get_permission_func(action.domain, action.name, [&](const auto& permission) {
                 uint32_t total_weight = 0;

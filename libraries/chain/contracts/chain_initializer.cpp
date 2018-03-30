@@ -64,6 +64,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
    eos_abi.structs.emplace_back( struct_def {
       "newdomain", "", {
          {"name", "domain_name"},
+         {"issuer", "user_id"},
          {"issue", "permission_def"},
          {"transfer", "permission_def"},
          {"manage", "permission_def"},

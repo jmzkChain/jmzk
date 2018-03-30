@@ -156,6 +156,7 @@ struct domain_def {
 
 struct newdomain {
     domain_name             name;
+    user_id                 issuer;
 
     permission_def          issue;
     permission_def          transfer;
@@ -227,7 +228,7 @@ FC_REFLECT( eosio::chain::contracts::group_weight                     , (id)(wei
 FC_REFLECT( eosio::chain::contracts::permission_def                   , (name)(threshold)(groups) )
 FC_REFLECT( eosio::chain::contracts::domain_def                       , (name)(issuer)(issue_time)(issue)(transfer)(manage) )
 
-FC_REFLECT( eosio::chain::contracts::newdomain                        , (name)(issue)(transfer)(manage)(groups))
+FC_REFLECT( eosio::chain::contracts::newdomain                        , (name)(issuer)(issue)(transfer)(manage)(groups))
 FC_REFLECT( eosio::chain::contracts::issuetoken                       , (domain)(names)(owner) )
 FC_REFLECT( eosio::chain::contracts::transfertoken                    , (domain)(name)(to) )
 FC_REFLECT( eosio::chain::contracts::updategroup                      , (id)(threshold)(keys) )
