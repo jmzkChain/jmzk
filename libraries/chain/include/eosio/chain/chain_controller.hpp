@@ -330,7 +330,7 @@ namespace eosio { namespace chain {
          }
 
          void check_transaction_authorization(const transaction& trx,
-                                              const vector<signature_type>& signatures,
+                                              const flat_set<public_key_type>& provided_keys,
                                               bool allow_unused_signatures = false)const;
 
 

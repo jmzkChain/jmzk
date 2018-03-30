@@ -40,7 +40,7 @@ public:
     int initialize(const std::string& dbpath);
 
 public:
-    int add_new_domain(const domain_def&);
+    int add_domain(const domain_def&);
     int exists_domain(const domain_name);
     int issue_tokens(const issuetoken&);
     int exists_token(const domain_name, const token_name name);

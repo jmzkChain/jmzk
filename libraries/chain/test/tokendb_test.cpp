@@ -39,7 +39,7 @@ BOOST_AUTO_TEST_CASE(tokendb_default_test)
     issue_permission.groups.push_back(group_weight(100001, 2));
     domain.issue = issue_permission;
 
-    auto r2 = db.add_new_domain(domain);
+    auto r2 = db.add_domain(domain);
     BOOST_CHECK_EQUAL(0, r2);
     BOOST_CHECK_EQUAL(true, db.exists_domain("test"));
 

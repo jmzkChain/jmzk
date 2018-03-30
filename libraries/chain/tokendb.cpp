@@ -32,10 +32,10 @@ tokendb::initialize(const std::string& dbpath) {
 
     // add system reservered domain
     if(!exists_domain("domain")) {
-        add_new_domain(domain_def("domain"));
+        add_domain(domain_def("domain"));
     }
     if(!exists_domain("group")) {
-        add_new_domain(domain_def("group"));
+        add_domain(domain_def("group"));
     }
 
     return 0;
@@ -102,7 +102,7 @@ read_value(const std::string& value) {
 } // namespace __internal
 
 int
-tokendb::add_new_domain(const domain_def& domain) {
+tokendb::add_domain(const domain_def& domain) {
     using namespace __internal;
     if(exists_domain(domain.name)) {
         return tokendb_error::domain_existed;
