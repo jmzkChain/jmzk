@@ -89,14 +89,16 @@ apply_eosio_newdomain(apply_context& context) {
 
     auto ndact = context.act.data_as<newdomain>();
     try {
+        auto& tokendb = context.mutable_tokendb;
+        FC_ASSERT(!tokendb.exists_domain(ndact.name), "Domain ${name} already existed", ("name",ndact.name));
         FC_ASSERT(context.trx_meta.signing_keys, "[EVT] Signing keys not avaiable");
         auto& keys = *context.trx_meta.signing_keys;
         auto found = std::find(keys.cbegin(), keys.cend(), ndact.issuer);
         FC_ASSERT(found != keys.cend(), "Issuer must sign his key");
 
-
         for(auto& g : ndact.groups) {
             FC_ASSERT(validate(g), "Group ${id} is not valid, eithor threshold is not valid or exist duplicate or unordered key", ("id", g.id));
+            FC_ASSERT(g.id == get_groupid(g.key), "Group id and key are not match", ("id",g.id)("key",g.key)); 
         }
         FC_ASSERT(!ndact.name.empty(), "Domain name shouldn't be empty");
         FC_ASSERT(ndact.issue.threshold > 0 && validate(ndact.issue), "Issue permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
@@ -104,7 +106,6 @@ apply_eosio_newdomain(apply_context& context) {
         // manage permission's threshold can be 0 which means no one can update permission later.
         FC_ASSERT(validate(ndact.manage), "Manage permission not valid, maybe exist duplicate keys.");
 
-        auto& tokendb = context.mutable_tokendb;
         auto check_groups = [&](const auto& p, auto allowed_owner) {
             for(const auto& g : p.groups) {
                 if(g.id == 0) {
