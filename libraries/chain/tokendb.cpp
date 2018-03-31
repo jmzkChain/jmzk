@@ -80,17 +80,28 @@ public:
         if(merge_in.existing_value == nullptr) {
             return false;
         }
-        static domain_name GroupDomainName("group");
-        static rocksdb::Slice GroupDomainPrefix((const char*)&GroupDomainName, sizeof(GroupDomainName));
+        static domain_name GroupPrefixName("group");
+        static rocksdb::Slice GroupPrefixSlice((const char*)&GroupPrefixName, sizeof(GroupPrefixName));
+        static domain_name DomainPrefixName("domain");
+        static rocksdb::Slice DomainPrefixSlice((const char*)&DomainPrefixName, sizeof(DomainPrefixName));
 
         try {
             // merge only need to consider latest one
-            if(merge_in.key.starts_with(GroupDomainPrefix)) {
+            if(merge_in.key.starts_with(GroupPrefixSlice)) {
                 // group
                 auto v = read_value<group_def>(*merge_in.existing_value);
                 auto ug = read_value<updategroup>(merge_in.operand_list[merge_in.operand_list.size() - 1]);
                 v.threshold = ug.threshold;
                 v.keys = std::move(ug.keys);
+                merge_out->new_value = get_value(v);
+            }
+            else if(merge_in.key.starts_with(DomainPrefixSlice)) {
+                // domain
+                auto v = read_value<domain_def>(*merge_in.existing_value);
+                auto ug = read_value<updatedomain>(merge_in.operand_list[merge_in.operand_list.size() - 1]);
+                v.issue = std::move(ug.issue);
+                v.transfer = std::move(ug.transfer);
+                v.manage = std::move(ug.manage);
                 merge_out->new_value = get_value(v);
             }
             else {
@@ -229,25 +240,6 @@ tokendb::exists_group(const group_id& id) {
 }
 
 int
-tokendb::update_domain(const domain_name type, const update_domain_func& func) {
-    using namespace __internal;
-    std::string value;
-    auto key = get_domain_key(type);
-    auto status = db_->Get(rocksdb::ReadOptions(), key.as_slice(), &value);
-    if(!status.ok()) {
-        return tokendb_error::not_found_domain;
-    }
-    auto v = read_value<domain_def>(value);
-    func(v);
-    auto new_value = get_value(v);
-    auto new_status = db_->Put(rocksdb::WriteOptions(), key.as_slice(), new_value);
-    if(!new_status.ok()) {
-        return tokendb_error::rocksdb_err;
-    }
-    return 0;
-}
-
-int
 tokendb::read_domain(const domain_name type, const read_domain_func& func) const {
     using namespace __internal;
     std::string value;
@@ -258,25 +250,6 @@ tokendb::read_domain(const domain_name type, const read_domain_func& func) const
     }
     auto v = read_value<domain_def>(value);
     func(v);
-    return 0;
-}
-
-int
-tokendb::update_token(const domain_name type, const token_name name, const update_token_func& func) {
-    using namespace __internal;
-    std::string value;
-    auto key = get_token_key(type, name);
-    auto status = db_->Get(rocksdb::ReadOptions(), key.as_slice(), &value);
-    if(!status.ok()) {
-        return tokendb_error::not_found_token_id;
-    }
-    auto v = read_value<token_def>(value);
-    func(v);
-    auto new_value = get_value(v);
-    auto new_status = db_->Put(rocksdb::WriteOptions(), key.as_slice(), new_value);
-    if(!new_status.ok()) {
-        return tokendb_error::rocksdb_err;
-    }
     return 0;
 }
 
@@ -295,25 +268,6 @@ tokendb::read_token(const domain_name type, const token_name name, const read_to
 }
 
 int
-tokendb::update_group(const group_id& id, const update_group_func& func) {
-    using namespace __internal;
-    std::string value;
-    auto key = get_group_key(id);
-    auto status = db_->Get(rocksdb::ReadOptions(), key.as_slice(), &value);
-    if(!status.ok()) {
-        return tokendb_error::not_found_group;
-    }
-    auto v = read_value<group_def>(value);
-    func(v);
-    auto new_value = get_value(v);
-    auto new_status = db_->Put(rocksdb::WriteOptions(), key.as_slice(), new_value);
-    if(!new_status.ok()) {
-        return tokendb_error::rocksdb_err;
-    }
-    return 0;
-}
-
-int
 tokendb::read_group(const group_id& id, const read_group_func& func) const {
     using namespace __internal;
     std::string value;
@@ -324,6 +278,18 @@ tokendb::read_group(const group_id& id, const read_group_func& func) const {
     }
     auto v = read_value<group_def>(value);
     func(v);
+    return 0;
+}
+
+int
+tokendb::update_domain(const updatedomain& ud) {
+    using namespace __internal;
+    auto key = get_domain_key(ud.name);
+    auto value = get_value(ud);
+    auto status = db_->Merge(rocksdb::WriteOptions(), key.as_slice(), value);
+    if(!status.ok()) {
+        return tokendb_error::rocksdb_err;
+    }
     return 0;
 }
 

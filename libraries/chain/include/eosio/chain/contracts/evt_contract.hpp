@@ -18,6 +18,7 @@ namespace eosio { namespace chain { namespace contracts {
         void apply_eosio_issuetoken(apply_context& context);
         void apply_eosio_transfertoken(apply_context& context);
         void apply_eosio_updategroup(apply_context& context);
+        void apply_eosio_updatedomain(apply_context& context);
 
     ///@}  end action handlers
 

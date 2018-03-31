@@ -156,9 +156,7 @@ apply_eosio_transfertoken(apply_context& context) {
     auto& tokendb = context.mutable_tokendb;
     FC_ASSERT(tokendb.exists_token(ttact.domain, ttact.name), "Token ${domain}-${name} not existed", ("domain",ttact.domain)("name",ttact.name));
     
-    auto r = tokendb.update_token(ttact.domain, ttact.name, [&ttact](auto& t) {
-        t.owner = ttact.to;
-    });
+    auto r = tokendb.transfer_token(ttact);
     FC_ASSERT(r == 0, "[EVT] Transfer token ${domain}-${name} failed", ("domain",ttact.domain)("name",ttact.name));
 }
 
@@ -173,13 +171,53 @@ apply_eosio_updategroup(apply_context& context) {
         FC_ASSERT(ugact.keys.size() > 0, "Group must contains at least one key");
         FC_ASSERT(validate(ugact), "Updated group is not valid, eithor threshold is not valid or exist duplicate or unordered keys");
 
-        auto r = tokendb.update_group(ugact.id, [&ugact](auto& g) {
-            g.threshold = ugact.threshold;
-            g.keys = ugact.keys;
-        });
+        auto r = tokendb.update_group(ugact);
         FC_ASSERT(r == 0, "[EVT] Update group ${id} failed", ("id",ugact.id));
     }
     FC_CAPTURE_AND_RETHROW((ugact));
+}
+
+void
+apply_eosio_updatedomain(apply_context& context) {
+    using namespace __internal;
+
+    auto udact = context.act.data_as<updatedomain>();
+    try {
+        auto& tokendb = context.mutable_tokendb;
+        FC_ASSERT(tokendb.exists_domain(udact.name), "Domain ${name} is not existed", ("name",udact.name));
+
+        for(auto& g : udact.groups) {
+            FC_ASSERT(validate(g), "Group ${id} is not valid, eithor threshold is not valid or exist duplicate or unordered key", ("id", g.id));
+            FC_ASSERT(g.id == get_groupid(g.key), "Group id and key are not match", ("id",g.id)("key",g.key)); 
+        }
+        FC_ASSERT(!udact.name.empty(), "Domain name shouldn't be empty");
+        FC_ASSERT(udact.issue.threshold > 0 && validate(udact.issue), "Issue permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
+        FC_ASSERT(udact.transfer.threshold > 0 && validate(udact.transfer), "Transfer permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
+        // manage permission's threshold can be 0 which means no one can update permission later.
+        FC_ASSERT(validate(udact.manage), "Manage permission not valid, maybe exist duplicate keys.");
+
+        auto check_groups = [&](const auto& p, auto allowed_owner) {
+            for(const auto& g : p.groups) {
+                if(g.id == 0) {
+                    // owner group
+                    FC_ASSERT(allowed_owner, "Owner group is not allowed in ${name} permission", ("name", p.name));
+                    continue;
+                }
+                auto dbexisted = tokendb.exists_group(g.id);
+                auto defexisted = std::find_if(udact.groups.cbegin(), udact.groups.cend(), [&g](auto& gd) { return gd.id == g.id; }) != udact.groups.cend();
+
+                FC_ASSERT(dbexisted && defexisted, "Group ${id} already existed shouldn't be defined again", ("id", g.id));
+                FC_ASSERT(!dbexisted && !defexisted, "Group ${id} need to be defined", ("id", g.id));
+            }
+        };
+        check_groups(udact.issue, false);
+        check_groups(udact.transfer, true);
+        check_groups(udact.manage, false);
+
+        auto r = tokendb.update_domain(udact);
+        FC_ASSERT(r == 0, "[EVT] Update domain ${name} failed", ("name",udact.name));
+    }
+    FC_CAPTURE_AND_RETHROW((udact));
 }
 
 } } } // namespace eosio::chain::contracts

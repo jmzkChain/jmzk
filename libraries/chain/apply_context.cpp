@@ -47,10 +47,6 @@ bool apply_context::is_account( const account_name& account )const {
    return nullptr != db.find<account_object,by_name>( account );
 }
 
-static bool scopes_contain(const vector<scope_name>& scopes, const scope_name& scope) {
-   return std::find(scopes.begin(), scopes.end(), scope) != scopes.end();
-}
-
 bool apply_context::has_recipient( account_name code )const {
    for( auto a : _notified )
       if( a == code )

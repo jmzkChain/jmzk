@@ -215,6 +215,24 @@ struct updategroup {
     }
 };
 
+struct updatedomain {
+    domain_name             name;
+    
+    permission_def          issue;
+    permission_def          transfer;
+    permission_def          manage;
+
+    std::vector<group_def>  groups;
+
+    static account_name get_account() {
+        return config::system_account_name;
+    }
+
+    static action_name get_name() {
+        return N(newdomain);
+    }
+};
+
 } } } /// namespace eosio::chain::contracts
 
 FC_REFLECT( eosio::chain::contracts::type_def                         , (new_type_name)(type) )
@@ -232,3 +250,4 @@ FC_REFLECT( eosio::chain::contracts::newdomain                        , (name)(i
 FC_REFLECT( eosio::chain::contracts::issuetoken                       , (domain)(names)(owner) )
 FC_REFLECT( eosio::chain::contracts::transfertoken                    , (domain)(name)(to) )
 FC_REFLECT( eosio::chain::contracts::updategroup                      , (id)(threshold)(keys) )
+FC_REFLECT( eosio::chain::contracts::updatedomain                     , (name)(issue)(transfer)(manage)(groups))

@@ -15,9 +15,6 @@ namespace evt { namespace chain {
 
 using namespace eosio::chain::contracts;
 
-using update_domain_func = std::function<void(domain_def&)>;
-using update_token_func = std::function<void(token_def&)>;
-using update_group_func = std::function<void(group_def&)>;
 using read_domain_func = std::function<void(const domain_def&)>;
 using read_token_func = std::function<void(const token_def&)>;
 using read_group_func = std::function<void(const group_def&)>;
@@ -48,16 +45,19 @@ public:
     int add_group(const group_def&);
     int exists_group(const group_id&);
 
-    int update_domain(const domain_name, const update_domain_func&);
     int read_domain(const domain_name, const read_domain_func&) const;
-    int update_token(const domain_name, const token_name, const update_token_func&);
     int read_token(const domain_name, const token_name, const read_token_func&) const;
-    int update_group(const group_id&, const update_group_func&);
     int read_group(const group_id&, const read_group_func&) const;
 
     // specific function, use merge operator to speed up rocksdb action.
+    int update_domain(const updatedomain& ud);
     int update_group(const updategroup& ug);
     int transfer_token(const transfertoken& tt);
+
+public:
+    int add_checkpoint(uint32 seq);
+    int rollback_to_latest();
+    int pop_checkpoints(uint32 until);
 
 private:
     rocksdb::DB*    db_;
