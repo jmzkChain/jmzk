@@ -131,6 +131,43 @@ public:
     virtual bool AllowSingleOperand() const override { return true; }
 };
 
+enum dbaction_type {
+    none = 0,
+    kNewDomain,
+    kIssueToken,
+    kAddGroup,
+    kUpdateDomain,
+    kUpdateGroup,
+    kUpdateToken
+};
+
+struct cp_newdomain {
+    domain_name name;
+};
+
+struct cp_issuetoken {
+    domain_name domain;
+    size_t      size;
+    token_name  names[0];
+};
+
+struct cp_addgroup {
+    group_id    id;
+};
+
+struct cp_updatedomain {
+    domain_name name;
+};
+
+struct cp_updategroup {
+    group_id    id;
+};
+
+struct cp_updatetoken {
+    domain_name domain;
+    token_name  name;
+};
+
 } // namespace __internal
 
 int
@@ -175,6 +212,11 @@ tokendb::add_domain(const domain_def& domain) {
     if(!status.ok()) {
         return tokendb_error::rocksdb_err;
     }
+    if(should_record()) {
+        auto act = (cp_newdomain*)malloc(sizeof(cp_newdomain));
+        act->name = domain.name;
+        record(kNewDomain, act);
+    }
     return 0;
 }
 
@@ -203,6 +245,13 @@ tokendb::issue_tokens(const issuetoken& issue) {
     if(!status.ok()) {
         return tokendb_error::rocksdb_err;
     }
+    if(should_record()) {
+        auto act = (cp_issuetoken*)malloc(sizeof(cp_issuetoken) + sizeof(token_name) * issue.names.size());
+        act->domain = issue.domain;
+        act->size = issue.names.size();
+        memcpy(act->names, &issue.names[0], sizeof(token_name) * act->size); 
+        record(kIssueToken, act);
+    }
     return 0;
 }
 
@@ -226,6 +275,11 @@ tokendb::add_group(const group_def& group) {
     auto status = db_->Put(rocksdb::WriteOptions(), key.as_slice(), value);
     if(!status.ok()) {
         return tokendb_error::rocksdb_err;
+    }
+    if(should_record()) {
+        auto act = (cp_addgroup*)malloc(sizeof(cp_addgroup));
+        act->id = group.id;
+        record(kAddGroup, act);
     }
     return 0;
 }
@@ -290,6 +344,11 @@ tokendb::update_domain(const updatedomain& ud) {
     if(!status.ok()) {
         return tokendb_error::rocksdb_err;
     }
+    if(should_record()) {
+        auto act = (cp_updatedomain*)malloc(sizeof(cp_updatedomain));
+        act->name = ud.name;
+        record(kUpdateDomain, act);
+    }
     return 0;
 }
 
@@ -301,6 +360,11 @@ tokendb::update_group(const updategroup& ug) {
     auto status = db_->Merge(rocksdb::WriteOptions(), key.as_slice(), value);
     if(!status.ok()) {
         return tokendb_error::rocksdb_err;
+    }
+    if(should_record()) { 
+        auto act = (cp_updategroup*)malloc(sizeof(cp_updategroup));
+        act->id = ug.id;
+        record(kUpdateGroup, act);
     }
     return 0;
 }
@@ -314,6 +378,59 @@ tokendb::transfer_token(const transfertoken& tt) {
     if(!status.ok()) {
         return tokendb_error::rocksdb_err;
     }
+     if(should_record()) {
+        auto act = (cp_updatetoken*)malloc(sizeof(cp_updatetoken));
+        act->domain = tt.domain;
+        act->name = tt.name;
+        record(kUpdateToken, act);
+    }  
+    return 0;
+}
+
+int 
+tokendb::record(int type, void* data) {
+    if(!should_record()) {
+        return tokendb_error::no_checkpoint;
+    }
+    checkpoints_.back().actions.emplace_back(dbaction { .type = type, .data = data });
+    return 0;
+}
+
+int
+tokendb::add_checkpoint(uint32 seq) {
+    if(!checkpoints_.empty()) {
+        if(checkpoints_.back().seq >= seq) {
+            return tokendb_error::seq_not_valid;
+        }
+    }
+    checkpoints_.emplace_back(checkpoint {
+        .seq = seq,
+        .rb_snapshot = (const void*)db_->GetSnapshot(),
+        .actions = {}
+    });
+    return 0;
+}
+
+int
+tokendb::free_checkpoint(checkpoint& cp) {
+    for(auto& act : cp.actions) {
+        free(act.data);
+    }
+    db_->ReleaseSnapshot((const rocksdb::Snapshot*)cp.rb_snapshot);
+    return 0;
+}
+
+int
+tokendb::pop_checkpoints(uint32 until) {
+    while(!checkpoints_.empty() && checkpoints_.front().seq < until) {
+        free_checkpoint(checkpoints_.front());
+        checkpoints_.pop_front();
+    }
+    return 0;
+}
+
+int
+tokendb::rollback_to_latest() {
     return 0;
 }
 

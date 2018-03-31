@@ -4,6 +4,7 @@
 */
 
 #pragma once
+#include <deque>
 #include <functional>
 #include <eosio/chain/contracts/types.hpp>
 
@@ -20,6 +21,7 @@ using read_token_func = std::function<void(const token_def&)>;
 using read_group_func = std::function<void(const group_def&)>;
 
 enum tokendb_error {
+    ok = 0,
     domain_existed = -1,
     not_found_domain = -2,
     group_existed = -3,
@@ -27,10 +29,22 @@ enum tokendb_error {
     token_id_existed = -5,
     not_found_token_id = -6,
     rocksdb_err = -7,
-    fc_err = -8
+    no_checkpoint = -8,
+    seq_not_valid = -9
 };
 
 class tokendb {
+private:
+    struct dbaction {
+        int     type;
+        void*   data;
+    };
+    struct checkpoint {
+        uint32                  seq;
+        const void*             rb_snapshot;
+        std::vector<dbaction>   actions;
+    };
+
 public:
     tokendb() : db_(nullptr) {}
 
@@ -60,7 +74,13 @@ public:
     int pop_checkpoints(uint32 until);
 
 private:
-    rocksdb::DB*    db_;
+    int should_record() { return !checkpoints_.empty(); }
+    int record(int type, void* data);
+    int free_checkpoint(checkpoint&);
+
+private:
+    rocksdb::DB*            db_;
+    std::deque<checkpoint>  checkpoints_;
 };
 
 }}  // namespace evt::chain
