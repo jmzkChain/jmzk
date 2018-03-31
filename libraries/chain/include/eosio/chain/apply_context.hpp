@@ -7,7 +7,6 @@
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/transaction_metadata.hpp>
 #include <eosio/chain/tokendb.hpp>
-#include <eosio/chain/contracts/contract_table_objects.hpp>
 #include <fc/utility.hpp>
 #include <sstream>
 #include <algorithm>
@@ -15,8 +14,6 @@
 namespace chainbase { class database; }
 
 namespace eosio { namespace chain {
-
-using contracts::key_value_object;
 
 class chain_controller;
 

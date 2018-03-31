@@ -8,24 +8,12 @@
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/ripemd160.hpp>
 
-#include <eosio/chain/contracts/contract_table_objects.hpp>
 #include <eosio/chain/contracts/chain_initializer.hpp>
 
 #include <eosio/chain/chain_controller.hpp>
 #include <eosio/chain/apply_context.hpp>
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/exceptions.hpp>
-
-#include <eosio/chain/account_object.hpp>
-#include <eosio/chain/permission_object.hpp>
-#include <eosio/chain/permission_link_object.hpp>
-#include <eosio/chain/global_property_object.hpp>
-#include <eosio/chain/contracts/types.hpp>
-#include <eosio/chain/producer_object.hpp>
-
-#include <eosio/chain/contracts/abi_serializer.hpp>
-
-#include <eosio/chain/rate_limiting.hpp>
 
 namespace eosio { namespace chain { namespace contracts {
 

@@ -233,25 +233,6 @@ const bytes& apply_context::get_packed_transaction() {
    return trx_meta.packed_trx;
 }
 
-const char* to_string(contracts::table_key_type key_type) {
-   switch(key_type) {
-   case contracts::type_unassigned:
-      return "unassigned";
-   case contracts::type_i64:
-      return "i64";
-   case contracts::type_str:
-      return "str";
-   case contracts::type_i128i128:
-      return "i128i128";
-   case contracts::type_i64i64:
-      return "i64i64";
-   case contracts::type_i64i64i64:
-      return "i64i64i64";
-   default:
-      return "<unkown table_key_type>";
-   }
-}
-
 int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size_t buffer_size )const
 {
    const transaction& trx = trx_meta.trx();

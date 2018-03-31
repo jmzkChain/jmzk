@@ -97,7 +97,7 @@ public:
                 // token
                 auto v = read_value<token_def>(*merge_in.existing_value);
                 auto tt = read_value<transfertoken>(merge_in.operand_list[merge_in.operand_list.size() - 1]);
-                v.owner = tt.to;
+                v.owner = std::move(tt.to);
                 merge_out->new_value = get_value(v);
             }
         }
