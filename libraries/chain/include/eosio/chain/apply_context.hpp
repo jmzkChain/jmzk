@@ -34,11 +34,6 @@ public:
       void exec();
 
       void execute_inline( action &&a );
-      void execute_deferred( deferred_transaction &&trx );
-      void cancel_deferred( uint32_t sender_id );
-      
-      void require_write_lock(const scope_name& scope);
-      void require_read_lock(const account_name& account, const scope_name& scope);
 
     /**
        * @return true if account exists, false if it does not
@@ -75,8 +70,6 @@ public:
 
       struct apply_results {
          vector<action_trace>          applied_actions;
-         vector<deferred_transaction>  generated_transactions;
-         vector<deferred_reference>    canceled_deferred;
       };
 
       apply_results results;
@@ -109,8 +102,6 @@ public:
    private:
       void append_results(apply_results &&other) {
          fc::move_append(results.applied_actions, move(other.applied_actions));
-         fc::move_append(results.generated_transactions, move(other.generated_transactions));
-         fc::move_append(results.canceled_deferred, move(other.canceled_deferred));
       }
 
       void exec_one();
@@ -119,8 +110,6 @@ public:
       vector<action>                      _inline_actions; ///< queued inline messages
       std::ostringstream                  _pending_console_output;
 
-      vector<shard_lock>                  _read_locks;
-      vector<scope_name>                  _write_scopes;
       bytes                               _cached_trx;
 };
 
@@ -128,4 +117,4 @@ using apply_handler = std::function<void(apply_context&)>;
 
 } } // namespace eosio::chain
 
-FC_REFLECT(eosio::chain::apply_context::apply_results, (applied_actions)(generated_transactions))
+FC_REFLECT(eosio::chain::apply_context::apply_results, (applied_actions))

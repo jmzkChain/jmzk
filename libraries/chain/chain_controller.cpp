@@ -14,7 +14,6 @@
 #include <eosio/chain/permission_link_object.hpp>
 #include <eosio/chain/authority_checker.hpp>
 #include <eosio/chain/contracts/chain_initializer.hpp>
-#include <eosio/chain/scope_sequence_object.hpp>
 #include <eosio/chain/merkle.hpp>
 
 #include <eosio/utilities/rand.hpp>
@@ -267,18 +266,6 @@ transaction_trace chain_controller::_push_transaction(const packed_transaction& 
 
 }
 
-static void record_locks_for_data_access(const vector<action_trace>& action_traces, vector<shard_lock>& read_locks, vector<shard_lock>& write_locks ) {
-   for (const auto& at: action_traces) {
-      for (const auto& access: at.data_access) {
-         if (access.type == data_access_info::read) {
-            read_locks.emplace_back(shard_lock{access.code, access.scope});
-         } else {
-            write_locks.emplace_back(shard_lock{access.code, access.scope});
-         }
-      }
-   }
-}
-
 transaction_trace chain_controller::_push_transaction( transaction_metadata&& data )
 {
    if (_limits.max_push_transaction_us.count() > 0) {
@@ -310,11 +297,6 @@ transaction_trace chain_controller::_push_transaction( transaction_metadata&& da
 
    auto& bcycle = _pending_block->regions.back().cycles_summary.back();
    auto& bshard = bcycle.front();
-
-   record_locks_for_data_access(result.action_traces, bshard.read_locks, bshard.write_locks);
-
-   fc::deduplicate(bshard.read_locks);
-   fc::deduplicate(bshard.write_locks);
 
    bshard.transactions.emplace_back( result );
 
@@ -374,35 +356,6 @@ void chain_controller::_apply_cycle_trace( const cycle_trace& res )
 {
    for (const auto&st: res.shard_traces) {
       for (const auto &tr: st.transaction_traces) {
-         for (const auto &dt: tr.deferred_transactions) {
-            _db.create<generated_transaction_object>([&](generated_transaction_object &obj) {
-               obj.trx_id = dt.id();
-               obj.sender = dt.sender;
-               obj.sender_id = dt.sender_id;
-               obj.expiration = dt.expiration;
-               obj.delay_until = dt.execute_after;
-               obj.published = head_block_time();
-               obj.packed_trx.resize(fc::raw::pack_size(dt));
-               fc::datastream<char *> ds(obj.packed_trx.data(), obj.packed_trx.size());
-               fc::raw::pack(ds, dt);
-            });
-         }
-
-         if (tr.canceled_deferred.size() > 0 ) {
-            auto &generated_transaction_idx = _db.get_mutable_index<generated_transaction_multi_index>();
-            const auto &generated_index = generated_transaction_idx.indices().get<by_sender_id>();
-            for (const auto &dr: tr.canceled_deferred) {
-               while(!generated_index.empty()) {
-                  const auto& itr = generated_index.lower_bound(boost::make_tuple(dr.sender, dr.sender_id));
-                  if (itr == generated_index.end() || itr->sender != dr.sender || itr->sender_id != dr.sender_id ) {
-                     break;
-                  }
-
-                  generated_transaction_idx.remove(*itr);
-               }
-            }
-         }
-
          ///TODO: hook this up as a signal handler in a de-coupled "logger" that may just silently drop them
          for (const auto &ar : tr.action_traces) {
             if (!ar.console.empty()) {
@@ -566,18 +519,6 @@ void chain_controller::_apply_block(const signed_block& next_block, uint32_t ski
    });
 }
 
-static void validate_shard_locks(const vector<shard_lock>& locks, const string& tag) {
-   if (locks.size() < 2) {
-      return;
-   }
-
-   for (auto cur = locks.begin() + 1; cur != locks.end(); ++cur) {
-      auto prev = cur - 1;
-      EOS_ASSERT(*prev != *cur, block_lock_exception, "${tag} lock \"${a}::${s}\" is not unique", ("tag",tag)("a",cur->account)("s",cur->scope));
-      EOS_ASSERT(*prev < *cur,  block_lock_exception, "${tag} locks are not sorted", ("tag",tag));
-   }
-}
-
 void chain_controller::__apply_block(const signed_block& next_block)
 { try {
    optional<fc::time_point> processing_deadline;
@@ -623,64 +564,25 @@ void chain_controller::__apply_block(const signed_block& next_block)
          cycle_trace c_trace;
          c_trace.shard_traces.reserve(cycle.size());
 
-         // validate that no read_scope is used as a write scope in this cycle and that no two shards
-         // share write scopes
-         set<shard_lock> read_locks;
-         map<shard_lock, uint32_t> write_locks;
-
          for (uint32_t shard_index = 0; shard_index < cycle.size(); shard_index++) {
             const auto& shard = cycle.at(shard_index);
-
-            // Validate that the shards scopes are correct and available
-            validate_shard_locks(shard.read_locks,  "read");
-            validate_shard_locks(shard.write_locks, "write");
-
-            for (const auto& s: shard.read_locks) {
-               EOS_ASSERT(write_locks.count(s) == 0, block_concurrency_exception,
-                  "shard ${i} requires read lock \"${a}::${s}\" which is locked for write by shard ${j}",
-                  ("i", shard_index)("s", s)("j", write_locks[s]));
-               read_locks.emplace(s);
-            }
-
-            for (const auto& s: shard.write_locks) {
-               EOS_ASSERT(write_locks.count(s) == 0, block_concurrency_exception,
-                  "shard ${i} requires write lock \"${a}::${s}\" which is locked for write by shard ${j}",
-                  ("i", shard_index)("a", s.account)("s", s.scope)("j", write_locks[s]));
-               EOS_ASSERT(read_locks.count(s) == 0, block_concurrency_exception,
-                  "shard ${i} requires write lock \"${a}::${s}\" which is locked for read",
-                  ("i", shard_index)("a", s.account)("s", s.scope));
-               write_locks[s] = shard_index;
-            }
-
-            vector<shard_lock> used_read_locks;
-            vector<shard_lock> used_write_locks;
 
             shard_trace s_trace;
             for (const auto& receipt : shard.transactions) {
                 optional<transaction_metadata> _temp;
                 auto make_metadata = [&]() -> transaction_metadata* {
                   auto itr = trx_index.find(receipt.id);
-                  if( itr != trx_index.end() ) {
-                     return &input_metas.at(itr->second);
-                  } else {
-                     const auto& gtrx = _db.get<generated_transaction_object,by_trx_id>(receipt.id);
-                     auto trx = fc::raw::unpack<deferred_transaction>(gtrx.packed_trx.data(), gtrx.packed_trx.size());
-                     _temp.emplace(trx, gtrx.published, trx.sender, trx.sender_id, gtrx.packed_trx.data(), gtrx.packed_trx.size() );
-                     return &*_temp;
-                  }
+                  FC_ASSERT(itr != trx_index.end());
+                  return &input_metas.at(itr->second);
                };
 
                auto *mtrx = make_metadata();
                mtrx->region_id = r.region;
                mtrx->cycle_index = cycle_index;
                mtrx->shard_index = shard_index;
-               mtrx->allowed_read_locks.emplace(&shard.read_locks);
-               mtrx->allowed_write_locks.emplace(&shard.write_locks);
                mtrx->processing_deadline = processing_deadline;
 
                s_trace.transaction_traces.emplace_back(_apply_transaction(*mtrx));
-               record_locks_for_data_access(s_trace.transaction_traces.back().action_traces, used_read_locks, used_write_locks);
-
                FC_ASSERT(receipt.status == s_trace.transaction_traces.back().status);
 
                // validate_referenced_accounts(trx);
@@ -688,16 +590,6 @@ void chain_controller::__apply_block(const signed_block& next_block)
                // If the block producer let it slide, we'll roll with it.
                // check_transaction_authorization(trx, true);
             } /// for each transaction id
-
-            // Validate that the producer didn't list extra locks to bloat the size of the block
-            // TODO: this check can be removed when blocks are irreversible
-            fc::deduplicate(used_read_locks);
-            fc::deduplicate(used_write_locks);
-
-            EOS_ASSERT(std::equal(used_read_locks.cbegin(), used_read_locks.cend(), shard.read_locks.begin()),
-               block_lock_exception, "Read locks for executing shard: ${s} do not match those listed in the block", ("s", shard_index));
-            EOS_ASSERT(std::equal(used_write_locks.cbegin(), used_write_locks.cend(), shard.write_locks.begin()),
-               block_lock_exception, "Write locks for executing shard: ${s} do not match those listed in the block", ("s", shard_index));
 
             s_trace.calculate_root();
             c_trace.shard_traces.emplace_back(move(s_trace));
@@ -1064,7 +956,6 @@ void chain_controller::_initialize_indexes() {
    _db.add_index<transaction_multi_index>();
    _db.add_index<generated_transaction_multi_index>();
    _db.add_index<producer_multi_index>();
-   _db.add_index<scope_sequence_multi_index>();
    _db.add_index<bandwidth_usage_index>();
    _db.add_index<compute_usage_index>();
 }
@@ -1425,8 +1316,6 @@ transaction_trace chain_controller::__apply_transaction( transaction_metadata& m
       context.exec();
 
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
-      fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));
-      fc::move_append(result.canceled_deferred, std::move(context.results.canceled_deferred));
    }
 
    uint32_t act_usage = result.action_traces.size();
@@ -1505,53 +1394,6 @@ transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
    result.status = transaction_trace::hard_fail;
    return result;
 }
-
-void chain_controller::push_deferred_transactions( bool flush )
-{
-   if (flush && _pending_cycle_trace && _pending_cycle_trace->shard_traces.size() > 0) {
-      // TODO: when we go multithreaded this will need a better way to see if there are flushable
-      // deferred transactions in the shards
-      auto maybe_start_new_cycle = [&]() {
-         for (const auto &st: _pending_cycle_trace->shard_traces) {
-            for (const auto &tr: st.transaction_traces) {
-               for (const auto &dt: tr.deferred_transactions) {
-                  if (fc::time_point(dt.execute_after) <= head_block_time()) {
-                     // force a new cycle and break out
-                     _finalize_pending_cycle();
-                     _start_pending_cycle();
-                     return;
-                  }
-               }
-            }
-         }
-      };
-
-      maybe_start_new_cycle();
-   }
-
-   auto& generated_transaction_idx = _db.get_mutable_index<generated_transaction_multi_index>();
-   auto& generated_index = generated_transaction_idx.indices().get<by_delay>();
-   vector<const generated_transaction_object*> candidates;
-
-   for( auto itr = generated_index.rbegin(); itr != generated_index.rend() && (head_block_time() >= itr->delay_until); ++itr) {
-      const auto &gtrx = *itr;
-      candidates.emplace_back(&gtrx);
-   }
-
-   for (const auto* trx_p: candidates) {
-      if (!is_known_transaction(trx_p->trx_id)) {
-         try {
-            auto trx = fc::raw::unpack<deferred_transaction>(trx_p->packed_trx.data(), trx_p->packed_trx.size());
-            transaction_metadata mtrx (trx, trx_p->published, trx.sender, trx.sender_id, trx_p->packed_trx.data(), trx_p->packed_trx.size());
-            _push_transaction(std::move(mtrx));
-            generated_transaction_idx.remove(*trx_p);
-         } FC_CAPTURE_AND_LOG((trx_p->trx_id)(trx_p->sender));
-      } else {
-         generated_transaction_idx.remove(*trx_p);
-      }
-   }
-}
-
 
 /**
  *  @param act_usage The number of "actions" delivered directly or indirectly by applying meta.trx

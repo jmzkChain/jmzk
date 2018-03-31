@@ -55,21 +55,7 @@ namespace eosio { namespace chain {
       signature_type             producer_signature;
    };
 
-   struct shard_lock {
-      account_name   account;
-      scope_name     scope;
-
-      friend bool operator <  ( const shard_lock& a, const shard_lock& b ) { return std::tie(a.account, a.scope) <  std::tie(b.account, b.scope); }
-      friend bool operator <= ( const shard_lock& a, const shard_lock& b ) { return std::tie(a.account, a.scope) <= std::tie(b.account, b.scope); }
-      friend bool operator >  ( const shard_lock& a, const shard_lock& b ) { return std::tie(a.account, a.scope) >  std::tie(b.account, b.scope); }
-      friend bool operator >= ( const shard_lock& a, const shard_lock& b ) { return std::tie(a.account, a.scope) >= std::tie(b.account, b.scope); }
-      friend bool operator == ( const shard_lock& a, const shard_lock& b ) { return std::tie(a.account, a.scope) == std::tie(b.account, b.scope); }
-      friend bool operator != ( const shard_lock& a, const shard_lock& b ) { return std::tie(a.account, a.scope) != std::tie(b.account, b.scope); }
-   };
-
    struct shard_summary {
-      vector<shard_lock>            read_locks;
-      vector<shard_lock>            write_locks;
       vector<transaction_receipt>   transactions; /// new or generated transactions
    };
 
@@ -171,8 +157,7 @@ FC_REFLECT(eosio::chain::block_header, (previous)(timestamp)
            (producer)(schedule_version)(new_producers))
 
 FC_REFLECT_DERIVED(eosio::chain::signed_block_header, (eosio::chain::block_header), (producer_signature))
-FC_REFLECT( eosio::chain::shard_lock, (account)(scope))
-FC_REFLECT( eosio::chain::shard_summary, (read_locks)(write_locks)(transactions))
+FC_REFLECT( eosio::chain::shard_summary, (transactions))
 FC_REFLECT( eosio::chain::region_summary, (region)(cycles_summary) )
 FC_REFLECT_DERIVED(eosio::chain::signed_block_summary, (eosio::chain::signed_block_header), (regions))
 FC_REFLECT_DERIVED(eosio::chain::signed_block, (eosio::chain::signed_block_summary), (input_transactions))

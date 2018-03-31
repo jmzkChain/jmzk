@@ -49,10 +49,6 @@ class transaction_metadata {
 
       vector<char>                          packed_trx;
 
-      // scopes available to this transaction if we are applying a block
-      optional<const vector<shard_lock>*>   allowed_read_locks;
-      optional<const vector<shard_lock>*>   allowed_write_locks;
-
       const transaction& trx() const{
          if (decompressed_trx) {
             return *decompressed_trx;

@@ -73,7 +73,6 @@ namespace eosio { namespace chain {
             fc::raw::pack(enc, at.act.data);
             fc::raw::pack(enc, at.region_id);
             fc::raw::pack(enc, at.cycle_index);
-            fc::raw::pack(enc, at.data_access);
 
             action_roots.emplace_back(enc.result());
          }

@@ -190,59 +190,18 @@ namespace eosio { namespace chain {
 
    };
 
-
-   /**
-    *  When a transaction is generated it can be scheduled to occur
-    *  in the future. It may also fail to execute for some reason in
-    *  which case the sender needs to be notified. When the sender
-    *  sends a transaction they will assign it an ID which will be
-    *  passed back to the sender if the transaction fails for some
-    *  reason.
-    */
-   struct deferred_transaction : public transaction
-   {
-      uint32_t       sender_id; /// ID assigned by sender of generated, accessible via WASM api when executing normal or error
-      account_name   sender; /// receives error handler callback
-      time_point_sec execute_after; /// delayed exeuction
-   };
-
-   struct deferred_reference {
-      deferred_reference( const account_name& sender, uint32_t sender_id)
-      :sender(sender),sender_id(sender_id)
-      {}
-
-      account_name   sender;
-      uint32_t       sender_id;
-   };
-
-   struct data_access_info {
-      enum access_type {
-         read = 0, ///< scope was read by this action
-         write  = 1, ///< scope was (potentially) written to by this action
-      };
-
-      access_type                type;
-      account_name               code;
-      scope_name                 scope;
-
-      uint64_t                   sequence;
-   };
-
    struct action_trace {
       account_name               receiver;
       action                     act;
       string                     console;
       uint32_t                   region_id;
       uint32_t                   cycle_index;
-      vector<data_access_info>   data_access;
    };
 
    struct transaction_trace : transaction_receipt {
       using transaction_receipt::transaction_receipt;
 
       vector<action_trace>          action_traces;
-      vector<deferred_transaction>  deferred_transactions;
-      vector<deferred_reference>    canceled_deferred;
    };
 } } // eosio::chain
 
@@ -253,13 +212,7 @@ FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header
 FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction), (signatures) )
 FC_REFLECT_ENUM( eosio::chain::packed_transaction::compression_type, (none)(zlib))
 FC_REFLECT( eosio::chain::packed_transaction, (signatures)(compression)(data) )
-FC_REFLECT_DERIVED( eosio::chain::deferred_transaction, (eosio::chain::transaction), (sender_id)(sender)(execute_after) )
-FC_REFLECT_ENUM( eosio::chain::data_access_info::access_type, (read)(write))
-FC_REFLECT( eosio::chain::data_access_info, (type)(code)(scope)(sequence))
-FC_REFLECT( eosio::chain::action_trace, (receiver)(act)(console)(region_id)(cycle_index)(data_access) )
+FC_REFLECT( eosio::chain::action_trace, (receiver)(act)(console)(region_id)(cycle_index) )
 FC_REFLECT( eosio::chain::transaction_receipt, (status)(id))
 FC_REFLECT_ENUM( eosio::chain::transaction_receipt::status_enum, (executed)(soft_fail)(hard_fail))
-FC_REFLECT_DERIVED( eosio::chain::transaction_trace, (eosio::chain::transaction_receipt), (action_traces)(deferred_transactions) )
-
-
-
+FC_REFLECT_DERIVED( eosio::chain::transaction_trace, (eosio::chain::transaction_receipt), (action_traces) )
