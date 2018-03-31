@@ -29,7 +29,8 @@ enum tokendb_error {
     not_found_group = -4,
     token_id_existed = -5,
     not_found_token_id = -6,
-    rocksdb_err = -7
+    rocksdb_err = -7,
+    fc_err = -8
 };
 
 class tokendb {
@@ -53,6 +54,10 @@ public:
     int read_token(const domain_name, const token_name, const read_token_func&) const;
     int update_group(const group_id&, const update_group_func&);
     int read_group(const group_id&, const read_group_func&) const;
+
+    // specific function, use merge operator to speed up rocksdb action.
+    int update_group(const updategroup& ug);
+    int transfer_token(const transfertoken& tt);
 
 private:
     rocksdb::DB*    db_;

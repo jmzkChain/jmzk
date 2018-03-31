@@ -8,38 +8,11 @@
 #include <rocksdb/db.h>
 #include <rocksdb/table.h>
 #include <rocksdb/slice_transform.h>
+#include <rocksdb/merge_operator.h>
 #include <fc/io/raw.hpp>
 #include <fc/io/datastream.hpp>
 
 namespace evt { namespace chain {
-
-int
-tokendb::initialize(const std::string& dbpath) {
-    using namespace rocksdb;
-
-    assert(db_ == nullptr);
-    Options options;
-    options.create_if_missing = true;
-    options.compression = CompressionType::kLZ4Compression;
-    options.bottommost_compression = CompressionType::kZSTD;
-    options.table_factory.reset(NewPlainTableFactory());
-    options.prefix_extractor.reset(NewFixedPrefixTransform(sizeof(uint128_t)));
-
-    auto status = DB::Open(options, dbpath, &db_);
-    if(!status.ok()) {
-        return status.code();
-    }
-
-    // add system reservered domain
-    if(!exists_domain("domain")) {
-        add_domain(domain_def("domain"));
-    }
-    if(!exists_domain("group")) {
-        add_domain(domain_def("group"));
-    }
-
-    return 0;
-}
 
 namespace __internal {
 
@@ -90,16 +63,94 @@ get_value(const T& v) {
     return value;
 }
 
-template<typename T>
+template<typename T, typename V>
 T
-read_value(const std::string& value) {
+read_value(const V& value) {
     T v;
     auto ds = fc::datastream<const char*>(value.data(), value.size());
     fc::raw::unpack(ds, v);
     return v;
 }
 
+class TokendbMerge : public rocksdb::MergeOperator {
+public:
+    virtual bool
+    FullMergeV2(const MergeOperationInput& merge_in, MergeOperationOutput* merge_out) const override 
+    {
+        if(merge_in.existing_value == nullptr) {
+            return false;
+        }
+        static domain_name GroupDomainName("group");
+        static rocksdb::Slice GroupDomainPrefix((const char*)&GroupDomainName, sizeof(GroupDomainName));
+
+        try {
+            // merge only need to consider latest one
+            if(merge_in.key.starts_with(GroupDomainPrefix)) {
+                // group
+                auto v = read_value<group_def>(*merge_in.existing_value);
+                auto ug = read_value<updategroup>(merge_in.operand_list[merge_in.operand_list.size() - 1]);
+                v.threshold = ug.threshold;
+                v.keys = std::move(ug.keys);
+                merge_out->new_value = get_value(v);
+            }
+            else {
+                // token
+                auto v = read_value<token_def>(*merge_in.existing_value);
+                auto tt = read_value<transfertoken>(merge_in.operand_list[merge_in.operand_list.size() - 1]);
+                v.owner = tt.to;
+                merge_out->new_value = get_value(v);
+            }
+        }
+        catch(fc::exception& e) {
+            return false;
+        }
+        return true;
+    }
+
+    virtual bool
+    PartialMerge(const rocksdb::Slice& key, const rocksdb::Slice& left_operand,
+                 const rocksdb::Slice& right_operand, std::string* new_value,
+                 rocksdb::Logger* logger) const override 
+    {
+        *new_value = right_operand.ToString();
+        return true;
+    }
+
+    virtual const char* Name() const override { return "Tokendb"; };
+    virtual bool AllowSingleOperand() const override { return true; }
+};
+
 } // namespace __internal
+
+int
+tokendb::initialize(const std::string& dbpath) {
+    using namespace rocksdb;
+    using namespace __internal;
+
+    assert(db_ == nullptr);
+    Options options;
+    options.create_if_missing = true;
+    options.compression = CompressionType::kLZ4Compression;
+    options.bottommost_compression = CompressionType::kZSTD;
+    options.table_factory.reset(NewPlainTableFactory());
+    options.prefix_extractor.reset(NewFixedPrefixTransform(sizeof(uint128_t)));
+    options.merge_operator.reset(new TokendbMerge());
+
+    auto status = DB::Open(options, dbpath, &db_);
+    if(!status.ok()) {
+        return status.code();
+    }
+
+    // add system reservered domain
+    if(!exists_domain("domain")) {
+        add_domain(domain_def("domain"));
+    }
+    if(!exists_domain("group")) {
+        add_domain(domain_def("group"));
+    }
+
+    return 0;
+}
 
 int
 tokendb::add_domain(const domain_def& domain) {
@@ -273,6 +324,30 @@ tokendb::read_group(const group_id& id, const read_group_func& func) const {
     }
     auto v = read_value<group_def>(value);
     func(v);
+    return 0;
+}
+
+int
+tokendb::update_group(const updategroup& ug) {
+    using namespace __internal;
+    auto key = get_group_key(ug.id);
+    auto value = get_value(ug);
+    auto status = db_->Merge(rocksdb::WriteOptions(), key.as_slice(), value);
+    if(!status.ok()) {
+        return tokendb_error::rocksdb_err;
+    }
+    return 0;
+}
+
+int
+tokendb::transfer_token(const transfertoken& tt) {
+    using namespace __internal;
+    auto key = get_token_key(tt.domain, tt.name);
+    auto value = get_value(tt);
+    auto status = db_->Merge(rocksdb::WriteOptions(), key.as_slice(), value);
+    if(!status.ok()) {
+        return tokendb_error::rocksdb_err;
+    }
     return 0;
 }
 

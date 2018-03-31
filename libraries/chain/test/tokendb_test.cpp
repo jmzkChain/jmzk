@@ -14,7 +14,7 @@ BOOST_AUTO_TEST_SUITE(tokendb_test)
 
 BOOST_AUTO_TEST_CASE(tokendb_default_test)
 {
-    evt::chain::token_db db;
+    evt::chain::tokendb db;
     auto path = "/var/tmp/tokendb";
     if(boost::filesystem::exists(path)) {
         boost::filesystem::remove_all(path);
@@ -66,7 +66,7 @@ BOOST_AUTO_TEST_CASE(tokendb_default_test)
     BOOST_CHECK_EQUAL(0, r4);
     BOOST_CHECK_EQUAL(true, db.exists_group(group.id));
 
-    db.read_domain("test", [&domain](auto& v) {
+    db.read_domain("test", [&domain](const auto& v) {
         BOOST_CHECK_EQUAL(true, "test" == v.name);
         BOOST_CHECK_EQUAL(true, domain.issuer == v.issuer);
         BOOST_CHECK_EQUAL(true, domain.issue_time == v.issue_time);
@@ -79,6 +79,36 @@ BOOST_AUTO_TEST_CASE(tokendb_default_test)
         }
     });
 
+    db.read_group(100001, [](const auto& g) {
+        BOOST_CHECK_EQUAL(20, g.threshold);
+        BOOST_CHECK_EQUAL(2, g.keys.size());
+    });
+
+    auto ug = updategroup();
+    ug.id = 100001;
+    ug.threshold = 40;
+    ug.keys = {};
+    db.update_group(ug);
+
+    db.read_group(100001, [](const auto& g) {
+        BOOST_CHECK_EQUAL(40, g.threshold);
+        BOOST_CHECK_EQUAL(0, g.keys.size());
+    });
+
+    db.read_token("test", "TEST-A", [&](const auto& t) {
+        BOOST_CHECK_EQUAL(true, t.owner[0] == issuer);
+    });
+
+    auto nuser = user_id(std::string("EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"));
+    auto tt = transfertoken();
+    tt.domain = "test";
+    tt.name = "TEST-A";
+    tt.to.push_back(nuser);
+
+    db.transfer_token(tt);
+    db.read_token("test", "TEST-A", [&](const auto& t) {
+        BOOST_CHECK_EQUAL(true, t.owner[0] == nuser);
+    });   
 
 }
 
