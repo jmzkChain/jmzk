@@ -44,14 +44,14 @@ namespace eosio { namespace chain {
       action(){}
 
       template<typename T>
-      action( domain_name& domain, domain_key& key, const T& value ) 
+      action( const domain_name& domain, const domain_key& key, const T& value ) 
             : account(config::system_account_name), domain(domain), key(key) 
       {
           name = T::get_name();
           data = fc::raw::pack(value);
       }
 
-      action( account_name account, action_name name, domain_name& domain, domain_key& key, const bytes& data )
+      action( const account_name account, const action_name name, const domain_name& domain, const domain_key& key, const bytes& data )
             : account(account), name(name), domain(domain), key(key), data(data) {
       }
 

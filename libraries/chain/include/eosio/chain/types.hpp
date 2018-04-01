@@ -23,6 +23,7 @@
 #include <fc/fixed_string.hpp>
 #include <fc/crypto/private_key.hpp>
 
+#include <limits>
 #include <memory>
 #include <vector>
 #include <deque>
@@ -101,7 +102,7 @@ namespace eosio { namespace chain {
    using account_name     = name;
    using permission_name  = name;
    using domain_name      = name128;
-   using domain_key       = uint128_t;
+   using domain_key       = __uint128_t;
    using token_name       = name128;
 
 
@@ -172,6 +173,26 @@ namespace eosio { namespace chain {
 
 } }  // eosio::chain
 
+namespace std {
+
+inline std::ostream& 
+operator << (std::ostream& o, const __uint128_t v) {
+    const uint64_t P10_UINT64 = 10000000000000000000ULL;   /* 19 zeroes */
+
+    if(v > std::numeric_limits<uint64_t>::max()) {
+        __uint128_t leading = v / P10_UINT64;
+        uint64_t  trailing = v % P10_UINT64;
+        o << leading;
+        o << trailing;
+    }
+    else {
+        uint64_t u64 = v;
+        o << u64;
+    }
+    return o;
+}
+
+}  // namespace std
 
 FC_REFLECT_ENUM(eosio::chain::object_type,
                 (null_object_type)

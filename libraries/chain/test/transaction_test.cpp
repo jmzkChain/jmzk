@@ -56,14 +56,13 @@ BOOST_AUTO_TEST_SUITE(transaction_test)
    {
       try {
 
-         std::string expected = "78da63606060d8bf7ff5eab2198ace0c20c03861f9320ec9091b4f31a8954a826846906888e7442f10bde2ad9191a04051625e4a7eae424a6249a242466a512a00bf3414bb";
+         std::string expected = "78da63606060d8bf7ff5eab2198ace402603238860786510caa0562a293961e3290664309fbd168997c066b9ee99a04051625e4a7eae424a6249a242466a512a00bfa61205";
 
          transaction trx;
          trx.region = 0xBFBFU;
          trx.ref_block_num = 0xABABU;
          trx.ref_block_prefix = 0x43219876UL;
-         trx.actions.emplace_back(vector<permission_level>{{N(decomp), config::active_name}},
-                                  test_action {"random data here"});
+         trx.actions.emplace_back("test", (uint128_t)N128(TEST-A), test_action {"random data here"});
 
          packed_transaction t;
          t.set_transaction(trx, packed_transaction::zlib);
@@ -81,10 +80,9 @@ BOOST_AUTO_TEST_SUITE(transaction_test)
          expected.region = 0xBFBFU;
          expected.ref_block_num = 0xABABU;
          expected.ref_block_prefix = 0x43219876UL;
-         expected.actions.emplace_back(vector<permission_level>{{N(decomp), config::active_name}},
-                                       test_action {"random data here"});
+         expected.actions.emplace_back("test", (uint128_t)N128(TEST-A), test_action {"random data here"});
 
-         char compressed_tx_raw[] = "78da63606060d8bf7ff5eab2198ace0c20c03861f9320ec9091b4f31a8954a826846906888e7442f10bde2ad9191a04051625e4a7eae424a6249a242466a512a00bf3414bb";
+         char compressed_tx_raw[] = "78da63606060d8bf7ff5eab2198ace402603238860786510caa0562a293961e3290664309fbd168997c066b9ee99a04051625e4a7eae424a6249a242466a512a00bfa61205";
 
          packed_transaction t;
          t.data.resize((sizeof(compressed_tx_raw) - 1) / 2);
@@ -98,9 +96,8 @@ BOOST_AUTO_TEST_SUITE(transaction_test)
          BOOST_REQUIRE_EQUAL(expected.actions.size(), actual.actions.size());
          BOOST_CHECK_EQUAL((string)expected.actions[0].name, (string)actual.actions[0].name);
          BOOST_CHECK_EQUAL((string)expected.actions[0].account, (string)actual.actions[0].account);
-         BOOST_REQUIRE_EQUAL(expected.actions[0].authorization.size(), actual.actions[0].authorization.size());
-         BOOST_CHECK_EQUAL((string)expected.actions[0].authorization[0].actor, (string)actual.actions[0].authorization[0].actor);
-         BOOST_CHECK_EQUAL((string)expected.actions[0].authorization[0].permission, (string)actual.actions[0].authorization[0].permission);
+         BOOST_CHECK_EQUAL((string)expected.actions[0].domain, (string)actual.actions[0].domain);
+         BOOST_CHECK_EQUAL(expected.actions[0].key, actual.actions[0].key);
          BOOST_REQUIRE_EQUAL(fc::to_hex(expected.actions[0].data), fc::to_hex(actual.actions[0].data));
 
       } FC_LOG_AND_RETHROW();
