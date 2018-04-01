@@ -6,6 +6,7 @@
 #pragma once
 #include <deque>
 #include <functional>
+#include <rocksdb/options.h>
 #include <eosio/chain/contracts/types.hpp>
 
 namespace rocksdb {
@@ -46,7 +47,8 @@ private:
     };
 
 public:
-    tokendb() : db_(nullptr) {}
+    tokendb() : db_(nullptr), read_opts_(), write_opts_() {}
+    ~tokendb();
 
 public:
     int initialize(const std::string& dbpath);
@@ -80,6 +82,8 @@ private:
 
 private:
     rocksdb::DB*            db_;
+    rocksdb::ReadOptions    read_opts_;
+    rocksdb::WriteOptions   write_opts_;
     std::deque<checkpoint>  checkpoints_;
 };
 

@@ -170,6 +170,13 @@ struct cp_updatetoken {
 
 } // namespace __internal
 
+tokendb::~tokendb() {
+    if(db_ != nullptr) {
+        delete db_;
+        db_ = nullptr;
+    }
+}
+
 int
 tokendb::initialize(const std::string& dbpath) {
     using namespace rocksdb;
@@ -208,7 +215,7 @@ tokendb::add_domain(const domain_def& domain) {
     }
     auto key = get_domain_key(domain.name);
     auto value = get_value(domain);
-    auto status = db_->Put(rocksdb::WriteOptions(), key.as_slice(), value);
+    auto status = db_->Put(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
         return tokendb_error::rocksdb_err;
     }
@@ -225,7 +232,7 @@ tokendb::exists_domain(const domain_name name) {
     using namespace __internal;
     auto key = get_domain_key(name);
     std::string value;
-    auto status = db_->Get(rocksdb::ReadOptions(), key.as_slice(), &value);
+    auto status = db_->Get(read_opts_, key.as_slice(), &value);
     return status.ok();
 }
 
@@ -241,7 +248,7 @@ tokendb::issue_tokens(const issuetoken& issue) {
         auto value = get_value(token_def(issue.domain, name, issue.owner));
         batch.Put(key.as_slice(), value);
     }
-    auto status = db_->Write(rocksdb::WriteOptions(), &batch);
+    auto status = db_->Write(write_opts_, &batch);
     if(!status.ok()) {
         return tokendb_error::rocksdb_err;
     }
@@ -260,7 +267,7 @@ tokendb::exists_token(const domain_name type, const token_name name) {
     using namespace __internal;
     auto key = get_token_key(type, name);
     std::string value;
-    auto status = db_->Get(rocksdb::ReadOptions(), key.as_slice(), &value);
+    auto status = db_->Get(read_opts_, key.as_slice(), &value);
     return status.ok();
 }
 
@@ -272,7 +279,7 @@ tokendb::add_group(const group_def& group) {
     }
     auto key = get_group_key(group.id);
     auto value = get_value(group);
-    auto status = db_->Put(rocksdb::WriteOptions(), key.as_slice(), value);
+    auto status = db_->Put(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
         return tokendb_error::rocksdb_err;
     }
@@ -289,7 +296,7 @@ tokendb::exists_group(const group_id& id) {
     using namespace __internal;
     auto key = get_group_key(id);
     std::string value;
-    auto status = db_->Get(rocksdb::ReadOptions(), key.as_slice(), &value);
+    auto status = db_->Get(read_opts_, key.as_slice(), &value);
     return status.ok();
 }
 
@@ -298,7 +305,7 @@ tokendb::read_domain(const domain_name type, const read_domain_func& func) const
     using namespace __internal;
     std::string value;
     auto key = get_domain_key(type);
-    auto status = db_->Get(rocksdb::ReadOptions(), key.as_slice(), &value);
+    auto status = db_->Get(read_opts_, key.as_slice(), &value);
     if(!status.ok()) {
         return tokendb_error::not_found_domain;
     }
@@ -312,7 +319,7 @@ tokendb::read_token(const domain_name type, const token_name name, const read_to
     using namespace __internal;
     std::string value;
     auto key = get_token_key(type, name);
-    auto status = db_->Get(rocksdb::ReadOptions(), key.as_slice(), &value);
+    auto status = db_->Get(read_opts_, key.as_slice(), &value);
     if(!status.ok()) {
         return tokendb_error::not_found_token_id;
     }
@@ -326,7 +333,7 @@ tokendb::read_group(const group_id& id, const read_group_func& func) const {
     using namespace __internal;
     std::string value;
     auto key = get_group_key(id);
-    auto status = db_->Get(rocksdb::ReadOptions(), key.as_slice(), &value);
+    auto status = db_->Get(read_opts_, key.as_slice(), &value);
     if(!status.ok()) {
         return tokendb_error::not_found_group;
     }
@@ -340,7 +347,7 @@ tokendb::update_domain(const updatedomain& ud) {
     using namespace __internal;
     auto key = get_domain_key(ud.name);
     auto value = get_value(ud);
-    auto status = db_->Merge(rocksdb::WriteOptions(), key.as_slice(), value);
+    auto status = db_->Merge(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
         return tokendb_error::rocksdb_err;
     }
@@ -357,7 +364,7 @@ tokendb::update_group(const updategroup& ug) {
     using namespace __internal;
     auto key = get_group_key(ug.id);
     auto value = get_value(ug);
-    auto status = db_->Merge(rocksdb::WriteOptions(), key.as_slice(), value);
+    auto status = db_->Merge(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
         return tokendb_error::rocksdb_err;
     }
@@ -374,7 +381,7 @@ tokendb::transfer_token(const transfertoken& tt) {
     using namespace __internal;
     auto key = get_token_key(tt.domain, tt.name);
     auto value = get_value(tt);
-    auto status = db_->Merge(rocksdb::WriteOptions(), key.as_slice(), value);
+    auto status = db_->Merge(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
         return tokendb_error::rocksdb_err;
     }
@@ -422,6 +429,9 @@ tokendb::free_checkpoint(checkpoint& cp) {
 
 int
 tokendb::pop_checkpoints(uint32 until) {
+    if(checkpoints_.empty()) {
+        return tokendb_error::no_checkpoint;
+    }
     while(!checkpoints_.empty() && checkpoints_.front().seq < until) {
         free_checkpoint(checkpoints_.front());
         checkpoints_.pop_front();
@@ -431,6 +441,89 @@ tokendb::pop_checkpoints(uint32 until) {
 
 int
 tokendb::rollback_to_latest() {
+    using namespace __internal;
+
+    if(checkpoints_.empty()) {
+        return tokendb_error::no_checkpoint;
+    }
+    auto& cp = checkpoints_.back();
+    if(cp.actions.size() > 0) {
+        auto snapshot_read_opts_ = read_opts_;
+        snapshot_read_opts_.snapshot = (const rocksdb::Snapshot*)cp.rb_snapshot;
+        for(auto it = --cp.actions.end(); it >= cp.actions.begin(); it--) {
+            switch(it->type) {
+            case kNewDomain: {
+                auto act = (cp_newdomain*)it->data;
+                auto key = get_domain_key(act->name);
+                db_->Delete(write_opts_, key.as_slice());
+                break;
+            }
+            case kIssueToken: {
+                auto act = (cp_issuetoken*)it->data;
+                for(size_t i = 0; i < act->size; i++) {
+                    auto key = get_token_key(act->domain, act->names[i]);
+                    db_->Delete(write_opts_, key.as_slice());
+                }
+                break;
+            }
+            case kAddGroup: {
+                auto act = (cp_addgroup*)it->data;
+                auto key = get_group_key(act->id);
+                db_->Delete(write_opts_, key.as_slice());
+                break;
+            }
+            case kUpdateDomain: {
+                auto act = (cp_updatedomain*)it->data;
+                auto key = get_domain_key(act->name);
+                std::string old_value;
+                auto status = db_->Get(snapshot_read_opts_, key.as_slice(), &old_value);
+                if(!status.ok()) {
+                    // key may not existed in latest snapshot, remove it
+                    FC_ASSERT(status.code() == rocksdb::Status::kNotFound, "Not expected rocksdb code: ${status}", ("status", status.getState()));
+                    db_->Delete(write_opts_, key.as_slice());
+                    break;
+                }
+                db_->Put(write_opts_, key.as_slice(), old_value);
+                break;
+            }
+            case kUpdateGroup: {
+                auto act = (cp_updategroup*)it->data;
+                auto key = get_group_key(act->id);
+                std::string old_value;
+                auto status = db_->Get(snapshot_read_opts_, key.as_slice(), &old_value);
+                if(!status.ok()) {
+                    // key may not existed in latest snapshot, remove it
+                    FC_ASSERT(status.code() == rocksdb::Status::kNotFound, "Not expected rocksdb code: ${status}", ("status", status.getState()));
+                    db_->Delete(write_opts_, key.as_slice());
+                    break;
+                }
+                db_->Put(write_opts_, key.as_slice(), old_value);
+                break;
+            }
+            case kUpdateToken: {
+                auto act = (cp_updatetoken*)it->data;
+                auto key = get_token_key(act->domain, act->name);
+                std::string old_value;
+                auto status = db_->Get(snapshot_read_opts_, key.as_slice(), &old_value);
+                if(!status.ok()) {
+                    // key may not existed in latest snapshot, remove it
+                    FC_ASSERT(status.code() == rocksdb::Status::kNotFound, "Not expected rocksdb code: ${status}", ("status", status.getState()));
+                    db_->Delete(write_opts_, key.as_slice());
+                    break;
+                }
+                db_->Put(write_opts_, key.as_slice(), old_value);
+                break;
+            }
+            default: {
+                FC_ASSERT(false, "Unexpected action type: ${type}", ("type", it->type));
+                break;
+            }
+            }  // switch
+            free(it->data);
+        }  // for
+    }  // if
+    db_->ReleaseSnapshot((const rocksdb::Snapshot*)cp.rb_snapshot);
+    checkpoints_.pop_back();
     return 0;
 }
 
