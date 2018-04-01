@@ -141,29 +141,29 @@ enum dbaction_type {
     kUpdateToken
 };
 
-struct cp_newdomain {
+struct sp_newdomain {
     domain_name name;
 };
 
-struct cp_issuetoken {
+struct sp_issuetoken {
     domain_name domain;
     size_t      size;
     token_name  names[0];
 };
 
-struct cp_addgroup {
+struct sp_addgroup {
     group_id    id;
 };
 
-struct cp_updatedomain {
+struct sp_updatedomain {
     domain_name name;
 };
 
-struct cp_updategroup {
+struct sp_updategroup {
     group_id    id;
 };
 
-struct cp_updatetoken {
+struct sp_updatetoken {
     domain_name domain;
     token_name  name;
 };
@@ -220,7 +220,7 @@ tokendb::add_domain(const domain_def& domain) {
         return tokendb_error::rocksdb_err;
     }
     if(should_record()) {
-        auto act = (cp_newdomain*)malloc(sizeof(cp_newdomain));
+        auto act = (sp_newdomain*)malloc(sizeof(sp_newdomain));
         act->name = domain.name;
         record(kNewDomain, act);
     }
@@ -253,7 +253,7 @@ tokendb::issue_tokens(const issuetoken& issue) {
         return tokendb_error::rocksdb_err;
     }
     if(should_record()) {
-        auto act = (cp_issuetoken*)malloc(sizeof(cp_issuetoken) + sizeof(token_name) * issue.names.size());
+        auto act = (sp_issuetoken*)malloc(sizeof(sp_issuetoken) + sizeof(token_name) * issue.names.size());
         act->domain = issue.domain;
         act->size = issue.names.size();
         memcpy(act->names, &issue.names[0], sizeof(token_name) * act->size); 
@@ -284,7 +284,7 @@ tokendb::add_group(const group_def& group) {
         return tokendb_error::rocksdb_err;
     }
     if(should_record()) {
-        auto act = (cp_addgroup*)malloc(sizeof(cp_addgroup));
+        auto act = (sp_addgroup*)malloc(sizeof(sp_addgroup));
         act->id = group.id;
         record(kAddGroup, act);
     }
@@ -352,7 +352,7 @@ tokendb::update_domain(const updatedomain& ud) {
         return tokendb_error::rocksdb_err;
     }
     if(should_record()) {
-        auto act = (cp_updatedomain*)malloc(sizeof(cp_updatedomain));
+        auto act = (sp_updatedomain*)malloc(sizeof(sp_updatedomain));
         act->name = ud.name;
         record(kUpdateDomain, act);
     }
@@ -369,7 +369,7 @@ tokendb::update_group(const updategroup& ug) {
         return tokendb_error::rocksdb_err;
     }
     if(should_record()) { 
-        auto act = (cp_updategroup*)malloc(sizeof(cp_updategroup));
+        auto act = (sp_updategroup*)malloc(sizeof(sp_updategroup));
         act->id = ug.id;
         record(kUpdateGroup, act);
     }
@@ -386,7 +386,7 @@ tokendb::transfer_token(const transfertoken& tt) {
         return tokendb_error::rocksdb_err;
     }
      if(should_record()) {
-        auto act = (cp_updatetoken*)malloc(sizeof(cp_updatetoken));
+        auto act = (sp_updatetoken*)malloc(sizeof(sp_updatetoken));
         act->domain = tt.domain;
         act->name = tt.name;
         record(kUpdateToken, act);
@@ -397,20 +397,20 @@ tokendb::transfer_token(const transfertoken& tt) {
 int 
 tokendb::record(int type, void* data) {
     if(!should_record()) {
-        return tokendb_error::no_checkpoint;
+        return tokendb_error::no_savepoint;
     }
-    checkpoints_.back().actions.emplace_back(dbaction { .type = type, .data = data });
+    savepoints_.back().actions.emplace_back(dbaction { .type = type, .data = data });
     return 0;
 }
 
 int
-tokendb::add_checkpoint(uint32 seq) {
-    if(!checkpoints_.empty()) {
-        if(checkpoints_.back().seq >= seq) {
+tokendb::add_savepoint(uint32 seq) {
+    if(!savepoints_.empty()) {
+        if(savepoints_.back().seq >= seq) {
             return tokendb_error::seq_not_valid;
         }
     }
-    checkpoints_.emplace_back(checkpoint {
+    savepoints_.emplace_back(savepoint {
         .seq = seq,
         .rb_snapshot = (const void*)db_->GetSnapshot(),
         .actions = {}
@@ -419,7 +419,7 @@ tokendb::add_checkpoint(uint32 seq) {
 }
 
 int
-tokendb::free_checkpoint(checkpoint& cp) {
+tokendb::free_savepoint(savepoint& cp) {
     for(auto& act : cp.actions) {
         free(act.data);
     }
@@ -428,80 +428,82 @@ tokendb::free_checkpoint(checkpoint& cp) {
 }
 
 int
-tokendb::pop_checkpoints(uint32 until) {
-    if(checkpoints_.empty()) {
-        return tokendb_error::no_checkpoint;
+tokendb::pop_savepoints(uint32 until) {
+    if(savepoints_.empty()) {
+        return tokendb_error::no_savepoint;
     }
-    while(!checkpoints_.empty() && checkpoints_.front().seq < until) {
-        free_checkpoint(checkpoints_.front());
-        checkpoints_.pop_front();
+    while(!savepoints_.empty() && savepoints_.front().seq < until) {
+        free_savepoint(savepoints_.front());
+        savepoints_.pop_front();
     }
     return 0;
 }
 
 int
-tokendb::rollback_to_latest() {
+tokendb::rollback_to_latest_savepoint() {
     using namespace __internal;
 
-    if(checkpoints_.empty()) {
-        return tokendb_error::no_checkpoint;
+    if(savepoints_.empty()) {
+        return tokendb_error::no_savepoint;
     }
-    auto& cp = checkpoints_.back();
+    auto& cp = savepoints_.back();
     if(cp.actions.size() > 0) {
         auto snapshot_read_opts_ = read_opts_;
         snapshot_read_opts_.snapshot = (const rocksdb::Snapshot*)cp.rb_snapshot;
+        rocksdb::WriteBatch batch;
         for(auto it = --cp.actions.end(); it >= cp.actions.begin(); it--) {
             switch(it->type) {
             case kNewDomain: {
-                auto act = (cp_newdomain*)it->data;
+                auto act = (sp_newdomain*)it->data;
                 auto key = get_domain_key(act->name);
-                db_->Delete(write_opts_, key.as_slice());
+                
+                batch.Delete(key.as_slice());
                 break;
             }
             case kIssueToken: {
-                auto act = (cp_issuetoken*)it->data;
+                auto act = (sp_issuetoken*)it->data;
                 for(size_t i = 0; i < act->size; i++) {
                     auto key = get_token_key(act->domain, act->names[i]);
-                    db_->Delete(write_opts_, key.as_slice());
+                    batch.Delete(key.as_slice());
                 }
                 break;
             }
             case kAddGroup: {
-                auto act = (cp_addgroup*)it->data;
+                auto act = (sp_addgroup*)it->data;
                 auto key = get_group_key(act->id);
-                db_->Delete(write_opts_, key.as_slice());
+                batch.Delete(key.as_slice());
                 break;
             }
             case kUpdateDomain: {
-                auto act = (cp_updatedomain*)it->data;
+                auto act = (sp_updatedomain*)it->data;
                 auto key = get_domain_key(act->name);
                 std::string old_value;
                 auto status = db_->Get(snapshot_read_opts_, key.as_slice(), &old_value);
                 if(!status.ok()) {
                     // key may not existed in latest snapshot, remove it
                     FC_ASSERT(status.code() == rocksdb::Status::kNotFound, "Not expected rocksdb code: ${status}", ("status", status.getState()));
-                    db_->Delete(write_opts_, key.as_slice());
+                    batch.Delete(key.as_slice());
                     break;
                 }
-                db_->Put(write_opts_, key.as_slice(), old_value);
+                batch.Put(key.as_slice(), old_value);
                 break;
             }
             case kUpdateGroup: {
-                auto act = (cp_updategroup*)it->data;
+                auto act = (sp_updategroup*)it->data;
                 auto key = get_group_key(act->id);
                 std::string old_value;
                 auto status = db_->Get(snapshot_read_opts_, key.as_slice(), &old_value);
                 if(!status.ok()) {
                     // key may not existed in latest snapshot, remove it
                     FC_ASSERT(status.code() == rocksdb::Status::kNotFound, "Not expected rocksdb code: ${status}", ("status", status.getState()));
-                    db_->Delete(write_opts_, key.as_slice());
+                    batch.Delete(key.as_slice());
                     break;
                 }
-                db_->Put(write_opts_, key.as_slice(), old_value);
+                batch.Put(key.as_slice(), old_value);
                 break;
             }
             case kUpdateToken: {
-                auto act = (cp_updatetoken*)it->data;
+                auto act = (sp_updatetoken*)it->data;
                 auto key = get_token_key(act->domain, act->name);
                 std::string old_value;
                 auto status = db_->Get(snapshot_read_opts_, key.as_slice(), &old_value);
@@ -511,7 +513,7 @@ tokendb::rollback_to_latest() {
                     db_->Delete(write_opts_, key.as_slice());
                     break;
                 }
-                db_->Put(write_opts_, key.as_slice(), old_value);
+                batch.Put(key.as_slice(), old_value);
                 break;
             }
             default: {
@@ -521,9 +523,13 @@ tokendb::rollback_to_latest() {
             }  // switch
             free(it->data);
         }  // for
+        auto sync_write_opts = write_opts_;
+        sync_write_opts.sync = true;
+        db_->Write(sync_write_opts, &batch);
     }  // if
+    
     db_->ReleaseSnapshot((const rocksdb::Snapshot*)cp.rb_snapshot);
-    checkpoints_.pop_back();
+    savepoints_.pop_back();
     return 0;
 }
 

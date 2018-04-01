@@ -111,7 +111,7 @@ BOOST_AUTO_TEST_CASE(tokendb_default_test)
     });
 }
 
-BOOST_AUTO_TEST_CASE(tokendb_checkpoint_test)
+BOOST_AUTO_TEST_CASE(tokendb_savepoint_test)
 {
     evt::chain::tokendb db;
     auto path = "/var/tmp/tokendb";
@@ -151,8 +151,8 @@ BOOST_AUTO_TEST_CASE(tokendb_checkpoint_test)
     BOOST_CHECK_EQUAL(true, db.exists_token("test", "TEST-B"));
     BOOST_CHECK_EQUAL(true, db.exists_token("test", "TEST-C"));
 
-    // set checkpoint 1
-    auto r4 = db.add_checkpoint(1);
+    // set savepoint 1
+    auto r4 = db.add_savepoint(1);
     BOOST_CHECK_EQUAL(0, r4);
 
     domain.name = "test2";
@@ -163,8 +163,8 @@ BOOST_AUTO_TEST_CASE(tokendb_checkpoint_test)
     auto r6 = db.issue_tokens(issuetoken);
     BOOST_CHECK_EQUAL(0, r6);
 
-    // set checkpoint 2
-    auto r7 = db.add_checkpoint(2);
+    // set savepoint 2
+    auto r7 = db.add_savepoint(2);
     BOOST_CHECK_EQUAL(0, r7);
 
     auto nuser = user_id(std::string("EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"));
@@ -199,8 +199,15 @@ BOOST_AUTO_TEST_CASE(tokendb_checkpoint_test)
         BOOST_CHECK_EQUAL(20, d.issue.threshold);
     });
 
-    // revert to checkpoint 2
-    auto r10 = db.rollback_to_latest();
+    issuetoken.domain = "test";
+    issuetoken.names = { "TEST-D", "TEST-E" };
+    auto r14 = db.issue_tokens(issuetoken);
+    BOOST_CHECK_EQUAL(0, r14);
+    BOOST_CHECK_EQUAL(true, db.exists_token("test", "TEST-D"));
+    BOOST_CHECK_EQUAL(true, db.exists_token("test", "TEST-E"));
+
+    // revert to savepoint 2
+    auto r10 = db.rollback_to_latest_savepoint();
     BOOST_CHECK_EQUAL(0, r10);
 
     BOOST_CHECK_EQUAL(false, db.exists_domain("test3"));
@@ -208,11 +215,14 @@ BOOST_AUTO_TEST_CASE(tokendb_checkpoint_test)
         BOOST_CHECK_EQUAL(true, t.owner[0] == issuer);
         BOOST_CHECK_EQUAL(false, t.owner[0] == nuser);
     });
+    
+    BOOST_CHECK_EQUAL(false, db.exists_token("test", "TEST-D"));
+    BOOST_CHECK_EQUAL(false, db.exists_token("test", "TEST-E"));
 
-    // pop all before checkpoint 2
-    auto r11 = db.pop_checkpoints(2);
+    // pop all before savepoint 2
+    auto r11 = db.pop_savepoints(2);
     BOOST_CHECK_EQUAL(0, r11);
-    auto r12 = db.rollback_to_latest();
+    auto r12 = db.rollback_to_latest_savepoint();
     BOOST_CHECK_NE(0, r12);
 }
 

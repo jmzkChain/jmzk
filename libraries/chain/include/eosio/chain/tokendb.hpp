@@ -30,7 +30,7 @@ enum tokendb_error {
     token_id_existed = -5,
     not_found_token_id = -6,
     rocksdb_err = -7,
-    no_checkpoint = -8,
+    no_savepoint = -8,
     seq_not_valid = -9
 };
 
@@ -40,7 +40,7 @@ private:
         int     type;
         void*   data;
     };
-    struct checkpoint {
+    struct savepoint {
         uint32                  seq;
         const void*             rb_snapshot;
         std::vector<dbaction>   actions;
@@ -71,20 +71,20 @@ public:
     int transfer_token(const transfertoken& tt);
 
 public:
-    int add_checkpoint(uint32 seq);
-    int rollback_to_latest();
-    int pop_checkpoints(uint32 until);
+    int add_savepoint(uint32 seq);
+    int rollback_to_latest_savepoint();
+    int pop_savepoints(uint32 until);
 
 private:
-    int should_record() { return !checkpoints_.empty(); }
+    int should_record() { return !savepoints_.empty(); }
     int record(int type, void* data);
-    int free_checkpoint(checkpoint&);
+    int free_savepoint(savepoint&);
 
 private:
     rocksdb::DB*            db_;
     rocksdb::ReadOptions    read_opts_;
     rocksdb::WriteOptions   write_opts_;
-    std::deque<checkpoint>  checkpoints_;
+    std::deque<savepoint>   savepoints_;
 };
 
 }}  // namespace evt::chain
