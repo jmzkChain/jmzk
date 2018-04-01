@@ -99,9 +99,15 @@ public:
                 // domain
                 auto v = read_value<domain_def>(*merge_in.existing_value);
                 auto ug = read_value<updatedomain>(merge_in.operand_list[merge_in.operand_list.size() - 1]);
-                v.issue = std::move(ug.issue);
-                v.transfer = std::move(ug.transfer);
-                v.manage = std::move(ug.manage);
+                if(ug.issue.valid()) {
+                    v.issue = std::move(*ug.issue);
+                }
+                if(ug.transfer.valid()) {
+                    v.transfer = std::move(*ug.transfer);
+                }
+                if(ug.manage.valid()) {
+                    v.manage = std::move(*ug.manage);
+                }
                 merge_out->new_value = get_value(v);
             }
             else {
@@ -456,7 +462,6 @@ tokendb::rollback_to_latest_savepoint() {
             case kNewDomain: {
                 auto act = (sp_newdomain*)it->data;
                 auto key = get_domain_key(act->name);
-                
                 batch.Delete(key.as_slice());
                 break;
             }

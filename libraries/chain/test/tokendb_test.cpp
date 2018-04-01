@@ -192,7 +192,7 @@ BOOST_AUTO_TEST_CASE(tokendb_savepoint_test)
     updatedomain ud;
     ud.name = "test3";
     ud.issue = issue_permission;
-    ud.issue.threshold = 20;
+    ud.issue->threshold = 20;
     auto r13 = db.update_domain(ud);
     BOOST_CHECK_EQUAL(0, r13);
     db.read_domain("test3", [](const auto& d) {

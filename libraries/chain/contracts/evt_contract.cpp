@@ -191,16 +191,25 @@ apply_eosio_updatedomain(apply_context& context) {
             FC_ASSERT(g.id == get_groupid(g.key), "Group id and key are not match", ("id",g.id)("key",g.key)); 
         }
         FC_ASSERT(!udact.name.empty(), "Domain name shouldn't be empty");
-        FC_ASSERT(udact.issue.threshold > 0 && validate(udact.issue), "Issue permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
-        FC_ASSERT(udact.transfer.threshold > 0 && validate(udact.transfer), "Transfer permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
-        // manage permission's threshold can be 0 which means no one can update permission later.
-        FC_ASSERT(validate(udact.manage), "Manage permission not valid, maybe exist duplicate keys.");
+        if(udact.issue.valid()) {
+            FC_ASSERT(udact.issue->threshold > 0 && validate(*udact.issue), "Issue permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
+        }
+        if(udact.transfer.valid()) {
+            FC_ASSERT(udact.transfer->threshold > 0 && validate(*udact.transfer), "Transfer permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
+        }
+        if(udact.manage.valid()) {
+            // manage permission's threshold can be 0 which means no one can update permission later.
+            FC_ASSERT(validate(*udact.manage), "Manage permission not valid, maybe exist duplicate keys.");
+        }
 
         auto check_groups = [&](const auto& p, auto allowed_owner) {
-            for(const auto& g : p.groups) {
+            if(!p.valid()) {
+                return;
+            }
+            for(const auto& g : p->groups) {
                 if(g.id == 0) {
                     // owner group
-                    FC_ASSERT(allowed_owner, "Owner group is not allowed in ${name} permission", ("name", p.name));
+                    FC_ASSERT(allowed_owner, "Owner group is not allowed in ${name} permission", ("name", p->name));
                     continue;
                 }
                 auto dbexisted = tokendb.exists_group(g.id);

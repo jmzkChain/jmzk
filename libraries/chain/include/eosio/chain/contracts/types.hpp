@@ -216,13 +216,13 @@ struct updategroup {
 };
 
 struct updatedomain {
-    domain_name             name;
+    domain_name                     name;
     
-    permission_def          issue;
-    permission_def          transfer;
-    permission_def          manage;
+    fc::optional<permission_def>    issue;
+    fc::optional<permission_def>    transfer;
+    fc::optional<permission_def>    manage;
 
-    std::vector<group_def>  groups;
+    std::vector<group_def>          groups;
 
     static account_name get_account() {
         return config::system_account_name;
