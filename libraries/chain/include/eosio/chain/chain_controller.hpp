@@ -8,6 +8,7 @@
 #include <eosio/chain/permission_object.hpp>
 #include <eosio/chain/fork_database.hpp>
 #include <eosio/chain/block_log.hpp>
+#include <eosio/chain/block_trace.hpp>
 
 #include <chainbase/chainbase.hpp>
 #include <fc/scoped_exit.hpp>
@@ -88,7 +89,7 @@ namespace eosio { namespace chain {
 
 
 
-      /**
+         /**
           *  This signal is emitted after all operations and virtual operation for a
           *  block have been applied but before the get_applied_operations() are cleared.
           *
@@ -111,7 +112,7 @@ namespace eosio { namespace chain {
           * This signal is emitted any time a new transaction is added to the pending
           * block state.
           */
-      signal<void(const transaction_metadata&, const packed_transaction&)> on_pending_transaction;
+         signal<void(const transaction_metadata&, const packed_transaction&)> on_pending_transaction;
 
 
 
@@ -264,6 +265,7 @@ namespace eosio { namespace chain {
          uint32_t             head_block_num()const;
          block_id_type        head_block_id()const;
          account_name         head_block_producer()const;
+         block_header         head_block_header()const; 
 
          uint32_t last_irreversible_block_num() const;
 
@@ -306,6 +308,9 @@ namespace eosio { namespace chain {
          transaction_trace __apply_transaction( transaction_metadata& data );
          transaction_trace _apply_error( transaction_metadata& data );
 
+         template<typename TransactionProcessing>
+         transaction_trace wrap_transaction_processing( transaction_metadata&& data, TransactionProcessing trx_processing );
+
          /// Reset the object graph in-memory
          void _initialize_indexes();
          void _initialize_chain(contracts::chain_initializer& starter);
@@ -343,7 +348,7 @@ namespace eosio { namespace chain {
          template<typename T>
          void validate_transaction(const T& trx) const {
          try {
-            EOS_ASSERT(trx.messages.size() > 0, transaction_exception, "A transaction must have at least one message");
+            EOS_ASSERT(trx.actions.size() > 0, transaction_exception, "A transaction must have at least one action");
 
             validate_expiration(trx);
             validate_uniqueness(trx);
@@ -359,19 +364,6 @@ namespace eosio { namespace chain {
          void record_transaction(const transaction& trx);
          /// @}
 
-         /**
-          * @brief Find the lowest authority level required for @ref authorizer_account to authorize a message of the
-          * specified type
-          * @param authorizer_account The account authorizing the message
-          * @param code_account The account which publishes the contract that handles the message
-          * @param type The type of message
-          * @return
-          */
-         optional<permission_name> lookup_minimum_permission( account_name authorizer_account,
-                                                             scope_name code_account,
-                                                             action_name type) const;
-
-
          bool should_check_for_duplicate_transactions()const { return !(_skip_flags&skip_transaction_dupe_check); }
          bool should_check_tapos()const                      { return !(_skip_flags&skip_tapos_check);            }
 
@@ -383,7 +375,6 @@ namespace eosio { namespace chain {
 
          void update_global_properties(const signed_block& b);
          void update_global_dynamic_data(const signed_block& b);
-         void update_usage( transaction_metadata&, uint32_t act_usage );
          void update_signing_producer(const producer_object& signing_producer, const signed_block& new_block);
          void update_last_irreversible_block();
          void update_or_create_producers( const producer_schedule_type& producers);

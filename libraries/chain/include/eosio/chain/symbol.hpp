@@ -51,6 +51,10 @@ namespace eosio {
          } FC_CAPTURE_LOG_AND_RETHROW((str))
       }
 
+      struct symbol_code {
+         uint64_t value;
+      };
+
       class symbol {
          public:
             explicit symbol(uint8_t p, const char* s): m_value(string_to_symbol(p, s)) { }
@@ -105,6 +109,8 @@ namespace eosio {
                }
                return result;
             }
+
+            symbol_code to_symbol_code()const { return {m_value >> 8}; }
             
             explicit operator string() const
             {
@@ -160,5 +166,15 @@ namespace fc {
    }
 }
 
+namespace fc {
+   inline void to_variant(const eosio::chain::symbol_code& var, fc::variant& vo) {
+      vo = eosio::chain::symbol(var.value << 8).name();
+   }
+   inline void from_variant(const fc::variant& var, eosio::chain::symbol_code& vo) {
+      vo = eosio::chain::symbol(0, var.get_string().c_str()).to_symbol_code();
+   }
+}
+
+FC_REFLECT(eosio::chain::symbol_code, (value))
 FC_REFLECT(eosio::chain::symbol, (m_value))
 FC_REFLECT(eosio::chain::extended_symbol, (sym)(contract))

@@ -190,19 +190,6 @@ namespace eosio { namespace chain {
 
    };
 
-   struct action_trace {
-      account_name               receiver;
-      action                     act;
-      string                     console;
-      uint32_t                   region_id;
-      uint32_t                   cycle_index;
-   };
-
-   struct transaction_trace : transaction_receipt {
-      using transaction_receipt::transaction_receipt;
-
-      vector<action_trace>          action_traces;
-   };
 } } // eosio::chain
 
 FC_REFLECT( eosio::chain::permission_level, (actor)(permission) )
@@ -212,7 +199,4 @@ FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header
 FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction), (signatures) )
 FC_REFLECT_ENUM( eosio::chain::packed_transaction::compression_type, (none)(zlib))
 FC_REFLECT( eosio::chain::packed_transaction, (signatures)(compression)(data) )
-FC_REFLECT( eosio::chain::action_trace, (receiver)(act)(console)(region_id)(cycle_index) )
 FC_REFLECT( eosio::chain::transaction_receipt, (status)(id))
-FC_REFLECT_ENUM( eosio::chain::transaction_receipt::status_enum, (executed)(soft_fail)(hard_fail))
-FC_REFLECT_DERIVED( eosio::chain::transaction_trace, (eosio::chain::transaction_receipt), (action_traces) )

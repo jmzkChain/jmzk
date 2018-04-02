@@ -282,24 +282,44 @@ namespace eosio { namespace chain { namespace contracts {
          }
       } else {
          const auto& st = get_struct(rtype);
-         const auto& vo = var.get_object();
+         if( var.is_object() ) {
+            const auto& vo = var.get_object();
 
-         if( st.base != type_name() ) {
-            variant_to_binary(resolve_type(st.base), var, ds);
-         }
-         for( const auto& field : st.fields ) {
-            if( vo.contains( string(field.name).c_str() ) ) {
-               variant_to_binary(field.type, vo[field.name], ds);
+            if( st.base != type_name() ) {
+               variant_to_binary(resolve_type(st.base), var, ds);
             }
-            else {
-               /// TODO: default construct field and write it out
-               FC_ASSERT( !"missing field in variant object", "Missing '${f}' in variant object", ("f",field.name) );
+            for( const auto& field : st.fields ) {
+               if( vo.contains( string(field.name).c_str() ) ) {
+                  variant_to_binary(field.type, vo[field.name], ds);
+               }
+               else {
+                  variant_to_binary(field.type, fc::variant(), ds);
+                  /// TODO: default construct field and write it out
+                  FC_THROW( "Missing '${f}' in variant object", ("f",field.name) );
+               }
+            }
+         } else if( var.is_array() ) {
+            const auto& va = var.get_array();
+
+            FC_ASSERT( st.base == type_name(), "support for base class as array not yet implemented" );
+            /*if( st.base != type_name() ) {
+               variant_to_binary(resolve_type(st.base), var, ds);
+            }
+            */
+            uint32_t i = 0;
+            for( const auto& field : st.fields ) {
+               idump((field.type)(va[i])(i));
+               if( va.size() > i )
+                  variant_to_binary(field.type, va[i], ds);
+               else
+                  variant_to_binary(field.type, fc::variant(), ds);
+               ++i;
             }
          }
       }
    } FC_CAPTURE_AND_RETHROW( (type)(var) ) }
 
-   bytes abi_serializer::variant_to_binary(const type_name& type, const fc::variant& var)const {
+   bytes abi_serializer::variant_to_binary(const type_name& type, const fc::variant& var)const { try {
       if( !is_type(type) ) {
          return var.as<bytes>();
       }
@@ -309,7 +329,7 @@ namespace eosio { namespace chain { namespace contracts {
       variant_to_binary(type, var, ds);
       temp.resize(ds.tellp());
       return temp;
-   }
+   } FC_CAPTURE_AND_RETHROW( (type)(var) ) }
 
    type_name abi_serializer::get_action_type(name action)const {
       auto itr = actions.find(action);

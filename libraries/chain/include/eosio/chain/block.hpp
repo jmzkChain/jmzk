@@ -15,33 +15,20 @@ namespace eosio { namespace chain {
       uint32_t        block_num() const { return num_from_id(previous) + 1; }
       static uint32_t num_from_id(const block_id_type& id);
 
-      block_id_type                 previous;
-      block_timestamp_type          timestamp;
+      block_id_type                     previous;
+      block_timestamp_type              timestamp;
 
-      checksum256_type                 transaction_mroot; /// mroot of cycles_summary
-      checksum256_type                 action_mroot;
-      checksum256_type                 block_mroot;
+      checksum256_type                  transaction_mroot; /// mroot of cycles_summary
+      checksum256_type                  action_mroot;
+      checksum256_type                  block_mroot;
 
-      account_name                  producer;
+      account_name                      producer;
 
       /** The producer schedule version that should validate this block, this is used to
        * indicate that the prior block which included new_producers->version has been marked
        * irreversible and that it the new producer schedule takes effect this block.
        */
-      uint32_t                      schedule_version = 0;
-
-      /**
-       * The changes in the round of producers after this block
-       *
-       * Must be stored with keys *and* values sorted, thus this is a valid RoundChanges:
-       * [["A", "X"],
-       *  ["B", "Y"]]
-       * ... whereas this is not:
-       * [["A", "Y"],
-       *  ["B", "X"]]
-       * Even though the above examples are semantically equivalent (replace A and B with X and Y), only the first is
-       * legal.
-       */
+      uint32_t                          schedule_version = 0;
       optional<producer_schedule_type>  new_producers;
    };
 
@@ -57,6 +44,9 @@ namespace eosio { namespace chain {
 
    struct shard_summary {
       vector<transaction_receipt>   transactions; /// new or generated transactions
+      bool empty() const {
+          return transactions.empty();
+      }
    };
 
    typedef vector<shard_summary>    cycle;
@@ -116,40 +106,6 @@ namespace eosio { namespace chain {
       vector<packed_transaction>   input_transactions;
    };
 
-   struct shard_trace {
-      digest_type                   shard_root;
-      vector<transaction_trace>     transaction_traces;
-
-      void append( transaction_trace&& res ) {
-         transaction_traces.emplace_back(move(res));
-      }
-
-      void append( const transaction_trace& res ) {
-         transaction_traces.emplace_back(res);
-      }
-
-      void calculate_root();
-   };
-
-   struct cycle_trace {
-      vector<shard_trace>           shard_traces;
-   };
-
-   struct region_trace {
-      vector<cycle_trace>           cycle_traces;
-   };
-
-   struct block_trace {
-      explicit block_trace(const signed_block& s)
-      :block(s)
-      {}
-
-      const signed_block&     block;
-      vector<region_trace>    region_traces;
-      digest_type             calculate_action_merkle_root()const;
-   };
-
-
 } } // eosio::chain
 
 FC_REFLECT(eosio::chain::block_header, (previous)(timestamp)
@@ -161,7 +117,3 @@ FC_REFLECT( eosio::chain::shard_summary, (transactions))
 FC_REFLECT( eosio::chain::region_summary, (region)(cycles_summary) )
 FC_REFLECT_DERIVED(eosio::chain::signed_block_summary, (eosio::chain::signed_block_header), (regions))
 FC_REFLECT_DERIVED(eosio::chain::signed_block, (eosio::chain::signed_block_summary), (input_transactions))
-FC_REFLECT( eosio::chain::shard_trace, (shard_root)(transaction_traces))
-FC_REFLECT( eosio::chain::cycle_trace, (shard_traces))
-FC_REFLECT( eosio::chain::region_trace, (cycle_traces))
-FC_REFLECT( eosio::chain::block_trace, (region_traces))

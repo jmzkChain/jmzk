@@ -3,7 +3,7 @@
  *  @copyright defined in eos/LICENSE.txt
  */
 #pragma once
-#include <eosio/chain/block.hpp>
+#include <eosio/chain/block_trace.hpp>
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/transaction_metadata.hpp>
 #include <eosio/chain/tokendb.hpp>
@@ -19,7 +19,7 @@ class chain_controller;
 
 class apply_context {
 public:
-      apply_context(chain_controller& con, chainbase::database& db, evt::chain::tokendb& tokendb, const action& a, const transaction_metadata& trx_meta, uint32_t depth=0)
+      apply_context(chain_controller& con, chainbase::database& db, evt::chain::tokendb& tokendb, const action& a, const transaction_metadata& trx_meta)
 
       :controller(con),
        db(db),
@@ -27,13 +27,10 @@ public:
        mutable_controller(con),
        mutable_db(db),
        mutable_tokendb(tokendb),
-       trx_meta(trx_meta),
-       recurse_depth(depth)
+       trx_meta(trx_meta)
        {}
 
       void exec();
-
-      void execute_inline( action &&a );
 
     /**
        * @return true if account exists, false if it does not
@@ -95,10 +92,6 @@ public:
 
       void update_db_usage( const account_name& payer, int64_t delta );
 
-      uint32_t                                    recurse_depth;  // how deep inline actions can recurse
-
-      static constexpr uint32_t base_row_fee = 200;
-
    private:
       void append_results(apply_results &&other) {
          fc::move_append(results.applied_actions, move(other.applied_actions));
@@ -107,7 +100,6 @@ public:
       void exec_one();
       
       vector<account_name>                _notified; ///< keeps track of new accounts to be notifed of current message
-      vector<action>                      _inline_actions; ///< queued inline messages
       std::ostringstream                  _pending_console_output;
 
       bytes                               _cached_trx;

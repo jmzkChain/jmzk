@@ -4,8 +4,8 @@
  */
 #pragma once
 #include <eosio/chain/contracts/types.hpp>
-#include <eosio/chain/transaction.hpp>
-#include <eosio/chain/block.hpp>
+#include <eosio/chain/block_trace.hpp>
+#include <eosio/chain/exceptions.hpp>
 
 #include <fc/variant_object.hpp>
 
@@ -177,6 +177,12 @@ namespace impl {
          mvo(name, std::move(array));
       }
 
+      template<typename Resolver, typename... Args>
+      static void add( mutable_variant_object &mvo, const char* name, const fc::static_variant<Args...>& v, Resolver resolver )
+      {
+         //TODO: implement deserialization for static_variant
+      }
+
       /**
        * overload of to_variant_object for actions
        * @tparam Resolver
@@ -334,21 +340,22 @@ namespace impl {
             }
          }
 
-         FC_ASSERT(!act.data.empty(), "Failed to deserialize data for ${account}:${name}", ("account", act.account)("name", act.name));
+         EOS_ASSERT(!act.data.empty(), packed_transaction_type_exception,
+                    "Failed to deserialize data for ${account}:${name}", ("account", act.account)("name", act.name));
       }
 
       template<typename Resolver>
       static void extract( const variant& v, packed_transaction& ptrx, Resolver resolver ) {
          const variant_object& vo = v.get_object();
-         FC_ASSERT(vo.contains("signatures"));
-         FC_ASSERT(vo.contains("compression"));
+         EOS_ASSERT(vo.contains("signatures"), packed_transaction_type_exception, "Missing signatures");
+         EOS_ASSERT(vo.contains("compression"), packed_transaction_type_exception, "Missing compression");
          from_variant(vo["signatures"], ptrx.signatures);
          from_variant(vo["compression"], ptrx.compression);
 
          if (vo.contains("hex_data") && vo["hex_data"].is_string() && !vo["hex_data"].as_string().empty()) {
             from_variant(vo["hex_data"], ptrx.data);
          } else {
-            FC_ASSERT(vo.contains("data"));
+            EOS_ASSERT(vo.contains("data"), packed_transaction_type_exception, "Missing data");
             if (vo["data"].is_string()) {
                from_variant(vo["data"], ptrx.data);
             } else {
@@ -397,7 +404,6 @@ namespace impl {
          T& _val;
          Resolver _resolver;
    };
-
 
    template<typename M, typename Resolver, require_abi_t<M>>
    void abi_to_variant::add( mutable_variant_object &mvo, const char* name, const M& v, Resolver resolver ) {
