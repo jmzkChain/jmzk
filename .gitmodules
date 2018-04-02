@@ -1,17 +1,17 @@
 [submodule "libraries/chainbase"]
 	path = libraries/chainbase
-	url = https://github.com/eosio/chainbase
+	url = https://github.com/everitoken/chainbase.git
         ignore = dirty
 [submodule "libraries/appbase"]
 	path = libraries/appbase
-	url = https://github.com/eosio/appbase
+	url = https://github.com/everitoken/appbase.git
         ignore = dirty
 [submodule "programs/snapshot"]
 	path = programs/snapshot
-	url = https://github.com/EOSIO/genesis.git
+	url = https://github.com/everitoken/genesis.git
 [submodule "libraries/softfloat"]
 	path = libraries/softfloat
-	url = https://github.com/eosio/berkeley-softfloat-3
+	url = https://github.com/everitoken/berkeley-softfloat-3
 [submodule "libraries/rocksdb"]
 	path = libraries/rocksdb
 	url = https://github.com/facebook/rocksdb.git
