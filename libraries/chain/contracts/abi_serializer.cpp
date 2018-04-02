@@ -94,6 +94,7 @@ namespace eosio { namespace chain { namespace contracts {
       built_in_types.emplace("domain_name",               pack_unpack<domain_name>());
       built_in_types.emplace("domain_key",                pack_unpack<domain_key>());
       built_in_types.emplace("token_name",                pack_unpack<token_name>());
+      built_in_types.emplace("producer_schedule",         pack_unpack<producer_schedule_type>());
    }
 
    void abi_serializer::set_abi(const abi_def& abi) {
