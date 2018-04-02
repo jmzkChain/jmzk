@@ -78,34 +78,34 @@ apply_eosio_newdomain(apply_context& context) {
     auto ndact = context.act.data_as<newdomain>();
     try {
         auto& tokendb = context.mutable_tokendb;
-        FC_ASSERT(!tokendb.exists_domain(ndact.name), "Domain ${name} already existed", ("name",ndact.name));
-        FC_ASSERT(context.trx_meta.signing_keys, "[EVT] Signing keys not avaiable");
+        EOS_ASSERT(!tokendb.exists_domain(ndact.name), action_validate_exception, "Domain ${name} already existed", ("name",ndact.name));
+        EOS_ASSERT(context.trx_meta.signing_keys, action_validate_exception, "[EVT] Signing keys not avaiable");
         auto& keys = *context.trx_meta.signing_keys;
         auto found = std::find(keys.cbegin(), keys.cend(), ndact.issuer);
-        FC_ASSERT(found != keys.cend(), "Issuer must sign his key");
+        EOS_ASSERT(found != keys.cend(), action_validate_exception, "Issuer must sign his key");
 
         for(auto& g : ndact.groups) {
-            FC_ASSERT(validate(g), "Group ${id} is not valid, eithor threshold is not valid or exist duplicate or unordered key", ("id", g.id));
-            FC_ASSERT(g.id == get_groupid(g.key), "Group id and key are not match", ("id",g.id)("key",g.key)); 
+            EOS_ASSERT(validate(g), action_validate_exception, "Group ${id} is not valid, eithor threshold is not valid or exist duplicate or unordered key", ("id", g.id));
+            EOS_ASSERT(g.id == get_groupid(g.key), action_validate_exception, "Group id and key are not match", ("id",g.id)("key",g.key)); 
         }
-        FC_ASSERT(!ndact.name.empty(), "Domain name shouldn't be empty");
-        FC_ASSERT(ndact.issue.threshold > 0 && validate(ndact.issue), "Issue permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
-        FC_ASSERT(ndact.transfer.threshold > 0 && validate(ndact.transfer), "Transfer permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
+        EOS_ASSERT(!ndact.name.empty(), action_validate_exception, "Domain name shouldn't be empty");
+        EOS_ASSERT(ndact.issue.threshold > 0 && validate(ndact.issue), action_validate_exception, "Issue permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
+        EOS_ASSERT(ndact.transfer.threshold > 0 && validate(ndact.transfer), action_validate_exception, "Transfer permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
         // manage permission's threshold can be 0 which means no one can update permission later.
-        FC_ASSERT(validate(ndact.manage), "Manage permission not valid, maybe exist duplicate keys.");
+        EOS_ASSERT(validate(ndact.manage), action_validate_exception, "Manage permission not valid, maybe exist duplicate keys.");
 
         auto check_groups = [&](const auto& p, auto allowed_owner) {
             for(const auto& g : p.groups) {
                 if(g.id == 0) {
                     // owner group
-                    FC_ASSERT(allowed_owner, "Owner group is not allowed in ${name} permission", ("name", p.name));
+                    EOS_ASSERT(allowed_owner, action_validate_exception, "Owner group is not allowed in ${name} permission", ("name", p.name));
                     continue;
                 }
                 auto dbexisted = tokendb.exists_group(g.id);
                 auto defexisted = std::find_if(ndact.groups.cbegin(), ndact.groups.cend(), [&g](auto& gd) { return gd.id == g.id; }) != ndact.groups.cend();
 
-                FC_ASSERT(dbexisted && defexisted, "Group ${id} already existed shouldn't be defined again", ("id", g.id));
-                FC_ASSERT(!dbexisted && !defexisted, "Group ${id} need to be defined", ("id", g.id));
+                EOS_ASSERT(dbexisted && defexisted, action_validate_exception, "Group ${id} already existed shouldn't be defined again", ("id", g.id));
+                EOS_ASSERT(!dbexisted && !defexisted, action_validate_exception, "Group ${id} need to be defined", ("id", g.id));
             }
         };
         check_groups(ndact.issue, false);
@@ -121,11 +121,11 @@ apply_eosio_newdomain(apply_context& context) {
         domain.manage = ndact.manage;
         
         auto r = tokendb.add_domain(domain);
-        FC_ASSERT(r == 0, "[EVT] Add new domain ${name} failed", ("id", domain.name));
+        EOS_ASSERT(r == 0, action_validate_exception, "[EVT] Add new domain ${name} failed", ("id", domain.name));
 
         for(auto& g : ndact.groups) {
             auto r2 = tokendb.add_group(g);
-            FC_ASSERT(r2 == 0, "[EVT] Add new group ${id} failed", ("id", g.id));
+            EOS_ASSERT(r2 == 0, action_validate_exception, "[EVT] Add new group ${id} failed", ("id", g.id));
         }
         
     }
@@ -136,16 +136,16 @@ void
 apply_eosio_issuetoken(apply_context& context) {
     auto itact = context.act.data_as<issuetoken>();
     try {
-        FC_ASSERT(context.mutable_tokendb.exists_domain(itact.domain), "Domain ${name} not existed", ("name", itact.domain));
-        FC_ASSERT(!itact.owner.empty(), "Owner cannot be empty");
+        EOS_ASSERT(context.mutable_tokendb.exists_domain(itact.domain), action_validate_exception, "Domain ${name} not existed", ("name", itact.domain));
+        EOS_ASSERT(!itact.owner.empty(), action_validate_exception, "Owner cannot be empty");
 
         auto& tokendb = context.mutable_tokendb;
         for(auto& n : itact.names) {
-            FC_ASSERT(!tokendb.exists_token(itact.domain, n), "Token ${domain}-${name} already existed", ("domain",itact.domain)("name",n));
+            EOS_ASSERT(!tokendb.exists_token(itact.domain, n), action_validate_exception, "Token ${domain}-${name} already existed", ("domain",itact.domain)("name",n));
         }
 
         auto r = tokendb.issue_tokens(itact);
-        FC_ASSERT(r == 0, "[EVT] Issue tokens in domain ${domain} failed", ("domain", itact.domain));
+        EOS_ASSERT(r == 0, action_validate_exception, "[EVT] Issue tokens in domain ${domain} failed", ("domain", itact.domain));
     }
     FC_CAPTURE_AND_RETHROW((itact));
 }
@@ -154,10 +154,10 @@ void
 apply_eosio_transfertoken(apply_context& context) {
     auto ttact = context.act.data_as<transfertoken>();
     auto& tokendb = context.mutable_tokendb;
-    FC_ASSERT(tokendb.exists_token(ttact.domain, ttact.name), "Token ${domain}-${name} not existed", ("domain",ttact.domain)("name",ttact.name));
+    EOS_ASSERT(tokendb.exists_token(ttact.domain, ttact.name), action_validate_exception, "Token ${domain}-${name} not existed", ("domain",ttact.domain)("name",ttact.name));
     
     auto r = tokendb.transfer_token(ttact);
-    FC_ASSERT(r == 0, "[EVT] Transfer token ${domain}-${name} failed", ("domain",ttact.domain)("name",ttact.name));
+    EOS_ASSERT(r == 0, action_validate_exception, "[EVT] Transfer token ${domain}-${name} failed", ("domain",ttact.domain)("name",ttact.name));
 }
 
 void
@@ -167,12 +167,12 @@ apply_eosio_updategroup(apply_context& context) {
     auto ugact = context.act.data_as<updategroup>();
     try {
         auto& tokendb = context.mutable_tokendb;
-        FC_ASSERT(tokendb.exists_group(ugact.id), "Group ${id} not existed", ("id",ugact.id));
-        FC_ASSERT(ugact.keys.size() > 0, "Group must contains at least one key");
-        FC_ASSERT(validate(ugact), "Updated group is not valid, eithor threshold is not valid or exist duplicate or unordered keys");
+        EOS_ASSERT(tokendb.exists_group(ugact.id), action_validate_exception, "Group ${id} not existed", ("id",ugact.id));
+        EOS_ASSERT(ugact.keys.size() > 0, action_validate_exception, "Group must contains at least one key");
+        EOS_ASSERT(validate(ugact), action_validate_exception, "Updated group is not valid, eithor threshold is not valid or exist duplicate or unordered keys");
 
         auto r = tokendb.update_group(ugact);
-        FC_ASSERT(r == 0, "[EVT] Update group ${id} failed", ("id",ugact.id));
+        EOS_ASSERT(r == 0, action_validate_exception, "[EVT] Update group ${id} failed", ("id",ugact.id));
     }
     FC_CAPTURE_AND_RETHROW((ugact));
 }
@@ -184,22 +184,22 @@ apply_eosio_updatedomain(apply_context& context) {
     auto udact = context.act.data_as<updatedomain>();
     try {
         auto& tokendb = context.mutable_tokendb;
-        FC_ASSERT(tokendb.exists_domain(udact.name), "Domain ${name} is not existed", ("name",udact.name));
+        EOS_ASSERT(tokendb.exists_domain(udact.name), action_validate_exception, "Domain ${name} is not existed", ("name",udact.name));
 
         for(auto& g : udact.groups) {
-            FC_ASSERT(validate(g), "Group ${id} is not valid, eithor threshold is not valid or exist duplicate or unordered key", ("id", g.id));
-            FC_ASSERT(g.id == get_groupid(g.key), "Group id and key are not match", ("id",g.id)("key",g.key)); 
+            EOS_ASSERT(validate(g), action_validate_exception, "Group ${id} is not valid, eithor threshold is not valid or exist duplicate or unordered key", ("id", g.id));
+            EOS_ASSERT(g.id == get_groupid(g.key), action_validate_exception, "Group id and key are not match", ("id",g.id)("key",g.key)); 
         }
-        FC_ASSERT(!udact.name.empty(), "Domain name shouldn't be empty");
+        EOS_ASSERT(!udact.name.empty(), action_validate_exception, "Domain name shouldn't be empty");
         if(udact.issue.valid()) {
-            FC_ASSERT(udact.issue->threshold > 0 && validate(*udact.issue), "Issue permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
+            EOS_ASSERT(udact.issue->threshold > 0 && validate(*udact.issue), action_validate_exception, "Issue permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
         }
         if(udact.transfer.valid()) {
-            FC_ASSERT(udact.transfer->threshold > 0 && validate(*udact.transfer), "Transfer permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
+            EOS_ASSERT(udact.transfer->threshold > 0 && validate(*udact.transfer), action_validate_exception, "Transfer permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
         }
         if(udact.manage.valid()) {
             // manage permission's threshold can be 0 which means no one can update permission later.
-            FC_ASSERT(validate(*udact.manage), "Manage permission not valid, maybe exist duplicate keys.");
+            EOS_ASSERT(validate(*udact.manage), action_validate_exception, "Manage permission not valid, maybe exist duplicate keys.");
         }
 
         auto check_groups = [&](const auto& p, auto allowed_owner) {
@@ -209,14 +209,14 @@ apply_eosio_updatedomain(apply_context& context) {
             for(const auto& g : p->groups) {
                 if(g.id == 0) {
                     // owner group
-                    FC_ASSERT(allowed_owner, "Owner group is not allowed in ${name} permission", ("name", p->name));
+                    EOS_ASSERT(allowed_owner, action_validate_exception, "Owner group is not allowed in ${name} permission", ("name", p->name));
                     continue;
                 }
                 auto dbexisted = tokendb.exists_group(g.id);
                 auto defexisted = std::find_if(udact.groups.cbegin(), udact.groups.cend(), [&g](auto& gd) { return gd.id == g.id; }) != udact.groups.cend();
 
-                FC_ASSERT(dbexisted && defexisted, "Group ${id} already existed shouldn't be defined again", ("id", g.id));
-                FC_ASSERT(!dbexisted && !defexisted, "Group ${id} need to be defined", ("id", g.id));
+                EOS_ASSERT(dbexisted && defexisted, action_validate_exception, "Group ${id} already existed shouldn't be defined again", ("id", g.id));
+                EOS_ASSERT(!dbexisted && !defexisted, action_validate_exception, "Group ${id} need to be defined", ("id", g.id));
             }
         };
         check_groups(udact.issue, false);
@@ -224,7 +224,7 @@ apply_eosio_updatedomain(apply_context& context) {
         check_groups(udact.manage, false);
 
         auto r = tokendb.update_domain(udact);
-        FC_ASSERT(r == 0, "[EVT] Update domain ${name} failed", ("name",udact.name));
+        EOS_ASSERT(r == 0, action_validate_exception, "[EVT] Update domain ${name} failed", ("name",udact.name));
     }
     FC_CAPTURE_AND_RETHROW((udact));
 }

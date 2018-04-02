@@ -733,6 +733,10 @@ void chain_controller::record_transaction(const transaction& trx) {
    }
 }
 
+void chain_controller::update_resource_usage( transaction_trace& trace, const transaction_metadata& meta ) {
+    // TODO: [EVT]Implement later
+}
+
 void chain_controller::validate_tapos(const transaction& trx)const {
    if (!should_check_tapos()) return;
 
@@ -1308,6 +1312,7 @@ transaction_trace chain_controller::__apply_transaction( transaction_metadata& m
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
    }
 
+   update_resource_usage(result, meta);
    record_transaction(meta.trx());
    return result;
 } FC_CAPTURE_AND_RETHROW() }

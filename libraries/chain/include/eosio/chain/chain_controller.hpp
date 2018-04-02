@@ -362,6 +362,7 @@ namespace eosio { namespace chain {
          void validate_referenced_accounts(const transaction& trx)const;
          void validate_expiration(const transaction& trx) const;
          void record_transaction(const transaction& trx);
+         void update_resource_usage( transaction_trace& trace, const transaction_metadata& meta );
          /// @}
 
          bool should_check_for_duplicate_transactions()const { return !(_skip_flags&skip_transaction_dupe_check); }
