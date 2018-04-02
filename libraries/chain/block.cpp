@@ -70,6 +70,8 @@ namespace eosio { namespace chain {
             fc::raw::pack(enc, at.receiver);
             fc::raw::pack(enc, at.act.account);
             fc::raw::pack(enc, at.act.name);
+            fc::raw::pack(enc, at.act.domain);
+            fc::raw::pack(enc, at.act.key);
             fc::raw::pack(enc, at.act.data);
             fc::raw::pack(enc, at.region_id);
             fc::raw::pack(enc, at.cycle_index);
