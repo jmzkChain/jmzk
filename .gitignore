@@ -41,8 +41,7 @@ libraries/wasm-jit/Source/Programs/Test
 libraries/wasm-jit/Source/Programs/wavm
 
 programs/cli_wallet/cli_wallet
-programs/js_operation_serializer/js_operation_serializer
-programs/witness_node/witness_node
+programs/js_operation_serializer/js_operation_serializer programs/witness_node/witness_node
 programs/data-dir
 programs/eos-walletd/eos-walletd
 programs/eosiod/eosiod
@@ -82,3 +81,4 @@ tn_data_*
 .idea/
 cmake-build-debug/
 cmake-build-release/
+diff/
