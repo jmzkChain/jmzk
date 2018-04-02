@@ -250,7 +250,6 @@ namespace fc {
 
       bool         _valid;
       storage_type _value;
-
   };
 
   template<typename T>

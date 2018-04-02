@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <fc/reflect/reflect.hpp>
+#include <iosfwd>
 
 namespace eosio { namespace chain {
     using std::string;
@@ -110,8 +111,7 @@ namespace eosio { namespace chain {
             return *this;
         }
 
-        template<typename Stream>
-        friend Stream& operator << ( Stream& out, const name& n ) {
+        friend std::ostream& operator << ( std::ostream& out, const name& n ) {
             return out << string(n);
         }
 
@@ -167,8 +167,7 @@ namespace eosio { namespace chain {
             return *this;
         }
 
-        template<typename Stream>
-        friend Stream& operator << ( Stream& out, const name128& n ) {
+        friend std::ostream& operator << ( std::ostream& out, const name128& n ) {
             return out << string(n);
         }
 
