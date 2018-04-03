@@ -51,11 +51,12 @@ endif()
         PRIVATE eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )  ]]
 
 target_link_libraries( eosiod
-        appbase
-        chain_api_plugin producer_plugin chain_plugin
-        net_plugin net_api_plugin
-        http_plugin
-        eosio_chain fc rocksdb)
+        PRIVATE appbase
+        PRIVATE chain_api_plugin
+        PRIVATE producer_plugin chain_plugin
+        PRIVATE net_plugin net_api_plugin
+        PRIVATE http_plugin
+        PRIVATE eosio_chain fc rocksdb)
 
 if(BUILD_MONGO_DB_PLUGIN)
   target_link_libraries( eosiod
