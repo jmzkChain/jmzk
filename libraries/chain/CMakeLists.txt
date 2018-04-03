@@ -13,6 +13,7 @@ add_library( eosio_chain
              fork_database.cpp
              get_config.cpp
              block_log.cpp
+             block_trace.cpp
              tokendb.cpp
              asset.cpp
 

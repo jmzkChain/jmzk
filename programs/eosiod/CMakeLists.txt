@@ -41,14 +41,21 @@ else()
   set(no_whole_archive_flag "--no-whole-archive")
 endif()
 
-target_link_libraries( eosiod
+#[[ target_link_libraries( eosiod
         PRIVATE appbase
         PRIVATE -Wl,${whole_archive_flag} account_history_api_plugin -Wl,${no_whole_archive_flag} account_history_plugin
         PRIVATE -Wl,${whole_archive_flag} chain_api_plugin -Wl,${no_whole_archive_flag} producer_plugin chain_plugin
         PRIVATE -Wl,${whole_archive_flag} wallet_api_plugin -Wl,${no_whole_archive_flag}
         PRIVATE net_plugin -Wl,${whole_archive_flag} net_api_plugin -Wl,${no_whole_archive_flag} 
         PRIVATE http_plugin -Wl,${whole_archive_flag} faucet_testnet_plugin -Wl,${no_whole_archive_flag}
-        PRIVATE eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )
+        PRIVATE eosio_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )  ]]
+
+target_link_libraries( eosiod
+        appbase
+        chain_api_plugin producer_plugin chain_plugin
+        net_plugin net_api_plugin
+        http_plugin
+        eosio_chain fc rocksdb)
 
 if(BUILD_MONGO_DB_PLUGIN)
   target_link_libraries( eosiod

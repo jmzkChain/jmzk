@@ -14,7 +14,6 @@ namespace eosio { namespace chain {
       static const size_t GUESS_ACTS_PER_TX = 10;
 
       vector<digest_type> action_roots;
-      cpu_usage = 0;
       action_roots.reserve(transaction_traces.size() * GUESS_ACTS_PER_TX);
       for (const auto& tx :transaction_traces) {
          for (const auto& at: tx.action_traces) {
@@ -30,8 +29,6 @@ namespace eosio { namespace chain {
             fc::raw::pack(enc, at.cycle_index);
 
             action_roots.emplace_back(enc.result());
-
-            cpu_usage += at.cpu_usage;
          }
       }
       shard_root = merkle(action_roots);
