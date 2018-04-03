@@ -113,7 +113,7 @@ public:
             else {
                 // token
                 auto v = read_value<token_def>(*merge_in.existing_value);
-                auto tt = read_value<transfertoken>(merge_in.operand_list[merge_in.operand_list.size() - 1]);
+                auto tt = read_value<transfer>(merge_in.operand_list[merge_in.operand_list.size() - 1]);
                 v.owner = std::move(tt.to);
                 merge_out->new_value = get_value(v);
             }
@@ -383,7 +383,7 @@ tokendb::update_group(const updategroup& ug) {
 }
 
 int
-tokendb::transfer_token(const transfertoken& tt) {
+tokendb::transfer_token(const transfer& tt) {
     using namespace __internal;
     auto key = get_token_key(tt.domain, tt.name);
     auto value = get_value(tt);

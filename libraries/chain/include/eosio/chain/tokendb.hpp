@@ -68,7 +68,7 @@ public:
     // specific function, use merge operator to speed up rocksdb action.
     int update_domain(const updatedomain& ud);
     int update_group(const updategroup& ug);
-    int transfer_token(const transfertoken& tt);
+    int transfer_token(const transfer& tt);
 
 public:
     int add_savepoint(uint32 seq);

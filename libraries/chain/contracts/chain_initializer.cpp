@@ -37,7 +37,7 @@ void chain_initializer::register_types(chain_controller& chain, chainbase::datab
 
     SET_APP_HANDLER( eosio, eosio, newdomain, eosio );
     SET_APP_HANDLER( eosio, eosio, issuetoken, eosio );
-    SET_APP_HANDLER( eosio, eosio, transfertoken, eosio );
+    SET_APP_HANDLER( eosio, eosio, transfer, eosio );
     SET_APP_HANDLER( eosio, eosio, updategroup, eosio );
 }
 
@@ -56,7 +56,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
 
    eos_abi.actions.push_back( action_def{name("newdomain"), "newdomain"} );
    eos_abi.actions.push_back( action_def{name("issuetoken"), "issuetoken"} );
-   eos_abi.actions.push_back( action_def{name("transfertoekn"), "transfertoken"} );
+   eos_abi.actions.push_back( action_def{name("transfer"), "transfer"} );
    eos_abi.actions.push_back( action_def{name("updategroup"), "updategroup"} );    
 
    // ACTION PAYLOADS
@@ -81,7 +81,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
    });
 
    eos_abi.structs.emplace_back( struct_def {
-      "transfertoken", "", {
+      "transfer", "", {
          {"domain", "domain_name"},
          {"token_name", "name"},
          {"to", "user_list"},

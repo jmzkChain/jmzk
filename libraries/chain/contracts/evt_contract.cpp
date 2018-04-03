@@ -155,8 +155,8 @@ apply_eosio_issuetoken(apply_context& context) {
 }
 
 void
-apply_eosio_transfertoken(apply_context& context) {
-    auto ttact = context.act.data_as<transfertoken>();
+apply_eosio_transfer(apply_context& context) {
+    auto ttact = context.act.data_as<transfer>();
     EOS_ASSERT(context.has_authorized(ttact.domain, (uint128_t)ttact.name), action_validate_exception, "Authorized information doesn't match");
     
     auto& tokendb = context.mutable_tokendb;

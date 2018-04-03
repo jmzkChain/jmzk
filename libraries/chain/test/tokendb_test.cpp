@@ -100,7 +100,7 @@ BOOST_AUTO_TEST_CASE(tokendb_default_test)
     });
 
     auto nuser = user_id(std::string("EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"));
-    auto tt = transfertoken();
+    auto tt = transfer();
     tt.domain = "test";
     tt.name = "TEST-A";
     tt.to.push_back(nuser);
@@ -168,7 +168,7 @@ BOOST_AUTO_TEST_CASE(tokendb_savepoint_test)
     BOOST_CHECK_EQUAL(0, r7);
 
     auto nuser = user_id(std::string("EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"));
-    auto tt = transfertoken();
+    auto tt = transfer();
     tt.domain = "test2";
     tt.name = "TEST-A";
     tt.to.push_back(nuser);

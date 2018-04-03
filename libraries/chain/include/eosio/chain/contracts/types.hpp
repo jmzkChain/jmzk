@@ -185,7 +185,7 @@ struct issuetoken {
     }
 };
 
-struct transfertoken {
+struct transfer {
     domain_name             domain;
     token_name              name;
     user_list               to;
@@ -195,7 +195,7 @@ struct transfertoken {
     }
 
     static action_name get_name() {
-        return N(transfertoken);
+        return N(transfer);
     }
 };
 
@@ -246,6 +246,6 @@ FC_REFLECT( eosio::chain::contracts::domain_def                       , (name)(i
 
 FC_REFLECT( eosio::chain::contracts::newdomain                        , (name)(issuer)(issue)(transfer)(manage)(groups))
 FC_REFLECT( eosio::chain::contracts::issuetoken                       , (domain)(names)(owner) )
-FC_REFLECT( eosio::chain::contracts::transfertoken                    , (domain)(name)(to) )
+FC_REFLECT( eosio::chain::contracts::transfer                         , (domain)(name)(to) )
 FC_REFLECT( eosio::chain::contracts::updategroup                      , (id)(threshold)(keys) )
 FC_REFLECT( eosio::chain::contracts::updatedomain                     , (name)(issue)(transfer)(manage)(groups))
