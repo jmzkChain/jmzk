@@ -189,6 +189,8 @@ if(ENABLE_COVERAGE_TESTING)
   find_program( GENHTML_PATH NAMES genhtml)
 endif()
 
+include_directories(libraries/rocksdb/include)
+
 add_subdirectory( libraries )
 add_subdirectory( plugins )
 add_subdirectory( programs )

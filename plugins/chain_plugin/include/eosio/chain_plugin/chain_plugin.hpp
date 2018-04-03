@@ -9,7 +9,6 @@
 #include <eosio/chain/account_object.hpp>
 #include <eosio/chain/block.hpp>
 #include <eosio/chain/chain_controller.hpp>
-#include <eosio/chain/contracts/contract_table_objects.hpp>
 #include <eosio/chain/transaction.hpp>
 #include <eosio/chain/contracts/abi_serializer.hpp>
 
@@ -152,46 +151,6 @@ public:
    };
 
    fc::variant get_currency_stats( const get_currency_stats_params& params )const;
-
-   static void copy_row(const chain::contracts::key_value_object& obj, vector<char>& data) {
-      data.resize( sizeof(uint64_t) + obj.value.size() );
-      memcpy( data.data(), &obj.primary_key, sizeof(uint64_t) );
-      memcpy( data.data()+sizeof(uint64_t), obj.value.data(), obj.value.size() );
-   }
-
-   static void copy_inline_row(const chain::contracts::key_value_object& obj, vector<char>& data) {
-      data.resize( obj.value.size() );
-      memcpy( data.data(), obj.value.data(), obj.value.size() );
-   }
-
-   static void copy_row(const chain::contracts::keystr_value_object& obj, vector<char>& data) {
-      data.resize( obj.primary_key.size() + obj.value.size() + 8 );
-      fc::datastream<char*> ds(data.data(), data.size());
-      fc::raw::pack(ds, obj.primary_key);
-      ds.write(obj.value.data(), obj.value.size());
-      data.resize(ds.tellp());
-   }
-
-   static void copy_row(const chain::contracts::key128x128_value_object& obj, vector<char>& data) {
-      data.resize( 2*sizeof(uint128_t) + obj.value.size() );
-      memcpy( data.data(), &obj.primary_key, sizeof(uint128_t) );
-      memcpy( data.data()+sizeof(uint128_t), &obj.secondary_key, sizeof(uint128_t) );
-      memcpy( data.data()+2*sizeof(uint128_t), obj.value.data(), obj.value.size() );
-   }
-
-   static void copy_row(const chain::contracts::key64x64x64_value_object& obj, vector<char>& data) {
-      data.resize( 3*sizeof(uint64_t) + obj.value.size() );
-      memcpy( data.data(), &obj.primary_key, sizeof(uint64_t) );
-      memcpy( data.data()+sizeof(uint64_t), &obj.secondary_key, sizeof(uint64_t) );
-      memcpy( data.data()+2*sizeof(uint64_t), &obj.tertiary_key, sizeof(uint64_t) );
-      memcpy( data.data()+3*sizeof(uint64_t), obj.value.data(), obj.value.size() );
-   }
-
-   static void copy_inline_row(const chain::contracts::key64x64x64_value_object& obj, vector<char>& data) {
-      data.resize( obj.value.size() );
-      memcpy( data.data(), obj.value.data(), obj.value.size() );
-   }
-
 
    friend struct resolver_factory<read_only>;
 };

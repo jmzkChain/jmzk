@@ -1,7 +1,4 @@
 file(GLOB HEADERS "include/eosio/chain/*.hpp" "include/eosio/chain/contracts/*.hpp")
-include_directories(
-        ../rocksdb/include
-)
 
 ## SORT .cpp by most likely to change / break compile
 add_library( eosio_chain
