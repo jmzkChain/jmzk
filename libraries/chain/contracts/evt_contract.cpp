@@ -77,6 +77,8 @@ apply_eosio_newdomain(apply_context& context) {
 
     auto ndact = context.act.data_as<newdomain>();
     try {
+        EOS_ASSERT(context.has_authorized("domain", (uint128_t)ndact.name), action_validate_exception, "Authorized information doesn't match");
+
         auto& tokendb = context.mutable_tokendb;
         EOS_ASSERT(!tokendb.exists_domain(ndact.name), action_validate_exception, "Domain ${name} already existed", ("name",ndact.name));
         EOS_ASSERT(context.trx_meta.signing_keys, action_validate_exception, "[EVT] Signing keys not avaiable");
@@ -136,6 +138,8 @@ void
 apply_eosio_issuetoken(apply_context& context) {
     auto itact = context.act.data_as<issuetoken>();
     try {
+        EOS_ASSERT(context.has_authorized(itact.domain, N128(issue)), action_validate_exception, "Authorized information doesn't match");
+        
         EOS_ASSERT(context.mutable_tokendb.exists_domain(itact.domain), action_validate_exception, "Domain ${name} not existed", ("name", itact.domain));
         EOS_ASSERT(!itact.owner.empty(), action_validate_exception, "Owner cannot be empty");
 
@@ -153,6 +157,8 @@ apply_eosio_issuetoken(apply_context& context) {
 void
 apply_eosio_transfertoken(apply_context& context) {
     auto ttact = context.act.data_as<transfertoken>();
+    EOS_ASSERT(context.has_authorized(ttact.domain, (uint128_t)ttact.name), action_validate_exception, "Authorized information doesn't match");
+    
     auto& tokendb = context.mutable_tokendb;
     EOS_ASSERT(tokendb.exists_token(ttact.domain, ttact.name), action_validate_exception, "Token ${domain}-${name} not existed", ("domain",ttact.domain)("name",ttact.name));
     
@@ -166,6 +172,8 @@ apply_eosio_updategroup(apply_context& context) {
 
     auto ugact = context.act.data_as<updategroup>();
     try {
+        EOS_ASSERT(context.has_authorized("group", ugact.id), action_validate_exception, "Authorized information doesn't match");
+
         auto& tokendb = context.mutable_tokendb;
         EOS_ASSERT(tokendb.exists_group(ugact.id), action_validate_exception, "Group ${id} not existed", ("id",ugact.id));
         EOS_ASSERT(ugact.keys.size() > 0, action_validate_exception, "Group must contains at least one key");
@@ -183,6 +191,8 @@ apply_eosio_updatedomain(apply_context& context) {
 
     auto udact = context.act.data_as<updatedomain>();
     try {
+        EOS_ASSERT(context.has_authorized(udact.name, N128(manage)), action_validate_exception, "Authorized information doesn't match");
+
         auto& tokendb = context.mutable_tokendb;
         EOS_ASSERT(tokendb.exists_domain(udact.name), action_validate_exception, "Domain ${name} is not existed", ("name",udact.name));
 

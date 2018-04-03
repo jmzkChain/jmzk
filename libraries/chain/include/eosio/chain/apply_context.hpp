@@ -38,15 +38,10 @@ public:
       bool is_account(const account_name& account)const;
 
       /**
-       * Requires that the current action be delivered to account
-       */
-      void require_recipient(account_name account);
-
-      /**
        * Return true if the current action has already been scheduled to be
        * delivered to the specified account.
        */
-      bool has_recipient(account_name account)const;
+      bool has_authorized(const domain_name& domain, const domain_key& key)const;
 
       vector<account_name> get_active_producers() const;
 
@@ -86,11 +81,7 @@ public:
          console_append(fc::format_string(fmt, vo));
       }
 
-      void checktime(uint32_t instruction_count) const;
-
       int get_action( uint32_t type, uint32_t index, char* buffer, size_t buffer_size )const;
-
-      void update_db_usage( const account_name& payer, int64_t delta );
 
    private:
       void append_results(apply_results &&other) {

@@ -41,16 +41,8 @@ bool apply_context::is_account( const account_name& account )const {
    return nullptr != db.find<account_object,by_name>( account );
 }
 
-bool apply_context::has_recipient( account_name code )const {
-   for( auto a : _notified )
-      if( a == code )
-         return true;
-   return false;
-}
-
-void apply_context::require_recipient( account_name code ) {
-   if( !has_recipient(code) )
-      _notified.push_back(code);
+bool apply_context::has_authorized(const domain_name& domain, const domain_key& key)const {
+    return act.domain == domain && act.key == key;
 }
 
 vector<account_name> apply_context::get_active_producers() const {
@@ -61,13 +53,6 @@ vector<account_name> apply_context::get_active_producers() const {
 
    return accounts;
 }
-
-void apply_context::checktime(uint32_t instruction_count) const {
-   if (trx_meta.processing_deadline && fc::time_point::now() > (*trx_meta.processing_deadline)) {
-      throw checktime_exceeded();
-   }
-}
-
 
 const bytes& apply_context::get_packed_transaction() {
    if( !trx_meta.packed_trx.size() ) {
