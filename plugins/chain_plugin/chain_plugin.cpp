@@ -34,6 +34,7 @@ using fc::flat_map;
 class chain_plugin_impl {
 public:
    bfs::path                        block_log_dir;
+   bfs::path                        tokendb_dir;
    bfs::path                        genesis_file;
    time_point                       genesis_timestamp;
    uint32_t                         skip_flags = skip_nothing;
@@ -63,6 +64,8 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
          ("genesis-timestamp", bpo::value<string>(), "override the initial timestamp in the Genesis State file")
          ("block-log-dir", bpo::value<bfs::path>()->default_value("blocks"),
           "the location of the block log (absolute path or relative to application data dir)")
+         ("tokendb-dir", bpo::value<bfs::path>()->default_value("tokendb"),
+          "the location of the tokendb (absolute path or relative to application data dir)")
          ("checkpoint,c", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
          ("max-reversible-block-time", bpo::value<int32_t>()->default_value(-1),
           "Limits the maximum time (in milliseconds) that a reversible block is allowed to run before being considered invalid")
@@ -121,6 +124,13 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
       else
          my->block_log_dir = bld;
    }
+   if (options.count("tokendb-dir")) {
+      auto bld = options.at("tokendb-dir").as<bfs::path>();
+      if(bld.is_relative())
+         my->tokendb_dir = app().data_dir() / bld;
+      else
+         my->tokendb_dir = bld;
+   }
 
    if (options.at("replay-blockchain").as<bool>()) {
       ilog("Replay requested: wiping database");
@@ -176,6 +186,7 @@ void chain_plugin::plugin_startup()
       fc::json::save_to_file( default_genesis, my->genesis_file, true );
    }
    my->chain_config->block_log_dir = my->block_log_dir;
+   my->chain_config->tokendb_dir = my->tokendb_dir;
    my->chain_config->shared_memory_dir = app().data_dir() / default_shared_memory_dir;
    my->chain_config->read_only = my->readonly;
    my->chain_config->genesis = fc::json::from_file(my->genesis_file).as<contracts::genesis_state_type>();

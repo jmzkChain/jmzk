@@ -11,6 +11,7 @@
 #include <rocksdb/merge_operator.h>
 #include <fc/io/raw.hpp>
 #include <fc/io/datastream.hpp>
+#include <fc/filesystem.hpp>
 
 namespace evt { namespace chain {
 
@@ -184,7 +185,7 @@ tokendb::~tokendb() {
 }
 
 int
-tokendb::initialize(const std::string& dbpath) {
+tokendb::initialize(const fc::path& dbpath) {
     using namespace rocksdb;
     using namespace __internal;
 
@@ -197,7 +198,12 @@ tokendb::initialize(const std::string& dbpath) {
     options.prefix_extractor.reset(NewFixedPrefixTransform(sizeof(uint128_t)));
     options.merge_operator.reset(new TokendbMerge());
 
-    auto status = DB::Open(options, dbpath, &db_);
+    if(!fc::exists(dbpath)) {
+        fc::create_directories(dbpath);
+    }
+
+    auto native_path = dbpath.to_native_ansi_path();
+    auto status = DB::Open(options, native_path, &db_);
     if(!status.ok()) {
         return status.code();
     }
@@ -307,10 +313,10 @@ tokendb::exists_group(const group_id& id) {
 }
 
 int
-tokendb::read_domain(const domain_name type, const read_domain_func& func) const {
+tokendb::read_domain(const domain_name name, const read_domain_func& func) const {
     using namespace __internal;
     std::string value;
-    auto key = get_domain_key(type);
+    auto key = get_domain_key(name);
     auto status = db_->Get(read_opts_, key.as_slice(), &value);
     if(!status.ok()) {
         return tokendb_error::not_found_domain;
@@ -321,10 +327,10 @@ tokendb::read_domain(const domain_name type, const read_domain_func& func) const
 }
 
 int
-tokendb::read_token(const domain_name type, const token_name name, const read_token_func& func) const {
+tokendb::read_token(const domain_name domain, const token_name name, const read_token_func& func) const {
     using namespace __internal;
     std::string value;
-    auto key = get_token_key(type, name);
+    auto key = get_token_key(domain, name);
     auto status = db_->Get(read_opts_, key.as_slice(), &value);
     if(!status.ok()) {
         return tokendb_error::not_found_token_id;

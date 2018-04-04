@@ -70,6 +70,7 @@ namespace eosio { namespace chain {
 
          struct controller_config {
             path                           block_log_dir       =  config::default_block_log_dir;
+            path                           tokendb_dir         =  config::default_tokendb_dir;
             path                           shared_memory_dir   =  config::default_shared_memory_dir;
             uint64_t                       shared_memory_size  =  config::default_shared_memory_size;
             bool                           read_only           =  false;

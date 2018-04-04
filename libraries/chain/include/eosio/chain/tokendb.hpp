@@ -51,7 +51,7 @@ public:
     ~tokendb();
 
 public:
-    int initialize(const std::string& dbpath);
+    int initialize(const fc::path& dbpath);
 
 public:
     int add_domain(const domain_def&);

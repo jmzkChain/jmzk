@@ -33,12 +33,11 @@ evt_plugin::set_program_options(options_description& cli, options_description& c
 
 void
 evt_plugin::plugin_initialize(const variables_map& options) {
-    this->my_.reset(new evt_plugin_impl(app().get_plugin<chain_plugin>().chain()));
 }
 
 void
 evt_plugin::plugin_startup() {
-
+    this->my_.reset(new evt_plugin_impl(app().get_plugin<chain_plugin>().chain()));
 }
 
 void
