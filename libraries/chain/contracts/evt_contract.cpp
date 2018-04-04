@@ -24,16 +24,14 @@ validate(const permission_def &permission) {
     uint32_t total_weight = 0;
     const contracts::group_weight* prev = nullptr;
     for(const auto& gw : permission.groups) {
-        if(!prev) {
-            prev = &gw;
-        }
-        else if(prev->id < gw.id) {
+        if(prev && (prev->id <= gw.id)) {
             return false;
         }
         if(gw.weight == 0) {
             return false;
         }
         total_weight += gw.weight;
+        prev = &gw;
     }
     return total_weight >= permission.threshold;
 }
@@ -55,16 +53,14 @@ validate(const T &group) {
     uint32_t total_weight = 0;
     const key_weight* prev = nullptr;
     for(const auto& kw : group.keys) {
-        if(!prev) {
-            prev = &kw;
-        }
-        else if(prev->key < kw.key) {
+        if(prev && ((prev->key < kw.key) || (prev->key == kw.key))) {
             return false;
         }
         if(kw.weight == 0) {
             return false;
         }
         total_weight += kw.weight;
+        prev = &kw;
     }
     return total_weight >= group.threshold;
 }
