@@ -271,6 +271,7 @@ namespace eosio { namespace chain {
 
          const chainbase::database& get_database() const { return _db; }
          chainbase::database&       get_mutable_database() { return _db; }
+         const evt::chain::tokendb& get_tokendb() const { return _tokendb; }
 
          /**
           * @param actions - the actions to check authorization across

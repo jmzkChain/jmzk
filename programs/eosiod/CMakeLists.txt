@@ -52,10 +52,11 @@ endif()
 
 target_link_libraries( eosiod
         PRIVATE appbase
-        PRIVATE chain_api_plugin
-        PRIVATE producer_plugin chain_plugin
+        PRIVATE chain_plugin chain_api_plugin
+        PRIVATE producer_plugin
         PRIVATE net_plugin net_api_plugin
         PRIVATE http_plugin
+        PRIVATE evt_plugin evt_api_plugin
         PRIVATE eosio_chain fc rocksdb)
 
 if(BUILD_MONGO_DB_PLUGIN)

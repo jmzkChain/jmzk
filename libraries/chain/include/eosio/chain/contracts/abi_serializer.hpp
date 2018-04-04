@@ -29,7 +29,6 @@ struct abi_serializer {
    map<type_name, type_name>  typedefs;
    map<type_name, struct_def> structs;
    map<name,type_name>        actions;
-   map<name,type_name>        tables;
 
    typedef std::function<fc::variant(fc::datastream<const char*>&, bool, bool)>  unpack_function;
    typedef std::function<void(const fc::variant&, fc::datastream<char*>&, bool, bool)>  pack_function;
@@ -53,7 +52,6 @@ struct abi_serializer {
    const struct_def& get_struct(const type_name& type)const;
 
    type_name get_action_type(name action)const;
-   type_name get_table_type(name action)const;
 
    fc::variant binary_to_variant(const type_name& type, const bytes& binary)const;
    bytes       variant_to_binary(const type_name& type, const fc::variant& var)const;

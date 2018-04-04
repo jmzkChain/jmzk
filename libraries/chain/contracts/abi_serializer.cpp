@@ -87,6 +87,7 @@ namespace eosio { namespace chain { namespace contracts {
       built_in_types.emplace("int64",                     pack_unpack<int64_t>());
       built_in_types.emplace("float64",                   pack_unpack<double>());
       built_in_types.emplace("name",                      pack_unpack<name>());
+      built_in_types.emplace("name128",                   pack_unpack<name128>());
       built_in_types.emplace("account_name",              pack_unpack<account_name>());
       built_in_types.emplace("permission_name",           pack_unpack<permission_name>());
       built_in_types.emplace("action_name",               pack_unpack<action_name>());
@@ -94,6 +95,7 @@ namespace eosio { namespace chain { namespace contracts {
       built_in_types.emplace("domain_name",               pack_unpack<domain_name>());
       built_in_types.emplace("domain_key",                pack_unpack<domain_key>());
       built_in_types.emplace("token_name",                pack_unpack<token_name>());
+      built_in_types.emplace("group_id",                  pack_unpack<group_id>());
       built_in_types.emplace("producer_schedule",         pack_unpack<producer_schedule_type>());
    }
 
@@ -101,7 +103,6 @@ namespace eosio { namespace chain { namespace contracts {
       typedefs.clear();
       structs.clear();
       actions.clear();
-      tables.clear();
 
       for( const auto& st : abi.structs )
          structs[st.name] = st;
@@ -209,10 +210,6 @@ namespace eosio { namespace chain { namespace contracts {
       for( const auto& a : actions ) { try {
         FC_ASSERT(is_type(a.second), "", ("type",a.second) );
       } FC_CAPTURE_AND_RETHROW( (a)  ) }
-
-      for( const auto& t : tables ) { try {
-        FC_ASSERT(is_type(t.second), "", ("type",t.second) );
-      } FC_CAPTURE_AND_RETHROW( (t)  ) }
    }
 
    type_name abi_serializer::resolve_type(const type_name& type)const  {
@@ -334,11 +331,6 @@ namespace eosio { namespace chain { namespace contracts {
    type_name abi_serializer::get_action_type(name action)const {
       auto itr = actions.find(action);
       if( itr != actions.end() ) return itr->second;
-      return type_name();
-   }
-   type_name abi_serializer::get_table_type(name action)const {
-      auto itr = tables.find(action);
-      if( itr != tables.end() ) return itr->second;
       return type_name();
    }
 

@@ -9,6 +9,8 @@ add_subdirectory(account_history_api_plugin)
 add_subdirectory(wallet_plugin)
 add_subdirectory(wallet_api_plugin)
 add_subdirectory(faucet_testnet_plugin)
+add_subdirectory(evt_plugin)
+add_subdirectory(evt_api_plugin)
 
 # Forward variables to top level so packaging picks them up
 set(CPACK_DEBIAN_PACKAGE_DEPENDS ${CPACK_DEBIAN_PACKAGE_DEPENDS} PARENT_SCOPE)

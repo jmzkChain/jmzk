@@ -5,9 +5,11 @@
 #include <appbase/application.hpp>
 
 #include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/chain_api_plugin/chain_api_plugin.hpp>
 #include <eosio/http_plugin/http_plugin.hpp>
 #include <eosio/net_plugin/net_plugin.hpp>
-#include <eosio/chain_api_plugin/chain_api_plugin.hpp>
+#include <evt/evt_plugin/evt_plugin.hpp>
+#include <evt/evt_api_plugin/evt_api_plugin.hpp>
 
 #include <fc/log/logger_config.hpp>
 #include <fc/log/appender.hpp>
@@ -105,7 +107,7 @@ int main(int argc, char** argv)
       bfs::path root = determine_root_directory();
       app().set_default_data_dir(root / "var/lib/eosio/node_00");
       app().set_default_config_dir(root / "etc/eosio/node_00");
-      if(!app().initialize<chain_plugin, http_plugin, net_plugin, chain_api_plugin>(argc, argv))
+      if(!app().initialize<chain_plugin, http_plugin, net_plugin, chain_api_plugin, evt_plugin, evt_api_plugin>(argc, argv))
          return -1;
       initialize_logging();
       ilog("eosiod version ${ver}", ("ver", eosio::eosiod::config::itoh(static_cast<uint32_t>(app().version()))));
