@@ -46,8 +46,8 @@ chain_controller::chain_controller( const chain_controller::controller_config& c
 :_db( cfg.shared_memory_dir,
       (cfg.read_only ? database::read_only : database::read_write),
       cfg.shared_memory_size),
- _tokendb(),
  _block_log(cfg.block_log_dir),
+ _tokendb(),
  _limits(cfg.limits)
 {
    auto r = _tokendb.initialize(cfg.tokendb_dir);

@@ -4,6 +4,7 @@
 #include <eosio/chain/chain_config.hpp>
 #include <eosio/chain/config.hpp>
 #include <eosio/chain/types.hpp>
+#include <eosio/chain/contracts/group_id.hpp>
 
 #include <boost/multiprecision/cpp_int.hpp>
 
@@ -30,7 +31,6 @@ using token_name        = eosio::chain::token_name;
 using user_id           = fc::crypto::public_key;
 using user_list         = std::vector<fc::crypto::public_key>;
 using group_key         = fc::crypto::public_key;
-using group_id          = uint128_t;
 using permission_name   = name;
 
 
@@ -114,7 +114,7 @@ struct group_def {
     vector<key_weight>      keys;
 };
 
-// Special: id == 0 means owner
+// Special: id.empty() == true means owner
 struct group_weight {
     group_weight() = default;
     group_weight(group_id id, weight_type weight)

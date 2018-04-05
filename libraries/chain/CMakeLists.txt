@@ -24,6 +24,7 @@ add_library( eosio_chain
              contracts/chain_initializer.cpp
              contracts/genesis_state.cpp
              contracts/abi_serializer.cpp
+             contracts/group_id.cpp
 
              ${HEADERS}
              transaction_metadata.cpp)

@@ -36,14 +36,6 @@ validate(const permission_def &permission) {
     return total_weight >= permission.threshold;
 }
 
-inline group_id
-get_groupid(const group_key& gkey) {
-    auto sha256 = fc::sha256::hash(gkey);
-    auto ripemd160 = fc::ripemd160::hash(sha256);
-    auto id = *(group_id*)(ripemd160.data());
-    return id;
-}
-
 template<typename T>
 inline bool
 validate(const T &group) {
@@ -84,7 +76,7 @@ apply_eosio_newdomain(apply_context& context) {
 
         for(auto& g : ndact.groups) {
             EOS_ASSERT(validate(g), action_validate_exception, "Group ${id} is not valid, eithor threshold is not valid or exist duplicate or unordered key", ("id", g.id));
-            EOS_ASSERT(g.id == get_groupid(g.key), action_validate_exception, "Group id and key are not match", ("id",g.id)("key",g.key)); 
+            EOS_ASSERT(g.id == group_id::from_group_key(g.key), action_validate_exception, "Group id and key are not match", ("id",g.id)("key",g.key)); 
         }
         EOS_ASSERT(!ndact.name.empty(), action_validate_exception, "Domain name shouldn't be empty");
         EOS_ASSERT(ndact.issue.threshold > 0 && validate(ndact.issue), action_validate_exception, "Issue permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
@@ -94,7 +86,7 @@ apply_eosio_newdomain(apply_context& context) {
 
         auto check_groups = [&](const auto& p, auto allowed_owner) {
             for(const auto& g : p.groups) {
-                if(g.id == 0) {
+                if(g.id.empty()) {
                     // owner group
                     EOS_ASSERT(allowed_owner, action_validate_exception, "Owner group is not allowed in ${name} permission", ("name", p.name));
                     continue;
@@ -194,7 +186,7 @@ apply_eosio_updatedomain(apply_context& context) {
 
         for(auto& g : udact.groups) {
             EOS_ASSERT(validate(g), action_validate_exception, "Group ${id} is not valid, eithor threshold is not valid or exist duplicate or unordered key", ("id", g.id));
-            EOS_ASSERT(g.id == get_groupid(g.key), action_validate_exception, "Group id and key are not match", ("id",g.id)("key",g.key)); 
+            EOS_ASSERT(g.id == group_id::from_group_key(g.key), action_validate_exception, "Group id and key are not match", ("id",g.id)("key",g.key)); 
         }
         EOS_ASSERT(!udact.name.empty(), action_validate_exception, "Domain name shouldn't be empty");
         if(udact.issue.valid()) {
@@ -213,7 +205,7 @@ apply_eosio_updatedomain(apply_context& context) {
                 return;
             }
             for(const auto& g : p->groups) {
-                if(g.id == 0) {
+                if(g.id.empty()) {
                     // owner group
                     EOS_ASSERT(allowed_owner, action_validate_exception, "Owner group is not allowed in ${name} permission", ("name", p->name));
                     continue;

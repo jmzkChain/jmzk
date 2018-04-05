@@ -88,7 +88,7 @@ namespace eosio { namespace chain {
                 uint32_t total_weight = 0;
                 for(const auto& group_ref : permission.groups) {
                     bool gresult = false;
-                    if(group_ref.id == 0) {
+                    if(group_ref.id.empty()) {
                         // is owner group, special handle this
                         _get_owner_func(action.domain, action.key, [&](const auto& owners) {
                             weight_tally_visitor vistor(*this);
@@ -102,7 +102,7 @@ namespace eosio { namespace chain {
                         });
                     }
                     else {
-                        // normal group
+                        // normal grou
                         _get_group_func(group_ref.id, [&](const auto& group) {
                             weight_tally_visitor vistor(*this);
                             for(const auto& kw : group.keys) {
