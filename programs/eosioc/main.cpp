@@ -69,12 +69,13 @@ Options:
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
 #include <fc/io/console.hpp>
+#include <fc/io/fstream.hpp>
 #include <fc/exception/exception.hpp>
-#include <eosio/utilities/key_conversion.hpp>
 
+#include <eosio/utilities/key_conversion.hpp>
 #include <eosio/chain/config.hpp>
-#include <eosio/chain/wast_to_wasm.hpp>
 #include <eosio/chain_plugin/chain_plugin.hpp>
+#include <eosio/chain/contracts/types.hpp>
 #include <boost/range/algorithm/find_if.hpp>
 #include <boost/range/algorithm/sort.hpp>
 #include <boost/range/adaptor/transformed.hpp>
@@ -83,14 +84,6 @@ Options:
 #include <boost/range/algorithm/copy.hpp>
 #include <boost/algorithm/string/classification.hpp>
 
-#include <Inline/BasicTypes.h>
-#include <IR/Module.h>
-#include <IR/Validate.h>
-#include <WAST/WAST.h>
-#include <WASM/WASM.h>
-#include <Runtime/Runtime.h>
-
-#include <fc/io/fstream.hpp>
 
 #include "CLI11.hpp"
 #include "help_text.hpp"
@@ -241,183 +234,174 @@ void send_transaction( signed_transaction& trx, packed_transaction::compression_
    std::cout << fc::json::to_pretty_string(push_transaction(trx, compression)) << std::endl;
 }
 
-chain::action create_newaccount(const name& creator, const name& newaccount, public_key_type owner, public_key_type active) {
-   return action {
-      tx_permission.empty() ? vector<chain::permission_level>{{creator,config::active_name}} : get_account_permissions(tx_permission),
-      contracts::newaccount{
-         .creator      = creator, 
-         .name         = newaccount, 
-         .owner        = eosio::chain::authority{1, {{owner, 1}}, {}}, 
-         .active       = eosio::chain::authority{1, {{active, 1}}, {}},
-         .recovery     = eosio::chain::authority{1, {}, {{{creator, config::active_name}, 1}}}
-      }
-   };
+template<typename T>
+chain::action create_action(const domain_name& domain, const domain_key& key, const T& value) {
+   return action(domain, key, value);
 }
 
-chain::action create_transfer(const name& sender, const name& recipient, uint64_t amount, const string& memo ) {
-
-   auto transfer = fc::mutable_variant_object
-      ("from", sender)
-      ("to", recipient)
-      ("quantity", asset(amount))
-      ("memo", memo);
-   
-   auto args = fc::mutable_variant_object
-      ("code", name(config::system_account_name))
-      ("action", "transfer")
-      ("args", transfer);
-
-   auto result = call(json_to_bin_func, args);
-
-   return action {
-      tx_permission.empty() ? vector<chain::permission_level>{{sender,config::active_name}} : get_account_permissions(tx_permission),
-      config::system_account_name, "transfer", result.get_object()["binargs"].as<bytes>()
-   };
-}
-
-chain::action create_setabi(const name& account, const contracts::abi_def& abi) {
-   return action { 
-      tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
-      contracts::setabi{
-         .account   = account,
-         .abi       = abi
-      }
-   };
-}
-
-chain::action create_setcode(const name& account, const bytes& code) {
-   return action { 
-      tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
-      contracts::setcode{
-         .account   = account,
-         .vmtype    = 0,
-         .vmversion = 0,
-         .code      = code 
-      }
-   };
-}
-
-chain::action create_updateauth(const name& account, const name& permission, const name& parent, const authority& auth) {
-   return action { tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
-                   contracts::updateauth{account, permission, parent, auth}};
-}
-
-chain::action create_deleteauth(const name& account, const name& permission) {
-   return action { tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
-                   contracts::deleteauth{account, permission}};
-}
-
-chain::action create_linkauth(const name& account, const name& code, const name& type, const name& requirement) {
-   return action { tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
-                   contracts::linkauth{account, code, type, requirement}};
-}
-
-chain::action create_unlinkauth(const name& account, const name& code, const name& type) {
-   return action { tx_permission.empty() ? vector<chain::permission_level>{{account,config::active_name}} : get_account_permissions(tx_permission),
-                   contracts::unlinkauth{account, code, type}};
-}
-
-struct set_account_permission_subcommand {
-   string accountStr;
-   string permissionStr;
-   string authorityJsonOrFile;
-   string parentStr;
-
-   set_account_permission_subcommand(CLI::App* accountCmd) {
-      auto permissions = accountCmd->add_subcommand("permission", localized("set parmaters dealing with account permissions"));
-      permissions->add_option("account", accountStr, localized("The account to set/delete a permission authority for"))->required();
-      permissions->add_option("permission", permissionStr, localized("The permission name to set/delete an authority for"))->required();
-      permissions->add_option("authority", authorityJsonOrFile, localized("[delete] NULL, [create/update] JSON string or filename defining the authority"))->required();
-      permissions->add_option("parent", parentStr, localized("[create] The permission name of this parents permission (Defaults to: \"Active\")"));
-
-      add_standard_transaction_options(permissions, "account@active");
-
-      permissions->set_callback([this] {
-         name account = name(accountStr);
-         name permission = name(permissionStr);
-         bool is_delete = boost::iequals(authorityJsonOrFile, "null");
-         
-         if (is_delete) {
-            send_actions({create_deleteauth(account, permission)});
-         } else {
-            authority auth;
-            if (boost::istarts_with(authorityJsonOrFile, "EOS")) {
-               try {
-                  auth = authority(public_key_type(authorityJsonOrFile));
-               } EOS_CAPTURE_AND_RETHROW(public_key_type_exception, "")
-            } else {
-               fc::variant parsedAuthority;
-               try {
-                  if (boost::istarts_with(authorityJsonOrFile, "{")) {
-                     parsedAuthority = fc::json::from_string(authorityJsonOrFile);
-                  } else {
-                     parsedAuthority = fc::json::from_file(authorityJsonOrFile);
-                  }
-                  auth = parsedAuthority.as<authority>();
-               } EOS_CAPTURE_AND_RETHROW(authority_type_exception, "Fail to parse Authority JSON")
-                 
-            }
-
-            name parent;
-            if (parentStr.size() == 0 && permissionStr != "owner") {
-               // see if we can auto-determine the proper parent
-               const auto account_result = call(get_account_func, fc::mutable_variant_object("account_name", accountStr));
-               const auto& existing_permissions = account_result.get_object()["permissions"].get_array();
-               auto permissionPredicate = [this](const auto& perm) { 
-                  return perm.is_object() && 
-                        perm.get_object().contains("permission") &&
-                        boost::equals(perm.get_object()["permission"].get_string(), permissionStr); 
-               };
-
-               auto itr = boost::find_if(existing_permissions, permissionPredicate);
-               if (itr != existing_permissions.end()) {
-                  parent = name((*itr).get_object()["parent"].get_string());
-               } else {
-                  // if this is a new permission and there is no parent we default to "active"
-                  parent = name(config::active_name);
-
-               }
-            } else {
-               parent = name(parentStr);
-            }
-
-            send_actions({create_updateauth(account, permission, parent, auth)});
-         }      
-      });
-   }
-   
+auto parse_permission = [](auto& jsonOrFile) {
+  try {
+    fc::variant parsedPermission;
+    if (boost::istarts_with(jsonOrFile, "{")) {
+        parsedPermission = fc::json::from_string(jsonOrFile);
+    } else {
+        parsedPermission = fc::json::from_file(jsonOrFile);
+    }
+    auto permission = parsedPermission.as<permission_def>();
+    return permission;
+  } EOS_CAPTURE_AND_RETHROW(permission_type_exception, "Fail to parse Permission JSON")
 };
 
-struct set_action_permission_subcommand {
-   string accountStr;
-   string codeStr;
-   string typeStr;
-   string requirementStr;
+auto parse_groups = [](auto& jsonOrFile) {
+  try {
+    fc::variant parsedGroups;
+    if (boost::istarts_with(jsonOrFile, "{")) {
+        parsedGroups = fc::json::from_string(jsonOrFile);
+    } else {
+        parsedGroups = fc::json::from_file(jsonOrFile);
+    }
+    auto groups = parsedGroups.as<std::vector<group_def>>();
+    return groups;
+  } EOS_CAPTURE_AND_RETHROW(groups_type_exception, "Fail to parse Groups JSON")
+};
 
-   set_action_permission_subcommand(CLI::App* actionRoot) {
-      auto permissions = actionRoot->add_subcommand("permission", localized("set parmaters dealing with account permissions"));
-      permissions->add_option("account", accountStr, localized("The account to set/delete a permission authority for"))->required();
-      permissions->add_option("code", codeStr, localized("The account that owns the code for the action"))->required();
-      permissions->add_option("type", typeStr, localized("the type of the action"))->required();
-      permissions->add_option("requirement", requirementStr, localized("[delete] NULL, [set/update] The permission name require for executing the given action"))->required();
+struct set_domain_subcommands {
+   string name;
+   string issuer;
+   string issue;
+   string transfer;
+   string manage;
+   string groups;
 
-      add_standard_transaction_options(permissions, "account@active");
+   set_domain_subcommands(CLI::App* actionRoot) {
+      auto newdomain = actionRoot->add_subcommand("new", localized("Add new domain"));
+      newdomain->add_option("name", name, localized("The name of new domain"))->required();
+      newdomain->add_option("issuer", issuer, localized("The public key of the issuer"))->required();
+      newdomain->add_option("issue", issue, localized("JSON string or filename defining ISSUE permission"))->required();
+      newdomain->add_option("transfer", transfer, localized("JSON string or filename defining TRANSFER permission"))->required();
+      newdomain->add_option("manage", manage, localized("JSON string or filename defining MANAGE permission"))->required();
+      newdomain->add_option("groups", groups, localized("JSON string or filename defining groups which are new defined"))->required();
 
-      permissions->set_callback([this] {
-         name account = name(accountStr);
-         name code = name(codeStr);
-         name type = name(typeStr);
-         bool is_delete = boost::iequals(requirementStr, "null");
+      add_standard_transaction_options(newdomain);
+
+      newdomain->set_callback([this, &] {
+         newdomain nd;
+         nd.name = name128(name);
+         nd.issuer = public_key(issuer);
+         nd.issue = parse_permission(issue);
+         nd.transfer = parse_permission(transfer);
+         nd.manage = parse_permission(manage);
+         nd.groups = parse_groups(groups);
          
-         if (is_delete) {
-            send_actions({create_unlinkauth(account, code, type)});
-         } else {
-            name requirement = name(requirementStr);
-            send_actions({create_linkauth(account, code, type, requirement)});
-         }      
+         auto act = crate_action("domain", (domain_key)nd.name, nd);
+         send_actions({ act });
+      });
+      
+      auto updatedomain = actionRoot->add_subcommand("update", localized("Update existing domain"));
+      updatedomain->add_option("name", name, localized("The name of new domain"))->required();
+      updatedomain->add_option("issue", issue, localized("JSON string or filename defining ISSUE permission"))->required();
+      updatedomain->add_option("transfer", transfer, localized("JSON string or filename defining TRANSFER permission")->required();
+      updatedomain->add_option("manage", manage, localized("JSON string or filename defining MANAGE permission"))->required();
+      updatedomain->add_option("groups", groups, localized("JSON string or filename defining groups which are new defined"))->required();
+
+      add_standard_transaction_options(updatedomain);
+
+      updatedomain->set_callback([this, &] {
+         updatedomain ud;
+         ud.name = name128(name);
+         ud.issue = parse_permission(issue);
+         ud.transfer = parse_permission(transfer);
+         ud.manage = parse_permission(manage);
+         ud.groups = parse_groups(groups);
+         
+         auto act = create_action("domain", (domain_key)ud.name, ud);
+         send_actions({ act });
       });
    }
 };
+
+struct set_issue_token_subcommand {
+   string domain;
+   std::vector<string> names;
+   std::vector<string> owner;
+
+   set_issue_token_subcommand(CLI::App* actionRoot) {
+      auto issue = actionRoot->add_subcommand("issue", localized("Issue new tokens in specific domain"));
+      issue->add_option("domain", domain, localized("Name of the domain where token issued"))->required();
+      issue->add_option("names", names, localized("Names of tokens will be issued"))->required();
+      issue->add_option("owner", owner, localized("Owner that issued tokens belongs to"))->required();
+
+      add_standard_transaction_options(issue);
+
+      issue->set_callback([this] {
+         issuetoken it;
+         it.domain = name128(domain);
+         it.names = names;
+         it.owner = owner;
+
+         auto act = create_action(it.domain, N128(issue), it);
+         send_actions({ act });
+      });
+   }
+};
+
+struct set_transfer_token_subcommand {
+   string domain;
+   string name;
+   std::vector<string> to;
+
+   set_transfer_token_subcommand(CLI::App* actionRoot) {
+      auto transfer = actionRoot->add_subcommand("transfer", localized("Transfer token"));
+      transfer->add_option("domain", domain, localized("Name of the domain where token existed"))->required();
+      transfer->add_option("name", name, localized("Name of the token to be transfered"))->required();
+      transfer->add_option("to", to, localized("User list receives this token"))->required();
+      
+      add_standard_transaction_options(transfer);
+
+      transfer->set_callback([this] {
+         transfer tt;
+         tt.domain = name128(domain);
+         tt.name = name128(name);
+         tt.to = to;
+
+         auto act = create_action(it.domain, (domain_key)tt.name, tt);
+         send_actions({ tt });
+      });
+   }
+};
+
+auto parse_uint128(const string& str) {
+   __uint128_t v = 0;
+   for(uint i = 0; i < str.size(); i++, v *= 10) {
+      auto c = str[i];
+      FC_ASSERT(c >= '0' && c <= '9', "Not a valid number: ${str}", ("str", str));
+      v += (c - '0');
+   }
+   return v;
+}
+
+struct set_group_subcommands {
+   string id;
+   string key;
+   uint32_t threshold;
+   string keys;
+
+   
+   set_group_subcommands(CLI::App* actionRoot) {
+      auto updategroup = actionRoot->add_subcommand("update", localized("Update specific permission group, id or key must provide at least one."));
+      updategroup->add_option("id", id, localized("Id of the permission group to be updated"));
+      updategroup->add_option("key", key, "Key of permission group to be updated");
+      updategroup->add_option("threshold", threshold, "Threshold of permission group");
+      updategroup->add_option("keys", keys, "JSON string or filename defining the keys of permission group");
+
+      add_standard_transaction_options(updategroup);
+
+      updategroup->set_callback([this] {
+         updategroup ug;
+         
+      });
+   }
+}
 
 int main( int argc, char** argv ) {
    fc::path binPath = argv[0];
@@ -433,8 +417,6 @@ int main( int argc, char** argv ) {
    app.require_subcommand();
    app.add_option( "-H,--host", host, localized("the host where eosd is running"), true );
    app.add_option( "-p,--port", port, localized("the port where eosd is running"), true );
-   app.add_option( "--wallet-host", wallet_host, localized("the host where eos-walletd is running"), true );
-   app.add_option( "--wallet-port", wallet_port, localized("the port where eos-walletd is running"), true );
 
    bool verbose_errors = false;
    app.add_flag( "-v,--verbose", verbose_errors, localized("output verbose actions on error"));
@@ -459,27 +441,6 @@ int main( int argc, char** argv ) {
       std::cout << localized("Public key: ${key}", ("key", pubs ) ) << std::endl;
    });
 
-   // create account
-   string creator;
-   string account_name;
-   string owner_key_str;
-   string active_key_str;
-
-   auto createAccount = create->add_subcommand("account", localized("Create a new account on the blockchain"), false);
-   createAccount->add_option("creator", creator, localized("The name of the account creating the new account"))->required();
-   createAccount->add_option("name", account_name, localized("The name of the new account"))->required();
-   createAccount->add_option("OwnerKey", owner_key_str, localized("The owner public key for the new account"))->required();
-   createAccount->add_option("ActiveKey", active_key_str, localized("The active public key for the new account"))->required();
-   add_standard_transaction_options(createAccount, "creator@active");
-   createAccount->set_callback([&] {
-      public_key_type owner_key, active_key;
-      try {
-         owner_key = public_key_type(owner_key_str);
-         active_key = public_key_type(active_key_str);
-      } EOS_CAPTURE_AND_RETHROW(public_key_type_exception, "Invalid Public Key")
-      send_actions({create_newaccount(creator, account_name, owner_key, active_key)});
-   });
-
    // Get subcommand
    auto get = app.add_subcommand("get", localized("Retrieve various items and information from the blockchain"), false);
    get->require_subcommand();
@@ -496,139 +457,6 @@ int main( int argc, char** argv ) {
    getBlock->set_callback([&blockArg] {
       auto arg = fc::mutable_variant_object("block_num_or_id", blockArg);
       std::cout << fc::json::to_pretty_string(call(get_block_func, arg)) << std::endl;
-   });
-
-   // get account
-   string accountName;
-   auto getAccount = get->add_subcommand("account", localized("Retrieve an account from the blockchain"), false);
-   getAccount->add_option("name", accountName, localized("The name of the account to retrieve"))->required();
-   getAccount->set_callback([&] {
-      std::cout << fc::json::to_pretty_string(call(get_account_func,
-                                                   fc::mutable_variant_object("account_name", accountName)))
-                << std::endl;
-   });
-
-   // get code
-   string codeFilename;
-   string abiFilename;
-   auto getCode = get->add_subcommand("code", localized("Retrieve the code and ABI for an account"), false);
-   getCode->add_option("name", accountName, localized("The name of the account whose code should be retrieved"))->required();
-   getCode->add_option("-c,--code",codeFilename, localized("The name of the file to save the contract .wast to") );
-   getCode->add_option("-a,--abi",abiFilename, localized("The name of the file to save the contract .abi to") );
-   getCode->set_callback([&] {
-      auto result = call(get_code_func, fc::mutable_variant_object("account_name", accountName));
-
-      std::cout << localized("code hash: ${code_hash}", ("code_hash", result["code_hash"].as_string())) << std::endl;
-
-      if( codeFilename.size() ){
-         std::cout << localized("saving wast to ${codeFilename}", ("codeFilename", codeFilename)) << std::endl;
-         auto code = result["wast"].as_string();
-         std::ofstream out( codeFilename.c_str() );
-         out << code;
-      }
-      if( abiFilename.size() ) {
-         std::cout << localized("saving abi to ${abiFilename}", ("abiFilename", abiFilename)) << std::endl;
-         auto abi  = fc::json::to_pretty_string( result["abi"] );
-         std::ofstream abiout( abiFilename.c_str() );
-         abiout << abi;
-      }
-   });
-
-   // get table 
-   string scope;
-   string code;
-   string table;
-   string lower;
-   string upper;
-   string table_key;
-   bool binary = false;
-   uint32_t limit = 10;
-   auto getTable = get->add_subcommand( "table", localized("Retrieve the contents of a database table"), false);
-   getTable->add_option( "scope", scope, localized("The account scope where the table is found") )->required();
-   getTable->add_option( "contract", code, localized("The contract within scope who owns the table") )->required();
-   getTable->add_option( "table", table, localized("The name of the table as specified by the contract abi") )->required();
-   getTable->add_option( "-b,--binary", binary, localized("Return the value as BINARY rather than using abi to interpret as JSON") );
-   getTable->add_option( "-l,--limit", limit, localized("The maximum number of rows to return") );
-   getTable->add_option( "-k,--key", table_key, localized("The name of the key to index by as defined by the abi, defaults to primary key") );
-   getTable->add_option( "-L,--lower", lower, localized("JSON representation of lower bound value of key, defaults to first") );
-   getTable->add_option( "-U,--upper", upper, localized("JSON representation of upper bound value value of key, defaults to last") );
-
-   getTable->set_callback([&] {
-      auto result = call(get_table_func, fc::mutable_variant_object("json", !binary)
-                         ("scope",scope)
-                         ("code",code)
-                         ("table",table)
-                         ("table_key",table_key)
-                         ("lower_bound",lower)
-                         ("upper_bound",upper)
-                         ("limit",limit)
-                         );
-
-      std::cout << fc::json::to_pretty_string(result)
-                << std::endl;
-   });
-
-   // currency accessors
-   // get currency balance
-   string symbol;
-   auto get_currency = get->add_subcommand( "currency", localized("Retrieve information related to standard currencies"), true);
-   auto get_balance = get_currency->add_subcommand( "balance", localized("Retrieve the balance of an account for a given currency"), false);
-   get_balance->add_option( "contract", code, localized("The contract that operates the currency") )->required();
-   get_balance->add_option( "account", accountName, localized("The account to query balances for") )->required();
-   get_balance->add_option( "symbol", symbol, localized("The symbol for the currency if the contract operates multiple currencies") );
-   get_balance->set_callback([&] {
-      auto result = call(get_currency_balance_func, fc::mutable_variant_object("json", false)
-         ("account", accountName)
-         ("code", code)
-         ("symbol", symbol)
-      );
-
-      const auto& rows = result.get_array();
-      if (symbol.empty()) {
-         std::cout << fc::json::to_pretty_string(rows)
-                   << std::endl;
-      } else if ( rows.size() > 0 ){
-         std::cout << fc::json::to_pretty_string(rows[0])
-                   << std::endl;
-      }
-   });
-
-   auto get_currency_stats = get_currency->add_subcommand( "stats", localized("Retrieve the stats of for a given currency"), false);
-   get_currency_stats->add_option( "contract", code, localized("The contract that operates the currency") )->required();
-   get_currency_stats->add_option( "symbol", symbol, localized("The symbol for the currency if the contract operates multiple currencies") );
-   get_currency_stats->set_callback([&] {
-      auto result = call(get_currency_stats_func, fc::mutable_variant_object("json", false)
-         ("code", code)
-         ("symbol", symbol)
-      );
-
-      if (symbol.empty()) {
-         std::cout << fc::json::to_pretty_string(result)
-                   << std::endl;
-      } else {
-         const auto& mapping = result.get_object();
-         std::cout << fc::json::to_pretty_string(mapping[symbol])
-                   << std::endl;
-      }
-   });
-
-   // get accounts
-   string publicKey;
-   auto getAccounts = get->add_subcommand("accounts", localized("Retrieve accounts associated with a public key"), false);
-   getAccounts->add_option("public_key", publicKey, localized("The public key to retrieve accounts for"))->required();
-   getAccounts->set_callback([&] {
-      auto arg = fc::mutable_variant_object( "public_key", publicKey);
-      std::cout << fc::json::to_pretty_string(call(get_key_accounts_func, arg)) << std::endl;
-   });
-
-
-   // get servants
-   string controllingAccount;
-   auto getServants = get->add_subcommand("servants", localized("Retrieve accounts which are servants of a given account "), false);
-   getServants->add_option("account", controllingAccount, localized("The name of the controlling account"))->required();
-   getServants->set_callback([&] {
-      auto arg = fc::mutable_variant_object( "controlling_account", controllingAccount);
-      std::cout << fc::json::to_pretty_string(call(get_controlled_accounts_func, arg)) << std::endl;
    });
 
    // get transaction
@@ -675,82 +503,6 @@ int main( int argc, char** argv ) {
    auto setSubcommand = app.add_subcommand("set", localized("Set or update blockchain state"));
    setSubcommand->require_subcommand();
 
-   // set contract subcommand
-   string account;
-   string wastPath;
-   string abiPath;
-   auto contractSubcommand = setSubcommand->add_subcommand("contract", localized("Create or update the contract on an account"));
-   contractSubcommand->add_option("account", account, localized("The account to publish a contract for"))->required();
-   contractSubcommand->add_option("wast-file", wastPath, localized("The file containing the contract WAST or WASM"))->required()
-         ->check(CLI::ExistingFile);
-   auto abi = contractSubcommand->add_option("abi-file,-a,--abi", abiPath, localized("The ABI for the contract"))
-              ->check(CLI::ExistingFile);
-   
-   add_standard_transaction_options(contractSubcommand, "account@active");
-   contractSubcommand->set_callback([&] {
-      std::string wast;
-      std::cout << localized("Reading WAST...") << std::endl;
-      fc::read_file_contents(wastPath, wast);
-
-      vector<uint8_t> wasm;
-      const string binary_wasm_header("\x00\x61\x73\x6d", 4);
-      if(wast.compare(0, 4, binary_wasm_header) == 0) {
-         std::cout << localized("Using already assembled WASM...") << std::endl;
-         wasm = vector<uint8_t>(wast.begin(), wast.end());
-      }
-      else {
-         std::cout << localized("Assembling WASM...") << std::endl;
-         wasm = wast_to_wasm(wast);
-      }
-
-      std::vector<chain::action> actions;
-      actions.emplace_back( create_setcode(account, bytes(wasm.begin(), wasm.end()) ) );
-
-      if (abi->count()) {
-         try {
-            actions.emplace_back( create_setabi(account, fc::json::from_file(abiPath).as<contracts::abi_def>()) );
-         } EOS_CAPTURE_AND_RETHROW(abi_type_exception,  "Fail to parse ABI JSON")
-      }
-
-      std::cout << localized("Publishing contract...") << std::endl;
-      send_actions(std::move(actions), packed_transaction::zlib);
-   });
-
-   // set account
-   auto setAccount = setSubcommand->add_subcommand("account", localized("set or update blockchain account state"))->require_subcommand();
-
-   // set account permission
-   auto setAccountPermission = set_account_permission_subcommand(setAccount);
-
-   // set action
-   auto setAction = setSubcommand->add_subcommand("action", localized("set or update blockchain action state"))->require_subcommand();
-   
-   // set action permission
-   auto setActionPermission = set_action_permission_subcommand(setAction);
-
-   // Transfer subcommand
-   string sender;
-   string recipient;
-   uint64_t amount;
-   string memo;
-   auto transfer = app.add_subcommand("transfer", localized("Transfer EOS from account to account"), false);
-   transfer->add_option("sender", sender, localized("The account sending EOS"))->required();
-   transfer->add_option("recipient", recipient, localized("The account receiving EOS"))->required();
-   transfer->add_option("amount", amount, localized("The amount of EOS to send"))->required();
-   transfer->add_option("memo", memo, localized("The memo for the transfer"));
-
-   add_standard_transaction_options(transfer, "sender@active");
-   transfer->set_callback([&] {
-      signed_transaction trx;
-      if (tx_force_unique && memo.size() == 0) {
-         // use the memo to add a nonce
-         memo = generate_nonce_value();
-         tx_force_unique = false;
-      }
-      
-      send_actions({create_transfer(sender, recipient, amount, memo)});
-   });
-
    // Net subcommand 
    string new_host;
    auto net = app.add_subcommand( "net", localized("Interact with local p2p network connections"), false );
@@ -782,99 +534,10 @@ int main( int argc, char** argv ) {
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
+   // domain subcommand
+   auto domain = app.add_subcommand("domain", localized("Create or update a domain"), false);
+   domain.require_subcommand();
 
-
-   // Wallet subcommand
-   auto wallet = app.add_subcommand( "wallet", localized("Interact with local wallet"), false );
-   wallet->require_subcommand();
-   // create wallet
-   string wallet_name = "default";
-   auto createWallet = wallet->add_subcommand("create", localized("Create a new wallet locally"), false);
-   createWallet->add_option("-n,--name", wallet_name, localized("The name of the new wallet"), true);
-   createWallet->set_callback([&wallet_name] {
-      const auto& v = call(wallet_host, wallet_port, wallet_create, wallet_name);
-      std::cout << localized("Creating wallet: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
-      std::cout << localized("Save password to use in the future to unlock this wallet.") << std::endl;
-      std::cout << localized("Without password imported keys will not be retrievable.") << std::endl;
-      std::cout << fc::json::to_pretty_string(v) << std::endl;
-   });
-
-   // open wallet
-   auto openWallet = wallet->add_subcommand("open", localized("Open an existing wallet"), false);
-   openWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to open"));
-   openWallet->set_callback([&wallet_name] {
-      /*const auto& v = */call(wallet_host, wallet_port, wallet_open, wallet_name);
-      //std::cout << fc::json::to_pretty_string(v) << std::endl;
-      std::cout << localized("Opened: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
-   });
-
-   // lock wallet
-   auto lockWallet = wallet->add_subcommand("lock", localized("Lock wallet"), false);
-   lockWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to lock"));
-   lockWallet->set_callback([&wallet_name] {
-      /*const auto& v = */call(wallet_host, wallet_port, wallet_lock, wallet_name);
-      std::cout << localized("Locked: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
-      //std::cout << fc::json::to_pretty_string(v) << std::endl;
-
-   });
-
-   // lock all wallets
-   auto locakAllWallets = wallet->add_subcommand("lock_all", localized("Lock all unlocked wallets"), false);
-   locakAllWallets->set_callback([] {
-      /*const auto& v = */call(wallet_host, wallet_port, wallet_lock_all);
-      //std::cout << fc::json::to_pretty_string(v) << std::endl;
-      std::cout << localized("Locked All Wallets") << std::endl;
-   });
-
-   // unlock wallet
-   string wallet_pw;
-   auto unlockWallet = wallet->add_subcommand("unlock", localized("Unlock wallet"), false);
-   unlockWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to unlock"));
-   unlockWallet->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
-   unlockWallet->set_callback([&wallet_name, &wallet_pw] {
-      if( wallet_pw.size() == 0 ) {
-         std::cout << localized("password: ");
-         fc::set_console_echo(false);
-         std::getline( std::cin, wallet_pw, '\n' );
-         fc::set_console_echo(true);
-      }
-
-
-      fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_pw)};
-      /*const auto& v = */call(wallet_host, wallet_port, wallet_unlock, vs);
-      std::cout << localized("Unlocked: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
-      //std::cout << fc::json::to_pretty_string(v) << std::endl;
-   });
-
-   // import keys into wallet
-   string wallet_key;
-   auto importWallet = wallet->add_subcommand("import", localized("Import private key into wallet"), false);
-   importWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to import key into"));
-   importWallet->add_option("key", wallet_key, localized("Private key in WIF format to import"))->required();
-   importWallet->set_callback([&wallet_name, &wallet_key] {
-      private_key_type key( wallet_key );
-      public_key_type pubkey = key.get_public_key();
-
-      fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_key)};
-      const auto& v = call(wallet_host, wallet_port, wallet_import_key, vs);
-      std::cout << localized("imported private key for: ${pubkey}", ("pubkey", std::string(pubkey))) << std::endl;
-      //std::cout << fc::json::to_pretty_string(v) << std::endl;
-   });
-
-   // list wallets
-   auto listWallet = wallet->add_subcommand("list", localized("List opened wallets, * = unlocked"), false);
-   listWallet->set_callback([] {
-      std::cout << localized("Wallets:") << std::endl;
-      const auto& v = call(wallet_host, wallet_port, wallet_list);
-      std::cout << fc::json::to_pretty_string(v) << std::endl;
-   });
-
-   // list keys
-   auto listKeys = wallet->add_subcommand("keys", localized("List of private keys from all unlocked wallets in wif format."), false);
-   listKeys->set_callback([] {
-      const auto& v = call(wallet_host, wallet_port, wallet_list_keys);
-      std::cout << fc::json::to_pretty_string(v) << std::endl;
-   });
 
    // sign subcommand
    string trx_json_to_sign;
