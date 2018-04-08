@@ -151,29 +151,6 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
    cmd->add_option("-p,--permission", tx_permission, localized(msg.c_str()));
 }
 
-string generate_nonce_value() {
-   return fc::to_string(fc::time_point::now().time_since_epoch().count());
-}
-
-chain::action generate_nonce() {
-   auto v = generate_nonce_value();
-   variant nonce = fc::mutable_variant_object()
-         ("value", v);
-   return chain::action( {}, config::system_account_name, "nonce", fc::raw::pack(nonce));
-}
-
-vector<chain::permission_level> get_account_permissions(const vector<string>& permissions) {
-   auto fixedPermissions = permissions | boost::adaptors::transformed([](const string& p) {
-      vector<string> pieces;
-      split(pieces, p, boost::algorithm::is_any_of("@"));
-      EOSC_ASSERT(pieces.size() == 2, "Invalid permission: ${p}", ("p", p));
-      return chain::permission_level{ .actor = pieces[0], .permission = pieces[1] };
-   });
-   vector<chain::permission_level> accountPermissions;
-   boost::range::copy(fixedPermissions, back_inserter(accountPermissions));
-   return accountPermissions;
-}
-
 template<typename T>
 fc::variant call( const std::string& server, uint16_t port,
                   const std::string& path,
