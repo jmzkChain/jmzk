@@ -86,12 +86,16 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( permission_type_exception,         eosio::chain::chain_type_exception, 3120012, "Invalid permission" )
    FC_DECLARE_DERIVED_EXCEPTION( groups_type_exception,             eosio::chain::chain_type_exception, 3120012, "Invalid groups" )
 
-
    FC_DECLARE_DERIVED_EXCEPTION( missing_chain_api_plugin_exception,                 eosio::chain::missing_plugin_exception, 3130001, "Missing Chain API Plugin" )
    FC_DECLARE_DERIVED_EXCEPTION( missing_wallet_api_plugin_exception,                eosio::chain::missing_plugin_exception, 3130002, "Missing Wallet API Plugin" )
    FC_DECLARE_DERIVED_EXCEPTION( missing_account_history_api_plugin_exception,       eosio::chain::missing_plugin_exception, 3130003, "Missing Account History API Plugin" )
    FC_DECLARE_DERIVED_EXCEPTION( missing_net_api_plugin_exception,                   eosio::chain::missing_plugin_exception, 3130004, "Missing Net API Plugin" )
 
+   FC_DECLARE_DERIVED_EXCEPTION( wallet_exist_exception,            eosio::chain::wallet_exception, 3140001, "Wallet already exists" )
+   FC_DECLARE_DERIVED_EXCEPTION( wallet_nonexistent_exception,      eosio::chain::wallet_exception, 3140002, "Nonexistent wallet" )
+   FC_DECLARE_DERIVED_EXCEPTION( wallet_locked_exception,           eosio::chain::wallet_exception, 3140003, "Locked wallet" )
+   FC_DECLARE_DERIVED_EXCEPTION( wallet_missing_pub_key_exception,  eosio::chain::wallet_exception, 3140004, "Missing public key" )
+   FC_DECLARE_DERIVED_EXCEPTION( wallet_invalid_password_exception, eosio::chain::wallet_exception, 3140005, "Invalid wallet password" )
 
    #define EOS_RECODE_EXC( cause_type, effect_type ) \
       catch( const cause_type& e ) \
