@@ -94,6 +94,7 @@ Options:
 using namespace std;
 using namespace eosio;
 using namespace eosio::chain;
+using namespace eosio::chain::contracts;
 using namespace eosio::utilities;
 using namespace eosio::client::help;
 using namespace eosio::client::http;
@@ -274,7 +275,7 @@ struct set_domain_subcommands {
    string groups;
 
    set_domain_subcommands(CLI::App* actionRoot) {
-      auto newdomain = actionRoot->add_subcommand("new", localized("Add new domain"));
+      auto newdomain = actionRoot->add_subcommand("new", localized("Add new domain"), false);
       newdomain->add_option("name", name, localized("The name of new domain"))->required();
       newdomain->add_option("issuer", issuer, localized("The public key of the issuer"))->required();
       newdomain->add_option("issue", issue, localized("JSON string or filename defining ISSUE permission"))->required();
@@ -297,7 +298,7 @@ struct set_domain_subcommands {
          send_actions({ act });
       });
       
-      auto updatedomain = actionRoot->add_subcommand("update", localized("Update existing domain"));
+      auto updatedomain = actionRoot->add_subcommand("update", localized("Update existing domain"), false);
       updatedomain->add_option("name", name, localized("The name of new domain"))->required();
       updatedomain->add_option("issue", issue, localized("JSON string or filename defining ISSUE permission"))->required();
       updatedomain->add_option("transfer", transfer, localized("JSON string or filename defining TRANSFER permission")->required();
@@ -326,7 +327,7 @@ struct set_issue_token_subcommand {
    std::vector<string> owner;
 
    set_issue_token_subcommand(CLI::App* actionRoot) {
-      auto issue = actionRoot->add_subcommand("issue", localized("Issue new tokens in specific domain"));
+      auto issue = actionRoot->add_subcommand("issue", localized("Issue new tokens in specific domain"), false);
       issue->add_option("domain", domain, localized("Name of the domain where token issued"))->required();
       issue->add_option("names", names, localized("Names of tokens will be issued"))->required();
       issue->add_option("owner", owner, localized("Owner that issued tokens belongs to"))->required();
@@ -351,7 +352,7 @@ struct set_transfer_token_subcommand {
    std::vector<string> to;
 
    set_transfer_token_subcommand(CLI::App* actionRoot) {
-      auto transfer = actionRoot->add_subcommand("transfer", localized("Transfer token"));
+      auto transfer = actionRoot->add_subcommand("transfer", localized("Transfer token"), false);
       transfer->add_option("domain", domain, localized("Name of the domain where token existed"))->required();
       transfer->add_option("name", name, localized("Name of the token to be transfered"))->required();
       transfer->add_option("to", to, localized("User list receives this token"))->required();
@@ -365,20 +366,10 @@ struct set_transfer_token_subcommand {
          tt.to = to;
 
          auto act = create_action(it.domain, (domain_key)tt.name, tt);
-         send_actions({ tt });
+         send_actions({ act });
       });
    }
 };
-
-auto parse_uint128(const string& str) {
-   __uint128_t v = 0;
-   for(uint i = 0; i < str.size(); i++, v *= 10) {
-      auto c = str[i];
-      FC_ASSERT(c >= '0' && c <= '9', "Not a valid number: ${str}", ("str", str));
-      v += (c - '0');
-   }
-   return v;
-}
 
 struct set_group_subcommands {
    string id;
@@ -388,20 +379,93 @@ struct set_group_subcommands {
 
    
    set_group_subcommands(CLI::App* actionRoot) {
-      auto updategroup = actionRoot->add_subcommand("update", localized("Update specific permission group, id or key must provide at least one."));
+      auto updategroup = actionRoot->add_subcommand("update", localized("Update specific permission group, id or key must provide at least one."), false);
       updategroup->add_option("id", id, localized("Id of the permission group to be updated"));
-      updategroup->add_option("key", key, "Key of permission group to be updated");
-      updategroup->add_option("threshold", threshold, "Threshold of permission group");
-      updategroup->add_option("keys", keys, "JSON string or filename defining the keys of permission group");
+      updategroup->add_option("key", key, localized("Key of permission group to be updated"));
+      updategroup->add_option("threshold", threshold, localized("Threshold of permission group"))->required();
+      updategroup->add_option("keys", keys, localized("JSON string or filename defining the keys of permission group"))->required();
 
       add_standard_transaction_options(updategroup);
 
       updategroup->set_callback([this] {
          updategroup ug;
-         
+         FC_ASSERT(id.empty() && key.empty(), "Must provide either id or key");
+         if(!id.empty()) {
+             ug.id = group_id::from_base58(id);
+         }
+         if(!key.empty()) {
+             ug.id = group_id::from_group_key(public_key(key));
+         }
+         ug.threshold = threshold;
+
+         fc::variant parsedKeys;
+         if (boost::istarts_with(keys, "{")) {
+             parsedKeys = fc::json::from_string(keys);
+         } else {
+             parsedKeys = fc::json::from_file(keys);
+         }
+         ug.keys = parsedKeys.as<std::vector<key_weight>>();
+
+         auto act = create_action("group", (domain_key)ug.id, ug);
+         send_actions({ act });
       });
    }
-}
+};
+
+struct set_get_domain_subcommand {
+   string name;
+
+   set_get_domain_subcommand(CLI::App* actionRoot) {
+       auto get_domain = actionRoot->add_subcommand("domain", localized("Retrieve a domain information"), false);
+       get_domain->add_option("name", name, localized("Name of domain to be retrieved"))->required();
+
+       get_domain->set_callback([this] {
+          auto arg = fc::mutable_variant_object("name", name);
+          std::cout << fc::json::to_pretty_string(call(get_domain_func, arg)) << std::endl;
+       });
+   }
+};
+
+struct set_get_token_subcommand {
+   string domain;
+   string name;
+
+   set_get_domain_subcommand(CLI::App* actionRoot) {
+       auto get_token = actionRoot->add_subcommand("token", localized("Retrieve a token information"), false);
+       get_token->add_option("domain", name, localized("Domain name of token to be retrieved"))->required();
+       get_token->add_option("name", name, localized("Name of token to be retrieved"))->required();
+
+       get_token->set_callback([this] {
+          auto arg = fc::mutable_variant_object("domain", domain)("name", name);
+          std::cout << fc::json::to_pretty_string(call(get_token_func, arg)) << std::endl;
+       });
+   }
+};
+
+struct set_get_group_subcommand {
+   string id;
+   string key;
+
+   set_get_group_subcommand(CLI::App* actionRoot) {
+       auto get_group = actionRoot->add_subcommand("group", localized("Retrieve a permission group information"), false);
+       get_group->add_option("id", id, localized("Id of group to be retrieved"));
+       get_group->add_option("key", key, localized("Key of group to be retrieved"));
+
+       get_group->set_callback([this] {
+          group_id gid;
+          FC_ASSERT(id.empty() && key.empty(), "Must provide either id or key");
+          if(!id.empty()) {
+             gid = group_id::from_base58(id);
+          }
+          if(!key.empty()) {
+             gid = group_id::from_group_key(public_key(key));
+          }
+
+          auto arg = fc::mutable_variant_object("id", gid.to_base58());
+          std::cout << fc::json::to_pretty_string(call(get_group_func, arg)) << std::endl;
+       });
+   }
+};
 
 int main( int argc, char** argv ) {
    fc::path binPath = argv[0];
@@ -499,9 +563,9 @@ int main( int argc, char** argv ) {
 
    });
 
-   // set subcommand
-   auto setSubcommand = app.add_subcommand("set", localized("Set or update blockchain state"));
-   setSubcommand->require_subcommand();
+   set_get_domain_subcommand get_domain(get);
+   set_get_token_subcommand get_token(get);
+   set_get_group_subcommand get_group(get);
 
    // Net subcommand 
    string new_host;
@@ -537,7 +601,15 @@ int main( int argc, char** argv ) {
    // domain subcommand
    auto domain = app.add_subcommand("domain", localized("Create or update a domain"), false);
    domain.require_subcommand();
+   
+   set_domain_subcommands domain_subcommands(domain);
 
+   // token subcommand
+   auto token = app.add_subcommand("token", localized("Issue or transfer tokens"), false);
+   token.require_subcommand();
+
+   set_issue_token_subcommand issue_token(token);
+   set_transfer_token_subcommand transfer(token);
 
    // sign subcommand
    string trx_json_to_sign;
