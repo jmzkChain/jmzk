@@ -7,22 +7,8 @@ Development phases:
 | Add new token-based database and Apis | Development | Harry | 3/21/18 |
 | Add tests | Not started | Unknown | 3/21/18 |
 
-## EOS.IO - The Most Powerful Infrastructure for Decentralized Applications
-
-[![Build Status](https://jenkins.eos.io/buildStatus/icon?job=eosio/master)](https://jenkins.eos.io/job/eosio/job/master/)
-
-Welcome to the EOS.IO source code repository!  EOS.IO software enables developers to create and deploy
-high-performance, horizontally scalable, blockchain infrastructure upon which decentralized applications
-can be built.
-
-This code is currently alpha-quality and under rapid development. That said,
-there is plenty early experimenters can do including running a private multi-node test network and
-developing applications (smart contracts).
-
-The public testnet described in the [wiki](https://github.com/EOSIO/eos/wiki/Testnet%3A%20Public) is running the `dawn-2.x` branch.  The `master` branch is no longer compatible with the public testnet.  Instructions are provided below for building either option.
-
 ### Supported Operating Systems
-EOS.IO currently supports the following operating systems:  
+everiToken currently supports the following operating systems:  
 1. Amazon 2017.09 and higher.  
 2. Centos 7.  
 3. Fedora 25 and higher (Fedora 27 recommended).  
@@ -30,26 +16,15 @@ EOS.IO currently supports the following operating systems:
 5. Ubuntu 16.04 (Ubuntu 16.10 recommended).  
 6. MacOS Darwin 10.12 and higher (MacOS 10.13.x recommended).  
 
-# Resources
-1. [EOS.IO Website](https://eos.io)
-2. [Documentation](https://eosio.github.io/eos/)
-3. [Blog](https://steemit.com/@eosio)
-4. [Community Telegram Group](https://t.me/EOSProject)
-5. [Developer Telegram Group](https://t.me/joinchat/EaEnSUPktgfoI-XPfMYtcQ)
-6. [White Paper](https://github.com/EOSIO/Documentation/blob/master/TechnicalWhitePaper.md)
-7. [Roadmap](https://github.com/EOSIO/Documentation/blob/master/Roadmap.md)
-8. [Wiki](https://github.com/EOSIO/eos/wiki)
-
 # Table of contents
 
-1. [Getting Started](#gettingstarted)
-2. [Setting up a build/development environment](#setup)
+1. [Setting up a build/development environment](#setup)
 	1. [Automated build script](#autobuild)
       1. [Clean install Linux (Amazon, Centos, Fedora, Mint, & Ubuntu) for a local testnet](#autoubuntulocal)
       2. [Clean install Linux (Amazon, Centos, Fedora, Mint, & Ubuntu) for the public testnet](#autoubuntupublic)
       3. [MacOS for a local testnet](#automaclocal)
       4. [MacOS for the public testnet](#automacpublic)
-3. [Building EOS and running a node](#runanode)
+2. [Building everiToken and running a node](#runanode)
 	1. [Getting the code](#getcode)
 	2. [Building from source code](#build)
 	3. [Creating and launching a single-node testnet](#singlenode)
@@ -64,7 +39,7 @@ EOS.IO currently supports the following operating systems:
 5. [Running local testnet](#localtestnet)
 6. [Running a node on the public testnet](#publictestnet)
 7. [Doxygen documentation](#doxygen)
-8. [Running EOS in Docker](#docker)
+8. [Running everiToken in Docker](#docker)
 9. [Manual installation of the dependencies](#manualdep)
    1. [Clean install Amazon 2017.09 and higher](#manualdepamazon)
    2. [Clean install Centos 7 and higher](#manualdepcentos)
@@ -91,10 +66,10 @@ Supported Operating Systems:
 5. Ubuntu 16.04 (Ubuntu 16.10 recommended).  
 6. MacOS Darwin 10.12 and higher (MacOS 10.13.x recommended).  
 
-For Amazon, Centos, Fedora, Mint, Ubuntu, & MacOS there is an automated build script that can install all dependencies and builds EOS.
+For Amazon, Centos, Fedora, Mint, Ubuntu, & MacOS there is an automated build script that can install all dependencies and builds everiToken.
 We are working on supporting other Linux/Unix distributions in future releases.
 
-Choose whether you will be building for a local testnet or for the public testnet and jump to the appropriate section below.  Clone the EOS repository recursively as described and run eosio_build.sh located in the root `eos` folder.
+Choose whether you will be building for a local testnet or for the public testnet and jump to the appropriate section below.  Clone the everiToken repository recursively as described and run eosio_build.sh located in the root `everiToken` folder.
 
 :warning: **As of February 2018, `master` is under heavy development and is not suitable for experimentation.** :warning:
 
@@ -104,9 +79,9 @@ We strongly recommend following the instructions for building the public testnet
 #### :no_entry: Clean install Linux (Amazon, Centos, Fedora, Mint, & Ubuntu) for a local testnet :no_entry:
 
 ```bash
-git clone https://github.com/eosio/eos --recursive
+git clone https://github.com/eosio/everiToken --recursive
 
-cd eos
+cd everiToken
 ./eosio_build.sh
 ```
 
@@ -122,9 +97,9 @@ Now you can proceed to the next step - [Creating and launching a single-node tes
 #### Clean install Linux (Amazon, Centos, Fedora, Mint, & Ubuntu) for the public testnet
 
 ```bash
-git clone https://github.com/eosio/eos --recursive
+git clone https://github.com/eosio/everiToken --recursive
 
-cd eos
+cd everiToken
 
 git checkout DAWN-2018-02-14 --recurse-submodules
 ./eosio_build.sh
@@ -144,12 +119,12 @@ Now you can proceed to the next step - [Running a node on the public testnet](#p
 Before running the script make sure you have installed/updated XCode. Note: The build script
 will install homebrew if it is not already installed on you system. [Homebrew Website](https://brew.sh)
 
-Then clone the EOS repository recursively and run eosio_build.sh in the root `eos` folder.
+Then clone the everiToken repository recursively and run eosio_build.sh in the root `everiToken` folder.
 
 ```bash
-git clone https://github.com/eosio/eos --recursive
+git clone https://github.com/eosio/everiToken --recursive
 
-cd eos
+cd everiToken
 ./eosio_build.sh
 ```
 
@@ -167,12 +142,12 @@ Now you can proceed to the next step - [Creating and launching a single-node tes
 Before running the script make sure you have installed/updated XCode. Note: The build script
 will install homebrew if it is not already installed on you system. [Homebrew Website](https://brew.sh)
 
-Then clone the EOS repository recursively, checkout the branch that is compatible with the public testnet, and run eosio_build.sh in the root `eos` folder.
+Then clone the everiToken repository recursively, checkout the branch that is compatible with the public testnet, and run eosio_build.sh in the root `everiToken` folder.
 
 ```bash
-git clone https://github.com/eosio/eos --recursive
+git clone https://github.com/eosio/everiToken --recursive
 
-cd eos
+cd everiToken
 
 git checkout DAWN-2018-02-14 --recurse-submodules
 ./eosio_build.sh
@@ -187,15 +162,15 @@ make install
 Now you can proceed to the next step - [Running a node on the public testnet](#publictestnet)
 
 <a name="runanode"></a>
-## Building EOS and running a node
+## Building everiToken and running a node
 
 <a name="getcode"></a>
 ### Getting the code
 
-To download all of the code, download EOS source code and a recursion or two of submodules. The easiest way to get all of this is to do a recursive clone:
+To download all of the code, download everiToken source code and a recursion or two of submodules. The easiest way to get all of this is to do a recursive clone:
 
 ```bash
-git clone https://github.com/eosio/eos --recursive
+git clone https://github.com/eosio/everiToken --recursive
 ```
 
 If a repo is cloned without the `--recursive` flag, the submodules can be retrieved after the fact by running this command from within the repo:
@@ -209,8 +184,8 @@ git submodule update --init --recursive
 
 ```bash
 cd ~
-git clone https://github.com/eosio/eos --recursive
-mkdir -p ~/eos/build && cd ~/eos/build
+git clone https://github.com/eosio/everiToken --recursive
+mkdir -p ~/everiToken/build && cd ~/everiToken/build
 cmake -DBINARYEN_BIN=~/binaryen/bin -DWASM_ROOT=~/wasm-compiler/llvm -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl -DOPENSSL_LIBRARIES=/usr/local/opt/openssl/lib ..
 make -j$( nproc )
 ```
@@ -223,12 +198,12 @@ For a debug build, add `-DCMAKE_BUILD_TYPE=Debug`. Other common build types incl
 
 To run the test suite after building, run the `chain_test` executable in the `tests` folder.
 
-EOS comes with a number of programs you can find in `~/eos/build/programs`. They are listed below:
+everiToken comes with a number of programs you can find in `~/everiToken/build/programs`. They are listed below:
 
 * eosiod - server-side blockchain node component
 * eosioc - command line interface to interact with the blockchain
-* eosiowd - EOS wallet
-* eosio-launcher - application for nodes network composing and deployment; [more on eosio-launcher](https://github.com/EOSIO/eos/blob/master/testnet.md)
+* eosiowd - everiToken wallet
+* eosio-launcher - application for nodes network composing and deployment; [more on eosio-launcher](https://github.com/EOSIO/everiToken/blob/master/testnet.md)
 
 <a name="singlenode"></a>
 ### Creating and launching a single-node testnet
@@ -239,7 +214,7 @@ Edit the `config.ini` file, adding/updating the following settings to the defaul
 
 ```
 # Load the testnet genesis state, which creates some initial block producers with the default key
-genesis-json = /path/to/eos/source/genesis.json
+genesis-json = /path/to/everiToken/source/genesis.json
  # Enable production on a stale chain, since a single-node test chain is pretty much always stale
 enable-stale-production = true
 # Enable block production with the testnet producers
@@ -288,12 +263,12 @@ When running `eosiod` you should get log messages similar to below. It means the
 <a name="nextsteps"></a>
 ### Next Steps
 
-Further documentation is available in the [wiki](https://github.com/EOSIO/eos/wiki). Wiki pages include detailed reference documentation for all programs and tools and the database schema and API. The wiki also includes a section describing smart contract development. A simple walkthrough of the "currency" contract follows.
+Further documentation is available in the [wiki](https://github.com/EOSIO/everiToken/wiki). Wiki pages include detailed reference documentation for all programs and tools and the database schema and API. The wiki also includes a section describing smart contract development. A simple walkthrough of the "currency" contract follows.
 
 <a name="smartcontracts"></a>
 ## Example "Currency" Contract Walkthrough
 
-EOS comes with example contracts that can be uploaded and run for testing purposes. Next we demonstrate how to upload and interact with the sample contract "currency".
+everiToken comes with example contracts that can be uploaded and run for testing purposes. Next we demonstrate how to upload and interact with the sample contract "currency".
 
 <a name="smartcontractexample"></a>
 ### Example smart contracts
@@ -301,17 +276,17 @@ EOS comes with example contracts that can be uploaded and run for testing purpos
 First, run the node
 
 ```bash
-cd ~/eos/build/programs/eosiod/
+cd ~/everiToken/build/programs/eosiod/
 ./eosiod
 ```
 
 <a name="walletimport"></a>
 ### Setting up a wallet and importing account key
 
-As you've previously added `plugin = eosio::wallet_api_plugin` into `config.ini`, EOS wallet will be running as a part of `eosiod` process. Every contract requires an associated account, so first, create a wallet.
+As you've previously added `plugin = eosio::wallet_api_plugin` into `config.ini`, everiToken wallet will be running as a part of `eosiod` process. Every contract requires an associated account, so first, create a wallet.
 
 ```bash
-cd ~/eos/build/programs/eosioc/
+cd ~/everiToken/build/programs/eosioc/
 ./eosioc wallet create # Outputs a password that you need to save to be able to lock/unlock the wallet
 ```
 
@@ -327,7 +302,7 @@ For the purpose of this walkthrough, import the private key of the `eosio` accou
 First, generate some public/private key pairs that will be later assigned as `owner_key` and `active_key`.
 
 ```bash
-cd ~/eos/build/programs/eosioc/
+cd ~/everiToken/build/programs/eosioc/
 ./eosioc create key # owner_key
 ./eosioc create key # active_key
 ```
@@ -361,9 +336,9 @@ If all went well, you will receive output similar to the following:
 ```json
 {
   "account_name": "currency",
-  "eos_balance": "0.0000 EOS",
-  "staked_balance": "0.0001 EOS",
-  "unstaking_balance": "0.0000 EOS",
+  "eos_balance": "0.0000 everiToken",
+  "staked_balance": "0.0001 everiToken",
+  "unstaking_balance": "0.0000 everiToken",
   "last_unstaking_time": "2035-10-29T06:32:22",
 ...
 ```
@@ -473,12 +448,12 @@ As expected, the receiving account **eosio** now has a balance of **20** tokens,
 <a name="localtestnet"></a>
 ## Running multi-node local testnet
 
-To run a local testnet you can use the `eosio-launcher` application provided in the `~/eos/build/programs/eosio-launcher` folder.
+To run a local testnet you can use the `eosio-launcher` application provided in the `~/everiToken/build/programs/eosio-launcher` folder.
 
 For testing purposes you will run two local production nodes talking to each other.
 
 ```bash
-cd ~/eos/build
+cd ~/everiToken/build
 cp ../genesis.json ./
 ./programs/eosio-launcher/eosio-launcher -p2 --skip-signature
 ```
@@ -494,14 +469,14 @@ spawning child, programs/eosiod/eosiod --skip-transaction-signatures --data-dir 
 
 To confirm the nodes are running, run the following `eosioc` commands:
 ```bash
-~/eos/build/programs/eosioc
+~/everiToken/build/programs/eosioc
 ./eosioc -p 8888 get info
 ./eosioc -p 8889 get info
 ```
 
 For each command, you should get a JSON response with blockchain information.
 
-You can read more on eosio-launcher and its settings [here](https://github.com/EOSIO/eos/blob/master/testnet.md)
+You can read more on eosio-launcher and its settings [here](https://github.com/EOSIO/everiToken/blob/master/testnet.md)
 
 <a name="publictestnet"></a>
 ## Running a local node connected to the public testnet
@@ -509,7 +484,7 @@ You can read more on eosio-launcher and its settings [here](https://github.com/E
 To run a local node connected to the public testnet operated by block.one, a script is provided.
 
 ```bash
-cd ~/eos/build/scripts
+cd ~/everiToken/build/scripts
 ./start_npnode.sh
 ```
 
@@ -552,13 +527,13 @@ for p2p requests, and includes the wallet plugins.
 ## Doxygen documentation
 
 You can find more detailed API documentation in the Doxygen reference.
-For the `master` branch: https://eosio.github.io/eos/
-For the public testnet branch: http://htmlpreview.github.io/?https://github.com/EOSIO/eos/blob/dawn-2.x/docs/index.html
+For the `master` branch: https://eosio.github.io/everiToken/
+For the public testnet branch: http://htmlpreview.github.io/?https://github.com/EOSIO/everiToken/blob/dawn-2.x/docs/index.html
 
 <a name="docker"></a>
-## Running EOS in Docker
+## Running everiToken in Docker
 
-You can find up to date information about EOS Docker in the [Docker Readme](https://github.com/EOSIO/eos/blob/master/Docker/README.md)
+You can find up to date information about everiToken Docker in the [Docker Readme](https://github.com/EOSIO/everiToken/blob/master/Docker/README.md)
 
 <a name="manualdep"></a>
 ## Manual installation of the dependencies
@@ -645,7 +620,7 @@ make -j$( nproc )
 make install
 ```
 
-Your environment is set up. Now you can <a href="#runanode">build EOS and run a node</a>.
+Your environment is set up. Now you can <a href="#runanode">build everiToken and run a node</a>.
 
 <a name="manualdepcentos"></a>
 ### Clean install Centos 7 and higher
@@ -720,7 +695,7 @@ make -j$( nproc )
 make install
 ```
 
-Your environment is set up. Now you can <a href="#runanode">build EOS and run a node</a>.
+Your environment is set up. Now you can <a href="#runanode">build everiToken and run a node</a>.
 
 <a name="manualdepfedora"></a>
 ### Clean install Fedora 25 and higher
@@ -792,7 +767,7 @@ cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DL
 make -j$( nproc ) install
 ```
 
-Your environment is set up. Now you can <a href="#runanode">build EOS and run a node</a>.
+Your environment is set up. Now you can <a href="#runanode">build everiToken and run a node</a>.
 
 <a name="manualdepubuntu"></a>
 ### Clean install Ubuntu 16.04 & Linux Mint 18
@@ -866,7 +841,7 @@ cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=.. -DLLVM_TARGETS_TO_BUILD= -DL
 make -j4 install
 ```
 
-Your environment is set up. Now you can <a href="#runanode">build EOS and run a node</a>.
+Your environment is set up. Now you can <a href="#runanode">build everiToken and run a node</a>.
 
 <a name="manualdepmacos"></a>
 ### MacOS Sierra 10.12.6 & higher
@@ -949,4 +924,4 @@ make -j$( sysctl -in machdep.cpu.core_count )
 make install
 ```
 
-Your environment is set up. Now you can <a href="#runanode">build EOS and run a node</a>.
+Your environment is set up. Now you can <a href="#runanode">build everiToken and run a node</a>.
