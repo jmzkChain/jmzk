@@ -23,7 +23,7 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( chain_type_exception,              eosio::chain::chain_exception, 3120000, "chain type exception" )
    FC_DECLARE_DERIVED_EXCEPTION( missing_plugin_exception,          eosio::chain::chain_exception, 3130000, "missing plugin exception" )
    FC_DECLARE_DERIVED_EXCEPTION( wallet_exception,                  eosio::chain::chain_exception, 3140000, "wallet exception" )
-   FC_DECLARE_DERIVED_EXCEPTION( rate_limiting_invariant_exception, eosio::chain::chain_exception, 3150000, "rate limiting invariant violated" )
+   FC_DECLARE_DERIVED_EXCEPTION( tokendb_exception,                 eosio::chain::chain_exception, 3150000, "tokendb exception" )
 
    FC_DECLARE_DERIVED_EXCEPTION( permission_query_exception,        eosio::chain::database_query_exception, 3010001, "Permission Query Exception" )
    FC_DECLARE_DERIVED_EXCEPTION( account_query_exception,           eosio::chain::database_query_exception, 3010002, "Account Query Exception" )
@@ -90,7 +90,7 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( asset_type_exception,              eosio::chain::chain_type_exception, 3120011, "Invalid asset" )
    FC_DECLARE_DERIVED_EXCEPTION( permission_type_exception,         eosio::chain::chain_type_exception, 3120012, "Invalid permission" )
    FC_DECLARE_DERIVED_EXCEPTION( groups_type_exception,             eosio::chain::chain_type_exception, 3120012, "Invalid groups" )
-   FC_DECLARE_DERIVED_EXCEPTION( group_keys_type_exception,         eosio::chain::chain_type_exception, 3120013, "Invalid groups keyss" )
+   FC_DECLARE_DERIVED_EXCEPTION( group_keys_type_exception,         eosio::chain::chain_type_exception, 3120013, "Invalid groups keys" )
 
    FC_DECLARE_DERIVED_EXCEPTION( missing_chain_api_plugin_exception,                 eosio::chain::missing_plugin_exception, 3130001, "Missing Chain API Plugin" )
    FC_DECLARE_DERIVED_EXCEPTION( missing_wallet_api_plugin_exception,                eosio::chain::missing_plugin_exception, 3130002, "Missing Wallet API Plugin" )
@@ -102,6 +102,16 @@ namespace eosio { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( wallet_locked_exception,           eosio::chain::wallet_exception, 3140003, "Locked wallet" )
    FC_DECLARE_DERIVED_EXCEPTION( wallet_missing_pub_key_exception,  eosio::chain::wallet_exception, 3140004, "Missing public key" )
    FC_DECLARE_DERIVED_EXCEPTION( wallet_invalid_password_exception, eosio::chain::wallet_exception, 3140005, "Invalid wallet password" )
+
+   FC_DECLARE_DERIVED_EXCEPTION( tokendb_domain_existed,            eosio::chain::tokendb_exception, 3150001, "Domain already exists" )
+   FC_DECLARE_DERIVED_EXCEPTION( tokendb_group_existed,             eosio::chain::tokendb_exception, 3150002, "Permission Group already exists" )
+   FC_DECLARE_DERIVED_EXCEPTION( tokendb_token_existed,             eosio::chain::tokendb_exception, 3150003, "Token already exists" )
+   FC_DECLARE_DERIVED_EXCEPTION( tokendb_domain_not_found,          eosio::chain::tokendb_exception, 3150004, "Not found specifc domain" )
+   FC_DECLARE_DERIVED_EXCEPTION( tokendb_group_not_found,           eosio::chain::tokendb_exception, 3150005, "Not found specific permission group" )
+   FC_DECLARE_DERIVED_EXCEPTION( tokendb_token_not_found,           eosio::chain::tokendb_exception, 3150006, "Not found specific token" )
+   FC_DECLARE_DERIVED_EXCEPTION( tokendb_rocksdb_fail,              eosio::chain::tokendb_exception, 3150007, "Rocksdb internal error occurred" )
+   FC_DECLARE_DERIVED_EXCEPTION( tokendb_no_savepoint,              eosio::chain::tokendb_exception, 3150008, "No savepoints anymore" )
+   FC_DECLARE_DERIVED_EXCEPTION( tokendb_seq_not_valid,             eosio::chain::tokendb_exception, 3150009, "Seq for checkpoint is not valid" )
 
    #define EOS_RECODE_EXC( cause_type, effect_type ) \
       catch( const cause_type& e ) \

@@ -110,12 +110,9 @@ apply_eosio_newdomain(apply_context& context) {
         domain.transfer = ndact.transfer;
         domain.manage = ndact.manage;
         
-        auto r = tokendb.add_domain(domain);
-        EOS_ASSERT(r == 0, action_validate_exception, "[EVT] Add new domain ${name} failed", ("id", domain.name));
-
+        tokendb.add_domain(domain);
         for(auto& g : ndact.groups) {
-            auto r2 = tokendb.add_group(g);
-            EOS_ASSERT(r2 == 0, action_validate_exception, "[EVT] Add new group ${id} failed", ("id", g.id));
+            tokendb.add_group(g);
         }
         
     }
@@ -135,9 +132,7 @@ apply_eosio_issuetoken(apply_context& context) {
         for(auto& n : itact.names) {
             EOS_ASSERT(!tokendb.exists_token(itact.domain, n), action_validate_exception, "Token ${domain}-${name} already existed", ("domain",itact.domain)("name",n));
         }
-
-        auto r = tokendb.issue_tokens(itact);
-        EOS_ASSERT(r == 0, action_validate_exception, "[EVT] Issue tokens in domain ${domain} failed", ("domain", itact.domain));
+        tokendb.issue_tokens(itact);
     }
     FC_CAPTURE_AND_RETHROW((itact));
 }
@@ -150,8 +145,7 @@ apply_eosio_transfer(apply_context& context) {
     auto& tokendb = context.mutable_tokendb;
     EOS_ASSERT(tokendb.exists_token(ttact.domain, ttact.name), action_validate_exception, "Token ${domain}-${name} not existed", ("domain",ttact.domain)("name",ttact.name));
     
-    auto r = tokendb.transfer_token(ttact);
-    EOS_ASSERT(r == 0, action_validate_exception, "[EVT] Transfer token ${domain}-${name} failed", ("domain",ttact.domain)("name",ttact.name));
+    tokendb.transfer_token(ttact);
 }
 
 void
@@ -167,8 +161,7 @@ apply_eosio_updategroup(apply_context& context) {
         EOS_ASSERT(ugact.keys.size() > 0, action_validate_exception, "Group must contains at least one key");
         EOS_ASSERT(validate(ugact), action_validate_exception, "Updated group is not valid, eithor threshold is not valid or exist duplicate or unordered keys");
 
-        auto r = tokendb.update_group(ugact);
-        EOS_ASSERT(r == 0, action_validate_exception, "[EVT] Update group ${id} failed", ("id",ugact.id));
+        tokendb.update_group(ugact);
     }
     FC_CAPTURE_AND_RETHROW((ugact));
 }
@@ -221,8 +214,7 @@ apply_eosio_updatedomain(apply_context& context) {
         check_groups(udact.transfer, true);
         check_groups(udact.manage, false);
 
-        auto r = tokendb.update_domain(udact);
-        EOS_ASSERT(r == 0, action_validate_exception, "[EVT] Update domain ${name} failed", ("name",udact.name));
+        tokendb.update_domain(udact);
     }
     FC_CAPTURE_AND_RETHROW((udact));
 }

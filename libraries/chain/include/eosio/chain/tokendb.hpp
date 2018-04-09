@@ -21,19 +21,6 @@ using read_domain_func = std::function<void(const domain_def&)>;
 using read_token_func = std::function<void(const token_def&)>;
 using read_group_func = std::function<void(const group_def&)>;
 
-enum tokendb_error {
-    ok = 0,
-    domain_existed = -1,
-    not_found_domain = -2,
-    group_existed = -3,
-    not_found_group = -4,
-    token_id_existed = -5,
-    not_found_token_id = -6,
-    rocksdb_err = -7,
-    no_savepoint = -8,
-    seq_not_valid = -9
-};
-
 class tokendb {
 private:
     struct dbaction {

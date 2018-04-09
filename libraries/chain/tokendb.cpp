@@ -12,8 +12,12 @@
 #include <fc/io/raw.hpp>
 #include <fc/io/datastream.hpp>
 #include <fc/filesystem.hpp>
+#include <eosio/utilities/exception_macros.hpp>
+#include <eosio/chain/exceptions.hpp>
 
 namespace evt { namespace chain {
+
+using namespace eosio::chain;
 
 namespace __internal {
 
@@ -195,7 +199,7 @@ tokendb::initialize(const fc::path& dbpath) {
     options.compression = CompressionType::kLZ4Compression;
     options.bottommost_compression = CompressionType::kZSTD;
     options.table_factory.reset(NewPlainTableFactory());
-    options.prefix_extractor.reset(NewFixedPrefixTransform(sizeof(uint128_t)));
+    options.prefix_extractor.reset(NewFixedPrefixTransform(sizeof(__uint128_t)));
     options.merge_operator.reset(new TokendbMerge());
 
     if(!fc::exists(dbpath)) {
@@ -205,7 +209,7 @@ tokendb::initialize(const fc::path& dbpath) {
     auto native_path = dbpath.to_native_ansi_path();
     auto status = DB::Open(options, native_path, &db_);
     if(!status.ok()) {
-        return status.code();
+        EOS_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
 
     return 0;
@@ -215,13 +219,13 @@ int
 tokendb::add_domain(const domain_def& domain) {
     using namespace __internal;
     if(exists_domain(domain.name)) {
-        return tokendb_error::domain_existed;
+        EOS_THROW(tokendb_domain_existed, "Domain is already existed: ${name}", ("name", (std::string)domain.name));
     }
     auto key = get_domain_key(domain.name);
     auto value = get_value(domain);
     auto status = db_->Put(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
-        return tokendb_error::rocksdb_err;
+        EOS_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
     if(should_record()) {
         auto act = (sp_newdomain*)malloc(sizeof(sp_newdomain));
@@ -244,7 +248,7 @@ int
 tokendb::issue_tokens(const issuetoken& issue) {
     using namespace __internal;
     if(!exists_domain(issue.domain)) {
-        return tokendb_error::not_found_domain;
+        EOS_THROW(tokendb_domain_not_found, "Cannot find domain: ${name}", ("name", (std::string)issue.domain));
     }
     rocksdb::WriteBatch batch;
     for(auto name : issue.names) {
@@ -254,7 +258,7 @@ tokendb::issue_tokens(const issuetoken& issue) {
     }
     auto status = db_->Write(write_opts_, &batch);
     if(!status.ok()) {
-        return tokendb_error::rocksdb_err;
+        EOS_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
     if(should_record()) {
         auto act = (sp_issuetoken*)malloc(sizeof(sp_issuetoken) + sizeof(token_name) * issue.names.size());
@@ -279,13 +283,13 @@ int
 tokendb::add_group(const group_def& group) {
     using namespace __internal;
     if(exists_group(group.id)) {
-        return tokendb_error::group_existed;
+        EOS_THROW(tokendb_group_existed, "Group is already existed: ${id}", ("id", group.id.to_base58()));
     }
     auto key = get_group_key(group.id);
     auto value = get_value(group);
     auto status = db_->Put(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
-        return tokendb_error::rocksdb_err;
+        EOS_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
     if(should_record()) {
         auto act = (sp_addgroup*)malloc(sizeof(sp_addgroup));
@@ -311,7 +315,7 @@ tokendb::read_domain(const domain_name name, const read_domain_func& func) const
     auto key = get_domain_key(name);
     auto status = db_->Get(read_opts_, key.as_slice(), &value);
     if(!status.ok()) {
-        return tokendb_error::not_found_domain;
+        EOS_THROW(tokendb_domain_not_found, "Cannot find domain: ${name}", ("name", (std::string)name));
     }
     auto v = read_value<domain_def>(value);
     func(v);
@@ -325,7 +329,7 @@ tokendb::read_token(const domain_name domain, const token_name name, const read_
     auto key = get_token_key(domain, name);
     auto status = db_->Get(read_opts_, key.as_slice(), &value);
     if(!status.ok()) {
-        return tokendb_error::not_found_token_id;
+        EOS_THROW(tokendb_token_not_found, "Cannot find token: ${domain}-${name}", ("domain", (std::string)domain)("name", (std::string)name));
     }
     auto v = read_value<token_def>(value);
     func(v);
@@ -339,7 +343,7 @@ tokendb::read_group(const group_id& id, const read_group_func& func) const {
     auto key = get_group_key(id);
     auto status = db_->Get(read_opts_, key.as_slice(), &value);
     if(!status.ok()) {
-        return tokendb_error::not_found_group;
+        EOS_THROW(tokendb_group_not_found, "Cannot find group: ${id}", ("id", id.to_base58()));
     }
     auto v = read_value<group_def>(value);
     func(v);
@@ -353,7 +357,7 @@ tokendb::update_domain(const updatedomain& ud) {
     auto value = get_value(ud);
     auto status = db_->Merge(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
-        return tokendb_error::rocksdb_err;
+        EOS_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
     if(should_record()) {
         auto act = (sp_updatedomain*)malloc(sizeof(sp_updatedomain));
@@ -370,7 +374,7 @@ tokendb::update_group(const updategroup& ug) {
     auto value = get_value(ug);
     auto status = db_->Merge(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
-        return tokendb_error::rocksdb_err;
+        EOS_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
     if(should_record()) { 
         auto act = (sp_updategroup*)malloc(sizeof(sp_updategroup));
@@ -387,9 +391,9 @@ tokendb::transfer_token(const transfer& tt) {
     auto value = get_value(tt);
     auto status = db_->Merge(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
-        return tokendb_error::rocksdb_err;
+        EOS_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
-     if(should_record()) {
+    if(should_record()) {
         auto act = (sp_updatetoken*)malloc(sizeof(sp_updatetoken));
         act->domain = tt.domain;
         act->name = tt.name;
@@ -401,7 +405,7 @@ tokendb::transfer_token(const transfer& tt) {
 int 
 tokendb::record(int type, void* data) {
     if(!should_record()) {
-        return tokendb_error::no_savepoint;
+        return 0;
     }
     savepoints_.back().actions.emplace_back(dbaction { .type = type, .data = data });
     return 0;
@@ -411,7 +415,7 @@ int
 tokendb::add_savepoint(uint32 seq) {
     if(!savepoints_.empty()) {
         if(savepoints_.back().seq >= seq) {
-            return tokendb_error::seq_not_valid;
+            EOS_THROW(tokendb_seq_not_valid, "Seq is not valid, prev: ${prev}, curr: ${curr}", ("prev",savepoints_.back().seq)("curr",seq));
         }
     }
     savepoints_.emplace_back(savepoint {
@@ -434,7 +438,7 @@ tokendb::free_savepoint(savepoint& cp) {
 int
 tokendb::pop_savepoints(uint32 until) {
     if(savepoints_.empty()) {
-        return tokendb_error::no_savepoint;
+        EOS_THROW(tokendb_no_savepoint, "There's no savepoints anymore");
     }
     while(!savepoints_.empty() && savepoints_.front().seq < until) {
         free_savepoint(savepoints_.front());
@@ -448,7 +452,7 @@ tokendb::rollback_to_latest_savepoint() {
     using namespace __internal;
 
     if(savepoints_.empty()) {
-        return tokendb_error::no_savepoint;
+        EOS_THROW(tokendb_no_savepoint, "There's no savepoints anymore");
     }
     auto& cp = savepoints_.back();
     if(cp.actions.size() > 0) {
