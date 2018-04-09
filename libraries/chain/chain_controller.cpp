@@ -1031,6 +1031,7 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
             _db.create<block_summary_object>([&](block_summary_object&) {});
 
          starter.prepare_database(*this, _db);
+         starter.prepare_tokendb(*this, _tokendb);
          _update_producers_authority();
       });
    }
@@ -1266,6 +1267,7 @@ void chain_controller::update_last_irreversible_block()
    // Trim fork_database and undo histories
    _fork_db.set_max_size(head_block_num() - new_last_irreversible_block_num + 1);
    _db.commit(new_last_irreversible_block_num);
+   _tokendb.pop_savepoints(new_last_irreversible_block_num);
 }
 
 void chain_controller::clear_expired_transactions()

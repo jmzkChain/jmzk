@@ -208,14 +208,6 @@ tokendb::initialize(const fc::path& dbpath) {
         return status.code();
     }
 
-    // add system reservered domain
-    if(!exists_domain("domain")) {
-        add_domain(domain_def("domain"));
-    }
-    if(!exists_domain("group")) {
-        add_domain(domain_def("group"));
-    }
-
     return 0;
 }
 
