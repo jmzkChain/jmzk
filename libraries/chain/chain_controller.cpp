@@ -164,6 +164,7 @@ void chain_controller::push_block(const signed_block& new_block, uint32_t skip)
          } );
       });
    });
+   ilog( "\rpush block #${n} from ${pro} ${time}  ${id} lib: ${l} success", ("n",new_block.block_num())("pro",name(new_block.producer))("time",new_block.timestamp)("id",new_block.id())("l",last_irreversible_block_num()));
 } FC_CAPTURE_AND_RETHROW((new_block)) }
 
 bool chain_controller::_push_block(const signed_block& new_block)
@@ -266,7 +267,15 @@ transaction_trace chain_controller::_push_transaction(const packed_transaction& 
    auto start = fc::time_point::now();
    transaction_metadata   mtrx( packed_trx, get_chain_id(), head_block_time());
    mtrx.signing_keys = mtrx.trx().get_signature_keys(packed_trx.signatures, get_chain_id());
-   check_transaction_authorization(mtrx.trx(), *mtrx.signing_keys);
+
+   const transaction& trx = mtrx.trx();
+
+   validate_transaction_with_minimal_state(trx);
+   validate_referenced_accounts(trx);
+   validate_uniqueness(trx);
+   if(should_check_authorization()) {
+      check_transaction_authorization(mtrx.trx(), *mtrx.signing_keys);
+   }
    auto setup_us = fc::time_point::now() - start;
    auto result = _push_transaction(std::move(mtrx));
    result._setup_profiling_us = setup_us;
@@ -316,6 +325,7 @@ void chain_controller::_start_pending_block()
    _pending_block_session = _db.start_undo_session(true);
    _pending_block->regions.resize(1);
    _pending_block_trace->region_traces.resize(1);
+   _tokendb.add_savepoint(_pending_block_session->revision());
    _start_pending_cycle();
 }
 
@@ -382,14 +392,14 @@ void chain_controller::_apply_cycle_trace( const cycle_trace& res )
          for (const auto &ar : tr.action_traces) {
             if (!ar.console.empty()) {
                auto prefix = fc::format_string(
-                  "[(${a},${n})->${r}]",
+                  "\n[(${a},${n})->${r}]",
                   fc::mutable_variant_object()
                      ("a", ar.act.account)
                      ("n", ar.act.name)
                      ("r", ar.receiver));
-               ilog(prefix + ": CONSOLE OUTPUT BEGIN =====================");
-               ilog(ar.console);
-               ilog(prefix + ": CONSOLE OUTPUT END   =====================");
+               ilog(prefix + ": CONSOLE OUTPUT BEGIN =====================\n"
+                     + ar.console
+                     + prefix + ": CONSOLE OUTPUT END   =====================" );
             }
          }
       }
@@ -461,7 +471,7 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
       _pending_block->producer    = producer_obj.owner;
       _pending_block->previous    = head_block_id();
       _pending_block->block_mroot = get_dynamic_global_properties().block_merkle_root.get_root();
-      _pending_block->transaction_mroot = transaction_metadata::calculate_transaction_merkle_root( _pending_transaction_metas );
+      _pending_block->transaction_mroot = _pending_block_trace->calculate_transaction_merkle_root();
       _pending_block->action_mroot = _pending_block_trace->calculate_action_merkle_root();
 
       if( is_start_of_round( _pending_block->block_num() ) ) {
@@ -501,13 +511,17 @@ signed_block chain_controller::_generate_block( block_timestamp_type when,
  */
 void chain_controller::pop_block()
 { try {
-   _pending_block_session.reset();
+   auto rev = _pending_block_session->revision();
+   clear_pending();
    auto head_id = head_block_id();
    optional<signed_block> head_block = fetch_block_by_id( head_id );
+
    EOS_ASSERT( head_block.valid(), pop_empty_chain, "there are no blocks to pop" );
+   wlog( "\rpop block #${n} from ${pro} ${time}  ${id}", ("n",head_block->block_num())("pro",name(head_block->producer))("time",head_block->timestamp)("id",head_block->id()));
 
    _fork_db.pop_block();
    _db.undo();
+   _tokendb.pop_savepoints(rev);
 } FC_CAPTURE_AND_RETHROW() }
 
 void chain_controller::clear_pending()
@@ -570,6 +584,8 @@ void chain_controller::__apply_block(const signed_block& next_block)
    map<transaction_id_type,size_t> trx_index;
    for( const auto& t : next_block.input_transactions ) {
       input_metas.emplace_back(t, chain_id_type(), next_block.timestamp);
+      validate_transaction_with_minimal_state( input_metas.back().trx() );
+      input_metas.back().signing_keys = input_metas.back().trx().get_signature_keys( t.signatures, chain_id_type() );
       trx_index[input_metas.back().id] =  input_metas.size() - 1;
    }
 
@@ -595,18 +611,38 @@ void chain_controller::__apply_block(const signed_block& next_block)
             for (const auto& receipt : shard.transactions) {
                 optional<transaction_metadata> _temp;
                 auto make_metadata = [&]() -> transaction_metadata* {
-                  auto itr = trx_index.find(receipt.id);
-                  FC_ASSERT(itr != trx_index.end());
-                  return &input_metas.at(itr->second);
+                   auto itr = trx_index.find(receipt.id);
+                   FC_ASSERT(itr != trx_index.end());
+
+                   auto& trx_meta = input_metas.at(itr->second);
+                   const auto& trx = trx_meta.trx();
+
+                   validate_referenced_accounts(trx);
+                   validate_uniqueness(trx);
+                   if( should_check_authorization() ) {
+                      FC_ASSERT( trx_meta.signing_keys, "signing_keys missing from transaction_metadata of an input transaction" );
+                      check_authorization( trx.actions, *trx_meta.signing_keys );
+                   }
+                   return &trx_meta;
                };
 
                auto *mtrx = make_metadata();
+
+               FC_ASSERT( mtrx->trx().region == r.region, "transaction was scheduled into wrong region" );
+
                mtrx->region_id = r.region;
                mtrx->cycle_index = cycle_index;
                mtrx->shard_index = shard_index;
-               mtrx->processing_deadline = processing_deadline;
 
                s_trace.transaction_traces.emplace_back(_apply_transaction(*mtrx));
+
+               auto& t_trace = s_trace.transaction_traces.back();
+               if( mtrx->raw_trx.valid() ) { // if an input transaction
+                  t_trace.packed_trx_digest = mtrx->packed_digest;
+               }
+               t_trace.region_id = r.region;
+               t_trace.cycle_index = cycle_index;
+               t_trace.shard_index = shard_index;
 
                EOS_ASSERT(receipt.status == s_trace.transaction_traces.back().status, tx_receipt_inconsistent_status,
                           "Received status of transaction from block (${rstatus}) does not match the applied transaction's status (${astatus})",
@@ -628,8 +664,8 @@ void chain_controller::__apply_block(const signed_block& next_block)
       next_block_trace.region_traces.emplace_back(move(r_trace));
    } /// for each region
 
-   FC_ASSERT(next_block.action_mroot == next_block_trace.calculate_action_merkle_root());
-   FC_ASSERT( transaction_metadata::calculate_transaction_merkle_root(input_metas) == next_block.transaction_mroot, "merkle root does not match" );
+   FC_ASSERT( next_block.action_mroot == next_block_trace.calculate_action_merkle_root(), "action merkle root does not match");
+   FC_ASSERT( next_block.transaction_mroot == next_block_trace.calculate_transaction_merkle_root(), "transaction merkle root does not match" );
 
    _finalize_block( next_block_trace );
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
@@ -737,10 +773,6 @@ void chain_controller::record_transaction(const transaction& trx) {
    }
 }
 
-void chain_controller::update_resource_usage( transaction_trace& trace, const transaction_metadata& meta ) {
-    // TODO: [EVT]Implement later
-}
-
 void chain_controller::validate_tapos(const transaction& trx)const {
    if (!should_check_tapos()) return;
 
@@ -760,36 +792,34 @@ void chain_controller::validate_referenced_accounts( const transaction& trx )con
    }
 } FC_CAPTURE_AND_RETHROW() }
 
-void chain_controller::validate_expiration( const transaction& trx ) const
+void chain_controller::validate_not_expired( const transaction& trx )const
 { try {
    fc::time_point now = head_block_time();
-   const auto& chain_configuration = get_global_properties().configuration;
 
-   EOS_ASSERT( time_point(trx.expiration) <= now + fc::seconds(chain_configuration.max_transaction_lifetime),
-               tx_exp_too_far_exception, "Transaction expiration is too far in the future, expiration is ${trx.expiration} but max expiration is ${max_til_exp}",
-              ("trx.expiration",trx.expiration)("now",now)
-              ("max_til_exp",chain_configuration.max_transaction_lifetime));
-   EOS_ASSERT( now <= time_point(trx.expiration), expired_tx_exception, "Transaction is expired, now is ${now}, expiration is ${trx.exp}",
-              ("now",now)("trx.exp",trx.expiration));
+   EOS_ASSERT( now < time_point(trx.expiration),
+               expired_tx_exception,
+               "Transaction is expired, now is ${now}, expiration is ${trx.exp}",
+               ("now",now)("trx.expiration",trx.expiration) );
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
+void chain_controller::validate_transaction_without_state( const transaction& trx )const
+{ try {
+   EOS_ASSERT( !trx.actions.empty(), tx_no_action, "transaction must have at least one action" );
+} FC_CAPTURE_AND_RETHROW((trx)) }
 
-void chain_controller::require_scope( const scope_name& scope )const {
-   switch( uint64_t(scope) ) {
-      case config::eosio_all_scope:
-      case config::eosio_auth_scope:
-         return; /// built in scopes
-      default:
-         require_account(scope);
-   }
-}
+void chain_controller::validate_transaction_with_minimal_state( const transaction& trx )const
+{ try {
+   validate_transaction_without_state(trx);
+   validate_not_expired(trx);
+   validate_tapos(trx);
+} FC_CAPTURE_AND_RETHROW((trx)) }
 
 void chain_controller::require_account(const account_name& name) const {
    auto account = _db.find<account_object, by_name>(name);
    FC_ASSERT(account != nullptr, "Account not found: ${name}", ("name", name));
 }
 
-const producer_object& chain_controller::validate_block_header(uint32_t skip, const signed_block& next_block)const {
+const producer_object& chain_controller::validate_block_header(uint32_t skip, const signed_block& next_block)const { try {
    EOS_ASSERT(head_block_id() == next_block.previous, block_validate_exception, "",
               ("head_block_id",head_block_id())("next.prev",next_block.previous));
    EOS_ASSERT(head_block_time() < (fc::time_point)next_block.timestamp, block_validate_exception, "",
@@ -820,10 +850,12 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
                  ("block producer",next_block.producer)("scheduled producer",producer.owner));
    }
 
-   EOS_ASSERT( next_block.schedule_version == get_global_properties().active_producers.version, block_validate_exception, "wrong producer schedule version specified" );
+   auto expected_schedule_version = get_global_properties().active_producers.version;
+   EOS_ASSERT( next_block.schedule_version == expected_schedule_version , block_validate_exception,"wrong producer schedule version specified ${x} expectd ${y}",
+               ("x", next_block.schedule_version)("y",expected_schedule_version) );
 
    return producer;
-}
+} FC_CAPTURE_AND_RETHROW( (block_header(next_block))) }
 
 void chain_controller::create_block_summary(const signed_block& next_block) {
    auto sid = next_block.block_num() & 0xffff;
@@ -869,6 +901,7 @@ void chain_controller::update_global_properties(const signed_block& b) { try {
       const auto& gpo = get_global_properties();
 
       if( _head_producer_schedule() != schedule ) {
+         //wlog( "change in producer schedule pending irreversible: ${s}",  ("s", b.new_producers ) );
          FC_ASSERT( b.new_producers, "pending producer set changed but block didn't indicate it" );
       }
       _db.modify( gpo, [&]( auto& props ) {
@@ -876,7 +909,7 @@ void chain_controller::update_global_properties(const signed_block& b) { try {
             props.pending_active_producers.back().second = schedule;
          else
          {
-            props.pending_active_producers.emplace_back( props.pending_active_producers.get_allocator() );// props.pending_active_producers.size()+1, props.pending_active_producers.get_allocator() );
+            props.pending_active_producers.emplace_back( props.pending_active_producers.get_allocator() );
             auto& back = props.pending_active_producers.back();
             back.first = b.block_num();
             back.second = schedule;
@@ -884,19 +917,24 @@ void chain_controller::update_global_properties(const signed_block& b) { try {
          }
       });
 
-
-      auto active_producers_authority = authority(config::producers_authority_threshold, {}, {});
-      for(auto& name : gpo.active_producers.producers ) {
-         active_producers_authority.accounts.push_back({{name.producer_name, config::active_name}, 1});
-      }
-
-      auto& po = _db.get<permission_object, by_owner>( boost::make_tuple(config::producers_account_name,
-                                                                         config::active_name ) );
-      _db.modify(po,[active_producers_authority] (permission_object& po) {
-         po.auth = active_producers_authority;
-      });
+      _update_producers_authority();
    }
 } FC_CAPTURE_AND_RETHROW() }
+
+void chain_controller::_update_producers_authority() {
+   const auto& gpo = get_global_properties();
+   uint32_t authority_threshold = EOS_PERCENT_CEIL(gpo.active_producers.producers.size(), config::producers_authority_threshold_pct);
+   auto active_producers_authority = authority(authority_threshold, {}, {});
+   for(auto& name : gpo.active_producers.producers ) {
+      active_producers_authority.accounts.push_back({{name.producer_name, config::active_name}, 1});
+   }
+
+   auto& po = _db.get<permission_object, by_owner>( boost::make_tuple(config::producers_account_name,
+                                                                      config::active_name ) );
+   _db.modify(po,[active_producers_authority] (permission_object& po) {
+      po.auth = active_producers_authority;
+   });
+}
 
 void chain_controller::add_checkpoints( const flat_map<uint32_t,block_id_type>& checkpts ) {
    for (const auto& i : checkpts)
@@ -993,6 +1031,7 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
             _db.create<block_summary_object>([&](block_summary_object&) {});
 
          starter.prepare_database(*this, _db);
+         _update_producers_authority();
       });
    }
 } FC_CAPTURE_AND_RETHROW() }
@@ -1204,24 +1243,24 @@ void chain_controller::update_last_irreversible_block()
       }
    }
 
-   if( new_last_irreversible_block_num > last_block_on_disk ) {
-      /// TODO: use upper / lower bound to find
-      optional<producer_schedule_type> new_producer_schedule;
-      for( const auto& item : gpo.pending_active_producers ) {
-         if( item.first < new_last_irreversible_block_num ) {
-            new_producer_schedule = item.second;
-         }
+   /// TODO: use upper / lower bound to find
+   optional<producer_schedule_type> new_producer_schedule;
+   for( const auto& item : gpo.pending_active_producers ) {
+      if( item.first < new_last_irreversible_block_num ) {
+         new_producer_schedule = item.second;
       }
-      if( new_producer_schedule ) {
-         update_or_create_producers( *new_producer_schedule );
-         _db.modify( gpo, [&]( auto& props ){
-              boost::range::remove_erase_if(props.pending_active_producers,
-                                            [new_last_irreversible_block_num](const typename decltype(props.pending_active_producers)::value_type& v) -> bool {
-                                               return v.first < new_last_irreversible_block_num;
-                                            });
+   }
+   if( new_producer_schedule ) {
+      update_or_create_producers( *new_producer_schedule );
+      _db.modify( gpo, [&]( auto& props ){
+           boost::range::remove_erase_if(props.pending_active_producers,
+                                         [new_last_irreversible_block_num](const typename decltype(props.pending_active_producers)::value_type& v) -> bool {
+                                            return v.first <= new_last_irreversible_block_num;
+                                         });
+           if( props.active_producers.version != new_producer_schedule->version ) {
               props.active_producers = *new_producer_schedule;
-         });
-      }
+           }
+      });
    }
 
    // Trim fork_database and undo histories
@@ -1236,8 +1275,9 @@ void chain_controller::clear_expired_transactions()
 
    auto& transaction_idx = _db.get_mutable_index<transaction_multi_index>();
    const auto& dedupe_index = transaction_idx.indices().get<by_expiration>();
-   while( (!dedupe_index.empty()) && (head_block_time() > fc::time_point(dedupe_index.rbegin()->expiration) ) )
-      transaction_idx.remove(*dedupe_index.rbegin());
+   while( (!dedupe_index.empty()) && (head_block_time() > fc::time_point(dedupe_index.begin()->expiration) ) ) {
+      transaction_idx.remove(*dedupe_index.begin());
+   }
 
 } FC_CAPTURE_AND_RETHROW() }
 
@@ -1307,8 +1347,6 @@ transaction_trace chain_controller::__apply_transaction( transaction_metadata& m
 { try {
    transaction_trace result(meta.id);
 
-   validate_transaction( meta.trx() );
-
    for (const auto &act : meta.trx().actions) {
       apply_context context(*this, _db, _tokendb, act, meta);
       context.exec();
@@ -1316,7 +1354,6 @@ transaction_trace chain_controller::__apply_transaction( transaction_metadata& m
       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
    }
 
-   update_resource_usage(result, meta);
    record_transaction(meta.trx());
    return result;
 } FC_CAPTURE_AND_RETHROW() }

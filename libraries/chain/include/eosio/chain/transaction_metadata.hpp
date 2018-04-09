@@ -32,6 +32,7 @@ class transaction_metadata {
       // things for packed_transaction
       optional<bytes>                       raw_trx;
       optional<transaction>                 decompressed_trx;
+      digest_type                           packed_digest;
 
       // things for signed/packed transactions
       optional<flat_set<public_key_type>>   signing_keys;
@@ -41,7 +42,7 @@ class transaction_metadata {
       uint32_t                              region_id       = 0;
       uint32_t                              cycle_index     = 0;
       uint32_t                              shard_index     = 0;
-      uint32_t                              bandwidth_usage = 0;
+      uint32_t                              signature_count = 0;
       time_point                            published;
 
       // things for processing deferred transactions
@@ -65,10 +66,10 @@ class transaction_metadata {
       // limits
       optional<time_point>                  processing_deadline;
 
-      static digest_type calculate_transaction_merkle_root( const vector<transaction_metadata>& metas );
    private:
       const transaction* _trx = nullptr;
 };
 
 } } // eosio::chain
 
+FC_REFLECT( eosio::chain::transaction_metadata, (raw_trx)(signing_keys)(id)(region_id)(cycle_index)(shard_index)(published)(sender)(sender_id) )

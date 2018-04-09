@@ -23,7 +23,7 @@ void apply_context::exec_one()
       }
    } FC_CAPTURE_AND_RETHROW((_pending_console_output.str()));
 
-   results.applied_actions.emplace_back(action_trace {receiver, act, _pending_console_output.str(), 0, 0 });
+   results.applied_actions.emplace_back(action_trace {receiver, act, _pending_console_output.str() });
    _pending_console_output = std::ostringstream();
    results.applied_actions.back()._profiling_us = fc::time_point::now() - start;
 }

@@ -63,7 +63,7 @@ const static uint32_t   default_max_gen_trx_count      = 16; ///< the number of 
 const static uint32_t   producers_authority_threshold  = 14;
 const static uint32_t   rate_limiting_precision        = 1000*1000;
 
-const static uint16_t   max_recursion_depth = 6;
+const static uint32_t   producers_authority_threshold_pct  = 66 * config::percent_1;
 
 /**
  *  The number of sequential blocks produced by a single producer
@@ -83,4 +83,9 @@ const static int irreversible_threshold_percent= 70 * percent_1;
 template<typename Number>
 Number EOS_PERCENT(Number value, int percentage) {
    return value * percentage / eosio::chain::config::percent_100;
+}
+
+template<typename Number>
+Number EOS_PERCENT_CEIL(Number value, uint32_t percentage) {
+   return ((value * percentage) + eosio::chain::config::percent_100 - eosio::chain::config::percent_1)  / eosio::chain::config::percent_100;
 }

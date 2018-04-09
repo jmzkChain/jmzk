@@ -340,35 +340,23 @@ namespace eosio { namespace chain {
                                               bool allow_unused_signatures = false)const;
 
 
-         void require_scope(const scope_name& name) const;
          void require_account(const account_name& name) const;
-
-         /**
-          * This method performs some consistency checks on a transaction.
-          * @throw transaction_exception if the transaction is invalid
-          */
-         template<typename T>
-         void validate_transaction(const T& trx) const {
-         try {
-            EOS_ASSERT(trx.actions.size() > 0, transaction_exception, "A transaction must have at least one action");
-
-            validate_expiration(trx);
-            validate_uniqueness(trx);
-            validate_tapos(trx);
-
-         } FC_CAPTURE_AND_RETHROW( (trx) ) }
 
          /// Validate transaction helpers @{
          void validate_uniqueness(const transaction& trx)const;
          void validate_tapos(const transaction& trx)const;
          void validate_referenced_accounts(const transaction& trx)const;
-         void validate_expiration(const transaction& trx) const;
-         void record_transaction(const transaction& trx);
-         void update_resource_usage( transaction_trace& trace, const transaction_metadata& meta );
+         void validate_not_expired( const transaction& trx )const;
+         void validate_transaction_without_state( const transaction& trx )const;
+         void validate_transaction_with_minimal_state( const transaction& trx)const;
+         void validate_transaction_with_minimal_state( const packed_transaction& packed_trx, const transaction* trx_ptr = nullptr )const;
          /// @}
+
+         void record_transaction(const transaction& trx);
 
          bool should_check_for_duplicate_transactions()const { return !(_skip_flags&skip_transaction_dupe_check); }
          bool should_check_tapos()const                      { return !(_skip_flags&skip_tapos_check);            }
+         bool should_check_authorization()const              { return !(_skip_flags&skip_authority_check);        }
 
          ///Steps involved in applying a new block
          ///@{
@@ -377,6 +365,7 @@ namespace eosio { namespace chain {
          void create_block_summary(const signed_block& next_block);
 
          void update_global_properties(const signed_block& b);
+         void _update_producers_authority();
          void update_global_dynamic_data(const signed_block& b);
          void update_signing_producer(const producer_object& signing_producer, const signed_block& new_block);
          void update_last_irreversible_block();

@@ -46,8 +46,8 @@ public:
    fc::optional<chain_controller::controller_config> chain_config = chain_controller::controller_config();
    fc::optional<chain_controller>   chain;
    chain_id_type                    chain_id;
-   uint32_t                         max_reversible_block_time_ms;
-   uint32_t                         max_pending_transaction_time_ms;
+   int32_t                          max_reversible_block_time_ms;
+   int32_t                          max_pending_transaction_time_ms;
    //txn_msg_rate_limits              rate_limits;
 };
 

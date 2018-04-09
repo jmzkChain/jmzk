@@ -109,8 +109,6 @@ namespace eosio { namespace chain {
       uint16_t               region        = 0; ///< the computational memory region this transaction applies to.
       uint16_t               ref_block_num = 0; ///< specifies a block num in the last 2^16 blocks.
       uint32_t               ref_block_prefix = 0; ///< specifies the lower 32 bits of the blockid at get_ref_blocknum
-      uint16_t               packed_bandwidth_words = 0; /// number of 8 byte words this transaction can compress into
-      uint16_t               context_free_cpu_bandwidth = 0; /// number of CPU usage units to bill transaction for
 
       /**
        * @return the absolute block number given the relative ref_block_num
@@ -156,8 +154,8 @@ namespace eosio { namespace chain {
 
    struct packed_transaction {
       enum compression_type {
-         none,
-         zlib,
+         none = 0,
+         zlib = 1,
       };
 
       packed_transaction() = default;
@@ -179,9 +177,11 @@ namespace eosio { namespace chain {
          set_transaction(t, _compression);
       }
 
-      vector<signature_type>    signatures;
-      compression_type          compression;
-      bytes                     data;
+      digest_type packed_digest()const;
+
+      vector<signature_type>                    signatures;
+      fc::enum_type<uint8_t, compression_type>  compression;
+      bytes                                     packed_trx;
 
       bytes                     get_raw_transaction()const;
       transaction               get_transaction()const;
@@ -194,9 +194,9 @@ namespace eosio { namespace chain {
 
 FC_REFLECT( eosio::chain::permission_level, (actor)(permission) )
 FC_REFLECT( eosio::chain::action, (account)(name)(domain)(key)(data) )
-FC_REFLECT( eosio::chain::transaction_header, (expiration)(region)(ref_block_num)(ref_block_prefix)(packed_bandwidth_words)(context_free_cpu_bandwidth) )
+FC_REFLECT( eosio::chain::transaction_header, (expiration)(region)(ref_block_num)(ref_block_prefix) )
 FC_REFLECT_DERIVED( eosio::chain::transaction, (eosio::chain::transaction_header), (actions) )
 FC_REFLECT_DERIVED( eosio::chain::signed_transaction, (eosio::chain::transaction), (signatures) )
-FC_REFLECT_ENUM( eosio::chain::packed_transaction::compression_type, (none)(zlib))
-FC_REFLECT( eosio::chain::packed_transaction, (signatures)(compression)(data) )
-FC_REFLECT( eosio::chain::transaction_receipt, (status)(id))
+FC_REFLECT_ENUM( eosio::chain::packed_transaction::compression_type, (none)(zlib) )
+FC_REFLECT( eosio::chain::packed_transaction, (signatures)(compression)(packed_trx) )
+FC_REFLECT( eosio::chain::transaction_receipt, (status)(id) )

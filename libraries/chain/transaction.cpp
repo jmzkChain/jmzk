@@ -113,6 +113,12 @@ flat_set<public_key_type> signed_transaction::get_signature_keys( const chain_id
    return transaction::get_signature_keys(signatures, chain_id);
 }
 
+digest_type packed_transaction::packed_digest()const {
+   digest_type::encoder enc;
+   fc::raw::pack( enc, *this );
+   return enc.result();
+}
+
 namespace bio = boost::iostreams;
 
 template<size_t Limit>
@@ -179,13 +185,13 @@ bytes packed_transaction::get_raw_transaction() const
    try {
       switch(compression) {
          case none:
-            return data;
+            return packed_trx;
          case zlib:
-            return zlib_decompress(data);
+            return zlib_decompress(packed_trx);
          default:
             FC_THROW("Unknown transaction compression algorithm");
       }
-   } FC_CAPTURE_AND_RETHROW((compression)(data))
+   } FC_CAPTURE_AND_RETHROW((compression)(packed_trx))
 }
 
 transaction packed_transaction::get_transaction()const
@@ -193,13 +199,13 @@ transaction packed_transaction::get_transaction()const
    try {
       switch(compression) {
          case none:
-            return unpack_transaction(data);
+            return unpack_transaction(packed_trx);
          case zlib:
-            return zlib_decompress_transaction(data);
+            return zlib_decompress_transaction(packed_trx);
          default:
             FC_THROW("Unknown transaction compression algorithm");
       }
-   } FC_CAPTURE_AND_RETHROW((compression)(data))
+   } FC_CAPTURE_AND_RETHROW((compression)(packed_trx))
 }
 
 signed_transaction packed_transaction::get_signed_transaction() const
@@ -212,10 +218,10 @@ void packed_transaction::set_transaction(const transaction& t, packed_transactio
    try {
       switch(_compression) {
          case none:
-            data = pack_transaction(t);
+            packed_trx = pack_transaction(t);
             break;
          case zlib:
-            data = zlib_compress_transaction(t);
+            packed_trx = zlib_compress_transaction(t);
             break;
          default:
             FC_THROW("Unknown transaction compression algorithm");
