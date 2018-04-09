@@ -48,4 +48,12 @@ public:
 
 }}}  // namespac eosio::chain::contracts
 
+namespace fc {
+
+class variant;
+void to_variant(const eosio::chain::contracts::group_id& gid, fc::variant& v);
+void from_variant(const fc::variant& v, eosio::chain::contracts::group_id& gid);
+
+}  // namespace fc
+
 FC_REFLECT(eosio::chain::contracts::group_id, (value_))

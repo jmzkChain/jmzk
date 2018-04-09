@@ -342,15 +342,19 @@ void chain_initializer::prepare_database( chain_controller& chain,
 
 void chain_initializer::prepare_tokendb(chain::chain_controller& chain, evt::chain::tokendb& tokendb) {
     if(!tokendb.exists_domain("domain")) {
-        domain_def ddomain;
-        ddomain.issuer = genesis.initial_key;
-        auto r = tokendb.add_domain(ddomain);
+        domain_def dd;
+        dd.name = "domain";
+        dd.issuer = genesis.initial_key;
+        dd.issue_time = genesis.initial_timestamp;
+        auto r = tokendb.add_domain(dd);
         FC_ASSERT(r == 0, "Add `domain` domain failed");
     }
     if(!tokendb.exists_domain("group")) {
-        domain_def gdomain;
-        gdomain.issuer = genesis.initial_key;
-        auto r = tokendb.add_domain(gdomain);
+        domain_def gd;
+        gd.name = "group";
+        gd.issuer = genesis.initial_key;
+        gd.issue_time = genesis.initial_timestamp;
+        auto r = tokendb.add_domain(gd);
         FC_ASSERT(r == 0, "Add `group` domain failed");
     }
 }
