@@ -63,6 +63,7 @@ Options:
 */
 #include <string>
 #include <vector>
+#include <regex>
 #include <boost/asio.hpp>
 #include <boost/format.hpp>
 #include <iostream>
@@ -212,28 +213,30 @@ chain::action create_action(const domain_name& domain, const domain_key& key, co
    return action(domain, key, value);
 }
 
+fc::variant json_from_file_or_string(const string& file_or_str, fc::json::parse_type ptype = fc::json::legacy_parser)
+{
+   regex r("^[ \t]*[\{\[]");
+   if ( !regex_search(file_or_str, r) && fc::is_regular_file(file_or_str) ) {
+      return fc::json::from_file(file_or_str, ptype);
+   } else {
+      return fc::json::from_string(file_or_str, ptype);
+   }
+}
+
 auto parse_permission = [](auto& jsonOrFile) {
   try {
-    fc::variant parsedPermission;
-    if (boost::istarts_with(jsonOrFile, "{")) {
-        parsedPermission = fc::json::from_string(jsonOrFile);
-    } else {
-        parsedPermission = fc::json::from_file(jsonOrFile);
-    }
-    auto permission = parsedPermission.as<permission_def>();
+    auto parsedPermission = json_from_file_or_string(jsonOrFile);
+    permission_def permission;
+    parsedPermission.as(permission);
     return permission;
   } EOS_RETHROW_EXCEPTIONS(permission_type_exception, "Fail to parse Permission JSON")
 };
 
 auto parse_groups = [](auto& jsonOrFile) {
   try {
-    fc::variant parsedGroups;
-    if (boost::istarts_with(jsonOrFile, "{")) {
-        parsedGroups = fc::json::from_string(jsonOrFile);
-    } else {
-        parsedGroups = fc::json::from_file(jsonOrFile);
-    }
-    auto groups = parsedGroups.as<std::vector<group_def>>();
+    auto parsedGroups = json_from_file_or_string(jsonOrFile);
+    std::vector<group_def> groups;
+    parsedGroups.as(groups);
     return groups;
   } EOS_RETHROW_EXCEPTIONS(groups_type_exception, "Fail to parse Groups JSON")
 };
@@ -370,13 +373,10 @@ struct set_group_subcommands {
          }
          ug.threshold = threshold;
 
-         fc::variant parsedKeys;
-         if (boost::istarts_with(keys, "{")) {
-             parsedKeys = fc::json::from_string(keys);
-         } else {
-             parsedKeys = fc::json::from_file(keys);
-         }
-         ug.keys = parsedKeys.as<std::vector<key_weight>>();
+         try {
+            auto parsedKeys = json_from_file_or_string(keys);
+            parsedKeys.as(ug.keys);
+         } EOS_RETHROW_EXCEPTIONS(group_keys_type_exception, "Fail to parse Group Keys JSON")
 
          auto act = create_action("group", (domain_key)ug.id, ug);
          send_actions({ act });
