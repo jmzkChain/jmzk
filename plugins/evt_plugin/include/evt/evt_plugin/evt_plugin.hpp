@@ -3,22 +3,22 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #pragma once
-#include <eosio/chain_plugin/chain_plugin.hpp>
+#include <evt/chain_plugin/chain_plugin.hpp>
 
 #include <appbase/application.hpp>
-#include <eosio/chain/asset.hpp>
-#include <eosio/chain/authority.hpp>
-#include <eosio/chain/account_object.hpp>
-#include <eosio/chain/block.hpp>
-#include <eosio/chain/chain_controller.hpp>
-#include <eosio/chain/transaction.hpp>
-#include <eosio/chain/types.hpp>
-#include <eosio/chain/contracts/abi_serializer.hpp>
-#include <eosio/chain/contracts/types.hpp>
+#include <evt/chain/asset.hpp>
+#include <evt/chain/authority.hpp>
+#include <evt/chain/account_object.hpp>
+#include <evt/chain/block.hpp>
+#include <evt/chain/chain_controller.hpp>
+#include <evt/chain/transaction.hpp>
+#include <evt/chain/types.hpp>
+#include <evt/chain/contracts/abi_serializer.hpp>
+#include <evt/chain/contracts/types.hpp>
 
 namespace fc { class variant; }
 
-namespace eosio {
+namespace evt {
 using chain::chain_controller;
 using std::unique_ptr;
 using namespace appbase;
@@ -125,11 +125,11 @@ private:
     std::unique_ptr<class evt_plugin_impl> my_;
 };
 
-}  // namespace eosio
+}  // namespace evt
 
-FC_REFLECT(eosio::evt_apis::read_only::get_domain_params, (name));
-FC_REFLECT(eosio::evt_apis::read_only::get_group_params, (id));
-FC_REFLECT(eosio::evt_apis::read_only::get_token_params, (domain)(name));
-FC_REFLECT(eosio::evt_apis::read_write::new_domain_result, (name));
-FC_REFLECT(eosio::evt_apis::read_write::issue_tokens_result, (domain)(names));
-FC_REFLECT(eosio::evt_apis::read_write::transfer_result, (token));
+FC_REFLECT(evt::evt_apis::read_only::get_domain_params, (name));
+FC_REFLECT(evt::evt_apis::read_only::get_group_params, (id));
+FC_REFLECT(evt::evt_apis::read_only::get_token_params, (domain)(name));
+FC_REFLECT(evt::evt_apis::read_write::new_domain_result, (name));
+FC_REFLECT(evt::evt_apis::read_write::issue_tokens_result, (domain)(names));
+FC_REFLECT(evt::evt_apis::read_write::transfer_result, (token));

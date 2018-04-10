@@ -8,12 +8,12 @@
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
 
-namespace eosio {
+namespace evt {
 
 static appbase::abstract_plugin& _evt_plugin = app().register_plugin<evt_plugin>();
 
-using namespace eosio;
-using namespace eosio::chain;
+using namespace evt;
+using namespace evt::chain;
 
 class evt_plugin_impl {
 public:
@@ -107,4 +107,4 @@ read_write::transfer_token(const transfer& params) {
 
 }  // namespace evt_apis
 
-}  // namespace eosio
+}  // namespace evt

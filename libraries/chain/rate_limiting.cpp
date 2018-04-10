@@ -1,5 +1,5 @@
-#include <eosio/chain/rate_limiting.hpp>
-namespace eosio { namespace chain {
+#include <evt/chain/rate_limiting.hpp>
+namespace evt { namespace chain {
 
 
-} } /// eosio::chain
+} } /// evt::chain

@@ -1,14 +1,14 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in evt/LICENSE.txt
  */
-#include <eosio/chain/block_trace.hpp>
-#include <eosio/chain/merkle.hpp>
+#include <evt/chain/block_trace.hpp>
+#include <evt/chain/merkle.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/bitutil.hpp>
 #include <algorithm>
 
-namespace eosio { namespace chain {
+namespace evt { namespace chain {
 
    void shard_trace::finalize_shard() {
       {
@@ -85,4 +85,4 @@ namespace eosio { namespace chain {
       return merkle( std::move(merkle_root_of_each_region) );
    }
 
-} }  // namespace eosio::chain
+} }  // namespace evt::chain

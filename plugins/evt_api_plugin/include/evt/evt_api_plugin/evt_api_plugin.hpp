@@ -4,13 +4,13 @@
  */
 #pragma once
 #include <evt/evt_plugin/evt_plugin.hpp>
-#include <eosio/http_plugin/http_plugin.hpp>
+#include <evt/http_plugin/http_plugin.hpp>
 
 #include <appbase/application.hpp>
-#include <eosio/chain/chain_controller.hpp>
+#include <evt/chain/chain_controller.hpp>
 
-namespace eosio {
-   using eosio::chain::chain_controller;
+namespace evt {
+   using evt::chain::chain_controller;
    using std::unique_ptr;
    using namespace appbase;
 

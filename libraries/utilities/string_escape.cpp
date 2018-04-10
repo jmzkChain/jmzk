@@ -1,12 +1,12 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in evt/LICENSE.txt
  */
 
-#include <eosio/utilities/string_escape.hpp>
+#include <evt/utilities/string_escape.hpp>
 #include <sstream>
 
-namespace eosio { namespace utilities {
+namespace evt { namespace utilities {
 
   std::string escape_string_for_c_source_code(const std::string& input)
   {
@@ -51,5 +51,5 @@ namespace eosio { namespace utilities {
     return escaped_string.str();
   }
 
-} } // end namespace eosio::utilities
+} } // end namespace evt::utilities
 

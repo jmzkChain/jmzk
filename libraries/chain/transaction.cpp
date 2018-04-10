@@ -1,8 +1,8 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in evt/LICENSE.txt
  */
-#include <eosio/chain/exceptions.hpp>
+#include <evt/chain/exceptions.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/bitutil.hpp>
 #include <fc/smart_ref_impl.hpp>
@@ -18,7 +18,7 @@
 #include <boost/iostreams/filter/zlib.hpp>
 
 
-namespace eosio { namespace chain {
+namespace evt { namespace chain {
 
 using namespace boost::multi_index;
 
@@ -129,7 +129,7 @@ struct read_limiter {
    template<typename Sink>
    size_t write(Sink &sink, const char* s, size_t count)
    {
-      EOS_ASSERT(_total + count <= Limit, tx_decompression_error, "Exceeded maximum decompressed transaction size");
+      EVT_ASSERT(_total + count <= Limit, tx_decompression_error, "Exceeded maximum decompressed transaction size");
       _total += count;
       return bio::write(sink, s, count);
    }
@@ -231,4 +231,4 @@ void packed_transaction::set_transaction(const transaction& t, packed_transactio
 }
 
 
-} } // eosio::chain
+} } // evt::chain

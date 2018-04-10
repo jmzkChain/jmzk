@@ -2,14 +2,13 @@
  *  @file
  *  @copyright defined in evt/LICENSE.txt
  */
-
-#include <eosio/chain/contracts/group_id.hpp>
+#include <evt/chain/contracts/group_id.hpp>
 #include <fc/crypto/base58.hpp>
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/ripemd160.hpp>
 #include <fc/variant.hpp>
 
-namespace eosio { namespace chain { namespace contracts {
+namespace evt { namespace chain { namespace contracts {
 
 group_id
 group_id::from_base58(const std::string& base58) {
@@ -33,12 +32,12 @@ group_id::to_base58() const {
     return fc::to_base58((const char*)&value_, sizeof(value_));
 }
 
-}}}  // namespac eosio::chain::contracts
+}}}  // namespac evt::chain::contracts
 
 namespace fc {
 
 class variant;
-void to_variant(const eosio::chain::contracts::group_id& gid, fc::variant& v) { v = gid.to_base58(); }
-void from_variant(const fc::variant& v, eosio::chain::contracts::group_id& gid) { gid = eosio::chain::contracts::group_id::from_base58(v.get_string()); }
+void to_variant(const evt::chain::contracts::group_id& gid, fc::variant& v) { v = gid.to_base58(); }
+void from_variant(const fc::variant& v, evt::chain::contracts::group_id& gid) { gid = evt::chain::contracts::group_id::from_base58(v.get_string()); }
 
 }  // namespace fc

@@ -1,18 +1,18 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in evt/LICENSE.txt
  */
-#include <eosio/chain/types.hpp>
+#include <evt/chain/types.hpp>
 
-#include <eosio/net_plugin/net_plugin.hpp>
-#include <eosio/net_plugin/protocol.hpp>
-#include <eosio/net_plugin/message_buffer.hpp>
-#include <eosio/chain/chain_controller.hpp>
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/block.hpp>
-#include <eosio/producer_plugin/producer_plugin.hpp>
-#include <eosio/utilities/key_conversion.hpp>
-#include <eosio/chain/contracts/types.hpp>
+#include <evt/net_plugin/net_plugin.hpp>
+#include <evt/net_plugin/protocol.hpp>
+#include <evt/net_plugin/message_buffer.hpp>
+#include <evt/chain/chain_controller.hpp>
+#include <evt/chain/exceptions.hpp>
+#include <evt/chain/block.hpp>
+#include <evt/producer_plugin/producer_plugin.hpp>
+#include <evt/utilities/key_conversion.hpp>
+#include <evt/chain/contracts/types.hpp>
 
 #include <fc/network/ip.hpp>
 #include <fc/io/json.hpp>
@@ -32,7 +32,7 @@ namespace fc {
    extern std::unordered_map<std::string,logger>& get_logger_map();
 }
 
-namespace eosio {
+namespace evt {
    static appbase::abstract_plugin& _net_plugin = app().register_plugin<net_plugin>();
 
    using std::vector;
@@ -44,7 +44,7 @@ namespace eosio {
 
    using fc::time_point;
    using fc::time_point_sec;
-   using eosio::chain::transaction_id_type;
+   using evt::chain::transaction_id_type;
    namespace bip = boost::interprocess;
    using chain::contracts::uint16;
 
@@ -2595,7 +2595,7 @@ namespace eosio {
          ( "p2p-listen-endpoint", bpo::value<string>()->default_value( "0.0.0.0:9876" ), "The actual host:port used to listen for incoming p2p connections.")
          ( "p2p-server-address", bpo::value<string>(), "An externally accessible host:port for identifying this node. Defaults to p2p-listen-endpoint.")
          ( "p2p-peer-address", bpo::value< vector<string> >()->composing(), "The public endpoint of a peer node to connect to. Use multiple p2p-peer-address options as needed to compose a network.")
-         ( "agent-name", bpo::value<string>()->default_value("\"EOS Test Agent\""), "The name supplied to identify this node amongst the peers.")
+         ( "agent-name", bpo::value<string>()->default_value("\"EVT Test Agent\""), "The name supplied to identify this node amongst the peers.")
 #if 0 //disabling block summary support
          ( "send-whole-blocks", bpo::value<bool>()->default_value(def_send_whole_blocks), "True to always send full blocks, false to send block summaries" )
 #endif

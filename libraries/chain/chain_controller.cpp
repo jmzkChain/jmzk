@@ -1,22 +1,22 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in evt/LICENSE.txt
  */
 
-#include <eosio/chain/chain_controller.hpp>
+#include <evt/chain/chain_controller.hpp>
 
-#include <eosio/chain/block_summary_object.hpp>
-#include <eosio/chain/global_property_object.hpp>
-#include <eosio/chain/action_objects.hpp>
-#include <eosio/chain/generated_transaction_object.hpp>
-#include <eosio/chain/transaction_object.hpp>
-#include <eosio/chain/producer_object.hpp>
-#include <eosio/chain/permission_link_object.hpp>
-#include <eosio/chain/authority_checker.hpp>
-#include <eosio/chain/contracts/chain_initializer.hpp>
-#include <eosio/chain/merkle.hpp>
+#include <evt/chain/block_summary_object.hpp>
+#include <evt/chain/global_property_object.hpp>
+#include <evt/chain/action_objects.hpp>
+#include <evt/chain/generated_transaction_object.hpp>
+#include <evt/chain/transaction_object.hpp>
+#include <evt/chain/producer_object.hpp>
+#include <evt/chain/permission_link_object.hpp>
+#include <evt/chain/authority_checker.hpp>
+#include <evt/chain/contracts/chain_initializer.hpp>
+#include <evt/chain/merkle.hpp>
 
-#include <eosio/utilities/rand.hpp>
+#include <evt/utilities/rand.hpp>
 
 #include <fc/smart_ref_impl.hpp>
 #include <fc/uint128.hpp>
@@ -32,7 +32,7 @@
 #include <functional>
 #include <chrono>
 
-namespace eosio { namespace chain {
+namespace evt { namespace chain {
 
 bool chain_controller::is_start_of_round( block_num_type block_num )const  {
   return 0 == (block_num % blocks_per_round());
@@ -263,7 +263,7 @@ transaction_trace chain_controller::push_transaction(const packed_transaction& t
          return _push_transaction(trx);
       });
    });
-} EOS_CAPTURE_AND_RETHROW( transaction_exception ) }
+} EVT_CAPTURE_AND_RETHROW( transaction_exception ) }
 
 transaction_trace chain_controller::_push_transaction(const packed_transaction& packed_trx) 
 { try {
@@ -521,7 +521,7 @@ void chain_controller::pop_block()
    auto head_id = head_block_id();
    optional<signed_block> head_block = fetch_block_by_id( head_id );
 
-   EOS_ASSERT( head_block.valid(), pop_empty_chain, "there are no blocks to pop" );
+   EVT_ASSERT( head_block.valid(), pop_empty_chain, "there are no blocks to pop" );
    wlog( "\rpop block #${n} from ${pro} ${time}  ${id}", ("n",head_block->block_num())("pro",name(head_block->producer))("time",head_block->timestamp)("id",head_block->id()));
 
    _fork_db.pop_block();
@@ -602,13 +602,13 @@ void chain_controller::__apply_block(const signed_block& next_block)
       region_trace r_trace;
       r_trace.cycle_traces.reserve(r.cycles_summary.size());
 
-      EOS_ASSERT(!r.cycles_summary.empty(), tx_empty_region,"region[${r_index}] has no cycles", ("r_index",region_index));
+      EVT_ASSERT(!r.cycles_summary.empty(), tx_empty_region,"region[${r_index}] has no cycles", ("r_index",region_index));
       for (uint32_t cycle_index = 0; cycle_index < r.cycles_summary.size(); cycle_index++) {
          const auto& cycle = r.cycles_summary.at(cycle_index);
          cycle_trace c_trace;
          c_trace.shard_traces.reserve(cycle.size());
 
-         EOS_ASSERT(!cycle.empty(), tx_empty_cycle,"region[${r_index}] cycle[${c_index}] has no shards", ("r_index",region_index)("c_index",cycle_index));
+         EVT_ASSERT(!cycle.empty(), tx_empty_cycle,"region[${r_index}] cycle[${c_index}] has no shards", ("r_index",region_index)("c_index",cycle_index));
          for (uint32_t shard_index = 0; shard_index < cycle.size(); shard_index++) {
             const auto& shard = cycle.at(shard_index);
 
@@ -649,7 +649,7 @@ void chain_controller::__apply_block(const signed_block& next_block)
                t_trace.cycle_index = cycle_index;
                t_trace.shard_index = shard_index;
 
-               EOS_ASSERT(receipt.status == s_trace.transaction_traces.back().status, tx_receipt_inconsistent_status,
+               EVT_ASSERT(receipt.status == s_trace.transaction_traces.back().status, tx_receipt_inconsistent_status,
                           "Received status of transaction from block (${rstatus}) does not match the applied transaction's status (${astatus})",
                           ("rstatus",receipt.status)("astatus",s_trace.transaction_traces.back().status));
                // validate_referenced_accounts(trx);
@@ -712,7 +712,7 @@ flat_set<public_key_type> chain_controller::get_required_keys(const transaction&
    auto checker = get_auth_checker(_tokendb, candidate_keys);
 
     for(const auto& act : trx.actions) {
-        EOS_ASSERT(checker.satisfied(act), tx_missing_sigs,
+        EVT_ASSERT(checker.satisfied(act), tx_missing_sigs,
             "${name} action in domain: ${domain} with key: ${key} authorized failed",
             ("domain", act.domain)("key", act.key)("name", act.name));
     }
@@ -729,14 +729,14 @@ void chain_controller::check_authorization( const vector<action>& actions,
 
    for( const auto& act : actions ) {
        if((_skip_flags & skip_transaction_signatures) == false) {
-            EOS_ASSERT(checker.satisfied(act), tx_missing_sigs,
+            EVT_ASSERT(checker.satisfied(act), tx_missing_sigs,
                 "${name} action in domain: ${domain} with key: ${key} authorized failed",
                 ("domain", act.domain)("key", act.key)("name", act.name));
        }
    }
 
    if (!allow_unused_signatures && (_skip_flags & skip_transaction_signatures) == false)
-      EOS_ASSERT(checker.all_keys_used(), tx_irrelevant_sig,
+      EVT_ASSERT(checker.all_keys_used(), tx_irrelevant_sig,
                  "transaction bears irrelevant signatures from these keys: ${keys}",
                  ("keys", checker.unused_keys()));
 }
@@ -752,7 +752,7 @@ void chain_controller::validate_uniqueness( const transaction& trx )const {
    if( !should_check_for_duplicate_transactions() ) return;
 
    auto transaction = _db.find<transaction_object, by_trx_id>(trx.id());
-   EOS_ASSERT(transaction == nullptr, tx_duplicate, "Transaction is not unique");
+   EVT_ASSERT(transaction == nullptr, tx_duplicate, "Transaction is not unique");
 }
 
 void chain_controller::record_transaction(const transaction& trx) {
@@ -762,7 +762,7 @@ void chain_controller::record_transaction(const transaction& trx) {
            transaction.expiration = trx.expiration;
        });
    } catch ( ... ) {
-       EOS_ASSERT( false, transaction_exception,
+       EVT_ASSERT( false, transaction_exception,
                   "duplicate transaction ${id}", 
                   ("id", trx.id() ) );
    }
@@ -774,7 +774,7 @@ void chain_controller::validate_tapos(const transaction& trx)const {
    const auto& tapos_block_summary = _db.get<block_summary_object>((uint16_t)trx.ref_block_num);
 
    //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
-   EOS_ASSERT(trx.verify_reference_block(tapos_block_summary.block_id), invalid_ref_block_exception,
+   EVT_ASSERT(trx.verify_reference_block(tapos_block_summary.block_id), invalid_ref_block_exception,
               "Transaction's reference block did not match. Is this transaction from a different fork?",
               ("tapos_summary", tapos_block_summary));
 }
@@ -791,7 +791,7 @@ void chain_controller::validate_not_expired( const transaction& trx )const
 { try {
    fc::time_point now = head_block_time();
 
-   EOS_ASSERT( now < time_point(trx.expiration),
+   EVT_ASSERT( now < time_point(trx.expiration),
                expired_tx_exception,
                "Transaction is expired, now is ${now}, expiration is ${trx.exp}",
                ("now",now)("trx.expiration",trx.expiration) );
@@ -799,7 +799,7 @@ void chain_controller::validate_not_expired( const transaction& trx )const
 
 void chain_controller::validate_transaction_without_state( const transaction& trx )const
 { try {
-   EOS_ASSERT( !trx.actions.empty(), tx_no_action, "transaction must have at least one action" );
+   EVT_ASSERT( !trx.actions.empty(), tx_no_action, "transaction must have at least one action" );
 } FC_CAPTURE_AND_RETHROW((trx)) }
 
 void chain_controller::validate_transaction_with_minimal_state( const transaction& trx )const
@@ -815,9 +815,9 @@ void chain_controller::require_account(const account_name& name) const {
 }
 
 const producer_object& chain_controller::validate_block_header(uint32_t skip, const signed_block& next_block)const { try {
-   EOS_ASSERT(head_block_id() == next_block.previous, block_validate_exception, "",
+   EVT_ASSERT(head_block_id() == next_block.previous, block_validate_exception, "",
               ("head_block_id",head_block_id())("next.prev",next_block.previous));
-   EOS_ASSERT(head_block_time() < (fc::time_point)next_block.timestamp, block_validate_exception, "",
+   EVT_ASSERT(head_block_time() < (fc::time_point)next_block.timestamp, block_validate_exception, "",
               ("head_block_time",head_block_time())("next",next_block.timestamp)("blocknum",next_block.block_num()));
    if (((fc::time_point)next_block.timestamp) > head_block_time() + fc::microseconds(config::block_interval_ms*1000)) {
       elog("head_block_time ${h}, next_block ${t}, block_interval ${bi}",
@@ -828,25 +828,25 @@ const producer_object& chain_controller::validate_block_header(uint32_t skip, co
 
 
    if( !is_start_of_round( next_block.block_num() ) )  {
-      EOS_ASSERT(!next_block.new_producers, block_validate_exception,
+      EVT_ASSERT(!next_block.new_producers, block_validate_exception,
                  "Producer changes may only occur at the end of a round.");
    }
 
    const producer_object& producer = get_producer(get_scheduled_producer(get_slot_at_time(next_block.timestamp)));
 
    if(!(skip&skip_producer_signature))
-      EOS_ASSERT(next_block.validate_signee(producer.signing_key), block_validate_exception,
+      EVT_ASSERT(next_block.validate_signee(producer.signing_key), block_validate_exception,
                  "Incorrect block producer key: expected ${e} but got ${a}",
                  ("e", producer.signing_key)("a", public_key_type(next_block.signee())));
 
    if(!(skip&skip_producer_schedule_check)) {
-      EOS_ASSERT(next_block.producer == producer.owner, block_validate_exception,
+      EVT_ASSERT(next_block.producer == producer.owner, block_validate_exception,
                  "Producer produced block at wrong time",
                  ("block producer",next_block.producer)("scheduled producer",producer.owner));
    }
 
    auto expected_schedule_version = get_global_properties().active_producers.version;
-   EOS_ASSERT( next_block.schedule_version == expected_schedule_version , block_validate_exception,"wrong producer schedule version specified ${x} expectd ${y}",
+   EVT_ASSERT( next_block.schedule_version == expected_schedule_version , block_validate_exception,"wrong producer schedule version specified ${x} expectd ${y}",
                ("x", next_block.schedule_version)("y",expected_schedule_version) );
 
    return producer;
@@ -918,7 +918,7 @@ void chain_controller::update_global_properties(const signed_block& b) { try {
 
 void chain_controller::_update_producers_authority() {
    const auto& gpo = get_global_properties();
-   uint32_t authority_threshold = EOS_PERCENT_CEIL(gpo.active_producers.producers.size(), config::producers_authority_threshold_pct);
+   uint32_t authority_threshold = EVT_PERCENT_CEIL(gpo.active_producers.producers.size(), config::producers_authority_threshold_pct);
    auto active_producers_authority = authority(authority_threshold, {}, {});
    for(auto& name : gpo.active_producers.producers ) {
       active_producers_authority.accounts.push_back({{name.producer_name, config::active_name}, 1});
@@ -977,7 +977,7 @@ const producer_object& chain_controller::get_producer(const account_name& owner_
 const permission_object&   chain_controller::get_permission( const permission_level& level )const
 { try {
    return _db.get<permission_object, by_owner>( boost::make_tuple(level.actor,level.permission) );
-} EOS_RETHROW_EXCEPTIONS( chain::permission_query_exception, "Fail to retrieve permission: ${level}", ("level", level) ) }
+} EVT_RETHROW_EXCEPTIONS( chain::permission_query_exception, "Fail to retrieve permission: ${level}", ("level", level) ) }
 
 uint32_t chain_controller::last_irreversible_block_num() const {
    return get_dynamic_global_properties().last_irreversible_block_num;
@@ -1097,7 +1097,7 @@ void chain_controller::_spinup_fork_db()
 ProducerRound chain_controller::calculate_next_round(const signed_block& next_block) {
    auto schedule = _admin->get_next_round(_db);
    auto changes = get_global_properties().active_producers - schedule;
-   EOS_ASSERT(boost::range::equal(next_block.producer_changes, changes), block_validate_exception,
+   EVT_ASSERT(boost::range::equal(next_block.producer_changes, changes), block_validate_exception,
               "Unexpected round changes in new block header",
               ("expected changes", changes)("block changes", next_block.producer_changes));
 
@@ -1201,7 +1201,7 @@ void chain_controller::update_last_irreversible_block()
 
    static_assert(config::irreversible_threshold_percent > 0, "irreversible threshold must be nonzero");
 
-   size_t offset = EOS_PERCENT(producer_objs.size(), config::percent_100- config::irreversible_threshold_percent);
+   size_t offset = EVT_PERCENT(producer_objs.size(), config::percent_100- config::irreversible_threshold_percent);
    std::nth_element(producer_objs.begin(), producer_objs.begin() + offset, producer_objs.end(),
       [](const producer_object* a, const producer_object* b) {
          return a->last_confirmed_block_num < b->last_confirmed_block_num;
@@ -1484,4 +1484,4 @@ transaction_trace chain_controller::wrap_transaction_processing( transaction_met
    return result;
 } FC_CAPTURE_AND_RETHROW( (transaction_header(data.trx())) ) }
 
-} } /// eosio::chain
+} } /// evt::chain

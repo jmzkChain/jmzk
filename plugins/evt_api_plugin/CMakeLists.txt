@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/eos/evt_api_plugin/*.hpp")
+file(GLOB HEADERS "include/evt/evt_api_plugin/*.hpp")
 add_library( evt_api_plugin
              evt_api_plugin.cpp
              ${HEADERS} )

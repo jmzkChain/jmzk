@@ -1,12 +1,12 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in evt/LICENSE.txt
  */
-#include <eosio/chain/fork_database.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <evt/chain/fork_database.hpp>
+#include <evt/chain/exceptions.hpp>
 #include <fc/smart_ref_impl.hpp>
 
-namespace eosio { namespace chain {
+namespace evt { namespace chain {
 fork_database::fork_database()
 {
 }
@@ -64,7 +64,7 @@ void  fork_database::_push_block(const item_ptr& item)
    {
       auto& index = _index.get<block_id>();
       auto itr = index.find(item->previous_id());
-      EOS_ASSERT(itr != index.end(), unlinkable_block_exception, "block does not link to known chain");
+      EVT_ASSERT(itr != index.end(), unlinkable_block_exception, "block does not link to known chain");
       FC_ASSERT(!(*itr)->invalid);
       item->prev = *itr;
    }
@@ -230,4 +230,4 @@ void fork_database::remove(block_id_type id)
    _index.get<block_id>().erase(id);
 }
 
-} } // eosio::chain
+} } // evt::chain

@@ -1,14 +1,14 @@
 #include <stdint.h>
 #include <eos/utilities/git_revision.hpp>
 
-#define EOS_GIT_REVISION_SHA "@EOS_GIT_REVISION_SHA@"
-#define EOS_GIT_REVISION_UNIX_TIMESTAMP @EOS_GIT_REVISION_UNIX_TIMESTAMP@
-#define EOS_GIT_REVISION_DESCRIPTION "@EOS_GIT_REVISION_DESCRIPTION@"
+#define EVT_GIT_REVISION_SHA "@EVT_GIT_REVISION_SHA@"
+#define EVT_GIT_REVISION_UNIX_TIMESTAMP @EVT_GIT_REVISION_UNIX_TIMESTAMP@
+#define EVT_GIT_REVISION_DESCRIPTION "@EVT_GIT_REVISION_DESCRIPTION@"
 
-namespace eosio { namespace utilities {
+namespace evt { namespace utilities {
 
-const char* const git_revision_sha = EOS_GIT_REVISION_SHA;
-const uint32_t git_revision_unix_timestamp = EOS_GIT_REVISION_UNIX_TIMESTAMP;
-const char* const git_revision_description = EOS_GIT_REVISION_DESCRIPTION;
+const char* const git_revision_sha = EVT_GIT_REVISION_SHA;
+const uint32_t git_revision_unix_timestamp = EVT_GIT_REVISION_UNIX_TIMESTAMP;
+const char* const git_revision_description = EVT_GIT_REVISION_DESCRIPTION;
 
-} } // end namespace eosio::utilities
+} } // end namespace evt::utilities

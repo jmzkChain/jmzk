@@ -1,12 +1,16 @@
+/**
+ *  @file
+ *  @copyright defined in evt/LICENSE.txt
+ */
 #include <algorithm>
-#include <eosio/chain/apply_context.hpp>
-#include <eosio/chain/chain_controller.hpp>
-#include <eosio/chain/generated_transaction_object.hpp>
+#include <evt/chain/apply_context.hpp>
+#include <evt/chain/chain_controller.hpp>
+#include <evt/chain/generated_transaction_object.hpp>
 #include <boost/container/flat_set.hpp>
 
 using boost::container::flat_set;
 
-namespace eosio { namespace chain {
+namespace evt { namespace chain {
 void apply_context::exec_one()
 {
    auto start = fc::time_point::now();
@@ -87,4 +91,4 @@ int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size
    return ps;
 }
 
-} } /// eosio::chain
+} } /// evt::chain

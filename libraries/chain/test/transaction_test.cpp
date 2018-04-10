@@ -1,8 +1,8 @@
 #include <boost/test/unit_test.hpp>
 
-#include <eosio/chain/transaction.hpp>
-#include <eosio/chain/contracts/types.hpp>
-#include <eosio/chain/exceptions.hpp>
+#include <evt/chain/transaction.hpp>
+#include <evt/chain/contracts/types.hpp>
+#include <evt/chain/exceptions.hpp>
 
 #include <fc/io/raw.hpp>
 
@@ -11,7 +11,7 @@
 #include <boost/iostreams/filter/zlib.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
-using namespace eosio::chain;
+using namespace evt::chain;
 using namespace std;
 namespace bio = boost::iostreams;
 
@@ -32,7 +32,7 @@ struct test_action {
 static const char deflate_bomb[] = "789c012e00d1ff789cabb8f5f6a021230303c3a1055ffd7379e417308c8251300a46c1281805a360d8837d6c8c0f18180190e708b7ec451357";
 
 /**
- * Utility predicate to check whether an EOS exception has the given message/code
+ * Utility predicate to check whether an EVT exception has the given message/code
  */
 template<typename E>
 struct exception_is {

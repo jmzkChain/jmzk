@@ -1,11 +1,11 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in evt/LICENSE.txt
  */
 #include <stdint.h>
-#include <eosio/utilities/words.hpp>
+#include <evt/utilities/words.hpp>
 
-namespace eosio { namespace words {
+namespace evt { namespace words {
 
 const const_char_ptr word_list[] = { 
 "a",
@@ -49761,4 +49761,4 @@ void hide_unused_warning() {
   (void)word_list; 
 }
 
-} } // eosio::words
+} } // evt::words

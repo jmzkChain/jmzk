@@ -1,6 +1,10 @@
-#include <eosio/chain/global_property_object.hpp>
+/**
+ *  @file
+ *  @copyright defined in evt/LICENSE.txt
+ */
+#include <evt/chain/global_property_object.hpp>
 
-namespace eosio { namespace chain {
+namespace evt { namespace chain {
 
 void dynamic_global_property_object::update_virtual_net_bandwidth( const chain_config& cfg ) {
 
@@ -36,4 +40,4 @@ void dynamic_global_property_object::update_virtual_act_bandwidth( const chain_c
   if( virtual_act_bandwidth >  min * 1000 )  virtual_act_bandwidth = min * 1000;
 }
 
-} } /// eosio::chain
+} } /// evt::chain

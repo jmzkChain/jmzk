@@ -1,0 +1,11 @@
+/** @file 
+ *    @copyright defined in evt/LICENSE.txt 
+ *
+ * \warning This file is machine generated. DO NOT EDIT.  See config.hpp.in for changes.
+ */
+
+namespace evt { namespace client { namespace config {
+   constexpr char version_str[] = "${evtc_BUILD_VERSION}";
+   constexpr char locale_path[] = "${LOCALEDIR}";
+   constexpr char locale_domain[] = "${LOCALEDOMAIN}";
+}}}

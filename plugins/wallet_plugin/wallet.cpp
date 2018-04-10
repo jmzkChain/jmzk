@@ -1,8 +1,8 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in evt/LICENSE.txt
  */
-#include <eosio/wallet_plugin/wallet.hpp>
+#include <evt/wallet_plugin/wallet.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -24,11 +24,11 @@
 #ifndef WIN32
 # include <sys/types.h>
 # include <sys/stat.h>
-#include <eosio/chain/exceptions.hpp>
+#include <evt/chain/exceptions.hpp>
 
 #endif
 
-namespace eosio { namespace wallet {
+namespace evt { namespace wallet {
 
 namespace detail {
 
@@ -140,7 +140,7 @@ public:
    bool import_key(string wif_key)
    {
       private_key_type priv(wif_key);
-      eosio::chain::public_key_type wif_pub_key = priv.get_public_key();
+      evt::chain::public_key_type wif_pub_key = priv.get_public_key();
 
       auto itr = _keys.find(wif_pub_key);
       if( itr == _keys.end() ) {
@@ -220,11 +220,11 @@ public:
    const string _wallet_filename_extension = ".wallet";
 };
 
-} } } // eosio::wallet::detail
+} } } // evt::wallet::detail
 
 
 
-namespace eosio { namespace wallet {
+namespace evt { namespace wallet {
 
 wallet_api::wallet_api(const wallet_data& initial_data)
    : my(new detail::wallet_api_impl(*this, initial_data))
@@ -297,7 +297,7 @@ void wallet_api::unlock(string password)
    FC_ASSERT(pk.checksum == pw);
    my->_keys = std::move(pk.keys);
    my->_checksum = pk.checksum;
-} EOS_RETHROW_EXCEPTIONS(chain::wallet_invalid_password_exception,
+} EVT_RETHROW_EXCEPTIONS(chain::wallet_invalid_password_exception,
                           "Invalid password for wallet: \"${wallet_name}\"", ("wallet_name", get_wallet_filename())) }
 
 void wallet_api::set_password( string password )
@@ -338,5 +338,5 @@ void wallet_api::set_wallet_filename(string wallet_filename)
    my->_wallet_filename = wallet_filename;
 }
 
-} } // eosio::wallet
+} } // evt::wallet
 

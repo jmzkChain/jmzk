@@ -1,13 +1,13 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in evt/LICENSE.txt
  */
-#include <eosio/chain/contracts/abi_serializer.hpp>
-#include <eosio/chain/contracts/chain_initializer.hpp>
-#include <eosio/chain/contracts/types.hpp>
-#include <eosio/chain/authority.hpp>
-#include <eosio/chain/chain_config.hpp>
-#include <eosio/chain/transaction.hpp>
+#include <evt/chain/contracts/abi_serializer.hpp>
+#include <evt/chain/contracts/chain_initializer.hpp>
+#include <evt/chain/contracts/types.hpp>
+#include <evt/chain/authority.hpp>
+#include <evt/chain/chain_config.hpp>
+#include <evt/chain/transaction.hpp>
 #include <fc/io/raw.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
@@ -15,7 +15,7 @@
 
 using namespace boost;
 
-namespace eosio { namespace chain { namespace contracts {
+namespace evt { namespace chain { namespace contracts {
 
    using boost::algorithm::ends_with;
    using std::string;

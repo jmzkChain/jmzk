@@ -1,31 +1,31 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in evt/LICENSE.txt
  */
-#include <eosio/chain_plugin/chain_plugin.hpp>
-#include <eosio/chain/fork_database.hpp>
-#include <eosio/chain/block_log.hpp>
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/permission_object.hpp>
-#include <eosio/chain/producer_object.hpp>
-#include <eosio/chain/config.hpp>
-#include <eosio/chain/types.hpp>
+#include <evt/chain_plugin/chain_plugin.hpp>
+#include <evt/chain/fork_database.hpp>
+#include <evt/chain/block_log.hpp>
+#include <evt/chain/exceptions.hpp>
+#include <evt/chain/permission_object.hpp>
+#include <evt/chain/producer_object.hpp>
+#include <evt/chain/config.hpp>
+#include <evt/chain/types.hpp>
 
 
-#include <eosio/chain/contracts/chain_initializer.hpp>
-#include <eosio/chain/contracts/genesis_state.hpp>
-#include <eosio/chain/contracts/evt_contract.hpp>
+#include <evt/chain/contracts/chain_initializer.hpp>
+#include <evt/chain/contracts/genesis_state.hpp>
+#include <evt/chain/contracts/evt_contract.hpp>
 
-#include <eosio/utilities/key_conversion.hpp>
+#include <evt/utilities/key_conversion.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
 
-namespace eosio {
+namespace evt {
 
-using namespace eosio;
-using namespace eosio::chain;
-using namespace eosio::chain::config;
+using namespace evt;
+using namespace evt::chain;
+using namespace evt::chain::config;
 using fc::flat_map;
 
 //using txn_msg_rate_limits = chain_controller::txn_msg_rate_limits;
@@ -396,7 +396,7 @@ read_write::push_transactions_results read_write::push_transactions(const read_w
 }
 
 read_only::get_account_results read_only::get_account( const get_account_params& params )const {
-   using namespace eosio::contracts;
+   using namespace evt::contracts;
 
    get_account_results result;
    result.account_name = params.account_name;
@@ -459,4 +459,4 @@ read_only::get_required_keys_result read_only::get_required_keys( const get_requ
 
 
 } // namespace chain_apis
-} // namespace eosio
+} // namespace evt

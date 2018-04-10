@@ -1,8 +1,8 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in evt/LICENSE.txt
  */
-#include <eosio/http_plugin/http_plugin.hpp>
+#include <evt/http_plugin/http_plugin.hpp>
 
 #include <fc/network/ip.hpp>
 #include <fc/log/logger_config.hpp>
@@ -22,7 +22,7 @@
 #include <thread>
 #include <memory>
 
-namespace eosio {
+namespace evt {
 
    static appbase::abstract_plugin& _http_plugin = app().register_plugin<http_plugin>();
 

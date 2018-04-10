@@ -1,20 +1,20 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in evt/LICENSE.txt
  */
-#include <eosio/chain/contracts/chain_initializer.hpp>
-#include <eosio/chain/contracts/evt_contract.hpp>
-#include <eosio/chain/contracts/types.hpp>
+#include <evt/chain/contracts/chain_initializer.hpp>
+#include <evt/chain/contracts/evt_contract.hpp>
+#include <evt/chain/contracts/types.hpp>
 
-#include <eosio/chain/producer_object.hpp>
-#include <eosio/chain/permission_object.hpp>
+#include <evt/chain/producer_object.hpp>
+#include <evt/chain/permission_object.hpp>
 
 #include <fc/io/json.hpp>
 
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/range/algorithm/copy.hpp>
 
-namespace eosio { namespace chain { namespace contracts {
+namespace evt { namespace chain { namespace contracts {
 
 time_point chain_initializer::get_chain_start_time() {
    return genesis.initial_timestamp;
@@ -35,35 +35,35 @@ void chain_initializer::register_types(chain_controller& chain, chainbase::datab
 #define SET_APP_HANDLER( contract, scope, action, nspace ) \
    chain._set_apply_handler( #contract, #scope, #action, &BOOST_PP_CAT(contracts::apply_, BOOST_PP_CAT(contract, BOOST_PP_CAT(_,action) ) ) )
 
-    SET_APP_HANDLER( eosio, eosio, newdomain, eosio );
-    SET_APP_HANDLER( eosio, eosio, issuetoken, eosio );
-    SET_APP_HANDLER( eosio, eosio, transfer, eosio );
-    SET_APP_HANDLER( eosio, eosio, updategroup, eosio );
-    SET_APP_HANDLER( eosio, eosio, updatedomain, eosio );
+    SET_APP_HANDLER( evt, evt, newdomain, evt );
+    SET_APP_HANDLER( evt, evt, issuetoken, evt );
+    SET_APP_HANDLER( evt, evt, transfer, evt );
+    SET_APP_HANDLER( evt, evt, updategroup, evt );
+    SET_APP_HANDLER( evt, evt, updatedomain, evt );
 }
 
 
-abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
+abi_def chain_initializer::evt_contract_abi(const abi_def& evt_system_abi)
 {
-   abi_def eos_abi(eosio_system_abi);
-   eos_abi.types.push_back( type_def{"user_id","public_key"} );
-   eos_abi.types.push_back( type_def{"user_list","public_key[]"} );
-   eos_abi.types.push_back( type_def{"group_key","public_key"} );
-   eos_abi.types.push_back( type_def{"group_id","uint128_t"} );
-   eos_abi.types.push_back( type_def{"permission_name","name"} );
-   eos_abi.types.push_back( type_def{"weight_type","uint16"} );
-   eos_abi.types.push_back( type_def{"fields","field[]"} );
-   eos_abi.types.push_back( type_def{"time_point_sec","time"} );
+   abi_def evt_abi(evt_system_abi);
+   evt_abi.types.push_back( type_def{"user_id","public_key"} );
+   evt_abi.types.push_back( type_def{"user_list","public_key[]"} );
+   evt_abi.types.push_back( type_def{"group_key","public_key"} );
+   evt_abi.types.push_back( type_def{"group_id","uint128_t"} );
+   evt_abi.types.push_back( type_def{"permission_name","name"} );
+   evt_abi.types.push_back( type_def{"weight_type","uint16"} );
+   evt_abi.types.push_back( type_def{"fields","field[]"} );
+   evt_abi.types.push_back( type_def{"time_point_sec","time"} );
 
-   eos_abi.actions.push_back( action_def{name("newdomain"), "newdomain"} );
-   eos_abi.actions.push_back( action_def{name("issuetoken"), "issuetoken"} );
-   eos_abi.actions.push_back( action_def{name("transfer"), "transfer"} );
-   eos_abi.actions.push_back( action_def{name("updategroup"), "updategroup"} );  
-   eos_abi.actions.push_back( action_def{name("updatedomain"), "updatedomain"} );  
+   evt_abi.actions.push_back( action_def{name("newdomain"), "newdomain"} );
+   evt_abi.actions.push_back( action_def{name("issuetoken"), "issuetoken"} );
+   evt_abi.actions.push_back( action_def{name("transfer"), "transfer"} );
+   evt_abi.actions.push_back( action_def{name("updategroup"), "updategroup"} );  
+   evt_abi.actions.push_back( action_def{name("updatedomain"), "updatedomain"} );  
 
    // ACTION PAYLOADS
 
-   eos_abi.structs.emplace_back( struct_def {
+   evt_abi.structs.emplace_back( struct_def {
       "newdomain", "", {
          {"name", "domain_name"},
          {"issuer", "user_id"},
@@ -74,7 +74,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   evt_abi.structs.emplace_back( struct_def {
       "issuetoken", "", {
          {"domain", "domain_name"},
          {"names", "token_name[]"},
@@ -82,7 +82,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   evt_abi.structs.emplace_back( struct_def {
       "transfer", "", {
          {"domain", "domain_name"},
          {"token_name", "name"},
@@ -90,7 +90,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   evt_abi.structs.emplace_back( struct_def {
       "updategroup", "", {
          {"id", "group_id"},
          {"threshold", "uint32"},
@@ -99,7 +99,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   evt_abi.structs.emplace_back( struct_def {
       "updatedomain", "", {
          {"name", "domain_name"},
          {"issue", "permission_def"},
@@ -111,7 +111,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
 
    // DATABASE RECORDS
 
-   eos_abi.structs.emplace_back( struct_def {
+   evt_abi.structs.emplace_back( struct_def {
       "pending_recovery", "", {
          {"account",    "name"},
          {"request_id", "uint32"},
@@ -122,14 +122,14 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
 
    // abi_def fields
 
-   eos_abi.structs.emplace_back( struct_def {
+   evt_abi.structs.emplace_back( struct_def {
       "field", "", {
          {"name", "field_name"},
          {"type", "type_name"}
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   evt_abi.structs.emplace_back( struct_def {
       "struct_def", "", {
          {"name", "type_name"},
          {"base", "type_name"},
@@ -137,7 +137,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   evt_abi.structs.emplace_back( struct_def {
       "token_def", "", {
          {"domain", "domain_name"},
          {"name", "token_name"},
@@ -145,7 +145,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   evt_abi.structs.emplace_back( struct_def {
       "group_def", "", {
          {"id", "group_id"},
          {"key", "group_key"},
@@ -154,14 +154,14 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   evt_abi.structs.emplace_back( struct_def {
       "group_weight", "", {
          {"id", "group_id"},
          {"weight", "weight_type"}
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   evt_abi.structs.emplace_back( struct_def {
       "permission_def", "", {
          {"name", "permission_name"},
          {"threshold", "uint32"},
@@ -169,7 +169,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   evt_abi.structs.emplace_back( struct_def {
       "domain_def", "", {
          {"name", "domain_name"},
          {"issuer", "user_id"},
@@ -180,14 +180,14 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   evt_abi.structs.emplace_back( struct_def {
       "permission_level", "", {
          {"actor", "account_name"},
          {"permission", "permission_name"}
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   evt_abi.structs.emplace_back( struct_def {
       "action", "", {
          {"account", "account_name"},
          {"name", "action_name"},
@@ -197,14 +197,14 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   evt_abi.structs.emplace_back( struct_def {
       "permission_level_weight", "", {
          {"permission", "permission_level"},
          {"weight", "weight_type"}
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   evt_abi.structs.emplace_back( struct_def {
       "transaction_header", "", {
          {"expiration", "time_point_sec"},
          {"region", "uint16"},
@@ -215,26 +215,26 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   evt_abi.structs.emplace_back( struct_def {
       "transaction", "transaction_header", {
          {"actions", "action[]"}
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   evt_abi.structs.emplace_back( struct_def {
       "signed_transaction", "transaction", {
          {"signatures", "signature[]"}
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   evt_abi.structs.emplace_back( struct_def {
       "key_weight", "", {
          {"key", "public_key"},
          {"weight", "weight_type"}
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   evt_abi.structs.emplace_back( struct_def {
       "authority", "", {
          {"threshold", "uint32"},
          {"keys", "key_weight[]"},
@@ -242,21 +242,21 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   evt_abi.structs.emplace_back( struct_def {
       "type_def", "", {
          {"new_type_name", "type_name"},
          {"type", "type_name"}
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   evt_abi.structs.emplace_back( struct_def {
       "action_def", "", {
          {"name", "action_name"},
          {"type", "type_name"}
       }
    });
 
-   eos_abi.structs.emplace_back( struct_def {
+   evt_abi.structs.emplace_back( struct_def {
       "block_header", "", {
          {"previous", "checksum256"},
          {"timestamp", "uint32"},
@@ -269,7 +269,7 @@ abi_def chain_initializer::eos_contract_abi(const abi_def& eosio_system_abi)
       }
    });
 
-   return eos_abi;
+   return evt_abi;
 }
 
 void chain_initializer::prepare_database( chain_controller& chain,
@@ -359,4 +359,4 @@ void chain_initializer::prepare_tokendb(chain::chain_controller& chain, evt::cha
     }
 }
 
-} } } // namespace eosio::chain::contracts
+} } } // namespace evt::chain::contracts

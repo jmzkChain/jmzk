@@ -1,8 +1,12 @@
-#include <eosio/chain/transaction_metadata.hpp>
-#include <eosio/chain/merkle.hpp>
+/**
+ *  @file
+ *  @copyright defined in evt/LICENSE.txt
+ */
+#include <evt/chain/transaction_metadata.hpp>
+#include <evt/chain/merkle.hpp>
 #include <fc/io/raw.hpp>
 
-namespace eosio { namespace chain {
+namespace evt { namespace chain {
 
 transaction_metadata::transaction_metadata( const packed_transaction& t, chain_id_type chainid, const time_point& published )
    :raw_trx(t.get_raw_transaction())
@@ -15,4 +19,4 @@ transaction_metadata::transaction_metadata( const packed_transaction& t, chain_i
    ,raw_size(raw_trx->size())
 { }
 
-} } // eosio::chain
+} } // evt::chain

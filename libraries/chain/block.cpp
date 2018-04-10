@@ -1,14 +1,14 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in evt/LICENSE.txt
  */
-#include <eosio/chain/block.hpp>
-#include <eosio/chain/merkle.hpp>
+#include <evt/chain/block.hpp>
+#include <evt/chain/merkle.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/bitutil.hpp>
 #include <algorithm>
 
-namespace eosio { namespace chain {
+namespace evt { namespace chain {
    digest_type block_header::digest()const
    {
       return digest_type::hash(*this);

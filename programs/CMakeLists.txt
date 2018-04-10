@@ -1,5 +1,5 @@
-add_subdirectory( eosiod )
-add_subdirectory( eosioc )
-add_subdirectory( eosiowd )
+add_subdirectory( evtd )
+add_subdirectory( evtc )
+add_subdirectory( evtwd )
 add_subdirectory( eosio-launcher )
 add_subdirectory( eosio-applesedemo )

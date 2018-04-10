@@ -1,14 +1,14 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in evt/LICENSE.txt
  */
-#include <eosio/chain/chain_config.hpp>
+#include <evt/chain/chain_config.hpp>
 
 #include <boost/range/algorithm/nth_element.hpp>
 
 #include <fc/io/json.hpp>
 
-namespace eosio { namespace chain {
+namespace evt { namespace chain {
 
 
 template <typename T, typename Range>
@@ -70,4 +70,4 @@ bool operator==(const chain_config& a, const chain_config& b) {
    return true;
 }
 
-} } // namespace eosio::chain
+} } // namespace evt::chain

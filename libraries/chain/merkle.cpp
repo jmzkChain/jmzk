@@ -1,7 +1,11 @@
-#include <eosio/chain/merkle.hpp>
+/**
+ *  @file
+ *  @copyright defined in evt/LICENSE.txt
+ */
+#include <evt/chain/merkle.hpp>
 #include <fc/io/raw.hpp>
 
-namespace eosio { namespace chain {
+namespace evt { namespace chain {
 
 /**
  * in order to keep proofs concise, before hashing we set the first bit
@@ -49,4 +53,4 @@ digest_type merkle(vector<digest_type> ids) {
    return ids.front();
 }
 
-} } // eosio::chain
+} } // evt::chain

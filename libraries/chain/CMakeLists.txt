@@ -1,7 +1,7 @@
-file(GLOB HEADERS "include/eosio/chain/*.hpp" "include/eosio/chain/contracts/*.hpp")
+file(GLOB HEADERS "include/evt/chain/*.hpp" "include/evt/chain/contracts/*.hpp")
 
 ## SORT .cpp by most likely to change / break compile
-add_library( eosio_chain
+add_library( evt_chain
              chain_config.cpp
              merkle.cpp
              name.cpp
@@ -29,8 +29,8 @@ add_library( eosio_chain
              ${HEADERS}
              transaction_metadata.cpp)
 
-target_link_libraries( eosio_chain eos_utilities fc chainbase softfloat rocksdb )
-target_include_directories( eosio_chain
+target_link_libraries( evt_chain evt_utilities fc chainbase softfloat rocksdb )
+target_include_directories( evt_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"
                             )
 
@@ -41,6 +41,6 @@ endif(MSVC)
 add_subdirectory(test)
 
 #add_executable( test test.cpp )
-#target_link_libraries( test eosio_chain ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} ${Intl_LIBRARIES} )
+#target_link_libraries( test evt_chain ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} ${Intl_LIBRARIES} )
 
 

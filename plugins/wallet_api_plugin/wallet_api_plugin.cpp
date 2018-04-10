@@ -1,28 +1,28 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in evt/LICENSE.txt
  */
-#include <eosio/wallet_api_plugin/wallet_api_plugin.hpp>
-#include <eosio/wallet_plugin/wallet_manager.hpp>
-#include <eosio/chain/exceptions.hpp>
-#include <eosio/chain/transaction.hpp>
+#include <evt/wallet_api_plugin/wallet_api_plugin.hpp>
+#include <evt/wallet_plugin/wallet_manager.hpp>
+#include <evt/chain/exceptions.hpp>
+#include <evt/chain/transaction.hpp>
 
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
 
 #include <chrono>
 
-namespace eosio { namespace detail {
+namespace evt { namespace detail {
   struct wallet_api_plugin_empty {};
 }}
 
-FC_REFLECT(eosio::detail::wallet_api_plugin_empty, );
+FC_REFLECT(evt::detail::wallet_api_plugin_empty, );
 
-namespace eosio {
+namespace evt {
 
 static appbase::abstract_plugin& _wallet_api_plugin = app().register_plugin<wallet_api_plugin>();
 
-using namespace eosio;
+using namespace evt;
 
 #define CALL(api_name, api_handle, call_name, INVOKE, http_response_code) \
 {std::string("/v1/" #api_name "/" #call_name), \
@@ -54,16 +54,16 @@ using namespace eosio;
 
 #define INVOKE_V_R(api_handle, call_name, in_param) \
      api_handle.call_name(fc::json::from_string(body).as<in_param>()); \
-     eosio::detail::wallet_api_plugin_empty result;
+     evt::detail::wallet_api_plugin_empty result;
 
 #define INVOKE_V_R_R(api_handle, call_name, in_param0, in_param1) \
      const auto& vs = fc::json::json::from_string(body).as<fc::variants>(); \
      api_handle.call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>()); \
-     eosio::detail::wallet_api_plugin_empty result;
+     evt::detail::wallet_api_plugin_empty result;
 
 #define INVOKE_V_V(api_handle, call_name) \
      api_handle.call_name(); \
-     eosio::detail::wallet_api_plugin_empty result;
+     evt::detail::wallet_api_plugin_empty result;
 
 
 void wallet_api_plugin::plugin_startup() {

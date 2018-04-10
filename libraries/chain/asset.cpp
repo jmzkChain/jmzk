@@ -1,13 +1,13 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in evt/LICENSE.txt
  */
-#include <eosio/chain/asset.hpp>
+#include <evt/chain/asset.hpp>
 #include <boost/rational.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 #include <fc/reflect/variant.hpp>
 
-namespace eosio { namespace chain {
+namespace evt { namespace chain {
 typedef boost::multiprecision::int128_t  int128_t;
 
 uint8_t asset::decimals()const {
@@ -47,7 +47,7 @@ asset asset::from_string(const string& from)
       result.amount = fc::to_int64(intpart);
       string symbol_part;
       if (dot_pos != string::npos && space_pos != string::npos) {
-         symbol_part = eosio::chain::to_string(space_pos - dot_pos - 1);
+         symbol_part = evt::chain::to_string(space_pos - dot_pos - 1);
          symbol_part += ',';
          symbol_part += s.substr(space_pos + 1);
       }
@@ -65,4 +65,4 @@ asset asset::from_string(const string& from)
    FC_CAPTURE_LOG_AND_RETHROW( (from) )
 }
 
-} }  // eosio::types
+} }  // evt::types

@@ -1,9 +1,9 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in evt/LICENSE.txt
  */
-#include <eosio/wallet_plugin/wallet_plugin.hpp>
-#include <eosio/wallet_plugin/wallet_manager.hpp>
+#include <evt/wallet_plugin/wallet_plugin.hpp>
+#include <evt/wallet_plugin/wallet_manager.hpp>
 
 #include <boost/filesystem/path.hpp>
 #include <chrono>
@@ -12,7 +12,7 @@
 
 namespace fc { class variant; }
 
-namespace eosio {
+namespace evt {
 
 static appbase::abstract_plugin& _wallet_plugin = app().register_plugin<wallet_plugin>();
 
@@ -32,8 +32,8 @@ void wallet_plugin::set_program_options(options_description& cli, options_descri
           "Timeout for unlocked wallet in seconds. "
                 "Wallets will automatically lock after specified number of seconds of inactivity. "
                 "Activity is defined as any wallet command e.g. list-wallets.")
-         ("eosio-key", bpo::value<std::string>(),
-          "eosio key that will be imported automatically when a wallet is created.")
+         ("evt-key", bpo::value<std::string>(),
+          "evt key that will be imported automatically when a wallet is created.")
          ;
 }
 
@@ -52,10 +52,10 @@ void wallet_plugin::plugin_initialize(const variables_map& options) {
       std::chrono::seconds t(timeout);
       wallet_manager_ptr->set_timeout(t);
    }
-   if (options.count("eosio-key")) {
-      std::string eosio_wif_key = options.at("eosio-key").as<std::string>();
-      eosio_wif_key = fc::json::from_string(eosio_wif_key).as<std::string>();
-      wallet_manager_ptr->set_eosio_key(eosio_wif_key);
+   if (options.count("evt-key")) {
+      std::string evt_wif_key = options.at("evt-key").as<std::string>();
+      evt_wif_key = fc::json::from_string(evt_wif_key).as<std::string>();
+      wallet_manager_ptr->set_evt_key(evt_wif_key);
    }
 }
-} // namespace eosio
+} // namespace evt

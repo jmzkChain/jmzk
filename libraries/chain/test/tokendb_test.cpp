@@ -5,10 +5,10 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/test/unit_test.hpp>
-#include "eosio/chain/tokendb.hpp"
+#include "evt/chain/tokendb.hpp"
 
-using namespace eosio::chain;
-using namespace eosio::chain::contracts;
+using namespace evt::chain;
+using namespace evt::chain::contracts;
 
 BOOST_AUTO_TEST_SUITE(tokendb_test)
 
@@ -99,7 +99,7 @@ BOOST_AUTO_TEST_CASE(tokendb_default_test)
         BOOST_CHECK_EQUAL(true, t.owner[0] == issuer);
     });
 
-    auto nuser = user_id(std::string("EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"));
+    auto nuser = user_id(std::string("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"));
     auto tt = transfer();
     tt.domain = "test";
     tt.name = "TEST-A";
@@ -167,7 +167,7 @@ BOOST_AUTO_TEST_CASE(tokendb_savepoint_test)
     auto r7 = db.add_savepoint(2);
     BOOST_CHECK_EQUAL(0, r7);
 
-    auto nuser = user_id(std::string("EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"));
+    auto nuser = user_id(std::string("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"));
     auto tt = transfer();
     tt.domain = "test2";
     tt.name = "TEST-A";

@@ -1,8 +1,8 @@
-#include <eosio/chain/chain_controller.hpp>
-#include <eosio/chain/producer_object.hpp>
+#include <evt/chain/chain_controller.hpp>
+#include <evt/chain/producer_object.hpp>
 #include <fc/io/json.hpp>
 
-using namespace eosio::chain;
+using namespace evt::chain;
 
 int main( int argc, char** argv ) {
    try {
@@ -40,8 +40,8 @@ int main( int argc, char** argv ) {
 
 
       /*
-      auto private_key_default = std::make_pair(eosio::chain::public_key_type(default_priv_key.get_public_key()),
-                                                eosio::utilities::key_to_wif(default_priv_key));
+      auto private_key_default = std::make_pair(evt::chain::public_key_type(default_priv_key.get_public_key()),
+                                                evt::utilities::key_to_wif(default_priv_key));
                                                 */
 
       idump((pub_key)(default_priv_key));

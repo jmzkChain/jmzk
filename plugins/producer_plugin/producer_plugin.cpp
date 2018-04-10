@@ -1,10 +1,10 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in evt/LICENSE.txt
  */
-#include <eosio/producer_plugin/producer_plugin.hpp>
-#include <eosio/net_plugin/net_plugin.hpp>
-#include <eosio/chain/producer_object.hpp>
+#include <evt/producer_plugin/producer_plugin.hpp>
+#include <evt/net_plugin/net_plugin.hpp>
+#include <evt/chain/producer_object.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/smart_ref_impl.hpp>
@@ -18,11 +18,11 @@
 using std::string;
 using std::vector;
 
-namespace eosio {
+namespace evt {
 
 static appbase::abstract_plugin& _producer_plugin = app().register_plugin<producer_plugin>();
 
-using namespace eosio::chain;
+using namespace evt::chain;
 
 class producer_plugin_impl {
 public:
@@ -36,7 +36,7 @@ public:
    boost::program_options::variables_map _options;
    bool     _production_enabled                 = false;
    uint32_t _required_producer_participation    = uint32_t(config::required_producer_participation);
-   uint32_t _production_skip_flags              = eosio::chain::skip_nothing;
+   uint32_t _production_skip_flags              = evt::chain::skip_nothing;
 
    std::map<chain::public_key_type, chain::private_key_type> _private_keys;
    std::set<chain::account_name>                             _producers;
@@ -46,16 +46,16 @@ public:
    uint32_t _prev_result_count = 0;
 };
 
-void new_chain_banner(const eosio::chain::chain_controller& db)
+void new_chain_banner(const evt::chain::chain_controller& db)
 {
    std::cerr << "\n"
-      "*******************************\n"
-      "*                             *\n"
-      "*   ------ NEW CHAIN ------   *\n"
-      "*   -  Welcome to EOSIO!  -   *\n"
-      "*   -----------------------   *\n"
-      "*                             *\n"
-      "*******************************\n"
+      "************************************\n"
+      "*                                  *\n"
+      "*   -------- NEW CHAIN ---------   *\n"
+      "*   -  Welcome to everiToken!  -   *\n"
+      "*   ----------------------------   *\n"
+      "*                                  *\n"
+      "************************************\n"
       "\n";
    if(db.get_slot_at_time(fc::time_point::now()) > 200)
    {
@@ -168,7 +168,7 @@ void producer_plugin::plugin_startup()
       {
          if(chain.head_block_num() == 0)
             new_chain_banner(chain);
-         my->_production_skip_flags |= eosio::chain::skip_undo_history_check;
+         my->_production_skip_flags |= evt::chain::skip_undo_history_check;
       }
       my->schedule_production_loop();
    } else
@@ -309,7 +309,7 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
    }
 
    auto scheduled_time = chain.get_slot_time( slot );
-   eosio::chain::public_key_type scheduled_key = chain.get_producer(scheduled_producer).signing_key;
+   evt::chain::public_key_type scheduled_key = chain.get_producer(scheduled_producer).signing_key;
    auto private_key_itr = _private_keys.find( scheduled_key );
 
    if( private_key_itr == _private_keys.end() )
@@ -345,4 +345,4 @@ block_production_condition::block_production_condition_enum producer_plugin_impl
    return block_production_condition::produced;
 }
 
-} // namespace eosio
+} // namespace evt

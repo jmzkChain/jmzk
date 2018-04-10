@@ -10,6 +10,6 @@ add_executable(chain_unit_test
     tokendb_test.cpp)
 target_include_directories(chain_unit_test PRIVATE ${Boost_INCLUDE_DIRS})
 target_compile_definitions(chain_unit_test PRIVATE "BOOST_TEST_DYN_LINK=1")
-target_link_libraries(chain_unit_test eosio_chain)
+target_link_libraries(chain_unit_test evt_chain)
 
 add_test(chain_unit_test chain_unit_test)
