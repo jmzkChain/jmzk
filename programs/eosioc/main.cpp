@@ -420,11 +420,13 @@ struct set_get_token_subcommand {
 
    set_get_token_subcommand(CLI::App* actionRoot) {
        auto gtcmd = actionRoot->add_subcommand("token", localized("Retrieve a token information"));
-       gtcmd->add_option("domain", name, localized("Domain name of token to be retrieved"))->required();
+       gtcmd->add_option("domain", domain, localized("Domain name of token to be retrieved"))->required();
        gtcmd->add_option("name", name, localized("Name of token to be retrieved"))->required();
 
        gtcmd->set_callback([this] {
-          auto arg = fc::mutable_variant_object("domain", domain)("name", name);
+          auto arg = fc::mutable_variant_object();
+          arg.set("domain", domain);
+          arg.set("name", name);
           std::cout << fc::json::to_pretty_string(call(get_token_func, arg)) << std::endl;
        });
    }
