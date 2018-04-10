@@ -73,55 +73,85 @@ namespace eosio { namespace chain {
             auto KeyReverter = fc::make_scoped_exit([this, keys = _used_keys] () mutable {
                _used_keys = keys;
             });
-            
+            bool result = false;
+
             if(action.domain == "domain") {
                 // newdomain action
                 if(action.name != "newdomain") {
                     return false;
                 }
-                // will check later
-                return true;
-            }
+                public_key_type issuer;
+                try {
+                    auto nd = action.data_as<contracts::newdomain>();
+                    issuer = nd.issuer;
+                } EOS_RETHROW_EXCEPTIONS(chain_type_exception, "transaction data is not valid, data cannot cast to `newdomain` type.");
 
-            bool result = false;
-            _get_permission_func(action.domain, action.name, [&](const auto& permission) {
-                uint32_t total_weight = 0;
-                for(const auto& group_ref : permission.groups) {
-                    bool gresult = false;
-                    if(group_ref.id.empty()) {
-                        // is owner group, special handle this
-                        _get_owner_func(action.domain, action.key, [&](const auto& owners) {
-                            weight_tally_visitor vistor(*this);
-                            for(const auto& owner : owners) {
-                                vistor(owner, 1);
-                            }
-                            if(vistor.total_weight == owners.size()) {
-                                gresult = true;
-                                return;
-                            }
-                        });
-                    }
-                    else {
-                        // normal grou
-                        _get_group_func(group_ref.id, [&](const auto& group) {
-                            weight_tally_visitor vistor(*this);
-                            for(const auto& kw : group.keys) {
-                                if(vistor(kw) >= group.threshold) {
+                weight_tally_visitor vistor(*this);
+                if(vistor(issuer, 1) < 1) {
+                    return false;
+                }
+                result = true;
+            }
+            else if(action.domain == "group") {
+                // updategroup action
+                if(action.name != "updategroup") {
+                    return false;
+                }
+                public_key_type gkey;
+                contracts::updategroup ug;
+                try {
+                    ug = action.data_as<contracts::updategroup>();
+                } EOS_RETHROW_EXCEPTIONS(chain_type_exception, "transation data is not valid, data cannot cast to `updategroup` type");
+                
+                _get_group_func(ug.id, [&](const auto& group) {
+                    gkey = group.key;
+                });
+                weight_tally_visitor vistor(*this);
+                if(vistor(gkey, 1) < 1) {
+                    return false;
+                }
+                result = true;
+            }
+            else {
+                _get_permission_func(action.domain, action.name, [&](const auto& permission) {
+                    uint32_t total_weight = 0;
+                    for (const auto& group_ref : permission.groups) {
+                        bool gresult = false;
+                        if (group_ref.id.empty()) {
+                            // is owner group, special handle this
+                            _get_owner_func(action.domain, action.key, [&](const auto& owners) {
+                                weight_tally_visitor vistor(*this);
+                                for (const auto& owner : owners) {
+                                    vistor(owner, 1);
+                                }
+                                if (vistor.total_weight == owners.size()) {
                                     gresult = true;
                                     return;
                                 }
+                            });
+                        }
+                        else {
+                            // normal group
+                            _get_group_func(group_ref.id, [&](const auto& group) {
+                                weight_tally_visitor vistor(*this);
+                                for (const auto& kw : group.keys) {
+                                    if (vistor(kw) >= group.threshold) {
+                                        gresult = true;
+                                        return;
+                                    }
+                                }
+                            });
+                        }
+                        if (gresult) {
+                            total_weight += group_ref.weight;
+                            if (total_weight >= permission.threshold) {
+                                result = true;
+                                return;
                             }
-                        });
-                    }
-                    if(gresult) {
-                        total_weight += group_ref.weight;
-                        if(total_weight >= permission.threshold) {
-                            result = true;
-                            return;
                         }
                     }
-                }
-            });
+                });
+            }
             if(result) {
                 KeyReverter.cancel();
                 return true;
