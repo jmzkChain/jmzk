@@ -356,7 +356,7 @@ struct set_group_subcommands {
    set_group_subcommands(CLI::App* actionRoot) {
       auto ugcmd = actionRoot->add_subcommand("update", localized("Update specific permission group, id or key must provide at least one."));
       ugcmd->add_option("id", id, localized("Id of the permission group to be updated"));
-      ugcmd->add_option("key", key, localized("Key of permission group to be updated"));
+      ugcmd->add_option("-k,--key", key, localized("Key of permission group to be updated"));
       ugcmd->add_option("threshold", threshold, localized("Threshold of permission group"))->required();
       ugcmd->add_option("keys", keys, localized("JSON string or filename defining the keys of permission group"))->required();
 
