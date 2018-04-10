@@ -673,12 +673,12 @@ void chain_controller::__apply_block(const signed_block& next_block)
    _finalize_block( next_block_trace );
 } FC_CAPTURE_AND_RETHROW( (next_block.block_num()) )  }
 
-flat_set<public_key_type> chain_controller::get_required_keys(const transaction& trx,
-                                                              const flat_set<public_key_type>& candidate_keys)const
-{
-   auto checker = make_auth_checker( candidate_keys, 
+namespace __internal {
+
+auto get_auth_checker( const evt::chain::tokendb& tokendb, const flat_set<public_key_type>& keys) {
+    auto checker = make_auth_checker( keys, 
         [&](const auto& domain, const auto name, const auto& cb) {
-            _tokendb.read_domain(domain, [&](const auto& domain) {
+            tokendb.read_domain(domain, [&](const auto& domain) {
                 if(name == "issue") {
                     cb(domain.issue);
                 }
@@ -691,13 +691,23 @@ flat_set<public_key_type> chain_controller::get_required_keys(const transaction&
             });
         },
         [&](const auto& id, const auto& cb) {
-            _tokendb.read_group(id, cb);
+            tokendb.read_group(id, cb);
         },
         [&](const auto& domain, const auto& name, const auto& cb) {
-            _tokendb.read_token(domain, name, [&](const auto& token) {
+            tokendb.read_token(domain, name, [&](const auto& token) {
                 cb(token.owner);
             });
         });
+    return checker;
+}
+
+}  // namespace __internal
+
+flat_set<public_key_type> chain_controller::get_required_keys(const transaction& trx,
+                                                              const flat_set<public_key_type>& candidate_keys)const
+{
+   using namespace __internal;
+   auto checker = get_auth_checker(_tokendb, candidate_keys);
 
     for(const auto& act : trx.actions) {
         EOS_ASSERT(checker.satisfied(act), tx_missing_sigs,
@@ -712,28 +722,8 @@ void chain_controller::check_authorization( const vector<action>& actions,
                                             const flat_set<public_key_type>& provided_keys,
                                             bool allow_unused_signatures) const
 {
-   auto checker = make_auth_checker( provided_keys, 
-        [&](const auto& domain, const auto name, const auto& cb) {
-            _tokendb.read_domain(domain, [&](const auto& domain) {
-                if(name == "issue") {
-                    cb(domain.issue);
-                }
-                else if(name == "transfer") {
-                    cb(domain.transfer);
-                }
-                else if(name == "manage") {
-                    cb(domain.manage);
-                }
-            });
-        },
-        [&](const auto& id, const auto& cb) {
-            _tokendb.read_group(id, cb);
-        },
-        [&](const auto& domain, const auto& name, const auto& cb) {
-            _tokendb.read_token(domain, name, [&](const auto& token) {
-                cb(token.owner);
-            });
-        });
+   using namespace __internal;
+   auto checker = get_auth_checker(_tokendb, provided_keys);
 
    for( const auto& act : actions ) {
        if((_skip_flags & skip_transaction_signatures) == false) {
@@ -1455,9 +1445,12 @@ transaction_trace chain_controller::wrap_transaction_processing( transaction_met
 
    const transaction& trx = data.trx();
 
+   FC_ASSERT( trx.region == 0, "currently only region 0 is supported" );
+
    //wdump((transaction_header(trx)));
 
    auto temp_session = _db.start_undo_session(true);
+
 
    // for now apply the transaction serially but schedule it according to those invariants
    validate_referenced_accounts(trx);
@@ -1469,6 +1462,14 @@ transaction_trace chain_controller::wrap_transaction_processing( transaction_met
    auto& bshard_trace = _pending_cycle_trace->shard_traces.at(0);
 
    bshard.transactions.emplace_back( result );
+
+   if(data.raw_trx.valid()) {
+       result.packed_trx_digest = data.packed_digest;
+   }
+
+   result.region_id   = 0; // Currently we only support region 0.
+   result.cycle_index = _pending_block->regions.back().cycles_summary.size() - 1;
+   result.shard_index = 0; // Currently we only have one shard per cycle.
    
    bshard_trace.append(result);
 

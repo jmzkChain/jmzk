@@ -69,7 +69,7 @@ apply_eosio_newdomain(apply_context& context) {
 
         auto& tokendb = context.mutable_tokendb;
         EOS_ASSERT(!tokendb.exists_domain(ndact.name), action_validate_exception, "Domain ${name} already existed", ("name",ndact.name));
-        EOS_ASSERT(context.trx_meta.signing_keys, action_validate_exception, "[EVT] Signing keys not avaiable");
+        EOS_ASSERT(context.trx_meta.signing_keys && !context.trx_meta.signing_keys->empty(), action_validate_exception, "[EVT] Signing keys not avaiable");
         auto& keys = *context.trx_meta.signing_keys;
         auto found = std::find(keys.cbegin(), keys.cend(), ndact.issuer);
         EOS_ASSERT(found != keys.cend(), action_validate_exception, "Issuer must sign his key");
@@ -94,8 +94,7 @@ apply_eosio_newdomain(apply_context& context) {
                 auto dbexisted = tokendb.exists_group(g.id);
                 auto defexisted = std::find_if(ndact.groups.cbegin(), ndact.groups.cend(), [&g](auto& gd) { return gd.id == g.id; }) != ndact.groups.cend();
 
-                EOS_ASSERT(dbexisted && defexisted, action_validate_exception, "Group ${id} already existed shouldn't be defined again", ("id", g.id));
-                EOS_ASSERT(!dbexisted && !defexisted, action_validate_exception, "Group ${id} need to be defined", ("id", g.id));
+                EOS_ASSERT(dbexisted || defexisted, action_validate_exception, "Group ${id} is not valid, may already be defined or not provide defines", ("id", g.id));
             }
         };
         check_groups(ndact.issue, false);
@@ -206,8 +205,7 @@ apply_eosio_updatedomain(apply_context& context) {
                 auto dbexisted = tokendb.exists_group(g.id);
                 auto defexisted = std::find_if(udact.groups.cbegin(), udact.groups.cend(), [&g](auto& gd) { return gd.id == g.id; }) != udact.groups.cend();
 
-                EOS_ASSERT(dbexisted && defexisted, action_validate_exception, "Group ${id} already existed shouldn't be defined again", ("id", g.id));
-                EOS_ASSERT(!dbexisted && !defexisted, action_validate_exception, "Group ${id} need to be defined", ("id", g.id));
+                EOS_ASSERT(dbexisted || defexisted, action_validate_exception, "Group ${id} is not valid, may already be defined or not provide defines", ("id", g.id));
             }
         };
         check_groups(udact.issue, false);

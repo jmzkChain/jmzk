@@ -123,7 +123,7 @@ uint32_t port = 8888;
 
 // restricting use of wallet to localhost
 string wallet_host = "localhost";
-uint32_t wallet_port = 8888;
+uint32_t wallet_port = 9999;
 
 auto   tx_expiration = fc::seconds(30);
 bool   tx_dont_broadcast = false;
@@ -250,13 +250,13 @@ struct set_domain_subcommands {
    string groups;
 
    set_domain_subcommands(CLI::App* actionRoot) {
-      auto ndcmd = actionRoot->add_subcommand("new", localized("Add new domain"), false);
+      auto ndcmd = actionRoot->add_subcommand("new", localized("Add new domain"));
       ndcmd->add_option("name", name, localized("The name of new domain"))->required();
       ndcmd->add_option("issuer", issuer, localized("The public key of the issuer"))->required();
       ndcmd->add_option("issue", issue, localized("JSON string or filename defining ISSUE permission"))->required();
       ndcmd->add_option("transfer", transfer, localized("JSON string or filename defining TRANSFER permission"))->required();
-      ndcmd->add_option("manage", manage, localized("JSON string or filename defining MANAGE permission"))->required();
-      ndcmd->add_option("groups", groups, localized("JSON string or filename defining groups which are new defined"))->required();
+      ndcmd->add_option("manage", manage, localized("JSON string or filename defining MANAGE permission"))->set_default_str("{}");
+      ndcmd->add_option("groups", groups, localized("JSON string or filename defining groups which are new defined"))->set_default_str("[]");
 
       add_standard_transaction_options(ndcmd);
 
@@ -273,7 +273,7 @@ struct set_domain_subcommands {
          send_actions({ act });
       });
       
-      auto udcmd = actionRoot->add_subcommand("update", localized("Update existing domain"), false);
+      auto udcmd = actionRoot->add_subcommand("update", localized("Update existing domain"));
       udcmd->add_option("name", name, localized("The name of new domain"))->required();
       udcmd->add_option("issue", issue, localized("JSON string or filename defining ISSUE permission"))->required();
       udcmd->add_option("transfer", transfer, localized("JSON string or filename defining TRANSFER permission"))->required();
@@ -302,9 +302,9 @@ struct set_issue_token_subcommand {
    std::vector<string> owner;
 
    set_issue_token_subcommand(CLI::App* actionRoot) {
-      auto itcmd = actionRoot->add_subcommand("issue", localized("Issue new tokens in specific domain"), false);
+      auto itcmd = actionRoot->add_subcommand("issue", localized("Issue new tokens in specific domain"));
       itcmd->add_option("domain", domain, localized("Name of the domain where token issued"))->required();
-      itcmd->add_option("names", names, localized("Names of tokens will be issued"))->required();
+      itcmd->add_option("-n,--names", names, localized("Names of tokens will be issued"))->required();
       itcmd->add_option("owner", owner, localized("Owner that issued tokens belongs to"))->required();
 
       add_standard_transaction_options(itcmd);
@@ -327,7 +327,7 @@ struct set_transfer_token_subcommand {
    std::vector<string> to;
 
    set_transfer_token_subcommand(CLI::App* actionRoot) {
-      auto ttcmd = actionRoot->add_subcommand("transfer", localized("Transfer token"), false);
+      auto ttcmd = actionRoot->add_subcommand("transfer", localized("Transfer token"));
       ttcmd->add_option("domain", domain, localized("Name of the domain where token existed"))->required();
       ttcmd->add_option("name", name, localized("Name of the token to be transfered"))->required();
       ttcmd->add_option("to", to, localized("User list receives this token"))->required();
@@ -354,7 +354,7 @@ struct set_group_subcommands {
 
    
    set_group_subcommands(CLI::App* actionRoot) {
-      auto ugcmd = actionRoot->add_subcommand("update", localized("Update specific permission group, id or key must provide at least one."), false);
+      auto ugcmd = actionRoot->add_subcommand("update", localized("Update specific permission group, id or key must provide at least one."));
       ugcmd->add_option("id", id, localized("Id of the permission group to be updated"));
       ugcmd->add_option("key", key, localized("Key of permission group to be updated"));
       ugcmd->add_option("threshold", threshold, localized("Threshold of permission group"))->required();
@@ -364,13 +364,20 @@ struct set_group_subcommands {
 
       ugcmd->set_callback([this] {
          updategroup ug;
-         FC_ASSERT(id.empty() && key.empty(), "Must provide either id or key");
+         group_id gid;
+         FC_ASSERT(!(id.empty() && key.empty()), "Must provide either id or key");
          if(!id.empty()) {
-             ug.id = group_id::from_base58(id);
+             try {
+                gid = group_id::from_base58(id);
+             } FC_CAPTURE_AND_RETHROW((id))
          }
          if(!key.empty()) {
-             ug.id = group_id::from_group_key(public_key_type(key));
+             try {
+                gid = group_id::from_group_key(public_key_type(key));
+                printf("Group id: %s\n", gid.to_base58().c_str());
+             } FC_CAPTURE_AND_RETHROW((key))
          }
+         ug.id = gid;
          ug.threshold = threshold;
 
          try {
@@ -381,6 +388,15 @@ struct set_group_subcommands {
          auto act = create_action("group", (domain_key)ug.id, ug);
          send_actions({ act });
       });
+
+      auto gicmd = actionRoot->add_subcommand("getid", localized("Get group id from group key"));
+      gicmd->add_option("key", key, localized("Group key to be converted"))->required();
+      gicmd->set_callback([this] {
+          try {
+              auto gid = group_id::from_group_key(public_key_type(key));
+              printf("Group id: %s\n", gid.to_base58().c_str());
+          } FC_CAPTURE_AND_RETHROW((key))
+      });
    }
 };
 
@@ -388,7 +404,7 @@ struct set_get_domain_subcommand {
    string name;
 
    set_get_domain_subcommand(CLI::App* actionRoot) {
-       auto gdcmd = actionRoot->add_subcommand("domain", localized("Retrieve a domain information"), false);
+       auto gdcmd = actionRoot->add_subcommand("domain", localized("Retrieve a domain information"));
        gdcmd->add_option("name", name, localized("Name of domain to be retrieved"))->required();
 
        gdcmd->set_callback([this] {
@@ -403,7 +419,7 @@ struct set_get_token_subcommand {
    string name;
 
    set_get_token_subcommand(CLI::App* actionRoot) {
-       auto gtcmd = actionRoot->add_subcommand("token", localized("Retrieve a token information"), false);
+       auto gtcmd = actionRoot->add_subcommand("token", localized("Retrieve a token information"));
        gtcmd->add_option("domain", name, localized("Domain name of token to be retrieved"))->required();
        gtcmd->add_option("name", name, localized("Name of token to be retrieved"))->required();
 
@@ -419,18 +435,23 @@ struct set_get_group_subcommand {
    string key;
 
    set_get_group_subcommand(CLI::App* actionRoot) {
-       auto ggcmd = actionRoot->add_subcommand("group", localized("Retrieve a permission group information"), false);
-       ggcmd->add_option("id", id, localized("Id of group to be retrieved"));
-       ggcmd->add_option("key", key, localized("Key of group to be retrieved"));
+       auto ggcmd = actionRoot->add_subcommand("group", localized("Retrieve a permission group information"));
+       ggcmd->add_option("id,-i,--id", id, localized("Id of group to be retrieved"));
+       ggcmd->add_option("-k,--key", key, localized("Key of group to be retrieved"));
 
        ggcmd->set_callback([this] {
           group_id gid;
-          FC_ASSERT(id.empty() && key.empty(), "Must provide either id or key");
+          FC_ASSERT(!(id.empty() && key.empty()), "Must provide either id or key");
           if(!id.empty()) {
-             gid = group_id::from_base58(id);
+             try {
+                gid = group_id::from_base58(id);
+             } FC_CAPTURE_AND_RETHROW((id))
           }
           if(!key.empty()) {
-             gid = group_id::from_group_key(public_key_type(key));
+             try {
+                gid = group_id::from_group_key(public_key_type(key));
+                printf("Group id: %s\n", gid.to_base58().c_str());
+             } FC_CAPTURE_AND_RETHROW((key))
           }
 
           auto arg = fc::mutable_variant_object("id", gid.to_base58());
@@ -457,7 +478,7 @@ int main( int argc, char** argv ) {
    bool verbose_errors = false;
    app.add_flag( "-v,--verbose", verbose_errors, localized("output verbose actions on error"));
 
-   auto version = app.add_subcommand("version", localized("Retrieve version information"), false);
+   auto version = app.add_subcommand("version", localized("Retrieve version information"));
    version->require_subcommand();
 
    version->add_subcommand("client", localized("Retrieve version information of the client"))->set_callback([] {
@@ -465,7 +486,7 @@ int main( int argc, char** argv ) {
    });
 
    // Create subcommand
-   auto create = app.add_subcommand("create", localized("Create various items, on and off the blockchain"), false);
+   auto create = app.add_subcommand("create", localized("Create various items, on and off the blockchain"));
    create->require_subcommand();
 
    // create key
@@ -478,7 +499,7 @@ int main( int argc, char** argv ) {
    });
 
    // Get subcommand
-   auto get = app.add_subcommand("get", localized("Retrieve various items and information from the blockchain"), false);
+   auto get = app.add_subcommand("get", localized("Retrieve various items and information from the blockchain"));
    get->require_subcommand();
 
    // get info
@@ -488,7 +509,7 @@ int main( int argc, char** argv ) {
 
    // get block
    string blockArg;
-   auto getBlock = get->add_subcommand("block", localized("Retrieve a full block from the blockchain"), false);
+   auto getBlock = get->add_subcommand("block", localized("Retrieve a full block from the blockchain"));
    getBlock->add_option("block", blockArg, localized("The number or ID of the block to retrieve"))->required();
    getBlock->set_callback([&blockArg] {
       auto arg = fc::mutable_variant_object("block_num_or_id", blockArg);
@@ -497,7 +518,7 @@ int main( int argc, char** argv ) {
 
    // get transaction
    string transactionId;
-   auto getTransaction = get->add_subcommand("transaction", localized("Retrieve a transaction from the blockchain"), false);
+   auto getTransaction = get->add_subcommand("transaction", localized("Retrieve a transaction from the blockchain"));
    getTransaction->add_option("id", transactionId, localized("ID of the transaction to retrieve"))->required();
    getTransaction->set_callback([&] {
       auto arg= fc::mutable_variant_object( "transaction_id", transactionId);
@@ -508,7 +529,7 @@ int main( int argc, char** argv ) {
    string account_name;
    string skip_seq;
    string num_seq;
-   auto getTransactions = get->add_subcommand("transactions", localized("Retrieve all transactions with specific account name referenced in their scope"), false);
+   auto getTransactions = get->add_subcommand("transactions", localized("Retrieve all transactions with specific account name referenced in their scope"));
    getTransactions->add_option("account_name", account_name, localized("name of account to query on"))->required();
    getTransactions->add_option("skip_seq", skip_seq, localized("Number of most recent transactions to skip (0 would start at most recent transaction)"));
    getTransactions->add_option("num_seq", num_seq, localized("Number of transactions to return"));
@@ -542,55 +563,61 @@ int main( int argc, char** argv ) {
 
    // Net subcommand 
    string new_host;
-   auto net = app.add_subcommand( "net", localized("Interact with local p2p network connections"), false );
+   auto net = app.add_subcommand( "net", localized("Interact with local p2p network connections") );
    net->require_subcommand();
-   auto connect = net->add_subcommand("connect", localized("start a new connection to a peer"), false);
+   auto connect = net->add_subcommand("connect", localized("start a new connection to a peer"));
    connect->add_option("host", new_host, localized("The hostname:port to connect to."))->required();
    connect->set_callback([&] {
       const auto& v = call(host, port, net_connect, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
-   auto disconnect = net->add_subcommand("disconnect", localized("close an existing connection"), false);
+   auto disconnect = net->add_subcommand("disconnect", localized("close an existing connection"));
    disconnect->add_option("host", new_host, localized("The hostname:port to disconnect from."))->required();
    disconnect->set_callback([&] {
       const auto& v = call(host, port, net_disconnect, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
-   auto status = net->add_subcommand("status", localized("status of existing connection"), false);
+   auto status = net->add_subcommand("status", localized("status of existing connection"));
    status->add_option("host", new_host, localized("The hostname:port to query status of connection"))->required();
    status->set_callback([&] {
       const auto& v = call(host, port, net_status, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
-   auto connections = net->add_subcommand("peers", localized("status of all existing peers"), false);
+   auto connections = net->add_subcommand("peers", localized("status of all existing peers"));
    connections->set_callback([&] {
       const auto& v = call(host, port, net_connections, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    // domain subcommand
-   auto domain = app.add_subcommand("domain", localized("Create or update a domain"), false);
+   auto domain = app.add_subcommand("domain", localized("Create or update a domain"));
    domain->require_subcommand();
    
-   set_domain_subcommands domain_subcommands(domain);
+   auto set_domain = set_domain_subcommands(domain);
 
    // token subcommand
-   auto token = app.add_subcommand("token", localized("Issue or transfer tokens"), false);
+   auto token = app.add_subcommand("token", localized("Issue or transfer tokens"));
    token->require_subcommand();
 
-   set_issue_token_subcommand issue_token(token);
-   set_transfer_token_subcommand transfer(token);
+   auto set_issue_token = set_issue_token_subcommand(token);
+   auto set_transfer_token = set_transfer_token_subcommand(token);
+
+   // group subcommand
+   auto group = app.add_subcommand("group", localized("Update pemission group"));
+   group->require_subcommand();
+   
+   auto set_group = set_group_subcommands(group);
 
    // Wallet subcommand
-   auto wallet = app.add_subcommand( "wallet", localized("Interact with local wallet"), false );
+   auto wallet = app.add_subcommand( "wallet", localized("Interact with local wallet") );
    wallet->require_subcommand();
    // create wallet
    string wallet_name = "default";
-   auto createWallet = wallet->add_subcommand("create", localized("Create a new wallet locally"), false);
-   createWallet->add_option("-n,--name", wallet_name, localized("The name of the new wallet"), true);
+   auto createWallet = wallet->add_subcommand("create", localized("Create a new wallet locally"));
+   createWallet->add_option("-n,--name", wallet_name, localized("The name of the new wallet"));
    createWallet->set_callback([&wallet_name] {
       const auto& v = call(wallet_host, wallet_port, wallet_create, wallet_name);
       std::cout << localized("Creating wallet: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
@@ -600,7 +627,7 @@ int main( int argc, char** argv ) {
    });
 
    // open wallet
-   auto openWallet = wallet->add_subcommand("open", localized("Open an existing wallet"), false);
+   auto openWallet = wallet->add_subcommand("open", localized("Open an existing wallet"));
    openWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to open"));
    openWallet->set_callback([&wallet_name] {
       /*const auto& v = */call(wallet_host, wallet_port, wallet_open, wallet_name);
@@ -609,7 +636,7 @@ int main( int argc, char** argv ) {
    });
 
    // lock wallet
-   auto lockWallet = wallet->add_subcommand("lock", localized("Lock wallet"), false);
+   auto lockWallet = wallet->add_subcommand("lock", localized("Lock wallet"));
    lockWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to lock"));
    lockWallet->set_callback([&wallet_name] {
       /*const auto& v = */call(wallet_host, wallet_port, wallet_lock, wallet_name);
@@ -619,7 +646,7 @@ int main( int argc, char** argv ) {
    });
 
    // lock all wallets
-   auto locakAllWallets = wallet->add_subcommand("lock_all", localized("Lock all unlocked wallets"), false);
+   auto locakAllWallets = wallet->add_subcommand("lock_all", localized("Lock all unlocked wallets"));
    locakAllWallets->set_callback([] {
       /*const auto& v = */call(wallet_host, wallet_port, wallet_lock_all);
       //std::cout << fc::json::to_pretty_string(v) << std::endl;
@@ -628,7 +655,7 @@ int main( int argc, char** argv ) {
 
    // unlock wallet
    string wallet_pw;
-   auto unlockWallet = wallet->add_subcommand("unlock", localized("Unlock wallet"), false);
+   auto unlockWallet = wallet->add_subcommand("unlock", localized("Unlock wallet"));
    unlockWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to unlock"));
    unlockWallet->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
    unlockWallet->set_callback([&wallet_name, &wallet_pw] {
@@ -648,7 +675,7 @@ int main( int argc, char** argv ) {
 
    // import keys into wallet
    string wallet_key_str;
-   auto importWallet = wallet->add_subcommand("import", localized("Import private key into wallet"), false);
+   auto importWallet = wallet->add_subcommand("import", localized("Import private key into wallet"));
    importWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to import key into"));
    importWallet->add_option("key", wallet_key_str, localized("Private key in WIF format to import"))->required();
    importWallet->set_callback([&wallet_name, &wallet_key_str] {
@@ -667,7 +694,7 @@ int main( int argc, char** argv ) {
    });
 
    // list wallets
-   auto listWallet = wallet->add_subcommand("list", localized("List opened wallets, * = unlocked"), false);
+   auto listWallet = wallet->add_subcommand("list", localized("List opened wallets, * = unlocked"));
    listWallet->set_callback([] {
       std::cout << localized("Wallets:") << std::endl;
       const auto& v = call(wallet_host, wallet_port, wallet_list);
@@ -675,7 +702,7 @@ int main( int argc, char** argv ) {
    });
 
    // list keys
-   auto listKeys = wallet->add_subcommand("keys", localized("List of private keys from all unlocked wallets in wif format."), false);
+   auto listKeys = wallet->add_subcommand("keys", localized("List of private keys from all unlocked wallets in wif format."));
    listKeys->set_callback([] {
       const auto& v = call(wallet_host, wallet_port, wallet_list_keys);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
@@ -686,7 +713,7 @@ int main( int argc, char** argv ) {
    string str_private_key;
    bool push_trx = false;
 
-   auto sign = app.add_subcommand("sign", localized("Sign a transaction"), false);
+   auto sign = app.add_subcommand("sign", localized("Sign a transaction"));
    sign->add_option("transaction", trx_json_to_sign,
                                  localized("The JSON of the transaction to sign, or the name of a JSON file containing the transaction"), true)->required();
    sign->add_option("-k,--private-key", str_private_key, localized("The private key that will be used to sign the transaction"));
@@ -719,7 +746,7 @@ int main( int argc, char** argv ) {
    });
 
    // Push subcommand
-   auto push = app.add_subcommand("push", localized("Push arbitrary transactions to the blockchain"), false);
+   auto push = app.add_subcommand("push", localized("Push arbitrary transactions to the blockchain"));
    push->require_subcommand();
 
    // push transaction

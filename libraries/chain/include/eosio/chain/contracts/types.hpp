@@ -239,7 +239,7 @@ FC_REFLECT( eosio::chain::contracts::struct_def                       , (name)(b
 FC_REFLECT( eosio::chain::contracts::action_def                       , (name)(type) )
 FC_REFLECT( eosio::chain::contracts::abi_def                          , (types)(structs)(actions) )
 FC_REFLECT( eosio::chain::contracts::token_def                        , (domain)(name)(owner) )
-FC_REFLECT( eosio::chain::contracts::group_def                        , (key)(threshold)(keys) )
+FC_REFLECT( eosio::chain::contracts::group_def                        , (id)(key)(threshold)(keys) )
 FC_REFLECT( eosio::chain::contracts::group_weight                     , (id)(weight) )
 FC_REFLECT( eosio::chain::contracts::permission_def                   , (name)(threshold)(groups) )
 FC_REFLECT( eosio::chain::contracts::domain_def                       , (name)(issuer)(issue_time)(issue)(transfer)(manage) )
