@@ -681,13 +681,13 @@ auto get_auth_checker( const evt::chain::tokendb& tokendb, const flat_set<public
     auto checker = make_auth_checker( keys, 
         [&](const auto& domain, const auto name, const auto& cb) {
             tokendb.read_domain(domain, [&](const auto& domain) {
-                if(name == "issue") {
+                if(name == "issuetoken") {
                     cb(domain.issue);
                 }
                 else if(name == "transfer") {
                     cb(domain.transfer);
                 }
-                else if(name == "manage") {
+                else if(name == "updatedomain") {
                     cb(domain.manage);
                 }
             });
@@ -713,7 +713,7 @@ flat_set<public_key_type> chain_controller::get_required_keys(const transaction&
 
     for(const auto& act : trx.actions) {
         EOS_ASSERT(checker.satisfied(act), tx_missing_sigs,
-            "${domain}-${key} action declares permission '${name}', but does not have signatures for it.",
+            "${name} action in domain: ${domain} with key: ${key} authorized failed",
             ("domain", act.domain)("key", act.key)("name", act.name));
     }
 
@@ -730,7 +730,7 @@ void chain_controller::check_authorization( const vector<action>& actions,
    for( const auto& act : actions ) {
        if((_skip_flags & skip_transaction_signatures) == false) {
             EOS_ASSERT(checker.satisfied(act), tx_missing_sigs,
-                "${domain}-${key} action declares permission '${name}', but does not have signatures for it.",
+                "${name} action in domain: ${domain} with key: ${key} authorized failed",
                 ("domain", act.domain)("key", act.key)("name", act.name));
        }
    }
