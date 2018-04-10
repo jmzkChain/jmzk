@@ -193,10 +193,11 @@ bool chain_controller::_push_block(const signed_block& new_block)
                 optional<fc::exception> except;
                 try {
                    auto session = _db.start_undo_session(true);
+                   _tokendb.add_savepoint(_db.revision());
                    _apply_block((*ritr)->data, skip);
                    session.push();
                 }
-                catch (const fc::exception& e) { except = e; }
+                catch (const fc::exception& e) { except = e; _tokendb.rollback_to_latest_savepoint(); }
                 if (except) {
                    wlog("exception thrown while switching forks ${e}", ("e",except->to_detail_string()));
                    // remove the rest of branches.first from the fork_db, those blocks are invalid
@@ -213,6 +214,7 @@ bool chain_controller::_push_block(const signed_block& new_block)
                    // restore all blocks from the good fork
                    for (auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr) {
                       auto session = _db.start_undo_session(true);
+                      _tokendb.add_savepoint(_db.revision());
                       _apply_block((*ritr)->data, skip);
                       session.push();
                    }
@@ -232,6 +234,7 @@ bool chain_controller::_push_block(const signed_block& new_block)
    } catch ( const fc::exception& e ) {
       elog("Failed to push new block:\n${e}", ("e", e.to_detail_string()));
       _fork_db.remove(new_block.id());
+      _tokendb.rollback_to_latest_savepoint();
       throw;
    }
 
@@ -325,7 +328,7 @@ void chain_controller::_start_pending_block()
    _pending_block_session = _db.start_undo_session(true);
    _pending_block->regions.resize(1);
    _pending_block_trace->region_traces.resize(1);
-   _tokendb.add_savepoint(_pending_block_session->revision());
+   _tokendb.add_savepoint(_db.revision());
    _start_pending_cycle();
 }
 
@@ -375,7 +378,7 @@ void chain_controller::_finalize_pending_cycle()
       return;
    }
 
-   for( int idx = 0; idx < _pending_cycle_trace->shard_traces.size(); idx++ ) {
+   for( auto idx = 0u; idx < _pending_cycle_trace->shard_traces.size(); idx++ ) {
       auto& trace = _pending_cycle_trace->shard_traces.at(idx);
       auto& shard = _pending_block->regions.back().cycles_summary.back().at(idx);
 
@@ -521,7 +524,7 @@ void chain_controller::pop_block()
 
    _fork_db.pop_block();
    _db.undo();
-   _tokendb.pop_savepoints(rev);
+   _tokendb.rollback_to_latest_savepoint();
 } FC_CAPTURE_AND_RETHROW() }
 
 void chain_controller::clear_pending()
@@ -1364,9 +1367,7 @@ transaction_trace chain_controller::_apply_transaction( transaction_metadata& me
 { try {
    auto execute = [this](transaction_metadata& meta) -> transaction_trace {
       try {
-         auto temp_session = _db.start_undo_session(true);
          auto result =  __apply_transaction(meta);
-         temp_session.squash();
          return result;
       } catch (...) {
          // if there is no sender, there is no error handling possible, rethrow

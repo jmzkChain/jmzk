@@ -55,7 +55,7 @@ public:
 
       chain_controller&             mutable_controller;
       chainbase::database&          mutable_db;
-      evt::chain::tokendb           mutable_tokendb;
+      evt::chain::tokendb&          mutable_tokendb;
 
 
       const transaction_metadata&   trx_meta;

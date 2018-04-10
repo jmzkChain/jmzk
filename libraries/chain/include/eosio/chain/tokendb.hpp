@@ -6,6 +6,7 @@
 #pragma once
 #include <deque>
 #include <functional>
+#include <boost/noncopyable.hpp>
 #include <rocksdb/options.h>
 #include <eosio/chain/contracts/types.hpp>
 
@@ -21,14 +22,14 @@ using read_domain_func = std::function<void(const domain_def&)>;
 using read_token_func = std::function<void(const token_def&)>;
 using read_group_func = std::function<void(const group_def&)>;
 
-class tokendb {
+class tokendb : boost::noncopyable {
 private:
     struct dbaction {
         int     type;
         void*   data;
     };
     struct savepoint {
-        uint32                  seq;
+        int32_t                 seq;
         const void*             rb_snapshot;
         std::vector<dbaction>   actions;
     };
@@ -58,9 +59,9 @@ public:
     int transfer_token(const transfer& tt);
 
 public:
-    int add_savepoint(uint32 seq);
+    int add_savepoint(int32_t seq);
     int rollback_to_latest_savepoint();
-    int pop_savepoints(uint32 until);
+    int pop_savepoints(int32_t until);
 
 private:
     int should_record() { return !savepoints_.empty(); }

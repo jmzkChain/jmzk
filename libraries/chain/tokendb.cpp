@@ -412,7 +412,7 @@ tokendb::record(int type, void* data) {
 }
 
 int
-tokendb::add_savepoint(uint32 seq) {
+tokendb::add_savepoint(int32_t seq) {
     if(!savepoints_.empty()) {
         if(savepoints_.back().seq >= seq) {
             EOS_THROW(tokendb_seq_not_valid, "Seq is not valid, prev: ${prev}, curr: ${curr}", ("prev",savepoints_.back().seq)("curr",seq));
@@ -436,13 +436,14 @@ tokendb::free_savepoint(savepoint& cp) {
 }
 
 int
-tokendb::pop_savepoints(uint32 until) {
+tokendb::pop_savepoints(int32_t until) {
     if(savepoints_.empty()) {
         EOS_THROW(tokendb_no_savepoint, "There's no savepoints anymore");
     }
     while(!savepoints_.empty() && savepoints_.front().seq < until) {
-        free_savepoint(savepoints_.front());
+        auto it = std::move(savepoints_.front());
         savepoints_.pop_front();
+        free_savepoint(it);
     }
     return 0;
 }
