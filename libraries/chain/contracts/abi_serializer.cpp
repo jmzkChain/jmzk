@@ -5,7 +5,6 @@
 #include <evt/chain/contracts/abi_serializer.hpp>
 #include <evt/chain/contracts/chain_initializer.hpp>
 #include <evt/chain/contracts/types.hpp>
-#include <evt/chain/authority.hpp>
 #include <evt/chain/chain_config.hpp>
 #include <evt/chain/transaction.hpp>
 #include <fc/io/raw.hpp>

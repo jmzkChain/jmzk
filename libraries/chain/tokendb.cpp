@@ -235,7 +235,7 @@ tokendb::add_domain(const domain_def& domain) {
 }
 
 int
-tokendb::exists_domain(const domain_name name) {
+tokendb::exists_domain(const domain_name name) const {
     using namespace __internal;
     auto key = get_domain_key(name);
     std::string value;
@@ -270,7 +270,7 @@ tokendb::issue_tokens(const issuetoken& issue) {
 }
 
 int
-tokendb::exists_token(const domain_name type, const token_name name) {
+tokendb::exists_token(const domain_name type, const token_name name) const {
     using namespace __internal;
     auto key = get_token_key(type, name);
     std::string value;
@@ -299,7 +299,7 @@ tokendb::add_group(const group_def& group) {
 }
 
 int
-tokendb::exists_group(const group_id& id) {
+tokendb::exists_group(const group_id& id) const {
     using namespace __internal;
     auto key = get_group_key(id);
     std::string value;

@@ -6,7 +6,6 @@
 #include <evt/chain/fork_database.hpp>
 #include <evt/chain/block_log.hpp>
 #include <evt/chain/exceptions.hpp>
-#include <evt/chain/permission_object.hpp>
 #include <evt/chain/producer_object.hpp>
 #include <evt/chain/config.hpp>
 #include <evt/chain/types.hpp>
@@ -49,6 +48,8 @@ public:
    int32_t                          max_reversible_block_time_ms;
    int32_t                          max_pending_transaction_time_ms;
    //txn_msg_rate_limits              rate_limits;
+
+   abi_def                          system_abi;
 };
 
 chain_plugin::chain_plugin()
@@ -213,6 +214,7 @@ void chain_plugin::plugin_startup()
         ("num", my->chain->head_block_num())("ts", (std::string)my->chain_config->genesis.initial_timestamp));
 
    my->chain_config.reset();
+   my->system_abi = chain_initializer::evt_contract_abi();
 
    } FC_CAPTURE_LOG_AND_RETHROW( (my->genesis_file.generic_string()) ) }
 
@@ -220,8 +222,12 @@ void chain_plugin::plugin_shutdown() {
    my->chain.reset();
 }
 
+chain_apis::read_only chain_plugin::get_read_only_api() const {
+   return chain_apis::read_only(chain(), my->system_abi);
+}
+
 chain_apis::read_write chain_plugin::get_read_write_api() {
-   return chain_apis::read_write(chain(), my->skip_flags);
+   return chain_apis::read_write(chain(), my->system_abi, my->skip_flags);
 }
 
 bool chain_plugin::accept_block(const signed_block& block, bool currently_syncing) {
@@ -295,39 +301,13 @@ read_only::get_info_results read_only::get_info(const read_only::get_info_params
    };
 }
 
-abi_def get_abi( const chain_controller& db, const name& account ) {
-   const auto& d = db.get_database();
-   const auto& code_accnt  = d.get<account_object,by_name>( account );
-
-   abi_def abi;
-   abi_serializer::to_abi(code_accnt.abi, abi);
-   return abi;
-}
-
-vector<asset> read_only::get_currency_balance( const read_only::get_currency_balance_params& p )const {
-   // TODO: Replace with our own logic
-   vector<asset> results;
-   return results;
-}
-
-fc::variant read_only::get_currency_stats( const read_only::get_currency_stats_params& p )const {
-   // TODO: Replace with our own logic
-   fc::mutable_variant_object results;
-   return results;
-}
-
 template<typename Api>
 struct resolver_factory {
    static auto make(const Api *api) {
       return [api](const account_name &name) -> optional<abi_serializer> {
-         const auto *accnt = api->db.get_database().template find<account_object, by_name>(name);
-         if (accnt != nullptr) {
-            abi_def abi;
-            if (abi_serializer::to_abi(accnt->abi, abi)) {
-               return abi_serializer(abi);
-            }
+         if(name == config::system_account_name) {
+             return api->system_abi;
          }
-
          return optional<abi_serializer>();
       };
    }
@@ -395,56 +375,17 @@ read_write::push_transactions_results read_write::push_transactions(const read_w
    return result;
 }
 
-read_only::get_account_results read_only::get_account( const get_account_params& params )const {
-   using namespace evt::contracts;
-
-   get_account_results result;
-   result.account_name = params.account_name;
-
-   const auto& d = db.get_database();
-
-   const auto& permissions = d.get_index<permission_index,by_owner>();
-   auto perm = permissions.lower_bound( boost::make_tuple( params.account_name ) );
-   while( perm != permissions.end() && perm->owner == params.account_name ) {
-      /// TODO: lookup perm->parent name
-      name parent;
-
-      // Don't lookup parent if null
-      if( perm->parent._id ) {
-         const auto* p = d.find<permission_object,by_id>( perm->parent );
-         if( p ) {
-            FC_ASSERT(perm->owner == p->owner, "Invalid parent");
-            parent = p->name;
-         }
-      }
-
-      result.permissions.push_back( permission{ perm->name, parent, perm->auth.to_authority() } );
-      ++perm;
-   }
-
-
-   return result;
-}
-
 read_only::abi_json_to_bin_result read_only::abi_json_to_bin( const read_only::abi_json_to_bin_params& params )const try {
    abi_json_to_bin_result result;
-   const auto& code_account = db.get_database().get<account_object,by_name>( params.code );
-   abi_def abi;
-   if( abi_serializer::to_abi(code_account.abi, abi) ) {
-      abi_serializer abis( abi );
-      result.binargs = abis.variant_to_binary( abis.get_action_type( params.action ), params.args );
-   }
+   abi_serializer abis( system_abi );
+   result.binargs = abis.variant_to_binary( abis.get_action_type( params.action ), params.args );
    return result;
-} FC_CAPTURE_AND_RETHROW( (params.code)(params.action)(params.args) )
+} FC_CAPTURE_AND_RETHROW( (params.action)(params.args) )
 
 read_only::abi_bin_to_json_result read_only::abi_bin_to_json( const read_only::abi_bin_to_json_params& params )const {
    abi_bin_to_json_result result;
-   const auto& code_account = db.get_database().get<account_object,by_name>( params.code );
-   abi_def abi;
-   if( abi_serializer::to_abi(code_account.abi, abi) ) {
-      abi_serializer abis( abi );
-      result.args = abis.binary_to_variant( abis.get_action_type( params.action ), params.binargs );
-   }
+   abi_serializer abis( system_abi );
+   result.args = abis.binary_to_variant( abis.get_action_type( params.action ), params.binargs );
    return result;
 }
 

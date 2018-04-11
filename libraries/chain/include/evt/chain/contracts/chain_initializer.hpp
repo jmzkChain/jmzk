@@ -25,7 +25,7 @@ namespace evt { namespace chain {  namespace contracts {
          void prepare_database(chain::chain_controller& chain, chainbase::database& db);
          void prepare_tokendb(chain::chain_controller& chain, evt::chain::tokendb& tokendb);
 
-         static abi_def evt_contract_abi(const abi_def& evt_system_abi);
+         static abi_def evt_contract_abi();
 
       private:
          genesis_state_type genesis;

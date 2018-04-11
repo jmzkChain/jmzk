@@ -50,7 +50,6 @@ public:
       const chain_controller&       controller;
       const chainbase::database&    db;  ///< database where state is stored
       const action&                 act; ///< message being applied
-      account_name                  receiver; ///< the code that is currently running
       bool                          privileged   = false;
 
       chain_controller&             mutable_controller;
@@ -90,9 +89,7 @@ public:
 
       void exec_one();
       
-      vector<account_name>                _notified; ///< keeps track of new accounts to be notifed of current message
       std::ostringstream                  _pending_console_output;
-
       bytes                               _cached_trx;
 };
 

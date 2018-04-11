@@ -7,11 +7,9 @@
 
 #include <evt/chain/block_summary_object.hpp>
 #include <evt/chain/global_property_object.hpp>
-#include <evt/chain/action_objects.hpp>
 #include <evt/chain/generated_transaction_object.hpp>
 #include <evt/chain/transaction_object.hpp>
 #include <evt/chain/producer_object.hpp>
-#include <evt/chain/permission_link_object.hpp>
 #include <evt/chain/authority_checker.hpp>
 #include <evt/chain/contracts/chain_initializer.hpp>
 #include <evt/chain/merkle.hpp>
@@ -274,7 +272,6 @@ transaction_trace chain_controller::_push_transaction(const packed_transaction& 
    const transaction& trx = mtrx.trx();
 
    validate_transaction_with_minimal_state(trx);
-   validate_referenced_accounts(trx);
    validate_uniqueness(trx);
    if(should_check_authorization()) {
       check_transaction_authorization(mtrx.trx(), *mtrx.signing_keys);
@@ -396,11 +393,11 @@ void chain_controller::_apply_cycle_trace( const cycle_trace& res )
             for (const auto &ar : tr.action_traces) {
                if (!ar.console.empty()) {
                   auto prefix = fc::format_string(
-                     "\n[(${a},${n})->${r}]",
+                     "\n[(${d},${k},${n})]",
                      fc::mutable_variant_object()
-                        ("a", ar.act.account)
-                        ("n", ar.act.name)
-                        ("r", ar.receiver));
+                        ("d", ar.act.domain)
+                        ("k", ar.act.key)
+                        ("n", ar.act.name));
                   dlog(prefix + ": CONSOLE OUTPUT BEGIN =====================\n"
                        + ar.console
                        + prefix + ": CONSOLE OUTPUT END   =====================" );
@@ -622,7 +619,6 @@ void chain_controller::__apply_block(const signed_block& next_block)
                    auto& trx_meta = input_metas.at(itr->second);
                    const auto& trx = trx_meta.trx();
 
-                   validate_referenced_accounts(trx);
                    validate_uniqueness(trx);
                    if( should_check_authorization() ) {
                       FC_ASSERT( trx_meta.signing_keys, "signing_keys missing from transaction_metadata of an input transaction" );
@@ -779,14 +775,6 @@ void chain_controller::validate_tapos(const transaction& trx)const {
               ("tapos_summary", tapos_block_summary));
 }
 
-// TODO: [EVT] We don't need this validate
-void chain_controller::validate_referenced_accounts( const transaction& trx )const
-{ try {
-   for( const auto& act : trx.actions ) {
-      require_account(act.account);
-   }
-} FC_CAPTURE_AND_RETHROW() }
-
 void chain_controller::validate_not_expired( const transaction& trx )const
 { try {
    fc::time_point now = head_block_time();
@@ -808,11 +796,6 @@ void chain_controller::validate_transaction_with_minimal_state( const transactio
    validate_not_expired(trx);
    validate_tapos(trx);
 } FC_CAPTURE_AND_RETHROW((trx)) }
-
-void chain_controller::require_account(const account_name& name) const {
-   auto account = _db.find<account_object, by_name>(name);
-   FC_ASSERT(account != nullptr, "Account not found: ${name}", ("name", name));
-}
 
 const producer_object& chain_controller::validate_block_header(uint32_t skip, const signed_block& next_block)const { try {
    EVT_ASSERT(head_block_id() == next_block.previous, block_validate_exception, "",
@@ -911,25 +894,8 @@ void chain_controller::update_global_properties(const signed_block& b) { try {
 
          }
       });
-
-      _update_producers_authority();
    }
 } FC_CAPTURE_AND_RETHROW() }
-
-void chain_controller::_update_producers_authority() {
-   const auto& gpo = get_global_properties();
-   uint32_t authority_threshold = EVT_PERCENT_CEIL(gpo.active_producers.producers.size(), config::producers_authority_threshold_pct);
-   auto active_producers_authority = authority(authority_threshold, {}, {});
-   for(auto& name : gpo.active_producers.producers ) {
-      active_producers_authority.accounts.push_back({{name.producer_name, config::active_name}, 1});
-   }
-
-   auto& po = _db.get<permission_object, by_owner>( boost::make_tuple(config::producers_account_name,
-                                                                      config::active_name ) );
-   _db.modify(po,[active_producers_authority] (permission_object& po) {
-      po.auth = active_producers_authority;
-   });
-}
 
 void chain_controller::add_checkpoints( const flat_map<uint32_t,block_id_type>& checkpts ) {
    for (const auto& i : checkpts)
@@ -974,30 +940,17 @@ const producer_object& chain_controller::get_producer(const account_name& owner_
    return _db.get<producer_object, by_owner>(owner_name);
 } FC_CAPTURE_AND_RETHROW( (owner_name) ) }
 
-const permission_object&   chain_controller::get_permission( const permission_level& level )const
-{ try {
-   return _db.get<permission_object, by_owner>( boost::make_tuple(level.actor,level.permission) );
-} EVT_RETHROW_EXCEPTIONS( chain::permission_query_exception, "Fail to retrieve permission: ${level}", ("level", level) ) }
-
 uint32_t chain_controller::last_irreversible_block_num() const {
    return get_dynamic_global_properties().last_irreversible_block_num;
 }
 
 void chain_controller::_initialize_indexes() {
-   _db.add_index<account_index>();
-   _db.add_index<permission_index>();
-   _db.add_index<permission_usage_index>();
-   _db.add_index<permission_link_index>();
-   _db.add_index<action_permission_index>();
-
    _db.add_index<global_property_multi_index>();
    _db.add_index<dynamic_global_property_multi_index>();
    _db.add_index<block_summary_multi_index>();
    _db.add_index<transaction_multi_index>();
    _db.add_index<generated_transaction_multi_index>();
    _db.add_index<producer_multi_index>();
-   _db.add_index<bandwidth_usage_index>();
-   _db.add_index<compute_usage_index>();
 }
 
 void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
@@ -1027,7 +980,6 @@ void chain_controller::_initialize_chain(contracts::chain_initializer& starter)
 
          starter.prepare_database(*this, _db);
          starter.prepare_tokendb(*this, _tokendb);
-         _update_producers_authority();
       });
    }
 } FC_CAPTURE_AND_RETHROW() }
@@ -1146,7 +1098,6 @@ void chain_controller::update_global_dynamic_data(const signed_block& b) {
       dgp.time = b.timestamp;
       dgp.current_producer = b.producer;
       dgp.current_absolute_slot += missed_blocks+1;
-      dgp.average_block_size.add_usage( fc::raw::pack_size(b), b.timestamp );
 
       // If we've missed more blocks than the bitmap stores, skip calculations and simply reset the bitmap
       if (missed_blocks < sizeof(dgp.recent_slots_filled) * 8) {
@@ -1328,8 +1279,8 @@ uint32_t chain_controller::producer_participation_rate()const
    return static_cast<uint32_t>(config::percent_100); // Ignore participation rate for now until we construct a better metric.
 }
 
-void chain_controller::_set_apply_handler( account_name contract, scope_name scope, action_name action, apply_handler v ) {
-   _apply_handlers[contract][make_pair(scope,action)] = v;
+void chain_controller::_set_apply_handler( action_name action, apply_handler v ) {
+   _apply_handlers[action] = v;
 }
 
 static void log_handled_exceptions(const transaction& trx) {
@@ -1422,13 +1373,11 @@ transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
    return result;
 }
 
-const apply_handler* chain_controller::find_apply_handler( account_name receiver, account_name scope, action_name act ) const
+const apply_handler* chain_controller::find_apply_handler( action_name act ) const
 {
-   auto native_handler_scope = _apply_handlers.find( receiver );
-   if( native_handler_scope != _apply_handlers.end() ) {
-      auto handler = native_handler_scope->second.find( make_pair( scope, act ) );
-      if( handler != native_handler_scope->second.end() )
-         return &handler->second;
+   auto it = _apply_handlers.find( act );
+   if( it != _apply_handlers.end() ) {
+      return &it->second;
    }
    return nullptr;
 }
@@ -1455,8 +1404,6 @@ transaction_trace chain_controller::wrap_transaction_processing( transaction_met
 
 
    // for now apply the transaction serially but schedule it according to those invariants
-   validate_referenced_accounts(trx);
-
    auto result = trx_processing(data);
 
    auto& bcycle = _pending_block->regions.back().cycles_summary.back();

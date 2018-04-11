@@ -8,7 +8,6 @@ add_library( evt_chain
              transaction.cpp
              block.cpp
              apply_context.cpp
-             rate_limiting.cpp
 
              fork_database.cpp
              get_config.cpp

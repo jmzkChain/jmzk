@@ -42,11 +42,11 @@ public:
 
 public:
     int add_domain(const domain_def&);
-    int exists_domain(const domain_name);
+    int exists_domain(const domain_name) const;
     int issue_tokens(const issuetoken&);
-    int exists_token(const domain_name, const token_name name);
+    int exists_token(const domain_name, const token_name name) const;
     int add_group(const group_def&);
-    int exists_group(const group_id&);
+    int exists_group(const group_id&) const;
 
     int read_domain(const domain_name, const read_domain_func&) const;
     int read_token(const domain_name, const token_name, const read_token_func&) const;

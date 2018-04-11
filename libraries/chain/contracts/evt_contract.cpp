@@ -57,6 +57,23 @@ validate(const T &group) {
     return total_weight >= group.threshold;
 }
 
+auto make_permission_checker = [](const auto& tokendb, const auto& groups) {
+    auto checker = [&](const auto& p, auto allowed_owner) {
+        for(const auto& g : p.groups) {
+            if(g.id.empty()) {
+                // owner group
+                EVT_ASSERT(allowed_owner, action_validate_exception, "Owner group is not allowed in ${name} permission", ("name", p.name));
+                continue;
+            }
+            auto dbexisted = tokendb.exists_group(g.id);
+            auto defexisted = std::find_if(groups.cbegin(), groups.cend(), [&g](auto& gd) { return gd.id == g.id; }) != groups.cend();
+
+            EVT_ASSERT(dbexisted ^ defexisted, action_validate_exception, "Group ${id} is not valid, may already be defined or not provide defines", ("id", g.id));
+        }
+    };
+    return checker;
+};
+
 } // namespace __internal
 
 void
@@ -84,22 +101,10 @@ apply_evt_newdomain(apply_context& context) {
         // manage permission's threshold can be 0 which means no one can update permission later.
         EVT_ASSERT(validate(ndact.manage), action_validate_exception, "Manage permission not valid, maybe exist duplicate keys.");
 
-        auto check_groups = [&](const auto& p, auto allowed_owner) {
-            for(const auto& g : p.groups) {
-                if(g.id.empty()) {
-                    // owner group
-                    EVT_ASSERT(allowed_owner, action_validate_exception, "Owner group is not allowed in ${name} permission", ("name", p.name));
-                    continue;
-                }
-                auto dbexisted = tokendb.exists_group(g.id);
-                auto defexisted = std::find_if(ndact.groups.cbegin(), ndact.groups.cend(), [&g](auto& gd) { return gd.id == g.id; }) != ndact.groups.cend();
-
-                EVT_ASSERT(dbexisted || defexisted, action_validate_exception, "Group ${id} is not valid, may already be defined or not provide defines", ("id", g.id));
-            }
-        };
-        check_groups(ndact.issue, false);
-        check_groups(ndact.transfer, true);
-        check_groups(ndact.manage, false);
+        auto pchecker = make_permission_checker(tokendb, ndact.groups);
+        pchecker(ndact.issue, false);
+        pchecker(ndact.transfer, true);
+        pchecker(ndact.manage, false);
 
         domain_def domain;
         domain.name = ndact.name;
@@ -181,36 +186,21 @@ apply_evt_updatedomain(apply_context& context) {
             EVT_ASSERT(g.id == group_id::from_group_key(g.key), action_validate_exception, "Group id and key are not match", ("id",g.id)("key",g.key)); 
         }
         EVT_ASSERT(!udact.name.empty(), action_validate_exception, "Domain name shouldn't be empty");
+
+        auto pchecker = make_permission_checker(tokendb, udact.groups);
         if(udact.issue.valid()) {
             EVT_ASSERT(udact.issue->threshold > 0 && validate(*udact.issue), action_validate_exception, "Issue permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
+            pchecker(*udact.issue, false);
         }
         if(udact.transfer.valid()) {
             EVT_ASSERT(udact.transfer->threshold > 0 && validate(*udact.transfer), action_validate_exception, "Transfer permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
+            pchecker(*udact.transfer, true);
         }
         if(udact.manage.valid()) {
             // manage permission's threshold can be 0 which means no one can update permission later.
             EVT_ASSERT(validate(*udact.manage), action_validate_exception, "Manage permission not valid, maybe exist duplicate keys.");
+            pchecker(*udact.manage, false);
         }
-
-        auto check_groups = [&](const auto& p, auto allowed_owner) {
-            if(!p.valid()) {
-                return;
-            }
-            for(const auto& g : p->groups) {
-                if(g.id.empty()) {
-                    // owner group
-                    EVT_ASSERT(allowed_owner, action_validate_exception, "Owner group is not allowed in ${name} permission", ("name", p->name));
-                    continue;
-                }
-                auto dbexisted = tokendb.exists_group(g.id);
-                auto defexisted = std::find_if(udact.groups.cbegin(), udact.groups.cend(), [&g](auto& gd) { return gd.id == g.id; }) != udact.groups.cend();
-
-                EVT_ASSERT(dbexisted || defexisted, action_validate_exception, "Group ${id} is not valid, may already be defined or not provide defines", ("id", g.id));
-            }
-        };
-        check_groups(udact.issue, false);
-        check_groups(udact.transfer, true);
-        check_groups(udact.manage, false);
 
         tokendb.update_domain(udact);
     }

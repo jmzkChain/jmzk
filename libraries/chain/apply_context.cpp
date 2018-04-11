@@ -15,35 +15,20 @@ void apply_context::exec_one()
 {
    auto start = fc::time_point::now();
    try {
-      const auto &a = mutable_controller.get_database().get<account_object, by_name>(receiver);
-      privileged = a.privileged;
-
-      auto native = mutable_controller.find_apply_handler(receiver, act.account, act.name);
-      if (native) {
-        (*native)(*this);
-      } else {
-        // Removed WASM executing path
-        assert(false);
-      }
+      auto func = mutable_controller.find_apply_handler(act.name);
+      EVT_ASSERT(func != nullptr, action_validate_exception, "Action is not valid, ${name} doesn't exist", ("name",act.name));
+      (*func)(*this);
    } FC_CAPTURE_AND_RETHROW((_pending_console_output.str()));
 
-   results.applied_actions.emplace_back(action_trace {receiver, act, _pending_console_output.str() });
+   results.applied_actions.emplace_back(action_trace { act, _pending_console_output.str() });
    _pending_console_output = std::ostringstream();
    results.applied_actions.back()._profiling_us = fc::time_point::now() - start;
 }
 
 void apply_context::exec()
 {
-   _notified.push_back(act.account);
-   for( uint32_t i = 0; i < _notified.size(); ++i ) {
-      receiver = _notified[i];
-      exec_one();
-   }
+   exec_one();
 } /// exec()
-
-bool apply_context::is_account( const account_name& account )const {
-   return nullptr != db.find<account_object,by_name>( account );
-}
 
 bool apply_context::has_authorized(const domain_name& domain, const domain_key& key)const {
     return act.domain == domain && act.key == key;

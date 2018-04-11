@@ -5,7 +5,6 @@
 #pragma once
 
 #include <evt/chain/types.hpp>
-#include <evt/chain/authority.hpp>
 #include <evt/chain/contracts/types.hpp>
 
 #include <evt/utilities/parallel_markers.hpp>

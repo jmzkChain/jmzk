@@ -10,32 +10,7 @@
 
 namespace evt { namespace chain {
 
-    struct permission_level {
-        account_name    actor;
-        permission_name permission;
-    };
-
-   /**
-    *  An action is performed by an actor, aka an account. It may
-    *  be created explicitly and authorized by signatures or might be
-    *  generated implicitly by executing application code. 
-    *
-    *  This follows the design pattern of React Flux where actions are
-    *  named and then dispatched to one or more action handlers (aka stores).
-    *  In the context of evt, every action is dispatched to the handler defined
-    *  by account 'scope' and function 'name', but the default handler may also
-    *  forward the action to any number of additional handlers. Any application
-    *  can write a handler for "scope::name" that will get executed if and only if
-    *  this action is forwarded to that application.
-    *
-    *  Each action may require the permission of specific actors. Actors can define
-    *  any number of permission levels. The actors and their respective permission
-    *  levels are declared on the action and validated independently of the executing
-    *  application code. An application code will check to see if the required authorization
-    *  were properly declared when it executes.
-    */
    struct action {
-      account_name               account;
       action_name                name;
       domain_name                domain;
       domain_key                 key;
@@ -45,19 +20,18 @@ namespace evt { namespace chain {
 
       template<typename T>
       action( const domain_name& domain, const domain_key& key, const T& value ) 
-            : account(config::system_account_name), domain(domain), key(key) 
+            : domain(domain), key(key) 
       {
           name = T::get_name();
           data = fc::raw::pack(value);
       }
 
-      action( const account_name account, const action_name name, const domain_name& domain, const domain_key& key, const bytes& data )
-            : account(account), name(name), domain(domain), key(key), data(data) {
+      action( const action_name name, const domain_name& domain, const domain_key& key, const bytes& data )
+            : name(name), domain(domain), key(key), data(data) {
       }
 
       template<typename T>
       T data_as()const {
-         FC_ASSERT( account == T::get_account() ); 
          FC_ASSERT( name == T::get_name()  ); 
          return fc::raw::unpack<T>(data);
       }
@@ -192,8 +166,7 @@ namespace evt { namespace chain {
 
 } } // evt::chain
 
-FC_REFLECT( evt::chain::permission_level, (actor)(permission) )
-FC_REFLECT( evt::chain::action, (account)(name)(domain)(key)(data) )
+FC_REFLECT( evt::chain::action, (name)(domain)(key)(data) )
 FC_REFLECT( evt::chain::transaction_header, (expiration)(region)(ref_block_num)(ref_block_prefix) )
 FC_REFLECT_DERIVED( evt::chain::transaction, (evt::chain::transaction_header), (actions) )
 FC_REFLECT_DERIVED( evt::chain::signed_transaction, (evt::chain::transaction), (signatures) )

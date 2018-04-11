@@ -20,8 +20,6 @@ namespace evt { namespace chain {
             for (const auto& at: tx.action_traces) {
                 digest_type::encoder enc;
 
-                fc::raw::pack(enc, at.receiver);
-                fc::raw::pack(enc, at.act.account);
                 fc::raw::pack(enc, at.act.name);
                 fc::raw::pack(enc, at.act.domain);
                 fc::raw::pack(enc, at.act.key);

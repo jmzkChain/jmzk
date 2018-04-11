@@ -4,7 +4,6 @@
  */
 #pragma once
 
-#include <evt/chain/authority.hpp>
 #include <evt/chain/chain_config.hpp>
 #include <evt/chain/config.hpp>
 #include <evt/chain/types.hpp>
@@ -109,6 +108,11 @@ struct token_def {
     user_list               owner;
 };
 
+struct key_weight {
+   public_key_type key;
+   weight_type     weight;
+};
+
 struct group_def {
     group_def() = default;
 
@@ -166,10 +170,6 @@ struct newdomain {
 
     std::vector<group_def>  groups;
 
-    static account_name get_account() {
-        return config::system_account_name;
-    }
-
     static action_name get_name() {
         return N(newdomain);
     }
@@ -179,10 +179,6 @@ struct issuetoken {
     domain_name             domain;
     std::vector<token_name> names;
     user_list               owner;
-
-    static account_name get_account() {
-        return config::system_account_name;
-    }
 
     static action_name get_name() {
         return N(issuetoken);
@@ -194,10 +190,6 @@ struct transfer {
     token_name              name;
     user_list               to;
 
-    static account_name get_account() {
-        return config::system_account_name;
-    }
-
     static action_name get_name() {
         return N(transfer);
     }
@@ -207,10 +199,6 @@ struct updategroup {
     group_id                id;
     uint32                  threshold;
     vector<key_weight>      keys;
-
-    static account_name get_account() {
-        return config::system_account_name;
-    }
 
     static action_name get_name() {
         return N(updategroup);
@@ -226,10 +214,6 @@ struct updatedomain {
 
     std::vector<group_def>          groups;
 
-    static account_name get_account() {
-        return config::system_account_name;
-    }
-
     static action_name get_name() {
         return N(newdomain);
     }
@@ -243,6 +227,7 @@ FC_REFLECT( evt::chain::contracts::struct_def                       , (name)(bas
 FC_REFLECT( evt::chain::contracts::action_def                       , (name)(type) )
 FC_REFLECT( evt::chain::contracts::abi_def                          , (types)(structs)(actions) )
 FC_REFLECT( evt::chain::contracts::token_def                        , (domain)(name)(owner) )
+FC_REFLECT( evt::chain::contracts::key_weight                       , (key)(weight) )
 FC_REFLECT( evt::chain::contracts::group_def                        , (id)(key)(threshold)(keys) )
 FC_REFLECT( evt::chain::contracts::group_weight                     , (id)(weight) )
 FC_REFLECT( evt::chain::contracts::permission_def                   , (name)(threshold)(groups) )

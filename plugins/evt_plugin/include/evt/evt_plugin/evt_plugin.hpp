@@ -7,8 +7,6 @@
 
 #include <appbase/application.hpp>
 #include <evt/chain/asset.hpp>
-#include <evt/chain/authority.hpp>
-#include <evt/chain/account_object.hpp>
 #include <evt/chain/block.hpp>
 #include <evt/chain/chain_controller.hpp>
 #include <evt/chain/transaction.hpp>
@@ -28,14 +26,10 @@ using chain::public_key_type;
 using fc::optional;
 using boost::container::flat_set;
 using chain::asset;
-using chain::authority;
-using chain::account_name;
 using chain::domain_name;
 using chain::domain_key;
 using chain::token_name;
 using chain::contracts::group_id;
-using chain::contracts::abi_def;
-using chain::contracts::abi_serializer;
 using chain::contracts::domain_def;
 using chain::contracts::token_def;
 using chain::contracts::group_def;

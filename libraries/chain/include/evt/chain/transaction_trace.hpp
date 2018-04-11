@@ -12,7 +12,6 @@
 namespace evt { namespace chain {
 
    struct action_trace {
-      account_name               receiver;
       action                     act;
       string                     console;
 
@@ -34,6 +33,6 @@ namespace evt { namespace chain {
    };
 } } // evt::chain
 
-FC_REFLECT( evt::chain::action_trace, (receiver)(act)(console)(_profiling_us) )
+FC_REFLECT( evt::chain::action_trace, (act)(console)(_profiling_us) )
 FC_REFLECT_ENUM( evt::chain::transaction_receipt::status_enum, (executed)(soft_fail)(hard_fail) )
 FC_REFLECT_DERIVED( evt::chain::transaction_trace, (evt::chain::transaction_receipt), (action_traces)(packed_trx_digest)(region_id)(cycle_index)(shard_index)(_profiling_us)(_setup_profiling_us) )

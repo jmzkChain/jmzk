@@ -4,8 +4,6 @@
  */
 #pragma once
 #include <evt/chain/global_property_object.hpp>
-#include <evt/chain/account_object.hpp>
-#include <evt/chain/permission_object.hpp>
 #include <evt/chain/fork_database.hpp>
 #include <evt/chain/block_log.hpp>
 #include <evt/chain/block_trace.hpp>
@@ -260,7 +258,6 @@ namespace evt { namespace chain {
          const global_property_object&          get_global_properties()const;
          const dynamic_global_property_object&  get_dynamic_global_properties()const;
          const producer_object&                 get_producer(const account_name& ownername)const;
-         const permission_object&               get_permission( const permission_level& level )const;
 
          time_point           head_block_time()const;
          uint32_t             head_block_num()const;
@@ -289,20 +286,11 @@ namespace evt { namespace chain {
 
 
       private:
-         const apply_handler* find_apply_handler( account_name contract, scope_name scope, action_name act )const;
-
          friend class contracts::chain_initializer;
          friend class apply_context;
 
-         bool should_check_scope()const                      { return !(_skip_flags&skip_scope_check);            }
-
-         /**
-          *  The controller can override any script endpoint with native code.
-          */
-         ///@{
-         void _set_apply_handler( account_name contract, account_name scope, action_name action, apply_handler v );
-         //@}
-
+         const apply_handler* find_apply_handler( action_name act )const;
+         void _set_apply_handler( action_name action, apply_handler v );
 
          transaction_trace _push_transaction( const packed_transaction& trx );
          transaction_trace _push_transaction( transaction_metadata&& data );
@@ -340,12 +328,9 @@ namespace evt { namespace chain {
                                               bool allow_unused_signatures = false)const;
 
 
-         void require_account(const account_name& name) const;
-
          /// Validate transaction helpers @{
          void validate_uniqueness(const transaction& trx)const;
          void validate_tapos(const transaction& trx)const;
-         void validate_referenced_accounts(const transaction& trx)const;
          void validate_not_expired( const transaction& trx )const;
          void validate_transaction_without_state( const transaction& trx )const;
          void validate_transaction_with_minimal_state( const transaction& trx)const;
@@ -365,7 +350,6 @@ namespace evt { namespace chain {
          void create_block_summary(const signed_block& next_block);
 
          void update_global_properties(const signed_block& b);
-         void _update_producers_authority();
          void update_global_dynamic_data(const signed_block& b);
          void update_signing_producer(const producer_object& signing_producer, const signed_block& new_block);
          void update_last_irreversible_block();
@@ -402,11 +386,9 @@ namespace evt { namespace chain {
          uint64_t                         _skip_flags = 0;
 
          flat_map<uint32_t,block_id_type> _checkpoints;
+         map<action_name, apply_handler>  _apply_handlers;
 
-         typedef pair<scope_name,action_name>                   handler_key;
-         map< account_name, map<handler_key, apply_handler> >   _apply_handlers;
-
-         runtime_limits                   _limits;
+         runtime_limits                   _limits; 
    };
 
-} }
+} }  // namespace evt::chain

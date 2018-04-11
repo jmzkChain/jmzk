@@ -5,12 +5,11 @@
 #pragma once
 #include <appbase/application.hpp>
 #include <evt/chain/asset.hpp>
-#include <evt/chain/authority.hpp>
-#include <evt/chain/account_object.hpp>
 #include <evt/chain/block.hpp>
 #include <evt/chain/chain_controller.hpp>
 #include <evt/chain/transaction.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
+#include <evt/chain/contracts/chain_initializer.hpp>
 
 #include <boost/container/flat_set.hpp>
 
@@ -26,7 +25,6 @@ namespace evt {
    using fc::optional;
    using boost::container::flat_set;
    using chain::asset;
-   using chain::authority;
    using chain::account_name;
    using chain::contracts::abi_def;
    using chain::contracts::abi_serializer;
@@ -34,17 +32,12 @@ namespace evt {
 namespace chain_apis {
 struct empty{};
 
-struct permission {
-   name              perm_name;
-   name              parent;
-   authority         required_auth;
-};
-
 template<typename>
 struct resolver_factory;
 
 class read_only {
    const chain_controller& db;
+   const abi_def& system_abi;
 
 public:
    static const string KEYi64;
@@ -55,8 +48,8 @@ public:
    static const string SECONDARY;
    static const string TERTIARY;
    
-   read_only(const chain_controller& db)
-      : db(db) {}
+   read_only(const chain_controller& db, const abi_def& system_abi)
+      : db(db), system_abi(system_abi) {}
 
    using get_info_params = empty;
 
@@ -76,41 +69,23 @@ public:
       name                       producer_name;
    };
 
-
-   struct get_account_results {
-      name                       account_name;
-      vector<permission>         permissions;
-   };
-
-   struct get_account_params {
-      name account_name;
-   };
-   get_account_results get_account( const get_account_params& params )const;
-
-
    struct abi_json_to_bin_params {
-      name         code;
       name         action;
       fc::variant  args;
    };
    struct abi_json_to_bin_result {
       vector<char>   binargs;
-      vector<name>   required_scope;
-      vector<name>   required_auth;
    };
       
    abi_json_to_bin_result abi_json_to_bin( const abi_json_to_bin_params& params )const;
 
 
    struct abi_bin_to_json_params {
-      name         code;
       name         action;
       vector<char> binargs;
    };
    struct abi_bin_to_json_result {
       fc::variant    args;
-      vector<name>   required_scope;
-      vector<name>   required_auth;
    };
       
    abi_bin_to_json_result abi_bin_to_json( const abi_bin_to_json_params& params )const;
@@ -133,33 +108,15 @@ public:
 
    fc::variant get_block(const get_block_params& params) const;
 
-   struct get_currency_balance_params {
-      name             code;
-      name             account;
-      optional<string> symbol;
-   };
-
-   vector<asset> get_currency_balance( const get_currency_balance_params& params )const;
-
-   struct get_currency_stats_params {
-      name             code;
-      optional<string> symbol;
-   };
-
-   struct get_currency_stats_result {
-      asset        supply;
-   };
-
-   fc::variant get_currency_stats( const get_currency_stats_params& params )const;
-
    friend struct resolver_factory<read_only>;
 };
 
 class read_write {
    chain_controller& db;
+   const abi_def& system_abi;
    uint32_t skip_flags;
 public:
-   read_write(chain_controller& db, uint32_t skip_flags) : db(db), skip_flags(skip_flags) {}
+   read_write(chain_controller& db, const abi_def& system_abi, uint32_t skip_flags) : db(db), system_abi(system_abi), skip_flags(skip_flags) {}
 
    using push_block_params = chain::signed_block;
    using push_block_results = empty;
@@ -194,7 +151,7 @@ public:
    void plugin_startup();
    void plugin_shutdown();
 
-   chain_apis::read_only get_read_only_api() const { return chain_apis::read_only(chain()); }
+   chain_apis::read_only get_read_only_api() const;
    chain_apis::read_write get_read_write_api();
 
    bool accept_block(const chain::signed_block& block, bool currently_syncing);
@@ -220,7 +177,6 @@ private:
 
 }
 
-FC_REFLECT( evt::chain_apis::permission, (perm_name)(parent)(required_auth) )
 FC_REFLECT(evt::chain_apis::empty, )
 FC_REFLECT(evt::chain_apis::read_only::get_info_results,
   (server_version)(head_block_num)(last_irreversible_block_num)(head_block_id)(head_block_time)(head_block_producer)
@@ -229,16 +185,10 @@ FC_REFLECT(evt::chain_apis::read_only::get_block_params, (block_num_or_id))
   
 FC_REFLECT( evt::chain_apis::read_write::push_transaction_results, (transaction_id)(processed) )
   
-FC_REFLECT( evt::chain_apis::read_only::get_currency_balance_params, (code)(account)(symbol));
-FC_REFLECT( evt::chain_apis::read_only::get_currency_stats_params, (code)(symbol));
-FC_REFLECT( evt::chain_apis::read_only::get_currency_stats_result, (supply));
-
-FC_REFLECT( evt::chain_apis::read_only::get_account_results, (account_name)(permissions) )
-FC_REFLECT( evt::chain_apis::read_only::get_account_params, (account_name) )
 FC_REFLECT( evt::chain_apis::read_only::producer_info, (producer_name) )
-FC_REFLECT( evt::chain_apis::read_only::abi_json_to_bin_params, (code)(action)(args) )
-FC_REFLECT( evt::chain_apis::read_only::abi_json_to_bin_result, (binargs)(required_scope)(required_auth) )
-FC_REFLECT( evt::chain_apis::read_only::abi_bin_to_json_params, (code)(action)(binargs) )
-FC_REFLECT( evt::chain_apis::read_only::abi_bin_to_json_result, (args)(required_scope)(required_auth) )
+FC_REFLECT( evt::chain_apis::read_only::abi_json_to_bin_params, (action)(args) )
+FC_REFLECT( evt::chain_apis::read_only::abi_json_to_bin_result, (binargs) )
+FC_REFLECT( evt::chain_apis::read_only::abi_bin_to_json_params, (action)(binargs) )
+FC_REFLECT( evt::chain_apis::read_only::abi_bin_to_json_result, (args) )
 FC_REFLECT( evt::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys) )
 FC_REFLECT( evt::chain_apis::read_only::get_required_keys_result, (required_keys) )

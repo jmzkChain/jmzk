@@ -191,12 +191,11 @@ namespace impl {
       template<typename Resolver>
       static void add(mutable_variant_object &out, const char* name, const action& act, Resolver resolver) {
          mutable_variant_object mvo;
-         mvo("account", act.account);
          mvo("name", act.name);
          mvo("domain", act.domain);
          mvo("key", act.key);
 
-         auto abi = resolver(act.account);
+         auto abi = resolver(config::system_account_name);
          if (abi.valid()) {
             auto type = abi->get_action_type(act.name);
             mvo("data", abi->binary_to_variant(type, act.data));
@@ -306,11 +305,9 @@ namespace impl {
       static void extract( const variant& v, action& act, Resolver resolver )
       {
          const variant_object& vo = v.get_object();
-         FC_ASSERT(vo.contains("account"));
          FC_ASSERT(vo.contains("name"));
          FC_ASSERT(vo.contains("domain"));
          FC_ASSERT(vo.contains("key"));
-         from_variant(vo["account"], act.account);
          from_variant(vo["name"], act.name);
          from_variant(vo["domain"], act.domain);
          from_variant(vo["key"], act.key);
@@ -320,7 +317,7 @@ namespace impl {
             if( data.is_string() ) {
                from_variant(data, act.data);
             } else if ( data.is_object() ) {
-               auto abi = resolver(act.account);
+               auto abi = resolver(config::system_account_name);
                if (abi.valid()) {
                   auto type = abi->get_action_type(act.name);
                   act.data = std::move(abi->variant_to_binary(type, data));
@@ -338,7 +335,7 @@ namespace impl {
          }
 
          EVT_ASSERT(!act.data.empty(), packed_transaction_type_exception,
-                    "Failed to deserialize data for ${account}:${name}", ("account", act.account)("name", act.name));
+                    "Failed to deserialize data for ${name}", ("name", act.name));
       }
 
       template<typename Resolver>
