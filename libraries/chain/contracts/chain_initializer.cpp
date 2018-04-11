@@ -154,8 +154,8 @@ abi_def chain_initializer::evt_contract_abi()
    evt_abi.structs.emplace_back( struct_def {
       "updatedomain", "", {
          {"name", "domain_name"},
-         {"issue", "permission_def"},
-         {"transfer", "permission_def"},
+         {"issue", "permission_def?"},
+         {"transfer", "permission_def?"},
          {"manage", "permission_def?"},
          {"groups", "group_def[]"},
       }
