@@ -1284,14 +1284,6 @@ void chain_controller::_set_apply_handler( action_name action, apply_handler v )
    _apply_handlers[action] = v;
 }
 
-static void log_handled_exceptions(const transaction& trx) {
-   try {
-      throw;
-   } catch (const checktime_exceeded&) {
-      throw;
-   } FC_CAPTURE_AND_LOG((trx));
-}
-
 transaction_trace chain_controller::__apply_transaction( transaction_metadata& meta ) 
 { try {
    transaction_trace result(meta.id);
@@ -1315,14 +1307,7 @@ transaction_trace chain_controller::_apply_transaction( transaction_metadata& me
          return result;
       } catch (...) {
          // if there is no sender, there is no error handling possible, rethrow
-         if (!meta.sender) {
-            throw;
-         }
-
-         // log exceptions we can handle with the error handle, throws otherwise
-         log_handled_exceptions(meta.trx());
-
-         return _apply_error(meta);
+         throw;
       }
    };
 
@@ -1331,48 +1316,6 @@ transaction_trace chain_controller::_apply_transaction( transaction_metadata& me
    result._profiling_us = fc::time_point::now() - start;
    return result;
 } FC_CAPTURE_AND_RETHROW( (transaction_header(meta.trx())) ) }
-
-transaction_trace chain_controller::_apply_error( transaction_metadata& meta ) {
-   transaction_trace result(meta.id);
-   result.status = transaction_trace::soft_fail;
-   // TODO [EVT] We need to rewrite this logic
-
-//    transaction etrx;
-//    etrx.actions.emplace_back(vector<permission_level>{{meta.sender_id,config::active_name}},
-//                              contracts::onerror(meta.raw_data, meta.raw_data + meta.raw_size) );
-
-//    try {
-//       auto temp_session = _db.start_undo_session(true);
-
-//       apply_context context(*this, _db, etrx.actions.front(), meta);
-//       context.exec();
-//       fc::move_append(result.action_traces, std::move(context.results.applied_actions));
-//       fc::move_append(result.deferred_transactions, std::move(context.results.generated_transactions));
-
-//       uint32_t act_usage = result.action_traces.size();
-
-//       for (auto &at: result.action_traces) {
-//          at.region_id = meta.region_id;
-//          at.cycle_index = meta.cycle_index;
-//       }
-
-//       update_usage(meta, act_usage);
-//       record_transaction(meta.trx());
-
-//       temp_session.squash();
-//       return result;
-
-//    } catch (...) {
-//       // log exceptions we can handle with the error handle, throws otherwise
-//       log_handled_exceptions(etrx);
-
-//       // fall through to marking this tx as hard-failing
-//    }
-
-   // if we have an objective error, on an error handler, we return hard fail for the trx
-   result.status = transaction_trace::hard_fail;
-   return result;
-}
 
 const apply_handler* chain_controller::find_apply_handler( action_name act ) const
 {

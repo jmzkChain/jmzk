@@ -296,7 +296,6 @@ namespace evt { namespace chain {
          transaction_trace _push_transaction( transaction_metadata&& data );
          transaction_trace _apply_transaction( transaction_metadata& data );
          transaction_trace __apply_transaction( transaction_metadata& data );
-         transaction_trace _apply_error( transaction_metadata& data );
 
          template<typename TransactionProcessing>
          transaction_trace wrap_transaction_processing( transaction_metadata&& data, TransactionProcessing trx_processing );
