@@ -489,7 +489,6 @@ namespace evt {
       void enqueue( transaction_id_type id );
       void enqueue( const net_message &msg, bool trigger_send = true );
       void cancel_sync(go_away_reason);
-      void cancel_fetch();
       void flush_queues();
       bool enqueue_sync_block();
       void request_sync_blocks (uint32_t start, uint32_t end);
@@ -927,10 +926,6 @@ namespace evt {
       }
    }
 
-   void connection::cancel_fetch() {
-      my_impl->big_msg_master->retry_fetch(shared_from_this() );
-   }
-
    bool connection::enqueue_sync_block() {
       chain_controller& cc = app().find_plugin<chain_plugin>()->chain();
       if (!peer_requested)
@@ -1036,7 +1031,7 @@ namespace evt {
 
    void connection::fetch_timeout( boost::system::error_code ec ) {
       if( !ec ) {
-         if( !( pending_fetch->req_trx.empty( ) || pending_fetch->req_blocks.empty( ) ) ) {
+         if( pending_fetch.valid() && !( pending_fetch->req_trx.empty( ) || pending_fetch->req_blocks.empty( ) ) ) {
             my_impl->big_msg_master->retry_fetch (shared_from_this() );
          }
       }
@@ -1528,9 +1523,9 @@ namespace evt {
                                        0, 0, 0};
          my_impl->local_txns.insert(std::move(nts));
       }
-      if( !skip && bufsiz <= just_send_it_max) {
-         my_impl->send_all( txn, [remember,txnid](connection_ptr c) -> bool {
-               if( c->syncing ) {
+      if(bufsiz <= just_send_it_max) {
+         my_impl->send_all( txn, [skip, remember,txnid](connection_ptr c) -> bool {
+               if(c == skip || c->syncing ) {
                   return false;
                }
                const auto& bs = c->trx_state.find(txnid);
@@ -1556,7 +1551,7 @@ namespace evt {
                const auto& bs = c->trx_state.find(txnid);
                bool unknown = bs == c->trx_state.end();
                if( unknown) {
-                  fc_ilog(logger, "sending notice to ${n}", ("n",c->peer_name() ) );
+                  fc_dlog(logger, "sending notice to ${n}", ("n",c->peer_name() ) );
                   if (remember) {
                      c->trx_state.insert(transaction_state({txnid,false,true,0, time_point() }));
                   }
