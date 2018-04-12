@@ -4,31 +4,59 @@
 // file LICENSE or https://github.com/CLIUtils/CLI11 for details.
 
 // This file was generated using MakeSingleHeader.py in CLI11/scripts
-// from: v1.4.0
+// from: v1.5.1
 
 // This has the complete CLI library in one file.
 
-#include <sys/stat.h>
-#include <deque>
-#include <set>
-#include <iostream>
-#include <string>
-#include <iterator>
-#include <tuple>
-#include <locale>
-#include <functional>
-#include <numeric>
-#include <iomanip>
-#include <sys/types.h>
-#include <utility>
-#include <exception>
 #include <algorithm>
+#include <deque>
+#include <exception>
 #include <fstream>
+#include <functional>
+#include <iomanip>
+#include <iostream>
+#include <istream>
+#include <iterator>
+#include <locale>
+#include <memory>
+#include <numeric>
+#include <set>
 #include <sstream>
 #include <stdexcept>
-#include <vector>
+#include <string>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <tuple>
 #include <type_traits>
-#include <memory>
+#include <utility>
+#include <vector>
+
+
+// Verbatim copy from CLI/Optional.hpp
+
+#ifdef __has_include
+#if defined(CLI11_CPP17) && __has_include(<optional>)
+#include <optional>
+#ifdef __cpp_lib_optional
+#ifndef CLI11_STD_OPTIONAL
+#define CLI11_STD_OPTIONAL
+#endif
+#endif
+#endif
+#if defined(CLI11_CPP14) && __has_include(<experimental/optional>)
+#include <experimental/optional>
+#ifndef CLI11_EXPERIMENTAL_OPTIONAL
+#define CLI11_EXPERIMENTAL_OPTIONAL
+#endif
+#endif
+#if __has_include(<boost/optional.hpp>)
+#include <boost/optional.hpp>
+#ifndef CLI11_BOOST_OPTIONAL
+#define CLI11_BOOST_OPTIONAL
+#endif
+#endif
+#endif
+
 
 // From CLI/Version.hpp
 
@@ -37,9 +65,98 @@ namespace CLI {
 // Note that all code in CLI11 must be in a namespace, even if it just a define.
 
 #define CLI11_VERSION_MAJOR 1
-#define CLI11_VERSION_MINOR 4
-#define CLI11_VERSION_PATCH 0
-#define CLI11_VERSION "1.4.0"
+#define CLI11_VERSION_MINOR 5
+#define CLI11_VERSION_PATCH 1
+#define CLI11_VERSION "1.5.1"
+
+} // namespace CLI
+
+// From CLI/Macros.hpp
+
+namespace CLI {
+
+// Note that all code in CLI11 must be in a namespace, even if it just a define.
+
+// The following version macro is very similar to the one in PyBind11
+
+#if !(defined(_MSC_VER) && __cplusplus == 199711L) && !defined(__INTEL_COMPILER)
+#if __cplusplus >= 201402L
+#define CLI11_CPP14
+#if __cplusplus >= 201703L
+#define CLI11_CPP17
+#if __cplusplus > 201703L
+#define CLI11_CPP20
+#endif
+#endif
+#endif
+#elif defined(_MSC_VER) && __cplusplus == 199711L
+// MSVC sets _MSVC_LANG rather than __cplusplus (supposedly until the standard is fully implemented)
+// Unless you use the /Zc:__cplusplus flag on Visual Studio 2017 15.7 Preview 3 or newer
+#if _MSVC_LANG >= 201402L
+#define CLI11_CPP14
+#if _MSVC_LANG > 201402L && _MSC_VER >= 1910
+#define CLI11_CPP17
+#if __MSVC_LANG > 201703L && _MSC_VER >= 1910
+#define CLI11_CPP20
+#endif
+#endif
+#endif
+#endif
+
+#if defined(PYBIND11_CPP14)
+#define CLI11_DEPRECATED(reason) [[deprecated(reason)]]
+#elif defined(_MSC_VER)
+#define CLI11_DEPRECATED(reason) __declspec(deprecated(reason))
+#else
+#define CLI11_DEPRECATED(reason) __attribute__((deprecated(reason)))
+#endif
+
+} // namespace CLI
+
+// From CLI/Optional.hpp
+
+namespace CLI {
+
+#ifdef CLI11_STD_OPTIONAL
+template <typename T> std::istream &operator>>(std::istream &in, std::optional<T> &val) {
+    T v;
+    in >> v;
+    val = v;
+    return in;
+}
+#endif
+
+#ifdef CLI11_EXPERIMENTAL_OPTIONAL
+template <typename T> std::istream &operator>>(std::istream &in, std::experimental::optional<T> &val) {
+    T v;
+    in >> v;
+    val = v;
+    return in;
+}
+#endif
+
+#ifdef CLI11_BOOST_OPTIONAL
+template <typename T> std::istream &operator>>(std::istream &in, boost::optional<T> &val) {
+    T v;
+    in >> v;
+    val = v;
+    return in;
+}
+#endif
+
+// Export the best optional to the CLI namespace
+#if defined(CLI11_STD_OPTIONAL)
+using std::optional;
+#elif defined(CLI11_EXPERIMENTAL_OPTIONAL)
+using std::experimental::optional;
+#elif defined(CLI11_BOOST_OPTIONAL)
+using boost::optional;
+#endif
+
+// This is true if any optional is found
+#if defined(CLI11_STD_OPTIONAL) || defined(CLI11_EXPERIMENTAL_OPTIONAL) || defined(CLI11_BOOST_OPTIONAL)
+#define CLI11_OPTIONAL
+#endif
 
 } // namespace CLI
 
@@ -322,6 +439,9 @@ class IncorrectConstruction : public ConstructionError {
     static IncorrectConstruction Set0Opt(std::string name) {
         return IncorrectConstruction(name + ": Cannot set 0 expected, use a flag instead");
     }
+    static IncorrectConstruction SetFlag(std::string name) {
+        return IncorrectConstruction(name + ": Cannot set an expected number for flags");
+    }
     static IncorrectConstruction ChangeNotVector(std::string name) {
         return IncorrectConstruction(name + ": You can only change the expected arguments for vectors");
     }
@@ -333,7 +453,7 @@ class IncorrectConstruction : public ConstructionError {
         return IncorrectConstruction("Option " + name + " is not defined");
     }
     static IncorrectConstruction MultiOptionPolicy(std::string name) {
-        return IncorrectConstruction(name + ": multi_option_policy only works for flags and single value options");
+        return IncorrectConstruction(name + ": multi_option_policy only works for flags and exact value options");
     }
 };
 
@@ -582,8 +702,7 @@ constexpr const char *type_name() {
 
 /// Signed integers / enums
 template <typename T,
-          enable_if_t<(std::is_integral<T>::value && std::is_signed<T>::value) || std::is_enum<T>::value,
-                      detail::enabler> = detail::dummy>
+          enable_if_t<(std::is_integral<T>::value && std::is_signed<T>::value), detail::enabler> = detail::dummy>
 bool lexical_cast(std::string input, T &output) {
     try {
         size_t n = 0;
@@ -632,7 +751,7 @@ bool lexical_cast(std::string input, T &output) {
 
 /// String and similar
 template <typename T,
-          enable_if_t<!std::is_floating_point<T>::value && !std::is_integral<T>::value && !std::is_enum<T>::value &&
+          enable_if_t<!std::is_floating_point<T>::value && !std::is_integral<T>::value &&
                           std::is_assignable<T &, std::string>::value,
                       detail::enabler> = detail::dummy>
 bool lexical_cast(std::string input, T &output) {
@@ -642,17 +761,18 @@ bool lexical_cast(std::string input, T &output) {
 
 /// Non-string parsable
 template <typename T,
-          enable_if_t<!std::is_floating_point<T>::value && !std::is_integral<T>::value && !std::is_enum<T>::value &&
+          enable_if_t<!std::is_floating_point<T>::value && !std::is_integral<T>::value &&
                           !std::is_assignable<T &, std::string>::value,
                       detail::enabler> = detail::dummy>
 bool lexical_cast(std::string input, T &output) {
 
 // On GCC 4.7, thread_local is not available, so this optimization
-// is turned off (avoiding multiple initialisations on multiple usages
+// is turned off (avoiding multiple initialisations on multiple usages)
 #if defined(__GNUC__) && !defined(__clang__) && !defined(__INTEL_COMPILER) && __GNUC__ == 4 && (__GNUC_MINOR__ < 8)
     std::istringstream is;
 #else
     static thread_local std::istringstream is;
+    is.clear();
 #endif
 
     is.str(input);
@@ -1009,21 +1129,21 @@ template <typename CRTP> class OptionBase {
 
     /// Set the multi option policy to take last
     CRTP *take_last() {
-        CRTP *self = static_cast<CRTP *>(this);
+        auto self = static_cast<CRTP *>(this);
         self->multi_option_policy(MultiOptionPolicy::TakeLast);
         return self;
     }
 
     /// Set the multi option policy to take last
     CRTP *take_first() {
-        CRTP *self = static_cast<CRTP *>(this);
+        auto self = static_cast<CRTP *>(this);
         self->multi_option_policy(MultiOptionPolicy::TakeFirst);
         return self;
     }
 
     /// Set the multi option policy to take last
     CRTP *join() {
-        CRTP *self = static_cast<CRTP *>(this);
+        auto self = static_cast<CRTP *>(this);
         self->multi_option_policy(MultiOptionPolicy::Join);
         return self;
     }
@@ -1093,11 +1213,13 @@ class Option : public OptionBase<Option> {
     /// @name Configuration
     ///@{
 
-    /// The number of expected values, 0 for flag, -1 for unlimited vector
-    int expected_{1};
+    /// The number of arguments that make up one option. -1=unlimited (vector-like), 0=flag, 1=normal option,
+    /// 2=complex/pair, etc. Set only when the option is created; this is intrinsic to the type. Eventually, -2 may mean
+    /// vector of pairs.
+    int type_size_{1};
 
-    /// A private setting to allow args to not be able to accept incorrect expected values
-    bool changeable_{false};
+    /// The number of expected values, type_size_ must be < 0. Ignored for flag. N < 0 means at least -N values.
+    int expected_{1};
 
     /// A list of validators to run on each value parsed
     std::vector<std::function<std::string(std::string &)>> validators_;
@@ -1157,14 +1279,25 @@ class Option : public OptionBase<Option> {
     /// @name Setting options
     ///@{
 
-    /// Set the number of expected arguments (Flags bypass this)
+    /// Set the number of expected arguments (Flags don't use this)
     Option *expected(int value) {
-        if(expected_ == value)
-            return this;
+        // Break if this is a flag
+        if(type_size_ == 0)
+            throw IncorrectConstruction::SetFlag(single_name());
+
+        // Setting 0 is not allowed
         else if(value == 0)
             throw IncorrectConstruction::Set0Opt(single_name());
-        else if(!changeable_)
+
+        // No change is okay, quit now
+        else if(expected_ == value)
+            return this;
+
+        // Type must be a vector
+        else if(type_size_ >= 0)
             throw IncorrectConstruction::ChangeNotVector(single_name());
+
+        // TODO: Can support multioption for non-1 values (except for join)
         else if(value != 1 && multi_option_policy_ != MultiOptionPolicy::Throw)
             throw IncorrectConstruction::AfterMultiOpt(single_name());
 
@@ -1195,7 +1328,7 @@ class Option : public OptionBase<Option> {
     Option *needs(Option *opt) {
         auto tup = requires_.insert(opt);
         if(!tup.second)
-            throw OptionAlreadyAdded::Requires(get_name(), opt->get_name());
+            throw OptionAlreadyAdded::Requires(single_name(), opt->single_name());
         return this;
     }
 
@@ -1213,25 +1346,36 @@ class Option : public OptionBase<Option> {
         return needs(opt1, args...);
     }
 
-#if __cplusplus <= 201703L
+#ifndef CLI11_CPP20
     /// Sets required options \deprecated
+    CLI11_DEPRECATED("Use needs instead of requires (eventual keyword clash)")
     Option *requires(Option *opt) { return needs(opt); }
 
     /// Can find a string if needed \deprecated
-    template <typename T = App> Option *requires(std::string opt_name) { return needs<T>(opt_name); }
+    template <typename T = App> Option *requires(std::string opt_name) {
+        for(const Option_p &opt : dynamic_cast<T *>(parent_)->options_)
+            if(opt.get() != this && opt->check_name(opt_name))
+                return needs(opt.get());
+        throw IncorrectConstruction::MissingOption(opt_name);
+    }
 
     /// Any number supported, any mix of string and Opt \deprecated
     template <typename A, typename B, typename... ARG> Option *requires(A opt, B opt1, ARG... args) {
-        needs(opt);
-        return needs(opt1, args...);
+        requires(opt);
+        return requires(opt1, args...);
     }
 #endif
 
     /// Sets excluded options
     Option *excludes(Option *opt) {
-        auto tup = excludes_.insert(opt);
-        if(!tup.second)
-            throw OptionAlreadyAdded::Excludes(get_name(), opt->get_name());
+        excludes_.insert(opt);
+
+        // Help text should be symmetric - excluding a should exclude b
+        opt->excludes_.insert(this);
+
+        // Ignoring the insert return value, excluding twice is now allowed.
+        // (Mostly to allow both directions to be excluded by user, even though the library does it for you.)
+
         return this;
     }
 
@@ -1270,9 +1414,10 @@ class Option : public OptionBase<Option> {
         return this;
     }
 
-    /// Take the last argument if given multiple times
+    /// Take the last argument if given multiple times (or another policy)
     Option *multi_option_policy(MultiOptionPolicy value = MultiOptionPolicy::Throw) {
-        if(get_expected() != 0 && get_expected() != 1)
+
+        if(get_items_expected() < 0)
             throw IncorrectConstruction::MultiOptionPolicy(single_name());
         multi_option_policy_ = value;
         return this;
@@ -1283,7 +1428,31 @@ class Option : public OptionBase<Option> {
     ///@{
 
     /// The number of arguments the option expects
+    int get_type_size() const { return type_size_; }
+
+    /// The number of times the option expects to be included
     int get_expected() const { return expected_; }
+
+    /// \breif The total number of expected values (including the type)
+    /// This is positive if exactly this number is expected, and negitive for at least N values
+    ///
+    /// v = fabs(size_type*expected)
+    /// !MultiOptionPolicy::Throw
+    ///           | Expected < 0  | Expected == 0 | Expected > 0
+    /// Size < 0  |      -v       |       0       |     -v
+    /// Size == 0 |       0       |       0       |      0
+    /// Size > 0  |      -v       |       0       |     -v       // Expected must be 1
+    ///
+    /// MultiOptionPolicy::Throw
+    ///           | Expected < 0  | Expected == 0 | Expected > 0
+    /// Size < 0  |      -v       |       0       |      v
+    /// Size == 0 |       0       |       0       |      0
+    /// Size > 0  |       v       |       0       |      v      // Expected must be 1
+    ///
+    int get_items_expected() const {
+        return std::abs(type_size_ * expected_) *
+               ((multi_option_policy_ != MultiOptionPolicy::Throw || (expected_ < 0 && type_size_ < 0) ? -1 : 1));
+    }
 
     /// True if this has a default value
     int get_default() const { return default_; }
@@ -1330,7 +1499,7 @@ class Option : public OptionBase<Option> {
         return out;
     }
 
-    /// The most discriptive name available
+    /// The most descriptive name available
     std::string single_name() const {
         if(!lnames_.empty())
             return std::string("--") + lnames_[0];
@@ -1358,7 +1527,7 @@ class Option : public OptionBase<Option> {
     std::string help_aftername() const {
         std::stringstream out;
 
-        if(get_expected() != 0) {
+        if(get_type_size() != 0) {
             if(!typeval_.empty())
                 out << " " << typeval_;
             if(!defaultval_.empty())
@@ -1367,18 +1536,20 @@ class Option : public OptionBase<Option> {
                 out << " x " << get_expected();
             if(get_expected() == -1)
                 out << " ...";
+            if(get_required())
+                out << " (REQUIRED)";
         }
         if(!envname_.empty())
             out << " (env:" << envname_ << ")";
         if(!requires_.empty()) {
-            out << " Requires:";
+            out << " Needs:";
             for(const Option *opt : requires_)
-                out << " " << opt->get_name();
+                out << " " << opt->single_name();
         }
         if(!excludes_.empty()) {
             out << " Excludes:";
             for(const Option *opt : excludes_)
-                out << " " << opt->get_name();
+                out << " " << opt->single_name();
         }
         return out.str();
     }
@@ -1402,20 +1573,29 @@ class Option : public OptionBase<Option> {
 
         bool local_result;
 
+        // Num items expected or length of vector, always at least 1
+        // Only valid for a trimming policy
+        int trim_size = std::min(std::max(std::abs(get_items_expected()), 1), static_cast<int>(results_.size()));
+
         // Operation depends on the policy setting
         if(multi_option_policy_ == MultiOptionPolicy::TakeLast) {
-            results_t partial_result = {results_.back()};
+            // Allow multi-option sizes (including 0)
+            results_t partial_result{results_.end() - trim_size, results_.end()};
             local_result = !callback_(partial_result);
+
         } else if(multi_option_policy_ == MultiOptionPolicy::TakeFirst) {
-            results_t partial_result = {results_.at(0)};
+            results_t partial_result{results_.begin(), results_.begin() + trim_size};
             local_result = !callback_(partial_result);
+
         } else if(multi_option_policy_ == MultiOptionPolicy::Join) {
             results_t partial_result = {detail::join(results_, "\n")};
             local_result = !callback_(partial_result);
+
         } else {
-            if((expected_ > 0 && results_.size() != static_cast<size_t>(expected_)) ||
-               (expected_ < 0 && results_.size() < static_cast<size_t>(-expected_)))
-                throw ArgumentMismatch(single_name(), expected_, results_.size());
+            // For now, vector of non size 1 types are not supported but possibility included here
+            if((get_items_expected() > 0 && results_.size() != static_cast<size_t>(get_items_expected())) ||
+               (get_items_expected() < 0 && results_.size() < static_cast<size_t>(-get_items_expected())))
+                throw ArgumentMismatch(single_name(), get_items_expected(), results_.size());
             else
                 local_result = !callback_(results_);
         }
@@ -1497,13 +1677,14 @@ class Option : public OptionBase<Option> {
     /// @name Custom options
     ///@{
 
-    /// Set a custom option, typestring, expected; locks changeable unless expected is -1
-    void set_custom_option(std::string typeval, int expected = 1) {
+    /// Set a custom option, typestring, type_size
+    void set_custom_option(std::string typeval, int type_size = 1) {
         typeval_ = typeval;
-        expected_ = expected;
-        if(expected == 0)
+        type_size_ = type_size;
+        if(type_size_ == 0)
             required_ = false;
-        changeable_ = expected < 0;
+        if(type_size < 0)
+            expected_ = -1;
     }
 
     /// Set the default value string representation
@@ -1579,8 +1760,8 @@ class App {
     /// @name Basics
     ///@{
 
-    /// Subcommand name or program name (from parser)
-    std::string name_{"program"};
+    /// Subcommand name or program name (from parser if name is empty)
+    std::string name_;
 
     /// Description of the current program/subcommand
     std::string description_;
@@ -1708,9 +1889,13 @@ class App {
     ///@{
 
     /// Create a new program. Pass in the same arguments as main(), along with a help string.
-    App(std::string description_ = "") : App(description_, nullptr) {
+    App(std::string description_ = "", std::string name = "") : App(description_, nullptr) {
+        name_ = name;
         set_help_flag("-h,--help", "Print this help message and exit");
     }
+
+    /// virtual destructor
+    virtual ~App() = default;
 
     /// Set a callback for the end of parsing.
     ///
@@ -1720,6 +1905,12 @@ class App {
     /// to get a pointer to App if needed.
     App *set_callback(std::function<void()> callback) {
         callback_ = callback;
+        return this;
+    }
+
+    /// Set a name for the app (empty will use parser to set the name)
+    App *set_name(std::string name = "") {
+        name_ = name;
         return this;
     }
 
@@ -1963,7 +2154,7 @@ class App {
         return opt;
     }
 
-#if __cplusplus >= 201402L
+#ifdef CLI11_CPP14
     /// Add option for callback (C++14 or better only)
     Option *add_flag(std::string name,
                      std::function<void(size_t)> function, ///< A function to call, void(size_t)
@@ -2235,7 +2426,10 @@ class App {
     /// Parses the command line - throws errors
     /// This must be called after the options are in but before the rest of the program.
     void parse(int argc, char **argv) {
-        name_ = argv[0];
+        // If the name is not set, read from command line
+        if(name_.empty())
+            name_ = argv[0];
+
         std::vector<std::string> args;
         for(int i = argc - 1; i > 0; i--)
             args.emplace_back(argv[i]);
@@ -2350,7 +2544,7 @@ class App {
                 std::string value;
 
                 // Non-flags
-                if(opt->get_expected() != 0) {
+                if(opt->get_type_size() != 0) {
 
                     // If the option was found on command line
                     if(opt->count() > 0)
@@ -2402,15 +2596,19 @@ class App {
 
         std::stringstream out;
         out << description_ << std::endl;
-        out << "Usage: " << prev;
+        out << "Usage:" << (prev.empty() ? "" : " ") << prev;
 
         // Check for options_
         bool npos = false;
-        std::set<std::string> groups;
+        std::vector<std::string> groups;
         for(const Option_p &opt : options_) {
             if(opt->nonpositional()) {
                 npos = true;
-                groups.insert(opt->get_group());
+
+                // Add group if it is not already in there
+                if(std::find(groups.begin(), groups.end(), opt->get_group()) == groups.end()) {
+                    groups.push_back(opt->get_group());
+                }
             }
         }
 
@@ -2489,6 +2687,18 @@ class App {
     /// @name Getters
     ///@{
 
+    /// Get the app or subcommand description
+    std::string get_description() const { return description_; }
+
+    /// Get the list of options (user facing function, so returns raw pointers)
+    std::vector<Option *> get_options() const {
+        std::vector<Option *> options(options_.size());
+        std::transform(std::begin(options_), std::end(options_), std::begin(options), [](const Option_p &val) {
+            return val.get();
+        });
+        return options;
+    }
+
     /// Check the status of ignore_case
     bool get_ignore_case() const { return ignore_case_; }
 
@@ -2530,6 +2740,7 @@ class App {
 
     /// Get a pointer to the config option. (const)
     const Option *get_config_ptr() const { return config_ptr_; }
+
     /// Get the name of the current app
     std::string get_name() const { return name_; }
 
@@ -2547,12 +2758,14 @@ class App {
     /// This gets a vector of pointers with the original parse order
     const std::vector<Option *> &parse_order() const { return parse_order_; }
 
-    /// This retuns the missing options from the current subcommand
+    /// This returns the missing options from the current subcommand
     std::vector<std::string> remaining(bool recurse = false) const {
         std::vector<std::string> miss_list;
         for(const std::pair<detail::Classifer, std::string> &miss : missing_) {
             miss_list.push_back(std::get<1>(miss));
         }
+
+        // Recurse into subcommands
         if(recurse) {
             for(const App *sub : parsed_subcommands_) {
                 std::vector<std::string> output = sub->remaining(recurse);
@@ -2564,10 +2777,10 @@ class App {
 
     /// This returns the number of remaining options, minus the -- seperator
     size_t remaining_size(bool recurse = false) const {
-        size_t count = std::count_if(
+        size_t count = static_cast<size_t>(std::count_if(
             std::begin(missing_), std::end(missing_), [](const std::pair<detail::Classifer, std::string> &val) {
                 return val.first != detail::Classifer::POSITIONAL_MARK;
-            });
+            }));
         if(recurse) {
             for(const App_p &sub : subcommands_) {
                 count += sub->remaining_size(recurse);
@@ -2584,7 +2797,7 @@ class App {
     /// Currently checks to see if multiple positionals exist with -1 args
     void _validate() const {
         auto count = std::count_if(std::begin(options_), std::end(options_), [](const Option_p &opt) {
-            return opt->get_expected() == -1 && opt->get_positional();
+            return opt->get_items_expected() < 0 && opt->get_positional();
         });
         if(count > 1)
             throw InvalidError(name_);
@@ -2704,8 +2917,8 @@ class App {
             // Required or partially filled
             if(opt->get_required() || opt->count() != 0) {
                 // Make sure enough -N arguments parsed (+N is already handled in parsing function)
-                if(opt->get_expected() < 0 && opt->count() < static_cast<size_t>(-opt->get_expected()))
-                    throw ArgumentMismatch::AtLeast(opt->single_name(), -opt->get_expected());
+                if(opt->get_items_expected() < 0 && opt->count() < static_cast<size_t>(-opt->get_items_expected()))
+                    throw ArgumentMismatch::AtLeast(opt->single_name(), -opt->get_items_expected());
 
                 // Required but empty
                 if(opt->get_required() && opt->count() == 0)
@@ -2775,7 +2988,7 @@ class App {
 
         if(op->results_.empty()) {
             // Flag parsing
-            if(op->get_expected() == 0) {
+            if(op->get_type_size() == 0) {
                 if(current.inputs.size() == 1) {
                     std::string val = current.inputs.at(0);
                     val = detail::to_lower(val);
@@ -2835,9 +3048,9 @@ class App {
     size_t _count_remaining_positionals(bool required = false) const {
         size_t retval = 0;
         for(const Option_p &opt : options_)
-            if(opt->get_positional() && (!required || opt->get_required()) && opt->get_expected() > 0 &&
-               static_cast<int>(opt->count()) < opt->get_expected())
-                retval = static_cast<size_t>(opt->get_expected()) - opt->count();
+            if(opt->get_positional() && (!required || opt->get_required()) && opt->get_items_expected() > 0 &&
+               static_cast<int>(opt->count()) < opt->get_items_expected())
+                retval = static_cast<size_t>(opt->get_items_expected()) - opt->count();
 
         return retval;
     }
@@ -2849,7 +3062,7 @@ class App {
         for(const Option_p &opt : options_) {
             // Eat options, one by one, until done
             if(opt->get_positional() &&
-               (static_cast<int>(opt->count()) < opt->get_expected() || opt->get_expected() < 0)) {
+               (static_cast<int>(opt->count()) < opt->get_items_expected() || opt->get_items_expected() < 0)) {
 
                 opt->add_result(positional);
                 parse_order_.push_back(opt.get());
@@ -2936,27 +3149,34 @@ class App {
         // Get a reference to the pointer to make syntax bearable
         Option_p &op = *op_ptr;
 
-        int num = op->get_expected();
+        int num = op->get_items_expected();
 
+        // Make sure we always eat the minimum for unlimited vectors
+        int collected = 0;
+
+        // --this=value
         if(!value.empty()) {
-            if(num != -1)
+            // If exact number expected
+            if(num > 0)
                 num--;
             op->add_result(value);
             parse_order_.push_back(op.get());
+            collected += 1;
         } else if(num == 0) {
             op->add_result("");
             parse_order_.push_back(op.get());
+            // -Trest
         } else if(!rest.empty()) {
             if(num > 0)
                 num--;
             op->add_result(rest);
             parse_order_.push_back(op.get());
             rest = "";
+            collected += 1;
         }
 
         // Unlimited vector parser
         if(num < 0) {
-            int collected = 0; // Make sure we always eat the minimum
             while(!args.empty() && _recognize(args.back()) == detail::Classifer::NONE) {
                 if(collected >= -num) {
                     // We could break here for allow extras, but we don't
@@ -2964,18 +3184,16 @@ class App {
                     // If any positionals remain, don't keep eating
                     if(_count_remaining_positionals() > 0)
                         break;
-
-                    // If there are any unlimited positionals, those also take priority
-                    // if(std::any_of(std::begin(options_), std::end(options_), [](const Option_p &opt) {
-                    //     return opt->get_positional() && opt->get_expected() < 0;
-                    // }))
-                    // break;
                 }
                 op->add_result(args.back());
                 parse_order_.push_back(op.get());
                 args.pop_back();
                 collected++;
             }
+
+            // Allow -- to end an unlimited list and "eat" it
+            if(!args.empty() && _recognize(args.back()) == detail::Classifer::POSITIONAL_MARK)
+                args.pop_back();
 
         } else {
             while(num > 0 && !args.empty()) {
@@ -3036,3 +3254,4 @@ struct AppFriend {
 } // namespace detail
 
 } // namespace CLI
+
