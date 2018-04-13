@@ -12,6 +12,11 @@ namespace evt { namespace chain { namespace contracts {
 
 group_id
 group_id::from_base58(const std::string& base58) {
+    if(base58.empty()) {
+        // allow owner group
+        return group_id();
+    }
+
     char out[sizeof(value_)];
     auto sz = fc::from_base58(base58, out, sizeof(value_));
     FC_ASSERT(sz == sizeof(value_), "Not valid group id");
