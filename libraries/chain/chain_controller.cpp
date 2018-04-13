@@ -383,6 +383,8 @@ void chain_controller::_finalize_pending_cycle()
       trace.finalize_shard();
    }
    _apply_cycle_trace(*_pending_cycle_trace);
+   _pending_block_trace->region_traces.back().cycle_traces.emplace_back(std::move(*_pending_cycle_trace));
+   _pending_cycle_trace.reset();
 }
 
 void chain_controller::_apply_cycle_trace( const cycle_trace& res )
