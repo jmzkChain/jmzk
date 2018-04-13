@@ -63,7 +63,6 @@ auto make_permission_checker = [](const auto& tokendb, const auto& groups) {
             if(g.id.empty()) {
                 // owner group
                 EVT_ASSERT(allowed_owner, action_validate_exception, "Owner group is not allowed in ${name} permission", ("name", p.name));
-                EVT_ASSERT(g.keys.empty(), action_validate_exception, "Owner group is allowd to define keys and weights");
                 continue;
             }
             auto dbexisted = tokendb.exists_group(g.id);

@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 #include <regex>
+#include <limits>
+#include <type_traits>
 #include <boost/asio.hpp>
 #include <boost/format.hpp>
 #include <iostream>
@@ -27,6 +29,8 @@
 #include <boost/range/algorithm/copy.hpp>
 #include <boost/algorithm/string/classification.hpp>
 
+#include <readline/readline.h>
+#include <readline/history.h>
 
 #include "CLI11.hpp"
 #include "help_text.hpp"
@@ -70,7 +74,6 @@ auto   tx_expiration = fc::seconds(30);
 string tx_ref_block_num_or_id;
 bool   tx_dont_broadcast = false;
 bool   tx_skip_sign = false;
-vector<string> tx_permission;
 
 void add_standard_transaction_options(CLI::App* cmd, string default_permission = "") {
    CLI::callback_t parse_exipration = [](CLI::results_t res) -> bool {
@@ -413,6 +416,146 @@ struct set_get_group_subcommand {
    }
 };
 
+auto readstr = [](const std::string& prompt) {
+    static std::string empty;
+    char* line_read = readline(prompt.c_str());
+    if(line_read && *line_read) {
+        add_history(line_read);
+        auto str = std::string(line_read);
+        free(line_read);
+        return str;
+    }
+    return empty;
+};
+
+auto readvalue = [](const std::string& prompt, const auto& transfrom_func) {
+    while(true) {
+        auto v = readstr(prompt);
+        if(v.empty()) {
+            fprintf(stderr, "Input value is not valid: empty value\n");
+            continue;
+        }
+        try {
+            return transfrom_func(v);
+        }
+        catch(fc::exception& e) {
+            fprintf(stderr, "Input value is not valid: %s\n", e.top_message().c_str());
+            continue;
+        }
+    }
+};
+
+auto readvalues = [](const std::string& prompt, const auto& read_func) {
+    printf("%s\n", prompt.c_str());
+
+    using rtype = decltype(read_func());
+    std::vector<rtype> values;
+    int n = 1;
+    while(true) {
+        auto arg = fc::mutable_variant_object("n",n);
+        auto notes = fc::format_string("Would you input #${n} value ('n' for exit): ", arg);
+        auto end = readstr(notes);
+        if(end == "n") {
+            break;
+        }
+        
+        auto v = read_func();
+        values.emplace_back(std::move(v));
+        n++;
+    }
+    return values;
+};
+
+auto readintegral = [](const std::string& prompt, const auto target) {
+    using itype = std::remove_const_t<decltype(target)>;
+    itype i = 0;
+    i = readvalue(prompt, [](auto& v) {
+        auto ll = strtoll(v.c_str(), nullptr, 10);
+        if(ll == 0) {
+            FC_THROW_EXCEPTION(fc::exception, "Not a number");
+        }
+        if(errno == ERANGE || ll >= std::numeric_limits<itype>::max()) {
+            FC_THROW_EXCEPTION(fc::exception, "Out of range");
+        }
+        return static_cast<itype>(ll);
+    });
+    return i;
+};
+
+key_weight
+read_kw() {
+    key_weight kw;
+    kw.key = readvalue("Key: ", [](auto& v) { return public_key_type(v); });
+    kw.weight = readintegral("Weight: ", kw.weight);
+    return kw;
+}
+
+group_def
+read_group() {
+    group_def g;
+    g.key = readvalue("Group key: ", [](auto& v) { return public_key_type(v); });
+    g.id = group_id::from_group_key(g.key);
+    g.threshold = readintegral("Group threshold: ", g.threshold);
+    g.keys = readvalues("Keys and weights:", read_kw);
+    return g;
+}
+
+group_weight
+read_gw() {
+    group_weight gw{};
+    while(true) {
+        auto v = readstr("Group id or key(empty for owner group): ");
+        if(v.empty()) {
+            gw.id = 0;
+            break;
+        }
+        try {
+            gw.id = group_id::from_group_key(public_key_type(v));
+        }
+        catch(...) {}
+        if(gw.id.empty()) {
+            try {
+                gw.id = group_id::from_base58(v);
+            }
+            catch(...) {}
+        }
+        if(gw.id.empty()) {
+            fprintf(stderr, "Input is neither valid group id nor group key.\n");
+            continue;
+        }
+        break;
+    }
+    gw.weight = readintegral("Group weight: ", gw.weight);
+    return gw;
+}
+
+permission_def
+read_permission(const std::string& name) {
+    printf("Read %s permssion\n", name.c_str());
+    permission_def p;
+    p.name = name;
+    p.threshold = readintegral("Threshold: ", p.threshold);
+    p.groups = readvalues("Groups: ", read_gw);
+    return p;
+}
+
+struct set_interactive_subcommands {
+    set_interactive_subcommands(CLI::App* actionRoot) {
+        auto ndact = actionRoot->add_subcommand("newdomain", "Add new domain interactively");
+        ndact->set_callback([this] {
+            newdomain nd;
+            nd.name = readstr("Domain name: ");
+            nd.issuer = readvalue("Issuer: ", [](auto& v) { return public_key_type(v); });
+            nd.issue = read_permission("issuer");
+            nd.transfer = read_permission("transfer");
+            nd.manage = read_permission("manage");
+
+            auto act = create_action("domain", (domain_key)nd.name, nd);
+            send_actions({ act });
+        });
+    }
+};
+
 int main( int argc, char** argv ) {
    fc::path binPath = argv[0];
    if (binPath.is_relative()) {
@@ -732,6 +875,10 @@ int main( int argc, char** argv ) {
       auto trxs_result = call(push_txns_func, trx_var);
       std::cout << fc::json::to_pretty_string(trxs_result) << std::endl;
    });
+
+   // Interactive subcommand
+   auto interactive = app.add_subcommand("interactive", localized("Push action via interactive way"))->require_subcommand();
+   auto set_interactive = set_interactive_subcommands(interactive);
 
    try {
        app.parse(argc, argv);
