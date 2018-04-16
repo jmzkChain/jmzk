@@ -76,7 +76,7 @@ bool   tx_dont_broadcast = false;
 bool   tx_skip_sign = false;
 
 void add_standard_transaction_options(CLI::App* cmd, string default_permission = "") {
-   CLI::callback_t parse_exipration = [](CLI::results_t res) -> bool {
+   CLI::callback_t parse_expiration = [](CLI::results_t res) -> bool {
       double value_s;
       if (res.size() == 0 || !CLI::detail::lexical_cast(res[0], value_s)) {
          return false;
@@ -86,7 +86,7 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
       return true;
    };
 
-   cmd->add_option("-x,--expiration", parse_exipration, localized("set the time in seconds before a transaction expires, defaults to 30s"));
+   cmd->add_option("-x,--expiration", parse_expiration, localized("set the time in seconds before a transaction expires, defaults to 30s"));
    cmd->add_flag("-s,--skip-sign", tx_skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
    cmd->add_flag("-d,--dont-broadcast", tx_dont_broadcast, localized("don't broadcast transaction to the network (just print to stdout)"));
    cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id, (localized("set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)")));
