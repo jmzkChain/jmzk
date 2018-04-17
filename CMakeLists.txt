@@ -40,8 +40,6 @@ endif()
 
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
-set(BUILD_DOXYGEN FALSE CACHE BOOL "Build doxygen documentation on every make")
-set(BUILD_MONGO_DB_PLUGIN FALSE CACHE BOOL "Build mongo database plugin")
 set(EOS_EGENESIS_JSON "${CMAKE_CURRENT_SOURCE_DIR}/genesis.json" )
 
 #set (USE_PCH 1)
@@ -194,10 +192,6 @@ include_directories(libraries/rocksdb/include)
 add_subdirectory( libraries )
 add_subdirectory( plugins )
 add_subdirectory( programs )
-add_subdirectory( scripts )
-# add_subdirectory( tests )
-add_subdirectory( tools )
-add_subdirectory( debian )
 
 install(FILES genesis.json DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio/node_00)
 install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio)
@@ -205,5 +199,3 @@ install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio/n
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/genesis.json ${CMAKE_CURRENT_BINARY_DIR}/etc/eosio/node_00/genesis.json COPYONLY)
 
 include(installer)
-
-include(doxygen)
