@@ -5,6 +5,7 @@
 #pragma once
 
 #include <evt/chain/types.hpp>
+#include <evt/chain/config.hpp>
 
 namespace evt { namespace chain {
 
@@ -16,44 +17,39 @@ namespace evt { namespace chain {
  * values specified by the producers.
  */
 struct chain_config {
+   uint32_t   per_signature_cpu_usage;        ///< the cpu usage billed for every signature on a transaction
 
-   uint32_t   target_block_size;
-   uint32_t   max_block_size;
+   uint32_t   max_transaction_cpu_usage;      ///< the maximum objectively measured cpu usage that the chain will allow regardless of account limits
+   uint32_t   max_transaction_net_usage;      ///< the maximum objectively measured net usage that the chain will allow regardless of account limits
 
-   uint32_t   target_block_acts_per_scope;
-   uint32_t   max_block_acts_per_scope;
+   uint64_t   max_block_cpu_usage;            ///< the maxiumum cpu usage in instructions for a block
+   uint32_t   target_block_cpu_usage_pct;     ///< the target percent (1% == 100, 100%= 10,000) of maximum cpu usage; exceeding this triggers congestion handling
+   uint64_t   max_block_net_usage;            ///< the maxiumum net usage in instructions for a block
+   uint32_t   target_block_net_usage_pct;     ///< the target percent (1% == 100, 100%= 10,000) of maximum net usage; exceeding this triggers congestion handling
 
-   uint32_t   target_block_acts; ///< regardless of the amount of parallelism, this defines target compute time per block
-   uint32_t   max_block_acts; ///< regardless of the amount of parallelism, this maximum compute time per block
-
-   uint64_t   real_threads; ///< the number of real threads the producers are using
-
-   uint64_t   max_storage_size;
    uint32_t   max_transaction_lifetime;
-   uint16_t   max_authority_depth;
    uint32_t   max_transaction_exec_time;
+   uint16_t   max_authority_depth;
    uint16_t   max_inline_depth;
    uint32_t   max_inline_action_size;
-   uint32_t   max_generated_transaction_size;
+   uint32_t   max_generated_transaction_count;
 
    static chain_config get_median_values( vector<chain_config> votes );
 
    template<typename Stream>
    friend Stream& operator << ( Stream& out, const chain_config& c ) {
-      return out << "Target Block Size: " << c.target_block_size << ", "
-                 << "Max Block Size: " << c.max_block_size << ", "
-                 << "Target Block Acts Per Scope: " << c.target_block_acts_per_scope << ", "
-                 << "Max Block Acts Per Scope: " << c.max_block_acts_per_scope << ", "
-                 << "Target Block Acts: " << c.target_block_acts << ", "
-                 << "Max Block Acts: " << c.max_block_acts << ", "
-                 << "Max Storage Size: " << c.max_storage_size << ", "
-                 << "Max Transaction Lifetime: " << c.max_transaction_lifetime << ", "
-                 << "Max Transaction Exec Time: " << c.max_transaction_exec_time << ", "
-                 << "Max Authority Depth: " << c.max_authority_depth << ", " 
+      return out << "Per-Signature CPU Usage: " << c.per_signature_cpu_usage << ", "
+                 << "Max Transaction CPU Usage: " << c.max_transaction_cpu_usage << ", "
+                 << "Max Transaction Net Usage: " << c.max_transaction_net_usage << ", "
+                 << "Max Block CPU Usage: " << c.max_block_cpu_usage << ", "
+                 << "Target Block CPU Usage Percent: " << c.target_block_cpu_usage_pct << ", "
+                 << "Max Block NET Usage: " << c.max_block_net_usage << ", "
+                 << "Target Block NET Usage Percent: " << ((double)c.target_block_net_usage_pct / (double)config::percent_1) << "%, "
+                 << "Max Transaction Lifetime: " << ((double)c.max_transaction_lifetime / (double)config::percent_1) << "%, "
+                 << "Max Authority Depth: " << c.max_authority_depth << ", "
                  << "Max Inline Depth: " << c.max_inline_depth << ", "
                  << "Max Inline Action Size: " << c.max_inline_action_size << ", "
-
-                 << "Max Generated Transaction Size: " << c.max_generated_transaction_size << "\n";
+                 << "Max Generated Transaction Count: " << c.max_generated_transaction_count << "\n";
    }
 };
        bool operator==(const chain_config& a, const chain_config& b);
@@ -62,13 +58,10 @@ inline bool operator!=(const chain_config& a, const chain_config& b) { return !(
 } } // namespace evt::chain
 
 FC_REFLECT(evt::chain::chain_config,
-           (target_block_size)
-           (max_block_size)
-           (target_block_acts_per_scope)
-           (max_block_acts_per_scope)
-           (target_block_acts)
-           (max_block_acts)
-           (real_threads)
-           (max_storage_size)
-           (max_transaction_lifetime)(max_authority_depth)(max_transaction_exec_time)
-           (max_inline_depth)(max_inline_action_size)(max_generated_transaction_size) )
+           (per_signature_cpu_usage)
+           (max_transaction_cpu_usage)(max_transaction_net_usage)
+           (max_block_cpu_usage)(target_block_cpu_usage_pct)
+           (max_block_net_usage)(target_block_net_usage_pct)
+           (max_transaction_lifetime)(max_transaction_exec_time)(max_authority_depth)
+           (max_inline_depth)(max_inline_action_size)(max_generated_transaction_count)
+)

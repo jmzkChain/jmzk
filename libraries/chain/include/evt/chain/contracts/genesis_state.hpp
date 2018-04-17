@@ -17,24 +17,23 @@ namespace evt { namespace chain { namespace contracts {
 
 struct genesis_state_type {
    chain_config   initial_configuration = {
-      .target_block_size              = config::default_target_block_size,
-      .max_block_size                 = config::default_max_block_size,
-      .target_block_acts_per_scope    = config::default_target_block_acts_per_scope,
-      .max_block_acts_per_scope       = config::default_max_block_acts_per_scope,
-      .target_block_acts              = config::default_target_block_acts,
-      .max_block_acts                 = config::default_max_block_acts,
-      .real_threads                   = 0, // TODO: unused?
-      .max_storage_size               = config::default_max_storage_size,
+      .per_signature_cpu_usage        = config::default_per_signature_cpu_usage,
+      .max_transaction_cpu_usage      = config::default_max_transaction_cpu_usage,
+      .max_transaction_net_usage      = config::default_max_transaction_net_usage,
+      .max_block_cpu_usage            = config::default_max_block_cpu_usage,
+      .target_block_cpu_usage_pct     = config::default_target_block_cpu_usage_pct,
+      .max_block_net_usage            = config::default_max_block_net_usage,
+      .target_block_net_usage_pct     = config::default_target_block_net_usage_pct,
       .max_transaction_lifetime       = config::default_max_trx_lifetime,
-      .max_authority_depth            = config::default_max_auth_depth,
       .max_transaction_exec_time      = 0, // TODO: unused?
+      .max_authority_depth            = config::default_max_auth_depth,
       .max_inline_depth               = config::default_max_inline_depth,
       .max_inline_action_size         = config::default_max_inline_action_size,
-      .max_generated_transaction_size = config::default_max_gen_trx_size
+      .max_generated_transaction_count = config::default_max_gen_trx_count
    };
 
-   time_point                               initial_timestamp;
-   public_key_type                          initial_key;
+   time_point                               initial_timestamp = fc::time_point::from_iso_string( "2018-03-01T12:00:00" );;
+   public_key_type                          initial_key = fc::variant("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV").as<public_key_type>();
 
    /**
     * Temporary, will be moved elsewhere.
