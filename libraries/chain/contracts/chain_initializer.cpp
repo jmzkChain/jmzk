@@ -137,7 +137,7 @@ abi_def chain_initializer::evt_contract_abi()
    evt_abi.structs.emplace_back( struct_def {
       "transfer", "", {
          {"domain", "domain_name"},
-         {"token_name", "name"},
+         {"name", "token_name"},
          {"to", "user_list"},
       }
    });

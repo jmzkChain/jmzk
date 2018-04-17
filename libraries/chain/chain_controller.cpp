@@ -680,13 +680,13 @@ auto get_auth_checker( const evt::chain::tokendb& tokendb, const flat_set<public
     auto checker = make_auth_checker( keys, 
         [&](const auto& domain, const auto name, const auto& cb) {
             tokendb.read_domain(domain, [&](const auto& domain) {
-                if(name == "issuetoken") {
+                if(name == N(issuetoken)) {
                     cb(domain.issue);
                 }
-                else if(name == "transfer") {
+                else if(name == N(transfer)) {
                     cb(domain.transfer);
                 }
-                else if(name == "updatedomain") {
+                else if(name == N(updatedomain)) {
                     cb(domain.manage);
                 }
             });

@@ -181,8 +181,8 @@ namespace evt { namespace chain {
         friend bool operator >=( const name128& a, const name128& b ) { return a.value >= b.value; }
         friend bool operator == ( const name128& a, const name128& b ) { return a.value == b.value; }
 
-        friend bool operator == ( const name128& a, uint64_t b ) { return a.value == b; }
-        friend bool operator != ( const name128& a, uint64_t b ) { return a.value != b; }
+        friend bool operator == ( const name128& a, uint128_t b ) { return a.value == b; }
+        friend bool operator != ( const name128& a, uint128_t b ) { return a.value != b; }
 
         friend bool operator != ( const name128& a, const name128& b ) { return a.value != b.value; }
 

@@ -74,9 +74,9 @@ namespace evt { namespace chain {
             });
             bool result = false;
 
-            if(action.domain == "domain") {
+            if(action.domain == N128(domain)) {
                 // newdomain action
-                if(action.name != "newdomain") {
+                if(action.name != N(newdomain)) {
                     return false;
                 }
                 public_key_type issuer;
@@ -91,9 +91,9 @@ namespace evt { namespace chain {
                 }
                 result = true;
             }
-            else if(action.domain == "group") {
+            else if(action.domain == N128(group)) {
                 // updategroup action
-                if(action.name != "updategroup") {
+                if(action.name != N(updategroup)) {
                     return false;
                 }
                 public_key_type gkey;
