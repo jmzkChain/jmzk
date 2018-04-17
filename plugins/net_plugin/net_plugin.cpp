@@ -2260,18 +2260,6 @@ namespace evt {
                for (const auto &recpt : shard.transactions) {
                   auto ltx = local_txns.get<by_id>().find(recpt.id);
                   switch (recpt.status) {
-                  case transaction_receipt::delayed: {
-                     if (ltx == local_txns.end()) {
-                        fc_dlog(logger, "got a delayed transaction, treat it like a notify");
-                        notice_message pending_notify;
-                        pending_notify.known_blocks.mode = normal;
-                        pending_notify.known_blocks.ids.push_back( blk_id );
-                        pending_notify.known_trx.mode = none;
-                        big_msg_master->recv_notice (c, pending_notify, true);
-                        return;
-                     }
-                     // else fall through to executed.
-                  }
                   case transaction_receipt::executed: {
                      if( ltx != local_txns.end()) {
                         sb.input_transactions.push_back(ltx->packed_txn);
