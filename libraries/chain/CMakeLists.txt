@@ -28,7 +28,7 @@ add_library( evt_chain
              ${HEADERS}
              transaction_metadata.cpp)
 
-target_link_libraries( evt_chain evt_utilities fc chainbase softfloat rocksdb )
+target_link_libraries( evt_chain evt_utilities fc chainbase rocksdb )
 target_include_directories( evt_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"
                             )

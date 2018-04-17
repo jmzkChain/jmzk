@@ -126,7 +126,7 @@
 
 	DEP_ARRAY=( git autoconf automake libtool ocaml.x86_64 doxygen libicu-devel.x86_64 \
 	bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 python-devel.x86_64 gettext-devel.x86_64 \
-    lz4 lz4-devel libzstd libzstd-devel readline-devel readline gflags gflags-devel)
+    lz4 lz4-devel libzstd libzstd-devel readline-devel readline)
 	COUNT=1
 	DISPLAY=""
 	DEP=""
@@ -273,6 +273,37 @@
 		printf "\tsecp256k1 found\n"
 	fi
 	
+	printf "\n\tChecking gflags installation.\n"
+    if [ ! -e /usr/local/lib/libgflags.a ]; then
+		printf "\tInstalling gflags\n"
+		cd ${TEMP_DIR}
+		git clone https://github.com/gflags/gflags.git
+		if [ $? -ne 0 ]; then
+			printf "\tUnable to clone repo gflags @ https://github.com/gflags/gflags.git.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		cd gflags
+		mkdir build
+        cd build
+        cmake ../
+		if [ $? -ne 0 ]; then
+			printf "\tError running CMAKE for gflags.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		make -j${JOBS}
+		if [ $? -ne 0 ]; then
+			printf "\tError compiling gflags.\n"
+			printf "\tExiting now.\n\n"
+			exit;
+		fi
+		sudo make install
+		rm -rf cd ${TEMP_DIR}/gflags
+	else
+		printf "\tgflags found\n"
+	fi
+
 	function print_instructions()
 	{
 		printf "\tsource /opt/rh/python33/enable\n"
