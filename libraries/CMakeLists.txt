@@ -1,5 +1,4 @@
 add_subdirectory( fc )
-add_subdirectory( softfloat )
 add_subdirectory( chainbase )
 add_subdirectory( utilities )
 add_subdirectory( appbase )
@@ -10,4 +9,3 @@ set( WITH_JEMALLOC OFF CACHE BOOL "use Jemalloc" FORCE )
 add_subdirectory( rocksdb )
 
 add_subdirectory( chain )
-add_subdirectory( testing )
