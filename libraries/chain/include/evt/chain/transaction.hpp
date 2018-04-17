@@ -157,6 +157,7 @@ namespace evt { namespace chain {
       fc::enum_type<uint8_t, compression_type>  compression;
       bytes                                     packed_trx;
 
+      transaction_id_type id()const;
       bytes                     get_raw_transaction()const;
       transaction               get_transaction()const;
       signed_transaction        get_signed_transaction()const;
