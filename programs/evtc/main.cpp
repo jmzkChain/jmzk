@@ -886,31 +886,29 @@ int main( int argc, char** argv ) {
        return app.exit(e);
    } catch (const explained_exception& e) {
       return 1;
-   } catch (const fc::exception& e) {
+   } catch (connection_exception& e) {
       auto errorString = e.to_detail_string();
-      if (errorString.find("Connection refused") != string::npos) {
-         if (errorString.find(fc::json::to_string(port)) != string::npos) {
-            std::cerr << localized("Failed to connect to evtd at ${ip}:${port}; is evtd running?", ("ip", host)("port", port)) << std::endl;
-         } else if (errorString.find(fc::json::to_string(wallet_port)) != string::npos) {
-            std::cerr << localized("Failed to connect to evt-walletd at ${ip}:${port}; is evt-walletd running?", ("ip", wallet_host)("port", wallet_port)) << std::endl;
-         } else {
-            std::cerr << localized("Failed to connect") << std::endl;
-         }
-
-         if (verbose_errors) {
-            elog("connect error: ${e}", ("e", errorString));
-         }
+      if (errorString.find(fc::json::to_string(port)) != string::npos) {
+         std::cerr << localized("Failed to connect to nodeos at ${ip}:${port}; is nodeos running?", ("ip", host)("port", port)) << std::endl;
+      } else if (errorString.find(fc::json::to_string(wallet_port)) != string::npos) {
+         std::cerr << localized("Failed to connect to keosd at ${ip}:${port}; is keosd running?", ("ip", wallet_host)("port", wallet_port)) << std::endl;
       } else {
-         // attempt to extract the error code if one is present
-         if (!print_recognized_errors(e, verbose_errors)) {
-            // Error is not recognized
-            if (!print_help_text(e) || verbose_errors) {
-               elog("Failed with error: ${e}", ("e", verbose_errors ? e.to_detail_string() : e.to_string()));
-            }
+         std::cerr << localized("Failed to connect") << std::endl;
+      }
+
+      if (verbose_errors) {
+         elog("connect error: ${e}", ("e", errorString));
+      }
+   } catch (const fc::exception& e) {
+      // attempt to extract the error code if one is present
+      if (!print_recognized_errors(e, verbose_errors)) {
+         // Error is not recognized
+         if (!print_help_text(e) || verbose_errors) {
+            elog("Failed with error: ${e}", ("e", verbose_errors ? e.to_detail_string() : e.to_string()));
          }
       }
       return 1;
    }
-
+   
    return 0;
 }

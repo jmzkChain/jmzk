@@ -51,4 +51,6 @@ namespace evt { namespace client { namespace http {
    const string get_domain_func = evt_func_base + "/get_domain";
    const string get_token_func = evt_func_base + "/get_token";
    const string get_group_func = evt_func_base + "/get_group";
+
+   FC_DECLARE_EXCEPTION( connection_exception, 1100000, "Connection Exception" );
  }}}

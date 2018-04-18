@@ -34,6 +34,7 @@ namespace evt { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( block_concurrency_exception,       evt::chain::block_validate_exception, 3020002, "block does not guarantee concurrent exection without conflicts" )
    FC_DECLARE_DERIVED_EXCEPTION( block_lock_exception,              evt::chain::block_validate_exception, 3020003, "shard locks in block are incorrect or mal-formed" )
    FC_DECLARE_DERIVED_EXCEPTION( block_resource_exhausted,          evt::chain::block_validate_exception, 3020004, "block exhausted allowed resources" )
+   FC_DECLARE_DERIVED_EXCEPTION( block_too_old_exception,           evt::chain::block_validate_exception, 3020005, "block is too old to push" )
 
    FC_DECLARE_DERIVED_EXCEPTION( tx_missing_auth,                   evt::chain::transaction_exception, 3030001, "missing required authority" )
    FC_DECLARE_DERIVED_EXCEPTION( tx_missing_sigs,                   evt::chain::transaction_exception, 3030002, "signatures do not satisfy declared authorizations" )

@@ -11,7 +11,7 @@ namespace evt { namespace chain {
     using std::string;
     using uint128_t = __uint128_t;
 
-    static constexpr char char_to_symbol( char c ) {
+    static constexpr uint64_t char_to_symbol( char c ) {
         if( c >= 'a' && c <= 'z' )
             return (c - 'a') + 6;
         if( c >= '1' && c <= '5' )
@@ -19,7 +19,7 @@ namespace evt { namespace chain {
         return 0;
     }
 
-    static constexpr char char_to_symbol128( char c) {
+    static constexpr uint128_t char_to_symbol128( char c) {
         if( c >= 'a' && c <= 'z' ) {
             return (c - 'a' + 12);
         }
@@ -36,48 +36,33 @@ namespace evt { namespace chain {
     }
 
     static constexpr uint64_t string_to_name( const char* str ) {
-        uint32_t len = 0;
-        while( str[len] ) ++len;
-
-        uint64_t value = 0;
-
-        for( uint32_t i = 0; i <= 12; ++i ) {
-            uint64_t c = 0;
-            if( i < len && i <= 12 ) c = char_to_symbol( str[i] );
-
-            if( i < 12 ) {
-                c &= 0x1f;
-                c <<= 64-5*(i+1);
-            }
-            else {
-                c &= 0x0f;
-            }
-
-            value |= c;
+        uint64_t name = 0;
+        int i = 0;
+        for ( ; str[i] && i < 12; ++i) {
+            // NOTE: char_to_symbol() returns char type, and without this explicit
+            // expansion to uint64 type, the compilation fails at the point of usage
+            // of string_to_name(), where the usage requires constant (compile time) expression.
+            name |= (char_to_symbol(str[i]) & 0x1f) << (64 - 5 * (i + 1));
         }
 
-        return value;
+        // The for-loop encoded up to 60 high bits into uint64 'name' variable,
+        // if (strlen(str) > 12) then encode str[12] into the low (remaining)
+        // 4 bits of 'name'
+        if (i == 12)
+            name |= char_to_symbol(str[12]) & 0x0f;
+        return name;
     }
 
     static constexpr uint128_t string_to_name128( const char* str ) {
-        uint32_t len = 0;
-        while( str[len] ) ++len;
-
-        uint128_t value = 0;
-
-        for( uint32_t i = 0; i <= 20; ++i ) {
-            uint128_t c = 0;
-            if( i < len && i <= 20 ) c = char_to_symbol128( str[i] );
-
-            c &= 0x3f;
-            if( i < 20 ) {
-                c <<= 128-6*(i+1);
-            }
-
-            value |= c;
+        uint128_t name = 0;
+        int i = 0;
+        for( ; str[i] && i < 20; ++i ) {
+            name |= (char_to_symbol128(str[i]) & 0x3f) << (128 - 6 * (i + 1));
         }
-
-        return value;
+        if(i == 20) {
+            name |= (char_to_symbol128(str[20]) & 0x3f);
+        }
+        return name;
     }
 
 #define N(X) evt::chain::string_to_name(#X)
