@@ -361,7 +361,7 @@ namespace impl {
       template<typename Resolver>
       static void extract( const variant& v, group_id& gid, Resolver resolver ) {
           if(v.is_string()) {
-              gid = group_id::from_base58(v.as_string());
+              gid = group_id::from_string(v.as_string());
           }
           else {
               from_variant(v, gid);

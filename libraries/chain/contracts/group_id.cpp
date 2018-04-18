@@ -12,16 +12,19 @@ namespace evt { namespace chain { namespace contracts {
 
 group_id
 group_id::from_base58(const std::string& base58) {
-    if(base58.empty()) {
-        // allow owner group
-        return group_id();
-    }
-
     char out[sizeof(value_)];
     auto sz = fc::from_base58(base58, out, sizeof(value_));
     FC_ASSERT(sz == sizeof(value_), "Not valid group id");
     auto v = *(__uint128_t*)out;
     return group_id(v);
+}
+
+group_id
+group_id::from_string(const std::string& str) {
+    if(str.empty() || str == "owner") {
+        return group_id();
+    }
+    return group_id::from_base58(str);
 }
 
 group_id
@@ -37,12 +40,20 @@ group_id::to_base58() const {
     return fc::to_base58((const char*)&value_, sizeof(value_));
 }
 
+std::string
+group_id::to_string() const {
+    if(this->empty()) {
+        return "owner";
+    }
+    return to_base58();
+}
+
 }}}  // namespac evt::chain::contracts
 
 namespace fc {
 
 class variant;
-void to_variant(const evt::chain::contracts::group_id& gid, fc::variant& v) { v = gid.to_base58(); }
-void from_variant(const fc::variant& v, evt::chain::contracts::group_id& gid) { gid = evt::chain::contracts::group_id::from_base58(v.get_string()); }
+void to_variant(const evt::chain::contracts::group_id& gid, fc::variant& v) { v = gid.to_string(); }
+void from_variant(const fc::variant& v, evt::chain::contracts::group_id& gid) { gid = evt::chain::contracts::group_id::from_string(v.get_string()); }
 
 }  // namespace fc

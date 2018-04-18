@@ -16,10 +16,12 @@ public:
     group_id(__uint128_t v) : value_(v) {}
 
 public:
+    static group_id from_string(const std::string& str);
     static group_id from_base58(const std::string& base58);
     static group_id from_group_key(const fc::crypto::public_key& pkey);
 
 public:
+    std::string to_string() const;
     std::string to_base58() const;
     bool empty() const { return value_ == 0; }
 

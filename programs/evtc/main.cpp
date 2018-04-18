@@ -322,7 +322,7 @@ struct set_group_subcommands {
          FC_ASSERT(!(id.empty() && key.empty()), "Must provide either id or key");
          if(!id.empty()) {
              try {
-                gid = group_id::from_base58(id);
+                gid = group_id::from_string(id);
              } FC_CAPTURE_AND_RETHROW((id))
          }
          if(!key.empty()) {
@@ -400,7 +400,7 @@ struct set_get_group_subcommand {
           FC_ASSERT(!(id.empty() && key.empty()), "Must provide either id or key");
           if(!id.empty()) {
              try {
-                gid = group_id::from_base58(id);
+                gid = group_id::from_string(id);
              } FC_CAPTURE_AND_RETHROW((id))
           }
           if(!key.empty()) {
@@ -515,7 +515,7 @@ read_gw() {
         catch(...) {}
         if(gw.id.empty()) {
             try {
-                gw.id = group_id::from_base58(v);
+                gw.id = group_id::from_string(v);
             }
             catch(...) {}
         }
