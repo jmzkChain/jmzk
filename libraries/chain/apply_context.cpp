@@ -21,7 +21,7 @@ void apply_context::exec_one()
    } FC_CAPTURE_AND_RETHROW((_pending_console_output.str()));
 
    results.applied_actions.emplace_back(action_trace { act, _pending_console_output.str() });
-   _pending_console_output = std::ostringstream();
+   reset_console();
    results.applied_actions.back()._profiling_us = fc::time_point::now() - start;
 }
 
@@ -74,6 +74,11 @@ int apply_context::get_action( uint32_t type, uint32_t index, char* buffer, size
       fc::raw::pack( ds, *act );
    }
    return ps;
+}
+
+void apply_context::reset_console() {
+   _pending_console_output = std::ostringstream();
+   _pending_console_output.setf( std::ios::scientific, std::ios::floatfield );
 }
 
 } } /// evt::chain

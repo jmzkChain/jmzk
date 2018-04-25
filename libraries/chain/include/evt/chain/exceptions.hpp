@@ -103,6 +103,7 @@ namespace evt { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( wallet_locked_exception,           evt::chain::wallet_exception, 3140003, "Locked wallet" )
    FC_DECLARE_DERIVED_EXCEPTION( wallet_missing_pub_key_exception,  evt::chain::wallet_exception, 3140004, "Missing public key" )
    FC_DECLARE_DERIVED_EXCEPTION( wallet_invalid_password_exception, evt::chain::wallet_exception, 3140005, "Invalid wallet password" )
+   FC_DECLARE_DERIVED_EXCEPTION( wallet_not_available_exception,    evt::chain::wallet_exception, 3140006, "No available wallet" )
 
    FC_DECLARE_DERIVED_EXCEPTION( tokendb_domain_existed,            evt::chain::tokendb_exception, 3150001, "Domain already exists" )
    FC_DECLARE_DERIVED_EXCEPTION( tokendb_group_existed,             evt::chain::tokendb_exception, 3150002, "Permission Group already exists" )

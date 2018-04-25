@@ -65,6 +65,8 @@ public:
 
       apply_results results;
 
+      std::ostringstream& get_console_stream() { return _pending_console_output; }
+
       template<typename T>
       void console_append(T val) {
          _pending_console_output << val;
@@ -86,6 +88,8 @@ public:
       void append_results(apply_results &&other) {
          fc::move_append(results.applied_actions, move(other.applied_actions));
       }
+
+      void reset_console();
 
       void exec_one();
       

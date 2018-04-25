@@ -38,6 +38,7 @@ public:
    time_point                       genesis_timestamp;
    uint32_t                         skip_flags = skip_nothing;
    bool                             readonly = false;
+   uint64_t                         shared_memory_size;
    flat_map<uint32_t,block_id_type> loaded_checkpoints;
 
    fc::optional<fork_database>      fork_db;
@@ -72,6 +73,7 @@ void chain_plugin::set_program_options(options_description& cli, options_descrip
           "Limits the maximum time (in milliseconds) that a reversible block is allowed to run before being considered invalid")
          ("max-pending-transaction-time", bpo::value<int32_t>()->default_value(-1),
           "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute before being considered invalid")
+         ("shared-memory-size-mb", bpo::value<uint64_t>()->default_value(config::default_shared_memory_size / (1024 * 1024)), "Maximum size MB of database shared memory file")
 #warning TODO: rate limiting
          /*("per-authorized-account-transaction-msg-rate-limit-time-frame-sec", bpo::value<uint32_t>()->default_value(default_per_auth_account_time_frame_seconds),
           "The time frame, in seconds, that the per-authorized-account-transaction-msg-rate-limit is imposed over.")
@@ -124,6 +126,9 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
          my->block_log_dir = app().data_dir() / bld;
       else
          my->block_log_dir = bld;
+   }
+   if (options.count("shared-memory-size-mb")) {
+      my->shared_memory_size = options.at("shared-memory-size-mb").as<uint64_t>() * 1024 * 1024;
    }
    if (options.count("tokendb-dir")) {
       auto bld = options.at("tokendb-dir").as<bfs::path>();
@@ -190,6 +195,7 @@ void chain_plugin::plugin_startup()
    my->chain_config->tokendb_dir = my->tokendb_dir;
    my->chain_config->shared_memory_dir = app().data_dir() / default_shared_memory_dir;
    my->chain_config->read_only = my->readonly;
+   my->chain_config->shared_memory_size = my->shared_memory_size;
    my->chain_config->genesis = fc::json::from_file(my->genesis_file).as<contracts::genesis_state_type>();
    if (my->genesis_timestamp.sec_since_epoch() > 0) {
       my->chain_config->genesis.initial_timestamp = my->genesis_timestamp;

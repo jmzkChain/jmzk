@@ -53,6 +53,8 @@ namespace evt {
 
       struct symbol_code {
          uint64_t value;
+
+         operator uint64_t()const { return value; }
       };
 
       class symbol {
