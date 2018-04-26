@@ -20,7 +20,7 @@ using permission_name   = evt::chain::permission_name;
 using user_id           = fc::crypto::public_key;
 using user_list         = std::vector<fc::crypto::public_key>;
 using group_key         = fc::crypto::public_key;
-using balance           = int64_t;
+using balance_type      = int64_t;
 
 
 struct type_def {
@@ -153,7 +153,7 @@ struct account_def {
 
     account_name            name;
     account_name            creator;
-    balance                 balance;
+    balance_type            balance;
 };
 
 struct newdomain {
