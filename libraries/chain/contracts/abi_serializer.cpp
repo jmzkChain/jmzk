@@ -9,7 +9,6 @@
 #include <evt/chain/transaction.hpp>
 #include <fc/io/raw.hpp>
 #include <boost/algorithm/string/predicate.hpp>
-#include <boost/multiprecision/cpp_int.hpp>
 #include <fc/io/varint.hpp>
 
 using namespace boost;
@@ -70,20 +69,17 @@ namespace evt { namespace chain { namespace contracts {
       built_in_types.emplace("checksum256",               pack_unpack<checksum256_type>());
       built_in_types.emplace("checksum512",               pack_unpack<checksum512_type>());
       built_in_types.emplace("field_name",                pack_unpack<field_name>());
-      built_in_types.emplace("fixed_string32",            pack_unpack<fixed_string32>());
-      built_in_types.emplace("fixed_string16",            pack_unpack<fixed_string16>());
       built_in_types.emplace("type_name",                 pack_unpack<type_name>());
       built_in_types.emplace("bytes",                     pack_unpack<bytes>());
-      built_in_types.emplace("uint8",                     pack_unpack<uint8>());
-      built_in_types.emplace("uint16",                    pack_unpack<uint16>());
-      built_in_types.emplace("uint32",                    pack_unpack<uint32>());
-      built_in_types.emplace("uint64",                    pack_unpack<uint64>());
-      built_in_types.emplace("uint128",                   pack_unpack<boost::multiprecision::uint128_t>());
-      built_in_types.emplace("uint256",                   pack_unpack<boost::multiprecision::uint256_t>());
       built_in_types.emplace("int8",                      pack_unpack<int8_t>());
+      built_in_types.emplace("uint8",                     pack_unpack<uint8_t>());
       built_in_types.emplace("int16",                     pack_unpack<int16_t>());
+      built_in_types.emplace("uint16",                    pack_unpack<uint16_t>());
       built_in_types.emplace("int32",                     pack_unpack<int32_t>());
+      built_in_types.emplace("uint32",                    pack_unpack<uint32_t>());
       built_in_types.emplace("int64",                     pack_unpack<int64_t>());
+      built_in_types.emplace("uint64",                    pack_unpack<uint64_t>());
+      built_in_types.emplace("uint128",                   pack_unpack<uint128_t>());
       built_in_types.emplace("float64",                   pack_unpack<double>());
       built_in_types.emplace("name",                      pack_unpack<name>());
       built_in_types.emplace("name128",                   pack_unpack<name128>());

@@ -167,6 +167,7 @@ namespace evt { namespace chain {
    using weight_type         = uint16_t;
    using block_num_type      = uint32_t;
    using share_type          = int64_t;
+   using int128_t            = __int128_t;
    using uint128_t           = __uint128_t;
    using bytes               = vector<char>;
 

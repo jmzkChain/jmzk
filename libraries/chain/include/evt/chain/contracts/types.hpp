@@ -9,32 +9,18 @@
 #include <evt/chain/types.hpp>
 #include <evt/chain/contracts/group_id.hpp>
 
-#include <boost/multiprecision/cpp_int.hpp>
-
 namespace evt { namespace chain { namespace contracts {
 
-using namespace boost::multiprecision;
-
-template<size_t Size>
-using uint_t = number<cpp_int_backend<Size, Size, unsigned_magnitude, unchecked, void> >;
-
-using uint8     = uint_t<8>;
-using uint16    = uint_t<16>;
-using uint32    = uint_t<32>;
-using uint64    = uint_t<64>;
-
-using fixed_string32    = fc::fixed_string<fc::array<uint64,4>>;
-using fixed_string16    = fc::fixed_string<>;
 using type_name         = string;
 using field_name        = string;
-using table_name        = name;
 using action_name       = evt::chain::action_name;
 using domain_name       = evt::chain::domain_name;
 using token_name        = evt::chain::token_name;
+using permission_name   = evt::chain::permission_name;
 using user_id           = fc::crypto::public_key;
 using user_list         = std::vector<fc::crypto::public_key>;
 using group_key         = fc::crypto::public_key;
-using permission_name   = name;
+using balance           = int64_t;
 
 
 struct type_def {
@@ -118,7 +104,7 @@ struct group_def {
 
     group_id                id;
     group_key               key;
-    uint32                  threshold;
+    uint32_t                threshold;
     vector<key_weight>      keys;
 };
 
@@ -135,12 +121,12 @@ struct group_weight {
 
 struct permission_def {
     permission_def() = default;
-    permission_def(permission_name name, uint32 threshold, const vector<group_weight>& groups)
+    permission_def(permission_name name, uint32_t threshold, const vector<group_weight>& groups)
     : name(name), threshold(threshold), groups(groups)
     {}
 
     permission_name         name;
-    uint32                  threshold;
+    uint32_t                threshold;
     vector<group_weight>    groups;
 };
 
@@ -159,6 +145,16 @@ struct domain_def {
     permission_def          manage;
 };
 
+struct account_def {
+    account_def() = default;
+    account_def(const account_name& name)
+    :name(name)
+    {}
+
+    account_name            name;
+    account_name            creator;
+    balance                 balance;
+};
 
 struct newdomain {
     domain_name             name;
@@ -197,7 +193,7 @@ struct transfer {
 
 struct updategroup {
     group_id                id;
-    uint32                  threshold;
+    uint32_t                threshold;
     vector<key_weight>      keys;
 
     static action_name get_name() {

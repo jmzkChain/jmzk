@@ -6,7 +6,6 @@
 #include <fc/io/raw.hpp>
 
 #include <evt/chain/transaction.hpp>
-#include <fc/uint128.hpp>
 
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/mem_fun.hpp>

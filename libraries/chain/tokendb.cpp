@@ -198,7 +198,7 @@ tokendb::initialize(const fc::path& dbpath) {
     options.compression = CompressionType::kLZ4Compression;
     options.bottommost_compression = CompressionType::kZSTD;
     options.table_factory.reset(NewPlainTableFactory());
-    options.prefix_extractor.reset(NewFixedPrefixTransform(sizeof(__uint128_t)));
+    options.prefix_extractor.reset(NewFixedPrefixTransform(sizeof(uint128_t)));
     options.merge_operator.reset(new TokendbMerge());
 
     if(!fc::exists(dbpath)) {

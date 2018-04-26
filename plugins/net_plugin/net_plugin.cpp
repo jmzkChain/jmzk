@@ -46,7 +46,6 @@ namespace evt {
    using fc::time_point_sec;
    using evt::chain::transaction_id_type;
    namespace bip = boost::interprocess;
-   using chain::contracts::uint16;
 
    class connection;
    class sync_manager;

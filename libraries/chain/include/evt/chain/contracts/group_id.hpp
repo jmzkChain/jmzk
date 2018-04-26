@@ -7,13 +7,14 @@
 #include <string>
 #include <fc/crypto/public_key.hpp>
 #include <fc/reflect/reflect.hpp>
+#include <evt/chain/types.hpp>
 
 namespace evt { namespace chain { namespace contracts {
 
 struct group_id {
 public:
     group_id() = default;
-    group_id(__uint128_t v) : value_(v) {}
+    group_id(uint128_t v) : value_(v) {}
 
 public:
     static group_id from_string(const std::string& str);
@@ -42,10 +43,10 @@ public:
     friend bool operator != ( const group_id& a, const group_id& b ) { return a.value_ != b.value_; }
 
     operator bool() const { return value_; }
-    operator __uint128_t() const { return value_; };
+    operator uint128_t() const { return value_; };
 
 public:
-    __uint128_t value_;
+    uint128_t value_;
 };
 
 }}}  // namespac evt::chain::contracts
