@@ -633,7 +633,7 @@ namespace fc
    variant operator - ( const variant& a, const variant& b );
    variant operator * ( const variant& a, const variant& b );
    variant operator / ( const variant& a, const variant& b );
-   
+
    bool operator == ( const variant& a, const variant& b );
    bool operator != ( const variant& a, const variant& b );
    bool operator < ( const variant& a, const variant& b );

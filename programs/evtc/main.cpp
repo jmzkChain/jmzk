@@ -63,12 +63,8 @@ FC_DECLARE_EXCEPTION( localized_exception, 10000000, "an error occured" );
   )
 
 string program = "evtc";
-string host = "localhost";
-uint32_t port = 8888;
-
-// restricting use of wallet to localhost
-string wallet_host = "localhost";
-uint32_t wallet_port = 9999;
+string url = "http://localhost:8888";
+string wallet_url = "http://localhost:9999";
 
 auto   tx_expiration = fc::seconds(30);
 string tx_ref_block_num_or_id;
@@ -93,28 +89,39 @@ void add_standard_transaction_options(CLI::App* cmd, string default_permission =
 }
 
 template<typename T>
-fc::variant call( const std::string& server, uint16_t port,
+fc::variant call( const std::string& url,
                   const std::string& path,
-                  const T& v ) { return evt::client::http::call( server, port, path, fc::variant(v) ); }
+                  const T& v ) {
+   try {
+      return evt::client::http::call( url, path, fc::variant(v) );
+   }
+   catch(boost::system::system_error& e) {
+      if(url == ::url)
+         std::cerr << localized("Failed to connect to evtd at ${u}; is evtd running?", ("u", url)) << std::endl;
+      else if(url == ::wallet_url)
+         std::cerr << localized("Failed to connect to evtwd at ${u}; is evtwd running?", ("u", url)) << std::endl;
+      throw connection_exception(fc::log_messages{FC_LOG_MESSAGE(error, e.what())});
+   }
+}
 
 template<typename T>
 fc::variant call( const std::string& path,
-                  const T& v ) { return evt::client::http::call( host, port, path, fc::variant(v) ); }
+                  const T& v ) { return ::call( url, path, fc::variant(v) ); }
 
 evt::chain_apis::read_only::get_info_results get_info() {
-  return call(host, port, get_info_func ).as<evt::chain_apis::read_only::get_info_results>();
+   return ::call(url, get_info_func, fc::variant()).as<evt::chain_apis::read_only::get_info_results>();
 }
 
 void sign_transaction(signed_transaction& trx) {
    // TODO better error checking
-   const auto& public_keys = call(wallet_host, wallet_port, wallet_public_keys);
+   const auto& public_keys = call(wallet_url, wallet_public_keys);
    auto get_arg = fc::mutable_variant_object
          ("transaction", (transaction)trx)
          ("available_keys", public_keys);
-   const auto& required_keys = call(host, port, get_required_keys, get_arg);
+   const auto& required_keys = call(url, get_required_keys, get_arg);
    // TODO determine chain id
    fc::variants sign_args = {fc::variant(trx), required_keys["required_keys"], fc::variant(chain_id_type{})};
-   const auto& signed_trx = call(wallet_host, wallet_port, wallet_sign_trx, sign_args);
+   const auto& signed_trx = call(wallet_url, wallet_sign_trx, sign_args);
    trx = signed_trx.as<signed_transaction>();
 }
 
@@ -568,8 +575,9 @@ int main( int argc, char** argv ) {
 
    CLI::App app{"Command Line Interface to Eos Client"};
    app.require_subcommand();
-   app.add_option( "-H,--host", host, localized("the host where evtd is running"), true );
-   app.add_option( "-p,--port", port, localized("the port where evtd is running"), true );
+
+   app.add_option( "-u,--url", url, localized("the http/https URL where evtd is running"), true );
+   app.add_option( "--wallet-url", wallet_url, localized("the http/https URL where evtwd is running"), true );
 
    bool verbose_errors = false;
    app.add_flag( "-v,--verbose", verbose_errors, localized("output verbose actions on error"));
@@ -664,27 +672,27 @@ int main( int argc, char** argv ) {
    auto connect = net->add_subcommand("connect", localized("start a new connection to a peer"));
    connect->add_option("host", new_host, localized("The hostname:port to connect to."))->required();
    connect->set_callback([&] {
-      const auto& v = call(host, port, net_connect, new_host);
+      const auto& v = call(net_connect, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    auto disconnect = net->add_subcommand("disconnect", localized("close an existing connection"));
    disconnect->add_option("host", new_host, localized("The hostname:port to disconnect from."))->required();
    disconnect->set_callback([&] {
-      const auto& v = call(host, port, net_disconnect, new_host);
+      const auto& v = call(net_disconnect, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    auto status = net->add_subcommand("status", localized("status of existing connection"));
    status->add_option("host", new_host, localized("The hostname:port to query status of connection"))->required();
    status->set_callback([&] {
-      const auto& v = call(host, port, net_status, new_host);
+      const auto& v = call(net_status, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    auto connections = net->add_subcommand("peers", localized("status of all existing peers"));
    connections->set_callback([&] {
-      const auto& v = call(host, port, net_connections, new_host);
+      const auto& v = call(net_connections, new_host);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
@@ -708,14 +716,14 @@ int main( int argc, char** argv ) {
    auto set_group = set_group_subcommands(group);
 
    // Wallet subcommand
-   auto wallet = app.add_subcommand( "wallet", localized("Interact with local wallet") );
+   auto wallet = app.add_subcommand( "wallet", localized("Interact with local wallet"));
    wallet->require_subcommand();
    // create wallet
    string wallet_name = "default";
    auto createWallet = wallet->add_subcommand("create", localized("Create a new wallet locally"));
-   createWallet->add_option("-n,--name", wallet_name, localized("The name of the new wallet"));
+   createWallet->add_option("-n,--name", wallet_name, localized("The name of the new wallet"), true);
    createWallet->set_callback([&wallet_name] {
-      const auto& v = call(wallet_host, wallet_port, wallet_create, wallet_name);
+      const auto& v = call(wallet_url, wallet_create, wallet_name);
       std::cout << localized("Creating wallet: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
       std::cout << localized("Save password to use in the future to unlock this wallet.") << std::endl;
       std::cout << localized("Without password imported keys will not be retrievable.") << std::endl;
@@ -726,8 +734,7 @@ int main( int argc, char** argv ) {
    auto openWallet = wallet->add_subcommand("open", localized("Open an existing wallet"));
    openWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to open"));
    openWallet->set_callback([&wallet_name] {
-      /*const auto& v = */call(wallet_host, wallet_port, wallet_open, wallet_name);
-      //std::cout << fc::json::to_pretty_string(v) << std::endl;
+      call(wallet_url, wallet_open, wallet_name);
       std::cout << localized("Opened: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
    });
 
@@ -735,17 +742,14 @@ int main( int argc, char** argv ) {
    auto lockWallet = wallet->add_subcommand("lock", localized("Lock wallet"));
    lockWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to lock"));
    lockWallet->set_callback([&wallet_name] {
-      /*const auto& v = */call(wallet_host, wallet_port, wallet_lock, wallet_name);
+      call(wallet_url, wallet_lock, wallet_name);
       std::cout << localized("Locked: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
-      //std::cout << fc::json::to_pretty_string(v) << std::endl;
-
    });
 
    // lock all wallets
    auto locakAllWallets = wallet->add_subcommand("lock_all", localized("Lock all unlocked wallets"));
    locakAllWallets->set_callback([] {
-      /*const auto& v = */call(wallet_host, wallet_port, wallet_lock_all);
-      //std::cout << fc::json::to_pretty_string(v) << std::endl;
+      call(wallet_url, wallet_lock_all);
       std::cout << localized("Locked All Wallets") << std::endl;
    });
 
@@ -762,11 +766,9 @@ int main( int argc, char** argv ) {
          fc::set_console_echo(true);
       }
 
-
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_pw)};
-      /*const auto& v = */call(wallet_host, wallet_port, wallet_unlock, vs);
+      call(wallet_url, wallet_unlock, vs);
       std::cout << localized("Unlocked: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
-      //std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    // import keys into wallet
@@ -784,7 +786,7 @@ int main( int argc, char** argv ) {
       public_key_type pubkey = wallet_key.get_public_key();
 
       fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_key)};
-      const auto& v = call(wallet_host, wallet_port, wallet_import_key, vs);
+      const auto& v = call(wallet_url, wallet_import_key, vs);
       std::cout << localized("imported private key for: ${pubkey}", ("pubkey", std::string(pubkey))) << std::endl;
       //std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
@@ -793,14 +795,14 @@ int main( int argc, char** argv ) {
    auto listWallet = wallet->add_subcommand("list", localized("List opened wallets, * = unlocked"));
    listWallet->set_callback([] {
       std::cout << localized("Wallets:") << std::endl;
-      const auto& v = call(wallet_host, wallet_port, wallet_list);
+      const auto& v = call(wallet_url, wallet_list);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
    // list keys
    auto listKeys = wallet->add_subcommand("keys", localized("List of private keys from all unlocked wallets in wif format."));
    listKeys->set_callback([] {
-      const auto& v = call(wallet_host, wallet_port, wallet_list_keys);
+      const auto& v = call(wallet_url, wallet_list_keys);
       std::cout << fc::json::to_pretty_string(v) << std::endl;
    });
 
@@ -887,17 +889,8 @@ int main( int argc, char** argv ) {
    } catch (const explained_exception& e) {
       return 1;
    } catch (connection_exception& e) {
-      auto errorString = e.to_detail_string();
-      if (errorString.find(fc::json::to_string(port)) != string::npos) {
-         std::cerr << localized("Failed to connect to nodeos at ${ip}:${port}; is nodeos running?", ("ip", host)("port", port)) << std::endl;
-      } else if (errorString.find(fc::json::to_string(wallet_port)) != string::npos) {
-         std::cerr << localized("Failed to connect to keosd at ${ip}:${port}; is keosd running?", ("ip", wallet_host)("port", wallet_port)) << std::endl;
-      } else {
-         std::cerr << localized("Failed to connect") << std::endl;
-      }
-
       if (verbose_errors) {
-         elog("connect error: ${e}", ("e", errorString));
+         elog("connect error: ${e}", ("e", e.to_detail_string()));
       }
    } catch (const fc::exception& e) {
       // attempt to extract the error code if one is present

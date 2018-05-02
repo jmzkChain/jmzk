@@ -10,6 +10,7 @@
 #include <evt/net_plugin/net_plugin.hpp>
 #include <evt/evt_plugin/evt_plugin.hpp>
 #include <evt/evt_api_plugin/evt_api_plugin.hpp>
+#include <evt/utilities/common.hpp>
 
 #include <fc/log/logger_config.hpp>
 #include <fc/log/appender.hpp>
@@ -110,7 +111,7 @@ int main(int argc, char** argv)
       if(!app().initialize<chain_plugin, http_plugin, net_plugin, chain_api_plugin, evt_plugin, evt_api_plugin>(argc, argv))
          return -1;
       initialize_logging();
-      ilog("evtd version ${ver}", ("ver", evt::evtd::config::itoh(static_cast<uint32_t>(app().version()))));
+      ilog("evtd version ${ver}", ("ver", evt::utilities::common::itoh(static_cast<uint32_t>(app().version()))));
       ilog("evt root is ${root}", ("root", root.string()));
       app().startup();
       app().exec();

@@ -12,7 +12,7 @@ using namespace fc;
 BOOST_AUTO_TEST_SUITE(cypher_suites)
 BOOST_AUTO_TEST_CASE(test_k1) try {
    auto private_key_string = std::string("5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3");
-   auto expected_public_key = std::string("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV");
+   auto expected_public_key = std::string("EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV");
    auto test_private_key = private_key(private_key_string);
    auto test_public_key = test_private_key.get_public_key();
 
@@ -21,8 +21,8 @@ BOOST_AUTO_TEST_CASE(test_k1) try {
 } FC_LOG_AND_RETHROW();
 
 BOOST_AUTO_TEST_CASE(test_r1) try {
-   auto private_key_string = std::string("EVTR1iyQmnyPEGvFd8uffnk152WC2WryBjgTrg22fXQryuGL9mU6qW");
-   auto expected_public_key = std::string("EVTR16EPHFSKVYHBjQgxVGQPrwCxTg7BbZ69H9i4gztN9deKTEXYne4");
+   auto private_key_string = std::string("PVT_R1_iyQmnyPEGvFd8uffnk152WC2WryBjgTrg22fXQryuGL9mU6qW");
+   auto expected_public_key = std::string("PUB_R1_6EPHFSKVYHBjQgxVGQPrwCxTg7BbZ69H9i4gztN9deKTEXYne4");
    auto test_private_key = private_key(private_key_string);
    auto test_public_key = test_private_key.get_public_key();
 

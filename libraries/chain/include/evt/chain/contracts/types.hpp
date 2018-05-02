@@ -154,6 +154,8 @@ struct account_def {
     account_name            name;
     account_name            creator;
     balance_type            balance;
+
+    permission_def          owner;
 };
 
 struct newdomain {
