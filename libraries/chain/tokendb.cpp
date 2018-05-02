@@ -42,18 +42,23 @@ struct db_key {
 };
 
 db_key<domain_name>
-get_domain_key(const domain_name name) {
+get_domain_key(const domain_name& name) {
     return db_key<domain_name>("domain", name);
 }
 
 db_key<token_name>
-get_token_key(const domain_name domain, const token_name name) {
+get_token_key(const domain_name& domain, const token_name& name) {
     return db_key<token_name>(domain, name);
 }
 
 db_key<group_id>
 get_group_key(const group_id& id) {
     return db_key<group_id>("group", id);
+}
+
+db_key<account_name>
+get_account_key(const account_name& account) {
+    return db_key<account_name>("account", account);
 }
 
 template<typename T>
@@ -88,6 +93,8 @@ public:
         static rocksdb::Slice GroupPrefixSlice((const char*)&GroupPrefixName, sizeof(GroupPrefixName));
         static domain_name DomainPrefixName("domain");
         static rocksdb::Slice DomainPrefixSlice((const char*)&DomainPrefixName, sizeof(DomainPrefixName));
+        static account_name AccountPrefixName("account");
+        static rocksdb::Slice AccountPrefixSlice((const char*)&AccountPrefixName, sizeof(AccountPrefixName));
 
         try {
             // merge only need to consider latest one
@@ -112,6 +119,13 @@ public:
                 if(ug.manage.valid()) {
                     v.manage = std::move(*ug.manage);
                 }
+                merge_out->new_value = get_value(v);
+            }
+            else if(merge_in.key.starts_with(AccountPrefixSlice)) {
+                // account
+                auto v = read_value<account_def>(*merge_in.existing_value);
+                auto uo = read_value<updateowner>(merge_in.operand_list[merge_in.operand_list.size() - 1]);
+                v.owner = std::move(uo.owner);
                 merge_out->new_value = get_value(v);
             }
             else {
@@ -146,9 +160,11 @@ enum dbaction_type {
     kNewDomain,
     kIssueToken,
     kAddGroup,
+    kNewAccount,
     kUpdateDomain,
     kUpdateGroup,
-    kUpdateToken
+    kUpdateToken,
+    kUpdateAccount
 };
 
 struct sp_newdomain {
@@ -165,6 +181,10 @@ struct sp_addgroup {
     group_id    id;
 };
 
+struct sp_newaccount {
+    account_name name;
+};
+
 struct sp_updatedomain {
     domain_name name;
 };
@@ -176,6 +196,10 @@ struct sp_updategroup {
 struct sp_updatetoken {
     domain_name domain;
     token_name  name;
+};
+
+struct sp_updateaccount {
+    account_name name;
 };
 
 } // namespace __internal
@@ -235,7 +259,7 @@ tokendb::add_domain(const domain_def& domain) {
 }
 
 int
-tokendb::exists_domain(const domain_name name) const {
+tokendb::exists_domain(const domain_name& name) const {
     using namespace __internal;
     auto key = get_domain_key(name);
     std::string value;
@@ -270,9 +294,9 @@ tokendb::issue_tokens(const issuetoken& issue) {
 }
 
 int
-tokendb::exists_token(const domain_name type, const token_name name) const {
+tokendb::exists_token(const domain_name& domain, const token_name& name) const {
     using namespace __internal;
-    auto key = get_token_key(type, name);
+    auto key = get_token_key(domain, name);
     std::string value;
     auto status = db_->Get(read_opts_, key.as_slice(), &value);
     return status.ok();
@@ -308,7 +332,36 @@ tokendb::exists_group(const group_id& id) const {
 }
 
 int
-tokendb::read_domain(const domain_name name, const read_domain_func& func) const {
+tokendb::add_account(const account_def& account) {
+    using namespace __internal;
+    if(exists_account(account.name)) {
+        EVT_THROW(tokendb_account_existed, "Account is already existed: ${name}", ("name", (std::string)account.name));
+    }
+    auto key = get_account_key(account.name);
+    auto value = get_value(account);
+    auto status = db_->Put(write_opts_, key.as_slice(), value);
+    if(!status.ok()) {
+        EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
+    }
+    if(should_record()) {
+        auto act = (sp_newaccount*)malloc(sizeof(sp_newaccount));
+        act->name = account.name;
+        record(kNewAccount, act);
+    }
+    return 0;
+}
+
+int 
+tokendb::exists_account(const account_name& name) const {
+    using namespace __internal;
+    auto key = get_account_key(name);
+    std::string value;
+    auto status = db_->Get(read_opts_, key.as_slice(), &value);
+    return status.ok();
+}
+
+int
+tokendb::read_domain(const domain_name& name, const read_domain_func& func) const {
     using namespace __internal;
     std::string value;
     auto key = get_domain_key(name);
@@ -322,7 +375,7 @@ tokendb::read_domain(const domain_name name, const read_domain_func& func) const
 }
 
 int
-tokendb::read_token(const domain_name domain, const token_name name, const read_token_func& func) const {
+tokendb::read_token(const domain_name& domain, const token_name& name, const read_token_func& func) const {
     using namespace __internal;
     std::string value;
     auto key = get_token_key(domain, name);
@@ -345,6 +398,20 @@ tokendb::read_group(const group_id& id, const read_group_func& func) const {
         EVT_THROW(tokendb_group_not_found, "Cannot find group: ${id}", ("id", id.to_base58()));
     }
     auto v = read_value<group_def>(value);
+    func(v);
+    return 0;
+}
+
+int
+tokendb::read_account(const account_name& name, const read_account_func& func) const {
+    using namespace __internal;
+    std::string value;
+    auto key = get_account_key(name);
+    auto status = db_->Get(read_opts_, key.as_slice(), &value);
+    if(!status.ok()) {
+        EVT_THROW(tokendb_account_not_found, "Cannot find account: ${name}", ("name", (std::string)name));
+    }
+    auto v = read_value<account_def>(value);
     func(v);
     return 0;
 }
@@ -397,6 +464,23 @@ tokendb::transfer_token(const transfer& tt) {
         act->domain = tt.domain;
         act->name = tt.name;
         record(kUpdateToken, act);
+    }  
+    return 0;
+}
+
+int
+tokendb::update_account(const updateowner& uo) {
+    using namespace __internal;
+    auto key = get_account_key(uo.name);
+    auto value = get_value(uo);
+    auto status = db_->Merge(write_opts_, key.as_slice(), value);
+    if(!status.ok()) {
+        EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
+    }
+    if(should_record()) {
+        auto act = (sp_updateaccount*)malloc(sizeof(sp_updateaccount));
+        act->name = uo.name;
+        record(kUpdateAccount, act);
     }  
     return 0;
 }
@@ -481,6 +565,12 @@ tokendb::rollback_to_latest_savepoint() {
                 batch.Delete(key.as_slice());
                 break;
             }
+            case kNewAccount: {
+                auto act = (sp_newaccount*)it->data;
+                auto key = get_account_key(act->name);
+                batch.Delete(key.as_slice());
+                break;
+            }
             case kUpdateDomain: {
                 auto act = (sp_updatedomain*)it->data;
                 auto key = get_domain_key(act->name);
@@ -512,6 +602,20 @@ tokendb::rollback_to_latest_savepoint() {
             case kUpdateToken: {
                 auto act = (sp_updatetoken*)it->data;
                 auto key = get_token_key(act->domain, act->name);
+                std::string old_value;
+                auto status = db_->Get(snapshot_read_opts_, key.as_slice(), &old_value);
+                if(!status.ok()) {
+                    // key may not existed in latest snapshot, remove it
+                    FC_ASSERT(status.code() == rocksdb::Status::kNotFound, "Not expected rocksdb code: ${status}", ("status", status.getState()));
+                    db_->Delete(write_opts_, key.as_slice());
+                    break;
+                }
+                batch.Put(key.as_slice(), old_value);
+                break;
+            }
+            case kUpdateAccount: {
+                auto act = (sp_updateaccount*)it->data;
+                auto key = get_account_key(act->name);
                 std::string old_value;
                 auto status = db_->Get(snapshot_read_opts_, key.as_slice(), &old_value);
                 if(!status.ok()) {

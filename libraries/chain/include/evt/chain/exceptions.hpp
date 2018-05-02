@@ -108,12 +108,14 @@ namespace evt { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( tokendb_domain_existed,            evt::chain::tokendb_exception, 3150001, "Domain already exists" )
    FC_DECLARE_DERIVED_EXCEPTION( tokendb_group_existed,             evt::chain::tokendb_exception, 3150002, "Permission Group already exists" )
    FC_DECLARE_DERIVED_EXCEPTION( tokendb_token_existed,             evt::chain::tokendb_exception, 3150003, "Token already exists" )
-   FC_DECLARE_DERIVED_EXCEPTION( tokendb_domain_not_found,          evt::chain::tokendb_exception, 3150004, "Not found specifc domain" )
-   FC_DECLARE_DERIVED_EXCEPTION( tokendb_group_not_found,           evt::chain::tokendb_exception, 3150005, "Not found specific permission group" )
-   FC_DECLARE_DERIVED_EXCEPTION( tokendb_token_not_found,           evt::chain::tokendb_exception, 3150006, "Not found specific token" )
-   FC_DECLARE_DERIVED_EXCEPTION( tokendb_rocksdb_fail,              evt::chain::tokendb_exception, 3150007, "Rocksdb internal error occurred" )
-   FC_DECLARE_DERIVED_EXCEPTION( tokendb_no_savepoint,              evt::chain::tokendb_exception, 3150008, "No savepoints anymore" )
-   FC_DECLARE_DERIVED_EXCEPTION( tokendb_seq_not_valid,             evt::chain::tokendb_exception, 3150009, "Seq for checkpoint is not valid" )
+   FC_DECLARE_DERIVED_EXCEPTION( tokendb_account_existed,           evt::chain::tokendb_exception, 3150004, "Account already exists" )
+   FC_DECLARE_DERIVED_EXCEPTION( tokendb_domain_not_found,          evt::chain::tokendb_exception, 3150005, "Not found specifc domain" )
+   FC_DECLARE_DERIVED_EXCEPTION( tokendb_group_not_found,           evt::chain::tokendb_exception, 3150006, "Not found specific permission group" )
+   FC_DECLARE_DERIVED_EXCEPTION( tokendb_token_not_found,           evt::chain::tokendb_exception, 3150007, "Not found specific token" )
+   FC_DECLARE_DERIVED_EXCEPTION( tokendb_account_not_found,         evt::chain::tokendb_exception, 3150008, "Not found specific account" )
+   FC_DECLARE_DERIVED_EXCEPTION( tokendb_rocksdb_fail,              evt::chain::tokendb_exception, 3150009, "Rocksdb internal error occurred" )
+   FC_DECLARE_DERIVED_EXCEPTION( tokendb_no_savepoint,              evt::chain::tokendb_exception, 3150010, "No savepoints anymore" )
+   FC_DECLARE_DERIVED_EXCEPTION( tokendb_seq_not_valid,             evt::chain::tokendb_exception, 3150011, "Seq for checkpoint is not valid" )
 
    #define EVT_RECODE_EXC( cause_type, effect_type ) \
       catch( const cause_type& e ) \

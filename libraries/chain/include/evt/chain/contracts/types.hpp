@@ -17,6 +17,7 @@ using action_name       = evt::chain::action_name;
 using domain_name       = evt::chain::domain_name;
 using token_name        = evt::chain::token_name;
 using permission_name   = evt::chain::permission_name;
+using account_name      = evt::chain::account_name;
 using user_id           = fc::crypto::public_key;
 using user_list         = std::vector<fc::crypto::public_key>;
 using group_key         = fc::crypto::public_key;
@@ -154,6 +155,7 @@ struct account_def {
     account_name            name;
     account_name            creator;
     balance_type            balance;
+    balance_type            frozen_balance;
 
     permission_def          owner;
 };
@@ -213,8 +215,19 @@ struct updatedomain {
     std::vector<group_def>          groups;
 
     static action_name get_name() {
-        return N(newdomain);
+        return N(updatedomain);
     }
+};
+
+struct newaccount {
+    account_name                    name;
+    account_name                    creator;
+    permission_def                  owner;
+};
+
+struct updateowner {
+    account_name                    name;
+    permission_def                  owner;
 };
 
 } } } /// namespace evt::chain::contracts
@@ -230,9 +243,12 @@ FC_REFLECT( evt::chain::contracts::group_def                        , (id)(key)(
 FC_REFLECT( evt::chain::contracts::group_weight                     , (id)(weight) )
 FC_REFLECT( evt::chain::contracts::permission_def                   , (name)(threshold)(groups) )
 FC_REFLECT( evt::chain::contracts::domain_def                       , (name)(issuer)(issue_time)(issue)(transfer)(manage) )
+FC_REFLECT( evt::chain::contracts::account_def                      , (name)(creator)(balance)(frozen_balance)(owner) )
 
 FC_REFLECT( evt::chain::contracts::newdomain                        , (name)(issuer)(issue)(transfer)(manage)(groups))
 FC_REFLECT( evt::chain::contracts::issuetoken                       , (domain)(names)(owner) )
 FC_REFLECT( evt::chain::contracts::transfer                         , (domain)(name)(to) )
 FC_REFLECT( evt::chain::contracts::updategroup                      , (id)(threshold)(keys) )
 FC_REFLECT( evt::chain::contracts::updatedomain                     , (name)(issue)(transfer)(manage)(groups))
+FC_REFLECT( evt::chain::contracts::newaccount                       , (name)(creator)(owner) )
+FC_REFLECT( evt::chain::contracts::updateowner                      , (name)(owner) )
