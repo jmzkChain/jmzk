@@ -157,7 +157,7 @@ struct account_def {
     balance_type            balance;
     balance_type            frozen_balance;
 
-    permission_def          owner;
+    user_list               owner;
 };
 
 struct newdomain {
@@ -222,12 +222,37 @@ struct updatedomain {
 struct newaccount {
     account_name                    name;
     account_name                    creator;
-    permission_def                  owner;
+    user_list                       owner;
+
+    static action_name get_name() {
+        return N(newaccount);
+    }
 };
 
 struct updateowner {
     account_name                    name;
-    permission_def                  owner;
+    user_list                       owner;
+
+    static action_name get_name() {
+        return N(updateowner);
+    }
+};
+
+struct transferevt {
+    account_name                    from;
+    account_name                    to;
+    balance_type                    amount;
+
+    static action_name get_name() {
+        return N(transferevt);
+    }
+};
+
+struct updateaccount {
+    account_name                    name;
+    fc::optional<user_list>         owner;
+    fc::optional<balance_type>      balance;
+    fc::optional<balance_type>      frozen_balance;
 };
 
 } } } /// namespace evt::chain::contracts
@@ -252,3 +277,5 @@ FC_REFLECT( evt::chain::contracts::updategroup                      , (id)(thres
 FC_REFLECT( evt::chain::contracts::updatedomain                     , (name)(issue)(transfer)(manage)(groups))
 FC_REFLECT( evt::chain::contracts::newaccount                       , (name)(creator)(owner) )
 FC_REFLECT( evt::chain::contracts::updateowner                      , (name)(owner) )
+FC_REFLECT( evt::chain::contracts::transferevt                      , (from)(to)(amount) )
+FC_REFLECT( evt::chain::contracts::updateaccount                    , (owner)(balance)(frozen_balance) )

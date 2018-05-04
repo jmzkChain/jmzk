@@ -20,6 +20,10 @@ namespace evt { namespace chain { namespace contracts {
         void apply_evt_updategroup(apply_context& context);
         void apply_evt_updatedomain(apply_context& context);
 
+        void apply_evt_newaccount(apply_context& context);
+        void apply_evt_updateowner(apply_context& context);
+        void apply_evt_transferevt(apply_context& context);
+
     ///@}  end action handlers
 
 } } } /// namespace evt::contracts

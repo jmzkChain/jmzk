@@ -74,42 +74,58 @@ namespace evt { namespace chain {
             });
             bool result = false;
 
-            if(action.domain == N128(domain)) {
+            if(action.domain == N128(domain) && action.name == N(newdomain)) {
                 // newdomain action
-                if(action.name != N(newdomain)) {
-                    return false;
-                }
-                public_key_type issuer;
                 try {
                     auto nd = action.data_as<contracts::newdomain>();
-                    issuer = nd.issuer;
+                    weight_tally_visitor vistor(*this);
+                    if(vistor(nd.issuer, 1) < 1) {
+                        return false;
+                    }
+                    result = true;
                 } EVT_RETHROW_EXCEPTIONS(chain_type_exception, "transaction data is not valid, data cannot cast to `newdomain` type.");
-
-                weight_tally_visitor vistor(*this);
-                if(vistor(issuer, 1) < 1) {
-                    return false;
-                }
-                result = true;
             }
-            else if(action.domain == N128(group)) {
-                // updategroup action
-                if(action.name != N(updategroup)) {
-                    return false;
-                }
-                public_key_type gkey;
-                contracts::updategroup ug;
+            else if(action.domain == N128(group) && action.name == N(updategroup)) {
                 try {
-                    ug = action.data_as<contracts::updategroup>();
+                    auto ug = action.data_as<contracts::updategroup>();
+                    public_key_type gkey;
+                    _get_group_func(ug.id, [&](const auto& group) {
+                        auto gkey = group.key;
+                        weight_tally_visitor vistor(*this);
+                        if(vistor(gkey, 1) < 1) {
+                            return;
+                        }
+                        result = true;
+                    });
                 } EVT_RETHROW_EXCEPTIONS(chain_type_exception, "transation data is not valid, data cannot cast to `updategroup` type");
-                
-                _get_group_func(ug.id, [&](const auto& group) {
-                    gkey = group.key;
-                });
-                weight_tally_visitor vistor(*this);
-                if(vistor(gkey, 1) < 1) {
-                    return false;
+            }
+            else if(action.domain == N128(account)) {
+                if(action.name == N(newaccount)) {
+                    try {
+                        auto na = action.data_as<contracts::newaccount>();
+                        weight_tally_visitor vistor(*this);
+                        for(auto& o : na.owner) {
+                            vistor(o, 1);
+                        }
+                        if(vistor.total_weight == na.owner.size()) {
+                            result = true;
+                        }
+                    } EVT_RETHROW_EXCEPTIONS(chain_type_exception, "transation data is not valid, data cannot cast to `newaccount` type")
                 }
-                result = true;
+                else if(action.name == N(transferevt)) {
+                    try {
+                        auto te = action.data_as<contracts::transferevt>();
+                        _get_owner_func(N128(account), te.from, [&](const auto& owner) {
+                            weight_tally_visitor vistor(*this);
+                            for(auto& o : owner) {
+                                vistor(o, 1);
+                            }
+                            if(vistor.total_weight == owner.size()) {
+                                result = true;
+                            }
+                        });
+                    } EVT_RETHROW_EXCEPTIONS(chain_type_exception, "transation data is not valid, data cannot cast to `transferevt` type")
+                }
             }
             else {
                 _get_permission_func(action.domain, action.name, [&](const auto& permission) {
@@ -118,12 +134,12 @@ namespace evt { namespace chain {
                         bool gresult = false;
                         if (group_ref.id.empty()) {
                             // is owner group, special handle this
-                            _get_owner_func(action.domain, action.key, [&](const auto& owners) {
+                            _get_owner_func(action.domain, action.key, [&](const auto& owner) {
                                 weight_tally_visitor vistor(*this);
-                                for (const auto& owner : owners) {
-                                    vistor(owner, 1);
+                                for (const auto& o : owner) {
+                                    vistor(o, 1);
                                 }
-                                if (vistor.total_weight == owners.size()) {
+                                if (vistor.total_weight == owner.size()) {
                                     gresult = true;
                                     return;
                                 }

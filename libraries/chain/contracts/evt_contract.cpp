@@ -15,6 +15,8 @@
 #include <evt/chain/transaction.hpp>
 #include <evt/chain/exceptions.hpp>
 
+#include <evt/utilities/safemath.hpp>
+
 namespace evt { namespace chain { namespace contracts {
 
 namespace __internal {
@@ -86,10 +88,6 @@ apply_evt_newdomain(apply_context& context) {
 
         auto& tokendb = context.mutable_tokendb;
         EVT_ASSERT(!tokendb.exists_domain(ndact.name), action_validate_exception, "Domain ${name} already existed", ("name",ndact.name));
-        EVT_ASSERT(context.trx_meta.signing_keys && !context.trx_meta.signing_keys->empty(), action_validate_exception, "[EVT] Signing keys not avaiable");
-        auto& keys = *context.trx_meta.signing_keys;
-        auto found = std::find(keys.cbegin(), keys.cend(), ndact.issuer);
-        EVT_ASSERT(found != keys.cend(), action_validate_exception, "Issuer must sign his key");
 
         for(auto& g : ndact.groups) {
             EVT_ASSERT(validate(g), action_validate_exception, "Group ${id} is not valid, eithor threshold is not valid or exist duplicate or unordered key", ("id", g.id));
@@ -211,6 +209,93 @@ apply_evt_updatedomain(apply_context& context) {
         tokendb.update_domain(udact);
     }
     FC_CAPTURE_AND_RETHROW((udact));
+}
+
+void
+apply_evt_newaccount(apply_context& context) {
+    using namespace __internal;
+
+    auto naact = context.act.data_as<newaccount>();
+    try {
+        EVT_ASSERT(context.has_authorized("account", (uint128_t)naact.name), action_validate_exception, "Authorized information doesn't match");
+
+        auto& tokendb = context.mutable_tokendb;
+        EVT_ASSERT(!naact.name.empty(), action_validate_exception, "Account name shouldn't be empty");
+        EVT_ASSERT(!tokendb.exists_account(naact.name), action_validate_exception, "Account ${name} already existed", ("name",naact.name));
+        EVT_ASSERT(tokendb.exists_account(naact.creator), action_validate_exception, "Creator ${name} don't exist", ("name",naact.creator));
+    
+        auto account = account_def();
+        account.name = naact.name;
+        account.creator = naact.creator;
+        account.balance = 0;
+        account.frozen_balance = 0;
+        account.owner = std::move(naact.owner);
+
+        tokendb.add_account(account);
+    }
+    FC_CAPTURE_AND_RETHROW((naact));
+}
+
+void
+apply_evt_updateowner(apply_context& context) {
+    using namespace __internal;
+
+    auto uoact = context.act.data_as<updateowner>();
+    try {
+        EVT_ASSERT(context.has_authorized("account", (uint128_t)uoact.name), action_validate_exception, "Authorized information doesn't match");
+
+        auto& tokendb = context.mutable_tokendb;
+        EVT_ASSERT(tokendb.exists_account(uoact.name), action_validate_exception, "Account ${name} don't exist", ("name",uoact.name));
+        EVT_ASSERT(uoact.owner.size() > 0, action_validate_exception, "Owner cannot be empty");
+
+        auto ua = updateaccount();
+        ua.name = uoact.name;
+        ua.owner = uoact.owner;
+        tokendb.update_account(ua);
+    }
+    FC_CAPTURE_AND_RETHROW((uoact));
+}
+
+void
+apply_evt_transferevt(apply_context& context) {
+    using namespace __internal;
+
+    auto teact = context.act.data_as<transferevt>();
+    try {
+        EVT_ASSERT(context.has_authorized("account", (uint128_t)teact.from), action_validate_exception, "Authorized information doesn't match");
+
+        auto& tokendb = context.mutable_tokendb;
+        EVT_ASSERT(tokendb.exists_account(teact.from), action_validate_exception, "Account ${name} don't exist", ("name",teact.from));
+        EVT_ASSERT(tokendb.exists_account(teact.to), action_validate_exception, "Account ${name} don't exist", ("name",teact.to));
+        EVT_ASSERT(teact.amount > 0, action_validate_exception, "Transfer amount must be positive");
+
+        account_def facc, tacc;
+        tokendb.read_account(teact.from, [&](const auto& a) {
+            facc = a;
+        });
+        tokendb.read_account(teact.to, [&](const auto& a) {
+            tacc = a;
+        });
+
+        EVT_ASSERT(facc.balance >= teact.amount, action_validate_exception, "Account ${name} don't have enough balance left");
+        
+        bool r1, r2;
+        r1 = safemath::sub(facc.balance, teact.amount, facc.balance);
+        r2 = safemath::add(tacc.balance, teact.amount, tacc.balance);
+        EVT_ASSERT(r1 && r2, action_validate_exception, "Opeartions resulted in overflow results");
+
+        auto fua = updateaccount();
+        fua.name = facc.name;
+        fua.balance = facc.balance;
+
+        auto tua = updateaccount();
+        tua.name = tacc.name;
+        tua.balance = tacc.balance;
+
+        tokendb.update_account(fua);
+        tokendb.update_account(tua);
+    }
+    FC_CAPTURE_AND_RETHROW((teact));
 }
 
 } } } // namespace evt::chain::contracts

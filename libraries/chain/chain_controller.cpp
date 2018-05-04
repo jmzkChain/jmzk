@@ -701,9 +701,16 @@ auto get_auth_checker( const evt::chain::tokendb& tokendb, const flat_set<public
             tokendb.read_group(id, cb);
         },
         [&](const auto& domain, const auto& name, const auto& cb) {
-            tokendb.read_token(domain, name, [&](const auto& token) {
-                cb(token.owner);
-            });
+            if(domain == N128(account)) {
+                tokendb.read_account(name, [&](const auto& account) {
+                    cb(account.owner);
+                });
+            }
+            else {
+                tokendb.read_token(domain, name, [&](const auto& token) {
+                    cb(token.owner);
+                });
+            }
         });
     return checker;
 }

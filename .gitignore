@@ -82,3 +82,7 @@ tn_data_*
 cmake-build-debug/
 cmake-build-release/
 diff/
+
+GPATH
+GRTAGS
+GTAGS

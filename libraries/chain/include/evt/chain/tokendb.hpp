@@ -60,7 +60,7 @@ public:
     int update_domain(const updatedomain& ud);
     int update_group(const updategroup& ug);
     int transfer_token(const transfer& tt);
-    int update_account(const updateowner& uo);
+    int update_account(const updateaccount& ua);
 
 public:
     int add_savepoint(int32_t seq);

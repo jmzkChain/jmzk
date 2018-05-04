@@ -39,6 +39,9 @@ void chain_initializer::register_types(chain_controller& chain, chainbase::datab
     SET_APP_HANDLER( transfer );
     SET_APP_HANDLER( updategroup );
     SET_APP_HANDLER( updatedomain );
+    SET_APP_HANDLER( newaccount );
+    SET_APP_HANDLER( updateowner );
+    SET_APP_HANDLER( transferevt );
 }
 
 abi_def chain_initializer::evt_contract_abi()
@@ -55,13 +58,18 @@ abi_def chain_initializer::evt_contract_abi()
    evt_abi.types.push_back( type_def{"domain_name","name128"} );
    evt_abi.types.push_back( type_def{"group_name","name128"} );
    evt_abi.types.push_back( type_def{"token_name","name128"} );
+   evt_abi.types.push_back( type_def{"account_name","name128"} );
    evt_abi.types.push_back( type_def{"domain_key","uint128"} );
+   evt_abi.types.push_back( type_def{"balance_type","uint64"} );
 
    evt_abi.actions.push_back( action_def{name("newdomain"), "newdomain"} );
    evt_abi.actions.push_back( action_def{name("issuetoken"), "issuetoken"} );
    evt_abi.actions.push_back( action_def{name("transfer"), "transfer"} );
-   evt_abi.actions.push_back( action_def{name("updategroup"), "updategroup"} );  
-   evt_abi.actions.push_back( action_def{name("updatedomain"), "updatedomain"} );  
+   evt_abi.actions.push_back( action_def{name("updategroup"), "updategroup"} );
+   evt_abi.actions.push_back( action_def{name("updatedomain"), "updatedomain"} );
+   evt_abi.actions.push_back( action_def{name("newaccount"), "newaccount"} );
+   evt_abi.actions.push_back( action_def{name("updateowner"), "updateowner"} );
+   evt_abi.actions.push_back( action_def{name("transferevt"), "transferevt"} );
 
    // actions def
 
@@ -116,6 +124,15 @@ abi_def chain_initializer::evt_contract_abi()
    });
 
    evt_abi.structs.emplace_back( struct_def {
+      "account_def", "", {
+         {"name", "account_name"},
+         {"creator", "account_name"},
+         {"balance", "balance_type"},
+         {"frozen_balance", "balance_type"}
+      }
+   });
+
+   evt_abi.structs.emplace_back( struct_def {
       "newdomain", "", {
          {"name", "domain_name"},
          {"issuer", "user_id"},
@@ -158,6 +175,29 @@ abi_def chain_initializer::evt_contract_abi()
          {"transfer", "permission_def?"},
          {"manage", "permission_def?"},
          {"groups", "group_def[]"},
+      }
+   });
+
+   evt_abi.structs.emplace_back( struct_def {
+      "newaccount", "", {
+         {"name", "account_name"},
+         {"creator", "account_name"},
+         {"owner", "user_list"}
+      }
+   });
+
+   evt_abi.structs.emplace_back( struct_def {
+      "updateowner", "", {
+         {"name", "account_name"},
+         {"owner", "user_list"}
+      }
+   });
+
+   evt_abi.structs.emplace_back( struct_def {
+      "transferevt", "", {
+         {"from", "account_name"},
+         {"to", "account_name"},
+         {"amount", "balance_type"}
       }
    });
 
@@ -267,6 +307,14 @@ void chain_initializer::prepare_tokendb(chain::chain_controller& chain, evt::cha
         gd.issue_time = genesis.initial_timestamp;
         auto r = tokendb.add_domain(gd);
         FC_ASSERT(r == 0, "Add `group` domain failed");
+    }
+    if(!tokendb.exists_domain("account")) {
+        domain_def ad;
+        ad.name = "account";
+        ad.issuer = genesis.initial_key;
+        ad.issue_time = genesis.initial_timestamp;
+        auto r = tokendb.add_domain(ad);
+        FC_ASSERT(r == 0, "Add `account` domain failed");
     }
 }
 

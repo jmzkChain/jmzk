@@ -124,8 +124,16 @@ public:
             else if(merge_in.key.starts_with(AccountPrefixSlice)) {
                 // account
                 auto v = read_value<account_def>(*merge_in.existing_value);
-                auto uo = read_value<updateowner>(merge_in.operand_list[merge_in.operand_list.size() - 1]);
-                v.owner = std::move(uo.owner);
+                auto ua = read_value<updateaccount>(merge_in.operand_list[merge_in.operand_list.size() - 1]);
+                if(ua.owner.valid()) {
+                    v.owner = std::move(*ua.owner);
+                }
+                if(ua.balance.valid()) {
+                    v.balance = *ua.balance;
+                }
+                if(ua.frozen_balance.valid()) {
+                    v.frozen_balance = *ua.frozen_balance;
+                }
                 merge_out->new_value = get_value(v);
             }
             else {
@@ -469,17 +477,17 @@ tokendb::transfer_token(const transfer& tt) {
 }
 
 int
-tokendb::update_account(const updateowner& uo) {
+tokendb::update_account(const updateaccount& ua) {
     using namespace __internal;
-    auto key = get_account_key(uo.name);
-    auto value = get_value(uo);
+    auto key = get_account_key(ua.name);
+    auto value = get_value(ua);
     auto status = db_->Merge(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
         EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
     if(should_record()) {
         auto act = (sp_updateaccount*)malloc(sizeof(sp_updateaccount));
-        act->name = uo.name;
+        act->name = ua.name;
         record(kUpdateAccount, act);
     }  
     return 0;
