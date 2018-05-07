@@ -60,7 +60,7 @@ abi_def chain_initializer::evt_contract_abi()
    evt_abi.types.push_back( type_def{"token_name","name128"} );
    evt_abi.types.push_back( type_def{"account_name","name128"} );
    evt_abi.types.push_back( type_def{"domain_key","uint128"} );
-   evt_abi.types.push_back( type_def{"balance_type","uint64"} );
+   evt_abi.types.push_back( type_def{"balance_type","asset"} );
 
    evt_abi.actions.push_back( action_def{name("newdomain"), "newdomain"} );
    evt_abi.actions.push_back( action_def{name("issuetoken"), "issuetoken"} );
@@ -181,7 +181,6 @@ abi_def chain_initializer::evt_contract_abi()
    evt_abi.structs.emplace_back( struct_def {
       "newaccount", "", {
          {"name", "account_name"},
-         {"creator", "account_name"},
          {"owner", "user_list"}
       }
    });

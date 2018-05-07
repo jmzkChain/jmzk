@@ -68,6 +68,7 @@ void evt_api_plugin::plugin_startup() {
       EVT_RO_CALL(get_domain, 200),
       EVT_RO_CALL(get_group, 200),
       EVT_RO_CALL(get_token, 200),
+      EVT_RO_CALL(get_account, 200)
    });
 }
 

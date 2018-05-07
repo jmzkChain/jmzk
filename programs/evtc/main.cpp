@@ -361,6 +361,63 @@ struct set_group_subcommands {
    }
 };
 
+struct set_account_subcommands {
+    string name;
+    std::vector<string> owner;
+    std::string from, to;
+    std::string amount;
+
+    set_account_subcommands(CLI::App* actionRoot) {
+        auto nacmd = actionRoot->add_subcommand("create", localized("Create new account"));
+        nacmd->add_option("name", name, localized("Name of new account"))->required();
+        nacmd->add_option("owner", owner, localized("Owner that new account belongs to"))->required();
+
+        add_standard_transaction_options(nacmd);
+
+        nacmd->set_callback([this] {
+            newaccount na;
+            na.name = name128(name);
+            std::transform(owner.cbegin(), owner.cend(), std::back_inserter(na.owner), [](auto& str) { return public_key_type(str); });
+
+            auto act = create_action(N128(account), (domain_key)na.name, na);
+            send_actions({ act });
+        });
+
+        auto tecmd = actionRoot->add_subcommand("transfer", localized("Transfer EVT between accounts"));
+        tecmd->add_option("from", from, localized("Name of account EVT from"))->required();
+        tecmd->add_option("to", to, localized("Name of account EVT to"))->required();
+        tecmd->add_option("amount", amount, localized("Total EVT transfers"))->required();
+
+        add_standard_transaction_options(tecmd);
+
+        tecmd->set_callback([this] {
+            transferevt te;
+            te.from = name128(from);
+            te.to = name128(to);
+            te.amount = asset::from_string(amount);
+
+
+            auto act = create_action(N128(account), (domain_key)te.from, te);
+            send_actions({ act });
+        });
+
+        auto uocmd = actionRoot->add_subcommand("update", localized("Update owner for specific account"));
+        uocmd->add_option("name", name, localized("Name of updated account"))->required();
+        uocmd->add_option("owner", owner, localized("Updated owner for account"))->required();
+
+        add_standard_transaction_options(uocmd);
+
+        uocmd->set_callback([this] {
+            updateowner uo;
+            uo.name = name128(name);
+            std::transform(owner.cbegin(), owner.cend(), std::back_inserter(uo.owner), [](auto& str) { return public_key_type(str); });
+
+            auto act = create_action(N128(account), (domain_key)uo.name, uo);
+            send_actions({ act });
+        });
+    }
+};
+
 struct set_get_domain_subcommand {
    string name;
 
@@ -419,6 +476,20 @@ struct set_get_group_subcommand {
 
           auto arg = fc::mutable_variant_object("id", gid.to_base58());
           std::cout << fc::json::to_pretty_string(call(get_group_func, arg)) << std::endl;
+       });
+   }
+};
+
+struct set_get_account_subcommand {
+   string name;
+
+   set_get_account_subcommand(CLI::App* actionRoot) {
+       auto gacmd = actionRoot->add_subcommand("account", localized("Retrieve an account information"));
+       gacmd->add_option("name", name, localized("Name of account to be retrieved"))->required();
+
+       gacmd->set_callback([this] {
+          auto arg = fc::mutable_variant_object("name", name);
+          std::cout << fc::json::to_pretty_string(call(get_account_func, arg)) << std::endl;
        });
    }
 };
@@ -664,6 +735,7 @@ int main( int argc, char** argv ) {
    set_get_domain_subcommand get_domain(get);
    set_get_token_subcommand get_token(get);
    set_get_group_subcommand get_group(get);
+   set_get_account_subcommand get_account(get);
 
    // Net subcommand 
    string new_host;
@@ -714,6 +786,12 @@ int main( int argc, char** argv ) {
    group->require_subcommand();
    
    auto set_group = set_group_subcommands(group);
+
+   // account subcommand
+   auto account = app.add_subcommand("account", localized("Create or update account and transfer EVT between accounts"));
+   account->require_subcommand();
+
+   auto set_account = set_account_subcommands(account);
 
    // Wallet subcommand
    auto wallet = app.add_subcommand( "wallet", localized("Interact with local wallet"));

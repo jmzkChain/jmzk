@@ -12,20 +12,12 @@ namespace evt { namespace chain { namespace config {
 
 typedef __uint128_t uint128_t;
 
-const static auto default_block_log_dir     = "block_log";
-const static auto default_tokendb_dir       = "tokendb";
-const static auto default_shared_memory_dir = "shared_mem";
+const static auto default_block_log_dir      = "block_log";
+const static auto default_tokendb_dir        = "tokendb";
+const static auto default_shared_memory_dir  = "shared_mem";
 const static auto default_shared_memory_size = 32*1024*1024*1024ll;
 
-const static uint64_t system_account_name    = N(evt);
-const static uint64_t nobody_account_name    = N(nobody);
-const static uint64_t anybody_account_name   = N(anybody);
-const static uint64_t producers_account_name = N(producers);
-const static uint64_t evt_auth_scope       = N(evt.auth);
-const static uint64_t evt_all_scope        = N(evt.all);
-
-const static uint64_t active_name = N(active);
-const static uint64_t owner_name  = N(owner);
+const static uint128_t system_account_name   = N128(evt);
 
 const static int      block_interval_ms = 500;
 const static int      block_interval_us = block_interval_ms*1000;

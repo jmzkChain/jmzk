@@ -222,13 +222,12 @@ apply_evt_newaccount(apply_context& context) {
         auto& tokendb = context.mutable_tokendb;
         EVT_ASSERT(!naact.name.empty(), action_validate_exception, "Account name shouldn't be empty");
         EVT_ASSERT(!tokendb.exists_account(naact.name), action_validate_exception, "Account ${name} already existed", ("name",naact.name));
-        EVT_ASSERT(tokendb.exists_account(naact.creator), action_validate_exception, "Creator ${name} don't exist", ("name",naact.creator));
     
         auto account = account_def();
         account.name = naact.name;
-        account.creator = naact.creator;
-        account.balance = 0;
-        account.frozen_balance = 0;
+        account.creator = config::system_account_name;
+        account.balance = asset(10000);
+        account.frozen_balance = asset(0);
         account.owner = std::move(naact.owner);
 
         tokendb.add_account(account);
@@ -267,7 +266,7 @@ apply_evt_transferevt(apply_context& context) {
         auto& tokendb = context.mutable_tokendb;
         EVT_ASSERT(tokendb.exists_account(teact.from), action_validate_exception, "Account ${name} don't exist", ("name",teact.from));
         EVT_ASSERT(tokendb.exists_account(teact.to), action_validate_exception, "Account ${name} don't exist", ("name",teact.to));
-        EVT_ASSERT(teact.amount > 0, action_validate_exception, "Transfer amount must be positive");
+        EVT_ASSERT(teact.amount.amount > 0, action_validate_exception, "Transfer amount must be positive");
 
         account_def facc, tacc;
         tokendb.read_account(teact.from, [&](const auto& a) {
@@ -277,12 +276,14 @@ apply_evt_transferevt(apply_context& context) {
             tacc = a;
         });
 
-        EVT_ASSERT(facc.balance >= teact.amount, action_validate_exception, "Account ${name} don't have enough balance left");
+        EVT_ASSERT(facc.balance >= teact.amount, action_validate_exception, "Account ${name} don't have enough balance left", ("name",teact.from));
         
         bool r1, r2;
-        r1 = safemath::sub(facc.balance, teact.amount, facc.balance);
-        r2 = safemath::add(tacc.balance, teact.amount, tacc.balance);
+        r1 = safemath::test_sub(facc.balance.amount, teact.amount.amount, facc.balance.amount);
+        r2 = safemath::test_add(tacc.balance.amount, teact.amount.amount, tacc.balance.amount);
         EVT_ASSERT(r1 && r2, action_validate_exception, "Opeartions resulted in overflow results");
+        facc.balance -= teact.amount;
+        tacc.balance += teact.amount;
 
         auto fua = updateaccount();
         fua.name = facc.name;

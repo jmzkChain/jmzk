@@ -15,9 +15,6 @@ namespace evt { namespace client { namespace http {
    const string push_txns_func = chain_func_base + "/push_transactions";
    const string json_to_bin_func = chain_func_base + "/abi_json_to_bin";
    const string get_block_func = chain_func_base + "/get_block";
-   const string get_account_func = chain_func_base + "/get_account";
-   const string get_currency_balance_func = chain_func_base + "/get_currency_balance";
-   const string get_currency_stats_func = chain_func_base + "/get_currency_stats";
    const string get_required_keys = chain_func_base + "/get_required_keys";
 
    const string account_history_func_base = "/v1/account_history";
@@ -31,7 +28,6 @@ namespace evt { namespace client { namespace http {
    const string net_disconnect = net_func_base + "/disconnect";
    const string net_status = net_func_base + "/status";
    const string net_connections = net_func_base + "/connections";
-
 
    const string wallet_func_base = "/v1/wallet";
    const string wallet_create = wallet_func_base + "/create";
@@ -55,6 +51,9 @@ namespace evt { namespace client { namespace http {
    const string get_domain_func = evt_func_base + "/get_domain";
    const string get_token_func = evt_func_base + "/get_token";
    const string get_group_func = evt_func_base + "/get_group";
+   const string get_account_func = evt_func_base + "/get_account";
+   const string get_currency_balance_func = evt_func_base + "/get_currency_balance";
+   const string get_currency_stats_func = evt_func_base + "/get_currency_stats";
 
    FC_DECLARE_EXCEPTION( connection_exception, 1100000, "Connection Exception" );
  }}}

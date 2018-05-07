@@ -21,7 +21,7 @@ using account_name      = evt::chain::account_name;
 using user_id           = fc::crypto::public_key;
 using user_list         = std::vector<fc::crypto::public_key>;
 using group_key         = fc::crypto::public_key;
-using balance_type      = int64_t;
+using balance_type      = evt::chain::asset;
 
 
 struct type_def {
@@ -221,7 +221,6 @@ struct updatedomain {
 
 struct newaccount {
     account_name                    name;
-    account_name                    creator;
     user_list                       owner;
 
     static action_name get_name() {
@@ -275,7 +274,7 @@ FC_REFLECT( evt::chain::contracts::issuetoken                       , (domain)(n
 FC_REFLECT( evt::chain::contracts::transfer                         , (domain)(name)(to) )
 FC_REFLECT( evt::chain::contracts::updategroup                      , (id)(threshold)(keys) )
 FC_REFLECT( evt::chain::contracts::updatedomain                     , (name)(issue)(transfer)(manage)(groups))
-FC_REFLECT( evt::chain::contracts::newaccount                       , (name)(creator)(owner) )
+FC_REFLECT( evt::chain::contracts::newaccount                       , (name)(owner) )
 FC_REFLECT( evt::chain::contracts::updateowner                      , (name)(owner) )
 FC_REFLECT( evt::chain::contracts::transferevt                      , (from)(to)(amount) )
 FC_REFLECT( evt::chain::contracts::updateaccount                    , (owner)(balance)(frozen_balance) )

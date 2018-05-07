@@ -90,6 +90,17 @@ read_only::get_token(const read_only::get_token_params& params) {
     return var;
 }
 
+fc::variant
+read_only::get_account(const get_account_params& params) {
+    const auto& db = db_.get_tokendb();
+    variant var;
+    auto r = db.read_account(params.name, [&](const auto& a) {
+        fc::to_variant(a, var);
+    });
+    FC_ASSERT(r == 0, "Cannot find account: ${name}", ("name", params.name));
+    return var;
+}
+
 read_write::new_domain_result
 read_write::new_domain(const newdomain& params) {
     return read_write::new_domain_result();

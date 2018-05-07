@@ -112,6 +112,19 @@ namespace evt { namespace chain {
                         }
                     } EVT_RETHROW_EXCEPTIONS(chain_type_exception, "transation data is not valid, data cannot cast to `newaccount` type")
                 }
+                else if(action.name == N(updateowner)) {
+                    try {
+                        _get_owner_func(action.domain, action.key, [&](const auto& owner) {
+                            weight_tally_visitor vistor(*this);
+                            for(auto& o : owner) {
+                                vistor(o, 1);
+                            }
+                            if(vistor.total_weight == owner.size()) {
+                                result = true;
+                            }
+                        });
+                    } EVT_RETHROW_EXCEPTIONS(chain_type_exception, "transation data is not valid, data cannot cast to `updateowner` type")
+                }
                 else if(action.name == N(transferevt)) {
                     try {
                         auto te = action.data_as<contracts::transferevt>();

@@ -29,6 +29,7 @@ using chain::asset;
 using chain::domain_name;
 using chain::domain_key;
 using chain::token_name;
+using chain::account_name;
 using chain::contracts::group_id;
 using chain::contracts::domain_def;
 using chain::contracts::token_def;
@@ -65,6 +66,10 @@ public:
 
     fc::variant get_token(const get_token_params& params);
 
+    struct get_account_params {
+        account_name name;
+    };
+    fc::variant get_account(const get_account_params& params);
 
 private:
     const chain_controller& db_;
@@ -124,6 +129,7 @@ private:
 FC_REFLECT(evt::evt_apis::read_only::get_domain_params, (name));
 FC_REFLECT(evt::evt_apis::read_only::get_group_params, (id));
 FC_REFLECT(evt::evt_apis::read_only::get_token_params, (domain)(name));
+FC_REFLECT(evt::evt_apis::read_only::get_account_params, (name));
 FC_REFLECT(evt::evt_apis::read_write::new_domain_result, (name));
 FC_REFLECT(evt::evt_apis::read_write::issue_tokens_result, (domain)(names));
 FC_REFLECT(evt::evt_apis::read_write::transfer_result, (token));
