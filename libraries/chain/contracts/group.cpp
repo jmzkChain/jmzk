@@ -112,10 +112,12 @@ from_variant(const fc::variant& v, group& group, group::node& node, int depth) {
     EVT_ASSERT(group.nodes_.size() + cvs.size() < std::numeric_limits<decltype(node.index)>::max(), group_type_exception, "Exceeds max nodes limit");
     node.index = group.nodes_.size();
     node.size = cvs.size();
+
+    auto index = node.index;
     group.nodes_.resize(group.nodes_.size() + cvs.size());
     for(uint i = 0; i < cvs.size(); i++) {
         auto cv = cvs[i];
-        from_variant(cv, group, group.nodes_[node.index + i], depth + 1);
+        from_variant(cv, group, group.nodes_[index + i], depth + 1);
     }
 }
 
