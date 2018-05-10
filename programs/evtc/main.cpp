@@ -29,9 +29,6 @@
 #include <boost/range/algorithm/copy.hpp>
 #include <boost/algorithm/string/classification.hpp>
 
-#include <readline/readline.h>
-#include <readline/history.h>
-
 #include "CLI11.hpp"
 #include "help_text.hpp"
 #include "localize.hpp"
@@ -193,31 +190,47 @@ auto parse_permission = [](auto& jsonOrFile) {
   } EVT_RETHROW_EXCEPTIONS(permission_type_exception, "Fail to parse Permission JSON")
 };
 
-auto parse_groups = [](auto& jsonOrFile) {
+auto parse_group = [](auto& jsonOrFile) {
   try {
-    auto parsedGroups = json_from_file_or_string(jsonOrFile);
-    std::vector<group_def> groups;
-    parsedGroups.as(groups);
-    return groups;
-  } EVT_RETHROW_EXCEPTIONS(groups_type_exception, "Fail to parse Groups JSON")
+    auto parsedGroup = json_from_file_or_string(jsonOrFile);
+    group_def group;
+    parsedGroup.as(group);
+    return group;
+  } EVT_RETHROW_EXCEPTIONS(group_type_exception, "Fail to parse Group JSON")
+};
+
+auto get_default_permission = [](const auto& pname, const auto& pkey) {
+    auto p = permission_def();
+    auto a = authorizer_weight();
+    p.name = pname;
+    p.threshold = 1;
+    if(pkey == public_key_type()) {
+        // if no public key provided, assume it refer to owner group
+        a.ref.set_group(group_id::from_string("owner"));
+        a.weight = 1;
+    }
+    else {
+        a.ref.set_account(pkey);
+        a.weight = 1;
+    }
+    p.authorizers.emplace_back(a);
+    return p;
 };
 
 struct set_domain_subcommands {
    string name;
    string issuer;
-   string issue;
-   string transfer;
-   string manage;
-   string groups;
+   string issue = "default";
+   string transfer = "default";
+   string manage = "default";
 
    set_domain_subcommands(CLI::App* actionRoot) {
-      auto ndcmd = actionRoot->add_subcommand("new", localized("Add new domain"));
+      auto ndcmd = actionRoot->add_subcommand("create", localized("Create new domain"));
       ndcmd->add_option("name", name, localized("The name of new domain"))->required();
       ndcmd->add_option("issuer", issuer, localized("The public key of the issuer"))->required();
-      ndcmd->add_option("issue", issue, localized("JSON string or filename defining ISSUE permission"))->required();
-      ndcmd->add_option("transfer", transfer, localized("JSON string or filename defining TRANSFER permission"))->required();
-      ndcmd->add_option("manage", manage, localized("JSON string or filename defining MANAGE permission"))->set_default_str("{}");
-      ndcmd->add_option("groups", groups, localized("JSON string or filename defining groups which are new defined"))->set_default_str("[]");
+      ndcmd->add_option("issue", issue, localized("JSON string or filename defining ISSUE permission"), true);
+      ndcmd->add_option("transfer", transfer, localized("JSON string or filename defining TRANSFER permission"), true);
+      ndcmd->add_option("manage", manage, localized("JSON string or filename defining MANAGE permission"), true);
 
       add_standard_transaction_options(ndcmd);
 
@@ -225,10 +238,9 @@ struct set_domain_subcommands {
          newdomain nd;
          nd.name = name128(name);
          nd.issuer = public_key_type(issuer);
-         nd.issue = parse_permission(issue);
-         nd.transfer = parse_permission(transfer);
-         nd.manage = parse_permission(manage);
-         nd.groups = parse_groups(groups);
+         nd.issue = (issue == "default") ? get_default_permission("issue", nd.issuer) : parse_permission(issue);
+         nd.transfer = (transfer == "default") ? get_default_permission("transfer", public_key_type()) : parse_permission(transfer);
+         nd.manage = (manage == "default") ? get_default_permission("manage", nd.issuer) : parse_permission(manage);
          
          auto act = create_action("domain", (domain_key)nd.name, nd);
          send_actions({ act });
@@ -239,7 +251,6 @@ struct set_domain_subcommands {
       udcmd->add_option("issue", issue, localized("JSON string or filename defining ISSUE permission"))->required();
       udcmd->add_option("transfer", transfer, localized("JSON string or filename defining TRANSFER permission"))->required();
       udcmd->add_option("manage", manage, localized("JSON string or filename defining MANAGE permission"))->required();
-      udcmd->add_option("groups", groups, localized("JSON string or filename defining groups which are new defined"))->required();
 
       add_standard_transaction_options(udcmd);
 
@@ -249,7 +260,6 @@ struct set_domain_subcommands {
          ud.issue = parse_permission(issue);
          ud.transfer = parse_permission(transfer);
          ud.manage = parse_permission(manage);
-         ud.groups = parse_groups(groups);
          
          auto act = create_action("domain", (domain_key)ud.name, ud);
          send_actions({ act });
@@ -310,16 +320,31 @@ struct set_transfer_token_subcommand {
 struct set_group_subcommands {
    string id;
    string key;
-   uint32_t threshold;
-   string keys;
-
+   string json;
    
    set_group_subcommands(CLI::App* actionRoot) {
+      auto ngcmd = actionRoot->add_subcommand("create", localized("Create new group"));
+      ngcmd->add_option("json", json, localized("JSON string or filename defining the group to be created"))->required();
+
+      add_standard_transaction_options(ngcmd);
+
+      ngcmd->set_callback([this] {
+         newgroup ng;
+         try {
+            auto parsedGroup = json_from_file_or_string(json);
+            parsedGroup.as(ng.group);
+         } EVT_RETHROW_EXCEPTIONS(group_type_exception, "Fail to parse Group JSON")
+
+         ng.id = group_id::from_group_key(ng.group.key());
+
+         auto act = create_action("group", (domain_key)ng.id, ng);
+         send_actions({ act });
+      });
+
       auto ugcmd = actionRoot->add_subcommand("update", localized("Update specific permission group, id or key must provide at least one."));
       ugcmd->add_option("id", id, localized("Id of the permission group to be updated"));
       ugcmd->add_option("-k,--key", key, localized("Key of permission group to be updated"));
-      ugcmd->add_option("threshold", threshold, localized("Threshold of permission group"))->required();
-      ugcmd->add_option("keys", keys, localized("JSON string or filename defining the keys of permission group"))->required();
+      ugcmd->add_option("json", json, localized("JSON string or filename defining the updated group"))->required();
 
       add_standard_transaction_options(ugcmd);
 
@@ -339,12 +364,11 @@ struct set_group_subcommands {
              } FC_CAPTURE_AND_RETHROW((key))
          }
          ug.id = gid;
-         ug.threshold = threshold;
 
          try {
-            auto parsedKeys = json_from_file_or_string(keys);
-            parsedKeys.as(ug.keys);
-         } EVT_RETHROW_EXCEPTIONS(group_keys_type_exception, "Fail to parse Group Keys JSON")
+            auto parsedGroup = json_from_file_or_string(json);
+            parsedGroup.as(ug.group);
+         } EVT_RETHROW_EXCEPTIONS(group_type_exception, "Fail to parse Group JSON")
 
          auto act = create_action("group", (domain_key)ug.id, ug);
          send_actions({ act });
@@ -494,145 +518,6 @@ struct set_get_account_subcommand {
    }
 };
 
-auto readstr = [](const std::string& prompt) {
-    static std::string empty;
-    char* line_read = readline(prompt.c_str());
-    if(line_read && *line_read) {
-        add_history(line_read);
-        auto str = std::string(line_read);
-        free(line_read);
-        return str;
-    }
-    return empty;
-};
-
-auto readvalue = [](const std::string& prompt, const auto& transfrom_func) {
-    while(true) {
-        auto v = readstr(prompt);
-        if(v.empty()) {
-            fprintf(stderr, "Input value is not valid: empty value\n");
-            continue;
-        }
-        try {
-            return transfrom_func(v);
-        }
-        catch(fc::exception& e) {
-            fprintf(stderr, "Input value is not valid: %s\n", e.top_message().c_str());
-            continue;
-        }
-    }
-};
-
-auto readvalues = [](const std::string& prompt, const auto& read_func) {
-    printf("%s\n", prompt.c_str());
-
-    using rtype = decltype(read_func());
-    std::vector<rtype> values;
-    int n = 1;
-    while(true) {
-        auto arg = fc::mutable_variant_object("n",n);
-        auto notes = fc::format_string("Would you input #${n} value ('n' for exit): ", arg);
-        auto end = readstr(notes);
-        if(end == "n") {
-            break;
-        }
-        
-        auto v = read_func();
-        values.emplace_back(std::move(v));
-        n++;
-    }
-    return values;
-};
-
-auto readintegral = [](const std::string& prompt, const auto target) {
-    using itype = std::remove_const_t<decltype(target)>;
-    itype i = 0;
-    i = readvalue(prompt, [](auto& v) {
-        auto ll = strtoll(v.c_str(), nullptr, 10);
-        if(ll == 0) {
-            FC_THROW_EXCEPTION(fc::exception, "Not a number");
-        }
-        if(errno == ERANGE || ll >= std::numeric_limits<itype>::max()) {
-            FC_THROW_EXCEPTION(fc::exception, "Out of range");
-        }
-        return static_cast<itype>(ll);
-    });
-    return i;
-};
-
-key_weight
-read_kw() {
-    key_weight kw;
-    kw.key = readvalue("Key: ", [](auto& v) { return public_key_type(v); });
-    kw.weight = readintegral("Weight: ", kw.weight);
-    return kw;
-}
-
-group_def
-read_group() {
-    group_def g;
-    g.key = readvalue("Group key: ", [](auto& v) { return public_key_type(v); });
-    g.id = group_id::from_group_key(g.key);
-    g.threshold = readintegral("Group threshold: ", g.threshold);
-    g.keys = readvalues("Keys and weights:", read_kw);
-    return g;
-}
-
-group_weight
-read_gw() {
-    group_weight gw{};
-    while(true) {
-        auto v = readstr("Group id or key(empty for owner group): ");
-        if(v.empty()) {
-            gw.id = 0;
-            break;
-        }
-        try {
-            gw.id = group_id::from_group_key(public_key_type(v));
-        }
-        catch(...) {}
-        if(gw.id.empty()) {
-            try {
-                gw.id = group_id::from_string(v);
-            }
-            catch(...) {}
-        }
-        if(gw.id.empty()) {
-            fprintf(stderr, "Input is neither valid group id nor group key.\n");
-            continue;
-        }
-        break;
-    }
-    gw.weight = readintegral("Group weight: ", gw.weight);
-    return gw;
-}
-
-permission_def
-read_permission(const std::string& name) {
-    printf("Read %s permssion\n", name.c_str());
-    permission_def p;
-    p.name = name;
-    p.threshold = readintegral("Threshold: ", p.threshold);
-    p.groups = readvalues("Groups: ", read_gw);
-    return p;
-}
-
-struct set_interactive_subcommands {
-    set_interactive_subcommands(CLI::App* actionRoot) {
-        auto ndact = actionRoot->add_subcommand("newdomain", "Add new domain interactively");
-        ndact->set_callback([this] {
-            newdomain nd;
-            nd.name = readstr("Domain name: ");
-            nd.issuer = readvalue("Issuer: ", [](auto& v) { return public_key_type(v); });
-            nd.issue = read_permission("issuer");
-            nd.transfer = read_permission("transfer");
-            nd.manage = read_permission("manage");
-
-            auto act = create_action("domain", (domain_key)nd.name, nd);
-            send_actions({ act });
-        });
-    }
-};
 
 int main( int argc, char** argv ) {
    fc::path binPath = argv[0];
@@ -955,10 +840,6 @@ int main( int argc, char** argv ) {
       auto trxs_result = call(push_txns_func, trx_var);
       std::cout << fc::json::to_pretty_string(trxs_result) << std::endl;
    });
-
-   // Interactive subcommand
-   auto interactive = app.add_subcommand("interactive", localized("Push action via interactive way"))->require_subcommand();
-   auto set_interactive = set_interactive_subcommands(interactive);
 
    try {
        app.parse(argc, argv);

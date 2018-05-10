@@ -25,7 +25,6 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../../.git)
 endif()
 
 find_package(Intl REQUIRED)
-find_package(Readline REQUIRED)
 
 set(LOCALEDIR ${CMAKE_INSTALL_PREFIX}/share/locale)
 set(LOCALEDOMAIN evtc)
@@ -34,7 +33,7 @@ configure_file(config.hpp.in config.hpp ESCAPE_QUOTES)
 target_include_directories(evtc PUBLIC ${Intl_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR})
 
 target_link_libraries( evtc
-                       PRIVATE appbase chain_api_plugin producer_plugin chain_plugin http_plugin evt_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} ${Intl_LIBRARIES} readline )
+                       PRIVATE appbase chain_api_plugin producer_plugin chain_plugin http_plugin evt_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} ${Intl_LIBRARIES} )
 
 install( TARGETS
    evtc
