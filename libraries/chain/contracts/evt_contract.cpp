@@ -24,53 +24,63 @@ namespace __internal {
 inline bool 
 validate(const permission_def &permission) {
     uint32_t total_weight = 0;
-    const contracts::group_weight* prev = nullptr;
-    for(const auto& gw : permission.groups) {
-        if(prev && (prev->id <= gw.id)) {
+    const contracts::authorizer_weight* prev = nullptr;
+    for(const auto& aw : permission.authorizers) {
+        if(aw.weight == 0) {
             return false;
         }
-        if(gw.weight == 0) {
-            return false;
-        }
-        total_weight += gw.weight;
-        prev = &gw;
+        total_weight += aw.weight;
+        prev = &aw;
     }
     return total_weight >= permission.threshold;
 }
 
-template<typename T>
 inline bool
-validate(const T &group) {
-    if(group.threshold == 0) {
-        return false;
-    }
-    uint32_t total_weight = 0;
-    const key_weight* prev = nullptr;
-    for(const auto& kw : group.keys) {
-        if(prev && ((prev->key < kw.key) || (prev->key == kw.key))) {
+validate(const group& group, const group::node& node) {
+    EVT_ASSERT(node.validate(), group_type_exception, "Node is invalid: ${node}", ("node",node));
+    if(!node.is_leaf()) {
+        auto total_weight = 0u;
+        auto result = true;
+        group.visit_node(node, [&](auto& n) {
+            if(!validate(group, n)) {
+                result = false;
+                return false;
+            } 
+            total_weight += n.weight;
+            return true;
+        });
+        if(!result) {
             return false;
         }
-        if(kw.weight == 0) {
-            return false;
-        }
-        total_weight += kw.weight;
-        prev = &kw;
+        return total_weight >= node.threshold;
     }
-    return total_weight >= group.threshold;
+    return true;
 }
 
-auto make_permission_checker = [](const auto& tokendb, const auto& groups) {
+inline bool
+validate(const group& group) {
+    EVT_ASSERT(group_id::from_group_key(group.key()) == group.id(), action_validate_exception, "Group id and key are not match");
+    EVT_ASSERT(group.nodes_.size() > 0, action_validate_exception, "Don't have root node");
+    auto& root = group.root();
+    return validate(group, root);
+}
+
+auto make_permission_checker = [](const auto& tokendb) {
     auto checker = [&](const auto& p, auto allowed_owner) {
-        for(const auto& g : p.groups) {
-            if(g.id.empty()) {
+        for(const auto& a : p.authorizers) {
+            auto& ref = a.ref;
+            if(ref.is_account_ref()) {
+                continue;
+            }
+            FC_ASSERT(ref.is_group_ref());
+            auto& gid = ref.get_group();
+            if(gid.empty()) {
                 // owner group
                 EVT_ASSERT(allowed_owner, action_validate_exception, "Owner group is not allowed in ${name} permission", ("name", p.name));
                 continue;
             }
-            auto dbexisted = tokendb.exists_group(g.id);
-            auto defexisted = std::find_if(groups.cbegin(), groups.cend(), [&g](auto& gd) { return gd.id == g.id; }) != groups.cend();
-
-            EVT_ASSERT(dbexisted ^ defexisted, action_validate_exception, "Group ${id} is not valid, may already be defined or not provide defines", ("id", g.id));
+            auto dbexisted = tokendb.exists_group(gid);
+            EVT_ASSERT(dbexisted, action_validate_exception, "Group ${id} is not valid, should create group first", ("id", gid));
         }
     };
     return checker;
@@ -89,10 +99,6 @@ apply_evt_newdomain(apply_context& context) {
         auto& tokendb = context.mutable_tokendb;
         EVT_ASSERT(!tokendb.exists_domain(ndact.name), action_validate_exception, "Domain ${name} already existed", ("name",ndact.name));
 
-        for(auto& g : ndact.groups) {
-            EVT_ASSERT(validate(g), action_validate_exception, "Group ${id} is not valid, eithor threshold is not valid or exist duplicate or unordered key", ("id", g.id));
-            EVT_ASSERT(g.id == group_id::from_group_key(g.key), action_validate_exception, "Group id and key are not match", ("id",g.id)("key",g.key)); 
-        }
         EVT_ASSERT(!ndact.name.empty(), action_validate_exception, "Domain name shouldn't be empty");
         EVT_ASSERT(ndact.issue.name == "issue", action_validate_exception, "Name of issue permission is not valid, provided: ${name}", ("name",ndact.issue.name));
         EVT_ASSERT(ndact.issue.threshold > 0 && validate(ndact.issue), action_validate_exception, "Issue permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
@@ -102,7 +108,7 @@ apply_evt_newdomain(apply_context& context) {
         EVT_ASSERT(ndact.manage.name == "manage", action_validate_exception, "Name of transfer permission is not valid, provided: ${name}", ("name",ndact.manage.name));
         EVT_ASSERT(validate(ndact.manage), action_validate_exception, "Manage permission not valid, maybe exist duplicate keys.");
 
-        auto pchecker = make_permission_checker(tokendb, ndact.groups);
+        auto pchecker = make_permission_checker(tokendb);
         pchecker(ndact.issue, false);
         pchecker(ndact.transfer, true);
         pchecker(ndact.manage, false);
@@ -115,11 +121,7 @@ apply_evt_newdomain(apply_context& context) {
         domain.transfer = ndact.transfer;
         domain.manage = ndact.manage;
         
-        tokendb.add_domain(domain);
-        for(auto& g : ndact.groups) {
-            tokendb.add_group(g);
-        }
-        
+        tokendb.add_domain(domain);       
     }
     FC_CAPTURE_AND_RETHROW((ndact)) 
 }
@@ -130,10 +132,10 @@ apply_evt_issuetoken(apply_context& context) {
     try {
         EVT_ASSERT(context.has_authorized(itact.domain, N128(issue)), action_validate_exception, "Authorized information doesn't match");
         
-        EVT_ASSERT(context.mutable_tokendb.exists_domain(itact.domain), action_validate_exception, "Domain ${name} not existed", ("name", itact.domain));
+        auto& tokendb = context.mutable_tokendb;
+        EVT_ASSERT(tokendb.exists_domain(itact.domain), action_validate_exception, "Domain ${name} not existed", ("name", itact.domain));
         EVT_ASSERT(!itact.owner.empty(), action_validate_exception, "Owner cannot be empty");
 
-        auto& tokendb = context.mutable_tokendb;
         for(auto& n : itact.names) {
             EVT_ASSERT(!tokendb.exists_token(itact.domain, n), action_validate_exception, "Token ${domain}-${name} already existed", ("domain",itact.domain)("name",n));
         }
@@ -154,17 +156,33 @@ apply_evt_transfer(apply_context& context) {
 }
 
 void
+apply_evt_newgroup(apply_context& context) {
+    using namespace __internal;
+
+    auto ngact = context.act.data_as<newgroup>();
+    try {
+        EVT_ASSERT(context.has_authorized(N128(group), ngact.id), action_validate_exception, "Authorized information doesn't match");
+        
+        auto& tokendb = context.mutable_tokendb;
+        EVT_ASSERT(!tokendb.exists_group(ngact.id), action_validate_exception, "Group ${id} is already existed", ("id",ngact.id));
+        EVT_ASSERT(validate(ngact.group), action_validate_exception, "Input group is not valid");
+
+        tokendb.add_group(ngact.group);
+    }
+    FC_CAPTURE_AND_RETHROW((ngact));
+}
+
+void
 apply_evt_updategroup(apply_context& context) {
     using namespace __internal;
 
     auto ugact = context.act.data_as<updategroup>();
     try {
-        EVT_ASSERT(context.has_authorized("group", ugact.id), action_validate_exception, "Authorized information doesn't match");
+        EVT_ASSERT(context.has_authorized(N128(group), ugact.id), action_validate_exception, "Authorized information doesn't match");
 
         auto& tokendb = context.mutable_tokendb;
         EVT_ASSERT(tokendb.exists_group(ugact.id), action_validate_exception, "Group ${id} not existed", ("id",ugact.id));
-        EVT_ASSERT(ugact.keys.size() > 0, action_validate_exception, "Group must contains at least one key");
-        EVT_ASSERT(validate(ugact), action_validate_exception, "Updated group is not valid, eithor threshold is not valid or exist duplicate or unordered keys");
+        EVT_ASSERT(validate(ugact.group), action_validate_exception, "Updated group is not valid");
 
         tokendb.update_group(ugact);
     }
@@ -182,13 +200,9 @@ apply_evt_updatedomain(apply_context& context) {
         auto& tokendb = context.mutable_tokendb;
         EVT_ASSERT(tokendb.exists_domain(udact.name), action_validate_exception, "Domain ${name} is not existed", ("name",udact.name));
 
-        for(auto& g : udact.groups) {
-            EVT_ASSERT(validate(g), action_validate_exception, "Group ${id} is not valid, eithor threshold is not valid or exist duplicate or unordered key", ("id", g.id));
-            EVT_ASSERT(g.id == group_id::from_group_key(g.key), action_validate_exception, "Group id and key are not match", ("id",g.id)("key",g.key)); 
-        }
         EVT_ASSERT(!udact.name.empty(), action_validate_exception, "Domain name shouldn't be empty");
 
-        auto pchecker = make_permission_checker(tokendb, udact.groups);
+        auto pchecker = make_permission_checker(tokendb);
         if(udact.issue.valid()) {
             EVT_ASSERT(udact.issue->name == "issue", action_validate_exception, "Name of issue permission is not valid, provided: ${name}", ("name",udact.issue->name));
             EVT_ASSERT(udact.issue->threshold > 0 && validate(*udact.issue), action_validate_exception, "Issue permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
@@ -226,7 +240,7 @@ apply_evt_newaccount(apply_context& context) {
         auto account = account_def();
         account.name = naact.name;
         account.creator = config::system_account_name;
-        account.balance = asset(10000);
+        account.balance = asset(0);
         account.frozen_balance = asset(0);
         account.owner = std::move(naact.owner);
 

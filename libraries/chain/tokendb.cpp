@@ -100,11 +100,8 @@ public:
             // merge only need to consider latest one
             if(merge_in.key.starts_with(GroupPrefixSlice)) {
                 // group
-                auto v = read_value<group_def>(*merge_in.existing_value);
                 auto ug = read_value<updategroup>(merge_in.operand_list[merge_in.operand_list.size() - 1]);
-                v.threshold = ug.threshold;
-                v.keys = std::move(ug.keys);
-                merge_out->new_value = get_value(v);
+                merge_out->new_value = get_value(ug.group);
             }
             else if(merge_in.key.starts_with(DomainPrefixSlice)) {
                 // domain
@@ -313,10 +310,10 @@ tokendb::exists_token(const domain_name& domain, const token_name& name) const {
 int
 tokendb::add_group(const group_def& group) {
     using namespace __internal;
-    if(exists_group(group.id)) {
-        EVT_THROW(tokendb_group_existed, "Group is already existed: ${id}", ("id", group.id.to_base58()));
+    if(exists_group(group.id())) {
+        EVT_THROW(tokendb_group_existed, "Group is already existed: ${id}", ("id", group.id().to_base58()));
     }
-    auto key = get_group_key(group.id);
+    auto key = get_group_key(group.id());
     auto value = get_value(group);
     auto status = db_->Put(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
@@ -324,7 +321,7 @@ tokendb::add_group(const group_def& group) {
     }
     if(should_record()) {
         auto act = (sp_addgroup*)malloc(sizeof(sp_addgroup));
-        act->id = group.id;
+        act->id = group.id();
         record(kAddGroup, act);
     }
     return 0;

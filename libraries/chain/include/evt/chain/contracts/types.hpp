@@ -8,6 +8,8 @@
 #include <evt/chain/config.hpp>
 #include <evt/chain/types.hpp>
 #include <evt/chain/contracts/group_id.hpp>
+#include <evt/chain/contracts/group.hpp>
+#include <evt/chain/contracts/authorizer_ref.hpp>
 
 namespace evt { namespace chain { namespace contracts {
 
@@ -18,9 +20,10 @@ using domain_name       = evt::chain::domain_name;
 using token_name        = evt::chain::token_name;
 using permission_name   = evt::chain::permission_name;
 using account_name      = evt::chain::account_name;
-using user_id           = fc::crypto::public_key;
-using user_list         = std::vector<fc::crypto::public_key>;
-using group_key         = fc::crypto::public_key;
+using user_id           = public_key_type;
+using user_list         = std::vector<public_key_type>;
+using group_key         = public_key_type;
+using group_def         = group;
 using balance_type      = evt::chain::asset;
 
 
@@ -100,35 +103,25 @@ struct key_weight {
    weight_type     weight;
 };
 
-struct group_def {
-    group_def() = default;
-
-    group_id                id;
-    group_key               key;
-    uint32_t                threshold;
-    vector<key_weight>      keys;
-};
-
-// Special: id.empty() == true means owner
-struct group_weight {
-    group_weight() = default;
-    group_weight(group_id id, weight_type weight)
-    : id(id), weight(weight)
+struct authorizer_weight {
+    authorizer_weight() = default;
+    authorizer_weight(authorizer_ref ref, weight_type weight)
+    : ref(ref), weight(weight)
     {}
 
-    group_id                id;
+    authorizer_ref          ref;
     weight_type             weight;
 };
 
 struct permission_def {
     permission_def() = default;
-    permission_def(permission_name name, uint32_t threshold, const vector<group_weight>& groups)
-    : name(name), threshold(threshold), groups(groups)
+    permission_def(permission_name name, uint32_t threshold, const vector<authorizer_weight>& authorizers)
+    : name(name), threshold(threshold), authorizers(authorizers)
     {}
 
-    permission_name         name;
-    uint32_t                threshold;
-    vector<group_weight>    groups;
+    permission_name           name;
+    uint32_t                  threshold;
+    vector<authorizer_weight> authorizers;
 };
 
 struct domain_def {
@@ -168,8 +161,6 @@ struct newdomain {
     permission_def          transfer;
     permission_def          manage;
 
-    std::vector<group_def>  groups;
-
     static action_name get_name() {
         return N(newdomain);
     }
@@ -195,10 +186,18 @@ struct transfer {
     }
 };
 
+struct newgroup {
+    group_id                id;
+    group_def               group;
+
+    static action_name get_name() {
+        return N(newgroup);
+    }    
+};
+
 struct updategroup {
     group_id                id;
-    uint32_t                threshold;
-    vector<key_weight>      keys;
+    group_def               group;
 
     static action_name get_name() {
         return N(updategroup);
@@ -211,8 +210,6 @@ struct updatedomain {
     fc::optional<permission_def>    issue;
     fc::optional<permission_def>    transfer;
     fc::optional<permission_def>    manage;
-
-    std::vector<group_def>          groups;
 
     static action_name get_name() {
         return N(updatedomain);
@@ -263,17 +260,17 @@ FC_REFLECT( evt::chain::contracts::action_def                       , (name)(typ
 FC_REFLECT( evt::chain::contracts::abi_def                          , (types)(structs)(actions) )
 FC_REFLECT( evt::chain::contracts::token_def                        , (domain)(name)(owner) )
 FC_REFLECT( evt::chain::contracts::key_weight                       , (key)(weight) )
-FC_REFLECT( evt::chain::contracts::group_def                        , (id)(key)(threshold)(keys) )
-FC_REFLECT( evt::chain::contracts::group_weight                     , (id)(weight) )
-FC_REFLECT( evt::chain::contracts::permission_def                   , (name)(threshold)(groups) )
+FC_REFLECT( evt::chain::contracts::authorizer_weight                , (ref)(weight) )
+FC_REFLECT( evt::chain::contracts::permission_def                   , (name)(threshold)(authorizers) )
 FC_REFLECT( evt::chain::contracts::domain_def                       , (name)(issuer)(issue_time)(issue)(transfer)(manage) )
 FC_REFLECT( evt::chain::contracts::account_def                      , (name)(creator)(balance)(frozen_balance)(owner) )
 
-FC_REFLECT( evt::chain::contracts::newdomain                        , (name)(issuer)(issue)(transfer)(manage)(groups))
+FC_REFLECT( evt::chain::contracts::newdomain                        , (name)(issuer)(issue)(transfer)(manage))
 FC_REFLECT( evt::chain::contracts::issuetoken                       , (domain)(names)(owner) )
 FC_REFLECT( evt::chain::contracts::transfer                         , (domain)(name)(to) )
-FC_REFLECT( evt::chain::contracts::updategroup                      , (id)(threshold)(keys) )
-FC_REFLECT( evt::chain::contracts::updatedomain                     , (name)(issue)(transfer)(manage)(groups))
+FC_REFLECT( evt::chain::contracts::newgroup                         , (id)(group) )
+FC_REFLECT( evt::chain::contracts::updategroup                      , (id)(group) )
+FC_REFLECT( evt::chain::contracts::updatedomain                     , (name)(issue)(transfer)(manage))
 FC_REFLECT( evt::chain::contracts::newaccount                       , (name)(owner) )
 FC_REFLECT( evt::chain::contracts::updateowner                      , (name)(owner) )
 FC_REFLECT( evt::chain::contracts::transferevt                      , (from)(to)(amount) )

@@ -37,6 +37,7 @@ void chain_initializer::register_types(chain_controller& chain, chainbase::datab
     SET_APP_HANDLER( newdomain );
     SET_APP_HANDLER( issuetoken );
     SET_APP_HANDLER( transfer );
+    SET_APP_HANDLER( newgroup );
     SET_APP_HANDLER( updategroup );
     SET_APP_HANDLER( updatedomain );
     SET_APP_HANDLER( newaccount );
@@ -61,10 +62,12 @@ abi_def chain_initializer::evt_contract_abi()
    evt_abi.types.push_back( type_def{"account_name","name128"} );
    evt_abi.types.push_back( type_def{"domain_key","uint128"} );
    evt_abi.types.push_back( type_def{"balance_type","asset"} );
+   evt_abi.types.push_back( type_def{"group_def","group"} );
 
    evt_abi.actions.push_back( action_def{name("newdomain"), "newdomain"} );
    evt_abi.actions.push_back( action_def{name("issuetoken"), "issuetoken"} );
    evt_abi.actions.push_back( action_def{name("transfer"), "transfer"} );
+   evt_abi.actions.push_back( action_def{name("newgroup"), "newgroup"} );
    evt_abi.actions.push_back( action_def{name("updategroup"), "updategroup"} );
    evt_abi.actions.push_back( action_def{name("updatedomain"), "updatedomain"} );
    evt_abi.actions.push_back( action_def{name("newaccount"), "newaccount"} );
@@ -98,8 +101,8 @@ abi_def chain_initializer::evt_contract_abi()
    });
 
    evt_abi.structs.emplace_back( struct_def {
-      "group_weight", "", {
-         {"id", "group_id"},
+      "authorizer_weight", "", {
+         {"ref", "authorizer_ref"},
          {"weight", "weight_type"}
       }
    });
@@ -108,7 +111,7 @@ abi_def chain_initializer::evt_contract_abi()
       "permission_def", "", {
          {"name", "permission_name"},
          {"threshold", "uint32"},
-         {"groups", "group_weight[]"}
+         {"authorizers", "authorizer_weight[]"}
       }
    });
 
@@ -138,8 +141,7 @@ abi_def chain_initializer::evt_contract_abi()
          {"issuer", "user_id"},
          {"issue", "permission_def"},
          {"transfer", "permission_def"},
-         {"manage", "permission_def"},
-         {"groups", "group_def[]"},
+         {"manage", "permission_def"}
       }
    });
 
@@ -155,16 +157,21 @@ abi_def chain_initializer::evt_contract_abi()
       "transfer", "", {
          {"domain", "domain_name"},
          {"name", "token_name"},
-         {"to", "user_list"},
+         {"to", "user_list"}
+      }
+   });
+
+   evt_abi.structs.emplace_back( struct_def {
+      "newgroup", "", {
+         {"id", "group_id"},
+         {"group", "group_def"}
       }
    });
 
    evt_abi.structs.emplace_back( struct_def {
       "updategroup", "", {
          {"id", "group_id"},
-         {"threshold", "uint32"},
-         {"keys", "key_weight[]"},
-         {"requirement", "permission_name"},
+         {"group", "group_def"}
       }
    });
 
@@ -173,8 +180,7 @@ abi_def chain_initializer::evt_contract_abi()
          {"name", "domain_name"},
          {"issue", "permission_def?"},
          {"transfer", "permission_def?"},
-         {"manage", "permission_def?"},
-         {"groups", "group_def[]"},
+         {"manage", "permission_def?"}
       }
    });
 
@@ -292,7 +298,7 @@ void chain_initializer::prepare_database( chain_controller& chain,
 
 void chain_initializer::prepare_tokendb(chain::chain_controller& chain, evt::chain::tokendb& tokendb) {
     if(!tokendb.exists_domain("domain")) {
-        domain_def dd;
+        auto dd = domain_def();
         dd.name = "domain";
         dd.issuer = genesis.initial_key;
         dd.issue_time = genesis.initial_timestamp;
@@ -300,7 +306,7 @@ void chain_initializer::prepare_tokendb(chain::chain_controller& chain, evt::cha
         FC_ASSERT(r == 0, "Add `domain` domain failed");
     }
     if(!tokendb.exists_domain("group")) {
-        domain_def gd;
+        auto gd = domain_def();
         gd.name = "group";
         gd.issuer = genesis.initial_key;
         gd.issue_time = genesis.initial_timestamp;
@@ -308,7 +314,7 @@ void chain_initializer::prepare_tokendb(chain::chain_controller& chain, evt::cha
         FC_ASSERT(r == 0, "Add `group` domain failed");
     }
     if(!tokendb.exists_domain("account")) {
-        domain_def ad;
+        auto ad = domain_def();
         ad.name = "account";
         ad.issuer = genesis.initial_key;
         ad.issue_time = genesis.initial_timestamp;

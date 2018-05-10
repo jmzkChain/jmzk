@@ -24,6 +24,8 @@ add_library( evt_chain
              contracts/genesis_state.cpp
              contracts/abi_serializer.cpp
              contracts/group_id.cpp
+             contracts/group.cpp
+             contracts/authorizer_ref.cpp
 
              ${HEADERS}
              transaction_metadata.cpp)

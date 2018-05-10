@@ -17,6 +17,7 @@ namespace evt { namespace chain { namespace contracts {
         void apply_evt_newdomain(apply_context& context);
         void apply_evt_issuetoken(apply_context& context);
         void apply_evt_transfer(apply_context& context);
+        void apply_evt_newgroup(apply_context& context);
         void apply_evt_updategroup(apply_context& context);
         void apply_evt_updatedomain(apply_context& context);
 

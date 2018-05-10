@@ -3,6 +3,7 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #include <evt/chain/contracts/group_id.hpp>
+#include <boost/algorithm/string.hpp>
 #include <fc/crypto/base58.hpp>
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/ripemd160.hpp>
@@ -21,7 +22,7 @@ group_id::from_base58(const std::string& base58) {
 
 group_id
 group_id::from_string(const std::string& str) {
-    if(str.empty() || str == "owner") {
+    if(str.empty() || boost::to_upper_copy(str) == "OWNER") {
         return group_id();
     }
     return group_id::from_base58(str);
@@ -43,7 +44,7 @@ group_id::to_base58() const {
 std::string
 group_id::to_string() const {
     if(this->empty()) {
-        return "owner";
+        return "OWNER";
     }
     return to_base58();
 }

@@ -3,12 +3,12 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #include <evt/chain/contracts/abi_serializer.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 #include <evt/chain/contracts/chain_initializer.hpp>
 #include <evt/chain/contracts/types.hpp>
 #include <evt/chain/chain_config.hpp>
 #include <evt/chain/transaction.hpp>
 #include <fc/io/raw.hpp>
-#include <boost/algorithm/string/predicate.hpp>
 #include <fc/io/varint.hpp>
 
 using namespace boost;
@@ -91,6 +91,8 @@ namespace evt { namespace chain { namespace contracts {
       built_in_types.emplace("domain_key",                pack_unpack<domain_key>());
       built_in_types.emplace("token_name",                pack_unpack<token_name>());
       built_in_types.emplace("group_id",                  pack_unpack<group_id>());
+      built_in_types.emplace("group",                     pack_unpack<group>());
+      built_in_types.emplace("authorizer_ref",            pack_unpack<authorizer_ref>());
       built_in_types.emplace("producer_schedule",         pack_unpack<producer_schedule_type>());
    }
 

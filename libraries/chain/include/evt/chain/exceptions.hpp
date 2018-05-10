@@ -24,6 +24,8 @@ namespace evt { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( missing_plugin_exception,          evt::chain::chain_exception, 3130000, "missing plugin exception" )
    FC_DECLARE_DERIVED_EXCEPTION( wallet_exception,                  evt::chain::chain_exception, 3140000, "wallet exception" )
    FC_DECLARE_DERIVED_EXCEPTION( tokendb_exception,                 evt::chain::chain_exception, 3150000, "tokendb exception" )
+   FC_DECLARE_DERIVED_EXCEPTION( serialization_exception,           evt::chain::chain_exception, 3160000, "serialization exception")
+   FC_DECLARE_DERIVED_EXCEPTION( deserialization_exception,         evt::chain::chain_exception, 3170000, "deserialization exception")
 
    FC_DECLARE_DERIVED_EXCEPTION( permission_query_exception,        evt::chain::database_query_exception, 3010001, "Permission Query Exception" )
    FC_DECLARE_DERIVED_EXCEPTION( account_query_exception,           evt::chain::database_query_exception, 3010002, "Account Query Exception" )
@@ -72,7 +74,7 @@ namespace evt { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( tx_receipt_inconsistent_net,       evt::chain::transaction_exception, 3030035, "Transaction receipt applied net_usage_words does not match received net_usage_words" )
 
    FC_DECLARE_DERIVED_EXCEPTION( account_name_exists_exception,     evt::chain::action_validate_exception, 3040001, "account name already exists" )
-   FC_DECLARE_DERIVED_EXCEPTION( invalid_action_args_exception, evt::chain::action_validate_exception, 3040002, "Invalid Action Arguments" )
+   FC_DECLARE_DERIVED_EXCEPTION( invalid_action_args_exception,     evt::chain::action_validate_exception, 3040002, "Invalid Action Arguments" )
    FC_DECLARE_DERIVED_EXCEPTION( invalid_pts_address,               evt::chain::utility_exception, 3060001, "invalid pts address" )
    FC_DECLARE_DERIVED_EXCEPTION( insufficient_feeds,                evt::chain::chain_exception, 37006, "insufficient feeds" )
 
@@ -90,8 +92,7 @@ namespace evt { namespace chain {
    FC_DECLARE_DERIVED_EXCEPTION( packed_transaction_type_exception, evt::chain::chain_type_exception, 3120010, "Invalid packed transaction" )
    FC_DECLARE_DERIVED_EXCEPTION( asset_type_exception,              evt::chain::chain_type_exception, 3120011, "Invalid asset" )
    FC_DECLARE_DERIVED_EXCEPTION( permission_type_exception,         evt::chain::chain_type_exception, 3120012, "Invalid permission" )
-   FC_DECLARE_DERIVED_EXCEPTION( groups_type_exception,             evt::chain::chain_type_exception, 3120012, "Invalid groups" )
-   FC_DECLARE_DERIVED_EXCEPTION( group_keys_type_exception,         evt::chain::chain_type_exception, 3120013, "Invalid groups keys" )
+   FC_DECLARE_DERIVED_EXCEPTION( group_type_exception,              evt::chain::chain_type_exception, 3120012, "Invalid group" )
 
    FC_DECLARE_DERIVED_EXCEPTION( missing_chain_api_plugin_exception,                 evt::chain::missing_plugin_exception, 3130001, "Missing Chain API Plugin" )
    FC_DECLARE_DERIVED_EXCEPTION( missing_wallet_api_plugin_exception,                evt::chain::missing_plugin_exception, 3130002, "Missing Wallet API Plugin" )
