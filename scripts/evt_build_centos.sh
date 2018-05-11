@@ -126,7 +126,7 @@
 
 	DEP_ARRAY=( git autoconf automake libtool ocaml.x86_64 doxygen libicu-devel.x86_64 \
 	bzip2-devel.x86_64 openssl-devel.x86_64 gmp-devel.x86_64 python-devel.x86_64 gettext-devel.x86_64 \
-    lz4 lz4-devel libzstd libzstd-devel readline-devel readline)
+    lz4 lz4-devel libzstd libzstd-devel)
 	COUNT=1
 	DISPLAY=""
 	DEP=""
