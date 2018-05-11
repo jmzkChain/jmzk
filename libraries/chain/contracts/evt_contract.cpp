@@ -195,7 +195,7 @@ apply_evt_updatedomain(apply_context& context) {
 
     auto udact = context.act.data_as<updatedomain>();
     try {
-        EVT_ASSERT(context.has_authorized(udact.name, N128(manage)), action_validate_exception, "Authorized information doesn't match");
+        EVT_ASSERT(context.has_authorized(N128(domain), udact.name), action_validate_exception, "Authorized information doesn't match");
 
         auto& tokendb = context.mutable_tokendb;
         EVT_ASSERT(tokendb.exists_domain(udact.name), action_validate_exception, "Domain ${name} is not existed", ("name",udact.name));
@@ -231,7 +231,7 @@ apply_evt_newaccount(apply_context& context) {
 
     auto naact = context.act.data_as<newaccount>();
     try {
-        EVT_ASSERT(context.has_authorized("account", (uint128_t)naact.name), action_validate_exception, "Authorized information doesn't match");
+        EVT_ASSERT(context.has_authorized(N128(account), naact.name), action_validate_exception, "Authorized information doesn't match");
 
         auto& tokendb = context.mutable_tokendb;
         EVT_ASSERT(!naact.name.empty(), action_validate_exception, "Account name shouldn't be empty");
@@ -255,7 +255,7 @@ apply_evt_updateowner(apply_context& context) {
 
     auto uoact = context.act.data_as<updateowner>();
     try {
-        EVT_ASSERT(context.has_authorized("account", (uint128_t)uoact.name), action_validate_exception, "Authorized information doesn't match");
+        EVT_ASSERT(context.has_authorized(N128(account), uoact.name), action_validate_exception, "Authorized information doesn't match");
 
         auto& tokendb = context.mutable_tokendb;
         EVT_ASSERT(tokendb.exists_account(uoact.name), action_validate_exception, "Account ${name} don't exist", ("name",uoact.name));
@@ -275,7 +275,7 @@ apply_evt_transferevt(apply_context& context) {
 
     auto teact = context.act.data_as<transferevt>();
     try {
-        EVT_ASSERT(context.has_authorized("account", (uint128_t)teact.from), action_validate_exception, "Authorized information doesn't match");
+        EVT_ASSERT(context.has_authorized(N128(account), teact.from), action_validate_exception, "Authorized information doesn't match");
 
         auto& tokendb = context.mutable_tokendb;
         EVT_ASSERT(tokendb.exists_account(teact.from), action_validate_exception, "Account ${name} don't exist", ("name",teact.from));

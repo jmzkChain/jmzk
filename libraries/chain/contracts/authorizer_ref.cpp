@@ -31,13 +31,16 @@ to_variant(const evt::chain::contracts::authorizer_ref& ref, fc::variant& v) {
 void
 from_variant(const fc::variant& v, evt::chain::contracts::authorizer_ref& ref) {
     auto& str = v.get_string();
+    EVT_ASSERT(str.size() > 4, deserialization_exception, "Not valid authorizer ref string");    
     if(boost::starts_with(str, "[A] ")) {
         auto key = public_key_type(str.substr(4));
         ref = authorizer_ref(key);
+        return;
     }
     else if(boost::starts_with(str, "[G] ")) {
         auto gid = group_id::from_string(str.substr(4));
         ref = authorizer_ref(gid);
+        return;
     }
     EVT_ASSERT(false, deserialization_exception, "Unknown authorizer ref prefix");
 }

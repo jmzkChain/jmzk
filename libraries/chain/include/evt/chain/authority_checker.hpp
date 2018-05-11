@@ -24,8 +24,6 @@ namespace evt { namespace chain {
 * then determine whether that list of keys is sufficient to satisfy the authority. This class takes a list of keys and
 * provides the @ref satisfied method to determine whether that list of keys satisfies a provided authority.
 *
-* @tparam F A callable which takes a single argument of type @ref AccountPermission and returns the corresponding
-* authority
 */
 template<typename GetPermissionFunc, typename GetGroupFunc, typename GetOwnerFunc>
 class authority_checker {
@@ -79,6 +77,9 @@ private:
                     return true;
                 }
             } EVT_RETHROW_EXCEPTIONS(chain_type_exception, "transaction data is not valid, data cannot cast to `newdomain` type.");
+        }
+        else if(action.name == N(updatedomain)) {
+            return satisfied_permission(action, action.key);
         }
         return false;
     }
@@ -182,9 +183,9 @@ private:
     }
 
     bool
-    satisfied_token(const action& action) {
+    satisfied_permission(const action& action, const domain_name& domain) {
         bool result = false;
-        _get_permission_func(action.domain, action.name, [&](const auto& permission) {
+        _get_permission_func(domain, action.name, [&](const auto& permission) {
             uint32_t total_weight = 0;
             for(const auto& aw : permission.authorizers) {
                 auto& ref = aw.ref;
@@ -201,7 +202,7 @@ private:
                     auto& gid = ref.get_group();
                     if(gid.empty()) {
                         // owner group
-                        _get_owner_func(action.domain, action.key, [&](const auto& owner) {
+                        _get_owner_func(domain, action.key, [&](const auto& owner) {
                             weight_tally_visitor vistor(*this);
                             for (const auto& o : owner) {
                                 vistor(o, 1);
@@ -229,6 +230,11 @@ private:
             }
         });
         return result;
+    }
+
+    bool
+    satisfied_token(const action& action) {
+        return satisfied_permission(action, action.domain);
     }
 
 public:

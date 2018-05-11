@@ -248,18 +248,24 @@ struct set_domain_subcommands {
       
       auto udcmd = actionRoot->add_subcommand("update", localized("Update existing domain"));
       udcmd->add_option("name", name, localized("The name of new domain"))->required();
-      udcmd->add_option("issue", issue, localized("JSON string or filename defining ISSUE permission"))->required();
-      udcmd->add_option("transfer", transfer, localized("JSON string or filename defining TRANSFER permission"))->required();
-      udcmd->add_option("manage", manage, localized("JSON string or filename defining MANAGE permission"))->required();
+      udcmd->add_option("-i,--issue", issue, localized("JSON string or filename defining ISSUE permission"), true);
+      udcmd->add_option("-t,--transfer", transfer, localized("JSON string or filename defining TRANSFER permission"), true);
+      udcmd->add_option("-m,--manage", manage, localized("JSON string or filename defining MANAGE permission"), true);
 
       add_standard_transaction_options(udcmd);
 
       udcmd->set_callback([&] {
          updatedomain ud;
          ud.name = name128(name);
-         ud.issue = parse_permission(issue);
-         ud.transfer = parse_permission(transfer);
-         ud.manage = parse_permission(manage);
+         if(issue != "default") {
+            ud.issue = parse_permission(issue);
+         }
+         if(transfer != "default") {
+            ud.transfer = parse_permission(transfer);
+         }
+         if(manage != "default") {
+            ud.manage = parse_permission(manage);
+         }
          
          auto act = create_action("domain", (domain_key)ud.name, ud);
          send_actions({ act });
