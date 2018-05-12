@@ -2,6 +2,8 @@
 
 Welcome to the everiToken source code repository!
 
+everiToken public chain is developed and maintained by everiToken Team. It is built on earlier work on eos by EOSIO (https://github.com/EOSIO/eos).
+
 This code is currently alpha-quality and under rapid development. That said, there is plenty early experimenters can do. This includes running a private single node test network and issue and transfer tokens in domains.
 
 There is no public testnet running currently.
