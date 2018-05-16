@@ -110,6 +110,7 @@ using domain_name     = name128;
 using domain_key      = __uint128_t;
 using token_name      = name128;
 using account_name    = name128;
+using group_name      = name128;
 
 /**
  * List all object types from all namespaces here so they can

@@ -8,7 +8,6 @@
 #include <functional>
 #include <fc/reflect/reflect.hpp>
 #include <evt/chain/types.hpp>
-#include <evt/chain/contracts/group_id.hpp>
 
 namespace evt { namespace chain { namespace contracts {
 
@@ -40,7 +39,7 @@ public:
     using visit_func = std::function<bool(const node&)>;
 
 public:
-    const group_id& id() const { return id_; }
+    const group_name& name() const { return name_; }
     const public_key_type& key() const { return key_; }
     const node& root() const { FC_ASSERT(nodes_.size() > 0); return nodes_[0]; }
 
@@ -63,7 +62,7 @@ public:
     }
 
 public:
-    group_id                        id_;
+    group_name                      name_;
     public_key_type                 key_;
     std::vector<node>               nodes_;
     std::vector<public_key_type>    keys_;
@@ -80,4 +79,4 @@ void from_variant(const fc::variant& v, evt::chain::contracts::group& group);
 }  // namespace fc
 
 FC_REFLECT(evt::chain::contracts::group::node, (weight)(threshold)(index)(size))
-FC_REFLECT(evt::chain::contracts::group, (id_)(key_)(nodes_)(keys_))
+FC_REFLECT(evt::chain::contracts::group, (name_)(key_)(nodes_)(keys_))

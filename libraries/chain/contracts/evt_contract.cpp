@@ -54,7 +54,7 @@ validate(const group& group, const group::node& node) {
 
 inline bool
 validate(const group& group) {
-    EVT_ASSERT(group_id::from_group_key(group.key()) == group.id(), action_validate_exception, "Group id and key are not match");
+    EVT_ASSERT(!group.name().empty(), action_validate_exception, "Group name cannot be empty");
     EVT_ASSERT(group.nodes_.size() > 0, action_validate_exception, "Don't have root node");
     auto& root = group.root();
     return validate(group, root);
@@ -64,18 +64,25 @@ auto make_permission_checker = [](const auto& tokendb) {
     auto checker = [&](const auto& p, auto allowed_owner) {
         for(const auto& a : p.authorizers) {
             auto& ref = a.ref;
-            if(ref.is_account_ref()) {
+
+            switch(ref.type()) {
+            case authorizer_ref::account_t: {
                 continue;
             }
-            FC_ASSERT(ref.is_group_ref());
-            auto& gid = ref.get_group();
-            if(gid.empty()) {
-                // owner group
+            case authorizer_ref::owner_t: {
                 EVT_ASSERT(allowed_owner, action_validate_exception, "Owner group is not allowed in ${name} permission", ("name", p.name));
-                continue;
+                continue;  
             }
-            auto dbexisted = tokendb.exists_group(gid);
-            EVT_ASSERT(dbexisted, action_validate_exception, "Group ${id} is not valid, should create group first", ("id", gid));
+            case authorizer_ref::group_t: {
+                auto& name = ref.get_group();
+                auto dbexisted = tokendb.exists_group(name);
+                EVT_ASSERT(dbexisted, action_validate_exception, "Group ${name} is not valid, should create group first", ("name", name));
+                break;
+            }
+            default: {
+                EVT_ASSERT(false, action_validate_exception, "Not valid authorizer ref");
+            }
+            }  // switch
         }
     };
     return checker;
@@ -156,10 +163,11 @@ apply_evt_newgroup(apply_context& context) {
 
     auto ngact = context.act.data_as<newgroup>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(group), ngact.id), action_validate_exception, "Authorized information doesn't match");
+        EVT_ASSERT(context.has_authorized(N128(group), ngact.name), action_validate_exception, "Authorized information doesn't match");
+        EVT_ASSERT(ngact.name == ngact.group.name(), action_validate_exception, "The names in action are not the same");
         
         auto& tokendb = context.token_db;
-        EVT_ASSERT(!tokendb.exists_group(ngact.id), action_validate_exception, "Group ${id} is already existed", ("id",ngact.id));
+        EVT_ASSERT(!tokendb.exists_group(ngact.name), action_validate_exception, "Group ${name} is already existed", ("name",ngact.name));
         EVT_ASSERT(validate(ngact.group), action_validate_exception, "Input group is not valid");
 
         tokendb.add_group(ngact.group);
@@ -173,10 +181,11 @@ apply_evt_updategroup(apply_context& context) {
 
     auto ugact = context.act.data_as<updategroup>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(group), ugact.id), action_validate_exception, "Authorized information doesn't match");
+        EVT_ASSERT(context.has_authorized(N128(group), ugact.name), action_validate_exception, "Authorized information doesn't match");
+        EVT_ASSERT(ugact.name == ugact.group.name(), action_validate_exception, "The names in action are not the same");
 
         auto& tokendb = context.token_db;
-        EVT_ASSERT(tokendb.exists_group(ugact.id), action_validate_exception, "Group ${id} not existed", ("id",ugact.id));
+        EVT_ASSERT(tokendb.exists_group(ugact.name), action_validate_exception, "Group ${name} not existed", ("name",ugact.name));
         EVT_ASSERT(validate(ugact.group), action_validate_exception, "Updated group is not valid");
 
         tokendb.update_group(ugact);

@@ -222,7 +222,7 @@ auto get_default_permission = [](const auto& pname, const auto& pkey) {
     p.threshold = 1;
     if(pkey == public_key_type()) {
         // if no public key provided, assume it refer to owner group
-        a.ref.set_group(group_id::from_string("owner"));
+        a.ref.set_owner();
         a.weight = 1;
     }
     else {
@@ -340,74 +340,53 @@ struct set_transfer_token_subcommand {
 };
 
 struct set_group_subcommands {
-    string id;
+    string name;
     string key;
     string json;
 
     set_group_subcommands(CLI::App* actionRoot) {
         auto ngcmd = actionRoot->add_subcommand("create", localized("Create new group"));
+        ngcmd->add_option("name", name, localized("Name of the group to be created"))->required();
         ngcmd->add_option("json", json, localized("JSON string or filename defining the group to be created"))->required();
 
         add_standard_transaction_options(ngcmd);
 
         ngcmd->set_callback([this] {
             newgroup ng;
+            FC_ASSERT(!name.empty(), "Group name cannot be empty");
+            ng.name = name;
+            
             try {
                 auto parsedGroup = json_from_file_or_string(json);
                 parsedGroup.as(ng.group);
             }
             EVT_RETHROW_EXCEPTIONS(group_type_exception, "Fail to parse Group JSON")
+            ng.group.name_ = name;
 
-            ng.id = group_id::from_group_key(ng.group.key());
-
-            auto act = create_action("group", (domain_key)ng.id, ng);
+            auto act = create_action("group", (domain_key)ng.name, ng);
             send_actions({act});
         });
 
-        auto ugcmd = actionRoot->add_subcommand("update", localized("Update specific permission group, id or key must provide at least one."));
-        ugcmd->add_option("id", id, localized("Id of the permission group to be updated"));
-        ugcmd->add_option("-k,--key", key, localized("Key of permission group to be updated"));
+        auto ugcmd = actionRoot->add_subcommand("update", localized("Update specific permission group"));
+        ugcmd->add_option("name", name, localized("Name of the group to be updated"))->required();
         ugcmd->add_option("json", json, localized("JSON string or filename defining the updated group"))->required();
 
         add_standard_transaction_options(ugcmd);
 
         ugcmd->set_callback([this] {
             updategroup ug;
-            group_id    gid;
-            FC_ASSERT(!(id.empty() && key.empty()), "Must provide either id or key");
-            if(!id.empty()) {
-                try {
-                    gid = group_id::from_string(id);
-                }
-                FC_CAPTURE_AND_RETHROW((id))
-            }
-            if(!key.empty()) {
-                try {
-                    gid = group_id::from_group_key(public_key_type(key));
-                    printf("Group id: %s\n", gid.to_base58().c_str());
-                }
-                FC_CAPTURE_AND_RETHROW((key))
-            }
-            ug.id = gid;
+            FC_ASSERT(!name.empty(), "Group name cannot be empty");
+            ug.name = name;
 
             try {
                 auto parsedGroup = json_from_file_or_string(json);
                 parsedGroup.as(ug.group);
             }
             EVT_RETHROW_EXCEPTIONS(group_type_exception, "Fail to parse Group JSON")
+            ug.group.name_ = name;
 
-            auto act = create_action("group", (domain_key)ug.id, ug);
+            auto act = create_action("group", (domain_key)ug.name, ug);
             send_actions({act});
-        });
-
-        auto gicmd = actionRoot->add_subcommand("getid", localized("Get group id from group key"));
-        gicmd->add_option("key", key, localized("Group key to be converted"))->required();
-        gicmd->set_callback([this] {
-            try {
-                auto gid = group_id::from_group_key(public_key_type(key));
-                printf("Group id: %s\n", gid.to_base58().c_str());
-            }
-            FC_CAPTURE_AND_RETHROW((key))
         });
     }
 };
@@ -501,32 +480,17 @@ struct set_get_token_subcommand {
 };
 
 struct set_get_group_subcommand {
-    string id;
+    string name;
     string key;
 
     set_get_group_subcommand(CLI::App* actionRoot) {
         auto ggcmd = actionRoot->add_subcommand("group", localized("Retrieve a permission group information"));
-        ggcmd->add_option("id,-i,--id", id, localized("Id of group to be retrieved"));
-        ggcmd->add_option("-k,--key", key, localized("Key of group to be retrieved"));
+        ggcmd->add_option("name", name, localized("Name of group to be retrieved"))->required();
 
         ggcmd->set_callback([this] {
-            group_id gid;
-            FC_ASSERT(!(id.empty() && key.empty()), "Must provide either id or key");
-            if(!id.empty()) {
-                try {
-                    gid = group_id::from_string(id);
-                }
-                FC_CAPTURE_AND_RETHROW((id))
-            }
-            if(!key.empty()) {
-                try {
-                    gid = group_id::from_group_key(public_key_type(key));
-                    printf("Group id: %s\n", gid.to_base58().c_str());
-                }
-                FC_CAPTURE_AND_RETHROW((key))
-            }
+            FC_ASSERT(!name.empty(), "Group name cannot be empty");
 
-            auto arg = fc::mutable_variant_object("id", gid.to_base58());
+            auto arg = fc::mutable_variant_object("name", name);
             std::cout << fc::json::to_pretty_string(call(get_group_func, arg)) << std::endl;
         });
     }

@@ -9,13 +9,12 @@
 #include <fc/variant.hpp>
 #include <fc/array.hpp>
 #include <evt/chain/types.hpp>
-#include <evt/chain/contracts/group_id.hpp>
 
 namespace evt { namespace chain { namespace contracts {
 
 struct authorizer_ref {
 public:
-    enum ref_type { account_t = 0, group_t };
+    enum ref_type { none = 0, account_t, owner_t, group_t };
 
 public:
     authorizer_ref() = default;
@@ -25,10 +24,10 @@ public:
         memcpy(storage_.data, &pkey, sizeof(pkey));
     }
 
-    authorizer_ref(const group_id& gid) : type_(group_t) {
-        static_assert(sizeof(group_id) <= sizeof(storage_));
+    authorizer_ref(const group_name& name) : type_(group_t) {
+        static_assert(sizeof(group_name) <= sizeof(storage_));
         memset(storage_.data, 0, sizeof(storage_));
-        memcpy(storage_.data, &gid, sizeof(gid));
+        memcpy(storage_.data, &name, sizeof(name));
     }
 
 public:
@@ -37,9 +36,9 @@ public:
         return *(public_key_type*)storage_.data;
     }
 
-    const group_id&
+    const group_name&
     get_group() const {
-        return *(group_id*)storage_.data;
+        return *(group_name*)storage_.data;
     }
 
     void
@@ -50,14 +49,21 @@ public:
     }
 
     void
-    set_group(const group_id& gid) {
+    set_owner() {
+        type_ = owner_t;
+        memset(storage_.data, 0, sizeof(storage_));
+    }
+
+    void
+    set_group(const group_name& name) {
         type_ = group_t;
         memset(storage_.data, 0, sizeof(storage_));
-        memcpy(storage_.data, &gid, sizeof(gid));
+        memcpy(storage_.data, &name, sizeof(name));
     }
 
     int  type() const { return type_; }
     bool is_account_ref() const { return type_ == account_t; }
+    bool is_owner_ref() const { return type_ == owner_t; }
     bool is_group_ref() const { return type_ == group_t; }
 
 public:

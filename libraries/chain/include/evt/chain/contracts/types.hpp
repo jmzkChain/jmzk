@@ -9,7 +9,6 @@
 #include <evt/chain/config.hpp>
 #include <evt/chain/contracts/authorizer_ref.hpp>
 #include <evt/chain/contracts/group.hpp>
-#include <evt/chain/contracts/group_id.hpp>
 #include <evt/chain/types.hpp>
 
 namespace evt { namespace chain { namespace contracts {
@@ -23,6 +22,7 @@ using permission_name = evt::chain::permission_name;
 using account_name    = evt::chain::account_name;
 using user_id         = public_key_type;
 using user_list       = std::vector<public_key_type>;
+using group_name      = evt::chain::group_name;
 using group_key       = public_key_type;
 using group_def       = group;
 using balance_type    = evt::chain::asset;
@@ -195,8 +195,8 @@ struct transfer {
 };
 
 struct newgroup {
-    group_id  id;
-    group_def group;
+    group_name name;
+    group_def  group;
 
     static action_name
     get_name() {
@@ -205,8 +205,8 @@ struct newgroup {
 };
 
 struct updategroup {
-    group_id  id;
-    group_def group;
+    group_name name;
+    group_def  group;
 
     static action_name
     get_name() {
@@ -282,8 +282,8 @@ FC_REFLECT(evt::chain::contracts::account_def, (name)(creator)(create_time)(bala
 FC_REFLECT(evt::chain::contracts::newdomain, (name)(issuer)(issue)(transfer)(manage))
 FC_REFLECT(evt::chain::contracts::issuetoken, (domain)(names)(owner))
 FC_REFLECT(evt::chain::contracts::transfer, (domain)(name)(to))
-FC_REFLECT(evt::chain::contracts::newgroup, (id)(group))
-FC_REFLECT(evt::chain::contracts::updategroup, (id)(group))
+FC_REFLECT(evt::chain::contracts::newgroup, (name)(group))
+FC_REFLECT(evt::chain::contracts::updategroup, (name)(group))
 FC_REFLECT(evt::chain::contracts::updatedomain, (name)(issue)(transfer)(manage))
 FC_REFLECT(evt::chain::contracts::newaccount, (name)(owner))
 FC_REFLECT(evt::chain::contracts::updateowner, (name)(owner))

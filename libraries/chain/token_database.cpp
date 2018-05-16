@@ -55,9 +55,9 @@ get_token_key(const domain_name& domain, const token_name& name) {
     return db_key<token_name>(domain, name);
 }
 
-db_key<group_id>
-get_group_key(const group_id& id) {
-    return db_key<group_id>("group", id);
+db_key<group_name>
+get_group_key(const group_name& name) {
+    return db_key<group_name>("group", name);
 }
 
 db_key<account_name>
@@ -190,7 +190,7 @@ struct sp_issuetoken {
 };
 
 struct sp_addgroup {
-    group_id id;
+    group_name name;
 };
 
 struct sp_newaccount {
@@ -202,7 +202,7 @@ struct sp_updatedomain {
 };
 
 struct sp_updategroup {
-    group_id id;
+    group_name name;
 };
 
 struct sp_updatetoken {
@@ -322,27 +322,27 @@ token_database::exists_token(const domain_name& domain, const token_name& name) 
 int
 token_database::add_group(const group_def& group) {
     using namespace __internal;
-    if(exists_group(group.id())) {
-        EVT_THROW(tokendb_group_existed, "Group is already existed: ${id}", ("id", group.id().to_base58()));
+    if(exists_group(group.name())) {
+        EVT_THROW(tokendb_group_existed, "Group is already existed: ${name}", ("name", group.name()));
     }
-    auto key    = get_group_key(group.id());
+    auto key    = get_group_key(group.name());
     auto value  = get_value(group);
     auto status = db_->Put(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
         EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
     if(should_record()) {
-        auto act = (sp_addgroup*)malloc(sizeof(sp_addgroup));
-        act->id  = group.id();
+        auto act  = (sp_addgroup*)malloc(sizeof(sp_addgroup));
+        act->name = group.name();
         record(kAddGroup, act);
     }
     return 0;
 }
 
 int
-token_database::exists_group(const group_id& id) const {
+token_database::exists_group(const group_name& name) const {
     using namespace __internal;
-    auto        key = get_group_key(id);
+    auto        key = get_group_key(name);
     std::string value;
     auto        status = db_->Get(read_opts_, key.as_slice(), &value);
     return status.ok();
@@ -407,13 +407,13 @@ token_database::read_token(const domain_name& domain, const token_name& name, co
 }
 
 int
-token_database::read_group(const group_id& id, const read_group_func& func) const {
+token_database::read_group(const group_name& id, const read_group_func& func) const {
     using namespace __internal;
     std::string value;
     auto        key    = get_group_key(id);
     auto        status = db_->Get(read_opts_, key.as_slice(), &value);
     if(!status.ok()) {
-        EVT_THROW(tokendb_group_not_found, "Cannot find group: ${id}", ("id", id.to_base58()));
+        EVT_THROW(tokendb_group_not_found, "Cannot find group: ${id}", ("id", id));
     }
     auto v = read_value<group_def>(value);
     func(v);
@@ -454,15 +454,15 @@ token_database::update_domain(const updatedomain& ud) {
 int
 token_database::update_group(const updategroup& ug) {
     using namespace __internal;
-    auto key    = get_group_key(ug.id);
+    auto key    = get_group_key(ug.name);
     auto value  = get_value(ug);
     auto status = db_->Merge(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
         EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
     if(should_record()) {
-        auto act = (sp_updategroup*)malloc(sizeof(sp_updategroup));
-        act->id  = ug.id;
+        auto act  = (sp_updategroup*)malloc(sizeof(sp_updategroup));
+        act->name = ug.name;
         record(kUpdateGroup, act);
     }
     return 0;
@@ -582,7 +582,7 @@ token_database::rollback_to_latest_savepoint() {
             }
             case kAddGroup: {
                 auto act = (sp_addgroup*)it->data;
-                auto key = get_group_key(act->id);
+                auto key = get_group_key(act->name);
                 batch.Delete(key.as_slice());
                 break;
             }
@@ -609,7 +609,7 @@ token_database::rollback_to_latest_savepoint() {
             }
             case kUpdateGroup: {
                 auto        act = (sp_updategroup*)it->data;
-                auto        key = get_group_key(act->id);
+                auto        key = get_group_key(act->name);
                 std::string old_value;
                 auto        status = db_->Get(snapshot_read_opts_, key.as_slice(), &old_value);
                 if(!status.ok()) {

@@ -3,8 +3,8 @@
  *  @copyright defined in evt/LICENSE.txt
 */
 #pragma once
-#include <boost/noncopyable.hpp>
 #include <deque>
+#include <boost/noncopyable.hpp>
 #include <evt/chain/contracts/types.hpp>
 #include <functional>
 #include <rocksdb/options.h>
@@ -84,13 +84,13 @@ public:
     int issue_tokens(const issuetoken&);
     int exists_token(const domain_name&, const token_name& name) const;
     int add_group(const group_def&);
-    int exists_group(const group_id&) const;
+    int exists_group(const group_name&) const;
     int add_account(const account_def&);
     int exists_account(const account_name&) const;
 
     int read_domain(const domain_name&, const read_domain_func&) const;
     int read_token(const domain_name&, const token_name&, const read_token_func&) const;
-    int read_group(const group_id&, const read_group_func&) const;
+    int read_group(const group_name&, const read_group_func&) const;
     int read_account(const account_name&, const read_account_func&) const;
 
     // specific function, use merge operator to speed up rocksdb action.

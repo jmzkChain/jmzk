@@ -14,35 +14,51 @@ namespace fc {
 
 using namespace evt::chain;
 using namespace evt::chain::contracts;
+using evt::chain::contracts::authorizer_ref;
 
 void
-to_variant(const evt::chain::contracts::authorizer_ref& ref, fc::variant& v) {
-    if(ref.is_account_ref()) {
+to_variant(const authorizer_ref& ref, fc::variant& v) {
+    switch(ref.type()) {
+    case authorizer_ref::account_t: {
         auto& key = ref.get_account();
         v = "[A] " + (std::string)key;
+        break;
     }
-    else {
-        EVT_ASSERT(ref.is_group_ref(), serialization_exception, "Not excepted ref type");
-        auto& gkey = ref.get_group();
-        v = "[G] " + gkey.to_string();
+    case authorizer_ref::owner_t: {
+        v = "[G] OWNER";
+        break;
     }
+    case authorizer_ref::group_t: {
+        auto& name = ref.get_group();
+        v = "[G] " + (std::string)name;
+        break;
+    }
+    default: {
+        EVT_ASSERT(false, serialization_exception, "Not valid ref type: ${type}", ("type",ref.type()));
+    }
+    }  // switch
 }
 
 void
-from_variant(const fc::variant& v, evt::chain::contracts::authorizer_ref& ref) {
+from_variant(const fc::variant& v, authorizer_ref& ref) {
     auto& str = v.get_string();
     EVT_ASSERT(str.size() > 4, deserialization_exception, "Not valid authorizer ref string");    
     if(boost::starts_with(str, "[A] ")) {
         auto key = public_key_type(str.substr(4));
-        ref = authorizer_ref(key);
+        ref.set_account(key);
         return;
     }
     else if(boost::starts_with(str, "[G] ")) {
-        auto gid = group_id::from_string(str.substr(4));
-        ref = authorizer_ref(gid);
+        if(str == "[G] OWNER") {
+            ref.set_owner();
+        }
+        else {
+            auto name = (group_name)(str.substr(4));
+            ref.set_group(name);
+        }
         return;
     }
-    EVT_ASSERT(false, deserialization_exception, "Unknown authorizer ref prefix");
+    EVT_ASSERT(false, deserialization_exception, "Unknown authorizer ref prefix: ${prefix}", ("prefix",str.substr(0,4)));
 }
 
 }  // namespace fc

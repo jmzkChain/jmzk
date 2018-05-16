@@ -91,7 +91,7 @@ abi_serializer::configure_built_in_types() {
     built_in_types.emplace("domain_name", pack_unpack<domain_name>());
     built_in_types.emplace("domain_key", pack_unpack<domain_key>());
     built_in_types.emplace("token_name", pack_unpack<token_name>());
-    built_in_types.emplace("group_id", pack_unpack<group_id>());
+    built_in_types.emplace("group_name", pack_unpack<group_name>());
     built_in_types.emplace("group", pack_unpack<group>());
     built_in_types.emplace("authorizer_ref", pack_unpack<authorizer_ref>());
     built_in_types.emplace("producer_schedule", pack_unpack<producer_schedule_type>());

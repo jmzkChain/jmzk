@@ -54,7 +54,7 @@ evt_contract_abi() {
 
    evt_abi.structs.emplace_back( struct_def {
       "group_def", "", {
-         {"id", "group_id"},
+         {"name", "group_name"},
          {"key", "group_key"},
          {"threshold", "uint32"},
          {"keys", "key_weight[]"}
@@ -124,14 +124,14 @@ evt_contract_abi() {
 
    evt_abi.structs.emplace_back( struct_def {
       "newgroup", "", {
-         {"id", "group_id"},
+         {"name", "group_name"},
          {"group", "group_def"}
       }
    });
 
    evt_abi.structs.emplace_back( struct_def {
       "updategroup", "", {
-         {"id", "group_id"},
+         {"name", "group_name"},
          {"group", "group_def"}
       }
    });

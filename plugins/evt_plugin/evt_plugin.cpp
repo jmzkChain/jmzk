@@ -72,10 +72,10 @@ fc::variant
 read_only::get_group(const read_only::get_group_params& params) {
     const auto& db = db_.token_db();
     variant     var;
-    auto        r = db.read_group(params.id, [&](const auto& g) {
+    auto        r = db.read_group(params.name, [&](const auto& g) {
         fc::to_variant(g, var);
     });
-    FC_ASSERT(r == 0, "Cannot find group: ${id}", ("id", params.id));
+    FC_ASSERT(r == 0, "Cannot find group: ${name}", ("name", params.name));
     return var;
 }
 

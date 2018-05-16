@@ -40,7 +40,7 @@ public:
     fc::variant get_domain(const get_domain_params& params);
 
     struct get_group_params {
-        group_id id;
+        group_name name;
     };
 
     fc::variant get_group(const get_group_params& params);
@@ -95,6 +95,6 @@ private:
 }  // namespace evt
 
 FC_REFLECT(evt::evt_apis::read_only::get_domain_params, (name));
-FC_REFLECT(evt::evt_apis::read_only::get_group_params, (id));
+FC_REFLECT(evt::evt_apis::read_only::get_group_params, (name));
 FC_REFLECT(evt::evt_apis::read_only::get_token_params, (domain)(name));
 FC_REFLECT(evt::evt_apis::read_only::get_account_params, (name));

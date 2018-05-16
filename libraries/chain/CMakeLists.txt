@@ -22,7 +22,6 @@ add_library( evt_chain
              contracts/evt_contract_abi.cpp
              contracts/genesis_state.cpp
              contracts/abi_serializer.cpp
-             contracts/group_id.cpp
              contracts/group.cpp
              contracts/authorizer_ref.cpp
 

@@ -83,8 +83,8 @@ private:
     }
 
     void
-    get_group(const group_id& id, std::function<void(const group_def&)>&& cb) {
-        _token_db.read_group(id, cb);
+    get_group(const group_name& name, std::function<void(const group_def&)>&& cb) {
+        _token_db.read_group(name, cb);
     }
 
     void
@@ -128,8 +128,7 @@ private:
         }
         else if(action.name == N(updategroup)) {
             bool result = false;
-            auto gid = group_id(action.key);
-            get_group(gid, [&](const auto& group) {
+            get_group((group_name)action.key, [&](const auto& group) {
                 auto& gkey = group.key();
                 weight_tally_visitor vistor(*this);
                 if(vistor(gkey, 1) == 1) {
@@ -220,37 +219,40 @@ private:
             uint32_t total_weight = 0;
             for(const auto& aw : permission.authorizers) {
                 auto& ref = aw.ref;
-                bool ref_result = false;
-                if(ref.is_account_ref()) {
+                bool  ref_result = false;
+
+                switch(ref.type()) {
+                case authorizer_ref::account_t: {
                     weight_tally_visitor vistor(*this);
                     auto& key = ref.get_account();
                     if(vistor(key, 1) == 1) {
                         ref_result = true;
                     }
+                    break;
                 }
-                else {
-                    FC_ASSERT(ref.is_group_ref());
-                    auto& gid = ref.get_group();
-                    if(gid.empty()) {
-                        // owner group
-                        get_owner(domain, (name128)action.key, [&](const auto& owner) {
-                            weight_tally_visitor vistor(*this);
-                            for (const auto& o : owner) {
-                                vistor(o, 1);
-                            }
-                            if (vistor.total_weight == owner.size()) {
-                                ref_result = true;
-                            }
-                        });
-                    }
-                    else {
-                        get_group(gid, [&](const auto& group) {
-                            if(satisfied_node(group, group.root(), 0)) {
-                              ref_result = true;
-                            }
-                        });
-                    }
+                case authorizer_ref::owner_t: {
+                    get_owner(domain, (name128)action.key, [&](const auto& owner) {
+                        weight_tally_visitor vistor(*this);
+                        for (const auto& o : owner) {
+                            vistor(o, 1);
+                        }
+                        if (vistor.total_weight == owner.size()) {
+                            ref_result = true;
+                        }
+                    });
+                    break;
                 }
+                case authorizer_ref::group_t: {
+                    auto& name = ref.get_group();
+                    get_group(name, [&](const auto& group) {
+                        if(satisfied_node(group, group.root(), 0)) {
+                          ref_result = true;
+                        }
+                    });
+                    break;
+                }
+                }  // switch
+
                 if(ref_result) {
                     total_weight += aw.weight;
                     if(total_weight >= permission.threshold) {

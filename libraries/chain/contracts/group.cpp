@@ -74,7 +74,7 @@ to_variant(const group& group, const group::node& node, fc::variant& v) {
 void
 to_variant(const evt::chain::contracts::group& group, fc::variant& v) {
     fc::mutable_variant_object mv;
-    to_variant(group.id_, mv["id"]);
+    to_variant(group.name_, mv["name"]);
     to_variant(group.key_, mv["key"]);
     to_variant(group, group.nodes_[0], mv["root"]);
     v = mv;
@@ -123,10 +123,13 @@ from_variant(const fc::variant& v, group& group, group::node& node, uint32_t dep
 
 void
 from_variant(const fc::variant& v, evt::chain::contracts::group& group) {
-    from_variant(v["key"], group.key_);
-    group.id_ = group_id::from_group_key(group.key_);
+    auto& vo = v.get_object();
+    if(vo.find("name") != vo.end()) {
+        from_variant(vo["name"], group.name_);
+    }
+    from_variant(vo["key"], group.key_);
     group.nodes_.resize(1);
-    from_variant(v["root"], group, group.nodes_[0], 0);
+    from_variant(vo["root"], group, group.nodes_[0], 0);
 }
 
 }  // namespace fc
