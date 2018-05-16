@@ -47,39 +47,6 @@ struct pending_state {
     }
 };
 
-namespace __internal {
-
-auto
-get_auth_checker(const evt::chain::token_database& token_db, const flat_set<public_key_type>& keys) {
-    auto checker
-        = make_auth_checker(keys,
-                            [&](const auto& domain, const auto name, const auto& cb) {
-                                token_db.read_domain(domain, [&](const auto& domain) {
-                                    if(name == N(issuetoken)) {
-                                        cb(domain.issue);
-                                    }
-                                    else if(name == N(transfer)) {
-                                        cb(domain.transfer);
-                                    }
-                                    else if(name == N(updatedomain)) {
-                                        cb(domain.manage);
-                                    }
-                                });
-                            },
-                            [&](const auto& id, const auto& cb) { token_db.read_group(id, cb); },
-                            [&](const auto& domain, const auto& name, const auto& cb) {
-                                if(domain == N128(account)) {
-                                    token_db.read_account(name, [&](const auto& account) { cb(account.owner); });
-                                }
-                                else {
-                                    token_db.read_token(domain, name, [&](const auto& token) { cb(token.owner); });
-                                }
-                            });
-    return checker;
-}
-
-}  // namespace __internal
-
 struct controller_impl {
     controller&             self;
     chainbase::database     db;
@@ -380,7 +347,8 @@ struct controller_impl {
                 }
 
                 if(!implicit) {
-                    auto checker = __internal::get_auth_checker(token_db, trx->recover_keys());
+                    const static uint32_t max_authority_depth = conf.genesis.initial_configuration.max_authority_depth;
+                    auto checker = authority_checker(trx->recover_keys(), token_db, max_authority_depth);
                     for(const auto& act : trx->trx.actions) {
                         EVT_ASSERT(checker.satisfied(act), tx_missing_sigs,
                                    "${name} action in domain: ${domain} with key: ${key} authorized failed",
@@ -1053,8 +1021,8 @@ controller::validate_tapos(const transaction& trx) const {
 
 flat_set<public_key_type>
 controller::get_required_keys(const transaction& trx, const flat_set<public_key_type>& candidate_keys) const {
-    using namespace __internal;
-    auto checker = get_auth_checker(my->token_db, candidate_keys);
+    const static uint32_t max_authority_depth = my->conf.genesis.initial_configuration.max_authority_depth;
+    auto checker = authority_checker(candidate_keys, my->token_db, max_authority_depth);
 
     for(const auto& act : trx.actions) {
         EVT_ASSERT(checker.satisfied(act), tx_missing_sigs,

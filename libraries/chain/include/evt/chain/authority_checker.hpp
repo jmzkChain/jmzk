@@ -3,11 +3,12 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #pragma once
+#include <functional>
 
 #include <evt/chain/types.hpp>
-#include <evt/chain/contracts/types.hpp>
 #include <evt/chain/config.hpp>
-
+#include <evt/chain/token_database.hpp>
+#include <evt/chain/contracts/types.hpp>
 #include <evt/utilities/parallel_markers.hpp>
 
 #include <fc/scoped_exit.hpp>
@@ -27,14 +28,12 @@ using namespace evt::chain::contracts;
 * provides the @ref satisfied method to determine whether that list of keys satisfies a provided authority.
 *
 */
-template<typename GetPermissionFunc, typename GetGroupFunc, typename GetOwnerFunc>
 class authority_checker {
 private:
-    vector<public_key_type>    signing_keys;
-    vector<bool>               _used_keys;
-    GetPermissionFunc          _get_permission_func;
-    GetGroupFunc               _get_group_func;
-    GetOwnerFunc               _get_owner_func;
+    const flat_set<public_key_type>& _signing_keys;
+    const token_database&            _token_db;
+    const uint32_t                   _max_recursion_depth;
+    vector<bool>                     _used_keys;
 
     struct weight_tally_visitor {
         using result_type = uint32_t;
@@ -50,9 +49,9 @@ private:
         }
 
         uint32_t operator()(const public_key_type& key, const weight_type weight) {
-            auto itr = boost::find(checker.signing_keys, key);
-            if (itr != checker.signing_keys.end()) {
-                checker._used_keys[itr - checker.signing_keys.begin()] = true;
+            auto itr = boost::find(checker._signing_keys, key);
+            if (itr != checker._signing_keys.end()) {
+                checker._used_keys[itr - checker._signing_keys.begin()] = true;
                 total_weight += weight;
             }
             return total_weight;
@@ -60,13 +59,43 @@ private:
     };
 
 public:
-    authority_checker( const flat_set<public_key_type>& signing_keys, GetPermissionFunc&& gpf, GetGroupFunc&& ggf, GetOwnerFunc&& gof)
-      :  signing_keys(signing_keys.begin(), signing_keys.end()),
-        _used_keys(signing_keys.size(), false),
-        _get_permission_func(std::forward<GetPermissionFunc>(gpf)),
-        _get_group_func(std::forward<GetGroupFunc>(ggf)),
-        _get_owner_func(std::forward<GetOwnerFunc>(gof))
+    authority_checker(const flat_set<public_key_type>& signing_keys, const token_database& token_db, uint32_t max_recursion_depth)
+      : _signing_keys(signing_keys),
+        _token_db(token_db),
+        _max_recursion_depth(max_recursion_depth),
+        _used_keys(signing_keys.size(), false)
     {}
+
+private:
+    void
+    get_permission(const domain_name& domain, const action_name name, std::function<void(const permission_def&)>&& cb) {
+        _token_db.read_domain(domain, [&](const auto& domain) {
+            if(name == N(issuetoken)) {
+                cb(domain.issue);
+            }
+            else if(name == N(transfer)) {
+                cb(domain.transfer);
+            }
+            else if(name == N(updatedomain)) {
+                cb(domain.manage);
+            }
+        });
+    }
+
+    void
+    get_group(const group_id& id, std::function<void(const group_def&)>&& cb) {
+        _token_db.read_group(id, cb);
+    }
+
+    void
+    get_owner(const domain_name& domain, const name128& name, std::function<void(const user_list&)>&& cb) {
+        if(domain == N128(account)) {
+            _token_db.read_account(name, [&](const auto& account) { cb(account.owner); });
+        }
+        else {
+            _token_db.read_token(domain, name, [&](const auto& token) { cb(token.owner); });
+        }
+    }
 
 private:
     bool
@@ -100,7 +129,7 @@ private:
         else if(action.name == N(updategroup)) {
             bool result = false;
             auto gid = group_id(action.key);
-            _get_group_func(gid, [&](const auto& group) {
+            get_group(gid, [&](const auto& group) {
                 auto& gkey = group.key();
                 weight_tally_visitor vistor(*this);
                 if(vistor(gkey, 1) == 1) {
@@ -128,7 +157,7 @@ private:
         }
         else if(action.name == N(updateowner)) {
             bool result = false;
-            _get_owner_func(action.domain, action.key, [&](const auto& owner) {
+            get_owner(action.domain, (name128)action.key, [&](const auto& owner) {
                 weight_tally_visitor vistor(*this);
                 for(auto& o : owner) {
                     vistor(o, 1);
@@ -143,7 +172,7 @@ private:
             bool result = false;
             try {
                 auto te = action.data_as<contracts::transferevt>();
-                _get_owner_func(N128(account), te.from, [&](const auto& owner) {
+                get_owner(N128(account), te.from, [&](const auto& owner) {
                     weight_tally_visitor vistor(*this);
                     for(auto& o : owner) {
                         vistor(o, 1);
@@ -160,7 +189,7 @@ private:
 
     bool
     satisfied_node(const group& group, const group::node& node, uint32_t depth) {
-        FC_ASSERT(depth < config::max_recursion_depth);
+        FC_ASSERT(depth < _max_recursion_depth);
         FC_ASSERT(!node.is_leaf());
         weight_tally_visitor vistor(*this);
         group.visit_node(node, [&](const auto& n) {
@@ -187,7 +216,7 @@ private:
     bool
     satisfied_permission(const action& action, const domain_name& domain) {
         bool result = false;
-        _get_permission_func(domain, action.name, [&](const auto& permission) {
+        get_permission(domain, action.name, [&](const auto& permission) {
             uint32_t total_weight = 0;
             for(const auto& aw : permission.authorizers) {
                 auto& ref = aw.ref;
@@ -204,7 +233,7 @@ private:
                     auto& gid = ref.get_group();
                     if(gid.empty()) {
                         // owner group
-                        _get_owner_func(domain, action.key, [&](const auto& owner) {
+                        get_owner(domain, (name128)action.key, [&](const auto& owner) {
                             weight_tally_visitor vistor(*this);
                             for (const auto& o : owner) {
                                 vistor(o, 1);
@@ -215,7 +244,7 @@ private:
                         });
                     }
                     else {
-                        _get_group_func(gid, [&](const auto& group) {
+                        get_group(gid, [&](const auto& group) {
                             if(satisfied_node(group, group.root(), 0)) {
                               ref_result = true;
                             }
@@ -240,7 +269,8 @@ private:
     }
 
 public:
-    bool satisfied(const action& action) {
+    bool
+    satisfied(const action& action) {
       // Save the current used keys; if we do not satisfy this authority, the newly used keys aren't actually used
       auto KeyReverter = fc::make_scoped_exit([this, keys = _used_keys] () mutable {
          _used_keys = keys;
@@ -268,20 +298,17 @@ public:
 
     bool all_keys_used() const { return boost::algorithm::all_of_equal(_used_keys, true); }
 
-    flat_set<public_key_type> used_keys() const {
-      auto range = utilities::filter_data_by_marker(signing_keys, _used_keys, true);
+    flat_set<public_key_type>
+    used_keys() const {
+      auto range = utilities::filter_data_by_marker(_signing_keys, _used_keys, true);
       return {range.begin(), range.end()};
     }
-    flat_set<public_key_type> unused_keys() const {
-      auto range = utilities::filter_data_by_marker(signing_keys, _used_keys, false);
+
+    flat_set<public_key_type>
+    unused_keys() const {
+      auto range = utilities::filter_data_by_marker(_signing_keys, _used_keys, false);
       return {range.begin(), range.end()};
     }
 }; /// authority_checker
 
-template<typename GetPermissionFunc, typename GetGroupFunc, typename GetOwnerFunc>
-auto make_auth_checker(const flat_set<public_key_type>& signing_keys, GetPermissionFunc&& gpf, GetGroupFunc&& ggf, GetOwnerFunc&& gof) {
-  return authority_checker<GetPermissionFunc, GetGroupFunc, GetOwnerFunc>
-    (signing_keys, std::forward<GetPermissionFunc>(gpf), std::forward<GetGroupFunc>(ggf), std::forward<GetOwnerFunc>(gof));
-}
-
-} } // namespace evt::chain
+}} // namespace evt::chain
