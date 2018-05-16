@@ -11,7 +11,7 @@
 namespace evt { namespace chain { namespace contracts {
 
 
-chain::chain_id_type genesis_state_type::compute_chain_id() const {
+chain::chain_id_type genesis_state::compute_chain_id() const {
    return initial_chain_id;
 }
 

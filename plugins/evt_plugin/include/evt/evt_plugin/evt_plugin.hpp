@@ -8,43 +8,29 @@
 #include <appbase/application.hpp>
 #include <evt/chain/asset.hpp>
 #include <evt/chain/block.hpp>
-#include <evt/chain/chain_controller.hpp>
-#include <evt/chain/transaction.hpp>
-#include <evt/chain/types.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
 #include <evt/chain/contracts/types.hpp>
+#include <evt/chain/controller.hpp>
+#include <evt/chain/transaction.hpp>
+#include <evt/chain/types.hpp>
 
-namespace fc { class variant; }
+namespace fc {
+class variant;
+}
 
 namespace evt {
-using chain::chain_controller;
-using std::unique_ptr;
+
 using namespace appbase;
-using chain::name;
-using chain::uint128_t;
-using chain::public_key_type;
-using fc::optional;
-using boost::container::flat_set;
-using chain::asset;
-using chain::domain_name;
-using chain::domain_key;
-using chain::token_name;
-using chain::account_name;
-using chain::contracts::group_id;
-using chain::contracts::domain_def;
-using chain::contracts::token_def;
-using chain::contracts::group_def;
-using chain::contracts::newdomain;
-using chain::contracts::issuetoken;
-using chain::contracts::transfer;
-using chain::contracts::updatedomain;
-using chain::contracts::updategroup;
+using namespace evt::chain;
+using namespace evt::chain::contracts;
+using evt::chain_plugin;
 
 namespace evt_apis {
 
 class read_only {
 public:
-    read_only(const chain_controller& db) : db_(db) {}
+    read_only(const controller& db)
+        : db_(db) {}
 
 public:
     struct get_domain_params {
@@ -54,7 +40,7 @@ public:
     fc::variant get_domain(const get_domain_params& params);
 
     struct get_group_params {
-        group_id    id;
+        group_id id;
     };
 
     fc::variant get_group(const get_group_params& params);
@@ -72,37 +58,19 @@ public:
     fc::variant get_account(const get_account_params& params);
 
 private:
-    const chain_controller& db_;
-
+    const controller& db_;
 };
 
 class read_write {
 public:
-    read_write(chain_controller& db) : db_(db) {}
-
-public:
-    struct new_domain_result {
-        domain_name     name;
-    };
-    new_domain_result new_domain(const newdomain& params);
-
-    struct issue_tokens_result {
-        domain_name             domain;
-        std::vector<token_name> names;
-    };
-    issue_tokens_result issue_tokens(const issuetoken& params);
-
-    struct transfer_result {
-        token_def   token;
-    };
-    transfer_result transfer_token(const transfer& params);
+    read_write(controller& db)
+        : db_(db) {}
 
 private:
-    const chain_controller& db_;
-
+    const controller& db_;
 };
 
-} // namespace evt_apis
+}  // namespace evt_apis
 
 class evt_plugin : public plugin<evt_plugin> {
 public:
@@ -117,7 +85,7 @@ public:
     void plugin_startup();
     void plugin_shutdown();
 
-    evt_apis::read_only get_read_only_api() const;
+    evt_apis::read_only  get_read_only_api() const;
     evt_apis::read_write get_read_write_api();
 
 private:
@@ -130,6 +98,3 @@ FC_REFLECT(evt::evt_apis::read_only::get_domain_params, (name));
 FC_REFLECT(evt::evt_apis::read_only::get_group_params, (id));
 FC_REFLECT(evt::evt_apis::read_only::get_token_params, (domain)(name));
 FC_REFLECT(evt::evt_apis::read_only::get_account_params, (name));
-FC_REFLECT(evt::evt_apis::read_write::new_domain_result, (name));
-FC_REFLECT(evt::evt_apis::read_write::issue_tokens_result, (domain)(names));
-FC_REFLECT(evt::evt_apis::read_write::transfer_result, (token));

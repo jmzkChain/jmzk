@@ -7,14 +7,9 @@
 #include <algorithm>
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/ripemd160.hpp>
-
-#include <evt/chain/contracts/chain_initializer.hpp>
-
-#include <evt/chain/chain_controller.hpp>
 #include <evt/chain/apply_context.hpp>
-#include <evt/chain/transaction.hpp>
-#include <evt/chain/exceptions.hpp>
-
+#include <evt/chain/token_database.hpp>
+#include <evt/chain/contracts/types.hpp>
 #include <evt/utilities/safemath.hpp>
 
 namespace evt { namespace chain { namespace contracts {
@@ -96,7 +91,7 @@ apply_evt_newdomain(apply_context& context) {
     try {
         EVT_ASSERT(context.has_authorized("domain", (uint128_t)ndact.name), action_validate_exception, "Authorized information doesn't match");
 
-        auto& tokendb = context.mutable_tokendb;
+        auto& tokendb = context.token_db;
         EVT_ASSERT(!tokendb.exists_domain(ndact.name), action_validate_exception, "Domain ${name} already existed", ("name",ndact.name));
 
         EVT_ASSERT(!ndact.name.empty(), action_validate_exception, "Domain name shouldn't be empty");
@@ -116,7 +111,7 @@ apply_evt_newdomain(apply_context& context) {
         domain_def domain;
         domain.name = ndact.name;
         domain.issuer = ndact.issuer;
-        domain.issue_time = context.controller.head_block_time();
+        domain.issue_time = context.control.head_block_time();
         domain.issue = ndact.issue;
         domain.transfer = ndact.transfer;
         domain.manage = ndact.manage;
@@ -132,7 +127,7 @@ apply_evt_issuetoken(apply_context& context) {
     try {
         EVT_ASSERT(context.has_authorized(itact.domain, N128(issue)), action_validate_exception, "Authorized information doesn't match");
         
-        auto& tokendb = context.mutable_tokendb;
+        auto& tokendb = context.token_db;
         EVT_ASSERT(tokendb.exists_domain(itact.domain), action_validate_exception, "Domain ${name} not existed", ("name", itact.domain));
         EVT_ASSERT(!itact.owner.empty(), action_validate_exception, "Owner cannot be empty");
 
@@ -149,7 +144,7 @@ apply_evt_transfer(apply_context& context) {
     auto ttact = context.act.data_as<transfer>();
     EVT_ASSERT(context.has_authorized(ttact.domain, (uint128_t)ttact.name), action_validate_exception, "Authorized information doesn't match");
     
-    auto& tokendb = context.mutable_tokendb;
+    auto& tokendb = context.token_db;
     EVT_ASSERT(tokendb.exists_token(ttact.domain, ttact.name), action_validate_exception, "Token ${domain}-${name} not existed", ("domain",ttact.domain)("name",ttact.name));
     
     tokendb.transfer_token(ttact);
@@ -163,7 +158,7 @@ apply_evt_newgroup(apply_context& context) {
     try {
         EVT_ASSERT(context.has_authorized(N128(group), ngact.id), action_validate_exception, "Authorized information doesn't match");
         
-        auto& tokendb = context.mutable_tokendb;
+        auto& tokendb = context.token_db;
         EVT_ASSERT(!tokendb.exists_group(ngact.id), action_validate_exception, "Group ${id} is already existed", ("id",ngact.id));
         EVT_ASSERT(validate(ngact.group), action_validate_exception, "Input group is not valid");
 
@@ -180,7 +175,7 @@ apply_evt_updategroup(apply_context& context) {
     try {
         EVT_ASSERT(context.has_authorized(N128(group), ugact.id), action_validate_exception, "Authorized information doesn't match");
 
-        auto& tokendb = context.mutable_tokendb;
+        auto& tokendb = context.token_db;
         EVT_ASSERT(tokendb.exists_group(ugact.id), action_validate_exception, "Group ${id} not existed", ("id",ugact.id));
         EVT_ASSERT(validate(ugact.group), action_validate_exception, "Updated group is not valid");
 
@@ -197,7 +192,7 @@ apply_evt_updatedomain(apply_context& context) {
     try {
         EVT_ASSERT(context.has_authorized(N128(domain), udact.name), action_validate_exception, "Authorized information doesn't match");
 
-        auto& tokendb = context.mutable_tokendb;
+        auto& tokendb = context.token_db;
         EVT_ASSERT(tokendb.exists_domain(udact.name), action_validate_exception, "Domain ${name} is not existed", ("name",udact.name));
 
         EVT_ASSERT(!udact.name.empty(), action_validate_exception, "Domain name shouldn't be empty");
@@ -233,13 +228,14 @@ apply_evt_newaccount(apply_context& context) {
     try {
         EVT_ASSERT(context.has_authorized(N128(account), naact.name), action_validate_exception, "Authorized information doesn't match");
 
-        auto& tokendb = context.mutable_tokendb;
+        auto& tokendb = context.token_db;
         EVT_ASSERT(!naact.name.empty(), action_validate_exception, "Account name shouldn't be empty");
         EVT_ASSERT(!tokendb.exists_account(naact.name), action_validate_exception, "Account ${name} already existed", ("name",naact.name));
     
         auto account = account_def();
         account.name = naact.name;
         account.creator = config::system_account_name;
+        account.create_time = context.control.head_block_time();
         account.balance = asset(0);
         account.frozen_balance = asset(0);
         account.owner = std::move(naact.owner);
@@ -257,7 +253,7 @@ apply_evt_updateowner(apply_context& context) {
     try {
         EVT_ASSERT(context.has_authorized(N128(account), uoact.name), action_validate_exception, "Authorized information doesn't match");
 
-        auto& tokendb = context.mutable_tokendb;
+        auto& tokendb = context.token_db;
         EVT_ASSERT(tokendb.exists_account(uoact.name), action_validate_exception, "Account ${name} don't exist", ("name",uoact.name));
         EVT_ASSERT(uoact.owner.size() > 0, action_validate_exception, "Owner cannot be empty");
 
@@ -277,7 +273,7 @@ apply_evt_transferevt(apply_context& context) {
     try {
         EVT_ASSERT(context.has_authorized(N128(account), teact.from), action_validate_exception, "Authorized information doesn't match");
 
-        auto& tokendb = context.mutable_tokendb;
+        auto& tokendb = context.token_db;
         EVT_ASSERT(tokendb.exists_account(teact.from), action_validate_exception, "Account ${name} don't exist", ("name",teact.from));
         EVT_ASSERT(tokendb.exists_account(teact.to), action_validate_exception, "Account ${name} don't exist", ("name",teact.to));
         EVT_ASSERT(teact.amount.amount > 0, action_validate_exception, "Transfer amount must be positive");

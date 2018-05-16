@@ -17,6 +17,8 @@
 
 namespace evt { namespace chain {
 
+using namespace evt::chain::contracts;
+
 /**
 * @brief This class determines whether a set of signing keys are sufficient to satisfy an authority or not
 *
@@ -157,7 +159,7 @@ private:
     }
 
     bool
-    satisfied_node(const group& group, const group::node& node, int depth) {
+    satisfied_node(const group& group, const group::node& node, uint32_t depth) {
         FC_ASSERT(depth < config::max_recursion_depth);
         FC_ASSERT(!node.is_leaf());
         weight_tally_visitor vistor(*this);

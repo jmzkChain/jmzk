@@ -2,25 +2,24 @@ file(GLOB HEADERS "include/evt/chain/*.hpp" "include/evt/chain/contracts/*.hpp")
 
 ## SORT .cpp by most likely to change / break compile
 add_library( evt_chain
-             chain_config.cpp
+             asset.cpp
              merkle.cpp
              name.cpp
              transaction.cpp
-             block.cpp
-             apply_context.cpp
-
-             fork_database.cpp
-             get_config.cpp
+             transaction_context.cpp
+             block_header.cpp
+             block_header_state.cpp
+             block_state.cpp
              block_log.cpp
-             block_trace.cpp
-             tokendb.cpp
-             asset.cpp
+             
+             fork_database.cpp
+             token_database.cpp
 
-             global_property_object.cpp
-             chain_controller.cpp
+             apply_context.cpp
+             controller.cpp
 
              contracts/evt_contract.cpp
-             contracts/chain_initializer.cpp
+             contracts/evt_contract_abi.cpp
              contracts/genesis_state.cpp
              contracts/abi_serializer.cpp
              contracts/group_id.cpp
@@ -28,7 +27,7 @@ add_library( evt_chain
              contracts/authorizer_ref.cpp
 
              ${HEADERS}
-             transaction_metadata.cpp)
+             )
 
 target_link_libraries( evt_chain evt_utilities fc chainbase rocksdb )
 target_include_directories( evt_chain

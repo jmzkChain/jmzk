@@ -1,7 +1,3 @@
-/**
- *  @file
- *  @copyright defined in evt/LICENSE.txt
- */
 #pragma once
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/pool/object_pool.hpp>
@@ -9,7 +5,7 @@
 #include <deque>
 #include <array>
 
-namespace evt {
+namespace fc {
   template <uint32_t buffer_len>
   class mb_datastream;
 
@@ -299,4 +295,4 @@ namespace evt {
     return mb_datastream<buffer_len>(*this);
   }
 
-} // namespace evt
+} // namespace fc

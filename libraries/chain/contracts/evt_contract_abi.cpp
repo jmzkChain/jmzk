@@ -2,51 +2,13 @@
  *  @file
  *  @copyright defined in evt/LICENSE.txt
  */
-#include <evt/chain/contracts/chain_initializer.hpp>
 #include <evt/chain/contracts/evt_contract.hpp>
 #include <evt/chain/contracts/types.hpp>
 
-#include <evt/chain/producer_object.hpp>
+namespace evt { namespace chain { namespace contracts { 
 
-#include <fc/io/json.hpp>
-
-#include <boost/range/adaptor/transformed.hpp>
-#include <boost/range/algorithm/copy.hpp>
-
-namespace evt { namespace chain { namespace contracts {
-
-time_point chain_initializer::get_chain_start_time() {
-   return genesis.initial_timestamp;
-}
-
-chain_config chain_initializer::get_chain_start_configuration() {
-   return genesis.initial_configuration;
-}
-
-producer_schedule_type  chain_initializer::get_chain_start_producers() {
-   producer_schedule_type result;
-   result.producers.push_back( {config::system_account_name, genesis.initial_key} );
-   return result;
-}
-
-void chain_initializer::register_types(chain_controller& chain, chainbase::database& db) {
-
-#define SET_APP_HANDLER( action ) \
-   chain._set_apply_handler( #action, &BOOST_PP_CAT(contracts::apply_evt, BOOST_PP_CAT(_,action) ) )
-
-    SET_APP_HANDLER( newdomain );
-    SET_APP_HANDLER( issuetoken );
-    SET_APP_HANDLER( transfer );
-    SET_APP_HANDLER( newgroup );
-    SET_APP_HANDLER( updategroup );
-    SET_APP_HANDLER( updatedomain );
-    SET_APP_HANDLER( newaccount );
-    SET_APP_HANDLER( updateowner );
-    SET_APP_HANDLER( transferevt );
-}
-
-abi_def chain_initializer::evt_contract_abi()
-{
+abi_def
+evt_contract_abi() {
    abi_def evt_abi;
    evt_abi.types.push_back( type_def{"user_id","public_key"} );
    evt_abi.types.push_back( type_def{"user_list","public_key[]"} );
@@ -75,7 +37,6 @@ abi_def chain_initializer::evt_contract_abi()
    evt_abi.actions.push_back( action_def{name("transferevt"), "transferevt"} );
 
    // actions def
-
    evt_abi.structs.emplace_back( struct_def {
       "token_def", "", {
          {"domain", "domain_name"},
@@ -207,7 +168,6 @@ abi_def chain_initializer::evt_contract_abi()
    });
 
    // abi_def fields
-
    evt_abi.structs.emplace_back( struct_def {
       "field", "", {
          {"name", "field_name"},
@@ -284,43 +244,4 @@ abi_def chain_initializer::evt_contract_abi()
    return evt_abi;
 }
 
-void chain_initializer::prepare_database( chain_controller& chain,
-                                                         chainbase::database& db) {
-   /// Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
-   auto create_native_account = [this, &db](account_name name) {
-      db.create<producer_object>( [&]( auto& pro ) {
-         pro.owner = config::system_account_name;
-         pro.signing_key = genesis.initial_key;
-      });
-   };
-   create_native_account(config::system_account_name);
-}
-
-void chain_initializer::prepare_tokendb(chain::chain_controller& chain, evt::chain::tokendb& tokendb) {
-    if(!tokendb.exists_domain("domain")) {
-        auto dd = domain_def();
-        dd.name = "domain";
-        dd.issuer = genesis.initial_key;
-        dd.issue_time = genesis.initial_timestamp;
-        auto r = tokendb.add_domain(dd);
-        FC_ASSERT(r == 0, "Add `domain` domain failed");
-    }
-    if(!tokendb.exists_domain("group")) {
-        auto gd = domain_def();
-        gd.name = "group";
-        gd.issuer = genesis.initial_key;
-        gd.issue_time = genesis.initial_timestamp;
-        auto r = tokendb.add_domain(gd);
-        FC_ASSERT(r == 0, "Add `group` domain failed");
-    }
-    if(!tokendb.exists_domain("account")) {
-        auto ad = domain_def();
-        ad.name = "account";
-        ad.issuer = genesis.initial_key;
-        ad.issue_time = genesis.initial_timestamp;
-        auto r = tokendb.add_domain(ad);
-        FC_ASSERT(r == 0, "Add `account` domain failed");
-    }
-}
-
-} } } // namespace evt::chain::contracts
+}}}  // namespace evt::chain::contracts

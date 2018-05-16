@@ -3,157 +3,191 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #pragma once
+#include <chrono>
 #include <evt/chain/block.hpp>
 #include <evt/chain/types.hpp>
-#include <chrono>
 
 namespace evt {
-   using namespace chain;
-   using namespace fc;
+using namespace chain;
+using namespace fc;
 
-   static_assert(sizeof(std::chrono::system_clock::duration::rep) >= 8, "system_clock is expected to be at least 64 bits");
-   typedef std::chrono::system_clock::duration::rep tstamp;
+static_assert(sizeof(std::chrono::system_clock::duration::rep) >= 8, "system_clock is expected to be at least 64 bits");
+typedef std::chrono::system_clock::duration::rep tstamp;
 
-   struct handshake_message {
-      uint16_t                   network_version = 0; ///< incremental value above a computed base
-      chain_id_type              chain_id; ///< used to identify chain
-      fc::sha256                 node_id; ///< used to identify peers and prevent self-connect
-      chain::public_key_type     key; ///< authentication key; may be a producer or peer key, or empty
-      tstamp                     time;
-      fc::sha256                 token; ///< digest of time to prove we own the private key of the key above
-      chain::signature_type      sig; ///< signature for the digest
-      string                     p2p_address;
-      uint32_t                   last_irreversible_block_num = 0;
-      block_id_type              last_irreversible_block_id;
-      uint32_t                   head_num = 0;
-      block_id_type              head_id;
-      string                     os;
-      string                     agent;
-      int16_t                    generation;
-   };
+struct chain_size_message {
+    uint32_t      last_irreversible_block_num = 0;
+    block_id_type last_irreversible_block_id;
+    uint32_t      head_num = 0;
+    block_id_type head_id;
+};
 
-  enum go_away_reason {
-    no_reason, ///< no reason to go away
-    self, ///< the connection is to itself
-    duplicate, ///< the connection is redundant
-    wrong_chain, ///< the peer's chain id doesn't match
-    wrong_version, ///< the peer's network version doesn't match
-    forked, ///< the peer's irreversible blocks are different
-    unlinkable, ///< the peer sent a block we couldn't use
-    bad_transaction, ///< the peer sent a transaction that failed verification
-    validation, ///< the peer sent a block that failed validation
-    benign_other, ///< reasons such as a timeout. not fatal but warrant resetting
-    fatal_other, ///< a catch-all for errors we don't have discriminated
-    authentication ///< peer failed authenicatio
-  };
+struct handshake_message {
+    uint16_t               network_version = 0;  ///< incremental value above a computed base
+    chain_id_type          chain_id;             ///< used to identify chain
+    fc::sha256             node_id;              ///< used to identify peers and prevent self-connect
+    chain::public_key_type key;                  ///< authentication key; may be a producer or peer key, or empty
+    tstamp                 time;
+    fc::sha256             token;  ///< digest of time to prove we own the private key of the key above
+    chain::signature_type  sig;    ///< signature for the digest
+    string                 p2p_address;
+    uint32_t               last_irreversible_block_num = 0;
+    block_id_type          last_irreversible_block_id;
+    uint32_t               head_num = 0;
+    block_id_type          head_id;
+    string                 os;
+    string                 agent;
+    int16_t                generation;
+};
 
-  constexpr auto reason_str( go_away_reason rsn ) {
-    switch (rsn ) {
-    case no_reason : return "no reason";
-    case self : return "self connect";
-    case duplicate : return "duplicate";
-    case wrong_chain : return "wrong chain";
-    case wrong_version : return "wrong version";
-    case forked : return "chain is forked";
-    case unlinkable : return "unlinkable block received";
-    case bad_transaction : return "bad transaction";
-    case validation : return "invalid block";
-    case authentication : return "authentication failure";
-    case fatal_other : return "some other failure";
-    case benign_other : return "some other non-fatal condition";
-    default : return "some crazy reason";
+enum go_away_reason {
+    no_reason,        ///< no reason to go away
+    self,             ///< the connection is to itself
+    duplicate,        ///< the connection is redundant
+    wrong_chain,      ///< the peer's chain id doesn't match
+    wrong_version,    ///< the peer's network version doesn't match
+    forked,           ///< the peer's irreversible blocks are different
+    unlinkable,       ///< the peer sent a block we couldn't use
+    bad_transaction,  ///< the peer sent a transaction that failed verification
+    validation,       ///< the peer sent a block that failed validation
+    benign_other,     ///< reasons such as a timeout. not fatal but warrant resetting
+    fatal_other,      ///< a catch-all for errors we don't have discriminated
+    authentication    ///< peer failed authenicatio
+};
+
+constexpr auto
+reason_str(go_away_reason rsn) {
+    switch(rsn) {
+    case no_reason:
+        return "no reason";
+    case self:
+        return "self connect";
+    case duplicate:
+        return "duplicate";
+    case wrong_chain:
+        return "wrong chain";
+    case wrong_version:
+        return "wrong version";
+    case forked:
+        return "chain is forked";
+    case unlinkable:
+        return "unlinkable block received";
+    case bad_transaction:
+        return "bad transaction";
+    case validation:
+        return "invalid block";
+    case authentication:
+        return "authentication failure";
+    case fatal_other:
+        return "some other failure";
+    case benign_other:
+        return "some other non-fatal condition";
+    default:
+        return "some crazy reason";
     }
-  }
+}
 
-  struct go_away_message {
-    go_away_message (go_away_reason r = no_reason) : reason(r), node_id() {}
+struct go_away_message {
+    go_away_message(go_away_reason r = no_reason)
+        : reason(r)
+        , node_id() {}
     go_away_reason reason;
-    fc::sha256 node_id; ///< for duplicate notification
-  };
+    fc::sha256     node_id;  ///< for duplicate notification
+};
 
-   typedef std::chrono::system_clock::duration::rep tstamp;
-   typedef int32_t                                  tdist;
+typedef std::chrono::system_clock::duration::rep tstamp;
+typedef int32_t                                  tdist;
 
-   static_assert(sizeof(std::chrono::system_clock::duration::rep) >= 8, "system_clock is expected to be at least 64 bits");
+static_assert(sizeof(std::chrono::system_clock::duration::rep) >= 8, "system_clock is expected to be at least 64 bits");
 
-   struct time_message {
-              tstamp  org;       //!< origin timestamp
-              tstamp  rec;       //!< receive timestamp
-              tstamp  xmt;       //!< transmit timestamp
-      mutable tstamp  dst;       //!< destination timestamp
-   };
+struct time_message {
+    tstamp         org;  //!< origin timestamp
+    tstamp         rec;  //!< receive timestamp
+    tstamp         xmt;  //!< transmit timestamp
+    mutable tstamp dst;  //!< destination timestamp
+};
 
-  enum id_list_modes {
+enum id_list_modes {
     none,
     catch_up,
     last_irr_catch_up,
     normal
-  };
+};
 
-  constexpr auto modes_str( id_list_modes m ) {
-    switch( m ) {
-    case none : return "none";
-    case catch_up : return "catch up";
-    case last_irr_catch_up : return "last irreversible";
-    case normal : return "normal";
-    default: return "undefined mode";
+constexpr auto
+modes_str(id_list_modes m) {
+    switch(m) {
+    case none:
+        return "none";
+    case catch_up:
+        return "catch up";
+    case last_irr_catch_up:
+        return "last irreversible";
+    case normal:
+        return "normal";
+    default:
+        return "undefined mode";
     }
-  }
+}
 
-  template<typename T>
-  struct select_ids {
-    select_ids () : mode(none),pending(0),ids() {}
-    id_list_modes  mode;
-    uint32_t       pending;
-    vector<T>      ids;
-    bool           empty () const { return (mode == none || ids.empty()); }
-  };
+template <typename T>
+struct select_ids {
+    select_ids()
+        : mode(none)
+        , pending(0)
+        , ids() {}
+    id_list_modes mode;
+    uint32_t      pending;
+    vector<T>     ids;
+    bool
+    empty() const { return (mode == none || ids.empty()); }
+};
 
-  using ordered_txn_ids = select_ids<transaction_id_type>;
-  using ordered_blk_ids = select_ids<block_id_type>;
+using ordered_txn_ids = select_ids<transaction_id_type>;
+using ordered_blk_ids = select_ids<block_id_type>;
 
-  struct notice_message {
-    notice_message () : known_trx(), known_blocks() {}
+struct notice_message {
+    notice_message()
+        : known_trx()
+        , known_blocks() {}
     ordered_txn_ids known_trx;
     ordered_blk_ids known_blocks;
-  };
+};
 
-  struct request_message {
-    request_message () : req_trx(), req_blocks() {}
+struct request_message {
+    request_message()
+        : req_trx()
+        , req_blocks() {}
     ordered_txn_ids req_trx;
     ordered_blk_ids req_blocks;
-  };
+};
 
-   struct sync_request_message {
-      uint32_t start_block;
-      uint32_t end_block;
-   };
+struct sync_request_message {
+    uint32_t start_block;
+    uint32_t end_block;
+};
 
-   using net_message = static_variant<handshake_message,
-                                      go_away_message,
-                                      time_message,
-                                      notice_message,
-                                      request_message,
-                                      sync_request_message,
-                                      signed_block_summary,
-                                      signed_block,
-                                      signed_transaction,
-                                      packed_transaction>;
+using net_message = static_variant<handshake_message,
+                                   chain_size_message,
+                                   go_away_message,
+                                   time_message,
+                                   notice_message,
+                                   request_message,
+                                   sync_request_message,
+                                   signed_block,
+                                   packed_transaction>;
 
-} // namespace evt
+}  // namespace evt
 
-FC_REFLECT( evt::select_ids<fc::sha256>, (mode)(pending)(ids) )
-FC_REFLECT( evt::handshake_message,
-            (network_version)(chain_id)(node_id)(key)
-            (time)(token)(sig)(p2p_address)
-            (last_irreversible_block_num)(last_irreversible_block_id)
-            (head_num)(head_id)
-            (os)(agent)(generation) )
-FC_REFLECT( evt::go_away_message, (reason)(node_id) )
-FC_REFLECT( evt::time_message, (org)(rec)(xmt)(dst) )
-FC_REFLECT( evt::notice_message, (known_trx)(known_blocks) )
-FC_REFLECT( evt::request_message, (req_trx)(req_blocks) )
-FC_REFLECT( evt::sync_request_message, (start_block)(end_block) )
+FC_REFLECT(evt::select_ids<fc::sha256>, (mode)(pending)(ids))
+FC_REFLECT(evt::chain_size_message,
+           (last_irreversible_block_num)(last_irreversible_block_id)(head_num)(head_id))
+FC_REFLECT(evt::handshake_message,
+           (network_version)(chain_id)(node_id)(key)(time)(token)(sig)(p2p_address)(last_irreversible_block_num)(last_irreversible_block_id)(head_num)(head_id)(os)(agent)(generation))
+FC_REFLECT(evt::go_away_message, (reason)(node_id))
+FC_REFLECT(evt::time_message, (org)(rec)(xmt)(dst))
+FC_REFLECT(evt::notice_message, (known_trx)(known_blocks))
+FC_REFLECT(evt::request_message, (req_trx)(req_blocks))
+FC_REFLECT(evt::sync_request_message, (start_block)(end_block))
 
 /**
  *

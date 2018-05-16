@@ -81,7 +81,7 @@ to_variant(const evt::chain::contracts::group& group, fc::variant& v) {
 }
 
 void
-from_variant(const fc::variant& v, group& group, group::node& node, int depth) {
+from_variant(const fc::variant& v, group& group, group::node& node, uint32_t depth) {
     EVT_ASSERT(depth < config::max_recursion_depth, group_type_exception, "Exceeds max node depth");
 
     auto& vo = v.get_object();

@@ -3,8 +3,8 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #pragma once
-#include <evt/chain/types.hpp>
 #include <evt/chain/merkle.hpp>
+#include <evt/chain/types.hpp>
 #include <fc/io/raw.hpp>
 
 namespace evt { namespace chain {
@@ -18,16 +18,17 @@ namespace detail {
  * @param value - an unsigned integral
  * @return - the minimum power-of-2 which is >= value
  */
-constexpr uint64_t next_power_of_2(uint64_t value) {
-   value -= 1;
-   value |= value >> 1;
-   value |= value >> 2;
-   value |= value >> 4;
-   value |= value >> 8;
-   value |= value >> 16;
-   value |= value >> 32;
-   value += 1;
-   return value;
+constexpr uint64_t
+next_power_of_2(uint64_t value) {
+    value -= 1;
+    value |= value >> 1;
+    value |= value >> 2;
+    value |= value >> 4;
+    value |= value >> 8;
+    value |= value >> 16;
+    value |= value >> 32;
+    value += 1;
+    return value;
 }
 
 /**
@@ -39,18 +40,26 @@ constexpr uint64_t next_power_of_2(uint64_t value) {
  * @param value - and integral power-of-2
  * @return the number of leading zeros
  */
-constexpr int clz_power_2(uint64_t value) {
-   int lz = 64;
+constexpr int
+clz_power_2(uint64_t value) {
+    int lz = 64;
 
-   if (value) lz--;
-   if (value & 0x00000000FFFFFFFFULL) lz -= 32;
-   if (value & 0x0000FFFF0000FFFFULL) lz -= 16;
-   if (value & 0x00FF00FF00FF00FFULL) lz -= 8;
-   if (value & 0x0F0F0F0F0F0F0F0FULL) lz -= 4;
-   if (value & 0x3333333333333333ULL) lz -= 2;
-   if (value & 0x5555555555555555ULL) lz -= 1;
+    if(value)
+        lz--;
+    if(value & 0x00000000FFFFFFFFULL)
+        lz -= 32;
+    if(value & 0x0000FFFF0000FFFFULL)
+        lz -= 16;
+    if(value & 0x00FF00FF00FF00FFULL)
+        lz -= 8;
+    if(value & 0x0F0F0F0F0F0F0F0FULL)
+        lz -= 4;
+    if(value & 0x3333333333333333ULL)
+        lz -= 2;
+    if(value & 0x5555555555555555ULL)
+        lz -= 1;
 
-   return lz;
+    return lz;
 }
 
 /**
@@ -60,27 +69,29 @@ constexpr int clz_power_2(uint64_t value) {
  * @param node_count - the number of nodes in the implied tree
  * @return the max depth of the minimal tree that stores them
  */
-constexpr int calcluate_max_depth(uint64_t node_count) {
-   if (node_count == 0) {
-      return 0;
-   }
-   auto implied_count = next_power_of_2(node_count);
-   return clz_power_2(implied_count) + 1;
+constexpr int
+calcluate_max_depth(uint64_t node_count) {
+    if(node_count == 0) {
+        return 0;
+    }
+    auto implied_count = next_power_of_2(node_count);
+    return clz_power_2(implied_count) + 1;
 }
 
-template<typename ContainerA, typename ContainerB>
-inline void move_nodes(ContainerA& to, const ContainerB& from) {
-   to.clear();
-   to.insert(to.begin(), from.begin(), from.end());
+template <typename ContainerA, typename ContainerB>
+inline void
+move_nodes(ContainerA& to, const ContainerB& from) {
+    to.clear();
+    to.insert(to.begin(), from.begin(), from.end());
 }
 
-template<typename Container>
-inline void move_nodes(Container& to, Container&& from) {
-   to = std::forward<Container>(from);
+template <typename Container>
+inline void
+move_nodes(Container& to, Container&& from) {
+    to = std::forward<Container>(from);
 }
 
-
-} /// detail
+}  // namespace detail
 
 /**
  * A balanced merkle tree built in such that the set of leaf nodes can be
@@ -95,17 +106,17 @@ inline void move_nodes(Container& to, Container&& from) {
  * after some time has past only needing to update or add a single
  * value to maintain validity.
  */
-template<typename DigestType, template<typename ...> class Container = vector, typename ...Args>
+template <typename DigestType, template <typename...> class Container = vector, typename... Args>
 class incremental_merkle_impl {
-   public:
-      incremental_merkle_impl()
-      :_node_count(0)
-      {}
+public:
+    incremental_merkle_impl()
+        : _node_count(0) {}
 
-      template<typename Allocator>
-      incremental_merkle_impl( Allocator&& alloc ):_active_nodes(forward<Allocator>(alloc)){}
+    template <typename Allocator>
+    incremental_merkle_impl(Allocator&& alloc)
+        : _active_nodes(forward<Allocator>(alloc)) {}
 
-      /*
+    /*
       template<template<typename ...> class OtherContainer, typename ...OtherArgs>
       incremental_merkle_impl( incremental_merkle_impl<DigestType, OtherContainer, OtherArgs...>&& other )
       :_node_count(other._node_count)
@@ -118,7 +129,7 @@ class incremental_merkle_impl {
       {}
       */
 
-      /**
+    /**
        * Add a node to the incremental tree and recalculate the _active_nodes so they
        * are prepared for the next append.
        *
@@ -164,85 +175,90 @@ class incremental_merkle_impl {
        * @param digest - the node to add
        * @return - the new root
        */
-      const DigestType& append(const DigestType& digest) {
-         bool partial = false;
-         auto max_depth = detail::calcluate_max_depth(_node_count + 1);
-         auto current_depth = max_depth - 1;
-         auto index = _node_count;
-         auto top = digest;
-         auto active_iter = _active_nodes.begin();
-         auto updated_active_nodes = vector<DigestType>();
-         updated_active_nodes.reserve(max_depth);
+    const DigestType&
+    append(const DigestType& digest) {
+        bool partial              = false;
+        auto max_depth            = detail::calcluate_max_depth(_node_count + 1);
+        auto current_depth        = max_depth - 1;
+        auto index                = _node_count;
+        auto top                  = digest;
+        auto active_iter          = _active_nodes.begin();
+        auto updated_active_nodes = vector<DigestType>();
+        updated_active_nodes.reserve(max_depth);
 
-         while (current_depth > 0) {
-            if (!(index & 0x1)) {
-               // we are collapsing from a "left" value and an implied "right" creating a partial node
+        while(current_depth > 0) {
+            if(!(index & 0x1)) {
+                // we are collapsing from a "left" value and an implied "right" creating a partial node
 
-               // we only need to append this node if it is fully-realized and by definition
-               // if we have encountered a partial node during collapse this cannot be
-               // fully-realized
-               if (!partial) {
-                  updated_active_nodes.emplace_back(top);
-               }
+                // we only need to append this node if it is fully-realized and by definition
+                // if we have encountered a partial node during collapse this cannot be
+                // fully-realized
+                if(!partial) {
+                    updated_active_nodes.emplace_back(top);
+                }
 
-               // calculate the partially realized node value by implying the "right" value is identical
-               // to the "left" value
-               top = DigestType::hash(make_canonical_pair(top, top));
-               partial = true;
-            } else {
-               // we are collapsing from a "right" value and an fully-realized "left"
+                // calculate the partially realized node value by implying the "right" value is identical
+                // to the "left" value
+                top     = DigestType::hash(make_canonical_pair(top, top));
+                partial = true;
+            }
+            else {
+                // we are collapsing from a "right" value and an fully-realized "left"
 
-               // pull a "left" value from the previous active nodes
-               const auto& left_value = *active_iter;
-               ++active_iter;
+                // pull a "left" value from the previous active nodes
+                const auto& left_value = *active_iter;
+                ++active_iter;
 
-               // if the "right" value is a partial node we will need to copy the "left" as future appends still need it
-               // otherwise, it can be dropped from the set of active nodes as we are collapsing a fully-realized node
-               if (partial) {
-                  updated_active_nodes.emplace_back(left_value);
-               }
+                // if the "right" value is a partial node we will need to copy the "left" as future appends still need it
+                // otherwise, it can be dropped from the set of active nodes as we are collapsing a fully-realized node
+                if(partial) {
+                    updated_active_nodes.emplace_back(left_value);
+                }
 
-               // calculate the node
-               top = DigestType::hash(make_canonical_pair(left_value, top));
+                // calculate the node
+                top = DigestType::hash(make_canonical_pair(left_value, top));
             }
 
             // move up a level in the tree
             current_depth--;
             index = index >> 1;
-         }
+        }
 
-         // append the top of the collapsed tree (aka the root of the merkle)
-         updated_active_nodes.emplace_back(top);
+        // append the top of the collapsed tree (aka the root of the merkle)
+        updated_active_nodes.emplace_back(top);
 
-         // store the new active_nodes
-         detail::move_nodes(_active_nodes, std::move(updated_active_nodes));
+        // store the new active_nodes
+        detail::move_nodes(_active_nodes, std::move(updated_active_nodes));
 
-         // update the node count
-         _node_count++;
+        // update the node count
+        _node_count++;
 
-         return _active_nodes.back();
+        return _active_nodes.back();
+    }
 
-      }
-
-      /**l
+    /**l
        * return the current root of the incremental merkle
        *
        * @return
        */
-      DigestType get_root() const {
-         if (_node_count > 0) {
+    DigestType
+    get_root() const {
+        if(_node_count > 0) {
             return _active_nodes.back();
-         } else {
+        }
+        else {
             return DigestType();
-         }
-      }
+        }
+    }
 
-   private:
-      uint64_t                         _node_count;
-      Container<DigestType, Args...>   _active_nodes;
+public:
+    uint64_t                       _node_count;
+    Container<DigestType, Args...> _active_nodes;
 };
 
-typedef incremental_merkle_impl<digest_type>               incremental_merkle;
-typedef incremental_merkle_impl<digest_type,shared_vector> shared_incremental_merkle;
+typedef incremental_merkle_impl<digest_type>                incremental_merkle;
+typedef incremental_merkle_impl<digest_type, shared_vector> shared_incremental_merkle;
 
-} } /// evt::chain
+}}  // namespace evt::chain
+
+FC_REFLECT(evt::chain::incremental_merkle, (_active_nodes)(_node_count));
