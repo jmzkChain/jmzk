@@ -35,20 +35,19 @@ private:
 
     /// Fields:
 public:
-    controller&                  control;
-    const signed_transaction&    trx;
-    transaction_id_type          id;
-    transaction_trace_ptr        trace;
-    fc::time_point               start;
-
-    fc::time_point published;
+    controller&               control;
+    const signed_transaction& trx;
+    transaction_id_type       id;
+    transaction_trace_ptr     trace;
+    fc::time_point            start;
+    fc::time_point            published;
 
     vector<action_receipt> executed;
 
-    bool             is_input           = false;
+    bool is_input = false;
 
-    fc::time_point   deadline           = fc::time_point::maximum();
-    fc::microseconds leeway             = fc::microseconds(1000);
+    fc::time_point   deadline = fc::time_point::maximum();
+    fc::microseconds leeway   = fc::microseconds(1000);
 
 private:
     bool is_initialized = false;
