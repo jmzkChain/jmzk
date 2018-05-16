@@ -293,9 +293,10 @@ producer_plugin::set_program_options(
     producer_options.add_options()
         ("enable-stale-production,e", boost::program_options::bool_switch()->notifier([this](bool e) { my->_production_enabled = e; }), "Enable block production, even if the chain is stale.")
         ("max-transaction-time", bpo::value<int32_t>()->default_value(30), "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute before being considered invalid")
-        ("required-participation", boost::program_options::value<uint32_t>()->default_value(uint32_t(config::required_producer_participation / config::percent_1))->notifier([this](uint32_t e) {
-            my->_required_producer_participation = std::min(e, 100u) * config::percent_1;
-        }), "Percent of producers (0-100) that must be participating in order to produce blocks")
+        ("required-participation", boost::program_options::value<uint32_t>()->default_value(uint32_t(config::required_producer_participation / config::percent_1))
+            ->notifier([this](uint32_t e) {
+                my->_required_producer_participation = std::min(e, 100u) * config::percent_1;
+            }), "Percent of producers (0-100) that must be participating in order to produce blocks")
         ("producer-name,p", boost::program_options::value<vector<string>>()->composing()->multitoken(), "ID of producer controlled by this node (e.g. inita; may specify multiple times)")
         ("private-key", boost::program_options::value<vector<string>>()->composing()->multitoken()
             ->default_value({fc::json::to_string(private_key_default)}, fc::json::to_string(private_key_default)), "Tuple of [public key, WIF private key] (may specify multiple times)");

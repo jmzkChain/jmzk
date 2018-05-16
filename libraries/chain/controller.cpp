@@ -167,6 +167,7 @@ struct controller_impl {
       */
         if(!head) {
             initialize_fork_db();  // set head to genesis state
+            initialize_token_db();
         }
 
         while(db.revision() > head->block_num) {
@@ -210,7 +211,7 @@ struct controller_impl {
     void
     initialize_fork_db() {
         wlog(" Initializing new blockchain with genesis state                  ");
-        producer_schedule_type initial_schedule{0, {{N(evt), conf.genesis.initial_key}}};
+        producer_schedule_type initial_schedule{0, {{N128(evt), conf.genesis.initial_key}}};
 
         block_header_state genheader;
         genheader.active_schedule       = initial_schedule;
@@ -265,6 +266,34 @@ struct controller_impl {
             gpo.configuration = conf.genesis.initial_configuration;
         });
         db.create<dynamic_global_property_object>([](auto&) {});
+    }
+
+    void
+    initialize_token_db() {
+        if(!token_db.exists_domain("domain")) {
+            auto dd = domain_def();
+            dd.name = "domain";
+            dd.issuer = conf.genesis.initial_key;
+            dd.issue_time = conf.genesis.initial_timestamp;
+            auto r = token_db.add_domain(dd);
+            FC_ASSERT(r == 0, "Add `domain` domain failed");
+        }
+        if(!token_db.exists_domain("group")) {
+            auto gd = domain_def();
+            gd.name = "group";
+            gd.issuer = conf.genesis.initial_key;
+            gd.issue_time = conf.genesis.initial_timestamp;
+            auto r = token_db.add_domain(gd);
+            FC_ASSERT(r == 0, "Add `group` domain failed");
+        }
+        if(!token_db.exists_domain("account")) {
+            auto ad = domain_def();
+            ad.name = "account";
+            ad.issuer = conf.genesis.initial_key;
+            ad.issue_time = conf.genesis.initial_timestamp;
+            auto r = token_db.add_domain(ad);
+            FC_ASSERT(r == 0, "Add `account` domain failed");
+        }
     }
 
     void

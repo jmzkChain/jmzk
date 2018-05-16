@@ -103,7 +103,14 @@ template <typename T>
 fc::variant
 call(const std::string& path,
      const T&           v) {
-    return ::call(url, path, fc::variant(v));
+    return call(url, path, fc::variant(v));
+}
+
+template<>
+fc::variant
+call(const std::string& url,
+     const std::string& path) {
+    return call(url, path, fc::variant()); 
 }
 
 evt::chain_apis::read_only::get_info_results
