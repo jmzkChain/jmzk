@@ -389,11 +389,28 @@ read_write::push_transactions(const read_write::push_transactions_params& params
     return result;
 }
 
+static variant
+action_abi_to_variant(const abi_serializer& api, contracts::type_name action_type) {
+    variant v;
+    auto it = api.structs.find(action_type);
+    if(it != api.structs.end()) {
+        to_variant(it->second.fields, v);
+    }
+    return v;
+};
+
 read_only::abi_json_to_bin_result
 read_only::abi_json_to_bin(const read_only::abi_json_to_bin_params& params) const try {
     abi_json_to_bin_result result;
     auto& api = system_api;
-    result.binargs = api.variant_to_binary(api.get_action_type(params.action), params.args);
+    auto action_type = api.get_action_type(params.action);
+    EVT_ASSERT(!action_type.empty(), action_validate_exception, "Unknown action ${action}", ("action", params.action));
+    try {
+        result.binargs = api.variant_to_binary(action_type, params.args);
+    }
+    EVT_RETHROW_EXCEPTIONS(chain::invalid_action_args_exception,
+        "'${args}' is invalid args for action '${action}'. expected '${proto}'",
+        ("args", params.args)("action", params.action)("proto", action_abi_to_variant(api, action_type)))
     return result;
 }
 FC_CAPTURE_AND_RETHROW((params.action)(params.args))
