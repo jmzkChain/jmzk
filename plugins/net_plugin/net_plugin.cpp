@@ -730,7 +730,7 @@ connection::initialize() {
 
 bool
 connection::connected() {
-    return (socket->is_open() && !connecting);
+    return (socket && socket->is_open() && !connecting);
 }
 
 bool
@@ -1326,7 +1326,7 @@ sync_manager::request_next_chunk(connection_ptr conn) {
        * 3. we have multiple peers, select the next available from the list
        */
 
-    if(conn) {
+    if(conn && conn->current()) {
         source = conn;
     }
     else if(my_impl->connections.size() == 1) {
@@ -1338,36 +1338,35 @@ sync_manager::request_next_chunk(connection_ptr conn) {
         }
     }
     else {
-        auto cptr = my_impl->connections.find(source);
-        if(cptr == my_impl->connections.end()) {
-            elog("unable to find previous source connection in connections list");
-            source.reset();
-            cptr = my_impl->connections.begin();
-        }
-        else {
-            ++cptr;
-        }
-        while(my_impl->connections.size() > 1) {
-            if(cptr == my_impl->connections.end()) {
+        auto cptr = my_impl->connections.begin();
+        auto cend = my_impl->connections.end();
+        if (source) {
+            cptr = my_impl->connections.find(source);
+            cend = cptr;
+            if (cptr == my_impl->connections.end()) {
+                elog ("unable to find previous source connection in connections list");
+                source.reset();
                 cptr = my_impl->connections.begin();
-                if(!source) {
-                    break;
+            } else {
+                if (++cptr == my_impl->connections.end()) {
+                    cptr = my_impl->connections.begin();
                 }
             }
-            if(*cptr == source) {
-                break;
-            }
+        }
+        while (cptr != cend) {
             if((*cptr)->current()) {
                 source = *cptr;
                 break;
             }
             else {
-                ++cptr;
+                if(++cptr == my_impl->connections.end()) {
+                    cptr = my_impl->connections.begin();
+                }
             }
         }
     }
 
-    if(!source) {
+    if(!source || !source->current()) {
         elog("Unable to continue syncing at this time");
         sync_known_lib_num      = chain_plug->chain().last_irreversible_block_num();
         sync_last_requested_num = 0;
@@ -2522,6 +2521,7 @@ net_plugin_impl::handle_message(connection_ptr c, const packed_transaction& msg)
     try {
         chain_plug->accept_transaction(msg);
         fc_dlog(logger, "chain accepted transaction");
+        dispatcher->bcast_transaction(msg);
         return;
     }
     catch(const fc::exception& ex) {

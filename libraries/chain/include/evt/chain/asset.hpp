@@ -7,7 +7,7 @@
 #include <evt/chain/types.hpp>
 #include <evt/chain/symbol.hpp>
 
-/// evt with 8 digits of precision
+/// evt with 4 digits of precision
 #define EVT_SYMBOL_VALUE  (int64_t(4) | (uint64_t('E') << 8) | (uint64_t('V') << 16) | (uint64_t('T') << 24))
 static const evt::chain::symbol EVT_SYMBOL(EVT_SYMBOL_VALUE);
 
