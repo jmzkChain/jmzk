@@ -96,7 +96,7 @@ apply_evt_newdomain(apply_context& context) {
 
     auto ndact = context.act.data_as<newdomain>();
     try {
-        EVT_ASSERT(context.has_authorized("domain", (uint128_t)ndact.name), action_validate_exception, "Authorized information doesn't match");
+        EVT_ASSERT(context.has_authorized("domain", ndact.name), action_validate_exception, "Authorized information doesn't match");
 
         auto& tokendb = context.token_db;
         EVT_ASSERT(!tokendb.exists_domain(ndact.name), action_validate_exception, "Domain ${name} already existed", ("name",ndact.name));
@@ -149,7 +149,7 @@ apply_evt_issuetoken(apply_context& context) {
 void
 apply_evt_transfer(apply_context& context) {
     auto ttact = context.act.data_as<transfer>();
-    EVT_ASSERT(context.has_authorized(ttact.domain, (uint128_t)ttact.name), action_validate_exception, "Authorized information doesn't match");
+    EVT_ASSERT(context.has_authorized(ttact.domain, ttact.name), action_validate_exception, "Authorized information doesn't match");
     
     auto& tokendb = context.token_db;
     EVT_ASSERT(tokendb.exists_token(ttact.domain, ttact.name), action_validate_exception, "Token ${domain}-${name} not existed", ("domain",ttact.domain)("name",ttact.name));

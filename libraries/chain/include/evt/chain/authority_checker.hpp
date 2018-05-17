@@ -128,7 +128,7 @@ private:
         }
         else if(action.name == N(updategroup)) {
             bool result = false;
-            get_group((group_name)action.key, [&](const auto& group) {
+            get_group(action.key, [&](const auto& group) {
                 auto& gkey = group.key();
                 weight_tally_visitor vistor(*this);
                 if(vistor(gkey, 1) == 1) {
@@ -156,7 +156,7 @@ private:
         }
         else if(action.name == N(updateowner)) {
             bool result = false;
-            get_owner(action.domain, (name128)action.key, [&](const auto& owner) {
+            get_owner(action.domain, action.key, [&](const auto& owner) {
                 weight_tally_visitor vistor(*this);
                 for(auto& o : owner) {
                     vistor(o, 1);
@@ -231,7 +231,7 @@ private:
                     break;
                 }
                 case authorizer_ref::owner_t: {
-                    get_owner(domain, (name128)action.key, [&](const auto& owner) {
+                    get_owner(domain, action.key, [&](const auto& owner) {
                         weight_tally_visitor vistor(*this);
                         for (const auto& o : owner) {
                             vistor(o, 1);

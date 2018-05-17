@@ -19,10 +19,10 @@ evt_contract_abi() {
    evt_abi.types.push_back( type_def{"permission_name","name"} );
    evt_abi.types.push_back( type_def{"action_name","name"} );
    evt_abi.types.push_back( type_def{"domain_name","name128"} );
+   evt_abi.types.push_back( type_def{"domain_key","name128"} );
    evt_abi.types.push_back( type_def{"group_name","name128"} );
    evt_abi.types.push_back( type_def{"token_name","name128"} );
    evt_abi.types.push_back( type_def{"account_name","name128"} );
-   evt_abi.types.push_back( type_def{"domain_key","uint128"} );
    evt_abi.types.push_back( type_def{"balance_type","asset"} );
    evt_abi.types.push_back( type_def{"group_def","group"} );
 
