@@ -1,7 +1,7 @@
 cmake_minimum_required( VERSION 3.5 )
 
-# Defines EOS library target.
-project( EOS )
+# Defines everiToken library target.
+project( EVT )
 
 enable_testing()
 
@@ -13,7 +13,7 @@ include( VersionMacros )
 include( SetupTargetMacros )
 include( InstallDirectoryPermissions )
 
-set( BLOCKCHAIN_NAME "Eos" )
+set( BLOCKCHAIN_NAME "EVT" )
 set( CMAKE_CXX_STANDARD 14 )
 set( CMAKE_CXX_EXTENSIONS ON )
 set( CXX_STANDARD_REQUIRED ON)
@@ -22,10 +22,10 @@ set(VERSION_MAJOR 3)
 set(VERSION_MINOR 0)
 set(VERSION_PATCH 1)
 
-set( CLI_CLIENT_EXECUTABLE_NAME eosioc )
-set( GUI_CLIENT_EXECUTABLE_NAME eosio )
+set( CLI_CLIENT_EXECUTABLE_NAME evtc )
+set( GUI_CLIENT_EXECUTABLE_NAME evt )
 set( CUSTOM_URL_SCHEME "gcs" )
-set( INSTALLER_APP_ID "68ad7005-8eee-49c9-95ce-9eed97e5b347" )
+set( INSTALLER_APP_ID "0E523427-37A8-4368-8D5E-AC17FC845110" )
 
 # http://stackoverflow.com/a/18369825
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
@@ -40,7 +40,7 @@ endif()
 
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
-set(EOS_EGENESIS_JSON "${CMAKE_CURRENT_SOURCE_DIR}/genesis.json" )
+set(EVT_EGENESIS_JSON "${CMAKE_CURRENT_SOURCE_DIR}/genesis.json" )
 
 #set (USE_PCH 1)
 
@@ -111,7 +111,7 @@ FIND_PACKAGE(Boost 1.64 REQUIRED COMPONENTS
 
 if( WIN32 )
 
-    message( STATUS "Configuring Eos on WIN32")
+    message( STATUS "Configuring EVT on WIN32")
     set( DB_VERSION 60 )
     set( BDB_STATIC_LIBS 1 )
 
@@ -146,11 +146,11 @@ else( WIN32 ) # Apple AND Linux
 
     if( APPLE )
         # Apple Specific Options Here
-        message( STATUS "Configuring Eos on OS X" )
+        message( STATUS "Configuring EVT on OS X" )
         set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-deprecated-declarations" )
     else( APPLE )
         # Linux Specific Options Here
-        message( STATUS "Configuring Eos on Linux" )
+        message( STATUS "Configuring EVT on Linux" )
         set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -Wall" )
         if ( FULL_STATIC_BUILD )
           set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc")
@@ -179,7 +179,7 @@ else( WIN32 ) # Apple AND Linux
 
 endif( WIN32 )
 
-set(ENABLE_COVERAGE_TESTING FALSE CACHE BOOL "Build Eos for code coverage analysis")
+set(ENABLE_COVERAGE_TESTING FALSE CACHE BOOL "Build EVT for code coverage analysis")
 
 if(ENABLE_COVERAGE_TESTING)
   SET(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")
@@ -193,9 +193,9 @@ add_subdirectory( libraries )
 add_subdirectory( plugins )
 add_subdirectory( programs )
 
-install(FILES genesis.json DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio/node_00)
-install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio)
-install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/eosio/node_00)
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/genesis.json ${CMAKE_CURRENT_BINARY_DIR}/etc/eosio/node_00/genesis.json COPYONLY)
+install(FILES genesis.json DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/evt/node_00)
+install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/evt)
+install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/evt/node_00)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/genesis.json ${CMAKE_CURRENT_BINARY_DIR}/etc/evt/node_00/genesis.json COPYONLY)
 
 include(installer)

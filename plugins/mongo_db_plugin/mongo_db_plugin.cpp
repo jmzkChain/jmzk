@@ -7,11 +7,11 @@
 #include <queue>
 
 #include <evt/chain/config.hpp>
+#include <evt/chain/contracts/evt_contract.hpp>
 #include <evt/chain/exceptions.hpp>
+#include <evt/chain/plugin_interface.hpp>
 #include <evt/chain/transaction.hpp>
 #include <evt/chain/types.hpp>
-#include <evt/chain/plugin_interface.hpp>
-#include <evt/chain/contracts/evt_contract.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
@@ -64,20 +64,20 @@ public:
     bool configured{false};
     bool wipe_database_on_startup{false};
 
-    std::string          db_name;
-    mongocxx::instance   mongo_inst;
-    mongocxx::client     mongo_conn;
+    std::string        db_name;
+    mongocxx::instance mongo_inst;
+    mongocxx::client   mongo_conn;
 
-    size_t                             queue_size = 0;
-    size_t                             processed  = 0;
-    std::deque<block_state_ptr>        block_state_queue;
-    std::deque<transaction_trace_ptr>  transaction_trace_queue;
+    size_t                            queue_size = 0;
+    size_t                            processed  = 0;
+    std::deque<block_state_ptr>       block_state_queue;
+    std::deque<transaction_trace_ptr> transaction_trace_queue;
 
-    boost::mutex               mtx;
-    boost::condition_variable  condition;
-    boost::thread              consume_thread;
-    boost::atomic<bool>        done{false};
-    boost::atomic<bool>        startup{true};
+    boost::mutex              mtx;
+    boost::condition_variable condition;
+    boost::thread             consume_thread;
+    boost::atomic<bool>       done{false};
+    boost::atomic<bool>       startup{true};
 
     channels::accepted_block::channel_type::handle      accepted_block_subscription;
     channels::irreversible_block::channel_type::handle  irreversible_block_subscription;
@@ -90,7 +90,6 @@ public:
     static const std::string actions_col;
     static const std::string action_traces_col;
 };
-
 
 const std::string mongo_db_plugin_impl::blocks_col        = "Blocks";
 const std::string mongo_db_plugin_impl::trans_col         = "Transactions";
@@ -317,7 +316,7 @@ verify_no_blocks(mongocxx::collection& blocks) {
         FC_THROW("Existing blocks found in database");
     }
 }
-}  // namespace
+}  // namespace __internal
 
 void
 mongo_db_plugin_impl::process_irreversible_block(const signed_block& block) {
@@ -367,12 +366,6 @@ mongo_db_plugin_impl::process_transaction(const transaction_trace& trace) {
     }
 }
 
-
-void
-mongo_db_plugin_impl::_process_transaction(const transaction_trace& trace) {
-    
-}
-
 void
 mongo_db_plugin_impl::_process_block(const signed_block& block) {
     using namespace __internal;
@@ -387,7 +380,6 @@ mongo_db_plugin_impl::_process_block(const signed_block& block) {
     auto blocks        = mongo_conn[db_name][blocks_col];         // Blocks
     auto trans         = mongo_conn[db_name][trans_col];          // Transactions
     auto msgs          = mongo_conn[db_name][actions_col];        // Actions
-    auto action_traces = mongo_conn[db_name][action_traces_col];  // ActionTraces
 
     auto       block_doc         = bsoncxx::builder::basic::document{};
     const auto block_id          = block.id();
@@ -546,6 +538,50 @@ mongo_db_plugin_impl::_process_irreversible_block(const signed_block& block) {
 
         trans.update_one(document{} << "_id" << ir_trans.view()["_id"].get_oid() << finalize,
                          update_trans.view());
+    }
+}
+
+void
+mongo_db_plugin_impl::_process_transaction(const transaction_trace& trace) {
+    using namespace bsoncxx::types;
+    using namespace bsoncxx::builder;
+    using bsoncxx::builder::basic::kvp;
+
+    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+    std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
+
+    auto action_traces          = mongo_conn[db_name][action_traces_col];  // ActionTraces
+    bool action_traces_to_write = false;
+    auto process_action_trace   = [&](const std::string&       trans_id_str,
+                                    mongocxx::bulk_write&      bulk_acts,
+                                    const chain::action_trace& act,
+                                    const auto&                msg_oid) {
+        auto act_oid = bsoncxx::oid{};
+        auto act_doc = bsoncxx::builder::basic::document{};
+        act_doc.append(kvp("_id", b_oid{act_oid}),
+                       kvp("transaction_id", trans_id_str),
+                       kvp("elapsed", act.elapsed.count()),
+                       kvp("action", b_oid{msg_oid}),
+                       kvp("console", act.console));
+        act_doc.append(kvp("createdAt", b_date{now}));
+        mongocxx::model::insert_one insert_act{act_doc.view()};
+        bulk_acts.append(insert_act);
+        action_traces_to_write = true;
+    };
+
+    auto trx_id_str = trace.id.str();
+    auto bulk_acts  = mongocxx::bulk_write{};
+    auto oid        = bsoncxx::oid{};
+
+    for(auto& at : trace.action_traces) {
+        process_action_trace(trx_id_str, bulk_acts, at, oid);
+    }
+
+    if(action_traces_to_write) {
+        auto result = action_traces.bulk_write(bulk_acts);
+        if(!result) {
+            elog("Bulk action traces insert failed for transaction: ${tid}", ("tid", trx_id_str));
+        }
     }
 }
 
