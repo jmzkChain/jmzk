@@ -25,7 +25,6 @@
 #include <fc/smart_ref_fwd.hpp>
 #include <fc/static_variant.hpp>
 #include <fc/string.hpp>
-#include <fc/uint128.hpp>
 
 #include <evt/chain/name.hpp>
 
@@ -121,41 +120,11 @@ using group_name      = name128;
  */
 enum object_type {
     null_object_type,
-    account_object_type,
-    permission_object_type,
-    permission_usage_object_type,
-    permission_link_object_type,
-    action_code_object_type,
-    key_value_object_type,
-    key128x128_value_object_type,
-    key64x64_value_object_type,
-    index64_object_type,
-    index128_object_type,
-    index256_object_type,
-    index_double_object_type,
-    action_permission_object_type,
     global_property_object_type,
     dynamic_global_property_object_type,
     block_summary_object_type,
     transaction_object_type,
-    generated_transaction_object_type,
-    producer_object_type,
-    chain_property_object_type,
-    account_control_history_object_type,      ///< Defined by account_history_plugin
-    account_transaction_history_object_type,  ///< Defined by account_history_plugin
-    transaction_history_object_type,          ///< Defined by account_history_plugin
-    public_key_history_object_type,           ///< Defined by account_history_plugin
-    balance_object_type,                      ///< Defined by native_contract library
-    staked_balance_object_type,               ///< Defined by native_contract library
-    producer_votes_object_type,               ///< Defined by native_contract library
-    producer_schedule_object_type,            ///< Defined by native_contract library
-    proxy_vote_object_type,                   ///< Defined by native_contract library
-    key64x64x64_value_object_type,
-    keystr_value_object_type,
-    scope_sequence_object_type,
-    bandwidth_usage_object_type,
-    compute_usage_object_type,
-    table_id_object_type,
+    unconfirmed_block_object_type,
     OBJECT_TYPE_COUNT  ///< Sentry value which contains the number of different object types
 };
 
@@ -207,15 +176,7 @@ operator<<(std::ostream& o, const __uint128_t v) {
 
 FC_REFLECT_ENUM(
     evt::chain::object_type,
-    (null_object_type)(account_object_type)(permission_object_type)(permission_usage_object_type)
-    (permission_link_object_type)(action_code_object_type)(key_value_object_type)(key128x128_value_object_type)
-    (key64x64_value_object_type)(index64_object_type)(index128_object_type)(index256_object_type)
-    (index_double_object_type)(action_permission_object_type)(global_property_object_type)
-    (dynamic_global_property_object_type)(block_summary_object_type)(transaction_object_type)
-    (generated_transaction_object_type)(producer_object_type)(chain_property_object_type)
-    (account_control_history_object_type)(account_transaction_history_object_type)(transaction_history_object_type)
-    (public_key_history_object_type)(balance_object_type)(staked_balance_object_type)(producer_votes_object_type)
-    (producer_schedule_object_type)(proxy_vote_object_type)(key64x64x64_value_object_type)(keystr_value_object_type)
-    (scope_sequence_object_type)(bandwidth_usage_object_type)(compute_usage_object_type)(table_id_object_type)
+    (null_object_type)(global_property_object_type)(dynamic_global_property_object_type)
+    (block_summary_object_type)(transaction_object_type)(unconfirmed_block_object_type)
     (OBJECT_TYPE_COUNT))
 FC_REFLECT(evt::chain::void_t, )

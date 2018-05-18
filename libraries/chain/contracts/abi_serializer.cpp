@@ -53,25 +53,26 @@ abi_serializer::abi_serializer(const abi_def& abi) {
 
 void
 abi_serializer::configure_built_in_types() {
-    //public_key.hpp
     built_in_types.emplace("public_key", pack_unpack<public_key_type>());
+    built_in_types.emplace("signature", pack_unpack<signature_type>());
 
-    //symbol.hpp
     built_in_types.emplace("symbol", pack_unpack<symbol>());
-
-    //asset.hpp
+    built_in_types.emplace("symbol_code", pack_unpack<symbol_code>());
     built_in_types.emplace("asset", pack_unpack<asset>());
+    built_in_types.emplace("extended_asset", pack_unpack<extended_asset>());
 
-    //native.hpp
+    built_in_types.emplace("bytes", pack_unpack<bytes>());
     built_in_types.emplace("string", pack_unpack<string>());
     built_in_types.emplace("time", pack_unpack<fc::time_point_sec>());
-    built_in_types.emplace("signature", pack_unpack<signature_type>());
+    built_in_types.emplace("time_point", pack_unpack<fc::time_point>());
+    built_in_types.emplace("time_point_sec", pack_unpack<fc::time_point_sec>());
+    built_in_types.emplace("block_timestamp_type", pack_unpack<block_timestamp_type>());
+    
     built_in_types.emplace("checksum160", pack_unpack<checksum160_type>());
     built_in_types.emplace("checksum256", pack_unpack<checksum256_type>());
     built_in_types.emplace("checksum512", pack_unpack<checksum512_type>());
-    built_in_types.emplace("field_name", pack_unpack<field_name>());
-    built_in_types.emplace("type_name", pack_unpack<type_name>());
-    built_in_types.emplace("bytes", pack_unpack<bytes>());
+    
+    built_in_types.emplace("bool", pack_unpack<uint8_t>());
     built_in_types.emplace("int8", pack_unpack<int8_t>());
     built_in_types.emplace("uint8", pack_unpack<uint8_t>());
     built_in_types.emplace("int16", pack_unpack<int16_t>());
@@ -81,17 +82,13 @@ abi_serializer::configure_built_in_types() {
     built_in_types.emplace("int64", pack_unpack<int64_t>());
     built_in_types.emplace("uint64", pack_unpack<uint64_t>());
     built_in_types.emplace("uint128", pack_unpack<uint128_t>());
+
+    built_in_types.emplace("float32", pack_unpack<float>());
     built_in_types.emplace("float64", pack_unpack<double>());
+    built_in_types.emplace("float128", pack_unpack<uint128_t>());
+
     built_in_types.emplace("name", pack_unpack<name>());
     built_in_types.emplace("name128", pack_unpack<name128>());
-    built_in_types.emplace("account_name", pack_unpack<account_name>());
-    built_in_types.emplace("permission_name", pack_unpack<permission_name>());
-    built_in_types.emplace("action_name", pack_unpack<action_name>());
-    built_in_types.emplace("scope_name", pack_unpack<scope_name>());
-    built_in_types.emplace("domain_name", pack_unpack<domain_name>());
-    built_in_types.emplace("domain_key", pack_unpack<domain_key>());
-    built_in_types.emplace("token_name", pack_unpack<token_name>());
-    built_in_types.emplace("group_name", pack_unpack<group_name>());
     built_in_types.emplace("group", pack_unpack<group>());
     built_in_types.emplace("authorizer_ref", pack_unpack<authorizer_ref>());
     built_in_types.emplace("producer_schedule", pack_unpack<producer_schedule_type>());

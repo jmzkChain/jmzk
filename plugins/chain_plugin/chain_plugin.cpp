@@ -7,7 +7,6 @@
 #include <evt/chain/config.hpp>
 #include <evt/chain/exceptions.hpp>
 #include <evt/chain/fork_database.hpp>
-#include <evt/chain/producer_object.hpp>
 #include <evt/chain/types.hpp>
 #include <evt/chain/plugin_interface.hpp>
 

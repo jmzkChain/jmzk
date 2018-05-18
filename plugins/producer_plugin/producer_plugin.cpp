@@ -5,7 +5,6 @@
 #include <evt/producer_plugin/producer_plugin.hpp>
 #include <evt/chain/global_property_object.hpp>
 #include <evt/chain/plugin_interface.hpp>
-#include <evt/chain/producer_object.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/scoped_exit.hpp>
