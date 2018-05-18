@@ -16,6 +16,7 @@ const static auto default_block_log_dir      = "block_log";
 const static auto default_tokendb_dir        = "tokendb";
 const static auto default_shared_memory_dir  = "shared_mem";
 const static auto default_shared_memory_size = 1 * 1024 * 1024 * 1024ll;
+const static auto default_unconfirmed_cache_size = 320*1024*1024ll;/// 1MB * 340 blocks based on 21 producer BFT delay
 
 const static uint128_t system_account_name = N128(evt);
 

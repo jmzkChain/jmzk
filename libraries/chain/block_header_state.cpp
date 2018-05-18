@@ -168,7 +168,7 @@ block_header_state::next(const signed_block_header& h, bool trust) const {
 
     auto itr = producer_to_last_produced.find(h.producer);
     if(itr != producer_to_last_produced.end()) {
-        FC_ASSERT(itr->second <= result.block_num - h.confirmed, "producer double-confirming known range");
+        FC_ASSERT(itr->second < result.block_num - h.confirmed, "producer double-confirming known range");
     }
 
     // FC_ASSERT( result.header.block_mroot == h.block_mroot, "mismatch block merkle root" );
