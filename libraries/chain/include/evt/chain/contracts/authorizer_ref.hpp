@@ -25,7 +25,7 @@ public:
     }
 
     authorizer_ref(const group_name& name) : type_(group_t) {
-        static_assert(sizeof(group_name) <= sizeof(storage_));
+        static_assert(sizeof(group_name) <= sizeof(storage_), "Not fit storage");
         memset(storage_.data, 0, sizeof(storage_));
         memcpy(storage_.data, &name, sizeof(name));
     }
