@@ -13,3 +13,6 @@
 	path = libraries/rocksdb
 	url = https://github.com/facebook/rocksdb.git
 	branch = 5.11.fb
+[submodule "libraries/safeint"]
+	path = libraries/safeint
+	url = https://github.com/dcleblanc/SafeInt.git

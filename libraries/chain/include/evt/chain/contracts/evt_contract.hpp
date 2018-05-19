@@ -3,13 +3,14 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #pragma once
-#include <evt/chain/contracts/types.hpp>
 
 namespace evt { namespace chain {
 class apply_context;
 }}  // namespace evt::chain
 
 namespace evt { namespace chain { namespace contracts {
+
+struct abi_def;
 
 /**
 * @defgroup native_action_handlers Native Action Handlers

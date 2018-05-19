@@ -25,7 +25,7 @@ add_library( evt_utilities
 target_link_libraries( evt_utilities fc )
 target_include_directories( evt_utilities
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
-                                   "${CMAKE_CURRENT_SOURCE_DIR}/../wasm-jit/Include" )
+                                   "${CMAKE_CURRENT_SOURCE_DIR}/../safeint" )
 if (USE_PCH)
   set_target_properties(evt_utilities PROPERTIES COTIRE_ADD_UNITY_BUILD FALSE)
   cotire(evt_utilities)

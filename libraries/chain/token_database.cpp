@@ -24,7 +24,7 @@ struct db_key {
     db_key(const char* prefix, const T& t)
         : prefix(prefix)
         , slice((const char*)this, 16 + N) {
-        static_assert(sizeof(domain_name) == 16);
+        static_assert(sizeof(domain_name) == 16, "Not valid prefix size");
         memcpy(data, &t, N);
     }
 
