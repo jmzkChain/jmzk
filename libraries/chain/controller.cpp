@@ -96,7 +96,7 @@ struct controller_impl {
         , db(cfg.shared_memory_dir,
              cfg.read_only ? database::read_only : database::read_write,
              cfg.shared_memory_size)
-        , unconfirmed_blocks(cfg.shared_memory_dir,
+        , unconfirmed_blocks(cfg.block_log_dir/"unconfirmed",
              cfg.read_only ? database::read_only : database::read_write,
              cfg.unconfirmed_cache_size)
         , blog(cfg.block_log_dir)
