@@ -286,7 +286,7 @@
 		cd gflags
 		mkdir build
         cd build
-        cmake ../
+        cmake ../ -DBUILD_SHARED_LIBS=ON
 		if [ $? -ne 0 ]; then
 			printf "\tError running CMAKE for gflags.\n"
 			printf "\tExiting now.\n\n"
