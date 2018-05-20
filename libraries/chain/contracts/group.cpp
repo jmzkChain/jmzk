@@ -42,20 +42,12 @@ void
 to_variant(const group& group, const group::node& node, fc::variant& v) {
     fc::mutable_variant_object mv;
     if(node.is_leaf()) {
-        mv["type"] = "leaf";
         to_variant(group.keys_[node.index], mv["key"]);
         mv["weight"] = node.weight;
         v = mv;
         return;
     }
     
-
-    if(node.is_root()) {
-        mv["type"] = "root";
-    }
-    else {
-        mv["type"] = "branch";
-    }
     mv["threshold"] = node.threshold;
     mv["weight"] = node.weight;
 

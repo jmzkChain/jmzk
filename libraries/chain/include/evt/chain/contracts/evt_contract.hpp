@@ -4,6 +4,8 @@
  */
 #pragma once
 
+#include <stdint.h>
+
 namespace evt { namespace chain {
 class apply_context;
 }}  // namespace evt::chain
@@ -29,6 +31,7 @@ void apply_evt_updateowner(apply_context& context);
 void apply_evt_transferevt(apply_context& context);
 
 abi_def evt_contract_abi();
+uint32_t evt_contract_abi_version();
 
 ///@}  end action handlers
 

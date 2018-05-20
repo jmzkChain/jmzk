@@ -41,14 +41,6 @@ public:
     const abi_serializer& system_api;
 
 public:
-    static const string KEYi64;
-    static const string KEYstr;
-    static const string KEYi128i128;
-    static const string KEYi64i64i64;
-    static const string PRIMARY;
-    static const string SECONDARY;
-    static const string TERTIARY;
-
     read_only(const controller& db, const abi_serializer& system_api)
         : db(db)
         , system_api(system_api) {}
@@ -57,6 +49,7 @@ public:
 
     struct get_info_results {
         string               server_version;
+        uint32_t             evt_abi_version;
         uint32_t             head_block_num              = 0;
         uint32_t             last_irreversible_block_num = 0;
         chain::block_id_type last_irreversible_block_id;
@@ -179,7 +172,7 @@ private:
 
 FC_REFLECT(evt::chain_apis::empty, )
 FC_REFLECT(evt::chain_apis::read_only::get_info_results,
-           (server_version)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)
+           (server_version)(evt_abi_version)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)
            (head_block_id)(head_block_time)(head_block_producer)(recent_slots)(participation_rate))
 FC_REFLECT(evt::chain_apis::read_only::get_block_params, (block_num_or_id))
 

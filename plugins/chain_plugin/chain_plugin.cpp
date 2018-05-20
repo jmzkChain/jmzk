@@ -295,14 +295,6 @@ chain_plugin::get_chain_id(chain_id_type& cid) const {
 
 namespace chain_apis {
 
-const string read_only::KEYi64       = "i64";
-const string read_only::KEYstr       = "str";
-const string read_only::KEYi128i128  = "i128i128";
-const string read_only::KEYi64i64i64 = "i64i64i64";
-const string read_only::PRIMARY      = "primary";
-const string read_only::SECONDARY    = "secondary";
-const string read_only::TERTIARY     = "tertiary";
-
 read_only::get_info_results
 read_only::get_info(const read_only::get_info_params&) const {
     auto itoh = [](uint32_t n, size_t hlen = sizeof(uint32_t) << 1) {
@@ -314,6 +306,7 @@ read_only::get_info(const read_only::get_info_params&) const {
     };
     return {
         itoh(static_cast<uint32_t>(app().version())),
+        contracts::evt_contract_abi_version(),
         db.head_block_num(),
         db.last_irreversible_block_num(),
         db.last_irreversible_block_id(),

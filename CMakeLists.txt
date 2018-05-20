@@ -18,7 +18,7 @@ set( CMAKE_CXX_STANDARD 14 )
 set( CMAKE_CXX_EXTENSIONS ON )
 set( CXX_STANDARD_REQUIRED ON)
 
-set(VERSION_MAJOR 3)
+set(VERSION_MAJOR 1)
 set(VERSION_MINOR 0)
 set(VERSION_PATCH 1)
 
@@ -193,9 +193,7 @@ add_subdirectory( libraries )
 add_subdirectory( plugins )
 add_subdirectory( programs )
 
-install(FILES genesis.json DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/evt/node_00)
 install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/evt)
 install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/evt/node_00)
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/genesis.json ${CMAKE_CURRENT_BINARY_DIR}/etc/evt/node_00/genesis.json COPYONLY)
 
 include(installer)

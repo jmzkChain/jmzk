@@ -5,7 +5,16 @@
 #include <evt/chain/contracts/evt_contract.hpp>
 #include <evt/chain/contracts/types.hpp>
 
-namespace evt { namespace chain { namespace contracts { 
+namespace evt { namespace chain { namespace contracts {
+
+static auto evt_abi_version = 1u;
+static auto evt_abi_minor_version = 1u;
+static auto evt_abi_patch_version = 0u;
+
+uint32_t
+evt_contract_abi_version() {
+   return evt_abi_version * 10000 + evt_abi_minor_version * 100 + evt_abi_patch_version;
+}
 
 abi_def
 evt_contract_abi() {
