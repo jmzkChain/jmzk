@@ -52,10 +52,7 @@ transaction_header::verify_reference_block(const block_id_type& reference_block)
 }
 
 void
-transaction_header::validate() const {
-    EVT_ASSERT(max_net_usage_words.value < UINT32_MAX / 8UL, transaction_exception,
-               "declared max_net_usage_words overflows when expanded to max net usage");
-}
+transaction_header::validate() const {}
 
 transaction_id_type
 transaction::id() const {

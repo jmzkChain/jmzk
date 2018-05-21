@@ -31,9 +31,6 @@ struct transaction_header {
     time_point_sec   expiration;              ///< the time at which a transaction expires
     uint16_t         ref_block_num    = 0U;   ///< specifies a block num in the last 2^16 blocks.
     uint32_t         ref_block_prefix = 0UL;  ///< specifies the lower 32 bits of the blockid at get_ref_blocknum
-    fc::unsigned_int max_net_usage_words
-        = 0UL;  /// upper limit on total network bandwidth (in 8 byte words) billed for this transaction
-    uint8_t          max_cpu_usage_ms = 0;  /// upper limit on the total CPU time billed for this transaction
     fc::unsigned_int delay_sec
         = 0UL;  /// number of seconds to delay this transaction for during which it may be canceled.
 
@@ -134,7 +131,7 @@ uint128_t transaction_id_to_sender_id(const transaction_id_type& tid);
 }}  // namespace evt::chain
 
 FC_REFLECT(evt::chain::transaction_header,
-           (expiration)(ref_block_num)(ref_block_prefix)(max_net_usage_words)(max_cpu_usage_ms)(delay_sec))
+           (expiration)(ref_block_num)(ref_block_prefix)(delay_sec))
 FC_REFLECT_DERIVED(evt::chain::transaction, (evt::chain::transaction_header), (actions)(transaction_extensions))
 FC_REFLECT_DERIVED(evt::chain::signed_transaction, (evt::chain::transaction), (signatures))
 FC_REFLECT_ENUM(evt::chain::packed_transaction::compression_type, (none)(zlib))
