@@ -25,12 +25,14 @@ asset::precision() const {
 
 string
 asset::to_string() const {
-    string result = fc::to_string(static_cast<int64_t>(amount) / precision());
+    auto sign = amount < 0 ? "-" : "";
+    int64_t abs_amount = std::abs(amount);
+    auto result = fc::to_string(static_cast<int64_t>(abs_amount) / precision());
     if(decimals()) {
-        auto fract = static_cast<int64_t>(amount) % precision();
-        result += "." + fc::to_string(precision() + fract).erase(0, 1);
+        auto fract = static_cast<int64_t>(abs_amount) % precision();
+        result += "." + fc::to_string(precision() + fract).erase(0,1);
     }
-    return result + " " + symbol_name();
+    return sign + result + " " + symbol_name();
 }
 
 asset
