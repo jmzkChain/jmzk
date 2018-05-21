@@ -376,7 +376,7 @@ struct abi_from_variant {
     static void
     extract(const variant& v, packed_transaction& ptrx, Resolver resolver) {
         const variant_object& vo = v.get_object();
-        wdump((vo));
+        // wdump((vo));
         EVT_ASSERT(vo.contains("signatures"), packed_transaction_type_exception, "Missing signatures");
         EVT_ASSERT(vo.contains("compression"), packed_transaction_type_exception, "Missing compression");
         from_variant(vo["signatures"], ptrx.signatures);
