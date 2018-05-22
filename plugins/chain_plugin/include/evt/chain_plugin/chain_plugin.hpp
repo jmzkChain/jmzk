@@ -6,9 +6,10 @@
 #include <appbase/application.hpp>
 #include <evt/chain/asset.hpp>
 #include <evt/chain/block.hpp>
-#include <evt/chain/contracts/abi_serializer.hpp>
+#include <evt/chain/version.hpp>
 #include <evt/chain/controller.hpp>
 #include <evt/chain/transaction.hpp>
+#include <evt/chain/contracts/abi_serializer.hpp>
 
 #include <boost/container/flat_set.hpp>
 
@@ -17,17 +18,15 @@ class variant;
 }
 
 namespace evt {
-using chain::controller;
-using std::unique_ptr;
 using namespace appbase;
+using std::unique_ptr;
+using chain::controller;
 using boost::container::flat_set;
-using chain::account_name;
-using chain::asset;
 using chain::name;
+using chain::account_name;
 using chain::public_key_type;
-using chain::uint128_t;
+using chain::version;
 using chain::contracts::abi_serializer;
-using fc::optional;
 
 namespace chain_apis {
 struct empty {};
@@ -49,7 +48,7 @@ public:
 
     struct get_info_results {
         string               server_version;
-        uint32_t             evt_abi_version;
+        version              evt_api_version;
         uint32_t             head_block_num              = 0;
         uint32_t             last_irreversible_block_num = 0;
         chain::block_id_type last_irreversible_block_id;
@@ -172,12 +171,9 @@ private:
 
 FC_REFLECT(evt::chain_apis::empty, )
 FC_REFLECT(evt::chain_apis::read_only::get_info_results,
-           (server_version)(evt_abi_version)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)
-           (head_block_id)(head_block_time)(head_block_producer)(recent_slots)(participation_rate))
+          (server_version)(evt_api_version)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)
+          (head_block_id)(head_block_time)(head_block_producer)(recent_slots)(participation_rate))
 FC_REFLECT(evt::chain_apis::read_only::get_block_params, (block_num_or_id))
-
-FC_REFLECT(evt::chain_apis::read_write::push_transaction_results, (transaction_id)(processed))
-
 FC_REFLECT(evt::chain_apis::read_only::producer_info, (producer_name))
 FC_REFLECT(evt::chain_apis::read_only::abi_json_to_bin_params, (action)(args))
 FC_REFLECT(evt::chain_apis::read_only::abi_json_to_bin_result, (binargs))
@@ -185,3 +181,4 @@ FC_REFLECT(evt::chain_apis::read_only::abi_bin_to_json_params, (action)(binargs)
 FC_REFLECT(evt::chain_apis::read_only::abi_bin_to_json_result, (args))
 FC_REFLECT(evt::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys))
 FC_REFLECT(evt::chain_apis::read_only::get_required_keys_result, (required_keys))
+FC_REFLECT(evt::chain_apis::read_write::push_transaction_results, (transaction_id)(processed))

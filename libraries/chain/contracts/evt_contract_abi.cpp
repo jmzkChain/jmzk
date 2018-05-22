@@ -7,13 +7,13 @@
 
 namespace evt { namespace chain { namespace contracts {
 
-static auto evt_abi_version = 1u;
-static auto evt_abi_minor_version = 1u;
-static auto evt_abi_patch_version = 0u;
+static auto evt_abi_version = 1;
+static auto evt_abi_minor_version = 1;
+static auto evt_abi_patch_version = 0;
 
 version
 evt_contract_abi_version() {
-   return version(1, 1, 0);
+   return version(evt_abi_version, evt_abi_minor_version, evt_abi_patch_version);
 }
 
 abi_def
