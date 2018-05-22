@@ -11,9 +11,9 @@ static auto evt_abi_version = 1u;
 static auto evt_abi_minor_version = 1u;
 static auto evt_abi_patch_version = 0u;
 
-uint32_t
+version
 evt_contract_abi_version() {
-   return evt_abi_version * 10000 + evt_abi_minor_version * 100 + evt_abi_patch_version;
+   return version(1, 1, 0);
 }
 
 abi_def
