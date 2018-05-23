@@ -414,7 +414,7 @@ struct controller_impl {
 
         transaction_trace_ptr trace;
         try {
-            transaction_context trx_context(self, trx->trx, trx->id);
+            transaction_context trx_context(self, *trx);
             trx_context.deadline = deadline;
             trace                = trx_context.trace;
             try {

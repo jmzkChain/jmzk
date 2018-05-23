@@ -26,7 +26,7 @@ apply_context::exec_one() {
     r.global_sequence = next_global_sequence();
 
     auto t    = action_trace(r);
-    t.trx_id  = trx_context.id;
+    t.trx_id  = trx_context.trx.id;
     t.act     = act;
     t.console = _pending_console_output.str();
 

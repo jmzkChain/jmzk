@@ -10,18 +10,16 @@
 
 namespace evt { namespace chain {
 
-transaction_context::transaction_context(controller&                c,
-                                         const signed_transaction&  t,
-                                         const transaction_id_type& trx_id,
-                                         fc::time_point             s)
+transaction_context::transaction_context(controller&           c,
+                                         transaction_metadata& t,
+                                         fc::time_point        s)
     : control(c)
     , trx(t)
-    , id(trx_id)
     , trace(std::make_shared<transaction_trace>())
     , start(s) {
-    trace->id = id;
+    trace->id = trx.id;
     executed.reserve(trx.total_actions());
-    FC_ASSERT(trx.transaction_extensions.size() == 0, "we don't support any extensions yet");
+    FC_ASSERT(trx.trx.transaction_extensions.size() == 0, "we don't support any extensions yet");
 }
 
 void
@@ -39,19 +37,20 @@ transaction_context::init_for_implicit_trx() {
 
 void
 transaction_context::init_for_input_trx(uint32_t num_signatures) {
+    auto& t = trx.trx;
     published = control.pending_block_time();
     is_input  = true;
-    control.validate_expiration(trx);
-    control.validate_tapos(trx);
+    control.validate_expiration(t);
+    control.validate_tapos(t);
     init();
-    record_transaction(id, trx.expiration);  /// checks for dupes
+    record_transaction(trx.id, t.expiration);  /// checks for dupes
 }
 
 void
 transaction_context::exec() {
     FC_ASSERT(is_initialized, "must first initialize");
 
-    for(const auto& act : trx.actions) {
+    for(const auto& act : trx.trx.actions) {
         trace->action_traces.emplace_back();
         dispatch_action(trace->action_traces.back(), act);
     }

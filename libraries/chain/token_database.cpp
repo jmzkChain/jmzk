@@ -148,6 +148,7 @@ public:
                 auto v  = read_value<delay_def>(*merge_in.existing_value);
                 auto ud = read_value<updatedelay>(merge_in.operand_list[merge_in.operand_list.size() - 1]);
                 if(ud.signed_keys.valid()) {
+                    v.signed_keys.reserve(v.signed_keys.size() + ud.signed_keys->size());
                     v.signed_keys.insert(v.signed_keys.end(), ud.signed_keys->cbegin(), ud.signed_keys->cend());
                 }
                 if(ud.status.valid()) {
@@ -407,7 +408,7 @@ token_database::exists_account(const account_name& name) const {
 }
 
 int
-token_database::add_delay(const newdelay& delay) {
+token_database::add_delay(const delay_def& delay) {
     using namespace __internal;
     if(exists_delay(delay.name)) {
         EVT_THROW(tokendb_delay_existed, "Delay is already existed: ${name}", ("name", (std::string)delay.name));

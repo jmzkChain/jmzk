@@ -88,7 +88,7 @@ public:
     int exists_group(const group_name&) const;
     int add_account(const account_def&);
     int exists_account(const account_name&) const;
-    int add_delay(const newdelay&);
+    int add_delay(const delay_def&);
     int exists_delay(const proposal_name&) const;
 
     int read_domain(const domain_name&, const read_domain_func&) const;
