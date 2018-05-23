@@ -24,11 +24,11 @@ struct db_key {
     db_key(const char* prefix, const T& t)
         : prefix(prefix)
         , slice((const char*)this, 16 + N) {
-        static_assert(sizeof(domain_name) == 16, "Not valid prefix size");
+        static_assert(sizeof(name128) == 16, "Not valid prefix size");
         memcpy(data, &t, N);
     }
 
-    db_key(domain_name prefix, const T& t)
+    db_key(name128 prefix, const T& t)
         : prefix(prefix)
         , slice((const char*)this, 16 + N) {
         memcpy(data, &t, N);
@@ -39,8 +39,8 @@ struct db_key {
         return slice;
     }
 
-    domain_name prefix;
-    char        data[N];
+    name128 prefix;
+    char    data[N];
 
     rocksdb::Slice slice;
 };
@@ -63,6 +63,11 @@ get_group_key(const group_name& name) {
 db_key<account_name>
 get_account_key(const account_name& account) {
     return db_key<account_name>("account", account);
+}
+
+db_key<proposal_name>
+get_delay_key(const proposal_name& delay) {
+    return db_key<proposal_name>("delay", delay);
 }
 
 template <typename T>
@@ -98,6 +103,8 @@ public:
         static rocksdb::Slice DomainPrefixSlice((const char*)&DomainPrefixName, sizeof(DomainPrefixName));
         static account_name   AccountPrefixName("account");
         static rocksdb::Slice AccountPrefixSlice((const char*)&AccountPrefixName, sizeof(AccountPrefixName));
+        static proposal_name  DelayPrefixName("delay");
+        static rocksdb::Slice DelayPrefixSlice((const char*)&DelayPrefixName, sizeof(DelayPrefixName));
 
         try {
             // merge only need to consider latest one
@@ -133,6 +140,18 @@ public:
                 }
                 if(ua.frozen_balance.valid()) {
                     v.frozen_balance = *ua.frozen_balance;
+                }
+                merge_out->new_value = get_value(v);
+            }
+            else if(merge_in.key.starts_with(DelayPrefixSlice)) {
+                // delay
+                auto v  = read_value<delay_def>(*merge_in.existing_value);
+                auto ud = read_value<updatedelay>(merge_in.operand_list[merge_in.operand_list.size() - 1]);
+                if(ud.signed_keys.valid()) {
+                    v.signed_keys.insert(v.signed_keys.end(), ud.signed_keys->cbegin(), ud.signed_keys->cend());
+                }
+                if(ud.status.valid()) {
+                    v.status = *ud.status;
                 }
                 merge_out->new_value = get_value(v);
             }
@@ -176,7 +195,9 @@ enum dbaction_type {
     kUpdateDomain,
     kUpdateGroup,
     kUpdateToken,
-    kUpdateAccount
+    kUpdateAccount,
+    kNewDelay,
+    kUpdateDelay
 };
 
 struct sp_newdomain {
@@ -214,6 +235,14 @@ struct sp_updateaccount {
     account_name name;
 };
 
+struct sp_newdelay {
+    proposal_name name;
+};
+
+struct sp_updatedelay {
+    proposal_name name;
+};
+
 }  // namespace __internal
 
 token_database::token_database(const fc::path& dbpath)
@@ -247,7 +276,7 @@ token_database::initialize(const fc::path& dbpath) {
     }
 
     auto native_path = dbpath.to_native_ansi_path();
-    auto status      = DB::Open(options, native_path, &db_);
+    auto status = DB::Open(options, native_path, &db_);
     if(!status.ok()) {
         EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
@@ -378,6 +407,35 @@ token_database::exists_account(const account_name& name) const {
 }
 
 int
+token_database::add_delay(const newdelay& delay) {
+    using namespace __internal;
+    if(exists_delay(delay.name)) {
+        EVT_THROW(tokendb_delay_existed, "Delay is already existed: ${name}", ("name", (std::string)delay.name));
+    }
+    auto key    = get_delay_key(delay.name);
+    auto value  = get_value(delay);
+    auto status = db_->Put(write_opts_, key.as_slice(), value);
+    if(!status.ok()) {
+        EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
+    }
+    if(should_record()) {
+        auto act  = (sp_newdelay*)malloc(sizeof(sp_newdelay));
+        act->name = delay.name;
+        record(kNewDelay, act);
+    }
+    return 0;
+}
+
+int
+token_database::exists_delay(const proposal_name& name) const {
+    using namespace __internal;
+    auto        key = get_delay_key(name);
+    std::string value;
+    auto        status = db_->Get(read_opts_, key.as_slice(), &value);
+    return status.ok();
+}
+
+int
 token_database::read_domain(const domain_name& name, const read_domain_func& func) const {
     using namespace __internal;
     std::string value;
@@ -430,6 +488,20 @@ token_database::read_account(const account_name& name, const read_account_func& 
         EVT_THROW(tokendb_account_not_found, "Cannot find account: ${name}", ("name", (std::string)name));
     }
     auto v = read_value<account_def>(value);
+    func(v);
+    return 0;
+}
+
+int
+token_database::read_delay(const proposal_name& name, const read_delay_func& func) const {
+    using namespace __internal;
+    std::string value;
+    auto        key    = get_delay_key(name);
+    auto        status = db_->Get(read_opts_, key.as_slice(), &value);
+    if(!status.ok()) {
+        EVT_THROW(tokendb_delay_not_found, "Cannot find delay: ${name}", ("name", (std::string)name));
+    }
+    auto v = read_value<delay_def>(value);
     func(v);
     return 0;
 }
@@ -499,6 +571,23 @@ token_database::update_account(const updateaccount& ua) {
         auto act  = (sp_updateaccount*)malloc(sizeof(sp_updateaccount));
         act->name = ua.name;
         record(kUpdateAccount, act);
+    }
+    return 0;
+}
+
+int
+token_database::update_delay(const updatedelay& ud) {
+    using namespace __internal;
+    auto key    = get_delay_key(ud.name);
+    auto value  = get_value(ud);
+    auto status = db_->Merge(write_opts_, key.as_slice(), value);
+    if(!status.ok()) {
+        EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
+    }
+    if(should_record()) {
+        auto act  = (sp_updatedelay*)malloc(sizeof(sp_updatedelay));
+        act->name = ud.name;
+        record(kUpdateDelay, act);
     }
     return 0;
 }
@@ -640,6 +729,21 @@ token_database::rollback_to_latest_savepoint() {
             case kUpdateAccount: {
                 auto        act = (sp_updateaccount*)it->data;
                 auto        key = get_account_key(act->name);
+                std::string old_value;
+                auto        status = db_->Get(snapshot_read_opts_, key.as_slice(), &old_value);
+                if(!status.ok()) {
+                    // key may not existed in latest snapshot, remove it
+                    FC_ASSERT(status.code() == rocksdb::Status::kNotFound, "Not expected rocksdb code: ${status}",
+                              ("status", status.getState()));
+                    db_->Delete(write_opts_, key.as_slice());
+                    break;
+                }
+                batch.Put(key.as_slice(), old_value);
+                break;
+            }
+            case kUpdateDelay: {
+                auto        act = (sp_updatedelay*)it->data;
+                auto        key = get_delay_key(act->name);
                 std::string old_value;
                 auto        status = db_->Get(snapshot_read_opts_, key.as_slice(), &old_value);
                 if(!status.ok()) {

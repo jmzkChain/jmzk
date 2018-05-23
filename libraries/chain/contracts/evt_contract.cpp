@@ -318,4 +318,34 @@ apply_evt_transferevt(apply_context& context) {
     FC_CAPTURE_AND_RETHROW((teact));
 }
 
+void
+apply_evt_newdelay(apply_context& context) {
+    using namespace __internal;
+
+    auto ndact = context.act.data_ad<newdelay>();
+    try {
+        EVT_ASSERT(context.has_authorized(N128(delay), ndact.name), action_validate_exception, "Authorized information doesn't match");
+
+        auto& tokendb = context.token_db;
+        EVT_ASSERT(!ndact.name.empty(), action_validate_exception, "Proposal name shouldn't be empty");
+        EVT_ASSERT(!tokendb.exists_delay(ndact.name), action_validate_exception, "Delay ${name} already existed", ("name",ndact.name));
+
+    }
+}
+
+void
+apply_evt_approvedelay(apply_context& context) {
+
+}
+
+void
+apply_evt_canceldelay(apply_context& context) {
+
+}
+
+void
+apply_evt_executedelay(apply_context& context) {
+
+}
+
 } } } // namespace evt::chain::contracts

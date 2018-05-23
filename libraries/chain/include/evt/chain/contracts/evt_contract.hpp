@@ -30,6 +30,11 @@ void apply_evt_newaccount(apply_context& context);
 void apply_evt_updateowner(apply_context& context);
 void apply_evt_transferevt(apply_context& context);
 
+void apply_evt_newdelay(apply_context& context);
+void apply_evt_approvedelay(apply_context& context);
+void apply_evt_canceldelay(apply_context& context);
+void apply_evt_executedelay(apply_context& context);
+
 abi_def evt_contract_abi();
 version evt_contract_abi_version();
 

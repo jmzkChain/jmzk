@@ -116,6 +116,10 @@ struct controller_impl {
         SET_APP_HANDLER(newaccount);
         SET_APP_HANDLER(updateowner);
         SET_APP_HANDLER(transferevt);
+        SET_APP_HANDLER(newdelay);
+        SET_APP_HANDLER(approvedelay);
+        SET_APP_HANDLER(canceldelay);
+        SET_APP_HANDLER(executedelay);
 
         fork_db.irreversible.connect([&](auto b) {
             on_irreversible(b);
@@ -325,6 +329,14 @@ struct controller_impl {
             ad.issue_time = conf.genesis.initial_timestamp;
             auto r = token_db.add_domain(ad);
             FC_ASSERT(r == 0, "Add `account` domain failed");
+        }
+        if(!token_db.exists_domain("delay")) {
+            auto dd = domain_def();
+            dd.name = "delay";
+            dd.issuer = conf.genesis.initial_key;
+            dd.issue_time = conf.genesis.initial_timestamp;
+            auto r = token_db.add_domain(dd);
+            FC_ASSERT(r == 0, "Add `delay` domain failed");
         }
     }
 

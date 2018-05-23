@@ -158,6 +158,20 @@ struct account_def {
     user_list owner;
 };
 
+enum delay_status {
+    proposed = 0, executed, cancelled
+};
+
+struct delay_def {
+    delay_def() = default;
+
+    proposal_name                name;
+    public_key_type              proposer;
+    delay_status                 status;
+    transaction                  trx;
+    std::vector<public_key_type> signed_keys;
+};
+
 struct newdomain {
     domain_name name;
     user_id     issuer;
@@ -265,6 +279,51 @@ struct updateaccount {
     fc::optional<balance_type> frozen_balance;
 };
 
+struct newdelay {
+    proposal_name   name;
+    public_key_type proposer;
+    transaction     trx;
+
+    static action_name
+    get_name() {
+        return N(newdelay);
+    }
+};
+
+struct canceldelay {
+    proposal_name name;
+
+    static action_name
+    get_name() {
+        return N(canceldelay);
+    }
+};
+
+struct approvedelay {
+    proposal_name               name;
+    std::vector<signature_type> signatures;
+
+    static action_name
+    get_name() {
+        return N(approvedelay);
+    }
+};
+
+struct executedelay {
+    proposal_name name;
+
+    static action_name
+    get_name() {
+        return N(executedelay);
+    }
+};
+
+struct updatedelay {
+    proposal_name                              name;
+    fc::optional<std::vector<public_key_type>> signed_keys;
+    fc::optional<delay_status>                 status;
+};
+
 }}}  // namespace evt::chain::contracts
 
 FC_REFLECT(evt::chain::contracts::type_def, (new_type_name)(type))
@@ -278,6 +337,8 @@ FC_REFLECT(evt::chain::contracts::authorizer_weight, (ref)(weight))
 FC_REFLECT(evt::chain::contracts::permission_def, (name)(threshold)(authorizers))
 FC_REFLECT(evt::chain::contracts::domain_def, (name)(issuer)(issue_time)(issue)(transfer)(manage))
 FC_REFLECT(evt::chain::contracts::account_def, (name)(creator)(create_time)(balance)(frozen_balance)(owner))
+FC_REFLECT_ENUM(evt::chain::contracts::delay_status, (proposed)(executed)(cancelled))
+FC_REFLECT(evt::chain::contracts::delay_def, (name)(proposer)(status)(trx)(signed_keys))
 
 FC_REFLECT(evt::chain::contracts::newdomain, (name)(issuer)(issue)(transfer)(manage))
 FC_REFLECT(evt::chain::contracts::issuetoken, (domain)(names)(owner))
@@ -289,3 +350,8 @@ FC_REFLECT(evt::chain::contracts::newaccount, (name)(owner))
 FC_REFLECT(evt::chain::contracts::updateowner, (name)(owner))
 FC_REFLECT(evt::chain::contracts::transferevt, (from)(to)(amount))
 FC_REFLECT(evt::chain::contracts::updateaccount, (owner)(balance)(frozen_balance))
+FC_REFLECT(evt::chain::contracts::newdelay, (name)(proposer)(trx))
+FC_REFLECT(evt::chain::contracts::canceldelay, (name))
+FC_REFLECT(evt::chain::contracts::approvedelay, (name)(signatures))
+FC_REFLECT(evt::chain::contracts::executedelay, (name))
+FC_REFLECT(evt::chain::contracts::updatedelay, (name)(signed_keys)(status))

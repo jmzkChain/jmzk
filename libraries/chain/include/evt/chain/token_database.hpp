@@ -21,6 +21,7 @@ using read_domain_func  = std::function<void(const domain_def&)>;
 using read_token_func   = std::function<void(const token_def&)>;
 using read_group_func   = std::function<void(const group_def&)>;
 using read_account_func = std::function<void(const account_def&)>;
+using read_delay_func   = std::function<void(const delay_def&)>;
 
 class token_database : boost::noncopyable {
 private:
@@ -87,17 +88,21 @@ public:
     int exists_group(const group_name&) const;
     int add_account(const account_def&);
     int exists_account(const account_name&) const;
+    int add_delay(const newdelay&);
+    int exists_delay(const proposal_name&) const;
 
     int read_domain(const domain_name&, const read_domain_func&) const;
     int read_token(const domain_name&, const token_name&, const read_token_func&) const;
     int read_group(const group_name&, const read_group_func&) const;
     int read_account(const account_name&, const read_account_func&) const;
+    int read_delay(const proposal_name&, const read_delay_func&) const;
 
     // specific function, use merge operator to speed up rocksdb action.
     int update_domain(const updatedomain& ud);
     int update_group(const updategroup& ug);
     int transfer_token(const transfer& tt);
     int update_account(const updateaccount& ua);
+    int update_delay(const updatedelay& ud);
 
 public:
     int add_savepoint(int32_t seq);
@@ -113,10 +118,10 @@ private:
     int free_savepoint(savepoint&);
 
 private:
-    rocksdb::DB*          db_;
-    rocksdb::ReadOptions  read_opts_;
-    rocksdb::WriteOptions write_opts_;
-    std::deque<savepoint> savepoints_;
+    rocksdb::DB*                 db_;
+    rocksdb::ReadOptions         read_opts_;
+    rocksdb::WriteOptions        write_opts_;
+    std::deque<savepoint>        savepoints_;
 };
 
 }}  // namespace evt::chain
