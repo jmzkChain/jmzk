@@ -93,6 +93,7 @@ public:
       , m_external_io_service(false)
       , m_listen_backlog(lib::asio::socket_base::max_connections)
       , m_reuse_addr(false)
+      , m_reuse_port(false)
       , m_state(UNINITIALIZED)
     {
         //std::cout << "transport::asio::endpoint constructor" << std::endl;
@@ -133,6 +134,7 @@ public:
       , m_acceptor(src.m_acceptor)
       , m_listen_backlog(lib::asio::socket_base::max_connections)
       , m_reuse_addr(src.m_reuse_addr)
+      , m_reuse_port(src.m_reuse_port)
       , m_elog(src.m_elog)
       , m_alog(src.m_alog)
       , m_state(src.m_state)
@@ -150,6 +152,7 @@ public:
             m_acceptor = rhs.m_acceptor;
             m_listen_backlog = rhs.m_listen_backlog;
             m_reuse_addr = rhs.m_reuse_addr;
+            m_reuse_port = rhs.m_reuse_port;
             m_state = rhs.m_state;
 
             rhs.m_io_service = NULL;
@@ -343,6 +346,24 @@ public:
         m_reuse_addr = value;
     }
 
+    /// Sets whether to use the SO_REUSEPORT flag when opening listening sockets
+    /**
+     * Specifies whether or not to use the SO_REUSEPORT TCP socket option. What
+     * this flag does depends on your operating system. Please consult operating
+     * system documentation for more details.
+     *
+     * New values affect future calls to listen only.
+     *
+     * The default is false.
+     *
+     * @since 0.3.0
+     *
+     * @param value Whether or not to use the SO_REUSEADDR option
+     */
+    void set_reuse_port(bool value) {
+        m_reuse_addr = value;
+    }
+
     /// Retrieve a reference to the endpoint's io_service
     /**
      * The io_service may be an internal or external one. This may be used to
@@ -405,6 +426,10 @@ public:
         m_acceptor->open(ep.protocol(),bec);
         if (!bec) {
             m_acceptor->set_option(lib::asio::socket_base::reuse_address(m_reuse_addr),bec);
+        }
+        if (!bec) {
+            typedef lib::asio::detail::socket_option::boolean<SOL_SOCKET, SO_REUSEPORT> reuse_port;
+            m_acceptor->set_option(reuse_port(m_reuse_port),bec);
         }
         if (!bec) {
             m_acceptor->bind(ep,bec);
@@ -1132,6 +1157,7 @@ private:
     // Network constants
     int                 m_listen_backlog;
     bool                m_reuse_addr;
+    bool                m_reuse_port;
 
     elog_type* m_elog;
     alog_type* m_alog;
