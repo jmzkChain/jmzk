@@ -1,4 +1,4 @@
-# everiToken -  World's First Token-cutomized Public Chain for Token Economy and for Everyone
+# everiToken - World's First Token-customized Public Chain for Token Economy and for Everyone
 
 Welcome to the everiToken source code repository!
 
