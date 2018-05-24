@@ -171,12 +171,14 @@ FC_DECLARE_DERIVED_EXCEPTION( tokendb_domain_existed,            tokendb_excepti
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_group_existed,             tokendb_exception, 3150002, "Permission Group already exists" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_token_existed,             tokendb_exception, 3150003, "Token already exists" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_account_existed,           tokendb_exception, 3150004, "Account already exists" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_domain_not_found,          tokendb_exception, 3150005, "Not found specifc domain" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_group_not_found,           tokendb_exception, 3150006, "Not found specific permission group" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_token_not_found,           tokendb_exception, 3150007, "Not found specific token" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_account_not_found,         tokendb_exception, 3150008, "Not found specific account" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_rocksdb_fail,              tokendb_exception, 3150009, "Rocksdb internal error occurred" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_no_savepoint,              tokendb_exception, 3150010, "No savepoints anymore" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_seq_not_valid,             tokendb_exception, 3150011, "Seq for checkpoint is not valid" );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_delay_existed,             tokendb_exception, 3150005, "Delay already exists" );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_domain_not_found,          tokendb_exception, 3150006, "Not found specifc domain" );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_group_not_found,           tokendb_exception, 3150007, "Not found specific permission group" );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_token_not_found,           tokendb_exception, 3150008, "Not found specific token" );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_account_not_found,         tokendb_exception, 3150009, "Not found specific account" );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_delay_not_found,           tokendb_exception, 3150010, "Not found specific delay" );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_rocksdb_fail,              tokendb_exception, 3150011, "Rocksdb internal error occurred" );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_no_savepoint,              tokendb_exception, 3150012, "No savepoints anymore" );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_seq_not_valid,             tokendb_exception, 3150013, "Seq for checkpoint is not valid" );
 
 }} // evt::chain

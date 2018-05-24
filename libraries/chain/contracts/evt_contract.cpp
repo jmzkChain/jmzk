@@ -9,6 +9,7 @@
 #include <fc/crypto/ripemd160.hpp>
 #include <evt/chain/apply_context.hpp>
 #include <evt/chain/token_database.hpp>
+#include <evt/chain/transaction_context.hpp>
 #include <evt/chain/contracts/types.hpp>
 #include <evt/utilities/safemath.hpp>
 
@@ -316,6 +317,94 @@ apply_evt_transferevt(apply_context& context) {
         tokendb.update_account(tua);
     }
     FC_CAPTURE_AND_RETHROW((teact));
+}
+
+void
+apply_evt_newdelay(apply_context& context) {
+    using namespace __internal;
+
+    auto ndact = context.act.data_as<newdelay>();
+    try {
+        EVT_ASSERT(context.has_authorized(N128(delay), ndact.name), action_validate_exception, "Authorized information doesn't match");
+
+        auto& tokendb = context.token_db;
+        EVT_ASSERT(!ndact.name.empty(), action_validate_exception, "Proposal name shouldn't be empty");
+        EVT_ASSERT(!tokendb.exists_delay(ndact.name), action_validate_exception, "Delay ${name} already existed", ("name",ndact.name));
+
+        auto delay = delay_def {
+            ndact.name,
+            ndact.proposer,
+            delay_status::proposed,
+            ndact.trx
+        };
+        auto& keys = context.trx_context.trx.recover_keys();
+        delay.signed_keys.reserve(keys.size());
+        delay.signed_keys.insert(delay.signed_keys.end(), keys.cbegin(), keys.cend());
+        tokendb.add_delay(delay);
+    }
+    FC_CAPTURE_AND_RETHROW((ndact));
+}
+
+void
+apply_evt_approvedelay(apply_context& context) {
+    using namespace __internal;
+
+    auto adact = context.act.data_as<approvedelay>();
+    try {
+        EVT_ASSERT(context.has_authorized(N128(delay), adact.name), action_validate_exception, "Authorized information doesn't match");
+
+        auto& tokendb = context.token_db;
+        bool  existed = false;
+        flat_set<public_key_type> signed_keys;
+        tokendb.read_delay(adact.name, [&](const auto& delay) {
+            EVT_ASSERT(delay.status == delay_status::proposed, action_validate_exception, "Delay is not in proper status");
+            signed_keys = delay.trx.get_signature_keys(adact.signatures, chain_id_type());
+            existed = true;
+        });
+        EVT_ASSERT(existed, action_validate_exception, "Delay ${name} is not existed", ("name",adact.name));
+
+        auto& keys = context.trx_context.trx.recover_keys();
+        EVT_ASSERT(signed_keys.size() == keys.size(), action_validate_exception, "Signed keys and signatures are not match");
+
+        auto it  = signed_keys.cbegin();
+        auto it2 = keys.cbegin();
+        for(; it != signed_keys.cend(); it++, it2++) {
+            EVT_ASSERT(*it == *it2, action_validate_exception, "Signed keys and signatures are not match");
+        }
+
+        auto ud = updatedelay();
+        ud.signed_keys->insert(ud.signed_keys->end(), signed_keys.cbegin(), signed_keys.cend());
+        tokendb.update_delay(ud);
+    }
+    FC_CAPTURE_AND_RETHROW((adact))
+}
+
+void
+apply_evt_canceldelay(apply_context& context) {
+    using namespace __internal;
+
+    auto cdact = context.act.data_as<canceldelay>();
+    try {
+        EVT_ASSERT(context.has_authorized(N128(delay), cdact.name), action_validate_exception, "Authorized information doesn't match");
+
+        auto& tokendb = context.token_db;
+        bool  existed = false;
+        tokendb.read_delay(cdact.name, [&](const auto& delay) {
+            EVT_ASSERT(delay.status == delay_status::proposed, action_validate_exception, "Delay is not in proper status");
+            existed = true;
+        });
+        EVT_ASSERT(existed, action_validate_exception, "Delay ${name} is not existed", ("name",cdact.name));
+
+        auto ud = updatedelay();
+        ud.status = delay_status::cancelled;
+        tokendb.update_delay(ud);
+    }
+    FC_CAPTURE_AND_RETHROW((cdact))
+}
+
+void
+apply_evt_executedelay(apply_context& context) {
+
 }
 
 } } } // namespace evt::chain::contracts

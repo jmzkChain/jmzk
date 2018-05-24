@@ -13,10 +13,9 @@ private:
     void init();
 
 public:
-    transaction_context(controller&                c,
-                        const signed_transaction&  t,
-                        const transaction_id_type& trx_id,
-                        fc::time_point             start = fc::time_point::now());
+    transaction_context(controller&            c,
+                        transaction_metadata&  t,
+                        fc::time_point         start = fc::time_point::now());
 
     void init_for_implicit_trx();
     void init_for_input_trx(uint32_t num_signatures);
@@ -35,12 +34,11 @@ private:
 
     /// Fields:
 public:
-    controller&               control;
-    const signed_transaction& trx;
-    transaction_id_type       id;
-    transaction_trace_ptr     trace;
-    fc::time_point            start;
-    fc::time_point            published;
+    controller&           control;
+    transaction_metadata& trx;
+    transaction_trace_ptr trace;
+    fc::time_point        start;
+    fc::time_point        published;
 
     vector<action_receipt> executed;
 

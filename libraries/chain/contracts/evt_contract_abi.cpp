@@ -8,7 +8,7 @@
 namespace evt { namespace chain { namespace contracts {
 
 static auto evt_abi_version = 1;
-static auto evt_abi_minor_version = 1;
+static auto evt_abi_minor_version = 2;
 static auto evt_abi_patch_version = 0;
 
 version
@@ -23,7 +23,7 @@ evt_contract_abi() {
    evt_abi.types.push_back( type_def{"user_list","public_key[]"} );
    evt_abi.types.push_back( type_def{"group_key","public_key"} );
    evt_abi.types.push_back( type_def{"weight_type","uint16"} );
-   evt_abi.types.push_back( type_def{"fields","field[]"} );
+   evt_abi.types.push_back( type_def{"fields","field_def[]"} );
    evt_abi.types.push_back( type_def{"time_point_sec","time"} );
    evt_abi.types.push_back( type_def{"permission_name","name"} );
    evt_abi.types.push_back( type_def{"action_name","name"} );
@@ -32,6 +32,7 @@ evt_contract_abi() {
    evt_abi.types.push_back( type_def{"group_name","name128"} );
    evt_abi.types.push_back( type_def{"token_name","name128"} );
    evt_abi.types.push_back( type_def{"account_name","name128"} );
+   evt_abi.types.push_back( type_def{"proposal_name","name128"} );
    evt_abi.types.push_back( type_def{"balance_type","asset"} );
    evt_abi.types.push_back( type_def{"group_def","group"} );
 
@@ -44,8 +45,12 @@ evt_contract_abi() {
    evt_abi.actions.push_back( action_def{name("newaccount"), "newaccount"} );
    evt_abi.actions.push_back( action_def{name("updateowner"), "updateowner"} );
    evt_abi.actions.push_back( action_def{name("transferevt"), "transferevt"} );
+   evt_abi.actions.push_back( action_def{name("newdelay"), "newdelay"} );
+   evt_abi.actions.push_back( action_def{name("canceldelay"), "canceldelay"} );
+   evt_abi.actions.push_back( action_def{name("approvedelay"), "approvedelay"} );
+   evt_abi.actions.push_back( action_def{name("executedelay"), "executedelay"} );
 
-   // actions def
+   // structures def
    evt_abi.structs.emplace_back( struct_def {
       "token_def", "", {
          {"domain", "domain_name"},
@@ -105,6 +110,15 @@ evt_contract_abi() {
       }
    });
 
+    evt_abi.structs.emplace_back( struct_def {
+      "delay_def", "", {
+         {"name", "proposal_name"},
+         {"proposer", "public_key"},
+         {"trx", "transaction"}
+      }
+   });  
+
+   // actions def
    evt_abi.structs.emplace_back( struct_def {
       "newdomain", "", {
          {"name", "domain_name"},
@@ -176,9 +190,36 @@ evt_contract_abi() {
       }
    });
 
+   evt_abi.structs.emplace_back( struct_def {
+      "newdelay", "", {
+         {"name", "proposal_name"},
+         {"proposer", "public_key"},
+         {"trx", "transaction"}
+      }
+   });
+
+   evt_abi.structs.emplace_back( struct_def {
+      "canceldelay", "", {
+         {"name", "proposal_name"}
+      }
+   });
+
+   evt_abi.structs.emplace_back( struct_def {
+      "approvedelay", "", {
+         {"name", "proposal_name"},
+         {"signatures", "signature[]"}
+      }
+   });
+
+   evt_abi.structs.emplace_back( struct_def {
+      "executedelay", "", {
+         {"name", "proposal_name"}
+      }
+   });
+
    // abi_def fields
    evt_abi.structs.emplace_back( struct_def {
-      "field", "", {
+      "field_def", "", {
          {"name", "field_name"},
          {"type", "type_name"}
       }
@@ -192,6 +233,21 @@ evt_contract_abi() {
       }
    });
 
+   evt_abi.structs.emplace_back( struct_def {
+      "type_def", "", {
+         {"new_type_name", "type_name"},
+         {"type", "type_name"}
+      }
+   });
+
+   evt_abi.structs.emplace_back( struct_def {
+      "action_def", "", {
+         {"name", "action_name"},
+         {"type", "type_name"}
+      }
+   });
+
+   // blocks & transactions def
    evt_abi.structs.emplace_back( struct_def {
       "action", "", {
          {"name", "action_name"},
@@ -219,21 +275,6 @@ evt_contract_abi() {
    evt_abi.structs.emplace_back( struct_def {
       "signed_transaction", "transaction", {
          {"signatures", "signature[]"}
-      }
-   });
-
-
-   evt_abi.structs.emplace_back( struct_def {
-      "type_def", "", {
-         {"new_type_name", "type_name"},
-         {"type", "type_name"}
-      }
-   });
-
-   evt_abi.structs.emplace_back( struct_def {
-      "action_def", "", {
-         {"name", "action_name"},
-         {"type", "type_name"}
       }
    });
 
