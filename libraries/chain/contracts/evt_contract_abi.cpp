@@ -24,6 +24,8 @@ evt_contract_abi() {
    evt_abi.types.push_back( type_def{"group_key","public_key"} );
    evt_abi.types.push_back( type_def{"weight_type","uint16"} );
    evt_abi.types.push_back( type_def{"fields","field_def[]"} );
+   evt_abi.types.push_back( type_def{"type_name","string"} );
+   evt_abi.types.push_back( type_def{"field_name","string"} );
    evt_abi.types.push_back( type_def{"permission_name","name"} );
    evt_abi.types.push_back( type_def{"action_name","name"} );
    evt_abi.types.push_back( type_def{"domain_name","name128"} );
@@ -62,15 +64,6 @@ evt_contract_abi() {
       "key_weight", "", {
          {"key", "public_key"},
          {"weight", "weight_type"}
-      }
-   });
-
-   evt_abi.structs.emplace_back( struct_def {
-      "group_def", "", {
-         {"name", "group_name"},
-         {"key", "group_key"},
-         {"threshold", "uint32"},
-         {"keys", "key_weight[]"}
       }
    });
 
