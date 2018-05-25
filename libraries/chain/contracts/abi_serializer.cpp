@@ -63,7 +63,7 @@ abi_serializer::configure_built_in_types() {
 
     built_in_types.emplace("bytes", pack_unpack<bytes>());
     built_in_types.emplace("string", pack_unpack<string>());
-    built_in_types.emplace("time", pack_unpack<fc::time_point_sec>());
+    
     built_in_types.emplace("time_point", pack_unpack<fc::time_point>());
     built_in_types.emplace("time_point_sec", pack_unpack<fc::time_point_sec>());
     built_in_types.emplace("block_timestamp_type", pack_unpack<block_timestamp_type>());
