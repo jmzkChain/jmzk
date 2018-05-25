@@ -24,7 +24,6 @@ evt_contract_abi() {
    evt_abi.types.push_back( type_def{"group_key","public_key"} );
    evt_abi.types.push_back( type_def{"weight_type","uint16"} );
    evt_abi.types.push_back( type_def{"fields","field_def[]"} );
-   evt_abi.types.push_back( type_def{"time_point_sec","time"} );
    evt_abi.types.push_back( type_def{"permission_name","name"} );
    evt_abi.types.push_back( type_def{"action_name","name"} );
    evt_abi.types.push_back( type_def{"domain_name","name128"} );
