@@ -21,6 +21,7 @@ namespace evt {
 using namespace appbase;
 using std::unique_ptr;
 using chain::controller;
+using fc::optional;
 using boost::container::flat_set;
 using chain::name;
 using chain::account_name;
@@ -147,9 +148,11 @@ public:
     chain_apis::read_write get_read_write_api();
 
     void accept_block(const chain::signed_block_ptr& block );
-    void accept_transaction(const chain::packed_transaction& trx);
+    chain::transaction_trace_ptr accept_transaction(const chain::packed_transaction& trx);
 
     bool block_is_on_preferred_chain(const chain::block_id_type& block_id);
+
+    bool recover_reversible_blocks(const fc::path& db_dir, uint32_t cache_size, optional<fc::path> new_db_dir = optional<fc::path>())const;
 
     // return true if --skip-transaction-signatures passed to evtd
     bool is_skipping_transaction_signatures() const;

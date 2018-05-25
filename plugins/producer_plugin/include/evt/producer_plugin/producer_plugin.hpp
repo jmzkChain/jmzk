@@ -10,20 +10,6 @@
 
 namespace evt {
 
-namespace block_production_condition {
-enum block_production_condition_enum {
-    produced                  = 0,
-    not_synced                = 1,
-    not_my_turn               = 2,
-    not_time_yet              = 3,
-    no_private_key            = 4,
-    low_participation         = 5,
-    lag                       = 6,
-    exception_producing_block = 7,
-    fork_below_watermark      = 8,
-};
-}
-
 using boost::signals2::signal;
 
 class producer_plugin : public appbase::plugin<producer_plugin> {
@@ -43,11 +29,15 @@ public:
     virtual void plugin_initialize(const boost::program_options::variables_map& options);
     virtual void plugin_startup();
     virtual void plugin_shutdown();
+ 
+    void pause();
+    void resume();
+    bool paused() const;
 
     signal<void(const chain::producer_confirmation&)> confirmed_block;
 
 private:
-    std::unique_ptr<class producer_plugin_impl> my;
+    std::shared_ptr<class producer_plugin_impl> my;
 };
 
 }  // namespace evt

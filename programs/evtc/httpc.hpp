@@ -9,6 +9,22 @@
 
 namespace evt { namespace client { namespace http {
 
+using std::string;
+
+struct connection_param {
+    string& url;
+    string& path;
+    bool verify_cert;
+    std::vector<string>& headers;
+
+    connection_param( std::string& u,
+                     std::string& p,
+                     bool verify,
+                     std::vector<string>& h) : url(u), path(p), headers(h) {
+       verify_cert = verify;
+    }
+};
+
 struct parsed_url {
     std::string scheme;
     std::string server;
@@ -18,8 +34,7 @@ struct parsed_url {
 
 parsed_url parse_url(const std::string& server_url);
 
-fc::variant do_http_call(const std::string& server_url,
-                         const std::string& path,
+fc::variant do_http_call(const connection_param& cp,
                          const fc::variant& postdata = fc::variant());
 
 const std::string chain_func_base   = "/v1/chain";

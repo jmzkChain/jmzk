@@ -10,6 +10,21 @@
 
 namespace evt { namespace chain {
 
+static inline void
+print_debug(const action_trace& ar) {
+   if (!ar.console.empty()) {
+      auto prefix = fc::format_string(
+                                      "\n[${n}, ${d}-${k}]",
+                                      fc::mutable_variant_object()
+                                      ("n", ar.act.name)
+                                      ("d", ar.act.domain)
+                                      ("k", ar.act.key));
+      dlog(prefix + ": CONSOLE OUTPUT BEGIN =====================\n"
+           + ar.console
+           + prefix + ": CONSOLE OUTPUT END   =====================" );
+   }
+}
+
 action_trace
 apply_context::exec_one() {
     auto start = fc::time_point::now();
@@ -31,7 +46,8 @@ apply_context::exec_one() {
     t.console = _pending_console_output.str();
 
     trx_context.executed.emplace_back(std::move(r));
-
+    
+    print_debug(t);
     reset_console();
 
     t.elapsed = fc::time_point::now() - start;

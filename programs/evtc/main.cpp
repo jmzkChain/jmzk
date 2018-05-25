@@ -63,6 +63,8 @@ auto   tx_expiration = fc::seconds(30);
 string tx_ref_block_num_or_id;
 bool   tx_dont_broadcast = false;
 bool   tx_skip_sign      = false;
+bool   no_verify         = false;
+vector<string> headers;
 
 void
 add_standard_transaction_options(CLI::App* cmd, string default_permission = "") {
@@ -88,7 +90,10 @@ call(const std::string& url,
      const std::string& path,
      const T&           v) {
     try {
-        return evt::client::http::do_http_call(url, path, fc::variant(v));
+        evt::client::http::connection_param *cp = new evt::client::http::connection_param((std::string&)url, (std::string&)path,
+            no_verify ? false : true, headers);
+
+        return evt::client::http::do_http_call(*cp, fc::variant(v));
     }
     catch(boost::system::system_error& e) {
         if(url == ::url)
@@ -510,6 +515,17 @@ struct set_get_account_subcommand {
     }
 };
 
+CLI::callback_t header_opt_callback = [](CLI::results_t res) {
+    vector<string>::iterator itr;
+
+    for (itr = res.begin(); itr != res.end(); itr++) {
+        headers.push_back(*itr);
+    }
+
+    return true;
+};
+
+
 int
 main(int argc, char** argv) {
     fc::path binPath = argv[0];
@@ -526,6 +542,9 @@ main(int argc, char** argv) {
 
     app.add_option("-u,--url", url, localized("the http/https URL where evtd is running"), true);
     app.add_option("--wallet-url", wallet_url, localized("the http/https URL where evtwd is running"), true);
+
+    app.add_option( "-r,--header", header_opt_callback, localized("pass specific HTTP header; repeat this option to pass multiple headers"));
+    app.add_flag( "-n,--no-verify", no_verify, localized("don't verify peer certificate when using HTTPS"));
 
     bool verbose_errors = false;
     app.add_flag("-v,--verbose", verbose_errors, localized("output verbose actions on error"));

@@ -3,14 +3,13 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #include <evt/net_plugin/net_plugin.hpp>
-
 #include <evt/chain/types.hpp>
 #include <evt/chain/block.hpp>
 #include <evt/chain/contracts/types.hpp>
 #include <evt/chain/controller.hpp>
 #include <evt/chain/exceptions.hpp>
-#include <evt/chain/plugin_interface.hpp>
 #include <evt/chain/multi_index_includes.hpp>
+#include <evt/chain/plugin_interface.hpp>
 
 #include <evt/net_plugin/protocol.hpp>
 #include <evt/producer_plugin/producer_plugin.hpp>
@@ -348,7 +347,8 @@ struct transaction_state {
     bool                is_known_by_peer   = false;  ///< true if we sent or received this trx to this peer or received notice from peer
     bool                is_noticed_to_peer = false;  ///< have we sent peer notice we know it (true if we receive from this peer)
     uint32_t            block_num          = 0;      ///< the block number the transaction was included in
-    time_point          requested_time;              /// in case we fetch large trx
+    time_point_sec      expires;
+    time_point          requested_time;  /// in case we fetch large trx
 };
 
 struct update_block_num {
@@ -370,10 +370,21 @@ struct update_block_num {
     }
 };
 
+struct update_txn_expiry {
+    time_point_sec new_expiry;
+    update_txn_expiry(time_point_sec e)
+        : new_expiry(e) {}
+    void
+    operator()(transaction_state& ts) {
+        ts.expires = new_expiry;
+    }
+};
+
 typedef multi_index_container<
     transaction_state,
     indexed_by<
         ordered_unique<tag<by_id>, member<transaction_state, transaction_id_type, &transaction_state::id>>,
+        ordered_non_unique<tag<by_expiry>, member<transaction_state, fc::time_point_sec, &transaction_state::expires>>,
         ordered_non_unique<
             tag<by_block_num>,
             member<transaction_state,
@@ -462,16 +473,15 @@ public:
         std::shared_ptr<vector<char>>                               buff;
         std::function<void(boost::system::error_code, std::size_t)> callback;
     };
-    deque<queued_write> write_queue;
-    deque<queued_write> out_queue;
-
+    deque<queued_write>                   write_queue;
+    deque<queued_write>                   out_queue;
     fc::sha256                            node_id;
     handshake_message                     last_handshake_recv;
     handshake_message                     last_handshake_sent;
     int16_t                               sent_handshake_count = 0;
-    bool                                  connecting = false;
-    bool                                  syncing = false;
-    uint16_t                              protocol_version = 0;
+    bool                                  connecting           = false;
+    bool                                  syncing              = false;
+    uint16_t                              protocol_version     = 0;
     string                                peer_addr;
     unique_ptr<boost::asio::steady_timer> response_expected;
     optional<request_message>             pending_fetch;
@@ -605,7 +615,6 @@ private:
     uint32_t       sync_last_requested_num;
     uint32_t       sync_next_expected_num;
     uint32_t       sync_req_span;
-    uint32_t       last_repeated;
     connection_ptr source;
     stages         state;
 
@@ -617,15 +626,16 @@ private:
 public:
     sync_manager(uint32_t span);
     void set_state(stages s);
+    bool sync_required();
+    void send_handshakes();
     bool is_active(connection_ptr conn);
     void reset_lib_num(connection_ptr conn);
-    bool sync_required();
     void request_next_chunk(connection_ptr conn = connection_ptr());
     void start_sync(connection_ptr c, uint32_t target);
-    void send_handshakes();
     void reassign_fetch(connection_ptr c, go_away_reason reason);
     void verify_catchup(connection_ptr c, uint32_t num, block_id_type id);
-    void recv_block(connection_ptr c, const block_id_type& blk_id, uint32_t blk_num, bool accepted);
+    void rejected_block(connection_ptr c, uint32_t blk_num);
+    void recv_block(connection_ptr c, const block_id_type& blk_id, uint32_t blk_num);
     void recv_handshake(connection_ptr c, const handshake_message& msg);
     void recv_notice(connection_ptr c, const notice_message& msg);
 };
@@ -1245,7 +1255,6 @@ sync_manager::sync_manager(uint32_t req_span)
     , sync_last_requested_num(0)
     , sync_next_expected_num(1)
     , sync_req_span(req_span)
-    , last_repeated(0)
     , source()
     , state(in_sync) {
     chain_plug = app().find_plugin<chain_plugin>();
@@ -1313,59 +1322,68 @@ void
 sync_manager::request_next_chunk(connection_ptr conn) {
     uint32_t head_block = chain_plug->chain().head_block_num();
 
-    if(head_block < sync_last_requested_num) {
-        fc_ilog(logger, "ignoring request, head is ${h} last req = ${r}",
-                ("h", head_block)("r", sync_last_requested_num));
+    if(head_block < sync_last_requested_num && source && source->current()) {
+        fc_ilog(logger, "ignoring request, head is ${h} last req = ${r} source is ${p}",
+                ("h", head_block)("r", sync_last_requested_num)("p", source->peer_name()));
         return;
     }
 
     /* ----------
        * next chunk provider selection criteria
-       * 1. a provider is supplied, use it.
-       * 2. we only have 1 peer so use that.
-       * 3. we have multiple peers, select the next available from the list
+       * a provider is supplied and able to be used, use it.
+       * otherwise select the next available from the list, round-robin style.
        */
 
     if(conn && conn->current()) {
         source = conn;
     }
-    else if(my_impl->connections.size() == 1) {
-        if(!source) {
-            source = *my_impl->connections.begin();
-        }
-        if(!source->current()) {
-            source.reset();
-        }
-    }
     else {
-        auto cptr = my_impl->connections.begin();
-        auto cend = my_impl->connections.end();
-        if (source) {
-            cptr = my_impl->connections.find(source);
-            cend = cptr;
-            if (cptr == my_impl->connections.end()) {
-                elog ("unable to find previous source connection in connections list");
-                source.reset();
-                cptr = my_impl->connections.begin();
-            } else {
-                if (++cptr == my_impl->connections.end()) {
-                    cptr = my_impl->connections.begin();
-                }
+        if(my_impl->connections.size() == 1) {
+            if(!source) {
+                source = *my_impl->connections.begin();
             }
         }
-        while (cptr != cend) {
-            if((*cptr)->current()) {
-                source = *cptr;
-                break;
-            }
-            else {
-                if(++cptr == my_impl->connections.end()) {
+        else {
+            // init to a linear array search
+            auto cptr = my_impl->connections.begin();
+            auto cend = my_impl->connections.end();
+            // do we remember the previous source?
+            if(source) {
+                //try to find it in the list
+                cptr = my_impl->connections.find(source);
+                cend = cptr;
+                if(cptr == my_impl->connections.end()) {
+                    //not there - must have been closed! cend is now connections.end, so just flatten the ring.
+                    source.reset();
                     cptr = my_impl->connections.begin();
                 }
+                else {
+                    //was found - advance the start to the next. cend is the old source.
+                    if(++cptr == my_impl->connections.end() && cend != my_impl->connections.end()) {
+                        cptr = my_impl->connections.begin();
+                    }
+                }
             }
+
+            //scan the list of peers looking for another able to provide sync blocks.
+            while(cptr != cend) {
+                //select the first one which is current and break out.
+                if((*cptr)->current()) {
+                    source = *cptr;
+                    break;
+                }
+                else {
+                    // advance the iterator in a round robin fashion.
+                    if(++cptr == my_impl->connections.end()) {
+                        cptr = my_impl->connections.begin();
+                    }
+                }
+            }
+            // no need to check the result, either source advanced or the whole list was checked and the old source is reused.
         }
     }
 
+    // verify there is an available source
     if(!source || !source->current()) {
         elog("Unable to continue syncing at this time");
         sync_known_lib_num      = chain_plug->chain().last_irreversible_block_num();
@@ -1380,7 +1398,7 @@ sync_manager::request_next_chunk(connection_ptr conn) {
         if(end > sync_known_lib_num)
             end = sync_known_lib_num;
         if(end > 0 && end >= start) {
-            fc_dlog(logger, "conn ${n} requesting range ${s} to ${e}, calling sync_wait",
+            fc_ilog(logger, "requesting range ${s} to ${e}, from ${n}",
                     ("n", source->peer_name())("s", start)("e", end));
             source->request_sync_blocks(start, end);
             sync_last_requested_num = end;
@@ -1521,8 +1539,7 @@ sync_manager::verify_catchup(connection_ptr c, uint32_t num, block_id_type id) {
     if(req.req_blocks.mode == catch_up) {
         c->fork_head     = id;
         c->fork_head_num = num;
-        ilog("got a catch_up notice while in ${s}, fork head num = ${fhn} target LIB = ${lib} next_expected = ${ne}", 
-            ("s", stage_str(state))("fhn", num)("lib", sync_known_lib_num)("ne", sync_next_expected_num));
+        ilog("got a catch_up notice while in ${s}, fork head num = ${fhn} target LIB = ${lib} next_expected = ${ne}", ("s", stage_str(state))("fhn", num)("lib", sync_known_lib_num)("ne", sync_next_expected_num));
         if(state == lib_catchup)
             return;
         set_state(head_catchup);
@@ -1554,29 +1571,23 @@ sync_manager::recv_notice(connection_ptr c, const notice_message& msg) {
 }
 
 void
-sync_manager::recv_block(connection_ptr c, const block_id_type& blk_id, uint32_t blk_num, bool accepted) {
-    fc_dlog(logger, " got block ${bn} from ${p}", ("bn", blk_num)("p", c->peer_name()));
-    if(!accepted) {
-        uint32_t head_num = chain_plug->chain().head_block_num();
-        if(head_num != last_repeated) {
-            ilog("block not accepted, try requesting one more time");
-            last_repeated = head_num;
-            send_handshakes();
-        }
-        else {
-            ilog("second attempt to retrive block ${n} failed",
-                 ("n", head_num + 1));
-            last_repeated           = 0;
-            sync_last_requested_num = 0;
-            my_impl->close(c);
-        }
-        return;
+sync_manager::rejected_block(connection_ptr c, uint32_t blk_num) {
+    if(state != in_sync) {
+        fc_ilog(logger, "block ${bn} not accepted from ${p}", ("bn", blk_num)("p", c->peer_name()));
+        sync_last_requested_num = 0;
+        source.reset();
+        my_impl->close(c);
+        set_state(in_sync);
+        send_handshakes();
     }
-    last_repeated = 0;
+}
+void
+sync_manager::recv_block(connection_ptr c, const block_id_type& blk_id, uint32_t blk_num) {
+    fc_dlog(logger, " got block ${bn} from ${p}", ("bn", blk_num)("p", c->peer_name()));
     if(state == lib_catchup) {
         if(blk_num != sync_next_expected_num) {
             fc_ilog(logger, "expected block ${ne} but got ${bn}", ("ne", sync_next_expected_num)("bn", blk_num));
-            c->close();
+            my_impl->close(c);
             return;
         }
         sync_next_expected_num = blk_num + 1;
@@ -1722,6 +1733,8 @@ dispatch_manager::bcast_transaction(const packed_transaction& trx) {
     uint32_t packsiz = 0;
     uint32_t bufsiz  = 0;
 
+    time_point_sec trx_expiration = trx.expiration();
+
     net_message msg(trx);
     packsiz = fc::raw::pack_size(msg);
     bufsiz  = packsiz + sizeof(packsiz);
@@ -1730,7 +1743,7 @@ dispatch_manager::bcast_transaction(const packed_transaction& trx) {
     ds.write(reinterpret_cast<char*>(&packsiz), sizeof(packsiz));
     fc::raw::pack(ds, msg);
     node_transaction_state nts = {id,
-                                  trx.expiration(),
+                                  trx_expiration,
                                   trx,
                                   std::move(buff),
                                   0, 0, 0};
@@ -1738,15 +1751,19 @@ dispatch_manager::bcast_transaction(const packed_transaction& trx) {
 
     if(bufsiz <= just_send_it_max) {
         connection_wptr weak_skip = skip;
-        my_impl->send_all(trx, [weak_skip, id](connection_ptr c) -> bool {
+        my_impl->send_all(trx, [weak_skip, id, trx_expiration](connection_ptr c) -> bool {
             if(c == weak_skip.lock() || c->syncing) {
                 return false;
             }
             const auto& bs      = c->trx_state.find(id);
             bool        unknown = bs == c->trx_state.end();
             if(unknown) {
-                c->trx_state.insert(transaction_state({id, true, true, 0, time_point()}));
+                c->trx_state.insert(transaction_state({id, true, true, 0, trx_expiration, time_point()}));
                 fc_dlog(logger, "sending whole trx to ${n}", ("n", c->peer_name()));
+            }
+            else {
+                update_txn_expiry ute(trx_expiration);
+                c->trx_state.modify(bs, ute);
             }
             return unknown;
         });
@@ -1757,7 +1774,7 @@ dispatch_manager::bcast_transaction(const packed_transaction& trx) {
         pending_notify.known_trx.ids.push_back(id);
         pending_notify.known_blocks.mode = none;
         connection_wptr weak_skip        = skip;
-        my_impl->send_all(pending_notify, [weak_skip, id](connection_ptr c) -> bool {
+        my_impl->send_all(pending_notify, [weak_skip, id, trx_expiration](connection_ptr c) -> bool {
             if(c == weak_skip.lock() || c->syncing) {
                 return false;
             }
@@ -1765,7 +1782,11 @@ dispatch_manager::bcast_transaction(const packed_transaction& trx) {
             bool        unknown = bs == c->trx_state.end();
             if(unknown) {
                 fc_dlog(logger, "sending notice to ${n}", ("n", c->peer_name()));
-                c->trx_state.insert(transaction_state({id, false, true, 0, time_point()}));
+                c->trx_state.insert(transaction_state({id, false, true, 0, trx_expiration, time_point()}));
+            }
+            else {
+                update_txn_expiry ute(trx_expiration);
+                c->trx_state.modify(bs, ute);
             }
             return unknown;
         });
@@ -1895,7 +1916,10 @@ dispatch_manager::recv_notice(connection_ptr c, const notice_message& msg, bool 
             if(tx == my_impl->local_txns.end()) {
                 fc_dlog(logger, "did not find ${id}", ("id", t));
 
-                c->trx_state.insert((transaction_state){t, true, true, 0,
+                //At this point the details of the txn are not known, just its id. This
+                //effectively gives 120 seconds to learn of the details of the txn which
+                //will update the expiry in bcast_transaction
+                c->trx_state.insert((transaction_state){t, true, true, 0, time_point_sec(time_point::now()) + 120,
                                                         time_point()});
 
                 req.req_trx.ids.push_back(t);
@@ -2007,6 +2031,14 @@ net_plugin_impl::connect(connection_ptr c) {
 
     if(colon == std::string::npos || colon == 0) {
         elog("Invalid peer address. must be \"host:port\": ${p}", ("p", c->peer_addr));
+        for(auto itr : connections) {
+            if((*itr).peer_addr == c->peer_addr) {
+                (*itr).reset();
+                close(itr);
+                connections.erase(itr);
+                break;
+            }
+        }
         return;
     }
 
@@ -2014,16 +2046,15 @@ net_plugin_impl::connect(connection_ptr c) {
     auto port = c->peer_addr.substr(colon + 1);
     idump((host)(port));
     tcp::resolver::query query(tcp::v4(), host.c_str(), port.c_str());
-    connection_wptr weak_conn = c;
+    connection_wptr      weak_conn = c;
     // Note: need to add support for IPv6 too
 
     resolver->async_resolve(query,
                             [weak_conn, this](const boost::system::error_code& err,
-                                      tcp::resolver::iterator          endpoint_itr) {
+                                              tcp::resolver::iterator          endpoint_itr) {
                                 auto c = weak_conn.lock();
-                                if(!c) {
+                                if(!c)
                                     return;
-                                }
                                 if(!err) {
                                     connect(c, endpoint_itr);
                                 }
@@ -2042,13 +2073,12 @@ net_plugin_impl::connect(connection_ptr c, tcp::resolver::iterator endpoint_itr)
     }
     auto current_endpoint = *endpoint_itr;
     ++endpoint_itr;
-    c->connecting = true;
+    c->connecting             = true;
     connection_wptr weak_conn = c;
     c->socket->async_connect(current_endpoint, [weak_conn, endpoint_itr, this](const boost::system::error_code& err) {
         auto c = weak_conn.lock();
-        if(!c) {
+        if(!c)
             return;
-        }
         if(!err) {
             start_session(c);
             c->send_handshake();
@@ -2529,10 +2559,17 @@ net_plugin_impl::handle_message(connection_ptr c, const packed_transaction& msg)
     dispatcher->recv_transaction(c, tid);
     uint64_t code = 0;
     try {
-        chain_plug->accept_transaction(msg);
-        fc_dlog(logger, "chain accepted transaction");
-        dispatcher->bcast_transaction(msg);
-        return;
+        auto trace = chain_plug->accept_transaction(msg);
+        if(!trace->except) {
+            fc_dlog(logger, "chain accepted transaction");
+            dispatcher->bcast_transaction(msg);
+            return;
+        }
+
+        // if accept didn't throw but there was an exception on the trace
+        // it means that this was non-fatally rejected from the chain.
+        // we will mark it as "rejected" and hope someone sends it to us later
+        // when we are able to accept it.
     }
     catch(const fc::exception& ex) {
         code = ex.code();
@@ -2555,7 +2592,7 @@ net_plugin_impl::handle_message(connection_ptr c, const signed_block& msg) {
 
     try {
         if(cc.fetch_block_by_id(blk_id)) {
-            sync_master->recv_block(c, blk_id, blk_num, true);
+            sync_master->recv_block(c, blk_id, blk_num);
             return;
         }
     }
@@ -2576,7 +2613,6 @@ net_plugin_impl::handle_message(connection_ptr c, const signed_block& msg) {
         reason = no_reason;
     }
     catch(const unlinkable_block_exception& ex) {
-        elog("unlinkable_block_exception accept block #${n} syncing from ${p}", ("n", blk_num)("p", c->peer_name()));
         reason = unlinkable;
     }
     catch(const block_validate_exception& ex) {
@@ -2607,8 +2643,11 @@ net_plugin_impl::handle_message(connection_ptr c, const signed_block& msg) {
                 c->trx_state.modify(ctx, ubn);
             }
         }
+        sync_master->recv_block(c, blk_id, blk_num);
     }
-    sync_master->recv_block(c, blk_id, blk_num, reason == no_reason);
+    else {
+        sync_master->rejected_block(c, blk_num);
+    }
 }
 
 void
@@ -2678,6 +2717,8 @@ net_plugin_impl::expire_txns() {
     for(auto& c : connections) {
         auto& stale_txn = c->trx_state.get<by_block_num>();
         stale_txn.erase(stale_txn.lower_bound(1), stale_txn.upper_bound(bn));
+        auto& stale_txn_e = c->trx_state.get<by_expiry>();
+        stale_txn_e.erase(stale_txn_e.lower_bound(time_point_sec()), stale_txn_e.upper_bound(time_point::now()));
         auto& stale_blk = c->blk_state.get<by_block_num>();
         stale_blk.erase(stale_blk.lower_bound(1), stale_blk.upper_bound(bn));
     }
@@ -2912,8 +2953,8 @@ net_plugin::set_program_options(options_description& /*cli*/, options_descriptio
         ("p2p-server-address", bpo::value<string>(), "An externally accessible host:port for identifying this node. Defaults to p2p-listen-endpoint.")
         ("p2p-peer-address", bpo::value<vector<string>>()->composing(), "The public endpoint of a peer node to connect to. Use multiple p2p-peer-address options as needed to compose a network.")
         ("agent-name", bpo::value<string>()->default_value("\"EVT Test Agent\""), "The name supplied to identify this node amongst the peers.")
-        ("allowed-connection", bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"),
-             "Can be 'any' or 'producers' or 'specified' or 'none'. If 'specified', peer-key must be specified at least once. If only 'producers', peer-key is not required. 'producers' and 'specified' may be combined.")
+        ("allowed-connection", bpo::value<vector<string>>()->multitoken()
+            ->default_value({"any"}, "any"), "Can be 'any' or 'producers' or 'specified' or 'none'. If 'specified', peer-key must be specified at least once. If only 'producers', peer-key is not required. 'producers' and 'specified' may be combined.")
         ("peer-key", bpo::value<vector<string>>()->composing()->multitoken(), "Optional public key of peer allowed to connect.  May be used multiple times.")
         ("peer-private-key", boost::program_options::value<vector<string>>()->composing()->multitoken(), "Tuple of [PublicKey, WIF private key] (may specify multiple times)")
         ("max-clients", bpo::value<int>()->default_value(def_max_clients), "Maximum number of clients from which connections are accepted, use 0 for no limit")

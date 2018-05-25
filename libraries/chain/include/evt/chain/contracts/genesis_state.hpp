@@ -29,7 +29,7 @@ struct genesis_state {
       .max_authority_depth                  = config::default_max_auth_depth
    };
 
-   time_point                               initial_timestamp = fc::time_point::from_iso_string( "2018-03-01T12:00:00" );;
+   time_point                               initial_timestamp = fc::time_point::from_iso_string( "2018-03-01T12:00:00" );
    public_key_type                          initial_key = fc::variant("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV").as<public_key_type>();
 
    /**

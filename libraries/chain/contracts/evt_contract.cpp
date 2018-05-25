@@ -286,7 +286,7 @@ apply_evt_transferevt(apply_context& context) {
         auto& tokendb = context.token_db;
         EVT_ASSERT(tokendb.exists_account(teact.from), action_validate_exception, "Account ${name} don't exist", ("name",teact.from));
         EVT_ASSERT(tokendb.exists_account(teact.to), action_validate_exception, "Account ${name} don't exist", ("name",teact.to));
-        EVT_ASSERT(teact.amount.amount > 0, action_validate_exception, "Transfer amount must be positive");
+        EVT_ASSERT(teact.amount.get_amount() > 0, action_validate_exception, "Transfer amount must be positive");
 
         account_def facc, tacc;
         tokendb.read_account(teact.from, [&](const auto& a) {
@@ -299,8 +299,9 @@ apply_evt_transferevt(apply_context& context) {
         EVT_ASSERT(facc.balance >= teact.amount, action_validate_exception, "Account ${name} don't have enough balance left", ("name",teact.from));
         
         bool r1, r2;
-        r1 = safemath::test_sub(facc.balance.amount, teact.amount.amount, facc.balance.amount);
-        r2 = safemath::test_add(tacc.balance.amount, teact.amount.amount, tacc.balance.amount);
+        decltype(facc.balance.get_amount()) r;
+        r1 = safemath::test_sub(facc.balance.get_amount(), teact.amount.get_amount(), r);
+        r2 = safemath::test_add(tacc.balance.get_amount(), teact.amount.get_amount(), r);
         EVT_ASSERT(r1 && r2, action_validate_exception, "Opeartions resulted in overflow results");
         facc.balance -= teact.amount;
         tacc.balance += teact.amount;
@@ -407,4 +408,4 @@ apply_evt_executedelay(apply_context& context) {
 
 }
 
-} } } // namespace evt::chain::contracts
+}}} // namespace evt::chain::contracts

@@ -14,7 +14,7 @@
 #include <evt/chain/block_summary_object.hpp>
 #include <evt/chain/global_property_object.hpp>
 #include <evt/chain/transaction_object.hpp>
-#include <evt/chain/unconfirmed_block_object.hpp>
+#include <evt/chain/reversible_block_object.hpp>
 
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
@@ -51,7 +51,7 @@ struct pending_state {
 struct controller_impl {
     controller&             self;
     chainbase::database     db;
-    chainbase::database     unconfirmed_blocks; ///< a special database to persist blocks that have successfully been applied but are still reversible
+    chainbase::database     reversible_blocks; ///< a special database to persist blocks that have successfully been applied but are still reversible
     block_log               blog;
     optional<pending_state> pending;
     block_state_ptr         head;
@@ -59,6 +59,7 @@ struct controller_impl {
     token_database          token_db;
     controller::config      conf;
     bool                    replaying = false;
+    bool                    replaying_irreversible = false;
     abi_serializer          system_api;
 
     map<action_name, apply_handler> apply_handlers;
@@ -75,8 +76,8 @@ struct controller_impl {
         auto prev = fork_db.get_block(head->header.previous);
         FC_ASSERT(prev, "attempt to pop beyond last irreversible block");
 
-        if(const auto* b = unconfirmed_blocks.find<unconfirmed_block_object,by_num>(head->block_num)) {
-            unconfirmed_blocks.remove(*b);
+        if(const auto* b = reversible_blocks.find<reversible_block_object,by_num>(head->block_num)) {
+            reversible_blocks.remove(*b);
         }
 
         for(const auto& t : head->trxs)
@@ -93,14 +94,14 @@ struct controller_impl {
 
     controller_impl(const controller::config& cfg, controller& s)
         : self(s)
-        , db(cfg.shared_memory_dir,
+        , db(cfg.state_dir,
              cfg.read_only ? database::read_only : database::read_write,
-             cfg.shared_memory_size)
-        , unconfirmed_blocks(cfg.block_log_dir/"unconfirmed",
+             cfg.state_size)
+        , reversible_blocks(cfg.blocks_dir/config::reversible_blocks_dir_name,
              cfg.read_only ? database::read_only : database::read_write,
-             cfg.unconfirmed_cache_size)
-        , blog(cfg.block_log_dir)
-        , fork_db(cfg.shared_memory_dir)
+             cfg.reversible_cache_size)
+        , blog(cfg.blocks_dir)
+        , fork_db(cfg.state_dir)
         , token_db(cfg.tokendb_dir)
         , conf(cfg)
         , system_api(contracts::evt_contract_abi()) {
@@ -141,6 +142,10 @@ struct controller_impl {
         try {
             s(std::forward<Arg>(a));
         }
+        catch(boost::interprocess::bad_alloc& e) {
+            wlog( "bad alloc" );
+            throw e;
+        }
         catch(fc::exception& e) {
             wlog( "${details}", ("details", e.to_detail_string()) );
         }
@@ -170,11 +175,11 @@ struct controller_impl {
         db.commit(s->block_num);
         token_db.pop_savepoints(s->block_num);
 
-        const auto& ubi = unconfirmed_blocks.get_index<unconfirmed_block_index,by_num>();
-        auto objitr = ubi.begin(); 
+        const auto& ubi = reversible_blocks.get_index<reversible_block_index,by_num>();
+        auto objitr = ubi.begin();
         while(objitr != ubi.end() && objitr->blocknum <= s->block_num) {
-            unconfirmed_blocks.remove( *objitr );
-            objitr = ubi.begin(); 
+            reversible_blocks.remove( *objitr );
+            objitr = ubi.begin();
         }
     }
 
@@ -189,26 +194,66 @@ struct controller_impl {
         if(!head) {
             initialize_fork_db();  // set head to genesis state
             initialize_token_db();
+            auto end = blog.read_head();
+            if(end && end->block_num() > 1) {
+                replaying = true;
+                replaying_irreversible = true;
+                ilog( "existing block log, attempting to replay ${n} blocks", ("n",end->block_num()) );
+
+                auto start = fc::time_point::now();
+                while(auto next = blog.read_block_by_num(head->block_num + 1)) {
+                    self.push_block(next, true);
+                    if(next->block_num() % 100 == 0) {
+                        std::cerr << std::setw(10) << next->block_num() << " of " << end->block_num() <<"\r";
+                    }
+                }
+                replaying_irreversible = false;
+
+                int unconf = 0;
+                while(auto obj = reversible_blocks.find<reversible_block_object,by_num>(head->block_num+1)) {
+                    ++unconf;
+                    self.push_block(obj->get_block(), true);
+                }
+
+                std::cerr<< "\n";
+                ilog("${n} reversible blocks replayed", ("n",unconf));
+                auto end = fc::time_point::now();
+                ilog("replayed ${n} blocks in seconds, ${mspb} ms/block",
+                    ("n", head->block_num)("duration", (end-start).count()/1000000)
+                    ("mspb", ((end-start).count()/1000.0)/head->block_num));
+                std::cerr<< "\n";
+                replaying = false;
+            }
+            else if(!end) {
+                blog.append(head->block);
+            }
         }
 
-        while(db.revision() > head->block_num) {
-            wlog("warning database revision greater than head block, undoing pending changes");
-            db.undo();
-        }
-
-        uint32_t unconf_blocknum = 1;
-        const auto& ubi = unconfirmed_blocks.get_index<unconfirmed_block_index,by_num>();
+        const auto& ubi = reversible_blocks.get_index<reversible_block_index,by_num>();
         auto objitr = ubi.rbegin();
         if(objitr != ubi.rend()) {
-            unconf_blocknum = objitr->blocknum;
+            FC_ASSERT(objitr->blocknum == head->block_num,
+                "reversible block database is inconsistent with fork database, replay blockchain",
+                ("head",head->block_num)("unconfimed", objitr->blocknum));
+        }
+        else {
+            auto end = blog.read_head();
+            FC_ASSERT(end && end->block_num() == head->block_num,
+                "fork database exists but reversible block database does not, replay blockchain",
+                ("blog_head",end->block_num())("head",head->block_num));
         }
 
-        FC_ASSERT(db.revision() == head->block_num, "fork database is inconsistent with shared memory",
-                  ("db", db.revision())("head", head->block_num)("unconfimed",unconf_blocknum));
+        FC_ASSERT(db.revision() >= head->block_num, "fork database is inconsistent with shared memory",
+            ("db",db.revision())("head",head->block_num));
 
-        edump((unconf_blocknum));
-        FC_ASSERT(head->block_num == unconf_blocknum, "unconfirmed block database out of sync", 
-            ("db",db.revision())("head",head->block_num)("unconfimed",unconf_blocknum));
+        if(db.revision() > head->block_num) {
+            wlog("warning: database revision (${db}) is greater than head block number (${head}), "
+               "attempting to undo pending changes",
+               ("db",db.revision())("head",head->block_num));
+        }
+        while(db.revision() > head->block_num) {
+            db.undo();
+        }
     }
 
     ~controller_impl() {
@@ -218,12 +263,12 @@ struct controller_impl {
         edump((db.revision())(head->block_num)(blog.read_head()->block_num()));
 
         db.flush();
-        unconfirmed_blocks.flush();
+        reversible_blocks.flush();
     }
 
     void
     add_indices() {
-        unconfirmed_blocks.add_index<unconfirmed_block_index>(); 
+        reversible_blocks.add_index<reversible_block_index>(); 
 
         db.add_index<global_property_multi_index>();
         db.add_index<dynamic_global_property_multi_index>();
@@ -254,37 +299,6 @@ struct controller_impl {
         db.set_revision(head->block_num);
 
         initialize_database();
-
-        auto end = blog.read_head();
-        if(end && end->block_num() > 1) {
-            replaying = true;
-            ilog("existing block log, attempting to replay ${n} blocks", ("n", end->block_num()));
-
-            auto start = fc::time_point::now();
-            while(auto next = blog.read_block_by_num(head->block_num + 1)) {
-                self.push_block(next, true);
-                if(next->block_num() % 100 == 0) {
-                    std::cerr << std::setw(10) << next->block_num() << " of " << end->block_num() << "\r";
-                }
-            }
-
-            int unconf = 0;
-            while(auto obj = unconfirmed_blocks.find<unconfirmed_block_object,by_num>(head->block_num+1)) {
-                ++unconf;
-                self.push_block( obj->get_block(), true );
-            }
-
-            std::cerr << "\n";
-            ilog( "${n} unconfirmed blocks replayed", ("n",unconf) );
-            auto end = fc::time_point::now();
-            ilog( "replayed blocks in ${n} seconds, ${spb} spb",
-                ("n", head->block_num)("spb", ((end-start).count()/1000000.0)/head->block_num)  );
-            std::cerr<< "\n";
-            replaying = false;
-        }
-        else if(!end) {
-            blog.append(head->block);
-        }
     }
 
     void
@@ -354,7 +368,7 @@ struct controller_impl {
         emit(self.accepted_block, pending->_pending_block_state);
 
         if(!replaying) {
-            unconfirmed_blocks.create<unconfirmed_block_object>([&](auto& ubo) {
+            reversible_blocks.create<reversible_block_object>([&](auto& ubo) {
                 ubo.blocknum = pending->_pending_block_state->block_num;
                 ubo.set_block(pending->_pending_block_state->block);
             });
@@ -425,11 +439,11 @@ struct controller_impl {
                     trx_context.init_for_input_trx(trx->trx.signatures.size());
                 }
 
-                if(!implicit) {
+                if(!self.skip_auth_check() && !implicit) {
                     const static uint32_t max_authority_depth = conf.genesis.initial_configuration.max_authority_depth;
                     auto checker = authority_checker(trx->recover_keys(), token_db, max_authority_depth);
                     for(const auto& act : trx->trx.actions) {
-                        EVT_ASSERT(checker.satisfied(act), tx_missing_sigs,
+                        EVT_ASSERT(checker.satisfied(act), unsatisfied_authorization,
                                    "${name} action in domain: ${domain} with key: ${key} authorized failed",
                                    ("domain", act.domain)("key", act.key)("name", act.name));
                     }
@@ -507,9 +521,12 @@ struct controller_impl {
            !was_pending_promoted                                                                               // ... and not just because it was promoted to active at the start of this block, then:
         ) {
             // Promote proposed schedule to pending schedule.
-            ilog("promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
-                 ("proposed_num", *gpo.proposed_schedule_block_num)("n", pending->_pending_block_state->block_num)
-                 ("lib", pending->_pending_block_state->dpos_irreversible_blocknum)("schedule", static_cast<producer_schedule_type>(gpo.proposed_schedule)));
+            if(!replaying) {
+                ilog("promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
+                    ("proposed_num", *gpo.proposed_schedule_block_num)("n", pending->_pending_block_state->block_num)
+                    ("lib", pending->_pending_block_state->dpos_irreversible_blocknum)
+                    ("schedule", static_cast<producer_schedule_type>(gpo.proposed_schedule)));
+            }
             pending->_pending_block_state->set_new_producers(gpo.proposed_schedule);
             db.modify(gpo, [&](auto& gp) {
                 gp.proposed_schedule_block_num = optional<block_num_type>();
@@ -756,11 +773,8 @@ controller::startup() {
     my->head = my->fork_db.head();
     if(!my->head) {
         elog("No head block in fork db, perhaps we need to replay");
-        my->init();
     }
-    else {
-        //  my->db.set_revision( my->head->block_num );
-    }
+    my->init();
 }
 
 chainbase::database&
@@ -992,6 +1006,16 @@ controller::proposed_producers() const {
         return optional<producer_schedule_type>();
 
     return gpo.proposed_schedule;
+}
+
+bool
+controller::skip_auth_check()const {
+   return my->replaying_irreversible && !my->conf.force_all_checks;
+}
+
+bool
+controller::contracts_console()const {
+   return my->conf.contracts_console;
 }
 
 const apply_handler*

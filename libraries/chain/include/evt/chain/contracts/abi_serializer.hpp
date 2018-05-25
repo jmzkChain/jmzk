@@ -403,11 +403,11 @@ struct abi_from_variant {
     * @tparam Reslover - callable with the signature (const name& code_account) -> optional<abi_def>
     */
 template <typename T, typename Resolver>
-class abi_from_variant_visitor {
+class abi_from_variant_visitor : reflector_verifier_visitor<T> {
 public:
     abi_from_variant_visitor(const variant_object& _vo, T& v, Resolver _resolver)
-        : _vo(_vo)
-        , _val(v)
+        : reflector_verifier_visitor<T>(v)
+        , _vo(_vo)
         , _resolver(_resolver) {}
 
     /**
@@ -422,12 +422,11 @@ public:
     operator()(const char* name) const {
         auto itr = _vo.find(name);
         if(itr != _vo.end())
-            abi_from_variant::extract(itr->value(), _val.*member, _resolver);
+            abi_from_variant::extract(itr->value(), this->obj.*member, _resolver);
     }
 
 private:
     const variant_object& _vo;
-    T&                    _val;
     Resolver              _resolver;
 };
 

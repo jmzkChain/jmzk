@@ -125,7 +125,7 @@ enum object_type {
     dynamic_global_property_object_type,
     block_summary_object_type,
     transaction_object_type,
-    unconfirmed_block_object_type,
+    reversible_block_object_type,
     OBJECT_TYPE_COUNT  ///< Sentry value which contains the number of different object types
 };
 
@@ -178,6 +178,6 @@ operator<<(std::ostream& o, const __uint128_t v) {
 FC_REFLECT_ENUM(
     evt::chain::object_type,
     (null_object_type)(global_property_object_type)(dynamic_global_property_object_type)
-    (block_summary_object_type)(transaction_object_type)(unconfirmed_block_object_type)
+    (block_summary_object_type)(transaction_object_type)(reversible_block_object_type)
     (OBJECT_TYPE_COUNT))
 FC_REFLECT(evt::chain::void_t, )

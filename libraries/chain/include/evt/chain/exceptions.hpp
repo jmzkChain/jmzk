@@ -78,11 +78,12 @@ FC_DECLARE_DERIVED_EXCEPTION( utility_exception,                 chain_exception
 FC_DECLARE_DERIVED_EXCEPTION( undo_database_exception,           chain_exception, 3080000, "undo database exception" );
 FC_DECLARE_DERIVED_EXCEPTION( unlinkable_block_exception,        chain_exception, 3090000, "unlinkable block" );
 FC_DECLARE_DERIVED_EXCEPTION( black_swan_exception,              chain_exception, 3100000, "black swan" );
-FC_DECLARE_DERIVED_EXCEPTION( unknown_block_exception,           chain_exception, 3110000, "unknown block" );
-FC_DECLARE_DERIVED_EXCEPTION( chain_type_exception,              chain_exception, 3120000, "chain type exception" );
-FC_DECLARE_DERIVED_EXCEPTION( missing_plugin_exception,          chain_exception, 3130000, "missing plugin exception" );
-FC_DECLARE_DERIVED_EXCEPTION( wallet_exception,                  chain_exception, 3140000, "wallet exception" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_exception,                 chain_exception, 3150000, "tokendb exception" );
+FC_DECLARE_DERIVED_EXCEPTION( chain_type_exception,              chain_exception, 3110000, "chain type exception" );
+FC_DECLARE_DERIVED_EXCEPTION( missing_plugin_exception,          chain_exception, 3120000, "missing plugin exception" );
+FC_DECLARE_DERIVED_EXCEPTION( wallet_exception,                  chain_exception, 3130000, "wallet exception" );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_exception,                 chain_exception, 3140000, "tokendb exception" );
+FC_DECLARE_DERIVED_EXCEPTION( misc_exception,                    chain_exception, 3150000, "Miscellaneous exception");
+FC_DECLARE_DERIVED_EXCEPTION( authorization_exception,           chain_exception, 3160000, "Authorization exception");
 
 FC_DECLARE_DERIVED_EXCEPTION( permission_query_exception,        database_query_exception, 3010001, "Permission Query Exception" );
 FC_DECLARE_DERIVED_EXCEPTION( account_query_exception,           database_query_exception, 3010002, "Account Query Exception" );
@@ -97,15 +98,11 @@ FC_DECLARE_DERIVED_EXCEPTION( block_too_old_exception,           block_validate_
 
 FC_DECLARE_DERIVED_EXCEPTION( tx_missing_auth,                   transaction_exception, 3030001, "missing required authority" );
 FC_DECLARE_DERIVED_EXCEPTION( tx_missing_sigs,                   transaction_exception, 3030002, "signatures do not satisfy declared authorizations" );
-FC_DECLARE_DERIVED_EXCEPTION( tx_irrelevant_auth,                transaction_exception, 3030003, "irrelevant authority included" );
-FC_DECLARE_DERIVED_EXCEPTION( tx_irrelevant_sig,                 transaction_exception, 3030004, "irrelevant signature included" );
-FC_DECLARE_DERIVED_EXCEPTION( tx_duplicate_sig,                  transaction_exception, 3030005, "duplicate signature included" );
 FC_DECLARE_DERIVED_EXCEPTION( invalid_committee_approval,        transaction_exception, 3030006, "committee account cannot directly approve transaction" );
 FC_DECLARE_DERIVED_EXCEPTION( insufficient_fee,                  transaction_exception, 3030007, "insufficient fee" );
 FC_DECLARE_DERIVED_EXCEPTION( tx_missing_recipient,              transaction_exception, 3030009, "missing required recipient" );
 FC_DECLARE_DERIVED_EXCEPTION( checktime_exceeded,                transaction_exception, 3030010, "allotted processing time was exceeded" );
 FC_DECLARE_DERIVED_EXCEPTION( tx_duplicate,                      transaction_exception, 3030011, "duplicate transaction" );
-FC_DECLARE_DERIVED_EXCEPTION( unknown_transaction_exception,     transaction_exception, 3030012, "unknown transaction" );
 FC_DECLARE_DERIVED_EXCEPTION( tx_scheduling_exception,           transaction_exception, 3030013, "transaction failed during sheduling" );
 FC_DECLARE_DERIVED_EXCEPTION( tx_unknown_argument,               transaction_exception, 3030014, "transaction provided an unknown value to a system call" );
 FC_DECLARE_DERIVED_EXCEPTION( tx_resource_exhausted,             transaction_exception, 3030015, "transaction exhausted allowed resources" );
@@ -180,5 +177,16 @@ FC_DECLARE_DERIVED_EXCEPTION( tokendb_delay_not_found,           tokendb_excepti
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_rocksdb_fail,              tokendb_exception, 3150011, "Rocksdb internal error occurred" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_no_savepoint,              tokendb_exception, 3150012, "No savepoints anymore" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_seq_not_valid,             tokendb_exception, 3150013, "Seq for checkpoint is not valid" );
+
+FC_DECLARE_DERIVED_EXCEPTION( unknown_block_exception,           misc_exception, 3100002, "unknown block" );
+FC_DECLARE_DERIVED_EXCEPTION( unknown_transaction_exception,     misc_exception, 3100003, "unknown transaction" );
+FC_DECLARE_DERIVED_EXCEPTION( fixed_reversible_db_exception,     misc_exception, 3100004, "corrupted reversible block database was fixed" );
+
+FC_DECLARE_DERIVED_EXCEPTION( tx_duplicate_sig,                 authorization_exception, 3090001, "duplicate signature included" );
+FC_DECLARE_DERIVED_EXCEPTION( tx_irrelevant_sig,                authorization_exception, 3090002, "irrelevant signature included" );
+FC_DECLARE_DERIVED_EXCEPTION( unsatisfied_authorization,        authorization_exception, 3090003, "provided keys, permissions, and delays do not satisfy declared authorizations" );
+FC_DECLARE_DERIVED_EXCEPTION( missing_auth_exception,           authorization_exception, 3090004, "missing required authority" );
+FC_DECLARE_DERIVED_EXCEPTION( irrelevant_auth_exception,        authorization_exception, 3090005, "irrelevant authority included" );
+FC_DECLARE_DERIVED_EXCEPTION( insufficient_delay_exception,     authorization_exception, 3090006, "insufficient delay" );
 
 }} // evt::chain
