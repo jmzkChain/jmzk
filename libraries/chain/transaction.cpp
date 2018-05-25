@@ -66,7 +66,6 @@ transaction::sig_digest(const chain_id_type& chain_id) const {
     digest_type::encoder enc;
     fc::raw::pack(enc, chain_id);
     fc::raw::pack(enc, *this);
-    fc::raw::pack(enc, digest_type());
     return enc.result();
 }
 
