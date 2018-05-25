@@ -29,6 +29,8 @@ struct chain_config {
     uint16_t max_inline_action_depth;          ///< recursion depth limit on sending inline actions
     uint16_t max_authority_depth;              ///< recursion depth limit for checking if an authority is satisfied
 
+    void validate() const;
+
     template <typename Stream>
     friend Stream&
     operator<<(Stream& out, const chain_config& c) {

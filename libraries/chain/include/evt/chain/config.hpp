@@ -4,6 +4,7 @@
  */
 #pragma once
 #include <evt/chain/name.hpp>
+#include <evt/chain/types.hpp>
 #include <fc/time.hpp>
 
 #pragma GCC diagnostic ignored "-Wunused-variable"
@@ -59,6 +60,10 @@ const static uint16_t default_max_inline_action_depth        = 4;
 const static uint16_t default_max_auth_depth                 = 6;
 const static uint32_t default_max_gen_trx_count              = 16;
 
+const static uint32_t min_net_usage_delta_between_base_and_max_for_trx  = 10*1024;
+// Should be large enough to allow recovery from badly set blockchain parameters without a hard fork
+// (unless net_usage_leeway is set to 0 and so are the net limits of all accounts that can help with resetting blockchain parameters).
+
 const static uint32_t fixed_net_overhead_of_packed_trx = 16;  // TODO: is this reasonable?
 
 const static uint32_t fixed_overhead_shared_vector_ram_bytes = 16;        ///< overhead accounts for fixed portion of size of shared_vector field
@@ -81,6 +86,8 @@ static_assert(maximum_tracked_dpos_confirmations >= ((max_producers * 2 / 3) + 1
 //const static int blocks_per_round = producer_count * producer_repetitions;
 
 const static int irreversible_threshold_percent = 70 * percent_1;
+
+const static chain_id_type chain_id = chain_id_type();
 
 }}}  // namespace evt::chain::config
 

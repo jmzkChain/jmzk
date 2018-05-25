@@ -1,0 +1,6 @@
+#include <evt/chain/types.hpp>
+
+namespace evt { namespace chain {
+    chain_id_type::chain_id_type( const fc::string& s ) { id = fc::sha256(s); }
+    chain_id_type::chain_id_type() { id = fc::sha256("${evt_CHAIN_ID}"); }
+}} // namespace evt::chain

@@ -104,15 +104,15 @@ chain_plugin::set_program_options(options_description& cli, options_description&
         ("tokendb-dir", bpo::value<bfs::path>()->default_value("tokendb"), "the location of the token database directory (absolute path or relative to application data dir)")
         ("checkpoint", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
         ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024 * 1024)), "Maximum size (in MB) of the chain state database")
-        ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_cache_size / (1024 * 1024)), "Maximum size (in MB) of the reversible blocks database");
+        ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_cache_size / (1024 * 1024)), "Maximum size (in MB) of the reversible blocks database")
+        ("contracts-console", bpo::bool_switch()->default_value(false), "print contract's output to console");
 
     cli.add_options()
         ("fix-reversible-blocks", bpo::bool_switch()->default_value(false), "recovers reversible block database if that database is in a bad state")
         ("force-all-checks", bpo::bool_switch()->default_value(false), "do not skip any checks that can be skipped while replaying irreversible blocks")
         ("replay-blockchain", bpo::bool_switch()->default_value(false), "clear chain state database and replay all blocks")
         ("hard-replay-blockchain", bpo::bool_switch()->default_value(false), "clear chain state database, recover as many blocks as possible from the block log, and then replay those blocks")
-        ("delete-all-blocks", bpo::bool_switch()->default_value(false), "clear chain state database and block log")
-        ("contracts-console", bpo::bool_switch()->default_value(false), "print contract's output to console");
+        ("delete-all-blocks", bpo::bool_switch()->default_value(false), "clear chain state database and block log");
 }
 
 void
@@ -431,7 +431,7 @@ chain_plugin::chain() const {
 
 void
 chain_plugin::get_chain_id(chain_id_type& cid) const {
-    memcpy(cid.data(), my->chain_id.data(), cid.data_size());
+    memcpy(cid.id.data(), my->chain_id.id.data(), cid.id.data_size());
 }
 
 namespace chain_apis {

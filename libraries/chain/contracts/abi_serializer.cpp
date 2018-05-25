@@ -105,6 +105,7 @@ abi_serializer::set_abi(const abi_def& abi) {
 
     for(const auto& td : abi.types) {
         FC_ASSERT(is_type(td.type), "invalid type", ("type", td.type));
+        FC_ASSERT(!is_type(td.new_type_name), "type already exists", ("new_type_name",td.new_type_name));
         typedefs[td.new_type_name] = td.type;
     }
 
@@ -118,6 +119,8 @@ abi_serializer::set_abi(const abi_def& abi) {
     FC_ASSERT(typedefs.size() == abi.types.size());
     FC_ASSERT(structs.size() == abi.structs.size());
     FC_ASSERT(actions.size() == abi.actions.size());
+
+    validate();
 }
 
 bool
@@ -242,8 +245,13 @@ abi_serializer::validate() const {
 type_name
 abi_serializer::resolve_type(const type_name& type) const {
     auto itr = typedefs.find(type);
-    if(itr != typedefs.end())
-        return resolve_type(itr->second);
+    if(itr != typedefs.end()) {
+        for(auto i = typedefs.size(); i > 0; --i) { // avoid infinite recursion
+            const type_name& t = itr->second;
+            itr = typedefs.find( t );
+            if(itr == typedefs.end()) return t;
+        }
+    }
     return type;
 }
 

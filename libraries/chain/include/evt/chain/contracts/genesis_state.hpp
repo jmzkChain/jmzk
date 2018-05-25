@@ -33,11 +33,6 @@ struct genesis_state {
    public_key_type                          initial_key = fc::variant("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV").as<public_key_type>();
 
    /**
-    * Temporary, will be moved elsewhere.
-    */
-   chain_id_type initial_chain_id;
-
-   /**
     * Get the chain_id corresponding to this genesis state.
     *
     * This is the SHA256 serialization of the genesis_state.
@@ -49,4 +44,4 @@ struct genesis_state {
 
 
 FC_REFLECT(evt::chain::contracts::genesis_state,
-           (initial_timestamp)(initial_key)(initial_configuration)(initial_chain_id))
+           (initial_timestamp)(initial_key)(initial_configuration))
