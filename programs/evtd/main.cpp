@@ -4,10 +4,7 @@
  */
 #include <appbase/application.hpp>
 
-#include <evt/chain_api_plugin/chain_api_plugin.hpp>
 #include <evt/chain_plugin/chain_plugin.hpp>
-#include <evt/evt_api_plugin/evt_api_plugin.hpp>
-#include <evt/evt_plugin/evt_plugin.hpp>
 #include <evt/http_plugin/http_plugin.hpp>
 #include <evt/net_plugin/net_plugin.hpp>
 #include <evt/producer_plugin/producer_plugin.hpp>
@@ -103,7 +100,7 @@ main(int argc, char** argv) {
         auto root = fc::app_path();
         app().set_default_data_dir(root / "evt/evtd/data");
         app().set_default_config_dir(root / "evt/evtd/config");
-        if(!app().initialize<chain_plugin, chain_api_plugin, http_plugin, net_plugin, producer_plugin, evt_plugin, evt_api_plugin>(argc, argv))
+        if(!app().initialize<chain_plugin, http_plugin, net_plugin, producer_plugin>(argc, argv))
             return INITIALIZE_FAIL;
         initialize_logging();
         ilog("evtd version ${ver}", ("ver", evt::utilities::common::itoh(static_cast<uint32_t>(app().version()))));

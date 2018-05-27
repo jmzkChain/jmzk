@@ -41,23 +41,20 @@ else()
   set(no_whole_archive_flag "--no-whole-archive")
 endif()
 
-#[[ target_link_libraries( evtd
+target_link_libraries(evtd
         PRIVATE appbase
-        PRIVATE -Wl,${whole_archive_flag} account_history_api_plugin -Wl,${no_whole_archive_flag} account_history_plugin
-        PRIVATE -Wl,${whole_archive_flag} chain_api_plugin -Wl,${no_whole_archive_flag} producer_plugin chain_plugin
-        PRIVATE -Wl,${whole_archive_flag} wallet_api_plugin -Wl,${no_whole_archive_flag}
-        PRIVATE net_plugin -Wl,${whole_archive_flag} net_api_plugin -Wl,${no_whole_archive_flag} 
-        PRIVATE http_plugin -Wl,${whole_archive_flag} faucet_testnet_plugin -Wl,${no_whole_archive_flag}
-        PRIVATE evt_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} )  ]]
-
-target_link_libraries( evtd
-        PRIVATE appbase
-        PRIVATE chain_plugin chain_api_plugin
+        PRIVATE chain_plugin
         PRIVATE producer_plugin
-        PRIVATE net_plugin net_api_plugin
+        PRIVATE net_plugin
         PRIVATE http_plugin
-        PRIVATE evt_plugin evt_api_plugin
-        PRIVATE evt_chain fc rocksdb)
+        PRIVATE evt_chain
+        PRIVATE fc rocksdb
+        PRIVATE -Wl,${whole_archive_flag} producer_api_plugin -Wl,${no_whole_archive_flag}
+        PRIVATE -Wl,${whole_archive_flag} chain_api_plugin -Wl,${no_whole_archive_flag}
+        PRIVATE -Wl,${whole_archive_flag} net_api_plugin -Wl,${no_whole_archive_flag}
+        PRIVATE -Wl,${whole_archive_flag} evt_plugin -Wl,${no_whole_archive_flag}
+        PRIVATE -Wl,${whole_archive_flag} evt_api_plugin -Wl,${no_whole_archive_flag}
+        )
 
 if(BUILD_MONGO_DB_PLUGIN)
   target_link_libraries( evtd

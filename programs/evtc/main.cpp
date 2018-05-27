@@ -130,7 +130,7 @@ sign_transaction(signed_transaction& trx, const chain_id_type& chain_id) {
     auto        get_arg       = fc::mutable_variant_object("transaction", (transaction)trx)("available_keys", public_keys);
     const auto& required_keys = call(url, get_required_keys, get_arg);
     // TODO determine chain id
-    fc::variants sign_args  = {fc::variant(trx), required_keys["required_keys"], fc::variant(chain_id{})};
+    fc::variants sign_args  = {fc::variant(trx), required_keys["required_keys"], fc::variant(chain_id)};
     const auto&  signed_trx = call(wallet_url, wallet_sign_trx, sign_args);
     trx                     = signed_trx.as<signed_transaction>();
 }
