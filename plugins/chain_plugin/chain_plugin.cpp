@@ -34,7 +34,8 @@ using fc::flat_map;
 class chain_plugin_impl {
 public:
     chain_plugin_impl()
-        : accepted_block_header_channel(app().get_channel<channels::accepted_block_header>())
+        : system_api(chain::contracts::evt_contract_abi())
+        , accepted_block_header_channel(app().get_channel<channels::accepted_block_header>())
         , accepted_block_channel(app().get_channel<channels::accepted_block>())
         , irreversible_block_channel(app().get_channel<channels::irreversible_block>())
         , accepted_transaction_channel(app().get_channel<channels::accepted_transaction>())
