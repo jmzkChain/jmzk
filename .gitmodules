@@ -6,9 +6,6 @@
 	path = libraries/appbase
 	url = https://github.com/everitoken/appbase.git
         ignore = dirty
-[submodule "programs/snapshot"]
-	path = programs/snapshot
-	url = https://github.com/everitoken/genesis.git
 [submodule "libraries/rocksdb"]
 	path = libraries/rocksdb
 	url = https://github.com/everitoken/rocksdb.git
