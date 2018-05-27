@@ -27,6 +27,7 @@ using chain::name;
 using chain::account_name;
 using chain::public_key_type;
 using chain::version;
+using chain::digest_type;
 using chain::contracts::abi_serializer;
 
 namespace chain_apis {
@@ -84,6 +85,13 @@ public:
     };
 
     abi_bin_to_json_result abi_bin_to_json(const abi_bin_to_json_params& params) const;
+
+    using trx_json_to_digest_params = fc::variant_object;
+    struct trx_json_to_digest_result {
+        digest_type digest;
+    };
+
+    trx_json_to_digest_result trx_json_to_digest(const trx_json_to_digest_params& params) const;
 
     struct get_required_keys_params {
         fc::variant               transaction;
@@ -182,6 +190,7 @@ FC_REFLECT(evt::chain_apis::read_only::abi_json_to_bin_params, (action)(args))
 FC_REFLECT(evt::chain_apis::read_only::abi_json_to_bin_result, (binargs))
 FC_REFLECT(evt::chain_apis::read_only::abi_bin_to_json_params, (action)(binargs))
 FC_REFLECT(evt::chain_apis::read_only::abi_bin_to_json_result, (args))
+FC_REFLECT(evt::chain_apis::read_only::trx_json_to_digest_result, (digest))
 FC_REFLECT(evt::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys))
 FC_REFLECT(evt::chain_apis::read_only::get_required_keys_result, (required_keys))
 FC_REFLECT(evt::chain_apis::read_write::push_transaction_results, (transaction_id)(processed))

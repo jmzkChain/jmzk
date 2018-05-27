@@ -586,6 +586,26 @@ read_only::abi_bin_to_json(const read_only::abi_bin_to_json_params& params) cons
     return result;
 }
 
+read_only::trx_json_to_digest_result
+read_only::trx_json_to_digest(const trx_json_to_digest_params& params) const {
+    auto result = trx_json_to_digest_result();
+    try {
+        auto trx      = std::make_shared<transaction>();
+        auto resolver = make_resolver(this);
+        try {
+            abi_serializer::from_variant(params, *trx, resolver);
+        }
+        EVT_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid transaction")
+        result.digest = trx->sig_digest(chain_id_type());
+    }
+    catch(boost::interprocess::bad_alloc&) {
+        raise(SIGUSR1);
+    }
+    catch(...) {
+        throw;
+    }
+}
+
 read_only::get_required_keys_result
 read_only::get_required_keys(const get_required_keys_params& params) const {
     transaction pretty_input;
