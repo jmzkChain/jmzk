@@ -338,7 +338,7 @@ apply_evt_newdelay(apply_context& context) {
             delay_status::proposed,
             ndact.trx
         };
-        auto& keys = context.trx_context.trx.recover_keys();
+        auto& keys = context.trx_context.trx.recover_keys(context.control.get_chain_id());
         delay.signed_keys.reserve(keys.size());
         delay.signed_keys.insert(delay.signed_keys.end(), keys.cbegin(), keys.cend());
         tokendb.add_delay(delay);
@@ -359,12 +359,12 @@ apply_evt_approvedelay(apply_context& context) {
         flat_set<public_key_type> signed_keys;
         tokendb.read_delay(adact.name, [&](const auto& delay) {
             EVT_ASSERT(delay.status == delay_status::proposed, action_validate_exception, "Delay is not in proper status");
-            signed_keys = delay.trx.get_signature_keys(adact.signatures, chain_id_type());
+            signed_keys = delay.trx.get_signature_keys(adact.signatures, context.control.get_chain_id());
             existed = true;
         });
         EVT_ASSERT(existed, action_validate_exception, "Delay ${name} is not existed", ("name",adact.name));
 
-        auto& keys = context.trx_context.trx.recover_keys();
+        auto& keys = context.trx_context.trx.recover_keys(context.control.get_chain_id());
         EVT_ASSERT(signed_keys.size() == keys.size(), action_validate_exception, "Signed keys and signatures are not match");
 
         auto it  = signed_keys.cbegin();

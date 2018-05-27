@@ -1,12 +1,4 @@
-# set the chain id
-if (NOT "${CHAIN_ID}" STREQUAL "")
-   set(evt_CHAIN_ID "${CHAIN_ID}")
-else()
-   ## sha256("evt::chain version 1.0")
-   set(evt_CHAIN_ID "1DAF81D021D658B7A55092411F8A856AF5EE2980C0832691B36FDE79B93F28F8")
-endif()
-
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/chain_id.cpp.in ${CMAKE_CURRENT_SOURCE_DIR}/chain_id.cpp)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/genesis_state_root_key.cpp.in ${CMAKE_CURRENT_BINARY_DIR}/genesis_state_root_key.cpp)
 
 file(GLOB HEADERS "include/evt/chain/*.hpp" "include/evt/chain/contracts/*.hpp")
 
@@ -23,7 +15,9 @@ add_library( evt_chain
              block_log.cpp
 
              chain_config.cpp
-             chain_id.cpp
+             chain_id_type.cpp
+             genesis_state.cpp
+             ${CMAKE_CURRENT_BINARY_DIR}/genesis_state_root_key.cpp
              
              fork_database.cpp
              token_database.cpp
@@ -33,7 +27,6 @@ add_library( evt_chain
 
              contracts/evt_contract.cpp
              contracts/evt_contract_abi.cpp
-             contracts/genesis_state.cpp
              contracts/abi_serializer.cpp
              contracts/group.cpp
              contracts/authorizer_ref.cpp

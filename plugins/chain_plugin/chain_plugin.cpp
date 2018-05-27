@@ -10,9 +10,8 @@
 #include <evt/chain/plugin_interface.hpp>
 #include <evt/chain/reversible_block_object.hpp>
 #include <evt/chain/types.hpp>
-
+#include <evt/chain/genesis_state.hpp>
 #include <evt/chain/contracts/evt_contract.hpp>
-#include <evt/chain/contracts/genesis_state.hpp>
 
 #include <evt/utilities/key_conversion.hpp>
 
@@ -30,6 +29,7 @@ using namespace evt::chain::config;
 using namespace evt::chain::plugin_interface;
 using boost::signals2::scoped_connection;
 using fc::flat_map;
+using fc::json;
 
 class chain_plugin_impl {
 public:
@@ -47,17 +47,15 @@ public:
 
     bfs::path                         blocks_dir;
     bfs::path                         tokendb_dir;
-    bfs::path                         genesis_file;
-    time_point                        genesis_timestamp;
     bool                              readonly = false;
     uint64_t                          shared_memory_size;
     flat_map<uint32_t, block_id_type> loaded_checkpoints;
 
     fc::optional<fork_database>      fork_db;
     fc::optional<block_log>          block_logger;
-    fc::optional<controller::config> chain_config = controller::config();
+    fc::optional<controller::config> chain_config;
     fc::optional<controller>         chain;
-    chain_id_type                    chain_id;
+    fc::optional<chain_id_type>      chain_id;
     abi_serializer                   system_api;
     int32_t                          max_reversible_block_time_ms;
     int32_t                          max_pending_transaction_time_ms;
@@ -99,8 +97,6 @@ chain_plugin::~chain_plugin() {}
 void
 chain_plugin::set_program_options(options_description& cli, options_description& cfg) {
     cfg.add_options()
-        ("genesis-json", bpo::value<bfs::path>()->default_value("genesis.json"), "File to read Genesis State from")
-        ("genesis-timestamp", bpo::value<string>(), "override the initial timestamp in the Genesis State file")
         ("blocks-dir", bpo::value<bfs::path>()->default_value("blocks"), "the location of the blocks directory (absolute path or relative to application data dir)")
         ("tokendb-dir", bpo::value<bfs::path>()->default_value("tokendb"), "the location of the token database directory (absolute path or relative to application data dir)")
         ("checkpoint", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
@@ -109,6 +105,10 @@ chain_plugin::set_program_options(options_description& cli, options_description&
         ("contracts-console", bpo::bool_switch()->default_value(false), "print contract's output to console");
 
     cli.add_options()
+        ("genesis-json", bpo::value<bfs::path>(), "File to read Genesis State from")
+        ("genesis-timestamp", bpo::value<string>(), "override the initial timestamp in the Genesis State file")
+        ("print-genesis-json", bpo::bool_switch()->default_value(false), "extract genesis_state from blocks.log as JSON, print to console, and exit")
+        ("extract-genesis-json", bpo::value<bfs::path>(), "extract genesis_state from blocks.log as JSON, write into specified file, and exit")
         ("fix-reversible-blocks", bpo::bool_switch()->default_value(false), "recovers reversible block database if that database is in a bad state")
         ("force-all-checks", bpo::bool_switch()->default_value(false), "do not skip any checks that can be skipped while replaying irreversible blocks")
         ("replay-blockchain", bpo::bool_switch()->default_value(false), "clear chain state database and replay all blocks")
@@ -120,29 +120,16 @@ void
 chain_plugin::plugin_initialize(const variables_map& options) {
     ilog("initializing chain plugin");
 
-    if(options.count("genesis-json")) {
-        auto genesis = options.at("genesis-json").as<bfs::path>();
-        if(genesis.is_relative())
-            my->genesis_file = app().config_dir() / genesis;
-        else
-            my->genesis_file = genesis;
+    try {
+        genesis_state gs; // Check if EVT_ROOT_KEY is bad
     }
-    if(options.count("genesis-timestamp")) {
-        string tstr = options.at("genesis-timestamp").as<string>();
-        if(strcasecmp(tstr.c_str(), "now") == 0) {
-            my->genesis_timestamp = fc::time_point::now();
-            auto epoch_ms         = my->genesis_timestamp.time_since_epoch().count() / 1000;
-            auto diff_ms          = epoch_ms % block_interval_ms;
-            if(diff_ms > 0) {
-                auto delay_ms = (block_interval_ms - diff_ms);
-                my->genesis_timestamp += fc::microseconds(delay_ms * 10000);
-                dlog("pausing ${ms} milliseconds to the next interval", ("ms", delay_ms));
-            }
-        }
-        else {
-            my->genesis_timestamp = time_point::from_iso_string(tstr);
-        }
+    catch(const fc::exception&) {
+        elog("EVT_ROOT_KEY ('${root_key}') is invalid. Recompile with a valid public key.", ("root_key", genesis_state::evt_root_key));
+        throw;
     }
+
+    my->chain_config = controller::config();
+
     if(options.count("blocks-dir")) {
         auto bld = options.at("blocks-dir").as<bfs::path>();
         if(bld.is_relative())
@@ -180,6 +167,34 @@ chain_plugin::plugin_initialize(const variables_map& options) {
 
     my->chain_config->force_all_checks  = options.at("force-all-checks").as<bool>();
     my->chain_config->contracts_console = options.at("contracts-console").as<bool>();
+
+    if(options.count("extract-genesis-json") || options.at("print-genesis-json").as<bool>()) {
+        genesis_state gs;
+
+        if(fc::exists(my->blocks_dir / "blocks.log")) {
+            gs = block_log::extract_genesis_state(my->blocks_dir);
+        }
+        else {
+            wlog("No blocks.log found at '${p}'. Using default genesis state.", ("p", (my->blocks_dir / "blocks.log").generic_string()));
+        }
+
+        if(options.at("print-genesis-json").as<bool>()) {
+            ilog("Genesis JSON:\n${genesis}", ("genesis", json::to_pretty_string(gs)));
+        }
+
+        if(options.count("extract-genesis-json")) {
+            auto p = options.at("extract-genesis-json").as<bfs::path>();
+
+            if(p.is_relative()) {
+                p = bfs::current_path() / p;
+            }
+
+            fc::json::save_to_file(gs, p, true);
+            ilog("Saved genesis JSON to '${path}'", ("path", p.generic_string()));
+        }
+
+        EVT_THROW(extract_genesis_state_exception, "extracted genesis state from blocks.log");
+    }
 
     if(options.at("delete-all-blocks").as<bool>()) {
         ilog("Deleting state database and blocks");
@@ -223,18 +238,49 @@ chain_plugin::plugin_initialize(const variables_map& options) {
         EVT_THROW(fixed_reversible_db_exception, "fixed corrupted reversible blocks database");
     }
 
-    if(!fc::exists(my->genesis_file)) {
-        wlog("\n generating default genesis file ${f}", ("f", my->genesis_file.generic_string()));
-        genesis_state default_genesis;
-        fc::json::save_to_file(default_genesis, my->genesis_file, true);
-    }
+    if(options.count("genesis-json")) {
+        FC_ASSERT(!fc::exists(my->blocks_dir / "blocks.log"), "Genesis State can only be specified on a fresh blockchain.");
 
-    my->chain_config->genesis = fc::json::from_file(my->genesis_file).as<genesis_state>();
-    if(my->genesis_timestamp.sec_since_epoch() > 0) {
-        my->chain_config->genesis.initial_timestamp = my->genesis_timestamp;
+        auto genesis_file = options.at("genesis-json").as<bfs::path>();
+        if(genesis_file.is_relative()) {
+            genesis_file = bfs::current_path() / genesis_file;
+        }
+
+        FC_ASSERT(fc::is_regular_file(genesis_file), "Specified genesis file '${genesis}' does not exist.", ("genesis", genesis_file.generic_string()));
+
+        my->chain_config->genesis = fc::json::from_file(genesis_file).as<genesis_state>();
+
+        ilog("Using genesis state provided in '${genesis}'", ("genesis", genesis_file.generic_string()));
+
+        if(options.count("genesis-timestamp")) {
+            string tstr = options.at("genesis-timestamp").as<string>();
+            if(strcasecmp (tstr.c_str(), "now") == 0) {
+                my->chain_config->genesis.initial_timestamp = fc::time_point::now();
+                auto epoch_us = my->chain_config->genesis.initial_timestamp.time_since_epoch().count();
+                auto diff_us = epoch_us % config::block_interval_us;
+                if (diff_us > 0) {
+                    auto delay_us = (config::block_interval_us - diff_us);
+                    my->chain_config->genesis.initial_timestamp += fc::microseconds(delay_us);
+                    dlog("pausing ${us} microseconds to the next interval",("us",delay_us));
+                }
+            }
+            else {
+                my->chain_config->genesis.initial_timestamp = time_point::from_iso_string( tstr );
+            }
+            ilog("Adjusting genesis timestamp to ${timestamp}", ("timestamp", my->chain_config->genesis.initial_timestamp));
+        }
+
+        wlog("Starting up fresh blockchain with provided genesis state.");
+    }
+    else if(fc::is_regular_file(my->blocks_dir / "blocks.log")) {
+        my->chain_config->genesis = block_log::extract_genesis_state( my->blocks_dir );
+    }
+    else {
+        wlog("Starting up fresh blockchain with default genesis state.");
     }
 
     my->chain.emplace(*my->chain_config);
+    my->chain_id.emplace(my->chain->get_chain_id());
 
     // set up method providers
     my->get_block_by_number_provider = app().get_method<methods::get_block_by_number>().register_provider([this](uint32_t block_num) -> signed_block_ptr {
@@ -294,7 +340,7 @@ chain_plugin::plugin_startup() {
 
         my->chain_config.reset();
     }
-    FC_CAPTURE_LOG_AND_RETHROW((my->genesis_file.generic_string()))
+    FC_CAPTURE_AND_RETHROW()
 }
 
 void
@@ -430,9 +476,10 @@ chain_plugin::chain() const {
     return *my->chain;
 }
 
-void
-chain_plugin::get_chain_id(chain_id_type& cid) const {
-    memcpy(cid.id.data(), my->chain_id.id.data(), cid.id.data_size());
+chain::chain_id_type
+chain_plugin::get_chain_id() const {
+    FC_ASSERT(my->chain_id.valid(), "chain ID has not been initialized yet");
+    return *my->chain_id;
 }
 
 namespace chain_apis {
@@ -448,6 +495,7 @@ read_only::get_info(const read_only::get_info_params&) const {
     };
     return {
         itoh(static_cast<uint32_t>(app().version())),
+        db.get_chain_id(),
         contracts::evt_contract_abi_version(),
         db.head_block_num(),
         db.last_irreversible_block_num(),
@@ -551,6 +599,7 @@ read_write::push_transactions(const read_write::push_transactions_params& params
     catch(...) {
         throw;
     }
+    return result;
 }
 
 static variant
@@ -605,6 +654,7 @@ read_only::trx_json_to_digest(const trx_json_to_digest_params& params) const {
     catch(...) {
         throw;
     }
+    return result;
 }
 
 read_only::get_required_keys_result

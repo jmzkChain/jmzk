@@ -2268,7 +2268,7 @@ net_plugin_impl::handle_message(connection_ptr c, const handshake_message& msg) 
             fc_dlog(logger, "skipping duplicate check, addr == ${pa}, id = ${ni}", ("pa", c->peer_addr)("ni", c->last_handshake_recv.node_id));
         }
 
-        if(msg.chain_id.id != chain_id.id) {
+        if(msg.chain_id != chain_id) {
             elog("Peer on a different chain. Closing connection");
             c->enqueue(go_away_message(go_away_reason::wrong_chain));
             return;
@@ -2997,7 +2997,7 @@ net_plugin::plugin_initialize(const variables_map& options) {
     }
 
     my->chain_plug = app().find_plugin<chain_plugin>();
-    my->chain_plug->get_chain_id(my->chain_id);
+    my->chain_id   = app().get_plugin<chain_plugin>().get_chain_id();
     fc::rand_pseudo_bytes(my->node_id.data(), my->node_id.data_size());
     ilog("my node_id is ${id}", ("id", my->node_id));
 

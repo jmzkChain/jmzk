@@ -58,6 +58,7 @@ struct controller_impl {
     fork_database           fork_db;
     token_database          token_db;
     controller::config      conf;
+    chain_id_type           chain_id;
     bool                    replaying = false;
     bool                    replaying_irreversible = false;
     abi_serializer          system_api;
@@ -104,6 +105,7 @@ struct controller_impl {
         , fork_db(cfg.state_dir)
         , token_db(cfg.tokendb_dir)
         , conf(cfg)
+        , chain_id(cfg.genesis.compute_chain_id())
         , system_api(contracts::evt_contract_abi()) {
 #define SET_APP_HANDLER(action) \
     set_apply_handler(#action, &BOOST_PP_CAT(contracts::apply_evt, BOOST_PP_CAT(_, action)))
@@ -225,7 +227,7 @@ struct controller_impl {
                 replaying = false;
             }
             else if(!end) {
-                blog.append(head->block);
+                blog.reset_to_genesis(conf.genesis, head->block);
             }
         }
 
@@ -442,7 +444,7 @@ struct controller_impl {
 
                 if(!self.skip_auth_check() && !implicit) {
                     const static uint32_t max_authority_depth = conf.genesis.initial_configuration.max_authority_depth;
-                    auto checker = authority_checker(trx->recover_keys(), token_db, max_authority_depth);
+                    auto checker = authority_checker(trx->recover_keys(chain_id), token_db, max_authority_depth);
                     for(const auto& act : trx->trx.actions) {
                         EVT_ASSERT(checker.satisfied(act), unsatisfied_authorization,
                                    "${name} action in domain: ${domain} with key: ${key} authorized failed",
@@ -1013,12 +1015,17 @@ controller::proposed_producers() const {
 
 bool
 controller::skip_auth_check()const {
-   return my->replaying_irreversible && !my->conf.force_all_checks;
+    return my->replaying_irreversible && !my->conf.force_all_checks;
 }
 
 bool
 controller::contracts_console()const {
-   return my->conf.contracts_console;
+    return my->conf.contracts_console;
+}
+
+chain_id_type
+controller::get_chain_id() const {
+    return my->chain_id;
 }
 
 const apply_handler*

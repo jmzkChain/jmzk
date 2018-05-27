@@ -124,13 +124,13 @@ get_info() {
 }
 
 void
-sign_transaction(signed_transaction& trx) {
+sign_transaction(signed_transaction& trx, const chain_id_type& chain_id) {
     // TODO better error checking
     const auto& public_keys   = call(wallet_url, wallet_public_keys);
     auto        get_arg       = fc::mutable_variant_object("transaction", (transaction)trx)("available_keys", public_keys);
     const auto& required_keys = call(url, get_required_keys, get_arg);
     // TODO determine chain id
-    fc::variants sign_args  = {fc::variant(trx), required_keys["required_keys"], fc::variant(chain_id_type{})};
+    fc::variants sign_args  = {fc::variant(trx), required_keys["required_keys"], fc::variant(chain_id{})};
     const auto&  signed_trx = call(wallet_url, wallet_sign_trx, sign_args);
     trx                     = signed_trx.as<signed_transaction>();
 }
@@ -154,7 +154,7 @@ push_transaction(signed_transaction& trx, packed_transaction::compression_type c
     trx.set_reference_block(ref_block_id);
 
     if(!tx_skip_sign) {
-        sign_transaction(trx);
+        sign_transaction(trx, info.chain_id);
     }
 
     if(!tx_dont_broadcast) {
@@ -782,6 +782,7 @@ main(int argc, char** argv) {
     // sign subcommand
     string trx_json_to_sign;
     string str_private_key;
+    string str_chain_id;
     bool   push_trx = false;
 
     auto sign = app.add_subcommand("sign", localized("Sign a transaction"));
@@ -789,10 +790,23 @@ main(int argc, char** argv) {
                      localized("The JSON of the transaction to sign, or the name of a JSON file containing the transaction"), true)
         ->required();
     sign->add_option("-k,--private-key", str_private_key, localized("The private key that will be used to sign the transaction"));
+    sign->add_option("-c,--chain-id", str_chain_id, localized("The chain id that will be used to sign the transaction"));
     sign->add_flag("-p,--push-transaction", push_trx, localized("Push transaction after signing"));
 
     sign->set_callback([&] {
         signed_transaction trx;
+
+        fc::optional<chain_id_type> chain_id;
+
+        if(str_chain_id.size() == 0) {
+            ilog("grabbing chain_id from evtd");
+            auto info = get_info();
+            chain_id = info.chain_id;
+        }
+        else {
+            chain_id = chain_id_type(str_chain_id);
+        }
+
         if(fc::is_regular_file(trx_json_to_sign)) {
             trx = fc::json::from_file(trx_json_to_sign).as<signed_transaction>();
         }
@@ -808,7 +822,7 @@ main(int argc, char** argv) {
         }
 
         auto priv_key = fc::crypto::private_key::regenerate(*utilities::wif_to_key(str_private_key));
-        trx.sign(priv_key, chain_id_type{});
+        trx.sign(priv_key, *chain_id);
 
         if(push_trx) {
             auto trx_result = call(push_txn_func, packed_transaction(trx, packed_transaction::none));

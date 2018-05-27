@@ -87,8 +87,6 @@ static_assert(maximum_tracked_dpos_confirmations >= ((max_producers * 2 / 3) + 1
 
 const static int irreversible_threshold_percent = 70 * percent_1;
 
-const static chain_id_type chain_id = chain_id_type();
-
 }}}  // namespace evt::chain::config
 
 template <typename Number>

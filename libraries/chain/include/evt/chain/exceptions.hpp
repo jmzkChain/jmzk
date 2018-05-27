@@ -181,6 +181,7 @@ FC_DECLARE_DERIVED_EXCEPTION( tokendb_seq_not_valid,             tokendb_excepti
 FC_DECLARE_DERIVED_EXCEPTION( unknown_block_exception,           misc_exception, 3100002, "unknown block" );
 FC_DECLARE_DERIVED_EXCEPTION( unknown_transaction_exception,     misc_exception, 3100003, "unknown transaction" );
 FC_DECLARE_DERIVED_EXCEPTION( fixed_reversible_db_exception,     misc_exception, 3100004, "corrupted reversible block database was fixed" );
+FC_DECLARE_DERIVED_EXCEPTION( extract_genesis_state_exception,   misc_exception, 3100005, "extracted genesis state from blocks.log" );
 
 FC_DECLARE_DERIVED_EXCEPTION( tx_duplicate_sig,                 authorization_exception, 3090001, "duplicate signature included" );
 FC_DECLARE_DERIVED_EXCEPTION( tx_irrelevant_sig,                authorization_exception, 3090002, "irrelevant signature included" );

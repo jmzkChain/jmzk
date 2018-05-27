@@ -27,6 +27,7 @@
 #include <fc/string.hpp>
 
 #include <evt/chain/name.hpp>
+#include <evt/chain/chain_id_type.hpp>
 
 #define OBJECT_CTOR1(NAME)                                   \
     NAME() = delete;                                         \
@@ -92,13 +93,6 @@ using private_key_type = fc::crypto::private_key;
 using signature_type   = fc::crypto::signature;
 
 struct void_t {};
-
-struct chain_id_type {
-    chain_id_type(const fc::string& s);
-    chain_id_type();
-    operator fc::sha256() { return id; }
-    fc::sha256 id;
-};
 
 using chainbase::allocator;
 using shared_string = boost::interprocess::basic_string<char, std::char_traits<char>, allocator<char>>;
@@ -186,4 +180,3 @@ FC_REFLECT_ENUM(
     (block_summary_object_type)(transaction_object_type)(reversible_block_object_type)
     (OBJECT_TYPE_COUNT))
 FC_REFLECT(evt::chain::void_t, )
-FC_REFLECT(evt::chain::chain_id_type, (id) )

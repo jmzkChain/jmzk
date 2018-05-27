@@ -3,8 +3,9 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #pragma once
-#include <evt/chain/block.hpp>
 #include <fc/filesystem.hpp>
+#include <evt/chain/block.hpp>
+#include <evt/chain/genesis_state.hpp>
 
 namespace evt { namespace chain {
 
@@ -43,10 +44,13 @@ public:
     block_log(block_log&& other);
     ~block_log();
 
-    uint64_t                              append(const signed_block_ptr& b);
-    void                                  flush();
+    uint64_t append(const signed_block_ptr& b);
+    void     flush();
+    uint64_t reset_to_genesis(const genesis_state& gs, const signed_block_ptr& genesis_block);
+
     std::pair<signed_block_ptr, uint64_t> read_block(uint64_t file_pos) const;
     signed_block_ptr                      read_block_by_num(uint32_t block_num) const;
+
     signed_block_ptr
     read_block_by_id(const block_id_type& id) const {
         return read_block_by_num(block_header::num_from_id(id));
@@ -61,7 +65,11 @@ public:
 
     static const uint64_t npos = std::numeric_limits<uint64_t>::max();
 
+    static const uint32_t supported_version;
+
     static fc::path repair_log(const fc::path& data_dir);
+
+    static genesis_state extract_genesis_state(const fc::path& data_dir);
 
 private:
     void open(const fc::path& data_dir);

@@ -7,7 +7,7 @@
 #include <boost/signals2/signal.hpp>
 #include <evt/chain/block_state.hpp>
 #include <evt/chain/trace.hpp>
-#include <evt/chain/contracts/genesis_state.hpp>
+#include <evt/chain/genesis_state.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
 
 namespace chainbase {
@@ -23,7 +23,6 @@ class apply_context;
 struct controller_impl;
 using boost::signals2::signal;
 using chainbase::database;
-using contracts::genesis_state;
 using contracts::abi_serializer;
 
 class dynamic_global_property_object;
@@ -125,6 +124,8 @@ public:
     bool skip_auth_check() const;
 
     bool contracts_console() const;
+
+    chain_id_type get_chain_id() const;
 
     signal<void(const block_state_ptr&)>          accepted_block_header;
     signal<void(const block_state_ptr&)>          accepted_block;
