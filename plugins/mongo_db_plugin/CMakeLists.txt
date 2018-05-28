@@ -20,7 +20,7 @@ if(BUILD_MONGO_DB_PLUGIN)
       # mongo-cxx-driver libraries libmongocxx and libbsoncxx.
 
       find_package(libbsoncxx REQUIRED)
-      message(STATUS "Found bsoncxx headers: ${LIBBSONCXX_INCLUDE_DIRS}")
+      message(STATUS "Found bsoncxx headers: ${LIBBSONCXX_INCLUDE_DIR}")
 
       # mongo-cxx-driver 3.2 release altered LIBBSONCXX_LIBRARIES semantics. Instead of library names,
       #  it now hold library paths.
@@ -34,7 +34,7 @@ if(BUILD_MONGO_DB_PLUGIN)
       message(STATUS "Found bsoncxx library: ${EVT_LIBBSONCXX}")
 
       find_package(libmongocxx REQUIRED)
-      message(STATUS "Found mongocxx headers: ${LIBMONGOCXX_INCLUDE_DIRS}")
+      message(STATUS "Found mongocxx headers: ${LIBMONGOCXX_INCLUDE_DIR}")
 
       # mongo-cxx-driver 3.2 release altered LIBBSONCXX_LIBRARIES semantics. Instead of library names,
       #  it now hold library paths.
@@ -67,7 +67,7 @@ if(BUILD_MONGO_DB_PLUGIN)
   endif()
 
   target_include_directories(mongo_db_plugin
-          PRIVATE ${LIBMONGOCXX_INCLUDE_DIRS} ${LIBBSONCXX_INCLUDE_DIRS}
+          PRIVATE ${LIBMONGOCXX_INCLUDE_DIR} ${LIBBSONCXX_INCLUDE_DIR}
           PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/../chain_interface/include"
           )
 
