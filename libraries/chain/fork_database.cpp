@@ -224,7 +224,7 @@ fork_database::remove(const block_id_type& id) {
             previtr = previdx.find(id);
         }
     }
-    wdump((my->index.size()));
+    // wdump((my->index.size()));
 }
 
 void

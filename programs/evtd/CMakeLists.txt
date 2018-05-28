@@ -54,6 +54,7 @@ target_link_libraries(evtd
         PRIVATE -Wl,${whole_archive_flag} net_api_plugin -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} evt_plugin -Wl,${no_whole_archive_flag}
         PRIVATE -Wl,${whole_archive_flag} evt_api_plugin -Wl,${no_whole_archive_flag}
+        PRIVATE -Wl,${whole_archive_flag} bnet_plugin -Wl,${no_whole_archive_flag}
         )
 
 if(BUILD_MONGO_DB_PLUGIN)

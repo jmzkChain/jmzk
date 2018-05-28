@@ -6,6 +6,8 @@
 
 #include <fc/crypto/sha256.hpp>
 
+struct hello;
+
 namespace evt {
 
 class net_plugin_impl;
@@ -47,6 +49,8 @@ private:
 
     friend class evt::net_plugin_impl;
     friend struct evt::handshake_message;
+
+    friend struct ::hello; // TODO: Rushed hack to support bnet_plugin. Need a better solution.
 };
 
 }  // namespace chain
