@@ -7,11 +7,11 @@
 
 find_path(LIBMONGOCXX_INCLUDE_DIR
   NAMES mongocxx/v_noabi/mongocxx/document.hpp
-  HINTS ${BSONCXX_ROOT_DIR}/include)
+  HINTS ${MONGOCXX_ROOT_DIR}/include)
 
 find_library(LIBMONGOCXX_LIBRARIES
-  NAMES libmongocxx.so
-  HINTS ${BSONCXX_ROOT_DIR}/lib)
+  NAMES libmongocxx-static.a
+  HINTS ${MONGOCXX_ROOT_DIR}/lib)
 
 string(CONCAT LIBMONGOCXX_INCLUDE_DIR ${LIBMONGOCXX_INCLUDE_DIR} "/mongocxx/v_noabi")
 
