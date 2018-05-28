@@ -563,8 +563,6 @@ read_write::push_transaction(const read_write::push_transaction_params& params) 
         auto trx_trace_ptr = app().get_method<incoming::methods::transaction_sync>()(pretty_input, true);
 
         pretty_output = db.to_variant_with_abi(*trx_trace_ptr);
-        ;
-        //abi_serializer::to_variant(*trx_trace_ptr, pretty_output, resolver);
         id = trx_trace_ptr->id;
     }
     catch(boost::interprocess::bad_alloc&) {
@@ -646,7 +644,7 @@ read_only::trx_json_to_digest(const trx_json_to_digest_params& params) const {
             abi_serializer::from_variant(params, *trx, resolver);
         }
         EVT_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid transaction")
-        result.digest = trx->sig_digest(chain_id_type());
+        result.digest = trx->sig_digest(db.get_chain_id());
     }
     catch(boost::interprocess::bad_alloc&) {
         raise(SIGUSR1);

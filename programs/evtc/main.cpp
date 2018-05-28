@@ -537,7 +537,7 @@ main(int argc, char** argv) {
     bindtextdomain(locale_domain, locale_path);
     textdomain(locale_domain);
 
-    CLI::App app{"Command Line Interface to Eos Client"};
+    CLI::App app{"Command Line Interface to everiToken Client"};
     app.require_subcommand();
 
     app.add_option("-u,--url", url, localized("the http/https URL where evtd is running"), true);
