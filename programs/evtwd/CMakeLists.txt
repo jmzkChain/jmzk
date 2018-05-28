@@ -3,10 +3,10 @@ if( UNIX AND NOT APPLE )
   set(rt_library rt )
 endif()
 
-find_package( Gperftools QUIET )
-if( GPERFTOOLS_FOUND )
-    message( STATUS "Found gperftools; compiling evtwd with TCMalloc")
-    list( APPEND PLATFORM_SPECIFIC_LIBS tcmalloc )
+find_package( Jemalloc QUIET )
+if( JEMALLOC_FOUND )
+    message( STATUS "Found jemalloc; compiling evtwd with jemalloc")
+    list( APPEND PLATFORM_SPECIFIC_LIBS jemalloc )
 endif()
 
 target_link_libraries( evtwd
