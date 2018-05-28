@@ -444,11 +444,13 @@ struct controller_impl {
 
                 if(!self.skip_auth_check() && !implicit) {
                     const static uint32_t max_authority_depth = conf.genesis.initial_configuration.max_authority_depth;
-                    auto checker = authority_checker(trx->recover_keys(chain_id), token_db, max_authority_depth);
+                    // NOTICE: Expose keys when authorized failed is temporarily, for better debuging
+                    const auto& keys = trx->recover_keys(chain_id);
+                    auto checker = authority_checker(keys, token_db, max_authority_depth);
                     for(const auto& act : trx->trx.actions) {
                         EVT_ASSERT(checker.satisfied(act), unsatisfied_authorization,
-                                   "${name} action in domain: ${domain} with key: ${key} authorized failed",
-                                   ("domain", act.domain)("key", act.key)("name", act.name));
+                                   "${name} action in domain: ${domain} with key: ${key} authorized failed, provided keys: ${keys}",
+                                   ("domain", act.domain)("key", act.key)("name", act.name)("keys", keys));
                     }
                 }
 
