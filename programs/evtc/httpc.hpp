@@ -45,12 +45,6 @@ const std::string json_to_bin_func  = chain_func_base + "/abi_json_to_bin";
 const std::string get_block_func    = chain_func_base + "/get_block";
 const std::string get_required_keys = chain_func_base + "/get_required_keys";
 
-const std::string account_history_func_base    = "/v1/account_history";
-const std::string get_transaction_func         = account_history_func_base + "/get_transaction";
-const std::string get_transactions_func        = account_history_func_base + "/get_transactions";
-const std::string get_key_accounts_func        = account_history_func_base + "/get_key_accounts";
-const std::string get_controlled_accounts_func = account_history_func_base + "/get_controlled_accounts";
-
 const std::string net_func_base   = "/v1/net";
 const std::string net_connect     = net_func_base + "/connect";
 const std::string net_disconnect  = net_func_base + "/disconnect";
@@ -69,13 +63,7 @@ const std::string wallet_unlock      = wallet_func_base + "/unlock";
 const std::string wallet_import_key  = wallet_func_base + "/import_key";
 const std::string wallet_sign_trx    = wallet_func_base + "/sign_transaction";
 
-const std::string evt_func_base       = "/v1/evt";
-const std::string new_domain_func     = evt_func_base + "/new_domain";
-const std::string issue_token_func    = evt_func_base + "/issue_token";
-const std::string transfer_token_func = evt_func_base + "/transfer";
-const std::string update_group_func   = evt_func_base + "/update_group";
-const std::string update_domain_func  = evt_func_base + "/update_domain";
-
+const std::string evt_func_base             = "/v1/evt";
 const std::string get_domain_func           = evt_func_base + "/get_domain";
 const std::string get_token_func            = evt_func_base + "/get_token";
 const std::string get_group_func            = evt_func_base + "/get_group";

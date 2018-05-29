@@ -97,6 +97,7 @@ evt_contract_abi() {
       "account_def", "", {
          {"name", "account_name"},
          {"creator", "account_name"},
+         {"create_time", "time_point_sec"},
          {"balance", "balance_type"},
          {"frozen_balance", "balance_type"}
       }
