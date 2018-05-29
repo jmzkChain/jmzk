@@ -4,10 +4,6 @@
  */
 #pragma once
 
-#include <boost/range/combine.hpp>
-#include <boost/range/adaptor/filtered.hpp>
-#include <boost/range/adaptor/transformed.hpp>
-
 namespace evt { namespace utilities {
 
 /**
@@ -21,23 +17,28 @@ namespace evt { namespace utilities {
  * @code{.cpp}
  * vector<char> data = {'A', 'B', 'C'};
  * vector<bool> markers = {true, false, true};
- * auto markedData = FilterDataByMarker(data, markers, true);
+ * auto markedData = filter_data_by_marker(data, markers, true);
  * // markedData contains {'A', 'C'}
  * @endcode
  */
 template<typename DataRange, typename MarkerRange, typename Marker>
-DataRange filter_data_by_marker(DataRange data, MarkerRange markers, const Marker& markerValue) {
-   auto remove_mismatched_markers = boost::adaptors::filtered([&markerValue](const auto& tuple) {
-      return boost::get<0>(tuple) == markerValue;
-   });
-   auto ToData = boost::adaptors::transformed([](const auto& tuple) {
-      return boost::get<1>(tuple);
-   });
+DataRange
+filter_data_by_marker(DataRange data, MarkerRange markers, const Marker value) {
+    auto size = data.size();
+    FC_ASSERT(size == markers.size(), "The size of data and markers should be match");
 
-   // Zip the ranges together, filter out data with markers that don't match, and return the data without the markers
-   auto range = boost::combine(markers, data) | remove_mismatched_markers | ToData;
-   return {range.begin(), range.end()};
+    auto itd = std::cbegin(data);
+    auto itm = std::cbegin(markers);
+
+    auto r = DataRange();
+    r.reserve(size);
+
+    for(uint i = 0; i < size; i++, itd++, itm++) {
+        if(*itm == value) {
+            r.emplace(*itd);
+        }
+    }
+    return r;
 }
 
 }} // namespace evt::utilities
-
