@@ -6,7 +6,7 @@
 # LIBMONGOCXX_FOUND - True if libmongocxx found.
 
 find_path(LIBMONGOCXX_INCLUDE_DIR
-  NAMES mongocxx/v_noabi/mongocxx/document.hpp
+  NAMES mongocxx/v_noabi/mongocxx/database.hpp
   HINTS ${MONGOCXX_ROOT_DIR}/include)
 
 find_library(LIBMONGOCXX_LIBRARIES
