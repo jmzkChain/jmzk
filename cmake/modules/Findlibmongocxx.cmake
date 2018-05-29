@@ -10,7 +10,7 @@ find_path(LIBMONGOCXX_INCLUDE_DIR
   HINTS ${MONGOCXX_ROOT_DIR}/include)
 
 find_library(LIBMONGOCXX_LIBRARIES
-  NAMES libmongocxx-static.a
+  NAMES mongocxx
   HINTS ${MONGOCXX_ROOT_DIR}/lib)
 
 string(CONCAT LIBMONGOCXX_INCLUDE_DIR ${LIBMONGOCXX_INCLUDE_DIR} "/mongocxx/v_noabi")

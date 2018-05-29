@@ -10,7 +10,7 @@ find_path(LIBBSONCXX_INCLUDE_DIR
   HINTS ${BSONCXX_ROOT_DIR}/include)
 
 find_library(LIBBSONCXX_LIBRARIES
-  NAMES libbsoncxx-static.a
+  NAMES bsoncxx
   HINTS ${BSONCXX_ROOT_DIR}/lib)
 
 string(CONCAT LIBBSONCXX_INCLUDE_DIR ${LIBBSONCXX_INCLUDE_DIR} "/bsoncxx/v_noabi")

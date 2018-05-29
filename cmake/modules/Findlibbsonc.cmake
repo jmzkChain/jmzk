@@ -10,7 +10,7 @@ find_path(LIBBSONC_INCLUDE_DIR
   HINTS ${BSONC_ROOT_DIR}/include)
 
 find_library(LIBBSONC_LIBRARIES
-  NAMES libbson-static-1.0.a
+  NAMES bson-1.0
   HINTS ${BSONC_ROOT_DIR}/lib)
 
 include(FindPackageHandleStandardArgs)

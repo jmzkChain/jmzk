@@ -10,7 +10,7 @@ find_path(LIBMONGOC_INCLUDE_DIR
   HINTS ${MONGOC_ROOT_DIR}/include)
 
 find_library(LIBMONGOC_LIBRARIES
-  NAMES libmongoc-static-1.0.a
+  NAMES mongoc-1.0
   HINTS ${MONGOC_ROOT_DIR}/lib)
 
 include(FindPackageHandleStandardArgs)
