@@ -690,45 +690,6 @@ main(int argc, char** argv) {
         std::cout << fc::json::to_pretty_string(call(get_block_func, arg)) << std::endl;
     });
 
-    // get transaction
-    string transactionId;
-    auto   getTransaction = get->add_subcommand("transaction", localized("Retrieve a transaction from the blockchain"));
-    getTransaction->add_option("id", transactionId, localized("ID of the transaction to retrieve"))->required();
-    getTransaction->set_callback([&] {
-        auto arg = fc::mutable_variant_object("transaction_id", transactionId);
-        std::cout << fc::json::to_pretty_string(call(get_transaction_func, arg)) << std::endl;
-    });
-
-    // get transactions
-    string account_name;
-    string skip_seq;
-    string num_seq;
-    auto   getTransactions = get->add_subcommand("transactions", localized("Retrieve all transactions with specific account name referenced in their scope"));
-    getTransactions->add_option("account_name", account_name, localized("name of account to query on"))->required();
-    getTransactions->add_option("skip_seq", skip_seq, localized("Number of most recent transactions to skip (0 would start at most recent transaction)"));
-    getTransactions->add_option("num_seq", num_seq, localized("Number of transactions to return"));
-    getTransactions->set_callback([&] {
-        auto arg = (skip_seq.empty())
-                       ? fc::mutable_variant_object("account_name", account_name)
-                       : (num_seq.empty())
-                             ? fc::mutable_variant_object("account_name", account_name)("skip_seq", skip_seq)
-                             : fc::mutable_variant_object("account_name", account_name)("skip_seq", skip_seq)("num_seq", num_seq);
-        auto result = call(get_transactions_func, arg);
-        std::cout << fc::json::to_pretty_string(call(get_transactions_func, arg)) << std::endl;
-
-        const auto& trxs = result.get_object()["transactions"].get_array();
-        for(const auto& t : trxs) {
-            const auto& tobj    = t.get_object();
-            int64_t     seq_num = tobj["seq_num"].as<int64_t>();
-            string      id      = tobj["transaction_id"].as_string();
-            const auto& trx     = tobj["transaction"].get_object();
-            const auto& data    = trx["data"].get_object();
-            const auto& exp     = data["expiration"].as<fc::time_point_sec>();
-            const auto& msgs    = data["actions"].get_array();
-            std::cout << tobj["seq_num"].as_string() << "] " << id << "  " << data["expiration"].as_string() << std::endl;
-        }
-    });
-
     set_get_domain_subcommand  get_domain(get);
     set_get_token_subcommand   get_token(get);
     set_get_group_subcommand   get_group(get);

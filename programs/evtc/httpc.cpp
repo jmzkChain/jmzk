@@ -179,11 +179,11 @@ do_http_call(const connection_param& cp,
         else if(path.compare(0, wallet_func_base.size(), wallet_func_base) == 0) {
             throw chain::missing_wallet_api_plugin_exception(FC_LOG_MESSAGE(error, "Wallet is not available"));
         }
-        else if(path.compare(0, account_history_func_base.size(), account_history_func_base) == 0) {
-            throw chain::missing_account_history_api_plugin_exception(FC_LOG_MESSAGE(error, "Account History API plugin is not enabled"));
-        }
         else if(path.compare(0, net_func_base.size(), net_func_base) == 0) {
             throw chain::missing_net_api_plugin_exception(FC_LOG_MESSAGE(error, "Net API plugin is not enabled"));
+        }
+        else if(path.compare(0, evt_func_base.size(), evt_func_base) == 0) {
+            throw chain::missing_net_api_plugin_exception(FC_LOG_MESSAGE(error, "EVT API plugin is not enabled"));
         }
     }
     else {
