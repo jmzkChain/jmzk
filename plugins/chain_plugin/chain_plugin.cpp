@@ -7,7 +7,6 @@
 #include <evt/chain/config.hpp>
 #include <evt/chain/exceptions.hpp>
 #include <evt/chain/fork_database.hpp>
-#include <evt/chain/plugin_interface.hpp>
 #include <evt/chain/reversible_block_object.hpp>
 #include <evt/chain/types.hpp>
 #include <evt/chain/genesis_state.hpp>
@@ -31,6 +30,25 @@ using boost::signals2::scoped_connection;
 using fc::flat_map;
 using fc::json;
 
+#define CATCH_AND_CALL(NEXT)                                               \
+    catch(const fc::exception& err) {                                      \
+        NEXT(err.dynamic_copy_exception());                                \
+    }                                                                      \
+    catch(const std::exception& e) {                                       \
+        fc::exception fce(                                                 \
+            FC_LOG_MESSAGE(warn, "rethrow ${what}: ", ("what", e.what())), \
+            fc::std_exception_code,                                        \
+            BOOST_CORE_TYPEID(e).name(),                                   \
+            e.what());                                                     \
+        NEXT(fce.dynamic_copy_exception());                                \
+    }                                                                      \
+    catch(...) {                                                           \
+        fc::unhandled_exception e(                                         \
+            FC_LOG_MESSAGE(warn, "rethrow"),                               \
+            std::current_exception());                                     \
+        NEXT(e.dynamic_copy_exception());                                  \
+    }
+
 class chain_plugin_impl {
 public:
     chain_plugin_impl()
@@ -43,7 +61,7 @@ public:
         , accepted_confirmation_channel(app().get_channel<channels::accepted_confirmation>())
         , incoming_block_channel(app().get_channel<incoming::channels::block>())
         , incoming_block_sync_method(app().get_method<incoming::methods::block_sync>())
-        , incoming_transaction_sync_method(app().get_method<incoming::methods::transaction_sync>()) {}
+        , incoming_transaction_async_method(app().get_method<incoming::methods::transaction_async>()) {}
 
     bfs::path                         blocks_dir;
     bfs::path                         tokendb_dir;
@@ -70,8 +88,8 @@ public:
     incoming::channels::block::channel_type&       incoming_block_channel;
 
     // retained references to methods for easy calling
-    incoming::methods::block_sync::method_type&       incoming_block_sync_method;
-    incoming::methods::transaction_sync::method_type& incoming_transaction_sync_method;
+    incoming::methods::block_sync::method_type&        incoming_block_sync_method;
+    incoming::methods::transaction_async::method_type& incoming_transaction_async_method;
 
     // method provider handles
     methods::get_block_by_number::method_type::handle                get_block_by_number_provider;
@@ -121,7 +139,7 @@ chain_plugin::plugin_initialize(const variables_map& options) {
     ilog("initializing chain plugin");
 
     try {
-        genesis_state gs; // Check if EVT_ROOT_KEY is bad
+        genesis_state gs;  // Check if EVT_ROOT_KEY is bad
     }
     catch(const fc::exception&) {
         elog("EVT_ROOT_KEY ('${root_key}') is invalid. Recompile with a valid public key.", ("root_key", genesis_state::evt_root_key));
@@ -254,18 +272,18 @@ chain_plugin::plugin_initialize(const variables_map& options) {
 
         if(options.count("genesis-timestamp")) {
             string tstr = options.at("genesis-timestamp").as<string>();
-            if(strcasecmp (tstr.c_str(), "now") == 0) {
+            if(strcasecmp(tstr.c_str(), "now") == 0) {
                 my->chain_config->genesis.initial_timestamp = fc::time_point::now();
-                auto epoch_us = my->chain_config->genesis.initial_timestamp.time_since_epoch().count();
-                auto diff_us = epoch_us % config::block_interval_us;
-                if (diff_us > 0) {
+                auto epoch_us                               = my->chain_config->genesis.initial_timestamp.time_since_epoch().count();
+                auto diff_us                                = epoch_us % config::block_interval_us;
+                if(diff_us > 0) {
                     auto delay_us = (config::block_interval_us - diff_us);
                     my->chain_config->genesis.initial_timestamp += fc::microseconds(delay_us);
-                    dlog("pausing ${us} microseconds to the next interval",("us",delay_us));
+                    dlog("pausing ${us} microseconds to the next interval", ("us", delay_us));
                 }
             }
             else {
-                my->chain_config->genesis.initial_timestamp = time_point::from_iso_string( tstr );
+                my->chain_config->genesis.initial_timestamp = time_point::from_iso_string(tstr);
             }
             ilog("Adjusting genesis timestamp to ${timestamp}", ("timestamp", my->chain_config->genesis.initial_timestamp));
         }
@@ -273,7 +291,7 @@ chain_plugin::plugin_initialize(const variables_map& options) {
         wlog("Starting up fresh blockchain with provided genesis state.");
     }
     else if(fc::is_regular_file(my->blocks_dir / "blocks.log")) {
-        my->chain_config->genesis = block_log::extract_genesis_state( my->blocks_dir );
+        my->chain_config->genesis = block_log::extract_genesis_state(my->blocks_dir);
     }
     else {
         wlog("Starting up fresh blockchain with default genesis state.");
@@ -369,9 +387,9 @@ chain_plugin::accept_block(const signed_block_ptr& block) {
     my->incoming_block_sync_method(block);
 }
 
-chain::transaction_trace_ptr
-chain_plugin::accept_transaction(const packed_transaction& trx) {
-    return my->incoming_transaction_sync_method(std::make_shared<packed_transaction>(trx), false);
+void
+chain_plugin::accept_transaction(const chain::packed_transaction& trx, next_function<chain::transaction_trace_ptr> next) {
+    my->incoming_transaction_async_method(std::make_shared<packed_transaction>(trx), false, std::forward<decltype(next)>(next));
 }
 
 bool
@@ -534,24 +552,20 @@ read_only::get_block(const read_only::get_block_params& params) const {
     return fc::mutable_variant_object(pretty_output.get_object())("id", block->id())("block_num", block->block_num())("ref_block_prefix", ref_block_prefix);
 }
 
-read_write::push_block_results
-read_write::push_block(const read_write::push_block_params& params) {
+void
+read_write::push_block(const read_write::push_block_params& params, next_function<read_write::push_block_results> next) {
     try {
-        db.push_block(std::make_shared<signed_block>(params));
+        app().get_method<incoming::methods::block_sync>()(std::make_shared<signed_block>(params));
+        next(read_write::push_block_results{});
     }
     catch(boost::interprocess::bad_alloc&) {
         raise(SIGUSR1);
     }
-    catch(...) {
-        throw;
-    }
-    return read_write::push_block_results();
+    CATCH_AND_CALL(next);
 }
 
-read_write::push_transaction_results
-read_write::push_transaction(const read_write::push_transaction_params& params) {
-    chain::transaction_id_type id;
-    fc::variant                pretty_output;
+void
+read_write::push_transaction(const read_write::push_transaction_params& params, next_function<read_write::push_transaction_results> next) {
     try {
         auto pretty_input = std::make_shared<packed_transaction>();
         auto resolver     = make_resolver(this);
@@ -560,44 +574,66 @@ read_write::push_transaction(const read_write::push_transaction_params& params) 
         }
         EVT_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-        auto trx_trace_ptr = app().get_method<incoming::methods::transaction_sync>()(pretty_input, true);
+        app().get_method<incoming::methods::transaction_async>()(pretty_input, true, [this, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+            if(result.contains<fc::exception_ptr>()) {
+                next(result.get<fc::exception_ptr>());
+            }
+            else {
+                auto trx_trace_ptr = result.get<transaction_trace_ptr>();
 
-        pretty_output = db.to_variant_with_abi(*trx_trace_ptr);
-        id = trx_trace_ptr->id;
+                try {
+                    fc::variant pretty_output;
+                    pretty_output = db.to_variant_with_abi(*trx_trace_ptr);
+                    //abi_serializer::to_variant(*trx_trace_ptr, pretty_output, resolver);
+
+                    chain::transaction_id_type id = trx_trace_ptr->id;
+                    next(read_write::push_transaction_results{id, pretty_output});
+                }
+                CATCH_AND_CALL(next);
+            }
+        });
     }
     catch(boost::interprocess::bad_alloc&) {
         raise(SIGUSR1);
     }
-    catch(...) {
-        throw;
-    }
-    return read_write::push_transaction_results{id, pretty_output};
+    CATCH_AND_CALL(next);
 }
 
-read_write::push_transactions_results
-read_write::push_transactions(const read_write::push_transactions_params& params) {
-    FC_ASSERT(params.size() <= 1000, "Attempt to push too many transactions at once");
-
-    push_transactions_results result;
-    try {
-        result.reserve(params.size());
-        for(const auto& item : params) {
-            try {
-                result.emplace_back(push_transaction(item));
-            }
-            catch(const fc::exception& e) {
-                result.emplace_back(read_write::push_transaction_results{transaction_id_type(),
-                                                                         fc::mutable_variant_object("error", e.to_detail_string())});
-            }
+static void
+push_recurse(read_write* rw, int index, const std::shared_ptr<read_write::push_transactions_params>& params, const std::shared_ptr<read_write::push_transactions_results>& results, const next_function<read_write::push_transactions_results>& next) {
+    auto wrapped_next = [=](const fc::static_variant<fc::exception_ptr, read_write::push_transaction_results>& result) {
+        if(result.contains<fc::exception_ptr>()) {
+            const auto& e = result.get<fc::exception_ptr>();
+            results->emplace_back(read_write::push_transaction_results{transaction_id_type(), fc::mutable_variant_object("error", e->to_detail_string())});
         }
+        else {
+            const auto& r = result.get<read_write::push_transaction_results>();
+            results->emplace_back(r);
+        }
+
+        int next_index = index + 1;
+        if(next_index < params->size()) {
+            push_recurse(rw, next_index, params, results, next);
+        }
+        else {
+            next(*results);
+        }
+    };
+
+    rw->push_transaction(params->at(index), wrapped_next);
+}
+
+void
+read_write::push_transactions(const read_write::push_transactions_params& params, next_function<read_write::push_transactions_results> next) {
+    try {
+        FC_ASSERT(params.size() <= 1000, "Attempt to push too many transactions at once");
+        auto params_copy = std::make_shared<read_write::push_transactions_params>(params.begin(), params.end());
+        auto result      = std::make_shared<read_write::push_transactions_results>();
+        result->reserve(params.size());
+
+        push_recurse(this, 0, params_copy, result, next);
     }
-    catch(boost::interprocess::bad_alloc&) {
-        raise(SIGUSR1);
-    }
-    catch(...) {
-        throw;
-    }
-    return result;
+    CATCH_AND_CALL(next);
 }
 
 static variant
@@ -612,9 +648,9 @@ action_abi_to_variant(const abi_serializer& api, contracts::type_name action_typ
 
 read_only::abi_json_to_bin_result
 read_only::abi_json_to_bin(const read_only::abi_json_to_bin_params& params) const try {
-    auto result = abi_json_to_bin_result();
-    auto& api = system_api;
-    auto action_type = api.get_action_type(params.action);
+    auto  result      = abi_json_to_bin_result();
+    auto& api         = system_api;
+    auto  action_type = api.get_action_type(params.action);
     EVT_ASSERT(!action_type.empty(), action_validate_exception, "Unknown action ${action}", ("action", params.action));
     try {
         result.binargs = api.variant_to_binary(action_type, params.args);
@@ -628,9 +664,9 @@ FC_CAPTURE_AND_RETHROW((params.action)(params.args))
 
 read_only::abi_bin_to_json_result
 read_only::abi_bin_to_json(const read_only::abi_bin_to_json_params& params) const {
-    auto result = abi_bin_to_json_result();
-    auto& api = system_api;
-    result.args = api.binary_to_variant(api.get_action_type(params.action), params.binargs);
+    auto  result = abi_bin_to_json_result();
+    auto& api    = system_api;
+    result.args  = api.binary_to_variant(api.get_action_type(params.action), params.binargs);
     return result;
 }
 

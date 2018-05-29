@@ -154,6 +154,7 @@ public:
                 elog("${e}", ("e", err));
                 error_results results{websocketpp::http::status_code::internal_server_error,
                                       "Internal Service Error", fc::exception(FC_LOG_MESSAGE(error, e.what()))};
+                con->set_body(fc::json::to_string(results));
             }
             catch(...) {
                 err += "Unknown Exception";
@@ -196,9 +197,11 @@ public:
             auto resource    = con->get_uri()->get_resource();
             auto handler_itr = url_handlers.find(resource);
             if(handler_itr != url_handlers.end()) {
+                con->defer_http_response();
                 handler_itr->second(resource, body, [con](auto code, auto&& body) {
                     con->set_body(std::move(body));
                     con->set_status(websocketpp::http::status_code::value(code));
+                    con->send_http_response();
                 });
             }
             else {
@@ -324,13 +327,16 @@ http_plugin::plugin_startup() {
             my->server.start_accept();
         }
         catch(const fc::exception& e) {
-            elog("http: ${e}", ("e", e.to_detail_string()));
+            elog("http service failed to start: ${e}", ("e",e.to_detail_string()));
+            throw;
         }
         catch(const std::exception& e) {
-            elog("http: ${e}", ("e", e.what()));
+            elog("http service failed to start: ${e}", ("e",e.what()));
+            throw;
         }
         catch(...) {
             elog("error thrown from http io service");
+            throw;
         }
     }
 
@@ -346,13 +352,16 @@ http_plugin::plugin_startup() {
             my->https_server.start_accept();
         }
         catch(const fc::exception& e) {
-            elog("https: ${e}", ("e", e.to_detail_string()));
+            elog("https service failed to start: ${e}", ("e",e.to_detail_string()));
+            throw;
         }
         catch(const std::exception& e) {
-            elog("https: ${e}", ("e", e.what()));
+            elog("https service failed to start: ${e}", ("e",e.what()));
+            throw;
         }
         catch(...) {
             elog("error thrown from https io service");
+            throw;
         }
     }
 }

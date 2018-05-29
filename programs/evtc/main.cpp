@@ -16,13 +16,25 @@
 #include <type_traits>
 #include <vector>
 
-#include <boost/algorithm/string/classification.hpp>
-#include <boost/algorithm/string/predicate.hpp>
-#include <boost/algorithm/string/split.hpp>
-#include <boost/range/adaptor/transformed.hpp>
-#include <boost/range/algorithm/copy.hpp>
+#pragma push_macro("N")
+#undef N
+
+#include <boost/asio.hpp>
+#include <boost/format.hpp>
+#include <boost/dll/runtime_symbol_info.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/process.hpp>
+#include <boost/process/spawn.hpp>
 #include <boost/range/algorithm/find_if.hpp>
 #include <boost/range/algorithm/sort.hpp>
+#include <boost/range/adaptor/transformed.hpp>
+#include <boost/algorithm/string/predicate.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/range/algorithm/copy.hpp>
+#include <boost/algorithm/string/classification.hpp>
+
+#pragma pop_macro("N")
+
 #include <evt/chain/config.hpp>
 #include <evt/chain/contracts/types.hpp>
 #include <evt/chain/exceptions.hpp>
@@ -59,6 +71,7 @@ string program    = "evtc";
 string url        = "http://localhost:8888";
 string wallet_url = "http://localhost:9999";
 
+int64_t wallet_unlock_timeout = 0;
 auto   tx_expiration = fc::seconds(30);
 string tx_ref_block_num_or_id;
 bool   tx_dont_broadcast = false;
@@ -187,6 +200,94 @@ template <typename T>
 chain::action
 create_action(const domain_name& domain, const domain_key& key, const T& value) {
     return action(domain, key, value);
+}
+
+bool
+port_used(uint16_t port) {
+    using namespace boost::asio;
+
+    io_service ios;
+    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string("127.0.0.1"), port);
+    boost::asio::ip::tcp::socket socket(ios);
+    boost::system::error_code ec = error::would_block;
+    //connecting/failing to connect to localhost should be always fast - don't care about timeouts
+    socket.async_connect(endpoint, [&](const boost::system::error_code& error) { ec = error; } );
+    do {
+        ios.run_one();
+    } while (ec == error::would_block);
+    return !ec;
+}
+
+void
+try_port(uint16_t port, uint32_t duration) {
+    using namespace std::chrono;
+    auto start_time = duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch() ).count();
+    while (!port_used(port)) {
+        if(duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch()).count() - start_time > duration) {
+            std::cerr << "Unable to connect to evtd, if evtd is running please kill the process and try again.\n";
+            throw connection_exception(fc::log_messages{FC_LOG_MESSAGE(error, "Unable to connect to evtd")});
+        }
+    }
+}
+
+void
+ensure_evtd_running(CLI::App* app) {
+    // version, net do not require evtd
+    if(tx_skip_sign || app->got_subcommand("version") || app->got_subcommand("net"))
+        return;
+    if(app->get_subcommand("create")->got_subcommand("key")) // create key does not require wallet
+        return;
+    auto parsed_url = parse_url(wallet_url);
+    if(parsed_url.server != "localhost" && parsed_url.server != "127.0.0.1")
+        return;
+
+    auto wallet_port = std::stoi(parsed_url.port);
+    if(wallet_port < 0 || wallet_port > 65535) {
+        FC_THROW("port is not in valid range");
+    }
+
+    if(port_used(uint16_t(wallet_port)))  // Hopefully taken by evtd
+        return;
+
+
+    boost::filesystem::path binPath = boost::dll::program_location();
+    binPath.remove_filename();
+    // This extra check is necessary when running evtc like this: ./evtc ...
+    if(binPath.filename_is_dot())
+        binPath.remove_filename();
+    binPath.append("evtd"); // if evtc and evtd are in the same installation directory
+    if(!boost::filesystem::exists(binPath)) {
+        binPath.remove_filename().remove_filename().append("evtd").append("evtd");
+    }
+
+    if(boost::filesystem::exists(binPath)) {
+        namespace bp = boost::process;
+        binPath = boost::filesystem::canonical(binPath);
+
+        vector<std::string> pargs;
+        pargs.push_back("--http-server-address=127.0.0.1:" + parsed_url.port);
+        if(wallet_unlock_timeout > 0) {
+            pargs.push_back("--unlock-timeout=" + fc::to_string(wallet_unlock_timeout));
+        }
+
+        ::boost::process::child evtd(binPath, pargs,
+                                     bp::std_in.close(),
+                                     bp::std_out > bp::null,
+                                     bp::std_err > bp::null);
+        if(evtd.running()) {
+            std::cerr << binPath << " launched" << std::endl;
+            evtd.detach();
+            sleep(1);
+        }
+        else {
+            std::cerr << "No wallet service listening on 127.0.0.1:"
+                      << std::to_string(wallet_port) << ". Failed to launch " << binPath << std::endl;
+        }
+    }
+    else {
+        std::cerr << "No wallet service listening on 127.0.0.1: " << std::to_string(wallet_port)
+                  << ". Cannot automatically start evtd because evtd was not found." << std::endl;
+    }
 }
 
 fc::variant
@@ -549,6 +650,8 @@ main(int argc, char** argv) {
     bool verbose_errors = false;
     app.add_flag("-v,--verbose", verbose_errors, localized("output verbose actions on error"));
 
+    app.set_callback([&app]{ ensure_evtd_running(&app);});
+
     auto version = app.add_subcommand("version", localized("Retrieve version information"));
     version->require_subcommand();
 
@@ -730,6 +833,7 @@ main(int argc, char** argv) {
     auto   unlockWallet = wallet->add_subcommand("unlock", localized("Unlock wallet"));
     unlockWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to unlock"));
     unlockWallet->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
+    unlockWallet->add_option( "--unlock-timeout", wallet_unlock_timeout, localized("The timeout for unlocked wallet in seconds"));
     unlockWallet->set_callback([&wallet_name, &wallet_pw] {
         if(wallet_pw.size() == 0) {
             std::cout << localized("password: ");
