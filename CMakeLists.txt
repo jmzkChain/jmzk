@@ -193,7 +193,4 @@ add_subdirectory( libraries )
 add_subdirectory( plugins )
 add_subdirectory( programs )
 
-install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/evt)
-install_directory_permissions(DIRECTORY ${CMAKE_INSTALL_FULL_SYSCONFDIR}/evt/node_00)
-
 include(installer)
