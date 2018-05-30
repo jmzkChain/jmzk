@@ -246,7 +246,7 @@ apply_evt_newaccount(apply_context& context) {
         account.name = naact.name;
         account.creator = config::system_account_name;
         account.create_time = context.control.head_block_time();
-        account.balance = asset(0);
+        account.balance = asset(10000);
         account.frozen_balance = asset(0);
         account.owner = std::move(naact.owner);
 
