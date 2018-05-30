@@ -2,6 +2,7 @@ if(BUILD_MONGO_DB_PLUGIN)
   file(GLOB HEADERS "include/evt/mongo_db_plugin/*.hpp")
   add_library( mongo_db_plugin
                mongo_db_plugin.cpp
+               evt_interpreter.cpp
                ${HEADERS} )
 
 

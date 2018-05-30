@@ -3,6 +3,7 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #include <evt/mongo_db_plugin/mongo_db_plugin.hpp>
+#include <evt/mongo_db_plugin/evt_interpreter.hpp>
 
 #include <queue>
 
@@ -68,6 +69,8 @@ public:
     mongocxx::instance mongo_inst;
     mongocxx::client   mongo_conn;
 
+    evt_interpreter    interpreter;
+
     size_t                            queue_size = 0;
     size_t                            processed  = 0;
     std::deque<block_state_ptr>       block_state_queue;
@@ -89,12 +92,20 @@ public:
     static const std::string trans_col;
     static const std::string actions_col;
     static const std::string action_traces_col;
+    static const std::string domains_col;
+    static const std::string tokens_col;
+    static const std::string groups_col;
+    static const std::string accounts_col;
 };
 
 const std::string mongo_db_plugin_impl::blocks_col        = "Blocks";
 const std::string mongo_db_plugin_impl::trans_col         = "Transactions";
 const std::string mongo_db_plugin_impl::actions_col       = "Actions";
 const std::string mongo_db_plugin_impl::action_traces_col = "ActionTraces";
+const std::string mongo_db_plugin_impl::domains_col       = "Domains";
+const std::string mongo_db_plugin_impl::tokens_col        = "Tokens";
+const std::string mongo_db_plugin_impl::groups_col        = "Groups";
+const std::string mongo_db_plugin_impl::accounts_col      = "Accounts";
 
 void
 mongo_db_plugin_impl::applied_irreversible_block(const block_state_ptr& bsp) {
@@ -354,6 +365,7 @@ void
 mongo_db_plugin_impl::process_transaction(const transaction_trace& trace) {
     try {
         _process_transaction(trace);
+        interpreter.process_trx(trace);
     }
     catch(fc::exception& e) {
         elog("FC Exception while processing transaction trace ${e}", ("e", e.to_string()));
@@ -610,11 +622,19 @@ mongo_db_plugin_impl::wipe_database() {
     auto trans         = mongo_conn[db_name][trans_col];          // Transactions
     auto msgs          = mongo_conn[db_name][actions_col];        // Actions
     auto action_traces = mongo_conn[db_name][action_traces_col];  // ActionTraces
+    auto domains       = mongo_conn[db_name][domains_col];
+    auto tokens        = mongo_conn[db_name][tokens_col];
+    auto groups        = mongo_conn[db_name][groups_col];
+    auto accounts      = mongo_conn[db_name][accounts_col];
 
     blocks.drop();
     trans.drop();
     msgs.drop();
     action_traces.drop();
+    domains.drop();
+    tokens.drop();
+    groups.drop();
+    accounts.drop();
 }
 
 void
@@ -635,14 +655,33 @@ mongo_db_plugin_impl::init() {
         trans.create_index(bsoncxx::from_json(R"xxx({ "transaction_id" : 1 })xxx"));
 
         // Action indexes
-        auto msgs = mongo_conn[db_name][actions_col];  // Messages
-        msgs.create_index(bsoncxx::from_json(R"xxx({ "action_id" : 1 })xxx"));
-        msgs.create_index(bsoncxx::from_json(R"xxx({ "transaction_id" : 1 })xxx"));
+        auto acts = mongo_conn[db_name][actions_col];  // Actions
+        acts.create_index(bsoncxx::from_json(R"xxx({ "action_id" : 1 })xxx"));
+        acts.create_index(bsoncxx::from_json(R"xxx({ "transaction_id" : 1 })xxx"));
 
         // ActionTraces indexes
         auto action_traces = mongo_conn[db_name][action_traces_col];  // ActionTraces
         action_traces.create_index(bsoncxx::from_json(R"xxx({ "transaction_id" : 1 })xxx"));
+
+        // Domains indexes
+        auto domains = mongo_conn[db_name][domains_col];
+        domains.create_index(bsoncxx::from_json(R"xxx({ "name" : 1 })xxx"));
+
+        // Tokens indexes
+        auto tokens = mongo_conn[db_name][tokens_col];
+        tokens.create_index(bsoncxx::from_json(R"xxx({ "token_id" : 1 })xxx"));
+
+        // Groups indexes
+        auto groups = mongo_conn[db_name][groups_col];
+        groups.create_index(bsoncxx::from_json(R"xxx({ "name" : 1 })xxx"));
+
+        // Accounts indexes
+        auto accounts = mongo_conn[db_name][accounts_col];
+        accounts.create_index(bsoncxx::from_json(R"xxx({ "name" : 1 })xxx"));
     }
+
+    // initilize evt interpreter
+    interpreter.initialize_db(mongo_conn[db_name]);
 
     evt_api = abi_serializer(contracts::evt_contract_abi());
 
@@ -669,9 +708,9 @@ mongo_db_plugin::~mongo_db_plugin() {
 void
 mongo_db_plugin::set_program_options(options_description& cli, options_description& cfg) {
     cfg.add_options()
-        ("mongodb-queue-size,q", bpo::value<uint>()->default_value(256), "The queue size between nodeos and MongoDB plugin thread.")
+        ("mongodb-queue-size,q", bpo::value<uint>()->default_value(256), "The queue size between evtd and MongoDB plugin thread.")
         ("mongodb-uri,m", bpo::value<std::string>(), "MongoDB URI connection string, see: https://docs.mongodb.com/master/reference/connection-string/."
-                                                     " If not specified then plugin is disabled. Default database 'EOS' is used if not specified in URI.");
+                                                     " If not specified then plugin is disabled. Default database 'EVT' is used if not specified in URI.");
 }
 
 void
@@ -682,10 +721,6 @@ mongo_db_plugin::plugin_initialize(const variables_map& options) {
 
         if(options.at("replay-blockchain").as<bool>()) {
             ilog("Replay requested: wiping mongo database on startup");
-            my->wipe_database_on_startup = true;
-        }
-        if(options.at("resync-blockchain").as<bool>()) {
-            ilog("Resync requested: wiping mongo database on startup");
             my->wipe_database_on_startup = true;
         }
 
