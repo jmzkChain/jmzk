@@ -44,6 +44,13 @@ public:
         genesis_state genesis;
     };
 
+    enum class block_status {
+        irreversible = 0, ///< this block has already been applied before by this node and is considered irreversible
+        validated    = 1, ///< this is a complete block signed by a valid producer and has been previously applied by this node and therefore validated but it is not yet irreversible
+        complete     = 2, ///< this is a complete block signed by a valid producer but is not yet irreversible nor has it yet been applied by this node
+        incomplete   = 3, ///< this is an incomplete block (either being produced by a producer or speculatively produced by a node)
+    };
+
     controller(const config& cfg);
     ~controller();
 
@@ -79,7 +86,7 @@ public:
     void commit_block();
     void pop_block();
 
-    void push_block(const signed_block_ptr& b, bool trust = false /* does the caller trust the block*/);
+    void push_block(const signed_block_ptr& b, block_status s = block_status::complete);
 
     /**
           * Call this method when a producer confirmation is received, this might update
@@ -115,6 +122,8 @@ public:
     signed_block_ptr fetch_block_by_id(block_id_type id) const;
 
     block_id_type get_block_id_for_num(uint32_t block_num) const;
+
+    bool is_producing_block() const;
 
     void validate_expiration(const transaction& t) const;
     void validate_tapos(const transaction& t) const;

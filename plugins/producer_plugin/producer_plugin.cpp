@@ -114,7 +114,6 @@ public:
     boost::program_options::variables_map _options;
     bool                                  _production_enabled              = false;
     bool                                  _pause_production                = false;
-    uint32_t                              _required_producer_participation = uint32_t(config::required_producer_participation);
     uint32_t                              _production_skip_flags           = 0;  //evt::chain::skip_nothing;
 
     std::map<chain::public_key_type, chain::private_key_type> _private_keys;
@@ -324,7 +323,7 @@ public:
 
         auto deadline = fc::time_point::now() + fc::milliseconds(_max_transaction_time_ms);
         bool deadline_is_subjective = false;
-        if(_pending_block_mode == pending_block_mode::producing && block_time < deadline) {
+        if(_max_transaction_time_ms < 0 || (_pending_block_mode == pending_block_mode::producing && block_time < deadline)) {
             deadline_is_subjective = true;
             deadline = block_time;
         }
@@ -369,7 +368,7 @@ public:
 
     bool
     production_disabled_by_policy() {
-        return !_production_enabled || _pause_production || get_irreversible_block_age() >= _max_irreversible_block_age_us;
+        return !_production_enabled || _pause_production || (_max_irreversible_block_age_us.count() >= 0 && get_irreversible_block_age() >= _max_irreversible_block_age_us);
     }
 
     enum class start_block_result {
@@ -424,8 +423,6 @@ producer_plugin::set_program_options(
             [this](bool p) { my->_pause_production = p; }), "Start this node in a state where production is paused")
         ("max-transaction-time", bpo::value<int32_t>()->default_value(30), "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute before being considered invalid")
         ("max-irreversible-block-age", bpo::value<int32_t>()->default_value(30 * 60), "Limits the maximum age (in seconds) of the DPOS Irreversible Block for a chain this node will produce blocks on")
-        ("required-participation", boost::program_options::value<uint32_t>()->default_value(uint32_t(config::required_producer_participation / config::percent_1))->notifier(
-            [this](uint32_t e) { my->_required_producer_participation = std::min(e, 100u) * config::percent_1; }), "Percent of producers (0-100) that must be participating in order to produce blocks")
         ("producer-name,p", boost::program_options::value<vector<string>>()->composing()->multitoken(), "ID of producer controlled by this node (e.g. inita; may specify multiple times)")
         ("private-key", boost::program_options::value<vector<string>>()->composing()->multitoken()->default_value(
             {fc::json::to_string(private_key_default)}, fc::json::to_string(private_key_default)), "Tuple of [public key, WIF private key] (may specify multiple times)");
@@ -587,6 +584,35 @@ producer_plugin::paused() const {
     return my->_pause_production;
 }
 
+
+void
+producer_plugin::update_runtime_options(const runtime_options& options) {
+    bool check_speculating = false;
+
+    if(options.max_transaction_time) {
+        my->_max_transaction_time_ms = *options.max_transaction_time;
+    }
+
+    if(options.max_irreversible_block_age) {
+        my->_max_irreversible_block_age_us =  fc::seconds(*options.max_irreversible_block_age);
+        check_speculating = true;
+    }
+
+    if(check_speculating && my->_pending_block_mode == pending_block_mode::speculating) {
+        chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+        chain.abort_block();
+        my->schedule_production_loop();
+    }
+}
+
+producer_plugin::runtime_options
+producer_plugin::get_runtime_options() const {
+    return {
+        my->_max_transaction_time_ms,
+        my->_max_irreversible_block_age_us.count() < 0 ? -1 : my->_max_irreversible_block_age_us.count() / 1'000'000
+    };
+}
+
 optional<fc::time_point>
 producer_plugin_impl::calculate_next_block_time(const account_name& producer_name) const {
     chain::controller& chain           = app().get_plugin<chain_plugin>().chain();
@@ -683,6 +709,12 @@ producer_plugin_impl::start_block() {
         elog("Not producing block because production is explicitly paused");
         _pending_block_mode = pending_block_mode::speculating;
     }
+    else if(irreversible_block_age >= _max_irreversible_block_age_us) {
+        elog("Not producing block because the irreversible block is too old [age:${age}s, max:${max}s]", 
+            ("age", irreversible_block_age.count() / 1'000'000)
+            ("max", _max_irreversible_block_age_us.count() / 1'000'000));
+        _pending_block_mode = pending_block_mode::speculating;
+    }
 
     if(_pending_block_mode == pending_block_mode::producing) {
         // determine if our watermark excludes us from producing at this point
@@ -773,7 +805,7 @@ producer_plugin_impl::start_block() {
                 try {
                     auto deadline               = fc::time_point::now() + fc::milliseconds(_max_transaction_time_ms);
                     bool deadline_is_subjective = false;
-                    if(_pending_block_mode == pending_block_mode::producing && block_time < deadline) {
+                    if(_max_transaction_time_ms < 0 || (_pending_block_mode == pending_block_mode::producing && block_time < deadline)) {
                         deadline_is_subjective = true;
                         deadline               = block_time;
                     }

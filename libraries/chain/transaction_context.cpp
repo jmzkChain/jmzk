@@ -93,6 +93,9 @@ transaction_context::record_transaction(const transaction_id_type& id, fc::time_
             transaction.expiration = expire;
         });
     }
+    catch(const boost::interprocess::bad_alloc&) {
+        throw;
+    }
     catch(...) {
         EVT_ASSERT(false, tx_duplicate,
                    "duplicate transaction ${id}", ("id", id));

@@ -2,7 +2,6 @@
  *  @file
  *  @copyright defined in evt/LICENSE.txt
  */
-#include <evt/chain/block_context.hpp>
 #include <evt/chain/controller.hpp>
 #include <evt/chain/transaction_context.hpp>
 
@@ -39,7 +38,7 @@ struct pending_state {
 
     vector<action_receipt> _actions;
 
-    block_context _block_ctx;
+    controller::block_status _block_status = controller::block_status::incomplete;
 
     void
     push() {
@@ -60,7 +59,6 @@ struct controller_impl {
     controller::config      conf;
     chain_id_type           chain_id;
     bool                    replaying = false;
-    bool                    replaying_irreversible = false;
     abi_serializer          system_api;
 
     map<action_name, apply_handler> apply_handlers;
@@ -199,26 +197,24 @@ struct controller_impl {
             auto end = blog.read_head();
             if(end && end->block_num() > 1) {
                 replaying = true;
-                replaying_irreversible = true;
                 ilog( "existing block log, attempting to replay ${n} blocks", ("n",end->block_num()) );
 
                 auto start = fc::time_point::now();
                 while(auto next = blog.read_block_by_num(head->block_num + 1)) {
-                    self.push_block(next, true);
+                    self.push_block(next, controller::block_status::irreversible);
                     if(next->block_num() % 100 == 0) {
                         std::cerr << std::setw(10) << next->block_num() << " of " << end->block_num() <<"\r";
                     }
                 }
-                replaying_irreversible = false;
 
-                int unconf = 0;
+                int rev = 0;
                 while(auto obj = reversible_blocks.find<reversible_block_object,by_num>(head->block_num+1)) {
-                    ++unconf;
-                    self.push_block(obj->get_block(), true);
+                    ++rev;
+                    self.push_block(obj->get_block(), controller::block_status::validated);
                 }
 
                 std::cerr<< "\n";
-                ilog("${n} reversible blocks replayed", ("n",unconf));
+                ilog("${n} reversible blocks replayed", ("n",rev));
                 auto end = fc::time_point::now();
                 ilog("replayed ${n} blocks in seconds, ${mspb} ms/block",
                     ("n", head->block_num)("duration", (end-start).count()/1000000)
@@ -501,7 +497,7 @@ struct controller_impl {
     }  /// push_transaction
 
     void
-    start_block(block_timestamp_type when, uint16_t confirm_block_count) {
+    start_block(block_timestamp_type when, uint16_t confirm_block_count, controller::block_status s) {
         FC_ASSERT(!pending);
 
         FC_ASSERT(db.revision() == head->block_num, "",
@@ -512,6 +508,8 @@ struct controller_impl {
         });
 
         pending = pending_state(db.start_undo_session(true), token_db.new_savepoint_session(db.revision()));
+
+        pending->_block_status = s;
 
         pending->_pending_block_state                   = std::make_shared<block_state>(*head, when);  // promotes pending schedule (if any) to active
         pending->_pending_block_state->in_current_chain = true;
@@ -559,11 +557,11 @@ struct controller_impl {
     }  /// sign_block
 
     void
-    apply_block(const signed_block_ptr& b, bool trust) {
+    apply_block(const signed_block_ptr& b, controller::block_status s) {
         try {
             try {
                 FC_ASSERT(b->block_extensions.size() == 0, "no supported extensions");
-                start_block(b->timestamp, b->confirmed);
+                start_block(b->timestamp, b->confirmed, s);
 
                 for(const auto& receipt : b->transactions) {
                     auto& pt   = receipt.trx;
@@ -572,7 +570,7 @@ struct controller_impl {
                 }
 
                 finalize_block();
-                sign_block([&](const auto&) { return b->producer_signature; }, trust);
+                sign_block([&](const auto&) { return b->producer_signature; }, false); // trust
 
                 // this is implied by the signature passing
                 //FC_ASSERT( b->id() == pending->_pending_block_state->block->id(),
@@ -591,14 +589,16 @@ struct controller_impl {
     }  /// apply_block
 
     void
-    push_block(const signed_block_ptr& b, bool trust) {
+    push_block(const signed_block_ptr& b, controller::block_status s) {
         //  idump((fc::json::to_pretty_string(*b)));
         FC_ASSERT(!pending, "it is not valid to push a block when there is a pending block");
         try {
             FC_ASSERT(b);
+            FC_ASSERT(s != controller::block_status::incomplete, "invalid block status for a completed block");
+            bool trust = !conf.force_all_checks && (s == controller::block_status::irreversible || s == controller::block_status::validated);
             auto new_header_state = fork_db.add(b, trust);
             emit(self.accepted_block_header, new_header_state);
-            maybe_switch_forks(trust);
+            maybe_switch_forks(s);
         }
         FC_LOG_AND_RETHROW()
     }
@@ -612,12 +612,12 @@ struct controller_impl {
     }
 
     void
-    maybe_switch_forks(bool trust = false) {
+    maybe_switch_forks(controller::block_status s = controller::block_status::complete) {
         auto new_head = fork_db.head();
 
         if(new_head->header.previous == head->id) {
             try {
-                apply_block(new_head->block, trust);
+                apply_block(new_head->block, s);
                 fork_db.mark_in_current_chain(new_head, true);
                 fork_db.set_validity(new_head, true);
                 head = new_head;
@@ -642,9 +642,10 @@ struct controller_impl {
             for(auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr) {
                 optional<fc::exception> except;
                 try {
-                    apply_block((*ritr)->block, false /*don't trust*/);
+                    apply_block((*ritr)->block,  (*ritr)->validated ? controller::block_status::validated : controller::block_status::complete);
                     head = *ritr;
                     fork_db.mark_in_current_chain(*ritr, true);
+                    (*ritr)->validated = true;
                 }
                 catch(const fc::exception& e) {
                     except = e;
@@ -667,7 +668,7 @@ struct controller_impl {
 
                     // re-apply good blocks
                     for(auto ritr = branches.second.rbegin(); ritr != branches.second.rend(); ++ritr) {
-                        apply_block((*ritr)->block, true /* we previously validated these blocks*/);
+                        apply_block((*ritr)->block, controller::block_status::validated /* we previously validated these blocks*/);
                         head = *ritr;
                         fork_db.mark_in_current_chain(*ritr, true);
                     }
@@ -800,7 +801,7 @@ controller::token_db() const {
 
 void
 controller::start_block(block_timestamp_type when, uint16_t confirm_block_count) {
-    my->start_block(when, confirm_block_count);
+    my->start_block(when, confirm_block_count, block_status::incomplete);
 }
 
 void
@@ -824,8 +825,8 @@ controller::abort_block() {
 }
 
 void
-controller::push_block(const signed_block_ptr& b, bool trust) {
-    my->push_block(b, trust);
+controller::push_block(const signed_block_ptr& b, block_status s) {
+    my->push_block(b, s);
 }
 
 void
@@ -1018,7 +1019,7 @@ controller::proposed_producers() const {
 
 bool
 controller::skip_auth_check()const {
-    return my->replaying_irreversible && !my->conf.force_all_checks;
+    return my->replaying && !my->conf.force_all_checks;
 }
 
 bool
@@ -1058,6 +1059,13 @@ controller::get_unapplied_transactions() const {
 void
 controller::drop_unapplied_transaction(const transaction_metadata_ptr& trx) {
     my->unapplied_transactions.erase(trx->signed_id);
+}
+
+bool
+controller::is_producing_block() const {
+   if(!my->pending) return false;
+
+   return (my->pending->_block_status == block_status::incomplete);
 }
 
 void
