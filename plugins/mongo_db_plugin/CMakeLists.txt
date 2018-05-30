@@ -3,8 +3,8 @@ if(BUILD_MONGO_DB_PLUGIN)
   add_library( mongo_db_plugin
                mongo_db_plugin.cpp
                evt_interpreter.cpp
+               wallet_query.cpp
                ${HEADERS} )
-
 
   find_package(libbsonc REQUIRED)
   message(STATUS "Found bsonc library: ${LIBBSONC_LIBRARIES}")
@@ -55,7 +55,7 @@ if(BUILD_MONGO_DB_PLUGIN)
     )
 
   target_link_libraries(mongo_db_plugin
-          PUBLIC chain_plugin evt_chain appbase
+          PUBLIC chain_plugin evt_chain appbase fc
           ${LIBBSONC_LIBRARIES} ${LIBMONGOC_LIBRARIES}
           ${LIBBSONCXX_LIBRARIES} ${LIBMONGOCXX_LIBRARIES}
           )

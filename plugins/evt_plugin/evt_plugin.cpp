@@ -4,8 +4,11 @@
  */
 
 #include <evt/evt_plugin/evt_plugin.hpp>
+#include <evt/mongo_db_plugin/mongo_db_plugin.hpp>
+#include <evt/chain/types.hpp>
 #include <evt/chain/token_database.hpp>
 
+#include <fc/container/flat.hpp>
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
 
@@ -99,6 +102,62 @@ read_only::get_account(const get_account_params& params) {
     });
     FC_ASSERT(r == 0, "Cannot find account: ${name}", ("name", params.name));
     return var;
+}
+
+namespace __internal {
+
+static const char* EVERIWALLET_AUTH_STRING = "everiWallet";
+
+std::vector<public_key_type>
+recover_wallet_keys(const std::vector<std::string>& signatures) {
+    auto d = sha256::hash(EVERIWALLET_AUTH_STRING, strlen(EVERIWALLET_AUTH_STRING));
+    std::vector<public_key_type> results;
+    for(auto& s : signatures) {
+        auto sig = signature_type(s);
+        auto key = public_key_type(sig, d);
+        ilog((std::string)key);
+        
+        results.emplace_back(key);
+    }
+    return results;
+}
+
+}  // namespace __internal
+
+fc::variant
+read_only::get_my_tokens(const get_my_params& params) {
+    using namespace __internal;
+    auto mongodb = app().find_plugin<mongo_db_plugin>();
+    EVT_ASSERT(mongodb, missing_plugin_exception, "Cannot find mongodb plugin");
+
+    auto tokens = mongodb->get_tokens_by_public_keys(recover_wallet_keys(params.signatures));
+    fc::variant result;
+    fc::to_variant(tokens, result);
+    return result;
+}
+
+fc::variant
+read_only::get_my_domains(const get_my_params& params) {
+    using namespace __internal;
+    auto mongodb = app().find_plugin<mongo_db_plugin>();
+    EVT_ASSERT(mongodb, missing_plugin_exception, "Cannot find mongodb plugin");
+
+    auto domains = mongodb->get_domains_by_public_keys(recover_wallet_keys(params.signatures));
+    fc::variant result;
+    fc::to_variant(domains, result);
+    return result;
+}
+
+fc::variant
+read_only::get_my_groups(const get_my_params& params) {
+    using namespace __internal;
+    auto mongodb = app().find_plugin<mongo_db_plugin>();
+    EVT_ASSERT(mongodb, missing_plugin_exception, "Cannot find mongodb plugin");
+
+    auto groups = mongodb->get_groups_by_public_keys(recover_wallet_keys(params.signatures));
+    fc::variant result;
+    fc::to_variant(groups, result);
+    return result;
 }
 
 }  // namespace evt_apis

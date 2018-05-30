@@ -4,6 +4,7 @@
  */
 #include <evt/mongo_db_plugin/mongo_db_plugin.hpp>
 #include <evt/mongo_db_plugin/evt_interpreter.hpp>
+#include <evt/mongo_db_plugin/wallet_query.hpp>
 
 #include <queue>
 
@@ -763,6 +764,24 @@ mongo_db_plugin::plugin_startup() {
 void
 mongo_db_plugin::plugin_shutdown() {
     my.reset();
+}
+
+fc::flat_set<std::string>
+mongo_db_plugin::get_tokens_by_public_keys(const std::vector<public_key_type>& pkeys) {
+    auto query = wallet_query(my->mongo_conn[my->db_name]);
+    return query.get_tokens_by_public_keys(pkeys);
+}
+
+fc::flat_set<std::string>
+mongo_db_plugin::get_domains_by_public_keys(const std::vector<public_key_type>& pkeys) {
+    auto query = wallet_query(my->mongo_conn[my->db_name]);
+    return query.get_domains_by_public_keys(pkeys);
+}
+
+fc::flat_set<std::string>
+mongo_db_plugin::get_groups_by_public_keys(const std::vector<public_key_type>& pkeys) {
+    auto query = wallet_query(my->mongo_conn[my->db_name]);
+    return query.get_domains_by_public_keys(pkeys);
 }
 
 }  // namespace evt

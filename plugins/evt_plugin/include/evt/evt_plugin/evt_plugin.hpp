@@ -25,6 +25,8 @@ using namespace evt::chain;
 using namespace evt::chain::contracts;
 using evt::chain_plugin;
 
+class evt_plugin;
+
 namespace evt_apis {
 
 class read_only {
@@ -56,6 +58,17 @@ public:
         account_name name;
     };
     fc::variant get_account(const get_account_params& params);
+
+    struct get_my_params {
+        std::vector<std::string> signatures;
+    };
+    using get_my_tokens_params = get_my_params;
+    using get_my_domains_params = get_my_params;
+    using get_my_groups_params = get_my_params;
+
+    fc::variant get_my_tokens(const get_my_params& params);
+    fc::variant get_my_domains(const get_my_params& params);
+    fc::variant get_my_groups(const get_my_params& params);
 
 private:
     const controller& db_;
@@ -98,3 +111,4 @@ FC_REFLECT(evt::evt_apis::read_only::get_domain_params, (name));
 FC_REFLECT(evt::evt_apis::read_only::get_group_params, (name));
 FC_REFLECT(evt::evt_apis::read_only::get_token_params, (domain)(name));
 FC_REFLECT(evt::evt_apis::read_only::get_account_params, (name));
+FC_REFLECT(evt::evt_apis::read_only::get_my_params, (signatures));

@@ -3,5 +3,5 @@ add_library( evt_plugin
         evt_plugin.cpp
         ${HEADERS} )
 
-target_link_libraries( evt_plugin chain_plugin evt_chain appbase )
-target_include_directories( evt_plugin PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" )
+target_link_libraries( evt_plugin chain_plugin evt_chain appbase fc )
+target_include_directories( evt_plugin PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/../mongo_db_plugin/include" )
