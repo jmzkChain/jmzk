@@ -47,6 +47,7 @@ target_link_libraries(evtd
         PRIVATE producer_plugin
         PRIVATE net_plugin
         PRIVATE http_plugin
+        PRIVATE http_client_plugin
         PRIVATE evt_chain
         PRIVATE fc rocksdb
         PRIVATE -Wl,${whole_archive_flag} producer_api_plugin -Wl,${no_whole_archive_flag}
