@@ -100,7 +100,7 @@ parse_url(const string& server_url) {
     if(res.server.empty())
         FC_THROW("No server parsed from URL \"${u}\"", ("u", server_url));
     if(res.port.empty())
-        res.port = res.scheme == "http" ? "8888" : "443";
+        res.port = res.scheme == "http" ? "80" : "443";
     boost::trim_right_if(res.path_prefix, boost::is_any_of("/"));
     return res;
 }
@@ -133,6 +133,8 @@ do_http_call(const connection_param& cp,
     }
     request_stream << "\r\n";
     request_stream << postjson;
+
+    printf("%s\n\n", postjson.c_str());
 
     unsigned int status_code;
     std::string  re;

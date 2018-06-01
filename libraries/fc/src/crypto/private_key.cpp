@@ -91,7 +91,7 @@ namespace fc { namespace crypto {
    static private_key::storage_type parse_base58(const string& base58str)
    {
       const auto pivot = base58str.find('_');
-      
+
       if (pivot == std::string::npos) {
          // wif import
          using default_type = private_key::storage_type::template type_at<0>;

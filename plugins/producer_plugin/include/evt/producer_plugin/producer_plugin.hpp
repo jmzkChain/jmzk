@@ -6,6 +6,7 @@
 #pragma once
 
 #include <evt/chain_plugin/chain_plugin.hpp>
+#include <evt/http_client_plugin/http_client_plugin.hpp>
 #include <appbase/application.hpp>
 
 namespace evt {
@@ -14,7 +15,7 @@ using boost::signals2::signal;
 
 class producer_plugin : public appbase::plugin<producer_plugin> {
 public:
-    APPBASE_PLUGIN_REQUIRES((chain_plugin))
+    APPBASE_PLUGIN_REQUIRES((chain_plugin)(http_client_plugin))
 
     struct runtime_options {
         fc::optional<int32_t> max_transaction_time;

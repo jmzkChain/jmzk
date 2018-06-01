@@ -264,7 +264,7 @@ public:
          */
     explicit session(tcp::socket socket, bnet_ptr net_plug)
         : _resolver(socket.get_io_service())
-        , _net_plugin(net_plug)
+        , _net_plugin(std::move(net_plug))
         , _ios(socket.get_io_service())
         , _ws(new ws::stream<tcp::socket>(move(socket)))
         , _strand(_ws->get_executor())
@@ -281,7 +281,7 @@ public:
          */
     explicit session(boost::asio::io_context& ioc, bnet_ptr net_plug)
         : _resolver(ioc)
-        , _net_plugin(net_plug)
+        , _net_plugin(std::move(net_plug))
         , _ios(ioc)
         , _ws(new ws::stream<tcp::socket>(ioc))
         , _strand(_ws->get_executor())
@@ -1091,7 +1091,7 @@ public:
     listener(boost::asio::io_context& ioc, tcp::endpoint endpoint, bnet_ptr np)
         : _acceptor(ioc)
         , _socket(ioc)
-        , _net_plugin(np) {
+        , _net_plugin(std::move(np)) {
         boost::system::error_code ec;
 
         _acceptor.open(endpoint.protocol(), ec);
@@ -1134,25 +1134,23 @@ public:
 
 class bnet_plugin_impl : public std::enable_shared_from_this<bnet_plugin_impl> {
 public:
-    bnet_plugin_impl() {
-        _peer_pk = fc::crypto::private_key::generate();
-        _peer_id = _peer_pk.get_public_key();
-    }
+    bnet_plugin_impl() = default;
 
-    string           _bnet_endpoint_address = "0.0.0.0";
-    uint16_t         _bnet_endpoint_port    = 4321;
-    bool             _request_trx           = true;
-    public_key_type  _peer_id;
-    private_key_type _peer_pk;  /// one time random key to identify this process
+    const private_key_type  _peer_pk = fc::crypto::private_key::generate(); /// one time random key to identify this process
+    public_key_type         _peer_id = _peer_pk.get_public_key();
 
-    std::vector<std::string>                     _connect_to_peers;  /// list of peers to connect to
-    std::vector<std::thread>                     _socket_threads;
-    int32_t                                      _num_threads = 1;
-    std::unique_ptr<boost::asio::io_context>     _ioc; // lifetime guarded by shared_ptr of bnet_plugin_impl
-    std::shared_ptr<listener>                    _listener;
-    std::shared_ptr<boost::asio::deadline_timer> _timer;
+    string    _bnet_endpoint_address = "0.0.0.0";
+    uint16_t _bnet_endpoint_port = 4321;
+    bool     _request_trx = true;
 
-    std::map<const session*, std::weak_ptr<session>> _sessions;
+    std::vector<std::string> _connect_to_peers; /// list of peers to connect to
+    std::vector<std::thread> _socket_threads;
+    int32_t                  _num_threads = 1;
+
+    std::unique_ptr<boost::asio::io_context>         _ioc; // lifetime guarded by shared_ptr of bnet_plugin_impl
+    std::shared_ptr<listener>                        _listener;
+    std::shared_ptr<boost::asio::deadline_timer>     _timer;    // only access on app io_service
+    std::map<const session*, std::weak_ptr<session>> _sessions; // only access on app io_service
 
     channels::irreversible_block::channel_type::handle    _on_irb_handle;
     channels::accepted_block::channel_type::handle        _on_accepted_block_handle;
@@ -1171,6 +1169,7 @@ public:
 
     void
     on_session_close(const session* s) {
+        if(!app().get_io_service().get_executor().running_in_this_thread() ) { elog( "wrong strand"); }
         auto itr = _sessions.find(s);
         if(_sessions.end() != itr)
             _sessions.erase(itr);
@@ -1179,13 +1178,15 @@ public:
     template <typename Call>
     void
     for_each_session(Call callback) {
-        for(const auto& item : _sessions) {
-            if(auto ses = item.second.lock()) {
-                ses->_ios.post(boost::asio::bind_executor(
-                    ses->_strand,
-                    [ses, cb = callback]() { cb(ses); }));
+        app().get_io_service().post([this, callback = callback] {
+            for (const auto& item : _sessions) {
+                if (auto ses = item.second.lock()) {
+                    ses->_ios.post(boost::asio::bind_executor(
+                        ses->_strand, [ses, cb = callback]() { cb(ses); }
+                    ));
+                }
             }
-        }
+        });
     }
 
     void
@@ -1239,6 +1240,7 @@ public:
 
     void
     on_reconnect_peers() {
+        if(!app().get_io_service().get_executor().running_in_this_thread()) { elog( "wrong strand"); }
         for(const auto& peer : _connect_to_peers) {
             bool found = false;
             for(const auto& con : _sessions) {

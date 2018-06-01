@@ -34,7 +34,8 @@ wallet_plugin::set_program_options(options_description& cli, options_description
         ("unlock-timeout", bpo::value<int64_t>()->default_value(900), 
             "Timeout for unlocked wallet in seconds (default 900 (15 minutes)). " 
             "Wallets will automatically lock after specified number of seconds of inactivity. "
-            "Activity is defined as any wallet command e.g. list-wallets.")("evt-key", bpo::value<std::string>(), "evt key that will be imported automatically when a wallet is created.");
+            "Activity is defined as any wallet command e.g. list-wallets.")
+        ("evt-key", bpo::value<std::string>(), "evt key that will be imported automatically when a wallet is created.");
 }
 
 void
@@ -58,4 +59,5 @@ wallet_plugin::plugin_initialize(const variables_map& options) {
         wallet_manager_ptr->set_evt_key(evt_wif_key);
     }
 }
+
 }  // namespace evt

@@ -709,10 +709,14 @@ read_only::trx_json_to_digest(const trx_json_to_digest_params& params) const {
 
 read_only::get_required_keys_result
 read_only::get_required_keys(const get_required_keys_params& params) const {
-    transaction pretty_input;
-    from_variant(params.transaction, pretty_input);
-    auto required_keys_set = db.get_required_keys(pretty_input, params.available_keys);
+    auto pretty_input = transaction();
+    auto resolver     = make_resolver(this);
+    try {
+        abi_serializer::from_variant(params.transaction, pretty_input, resolver);
+    }
+    EVT_RETHROW_EXCEPTIONS(chain::transaction_type_exception, "Invalid transaction");
 
+    auto required_keys_set = db.get_required_keys(pretty_input, params.available_keys);
     get_required_keys_result result;
     result.required_keys = required_keys_set;
     return result;

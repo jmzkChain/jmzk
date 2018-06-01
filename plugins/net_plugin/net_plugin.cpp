@@ -1235,7 +1235,7 @@ connection::process_next_message(net_plugin_impl& impl, uint32_t message_length)
             pending_message_buffer.peek(&b, 1, index);
             which |= uint32_t(uint8_t(b) & 0x7f) << by;
             by += 7;
-        } while(uint8_t(b) & 0x80);
+        } while(uint8_t(b) & 0x80 && by < 32);
 
         if(which == uint64_t(net_message::tag<signed_block>::value)) {
             blk_buffer.resize(message_length);
@@ -2021,7 +2021,7 @@ net_plugin_impl::connect(connection_ptr c, tcp::resolver::iterator endpoint_itr)
         auto c = weak_conn.lock();
         if(!c)
             return;
-        if(!err) {
+        if(!err && c->socket->is_open()) {
             start_session(c);
             c->send_handshake();
         }
@@ -2068,7 +2068,8 @@ net_plugin_impl::start_listen_loop() {
                 if(conn->socket->is_open()) {
                     if(conn->peer_addr.empty()) {
                         visitors++;
-                        if (paddr == conn->socket->remote_endpoint().address().to_v4()) {
+                        boost::system::error_code ec;
+                        if (paddr == conn->socket->remote_endpoint(ec).address().to_v4()) {
                             from_addr++;
                         }
                     }
@@ -2134,7 +2135,7 @@ net_plugin_impl::start_read_message(connection_ptr conn) {
                                                           uint32_t message_length;
                                                           auto     index = conn->pending_message_buffer.read_index();
                                                           conn->pending_message_buffer.peek(&message_length, sizeof(message_length), index);
-                                                          if(message_length > def_send_buffer_size * 2) {
+                                                          if(message_length > def_send_buffer_size * 2 || message_length == 0) {
                                                               elog("incoming message length unexpected (${i})", ("i", message_length));
                                                               close(conn);
                                                               return;

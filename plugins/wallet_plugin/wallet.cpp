@@ -134,7 +134,7 @@ public:
     //          account, false otherwise (but it is stored either way)
     bool
     import_key(string wif_key) {
-        private_key_type              priv(wif_key);
+        private_key_type            priv(wif_key);
         evt::chain::public_key_type wif_pub_key = priv.get_public_key();
 
         auto itr = _keys.find(wif_pub_key);
@@ -317,6 +317,19 @@ wallet_api::unlock(string password) {
         FC_ASSERT(pk.checksum == pw);
         my->_keys     = std::move(pk.keys);
         my->_checksum = pk.checksum;
+    }
+    EVT_RETHROW_EXCEPTIONS(chain::wallet_invalid_password_exception,
+                           "Invalid password for wallet: \"${wallet_name}\"", ("wallet_name", get_wallet_filename()))
+}
+
+void
+wallet_api::check_password(string password) {
+    try {
+        FC_ASSERT(password.size() > 0);
+        auto         pw        = fc::sha512::hash(password.c_str(), password.size());
+        vector<char> decrypted = fc::aes_decrypt(pw, my->_wallet.cipher_keys);
+        auto         pk        = fc::raw::unpack<plain_keys>(decrypted);
+        FC_ASSERT(pk.checksum == pw);
     }
     EVT_RETHROW_EXCEPTIONS(chain::wallet_invalid_password_exception,
                            "Invalid password for wallet: \"${wallet_name}\"", ("wallet_name", get_wallet_filename()))

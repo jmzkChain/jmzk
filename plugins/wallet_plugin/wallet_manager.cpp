@@ -102,18 +102,16 @@ wallet_manager::list_wallets() {
 }
 
 map<public_key_type, private_key_type>
-wallet_manager::list_keys() {
+wallet_manager::list_keys(const string& name, const string& pw) {
     check_timeout();
-    map<public_key_type, private_key_type> result;
-    for(const auto& i : wallets) {
-        if(!i.second->is_locked()) {
-            const auto& keys = i.second->list_keys();
-            for(const auto& i : keys) {
-                result[i.first] = i.second;
-            }
-        }
-    }
-    return result;
+
+    if(wallets.count(name) == 0)
+        EVT_THROW(chain::wallet_nonexistent_exception, "Wallet not found: ${w}", ("w", name));
+    auto& w = wallets.at(name);
+    if(w->is_locked())
+        EVT_THROW(chain::wallet_locked_exception, "Wallet is locked: ${w}", ("w", name));
+    w->check_password(pw);  //throws if bad password
+    return w->list_keys();
 }
 
 flat_set<public_key_type>
@@ -224,5 +222,24 @@ wallet_manager::sign_transaction(const chain::signed_transaction& txn, const fla
 
     return stxn;
 }
+
+chain::signature_type
+wallet_manager::sign_digest(const chain::digest_type& digest, const public_key_type& key) {
+    check_timeout();
+
+    try {
+        for(const auto& i : wallets) {
+            if(!i.second->is_locked()) {
+                const auto& k = i.second->try_get_private_key(key);
+                if(k) {
+                    return k->sign(digest);
+                }
+            }
+        }
+    }
+    FC_LOG_AND_RETHROW();
+
+    EVT_THROW(chain::wallet_missing_pub_key_exception, "Public key not found in unlocked wallets ${k}", ("k", key));
 }
-}  // namespace evt::wallet
+
+}}  // namespace evt::wallet
