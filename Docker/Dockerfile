@@ -1,6 +1,6 @@
 FROM everitoken/builder:latest as builder
 ARG branch=master
-ARG rootkey=EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
+ARG rootkey
 
 RUN git clone -b $branch https://github.com/everitoken/evt.git --recursive \
     && cd evt && echo "$branch:$(git rev-parse HEAD)" > /etc/evt-version \

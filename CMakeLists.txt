@@ -190,6 +190,12 @@ endif()
 
 include_directories(libraries/rocksdb/include)
 
+if ("${EVT_ROOT_KEY}" STREQUAL "")
+   set(EVT_ROOT_KEY "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV")
+endif()
+
+message( STATUS "Using '${EVT_ROOT_KEY}' as public key for evt account" )
+
 add_subdirectory( libraries )
 add_subdirectory( plugins )
 add_subdirectory( programs )
