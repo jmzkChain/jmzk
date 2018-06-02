@@ -4,6 +4,7 @@ cd /opt/evt/bin
 if [ -f '/opt/evt/etc/config.ini' ]; then
     echo
   else
+    mkdir /opt/evt/etc
     cp /config.ini /opt/evt/etc
 fi
 

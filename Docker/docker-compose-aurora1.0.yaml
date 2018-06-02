@@ -11,7 +11,7 @@ services:
 
   evtd:
     image: everitoken/evt:latest
-    command: /opt/evt/bin/evtwd.sh --data-dir /opt/evt/data --delete-all-blocks
+    command: /opt/evt/bin/evtd.sh --data-dir /opt/evt/data --delete-all-blocks
     hostname: evtd
     links:
       - mongo

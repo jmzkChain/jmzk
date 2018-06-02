@@ -11,7 +11,7 @@ RUN git clone -b $branch https://github.com/everitoken/evt.git --recursive \
 
 FROM ubuntu:18.04
 
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive && apt-get install -y openssl libssl1.1 && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /usr/local/lib/* /usr/local/lib/
 COPY --from=builder /tmp/build/bin /opt/evt/bin
 COPY --from=builder /etc/evt-version /etc
