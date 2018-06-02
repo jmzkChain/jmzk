@@ -1,0 +1,41 @@
+version: "3"
+
+services:
+  mongo:
+    image: mongo:latest
+    hostname: mongo
+    ports:
+      - 27017:27017
+    volumes:
+      - mongo-data-volume:/data/db
+
+  evtd:
+    image: everitoken/evt:latest
+    command: /opt/evt/bin/evtwd.sh --data-dir /opt/evt/data --delete-all-blocks
+    hostname: evtd
+    links:
+      - mongo
+    ports:
+      - 8888:8888
+      - 9876:9876
+    expose:
+      - "8888"
+    volumes:
+      - evtd-data-volume:/opt/evt/data
+
+  evtwd:
+    image: everitoken/evt:latest
+    command: /opt/evt/bin/evtwd --wallet-dir /opt/evt/data --http-server-address=127.0.0.1:9999
+    hostname: evtwd
+    links:
+      - evtd
+    volumes:
+      - evtwd-data-volume:/opt/evt/data
+
+volumes:
+ mongo-data-volume:
+   external: true
+ evtd-data-volume:
+   external: true
+ evtwd-data-volume:
+   external: true

@@ -5,7 +5,7 @@ ARG rootkey
 RUN git clone -b $branch https://github.com/everitoken/evt.git --recursive \
     && cd evt && echo "$branch:$(git rev-parse HEAD)" > /etc/evt-version \
     && cmake -H. -B"/tmp/build" -DCMAKE_BUILD_TYPE=Release \
-       -DCMAKE_INSTALL_PREFIX=/tmp/build  -DSecp256k1_ROOT_DIR=/usr/local -DBUILD_MONGO_DB_PLUGIN=true -DEVT_ROOT_KEY=$rootkey \
+       -DCMAKE_INSTALL_PREFIX=/tmp/build  -DSecp256k1_ROOT_DIR=/usr/local -DBUILD_MONGO_DB_PLUGIN=ON -DEVT_ROOT_KEY=$rootkey \
     && cmake --build /tmp/build --target install -- -j$(nproc)
 
 

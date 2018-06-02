@@ -109,7 +109,7 @@ evt_contract_abi() {
          {"proposer", "public_key"},
          {"trx", "transaction"}
       }
-   });  
+   });
 
    // actions def
    evt_abi.structs.emplace_back( struct_def {
