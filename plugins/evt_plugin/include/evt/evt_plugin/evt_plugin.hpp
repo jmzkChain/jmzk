@@ -4,6 +4,9 @@
  */
 #pragma once
 #include <evt/chain_plugin/chain_plugin.hpp>
+#ifdef ENABLE_MONGODB
+#include <evt/mongo_db_plugin/mongo_db_plugin.hpp>
+#endif
 
 #include <appbase/application.hpp>
 #include <evt/chain/asset.hpp>
@@ -59,6 +62,7 @@ public:
     };
     fc::variant get_account(const get_account_params& params);
 
+#ifdef ENABLE_MONGODB
     struct get_my_params {
         std::vector<std::string> signatures;
     };
@@ -69,6 +73,7 @@ public:
     fc::variant get_my_tokens(const get_my_params& params);
     fc::variant get_my_domains(const get_my_params& params);
     fc::variant get_my_groups(const get_my_params& params);
+#endif
 
 private:
     const controller& db_;
@@ -87,7 +92,11 @@ private:
 
 class evt_plugin : public plugin<evt_plugin> {
 public:
+#ifndef ENABLE_MONGODB
     APPBASE_PLUGIN_REQUIRES((chain_plugin))
+#else
+    APPBASE_PLUGIN_REQUIRES((chain_plugin)(mongo_db_plugin))
+#endif
 
     evt_plugin();
     virtual ~evt_plugin();
@@ -111,4 +120,6 @@ FC_REFLECT(evt::evt_apis::read_only::get_domain_params, (name));
 FC_REFLECT(evt::evt_apis::read_only::get_group_params, (name));
 FC_REFLECT(evt::evt_apis::read_only::get_token_params, (domain)(name));
 FC_REFLECT(evt::evt_apis::read_only::get_account_params, (name));
+#ifdef ENABLE_MONGODB
 FC_REFLECT(evt::evt_apis::read_only::get_my_params, (signatures));
+#endif

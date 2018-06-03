@@ -58,11 +58,14 @@ evt_api_plugin::plugin_startup() {
     app().get_plugin<http_plugin>().add_api({EVT_RO_CALL(get_domain, 200),
                                              EVT_RO_CALL(get_group, 200),
                                              EVT_RO_CALL(get_token, 200),
-                                             EVT_RO_CALL(get_account, 200),
-                                             EVT_RO_CALL(get_my_tokens, 200),
+                                             EVT_RO_CALL(get_account, 200)
+                                         });
+#ifdef ENABLE_MONGODB
+    app().get_plugin<http_plugin>().add_api({EVT_RO_CALL(get_my_tokens, 200),
                                              EVT_RO_CALL(get_my_domains, 200),
                                              EVT_RO_CALL(get_my_groups, 200)
                                          });
+#endif
 }
 
 void

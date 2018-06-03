@@ -10,8 +10,14 @@ add_subdirectory(wallet_plugin)
 add_subdirectory(wallet_api_plugin)
 add_subdirectory(evt_plugin)
 add_subdirectory(evt_api_plugin)
-add_subdirectory(mongo_db_plugin)
 add_subdirectory(bnet_plugin)
+
+if(ENABLE_MONGO_DB_PLUGIN)
+    add_subdirectory(mongo_db_plugin)
+    set_target_properties(evt_plugin evt_api_plugin PROPERTIES COMPILE_DEFINITIONS "ENABLE_MONGODB")
+else()
+    message("mongo_db_plugin not selected and will be omitted.")
+endif()
 
 # Forward variables to top level so packaging picks them up
 set(CPACK_DEBIAN_PACKAGE_DEPENDS ${CPACK_DEBIAN_PACKAGE_DEPENDS} PARENT_SCOPE)

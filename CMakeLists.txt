@@ -3,6 +3,8 @@ cmake_minimum_required( VERSION 3.5 )
 # Defines everiToken library target.
 project( EVT )
 
+option(ENABLE_MONGO_DB_PLUGIN "Build the mongodb plugin" OFF)
+
 enable_testing()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libraries/fc/CMakeModules")

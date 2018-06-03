@@ -4,7 +4,6 @@
  */
 
 #include <evt/evt_plugin/evt_plugin.hpp>
-#include <evt/mongo_db_plugin/mongo_db_plugin.hpp>
 #include <evt/chain/types.hpp>
 #include <evt/chain/token_database.hpp>
 
@@ -104,6 +103,8 @@ read_only::get_account(const get_account_params& params) {
     return var;
 }
 
+#ifdef ENABLE_MONGODB
+
 namespace __internal {
 
 static const char* EVERIWALLET_AUTH_STRING = "everiWallet";
@@ -159,6 +160,8 @@ read_only::get_my_groups(const get_my_params& params) {
     fc::to_variant(groups, result);
     return result;
 }
+
+#endif
 
 }  // namespace evt_apis
 
