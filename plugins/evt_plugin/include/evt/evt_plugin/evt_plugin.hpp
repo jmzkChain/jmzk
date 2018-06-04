@@ -92,11 +92,7 @@ private:
 
 class evt_plugin : public plugin<evt_plugin> {
 public:
-#ifndef ENABLE_MONGODB
     APPBASE_PLUGIN_REQUIRES((chain_plugin))
-#else
-    APPBASE_PLUGIN_REQUIRES((chain_plugin)(mongo_db_plugin))
-#endif
 
     evt_plugin();
     virtual ~evt_plugin();
