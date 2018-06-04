@@ -16,6 +16,7 @@
 #  SECP256K1_FOUND            System has secp256k1, include and lib dirs found
 #  Secp256k1_INCLUDE_DIR      The secp256k1 include directories.
 #  Secp256k1_LIBRARY          The secp256k1 library.
+#  Secp256k1_SHARED_LIBRARY   The secp256k1 dynamic library.
 
 find_path(Secp256k1_ROOT_DIR
     NAMES include/secp256k1.h
@@ -31,6 +32,10 @@ find_library(Secp256k1_LIBRARY
     HINTS ${Secp256k1_ROOT_DIR}/lib
 )
 
+find_library(Secp256k1_SHARED_LIBRARY
+    NAMES libsecp256k1.so
+    HINTS ${Secp256k1_ROOT_DIR}/lib)
+
 if(Secp256k1_INCLUDE_DIR AND Secp256k1_LIBRARY)
   set(SECP256K1_FOUND TRUE)
 else(Secp256k1_INCLUDE_DIR AND Secp256k1_LIBRARY)
@@ -44,6 +49,7 @@ mark_as_advanced(
     Secp256k1_ROOT_DIR
     Secp256k1_INCLUDE_DIR
     Secp256k1_LIBRARY
+    Secp256k1_SHARED_LIBRARY
 )
 
 MESSAGE( STATUS "Found Secp256k1: ${Secp256k1_LIBRARY}" )

@@ -3,8 +3,12 @@
 #include <unordered_map>
 #include <string>
 #include <fc/log/console_appender.hpp>
+
+#ifndef FCLITE
 #include <fc/log/file_appender.hpp>
 #include <fc/log/gelf_appender.hpp>
+#endif
+
 #include <fc/variant.hpp>
 #include <mutex>
 #include "console_defines.h"
@@ -43,7 +47,9 @@ namespace fc {
    }
 
    static bool reg_console_appender = appender::register_appender<console_appender>( "console" );
+#ifndef FCLITE
    //static bool reg_file_appender = appender::register_appender<file_appender>( "file" );
    static bool reg_gelf_appender = appender::register_appender<gelf_appender>( "gelf" );
+#endif
 
 } // namespace fc

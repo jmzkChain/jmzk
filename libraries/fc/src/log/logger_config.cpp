@@ -5,7 +5,11 @@
 #include <unordered_map>
 #include <string>
 #include <fc/log/console_appender.hpp>
+
+#ifndef FCLITE
 #include <fc/log/gelf_appender.hpp>
+#endif
+
 #include <fc/reflect/variant.hpp>
 #include <fc/exception/exception.hpp>
 
@@ -22,7 +26,9 @@ namespace fc {
    {
       try {
       static bool reg_console_appender = appender::register_appender<console_appender>( "console" );
+#ifndef FCLITE
       static bool reg_gelf_appender = appender::register_appender<gelf_appender>( "gelf" );
+#endif
       get_logger_map().clear();
       get_appender_map().clear();
 
@@ -47,7 +53,11 @@ namespace fc {
             if( ap ) { lgr.add_appender(ap); }
          }
       }
+#ifndef FCLITE
       return reg_console_appender || reg_gelf_appender;
+#else
+      return reg_console_appender;
+#endif
       } catch ( exception& e )
       {
          std::cerr<<e.to_detail_string()<<"\n";

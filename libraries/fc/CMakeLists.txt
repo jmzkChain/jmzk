@@ -23,6 +23,7 @@ IF( ECC_IMPL STREQUAL openssl )
   SET( ECC_REST src/crypto/elliptic_impl_pub.cpp )
 ELSE( ECC_IMPL STREQUAL openssl )
   SET( ECC_LIB ${Secp256k1_LIBRARY} ${GMP_LIBRARIES} )
+  SET( ECC_SHARED_LIB ${Secp256k1_SHARED_LIBRARY} ${GMP_SHARED_LIBRARIES} )
   IF( ECC_IMPL STREQUAL mixed )
     SET( ECC_REST src/crypto/elliptic_impl_priv.cpp src/crypto/elliptic_impl_pub.cpp )
   ELSE( ECC_IMPL STREQUAL mixed )
@@ -109,17 +110,60 @@ set( fc_sources
      src/compress/zlib.cpp
      )
 
+set( fc_lite_sources
+    src/variant.cpp
+    src/exception.cpp
+    src/variant_object.cpp
+    src/string.cpp
+    src/shared_ptr.cpp
+    src/time.cpp
+    src/utf8.cpp
+    src/io/datastream.cpp
+    src/io/json.cpp
+    src/io/varint.cpp
+    src/io/console.cpp
+    src/filesystem.cpp
+    src/log/log_message.cpp
+    src/log/logger.cpp
+    src/log/appender.cpp
+    src/log/console_appender.cpp
+    src/log/logger_config.cpp
+    src/crypto/_digest_common.cpp
+    src/crypto/openssl.cpp
+    src/crypto/base58.cpp
+    src/crypto/base64.cpp
+    src/crypto/bigint.cpp
+    src/crypto/hex.cpp
+    src/crypto/ripemd160.cpp
+    src/crypto/sha256.cpp
+    src/crypto/sha512.cpp
+    src/crypto/elliptic_common.cpp
+    ${ECC_REST}
+    src/crypto/elliptic_${ECC_IMPL}.cpp
+    src/crypto/elliptic_r1.cpp
+    src/crypto/rand.cpp
+    src/crypto/public_key.cpp
+    src/crypto/private_key.cpp
+    src/crypto/signature.cpp
+    )
+
 file( GLOB_RECURSE fc_headers ${CMAKE_CURRENT_SOURCE_DIR} *.hpp *.h )
 
 set( sources
   ${fc_sources}
 )
 
+set( lite_sources
+  ${fc_lite_sources}
+)
+
 #configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/git_revision.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/git_revision.cpp" @ONLY)
 #list(APPEND sources "${CMAKE_CURRENT_BINARY_DIR}/git_revision.cpp")
 list(APPEND sources ${fc_headers})
+list(APPEND lite_sources ${fc_lite_sources})
 
 setup_library( fc SOURCES ${sources} LIBRARY_TYPE STATIC DONT_INSTALL_LIBRARY )
+setup_library( fc_lite SOURCES ${lite_sources} LIBRARY_TYPE SHARED DONT_INSTALL_LIBRARY )
   
 IF(APPLE)
   # As of 10.10 yosemite, the OpenSSL static libraries shipped with os x have a dependency
@@ -151,11 +195,20 @@ target_include_directories(fc
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/websocketpp
   )
 
+target_include_directories(fc_lite
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${Boost_INCLUDE_DIR}
+    ${OPENSSL_INCLUDE_DIR}
+    ${Secp256k1_INCLUDE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/websocketpp
+  )
+
 IF(NOT WIN32)
   set(LINK_USR_LOCAL_LIB -L/usr/local/lib)
 ENDIF()
 target_link_libraries( fc PUBLIC ${LINK_USR_LOCAL_LIB} ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} ${ZLIB_LIBRARIES} ${PLATFORM_SPECIFIC_LIBS} ${RPCRT4} ${CMAKE_DL_LIBS} ${rt_library} ${readline_libraries} ${ECC_LIB} )
-
+target_link_libraries( fc_lite PUBLIC ${LINK_USR_LOCAL_LIB} ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} ${ZLIB_LIBRARIES} ${PLATFORM_SPECIFIC_LIBS} ${RPCRT4} ${CMAKE_DL_LIBS} ${rt_library} ${ECC_SHARED_LIB} )
+set_target_properties( fc_lite PROPERTIES COMPILE_DEFINITIONS "FCLITE" )
 
 SET(OPENSSL_CONF_TARGET )
 IF(DEFINED CMAKE_RUNTIME_OUTPUT_DIRECTORY)
