@@ -34,9 +34,26 @@ add_library( evt_chain
              ${HEADERS}
              )
 
+add_library( evt_chain_lite SHARED
+             asset.cpp
+             name.cpp
+             chain_id_type.cpp
+             genesis_state.cpp
+             ${CMAKE_CURRENT_BINARY_DIR}/genesis_state_root_key.cpp
+             contracts/abi_serializer.cpp
+             contracts/group.cpp
+             contracts/authorizer_ref.cpp
+
+             ${HEADERS})
+
 target_link_libraries( evt_chain evt_utilities fc chainbase rocksdb )
 target_include_directories( evt_chain
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"
+                            )
+
+target_link_libraries( evt_chain_lite fc_lite )
+target_include_directories( evt_chain_lite
+                            PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/../chainbase/include" 
                             )
 
 if(MSVC)
