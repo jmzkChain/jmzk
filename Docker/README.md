@@ -20,10 +20,10 @@ cd evt/Docker
 docker build . -t everitoken/evt
 ```
 
-The above will build off the most recent commit to the master branch by default. If you would like to target a specific branch/tag, you may use a build argument. For example, if you wished to generate a docker image based off of the pretest-v1.0 tag, you could do the following:
+The above will build off the most recent commit to the master branch by default. If you would like to target a specific branch/tag, you may use a build argument. For example, if you wished to generate a docker image based off of the Aurora-v1.0 tag, you could do the following:
 
 ```bash
-docker build -t everitoken/evt:pretest-v1.0 --build-arg branch=pretest-v1.0 .
+docker build -t everitoken/evt:Aurora-v1.0 --build-arg branch=Aurora-v1.0 .
 ```
 
 By default, the root key of evt is set to `EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV`. You can override this using the `rootkey` argument while building the docker image.
@@ -73,13 +73,19 @@ After `docker-compose up -d`, two services named `evtd` and `evtwd` will be star
 You can run the `evtc` commands via a bash alias.
 
 ```bash
-alias evtc='docker-compose exec evtwd /opt/evt/bin/evtc -u http://evtd:8888 --wallet-url http://localhost:8888'
+alias evtc='docker-compose exec evtwd /opt/evt/bin/evtc -u http://evtd:8888 --wallet-url http://localhost:9999'
 evtc get info
 ```
 If you don't need evtwd afterwards, you can stop the evtwd service using
 
 ```bash
 docker-compose stop evtwd
+```
+
+### Stop and remove all
+If you have tested all the features, you can stop and remove all the containers using
+```bash
+docker-compose down
 ```
 
 ### Change default configuration
@@ -124,12 +130,12 @@ services:
   builder:
     build:
       context: builder
-    image: everitoken/builder
+    image: everitoken/builder:latest
 
   evtd:
     build:
       context: .
-    image: everitoken/evt
+    image: everitoken/evt:latest
     command: /opt/evt/bin/evtd.sh --data-dir /opt/evt/data
     hostname: evtd
     ports:
@@ -141,7 +147,7 @@ services:
       - evtd-data-volume:/opt/evt/data
 
   evtwd:
-    image: everitoken/evt
+    image: everitoken/evt:latest
     command: /opt/evt/bin/evtwd --wallet-dir /opt/evt/data
     hostname: evtwd
     links:

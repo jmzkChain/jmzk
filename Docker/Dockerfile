@@ -20,5 +20,5 @@ COPY evtd.sh /opt/evt/bin/evtd.sh
 RUN chmod +x /opt/evt/bin/evtd.sh
 ENV EVT_ROOT=/opt/evt
 ENV LD_LIBRARY_PATH /usr/local/lib
-VOLUME /opt/evt/bin/data
+VOLUME /opt/evt/data
 ENV PATH /opt/evt/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin

@@ -1,15 +1,10 @@
 version: "3"
 
 services:
-  builder:
-    build:
-      context: builder
-    image: everitoken/builder
-
   evtd:
     build:
       context: .
-    image: everitoken/evt
+    image: everitoken/evt:latest
     command: /opt/evt/bin/evtd.sh --data-dir /opt/evt/data
     hostname: evtd
     ports:
@@ -21,7 +16,7 @@ services:
       - evtd-data-volume:/opt/evt/data
 
   evtwd:
-    image: everitoken/evt
+    image: everitoken/evt:latest
     command: /opt/evt/bin/evtwd --wallet-dir /opt/evt/data
     hostname: evtwd
     links:
