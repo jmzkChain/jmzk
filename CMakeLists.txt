@@ -4,6 +4,7 @@ cmake_minimum_required( VERSION 3.5 )
 project( EVT )
 
 option(ENABLE_MONGO_DB_PLUGIN "Build the mongodb plugin" OFF)
+option(ENABLE_BIND_LIBRARIES  "Build bind libraries" OFF)
 
 enable_testing()
 
@@ -201,5 +202,8 @@ message( STATUS "Using '${EVT_ROOT_KEY}' as public key for evt account" )
 add_subdirectory( libraries )
 add_subdirectory( plugins )
 add_subdirectory( programs )
+if(ENABLE_BIND_LIBRARIES)
+    add_subdirectory(bind)
+endif()
 
 include(installer)
