@@ -2,6 +2,7 @@ file(GLOB HEADERS "include/libevt/*.h")
 add_library( libevt SHARED 
     evt.cpp
     evt_ecc.cpp
+    evt_abi.cpp
     ${HEADERS} )
 set_target_properties( libevt PROPERTIES OUTPUT_NAME evt )
 

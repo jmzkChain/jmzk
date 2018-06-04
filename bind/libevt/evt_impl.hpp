@@ -35,7 +35,7 @@ extract_data(evt_data_t* data, T& val) {
     return EVT_OK;
 }
 
-char*
+inline char*
 strdup(const std::string& str) {
     auto s = (char*)malloc(str.size());
     memcpy(s, str.data(), str.size());
