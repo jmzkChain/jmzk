@@ -3,7 +3,8 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 
-#include "evt_ecc.h"
+#include <libevt/evt_ecc.h>
+#include "evt_impl.hpp"
 
 #include <string.h>
 #include <limits>
@@ -17,42 +18,31 @@ using fc::crypto::private_key;
 using fc::crypto::public_key;
 using fc::crypto::signature;
 
-namespace __internal {
-
-template <typename T>
-evt_data_t*
-get_evt_data(const T& val) {
-    auto sz = sizeof(evt_data_t) + sizeof(val);
-    auto data = (evt_data_t*)malloc(sz);
-    data->sz = sizeof(val);
-    memcpy(data + sizeof(evt_data_t), &val, sizeof(val));
-    return data;
+template<>
+size_t
+get_type_size<public_key>() {
+    // static variant: int + first type
+    return sizeof(public_key::storage_type::type_at<0>);
 }
 
-template <typename T>
-int
-extract_data(evt_data_t* data, T& val) {
-    if(data->sz != sizeof(val)) {
-        return EVT_INVALID_ARGUMENT;
-    }
-    memcpy(&val, data->buf, sizeof(val));
-    return EVT_OK;
+template<>
+size_t
+get_type_size<private_key>() {
+    // static variant: int + first type
+    return sizeof(private_key::storage_type::type_at<0>);
 }
 
-char*
-strdup(const std::string& str) {
-    auto s = (char*)malloc(str.size());
-    memcpy(s, str.data(), str.size());
-    return s;
+template<>
+size_t
+get_type_size<signature>() {
+    // static variant: int + first type
+    return sizeof(signature::storage_type::type_at<0>);
 }
-
-}  // namespace __internal
 
 extern "C" {
 
 int
 evt_generate_new_pair(evt_public_key_t** pub_key /* out */, evt_private_key_t** priv_key /* out */) {
-    using namespace __internal;
     if(pub_key == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
@@ -75,7 +65,6 @@ evt_generate_new_pair(evt_public_key_t** pub_key /* out */, evt_private_key_t** 
 
 int
 evt_get_public_key(evt_private_key_t* priv_key, evt_public_key_t** pub_key /* out */) {
-    using namespace __internal;
     if(priv_key == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
@@ -98,7 +87,6 @@ evt_get_public_key(evt_private_key_t* priv_key, evt_public_key_t** pub_key /* ou
 
 int
 evt_sign_hash(evt_private_key_t* priv_key, evt_checksum_t* hash, evt_signature_t** sign /* out */) {
-    using namespace __internal;
     if(priv_key == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
@@ -128,7 +116,6 @@ evt_sign_hash(evt_private_key_t* priv_key, evt_checksum_t* hash, evt_signature_t
 
 int
 evt_recover(evt_signature_t* sign, evt_checksum_t* hash, evt_public_key_t** pub_key /* out */) {
-    using namespace __internal;
     if(sign == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
@@ -158,7 +145,6 @@ evt_recover(evt_signature_t* sign, evt_checksum_t* hash, evt_public_key_t** pub_
 
 int
 evt_hash(const char* buf, size_t sz, evt_checksum_t** hash /* out */) {
-    using namespace __internal;
     if(buf == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
@@ -180,7 +166,6 @@ evt_hash(const char* buf, size_t sz, evt_checksum_t** hash /* out */) {
 
 int
 evt_public_key_string(evt_public_key_t* pub_key, char** str /* out */) {
-    using namespace __internal;
     if(pub_key == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
@@ -198,7 +183,6 @@ evt_public_key_string(evt_public_key_t* pub_key, char** str /* out */) {
 
 int
 evt_private_key_string(evt_private_key_t* priv_key, char** str /* out */) {
-    using namespace __internal;
     if(priv_key == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
@@ -216,7 +200,6 @@ evt_private_key_string(evt_private_key_t* priv_key, char** str /* out */) {
 
 int
 evt_signature_string(evt_signature_t* sign, char** str /* out */) {
-    using namespace __internal;
     if(sign == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
@@ -234,7 +217,6 @@ evt_signature_string(evt_signature_t* sign, char** str /* out */) {
 
 int
 evt_checksum_string(evt_checksum_t* hash, char** str /* out */) {
-    using namespace __internal;
     if(hash == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }

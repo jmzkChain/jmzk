@@ -2,16 +2,12 @@
  *  @file
  *  @copyright defined in evt/LICENSE.txt
  */
-
-#include <stddef.h>
+#pragma once
 #include "evt.h"
 
+#ifdef __cplusplus
 extern "C" {
-
-typedef struct {
-    size_t  sz;
-    char    buf[0];
-} evt_data_t;
+#endif
 
 typedef evt_data_t evt_public_key_t;
 typedef evt_data_t evt_private_key_t;
@@ -29,4 +25,6 @@ int evt_private_key_string(evt_private_key_t* priv_key, char** str /* out */);
 int evt_signature_string(evt_signature_t* sign, char** str /* out */);
 int evt_checksum_string(evt_checksum_t* hash, char** str /* out */);
 
+#ifdef __cplusplus
 } // extern "C"
+#endif
