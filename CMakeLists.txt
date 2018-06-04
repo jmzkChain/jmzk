@@ -93,7 +93,7 @@ else()
   set(no_whole_archive_flag "--no-whole-archive")
 endif()
 
-SET( Boost_USE_STATIC_LIBS ON CACHE STRING "ON or OFF" )
+SET( Boost_USE_STATIC_LIBS OFF CACHE STRING "ON or OFF" )
 IF( WIN32 )
   SET(BOOST_ROOT $ENV{BOOST_ROOT})
   set(Boost_USE_MULTITHREADED ON)

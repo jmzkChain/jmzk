@@ -16,7 +16,7 @@ RUN wget https://dl.bintray.com/boostorg/release/1.67.0/source/boost_1_67_0.tar.
     && cd boost_1_67_0 \
     && ./bootstrap.sh --prefix=/usr/local \
     && ./b2 -d0 -j$(nproc) --with-thread --with-date_time --with-system --with-filesystem --with-program_options \
-       --with-signals --with-serialization --with-chrono --with-test --with-context --with-locale --with-coroutine --with-iostreams toolset=gcc link=static install \
+       --with-signals --with-serialization --with-chrono --with-test --with-context --with-locale --with-coroutine --with-iostreams toolset=gcc link=shared install \
     && cd .. && rm -rf boost_1_67_0
 
 RUN git clone --depth 1 git://github.com/cryptonomex/secp256k1-zkp \
