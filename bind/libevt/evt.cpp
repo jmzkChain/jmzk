@@ -5,7 +5,7 @@
 extern "C" {
 
 int
-evt_free(evt_data_t* ptr) {
+evt_free(void* ptr) {
     if(ptr == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }

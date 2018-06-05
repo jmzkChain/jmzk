@@ -232,4 +232,80 @@ evt_checksum_string(evt_checksum_t* hash, char** str /* out */) {
     return EVT_OK;
 }
 
+int
+evt_public_key_from_string(const char* str, evt_public_key_t** pub_key /* out */) {
+    if(str == nullptr) {
+        return EVT_INVALID_ARGUMENT;
+    }
+    if(pub_key == nullptr) {
+        return EVT_INVALID_ARGUMENT;
+    }
+    try {
+        auto pkey = public_key(std::string(str));
+        auto data = get_evt_data(pkey);
+        *pub_key = data;
+    }
+    catch(...) {
+        return EVT_INTERNAL_ERROR;
+    }
+    return EVT_OK;
+}
+
+int
+evt_private_key_from_string(const char* str, evt_private_key_t** priv_key /* out */) {
+    if(str == nullptr) {
+        return EVT_INVALID_ARGUMENT;
+    }
+    if(priv_key == nullptr) {
+        return EVT_INVALID_ARGUMENT;
+    }
+    try {
+        auto pkey = private_key(std::string(str));
+        auto data = get_evt_data(pkey);
+        *priv_key = data;
+    }
+    catch(...) {
+        return EVT_INTERNAL_ERROR;
+    }
+    return EVT_OK;
+}
+
+int
+evt_signature_from_string(const char* str, evt_signature_t** sign /* out */) {
+    if(str == nullptr) {
+        return EVT_INVALID_ARGUMENT;
+    }
+    if(sign == nullptr) {
+        return EVT_INVALID_ARGUMENT;
+    }
+    try {
+        auto sig = signature(std::string(str));
+        auto data = get_evt_data(sig);
+        *sign = data;
+    }
+    catch(...) {
+        return EVT_INTERNAL_ERROR;
+    }
+    return EVT_OK;
+}
+
+int
+evt_checksum_from_string(const char* str, evt_checksum_t** hash /* out */) {
+    if(str == nullptr) {
+        return EVT_INVALID_ARGUMENT;
+    }
+    if(hash == nullptr) {
+        return EVT_INVALID_ARGUMENT;
+    }
+    try {
+        auto h = sha256(std::string(str));
+        auto data = get_evt_data(h);
+        *hash = data;
+    }
+    catch(...) {
+        return EVT_INTERNAL_ERROR;
+    }
+    return EVT_OK;
+}
+
 } // extern "C"

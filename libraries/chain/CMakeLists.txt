@@ -37,12 +37,14 @@ add_library( evt_chain
 add_library( evt_chain_lite SHARED
              asset.cpp
              name.cpp
+             transaction.cpp
              chain_id_type.cpp
              genesis_state.cpp
              ${CMAKE_CURRENT_BINARY_DIR}/genesis_state_root_key.cpp
              contracts/abi_serializer.cpp
              contracts/group.cpp
              contracts/authorizer_ref.cpp
+             contracts/evt_contract_abi.cpp
 
              ${HEADERS})
 

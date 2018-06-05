@@ -25,6 +25,11 @@ int evt_private_key_string(evt_private_key_t* priv_key, char** str /* out */);
 int evt_signature_string(evt_signature_t* sign, char** str /* out */);
 int evt_checksum_string(evt_checksum_t* hash, char** str /* out */);
 
+int evt_public_key_from_string(const char* str, evt_public_key_t** pub_key /* out */);
+int evt_private_key_from_string(const char* str, evt_private_key_t** priv_key /* out */);
+int evt_signature_from_string(const char* str, evt_signature_t** sign /* out */);
+int evt_checksum_from_string(const char* str, evt_checksum_t** hash /* out */);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif

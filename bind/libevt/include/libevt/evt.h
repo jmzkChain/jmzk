@@ -26,7 +26,7 @@ typedef struct {
 #define EVT_SIZE_NOT_EQUALS         -11
 #define EVT_DATA_NOT_EQUALS         -12
 
-int evt_free(evt_data_t*);
+int evt_free(void*);
 int evt_equals(evt_data_t* rhs, evt_data_t* lhs);
 
 #ifdef __cplusplus
