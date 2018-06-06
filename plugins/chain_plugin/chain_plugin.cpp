@@ -129,9 +129,9 @@ chain_plugin::set_program_options(options_description& cli, options_description&
         ("extract-genesis-json", bpo::value<bfs::path>(), "extract genesis_state from blocks.log as JSON, write into specified file, and exit")
         ("fix-reversible-blocks", bpo::bool_switch()->default_value(false), "recovers reversible block database if that database is in a bad state")
         ("force-all-checks", bpo::bool_switch()->default_value(false), "do not skip any checks that can be skipped while replaying irreversible blocks")
-        ("replay-blockchain", bpo::bool_switch()->default_value(false), "clear chain state database and replay all blocks")
-        ("hard-replay-blockchain", bpo::bool_switch()->default_value(false), "clear chain state database, recover as many blocks as possible from the block log, and then replay those blocks")
-        ("delete-all-blocks", bpo::bool_switch()->default_value(false), "clear chain state database and block log")
+        ("replay-blockchain", bpo::bool_switch()->default_value(false), "clear chain state database and token database and replay all blocks")
+        ("hard-replay-blockchain", bpo::bool_switch()->default_value(false), "clear chain state database and token database, recover as many blocks as possible from the block log, and then replay those blocks")
+        ("delete-all-blocks", bpo::bool_switch()->default_value(false), "clear chain state database, token database and block log")
         ("truncate-at-block", bpo::value<uint32_t>()->default_value(0), "stop hard replay / block log recovery at this block number (if set to non-zero number)")
         ;
 }
@@ -240,16 +240,18 @@ chain_plugin::plugin_initialize(const variables_map& options) {
     }
 
     if(options.at("delete-all-blocks").as<bool>()) {
-        ilog("Deleting state database and blocks");
+        ilog("Deleting state database, token database and blocks");
         if(options.at("truncate-at-block").as<uint32_t>() > 0) {
             wlog("The --truncate-at-block option does not make sense when deleting all blocks.");
         }
         fc::remove_all(my->chain_config->state_dir);
+        fc::remove_all(my->chain_config->tokendb_dir);
         fc::remove_all(my->blocks_dir);
     }
     else if(options.at("hard-replay-blockchain").as<bool>()) {
-        ilog("Hard replay requested: deleting state database");
+        ilog("Hard replay requested: deleting state database and token database");
         fc::remove_all(my->chain_config->state_dir);
+        fc::remove_all(my->chain_config->tokendb_dir);
         auto backup_dir = block_log::repair_log(my->blocks_dir, options.at("truncate-at-block").as<uint32_t>());
         if(fc::exists(backup_dir / config::reversible_blocks_dir_name) || options.at("fix-reversible-blocks").as<bool>()) {
             // Do not try to recover reversible blocks if the directory does not exist, unless the option was explicitly provided.
@@ -265,11 +267,12 @@ chain_plugin::plugin_initialize(const variables_map& options) {
         }
     }
     else if(options.at("replay-blockchain").as<bool>()) {
-        ilog("Replay requested: deleting state database");
+        ilog("Replay requested: deleting state database and token database");
         if(options.at("truncate-at-block").as<uint32_t>() > 0) {
             wlog("The --truncate-at-block option does not work for a regular replay of the blockchain.");
         }
         fc::remove_all(my->chain_config->state_dir);
+        fc::remove_all(my->chain_config->tokendb_dir);
         if(options.at("fix-reversible-blocks").as<bool>()) {
             if(!recover_reversible_blocks(my->chain_config->blocks_dir / config::reversible_blocks_dir_name,
                                           my->chain_config->reversible_cache_size)) {
