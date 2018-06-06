@@ -127,6 +127,18 @@ find_group(mongocxx::collection& groups, const std::string& name) {
     return *group;
 }
 
+auto
+find_account(mongocxx::collection& accounts, const std::string& name) {
+    using bsoncxx::builder::stream::document;
+    document find{};
+    find << "name" << name;
+    auto account = accounts.find_one(find.view());
+    if(!account) {
+        FC_THROW("Unable to find account ${name}", ("name", name));
+    }
+    return *account;
+}
+
 }  // namespace __internal
 
 void
@@ -152,7 +164,7 @@ interpreter_impl::process_newdomain(const newdomain& nd) {
                kvp("issue", bsoncxx::from_json(fc::json::to_string(issue))),
                kvp("transfer", bsoncxx::from_json(fc::json::to_string(transfer))),
                kvp("manage", bsoncxx::from_json(fc::json::to_string(manage))));
-    doc.append(kvp("createdAt", b_date{now}));
+    doc.append(kvp("created_at", b_date{now}));
 
     if(!domains_collection_.insert_one(doc.view())) {
         elog("Failed to insert domain ${name}", ("name", nd.name));
@@ -160,7 +172,7 @@ interpreter_impl::process_newdomain(const newdomain& nd) {
 }
 
 void
-interpreter_impl::process_updatedomain(const updatedomain& nd) {
+interpreter_impl::process_updatedomain(const updatedomain& ud) {
     using namespace __internal;
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
@@ -170,7 +182,7 @@ interpreter_impl::process_updatedomain(const updatedomain& nd) {
     using bsoncxx::builder::stream::finalize;
     using bsoncxx::builder::stream::open_document;
 
-    auto name = (std::string)nd.name;
+    auto name = (std::string)ud.name;
     auto now  = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
 
@@ -178,26 +190,28 @@ interpreter_impl::process_updatedomain(const updatedomain& nd) {
 
     document update{};
     update << "$set" << open_document;
-    if(nd.issue.valid()) {
+    if(ud.issue.valid()) {
         fc::variant u;
-        fc::to_variant(*nd.issue, u);
+        fc::to_variant(*ud.issue, u);
         update << "issue" << bsoncxx::from_json(fc::json::to_string(u));
     }
-    if(nd.transfer.valid()) {
+    if(ud.transfer.valid()) {
         fc::variant u;
-        fc::to_variant(*nd.transfer, u);
+        fc::to_variant(*ud.transfer, u);
         update << "transfer" << bsoncxx::from_json(fc::json::to_string(u));
     }
-    if(nd.manage.valid()) {
+    if(ud.manage.valid()) {
         fc::variant u;
-        fc::to_variant(*nd.manage, u);
+        fc::to_variant(*ud.manage, u);
         update << "manage" << bsoncxx::from_json(fc::json::to_string(u));
     }
 
     update << "updatedAt" << b_date{now}
            << close_document;
 
-    domains_collection_.update_one(document{} << "_id" << d.view()["_id"].get_oid() << finalize, update.view());
+    if(!domains_collection_.update_one(document{} << "_id" << d.view()["_id"].get_oid() << finalize, update.view())) {
+        elog("Failed to update domain ${name}", ("name", ud.name));
+    }
 }
 
 void
@@ -225,13 +239,13 @@ interpreter_impl::process_issuetoken(const issuetoken& it) {
                            subarr.append((std::string)o);
                        }
                    }));
-        doc.append(kvp("createdAt", b_date{now}));
+        doc.append(kvp("created_at", b_date{now}));
         mongocxx::model::insert_one insert_op{doc.view()};
         bulk.append(insert_op);
     }
 
     if(!tokens_collection_.bulk_write(bulk)) {
-        elog("Bulk tokens insert failed for domain: ${name}", ("name", d));
+        elog("Bulk insert tokens failed for domain: ${name}", ("name", d));
     }
 }
 
@@ -258,8 +272,10 @@ interpreter_impl::process_transfer(const transfer& tt) {
            }
        }));
 
-    update.append(kvp("updatedAt", b_date{now}));
-    tokens_collection_.update_one(document{} << "_id" << t.view()["_id"].get_oid() << finalize, update.view());
+    update.append(kvp("updated_at", b_date{now}));
+    if(!tokens_collection_.update_one(document{} << "_id" << t.view()["_id"].get_oid() << finalize, update.view())) {
+        elog("Failed to update token: ${domain}-${name}", ("domain",tt.domain)("name", tt.name));
+    }
 }
 
 void
@@ -280,7 +296,7 @@ interpreter_impl::process_newgroup(const newgroup& ng) {
     doc.append(kvp("_id", oid),
                kvp("name", (std::string)ng.name),
                kvp("def", bsoncxx::from_json(fc::json::to_string(def))));
-    doc.append(kvp("createdAt", b_date{now}));
+    doc.append(kvp("created_at", b_date{now}));
 
     if(!groups_collection_.insert_one(doc.view())) {
         elog("Failed to insert group ${name}", ("name", ng.name));
@@ -309,17 +325,71 @@ interpreter_impl::process_updategroup(const updategroup& ug) {
     fc::variant u;
     fc::to_variant(ug.group, u);
     update << "def" << bsoncxx::from_json(fc::json::to_string(u));
-    update << "updatedAt" << b_date{now}
+    update << "updated_at" << b_date{now}
            << close_document;
 
-    groups_collection_.update_one(document{} << "_id" << g.view()["_id"].get_oid() << finalize, update.view());
+    if(!groups_collection_.update_one(document{} << "_id" << g.view()["_id"].get_oid() << finalize, update.view())) {
+        elog("Failed to update group ${name}", ("name", ug.name));
+    }
 }
 
 void
-interpreter_impl::process_newaccount(const newaccount& na) {}
+interpreter_impl::process_newaccount(const newaccount& na) {
+    using namespace bsoncxx::types;
+    using namespace bsoncxx::builder;
+    using bsoncxx::builder::basic::kvp;
+
+    auto oid = bsoncxx::oid{};
+    auto doc = bsoncxx::builder::basic::document{};
+
+    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
+
+    // NOTICE: balance below is defined the same as /chain/contracts/evt_contract.cpp:L249
+    doc.append(kvp("_id", oid),
+               kvp("name", (std::string)na.name),
+               kvp("balance", (std::string)balance_type(10000)),
+               kvp("frozen", (std::string)balance_type(0)));
+    doc.append(kvp("owner", [&na](bsoncxx::builder::basic::sub_array subarr) {
+           for(const auto& o : na.owner) {
+               subarr.append((std::string)o);
+           }
+       }));
+    doc.append(kvp("created_at", b_date{now}));
+
+    if(!accounts_collection_.insert_one(doc.view())) {
+        elog("Failed to insert account ${name}", ("name", na.name));
+    }
+}
 
 void
-interpreter_impl::process_updateowner(const updateowner& uo) {}
+interpreter_impl::process_updateowner(const updateowner& uo) {
+    using namespace __internal;
+    using namespace bsoncxx::types;
+    using namespace bsoncxx::builder;
+    using bsoncxx::builder::basic::kvp;
+    using bsoncxx::builder::stream::close_document;
+    using bsoncxx::builder::stream::document;
+    using bsoncxx::builder::stream::finalize;
+    using bsoncxx::builder::stream::open_document;
+
+    auto now  = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
+
+    auto t = find_account(accounts_collection_, (std::string)uo.name);
+
+    auto update = bsoncxx::builder::basic::document{};
+    update.append(kvp("owner", [&uo](bsoncxx::builder::basic::sub_array subarr) {
+           for(const auto& o : uo.owner) {
+               subarr.append((std::string)o);
+           }
+       }));
+
+    update.append(kvp("updated_at", b_date{now}));
+    if(!accounts_collection_.update_one(document{} << "_id" << t.view()["_id"].get_oid() << finalize, update.view())) {
+        elog("Failed to update account ${name}", ("name", uo.name));
+    }
+}
 
 evt_interpreter::evt_interpreter() : my_(new interpreter_impl()) {}
 

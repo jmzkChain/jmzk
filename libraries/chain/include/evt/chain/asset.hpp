@@ -56,6 +56,10 @@ struct asset {
     static asset from_string(const string& from);
     string       to_string() const;
 
+    explicit operator string() const {
+        return to_string();
+    }
+
     asset&
     operator+=(const asset& o) {
         FC_ASSERT(get_symbol() == o.get_symbol());

@@ -128,7 +128,6 @@ do_http_call(const connection_param& cp,
     request_stream << "content-length: " << postjson.size() << "\r\n";
     request_stream << "Accept: */*\r\n";
     request_stream << "Connection: close\r\n";
-    request_stream << "\r\n";
     // append more customized headers
     std::vector<string>::iterator itr;
     for (itr = cp.headers.begin(); itr != cp.headers.end(); itr++) {
