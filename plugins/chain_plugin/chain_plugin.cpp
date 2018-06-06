@@ -131,7 +131,9 @@ chain_plugin::set_program_options(options_description& cli, options_description&
         ("force-all-checks", bpo::bool_switch()->default_value(false), "do not skip any checks that can be skipped while replaying irreversible blocks")
         ("replay-blockchain", bpo::bool_switch()->default_value(false), "clear chain state database and replay all blocks")
         ("hard-replay-blockchain", bpo::bool_switch()->default_value(false), "clear chain state database, recover as many blocks as possible from the block log, and then replay those blocks")
-        ("delete-all-blocks", bpo::bool_switch()->default_value(false), "clear chain state database and block log");
+        ("delete-all-blocks", bpo::bool_switch()->default_value(false), "clear chain state database and block log")
+        ("truncate-at-block", bpo::value<uint32_t>()->default_value(0), "stop hard replay / block log recovery at this block number (if set to non-zero number)")
+        ;
 }
 
 fc::time_point
@@ -239,18 +241,22 @@ chain_plugin::plugin_initialize(const variables_map& options) {
 
     if(options.at("delete-all-blocks").as<bool>()) {
         ilog("Deleting state database and blocks");
+        if(options.at("truncate-at-block").as<uint32_t>() > 0) {
+            wlog("The --truncate-at-block option does not make sense when deleting all blocks.");
+        }
         fc::remove_all(my->chain_config->state_dir);
         fc::remove_all(my->blocks_dir);
     }
     else if(options.at("hard-replay-blockchain").as<bool>()) {
         ilog("Hard replay requested: deleting state database");
         fc::remove_all(my->chain_config->state_dir);
-        auto backup_dir = block_log::repair_log(my->blocks_dir);
+        auto backup_dir = block_log::repair_log(my->blocks_dir, options.at("truncate-at-block").as<uint32_t>());
         if(fc::exists(backup_dir / config::reversible_blocks_dir_name) || options.at("fix-reversible-blocks").as<bool>()) {
             // Do not try to recover reversible blocks if the directory does not exist, unless the option was explicitly provided.
             if(!recover_reversible_blocks(backup_dir / config::reversible_blocks_dir_name,
                                           my->chain_config->reversible_cache_size,
-                                          my->chain_config->blocks_dir / config::reversible_blocks_dir_name)) {
+                                          my->chain_config->blocks_dir / config::reversible_blocks_dir_name,
+                                          options.at("truncate-at-block").as<uint32_t>())) {
                 ilog("Reversible blocks database was not corrupted. Copying from backup to blocks directory.");
                 fc::copy(backup_dir / config::reversible_blocks_dir_name, my->chain_config->blocks_dir / config::reversible_blocks_dir_name);
                 fc::copy(backup_dir / "reversible/shared_memory.bin", my->chain_config->blocks_dir / "reversible/shared_memory.bin");
@@ -260,6 +266,9 @@ chain_plugin::plugin_initialize(const variables_map& options) {
     }
     else if(options.at("replay-blockchain").as<bool>()) {
         ilog("Replay requested: deleting state database");
+        if(options.at("truncate-at-block").as<uint32_t>() > 0) {
+            wlog("The --truncate-at-block option does not work for a regular replay of the blockchain.");
+        }
         fc::remove_all(my->chain_config->state_dir);
         if(options.at("fix-reversible-blocks").as<bool>()) {
             if(!recover_reversible_blocks(my->chain_config->blocks_dir / config::reversible_blocks_dir_name,
@@ -270,13 +279,18 @@ chain_plugin::plugin_initialize(const variables_map& options) {
     }
     else if(options.at("fix-reversible-blocks").as<bool>()) {
         if(!recover_reversible_blocks(my->chain_config->blocks_dir / config::reversible_blocks_dir_name,
-                                      my->chain_config->reversible_cache_size)) {
+                                      my->chain_config->reversible_cache_size,
+                                      optional<fc::path>(),
+                                      options.at("truncate-at-block").as<uint32_t>())) {
             ilog("Reversible blocks database verified to not be corrupted. Now exiting...");
         }
         else {
             ilog("Exiting after fixing reversible blocks database...");
         }
         EVT_THROW(fixed_reversible_db_exception, "fixed corrupted reversible blocks database");
+    }
+    else if(options.at("truncate-at-block").as<uint32_t>() > 0) {
+        wlog("The --truncate-at-block option can only be used with --fix-reversible-blocks without a replay or with --hard-replay-blockchain.");
     }
 
     if(options.count("genesis-json")) {
@@ -415,10 +429,22 @@ chain_plugin::block_is_on_preferred_chain(const block_id_type& block_id) {
 }
 
 bool
-chain_plugin::recover_reversible_blocks(const fc::path& db_dir, uint32_t cache_size, optional<fc::path> new_db_dir) const {
+chain_plugin::recover_reversible_blocks(const fc::path& db_dir, uint32_t cache_size, optional<fc::path> new_db_dir, uint32_t truncate_at_block) const {
     try {
         chainbase::database reversible(db_dir, database::read_only);  // Test if dirty
-        return false;                                                 // If it reaches here, then the reversible database is not dirty
+        // If it reaches here, then the reversible database is not dirty
+
+        if(truncate_at_block == 0) {
+            return false;
+        }
+
+        reversible.add_index<reversible_block_index>();
+        const auto& ubi = reversible.get_index<reversible_block_index,by_num>();
+
+        auto itr = ubi.rbegin();
+        if(itr != ubi.rend() && itr->blocknum <= truncate_at_block) {
+            return false; // Because we are not going to be truncating the reversible database at all.
+        }
     }
     catch(const std::runtime_error&) {
     }
@@ -471,6 +497,10 @@ chain_plugin::recover_reversible_blocks(const fc::path& db_dir, uint32_t cache_s
             start = itr->blocknum;
             end   = start - 1;
         }
+        if(truncate_at_block > 0 && start > truncate_at_block) {
+            ilog("Did not recover any reversible blocks since the specified block number to stop at (${stop}) is less than first block in the reversible database (${start}).", ("stop", truncate_at_block)("start", start));
+            return true;
+        }
         for(; itr != ubi.end(); ++itr) {
             FC_ASSERT(itr->blocknum == end + 1, "gap in reversible block database");
             new_reversible.create<reversible_block_object>([&](auto& ubo) {
@@ -479,9 +509,16 @@ chain_plugin::recover_reversible_blocks(const fc::path& db_dir, uint32_t cache_s
             });
             end = itr->blocknum;
             ++num;
+            if(end == truncate_at_block) {
+                break;
+            }
         }
     }
     catch(...) {
+    }
+
+    if(end == truncate_at_block) {
+        ilog("Stopped recovery of reversible blocks early at specified block number: ${stop}", ("stop", truncate_at_block));
     }
 
     if(num == 0)
@@ -566,6 +603,32 @@ read_only::get_block(const read_only::get_block_params& params) const {
     uint32_t ref_block_prefix = block->id()._hash[1];
 
     return fc::mutable_variant_object(pretty_output.get_object())("id", block->id())("block_num", block->block_num())("ref_block_prefix", ref_block_prefix);
+}
+
+fc::variant read_only::get_block_header_state(const get_block_header_state_params& params) const {
+    block_state_ptr b;
+    optional<uint64_t> block_num;
+    std::exception_ptr e;
+    try {
+        block_num = fc::to_uint64(params.block_num_or_id);
+    }
+    catch( ... ) {}
+
+    if( block_num.valid() ) {
+        b = db.fetch_block_state_by_number(*block_num);
+    }
+    else {
+        try {
+            b = db.fetch_block_state_by_id(fc::json::from_string(params.block_num_or_id).as<block_id_type>());
+        }
+        EVT_RETHROW_EXCEPTIONS(chain::block_id_type_exception, "Invalid block ID: ${block_num_or_id}", ("block_num_or_id", params.block_num_or_id))
+    }
+
+    EVT_ASSERT(b, unknown_block_exception, "Could not find reversible block: ${block}", ("block", params.block_num_or_id));
+
+    fc::variant vo;
+    fc::to_variant(static_cast<const block_header_state&>(*b), vo);
+    return vo;
 }
 
 void

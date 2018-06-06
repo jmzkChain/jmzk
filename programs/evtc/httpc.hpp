@@ -35,15 +35,17 @@ struct parsed_url {
 parsed_url parse_url(const std::string& server_url);
 
 fc::variant do_http_call(const connection_param& cp,
-                         const fc::variant& postdata = fc::variant());
+                         const fc::variant& postdata = fc::variant(),
+                         bool print_requrest = false);
 
-const std::string chain_func_base   = "/v1/chain";
-const std::string get_info_func     = chain_func_base + "/get_info";
-const std::string push_txn_func     = chain_func_base + "/push_transaction";
-const std::string push_txns_func    = chain_func_base + "/push_transactions";
-const std::string json_to_bin_func  = chain_func_base + "/abi_json_to_bin";
-const std::string get_block_func    = chain_func_base + "/get_block";
-const std::string get_required_keys = chain_func_base + "/get_required_keys";
+const std::string chain_func_base             = "/v1/chain";
+const std::string get_info_func               = chain_func_base + "/get_info";
+const std::string push_txn_func               = chain_func_base + "/push_transaction";
+const std::string push_txns_func              = chain_func_base + "/push_transactions";
+const std::string json_to_bin_func            = chain_func_base + "/abi_json_to_bin";
+const std::string get_block_func              = chain_func_base + "/get_block";
+const std::string get_block_header_state_func = chain_func_base + "/get_block_header_state";
+const std::string get_required_keys           = chain_func_base + "/get_required_keys";
 
 const std::string net_func_base   = "/v1/net";
 const std::string net_connect     = net_func_base + "/connect";

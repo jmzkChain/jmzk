@@ -121,6 +121,9 @@ public:
     signed_block_ptr fetch_block_by_number(uint32_t block_num) const;
     signed_block_ptr fetch_block_by_id(block_id_type id) const;
 
+    block_state_ptr fetch_block_state_by_number(uint32_t block_num) const;
+    block_state_ptr fetch_block_state_by_id(block_id_type id) const;
+
     block_id_type get_block_id_for_num(uint32_t block_num) const;
 
     bool is_producing_block() const;

@@ -71,13 +71,16 @@ string program    = "evtc";
 string url        = "http://localhost:8888";
 string wallet_url = "http://localhost:9999";
 
+bool no_verify = false;
+vector<string> headers;
+
 int64_t wallet_unlock_timeout = 0;
 auto   tx_expiration = fc::seconds(30);
 string tx_ref_block_num_or_id;
 bool   tx_dont_broadcast = false;
 bool   tx_skip_sign      = false;
-bool   no_verify         = false;
-vector<string> headers;
+bool   tx_print_json     = false;
+bool   print_request     = false;
 
 void
 add_standard_transaction_options(CLI::App* cmd, string default_permission = "") {
@@ -106,7 +109,7 @@ call(const std::string& url,
         evt::client::http::connection_param *cp = new evt::client::http::connection_param((std::string&)url, (std::string&)path,
             no_verify ? false : true, headers);
 
-        return evt::client::http::do_http_call(*cp, fc::variant(v));
+        return evt::client::http::do_http_call(*cp, fc::variant(v), print_request);
     }
     catch(boost::system::system_error& e) {
         if(url == ::url)
@@ -649,6 +652,7 @@ main(int argc, char** argv) {
 
     bool verbose_errors = false;
     app.add_flag("-v,--verbose", verbose_errors, localized("output verbose actions on error"));
+    app.add_flag("--print-request", print_request, localized("print HTTP request to STDERR"));
 
     app.set_callback([&app]{ ensure_evtd_running(&app);});
 

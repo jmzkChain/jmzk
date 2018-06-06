@@ -112,6 +112,12 @@ public:
     };
 
     fc::variant get_block(const get_block_params& params) const;
+
+    struct get_block_header_state_params {
+        string block_num_or_id;
+    };
+
+    fc::variant get_block_header_state(const get_block_header_state_params& params) const;
 };
 
 class read_write {
@@ -164,7 +170,7 @@ public:
 
     bool block_is_on_preferred_chain(const chain::block_id_type& block_id);
 
-    bool recover_reversible_blocks(const fc::path& db_dir, uint32_t cache_size, optional<fc::path> new_db_dir = optional<fc::path>())const;
+    bool recover_reversible_blocks(const fc::path& db_dir, uint32_t cache_size, optional<fc::path> new_db_dir = optional<fc::path>(), uint32_t truncate_at_block = 0)const;
 
     // return true if --skip-transaction-signatures passed to evtd
     bool is_skipping_transaction_signatures() const;
@@ -189,6 +195,7 @@ FC_REFLECT(evt::chain_apis::read_only::get_info_results,
           (server_version)(chain_id)(evt_api_version)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)
           (head_block_id)(head_block_time)(head_block_producer)(recent_slots)(participation_rate))
 FC_REFLECT(evt::chain_apis::read_only::get_block_params, (block_num_or_id))
+FC_REFLECT(evt::chain_apis::read_only::get_block_header_state_params, (block_num_or_id))
 FC_REFLECT(evt::chain_apis::read_only::producer_info, (producer_name))
 FC_REFLECT(evt::chain_apis::read_only::abi_json_to_bin_params, (action)(args))
 FC_REFLECT(evt::chain_apis::read_only::abi_json_to_bin_result, (binargs))

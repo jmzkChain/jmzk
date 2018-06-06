@@ -649,7 +649,7 @@ struct controller_impl {
 
                     // ritr currently points to the block that threw
                     // if we mark it invalid it will automatically remove all forks built off it.
-                    fork_db.set_validity( *ritr, false );
+                    fork_db.set_validity(*ritr, false);
 
                     // pop all blocks from the bad fork
                     // ritr base is a forward itr to the last block successfully applied
@@ -919,6 +919,20 @@ controller::fetch_block_by_number(uint32_t block_num) const {
     }
     FC_CAPTURE_AND_RETHROW((block_num))
 }
+
+block_state_ptr controller::fetch_block_state_by_id(block_id_type id) const {
+    auto state = my->fork_db.get_block(id);
+    return state;
+}
+
+block_state_ptr controller::fetch_block_state_by_number(uint32_t block_num) const { 
+    try {
+        auto blk_state = my->fork_db.get_block_in_current_chain_by_num( block_num );
+        return blk_state;
+    }
+    FC_CAPTURE_AND_RETHROW((block_num))
+}
+
 
 block_id_type
 controller::get_block_id_for_num(uint32_t block_num) const {

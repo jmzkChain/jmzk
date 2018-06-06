@@ -3,6 +3,7 @@
 #include <fc/crypto/common.hpp>
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/sha512.hpp>
+#include <fc/crypto/openssl.hpp>
 #include <fc/fwd.hpp>
 #include <fc/array.hpp>
 #include <fc/io/raw_fwd.hpp>
@@ -66,6 +67,7 @@ namespace fc {
 
         private:
           friend class private_key;
+          friend compact_signature signature_from_ecdsa(const EC_KEY* key, const public_key_data& pub_data, fc::ecdsa_sig& sig, const fc::sha256& d);
           fc::fwd<detail::public_key_impl,8> my;
     };
 
@@ -172,6 +174,9 @@ namespace fc {
            return private_key_shim(private_key::generate().get_secret());
         }
      };
+
+     //key here is just an optimization for getting the curve's parameters from an already constructed curve
+     compact_signature signature_from_ecdsa(const EC_KEY* key, const public_key_data& pub, fc::ecdsa_sig& sig, const fc::sha256& d);
 
   } // namespace r1
   } // namespace crypto

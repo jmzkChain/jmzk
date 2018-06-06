@@ -107,10 +107,12 @@ parse_url(const string& server_url) {
 
 fc::variant
 do_http_call(const connection_param& cp,
-             const fc::variant& postdata) {
+             const fc::variant& postdata,
+             bool print_request) {
     std::string postjson;
-    if(!postdata.is_null())
-        postjson = fc::json::to_string(postdata);
+    if(!postdata.is_null()) {
+        postjson = print_request ? fc::json::to_pretty_string(postdata) : fc::json::to_string(postdata);
+    }
 
     boost::asio::io_service io_service;
 
@@ -126,6 +128,7 @@ do_http_call(const connection_param& cp,
     request_stream << "content-length: " << postjson.size() << "\r\n";
     request_stream << "Accept: */*\r\n";
     request_stream << "Connection: close\r\n";
+    request_stream << "\r\n";
     // append more customized headers
     std::vector<string>::iterator itr;
     for (itr = cp.headers.begin(); itr != cp.headers.end(); itr++) {
@@ -134,7 +137,14 @@ do_http_call(const connection_param& cp,
     request_stream << "\r\n";
     request_stream << postjson;
 
-    printf("%s\n\n", postjson.c_str());
+    if(print_request) {
+        string s(request.size(), '\0');
+        buffer_copy(boost::asio::buffer(s), request.data());
+        std::cerr << "REQUEST:" << std::endl
+                  << "---------------------" << std::endl
+                  << "---------------------" << std::endl
+                  << "---------------------" << std::endl;
+    }
 
     unsigned int status_code;
     std::string  re;

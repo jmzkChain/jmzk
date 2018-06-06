@@ -140,6 +140,54 @@ namespace fc { namespace crypto { namespace r1 {
         return ret;
     }
 
+    compact_signature signature_from_ecdsa(const EC_KEY* key, const public_key_data& pub_data, fc::ecdsa_sig& sig, const fc::sha256& d) {
+        //We can't use ssl_bignum here; _get0() does not transfer ownership to us; _set0() does transfer ownership to fc::ecdsa_sig
+        const BIGNUM *sig_r, *sig_s;
+        BIGNUM *r = BN_new(), *s = BN_new();
+        ECDSA_SIG_get0(sig, &sig_r, &sig_s);
+        BN_copy(r, sig_r);
+        BN_copy(s, sig_s);
+
+        //want to always use the low S value
+        const EC_GROUP* group = EC_KEY_get0_group(key);
+        ssl_bignum order, halforder;
+        EC_GROUP_get_order(group, order, nullptr);
+        BN_rshift1(halforder, order);
+        if(BN_cmp(s, halforder) > 0)
+           BN_sub(s, order, s);
+
+        compact_signature csig;
+
+        int nBitsR = BN_num_bits(r);
+        int nBitsS = BN_num_bits(s);
+        if(nBitsR > 256 || nBitsS > 256)
+          FC_THROW_EXCEPTION( exception, "Unable to sign" );
+
+        ECDSA_SIG_set0(sig, r, s);
+
+        int nRecId = -1;
+        for (int i=0; i<4; i++)
+        {
+          public_key keyRec;
+          keyRec.my->_key = EC_KEY_new_by_curve_name( NID_X9_62_prime256v1 );
+          if (ECDSA_SIG_recover_key_GFp(keyRec.my->_key, sig, (unsigned char*)&d, sizeof(d), i, 1) == 1)
+          {
+            if (keyRec.serialize() == pub_data )
+            {
+              nRecId = i;
+              break;
+            }
+          }
+        }
+        if (nRecId == -1)
+          FC_THROW_EXCEPTION( exception, "unable to construct recoverable key");
+
+        csig.data[0] = nRecId+27+4;
+        BN_bn2bin(r,&csig.data[33-(nBitsR+7)/8]);
+        BN_bn2bin(s,&csig.data[65-(nBitsS+7)/8]);
+
+        return csig;
+    }
 
     int static inline EC_KEY_regenerate_key(EC_KEY *eckey, const BIGNUM *priv_key)
     {
@@ -524,52 +572,7 @@ namespace fc { namespace crypto { namespace r1 {
         if (sig==nullptr)
           FC_THROW_EXCEPTION( exception, "Unable to sign" );
 
-        //We can't use ssl_bignum here; _get0() does not transfer ownership to us; _set0() does transfer ownership to fc::ecdsa_sig
-        const BIGNUM *sig_r, *sig_s;
-        BIGNUM *r = BN_new(), *s = BN_new();
-        ECDSA_SIG_get0(sig, &sig_r, &sig_s);
-        BN_copy(r, sig_r);
-        BN_copy(s, sig_s);
-
-        //want to always use the low S value
-        const EC_GROUP* group = EC_KEY_get0_group(my->_key);
-        ssl_bignum order, halforder;
-        EC_GROUP_get_order(group, order, nullptr);
-        BN_rshift1(halforder, order);
-        if(BN_cmp(s, halforder) > 0)
-           BN_sub(s, order, s);
-
-        compact_signature csig;
-
-        int nBitsR = BN_num_bits(r);
-        int nBitsS = BN_num_bits(s);
-        if(nBitsR > 256 || nBitsS > 256)
-          FC_THROW_EXCEPTION( exception, "Unable to sign" );
-
-        ECDSA_SIG_set0(sig, r, s);
-        
-        int nRecId = -1;
-        for (int i=0; i<4; i++)
-        {
-          public_key keyRec;
-          keyRec.my->_key = EC_KEY_new_by_curve_name( NID_X9_62_prime256v1 );
-          if (ECDSA_SIG_recover_key_GFp(keyRec.my->_key, sig, (unsigned char*)&digest, sizeof(digest), i, 1) == 1)
-          {
-            if (keyRec.serialize() == my_pub_key )
-            {
-              nRecId = i;
-              break;
-            }
-          }
-        }
-        if (nRecId == -1)
-          FC_THROW_EXCEPTION( exception, "unable to construct recoverable key");
-
-        csig.data[0] = nRecId+27+4;
-        BN_bn2bin(r,&csig.data[33-(nBitsR+7)/8]);
-        BN_bn2bin(s,&csig.data[65-(nBitsS+7)/8]);
-        
-        return csig;
+        return signature_from_ecdsa(my->_key, my_pub_key, sig, digest);
       } FC_RETHROW_EXCEPTIONS( warn, "sign ${digest}", ("digest", digest)("private_key",*this) );
     }
 

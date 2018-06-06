@@ -9,10 +9,10 @@ namespace fc
   class enum_type
   {
     public:
-      enum_type( EnumType t )
+      explicit enum_type( EnumType t )
       :value(t){}
       
-      enum_type( IntType t )
+      explicit enum_type( IntType t )
       :value( (EnumType)t ){}
       
       enum_type(){}
@@ -24,7 +24,7 @@ namespace fc
       enum_type& operator=( IntType i )  { value = (EnumType)i; return *this;}
       enum_type& operator=( EnumType i ) { value = i; return *this;}
       bool       operator<( EnumType i ) const { return value < i; }
-      bool       operator>( EnumType i ) const { return value < i; }
+      bool       operator>( EnumType i ) const { return value > i; }
 
       bool operator<(const enum_type& e) const { return value < e.value;}
       bool operator>(const enum_type& e) const { return value > e.value;}
