@@ -399,7 +399,7 @@ mongo_db_plugin_impl::_process_block(const signed_block& block) {
     const auto block_id          = block.id();
     const auto block_id_str      = block_id.str();
     const auto prev_block_id_str = block.previous.str();
-    auto       block_num         = block.block_num();
+    auto       block_num         = (int32_t)block.block_num();
 
     if(processed == 0) {
         if(block_num <= 2) {
@@ -415,7 +415,7 @@ mongo_db_plugin_impl::_process_block(const signed_block& block) {
     auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
 
-    block_doc.append(kvp("block_num", b_int32{static_cast<int32_t>(block_num)}),
+    block_doc.append(kvp("block_num", b_int32{block_num}),
                      kvp("block_id", block_id_str),
                      kvp("prev_block_id", prev_block_id_str),
                      kvp("timestamp", b_date{std::chrono::milliseconds{
@@ -461,6 +461,7 @@ mongo_db_plugin_impl::_process_block(const signed_block& block) {
                    kvp("trx_id", trans_id_str),
                    kvp("seq_num", b_int32{trx_num}),
                    kvp("block_id", block_id_str),
+                   kvp("block_num", b_int32{block_num}),
                    kvp("action_count", b_int32{(int)trx.actions.size()}),
                    kvp("expiration",
                        b_date{std::chrono::milliseconds{std::chrono::seconds{trx.expiration.sec_since_epoch()}}}),
