@@ -142,7 +142,7 @@ BOOST_AUTO_TEST_CASE( evtabi ) {
 
     evt_bin_t* bin2 = nullptr;
     auto r11 = evt_abi_json_to_bin(abi, "newdomain", "{}", &bin2);
-    BOOST_TEST_REQUIRE(r1 == EVT_INVALID_JSON);
+    BOOST_TEST_REQUIRE(r11 == EVT_INVALID_JSON);
     BOOST_TEST_REQUIRE(bin2 == nullptr);
 
     char* j1restore = nullptr;

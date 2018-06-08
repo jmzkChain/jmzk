@@ -39,7 +39,7 @@ else()
     DOC "Path to the GMP library"
     )
 
-  find_library(GMP_SHARED_LIBRARIES NAMES libgmp.so
+  find_library(GMP_SHARED_LIBRARIES NAMES gmp
     HINTS ENV GMP_LIB_DIR
           ENV GMP_DIR
     PATH_SUFFIXES lib
