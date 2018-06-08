@@ -75,6 +75,9 @@ evt_abi_json_to_bin(void* evt_abi, const char* action, const char* json, evt_bin
     }
     try {
         auto b = abi.variant_to_binary(action_type, var);
+        if(b.empty()) {
+            return EVT_INVALID_JSON;
+        }
         auto data = get_evt_data(b);
         *bin = data;
     }
