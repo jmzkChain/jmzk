@@ -68,7 +68,16 @@ evt_abi_json_to_bin(void* evt_abi, const char* action, const char* json, evt_bin
         return EVT_INVALID_ARGUMENT;
     }
     auto abi = abi_serializer(*(abi_def*)evt_abi);
-    auto var = fc::json::from_string(json);
+    fc::variant var;
+    try {
+        var = fc::json::from_string(json);
+        if(!var.is_object()) {
+            return EVT_INVALID_JSON;
+        }
+    }
+    catch(...) {
+        return EVT_INVALID_JSON;
+    }
     auto action_type = abi.get_action_type(action);
     if(action_type.empty()) {
         return EVT_INVALID_ACTION;

@@ -1,6 +1,7 @@
 #define BOOST_TEST_MODULE libevt test
+#define BOOST_TEST_DYN_LINK
 
-#include <boost/test/included/unit_test.hpp>
+#include <boost/test/unit_test.hpp>
 #include <libevt/evt_ecc.h>
 #include <libevt/evt_abi.h>
 #include <iostream>
@@ -141,7 +142,7 @@ BOOST_AUTO_TEST_CASE( evtabi ) {
     BOOST_TEST_REQUIRE(bin->sz > 0);
 
     evt_bin_t* bin2 = nullptr;
-    auto r11 = evt_abi_json_to_bin(abi, "newdomain", "{}", &bin2);
+    auto r11 = evt_abi_json_to_bin(abi, "newdomain", "newdomain", &bin2);
     BOOST_TEST_REQUIRE(r11 == EVT_INVALID_JSON);
     BOOST_TEST_REQUIRE(bin2 == nullptr);
 
@@ -151,8 +152,8 @@ BOOST_AUTO_TEST_CASE( evtabi ) {
     BOOST_TEST_REQUIRE(j1restore != nullptr);
 
     auto sz = strlen(j1restore);
-    BOOST_TEST_CHECK(j1restore[sz-1] == '\0');
-    BOOST_TEST_CHECK(j1restore[sz-2] == '}');
+    BOOST_TEST_CHECK(j1restore[sz] == '\0');
+    BOOST_TEST_CHECK(j1restore[sz-1] == '}');
 
     auto j2 = R"(
     {
