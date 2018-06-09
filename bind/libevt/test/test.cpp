@@ -150,6 +150,10 @@ BOOST_AUTO_TEST_CASE( evtabi ) {
     BOOST_TEST_REQUIRE(r2 == EVT_OK);
     BOOST_TEST_REQUIRE(j1restore != nullptr);
 
+    auto sz = strlen(j1restore);
+    BOOST_TEST_CHECK(j1restore[sz-1] == '\0');
+    BOOST_TEST_CHECK(j1restore[sz-2] == '}');
+
     auto j2 = R"(
     {
         "expiration": "2018-05-20T12:25:51",

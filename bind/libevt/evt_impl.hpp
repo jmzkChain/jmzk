@@ -37,7 +37,8 @@ extract_data(evt_data_t* data, T& val) {
 
 inline char*
 strdup(const std::string& str) {
-    auto s = (char*)malloc(str.size());
+    auto s = (char*)malloc(str.size() + 1); // add '\0'
     memcpy(s, str.data(), str.size());
+    s[str.size()] = '\0';
     return s;
 }
