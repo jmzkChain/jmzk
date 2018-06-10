@@ -84,6 +84,99 @@ bool   print_request     = false;
 bool   print_response    = false;
 
 void
+print_info(const fc::variant& info, int indent) {
+    try {
+        if(info.is_object()) {
+            for(auto& obj : info.get_object()) {
+                for(int i = 0; i < indent; i++)
+                    cerr << "    ";
+                for(int i = 0; i < indent; i++)
+                    cerr << "|";
+                cerr << "->";
+                cerr << obj.key() << " : ";
+                if(obj.value().is_object()) {
+                    cerr << endl;
+                    print_info(obj.value(), indent + 1);
+                }
+                else if(obj.value().is_array()) {
+                    cerr << endl;
+                    for(auto& a : obj.value().get_array()) {
+                        print_info(a, indent + 1);
+                    }
+                }
+                else {
+                    cerr << obj.value().as_string() << endl;
+                }
+            }
+        }
+        else {
+            for(int i = 0; i < indent; i++)
+                cerr << "      ";
+            for(int i = 0; i < indent; i++)
+                cerr << "|";
+            cerr << "->";
+            cerr << info.as_string() << endl;
+        }
+    }
+    FC_CAPTURE_AND_RETHROW((info))
+}
+
+void
+print_action(const fc::variant& at) {
+    const auto& act     = at["act"].get_object();
+    auto        func    = act["name"].as_string();
+    auto        args    = act["data"];
+    auto        console = at["console"].as_string();
+
+    std::cout << "action : " << func << std::endl;
+    std::cout << "domain : " << act["domain"].as_string() << std::endl;
+    std::cout << "key : " << act["key"].as_string() << std::endl;
+    std::cout << "details :" << std::endl;
+    print_info(args, 0);
+
+    if(console.size()) {
+        std::stringstream ss(console);
+        string            line;
+        std::getline(ss, line);
+        std::cout << ">> " << line << "\n";
+    }
+}
+
+void
+print_result(const fc::variant& result) {
+    try {
+        if(result.is_object() && result.get_object().contains("processed")) {
+            const auto& processed      = result["processed"];
+            const auto& transaction_id = processed["id"].as_string();
+            string      status         = processed["receipt"].is_object()
+                                ? processed["receipt"]["status"].as_string()
+                                : "failed";
+
+            cerr << status << " transaction: " << transaction_id << "\n";
+
+            if(status == "failed") {
+                auto soft_except = processed["except"].as<optional<fc::exception>>();
+                if(soft_except) {
+                    edump((soft_except->to_detail_string()));
+                }
+            }
+            else {
+                const auto& actions = processed["action_traces"].get_array();
+                for(const auto& a : actions) {
+                    print_action(a);
+                }
+                wlog("\rwarning: transaction executed locally, but may not be "
+                     "confirmed by the network yet");
+            }
+        }
+        else {
+            cerr << fc::json::to_pretty_string(result) << endl;
+        }
+    }
+    FC_CAPTURE_AND_RETHROW((result))
+}
+
+void
 add_standard_transaction_options(CLI::App* cmd, string default_permission = "") {
     CLI::callback_t parse_expiration = [](CLI::results_t res) -> bool {
         double value_s;
@@ -192,7 +285,9 @@ push_actions(std::vector<chain::action>&& actions, packed_transaction::compressi
 
 void
 send_actions(std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::none) {
-    std::cout << fc::json::to_pretty_string(push_actions(std::forward<decltype(actions)>(actions), compression)) << std::endl;
+    // std::cout << fc::json::to_pretty_string(push_actions(std::forward<decltype(actions)>(actions), compression)) << std::endl;
+    auto result = push_actions(std::forward<decltype(actions)>(actions), compression);
+    print_result( result );
 }
 
 void
@@ -566,7 +661,8 @@ struct set_get_domain_subcommand {
 
         gdcmd->set_callback([this] {
             auto arg = fc::mutable_variant_object("name", name);
-            std::cout << fc::json::to_pretty_string(call(get_domain_func, arg)) << std::endl;
+            // std::cout << fc::json::to_pretty_string(call(get_domain_func, arg)) << std::endl;
+            print_info(call(get_domain_func, arg), 0);
         });
     }
 };
@@ -584,7 +680,8 @@ struct set_get_token_subcommand {
             auto arg = fc::mutable_variant_object();
             arg.set("domain", domain);
             arg.set("name", name);
-            std::cout << fc::json::to_pretty_string(call(get_token_func, arg)) << std::endl;
+            // std::cout << fc::json::to_pretty_string(call(get_token_func, arg)) << std::endl;
+            print_info(call(get_token_func, arg), 0);
         });
     }
 };
@@ -601,7 +698,8 @@ struct set_get_group_subcommand {
             FC_ASSERT(!name.empty(), "Group name cannot be empty");
 
             auto arg = fc::mutable_variant_object("name", name);
-            std::cout << fc::json::to_pretty_string(call(get_group_func, arg)) << std::endl;
+            // std::cout << fc::json::to_pretty_string(call(get_group_func, arg)) << std::endl;
+            print_info(call(get_group_func, arg), 0);
         });
     }
 };
@@ -615,7 +713,8 @@ struct set_get_account_subcommand {
 
         gacmd->set_callback([this] {
             auto arg = fc::mutable_variant_object("name", name);
-            std::cout << fc::json::to_pretty_string(call(get_account_func, arg)) << std::endl;
+            // std::cout << fc::json::to_pretty_string(call(get_account_func, arg)) << std::endl;
+            print_info(call(get_account_func, arg), 0);
         });
     }
 };
