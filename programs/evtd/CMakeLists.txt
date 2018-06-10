@@ -90,3 +90,4 @@ install(DIRECTORY DESTINATION ${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/lib/evt
                               WORLD_READ
                               WORLD_EXECUTE
 )
+

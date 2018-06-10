@@ -35,6 +35,11 @@ namespace fc { namespace crypto {
             return private_key(storage_type(KeyType::generate()));
          }
 
+         template< typename KeyType = r1::private_key_shim >
+         static private_key generate_r1() {
+            return private_key(storage_type(KeyType::generate()));
+         }
+
          template< typename KeyType = ecc::private_key_shim >
          static private_key regenerate( const typename KeyType::data_type& data ) {
             return private_key(storage_type(KeyType(data)));

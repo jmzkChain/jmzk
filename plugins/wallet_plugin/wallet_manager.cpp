@@ -17,6 +17,13 @@ gen_password() {
     return password_prefix + string(key);
 }
 
+bool
+valid_filename(const string& name) {
+    if (name.empty()) return false;
+    if (std::find_if(name.begin(), name.end(), !boost::algorithm::is_alnum() && !boost::algorithm::is_any_of("._-")) != name.end()) return false;
+    return boost::filesystem::path(name).filename().string() == name;
+}
+
 void
 wallet_manager::set_timeout(const std::chrono::seconds& t) {
     timeout      = t;
@@ -37,7 +44,8 @@ wallet_manager::check_timeout() {
 std::string
 wallet_manager::create(const std::string& name) {
     check_timeout();
-    std::string password = gen_password();
+    
+    EVT_ASSERT(valid_filename(name), wallet_exception, "Invalid filename, path not allowed in wallet name ${n}", ("n", name));
 
     auto wallet_filename = dir / (name + file_ext);
 
@@ -45,6 +53,7 @@ wallet_manager::create(const std::string& name) {
         EVT_THROW(chain::wallet_exist_exception, "Wallet with name: '${n}' already exists at ${path}", ("n", name)("path", fc::path(wallet_filename)));
     }
 
+    auto password = gen_password();
     wallet_data d;
     auto        wallet = make_unique<wallet_api>(d);
     wallet->set_password(password);
@@ -69,6 +78,9 @@ wallet_manager::create(const std::string& name) {
 void
 wallet_manager::open(const std::string& name) {
     check_timeout();
+
+    EVT_ASSERT(valid_filename(name), wallet_exception, "Invalid filename, path not allowed in wallet name ${n}", ("n", name));
+
     wallet_data d;
     auto        wallet          = std::make_unique<wallet_api>(d);
     auto        wallet_filename = dir / (name + file_ext);

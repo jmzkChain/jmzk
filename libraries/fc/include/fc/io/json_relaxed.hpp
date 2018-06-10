@@ -61,6 +61,8 @@ namespace fc { namespace json_relaxed
                   token << c;
                   in.get();
                   break;
+               case EOF:
+                  FC_THROW_EXCEPTION( eof_exception, "unexpected end of file" );
                default:
                   return token.str();
             }
@@ -154,6 +156,10 @@ namespace fc { namespace json_relaxed
            {
                char c = in.peek();
 
+               if (c == EOF) {
+                  FC_THROW_EXCEPTION( eof_exception, "unexpected end of file" );
+               }
+
                if( c == q )
                {
                    in.get();
@@ -226,6 +232,8 @@ namespace fc { namespace json_relaxed
                  if( strict )
                      FC_THROW_EXCEPTION( parse_error_exception, "unquoted strings not supported in strict mode" );
                  return tokenFromStream( in );
+             case EOF:
+                  FC_THROW_EXCEPTION( eof_exception, "unexpected end of file" );
              default:
                  FC_THROW_EXCEPTION( parse_error_exception, "expected: string" );
          }
