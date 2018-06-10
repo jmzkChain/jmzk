@@ -183,9 +183,25 @@ BOOST_AUTO_TEST_CASE( evtabi ) {
     BOOST_TEST_REQUIRE(r4 == EVT_OK);
     BOOST_TEST_REQUIRE(digest != nullptr);
 
+    evt_block_id_t* block_id = nullptr;
+    auto r5 = evt_block_id_from_string("000000cabd11d7f8163d5586a4bb4ef6bb8d0581f03db67a04c285bbcb83f921", &block_id);
+    BOOST_TEST_REQUIRE(r5 == EVT_OK);
+    BOOST_TEST_REQUIRE(block_id != nullptr);
+
+    uint16_t ref_block_num = 0;
+    auto r6 = evt_ref_block_num(block_id, &ref_block_num);
+    BOOST_TEST_REQUIRE(r6 == EVT_OK);
+    BOOST_TEST_CHECK(ref_block_num == 202);
+
+    uint32_t ref_block_prefix = 0;
+    auto r7 = evt_ref_block_prefix(block_id, &ref_block_prefix);
+    BOOST_TEST_REQUIRE(r7 == EVT_OK);
+    BOOST_TEST_CHECK(ref_block_prefix == 2253733142);
+
     evt_free(bin);
     evt_free(j1restore);
     evt_free(chain_id);
     evt_free(digest);
+    evt_free(block_id);
     evt_free_abi(abi);
 }
