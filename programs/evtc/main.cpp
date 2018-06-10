@@ -15,6 +15,7 @@
 #include <string>
 #include <type_traits>
 #include <vector>
+#include <typeinfo>
 
 #pragma push_macro("N")
 #undef N
@@ -78,6 +79,51 @@ bool   tx_dont_broadcast = false;
 bool   tx_skip_sign      = false;
 bool   no_verify         = false;
 vector<string> headers;
+
+void print_action( const fc::variant& at ) {
+   const auto& act = at["act"].get_object();
+   auto func = act["name"].as_string();
+   auto args = fc::json::to_pretty_string( act["data"] );
+   auto console = at["console"].as_string();
+
+   std::cout << "action : " << func << std::endl;
+   std::cout << "domain : " << act["domain"].as_string() << std::endl;
+   std::cout << "key : " << act["key"].as_string() << std::endl;
+   std::cout << "details :";
+   std::cout << args << std::endl;
+   
+   if( console.size() ) {
+      std::stringstream ss(console);
+      string line;
+      std::getline( ss, line );
+      std::cout << ">> " << line << "\n";
+   }
+}
+
+void print_result( const fc::variant& result ) { try {
+      if (result.is_object() && result.get_object().contains("processed")) {
+         const auto& processed = result["processed"];
+         const auto& transaction_id = processed["id"].as_string();
+         string status = processed["receipt"].is_object() ? processed["receipt"]["status"].as_string() : "failed";
+
+         cerr << status << " transaction: " << transaction_id << "\n";
+
+         if( status == "failed" ) {
+            auto soft_except = processed["except"].as<optional<fc::exception>>();
+            if( soft_except ) {
+               edump((soft_except->to_detail_string()));
+            }
+         } else {
+            const auto& actions = processed["action_traces"].get_array();
+            for( const auto& a : actions ) {
+               print_action( a );
+            }
+            wlog( "\rwarning: transaction executed locally, but may not be confirmed by the network yet" );
+         }
+      } else {
+         cerr << fc::json::to_pretty_string( result ) << endl;
+      }
+} FC_CAPTURE_AND_RETHROW( (result) ) }
 
 void
 add_standard_transaction_options(CLI::App* cmd, string default_permission = "") {
@@ -188,7 +234,9 @@ push_actions(std::vector<chain::action>&& actions, packed_transaction::compressi
 
 void
 send_actions(std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::none) {
-    std::cout << fc::json::to_pretty_string(push_actions(std::forward<decltype(actions)>(actions), compression)) << std::endl;
+    // std::cout << fc::json::to_pretty_string(push_actions(std::forward<decltype(actions)>(actions), compression)) << std::endl;
+    auto result = push_actions(std::forward<decltype(actions)>(actions), compression);
+    print_result( result );
 }
 
 void
@@ -562,7 +610,8 @@ struct set_get_domain_subcommand {
 
         gdcmd->set_callback([this] {
             auto arg = fc::mutable_variant_object("name", name);
-            std::cout << fc::json::to_pretty_string(call(get_domain_func, arg)) << std::endl;
+            // std::cout << fc::json::to_pretty_string(call(get_domain_func, arg)) << std::endl;
+            print_result(call(get_domain_func, arg));
         });
     }
 };
@@ -580,7 +629,8 @@ struct set_get_token_subcommand {
             auto arg = fc::mutable_variant_object();
             arg.set("domain", domain);
             arg.set("name", name);
-            std::cout << fc::json::to_pretty_string(call(get_token_func, arg)) << std::endl;
+            // std::cout << fc::json::to_pretty_string(call(get_token_func, arg)) << std::endl;
+            print_result( call(get_token_func, arg));
         });
     }
 };

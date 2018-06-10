@@ -682,7 +682,7 @@ namespace fc
                 if( quote )
                   escape = true;
               } else { escape = false; }
-              ss<<v[i];
+              // ss<<v[i];
               break;
             case ':':
               if( !quote ) {
@@ -701,30 +701,31 @@ namespace fc
                 quote = !quote;
               }
               escape = false;
-              ss<<'"';
+              // ss<<'"';
               break;
             case '{':
             case '[':
-              ss<<v[i];
+              // ss<<v[i];
               if( !quote ) {
                 ++level;
                 first = true;
               }else {
                 escape = false;
+                ss<<v[i];
               }
               break;
             case '}':
             case ']':
               if( !quote ) {
                 if( v[i-1] != '[' && v[i-1] != '{' ) {
-                  ss<<'\n';
+                  // ss<<'\n';
                 }
                 --level;
                 if( !first ) {
                   for( int i = 0; i < level*indent; ++i ) ss<<' ';
                 }
                 first = false;
-                ss<<v[i];
+                // ss<<v[i];
                 break;
               } else {
                 escape = false;
@@ -733,11 +734,11 @@ namespace fc
               break;
             case ',':
               if( !quote ) {
-                ss<<',';
+                // ss<<',';
                 first = true;
               } else {
                 escape = false;
-                ss<<',';
+                // ss<<',';
               }
               break;
             case 'n':
@@ -763,6 +764,95 @@ namespace fc
    {
       return pretty_print(to_string(v, format), 2);
    }
+
+//original version pretty_print
+   // std::string old_pretty_print( const std::string& v, uint8_t indent ) {
+   //    int level = 0;
+   //    std::stringstream ss;
+   //    bool first = false;
+   //    bool quote = false;
+   //    bool escape = false;
+   //    for( uint32_t i = 0; i < v.size(); ++i ) {
+   //       switch( v[i] ) {
+   //          case '\\':
+   //            if( !escape ) {
+   //              if( quote )
+   //                escape = true;
+   //            } else { escape = false; }
+   //            ss<<v[i];
+   //            break;
+   //          case ':':
+   //            if( !quote ) {
+   //              ss<<": ";
+   //            } else {
+   //              ss<<':';
+   //            }
+   //            break;
+   //          case '"':
+   //            if( first ) {
+   //               ss<<'\n';
+   //               for( int i = 0; i < level*indent; ++i ) ss<<' ';
+   //               first = false;
+   //            }
+   //            if( !escape ) {
+   //              quote = !quote;
+   //            }
+   //            escape = false;
+   //            ss<<'"';
+   //            break;
+   //          case '{':
+   //          case '[':
+   //            ss<<v[i];
+   //            if( !quote ) {
+   //              ++level;
+   //              first = true;
+   //            }else {
+   //              escape = false;
+   //            }
+   //            break;
+   //          case '}':
+   //          case ']':
+   //            if( !quote ) {
+   //              if( v[i-1] != '[' && v[i-1] != '{' ) {
+   //                ss<<'\n';
+   //              }
+   //              --level;
+   //              if( !first ) {
+   //                for( int i = 0; i < level*indent; ++i ) ss<<' ';
+   //              }
+   //              first = false;
+   //              ss<<v[i];
+   //              break;
+   //            } else {
+   //              escape = false;
+   //              ss<<v[i];
+   //            }
+   //            break;
+   //          case ',':
+   //            if( !quote ) {
+   //              ss<<',';
+   //              first = true;
+   //            } else {
+   //              escape = false;
+   //              ss<<',';
+   //            }
+   //            break;
+   //          case 'n':
+   //            //If we're in quotes and see a \n, just print it literally but unset the escape flag.
+   //            if( quote && escape )
+   //              escape = false;
+   //            //No break; fall through to default case
+   //          default:
+   //            if( first ) {
+   //               ss<<'\n';
+   //               for( int i = 0; i < level*indent; ++i ) ss<<' ';
+   //               first = false;
+   //            }
+   //            ss << v[i];
+   //       }
+   //    }
+   //    return ss.str();
+   //  }
 
    void json::save_to_file( const variant& v, const fc::path& fi, bool pretty, output_formatting format )
    {
