@@ -22,7 +22,8 @@ everiToken currently supports the following operating systems:
 2. [everiToken Documentation Wiki](https://github.com/everitoken/evt/wiki)
 3. [White Paper](https://everitoken.io/docs/whitepaper.pdf)
 4. [API References](https://github.com/everitoken/evt/wiki/API-References)
-5. [TestNet Guide](https://github.com/everitoken/evt/wiki/Single-Node-Test-Guide)
+5. [ABI References](https://github.com/everitoken/evt/wiki/ABI-References)
+6. [TestNet Guide](https://github.com/everitoken/evt/wiki/Single-Node-Test-Guide)
 
 <a name="gettingstarted"></a>
 ## Getting Started
