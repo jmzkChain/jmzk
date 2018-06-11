@@ -1,4 +1,4 @@
-# ABI References
+# EVT ABI References
 ## Overview
 The ABI defines the application interface interactive with the blockchain. Applications can use JSON RPC to communicate with everiToken. For the API references, you can check this [document](API-References.md). This document will expand the details of `action` definition.
 
