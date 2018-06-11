@@ -711,6 +711,7 @@ namespace fc
                 first = true;
               }else {
                 escape = false;
+                ss<<v[i];
               }
               break;
             case '}':
@@ -763,6 +764,7 @@ namespace fc
    {
       return pretty_print(to_string(v, format), 2);
    }
+
 
    void json::save_to_file( const variant& v, const fc::path& fi, bool pretty, output_formatting format )
    {
