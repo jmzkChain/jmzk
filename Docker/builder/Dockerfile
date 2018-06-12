@@ -55,7 +55,7 @@ RUN git clone --depth 1 --single-branch --branch master https://github.com/jemal
     && make -j${nproc} install_bin install_include install_lib \
     && cd .. && rm -rf jemalloc
 
-RUN git clone -b master git@github.com:google/benchmark.git \
+RUN git clone -b master https://github.com/google/benchmark.git \
     && cd benchmark \
     && cmake -H. -Bbuild -DBENCHMARK_ENABLE_TESTING=OFF -DBENCHMARK_ENABLE_LTO=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local\
     && cmake --build build --target install \
