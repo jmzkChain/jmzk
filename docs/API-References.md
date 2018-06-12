@@ -253,3 +253,173 @@ Response:
   }
 }
 ```
+
+## POST /v1/evt/get_domain
+This API is used to get specific domain.
+
+Request:
+```
+{
+    "name": "cookie"
+}
+```
+Response:
+```
+{
+    "name": "cookie",
+    "issuer": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+    "issue_time": "2018-06-09T09:06:27",
+    "issue": {
+        "name": "issue",
+        "threshold": 1,
+        "authorizers": [{
+                "ref": "[A] EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+                "weight": 1
+            }
+        ]
+    },
+    "transfer": {
+        "name": "transfer",
+        "threshold": 1,
+        "authorizers": [{
+                "ref": "[G] OWNER",
+                "weight": 1
+            }
+        ]
+    },
+    "manage": {
+        "name": "manage",
+        "threshold": 1,
+        "authorizers": [{
+                "ref": "[A] EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+                "weight": 1
+            }
+        ]
+    }
+}
+```
+
+## POST /v1/evt/get_group
+This API is used to get specific group.
+
+Request:
+```
+{
+    "name": "testgroup"
+}
+```
+Response:
+```
+{
+    "name": "testgroup",
+    "key": "EVT5RsxormWcjvVBvEdQFonu5RNG4js8Zvz9pTjABLZaYxo6NNbSJ",
+    "root": {
+        "threshold": 6,
+        "weight": 0,
+        "nodes": [{
+                "threshold": 1,
+                "weight": 3,
+                "nodes": [{
+                        "key": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+                        "weight": 1
+                    }, {
+                        "key": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+                        "weight": 1
+                    }
+                ]
+            }, {
+                "key": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+                "weight": 3
+            }, {
+                "threshold": 1,
+                "weight": 3,
+                "nodes": [{
+                        "key": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+                        "weight": 1
+                    }, {
+                        "key": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+                        "weight": 1
+                    }
+                ]
+            }
+        ]
+    }
+}
+```
+
+## POST /v1/evt/get_token
+This API is used to get specific token in specific domain
+Request:
+```
+{
+    "domain": "cookie",
+    "name": "t8",
+    "owner": ["EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"]
+}
+```
+
+## POST /v1/evt/get_account
+This API is used to get specific account.
+
+Request:
+```
+{
+    "name": "harry"
+}
+```
+Response:
+```
+{
+    "name": "harry",
+    "creator": "evt",
+    "create_time": "2018-06-08T13:53:26",
+    "balance": "1.0000 EVT",
+    "frozen_balance": "0.0000 EVT",
+    "owner": ["EVT7WLUYMcF6XYYrogGzphNxhyUyBfNAVEw9jkH6YWroGPadwXCkN"]
+}
+```
+
+## POST /v1/evt/get_my_tokens
+This API is special for wallet application and mongo_db_plugin is needed to be enabled.
+The wallet should use the account's private keys to sign sha256('everiWallet') and this API will response with all the tokens that account have.
+
+Request:
+```
+{
+    "signatures":["SIG_K1_KAgh7zpYtSb1T53odh2xJtcCAXkTRS3qZ3Dj8DvPyx17AsEqxz79tSwKTjRzQbqiQvLyjQayXeLwT2nThkL6RUj9vBGtvo"]
+}
+```
+Response:
+```
+["cookie-t1", "cookie-t2", "cookie-t3"]
+```
+
+## POST /v1/evt/get_my_domains
+This API is special for wallet application and mongo_db_plugin is needed to be enabled.
+The wallet should use the account's private keys to sign sha256('everiWallet') and this API will response with all the domains that account issue.
+
+Request:
+```
+{
+    "signatures":["SIG_K1_KAgh7zpYtSb1T53odh2xJtcCAXkTRS3qZ3Dj8DvPyx17AsEqxz79tSwKTjRzQbqiQvLyjQayXeLwT2nThkL6RUj9vBGtvo"]
+}
+```
+Response:
+```
+["cookie"]
+```
+
+## POST /v1/evt/get_my_groups
+This API is special for wallet application and mongo_db_plugin is needed to be enabled.
+The wallet should use the account's private keys to sign sha256('everiWallet') and this API will response with all the groups that account manage (aka. the key of group is one of account's public keys).
+
+Request:
+```
+{
+    "signatures":["SIG_K1_KAgh7zpYtSb1T53odh2xJtcCAXkTRS3qZ3Dj8DvPyx17AsEqxz79tSwKTjRzQbqiQvLyjQayXeLwT2nThkL6RUj9vBGtvo"]
+}
+```
+Response:
+```
+["testgroup"]
+```
