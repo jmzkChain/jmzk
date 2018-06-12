@@ -182,11 +182,11 @@ chain_plugin::plugin_initialize(const variables_map& options) {
     }
 
     if(options.count("tokendb-dir")) {
-        auto bld = options.at("tokendb-dir").as<bfs::path>();
-        if(bld.is_relative())
-            my->tokendb_dir = app().data_dir() / bld;
+        auto tod = options.at("tokendb-dir").as<bfs::path>();
+        if(tod.is_relative())
+            my->tokendb_dir = app().data_dir() / tod;
         else
-            my->tokendb_dir = bld;
+            my->tokendb_dir = tod;
     }
 
     if(options.count("checkpoint")) {
@@ -198,9 +198,10 @@ chain_plugin::plugin_initialize(const variables_map& options) {
         }
     }
 
-    my->chain_config->blocks_dir = my->blocks_dir;
-    my->chain_config->state_dir  = app().data_dir() / config::default_state_dir_name;
-    my->chain_config->read_only  = my->readonly;
+    my->chain_config->blocks_dir  = my->blocks_dir;
+    my->chain_config->tokendb_dir = my->tokendb_dir;
+    my->chain_config->state_dir   = app().data_dir() / config::default_state_dir_name;
+    my->chain_config->read_only   = my->readonly;
 
     if(options.count("chain-state-db-size-mb"))
         my->chain_config->state_size = options.at("chain-state-db-size-mb").as<uint64_t>() * 1024 * 1024;
