@@ -3,8 +3,10 @@ cmake_minimum_required( VERSION 3.5 )
 # Defines everiToken library target.
 project( EVT )
 
-option(ENABLE_MONGO_DB_PLUGIN "Build the mongodb plugin" OFF)
-option(ENABLE_BIND_LIBRARIES  "Build bind libraries" OFF)
+option(ENABLE_MONGO_DB_PLUGIN   "Build the mongodb plugin" OFF)
+option(ENABLE_BIND_LIBRARIES    "Build bind libraries" OFF)
+option(ENABLE_BENCHMARKS        "Build benchmarks" OFF)
+option(ENABLE_COVERAGE_TESTING  "Build EVT for code coverage analysis" OFF)
 
 enable_testing()
 
@@ -183,8 +185,6 @@ else( WIN32 ) # Apple AND Linux
 
 endif( WIN32 )
 
-set(ENABLE_COVERAGE_TESTING FALSE CACHE BOOL "Build EVT for code coverage analysis")
-
 if(ENABLE_COVERAGE_TESTING)
   SET(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")
   find_program( LCOV_PATH  lcov )
@@ -202,8 +202,13 @@ message( STATUS "Using '${EVT_ROOT_KEY}' as public key for evt account" )
 add_subdirectory( libraries )
 add_subdirectory( plugins )
 add_subdirectory( programs )
+
 if(ENABLE_BIND_LIBRARIES)
     add_subdirectory(bind)
+endif()
+
+if(ENABLE_BENCHMARKS)
+    add_subdirectory(benchmarks)
 endif()
 
 include(installer)
