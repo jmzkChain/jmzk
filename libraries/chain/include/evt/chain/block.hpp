@@ -27,6 +27,11 @@ struct transaction_receipt_header {
     transaction_receipt_header() : status(hard_fail) {}
     transaction_receipt_header(status_enum s) : status(s) {}
 
+    friend inline bool
+    operator ==( const transaction_receipt_header& lhs, const transaction_receipt_header& rhs ) {
+        return std::tie(lhs.status) == std::tie(rhs.status);
+    }
+
     fc::enum_type<uint8_t, status_enum> status;
 };
 

@@ -23,6 +23,7 @@ typedef struct {
 #define EVT_INVALID_HASH            -6
 #define EVT_INVALID_ACTION          -7
 #define EVT_INVALID_BINARY          -8
+#define EVT_INVALID_JSON            -9
 #define EVT_SIZE_NOT_EQUALS         -11
 #define EVT_DATA_NOT_EQUALS         -12
 

@@ -557,10 +557,30 @@ struct controller_impl {
                 FC_ASSERT(b->block_extensions.size() == 0, "no supported extensions");
                 start_block(b->timestamp, b->confirmed, s);
 
+                transaction_trace_ptr trace;
                 for(const auto& receipt : b->transactions) {
+                    auto num_pending_receipts = pending->_pending_block_state->block->transactions.size();
                     auto& pt   = receipt.trx;
                     auto  mtrx = std::make_shared<transaction_metadata>(pt);
-                    push_transaction(mtrx, fc::time_point::maximum(), false);
+                    trace = push_transaction(mtrx, fc::time_point::maximum(), false);
+
+                    if(trace && trace->except) {
+                        edump((*trace));
+                        throw *trace->except;
+                    }
+                    EVT_ASSERT(pending->_pending_block_state->block->transactions.size() > 0,
+                               block_validate_exception, "expected a receipt",
+                               ("block", *b)("expected_receipt", receipt)
+                               );
+                    EVT_ASSERT(pending->_pending_block_state->block->transactions.size() == num_pending_receipts + 1,
+                               block_validate_exception, "expected receipt was not added",
+                               ("block", *b)("expected_receipt", receipt)
+                               );
+                    const transaction_receipt_header& r = pending->_pending_block_state->block->transactions.back();
+                    EVT_ASSERT(r == static_cast<const transaction_receipt_header&>(receipt),
+                               block_validate_exception, "receipt does not match",
+                              ("producer_receipt", receipt)("validator_receipt", pending->_pending_block_state->block->transactions.back())
+                              );
                 }
 
                 finalize_block();

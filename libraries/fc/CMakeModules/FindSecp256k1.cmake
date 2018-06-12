@@ -33,7 +33,7 @@ find_library(Secp256k1_LIBRARY
 )
 
 find_library(Secp256k1_SHARED_LIBRARY
-    NAMES libsecp256k1.so
+    NAMES secp256k1
     HINTS ${Secp256k1_ROOT_DIR}/lib)
 
 if(Secp256k1_INCLUDE_DIR AND Secp256k1_LIBRARY)
