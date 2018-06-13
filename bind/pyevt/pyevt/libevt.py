@@ -11,7 +11,8 @@ class LibEVT:
 
 def check_lib_init():
     if LibEVT.lib is None:
-        evt_exception.evt_exception_raiser(evt_exception.EVTErrCode.EVT_NOT_INIT)
+        evt_exception.evt_exception_raiser(
+            evt_exception.EVTErrCode.EVT_NOT_INIT)
     return LibEVT
 
 

@@ -17,9 +17,9 @@ class TestPyEVT(unittest.TestCase):
         pub_key_string2 = pub_key_from_priv.to_string()
         self.assertTrue(pub_key_string == pub_key_string2)
 
-        pub_key2=PublicKey.from_string(pub_key_string)
-        pub_key_string2=pub_key2.to_string()
-        self.assertTrue(pub_key_string==pub_key_string2)
+        pub_key2 = PublicKey.from_string(pub_key_string)
+        pub_key_string2 = pub_key2.to_string()
+        self.assertTrue(pub_key_string == pub_key_string2)
 
         priv_key_string = priv_key.to_string()
         priv_key2 = PrivateKey.from_string(priv_key_string)
@@ -33,8 +33,6 @@ class TestPyEVT(unittest.TestCase):
         pub_key3 = PublicKey.recover(sign, check_sum)
         pub_key_string3 = pub_key3.to_string()
         self.assertTrue(pub_key_string3 == pub_key_string)
-
-
 
     def test_evtabi(self):
         j = r'''
@@ -108,13 +106,12 @@ class TestPyEVT(unittest.TestCase):
             'bb248d6319e51ad38502cc8ef8fe607eb5ad2cd0be2bdc0e6e30a506761b8636')
         digest = abi.trx_json_to_digest(j2, chain_id)
 
-        block_id=BlockId.from_string("000000cabd11d7f8163d5586a4bb4ef6bb8d0581f03db67a04c285bbcb83f921")
-        block_num=block_id.ref_block_num()
+        block_id = BlockId.from_string(
+            '000000cabd11d7f8163d5586a4bb4ef6bb8d0581f03db67a04c285bbcb83f921')
+        block_num = block_id.ref_block_num()
         self.assertTrue(block_num == 202)
-        block_prefix=block_id.ref_block_prefix()
-        self.assertTrue(block_prefix==2253733142)
-
-
+        block_prefix = block_id.ref_block_prefix()
+        self.assertTrue(block_prefix == 2253733142)
 
 
 if __name__ == '__main__':
