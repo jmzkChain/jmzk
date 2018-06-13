@@ -37,3 +37,43 @@ def trx_json_to_digest(json, chain_id):
         evt.abi, json_c, chain_id_c, digest_c)
     evt_exception.evt_exception_raiser(ret)
     return EvtData(digest_c[0])
+
+
+class ChainId(EvtData):
+    def __init__(self, data):
+        super().__init__(data)
+
+    @staticmethod
+    def from_string(str):
+        evt = libevt.check_lib_init()
+        str_c = bytes(str, encoding='utf-8')
+        chain_id_c = evt.ffi.new('evt_chain_id_t**')
+        ret = evt.lib.evt_chain_id_from_string(str_c, chain_id_c)
+        evt_exception.evt_exception_raiser(ret)
+        return ChainId(chain_id_c[0])
+
+
+class BlockId(EvtData):
+    def __init__(self, data):
+        super().__init__(data)
+
+    @staticmethod
+    def from_string(str):
+        evt = libevt.check_lib_init()
+        str_c = bytes(str, encoding='utf-8')
+        block_id_c = evt.ffi.new('evt_block_id_t**')
+        ret = evt.lib.evt_block_id_from_string(str_c, block_id_c)
+        evt_exception.evt_exception_raiser(ret)
+        return BlockId(block_id_c[0])
+
+    def ref_block_num(self):
+        uint16_c = self.evt.ffi.new('uint16_t*')
+        ret = self.evt.lib.evt_ref_block_num(self.data, uint16_c)
+        evt_exception.evt_exception_raiser(ret)
+        return int(uint16_c[0])
+
+    def ref_block_prefix(self):
+        uint32_c = self.evt.ffi.new('uint32_t*')
+        ret = self.evt.lib.evt_ref_block_prefix(self.data, uint32_c)
+        evt_exception.evt_exception_raiser(ret)
+        return int(uint32_c[0])

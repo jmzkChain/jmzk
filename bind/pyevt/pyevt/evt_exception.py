@@ -107,4 +107,4 @@ def evt_exception_raiser(error_code):
         return
     if error_code in ex_map:
         raise ex_map[error_code]
-    raise Exception("Unknown error code")
+    raise Exception('Unknown error code')

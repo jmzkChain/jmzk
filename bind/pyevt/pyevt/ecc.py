@@ -3,20 +3,6 @@ import libevt
 from evt_data import EvtData
 
 
-class ChainId(EvtData):
-    def __init__(self, data):
-        super().__init__(data)
-
-    @staticmethod
-    def from_string(str):
-        evt = libevt.check_lib_init()
-        str_c = bytes(str, encoding='utf-8')
-        chain_id_c = evt.ffi.new('evt_chain_id_t**')
-        ret = evt.lib.evt_chain_id_from_string(str_c, chain_id_c)
-        evt_exception.evt_exception_raiser(ret)
-        return ChainId(chain_id_c[0])
-
-
 class PublicKey(EvtData):
     def __init__(self, data):
         super().__init__(data)
@@ -100,7 +86,7 @@ class Signature(EvtData):
 
     def to_string(self):
         str_c = self.evt.ffi.new('char**')
-        ret = self.evt.lib.evt_signature_string(str_c, self.data)
+        ret = self.evt.lib.evt_signature_string(self.data, str_c)
         evt_exception.evt_exception_raiser(ret)
         str = self.evt.ffi.string(str_c[0]).decode('utf-8')
         ret = self.evt.lib.evt_free(str_c[0])
