@@ -3,12 +3,17 @@
 // This file is an internal header,
 // it is not meant to be included except internally from json.cpp in fc
 
+#include <stack>
+#include <vector>
 #include <tuple>
 #include <boost/any.hpp>
 #include <fc/io/json.hpp>
 #include <rapidjson/document.h>
 #include <rapidjson/reader.h>
 #include <rapidjson/istreamwrapper.h>
+#include <rapidjson/error/en.h>
+
+using namespace rapidjson;
 
 namespace fc { namespace rapidjson {
 
@@ -17,7 +22,8 @@ variant variant_from_stream( T& in, uint32_t max_depth );
 
 class VariantHandler : public BaseReaderHandler<UTF8<>, VariantHandler> {
 public:
-    VariantHandler(variant& v) : v_(v)
+    VariantHandler(variant& v, uint32_t max_depth) : v_(v),
+                                                     max_depth_(max_depth)
     { }
 
 public:
@@ -68,14 +74,17 @@ public:
 
     bool
     StartObject() {
-        obj_levels_.push(std::make_tuple(kObject, mutable_variant_object()));
+        obj_levels_.emplace(std::make_tuple(kObject, mutable_variant_object()));
+        if(obj_levels_.size() > max_depth_) {
+            FC_THROW_EXCEPTION(parse_error_exception, "Exceed max depth limit");
+        }
         return true;
     }
 
     bool
     Key(const Ch* str, SizeType len, bool copy) {
-        key_ = std::string(str, len);
-        key_levels_.emplace_back(std::move(key_));
+        auto key = std::string(str, len);
+        key_levels_.emplace(std::move(key));
         return true;
     }
 
@@ -88,19 +97,24 @@ public:
         if(std::get<0>(l) != kObject) {
             return false;
         }
-        auto v = std::move(std::get<1>(l));
+        auto  v   = std::move(std::get<1>(l));
+        auto& obj = boost::any_cast<mutable_variant_object&>(v);
+
         obj_levels_.pop();
         if(obj_levels_.empty()) {
             // root
-            v_ = std::move(v);
+            v_ = std::move(obj);
             return true;
         }
-        return insert_element(std::move(v));
+        return insert_element(std::move(obj));
     }
 
     bool
     StartArray() {
         obj_levels_.push(std::make_tuple(kArray, variants()));
+        if(obj_levels_.size() > max_depth_) {
+            FC_THROW_EXCEPTION(parse_error_exception, "Exceed max depth limit");
+        }
         return true;
     }
 
@@ -113,14 +127,16 @@ public:
         if(std::get<0>(l) != kArray) {
             return false;
         }
-        auto v = std::move(std::get<1>(l));
+        auto v    = std::move(std::get<1>(l));
+        auto& arr = boost::any_cast<variants&>(v);
+
         obj_levels_.pop();
         if(obj_levels_.empty()) {
             // root
-            v_ = std::move(v);
+            v_ = std::move(arr);
             return true;
         }
-        return insert_element(std::move(v));
+        return insert_element(std::move(arr));
     }
 
 private:
@@ -167,22 +183,24 @@ private:
     };
     using obj_level = std::tuple<int, boost::any>;
 
-    std::stack<std::string> key_levels_;
-    std::stack<obj_level>   obj_levels_;
-    variant&                v_;
+    template<typename T>
+    using stack = std::stack<T, std::vector<T>>;
+
+    stack<std::string> key_levels_;
+    stack<obj_level>   obj_levels_;
+    variant&           v_;
+    uint32_t           max_depth_;
 };
 
 template<typename T, bool strict>
 variant
 variant_from_stream(T& in, uint32_t max_depth) {
-    using namespace rapidjson;
-
     variant var;
 
     Reader reader;
-    VariantHandler handler(var);
+    VariantHandler handler(var, max_depth);
 
-    BasicIStreamWrapper ss(in);
+    BasicIStreamWrapper<T> ss(in);
     if(!reader.Parse(ss, handler)) {
         auto e = reader.GetParseErrorCode();
         FC_THROW_EXCEPTION(parse_error_exception, "Unexpected content, err: ${err}, offset: ${offset}",
