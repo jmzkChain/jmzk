@@ -1,6 +1,7 @@
 *.a
 *.sw*
 *.dylib
+*.so
 *.ll
 *.bc
 *.wast

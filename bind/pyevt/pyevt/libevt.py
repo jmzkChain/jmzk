@@ -3,21 +3,22 @@ from cffi import FFI
 import evt_exception
 
 
-class libevt:
+class LibEVT:
     lib = None
     ffi = None
     abi = None
 
 
 def check_lib_init():
-    if(libevt.lib == None):
-        evt_exception.evt_exception_raiser(-15)
+    if LibEVT.lib is None:
+        evt_exception.evt_exception_raiser(evt_exception.EVTErrCode.EVT_NOT_INIT)
+    return LibEVT
 
 
 def init_lib():
-    if(libevt.lib == None):
-        libevt.ffi = FFI()
-        libevt.ffi.cdef("""
+    if LibEVT.lib is None:
+        LibEVT.ffi = FFI()
+        LibEVT.ffi.cdef("""
                 typedef struct {
                     size_t  sz;
                     char    buf[0];
@@ -55,7 +56,6 @@ def init_lib():
                 int evt_chain_id_from_string(const char* str, evt_chain_id_t** chain_id /* out */);
 
 
-
                 int evt_generate_new_pair(evt_public_key_t** pub_key /* out */, evt_private_key_t** priv_key /* out */);
                 int evt_get_public_key(evt_private_key_t* priv_key, evt_public_key_t** pub_key /* out */);
                 int evt_sign_hash(evt_private_key_t* priv_key, evt_checksum_t* hash, evt_signature_t** sign /* out */);
@@ -71,12 +71,6 @@ def init_lib():
                 int evt_private_key_from_string(const char* str, evt_private_key_t** priv_key /* out */);
                 int evt_signature_from_string(const char* str, evt_signature_t** sign /* out */);
                 int evt_checksum_from_string(const char* str, evt_checksum_t** hash /* out */);
-
-
-
-
-
-
                 """)
-        libevt.lib = libevt.ffi.dlopen('./lib/libevt.so')
-        libevt.abi = libevt.lib.evt_abi()
+        LibEVT.lib = LibEVT.ffi.dlopen('./lib/libevt.so')
+        LibEVT.abi = LibEVT.lib.evt_abi()

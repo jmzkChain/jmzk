@@ -1,23 +1,26 @@
 import unittest
 
 import abi
-import libevt
 from ecc import *
 
 
-class test(unittest.TestCase):
+class TestPyEVT(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        libevt.init_lib()
 
     def test_evtecc(self):
         pub_key, priv_key = generate_new_pair()
         pub_key_string = pub_key.to_string()
         pub_key_from_priv = priv_key.get_public_key()
-        pub_key_string = pub_key.to_string()
         pub_key_string2 = pub_key_from_priv.to_string()
         self.assertTrue(pub_key_string == pub_key_string2)
+
         priv_key_string = priv_key.to_string()
         priv_key2 = PrivateKey.from_string(priv_key_string)
         priv_key_string2 = priv_key2.to_string()
         self.assertTrue(priv_key_string == priv_key_string2)
+
         check_sum = Checksum.from_string('hello world')
         sign = priv_key.sign_hash(check_sum)
         pub_key3 = PublicKey.recover(sign, check_sum)
@@ -92,11 +95,10 @@ class test(unittest.TestCase):
         '''
         bin = abi.json_to_bin('newdomain', j)
         json = abi.bin_to_json('newdomain', bin)
-        chain_id = ChainId.chain_id_from_string(
+        chain_id = ChainId.from_string(
             'bb248d6319e51ad38502cc8ef8fe607eb5ad2cd0be2bdc0e6e30a506761b8636')
         digest = abi.trx_json_to_digest(j2, chain_id)
 
 
 if __name__ == '__main__':
-    libevt.init_lib()
     unittest.main()

@@ -1,4 +1,4 @@
-class evt_error_code:
+class EVTErrCode:
     EVT_OK = 0
     EVT_INTERNAL_ERROR = -1
     EVT_INVALID_ARGUMENT = -2
@@ -8,99 +8,103 @@ class evt_error_code:
     EVT_INVALID_HASH = -6
     EVT_INVALID_ACTION = -7
     EVT_INVALID_BINARY = -8
+    EVT_INVALID_JSON = -9
     EVT_SIZE_NOT_EQUALS = -11
     EVT_DATA_NOT_EQUALS = -12
     EVT_NOT_INIT = -15
 
 
-class EvtInternalErrorException(Exception):
+class EVTInternalErrorException(Exception):
     def __init__(self):
         err = 'EVT_INTERNAL_ERROR'
-        Exception.__init__(self, err)
+        super().__init__(self, err)
 
 
-class EvtInvaildArgumentException(Exception):
+class EVTInvalidArgumentException(Exception):
     def __init__(self):
         err = 'EVT_INVALID_ARGUMENT'
-        Exception.__init__(self, err)
+        super().__init__(self, err)
 
 
-class EvtInvaildPrivateKeyException(Exception):
+class EVTInvalidPrivateKeyException(Exception):
     def __init__(self):
         err = 'EVT_INVALID_PRIVATE_KEY'
-        Exception.__init__(self, err)
+        super().__init__(self, err)
 
 
-class EvtInvaildPublicKeyException(Exception):
+class EVTInvalidPublicKeyException(Exception):
     def __init__(self):
         err = 'EVT_INVALID_PUBLIC_KEY'
-        Exception.__init__(self, err)
+        super().__init__(self, err)
 
 
-class EvtInvalidSignatureException(Exception):
+class EVTInvalidSignatureException(Exception):
     def __init__(self):
         err = 'EVT_INVALID_SIGNATURE'
-        Exception.__init__(self, err)
+        super().__init__(self, err)
 
 
-class EvtInvalidHashException(Exception):
+class EVTInvalidHashException(Exception):
     def __init__(self):
         err = 'EVT_INVALID_HASH'
-        Exception.__init__(self, err)
+        super().__init__(self, err)
 
 
-class EvtInvalidActionException(Exception):
+class EVTInvalidActionException(Exception):
     def __init__(self):
         err = 'EVT_INVALID_ACTION'
-        Exception.__init__(self, err)
+        super().__init__(self, err)
 
 
-class EvtInvalidBinaryException(Exception):
+class EVTInvalidBinaryException(Exception):
     def __init__(self):
         err = 'EVT_INVALID_BINARY'
-        Exception.__init__(self, err)
+        super().__init__(self, err)
 
 
-class EvtSizeNotEqualsException(Exception):
+class EVTInvalidJsonException(Exception):
+    def __init__(self):
+        err = 'EVT_INVALID_JSON'
+        super().__init__(self, err)
+
+
+class EVTSizeNotEqualsException(Exception):
     def __init__(self):
         err = 'EVT_SIZE_NOT_EQUALS'
-        Exception.__init__(self, err)
+        super().__init__(self, err)
 
 
-class EvtDataNotEqualsException(Exception):
+class EVTDataNotEqualsException(Exception):
     def __init__(self):
         err = 'EVT_DATA_NOT_EQUALS'
-        Exception.__init__(self, err)
+        super().__init__(self, err)
 
 
-class EvtNotInitException(Exception):
+class EVTNotInitException(Exception):
     def __init__(self):
         err = 'EVT_NOT_INIT'
-        Exception.__init__(self, err)
+        super().__init__(self, err)
+
+
+ex_map = {
+    EVTErrCode.EVT_INTERNAL_ERROR: EVTInternalErrorException,
+    EVTErrCode.EVT_INVALID_ARGUMENT: EVTInvalidArgumentException,
+    EVTErrCode.EVT_INVALID_PRIVATE_KEY: EVTInvalidPrivateKeyException,
+    EVTErrCode.EVT_INVALID_PUBLIC_KEY: EVTInvalidPublicKeyException,
+    EVTErrCode.EVT_INVALID_SIGNATURE: EVTInvalidSignatureException,
+    EVTErrCode.EVT_INVALID_HASH: EVTInvalidHashException,
+    EVTErrCode.EVT_INVALID_ACTION: EVTInvalidActionException,
+    EVTErrCode.EVT_INVALID_BINARY: EVTInvalidBinaryException,
+    EVTErrCode.EVT_INVALID_JSON: EVTInvalidJsonException,
+    EVTErrCode.EVT_SIZE_NOT_EQUALS: EVTSizeNotEqualsException,
+    EVTErrCode.EVT_DATA_NOT_EQUALS: EVTDataNotEqualsException,
+    EVTErrCode.EVT_NOT_INIT: EVTNotInitException
+}
 
 
 def evt_exception_raiser(error_code):
-    if(error_code == evt_error_code.EVT_OK):
+    if error_code == EVTErrCode.EVT_OK:
         return
-    if(error_code == evt_error_code.EVT_INTERNAL_ERROR):
-        raise EvtInternalErrorException()
-    if(error_code == evt_error_code.EVT_INVALID_ARGUMENT):
-        raise EvtInvaildArgumentException()
-    if(error_code == evt_error_code.EVT_INVALID_PRIVATE_KEY):
-        raise EvtInvaildPrivateKeyException()
-    if(error_code == evt_error_code.EVT_INVALID_PUBLIC_KEY):
-        raise EvtInvaildPublicKeyExceptionn()
-    if(error_code == evt_error_code.EVT_INVALID_SIGNATURE):
-        raise EvtInvalidSignatureException()
-    if(error_code == evt_error_code.EVT_INVALID_HASH):
-        raise EvtInvalidHashException()
-    if(error_code == evt_error_code.EVT_INVALID_ACTION):
-        raise EvtInvalidActionException()
-    if(error_code == evt_error_code.EVT_INVALID_BINARY):
-        raise EvtInvalidBinaryException()
-    if(error_code == evt_error_code.EVT_SIZE_NOT_EQUALS):
-        raise EvtSizeNotEqualsException()
-    if(error_code == evt_error_code.EVT_DATA_NOT_EQUALS):
-        raise EvtDataNotEqualsException()
-    if(error_code == evt_error_code.EVT_NOT_INIT):
-        raise EvtNotInitException()
+    if error_code in ex_map:
+        raise ex_map[error_code]
+    raise Exception("Unknown error code")
