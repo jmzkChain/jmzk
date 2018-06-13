@@ -57,6 +57,6 @@ RUN git clone --depth 1 --single-branch --branch master https://github.com/jemal
 
 RUN git clone -b master https://github.com/google/benchmark.git \
     && cd benchmark \
-    && cmake -H. -Bbuild -DBENCHMARK_ENABLE_TESTING=OFF -DBENCHMARK_ENABLE_LTO=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local\
+    && cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=Release -DBENCHMARK_ENABLE_TESTING=OFF -DBENCHMARK_ENABLE_LTO=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local\
     && cmake --build build --target install \
     && cd .. && rm -rf benchmark
