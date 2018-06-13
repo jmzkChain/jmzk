@@ -1,5 +1,4 @@
-file(GLOB UNIT_TESTS "*.cpp")
-add_executable( libevt_tests ${UNIT_TESTS}  )
+add_executable( libevt_tests libevt_tests.cpp  )
 target_link_libraries( libevt_tests libevt ${Boost_LIBRARIES} )
 target_include_directories( libevt_tests PUBLIC ${Boost_INCLUDE_DIR} )
 
