@@ -3,21 +3,22 @@ from cffi import FFI
 import evt_exception
 
 
-class libevt:
+class LibEVT:
     lib = None
     ffi = None
     abi = None
 
 
 def check_lib_init():
-    if(libevt.lib == None):
-        evt_exception.evt_exception_raiser(-15)
+    if LibEVT.lib is None:
+        evt_exception.evt_exception_raiser(evt_exception.EVTErrCode.EVT_NOT_INIT)
+    return LibEVT
 
 
 def init_lib():
-    if(libevt.lib == None):
-        libevt.ffi = FFI()
-        libevt.ffi.cdef("""
+    if LibEVT.lib is None:
+        LibEVT.ffi = FFI()
+        LibEVT.ffi.cdef("""
                 typedef struct {
                     size_t  sz;
                     char    buf[0];
@@ -41,6 +42,7 @@ def init_lib():
 
                 typedef evt_data_t evt_bin_t;
                 typedef evt_data_t evt_chain_id_t;
+                typedef evt_data_t evt_block_id_t;
                 typedef evt_data_t evt_public_key_t;
                 typedef evt_data_t evt_private_key_t;
                 typedef evt_data_t evt_signature_t;
@@ -53,7 +55,6 @@ def init_lib():
                 int evt_abi_bin_to_json(void* evt_abi, const char* action, evt_bin_t* bin, char** json /* out */);
                 int evt_trx_json_to_digest(void* evt_abi, const char* json, evt_chain_id_t* chain_id, evt_checksum_t** digest /* out */);
                 int evt_chain_id_from_string(const char* str, evt_chain_id_t** chain_id /* out */);
-
 
 
                 int evt_generate_new_pair(evt_public_key_t** pub_key /* out */, evt_private_key_t** priv_key /* out */);
@@ -72,11 +73,9 @@ def init_lib():
                 int evt_signature_from_string(const char* str, evt_signature_t** sign /* out */);
                 int evt_checksum_from_string(const char* str, evt_checksum_t** hash /* out */);
 
-
-
-
-
-
+                int evt_block_id_from_string(const char* str, evt_block_id_t** block_id /* out */);
+                int evt_ref_block_num(evt_block_id_t* block_id, uint16_t* ref_block_num);
+                int evt_ref_block_prefix(evt_block_id_t* block_id, uint32_t* ref_block_prefix);
                 """)
-        libevt.lib = libevt.ffi.dlopen('./lib/libevt.so')
-        libevt.abi = libevt.lib.evt_abi()
+        LibEVT.lib = LibEVT.ffi.dlopen('./lib/libevt.so')
+        LibEVT.abi = LibEVT.lib.evt_abi()
