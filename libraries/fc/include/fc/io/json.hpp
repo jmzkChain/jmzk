@@ -21,7 +21,8 @@ namespace fc
             legacy_parser         = 0,
             strict_parser         = 1,
             relaxed_parser        = 2,
-            legacy_parser_with_string_doubles = 3
+            rapidjson_parser      = 3,
+            legacy_parser_with_string_doubles = 4
          };
          enum output_formatting
          {

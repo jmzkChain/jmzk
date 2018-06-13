@@ -193,6 +193,7 @@ target_include_directories(fc
     ${OPENSSL_INCLUDE_DIR}
     ${Secp256k1_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/websocketpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../rapidjson/include
   )
 
 target_include_directories(fc_lite
@@ -201,7 +202,10 @@ target_include_directories(fc_lite
     ${OPENSSL_INCLUDE_DIR}
     ${Secp256k1_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/websocketpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../rapidjson/include
   )
+
+message(${CMAKE_CURRENT_SOURCE_DIR}/../rapidjson/include)
 
 IF(NOT WIN32)
   set(LINK_USR_LOCAL_LIB -L/usr/local/lib)

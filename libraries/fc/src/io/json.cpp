@@ -30,6 +30,7 @@ namespace fc
 }
 
 #include <fc/io/json_relaxed.hpp>
+#include <fc/io/json_rapidjson.hpp>
 
 namespace fc
 {
@@ -454,6 +455,8 @@ namespace fc
               return json_relaxed::variant_from_stream<std::stringstream, true>( in, max_depth );
           case relaxed_parser:
               return json_relaxed::variant_from_stream<std::stringstream, false>( in, max_depth );
+          case rapidjson_parser:
+              return rapidjson::variant_from_stream<std::stringstream, false>( in, max_depth );
           default:
               FC_ASSERT( false, "Unknown JSON parser type {ptype}", ("ptype", ptype) );
       }
@@ -794,6 +797,8 @@ namespace fc
               return json_relaxed::variant_from_stream<boost::filesystem::ifstream, true>( bi, max_depth );
           case relaxed_parser:
               return json_relaxed::variant_from_stream<boost::filesystem::ifstream, false>( bi, max_depth );
+          case rapidjson_parser:
+              return rapidjson::variant_from_stream<boost::filesystem::ifstream, false>( bi, max_depth );
           default:
               FC_ASSERT( false, "Unknown JSON parser type {ptype}", ("ptype", ptype) );
       }
@@ -850,6 +855,9 @@ namespace fc
               break;
           case relaxed_parser:
              json_relaxed::variant_from_stream<std::stringstream, false>( in, max_depth );
+              break;
+          case rapidjson_parser:
+             rapidjson::variant_from_stream<std::stringstream, false>( in, max_depth );
               break;
           default:
               FC_ASSERT( false, "Unknown JSON parser type {ptype}", ("ptype", ptype) );
