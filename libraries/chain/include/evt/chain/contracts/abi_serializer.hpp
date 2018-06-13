@@ -346,19 +346,24 @@ struct abi_from_variant {
         from_variant(vo["domain"], act.domain);
         from_variant(vo["key"], act.key);
 
+        bool valid_empty_data = false;
         if(vo.contains("data")) {
             const auto& data = vo["data"];
             if(data.is_string()) {
                 from_variant(data, act.data);
+                valid_empty_data = act.data.empty();
             }
             else if(data.is_object()) {
                 const auto& abi = resolver();
-                auto  type = abi.get_action_type(act.name);
-                act.data   = std::move(abi.variant_to_binary(type, data));
+                auto type = abi.get_action_type(act.name);
+                if(!type.empty()) {
+                    act.data = std::move(abi.variant_to_binary(type, data));
+                    valid_empty_data = act.data.empty();
+                }
             }
         }
 
-        if(act.data.empty()) {
+        if(!valid_empty_data && act.data.empty()) {
             if(vo.contains("hex_data")) {
                 const auto& data = vo["hex_data"];
                 if(data.is_string()) {
@@ -367,7 +372,7 @@ struct abi_from_variant {
             }
         }
 
-        EVT_ASSERT(!act.data.empty(), packed_transaction_type_exception,
+        EVT_ASSERT(valid_empty_data || !act.data.empty(), packed_transaction_type_exception,
                    "Failed to deserialize data for ${name}", ("name", act.name));
     }
 

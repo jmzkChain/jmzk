@@ -17,7 +17,7 @@ struct connection_param {
     bool verify_cert;
     std::vector<string>& headers;
 
-    connection_param( std::string& u,
+    connection_param(std::string& u,
                      std::string& p,
                      bool verify,
                      std::vector<string>& h) : url(u), path(p), headers(h) {
@@ -36,7 +36,8 @@ parsed_url parse_url(const std::string& server_url);
 
 fc::variant do_http_call(const connection_param& cp,
                          const fc::variant& postdata = fc::variant(),
-                         bool print_requrest = false);
+                         bool print_request = false,
+                         bool print_response = false);
 
 const std::string chain_func_base             = "/v1/chain";
 const std::string get_info_func               = chain_func_base + "/get_info";

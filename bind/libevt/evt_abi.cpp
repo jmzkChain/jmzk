@@ -8,7 +8,7 @@
 #include <evt/chain/contracts/abi_serializer.hpp>
 #include <evt/chain/types.hpp>
 #include <fc/crypto/sha256.hpp>
-
+#include <fc/bitutil.hpp>
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
 
@@ -164,6 +164,37 @@ evt_trx_json_to_digest(void* evt_abi, const char* json,  evt_chain_id_t* chain_i
 int
 evt_chain_id_from_string(const char* str, evt_chain_id_t** chain_id /* out */) {
     return evt_checksum_from_string(str, chain_id);
+}
+
+int
+evt_block_id_from_string(const char* str, evt_block_id_t** block_id /* out */) {
+    return evt_checksum_from_string(str, block_id);
+}
+
+int
+evt_ref_block_num(evt_block_id_t* block_id, uint16_t* ref_block_num) {
+    if(block_id == nullptr) {
+        return EVT_INVALID_ARGUMENT;
+    }
+    sha256 idhash;
+    if(extract_data(block_id, idhash) != EVT_OK) {
+        return EVT_INVALID_HASH;
+    }
+    *ref_block_num = (uint16_t)fc::endian_reverse_u32(idhash._hash[0]);
+    return EVT_OK;
+}
+
+int
+evt_ref_block_prefix(evt_block_id_t* block_id, uint32_t* ref_block_prefix) {
+    if(block_id == nullptr) {
+        return EVT_INVALID_ARGUMENT;
+    }
+    sha256 idhash;
+    if(extract_data(block_id, idhash) != EVT_OK) {
+        return EVT_INVALID_HASH;
+    }
+    *ref_block_prefix = (uint32_t)idhash._hash[1];
+    return EVT_OK;
 }
 
 }  // extern "C"

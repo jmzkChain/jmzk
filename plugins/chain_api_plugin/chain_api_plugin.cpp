@@ -40,7 +40,7 @@ struct async_result_visitor : public fc::visitor<std::string> {
 #define CALL(api_name, api_handle, api_namespace, call_name, http_response_code)                                             \
     {                                                                                                                        \
         std::string("/v1/" #api_name "/" #call_name),                                                                        \
-            [this, api_handle](string, string body, url_response_callback cb) mutable {                                      \
+            [api_handle](string, string body, url_response_callback cb) mutable {                                      \
                 try {                                                                                                        \
                     if(body.empty())                                                                                         \
                         body = "{}";                                                                                         \
@@ -56,7 +56,7 @@ struct async_result_visitor : public fc::visitor<std::string> {
 #define CALL_ASYNC(api_name, api_handle, api_namespace, call_name, call_result, http_response_code)                 \
     {                                                                                                               \
         std::string("/v1/" #api_name "/" #call_name),                                                               \
-            [this, api_handle](string, string body, url_response_callback cb) mutable {                             \
+            [api_handle](string, string body, url_response_callback cb) mutable {                             \
                 if(body.empty())                                                                                    \
                     body = "{}";                                                                                    \
                 api_handle.call_name(fc::json::from_string(body).as<api_namespace::call_name##_params>(),           \
