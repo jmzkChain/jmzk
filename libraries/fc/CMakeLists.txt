@@ -205,8 +205,6 @@ target_include_directories(fc_lite
     ${CMAKE_CURRENT_SOURCE_DIR}/../rapidjson/include
   )
 
-message(${CMAKE_CURRENT_SOURCE_DIR}/../rapidjson/include)
-
 IF(NOT WIN32)
   set(LINK_USR_LOCAL_LIB -L/usr/local/lib)
 ENDIF()
@@ -221,4 +219,6 @@ ELSE()
   SET (OPENSSL_CONF_TARGET ${CMAKE_CURRENT_BINARY_DIR})
 ENDIF()
 
-add_subdirectory( test )
+if(ENABLE_TESTING)
+    add_subdirectory( test )
+endif()

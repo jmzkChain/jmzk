@@ -1,4 +1,4 @@
-add_subdirectory( fc EXCLUDE_FROM_ALL )
+add_subdirectory( fc )
 add_subdirectory( chainbase EXCLUDE_FROM_ALL )
 add_subdirectory( utilities )
 add_subdirectory( appbase EXCLUDE_FROM_ALL )

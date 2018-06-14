@@ -19,4 +19,6 @@ install( TARGETS
    ARCHIVE DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
 )
 
-add_subdirectory( test )
+if(ENABLE_TESTING)
+    add_subdirectory( test )
+endif()

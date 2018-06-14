@@ -7,8 +7,7 @@ option(ENABLE_MONGO_DB_PLUGIN   "Build the mongodb plugin" OFF)
 option(ENABLE_BIND_LIBRARIES    "Build bind libraries" OFF)
 option(ENABLE_BENCHMARKS        "Build benchmarks" OFF)
 option(ENABLE_COVERAGE_TESTING  "Build EVT for code coverage analysis" OFF)
-
-enable_testing()
+option(ENABLE_TESTING           "Enable testing targets" ON)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libraries/fc/CMakeModules")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
@@ -38,8 +37,8 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
         message(FATAL_ERROR "GCC version must be at least 7.0!")
     endif()
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.0)
-        message(FATAL_ERROR "Clang version must be at least 4.0!")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.0)
+        message(FATAL_ERROR "Clang version must be at least 5.0!")
     endif()
 endif()
 
@@ -209,6 +208,10 @@ endif()
 
 if(ENABLE_BENCHMARKS)
     add_subdirectory(benchmarks)
+endif()
+
+if(ENABLE_TESTING)
+    enable_testing()
 endif()
 
 include(installer)
