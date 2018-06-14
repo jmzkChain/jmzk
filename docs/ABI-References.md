@@ -1,22 +1,9 @@
 # EVT ABI References
 ## Overview
-The ABI defines the application interface interactive with the blockchain. Applications can use JSON RPC to communicate with everiToken. For the API references, you can check this [document](API-References.md). This document will expand the details of `action` definition.
-
-In EVT, one transaction consists of multiple actions. Each action represents one event in the blockchain. The structure of an action is defined like below:
-```
-{
-    "name": "xxx",
-    "domain": "...",
-    "key": "...",
-    "data": { ... }
-}
-```
-
-Each action first has one field `name` which indicates its type. And `domain` and `key` fields specify where this action is applied to.
-`data` field of an action defines the event details and according to the different type of actions(aka. different names), each action has its own specific structure of data, which is also named `abi`.
+The ABI defines the application interface interactive with the everiToken blockchain. Applications can use JSON RPC to communicate with everiToken. For the API references, you can check [document](API-References.md). This document will expand the details of abi json definition (ie. the `args` field you send to `/v1/chain/abi_json_to_bin`).
 
 ## Base Types
-Before describing the ABI for each action, it's needed to introduce some base types. Base types are the basic types that EVT RPC interface supports. The table below is all the base types definitions.
+Before describing the ABI for each action, it is necessary to introduce some Base Types. Base Types are the basic types that EVT RPC interface supports. Their definitions are given in the table below.
 
 | Type Name | Description | Additional |
 |-----------|-------------|------------|
@@ -43,16 +30,16 @@ Before describing the ABI for each action, it's needed to introduce some base ty
 * __#1__: `EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX`
 * __#2__: `SIG_K1_JzrdhWW46N5nFUZzTUmhg2sK4nKNGktPz2UdRz9bSAP5pY4nhicKWCuo6Uc6U7KBBwD8VfjsSxzHWT87R41xMaubnzMq8w`
 
-These are all the base types and ABIs are built on these types.
+ABIs are built on Base Types given above.
 
 ### `asset` Type
-`asset` type is composed of two parts: the number part, which can be price or volume, and the symbol part is the type name of asset.
+`asset` type is composed of two parts: the number part representing price or volume, and the symbol part describing the type name of asset.
 
-The number part is a number plus a `.` which introduces its precision. The precision is determined by the digits after the `.`. It means that `0.300` has the precision of 3 but `0.3` only has the precision of 1. The precision of an asset should be less than __18__.
+The number part is a number containing a `.` which introduces its precision. The precision is determined by the digits after the `.`. That is, `0.300` has the precision of 3, while `0.3` only has the precision of 1. The precision of an asset should be less than __18__.
 
-The symbol introduces the name of this asset, and it's consisted of uppercase alphabets. Length of the symbol name should be less than 7 chars.
+The symbol part introduces the asset name, which is consisted of UPPERCASE alphabets, with a length less than 7 chars.
 
-Both the precision and symbol makes up one type of asset. Only the same type of asset can be added up. The `EVT` asset is a type of asset with the precision of 4 and `EVT` as symbol name. So `12.0000 EVT` is a valid `EVT` asset but `12.000 EVT`, `12 EVT` and `12.00000 EVT` are all invalid `EVT` asset.
+Only the assets of the same type can be added up. The `EVT` asset is an asset type with the precision of 4 and `EVT` as symbol name. Therefore, `12.0000 EVT` is a valid `EVT` asset, but `12.000 EVT`, `12 EVT` or `12.00000 EVT` are invalid `EVT` asset due to the wrong precisions.
 
 ### `authorizer_ref` Type
 For the `authorizer_ref`, it's a reference to one authorizer. Current valid authorizer including an account, a group or special `OWNER` group (aka. owners field in one token).
@@ -64,7 +51,7 @@ All the three formats will describe below:
 ### `group` Type
 A authorizer group is a tree structure, each leaf node is a reference to one authorizer and also attached with a weight and non-leaf nodes behaves a `switch`, it has a threshold value, and only turned on if the sum of weights of all the authorized child nodes large than its threshold value. So a non-leaf node also has a weight value and a root node only has threshold value.
 
-A sample group defined as below:
+A sample group is defined as below:
 ```
 {
     "name": "testgroup",
@@ -108,13 +95,13 @@ A sample group defined as below:
     }
 }
 ```
-This sample group has the name `testgroup` and key `EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV`. Threshold of root node is 6 and it has three child nodes, with the weight is all the value of 3.
+This sample group has the name `testgroup` and key `EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV`. Threshold of root node is 6 and it has 3 child nodes, with the weight is all the value of 3.
 
 ## Typedefs
-Normally `typedef` is a keyword in C and C++. And it shares the same meaning here. It means that the each type of the followings are the same type as one original type. Only have different names.
+Normally `typedef` is a keyword in C and C++. And it shares the same meaning here. It means that each type of the followings is the same type as its relative original type, or can be considered as an alias of the original type.
 
-And type with `[]` as suffix means is a array type, like `int32[]` means it a array type that its element type is `int32`.
-Type with `?` as suffix means is a optional type which its value can be not provided.
+Any type with `[]` as suffix stands for an array type. For example, `int32[]` defines an array type and every single element in that array belongs to type `int32`.
+A type with `?` as suffix means it is an optional type whose value can be undefined.
 
 | Typedef Type | Original Type |
 |-------------------|----------------|
@@ -133,7 +120,7 @@ Type with `?` as suffix means is a optional type which its value can be not prov
 | `group_def` | `group` |
 
 ## Structures
-Structure is the complex type consisted of base or typedef types. Below are all the structures used in everiToken ABI interface. 
+A structure is a complex type consisted of base types or/and typedef types. Below are all the structures used in everiToken ABI interface. 
 
 ### `token_def` Struct
 ```
@@ -184,10 +171,10 @@ Structure is the complex type consisted of base or typedef types. Below are all 
 ```
 
 ## Actions
-Below are all the actions defined in everiToken RPC interface.
+There are nine kinds of actions in everiToken RPC interface, shown as below.
 
 ### `newdomain` Action
-Create a new domain with  name and set `issue`, `transfer` and `manage` permissions.
+Create a new domain with name and permisson set of `issue`, `transfer` and `manage`.
 ```
 {
     "name": `domain_name`,
@@ -238,7 +225,7 @@ Update one specific group's structure
 ```
 
 ### `newaccount` Action
-Create a new account with a name and owners.
+Create a new account with a name and owner(s).
 ```
 {
     "name": `account_name`,
@@ -247,7 +234,7 @@ Create a new account with a name and owners.
 ```
 
 ### `updateowner` Action
-Update owners of a specific account.
+Update owner(s) of a specific account.
 ```
 {
     "name": `account_name`,

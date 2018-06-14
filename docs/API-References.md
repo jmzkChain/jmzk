@@ -1,8 +1,8 @@
 # EVT API References
 ## GET /v1/chain/get_info
-When getting interactive with EVT, you need to get information about chain first. Call this API to get `chain_id`, `evt_abi_version` and many other properties of current chain state.
+Before interacting with everiToken, you need to get some chain information first. Call this API to get `chain_id`, `evt_abi_version` and many other properties of current chain state.
 
-For the `chain_id`, it's consisted of three parts splitting by `.`: `major version`, `minor version` and `patch version`. `major version` changes when there have been some break changes in API. And for `minor version`, it will be changed when some new APIs are added, but old APIs are not influenced. `patch version` is only for some bug-fixed changes.
+For the `chain_id`, it is consisted of three parts splitted by `.`: `major version`, `minor version` and `patch version`. `major version` changes when there have been some break changes in API. And for `minor version`, it will be changed when some new APIs are added, but old APIs will not be influenced. `patch version` is only for some bug-fixed changes.
 
 Response:
 ```
@@ -22,11 +22,11 @@ Response:
 ```
 
 ## POST /v1/chain/abi_json_to_bin
-This API is used to convert this abi formatted json data into binary data. And it also can be used to check if your input action data is well-formatted and correct. The `action` below is the name of one action and args is the data definitions.
+This API is used to convert the abi formatted json data into binary data. And it also can be used to check if your input action data is well-formatted and correct. The `action` below is the name of one action and args is the json definitions.
 
-For the abi details, please check this [document](ABI-References.md)
+For the abi references, please check [document](ABI-References.md)
 
-If request is valid then it will response with the binary data.
+If a request is valid, it will response with the binary data.
 
 Request:
 ```
@@ -70,7 +70,7 @@ Response:
 ```
 
 ## POST /v1/chain/trx_json_to_digest
-After have checked actions are correct, it's time to build the transaction structure. As said before, a transaction consists several actions. A example transaction is like below:
+After verifying the correctness of actions, it is time to build up the transaction structure. As mentioned before, a transaction consists several actions. An example is given:
 
 Request:
 ```
@@ -89,18 +89,30 @@ Request:
     "transaction_extensions": []
 }
 ```
-Ignore other fields you can see the `actions` fields is a array of `action` definition.
-The `ref_block_num` and `ref_block_prefix` are the reference fields that corresponding to the head block. They can be calculated from the `chain_id` which you got from the previous call to `/v1/chain/get_info`.
+In everiToken, a transaction consists of multiple actions. Each action represents an event in the blockchain. The structure of an action is defined as below:
+```
+{
+    "name": "xxx",
+    "domain": "...",
+    "key": "...",
+    "data": "hex-binary-data"
+}
+```
+Each action first has one field `name` which indicates its type. The action types are documented in the `Actions` section in this [document](ABI-References.md). The `domain` and `key` fields specify where the certain action will be applied to. More details about these two fields you can check the table below.
 
-`chain_id` is a 256-long binary data and is represented in hex format. If we assume `chain_id` is a big number represented in little-endian encoding, then the `ref_block_num` is one 16-bits number represented in big-endian and it equals to the 6-7 bytes(index starts at zero) of `chain_id`.
+`data` field is the hex binary data you got from the `/v1/chain/abi_json_to_bin` API.
 
-`ref_block_prefix` is one 32-bits number in little-endian and it equals to the 12-15 bytes of `chain_id`.
+`ref_block_num` and `ref_block_prefix` are the reference fields corresponding to the head block. They can be calculated from the `chain_id` which you got from the previous call to `/v1/chain/get_info`.
 
-`expiration` is the time at which a transaction expires. If the time a transaction being executed is later than this value, execution will be turned out failed.
+`chain_id` is a 256-long binary data and represented in hex format. If we assume `chain_id` as a big number represented in little-endian encoding, then the `ref_block_num` is one 16-bit number represented in big-endian and it equals to the 6-7 bytes(whose index starts from zero) of `chain_id`.
 
-`transaction_extensions` is the field should be ignored now, it may be used in later release.
+`ref_block_prefix` is a 32-bit number in little-endian and it equals to the 12-15 bytes of `chain_id`.
 
-For the fields of action, here is one quick reference guide.
+`expiration` is the time at which a transaction expires. If the time a transaction being executed at is later than this value, the execution will fail.
+
+`transaction_extensions` is the field should be ignored now, it may be used in further release.
+
+For the fields of an action, here is a quick reference guide.
 
 | Action Name | Domain | Key |
 |-------------|--------|-----|
@@ -114,7 +126,7 @@ For the fields of action, here is one quick reference guide.
 | `issuetoken` | name of domain | `issue` |
 | `transfer` | name of domain token belongs to | name of token |
 
-After all that work, you can send transaction definition using this API to the chain, then chain will response with the digest of the transaction. You can then sign this digest with your private key.
+After all that work, you can send transaction definition using this API to the chain, then the chain will response with the digest of the transaction. You can then sign this digest with your private key.
 
 Response:
 ```
@@ -122,10 +134,10 @@ Response:
   "digest": "e58e12b2069e736b922c0e4a7eb39af477d000866b33f2ab899d5eacf832d4b"
 }
 ```
-This `digest` is also a 256-bits long binary data represented in hex format.
+This `digest` is also a 256-bit long binary data represented in hex format.
 
 ## GET /v1/chain/get_required_keys
-After you got the digest of one transaction, you can then sign the digest with your private key. In EVT each transaction may need to be signed with multiple signatures. You can use this API to provide all the keys you have and then query which keys are needed.
+After you got the digest of one transaction, you can sign the digest with your private key. In everiToken, each transaction may need to be signed with multiple signatures. You can use this API to provide all the keys you have and then query which keys are required.
 
 Request:
 ```
@@ -162,7 +174,7 @@ Response:
 ```
 
 ## POST /v1/chain/push_transaction
-After signed digest of a transaction, you can just push signed transaction!
+After signing the digest of a transaction, you can just push the signed transaction right away!
 
 Request:
 ```
