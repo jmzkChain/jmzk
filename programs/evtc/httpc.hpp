@@ -106,25 +106,27 @@ const std::string net_disconnect  = net_func_base + "/disconnect";
 const std::string net_status      = net_func_base + "/status";
 const std::string net_connections = net_func_base + "/connections";
 
-const std::string wallet_func_base   = "/v1/wallet";
-const std::string wallet_create      = wallet_func_base + "/create";
-const std::string wallet_open        = wallet_func_base + "/open";
-const std::string wallet_list        = wallet_func_base + "/list_wallets";
-const std::string wallet_list_keys   = wallet_func_base + "/list_keys";
-const std::string wallet_public_keys = wallet_func_base + "/get_public_keys";
-const std::string wallet_lock        = wallet_func_base + "/lock";
-const std::string wallet_lock_all    = wallet_func_base + "/lock_all";
-const std::string wallet_unlock      = wallet_func_base + "/unlock";
-const std::string wallet_import_key  = wallet_func_base + "/import_key";
-const std::string wallet_sign_trx    = wallet_func_base + "/sign_transaction";
+const std::string wallet_func_base     = "/v1/wallet";
+const std::string wallet_create        = wallet_func_base + "/create";
+const std::string wallet_open          = wallet_func_base + "/open";
+const std::string wallet_list          = wallet_func_base + "/list_wallets";
+const std::string wallet_list_keys     = wallet_func_base + "/list_keys";
+const std::string wallet_public_keys   = wallet_func_base + "/get_public_keys";
+const std::string wallet_lock          = wallet_func_base + "/lock";
+const std::string wallet_lock_all      = wallet_func_base + "/lock_all";
+const std::string wallet_unlock        = wallet_func_base + "/unlock";
+const std::string wallet_import_key    = wallet_func_base + "/import_key";
+const std::string wallet_sign_trx      = wallet_func_base + "/sign_transaction";
+const std::string wallet_my_signatures = wallet_func_base + "/get_my_signatures";
 
 const std::string evt_func_base             = "/v1/evt";
 const std::string get_domain_func           = evt_func_base + "/get_domain";
 const std::string get_token_func            = evt_func_base + "/get_token";
 const std::string get_group_func            = evt_func_base + "/get_group";
 const std::string get_account_func          = evt_func_base + "/get_account";
-const std::string get_currency_balance_func = evt_func_base + "/get_currency_balance";
-const std::string get_currency_stats_func   = evt_func_base + "/get_currency_stats";
+const std::string get_my_domains            = evt_func_base + "/get_my_domains";
+const std::string get_my_tokens             = evt_func_base + "/get_my_tokens";
+const std::string get_my_groups             = evt_func_base + "/get_my_groups";
 
 FC_DECLARE_EXCEPTION(connection_exception, 1100000, "Connection Exception");
 

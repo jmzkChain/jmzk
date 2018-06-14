@@ -87,6 +87,9 @@ public:
     /// @return A set of public keys from all unlocked wallets, use with chain_controller::get_required_keys.
     flat_set<public_key_type> get_public_keys();
 
+    /// @return A set of signatures from all unlocked wallets, all signed sha256(`everiWallet`)
+    flat_set<signature_type> get_my_signatures();
+
     /// Locks all the unlocked wallets.
     void lock_all();
 

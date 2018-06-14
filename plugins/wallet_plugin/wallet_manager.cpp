@@ -2,6 +2,7 @@
  *  @file
  *  @copyright defined in evt/LICENSE.txt
  */
+#include <fc/crypto/sha256.hpp>
 #include <boost/algorithm/string.hpp>
 #include <evt/chain/exceptions.hpp>
 #include <evt/wallet_plugin/wallet_manager.hpp>
@@ -137,6 +138,29 @@ wallet_manager::get_public_keys() {
             const auto& keys = i.second->list_keys();
             for(const auto& i : keys) {
                 result.emplace(i.first);
+            }
+        }
+        is_all_wallet_locked &= i.second->is_locked();
+    }
+    EVT_ASSERT(!is_all_wallet_locked, wallet_locked_exception, "You don't have any unlocked wallet!");
+    return result;
+}
+
+static const char* EVERIWALLET_AUTH_STRING = "everiWallet";
+
+flat_set<signature_type>
+wallet_manager::get_my_signatures() {
+    check_timeout();
+    EVT_ASSERT(!wallets.empty(), wallet_not_available_exception, "You don't have any wallet!");
+    auto result = flat_set<signature_type>();
+    auto hash   = fc::sha256::hash(EVERIWALLET_AUTH_STRING, strlen(EVERIWALLET_AUTH_STRING));
+
+    bool is_all_wallet_locked = true;
+    for(const auto& i : wallets) {
+        if(!i.second->is_locked()) {
+            const auto& keys = i.second->list_keys();
+            for(const auto& i : keys) {
+                result.emplace(i.second.sign(hash));
             }
         }
         is_all_wallet_locked &= i.second->is_locked();

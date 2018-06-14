@@ -724,6 +724,34 @@ struct set_get_account_subcommand {
     }
 };
 
+void
+get_my_resources(const std::string& url) {
+    auto signatures = call(wallet_url, wallet_my_signatures);
+    auto args = fc::mutable_variant_object("signatures", signatures);
+    std::cout << fc::json::to_pretty_string(call(url, args)) << std::endl;
+}
+
+struct set_get_my_subcommands {
+    set_get_my_subcommands(CLI::App* actionRoot) {
+        auto mycmd = actionRoot->add_subcommand("my", localized("Retrieve domains, tokens and groups created by user"));
+
+        auto mydomain = mycmd->add_subcommand("domains", localized("Retrieve my created domains"));
+        mydomain->set_callback([] {
+            get_my_resources(get_my_domains);
+        });
+
+        auto mytoken = mycmd->add_subcommand("tokens", localized("Retrieve my owned tokens"));
+        mytoken->set_callback([] {
+            get_my_resources(get_my_tokens);
+        });
+
+        auto mygroup = mycmd->add_subcommand("groups", localized("Retrieve my created groups"));
+        mygroup->set_callback([] {
+            get_my_resources(get_my_groups);
+        });        
+    }
+};
+
 CLI::callback_t header_opt_callback = [](CLI::results_t res) {
     vector<string>::iterator itr;
 
@@ -815,6 +843,7 @@ main(int argc, char** argv) {
     set_get_token_subcommand   get_token(get);
     set_get_group_subcommand   get_group(get);
     set_get_account_subcommand get_account(get);
+    set_get_my_subcommands     get_my(get);
 
     // Net subcommand
     string new_host;
