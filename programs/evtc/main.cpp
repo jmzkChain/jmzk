@@ -176,6 +176,8 @@ print_result(const fc::variant& result) {
     FC_CAPTURE_AND_RETHROW((result))
 }
 
+evt::client::http::http_context context;
+
 void
 add_standard_transaction_options(CLI::App* cmd, string default_permission = "") {
     CLI::callback_t parse_expiration = [](CLI::results_t res) -> bool {
@@ -200,7 +202,7 @@ call(const std::string& url,
      const std::string& path,
      const T&           v) {
     try {
-        evt::client::http::connection_param *cp = new evt::client::http::connection_param((std::string&)url, (std::string&)path,
+        evt::client::http::connection_param *cp = new evt::client::http::connection_param(context, parse_url(url) + path,
             no_verify ? false : true, headers);
 
         return evt::client::http::do_http_call(*cp, fc::variant(v), print_request, print_response);
@@ -302,11 +304,11 @@ create_action(const domain_name& domain, const domain_key& key, const T& value) 
 }
 
 bool
-port_used(uint16_t port) {
+local_port_used(const string& lo_address, uint16_t port) {
     using namespace boost::asio;
 
     io_service ios;
-    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string("127.0.0.1"), port);
+    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(lo_address), port);
     boost::asio::ip::tcp::socket socket(ios);
     boost::system::error_code ec = error::would_block;
     //connecting/failing to connect to localhost should be always fast - don't care about timeouts
@@ -318,74 +320,77 @@ port_used(uint16_t port) {
 }
 
 void
-try_port(uint16_t port, uint32_t duration) {
+try_local_port(const string& lo_address, uint16_t port, uint32_t duration) {
     using namespace std::chrono;
     auto start_time = duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch() ).count();
-    while (!port_used(port)) {
+    while (!local_port_used(lo_address, port)) {
         if(duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch()).count() - start_time > duration) {
-            std::cerr << "Unable to connect to evtd, if evtd is running please kill the process and try again.\n";
-            throw connection_exception(fc::log_messages{FC_LOG_MESSAGE(error, "Unable to connect to evtd")});
+            std::cerr << "Unable to connect to evtwd, if evtwd is running please kill the process and try again.\n";
+            throw connection_exception(fc::log_messages{FC_LOG_MESSAGE(error, "Unable to connect to evtwd")});
         }
     }
 }
 
 void
-ensure_evtd_running(CLI::App* app) {
-    // version, net do not require evtd
+ensure_evtwd_running(CLI::App* app) {
+    // version, net do not require evtwd
     if(tx_skip_sign || app->got_subcommand("version") || app->got_subcommand("net"))
         return;
     if(app->get_subcommand("create")->got_subcommand("key")) // create key does not require wallet
         return;
-    auto parsed_url = parse_url(wallet_url);
-    if(parsed_url.server != "localhost" && parsed_url.server != "127.0.0.1")
-        return;
 
-    auto wallet_port = std::stoi(parsed_url.port);
-    if(wallet_port < 0 || wallet_port > 65535) {
-        FC_THROW("port is not in valid range");
+    auto parsed_url = parse_url(wallet_url);
+    auto resolved_url = resolve_url(context, parsed_url);
+
+    if(!resolved_url.is_loopback) {
+        return;
     }
 
-    if(port_used(uint16_t(wallet_port)))  // Hopefully taken by evtd
-        return;
-
+    for(const auto& addr: resolved_url.resolved_addresses) {
+        if(local_port_used(addr, resolved_url.resolved_port)) { // Hopefully taken by keosd
+            return;
+        }
+    }
 
     boost::filesystem::path binPath = boost::dll::program_location();
     binPath.remove_filename();
     // This extra check is necessary when running evtc like this: ./evtc ...
-    if(binPath.filename_is_dot())
+    if(binPath.filename_is_dot()) {
         binPath.remove_filename();
-    binPath.append("evtd"); // if evtc and evtd are in the same installation directory
+    }
+    binPath.append("evtwd"); // if evtc and evtwd are in the same installation directory
     if(!boost::filesystem::exists(binPath)) {
-        binPath.remove_filename().remove_filename().append("evtd").append("evtd");
+        binPath.remove_filename().remove_filename().append("evtwd").append("evtwd");
     }
 
+    const auto& lo_address = resolved_url.resolved_addresses.front();
     if(boost::filesystem::exists(binPath)) {
         namespace bp = boost::process;
         binPath = boost::filesystem::canonical(binPath);
 
         vector<std::string> pargs;
-        pargs.push_back("--http-server-address=127.0.0.1:" + parsed_url.port);
+        pargs.push_back("--http-server-address=" + lo_address + ":" + std::to_string(resolved_url.resolved_port));
         if(wallet_unlock_timeout > 0) {
             pargs.push_back("--unlock-timeout=" + fc::to_string(wallet_unlock_timeout));
         }
 
-        ::boost::process::child evtd(binPath, pargs,
+        ::boost::process::child evtwd(binPath, pargs,
                                      bp::std_in.close(),
                                      bp::std_out > bp::null,
                                      bp::std_err > bp::null);
-        if(evtd.running()) {
+        if(evtwd.running()) {
             std::cerr << binPath << " launched" << std::endl;
-            evtd.detach();
-            sleep(1);
+            evtwd.detach();
+            try_local_port(lo_address, resolved_url.resolved_port, 2000);
         }
         else {
-            std::cerr << "No wallet service listening on 127.0.0.1:"
-                      << std::to_string(wallet_port) << ". Failed to launch " << binPath << std::endl;
+            std::cerr << "No wallet service listening on " << lo_address << ":"
+                      << std::to_string(resolved_url.resolved_port) << ". Failed to launch " << binPath << std::endl;
         }
     }
     else {
-        std::cerr << "No wallet service listening on 127.0.0.1: " << std::to_string(wallet_port)
-                  << ". Cannot automatically start evtd because evtd was not found." << std::endl;
+        std::cerr << "No wallet service listening on " << lo_address << ":" << std::to_string(resolved_url.resolved_port)
+                  << ". Cannot automatically start evtwd because evtwd was not found." << std::endl;
     }
 }
 
@@ -740,6 +745,7 @@ main(int argc, char** argv) {
     setlocale(LC_ALL, "");
     bindtextdomain(locale_domain, locale_path);
     textdomain(locale_domain);
+    context = evt::client::http::create_http_context();
 
     CLI::App app{"Command Line Interface to everiToken Client"};
     app.require_subcommand();
@@ -749,13 +755,12 @@ main(int argc, char** argv) {
 
     app.add_option( "-r,--header", header_opt_callback, localized("pass specific HTTP header; repeat this option to pass multiple headers"));
     app.add_flag( "-n,--no-verify", no_verify, localized("don't verify peer certificate when using HTTPS"));
+    app.set_callback([&app]{ ensure_evtwd_running(&app);});
 
     bool verbose_errors = false;
     app.add_flag("-v,--verbose", verbose_errors, localized("output verbose actions on error"));
     app.add_flag("--print-request", print_request, localized("print HTTP request to STDERR"));
     app.add_flag("--print-response", print_response, localized("print HTTP response to STDERR"));
-
-    app.set_callback([&app]{ ensure_evtd_running(&app);});
 
     auto version = app.add_subcommand("version", localized("Retrieve version information"));
     version->require_subcommand();
@@ -956,9 +961,6 @@ main(int argc, char** argv) {
     // list keys
     auto listKeys = wallet->add_subcommand("keys", localized("List of public keys from all unlocked wallets."));
     listKeys->set_callback([] {
-        // wait for evtwd to come up
-        try_port(uint16_t(std::stoi(parse_url(wallet_url).port)), 2000);
-
         const auto& v = call(wallet_url, wallet_public_keys);
         std::cout << fc::json::to_pretty_string(v) << std::endl;
     });
@@ -974,9 +976,6 @@ main(int argc, char** argv) {
             std::getline(std::cin, wallet_pw, '\n');
             fc::set_console_echo(true);
         }
-        // wait for evtwd to come up
-        try_port(uint16_t(std::stoi(parse_url(wallet_url).port)), 2000);
-
         fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_pw)};
         const auto& v = call(wallet_url, wallet_list_keys, vs);
         std::cout << fc::json::to_pretty_string(v) << std::endl;
