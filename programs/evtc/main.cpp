@@ -100,13 +100,16 @@ print_info(const fc::variant& info, int indent) {
                 }
                 else if(obj.value().is_array()) {
                     cerr << endl;
-                    for(auto& a : obj.value().get_array()) {
-                        print_info(a, indent + 1);
-                    }
+                    print_info(obj.value(), indent + 1);
                 }
                 else {
                     cerr << obj.value().as_string() << endl;
                 }
+            }
+        }
+        else if(info.is_array()) {
+            for(auto& a : info.get_array()) {
+                print_info(a, indent);
             }
         }
         else {
@@ -287,7 +290,6 @@ push_actions(std::vector<chain::action>&& actions, packed_transaction::compressi
 
 void
 send_actions(std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::none) {
-    // std::cout << fc::json::to_pretty_string(push_actions(std::forward<decltype(actions)>(actions), compression)) << std::endl;
     auto result = push_actions(std::forward<decltype(actions)>(actions), compression);
     print_result( result );
 }
@@ -666,7 +668,6 @@ struct set_get_domain_subcommand {
 
         gdcmd->set_callback([this] {
             auto arg = fc::mutable_variant_object("name", name);
-            // std::cout << fc::json::to_pretty_string(call(get_domain_func, arg)) << std::endl;
             print_info(call(get_domain_func, arg), 0);
         });
     }
@@ -685,7 +686,6 @@ struct set_get_token_subcommand {
             auto arg = fc::mutable_variant_object();
             arg.set("domain", domain);
             arg.set("name", name);
-            // std::cout << fc::json::to_pretty_string(call(get_token_func, arg)) << std::endl;
             print_info(call(get_token_func, arg), 0);
         });
     }
@@ -703,7 +703,6 @@ struct set_get_group_subcommand {
             FC_ASSERT(!name.empty(), "Group name cannot be empty");
 
             auto arg = fc::mutable_variant_object("name", name);
-            // std::cout << fc::json::to_pretty_string(call(get_group_func, arg)) << std::endl;
             print_info(call(get_group_func, arg), 0);
         });
     }
@@ -718,7 +717,6 @@ struct set_get_account_subcommand {
 
         gacmd->set_callback([this] {
             auto arg = fc::mutable_variant_object("name", name);
-            // std::cout << fc::json::to_pretty_string(call(get_account_func, arg)) << std::endl;
             print_info(call(get_account_func, arg), 0);
         });
     }
@@ -728,7 +726,7 @@ void
 get_my_resources(const std::string& url) {
     auto signatures = call(wallet_url, wallet_my_signatures);
     auto args = fc::mutable_variant_object("signatures", signatures);
-    std::cout << fc::json::to_pretty_string(call(url, args)) << std::endl;
+    print_info(call(url, args), 0);
 }
 
 struct set_get_my_subcommands {
