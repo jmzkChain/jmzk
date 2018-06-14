@@ -15,4 +15,4 @@
 	url = https://github.com/dcleblanc/SafeInt.git
 [submodule "libraries/rapidjson"]
 	path = libraries/rapidjson
-	url = git@github.com:everitoken/rapidjson.git
+	url = https://github.com/everitoken/rapidjson.git
