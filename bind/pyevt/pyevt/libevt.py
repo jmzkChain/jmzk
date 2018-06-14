@@ -11,7 +11,8 @@ class LibEVT:
 
 def check_lib_init():
     if LibEVT.lib is None:
-        evt_exception.evt_exception_raiser(evt_exception.EVTErrCode.EVT_NOT_INIT)
+        evt_exception.evt_exception_raiser(
+            evt_exception.EVTErrCode.EVT_NOT_INIT)
     return LibEVT
 
 
@@ -42,6 +43,7 @@ def init_lib():
 
                 typedef evt_data_t evt_bin_t;
                 typedef evt_data_t evt_chain_id_t;
+                typedef evt_data_t evt_block_id_t;
                 typedef evt_data_t evt_public_key_t;
                 typedef evt_data_t evt_private_key_t;
                 typedef evt_data_t evt_signature_t;
@@ -71,6 +73,10 @@ def init_lib():
                 int evt_private_key_from_string(const char* str, evt_private_key_t** priv_key /* out */);
                 int evt_signature_from_string(const char* str, evt_signature_t** sign /* out */);
                 int evt_checksum_from_string(const char* str, evt_checksum_t** hash /* out */);
+
+                int evt_block_id_from_string(const char* str, evt_block_id_t** block_id /* out */);
+                int evt_ref_block_num(evt_block_id_t* block_id, uint16_t* ref_block_num);
+                int evt_ref_block_prefix(evt_block_id_t* block_id, uint32_t* ref_block_prefix);
                 """)
         LibEVT.lib = LibEVT.ffi.dlopen('./lib/libevt.so')
         LibEVT.abi = LibEVT.lib.evt_abi()
