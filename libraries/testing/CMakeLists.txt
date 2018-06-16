@@ -12,8 +12,6 @@ target_include_directories( evt_testing
                             PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"
                             )
 
-add_dependencies( evt_testing )
-
 if(MSVC)
   set_source_files_properties( db_init.cpp db_block.cpp database.cpp block_log.cpp PROPERTIES COMPILE_FLAGS "/bigobj" )
 endif(MSVC)

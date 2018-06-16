@@ -1,10 +1,9 @@
 #pragma once
 #include <boost/test/unit_test.hpp>
-#include <evt/chain/abi_serializer.hpp>
-#include <evt/chain/account_object.hpp>
 #include <evt/chain/asset.hpp>
-#include <evt/chain/contract_table_objects.hpp>
 #include <evt/chain/controller.hpp>
+#include <evt/chain/contracts/evt_contract.hpp>
+#include <evt/chain/contracts/abi_serializer.hpp>
 #include <fc/io/json.hpp>
 
 #include <iosfwd>
@@ -33,8 +32,6 @@ std::ostream& operator<<(std::ostream& osm, const fc::variant& v);
 std::ostream& operator<<(std::ostream& osm, const fc::variant_object& v);
 
 std::ostream& operator<<(std::ostream& osm, const fc::variant_object::entry& e);
-
-evt::chain::asset core_from_string(const std::string& s);
 
 namespace boost { namespace test_tools { namespace tt_detail {
 
@@ -105,91 +102,52 @@ public:
     transaction_trace_ptr push_transaction(packed_transaction& trx, fc::time_point deadline = fc::time_point::maximum());
     transaction_trace_ptr push_transaction(signed_transaction& trx, fc::time_point deadline = fc::time_point::maximum());
 
-    transaction_trace_ptr push_action(const action_name&    acttype,
-                                      const domain_name&    domain,
-                                      const domain_key&     key,
-                                      const variant_object& data,
-                                      uint32_t              expiration = DEFAULT_EXPIRATION_DELTA);
+    typename base_tester::action_result push_action(action&& act, std::vector<account_name>& auths);
+
+    transaction_trace_ptr push_action(const action_name&               acttype,
+                                      const domain_name&               domain,
+                                      const domain_key&                key,
+                                      const variant_object&            data,
+                                      const std::vector<account_name>& auths,
+                                      uint32_t                         expiration = DEFAULT_EXPIRATION_DELTA);
 
     action get_action(action_name acttype, const domain_name& domain, const domain_key& key, const variant_object& data) const;
 
     void set_transaction_headers(signed_transaction& trx,
-                                 uint32_t            expiration = DEFAULT_EXPIRATION_DELTA,
-                                 uint32_t            delay_sec  = 0) const;
+                                 uint32_t            expiration = DEFAULT_EXPIRATION_DELTA) const;
 
     vector<transaction_trace_ptr>
-    create_accounts(vector<account_name> names,
-                    bool                 multisig     = false) {
+    create_accounts(vector<account_name> names) {
         vector<transaction_trace_ptr> traces;
         traces.reserve(names.size());
         for(auto n : names)
-            traces.emplace_back(create_account(n, config::system_account_name, multisig));
+            traces.emplace_back(create_account(n));
         return traces;
     }
 
     void                  push_genesis_block();
-    vector<producer_key>  get_producer_keys(const vector<account_name>& producer_names) const;
-    transaction_trace_ptr set_producers(const vector<account_name>& producer_names);
 
-    transaction_trace_ptr create_account(account_name name,
-                                         account_name creator      = config::system_account_name,
-                                         bool         multisig     = false);
+    transaction_trace_ptr create_account(account_name name);
 
-    transaction_trace_ptr new_domain(account_name from, const vector<permission_level>& auths, const vector<private_key_type>& keys);
-    transaction_trace_ptr push_reqauth(account_name from, string role, bool multi_sig = false);
-    // use when just want any old non-context free action
-    transaction_trace_ptr push_dummy(account_name from, const string& v = "blah", uint32_t billed_cpu_time_us = DEFAULT_BILLED_CPU_TIME_US);
-    transaction_trace_ptr transfer(account_name from, account_name to, asset amount, string memo, account_name currency);
-    transaction_trace_ptr transfer(account_name from, account_name to, string amount, string memo, account_name currency);
-    transaction_trace_ptr issue(account_name to, string amount, account_name currency);
+    transaction_trace_ptr new_domain(domain_name& name, std::vector<account_name> owners);
+    transaction_trace_ptr issue_tokens(domain_name& name, std::vector<token_name> tokens, std::vector<account_name> owners);
+    transaction_trace_ptr transfer_token(domain_name& name, std::vector<token_name> tokens, std::vector<account_name> to);
 
-    template <typename ObjectType>
-    const auto&
-    get(const chainbase::oid<ObjectType>& key) {
-        return control->db().get<ObjectType>(key);
-    }
-
-    template <typename ObjectType, typename IndexBy, typename... Args>
-    const auto&
-    get(Args&&... args) {
-        return control->db().get<ObjectType, IndexBy>(forward<Args>(args)...);
-    }
-
-    template <typename ObjectType, typename IndexBy, typename... Args>
-    const auto*
-    find(Args&&... args) {
-        return control->db().find<ObjectType, IndexBy>(forward<Args>(args)...);
-    }
 
     template <typename KeyType = fc::ecc::private_key_shim>
     static private_key_type
-    get_private_key(name keyname, string role = "owner") {
-        return private_key_type::regenerate<KeyType>(fc::sha256::hash(string(keyname) + role));
+    get_private_key(name128 keyname, name128 salt = "") {
+        return private_key_type::regenerate<KeyType>(fc::sha256::hash(string(keyname) + string(salt)));
     }
 
     template <typename KeyType = fc::ecc::private_key_shim>
     static public_key_type
-    get_public_key(name keyname, string role = "owner") {
-        return get_private_key<KeyType>(keyname, role).get_public_key();
+    get_public_key(name128 keyname, name128 salt = "") {
+        return get_private_key<KeyType>(keyname, salt).get_public_key();
     }
-
-    void set_code(account_name name, const char* wast, const private_key_type* signer = nullptr);
-    void set_code(account_name name, const vector<uint8_t> wasm, const private_key_type* signer = nullptr);
-    void set_abi(account_name name, const char* abi_json, const private_key_type* signer = nullptr);
 
     bool                       chain_has_transaction(const transaction_id_type& txid) const;
     const transaction_receipt& get_transaction_receipt(const transaction_id_type& txid) const;
-
-    asset get_currency_balance(const account_name& contract,
-                               const symbol&       asset_symbol,
-                               const account_name& account) const;
-
-    vector<char> get_row_by_account(uint64_t code, uint64_t scope, uint64_t table, const account_name& act);
-
-    map<account_name, block_id_type>
-    get_last_produced_block_map() const { return last_produced_block; };
-    void
-    set_last_produced_block_map(const map<account_name, block_id_type>& lpb) { last_produced_block = lpb; }
 
     static vector<uint8_t> to_uint8_vector(const string& s);
 
@@ -205,54 +163,14 @@ public:
     static action_result
     error(const string& msg) { return msg; }
 
-    static action_result
-    wasm_assert_msg(const string& msg) { return "assertion failure with message: " + msg; }
-
-    static action_result
-    wasm_assert_code(uint64_t error_code) { return "assertion failure with error code: " + std::to_string(error_code); }
-
     auto
     get_resolver() {
-        return [this](const account_name& name) -> optional<abi_serializer> {
-            try {
-                const auto& accnt = control->db().get<account_object, by_name>(name);
-                abi_def     abi;
-                if(abi_serializer::to_abi(accnt.abi, abi)) {
-                    return abi_serializer(abi);
-                }
-                return optional<abi_serializer>();
-            }
-            FC_RETHROW_EXCEPTIONS(error, "Failed to find or parse ABI for ${name}", ("name", name))
+        return [this] {
+            return evt_abi;
         };
     }
 
     void sync_with(base_tester& other);
-
-    const table_id_object* find_table(name code, name scope, name table);
-
-    // method treats key as a name type, if this is not appropriate in your case, pass require == false and report the correct behavior
-    template <typename Object>
-    bool
-    get_table_entry(Object& obj, account_name code, account_name scope, account_name table, uint64_t key, bool require = true) {
-        auto* maybe_tid = find_table(code, scope, table);
-        if(maybe_tid == nullptr) {
-            BOOST_FAIL("table for code=\"" + code.to_string()
-                       + "\" scope=\"" + scope.to_string()
-                       + "\" table=\"" + table.to_string()
-                       + "\" does not exist");
-        }
-
-        auto* o = control->db().find<key_value_object, by_scope_primary>(boost::make_tuple(maybe_tid->id, key));
-        if(o == nullptr) {
-            if(require)
-                BOOST_FAIL("object does not exist for primary_key=\"" + name(key).to_string() + "\"");
-
-            return false;
-        }
-
-        fc::raw::unpack(o->value.data(), o->value.size(), obj);
-        return true;
-    }
 
 protected:
     signed_block_ptr _produce_block(fc::microseconds skip_time, bool skip_pending_trxs = false, uint32_t skip_flag = 0);
@@ -271,6 +189,7 @@ protected:
     controller::config                            cfg;
     map<transaction_id_type, transaction_receipt> chain_transactions;
     map<account_name, block_id_type>              last_produced_block;
+    abi_serializer                                evt_abi;
 };
 
 class tester : public base_tester {
@@ -318,19 +237,13 @@ public:
     validating_tester() {
         vcfg.blocks_dir            = tempdir.path() / std::string("v_").append(config::default_blocks_dir_name);
         vcfg.state_dir             = tempdir.path() / std::string("v_").append(config::default_state_dir_name);
+        vcfg.tokendb_dir           = tempdir.path() / std::string("v_").append(config::default_tokendb_dir_name);
         vcfg.state_size            = 1024 * 1024 * 8;
         vcfg.reversible_cache_size = 1024 * 1024 * 8;
         vcfg.contracts_console     = false;
 
         vcfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
         vcfg.genesis.initial_key       = get_public_key(config::system_account_name, "active");
-
-        for(int i = 0; i < boost::unit_test::framework::master_test_suite().argc; ++i) {
-            if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--binaryen"))
-                vcfg.wasm_runtime = chain::wasm_interface::vm_type::binaryen;
-            else if(boost::unit_test::framework::master_test_suite().argv[i] == std::string("--wavm"))
-                vcfg.wasm_runtime = chain::wasm_interface::vm_type::wavm;
-        }
 
         validating_node = std::make_unique<controller>(vcfg);
         validating_node->startup();

@@ -132,8 +132,8 @@ FC_DECLARE_DERIVED_EXCEPTION( deadline_exception,                transaction_exc
 
 FC_DECLARE_DERIVED_EXCEPTION( account_name_exists_exception,     action_validate_exception, 3040001, "account name already exists" );
 FC_DECLARE_DERIVED_EXCEPTION( invalid_action_args_exception,     action_validate_exception, 3040002, "Invalid Action Arguments" );
-FC_DECLARE_DERIVED_EXCEPTION( invalid_pts_address,               utility_exception, 3060001, "invalid pts address" );
-FC_DECLARE_DERIVED_EXCEPTION( insufficient_feeds,                chain_exception, 37006, "insufficient feeds" );
+FC_DECLARE_DERIVED_EXCEPTION( evt_assert_message_exception,      action_validate_exception, 3040003, "evt_assert_message assertion failure" );
+FC_DECLARE_DERIVED_EXCEPTION( evt_assert_code_exception,         action_validate_exception, 3040004, "evt_assert_code assertion failure" );
 
 FC_DECLARE_DERIVED_EXCEPTION( pop_empty_chain,                   undo_database_exception, 3070001, "there are no blocks to pop" );
 
