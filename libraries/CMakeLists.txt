@@ -12,3 +12,4 @@ set( WITH_TOOLS OFF CACHE BOOL "with Tools" FORCE )
 add_subdirectory( rocksdb EXCLUDE_FROM_ALL )
 
 add_subdirectory( chain )
+add_subdirectory( testing)
