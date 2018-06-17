@@ -58,7 +58,7 @@ public:
     get_child_node(const node& n, int i) const {
         FC_ASSERT(!n.is_leaf());
         FC_ASSERT(i < n.size);
-        return nodes_[n.index];
+        return nodes_[n.index+i];
     }
 
 public:
