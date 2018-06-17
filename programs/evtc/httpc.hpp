@@ -116,6 +116,8 @@ const std::string wallet_lock          = wallet_func_base + "/lock";
 const std::string wallet_lock_all      = wallet_func_base + "/lock_all";
 const std::string wallet_unlock        = wallet_func_base + "/unlock";
 const std::string wallet_import_key    = wallet_func_base + "/import_key";
+const std::string wallet_remove_key    = wallet_func_base + "/remove_key";
+const std::string wallet_create_key    = wallet_func_base + "/create_key";
 const std::string wallet_sign_trx      = wallet_func_base + "/sign_transaction";
 const std::string wallet_my_signatures = wallet_func_base + "/get_my_signatures";
 
@@ -127,6 +129,8 @@ const std::string get_account_func          = evt_func_base + "/get_account";
 const std::string get_my_domains            = evt_func_base + "/get_my_domains";
 const std::string get_my_tokens             = evt_func_base + "/get_my_tokens";
 const std::string get_my_groups             = evt_func_base + "/get_my_groups";
+
+const string evtwd_stop = "/v1/evtwd/stop";
 
 FC_DECLARE_EXCEPTION(connection_exception, 1100000, "Connection Exception");
 
