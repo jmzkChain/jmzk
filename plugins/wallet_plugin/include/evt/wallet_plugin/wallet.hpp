@@ -5,6 +5,7 @@
 #pragma once
 
 #include <evt/chain/types.hpp>
+#include <evt/wallet_plugin/wallet_api.hpp>
 
 #include <fc/crypto/base58.hpp>
 #include <fc/real128.hpp>
@@ -21,16 +22,18 @@ struct wallet_data {
 };
 
 namespace detail {
-class wallet_api_impl;
+class soft_wallet_impl;
 }
 
 /**
  * This wallet assumes it is connected to the database server with a high-bandwidth, low-latency connection and
  * performs minimal caching.
  */
-class wallet_api {
+class soft_wallet final : public wallet_api {
 public:
-    wallet_api(const wallet_data& initial_data);
+    soft_wallet(const wallet_data& initial_data);
+
+    ~soft_wallet();
 
     bool copy_wallet_file(string destination_filename);
 
@@ -47,12 +50,7 @@ public:
        * Get the WIF private key corresponding to a public key.  The
        * private key must already be in the wallet.
        */
-    private_key_type get_private_key(public_key_type pubkey) const;
-
-    /**
-       * Get the private key corresponding to a public key or nothing.
-       */
-    optional<private_key_type> try_get_private_key(const public_key_type& id) const;
+    private_key_type get_private_key(public_key_type pubkey) const override;
 
     /**
        *  @param role - active | owner | posting | memo
@@ -73,12 +71,12 @@ public:
        * @return true if the wallet is locked
        * @ingroup Wallet Management
        */
-    bool is_locked() const;
+    bool is_locked() const override;
 
     /** Locks the wallet immediately.
        * @ingroup Wallet Management
        */
-    void lock();
+    void lock() override;
 
     /** Unlocks the wallet.
        *
@@ -87,16 +85,16 @@ public:
        * @param password the password previously set with \c set_password()
        * @ingroup Wallet Management
        */
-    void unlock(string password);
+    void unlock(string password) override;
 
     /** Checks the password of the wallet
-    *
-    * Validates the password on a wallet even if the wallet is already unlocked,
-    * throws if bad password given.
-    * @param password the password previously set with \c set_password()
-    * @ingroup Wallet Management
-    */
-    void check_password(string password);
+      *
+      * Validates the password on a wallet even if the wallet is already unlocked,
+      * throws if bad password given.
+      * @param password the password previously set with \c set_password()
+      * @ingroup Wallet Management
+      */
+    void check_password(string password) override;
 
     /** Sets a new password on the wallet.
        *
@@ -104,15 +102,20 @@ public:
        * execute this command.
        * @ingroup Wallet Management
        */
-    void set_password(string password);
+    void set_password(string password) override;
 
     /** Dumps all private keys owned by the wallet.
-       *
-       * The keys are printed in WIF format.  You can import these keys into another wallet
-       * using \c import_key()
-       * @returns a map containing the private keys, indexed by their public key
-       */
-    map<public_key_type, private_key_type> list_keys();
+      *
+      * The keys are printed in WIF format.  You can import these keys into another wallet
+      * using \c import_key()
+      * @returns a map containing the private keys, indexed by their public key
+      */
+    map<public_key_type, private_key_type> list_keys() override;
+
+    /** Dumps all public keys owned by the wallet.
+      * @returns a vector containing the public keys
+      */
+    flat_set<public_key_type> list_public_keys() override;
 
     /** Loads a specified Graphene wallet.
        *
@@ -156,7 +159,15 @@ public:
        *
        * @param wif_key the WIF Private Key to import
        */
-    bool import_key(string wif_key);
+    bool import_key(string wif_key) override;
+
+    /** Removes a key from the wallet.
+      *
+      * example: remove_key EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV
+      *
+      * @param key the Public Key to remove
+      */
+    bool remove_key(string key) override;
 
     /** Creates a key within the wallet to be used to sign transactions by an account.
        *
@@ -166,8 +177,12 @@ public:
        */
     string create_key(string key_type);
 
-    std::shared_ptr<detail::wallet_api_impl> my;
-    void                                     encrypt_keys();
+    /* Attempts to sign a digest via the given public_key
+      */
+    optional<signature_type> try_sign_digest(const digest_type digest, const public_key_type public_key) override;
+
+    std::shared_ptr<detail::soft_wallet_impl> my;
+    void                                      encrypt_keys();
 };
 
 struct plain_keys {
