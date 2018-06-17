@@ -197,6 +197,8 @@ public:
 
     shared_ptr<tcp::resolver> resolver;
 
+    bool use_socket_read_watermark = false;
+
     channels::transaction_ack::channel_type::handle incoming_transaction_ack_subscription;
 
     void connect(connection_ptr c);
@@ -498,6 +500,7 @@ public:
     socket_ptr              socket;
 
     fc::message_buffer<1024 * 1024> pending_message_buffer;
+    fc::optional<std::size_t>       outstanding_read_bytes;
     vector<char>                    blk_buffer;
 
     struct queued_write {
@@ -2185,77 +2188,108 @@ net_plugin_impl::start_read_message(connection_ptr conn) {
             return;
         }
         connection_wptr weak_conn = conn;
-        conn->socket->async_read_some(conn->pending_message_buffer.get_buffer_sequence_for_boost_async_read(),
-                                      [this, weak_conn](boost::system::error_code ec, std::size_t bytes_transferred) {
-                                          auto conn = weak_conn.lock();
-                                          if(!conn) {
-                                              return;
-                                          }
 
-                                          try {
-                                              if(!ec) {
-                                                  if(bytes_transferred > conn->pending_message_buffer.bytes_to_write()) {
-                                                      elog("async_read_some callback: bytes_transfered = ${bt}, buffer.bytes_to_write = ${btw}",
-                                                           ("bt", bytes_transferred)("btw", conn->pending_message_buffer.bytes_to_write()));
-                                                  }
-                                                  FC_ASSERT(bytes_transferred <= conn->pending_message_buffer.bytes_to_write());
-                                                  conn->pending_message_buffer.advance_write_ptr(bytes_transferred);
-                                                  while(conn->pending_message_buffer.bytes_to_read() > 0) {
-                                                      uint32_t bytes_in_buffer = conn->pending_message_buffer.bytes_to_read();
+        std::size_t minimum_read = conn->outstanding_read_bytes ? *conn->outstanding_read_bytes : message_header_size;
 
-                                                      if(bytes_in_buffer < message_header_size) {
-                                                          break;
-                                                      }
-                                                      else {
-                                                          uint32_t message_length;
-                                                          auto     index = conn->pending_message_buffer.read_index();
-                                                          conn->pending_message_buffer.peek(&message_length, sizeof(message_length), index);
-                                                          if(message_length > def_send_buffer_size * 2 || message_length == 0) {
-                                                              elog("incoming message length unexpected (${i})", ("i", message_length));
-                                                              close(conn);
-                                                              return;
-                                                          }
-                                                          if(bytes_in_buffer >= message_length + message_header_size) {
-                                                              conn->pending_message_buffer.advance_read_ptr(message_header_size);
-                                                              if(!conn->process_next_message(*this, message_length)) {
-                                                                  return;
-                                                              }
-                                                          }
-                                                          else {
-                                                              conn->pending_message_buffer.add_space(message_length + message_header_size - bytes_in_buffer);
-                                                              break;
-                                                          }
-                                                      }
-                                                  }
-                                                  start_read_message(conn);
-                                              }
-                                              else {
-                                                  auto pname = conn->peer_name();
-                                                  if(ec.value() != boost::asio::error::eof) {
-                                                      elog("Error reading message from ${p}: ${m}", ("p", pname)("m", ec.message()));
-                                                  }
-                                                  else {
-                                                      ilog("Peer ${p} closed connection", ("p", pname));
-                                                  }
-                                                  close(conn);
-                                              }
-                                          }
-                                          catch(const std::exception& ex) {
-                                              string pname = conn ? conn->peer_name() : "no connection name";
-                                              elog("Exception in handling read data from ${p} ${s}", ("p", pname)("s", ex.what()));
-                                              close(conn);
-                                          }
-                                          catch(const fc::exception& ex) {
-                                              string pname = conn ? conn->peer_name() : "no connection name";
-                                              elog("Exception in handling read data ${s}", ("p", pname)("s", ex.to_string()));
-                                              close(conn);
-                                          }
-                                          catch(...) {
-                                              string pname = conn ? conn->peer_name() : "no connection name";
-                                              elog("Undefined exception hanlding the read data from connection ${p}", ("p", pname));
-                                              close(conn);
-                                          }
-                                      });
+        if(use_socket_read_watermark) {
+            const size_t max_socket_read_watermark = 4096;
+            std::size_t socket_read_watermark = std::min<std::size_t>(minimum_read, max_socket_read_watermark);
+            boost::asio::socket_base::receive_low_watermark read_watermark_opt(socket_read_watermark);
+            conn->socket->set_option(read_watermark_opt);
+        }
+
+        auto completion_handler = [minimum_read](boost::system::error_code ec, std::size_t bytes_transferred) -> std::size_t {
+            if(ec || bytes_transferred >= minimum_read) {
+                return 0;
+            }
+            else {
+                return minimum_read - bytes_transferred;
+            }
+        };
+
+        boost::asio::async_read(*conn->socket,
+            conn->pending_message_buffer.get_buffer_sequence_for_boost_async_read(), completion_handler, [this,weak_conn]( boost::system::error_code ec, std::size_t bytes_transferred ) {
+            auto conn = weak_conn.lock();
+            if(!conn) {
+                return;
+            }
+
+            conn->outstanding_read_bytes.reset();
+
+            try {
+                if(!ec) {
+                    if(bytes_transferred > conn->pending_message_buffer.bytes_to_write()) {
+                        elog("async_read_some callback: bytes_transfered = ${bt}, buffer.bytes_to_write = ${btw}",
+                            ("bt", bytes_transferred)("btw", conn->pending_message_buffer.bytes_to_write()));
+                    }
+                    FC_ASSERT(bytes_transferred <= conn->pending_message_buffer.bytes_to_write());
+                    conn->pending_message_buffer.advance_write_ptr(bytes_transferred);
+                    while(conn->pending_message_buffer.bytes_to_read() > 0) {
+                        uint32_t bytes_in_buffer = conn->pending_message_buffer.bytes_to_read();
+
+                        if(bytes_in_buffer < message_header_size) {
+                            conn->outstanding_read_bytes.emplace(message_header_size - bytes_in_buffer);
+                            break;
+                        }
+                        else {
+                            uint32_t message_length;
+                            auto     index = conn->pending_message_buffer.read_index();
+                            conn->pending_message_buffer.peek(&message_length, sizeof(message_length), index);
+                            if(message_length > def_send_buffer_size * 2 || message_length == 0) {
+                                elog("incoming message length unexpected (${i})", ("i", message_length));
+                                close(conn);
+                                return;
+                            }
+
+                            auto total_message_bytes = message_length + message_header_size;
+
+                            if(bytes_in_buffer >= total_message_bytes) {
+                                conn->pending_message_buffer.advance_read_ptr(message_header_size);
+                                if(!conn->process_next_message(*this, message_length)) {
+                                    return;
+                                }
+                            }
+                            else {
+                                auto outstanding_message_bytes = total_message_bytes - bytes_in_buffer;
+                                auto available_buffer_bytes = conn->pending_message_buffer.bytes_to_write();
+                                if(outstanding_message_bytes > available_buffer_bytes) {
+                                    conn->pending_message_buffer.add_space(outstanding_message_bytes - available_buffer_bytes);
+                                }
+
+                                conn->outstanding_read_bytes.emplace(outstanding_message_bytes);
+                                break;
+                            }
+                        }
+                    }
+                    start_read_message(conn);
+                }
+                else {
+                    auto pname = conn->peer_name();
+                    if(ec.value() != boost::asio::error::eof) {
+                        elog("Error reading message from ${p}: ${m}", ("p", pname)("m", ec.message()));
+                    }
+                    else {
+                        ilog("Peer ${p} closed connection", ("p", pname));
+                    }
+                    close(conn);
+                }
+            }
+            catch(const std::exception& ex) {
+                string pname = conn ? conn->peer_name() : "no connection name";
+                elog("Exception in handling read data from ${p} ${s}", ("p", pname)("s", ex.what()));
+                close(conn);
+            }
+            catch(const fc::exception& ex) {
+                string pname = conn ? conn->peer_name() : "no connection name";
+                elog("Exception in handling read data ${s}", ("p", pname)("s", ex.to_string()));
+                close(conn);
+            }
+            catch(...) {
+                string pname = conn ? conn->peer_name() : "no connection name";
+                elog("Undefined exception hanlding the read data from connection ${p}", ("p", pname));
+                close(conn);
+            }
+        });
     }
     catch(...) {
         string pname = conn ? conn->peer_name() : "no connection name";
@@ -3001,6 +3035,7 @@ net_plugin::set_program_options(options_description& /*cli*/, options_descriptio
         ("network-version-match", bpo::value<bool>()->default_value(false), "True to require exact match of peer network version.")
         ("sync-fetch-span", bpo::value<uint32_t>()->default_value(def_sync_fetch_span), "number of blocks to retrieve in a chunk from any individual peer during synchronization")
         ("max-implicit-request", bpo::value<uint32_t>()->default_value(def_max_just_send), "maximum sizes of transaction or block messages that are sent without first sending a notice")
+        ("use-socket-read-watermark", bpo::value<bool>()->default_value(false), "Enable expirimental socket read watermark optimization")
         ("peer-log-format", bpo::value<string>()->default_value( "[\"${_name}\" ${_ip}:${_port}]"),
             "The string used to format peers when logging messages about them.  Variables are escaped with ${<variable name>}.\n"
             "Available Variables:\n"
@@ -3039,6 +3074,8 @@ net_plugin::plugin_initialize(const variables_map& options) {
 
     my->num_clients      = 0;
     my->started_sessions = 0;
+
+    my->use_socket_read_watermark = options.at("use-socket-read-watermark").as<bool>();
 
     my->resolver = std::make_shared<tcp::resolver>(std::ref(app().get_io_service()));
     if(options.count("p2p-listen-endpoint")) {

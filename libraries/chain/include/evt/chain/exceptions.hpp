@@ -152,10 +152,10 @@ FC_DECLARE_DERIVED_EXCEPTION( asset_type_exception,              chain_type_exce
 FC_DECLARE_DERIVED_EXCEPTION( permission_type_exception,         chain_type_exception, 3120013, "Invalid permission" );
 FC_DECLARE_DERIVED_EXCEPTION( group_type_exception,              chain_type_exception, 3120014, "Invalid group" );
 
-FC_DECLARE_DERIVED_EXCEPTION( missing_chain_api_plugin_exception,                 missing_plugin_exception, 3130001, "Missing Chain API Plugin" );
-FC_DECLARE_DERIVED_EXCEPTION( missing_wallet_api_plugin_exception,                missing_plugin_exception, 3130002, "Missing Wallet API Plugin" );
-FC_DECLARE_DERIVED_EXCEPTION( missing_account_history_api_plugin_exception,       missing_plugin_exception, 3130003, "Missing Account History API Plugin" );
-FC_DECLARE_DERIVED_EXCEPTION( missing_net_api_plugin_exception,                   missing_plugin_exception, 3130004, "Missing Net API Plugin" );
+FC_DECLARE_DERIVED_EXCEPTION( missing_chain_api_plugin_exception,  missing_plugin_exception, 3130001, "Missing Chain API Plugin" );
+FC_DECLARE_DERIVED_EXCEPTION( missing_wallet_api_plugin_exception, missing_plugin_exception, 3130002, "Missing Wallet API Plugin" );
+FC_DECLARE_DERIVED_EXCEPTION( missing_net_api_plugin_exception,    missing_plugin_exception, 3130003, "Missing Net API Plugin" );
+FC_DECLARE_DERIVED_EXCEPTION( missing_evt_api_plugin_exception,    missing_plugin_exception, 3130004, "Missing EVT API Plugin" );
 
 FC_DECLARE_DERIVED_EXCEPTION( wallet_exist_exception,            wallet_exception, 3140001, "Wallet already exists" );
 FC_DECLARE_DERIVED_EXCEPTION( wallet_nonexistent_exception,      wallet_exception, 3140002, "Nonexistent wallet" );
