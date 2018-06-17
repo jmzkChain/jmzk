@@ -175,12 +175,14 @@ abi_serializer::fundamental_type(const type_name& type) const {
 }
 
 bool
-abi_serializer::is_type(const type_name& rtype) const {
+abi_serializer::_is_type(const type_name& rtype, size_t recursion_depth) const {
+    if(++recursion_depth > max_recursion_depth)
+        return false;
     auto type = fundamental_type(rtype);
     if(built_in_types.find(type) != built_in_types.end())
         return true;
     if(typedefs.find(type) != typedefs.end())
-        return is_type(typedefs.find(type)->second);
+        return _is_type(typedefs.find(type)->second, recursion_depth);
     if(structs.find(type) != structs.end())
         return true;
     return false;
@@ -256,19 +258,21 @@ abi_serializer::resolve_type(const type_name& type) const {
 }
 
 void
-abi_serializer::binary_to_variant(const type_name& type, fc::datastream<const char*>& stream,
-                                  fc::mutable_variant_object& obj) const {
+abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const char*>& stream,
+                                  fc::mutable_variant_object& obj, size_t recursion_depth) const {
+    FC_ASSERT(++recursion_depth < max_recursion_depth, "recursive definition, max_recursion_depth");
     const auto& st = get_struct(type);
     if(st.base != type_name()) {
-        binary_to_variant(resolve_type(st.base), stream, obj);
+        _binary_to_variant(resolve_type(st.base), stream, obj, recursion_depth);
     }
     for(const auto& field : st.fields) {
-        obj(field.name, binary_to_variant(resolve_type(field.type), stream));
+        obj(field.name, _binary_to_variant(resolve_type(field.type), stream, recursion_depth));
     }
 }
 
 fc::variant
-abi_serializer::binary_to_variant(const type_name& type, fc::datastream<const char*>& stream) const {
+abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const char*>& stream, size_t recursion_depth) const {
+    FC_ASSERT(++recursion_depth < max_recursion_depth, "recursive definition, max_recursion_depth");
     type_name rtype = resolve_type(type);
     auto      ftype = fundamental_type(rtype);
     auto      btype = built_in_types.find(ftype);
@@ -281,29 +285,31 @@ abi_serializer::binary_to_variant(const type_name& type, fc::datastream<const ch
         vector<fc::variant> vars;
         vars.resize(size);
         for(auto& var : vars) {
-            var = binary_to_variant(ftype, stream);
+            var = _binary_to_variant(ftype, stream, recursion_depth);
         }
         return fc::variant(std::move(vars));
     }
     else if(is_optional(rtype)) {
         char flag;
         fc::raw::unpack(stream, flag);
-        return flag ? binary_to_variant(ftype, stream) : fc::variant();
+        return flag ? _binary_to_variant(ftype, stream, recursion_depth) : fc::variant();
     }
 
     fc::mutable_variant_object mvo;
-    binary_to_variant(rtype, stream, mvo);
+    _binary_to_variant(rtype, stream, mvo, recursion_depth);
     return fc::variant(std::move(mvo));
 }
 
 fc::variant
-abi_serializer::binary_to_variant(const type_name& type, const bytes& binary) const {
+abi_serializer::_binary_to_variant(const type_name& type, const bytes& binary, size_t recursion_depth) const {
+    FC_ASSERT(++recursion_depth < max_recursion_depth, "recursive definition, max_recursion_depth");
     fc::datastream<const char*> ds(binary.data(), binary.size());
-    return binary_to_variant(type, ds);
+    return _binary_to_variant(type, ds, recursion_depth);
 }
 
 void
-abi_serializer::variant_to_binary(const type_name& type, const fc::variant& var, fc::datastream<char*>& ds) const {
+abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var, fc::datastream<char*>& ds, size_t recursion_depth) const {
+    FC_ASSERT(++recursion_depth < max_recursion_depth, "recursive definition, max_recursion_depth");
     try {
         auto rtype = resolve_type(type);
 
@@ -315,7 +321,7 @@ abi_serializer::variant_to_binary(const type_name& type, const fc::variant& var,
             vector<fc::variant> vars = var.get_array();
             fc::raw::pack(ds, (fc::unsigned_int)vars.size());
             for(const auto& var : vars) {
-                variant_to_binary(fundamental_type(rtype), var, ds);
+                _variant_to_binary(fundamental_type(rtype), var, ds, recursion_depth);
             }
         }
         else {
@@ -324,14 +330,14 @@ abi_serializer::variant_to_binary(const type_name& type, const fc::variant& var,
                 const auto& vo = var.get_object();
 
                 if(st.base != type_name()) {
-                    variant_to_binary(resolve_type(st.base), var, ds);
+                    _variant_to_binary(resolve_type(st.base), var, ds, recursion_depth);
                 }
                 for(const auto& field : st.fields) {
                     if(vo.contains(string(field.name).c_str())) {
-                        variant_to_binary(field.type, vo[field.name], ds);
+                        _variant_to_binary(field.type, vo[field.name], ds, recursion_depth);
                     }
                     else {
-                        variant_to_binary(field.type, fc::variant(), ds);
+                        _variant_to_binary(field.type, fc::variant(), ds, recursion_depth);
                         /// TODO: default construct field and write it out
                         FC_THROW("Missing '${f}' in variant object", ("f", field.name));
                     }
@@ -341,18 +347,18 @@ abi_serializer::variant_to_binary(const type_name& type, const fc::variant& var,
                 const auto& va = var.get_array();
 
                 FC_ASSERT(st.base == type_name(), "support for base class as array not yet implemented");
-                /*if( st.base != type_name() ) {
-               variant_to_binary(resolve_type(st.base), var, ds);
-            }
-            */
+                /*if(st.base != type_name()) {
+                      _variant_to_binary(resolve_type(st.base), var, ds, recursion_depth);
+                  }
+                 */
                 uint32_t i = 0;
                 if(va.size() > 0) {
                     for(const auto& field : st.fields) {
                         idump((field.type)(va[i])(i));
                         if(va.size() > i)
-                            variant_to_binary(field.type, va[i], ds);
+                            _variant_to_binary(field.type, va[i], ds, recursion_depth);
                         else
-                            variant_to_binary(field.type, fc::variant(), ds);
+                            _variant_to_binary(field.type, fc::variant(), ds, recursion_depth);
                         ++i;
                     }
                 }
@@ -363,7 +369,8 @@ abi_serializer::variant_to_binary(const type_name& type, const fc::variant& var,
 }
 
 bytes
-abi_serializer::variant_to_binary(const type_name& type, const fc::variant& var) const {
+abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var, size_t recursion_depth) const {
+    FC_ASSERT(++recursion_depth < max_recursion_depth, "recursive definition, max_recursion_depth");
     try {
         if(!is_type(type)) {
             return var.as<bytes>();
@@ -371,7 +378,7 @@ abi_serializer::variant_to_binary(const type_name& type, const fc::variant& var)
 
         bytes                 temp(1024 * 1024);
         fc::datastream<char*> ds(temp.data(), temp.size());
-        variant_to_binary(type, var, ds);
+        _variant_to_binary(type, var, ds, recursion_depth);
         temp.resize(ds.tellp());
         return temp;
     }
