@@ -42,6 +42,7 @@ public:
     const group_name& name() const { return name_; }
     const public_key_type& key() const { return key_; }
     const node& root() const { FC_ASSERT(nodes_.size() > 0); return nodes_[0]; }
+    const bool empty() const { return nodes_.empty(); }
 
 public:
     void visit_root(const visit_func&) const;
@@ -58,7 +59,7 @@ public:
     get_child_node(const node& n, int i) const {
         FC_ASSERT(!n.is_leaf());
         FC_ASSERT(i < n.size);
-        return nodes_[n.index+i];
+        return nodes_[n.index + i];
     }
 
 public:
@@ -66,6 +67,7 @@ public:
     public_key_type                 key_;
     std::vector<node>               nodes_;
     std::vector<public_key_type>    keys_;
+    vector<metapiece>               metas_;
 };
 
 }}}  // namespac evt::chain::contracts
@@ -79,4 +81,4 @@ void from_variant(const fc::variant& v, evt::chain::contracts::group& group);
 }  // namespace fc
 
 FC_REFLECT(evt::chain::contracts::group::node, (weight)(threshold)(index)(size))
-FC_REFLECT(evt::chain::contracts::group, (name_)(key_)(nodes_)(keys_))
+FC_REFLECT(evt::chain::contracts::group, (name_)(key_)(nodes_)(keys_)(metas_))

@@ -20,13 +20,11 @@ namespace __internal {
 inline bool 
 validate(const permission_def &permission) {
     uint32_t total_weight = 0;
-    const contracts::authorizer_weight* prev = nullptr;
     for(const auto& aw : permission.authorizers) {
         if(aw.weight == 0) {
             return false;
         }
         total_weight += aw.weight;
-        prev = &aw;
     }
     return total_weight >= permission.threshold;
 }
@@ -56,7 +54,7 @@ validate(const group& group, const group::node& node) {
 inline bool
 validate(const group& group) {
     EVT_ASSERT(!group.name().empty(), action_validate_exception, "Group name cannot be empty");
-    EVT_ASSERT(group.nodes_.size() > 0, action_validate_exception, "Don't have root node");
+    EVT_ASSERT(!group.empty(), action_validate_exception, "Don't have root node");
     auto& root = group.root();
     return validate(group, root);
 }
@@ -318,6 +316,17 @@ apply_evt_transferevt(apply_context& context) {
         tokendb.update_account(tua);
     }
     FC_CAPTURE_AND_RETHROW((teact));
+}
+
+void
+apply_evt_addmeta(apply_context& context) {
+    using namespace __internal;
+
+    auto amact = context.act.data_ad<addmeta>();
+    try {
+        auto& tokendb = context.token_db;
+        
+    }
 }
 
 void

@@ -199,7 +199,7 @@ private:
         group.visit_node(node, [&](const auto& n) {
             FC_ASSERT(!n.is_root());
             if(n.is_leaf()) {
-                vistor(group.keys_[n.index], n.weight);
+                vistor(group.get_leaf_key(n), n.weight);
             }
             else {
                 if(satisfied_node(group, n, depth + 1)) {

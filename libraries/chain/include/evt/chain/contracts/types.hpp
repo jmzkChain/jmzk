@@ -17,15 +17,19 @@ using type_name       = string;
 using field_name      = string;
 using action_name     = evt::chain::action_name;
 using domain_name     = evt::chain::domain_name;
+using domian_key      = evt::chain::domain_key;
 using token_name      = evt::chain::token_name;
 using permission_name = evt::chain::permission_name;
 using account_name    = evt::chain::account_name;
-using user_id         = public_key_type;
-using user_list       = std::vector<public_key_type>;
+using user_id         = evt::chain::user_id;
+using user_list       = std::vector<user_id>;
 using group_name      = evt::chain::group_name;
 using group_key       = public_key_type;
 using group_def       = group;
 using balance_type    = evt::chain::asset;
+using meta_key        = evt::chain::meta_key;
+using meta_value      = evt::chain::meta_value;
+using metapiece       = evt::chain::metapiece;
 
 struct type_def {
     type_def() = default;
@@ -101,6 +105,8 @@ struct token_def {
     domain_name domain;
     token_name  name;
     user_list   owner;
+
+    vector<metapiece> metas;
 };
 
 struct key_weight {
@@ -142,6 +148,8 @@ struct domain_def {
     permission_def issue;
     permission_def transfer;
     permission_def manage;
+
+    vector<metapiece> metas;
 };
 
 struct account_def {
@@ -279,6 +287,17 @@ struct updateaccount {
     fc::optional<balance_type> frozen_balance;
 };
 
+struct addmeta {
+    meta_key    key;
+    meta_value  value;
+    user_id     creator;
+
+    static action_name
+    get_name() {
+        return N(addmeta);
+    }
+};
+
 struct newdelay {
     proposal_name   name;
     public_key_type proposer;
@@ -331,11 +350,11 @@ FC_REFLECT(evt::chain::contracts::field_def, (name)(type))
 FC_REFLECT(evt::chain::contracts::struct_def, (name)(base)(fields))
 FC_REFLECT(evt::chain::contracts::action_def, (name)(type))
 FC_REFLECT(evt::chain::contracts::abi_def, (types)(structs)(actions))
-FC_REFLECT(evt::chain::contracts::token_def, (domain)(name)(owner))
+FC_REFLECT(evt::chain::contracts::token_def, (domain)(name)(owner)(metas))
 FC_REFLECT(evt::chain::contracts::key_weight, (key)(weight))
 FC_REFLECT(evt::chain::contracts::authorizer_weight, (ref)(weight))
 FC_REFLECT(evt::chain::contracts::permission_def, (name)(threshold)(authorizers))
-FC_REFLECT(evt::chain::contracts::domain_def, (name)(issuer)(issue_time)(issue)(transfer)(manage))
+FC_REFLECT(evt::chain::contracts::domain_def, (name)(issuer)(issue_time)(issue)(transfer)(manage)(metas))
 FC_REFLECT(evt::chain::contracts::account_def, (name)(creator)(create_time)(balance)(frozen_balance)(owner))
 FC_REFLECT_ENUM(evt::chain::contracts::delay_status, (proposed)(executed)(cancelled))
 FC_REFLECT(evt::chain::contracts::delay_def, (name)(proposer)(status)(trx)(signed_keys))
@@ -350,6 +369,7 @@ FC_REFLECT(evt::chain::contracts::newaccount, (name)(owner))
 FC_REFLECT(evt::chain::contracts::updateowner, (name)(owner))
 FC_REFLECT(evt::chain::contracts::transferevt, (from)(to)(amount))
 FC_REFLECT(evt::chain::contracts::updateaccount, (owner)(balance)(frozen_balance))
+FC_REFLECT(evt::chain::contracts::addmeta, (key)(value)(creator))
 FC_REFLECT(evt::chain::contracts::newdelay, (name)(proposer)(trx))
 FC_REFLECT(evt::chain::contracts::canceldelay, (name))
 FC_REFLECT(evt::chain::contracts::approvedelay, (name)(signatures))

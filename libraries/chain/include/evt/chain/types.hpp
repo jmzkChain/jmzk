@@ -102,7 +102,6 @@ template <typename T>
 using shared_set = boost::interprocess::set<T, std::less<T>, allocator<T>>;
 
 using action_name     = name;
-using scope_name      = name;
 using permission_name = name;
 using domain_name     = name128;
 using domain_key      = name128;
@@ -110,6 +109,20 @@ using token_name      = name128;
 using account_name    = name128;
 using group_name      = name128;
 using proposal_name   = name128;
+using user_id         = public_key_type;
+using meta_key        = name128;
+using meta_value      = string;
+
+struct metapiece {
+    metapiece() = default;
+    metapiece(const meta_key& key, const string& value)
+        : key(key)
+        , value(value) {}
+
+    meta_key   key;
+    meta_value value;
+    user_id    creator;
+};
 
 /**
  * List all object types from all namespaces here so they can
@@ -179,4 +192,5 @@ FC_REFLECT_ENUM(
     (null_object_type)(global_property_object_type)(dynamic_global_property_object_type)
     (block_summary_object_type)(transaction_object_type)(reversible_block_object_type)
     (OBJECT_TYPE_COUNT))
+FC_REFLECT(evt::chain::metapiece, (key)(value)(creator))
 FC_REFLECT(evt::chain::void_t, )

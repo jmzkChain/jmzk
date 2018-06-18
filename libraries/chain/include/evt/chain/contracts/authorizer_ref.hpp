@@ -66,9 +66,11 @@ public:
     bool is_owner_ref() const { return type_ == owner_t; }
     bool is_group_ref() const { return type_ == group_t; }
 
-public:
+private:
     int  type_;
     fc::array<char, sizeof(public_key_type)> storage_;
+
+    friend struct fc::reflector<authorizer_ref>;
 };
 
 }}}  // namespac evt::chain::contracts
