@@ -7,8 +7,8 @@
 #include <evt/chain/types.hpp>
 #include <evt/chain/symbol.hpp>
 
-/// evt with 4 digits of precision
-#define EVT_SYMBOL_VALUE  (int64_t(4) | (uint64_t('E') << 8) | (uint64_t('V') << 16) | (uint64_t('T') << 24))
+/// 'EVT' with 5 digits of precision
+#define EVT_SYMBOL_VALUE  (int64_t(5) | (uint64_t('E') << 8) | (uint64_t('V') << 16) | (uint64_t('T') << 24))
 static const evt::chain::symbol EVT_SYMBOL(EVT_SYMBOL_VALUE);
 
 /// Defined to be largest power of 10 that fits in 53 bits of precision
