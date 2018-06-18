@@ -561,7 +561,9 @@ struct controller_impl {
                     auto  mtrx = std::make_shared<transaction_metadata>(pt);
                     trace = push_transaction(mtrx, fc::time_point::maximum(), false);
 
-                    if(trace && trace->except) {
+                    bool transaction_failed   = trace && trace->except;
+                    bool transaction_can_fail = receipt.status == transaction_receipt_header::hard_fail;
+                    if(transaction_failed && !transaction_can_fail) {
                         edump((*trace));
                         throw *trace->except;
                     }

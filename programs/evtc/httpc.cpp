@@ -250,7 +250,7 @@ do_http_call(const connection_param& cp,
             throw chain::missing_net_api_plugin_exception(FC_LOG_MESSAGE(error, "Net API plugin is not enabled"));
         }
         else if(url.path.compare(0, evt_func_base.size(), evt_func_base) == 0) {
-            throw chain::missing_net_api_plugin_exception(FC_LOG_MESSAGE(error, "EVT API plugin is not enabled"));
+            throw chain::missing_evt_api_plugin_exception(FC_LOG_MESSAGE(error, "EVT API plugin is not enabled"));
         }
     }
     else {

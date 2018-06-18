@@ -74,7 +74,6 @@ string wallet_url = "http://localhost:9999";
 bool no_verify = false;
 vector<string> headers;
 
-int64_t wallet_unlock_timeout = 0;
 auto   tx_expiration = fc::seconds(30);
 string tx_ref_block_num_or_id;
 bool   tx_dont_broadcast = false;
@@ -372,9 +371,6 @@ ensure_evtwd_running(CLI::App* app) {
 
         vector<std::string> pargs;
         pargs.push_back("--http-server-address=" + lo_address + ":" + std::to_string(resolved_url.resolved_port));
-        if(wallet_unlock_timeout > 0) {
-            pargs.push_back("--unlock-timeout=" + fc::to_string(wallet_unlock_timeout));
-        }
 
         ::boost::process::child evtwd(binPath, pargs,
                                      bp::std_in.close(),
@@ -942,7 +938,6 @@ main(int argc, char** argv) {
     auto   unlockWallet = wallet->add_subcommand("unlock", localized("Unlock wallet"));
     unlockWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to unlock"));
     unlockWallet->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
-    unlockWallet->add_option( "--unlock-timeout", wallet_unlock_timeout, localized("The timeout for unlocked wallet in seconds"));
     unlockWallet->set_callback([&wallet_name, &wallet_pw] {
         if(wallet_pw.size() == 0) {
             std::cout << localized("password: ");
@@ -977,6 +972,43 @@ main(int argc, char** argv) {
         //std::cout << fc::json::to_pretty_string(v) << std::endl;
     });
 
+    // remove keys from wallet
+    string wallet_rm_key_str;
+    auto removeKeyWallet = wallet->add_subcommand("remove_key", localized("Remove key from wallet"));
+    removeKeyWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to remove key from"));
+    removeKeyWallet->add_option("key", wallet_rm_key_str, localized("Public key in WIF format to remove"))->required();
+    removeKeyWallet->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
+    removeKeyWallet->set_callback([&wallet_name, &wallet_pw, &wallet_rm_key_str] {
+        if(wallet_pw.size() == 0) {
+            std::cout << localized("password: ");
+            fc::set_console_echo(false);
+            std::getline( std::cin, wallet_pw, '\n' );
+            fc::set_console_echo(true);
+        }
+        public_key_type pubkey;
+        try {
+            pubkey = public_key_type( wallet_rm_key_str );
+        }
+        catch (...) {
+            EVT_THROW(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", wallet_rm_key_str))
+        }
+        fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_pw), fc::variant(wallet_rm_key_str)};
+        call(wallet_url, wallet_remove_key, vs);
+        std::cout << localized("removed private key for: ${pubkey}", ("pubkey", wallet_rm_key_str)) << std::endl;
+    });
+
+    // create a key within wallet
+    string wallet_create_key_type;
+    auto createKeyInWallet = wallet->add_subcommand("create_key", localized("Create private key within wallet"));
+    createKeyInWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to create key into"), true);
+    createKeyInWallet->add_option("key_type", wallet_create_key_type, localized("Key type to create (K1/R1)"), true)->set_type_name("K1/R1");
+    createKeyInWallet->set_callback([&wallet_name, &wallet_create_key_type] {
+        //an empty key type is allowed -- it will let the underlying wallet pick which type it prefers
+        fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_create_key_type)};
+        const auto& v = call(wallet_url, wallet_create_key, vs);
+        std::cout << localized("Created new private key with a public key of: ") << fc::json::to_pretty_string(v) << std::endl;
+    });
+
     // list wallets
     auto listWallet = wallet->add_subcommand("list", localized("List opened wallets, * = unlocked"));
     listWallet->set_callback([] {
@@ -1006,6 +1038,18 @@ main(int argc, char** argv) {
         fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_pw)};
         const auto& v = call(wallet_url, wallet_list_keys, vs);
         std::cout << fc::json::to_pretty_string(v) << std::endl;
+    });
+
+    // stop evtwd
+    auto stopEvtwd = wallet->add_subcommand("stop", localized("Stop evtwd (doesn't work with evtd)."));
+    stopEvtwd->set_callback([] {
+        const auto& v = call(wallet_url, evtwd_stop);
+        if (!v.is_object() || v.get_object().size() != 0) { //on success evtwd responds with empty object
+            std::cerr << fc::json::to_pretty_string(v) << std::endl;
+        }
+        else {
+            std::cout << "OK" << std::endl;
+        }
     });
 
     // sign subcommand
