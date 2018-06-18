@@ -324,10 +324,20 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
                 _variant_to_binary(fundamental_type(rtype), var, ds, recursion_depth);
             }
         }
-        else {
-            if(is_optional(rtype)) {
-                rtype = fundamental_type(rtype);
+        else if(is_optional(rtype)) {
+            char flag = 1;
+            if(var.is_null()) {
+                flag = 0;
             }
+            else if(var.is_object() && var.get_object().size() == 0) {
+                flag = 0;
+            }
+            fc::raw::pack(ds, flag);
+            if(flag) {
+                _variant_to_binary(fundamental_type(rtype), var, ds, recursion_depth);
+            }
+        }
+        else {
             const auto& st = get_struct(rtype);
             if(var.is_object()) {
                 const auto& vo = var.get_object();
