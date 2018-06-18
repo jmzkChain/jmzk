@@ -325,6 +325,9 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
             }
         }
         else {
+            if(is_optional(rtype)) {
+                rtype = fundamental_type(rtype);
+            }
             const auto& st = get_struct(rtype);
             if(var.is_object()) {
                 const auto& vo = var.get_object();
