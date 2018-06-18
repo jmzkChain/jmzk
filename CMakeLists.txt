@@ -213,6 +213,7 @@ endif()
 
 if(ENABLE_TESTING)
     enable_testing()
+    add_subdirectory(unittest)
 endif()
 
 include(installer)
