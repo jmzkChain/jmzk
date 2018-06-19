@@ -43,10 +43,9 @@ verify_byte_round_trip_conversion(const abi_serializer& abis, const type_name& t
 }
 
 auto
-get_resolver(const abi_def& abi = abi_def()) {
-    return [&abi](const account_name& name) -> optional<abi_serializer> {
-        return abi_serializer(evt_contract_abi());
-    };
+get_resolver() {
+    static auto abis = abi_serializer(evt_contract_abi());
+    return abis;
 }
 
 // verify that round trip conversion, via actual class, reproduces the exact same data
@@ -75,7 +74,7 @@ verify_type_round_trip_conversion(const abi_serializer& abis, const type_name& t
 
 BOOST_AUTO_TEST_CASE(newdomain_test) {
     try {
-        abi_serializer abis(evt_contract_abi());
+        auto abis = get_resolver();
 
         BOOST_CHECK(true);
         const char* test_data = R"=====(
@@ -170,7 +169,7 @@ BOOST_AUTO_TEST_CASE(newdomain_test) {
 
 BOOST_AUTO_TEST_CASE(updatedomain_test) {
     try {
-        abi_serializer abis(evt_contract_abi());
+        auto abis = get_resolver();
 
         BOOST_CHECK(true);
         const char* test_data = R"=====(
@@ -220,7 +219,7 @@ BOOST_AUTO_TEST_CASE(updatedomain_test) {
 
 BOOST_AUTO_TEST_CASE(issuetoken_test) {
     try {
-        abi_serializer abis(evt_contract_abi());
+        auto abis = get_resolver();
 
         BOOST_CHECK(true);
         const char* test_data = R"=====(
@@ -270,7 +269,7 @@ BOOST_AUTO_TEST_CASE(issuetoken_test) {
 
 BOOST_AUTO_TEST_CASE(transfer_test) {
     try {
-        abi_serializer abis(evt_contract_abi());
+        auto abis = get_resolver();
 
         BOOST_CHECK(true);
         const char* test_data = R"=====(
@@ -308,7 +307,7 @@ BOOST_AUTO_TEST_CASE(transfer_test) {
 
 BOOST_AUTO_TEST_CASE(newgroup_test) {
     try {
-        abi_serializer abis(evt_contract_abi());
+        auto abis = get_resolver();
 
         BOOST_CHECK(true);
         const char* test_data = R"=====(
@@ -476,7 +475,7 @@ BOOST_AUTO_TEST_CASE(newgroup_test) {
 
 BOOST_AUTO_TEST_CASE(updategroup_test) {
     try {
-        abi_serializer abis(evt_contract_abi());
+        auto abis = get_resolver();
 
         BOOST_CHECK(true);
         const char* test_data = R"=====(
@@ -644,7 +643,7 @@ BOOST_AUTO_TEST_CASE(updategroup_test) {
 
 BOOST_AUTO_TEST_CASE(newaccount_test) {
     try {
-        abi_serializer abis(evt_contract_abi());
+        auto abis = get_resolver();
 
         BOOST_CHECK(true);
         const char* test_data = R"=====(
@@ -673,7 +672,7 @@ BOOST_AUTO_TEST_CASE(newaccount_test) {
 
 BOOST_AUTO_TEST_CASE(updateowner_test) {
     try {
-        abi_serializer abis(evt_contract_abi());
+        auto abis = get_resolver();
 
         BOOST_CHECK(true);
         const char* test_data = R"=====(
@@ -702,14 +701,14 @@ BOOST_AUTO_TEST_CASE(updateowner_test) {
 
 BOOST_AUTO_TEST_CASE(transferevt_test) {
     try {
-        abi_serializer abis(evt_contract_abi());
+        auto abis = get_resolver();
 
         BOOST_CHECK(true);
         const char* test_data = R"=====(
         {
           "from": "account1",
           "to": "account2",
-          "amount": "12.0000 EVT"
+          "amount": "12.00000 EVT"
         }
         )=====";
 
@@ -718,18 +717,18 @@ BOOST_AUTO_TEST_CASE(transferevt_test) {
 
         BOOST_TEST("account1" == trevt.from);
         BOOST_TEST_REQUIRE("account2" == trevt.to);
-        BOOST_TEST(120000 == trevt.amount.get_amount());
-        BOOST_TEST("4,EVT" == trevt.amount.get_symbol().to_string());
-        BOOST_TEST("12.0000 EVT" == trevt.amount.to_string());
+        BOOST_TEST(1200000 == trevt.amount.get_amount());
+        BOOST_TEST("5,EVT" == trevt.amount.get_symbol().to_string());
+        BOOST_TEST("12.00000 EVT" == trevt.amount.to_string());
 
         auto var2   = verify_byte_round_trip_conversion(abis, "transferevt", var);
         auto trevt2 = var2.as<transferevt>();
 
         BOOST_TEST("account1" == trevt2.from);
         BOOST_TEST_REQUIRE("account2" == trevt2.to);
-        BOOST_TEST(120000 == trevt2.amount.get_amount());
-        BOOST_TEST("4,EVT" == trevt2.amount.get_symbol().to_string());
-        BOOST_TEST("12.0000 EVT" == trevt2.amount.to_string());
+        BOOST_TEST(1200000 == trevt2.amount.get_amount());
+        BOOST_TEST("5,EVT" == trevt2.amount.get_symbol().to_string());
+        BOOST_TEST("12.00000 EVT" == trevt2.amount.to_string());
     }
     FC_LOG_AND_RETHROW()
 }
