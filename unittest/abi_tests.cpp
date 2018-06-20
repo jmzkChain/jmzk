@@ -732,3 +732,33 @@ BOOST_AUTO_TEST_CASE(transferevt_test) {
     }
     FC_LOG_AND_RETHROW()
 }
+
+BOOST_AUTO_TEST_CASE(addmeta_test) {
+    try {
+        auto abis = get_resolver();
+
+        BOOST_CHECK(true);
+        const char* test_data = R"=====(
+        {
+          "key": "key",
+          "value": "value",
+          "creator": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+        }
+        )=====";
+
+        auto var   = fc::json::from_string(test_data);
+        auto admt = var.as<addmeta>();
+
+        BOOST_TEST("key" == admt.key);
+        BOOST_TEST("value" == admt.value);
+        BOOST_TEST("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)admt.creator);
+
+        auto var2   = verify_byte_round_trip_conversion(abis, "addmeta", var);
+        auto admt2 = var2.as<addmeta>();
+
+        BOOST_TEST("key" == admt2.key);
+        BOOST_TEST("value" == admt2.value);
+        BOOST_TEST("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)admt2.creator);
+    }
+    FC_LOG_AND_RETHROW()
+}
