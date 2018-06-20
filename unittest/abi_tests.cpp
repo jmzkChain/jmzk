@@ -56,10 +56,10 @@ verify_type_round_trip_conversion(const abi_serializer& abis, const type_name& t
         auto bytes = abis.variant_to_binary(type, var);
 
         T obj;
-        abi_serializer::from_variant(var, obj, get_resolver());
+        fc::from_variant(var, obj);
 
         fc::variant var2;
-        abi_serializer::to_variant(obj, var2, get_resolver());
+        fc::to_variant(obj, var2);
 
         std::string r = fc::json::to_string(var2);
 
