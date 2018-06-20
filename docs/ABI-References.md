@@ -118,6 +118,9 @@ A type with `?` as suffix means it is an optional type whose value can be undefi
 | `account_name` | `name128` |
 | `balance_type` | `asset` |
 | `group_def` | `group` |
+| `meta_key` | `name128` |
+| `meat_value` | `string` |
+| `meta_list` | `meta[]` |
 
 ## Structures
 A structure is a complex type consisted of base types or/and typedef types. Below are all the structures used in everiToken ABI interface. 
@@ -170,6 +173,15 @@ A structure is a complex type consisted of base types or/and typedef types. Belo
 }
 ```
 
+### `meta` Struct
+```
+{
+    "key": `meta_key`,
+    "value": `meta_value`,
+    "creator": `user_id`
+}
+```
+
 ## Actions
 There are nine kinds of actions in everiToken RPC interface, shown as below.
 
@@ -184,6 +196,18 @@ Create a new domain with name and permisson set of `issue`, `transfer` and `mana
     "manage", `permission_def`
 }
 ```
+
+### `updatedomain` Action
+Update a domain with new permissons, `issue`, `transfer` and `manage` are all optional.
+```
+{
+    "name": `domain_name`,
+    "issue", `permission_def?`,
+    "transfer", `permission_def?`,
+    "manage", `permission_def?`
+}
+```
+
 
 ### `issuetoken` Action
 Issue one or more tokens in a specific domain, the default owners are also specified.
@@ -207,7 +231,7 @@ Transfer one token in specific domain to new owners.
 
 ### `newgroup` Action
 Create a new group with a name.
-> NOTICE: `group_def` is a special type defined in Base Types section. 
+> NOTICE: `group_def` is a special type defined in Base Types section.
 ```
 {
     "name": `group_name`,
@@ -249,5 +273,15 @@ Transfer `EVT` asset between accounts.
     "from": `account_name`,
     "to": `account_name`,
     "amount": `balance_type`
+}
+```
+
+### `addmeta` Action
+Add new metadata to one domain, group or token
+```
+{
+    "key": `meta_key`,
+    "value": `meta_value`,
+    "creator": `user_id`
 }
 ```

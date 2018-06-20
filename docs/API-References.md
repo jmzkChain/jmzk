@@ -2,7 +2,7 @@
 ## GET /v1/chain/get_info
 Before interacting with everiToken, you need to get some chain information first. Call this API to get `chain_id`, `evt_abi_version` and many other properties of current chain state.
 
-For the `chain_id`, it is consisted of three parts splitted by `.`: `major version`, `minor version` and `patch version`. `major version` changes when there have been some break changes in API. And for `minor version`, it will be changed when some new APIs are added, but old APIs will not be influenced. `patch version` is only for some bug-fixed changes.
+For the `evt_api_version`, it is consisted of three parts splitted by `.`: `major version`, `minor version` and `patch version`. `major version` changes when there have been some break changes in API. And for `minor version`, it will be changed when some new APIs are added, but old APIs will not be influenced. `patch version` is only for some bug-fixed changes.
 
 Response:
 ```
@@ -102,11 +102,11 @@ Each action first has one field `name` which indicates its type. The action type
 
 `data` field is the hex binary data you got from the `/v1/chain/abi_json_to_bin` API.
 
-`ref_block_num` and `ref_block_prefix` are the reference fields corresponding to the head block. They can be calculated from the `chain_id` which you got from the previous call to `/v1/chain/get_info`.
+`ref_block_num` and `ref_block_prefix` are the reference fields corresponding to the head block. They can be calculated from the `head_block_id` which you got from the previous call to `/v1/chain/get_info`.
 
-`chain_id` is a 256-long binary data and represented in hex format. If we assume `chain_id` as a big number represented in little-endian encoding, then the `ref_block_num` is one 16-bit number represented in big-endian and it equals to the 6-7 bytes(whose index starts from zero) of `chain_id`.
+`head_block_id` is a 256-long binary data and represented in hex format. If we assume `head_block_id` as a big number represented in little-endian encoding, then the `ref_block_num` is one 16-bit number represented in big-endian and it equals to the No.6-7 bytes(whose index starts from zero) of `head_block_id`.
 
-`ref_block_prefix` is a 32-bit number in little-endian and it equals to the 12-15 bytes of `chain_id`.
+`ref_block_prefix` is a 32-bit number in little-endian and it equals to the No.12-15 bytes of `chain_id`.
 
 `expiration` is the time at which a transaction expires. If the time a transaction being executed at is later than this value, the execution will fail.
 
@@ -125,6 +125,7 @@ For the fields of an action, here is a quick reference guide.
 | `transferevt` | `account` | name of giving account |
 | `issuetoken` | name of domain | `issue` |
 | `transfer` | name of domain token belongs to | name of token |
+| `addmeta` | `domain`, `group` or name of domain | domain name, group name or token name |
 
 After all that work, you can send transaction definition using this API to the chain, then the chain will response with the digest of the transaction. You can then sign this digest with your private key.
 

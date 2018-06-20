@@ -426,7 +426,7 @@ auto check_involved_owner = [](const auto& tokendb, const auto& domain, const au
     return result;
 };
 
-auto check_duplicate_meta_domain(const auto& tokendb, const auto& domain, const auto& key) {
+auto check_duplicate_meta_domain = [](const auto& tokendb, const auto& domain, const auto& key) {
     auto result = false;
     tokendb.read_domain(domain, [&](const auto& d) {
         if(std::find_if(d.metas.cbegin(), d.metas.cend(), [&](const auto& meta) { return meta.key == key; }) != d.metas.cend()) {
@@ -436,7 +436,7 @@ auto check_duplicate_meta_domain(const auto& tokendb, const auto& domain, const 
     return result;
 };
 
-auto check_duplicate_meta_group(const auto& tokendb, const auto& group, const auto& key) {
+auto check_duplicate_meta_group = [](const auto& tokendb, const auto& group, const auto& key) {
     auto result = false;
     tokendb.read_group(group, [&](const auto& g) {
         if(std::find_if(g.metas_.cbegin(), g.metas_.cend(), [&](const auto& meta) { return meta.key == key; }) != g.metas_.cend()) {
@@ -446,7 +446,7 @@ auto check_duplicate_meta_group(const auto& tokendb, const auto& group, const au
     return result;
 };
 
-auto check_duplicate_meta_token(const auto& tokendb, const auto& domain, const auto& name, const auto& key) {
+auto check_duplicate_meta_token = [](const auto& tokendb, const auto& domain, const auto& name, const auto& key) {
     auto result = false;
     tokendb.read_token(domain, name, [&](const auto& t) {
         if(std::find_if(t.metas.cbegin(), t.metas.cend(), [&](const auto& meta) { return meta.key == key; }) != t.metas.cend()) {
