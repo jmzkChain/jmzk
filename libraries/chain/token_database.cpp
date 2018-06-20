@@ -90,6 +90,91 @@ read_value(const V& value) {
     return v;
 }
 
+template <typename V>
+std::string
+update_group(const V& value, const V& update) {
+    auto v  = read_value<group_def>(value);
+    auto ug = read_value<db_updategroup>(update);
+    if(ug.group.valid()) {
+        v.key_   = ug.group->key_;
+        v.nodes_ = std::move(ug.group->nodes_);
+        v.keys_  = std::move(ug.group->keys_);
+    }
+    if(ug.metas.valid()) {
+        v.metas_.reserve(v.metas_.size() + ug.metas->size());
+        v.metas_.insert(v.metas_.end(), ug.metas->cbegin(), ug.metas->cend());
+    }
+    return get_value(v);
+}
+
+template <typename V>
+std::string
+update_domain(const V& value, const V& update) {
+    auto v  = read_value<domain_def>(value);
+    auto ud = read_value<db_updatedomain>(update);
+    if(ud.issue.valid()) {
+        v.issue = std::move(*ud.issue);
+    }
+    if(ud.transfer.valid()) {
+        v.transfer = std::move(*ud.transfer);
+    }
+    if(ud.manage.valid()) {
+        v.manage = std::move(*ud.manage);
+    }
+    if(ud.metas.valid()) {
+        v.metas.reserve(v.metas.size() + ud.metas->size());
+        v.metas.insert(v.metas.end(), ud.metas->cbegin(), ud.metas->cend());
+    }
+    return get_value(v);    
+}
+
+template <typename V>
+std::string
+update_token(const V& value, const V& update) {
+    auto v  = read_value<token_def>(value);
+    auto ut = read_value<db_updatetoken>(update);
+    if(ut.owner.valid()) {
+        v.owner = std::move(*ut.owner);
+    }
+    if(ut.metas.valid()) {
+        v.metas.reserve(v.metas.size() + ut.metas->size());
+        v.metas.insert(v.metas.end(), ut.metas->cbegin(), ut.metas->cend());
+    }
+    return get_value(v);
+}
+
+template <typename V>
+std::string
+update_account(const V& value, const V& update) {
+    auto v  = read_value<account_def>(value);
+    auto ua = read_value<db_updateaccount>(update);
+    if(ua.owner.valid()) {
+        v.owner = std::move(*ua.owner);
+    }
+    if(ua.balance.valid()) {
+        v.balance = *ua.balance;
+    }
+    if(ua.frozen_balance.valid()) {
+        v.frozen_balance = *ua.frozen_balance;
+    }
+    return get_value(v);
+}
+
+template <typename V>
+std::string
+update_delay(const V& value, const V& update) {
+    auto v  = read_value<delay_def>(value);
+    auto ud = read_value<db_updatedelay>(update);
+    if(ud.signed_keys.valid()) {
+        v.signed_keys.reserve(v.signed_keys.size() + ud.signed_keys->size());
+        v.signed_keys.insert(v.signed_keys.end(), ud.signed_keys->cbegin(), ud.signed_keys->cend());
+    }
+    if(ud.status.valid()) {
+        v.status = *ud.status;
+    }
+    return get_value(v);
+}
+
 class TokendbMerge : public rocksdb::MergeOperator {
 public:
     virtual bool
@@ -106,65 +191,38 @@ public:
         static proposal_name  DelayPrefixName("delay");
         static rocksdb::Slice DelayPrefixSlice((const char*)&DelayPrefixName, sizeof(DelayPrefixName));
 
+        // in current usage, merge operand cannot large than one
+        // because we always use RocksDB in this order: Put -> Get -> Merge -> Get -> Merge -> Get...
+        if(merge_in.operand_list.size() > 1) {
+            return false;
+        }
+        const auto& update = merge_in.operand_list[0];
+        const auto& value  = *merge_in.existing_value;
+
         try {
             // merge only need to consider latest one
             if(merge_in.key.starts_with(GroupPrefixSlice)) {
                 // group
-                auto ug              = read_value<updategroup>(merge_in.operand_list[merge_in.operand_list.size() - 1]);
-                merge_out->new_value = get_value(ug.group);
+                merge_out->new_value = update_group(value, update);
             }
             else if(merge_in.key.starts_with(DomainPrefixSlice)) {
                 // domain
-                auto v  = read_value<domain_def>(*merge_in.existing_value);
-                auto ug = read_value<updatedomain>(merge_in.operand_list[merge_in.operand_list.size() - 1]);
-                if(ug.issue.valid()) {
-                    v.issue = std::move(*ug.issue);
-                }
-                if(ug.transfer.valid()) {
-                    v.transfer = std::move(*ug.transfer);
-                }
-                if(ug.manage.valid()) {
-                    v.manage = std::move(*ug.manage);
-                }
-                merge_out->new_value = get_value(v);
+                merge_out->new_value = update_domain(value, update);
             }
             else if(merge_in.key.starts_with(AccountPrefixSlice)) {
                 // account
-                auto v  = read_value<account_def>(*merge_in.existing_value);
-                auto ua = read_value<updateaccount>(merge_in.operand_list[merge_in.operand_list.size() - 1]);
-                if(ua.owner.valid()) {
-                    v.owner = std::move(*ua.owner);
-                }
-                if(ua.balance.valid()) {
-                    v.balance = *ua.balance;
-                }
-                if(ua.frozen_balance.valid()) {
-                    v.frozen_balance = *ua.frozen_balance;
-                }
-                merge_out->new_value = get_value(v);
+                merge_out->new_value = update_account(value, update);
             }
             else if(merge_in.key.starts_with(DelayPrefixSlice)) {
                 // delay
-                auto v  = read_value<delay_def>(*merge_in.existing_value);
-                auto ud = read_value<updatedelay>(merge_in.operand_list[merge_in.operand_list.size() - 1]);
-                if(ud.signed_keys.valid()) {
-                    v.signed_keys.reserve(v.signed_keys.size() + ud.signed_keys->size());
-                    v.signed_keys.insert(v.signed_keys.end(), ud.signed_keys->cbegin(), ud.signed_keys->cend());
-                }
-                if(ud.status.valid()) {
-                    v.status = *ud.status;
-                }
-                merge_out->new_value = get_value(v);
+                merge_out->new_value = update_delay(value, update);
             }
             else {
                 // token
-                auto v               = read_value<token_def>(*merge_in.existing_value);
-                auto tt              = read_value<transfer>(merge_in.operand_list[merge_in.operand_list.size() - 1]);
-                v.owner              = std::move(tt.to);
-                merge_out->new_value = get_value(v);
+                merge_out->new_value = update_token(value, update);
             }
         }
-        catch(fc::exception& e) {
+        catch(...) {
             return false;
         }
         return true;
@@ -173,14 +231,15 @@ public:
     virtual bool
     PartialMerge(const rocksdb::Slice& key, const rocksdb::Slice& left_operand, const rocksdb::Slice& right_operand,
                  std::string* new_value, rocksdb::Logger* logger) const override {
-        *new_value = right_operand.ToString();
-        return true;
+        // in current usage, there's no opportunity to have use this operation.
+        return false;
     }
 
     virtual const char*
     Name() const override {
         return "Tokendb";
-    };
+    }
+
     virtual bool
     AllowSingleOperand() const override {
         return true;
@@ -508,7 +567,7 @@ token_database::read_delay(const proposal_name& name, const read_delay_func& fun
 }
 
 int
-token_database::update_domain(const updatedomain& ud) {
+token_database::update_domain(const db_updatedomain& ud) {
     using namespace __internal;
     auto key    = get_domain_key(ud.name);
     auto value  = get_value(ud);
@@ -525,7 +584,7 @@ token_database::update_domain(const updatedomain& ud) {
 }
 
 int
-token_database::update_group(const updategroup& ug) {
+token_database::update_group(const db_updategroup& ug) {
     using namespace __internal;
     auto key    = get_group_key(ug.name);
     auto value  = get_value(ug);
@@ -542,25 +601,25 @@ token_database::update_group(const updategroup& ug) {
 }
 
 int
-token_database::transfer_token(const transfer& tt) {
+token_database::update_token(const db_updatetoken& ut) {
     using namespace __internal;
-    auto key    = get_token_key(tt.domain, tt.name);
-    auto value  = get_value(tt);
+    auto key    = get_token_key(ut.domain, ut.name);
+    auto value  = get_value(ut);
     auto status = db_->Merge(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
         EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
     if(should_record()) {
         auto act    = (sp_updatetoken*)malloc(sizeof(sp_updatetoken));
-        act->domain = tt.domain;
-        act->name   = tt.name;
+        act->domain = ut.domain;
+        act->name   = ut.name;
         record(kUpdateToken, act);
     }
     return 0;
 }
 
 int
-token_database::update_account(const updateaccount& ua) {
+token_database::update_account(const db_updateaccount& ua) {
     using namespace __internal;
     auto key    = get_account_key(ua.name);
     auto value  = get_value(ua);
@@ -577,7 +636,7 @@ token_database::update_account(const updateaccount& ua) {
 }
 
 int
-token_database::update_delay(const updatedelay& ud) {
+token_database::update_delay(const db_updatedelay& ud) {
     using namespace __internal;
     auto key    = get_delay_key(ud.name);
     auto value  = get_value(ud);
@@ -721,7 +780,7 @@ token_database::rollback_to_latest_savepoint() {
                     // key may not existed in latest snapshot, remove it
                     FC_ASSERT(status.code() == rocksdb::Status::kNotFound, "Not expected rocksdb code: ${status}",
                               ("status", status.getState()));
-                    db_->Delete(write_opts_, key.as_slice());
+                    batch.Delete(key.as_slice());
                     break;
                 }
                 batch.Put(key.as_slice(), old_value);
@@ -736,7 +795,7 @@ token_database::rollback_to_latest_savepoint() {
                     // key may not existed in latest snapshot, remove it
                     FC_ASSERT(status.code() == rocksdb::Status::kNotFound, "Not expected rocksdb code: ${status}",
                               ("status", status.getState()));
-                    db_->Delete(write_opts_, key.as_slice());
+                    batch.Delete(key.as_slice());
                     break;
                 }
                 batch.Put(key.as_slice(), old_value);
@@ -751,7 +810,7 @@ token_database::rollback_to_latest_savepoint() {
                     // key may not existed in latest snapshot, remove it
                     FC_ASSERT(status.code() == rocksdb::Status::kNotFound, "Not expected rocksdb code: ${status}",
                               ("status", status.getState()));
-                    db_->Delete(write_opts_, key.as_slice());
+                    batch.Delete(key.as_slice());
                     break;
                 }
                 batch.Put(key.as_slice(), old_value);

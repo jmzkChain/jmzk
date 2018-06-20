@@ -117,6 +117,7 @@ struct controller_impl {
         SET_APP_HANDLER(newaccount);
         SET_APP_HANDLER(updateowner);
         SET_APP_HANDLER(transferevt);
+        SET_APP_HANDLER(addmeta);
         SET_APP_HANDLER(newdelay);
         SET_APP_HANDLER(approvedelay);
         SET_APP_HANDLER(canceldelay);

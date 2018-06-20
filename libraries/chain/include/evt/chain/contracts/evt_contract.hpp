@@ -30,6 +30,8 @@ void apply_evt_newaccount(apply_context& context);
 void apply_evt_updateowner(apply_context& context);
 void apply_evt_transferevt(apply_context& context);
 
+void apply_evt_addmeta(apply_context& context);
+
 void apply_evt_newdelay(apply_context& context);
 void apply_evt_approvedelay(apply_context& context);
 void apply_evt_canceldelay(apply_context& context);

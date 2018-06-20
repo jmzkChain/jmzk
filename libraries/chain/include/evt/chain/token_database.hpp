@@ -98,11 +98,11 @@ public:
     int read_delay(const proposal_name&, const read_delay_func&) const;
 
     // specific function, use merge operator to speed up rocksdb action.
-    int update_domain(const updatedomain& ud);
-    int update_group(const updategroup& ug);
-    int transfer_token(const transfer& tt);
-    int update_account(const updateaccount& ua);
-    int update_delay(const updatedelay& ud);
+    int update_domain(const db_updatedomain& ud);
+    int update_group(const db_updategroup& ug);
+    int update_token(const db_updatetoken& ut);
+    int update_account(const db_updateaccount& ua);
+    int update_delay(const db_updatedelay& ud);
 
 public:
     int add_savepoint(int32_t seq);

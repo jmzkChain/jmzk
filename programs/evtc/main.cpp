@@ -130,10 +130,11 @@ print_action(const fc::variant& at) {
     auto        args    = act["data"];
     auto        console = at["console"].as_string();
 
-    std::cout << "action : " << func << std::endl;
-    std::cout << "domain : " << act["domain"].as_string() << std::endl;
-    std::cout << "key : " << act["key"].as_string() << std::endl;
-    std::cout << "details :" << std::endl;
+    std::cout << " action : " << func << std::endl;
+    std::cout << " domain : " << act["domain"].as_string() << std::endl;
+    std::cout << "    key : " << act["key"].as_string() << std::endl;
+    std::cout << "elapsed : " << at["elapsed"].as_string() << " " << "us" << std::endl;
+    std::cout << "details : " << std::endl;
     print_info(args, 0);
 
     if(console.size()) {
@@ -153,8 +154,8 @@ print_result(const fc::variant& result) {
             string      status         = processed["receipt"].is_object()
                                 ? processed["receipt"]["status"].as_string()
                                 : "failed";
-
-            cerr << status << " transaction: " << transaction_id << "\n";
+            cerr << status << " transaction: " << transaction_id << std::endl;
+            cerr << "total elapsed: " << processed["elapsed"].as_string() << " us" << std::endl;
 
             if(status == "failed") {
                 auto soft_except = processed["except"].as<optional<fc::exception>>();
@@ -655,6 +656,63 @@ struct set_account_subcommands {
     }
 };
 
+struct set_meta_subcommands {
+    string domain;
+    string key;
+    
+    string metakey;
+    string metavalue;
+    string creator;
+
+    set_meta_subcommands(CLI::App* actionRoot) {
+        auto addcmds = [&](auto subcmd) {
+            subcmd->add_option("meta-key", metakey, localized("Key of the metadata"))->required();
+            subcmd->add_option("meta-value", metavalue, localized("Value of the metadata"))->required();
+            subcmd->add_option("creator", creator, localized("Public key of the metadata creator"))->required();
+        };
+
+        auto dmcmd = actionRoot->add_subcommand("domain", localized("Add metadata to one domain"));
+        dmcmd->add_option("name", key, localized("Name of domain adding to"))->required();
+        addcmds(dmcmd);
+        dmcmd->set_callback([this] {
+            addmeta am;
+            am.key = (meta_key)metakey;
+            am.value = metavalue;
+            am.creator = (public_key_type)creator;
+
+            auto act = create_action(N128(domain), (domain_key)key, am);
+            send_actions({act});
+        });
+
+        auto gmcmd = actionRoot->add_subcommand("group", localized("Add metadata to one group"));
+        gmcmd->add_option("name", key, localized("Name of group adding to"))->required();
+        addcmds(gmcmd);
+        gmcmd->set_callback([this] {
+            addmeta am;
+            am.key = (meta_key)metakey;
+            am.value = metavalue;
+            am.creator = (public_key_type)creator;
+
+            auto act = create_action(N128(group), (domain_key)key, am);
+            send_actions({act});
+        });
+
+        auto tmcmd = actionRoot->add_subcommand("token", localized("Add metadata to one token"));
+        tmcmd->add_option("domain", domain, localized("Domain name of token adding to"))->required();
+        tmcmd->add_option("name", key, localized("Name of token adding to"))->required();
+        addcmds(tmcmd);
+        tmcmd->set_callback([this] {
+            addmeta am;
+            am.key = (meta_key)metakey;
+            am.value = metavalue;
+            am.creator = (public_key_type)creator;
+
+            auto act = create_action((domain_name)domain, (domain_key)key, am);
+            send_actions({act});
+        });
+    }
+};
+
 struct set_get_domain_subcommand {
     string name;
 
@@ -894,6 +952,11 @@ main(int argc, char** argv) {
     account->require_subcommand();
 
     auto set_account = set_account_subcommands(account);
+
+    auto meta = app.add_subcommand("meta", localized("Add metadata to domain, group ot token"));
+    meta->require_subcommand();
+
+    auto set_meta = set_meta_subcommands(meta);
 
     // Wallet subcommand
     auto wallet = app.add_subcommand("wallet", localized("Interact with local wallet"));
