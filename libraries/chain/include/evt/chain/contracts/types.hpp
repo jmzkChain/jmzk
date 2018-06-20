@@ -29,7 +29,7 @@ using group_def       = group;
 using balance_type    = evt::chain::asset;
 using meta_key        = evt::chain::meta_key;
 using meta_value      = evt::chain::meta_value;
-using metapiece       = evt::chain::metapiece;
+using meta_list       = evt::chain::meta_list;
 
 struct type_def {
     type_def() = default;
@@ -106,7 +106,7 @@ struct token_def {
     token_name  name;
     user_list   owner;
 
-    vector<metapiece> metas;
+    meta_list metas;
 };
 
 struct key_weight {
@@ -149,7 +149,7 @@ struct domain_def {
     permission_def transfer;
     permission_def manage;
 
-    vector<metapiece> metas;
+    meta_list metas;
 };
 
 struct account_def {
@@ -280,13 +280,6 @@ struct transferevt {
     }
 };
 
-struct updateaccount {
-    account_name               name;
-    fc::optional<user_list>    owner;
-    fc::optional<balance_type> balance;
-    fc::optional<balance_type> frozen_balance;
-};
-
 struct addmeta {
     meta_key    key;
     meta_value  value;
@@ -337,8 +330,41 @@ struct executedelay {
     }
 };
 
-struct updatedelay {
-    proposal_name                              name;
+struct db_updatedomain {
+    domain_name name;
+
+    fc::optional<permission_def> issue;
+    fc::optional<permission_def> transfer;
+    fc::optional<permission_def> manage;
+    fc::optional<meta_list>      metas;
+};
+
+struct db_updategroup {
+    group_name name;
+
+    fc::optional<group_def> group;
+    fc::optional<meta_list> metas;
+};
+
+struct db_updatetoken {
+    domain_name domain;
+    token_name  name;
+
+    fc::optional<user_list> owner;
+    fc::optional<meta_list> metas;
+};
+
+struct db_updateaccount {
+    account_name name;
+
+    fc::optional<user_list>    owner;
+    fc::optional<balance_type> balance;
+    fc::optional<balance_type> frozen_balance;
+};
+
+struct db_updatedelay {
+    proposal_name name;
+
     fc::optional<std::vector<public_key_type>> signed_keys;
     fc::optional<delay_status>                 status;
 };
@@ -368,10 +394,14 @@ FC_REFLECT(evt::chain::contracts::updatedomain, (name)(issue)(transfer)(manage))
 FC_REFLECT(evt::chain::contracts::newaccount, (name)(owner))
 FC_REFLECT(evt::chain::contracts::updateowner, (name)(owner))
 FC_REFLECT(evt::chain::contracts::transferevt, (from)(to)(amount))
-FC_REFLECT(evt::chain::contracts::updateaccount, (owner)(balance)(frozen_balance))
 FC_REFLECT(evt::chain::contracts::addmeta, (key)(value)(creator))
 FC_REFLECT(evt::chain::contracts::newdelay, (name)(proposer)(trx))
 FC_REFLECT(evt::chain::contracts::canceldelay, (name))
 FC_REFLECT(evt::chain::contracts::approvedelay, (name)(signatures))
 FC_REFLECT(evt::chain::contracts::executedelay, (name))
-FC_REFLECT(evt::chain::contracts::updatedelay, (name)(signed_keys)(status))
+
+FC_REFLECT(evt::chain::contracts::db_updategroup, (name)(group)(metas))
+FC_REFLECT(evt::chain::contracts::db_updatedomain, (name)(issue)(transfer)(manage)(metas))
+FC_REFLECT(evt::chain::contracts::db_updatetoken, (domain)(name)(owner)(metas))
+FC_REFLECT(evt::chain::contracts::db_updateaccount, (name)(owner)(balance)(frozen_balance))
+FC_REFLECT(evt::chain::contracts::db_updatedelay, (name)(signed_keys)(status))

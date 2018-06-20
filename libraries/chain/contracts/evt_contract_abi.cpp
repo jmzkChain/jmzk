@@ -36,6 +36,9 @@ evt_contract_abi() {
    evt_abi.types.push_back( type_def{"proposal_name","name128"} );
    evt_abi.types.push_back( type_def{"balance_type","asset"} );
    evt_abi.types.push_back( type_def{"group_def","group"} );
+    evt_abi.types.push_back( type_def{"meta_key","name128"} );
+    evt_abi.types.push_back( type_def{"meta_value","string"} );
+    evt_abi.types.push_back( type_def{"meta_list","meta[]"} );
 
    evt_abi.actions.push_back( action_def{name("newdomain"), "newdomain"} );
    evt_abi.actions.push_back( action_def{name("issuetoken"), "issuetoken"} );
@@ -46,6 +49,7 @@ evt_contract_abi() {
    evt_abi.actions.push_back( action_def{name("newaccount"), "newaccount"} );
    evt_abi.actions.push_back( action_def{name("updateowner"), "updateowner"} );
    evt_abi.actions.push_back( action_def{name("transferevt"), "transferevt"} );
+   evt_abi.actions.push_back( action_def{name("addmeta"), "addmeta"} );
    evt_abi.actions.push_back( action_def{name("newdelay"), "newdelay"} );
    evt_abi.actions.push_back( action_def{name("canceldelay"), "canceldelay"} );
    evt_abi.actions.push_back( action_def{name("approvedelay"), "approvedelay"} );
@@ -53,10 +57,19 @@ evt_contract_abi() {
 
    // structures def
    evt_abi.structs.emplace_back( struct_def {
+      "meta", "", {
+         {"key", "meta_key"},
+         {"value", "meta_value"},
+         {"creator", "user_id"}
+      }
+   });
+
+   evt_abi.structs.emplace_back( struct_def {
       "token_def", "", {
          {"domain", "domain_name"},
          {"name", "token_name"},
-         {"owner", "user_list"}
+         {"owner", "user_list"},
+         {"metas", "meta_list"}
       }
    });
 
@@ -89,7 +102,8 @@ evt_contract_abi() {
          {"issue_time", "time_point_sec"},
          {"issue", "permission_def"},
          {"transfer", "permission_def"},
-         {"manage", "permission_def"}
+         {"manage", "permission_def"},
+         {"metas", "meta_list"}
       }
    });
 
@@ -180,6 +194,14 @@ evt_contract_abi() {
          {"from", "account_name"},
          {"to", "account_name"},
          {"amount", "balance_type"}
+      }
+   });
+
+   evt_abi.structs.emplace_back( struct_def {
+      "addmeta", "", {
+         {"key", "meta_key"},
+         {"value", "meta_value"},
+         {"creator", "user_id"}
       }
    });
 

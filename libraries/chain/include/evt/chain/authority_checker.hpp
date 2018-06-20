@@ -114,6 +114,16 @@ private:
         else if(action.name == N(updatedomain)) {
             return satisfied_permission(action, action.key);
         }
+        else if(action.name == N(addmeta)) {
+            try {
+                auto am     = action.data_as<contracts::addmeta>();
+                auto vistor = weight_tally_visitor(*this);
+                if(vistor(am.creator, 1) == 1) {
+                    return true;
+                }
+            }
+            EVT_RETHROW_EXCEPTIONS(chain_type_exception, "transaction data is not valid, data cannot cast to `addmeta` type.");
+        }
         return false;
     }
 
@@ -139,6 +149,16 @@ private:
                 }
             });
             return result;
+        }
+        else if(action.name == N(addmeta)) {
+            try {
+                auto am     = action.data_as<contracts::addmeta>();
+                auto vistor = weight_tally_visitor(*this);
+                if(vistor(am.creator, 1) == 1) {
+                    return true;
+                }
+            }
+            EVT_RETHROW_EXCEPTIONS(chain_type_exception, "transaction data is not valid, data cannot cast to `addmeta` type.");
         }
         return false;
     }
@@ -272,6 +292,17 @@ private:
 
     bool
     satisfied_token(const action& action) {
+        if(action.name == N(addmeta)) {
+            try {
+                auto am     = action.data_as<contracts::addmeta>();
+                auto vistor = weight_tally_visitor(*this);
+                if(vistor(am.creator, 1) == 1) {
+                    return true;
+                }
+            }
+            EVT_RETHROW_EXCEPTIONS(chain_type_exception, "transaction data is not valid, data cannot cast to `addmeta` type.");
+            return false;
+        }
         return satisfied_permission(action, action.domain);
     }
 

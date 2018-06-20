@@ -69,6 +69,7 @@ to_variant(const evt::chain::contracts::group& group, fc::variant& v) {
     to_variant(group.name_, mv["name"]);
     to_variant(group.key_, mv["key"]);
     to_variant(group, group.nodes_[0], mv["root"]);
+    to_variant(group.metas_, mv["metas"]);
     v = mv;
 }
 

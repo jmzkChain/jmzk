@@ -43,6 +43,7 @@ public:
     const public_key_type& key() const { return key_; }
     const node& root() const { FC_ASSERT(nodes_.size() > 0); return nodes_[0]; }
     const bool empty() const { return nodes_.empty(); }
+    const auto metas() const { return metas_; }
 
 public:
     void visit_root(const visit_func&) const;
@@ -67,7 +68,7 @@ public:
     public_key_type                 key_;
     std::vector<node>               nodes_;
     std::vector<public_key_type>    keys_;
-    vector<metapiece>               metas_;
+    meta_list                       metas_;
 };
 
 }}}  // namespac evt::chain::contracts
