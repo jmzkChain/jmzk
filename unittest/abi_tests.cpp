@@ -6,7 +6,6 @@
 #include <iterator>
 #include <vector>
 
-#include <boost/test/unit_test.hpp>
 
 #include <fc/exception/exception.hpp>
 #include <fc/io/json.hpp>
@@ -16,8 +15,8 @@
 #include <evt/chain/contracts/abi_serializer.hpp>
 #include <evt/chain/contracts/evt_contract.hpp>
 #include <evt/chain/contracts/types.hpp>
-// #include <evt/abi_generator/abi_generator.hpp>
 
+#include <boost/test/unit_test.hpp>
 #include <boost/test/framework.hpp>
 
 using namespace evt;
@@ -43,7 +42,7 @@ verify_byte_round_trip_conversion(const abi_serializer& abis, const type_name& t
 }
 
 auto
-get_resolver() {
+get_evt_abi() {
     static auto abis = abi_serializer(evt_contract_abi());
     return abis;
 }
@@ -74,7 +73,7 @@ verify_type_round_trip_conversion(const abi_serializer& abis, const type_name& t
 
 BOOST_AUTO_TEST_CASE(newdomain_test) {
     try {
-        auto abis = get_resolver();
+        auto abis = get_evt_abi();
 
         BOOST_CHECK(true);
         const char* test_data = R"=====(
@@ -169,7 +168,7 @@ BOOST_AUTO_TEST_CASE(newdomain_test) {
 
 BOOST_AUTO_TEST_CASE(updatedomain_test) {
     try {
-        auto abis = get_resolver();
+        auto abis = get_evt_abi();
 
         BOOST_CHECK(true);
         const char* test_data = R"=====(
@@ -219,7 +218,7 @@ BOOST_AUTO_TEST_CASE(updatedomain_test) {
 
 BOOST_AUTO_TEST_CASE(issuetoken_test) {
     try {
-        auto abis = get_resolver();
+        auto abis = get_evt_abi();
 
         BOOST_CHECK(true);
         const char* test_data = R"=====(
@@ -269,7 +268,7 @@ BOOST_AUTO_TEST_CASE(issuetoken_test) {
 
 BOOST_AUTO_TEST_CASE(transfer_test) {
     try {
-        auto abis = get_resolver();
+        auto abis = get_evt_abi();
 
         BOOST_CHECK(true);
         const char* test_data = R"=====(
@@ -307,7 +306,7 @@ BOOST_AUTO_TEST_CASE(transfer_test) {
 
 BOOST_AUTO_TEST_CASE(newgroup_test) {
     try {
-        auto abis = get_resolver();
+        auto abis = get_evt_abi();
 
         BOOST_CHECK(true);
         const char* test_data = R"=====(
@@ -475,7 +474,7 @@ BOOST_AUTO_TEST_CASE(newgroup_test) {
 
 BOOST_AUTO_TEST_CASE(updategroup_test) {
     try {
-        auto abis = get_resolver();
+        auto abis = get_evt_abi();
 
         BOOST_CHECK(true);
         const char* test_data = R"=====(
@@ -643,7 +642,7 @@ BOOST_AUTO_TEST_CASE(updategroup_test) {
 
 BOOST_AUTO_TEST_CASE(newaccount_test) {
     try {
-        auto abis = get_resolver();
+        auto abis = get_evt_abi();
 
         BOOST_CHECK(true);
         const char* test_data = R"=====(
@@ -672,7 +671,7 @@ BOOST_AUTO_TEST_CASE(newaccount_test) {
 
 BOOST_AUTO_TEST_CASE(updateowner_test) {
     try {
-        auto abis = get_resolver();
+        auto abis = get_evt_abi();
 
         BOOST_CHECK(true);
         const char* test_data = R"=====(
@@ -701,7 +700,7 @@ BOOST_AUTO_TEST_CASE(updateowner_test) {
 
 BOOST_AUTO_TEST_CASE(transferevt_test) {
     try {
-        auto abis = get_resolver();
+        auto abis = get_evt_abi();
 
         BOOST_CHECK(true);
         const char* test_data = R"=====(
@@ -735,7 +734,7 @@ BOOST_AUTO_TEST_CASE(transferevt_test) {
 
 BOOST_AUTO_TEST_CASE(addmeta_test) {
     try {
-        auto abis = get_resolver();
+        auto abis = get_evt_abi();
 
         BOOST_CHECK(true);
         const char* test_data = R"=====(
@@ -753,7 +752,7 @@ BOOST_AUTO_TEST_CASE(addmeta_test) {
         BOOST_TEST("value" == admt.value);
         BOOST_TEST("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)admt.creator);
 
-        auto var2   = verify_byte_round_trip_conversion(abis, "addmeta", var);
+        auto var2  = verify_byte_round_trip_conversion(abis, "addmeta", var);
         auto admt2 = var2.as<addmeta>();
 
         BOOST_TEST("key" == admt2.key);
