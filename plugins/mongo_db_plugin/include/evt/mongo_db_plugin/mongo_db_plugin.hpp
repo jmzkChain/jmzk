@@ -7,12 +7,11 @@
 #include <appbase/application.hpp>
 #include <evt/chain_plugin/chain_plugin.hpp>
 #include <evt/chain/types.hpp>
-#include <fc/container/flat_fwd.hpp>
+#include <mongocxx/database.hpp>
 #include <memory>
 
 namespace evt {
 
-using mongo_db_plugin_impl_ptr = std::shared_ptr<class mongo_db_plugin_impl>;
 using evt::chain::public_key_type;
 
 class mongo_db_plugin : public plugin<mongo_db_plugin> {
@@ -29,12 +28,10 @@ public:
     void plugin_shutdown();
 
 public:
-    fc::flat_set<std::string> get_tokens_by_public_keys(const std::vector<public_key_type>& pkeys);
-    fc::flat_set<std::string> get_domains_by_public_keys(const std::vector<public_key_type>& pkeys);
-    fc::flat_set<std::string> get_groups_by_public_keys(const std::vector<public_key_type>& pkeys);
+    const mongocxx::database& db() const;
 
 private:
-    mongo_db_plugin_impl_ptr my;
+    std::unique_ptr<class mongo_db_plugin_impl> my_;
 };
 
 }  // namespace evt

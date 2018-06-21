@@ -59,8 +59,10 @@ target_link_libraries(evtd
         )
 
 if(ENABLE_MONGO_DB_PLUGIN)
-  target_link_libraries( evtd
-    PRIVATE -Wl,${whole_archive_flag} mongo_db_plugin -Wl,${no_whole_archive_flag} )
+    target_link_libraries( evtd
+        PRIVATE -Wl,${whole_archive_flag} mongo_db_plugin -Wl,${no_whole_archive_flag} 
+        PRIVATE -Wl,${whole_archive_flag} history_plugin -Wl,${no_whole_archive_flag}
+    )
 endif()
 
 install( TARGETS evtd

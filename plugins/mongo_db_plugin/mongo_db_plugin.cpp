@@ -4,7 +4,6 @@
  */
 #include <evt/mongo_db_plugin/mongo_db_plugin.hpp>
 #include <evt/mongo_db_plugin/evt_interpreter.hpp>
-#include <evt/mongo_db_plugin/wallet_query.hpp>
 
 #include <queue>
 #include <tuple>
@@ -73,6 +72,7 @@ public:
     std::string        db_name;
     mongocxx::instance mongo_inst;
     mongocxx::client   mongo_conn;
+    mongocxx::database mongo_db;
 
     evt_interpreter    interpreter;
 
@@ -391,9 +391,9 @@ mongo_db_plugin_impl::_process_block(const signed_block& block) {
     auto bulk_trans = mongocxx::bulk_write(bulk_opts);
     auto bulk_acts  = mongocxx::bulk_write(bulk_opts);
 
-    auto blocks        = mongo_conn[db_name][blocks_col];         // Blocks
-    auto trans         = mongo_conn[db_name][trans_col];          // Transactions
-    auto actions       = mongo_conn[db_name][actions_col];        // Actions
+    auto blocks        = mongo_db[blocks_col];         // Blocks
+    auto trans         = mongo_db[trans_col];          // Transactions
+    auto actions       = mongo_db[actions_col];        // Actions
 
     auto       block_doc         = bsoncxx::builder::basic::document{};
     const auto block_id          = block.id();
@@ -521,8 +521,8 @@ mongo_db_plugin_impl::_process_irreversible_block(const signed_block& block) {
     using bsoncxx::builder::stream::finalize;
     using bsoncxx::builder::stream::open_document;
 
-    auto blocks = mongo_conn[db_name][blocks_col];  // Blocks
-    auto trans  = mongo_conn[db_name][trans_col];   // Transactions
+    auto blocks = mongo_db[blocks_col];  // Blocks
+    auto trans  = mongo_db[trans_col];   // Transactions
 
     const auto block_id     = block.id();
     const auto block_id_str = block_id.str();
@@ -562,7 +562,7 @@ mongo_db_plugin_impl::_process_transaction(const transaction_trace& trace) {
     auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
     std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
 
-    auto action_traces          = mongo_conn[db_name][action_traces_col];  // ActionTraces
+    auto action_traces          = mongo_db[action_traces_col];  // ActionTraces
     bool action_traces_to_write = false;
     auto seq_num                = 0;
     auto process_action_trace   = [&](const std::string&       trans_id_str,
@@ -628,14 +628,14 @@ void
 mongo_db_plugin_impl::wipe_database() {
     ilog("mongo db wipe_database");
 
-    auto blocks        = mongo_conn[db_name][blocks_col];         // Blocks
-    auto trans         = mongo_conn[db_name][trans_col];          // Transactions
-    auto msgs          = mongo_conn[db_name][actions_col];        // Actions
-    auto action_traces = mongo_conn[db_name][action_traces_col];  // ActionTraces
-    auto domains       = mongo_conn[db_name][domains_col];
-    auto tokens        = mongo_conn[db_name][tokens_col];
-    auto groups        = mongo_conn[db_name][groups_col];
-    auto accounts      = mongo_conn[db_name][accounts_col];
+    auto blocks        = mongo_db[blocks_col];         // Blocks
+    auto trans         = mongo_db[trans_col];          // Transactions
+    auto msgs          = mongo_db[actions_col];        // Actions
+    auto action_traces = mongo_db[action_traces_col];  // ActionTraces
+    auto domains       = mongo_db[domains_col];
+    auto tokens        = mongo_db[tokens_col];
+    auto groups        = mongo_db[groups_col];
+    auto accounts      = mongo_db[accounts_col];
 
     blocks.drop();
     trans.drop();
@@ -653,7 +653,7 @@ mongo_db_plugin_impl::init() {
     // Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
     // See native_contract_chain_initializer::prepare_database()
 
-    auto blocks = mongo_conn[db_name][blocks_col];  // Blocks
+    auto blocks = mongo_db[blocks_col];  // Blocks
     bsoncxx::builder::stream::document doc{};
     if(blocks.count(doc.view()) == 0) {
         // Blocks indexes
@@ -661,37 +661,37 @@ mongo_db_plugin_impl::init() {
         blocks.create_index(bsoncxx::from_json(R"xxx({ "block_id" : 1 })xxx"));
 
         // Transactions indexes
-        auto trans = mongo_conn[db_name][trans_col];  // Transactions
+        auto trans = mongo_db[trans_col];  // Transactions
         trans.create_index(bsoncxx::from_json(R"xxx({ "trx_id" : 1 })xxx"));
 
         // Action indexes
-        auto acts = mongo_conn[db_name][actions_col];  // Actions
+        auto acts = mongo_db[actions_col];  // Actions
         acts.create_index(bsoncxx::from_json(R"xxx({ "domain" : 1 })xxx"));
         acts.create_index(bsoncxx::from_json(R"xxx({ "trx_id" : 1 })xxx"));
 
         // ActionTraces indexes
-        auto action_traces = mongo_conn[db_name][action_traces_col];  // ActionTraces
+        auto action_traces = mongo_db[action_traces_col];  // ActionTraces
         action_traces.create_index(bsoncxx::from_json(R"xxx({ "trx_id" : 1 })xxx"));
 
         // Domains indexes
-        auto domains = mongo_conn[db_name][domains_col];
+        auto domains = mongo_db[domains_col];
         domains.create_index(bsoncxx::from_json(R"xxx({ "name" : 1 })xxx"));
 
         // Tokens indexes
-        auto tokens = mongo_conn[db_name][tokens_col];
+        auto tokens = mongo_db[tokens_col];
         tokens.create_index(bsoncxx::from_json(R"xxx({ "token_id" : 1 })xxx"));
 
         // Groups indexes
-        auto groups = mongo_conn[db_name][groups_col];
+        auto groups = mongo_db[groups_col];
         groups.create_index(bsoncxx::from_json(R"xxx({ "name" : 1 })xxx"));
 
         // Accounts indexes
-        auto accounts = mongo_conn[db_name][accounts_col];
+        auto accounts = mongo_db[accounts_col];
         accounts.create_index(bsoncxx::from_json(R"xxx({ "name" : 1 })xxx"));
     }
 
     // initilize evt interpreter
-    interpreter.initialize_db(mongo_conn[db_name]);
+    interpreter.initialize_db(mongo_db);
 
     evt_api = abi_serializer(contracts::evt_contract_abi());
 
@@ -709,10 +709,15 @@ mongo_db_plugin_impl::init() {
 ////////////
 
 mongo_db_plugin::mongo_db_plugin()
-    : my(new mongo_db_plugin_impl) {
+    : my_(new mongo_db_plugin_impl) {
 }
 
 mongo_db_plugin::~mongo_db_plugin() {
+}
+
+const mongocxx::database&
+mongo_db_plugin::db() const {
+    return my_->mongo_db;
 }
 
 void
@@ -728,33 +733,35 @@ void
 mongo_db_plugin::plugin_initialize(const variables_map& options) {
     if(options.count("mongodb-uri")) {
         ilog("initializing mongo_db_plugin");
-        my->configured = true;
+        my_->configured = true;
 
         if(options.at("replay-blockchain").as<bool>() || options.at("hard-replay-blockchain").as<bool>()) {
             ilog("Replay requested: wiping mongo database on startup");
-            my->wipe_database_on_startup = true;
+            my_->wipe_database_on_startup = true;
         } 
         if(options.at("delete-all-blocks").as<bool>()) {
             ilog("Deleted all blocks: wiping mongo database on startup");
-            my->wipe_database_on_startup = true;
+            my_->wipe_database_on_startup = true;
         }
         if(options.count("mongodb-queue-size")) {
             auto size      = options.at("mongodb-queue-size").as<uint>();
-            my->queue_size = size;
+            my_->queue_size = size;
         }
 
         std::string uri_str = options.at("mongodb-uri").as<std::string>();
         ilog("connecting to ${u}", ("u", uri_str));
         mongocxx::uri uri = mongocxx::uri{uri_str};
-        my->db_name       = uri.database();
-        if(my->db_name.empty())
-            my->db_name = "EVT";
-        my->mongo_conn = mongocxx::client{uri};
+        my_->db_name      = uri.database();
+        if(my_->db_name.empty())
+            my_->db_name = "EVT";
 
-        if(my->wipe_database_on_startup) {
-            my->wipe_database();
+        my_->mongo_conn = mongocxx::client{uri};
+        my_->mongo_db   = my_->mongo_conn[my_->db_name];
+
+        if(my_->wipe_database_on_startup) {
+            my_->wipe_database();
         }
-        my->init();
+        my_->init();
     }
     else {
         wlog("evt::mongo_db_plugin configured, but no --mongodb-uri specified.");
@@ -764,37 +771,19 @@ mongo_db_plugin::plugin_initialize(const variables_map& options) {
 
 void
 mongo_db_plugin::plugin_startup() {
-    if(my->configured) {
+    if(my_->configured) {
         ilog("starting db plugin");
 
-        my->consume_thread = boost::thread([this] { my->consume_queues(); });
+        my_->consume_thread = boost::thread([this] { my_->consume_queues(); });
 
         // chain_controller is created and has resynced or replayed if needed
-        my->startup = false;
+        my_->startup = false;
     }
 }
 
 void
 mongo_db_plugin::plugin_shutdown() {
-    my.reset();
-}
-
-fc::flat_set<std::string>
-mongo_db_plugin::get_tokens_by_public_keys(const std::vector<public_key_type>& pkeys) {
-    auto query = wallet_query(my->mongo_conn[my->db_name]);
-    return query.get_tokens_by_public_keys(pkeys);
-}
-
-fc::flat_set<std::string>
-mongo_db_plugin::get_domains_by_public_keys(const std::vector<public_key_type>& pkeys) {
-    auto query = wallet_query(my->mongo_conn[my->db_name]);
-    return query.get_domains_by_public_keys(pkeys);
-}
-
-fc::flat_set<std::string>
-mongo_db_plugin::get_groups_by_public_keys(const std::vector<public_key_type>& pkeys) {
-    auto query = wallet_query(my->mongo_conn[my->db_name]);
-    return query.get_domains_by_public_keys(pkeys);
+    my_.reset();
 }
 
 }  // namespace evt

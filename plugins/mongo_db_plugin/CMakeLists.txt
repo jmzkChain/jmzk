@@ -2,7 +2,6 @@ file(GLOB HEADERS "include/evt/mongo_db_plugin/*.hpp")
 add_library( mongo_db_plugin
            mongo_db_plugin.cpp
            evt_interpreter.cpp
-           wallet_query.cpp
            ${HEADERS} )
 
 find_package(libbsonc REQUIRED)
