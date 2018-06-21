@@ -50,6 +50,9 @@ public:
     mongo_db_plugin_impl();
     ~mongo_db_plugin_impl();
 
+public:
+    void consume_queues();
+
     void applied_block(const block_state_ptr&);
     void applied_irreversible_block(const block_state_ptr&);
     void applied_transaction(const transaction_trace_ptr&);
@@ -63,13 +66,12 @@ public:
     void init();
     void wipe_database();
 
-    static abi_def eos_abi;  // cached for common use
+public:
     abi_serializer evt_api;
 
     bool configured{false};
     bool wipe_database_on_startup{false};
 
-    std::string        db_name;
     mongocxx::instance mongo_inst;
     mongocxx::client   mongo_conn;
     mongocxx::database mongo_db;
@@ -91,26 +93,16 @@ public:
     channels::irreversible_block::channel_type::handle  irreversible_block_subscription;
     channels::applied_transaction::channel_type::handle applied_transaction_subscription;
 
-    void consume_queues();
-
-    static const std::string blocks_col;
-    static const std::string trans_col;
-    static const std::string actions_col;
-    static const std::string action_traces_col;
-    static const std::string domains_col;
-    static const std::string tokens_col;
-    static const std::string groups_col;
-    static const std::string accounts_col;
+public:
+    const std::string blocks_col        = "Blocks";
+    const std::string trans_col         = "Transactions";
+    const std::string actions_col       = "Actions";
+    const std::string action_traces_col = "ActionTraces";
+    const std::string domains_col       = "Domains";
+    const std::string tokens_col        = "Tokens";
+    const std::string groups_col        = "Groups";
+    const std::string accounts_col      = "Accounts";
 };
-
-const std::string mongo_db_plugin_impl::blocks_col        = "Blocks";
-const std::string mongo_db_plugin_impl::trans_col         = "Transactions";
-const std::string mongo_db_plugin_impl::actions_col       = "Actions";
-const std::string mongo_db_plugin_impl::action_traces_col = "ActionTraces";
-const std::string mongo_db_plugin_impl::domains_col       = "Domains";
-const std::string mongo_db_plugin_impl::tokens_col        = "Tokens";
-const std::string mongo_db_plugin_impl::groups_col        = "Groups";
-const std::string mongo_db_plugin_impl::accounts_col      = "Accounts";
 
 void
 mongo_db_plugin_impl::applied_irreversible_block(const block_state_ptr& bsp) {
@@ -750,13 +742,14 @@ mongo_db_plugin::plugin_initialize(const variables_map& options) {
 
         std::string uri_str = options.at("mongodb-uri").as<std::string>();
         ilog("connecting to ${u}", ("u", uri_str));
-        mongocxx::uri uri = mongocxx::uri{uri_str};
-        my_->db_name      = uri.database();
-        if(my_->db_name.empty())
-            my_->db_name = "EVT";
+        
+        auto uri    = mongocxx::uri{uri_str};
+        auto dbname = uri.database();
+        if(dbname.empty())
+            dbname = "EVT";
 
         my_->mongo_conn = mongocxx::client{uri};
-        my_->mongo_db   = my_->mongo_conn[my_->db_name];
+        my_->mongo_db   = my_->mongo_conn[dbname];
 
         if(my_->wipe_database_on_startup) {
             my_->wipe_database();
