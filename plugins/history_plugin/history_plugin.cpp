@@ -3,12 +3,20 @@
 #include <bsoncxx/builder/basic/document.hpp>
 #include <bsoncxx/builder/basic/kvp.hpp>
 #include <bsoncxx/builder/stream/document.hpp>
+#include <bsoncxx/builder/stream/array.hpp>
 #include <bsoncxx/json.hpp>
 
 #include <mongocxx/client.hpp>
 #include <mongocxx/instance.hpp>
 #include <mongocxx/database.hpp>
+#include <mongocxx/pipeline.hpp>
 #include <mongocxx/exception/query_exception.hpp>
+
+#include <fc/io/json.hpp>
+#include <fc/variant.hpp>
+#include <fc/variant_object.hpp>
+
+#include <evt/chain/contracts/evt_contract.hpp>
 
 namespace evt {
 
@@ -16,37 +24,55 @@ static appbase::abstract_plugin& _history_plugin = app().register_plugin<history
 
 using namespace evt;
 using namespace evt::chain;
+using std::string;
+using std::vector;
+using fc::flat_set;
+using fc::variant;
+using fc::optional;
+using bsoncxx::builder::stream::document;
 
 class history_plugin_impl {
 public:
-    const std::string blocks_col        = "Blocks";
-    const std::string trans_col         = "Transactions";
-    const std::string actions_col       = "Actions";
-    const std::string action_traces_col = "ActionTraces";
-    const std::string domains_col       = "Domains";
-    const std::string tokens_col        = "Tokens";
-    const std::string groups_col        = "Groups";
-    const std::string accounts_col      = "Accounts";
+    const string blocks_col        = "Blocks";
+    const string trans_col         = "Transactions";
+    const string actions_col       = "Actions";
+    const string action_traces_col = "ActionTraces";
+    const string domains_col       = "Domains";
+    const string tokens_col        = "Tokens";
+    const string groups_col        = "Groups";
+    const string accounts_col      = "Accounts";
 
 public:
     history_plugin_impl(const mongocxx::database& db, const controller& chain)
-        : db_(db), chain_(chain) {}
+        : db_(db)
+        , chain_(chain)
+        , evt_abi_(contracts::evt_contract_abi()) {}
 
 public:
-    std::vector<public_key_type> recover_keys(const std::vector<std::string>& signatures);
+    vector<public_key_type> recover_keys(const vector<string>& signatures);
 
-    fc::flat_set<std::string> get_tokens_by_public_keys(const std::vector<public_key_type>& pkeys);
-    fc::flat_set<std::string> get_domains_by_public_keys(const std::vector<public_key_type>& pkeys);
-    fc::flat_set<std::string> get_groups_by_public_keys(const std::vector<public_key_type>& pkeys);
+    flat_set<string> get_tokens_by_public_keys(const vector<public_key_type>& pkeys);
+    flat_set<string> get_domains_by_public_keys(const vector<public_key_type>& pkeys);
+    flat_set<string> get_groups_by_public_keys(const vector<public_key_type>& pkeys);
+
+    variant get_actions(const domain_name& domain, const domain_key& key, optional<int> skip, optional<int> take);
+    variant get_transaction(const transaction_id_type& trx_id);
+    variant get_transactions(const vector<public_key_type>& pkeys, optional<int> skip, optional<int> take);
+
+private:
+    block_id_type get_block_id_by_trx_id(const transaction_id_type& trx_id);
+    string get_bson_string_value(const mongocxx::cursor::iterator& it, const std::string& key);
+    variant transaction_to_variant(const packed_transaction& ptrx);
 
 public:
     const mongocxx::database& db_;
     const controller& chain_;
+    const abi_serializer evt_abi_;
 };
 
-std::vector<public_key_type>
-history_plugin_impl::recover_keys(const std::vector<std::string>& signatures) {
-    std::vector<public_key_type> results;
+vector<public_key_type>
+history_plugin_impl::recover_keys(const vector<string>& signatures) {
+    vector<public_key_type> results;
 
     for(auto& s : signatures) {
         auto sig = signature_type(s);
@@ -57,20 +83,38 @@ history_plugin_impl::recover_keys(const std::vector<std::string>& signatures) {
     return results;
 }
 
-fc::flat_set<std::string>
-history_plugin_impl::get_tokens_by_public_keys(const std::vector<public_key_type>& pkeys) {
-    fc::flat_set<std::string> results;
+string
+history_plugin_impl::get_bson_string_value(const mongocxx::cursor::iterator& it, const std::string& key) {
+    auto v = (bsoncxx::stdx::string_view)(*it)[key].get_utf8();
+    return string(v.data(), v.size());
+}
+
+fc::variant
+history_plugin_impl::transaction_to_variant(const packed_transaction& ptrx) {
+    auto resolver = [this] {
+        return evt_abi_;
+    };
+
+    fc::variant pretty_output;
+    abi_serializer::to_variant(ptrx, pretty_output, resolver);
+    return pretty_output;
+}
+
+
+flat_set<string>
+history_plugin_impl::get_tokens_by_public_keys(const vector<public_key_type>& pkeys) {
+    flat_set<string> results;
 
     auto tokens = db_[tokens_col];
     for(auto& pkey : pkeys) {
         using bsoncxx::builder::stream::document;
         document find{};
-        find << "owner" << (std::string)pkey;
+        find << "owner" << (string)pkey;
         auto cursor = tokens.find(find.view());
         try {
             for(auto it = cursor.begin(); it != cursor.end(); it++) {
-                auto id = (bsoncxx::stdx::string_view)(*it)["token_id"].get_utf8();
-                results.insert(std::string(id.data(), id.size()));
+                auto id = get_bson_string_value(it, "token_id");
+                results.insert(string(id.data(), id.size()));
             }
         }
         catch(mongocxx::query_exception e) {
@@ -80,20 +124,20 @@ history_plugin_impl::get_tokens_by_public_keys(const std::vector<public_key_type
     return results;
 }
 
-fc::flat_set<std::string>
-history_plugin_impl::get_domains_by_public_keys(const std::vector<public_key_type>& pkeys) {
-    fc::flat_set<std::string> results;
+flat_set<string>
+history_plugin_impl::get_domains_by_public_keys(const vector<public_key_type>& pkeys) {
+    flat_set<string> results;
 
     auto domains = db_[domains_col];
     for(auto& pkey : pkeys) {
         using bsoncxx::builder::stream::document;
         document find{};
-        find << "issuer" << (std::string)pkey;
+        find << "issuer" << (string)pkey;
         auto cursor = domains.find(find.view());
         try {
             for(auto it = cursor.begin(); it != cursor.end(); it++) {
-                auto name = (bsoncxx::stdx::string_view)(*it)["name"].get_utf8();;
-                results.insert(std::string(name.data(), name.size()));
+                auto name = get_bson_string_value(it, "name");
+                results.insert(string(name.data(), name.size()));
             }
         }
         catch(mongocxx::query_exception e) {
@@ -103,20 +147,19 @@ history_plugin_impl::get_domains_by_public_keys(const std::vector<public_key_typ
     return results;
 }
 
-fc::flat_set<std::string>
-history_plugin_impl::get_groups_by_public_keys(const std::vector<public_key_type>& pkeys) {
-    fc::flat_set<std::string> results;
+flat_set<string>
+history_plugin_impl::get_groups_by_public_keys(const vector<public_key_type>& pkeys) {
+    flat_set<string> results;
 
     auto groups = db_[groups_col];
     for(auto& pkey : pkeys) {
-        using bsoncxx::builder::stream::document;
         document find{};
-        find << "def.key" << (std::string)pkey;
+        find << "def.key" << (string)pkey;
         auto cursor = groups.find(find.view());
         try {
             for(auto it = cursor.begin(); it != cursor.end(); it++) {
-                auto name = (bsoncxx::stdx::string_view)(*it)["name"].get_utf8();
-                results.insert(std::string(name.data(), name.size()));
+                auto name = get_bson_string_value(it, "name");
+                results.insert(string(name.data(), name.size()));
             }
         }
         catch(mongocxx::query_exception e) {
@@ -124,6 +167,128 @@ history_plugin_impl::get_groups_by_public_keys(const std::vector<public_key_type
         }
     }
     return results;
+}
+
+variant
+history_plugin_impl::get_actions(const domain_name& domain, const domain_key& key, optional<int> skip, optional<int> take) {
+    fc::variants result;
+
+    int s = 0, t = 10;
+    if(skip.valid()) {
+        s = *skip;
+    }
+    if(take.valid()) {
+        t = *take;
+    }
+
+    document match{};
+    match << "domain" << (string)domain << "key" << (string)key;
+
+    document sort{};
+    sort << "_id" << -1;
+
+    auto pipeline = mongocxx::pipeline();
+    pipeline.match(match.view()).sort(sort.view()).skip(s).limit(t);
+
+    auto actions = db_[actions_col];
+    auto cursor = actions.aggregate(pipeline);
+    try {
+        for(auto it = cursor.begin(); it != cursor.end(); it++) {
+            auto v = fc::mutable_variant_object();
+            v["name"] = get_bson_string_value(it, "name");
+            v["domain"] = get_bson_string_value(it, "domain");
+            v["key"] = get_bson_string_value(it, "key");
+            v["trx_id"] = get_bson_string_value(it, "trx_id");
+            v["data"] = fc::json::from_string(bsoncxx::to_json((*it)["data"].get_document().view()));
+
+            result.emplace_back(std::move(v));
+        }
+    }
+    catch(mongocxx::query_exception e) {
+        return variant();
+    }
+    return variant(std::move(result));
+}
+
+block_id_type
+history_plugin_impl::get_block_id_by_trx_id(const transaction_id_type& trx_id) {
+    document find{};
+    find << "trx_id" << (string)trx_id;
+
+    auto trxs = db_[trans_col];
+    auto cursor = trxs.find(find.view());
+    try {
+        for(auto it = cursor.begin(); it != cursor.end(); it++) {
+            auto bid = get_bson_string_value(it, "block_id");
+            return block_id_type(bid);
+        }
+    }
+    catch(...) {}
+    FC_THROW_EXCEPTION(unknown_transaction_exception, "Cannot find transaction");
+}
+
+variant
+history_plugin_impl::get_transaction(const transaction_id_type& trx_id) {
+    auto block_id = get_block_id_by_trx_id(trx_id);
+    auto block = chain_.fetch_block_by_id(block_id);
+    for(auto& tx : block->transactions) {
+        if(tx.trx.id() == trx_id) {
+            return transaction_to_variant(tx.trx);
+        }
+    }
+    FC_THROW_EXCEPTION(unknown_transaction_exception, "Cannot find transaction");
+}
+
+variant
+history_plugin_impl::get_transactions(const vector<public_key_type>& pkeys, optional<int> skip, optional<int> take) {
+    using namespace bsoncxx::types;
+    using namespace bsoncxx::builder;
+    using namespace bsoncxx::builder::stream;
+
+    int s = 0, t = 10;
+    if(skip.valid()) {
+        s = *skip;
+    }
+    if(take.valid()) {
+        t = *take;
+    }
+
+    document match{};
+    array    keys{};
+
+    for(auto& pkey : pkeys) {
+        keys << (string)pkey;
+    }
+    match << "signatures" << open_document << "$in" << keys << close_document;
+
+    document sort{};
+    sort << "_id" << -1;
+
+    document project{};
+    project << "trx_id" << 1;
+
+    auto pipeline = mongocxx::pipeline();
+    pipeline.match(match.view()).project(project.view()).sort(sort.view()).skip(s).limit(t);
+
+    auto trxs = db_[trans_col];
+    auto cursor = trxs.aggregate(pipeline);
+
+    auto vars = fc::variants();
+    auto tids = vector<transaction_id_type>();
+    try {
+        for(auto it = cursor.begin(); it != cursor.end(); it++) {
+            auto tid = get_bson_string_value(it, "trx_id");
+            tids.emplace_back((transaction_id_type)tid);
+        }
+    }
+    catch(mongocxx::query_exception e) {
+        return vars;
+    }
+    
+    for(auto& tid : tids) {
+        vars.emplace_back(get_transaction(tid));
+    }
+    return vars;
 }
 
 history_plugin::history_plugin() {}
@@ -153,9 +318,9 @@ namespace history_apis {
 
 namespace __internal {
 
-std::vector<public_key_type>
-recover_keys(const chain_id_type& chain_id, const std::vector<std::string>& signatures) {
-    std::vector<public_key_type> results;
+vector<public_key_type>
+recover_keys(const chain_id_type& chain_id, const vector<string>& signatures) {
+    vector<public_key_type> results;
     for(auto& s : signatures) {
         auto sig = signature_type(s);
         auto key = public_key_type(sig, chain_id);
