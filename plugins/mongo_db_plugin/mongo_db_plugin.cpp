@@ -47,7 +47,12 @@ private:
     using inblock_ptr = std::tuple<block_state_ptr, bool>; // true for irreversible block
 
 public:
-    mongo_db_plugin_impl();
+    mongo_db_plugin_impl()
+        : chain_id(app().get_plugin<chain_plugin>().chain().get_chain_id())
+        , mongo_inst{}
+        , mongo_conn{}
+    { }
+
     ~mongo_db_plugin_impl();
 
 public:
@@ -67,7 +72,8 @@ public:
     void wipe_database();
 
 public:
-    abi_serializer evt_api;
+    abi_serializer       evt_api;
+    const chain_id_type& chain_id;
 
     bool configured{false};
     bool wipe_database_on_startup{false};
@@ -478,9 +484,17 @@ mongo_db_plugin_impl::_process_block(const signed_block& block) {
         doc.append(kvp("type", "input"));
         doc.append(kvp("signatures", [&trx](bsoncxx::builder::basic::sub_array subarr) {
             for(const auto& sig : trx.signatures) {
-                subarr.append(fc::variant(sig).as_string());
+                subarr.append((std::string)sig);
             }
         }));
+
+        auto keys = trx.get_signature_keys(chain_id);
+        doc.append(kvp("keys", [&keys](bsoncxx::builder::basic::sub_array subarr) {
+            for(const auto& key : keys) {
+                subarr.append((std::string)key);
+            }
+        }));
+
         mongocxx::model::insert_one insert_op{doc.view()};
         bulk_trans.append(insert_op);
         ++trx_num;
@@ -590,11 +604,6 @@ mongo_db_plugin_impl::_process_transaction(const transaction_trace& trace) {
             elog("Bulk action traces insert failed for transaction: ${tid}", ("tid", trx_id_str));
         }
     }
-}
-
-mongo_db_plugin_impl::mongo_db_plugin_impl()
-    : mongo_inst{}
-    , mongo_conn{} {
 }
 
 mongo_db_plugin_impl::~mongo_db_plugin_impl() {
