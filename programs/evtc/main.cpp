@@ -82,6 +82,23 @@ bool   tx_print_json     = false;
 bool   print_request     = false;
 bool   print_response    = false;
 
+bool
+detect_public_key(const std::string& pkey, bool &reserved) {
+    static public_key_type rkey;
+
+    if(pkey.size() != 42) {
+        return false;
+    }
+    try {
+        auto key = public_key_type(pkey);
+        reserved = (key == rkey);
+        return true;
+    }
+    catch(...) {
+        return false;
+    }
+}
+
 void
 print_info(const fc::variant& info, int indent) {
     try {
@@ -117,7 +134,15 @@ print_info(const fc::variant& info, int indent) {
             for(int i = 0; i < indent; i++)
                 cerr << "|";
             cerr << "->";
-            cerr << info.as_string() << endl;
+            auto v = info.as_string();
+
+            bool reserved = false;
+            if(detect_public_key(v, reserved) && reserved) {
+                cerr << info.as_string() << " [destroyed]" << endl;
+            }
+            else {
+                cerr << info.as_string() << endl;
+            }
         }
     }
     FC_CAPTURE_AND_RETHROW((info))
@@ -523,12 +548,12 @@ struct set_issue_token_subcommand {
     }
 };
 
-struct set_transfer_token_subcommand {
+struct set_token_subcommands {
     string              domain;
     string              name;
     std::vector<string> to;
 
-    set_transfer_token_subcommand(CLI::App* actionRoot) {
+    set_token_subcommands(CLI::App* actionRoot) {
         auto ttcmd = actionRoot->add_subcommand("transfer", localized("Transfer token"));
         ttcmd->add_option("domain", domain, localized("Name of the domain where token existed"))->required();
         ttcmd->add_option("name", name, localized("Name of the token to be transfered"))->required();
@@ -543,6 +568,21 @@ struct set_transfer_token_subcommand {
             std::transform(to.cbegin(), to.cend(), std::back_inserter(tt.to), [](auto& str) { return public_key_type(str); });
 
             auto act = create_action(tt.domain, (domain_key)tt.name, tt);
+            send_actions({act});
+        });
+
+        auto dtcmd = actionRoot->add_subcommand("destroy", localized("Destroy one token"));
+        dtcmd->add_option("domain", domain, localized("Name of the domain where token existed"))->required();
+        dtcmd->add_option("name", name, localized("Name of the token to be destroyed"))->required();
+
+        add_standard_transaction_options(dtcmd);
+
+        dtcmd->set_callback([this] {
+            destroytoken dt;
+            dt.domain = name128(domain);
+            dt.name   = name128(name);
+
+            auto act = create_action(dt.domain, (domain_key)dt.name, dt);
             send_actions({act});
         });
     }
@@ -938,8 +978,8 @@ main(int argc, char** argv) {
     auto token = app.add_subcommand("token", localized("Issue or transfer tokens"));
     token->require_subcommand();
 
-    auto set_issue_token    = set_issue_token_subcommand(token);
-    auto set_transfer_token = set_transfer_token_subcommand(token);
+    auto set_issue_token = set_issue_token_subcommand(token);
+    auto set_token = set_token_subcommands(token);
 
     // group subcommand
     auto group = app.add_subcommand("group", localized("Update pemission group"));

@@ -299,7 +299,8 @@ private:
         case N(issuetoken): {
             return satisfied_permission(action, N(issue));
         }
-        case N(transfer): {
+        case N(transfer):
+        case N(destroytoken): {
             return satisfied_permission(action, N(transfer));
         }
         default: {
