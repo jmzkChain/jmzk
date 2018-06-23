@@ -74,10 +74,12 @@ string_to_name128(const char* str) {
 
 struct name {
     uint64_t value = 0;
+
     bool
     empty() const {
         return 0 == value;
     }
+
     bool
     good() const {
         return !empty();
@@ -111,6 +113,7 @@ struct name {
         value = name(n).value;
         return *this;
     }
+
     name&
     operator=(const char* n) {
         value = name(n).value;
@@ -126,18 +129,22 @@ struct name {
     operator<(const name& a, const name& b) {
         return a.value < b.value;
     }
+
     friend bool
     operator<=(const name& a, const name& b) {
         return a.value <= b.value;
     }
+
     friend bool
     operator>(const name& a, const name& b) {
         return a.value > b.value;
     }
+
     friend bool
     operator>=(const name& a, const name& b) {
         return a.value >= b.value;
     }
+
     friend bool
     operator==(const name& a, const name& b) {
         return a.value == b.value;
@@ -147,6 +154,7 @@ struct name {
     operator==(const name& a, uint64_t b) {
         return a.value == b;
     }
+
     friend bool
     operator!=(const name& a, uint64_t b) {
         return a.value != b;
@@ -169,10 +177,12 @@ sort_names(std::vector<name>&& names) {
 
 struct name128 {
     uint128_t value = 0;
+
     bool
     empty() const {
         return 0 == value;
     }
+
     bool
     good() const {
         return !empty();
@@ -206,6 +216,7 @@ struct name128 {
         value = name128(n).value;
         return *this;
     }
+
     name128&
     operator=(const char* n) {
         value = name128(n).value;
@@ -221,18 +232,22 @@ struct name128 {
     operator<(const name128& a, const name128& b) {
         return a.value < b.value;
     }
+
     friend bool
     operator<=(const name128& a, const name128& b) {
         return a.value <= b.value;
     }
+
     friend bool
     operator>(const name128& a, const name128& b) {
         return a.value > b.value;
     }
+
     friend bool
     operator>=(const name128& a, const name128& b) {
         return a.value >= b.value;
     }
+
     friend bool
     operator==(const name128& a, const name128& b) {
         return a.value == b.value;
@@ -242,6 +257,7 @@ struct name128 {
     operator==(const name128& a, uint128_t b) {
         return a.value == b;
     }
+    
     friend bool
     operator!=(const name128& a, uint128_t b) {
         return a.value != b;

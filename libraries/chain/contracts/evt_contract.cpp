@@ -95,7 +95,7 @@ apply_evt_newdomain(apply_context& context) {
 
     auto ndact = context.act.data_as<newdomain>();
     try {
-        EVT_ASSERT(context.has_authorized("domain", ndact.name), action_validate_exception, "Authorized information doesn't match");
+        EVT_ASSERT(context.has_authorized(ndact.name, N128(.create)), action_validate_exception, "Authorized information doesn't match");
 
         auto& tokendb = context.token_db;
         EVT_ASSERT(!tokendb.exists_domain(ndact.name), action_validate_exception, "Domain ${name} already existed", ("name",ndact.name));
@@ -131,14 +131,20 @@ void
 apply_evt_issuetoken(apply_context& context) {
     auto itact = context.act.data_as<issuetoken>();
     try {
-        EVT_ASSERT(context.has_authorized(itact.domain, N128(issue)), action_validate_exception, "Authorized information doesn't match");
+        EVT_ASSERT(context.has_authorized(itact.domain, N128(.issue)), action_validate_exception, "Authorized information doesn't match");
         
         auto& tokendb = context.token_db;
         EVT_ASSERT(tokendb.exists_domain(itact.domain), action_validate_exception, "Domain ${name} not existed", ("name", itact.domain));
         EVT_ASSERT(!itact.owner.empty(), action_validate_exception, "Owner cannot be empty");
 
+        auto check_name = [&](const auto& name) {
+            const uint128_t reserved_flag = ((uint128_t)0x3f << (128-6));
+            EVT_ASSERT(!name.empty() && !(name.value & reserved_flag), action_validate_exception, "Token name starts with '.' is reserved for system usage");
+            EVT_ASSERT(!tokendb.exists_token(itact.domain, name), action_validate_exception, "Token ${domain}-${name} already existed", ("domain",itact.domain)("name",name));
+        };
+
         for(auto& n : itact.names) {
-            EVT_ASSERT(!tokendb.exists_token(itact.domain, n), action_validate_exception, "Token ${domain}-${name} already existed", ("domain",itact.domain)("name",n));
+            check_name(n);
         }
 
         tokendb.issue_tokens(itact);
@@ -211,7 +217,7 @@ apply_evt_updatedomain(apply_context& context) {
 
     auto udact = context.act.data_as<updatedomain>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(domain), udact.name), action_validate_exception, "Authorized information doesn't match");
+        EVT_ASSERT(context.has_authorized(udact.name, N128(.update)), action_validate_exception, "Authorized information doesn't match");
 
         auto& tokendb = context.token_db;
         EVT_ASSERT(tokendb.exists_domain(udact.name), action_validate_exception, "Domain ${name} is not existed", ("name",udact.name));
