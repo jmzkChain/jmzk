@@ -3,12 +3,9 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #pragma once
-#include <evt/chain_plugin/chain_plugin.hpp>
-#ifdef ENABLE_MONGODB
-#include <evt/mongo_db_plugin/mongo_db_plugin.hpp>
-#endif
-
 #include <appbase/application.hpp>
+#include <evt/chain_plugin/chain_plugin.hpp>
+
 #include <evt/chain/asset.hpp>
 #include <evt/chain/block.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
@@ -62,19 +59,6 @@ public:
     };
     fc::variant get_account(const get_account_params& params);
 
-#ifdef ENABLE_MONGODB
-    struct get_my_params {
-        std::vector<std::string> signatures;
-    };
-    using get_my_tokens_params = get_my_params;
-    using get_my_domains_params = get_my_params;
-    using get_my_groups_params = get_my_params;
-
-    fc::variant get_my_tokens(const get_my_params& params);
-    fc::variant get_my_domains(const get_my_params& params);
-    fc::variant get_my_groups(const get_my_params& params);
-#endif
-
 private:
     const controller& db_;
 };
@@ -116,6 +100,3 @@ FC_REFLECT(evt::evt_apis::read_only::get_domain_params, (name));
 FC_REFLECT(evt::evt_apis::read_only::get_group_params, (name));
 FC_REFLECT(evt::evt_apis::read_only::get_token_params, (domain)(name));
 FC_REFLECT(evt::evt_apis::read_only::get_account_params, (name));
-#ifdef ENABLE_MONGODB
-FC_REFLECT(evt::evt_apis::read_only::get_my_params, (signatures));
-#endif

@@ -111,6 +111,7 @@ struct controller_impl {
         SET_APP_HANDLER(newdomain);
         SET_APP_HANDLER(issuetoken);
         SET_APP_HANDLER(transfer);
+        SET_APP_HANDLER(destroytoken);
         SET_APP_HANDLER(newgroup);
         SET_APP_HANDLER(updategroup);
         SET_APP_HANDLER(updatedomain);
