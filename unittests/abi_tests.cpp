@@ -734,11 +734,8 @@ BOOST_AUTO_TEST_CASE(transferevt_test) {
 
 BOOST_AUTO_TEST_CASE(addmeta_test) {
     try {
-<<<<<<< HEAD
-        auto abis = get_resolver();
-=======
         auto abis = get_evt_abi();
->>>>>>> 4c408e7453cdafecbf7ecaf90c84f31ea104923e
+
 
         BOOST_CHECK(true);
         const char* test_data = R"=====(
@@ -756,11 +753,9 @@ BOOST_AUTO_TEST_CASE(addmeta_test) {
         BOOST_TEST("value" == admt.value);
         BOOST_TEST("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)admt.creator);
 
-<<<<<<< HEAD
-        auto var2   = verify_byte_round_trip_conversion(abis, "addmeta", var);
-=======
+
         auto var2  = verify_byte_round_trip_conversion(abis, "addmeta", var);
->>>>>>> 4c408e7453cdafecbf7ecaf90c84f31ea104923e
+
         auto admt2 = var2.as<addmeta>();
 
         BOOST_TEST("key" == admt2.key);

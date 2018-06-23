@@ -215,7 +215,7 @@ endif()
 
 if(ENABLE_TESTING)
     enable_testing()
-    add_subdirectory(unittest)
+    add_subdirectory(unittests)
 endif()
 
 include(installer)
