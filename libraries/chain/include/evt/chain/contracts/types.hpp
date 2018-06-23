@@ -216,6 +216,16 @@ struct transfer {
     }
 };
 
+struct destroytoken {
+    domain_name             domain;
+    token_name              name;
+
+    static action_name
+    get_name() {
+        return N(destroytoken);
+    }
+};
+
 struct newgroup {
     group_name name;
     group_def  group;
@@ -388,6 +398,7 @@ FC_REFLECT(evt::chain::contracts::delay_def, (name)(proposer)(status)(trx)(signe
 FC_REFLECT(evt::chain::contracts::newdomain, (name)(issuer)(issue)(transfer)(manage))
 FC_REFLECT(evt::chain::contracts::issuetoken, (domain)(names)(owner))
 FC_REFLECT(evt::chain::contracts::transfer, (domain)(name)(to))
+FC_REFLECT(evt::chain::contracts::destorytoken, (domain)(name))
 FC_REFLECT(evt::chain::contracts::newgroup, (name)(group))
 FC_REFLECT(evt::chain::contracts::updategroup, (name)(group))
 FC_REFLECT(evt::chain::contracts::updatedomain, (name)(issue)(transfer)(manage))

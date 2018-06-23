@@ -139,7 +139,7 @@ apply_evt_issuetoken(apply_context& context) {
 
         auto check_name = [&](const auto& name) {
             const uint128_t reserved_flag = ((uint128_t)0x3f << (128-6));
-            EVT_ASSERT(!name.empty() && !(name.value & reserved_flag), action_validate_exception, "Token name starts with '.' is reserved for system usage");
+            EVT_ASSERT(!name.empty() && (name.value & reserved_flag), action_validate_exception, "Token name starts with '.' is reserved for system usage");
             EVT_ASSERT(!tokendb.exists_token(itact.domain, name), action_validate_exception, "Token ${domain}-${name} already existed", ("domain",itact.domain)("name",name));
         };
 
@@ -152,14 +152,32 @@ apply_evt_issuetoken(apply_context& context) {
     FC_CAPTURE_AND_RETHROW((itact));
 }
 
+namespace __internal {
+
+public_key_type
+get_reservered_public_key() {
+    static public_key_type pkey;
+    return pkey;
+}
+
+}  // namespace __internal
+
 void
 apply_evt_transfer(apply_context& context) {
+    using namespace __internal;
+
     auto ttact = context.act.data_as<transfer>();
     try {
         EVT_ASSERT(context.has_authorized(ttact.domain, ttact.name), action_validate_exception, "Authorized information doesn't match");
         
         auto& tokendb = context.token_db;
-        EVT_ASSERT(tokendb.exists_token(ttact.domain, ttact.name), action_validate_exception, "Token ${domain}-${name} not existed", ("domain",ttact.domain)("name",ttact.name));
+
+        bool existed = false;
+        tokendb.read_token(ttact.domain, ttact.name, [&](const auto& t) {
+            EVT_ASSERT(t.owner[0] != get_reservered_public_key(), action_validate_exception, "Token ${domain}-${name} is already destroyed", ("domain",ttact.domain)("name",ttact.name));
+            existed = true;
+        });
+        EVT_ASSERT(existed, action_validate_exception, "Token ${domain}-${name} not existed", ("domain",ttact.domain)("name",ttact.name));
         
         auto ut = db_updatetoken();
         ut.domain = ttact.domain;
@@ -169,6 +187,27 @@ apply_evt_transfer(apply_context& context) {
         tokendb.update_token(ut);
     }
     FC_CAPTURE_AND_RETHROW((ttact));
+}
+
+void
+apply_evt_destroytoken(apply_context& context) {
+    using namespace __internal;
+
+    auto dtact = context.act.data_as<destroytoken>();
+    try {
+        EVT_ASSERT(context.has_authorized(dtact.domain, dtact.name), action_validate_exception, "Authorized information doesn't match");
+
+        auto& tokendb = context.token_db;
+        EVT_ASSERT(tokendb.exists_token(dtact.domain, dtact.name), action_validate_exception, "Token ${domain}-${name} not existed", ("domain",dtact.domain)("name",dtact.name));
+        
+        auto ut = db_updatetoken();
+        ut.domain = dtact.domain;
+        ut.name   = dtact.name;
+        ut.owner  = user_list{ get_reservered_public_key() };
+
+        tokendb.update_token(ut);
+    }
+    FC_CAPTURE_AND_RETHROW((dtact));
 }
 
 void
@@ -473,19 +512,7 @@ apply_evt_addmeta(apply_context& context) {
     try {
         auto& tokendb = context.token_db;
 
-        if(act.domain == N128(domain)) {
-            EVT_ASSERT(tokendb.exists_domain(act.key), action_validate_exception, "Domain ${name} doesn't existed", ("name",act.key));
-            EVT_ASSERT(!check_duplicate_meta_domain(tokendb, act.key, amact.key), action_validate_exception, "Metadata with key ${key} is already existed", ("key",amact.key));
-            // check involved, only person involved in `manage` permission can add meta
-            EVT_ASSERT(check_involved_domain(tokendb, act.key, N(manage), amact.creator), action_validate_exception, "Creator is not involved in domain ${name}", ("name",act.key));
-
-            auto ud = db_updatedomain();
-            ud.name  = act.key;
-            ud.metas = meta_list { meta(amact.key, amact.value, amact.creator) };
-
-            tokendb.update_domain(ud);
-        }
-        else if(act.domain == N128(group)) {
+        if(act.domain == N128(group)) {
             EVT_ASSERT(tokendb.exists_group(act.key), action_validate_exception, "Group ${name} doesn't existed", ("name",act.key));
             EVT_ASSERT(!check_duplicate_meta_group(tokendb, act.key, amact.key), action_validate_exception, "Metadata with key ${key} is already existed", ("key",amact.key));
             // check involved, only group manager(aka. group key) can add meta
@@ -496,6 +523,18 @@ apply_evt_addmeta(apply_context& context) {
             ud.metas = meta_list { meta(amact.key, amact.value, amact.creator) };
 
             tokendb.update_group(ud);
+        }
+        else if(act.key == N128(.meta)) {
+            EVT_ASSERT(tokendb.exists_domain(act.domain), action_validate_exception, "Domain ${name} doesn't existed", ("name",act.domain));
+            EVT_ASSERT(!check_duplicate_meta_domain(tokendb, act.domain, amact.key), action_validate_exception, "Metadata with key ${key} is already existed", ("key",amact.key));
+            // check involved, only person involved in `manage` permission can add meta
+            EVT_ASSERT(check_involved_domain(tokendb, act.domain, N(manage), amact.creator), action_validate_exception, "Creator is not involved in domain ${name}", ("name",act.key));
+
+            auto ud = db_updatedomain();
+            ud.name  = act.domain;
+            ud.metas = meta_list { meta(amact.key, amact.value, amact.creator) };
+
+            tokendb.update_domain(ud);
         }
         else {
             EVT_ASSERT(tokendb.exists_token(act.domain, act.key), action_validate_exception, "Token ${domain}-${name} not existed", ("domain",act.domain)("name",act.key));
