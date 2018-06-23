@@ -12,7 +12,7 @@ add_subdirectory(evt_plugin)
 add_subdirectory(evt_api_plugin)
 add_subdirectory(bnet_plugin)
 
-if(ENABLE_MONGO_DB_PLUGIN)
+if(ENABLE_MONGODB_SUPPORT)
     add_subdirectory(mongo_db_plugin)
     add_subdirectory(history_plugin)
 else()
