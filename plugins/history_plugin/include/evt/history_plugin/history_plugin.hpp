@@ -11,12 +11,12 @@
 
 #include <evt/chain/controller.hpp>
 #include <evt/chain/types.hpp>
-#include <fc/container/flat_fwd.hpp>
+
+#include <fc/optional.hpp>
 
 namespace evt {
 
 class history_plugin;
-
 
 namespace history_apis {
 
@@ -36,6 +36,28 @@ public:
     fc::variant get_my_tokens(const get_my_params& params);
     fc::variant get_my_domains(const get_my_params& params);
     fc::variant get_my_groups(const get_my_params& params);
+
+    struct get_actions_params {
+        std::string               domain;
+        fc::optional<std::string> key;
+        fc::optional<bool>        exclude_transfer;
+        fc::optional<int>         skip;
+        fc::optional<int>         take;
+    };
+    fc::variant get_actions(const get_actions_params& params);
+
+    struct get_transaction_params {
+        chain::transaction_id_type id;
+    };
+    fc::variant get_transaction(const get_transaction_params& params);
+
+    struct get_transactions_params {
+        std::vector<public_key_type> keys;
+        fc::optional<int>            skip;
+        fc::optional<int>            take;        
+    };
+    fc::variant get_transactions(const get_transactions_params& params);
+
 
 private:
     const history_plugin& plugin_;
@@ -69,3 +91,6 @@ private:
 }  // namespace evt
 
 FC_REFLECT(evt::history_apis::read_only::get_my_params, (signatures));
+FC_REFLECT(evt::history_apis::read_only::get_actions_params, (domain)(key)(exclude_transfer)(skip)(take));
+FC_REFLECT(evt::history_apis::read_only::get_transaction_params, (id));
+FC_REFLECT(evt::history_apis::read_only::get_transactions_params, (keys)(skip)(take));

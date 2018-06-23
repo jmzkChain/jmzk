@@ -48,7 +48,8 @@ private:
 
 public:
     mongo_db_plugin_impl()
-        : chain_id(app().get_plugin<chain_plugin>().chain().get_chain_id())
+        : evt_api(contracts::evt_contract_abi())
+        , chain_id(app().get_plugin<chain_plugin>().chain().get_chain_id())
         , mongo_inst{}
         , mongo_conn{}
     { }
@@ -72,8 +73,8 @@ public:
     void wipe_database();
 
 public:
-    abi_serializer       evt_api;
-    const chain_id_type& chain_id;
+    abi_serializer evt_api;
+    chain_id_type  chain_id;
 
     bool configured{false};
     bool wipe_database_on_startup{false};
@@ -693,8 +694,6 @@ mongo_db_plugin_impl::init() {
 
     // initilize evt interpreter
     interpreter.initialize_db(mongo_db);
-
-    evt_api = abi_serializer(contracts::evt_contract_abi());
 
     // connect callbacks to channel
     accepted_block_subscription = app().get_channel<channels::accepted_block>().subscribe(

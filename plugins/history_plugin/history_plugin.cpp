@@ -55,9 +55,13 @@ public:
     flat_set<string> get_domains_by_public_keys(const vector<public_key_type>& pkeys);
     flat_set<string> get_groups_by_public_keys(const vector<public_key_type>& pkeys);
 
-    variant get_actions(const domain_name& domain, const domain_key& key, optional<int> skip, optional<int> take);
+    variant get_actions(const domain_name&          domain,
+                        const optional<domain_key>& key,
+                        const optional<bool>        exclude_transfer,
+                        const optional<int>         skip,
+                        const optional<int>         take);
     variant get_transaction(const transaction_id_type& trx_id);
-    variant get_transactions(const vector<public_key_type>& pkeys, optional<int> skip, optional<int> take);
+    variant get_transactions(const vector<public_key_type>& pkeys, const optional<int> skip, const optional<int> take);
 
 private:
     block_id_type get_block_id_by_trx_id(const transaction_id_type& trx_id);
@@ -170,7 +174,11 @@ history_plugin_impl::get_groups_by_public_keys(const vector<public_key_type>& pk
 }
 
 variant
-history_plugin_impl::get_actions(const domain_name& domain, const domain_key& key, optional<int> skip, optional<int> take) {
+history_plugin_impl::get_actions(const domain_name&          domain,
+                                 const optional<domain_key>& key,
+                                 const optional<bool>        exclude_transfer,
+                                 const optional<int>         skip,
+                                 const optional<int>         take) {
     fc::variants result;
 
     int s = 0, t = 10;
@@ -182,7 +190,16 @@ history_plugin_impl::get_actions(const domain_name& domain, const domain_key& ke
     }
 
     document match{};
-    match << "domain" << (string)domain << "key" << (string)key;
+    match << "domain" << (string)domain;
+    if(key.valid()) {
+        FC_ASSERT(!exclude_transfer.valid(), "exclude_transfer can only be used when key is null");
+        match << "key" << (string)*key;
+    }
+    else {
+        if(exclude_transfer.valid() && !(*exclude_transfer)) {
+            match << "key" << R"(/^\./)";
+        }
+    }
 
     document sort{};
     sort << "_id" << -1;
@@ -240,7 +257,7 @@ history_plugin_impl::get_transaction(const transaction_id_type& trx_id) {
 }
 
 variant
-history_plugin_impl::get_transactions(const vector<public_key_type>& pkeys, optional<int> skip, optional<int> take) {
+history_plugin_impl::get_transactions(const vector<public_key_type>& pkeys, const optional<int> skip, const optional<int> take) {
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
     using namespace bsoncxx::builder::stream;
@@ -316,26 +333,8 @@ history_plugin::plugin_shutdown() {
 
 namespace history_apis {
 
-namespace __internal {
-
-vector<public_key_type>
-recover_keys(const chain_id_type& chain_id, const vector<string>& signatures) {
-    vector<public_key_type> results;
-    for(auto& s : signatures) {
-        auto sig = signature_type(s);
-        auto key = public_key_type(sig, chain_id);
-        
-        results.emplace_back(key);
-    }
-    return results;
-}
-
-}  // namespace __internal
-
 fc::variant
 read_only::get_my_tokens(const get_my_params& params) {
-    using namespace __internal;
-
     auto tokens = plugin_.my_->get_tokens_by_public_keys(plugin_.my_->recover_keys(params.signatures));
     fc::variant result;
     fc::to_variant(tokens, result);
@@ -344,8 +343,6 @@ read_only::get_my_tokens(const get_my_params& params) {
 
 fc::variant
 read_only::get_my_domains(const get_my_params& params) {
-    using namespace __internal;
-
     auto domains = plugin_.my_->get_domains_by_public_keys(plugin_.my_->recover_keys(params.signatures));
     fc::variant result;
     fc::to_variant(domains, result);
@@ -354,12 +351,25 @@ read_only::get_my_domains(const get_my_params& params) {
 
 fc::variant
 read_only::get_my_groups(const get_my_params& params) {
-    using namespace __internal;
-
     auto groups = plugin_.my_->get_groups_by_public_keys(plugin_.my_->recover_keys(params.signatures));
     fc::variant result;
     fc::to_variant(groups, result);
     return result;
+}
+
+fc::variant
+read_only::get_actions(const get_actions_params& params) {
+    return plugin_.my_->get_actions(params.domain, params.key, params.exclude_transfer, params.skip, params.take);
+}
+
+fc::variant
+read_only::get_transaction(const get_transaction_params& params) {
+    return plugin_.my_->get_transaction(params.id);
+}
+
+fc::variant
+read_only::get_transactions(const get_transactions_params& params) {
+    return plugin_.my_->get_transactions(params.keys, params.skip, params.take);
 }
 
 }  // namespace history_apis
