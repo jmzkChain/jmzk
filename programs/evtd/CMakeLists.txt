@@ -58,10 +58,11 @@ target_link_libraries(evtd
         PRIVATE -Wl,${whole_archive_flag} bnet_plugin -Wl,${no_whole_archive_flag}
         )
 
-if(ENABLE_MONGO_DB_PLUGIN)
+if(ENABLE_MONGODB_SUPPORT)
     target_link_libraries( evtd
         PRIVATE -Wl,${whole_archive_flag} mongo_db_plugin -Wl,${no_whole_archive_flag} 
         PRIVATE -Wl,${whole_archive_flag} history_plugin -Wl,${no_whole_archive_flag}
+        PRIVATE -Wl,${whole_archive_flag} history_api_plugin -Wl,${no_whole_archive_flag}
     )
 endif()
 
