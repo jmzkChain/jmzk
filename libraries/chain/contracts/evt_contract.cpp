@@ -160,6 +160,14 @@ get_reservered_public_key() {
     return pkey;
 }
 
+bool
+check_token_destroy(const token_def& token) {
+    if(token.owner.size() > 1) {
+        return false;
+    }
+    return token.owner[0] == get_reservered_public_key();
+}
+
 }  // namespace __internal
 
 void
@@ -169,11 +177,13 @@ apply_evt_transfer(apply_context& context) {
     auto ttact = context.act.data_as<transfer>();
     try {
         EVT_ASSERT(context.has_authorized(ttact.domain, ttact.name), action_validate_exception, "Authorized information doesn't match");
-        
+
         auto& tokendb = context.token_db;
 
         token_def token;
         tokendb.read_token(ttact.domain, ttact.name, token);
+
+        EVT_ASSERT(!check_token_destroy(token), action_validate_exception, "Token is already destroyed");
 
         token.owner = ttact.to;
         tokendb.update_token(token);
@@ -193,6 +203,8 @@ apply_evt_destroytoken(apply_context& context) {
 
         token_def token;
         tokendb.read_token(dtact.domain, dtact.name, token);
+
+        EVT_ASSERT(!check_token_destroy(token), action_validate_exception, "Token is already destroyed");
 
         token.owner  = user_list{ get_reservered_public_key() };
         tokendb.update_token(token);
@@ -483,6 +495,7 @@ apply_evt_addmeta(apply_context& context) {
             token_def token;
             tokendb.read_token(act.domain, act.key, token);
 
+            EVT_ASSERT(!check_token_destroy(token), action_validate_exception, "Token is already destroyed");
             EVT_ASSERT(!check_duplicate_meta(token, amact.key), action_validate_exception, "Metadata with key ${key} is already existed", ("key",amact.key));
 
             domain_def domain;
