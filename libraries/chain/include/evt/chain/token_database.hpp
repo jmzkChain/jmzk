@@ -17,12 +17,6 @@ namespace evt { namespace chain {
 
 using namespace evt::chain::contracts;
 
-using read_domain_func  = std::function<void(const domain_def&)>;
-using read_token_func   = std::function<void(const token_def&)>;
-using read_group_func   = std::function<void(const group_def&)>;
-using read_account_func = std::function<void(const account_def&)>;
-using read_delay_func   = std::function<void(const delay_def&)>;
-
 class token_database : boost::noncopyable {
 private:
     struct dbaction {
@@ -91,18 +85,17 @@ public:
     int add_delay(const delay_def&);
     int exists_delay(const proposal_name&) const;
 
-    int read_domain(const domain_name&, const read_domain_func&) const;
-    int read_token(const domain_name&, const token_name&, const read_token_func&) const;
-    int read_group(const group_name&, const read_group_func&) const;
-    int read_account(const account_name&, const read_account_func&) const;
-    int read_delay(const proposal_name&, const read_delay_func&) const;
+    int read_domain(const domain_name&, domain_def&) const;
+    int read_token(const domain_name&, const token_name&, token_def&) const;
+    int read_group(const group_name&, group_def&) const;
+    int read_account(const account_name&, account_def&) const;
+    int read_delay(const proposal_name&, delay_def&) const;
 
-    // specific function, use merge operator to speed up rocksdb action.
-    int update_domain(const db_updatedomain& ud);
-    int update_group(const db_updategroup& ug);
-    int update_token(const db_updatetoken& ut);
-    int update_account(const db_updateaccount& ua);
-    int update_delay(const db_updatedelay& ud);
+    int update_domain(const domain_def&);
+    int update_group(const group_def&);
+    int update_token(const token_def&);
+    int update_account(const account_def&);
+    int update_delay(const delay_def&);
 
 public:
     int add_savepoint(int32_t seq);

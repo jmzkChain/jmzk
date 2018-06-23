@@ -69,32 +69,38 @@ public:
 
 private:
     void
-    get_permission(const domain_name& domain, const permission_name name, std::function<void(const permission_def&)>&& cb) {
-        _token_db.read_domain(domain, [&](const auto& domain) {
-            if(name == N(issue)) {
-                cb(domain.issue);
-            }
-            else if(name == N(transfer)) {
-                cb(domain.transfer);
-            }
-            else if(name == N(manage)) {
-                cb(domain.manage);
-            }
-        });
+    get_permission(const domain_name& domain_name, const permission_name name, std::function<void(const permission_def&)>&& cb) {
+        domain_def domain;
+        _token_db.read_domain(domain_name, domain);
+        if(name == N(issue)) {
+            cb(domain.issue);
+        }
+        else if(name == N(transfer)) {
+            cb(domain.transfer);
+        }
+        else if(name == N(manage)) {
+            cb(domain.manage);
+        }
     }
 
     void
     get_group(const group_name& name, std::function<void(const group_def&)>&& cb) {
-        _token_db.read_group(name, cb);
+        group_def group;
+        _token_db.read_group(name, group);
+        cb(group);
     }
 
     void
     get_owner(const domain_name& domain, const name128& name, std::function<void(const user_list&)>&& cb) {
         if(domain == N128(account)) {
-            _token_db.read_account(name, [&](const auto& account) { cb(account.owner); });
+            account_def account;
+            _token_db.read_account(name, account);
+            cb(account.owner);
         }
         else {
-            _token_db.read_token(domain, name, [&](const auto& token) { cb(token.owner); });
+            token_def token;
+            _token_db.read_token(domain, name, token);
+            cb(token.owner);
         }
     }
 

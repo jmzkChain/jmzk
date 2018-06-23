@@ -43,6 +43,7 @@ evt_contract_abi() {
     evt_abi.actions.push_back( action_def{name("newdomain"), "newdomain"} );
     evt_abi.actions.push_back( action_def{name("issuetoken"), "issuetoken"} );
     evt_abi.actions.push_back( action_def{name("transfer"), "transfer"} );
+    evt_abi.actions.push_back( action_def{name("destroytoken"), "destroytoken"} );
     evt_abi.actions.push_back( action_def{name("newgroup"), "newgroup"} );
     evt_abi.actions.push_back( action_def{name("updategroup"), "updategroup"} );
     evt_abi.actions.push_back( action_def{name("updatedomain"), "updatedomain"} );
@@ -149,6 +150,13 @@ evt_contract_abi() {
             {"domain", "domain_name"},
             {"name", "token_name"},
             {"to", "user_list"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "destroytoken", "", {
+            {"domain", "domain_name"},
+            {"name", "token_name"}
         }
     });
 

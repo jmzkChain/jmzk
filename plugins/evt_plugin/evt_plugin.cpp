@@ -62,33 +62,30 @@ namespace evt_apis {
 fc::variant
 read_only::get_domain(const read_only::get_domain_params& params) {
     const auto& db = db_.token_db();
-    variant     var;
-    auto        r = db.read_domain(params.name, [&](const auto& d) {
-        fc::to_variant(d, var);
-    });
-    FC_ASSERT(r == 0, "Cannot find domain: ${name}", ("name", params.name));
+    variant    var;
+    domain_def domain;
+    db.read_domain(params.name, domain);
+    fc::to_variant(domain, var);
     return var;
 }
 
 fc::variant
 read_only::get_group(const read_only::get_group_params& params) {
     const auto& db = db_.token_db();
-    variant     var;
-    auto        r = db.read_group(params.name, [&](const auto& g) {
-        fc::to_variant(g, var);
-    });
-    FC_ASSERT(r == 0, "Cannot find group: ${name}", ("name", params.name));
+    variant   var;
+    group_def group;
+    db.read_group(params.name, group);
+    fc::to_variant(group, var);
     return var;
 }
 
 fc::variant
 read_only::get_token(const read_only::get_token_params& params) {
     const auto& db = db_.token_db();
-    variant     var;
-    auto        r = db.read_token(params.domain, params.name, [&](const auto& t) {
-        fc::to_variant(t, var);
-    });
-    FC_ASSERT(r == 0, "Cannot find token: ${domain}-${name}", ("domain", params.domain)("name", params.name));
+    variant   var;
+    token_def token;
+    db.read_token(params.domain, params.name, token);
+    fc::to_variant(token, var);
     return var;
 }
 
@@ -96,10 +93,9 @@ fc::variant
 read_only::get_account(const get_account_params& params) {
     const auto& db = db_.token_db();
     variant     var;
-    auto        r = db.read_account(params.name, [&](const auto& a) {
-        fc::to_variant(a, var);
-    });
-    FC_ASSERT(r == 0, "Cannot find account: ${name}", ("name", params.name));
+    account_def account;
+    db.read_account(params.name, account);
+    fc::to_variant(account, var);
     return var;
 }
 
