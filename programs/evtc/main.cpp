@@ -467,7 +467,7 @@ struct set_domain_subcommands {
             nd.transfer = (transfer == "default") ? get_default_permission("transfer", public_key_type()) : parse_permission(transfer);
             nd.manage   = (manage == "default") ? get_default_permission("manage", nd.issuer) : parse_permission(manage);
 
-            auto act = create_action("domain", (domain_key)nd.name, nd);
+            auto act = create_action((domain_name)nd.name, N128(.create), nd);
             send_actions({act});
         });
 
@@ -492,7 +492,7 @@ struct set_domain_subcommands {
                 ud.manage = parse_permission(manage);
             }
 
-            auto act = create_action("domain", (domain_key)ud.name, ud);
+            auto act = create_action((domain_name)ud.name, N128(.update), ud);
             send_actions({act});
         });
     }
@@ -517,7 +517,7 @@ struct set_issue_token_subcommand {
             std::transform(names.cbegin(), names.cend(), std::back_inserter(it.names), [](auto& str) { return name128(str); });
             std::transform(owner.cbegin(), owner.cend(), std::back_inserter(it.owner), [](auto& str) { return public_key_type(str); });
 
-            auto act = create_action(it.domain, N128(issue), it);
+            auto act = create_action(it.domain, N128(.issue), it);
             send_actions({act});
         });
     }
@@ -672,7 +672,7 @@ struct set_meta_subcommands {
         };
 
         auto dmcmd = actionRoot->add_subcommand("domain", localized("Add metadata to one domain"));
-        dmcmd->add_option("name", key, localized("Name of domain adding to"))->required();
+        dmcmd->add_option("name", domain, localized("Name of domain adding to"))->required();
         addcmds(dmcmd);
         dmcmd->set_callback([this] {
             addmeta am;
@@ -680,7 +680,7 @@ struct set_meta_subcommands {
             am.value = metavalue;
             am.creator = (public_key_type)creator;
 
-            auto act = create_action(N128(domain), (domain_key)key, am);
+            auto act = create_action((domain_name)key, N128(.meta), am);
             send_actions({act});
         });
 

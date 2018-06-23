@@ -48,9 +48,7 @@ private:
 
 public:
     mongo_db_plugin_impl()
-        : evt_api(contracts::evt_contract_abi())
-        , chain_id(app().get_plugin<chain_plugin>().chain().get_chain_id())
-        , mongo_inst{}
+        : mongo_inst{}
         , mongo_conn{}
     { }
 
@@ -73,8 +71,8 @@ public:
     void wipe_database();
 
 public:
-    abi_serializer evt_api;
-    chain_id_type  chain_id;
+    abi_serializer              evt_abi;
+    fc::optional<chain_id_type> chain_id;
 
     bool configured{false};
     bool wipe_database_on_startup{false};
@@ -272,10 +270,10 @@ find_block(mongocxx::collection& blocks, const string& id) {
 void
 add_data(bsoncxx::builder::basic::document& msg_doc,
          const chain::action&               msg,
-         const abi_serializer&              evt_api) {
+         const abi_serializer&              evt_abi) {
     using bsoncxx::builder::basic::kvp;
     try {
-        auto& abis = evt_api;
+        auto& abis = evt_abi;
         auto v     = abis.binary_to_variant(abis.get_action_type(msg.name), msg.data);
         auto json  = fc::json::to_string(v);
         try {
@@ -440,7 +438,7 @@ mongo_db_plugin_impl::_process_block(const signed_block& block) {
         msg_doc.append(kvp("name", msg.name.to_string()));
         msg_doc.append(kvp("domain", msg.domain.to_string()));
         msg_doc.append(kvp("key", msg.key.to_string()));
-        add_data(msg_doc, msg, evt_api);
+        add_data(msg_doc, msg, evt_abi);
         msg_doc.append(kvp("created_at", b_date{now}));
         mongocxx::model::insert_one insert_msg{msg_doc.view()};
         bulk_acts.append(insert_msg);
@@ -489,7 +487,7 @@ mongo_db_plugin_impl::_process_block(const signed_block& block) {
             }
         }));
 
-        auto keys = trx.get_signature_keys(chain_id);
+        auto keys = trx.get_signature_keys(*chain_id);
         doc.append(kvp("keys", [&keys](bsoncxx::builder::basic::sub_array subarr) {
             for(const auto& key : keys) {
                 subarr.append((std::string)key);
@@ -758,6 +756,9 @@ mongo_db_plugin::plugin_initialize(const variables_map& options) {
 
         my_->mongo_conn = mongocxx::client{uri};
         my_->mongo_db   = my_->mongo_conn[dbname];
+
+        my_->evt_abi  = evt_contract_abi();
+        my_->chain_id = app().get_plugin<chain_plugin>().chain().get_chain_id();
 
         if(my_->wipe_database_on_startup) {
             my_->wipe_database();

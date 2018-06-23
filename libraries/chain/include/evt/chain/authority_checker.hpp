@@ -69,15 +69,15 @@ public:
 
 private:
     void
-    get_permission(const domain_name& domain, const action_name name, std::function<void(const permission_def&)>&& cb) {
+    get_permission(const domain_name& domain, const permission_name name, std::function<void(const permission_def&)>&& cb) {
         _token_db.read_domain(domain, [&](const auto& domain) {
-            if(name == N(issuetoken)) {
+            if(name == N(issue)) {
                 cb(domain.issue);
             }
             else if(name == N(transfer)) {
                 cb(domain.transfer);
             }
-            else if(name == N(updatedomain)) {
+            else if(name == N(manage)) {
                 cb(domain.manage);
             }
         });
@@ -99,34 +99,6 @@ private:
     }
 
 private:
-    bool
-    satisfied_domain(const action& action) {
-        if(action.name == N(newdomain)) {
-            try {
-                auto nd     = action.data_as<contracts::newdomain>();
-                auto vistor = weight_tally_visitor(*this);
-                if(vistor(nd.issuer, 1) == 1) {
-                    return true;
-                }
-            }
-            EVT_RETHROW_EXCEPTIONS(chain_type_exception, "transaction data is not valid, data cannot cast to `newdomain` type.");
-        }
-        else if(action.name == N(updatedomain)) {
-            return satisfied_permission(action, action.key);
-        }
-        else if(action.name == N(addmeta)) {
-            try {
-                auto am     = action.data_as<contracts::addmeta>();
-                auto vistor = weight_tally_visitor(*this);
-                if(vistor(am.creator, 1) == 1) {
-                    return true;
-                }
-            }
-            EVT_RETHROW_EXCEPTIONS(chain_type_exception, "transaction data is not valid, data cannot cast to `addmeta` type.");
-        }
-        return false;
-    }
-
     bool
     satisfied_group(const action& action) {
         if(action.name == N(newgroup)) {
@@ -238,9 +210,9 @@ private:
     }
 
     bool
-    satisfied_permission(const action& action, const domain_name& domain) {
+    satisfied_permission(const action& action, const permission_name& name) {
         bool result = false;
-        get_permission(domain, action.name, [&](const auto& permission) {
+        get_permission(action.domain, name, [&](const auto& permission) {
             uint32_t total_weight = 0;
             for(const auto& aw : permission.authorizers) {
                 auto& ref        = aw.ref;
@@ -256,7 +228,7 @@ private:
                     break;
                 }
                 case authorizer_ref::owner_t: {
-                    get_owner(domain, action.key, [&](const auto& owner) {
+                    get_owner(action.domain, action.key, [&](const auto& owner) {
                         auto vistor = weight_tally_visitor(*this);
                         for(const auto& o : owner) {
                             vistor(o, 1);
@@ -292,7 +264,19 @@ private:
 
     bool
     satisfied_token(const action& action) {
-        if(action.name == N(addmeta)) {
+        switch(action.name.value) {
+        case N(newdomain): {
+            try {
+                auto nd     = action.data_as<contracts::newdomain>();
+                auto vistor = weight_tally_visitor(*this);
+                if(vistor(nd.issuer, 1) == 1) {
+                    return true;
+                }
+            }
+            EVT_RETHROW_EXCEPTIONS(chain_type_exception, "transaction data is not valid, data cannot cast to `newdomain` type.");
+            break;
+        }
+        case N(addmeta): {
             try {
                 auto am     = action.data_as<contracts::addmeta>();
                 auto vistor = weight_tally_visitor(*this);
@@ -301,9 +285,22 @@ private:
                 }
             }
             EVT_RETHROW_EXCEPTIONS(chain_type_exception, "transaction data is not valid, data cannot cast to `addmeta` type.");
-            return false;
+            break;
         }
-        return satisfied_permission(action, action.domain);
+        case N(updatedomain): {
+            return satisfied_permission(action, N(manage));
+        }
+        case N(issuetoken): {
+            return satisfied_permission(action, N(issue));
+        }
+        case N(transfer): {
+            return satisfied_permission(action, N(transfer));
+        }
+        default: {
+            FC_ASSERT(false, "Unknown action name: ${type}", ("type",action.name));
+        }
+        }  // switch
+        return false;
     }
 
 public:
@@ -315,10 +312,7 @@ public:
         });
         bool result      = false;
 
-        if(action.domain == N128(domain)) {
-            result = satisfied_domain(action);
-        }
-        else if(action.domain == N128(group)) {
+        if(action.domain == N128(group)) {
             result = satisfied_group(action);
         }
         else if(action.domain == N128(account)) {

@@ -175,7 +175,7 @@ public:
        *
        * @param key_type the key type to create. May be empty to allow wallet to pick appropriate/"best" key type
        */
-    string create_key(string key_type);
+    string create_key(string key_type) override;
 
     /* Attempts to sign a digest via the given public_key
       */
