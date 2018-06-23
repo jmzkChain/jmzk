@@ -216,6 +216,16 @@ struct transfer {
     }
 };
 
+struct destroytoken {
+    domain_name             domain;
+    token_name              name;
+
+    static action_name
+    get_name() {
+        return N(destroytoken);
+    }
+};
+
 struct newgroup {
     group_name name;
     group_def  group;
@@ -330,45 +340,6 @@ struct executedelay {
     }
 };
 
-struct db_updatedomain {
-    domain_name name;
-
-    fc::optional<permission_def> issue;
-    fc::optional<permission_def> transfer;
-    fc::optional<permission_def> manage;
-    fc::optional<meta_list>      metas;
-};
-
-struct db_updategroup {
-    group_name name;
-
-    fc::optional<group_def> group;
-    fc::optional<meta_list> metas;
-};
-
-struct db_updatetoken {
-    domain_name domain;
-    token_name  name;
-
-    fc::optional<user_list> owner;
-    fc::optional<meta_list> metas;
-};
-
-struct db_updateaccount {
-    account_name name;
-
-    fc::optional<user_list>    owner;
-    fc::optional<balance_type> balance;
-    fc::optional<balance_type> frozen_balance;
-};
-
-struct db_updatedelay {
-    proposal_name name;
-
-    fc::optional<std::vector<public_key_type>> signed_keys;
-    fc::optional<delay_status>                 status;
-};
-
 }}}  // namespace evt::chain::contracts
 
 FC_REFLECT(evt::chain::contracts::type_def, (new_type_name)(type))
@@ -388,6 +359,7 @@ FC_REFLECT(evt::chain::contracts::delay_def, (name)(proposer)(status)(trx)(signe
 FC_REFLECT(evt::chain::contracts::newdomain, (name)(issuer)(issue)(transfer)(manage))
 FC_REFLECT(evt::chain::contracts::issuetoken, (domain)(names)(owner))
 FC_REFLECT(evt::chain::contracts::transfer, (domain)(name)(to))
+FC_REFLECT(evt::chain::contracts::destroytoken, (domain)(name))
 FC_REFLECT(evt::chain::contracts::newgroup, (name)(group))
 FC_REFLECT(evt::chain::contracts::updategroup, (name)(group))
 FC_REFLECT(evt::chain::contracts::updatedomain, (name)(issue)(transfer)(manage))
@@ -399,9 +371,3 @@ FC_REFLECT(evt::chain::contracts::newdelay, (name)(proposer)(trx))
 FC_REFLECT(evt::chain::contracts::canceldelay, (name))
 FC_REFLECT(evt::chain::contracts::approvedelay, (name)(signatures))
 FC_REFLECT(evt::chain::contracts::executedelay, (name))
-
-FC_REFLECT(evt::chain::contracts::db_updategroup, (name)(group)(metas))
-FC_REFLECT(evt::chain::contracts::db_updatedomain, (name)(issue)(transfer)(manage)(metas))
-FC_REFLECT(evt::chain::contracts::db_updatetoken, (domain)(name)(owner)(metas))
-FC_REFLECT(evt::chain::contracts::db_updateaccount, (name)(owner)(balance)(frozen_balance))
-FC_REFLECT(evt::chain::contracts::db_updatedelay, (name)(signed_keys)(status))

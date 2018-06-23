@@ -3,7 +3,7 @@ cmake_minimum_required( VERSION 3.5 )
 # Defines everiToken library target.
 project( EVT )
 
-option(ENABLE_MONGO_DB_PLUGIN   "Build the mongodb plugin" OFF)
+option(ENABLE_MONGODB_SUPPORT   "Build with mongodb support, this enables both mongo_db_plugin and history_plugin" OFF)
 option(ENABLE_BIND_LIBRARIES    "Build bind libraries" OFF)
 option(ENABLE_BENCHMARKS        "Build benchmarks" OFF)
 option(ENABLE_COVERAGE_TESTING  "Build EVT for code coverage analysis" OFF)
