@@ -236,6 +236,24 @@ class Test(unittest.TestCase):
         ''' % (token_name, domain_name)).json()
         self.assertTrue(resp['owner'][0] == pub2.to_string())
 
+    def test_action_addmeta(self):
+        pub_key, priv_key = ecc.generate_new_pair()
+        # create a new domain
+        domain_name = fake_name()
+        newdomain = AG.new_action(
+            'newdomain', name=domain_name, issuer=pub_key)
+        trx = transaction.Transaction()
+        trx.add_action(newdomain)
+        trx.add_sign(priv_key)
+        api.push_transaction(trx.dumps())
+
+        # add meta to this domain
+        addmeta = AG.new_action(key="meta_key_test", value="meta_value_test", creator=pub_key, domain="domain", key=domain_name)
+        trx = transaction.Transaction()
+        trx.add_action(addmeta)
+        trx.add_sign(priv_key)
+        api.push_transaction(trx.dumps())
+
 
 if __name__ == '__main__':
     unittest.main()
