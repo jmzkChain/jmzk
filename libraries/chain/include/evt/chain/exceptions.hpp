@@ -110,18 +110,12 @@ FC_DECLARE_DERIVED_EXCEPTION( page_memory_error,                 transaction_exc
 FC_DECLARE_DERIVED_EXCEPTION( unsatisfied_permission,            transaction_exception, 3030017, "Unsatisfied permission" );
 FC_DECLARE_DERIVED_EXCEPTION( tx_msgs_auth_exceeded,             transaction_exception, 3030018, "Number of transaction messages per authorized account has been exceeded" );
 FC_DECLARE_DERIVED_EXCEPTION( tx_msgs_code_exceeded,             transaction_exception, 3030019, "Number of transaction messages per code account has been exceeded" );
-FC_DECLARE_DERIVED_EXCEPTION( wasm_execution_error,              transaction_exception, 3030020, "Runtime Error Processing WASM" );
 FC_DECLARE_DERIVED_EXCEPTION( tx_decompression_error,            transaction_exception, 3030021, "Error decompressing transaction" );
 FC_DECLARE_DERIVED_EXCEPTION( expired_tx_exception,              transaction_exception, 3030022, "Expired Transaction" );
 FC_DECLARE_DERIVED_EXCEPTION( tx_exp_too_far_exception,          transaction_exception, 3030023, "Transaction Expiration Too Far" );
 FC_DECLARE_DERIVED_EXCEPTION( invalid_ref_block_exception,       transaction_exception, 3030024, "Invalid Reference Block" );
 FC_DECLARE_DERIVED_EXCEPTION( tx_apply_exception,                transaction_exception, 3030025, "Transaction Apply Exception" );
-FC_DECLARE_DERIVED_EXCEPTION( wasm_serialization_error,          transaction_exception, 3030026, "Serialization Error Processing WASM" );
-FC_DECLARE_DERIVED_EXCEPTION( tx_empty_region,                   transaction_exception, 3030027, "Transaction contains an empty region" );
-FC_DECLARE_DERIVED_EXCEPTION( tx_empty_cycle,                    transaction_exception, 3030028, "Transaction contains an empty cycle" );
-FC_DECLARE_DERIVED_EXCEPTION( tx_empty_shard,                    transaction_exception, 3030029, "Transaction contains an empty shard" );
 FC_DECLARE_DERIVED_EXCEPTION( tx_receipt_inconsistent_status,    transaction_exception, 3030030, "Transaction receipt applied status does not match received status" );
-FC_DECLARE_DERIVED_EXCEPTION( cfa_irrelevant_auth,               transaction_exception, 3030031, "context-free action should have no required authority" );
 FC_DECLARE_DERIVED_EXCEPTION( tx_no_action,                      transaction_exception, 3030032, "transaction should have at least one normal action" );
 FC_DECLARE_DERIVED_EXCEPTION( tx_no_auths,                       transaction_exception, 3030033, "transaction should have at least one required authority" );
 FC_DECLARE_DERIVED_EXCEPTION( tx_receipt_inconsistent_cpu,       transaction_exception, 3030034, "Transaction receipt applied kcpu_usage does not match received kcpu_usage" );

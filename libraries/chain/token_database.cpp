@@ -90,162 +90,6 @@ read_value(const V& value) {
     return v;
 }
 
-template <typename V>
-std::string
-update_group(const V& value, const V& update) {
-    auto v  = read_value<group_def>(value);
-    auto ug = read_value<db_updategroup>(update);
-    if(ug.group.valid()) {
-        v.key_   = ug.group->key_;
-        v.nodes_ = std::move(ug.group->nodes_);
-        v.keys_  = std::move(ug.group->keys_);
-    }
-    if(ug.metas.valid()) {
-        v.metas_.reserve(v.metas_.size() + ug.metas->size());
-        v.metas_.insert(v.metas_.end(), ug.metas->cbegin(), ug.metas->cend());
-    }
-    return get_value(v);
-}
-
-template <typename V>
-std::string
-update_domain(const V& value, const V& update) {
-    auto v  = read_value<domain_def>(value);
-    auto ud = read_value<db_updatedomain>(update);
-    if(ud.issue.valid()) {
-        v.issue = std::move(*ud.issue);
-    }
-    if(ud.transfer.valid()) {
-        v.transfer = std::move(*ud.transfer);
-    }
-    if(ud.manage.valid()) {
-        v.manage = std::move(*ud.manage);
-    }
-    if(ud.metas.valid()) {
-        v.metas.reserve(v.metas.size() + ud.metas->size());
-        v.metas.insert(v.metas.end(), ud.metas->cbegin(), ud.metas->cend());
-    }
-    return get_value(v);    
-}
-
-template <typename V>
-std::string
-update_token(const V& value, const V& update) {
-    auto v  = read_value<token_def>(value);
-    auto ut = read_value<db_updatetoken>(update);
-    if(ut.owner.valid()) {
-        v.owner = std::move(*ut.owner);
-    }
-    if(ut.metas.valid()) {
-        v.metas.reserve(v.metas.size() + ut.metas->size());
-        v.metas.insert(v.metas.end(), ut.metas->cbegin(), ut.metas->cend());
-    }
-    return get_value(v);
-}
-
-template <typename V>
-std::string
-update_account(const V& value, const V& update) {
-    auto v  = read_value<account_def>(value);
-    auto ua = read_value<db_updateaccount>(update);
-    if(ua.owner.valid()) {
-        v.owner = std::move(*ua.owner);
-    }
-    if(ua.balance.valid()) {
-        v.balance = *ua.balance;
-    }
-    if(ua.frozen_balance.valid()) {
-        v.frozen_balance = *ua.frozen_balance;
-    }
-    return get_value(v);
-}
-
-template <typename V>
-std::string
-update_delay(const V& value, const V& update) {
-    auto v  = read_value<delay_def>(value);
-    auto ud = read_value<db_updatedelay>(update);
-    if(ud.signed_keys.valid()) {
-        v.signed_keys.reserve(v.signed_keys.size() + ud.signed_keys->size());
-        v.signed_keys.insert(v.signed_keys.end(), ud.signed_keys->cbegin(), ud.signed_keys->cend());
-    }
-    if(ud.status.valid()) {
-        v.status = *ud.status;
-    }
-    return get_value(v);
-}
-
-class TokendbMerge : public rocksdb::MergeOperator {
-public:
-    virtual bool
-    FullMergeV2(const MergeOperationInput& merge_in, MergeOperationOutput* merge_out) const override {
-        if(merge_in.existing_value == nullptr) {
-            return false;
-        }
-        static domain_name    GroupPrefixName("group");
-        static rocksdb::Slice GroupPrefixSlice((const char*)&GroupPrefixName, sizeof(GroupPrefixName));
-        static domain_name    DomainPrefixName("domain");
-        static rocksdb::Slice DomainPrefixSlice((const char*)&DomainPrefixName, sizeof(DomainPrefixName));
-        static account_name   AccountPrefixName("account");
-        static rocksdb::Slice AccountPrefixSlice((const char*)&AccountPrefixName, sizeof(AccountPrefixName));
-        static proposal_name  DelayPrefixName("delay");
-        static rocksdb::Slice DelayPrefixSlice((const char*)&DelayPrefixName, sizeof(DelayPrefixName));
-
-        // in current usage, merge operand cannot large than one
-        // because we always use RocksDB in this order: Put -> Get -> Merge -> Get -> Merge -> Get...
-        if(merge_in.operand_list.size() > 1) {
-            return false;
-        }
-        const auto& update = merge_in.operand_list[0];
-        const auto& value  = *merge_in.existing_value;
-
-        try {
-            // merge only need to consider latest one
-            if(merge_in.key.starts_with(GroupPrefixSlice)) {
-                // group
-                merge_out->new_value = update_group(value, update);
-            }
-            else if(merge_in.key.starts_with(DomainPrefixSlice)) {
-                // domain
-                merge_out->new_value = update_domain(value, update);
-            }
-            else if(merge_in.key.starts_with(AccountPrefixSlice)) {
-                // account
-                merge_out->new_value = update_account(value, update);
-            }
-            else if(merge_in.key.starts_with(DelayPrefixSlice)) {
-                // delay
-                merge_out->new_value = update_delay(value, update);
-            }
-            else {
-                // token
-                merge_out->new_value = update_token(value, update);
-            }
-        }
-        catch(...) {
-            return false;
-        }
-        return true;
-    }
-
-    virtual bool
-    PartialMerge(const rocksdb::Slice& key, const rocksdb::Slice& left_operand, const rocksdb::Slice& right_operand,
-                 std::string* new_value, rocksdb::Logger* logger) const override {
-        // in current usage, there's no opportunity to have use this operation.
-        return false;
-    }
-
-    virtual const char*
-    Name() const override {
-        return "Tokendb";
-    }
-
-    virtual bool
-    AllowSingleOperand() const override {
-        return true;
-    }
-};
-
 enum dbaction_type {
     none = 0,
     kNewDomain,
@@ -329,7 +173,6 @@ token_database::initialize(const fc::path& dbpath) {
     options.bottommost_compression = CompressionType::kZSTD;
     options.table_factory.reset(NewPlainTableFactory());
     options.prefix_extractor.reset(NewFixedPrefixTransform(sizeof(uint128_t)));
-    options.merge_operator.reset(new TokendbMerge());
 
     if(!fc::exists(dbpath)) {
         fc::create_directories(dbpath);
@@ -496,7 +339,7 @@ token_database::exists_delay(const proposal_name& name) const {
 }
 
 int
-token_database::read_domain(const domain_name& name, const read_domain_func& func) const {
+token_database::read_domain(const domain_name& name, domain_def& domain) const {
     using namespace __internal;
     std::string value;
     auto        key    = get_domain_key(name);
@@ -504,13 +347,12 @@ token_database::read_domain(const domain_name& name, const read_domain_func& fun
     if(!status.ok()) {
         EVT_THROW(tokendb_domain_not_found, "Cannot find domain: ${name}", ("name", (std::string)name));
     }
-    auto v = read_value<domain_def>(value);
-    func(v);
+    domain = read_value<domain_def>(value);
     return 0;
 }
 
 int
-token_database::read_token(const domain_name& domain, const token_name& name, const read_token_func& func) const {
+token_database::read_token(const domain_name& domain, const token_name& name, token_def& token) const {
     using namespace __internal;
     std::string value;
     auto        key    = get_token_key(domain, name);
@@ -519,13 +361,12 @@ token_database::read_token(const domain_name& domain, const token_name& name, co
         EVT_THROW(tokendb_token_not_found, "Cannot find token: ${domain}-${name}",
                   ("domain", (std::string)domain)("name", (std::string)name));
     }
-    auto v = read_value<token_def>(value);
-    func(v);
+    token = read_value<token_def>(value);
     return 0;
 }
 
 int
-token_database::read_group(const group_name& id, const read_group_func& func) const {
+token_database::read_group(const group_name& id, group_def& group) const {
     using namespace __internal;
     std::string value;
     auto        key    = get_group_key(id);
@@ -533,13 +374,12 @@ token_database::read_group(const group_name& id, const read_group_func& func) co
     if(!status.ok()) {
         EVT_THROW(tokendb_group_not_found, "Cannot find group: ${id}", ("id", id));
     }
-    auto v = read_value<group_def>(value);
-    func(v);
+    group = read_value<group_def>(value);
     return 0;
 }
 
 int
-token_database::read_account(const account_name& name, const read_account_func& func) const {
+token_database::read_account(const account_name& name, account_def& account) const {
     using namespace __internal;
     std::string value;
     auto        key    = get_account_key(name);
@@ -547,13 +387,12 @@ token_database::read_account(const account_name& name, const read_account_func& 
     if(!status.ok()) {
         EVT_THROW(tokendb_account_not_found, "Cannot find account: ${name}", ("name", (std::string)name));
     }
-    auto v = read_value<account_def>(value);
-    func(v);
+    account = read_value<account_def>(value);
     return 0;
 }
 
 int
-token_database::read_delay(const proposal_name& name, const read_delay_func& func) const {
+token_database::read_delay(const proposal_name& name, delay_def& delay) const {
     using namespace __internal;
     std::string value;
     auto        key    = get_delay_key(name);
@@ -561,92 +400,91 @@ token_database::read_delay(const proposal_name& name, const read_delay_func& fun
     if(!status.ok()) {
         EVT_THROW(tokendb_delay_not_found, "Cannot find delay: ${name}", ("name", (std::string)name));
     }
-    auto v = read_value<delay_def>(value);
-    func(v);
+    delay = read_value<delay_def>(value);
     return 0;
 }
 
 int
-token_database::update_domain(const db_updatedomain& ud) {
+token_database::update_domain(const domain_def& domain) {
     using namespace __internal;
-    auto key    = get_domain_key(ud.name);
-    auto value  = get_value(ud);
-    auto status = db_->Merge(write_opts_, key.as_slice(), value);
+    auto key    = get_domain_key(domain.name);
+    auto value  = get_value(domain);
+    auto status = db_->Put(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
         EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
     if(should_record()) {
         auto act  = (sp_updatedomain*)malloc(sizeof(sp_updatedomain));
-        act->name = ud.name;
+        act->name = domain.name;
         record(kUpdateDomain, act);
     }
     return 0;
 }
 
 int
-token_database::update_group(const db_updategroup& ug) {
+token_database::update_group(const group& group) {
     using namespace __internal;
-    auto key    = get_group_key(ug.name);
-    auto value  = get_value(ug);
-    auto status = db_->Merge(write_opts_, key.as_slice(), value);
+    auto key    = get_group_key(group.name());
+    auto value  = get_value(group);
+    auto status = db_->Put(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
         EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
     if(should_record()) {
         auto act  = (sp_updategroup*)malloc(sizeof(sp_updategroup));
-        act->name = ug.name;
+        act->name = group.name();
         record(kUpdateGroup, act);
     }
     return 0;
 }
 
 int
-token_database::update_token(const db_updatetoken& ut) {
+token_database::update_token(const token_def& token) {
     using namespace __internal;
-    auto key    = get_token_key(ut.domain, ut.name);
-    auto value  = get_value(ut);
-    auto status = db_->Merge(write_opts_, key.as_slice(), value);
+    auto key    = get_token_key(token.domain, token.name);
+    auto value  = get_value(token);
+    auto status = db_->Put(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
         EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
     if(should_record()) {
         auto act    = (sp_updatetoken*)malloc(sizeof(sp_updatetoken));
-        act->domain = ut.domain;
-        act->name   = ut.name;
+        act->domain = token.domain;
+        act->name   = token.name;
         record(kUpdateToken, act);
     }
     return 0;
 }
 
 int
-token_database::update_account(const db_updateaccount& ua) {
+token_database::update_account(const account_def& account) {
     using namespace __internal;
-    auto key    = get_account_key(ua.name);
-    auto value  = get_value(ua);
-    auto status = db_->Merge(write_opts_, key.as_slice(), value);
+    auto key    = get_account_key(account.name);
+    auto value  = get_value(account);
+    auto status = db_->Put(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
         EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
     if(should_record()) {
         auto act  = (sp_updateaccount*)malloc(sizeof(sp_updateaccount));
-        act->name = ua.name;
+        act->name = account.name;
         record(kUpdateAccount, act);
     }
     return 0;
 }
 
 int
-token_database::update_delay(const db_updatedelay& ud) {
+token_database::update_delay(const delay_def& delay) {
     using namespace __internal;
-    auto key    = get_delay_key(ud.name);
-    auto value  = get_value(ud);
-    auto status = db_->Merge(write_opts_, key.as_slice(), value);
+    auto key    = get_delay_key(delay.name);
+    auto value  = get_value(delay);
+    auto status = db_->Put(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
         EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
     if(should_record()) {
         auto act  = (sp_updatedelay*)malloc(sizeof(sp_updatedelay));
-        act->name = ud.name;
+        act->name = delay.name;
         record(kUpdateDelay, act);
     }
     return 0;
