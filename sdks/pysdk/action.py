@@ -68,6 +68,12 @@ class TransferAction(Action):
     def __init__(self, domain, key, data):
         super().__init__('transfer', domain, key, data)
 
+class AddMetaAction(Action):
+    # domain: domain, group of name of domain
+    # key: domain name, group name, or token name
+    def __init__(self, domain, key, data):
+        super().__init__('addmeta', domain, key, data)
+
 
 class ActionTypeErrorException(Exception):
     def __init__(self):
@@ -75,7 +81,7 @@ class ActionTypeErrorException(Exception):
         super().__init__(self, err)
 
 
-def get_action_from_abi_json(action, abi_json):
+def get_action_from_abi_json(action, abi_json, domain=None, key=None):
     libevt.init_lib()
     abi_dict = json.loads(abi_json)
     _bin = abi.json_to_bin(action, abi_json).to_hex_string()
@@ -97,6 +103,8 @@ def get_action_from_abi_json(action, abi_json):
         return IssueTokenAction(abi_dict['domain'], _bin)
     elif action == 'transfer':
         return TransferAction(abi_dict['domain'], abi_dict['name'], _bin)
+    elif action == 'addmeta':
+        return AddMetaAction(domain, key, _bin)
     else:
         raise ActionTypeErrorException
 
@@ -163,6 +171,10 @@ class ActionGenerator:
         abi_json = base.TransferAbi(
             domain, name, to=[str(each) for each in to])
         return get_action_from_abi_json('transfer', abi_json.dumps())
+
+    def addmeta(self, key, value, creator, domain, key):
+        abi_json = base.AddMetaAbi(key, value, str(creator))
+        return get_action_from_abi_json('addmeta', abi_json.dumps(), domain, key)
 
     def new_action(self, action, **args):
         func = getattr(self, action)
