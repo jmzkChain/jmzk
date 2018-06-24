@@ -115,16 +115,16 @@ apply_evt_newdomain(apply_context& context) {
         pchecker(ndact.manage, false);
 
         domain_def domain;
-        domain.name = ndact.name;
-        domain.issuer = ndact.issuer;
+        domain.name       = ndact.name;
+        domain.issuer     = ndact.issuer;
         domain.issue_time = context.control.head_block_time();
-        domain.issue = ndact.issue;
-        domain.transfer = ndact.transfer;
-        domain.manage = ndact.manage;
+        domain.issue      = std::move(ndact.issue);
+        domain.transfer   = std::move(ndact.transfer);
+        domain.manage     = std::move(ndact.manage);
         
         tokendb.add_domain(domain);       
     }
-    FC_CAPTURE_AND_RETHROW((ndact)) 
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
 void
@@ -149,7 +149,7 @@ apply_evt_issuetoken(apply_context& context) {
 
         tokendb.issue_tokens(itact);
     }
-    FC_CAPTURE_AND_RETHROW((itact));
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
 namespace __internal {
@@ -185,10 +185,10 @@ apply_evt_transfer(apply_context& context) {
 
         EVT_ASSERT(!check_token_destroy(token), action_validate_exception, "Token is already destroyed");
 
-        token.owner = ttact.to;
+        token.owner = std::move(ttact.to);
         tokendb.update_token(token);
     }
-    FC_CAPTURE_AND_RETHROW((ttact));
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
 void
@@ -206,10 +206,10 @@ apply_evt_destroytoken(apply_context& context) {
 
         EVT_ASSERT(!check_token_destroy(token), action_validate_exception, "Token is already destroyed");
 
-        token.owner  = user_list{ get_reservered_public_key() };
+        token.owner = user_list{ get_reservered_public_key() };
         tokendb.update_token(token);
     }
-    FC_CAPTURE_AND_RETHROW((dtact));
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
 void
@@ -225,9 +225,9 @@ apply_evt_newgroup(apply_context& context) {
         EVT_ASSERT(!tokendb.exists_group(ngact.name), action_validate_exception, "Group ${name} is already existed", ("name",ngact.name));
         EVT_ASSERT(validate(ngact.group), action_validate_exception, "Input group is not valid");
 
-        tokendb.add_group(ngact.group);
+        tokendb.add_group(std::move(ngact.group));
     }
-    FC_CAPTURE_AND_RETHROW((ngact));
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
 void
@@ -243,9 +243,9 @@ apply_evt_updategroup(apply_context& context) {
         EVT_ASSERT(tokendb.exists_group(ugact.name), action_validate_exception, "Group ${name} not existed", ("name",ugact.name));
         EVT_ASSERT(validate(ugact.group), action_validate_exception, "Updated group is not valid");
 
-        tokendb.update_group(ugact.group);
+        tokendb.update_group(std::move(ugact.group));
     }
-    FC_CAPTURE_AND_RETHROW((ugact));
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
 void
@@ -267,14 +267,14 @@ apply_evt_updatedomain(apply_context& context) {
             EVT_ASSERT(udact.issue->threshold > 0 && validate(*udact.issue), action_validate_exception, "Issue permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
             pchecker(*udact.issue, false);
 
-            domain.issue = *udact.issue;
+            domain.issue = std::move(*udact.issue);
         }
         if(udact.transfer.valid()) {
             EVT_ASSERT(udact.transfer->name == "transfer", action_validate_exception, "Name of transfer permission is not valid, provided: ${name}", ("name",udact.transfer->name));
             EVT_ASSERT(udact.transfer->threshold > 0 && validate(*udact.transfer), action_validate_exception, "Transfer permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
             pchecker(*udact.transfer, true);
 
-            domain.transfer = *udact.transfer;
+            domain.transfer = std::move(*udact.transfer);
         }
         if(udact.manage.valid()) {
             // manage permission's threshold can be 0 which means no one can update permission later.
@@ -282,12 +282,12 @@ apply_evt_updatedomain(apply_context& context) {
             EVT_ASSERT(validate(*udact.manage), action_validate_exception, "Manage permission not valid, maybe exist duplicate keys.");
             pchecker(*udact.manage, false);
 
-            domain.manage = *udact.manage;
+            domain.manage = std::move(*udact.manage);
         }
 
         tokendb.update_domain(domain);
     }
-    FC_CAPTURE_AND_RETHROW((udact));
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
 void
@@ -303,16 +303,17 @@ apply_evt_newaccount(apply_context& context) {
         EVT_ASSERT(!tokendb.exists_account(naact.name), action_validate_exception, "Account ${name} already existed", ("name",naact.name));
     
         auto account = account_def();
-        account.name = naact.name;
-        account.creator = config::system_account_name;
-        account.create_time = context.control.head_block_time();
-        account.balance = asset(10000);
+
+        account.name           = naact.name;
+        account.creator        = config::system_account_name;
+        account.create_time    = context.control.head_block_time();
+        account.balance        = asset(10000);
         account.frozen_balance = asset(0);
-        account.owner = naact.owner;
+        account.owner          = std::move(naact.owner);
 
         tokendb.add_account(account);
     }
-    FC_CAPTURE_AND_RETHROW((naact));
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
 void
@@ -329,10 +330,10 @@ apply_evt_updateowner(apply_context& context) {
         account_def account;
         tokendb.read_account(uoact.name, account);
 
-        account.owner = uoact.owner;
+        account.owner = std::move(uoact.owner);
         tokendb.update_account(account);
     }
-    FC_CAPTURE_AND_RETHROW((uoact));
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
 void
@@ -363,7 +364,7 @@ apply_evt_transferevt(apply_context& context) {
         tokendb.update_account(facc);
         tokendb.update_account(tacc);
     }
-    FC_CAPTURE_AND_RETHROW((teact));
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
 namespace __internal {
@@ -511,7 +512,7 @@ apply_evt_addmeta(apply_context& context) {
             tokendb.update_token(token);
         }
     }
-    FC_CAPTURE_AND_RETHROW((context.act));
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
 void
@@ -533,12 +534,12 @@ apply_evt_newdelay(apply_context& context) {
             ndact.trx
         };
         auto& keys = context.trx_context.trx.recover_keys(context.control.get_chain_id());
-        delay.signed_keys.reserve(keys.size());
+        delay.signed_keys.reserve(delay.signed_keys.size() + keys.size());
         delay.signed_keys.insert(delay.signed_keys.end(), keys.cbegin(), keys.cend());
 
         tokendb.add_delay(delay);
     }
-    FC_CAPTURE_AND_RETHROW((ndact));
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
 void
@@ -569,10 +570,11 @@ apply_evt_approvedelay(apply_context& context) {
             EVT_ASSERT(*it == *it2, action_validate_exception, "Signed keys and signatures are not match");
         }
 
+        delay.signed_keys.reserve(delay.signed_keys.size() + signed_keys.size());
         delay.signed_keys.insert(delay.signed_keys.end(), signed_keys.cbegin(), signed_keys.cend());
         tokendb.update_delay(delay);
     }
-    FC_CAPTURE_AND_RETHROW((adact))
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
 void
@@ -592,7 +594,7 @@ apply_evt_canceldelay(apply_context& context) {
         delay.status = delay_status::cancelled;
         tokendb.update_delay(delay);
     }
-    FC_CAPTURE_AND_RETHROW((cdact))
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
 void
