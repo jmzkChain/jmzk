@@ -100,7 +100,7 @@ detect_public_key(const std::string& pkey, bool &reserved) {
 }
 
 void
-print_info(const fc::variant& info, int indent) {
+print_info(const fc::variant& info, int indent = 0) {
     try {
         if(info.is_object()) {
             for(auto& obj : info.get_object()) {
@@ -124,8 +124,16 @@ print_info(const fc::variant& info, int indent) {
             }
         }
         else if(info.is_array()) {
-            for(auto& a : info.get_array()) {
+            auto& arr  = info.get_array();
+            auto  size = arr.size();
+
+            auto i = 1;
+            for(auto& a : arr) {
+                if(indent == 0) {
+                    cerr << "(" << i << " of " << size << ")" << endl;
+                }
                 print_info(a, indent);
+                i++;
             }
         }
         else {
@@ -160,7 +168,7 @@ print_action(const fc::variant& at) {
     std::cout << "    key : " << act["key"].as_string() << std::endl;
     std::cout << "elapsed : " << at["elapsed"].as_string() << " " << "us" << std::endl;
     std::cout << "details : " << std::endl;
-    print_info(args, 0);
+    print_info(args);
 
     if(console.size()) {
         std::stringstream ss(console);
@@ -762,7 +770,7 @@ struct set_get_domain_subcommand {
 
         gdcmd->set_callback([this] {
             auto arg = fc::mutable_variant_object("name", name);
-            print_info(call(get_domain_func, arg), 0);
+            print_info(call(get_domain_func, arg));
         });
     }
 };
@@ -780,7 +788,7 @@ struct set_get_token_subcommand {
             auto arg = fc::mutable_variant_object();
             arg.set("domain", domain);
             arg.set("name", name);
-            print_info(call(get_token_func, arg), 0);
+            print_info(call(get_token_func, arg));
         });
     }
 };
@@ -797,7 +805,7 @@ struct set_get_group_subcommand {
             FC_ASSERT(!name.empty(), "Group name cannot be empty");
 
             auto arg = fc::mutable_variant_object("name", name);
-            print_info(call(get_group_func, arg), 0);
+            print_info(call(get_group_func, arg));
         });
     }
 };
@@ -811,21 +819,29 @@ struct set_get_account_subcommand {
 
         gacmd->set_callback([this] {
             auto arg = fc::mutable_variant_object("name", name);
-            print_info(call(get_account_func, arg), 0);
+            print_info(call(get_account_func, arg));
         });
     }
 };
 
 void
 get_my_resources(const std::string& url) {
-    auto signatures = call(wallet_url, wallet_my_signatures);
-    auto args = fc::mutable_variant_object("signatures", signatures);
-    print_info(call(url, args), 0);
+    auto info = get_info();
+
+    auto signatures = call(wallet_url, wallet_my_signatures, info.chain_id);
+    auto my_args    = fc::mutable_variant_object("signatures", signatures);
+
+    print_info(call(url, my_args))
+    ;
 }
 
 struct set_get_my_subcommands {
+    int skip = -1;
+    int take = -1;
+
     set_get_my_subcommands(CLI::App* actionRoot) {
         auto mycmd = actionRoot->add_subcommand("my", localized("Retrieve domains, tokens and groups created by user"));
+        mycmd->require_subcommand();
 
         auto mydomain = mycmd->add_subcommand("domains", localized("Retrieve my created domains"));
         mydomain->set_callback([] {
@@ -840,8 +856,78 @@ struct set_get_my_subcommands {
         auto mygroup = mycmd->add_subcommand("groups", localized("Retrieve my created groups"));
         mygroup->set_callback([] {
             get_my_resources(get_my_groups);
-        });        
+        });
+
+        auto trxscmd = mycmd->add_subcommand("transactions", localized("Retrieve my transactions"));
+        trxscmd->add_option("--skip,-s", skip, localized("How many records should be skipped"));
+        trxscmd->add_option("--take,-t", take, localized("How many records should be returned"));
+
+        trxscmd->set_callback([this] {
+            auto args = mutable_variant_object();
+            args["keys"] = call(wallet_url, wallet_public_keys);
+            
+            if(skip > 0) {
+                args["skip"] = skip;
+            }
+            if(take > 0) {
+                args["take"] = take;
+            }
+
+            print_info(call(get_transactions, args));
+        });
     }
+};
+
+struct set_get_history_subcommands {
+    string domain;
+    string key;
+    bool   exclude_transfer = false;
+
+    string trx_id;
+    
+    int skip = -1;
+    int take = -1;
+
+    set_get_history_subcommands(CLI::App* actionRoot) {
+        auto hiscmd = actionRoot->add_subcommand("history", localized("Retrieve actions, transactions history"));
+        hiscmd->require_subcommand();
+
+        auto actscmd = hiscmd->add_subcommand("actions", localized("Retrieve actions by domian and key"));
+        actscmd->add_option("domain", domain, localized("Domain of acitons to be retrieved"))->required();
+        actscmd->add_option("key", key, localized("Key of acitons to be retrieved, if not specified, will return all the actions in this domain"));
+        actscmd->add_option("--exclude-transfer,-e", exclude_transfer, localized("Exclude transfer actions, only need to be specified when key is not provided"));
+        actscmd->add_option("--skip,-s", skip, localized("How many records should be skipped"));
+        actscmd->add_option("--take,-t", take, localized("How many records should be returned"));
+
+        actscmd->set_callback([this] {
+            auto args = mutable_variant_object();
+            args["domain"] = domain;
+            if(!key.empty()) {
+                args["key"] = key;
+            }
+            else if(exclude_transfer) {
+                args["exclude_transfer"] = true;
+            }
+
+            if(skip > 0) {
+                args["skip"] = skip;
+            }
+            if(take > 0) {
+                args["take"] = take;
+            }
+
+            print_info(call(get_actions, args));
+        });
+
+        auto trxcmd = hiscmd->add_subcommand("transaction", localized("Retrieve a transaction by its id"));
+        trxcmd->add_option("id", trx_id, localized("Id of transaction to be retrieved"))->required();
+
+        trxcmd->set_callback([this] {
+            auto args = mutable_variant_object("id", trx_id);
+            print_info(call(get_transaction, args));
+        });
+    }
+
 };
 
 CLI::callback_t header_opt_callback = [](CLI::results_t res) {
@@ -931,11 +1017,12 @@ main(int argc, char** argv) {
         std::cout << fc::json::to_pretty_string(call(get_block_func, arg)) << std::endl;
     });
 
-    set_get_domain_subcommand  get_domain(get);
-    set_get_token_subcommand   get_token(get);
-    set_get_group_subcommand   get_group(get);
-    set_get_account_subcommand get_account(get);
-    set_get_my_subcommands     get_my(get);
+    set_get_domain_subcommand   get_domain(get);
+    set_get_token_subcommand    get_token(get);
+    set_get_group_subcommand    get_group(get);
+    set_get_account_subcommand  get_account(get);
+    set_get_my_subcommands      get_my(get);
+    set_get_history_subcommands get_history(get); 
 
     // Net subcommand
     string new_host;

@@ -276,7 +276,7 @@ history_plugin_impl::get_transactions(const vector<public_key_type>& pkeys, cons
     for(auto& pkey : pkeys) {
         keys << (string)pkey;
     }
-    match << "signatures" << open_document << "$in" << keys << close_document;
+    match << "keys" << open_document << "$in" << keys << close_document;
 
     document sort{};
     sort << "_id" << -1;
