@@ -12,6 +12,7 @@
 #include <rocksdb/merge_operator.h>
 #include <rocksdb/slice_transform.h>
 #include <rocksdb/table.h>
+#include <rocksdb/sst_file_manager.h>
 
 namespace evt { namespace chain {
 
@@ -19,19 +20,21 @@ using namespace evt::chain;
 
 namespace __internal {
 
-template <typename T, int N = sizeof(T)>
+template <typename T>
 struct db_key {
     db_key(const char* prefix, const T& t)
         : prefix(prefix)
-        , slice((const char*)this, 16 + N) {
+        , slice((const char*)this, 16 + sizeof(T)) {
         static_assert(sizeof(name128) == 16, "Not valid prefix size");
-        memcpy(data, &t, N);
+        static_assert(sizeof(T) == 16, "Not valid value type");
+
+        memcpy(data, &t, sizeof(T));
     }
 
     db_key(name128 prefix, const T& t)
         : prefix(prefix)
-        , slice((const char*)this, 16 + N) {
-        memcpy(data, &t, N);
+        , slice((const char*)this, 16 + sizeof(T)) {
+        memcpy(data, &t, sizeof(T));
     }
 
     const rocksdb::Slice&
@@ -40,14 +43,31 @@ struct db_key {
     }
 
     name128 prefix;
-    char    data[N];
+    char    data[sizeof(T)];
+
+    rocksdb::Slice slice;
+};
+
+struct db_points_key {
+    db_points_key(const public_key_type& pkey, symbol symbol)
+        : slice((const char*)this, sizeof(buf)) {
+        memcpy(buf, &pkey, sizeof(pkey));
+        memcpy(buf + sizeof(pkey), &symbol, sizeof(symbol));
+    }
+
+    const rocksdb::Slice&
+    as_slice() const {
+        return slice;
+    }
+
+    char buf[sizeof(public_key_type) + sizeof(symbol)];
 
     rocksdb::Slice slice;
 };
 
 db_key<domain_name>
 get_domain_key(const domain_name& name) {
-    return db_key<domain_name>("domain", name);
+    return db_key<domain_name>(N128(domain), name);
 }
 
 db_key<token_name>
@@ -57,17 +77,32 @@ get_token_key(const domain_name& domain, const token_name& name) {
 
 db_key<group_name>
 get_group_key(const group_name& name) {
-    return db_key<group_name>("group", name);
+    return db_key<group_name>(N128(group), name);
 }
 
 db_key<account_name>
 get_account_key(const account_name& account) {
-    return db_key<account_name>("account", account);
+    return db_key<account_name>(N128(account), account);
 }
 
 db_key<proposal_name>
 get_delay_key(const proposal_name& delay) {
-    return db_key<proposal_name>("delay", delay);
+    return db_key<proposal_name>(N128(delay), delay);
+}
+
+db_points_key
+get_points_key(const public_key_type& pkey, const asset& asset) {
+    return db_points_key(pkey, asset.get_symbol());
+}
+
+db_points_key
+get_points_key(const public_key_type& pkey, const symbol symbol) {
+    return db_points_key(pkey, symbol);
+}
+
+rocksdb::Slice
+get_points_prefix_key(const public_key_type& pkey) {
+    return rocksdb::Slice((const char*)&pkey, sizeof(pkey));
 }
 
 template <typename T>
@@ -101,7 +136,8 @@ enum dbaction_type {
     kUpdateToken,
     kUpdateAccount,
     kNewDelay,
-    kUpdateDelay
+    kUpdateDelay,
+    kUpdatePoints
 };
 
 struct sp_newdomain {
@@ -147,6 +183,10 @@ struct sp_updatedelay {
     proposal_name name;
 };
 
+struct sp_updatepoints {
+    char key[sizeof(public_key_type) + sizeof(symbol)];
+};
+
 }  // namespace __internal
 
 token_database::token_database(const fc::path& dbpath)
@@ -156,6 +196,15 @@ token_database::token_database(const fc::path& dbpath)
 
 token_database::~token_database() {
     if(db_ != nullptr) {
+        if(tokens_handle_ != nullptr) {
+            delete tokens_handle_;
+            tokens_handle_ = nullptr;
+        }
+        if(points_handle_ != nullptr) {
+            delete points_handle_;
+            points_handle_ = nullptr;
+        }
+
         delete db_;
         db_ = nullptr;
     }
@@ -166,23 +215,61 @@ token_database::initialize(const fc::path& dbpath) {
     using namespace rocksdb;
     using namespace __internal;
 
+    static std::string PointsColumnFamilyName = "Points";
+
     assert(db_ == nullptr);
     Options options;
+    options.OptimizeUniversalStyleCompaction();
+
+    auto tokens_plain_table_opts = PlainTableOptions();
+    auto points_plain_table_opts = PlainTableOptions();
+    tokens_plain_table_opts.user_key_len = sizeof(name128) + sizeof(name128);
+    points_plain_table_opts.user_key_len = sizeof(public_key_type) + sizeof(symbol);
+
     options.create_if_missing      = true;
     options.compression            = CompressionType::kLZ4Compression;
     options.bottommost_compression = CompressionType::kZSTD;
-    options.table_factory.reset(NewPlainTableFactory());
-    options.prefix_extractor.reset(NewFixedPrefixTransform(sizeof(uint128_t)));
+    options.table_factory.reset(NewPlainTableFactory(tokens_plain_table_opts));
+    options.prefix_extractor.reset(NewFixedPrefixTransform(sizeof(name128)));
+    // options.sst_file_manager.reset(NewSstFileManager(Env::Default()));
 
-    if(!fc::exists(dbpath)) {
-        fc::create_directories(dbpath);
-    }
+    auto points_opts = ColumnFamilyOptions(options);
+    points_opts.table_factory.reset(NewPlainTableFactory(points_plain_table_opts));
+    points_opts.prefix_extractor.reset(NewFixedPrefixTransform(sizeof(public_key_type)));
+
+    read_opts_.prefix_same_as_start = true;
 
     auto native_path = dbpath.to_native_ansi_path();
-    auto status = DB::Open(options, native_path, &db_);
+    if(!fc::exists(dbpath)) {
+        // create new databse and open
+        fc::create_directories(dbpath);
+
+        auto status = DB::Open(options, native_path, &db_);
+        if(!status.ok()) {
+            EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
+        }
+
+        status = db_->CreateColumnFamily(points_opts, PointsColumnFamilyName, &points_handle_);
+        if(!status.ok()) {
+            EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
+        }
+        return 0;
+    }
+
+    auto columns = std::vector<ColumnFamilyDescriptor>();
+    columns.emplace_back(kDefaultColumnFamilyName, options);
+    columns.emplace_back(PointsColumnFamilyName, points_opts);
+
+    auto handles = std::vector<ColumnFamilyHandle*>();
+
+    auto status = DB::Open(options, native_path, columns, &handles, &db_);
     if(!status.ok()) {
         EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
+
+    asset(handles.size() == 2);
+    tokens_handle_ = handles[0];
+    points_handle_ = handles[1];
 
     return 0;
 }
@@ -339,6 +426,49 @@ token_database::exists_delay(const proposal_name& name) const {
 }
 
 int
+token_database::update_points(const public_key_type& address, const asset& asset) {
+    using namespace __internal;
+    auto key = get_points_key(address, asset);
+    auto value = get_value(asset);
+    auto status = db_->Put(write_opts_, points_handle_, key.as_slice(), value);
+    if(!status.ok()) {
+        EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
+    }
+    if(should_record()) {
+        auto act  = (sp_updatepoints*)malloc(sizeof(sp_updatepoints));
+        memcpy(act->key, key.buf, sizeof(key.buf));
+        record(kUpdatePoints, act);
+    }
+    return 0;
+}
+
+int
+token_database::exists_any_points(const public_key_type& address) {
+    using namespace __internal;
+    auto it = db_->NewIterator(read_opts_, points_handle_);
+    auto key = get_points_prefix_key(address);
+    it->Seek(key);
+
+    auto existed = it->Valid();
+    delete it;
+
+    return existed;
+}
+
+int
+token_database::exists_points(const public_key_type& address, const symbol symbol) {
+    using namespace __internal;
+    auto it = db_->NewIterator(read_opts_, points_handle_);
+    auto key = get_points_key(address, symbol);
+    it->Seek(key.as_slice());
+
+    auto existed = it->Valid() && it->key().compare(key.as_slice()) == 0;
+    delete it;
+
+    return existed;
+}
+
+int
 token_database::read_domain(const domain_name& name, domain_def& domain) const {
     using namespace __internal;
     std::string value;
@@ -401,6 +531,39 @@ token_database::read_delay(const proposal_name& name, delay_def& delay) const {
         EVT_THROW(tokendb_delay_not_found, "Cannot find delay: ${name}", ("name", (std::string)name));
     }
     delay = read_value<delay_def>(value);
+    return 0;
+}
+
+int
+token_database::read_points(const public_key_type& address, const symbol symbol, asset& v) {
+    using namespace __internal;
+    auto it = db_->NewIterator(read_opts_, points_handle_);
+    auto key = get_points_key(address, symbol);
+    it->Seek(key.as_slice());
+
+    if(!it->Valid() || it->key().compare(key.as_slice()) != 0) {
+        EVT_THROW(tokendb_delay_not_found, "Cannot find points: ${name} in address: {address}", ("name", symbol)("address", address));
+    }
+    v = read_value<asset>(it->value());
+    delete it;
+    return 0;
+}
+
+int
+token_database::read_all_points(const public_key_type& address, const read_points_func& func) {
+    using namespace __internal;
+    auto it = db_->NewIterator(read_opts_, points_handle_);
+    auto key = get_points_prefix_key(address);
+    it->Seek(key);
+
+    while(it->Valid()) {
+        auto v = read_value<asset>(it->value());
+        if(!func(v)) {
+            break;
+        }
+        it->Next();
+    }
+    delete it;
     return 0;
 }
 
@@ -652,6 +815,22 @@ token_database::rollback_to_latest_savepoint() {
                     break;
                 }
                 batch.Put(key.as_slice(), old_value);
+                break;
+            }
+            case kUpdatePoints: {
+                auto act = (sp_updatepoints*)it->data;
+                auto key = rocksdb::Slice(act->key, sizeof(act->key));
+
+                std::string old_value;
+                auto        status = db_->Get(snapshot_read_opts_, points_handle_, key, &old_value);
+                if(!status.ok()) {
+                    // key may not existed in latest snapshot, remove it
+                    FC_ASSERT(status.code() == rocksdb::Status::kNotFound, "Not expected rocksdb code: ${status}",
+                              ("status", status.getState()));
+                    batch.Delete(points_handle_, key);
+                    break;
+                }
+                batch.Put(points_handle_, key, old_value);
                 break;
             }
             default: {
