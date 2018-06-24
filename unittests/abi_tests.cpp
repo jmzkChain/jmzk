@@ -304,6 +304,35 @@ BOOST_AUTO_TEST_CASE(transfer_test) {
     FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE(destroytoken_test) {
+    try {
+        auto abis = get_evt_abi();
+
+        BOOST_CHECK(true);
+        const char* test_data = R"=====(
+        {
+          "domain": "cookie",
+          "name": "t1"
+        }
+        )=====";
+
+        auto var = fc::json::from_string(test_data);
+        auto destk = var.as<destroytoken>();
+
+        BOOST_TEST("cookie" == destk.domain);
+        BOOST_TEST("t1" == destk.name);
+
+        auto var2 = verify_byte_round_trip_conversion(abis, "destroytoken", var);
+        auto destk2 = var2.as<destroytoken>();
+
+        BOOST_TEST("cookie" == destk2.domain);
+        BOOST_TEST("t1" == destk2.name);
+
+        verify_type_round_trip_conversion<transfer>(abis, "destroytoken", var);
+    }
+    FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_CASE(newgroup_test) {
     try {
         auto abis = get_evt_abi();
