@@ -68,6 +68,12 @@ class TransferAction(Action):
     def __init__(self, domain, key, data):
         super().__init__('transfer', domain, key, data)
 
+class AddMetaAction(Action):
+    # domain: domain, group of name of domain
+    # key: domain name, group name, or token name
+    def __init__(self, domain, key, data):
+        super().__init__('addmeta', domain, key, data)
+
 
 class AddMetaAction(Action):
     # domain: domain, group of name of domain
