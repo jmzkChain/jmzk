@@ -62,6 +62,7 @@ def run(mode,enable_mongodb,producer_number,nodes_number,evtd_port_http,evtd_por
                 print("name: "+"evtd_"+str(i))
                 print("nework: "+"evt-net")
                 print("mongodb port: "+str(mongo_db_port+i)+'/tcp:'+str(27017+i))
+                print("mount location: "+file)
                 print("****************************")
 
                 #create files in mongo_db_dir
@@ -117,6 +118,13 @@ def run(mode,enable_mongodb,producer_number,nodes_number,evtd_port_http,evtd_por
 
             #run the image evtd in container
             if(not tmpfs_use):
+                print("********evtd "+str(i)+"**************")
+                print("name: "+"evtd_"+str(i))
+                print("nework: "+"evt-net")
+                print("http port: "+str(evtd_port_http+i)+'/tcp:'+str(8888+i))
+                print("p2p port: "+str(evtd_port_p2p+i)+"/tcp:"+str(9876+i))
+                print("mount location: "+file)
+                print("****************************")
                 container=client.containers.run(image="everitoken/evt:latest",
                 name="evtd_"+str(i),
                 command=command,
