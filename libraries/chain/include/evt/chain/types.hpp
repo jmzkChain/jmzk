@@ -109,6 +109,7 @@ using token_name      = name128;
 using account_name    = name128;
 using group_name      = name128;
 using proposal_name   = name128;
+using fungible_name   = name128;
 using user_id         = public_key_type;
 using meta_key        = name128;
 using meta_value      = string;

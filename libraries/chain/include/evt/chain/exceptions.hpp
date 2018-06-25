@@ -168,10 +168,10 @@ FC_DECLARE_DERIVED_EXCEPTION( tokendb_delay_existed,             tokendb_excepti
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_domain_not_found,          tokendb_exception, 3150006, "Not found specifc domain" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_group_not_found,           tokendb_exception, 3150007, "Not found specific permission group" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_token_not_found,           tokendb_exception, 3150008, "Not found specific token" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_account_not_found,         tokendb_exception, 3150009, "Not found specific account" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_delay_not_found,           tokendb_exception, 3150010, "Not found specific delay" );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_delay_not_found,           tokendb_exception, 3150009, "Not found specific delay" );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_fungible_not_found,        tokendb_exception, 3150010, "Not found specific fungible" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_address_not_found,         tokendb_exception, 3150011, "Not found specific address" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_points_not_found,          tokendb_exception, 3150012, "Not found specific points type in address" );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_asset_not_found,           tokendb_exception, 3150012, "Not found specific asset in address" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_rocksdb_fail,              tokendb_exception, 3150013, "Rocksdb internal error occurred" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_no_savepoint,              tokendb_exception, 3150014, "No savepoints anymore" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_seq_not_valid,             tokendb_exception, 3150015, "Seq for checkpoint is not valid" );

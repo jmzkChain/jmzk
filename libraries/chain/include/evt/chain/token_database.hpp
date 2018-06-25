@@ -17,7 +17,7 @@ class DB;
 namespace evt { namespace chain {
 
 using namespace evt::chain::contracts;
-using read_points_func = std::function<bool(const asset&)>;
+using read_fungible_func = std::function<bool(const asset&)>;
 
 class token_database : boost::noncopyable {
 private:
@@ -70,7 +70,7 @@ public:
         , read_opts_()
         , write_opts_()
         , tokens_handle_(nullptr)
-        , points_handle_(nullptr) {}
+        , assets_handle_(nullptr) {}
     token_database(const fc::path& dbpath);
     ~token_database();
 
@@ -84,29 +84,30 @@ public:
     int exists_token(const domain_name&, const token_name&) const;
     int add_group(const group_def&);
     int exists_group(const group_name&) const;
-    int add_account(const account_def&);
-    int exists_account(const account_name&) const;
     int add_delay(const delay_def&);
     int exists_delay(const proposal_name&) const;
+    int add_fungible(const fungible_def&);
+    int exists_fungible(const symbol) const;
 
-    int update_points(const public_key_type& address, const asset&);
-    int exists_any_points(const public_key_type& address);
-    int exists_points(const public_key_type& address, const symbol);
+    int update_asset(const public_key_type& address, const asset&);
+    int exists_any_asset(const public_key_type& address) const;
+    int exists_asset(const public_key_type& address, const symbol) const;
 
     int read_domain(const domain_name&, domain_def&) const;
     int read_token(const domain_name&, const token_name&, token_def&) const;
     int read_group(const group_name&, group_def&) const;
-    int read_account(const account_name&, account_def&) const;
     int read_delay(const proposal_name&, delay_def&) const;
 
-    int read_points(const public_key_type& address, const symbol, asset&);
-    int read_all_points(const public_key_type& address, const read_points_func&);
+    int read_fungible(const symbol, fungible_def&) const;
+    int read_fungible(const fungible_name& sym_name, fungible_def&) const;
+    int read_asset(const public_key_type& address, const symbol, asset&) const;
+    int read_all_assets(const public_key_type& address, const read_fungible_func&) const;
 
     int update_domain(const domain_def&);
     int update_group(const group_def&);
     int update_token(const token_def&);
-    int update_account(const account_def&);
     int update_delay(const delay_def&);
+    int update_fungible(const fungible_def&);
 
 public:
     int add_savepoint(int32_t seq);
@@ -116,8 +117,7 @@ public:
     session new_savepoint_session(int seq);
 
 private:
-    int
-    should_record() { return !savepoints_.empty(); }
+    int should_record() { return !savepoints_.empty(); }
     int record(int type, void* data);
     int free_savepoint(savepoint&);
 
@@ -127,7 +127,7 @@ private:
     rocksdb::WriteOptions        write_opts_;
 
     rocksdb::ColumnFamilyHandle* tokens_handle_;
-    rocksdb::ColumnFamilyHandle* points_handle_;  
+    rocksdb::ColumnFamilyHandle* assets_handle_;  
 
     std::deque<savepoint>        savepoints_;
 };

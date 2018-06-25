@@ -69,7 +69,7 @@ public:
 
 private:
     void
-    get_permission(const domain_name& domain_name, const permission_name name, std::function<void(const permission_def&)>&& cb) {
+    get_domain_permission(const domain_name& domain_name, const permission_name name, std::function<void(const permission_def&)>&& cb) {
         domain_def domain;
         _token_db.read_domain(domain_name, domain);
         if(name == N(issue)) {
@@ -84,6 +84,18 @@ private:
     }
 
     void
+    get_fungible_permission(const fungible_name& sym_name, const permission_name name, std::function<void(const permission_def&)>&& cb) {
+        fungible_def fungible;
+        _token_db.read_fungible(sym_name, fungible);
+        if(name == N(issue)) {
+            cb(fungible.issue);
+        }
+        else if(name == N(manage)) {
+            cb(fungible.manage);
+        }
+    }
+
+    void
     get_group(const group_name& name, std::function<void(const group_def&)>&& cb) {
         group_def group;
         _token_db.read_group(name, group);
@@ -92,16 +104,9 @@ private:
 
     void
     get_owner(const domain_name& domain, const name128& name, std::function<void(const user_list&)>&& cb) {
-        if(domain == N128(account)) {
-            account_def account;
-            _token_db.read_account(name, account);
-            cb(account.owner);
-        }
-        else {
-            token_def token;
-            _token_db.read_token(domain, name, token);
-            cb(token.owner);
-        }
+        token_def token;
+        _token_db.read_token(domain, name, token);
+        cb(token.owner);
     }
 
 private:
@@ -142,54 +147,6 @@ private:
     }
 
     bool
-    satisfied_account(const action& action) {
-        if(action.name == N(newaccount)) {
-            try {
-                auto na     = action.data_as<contracts::newaccount>();
-                auto vistor = weight_tally_visitor(*this);
-                for(auto& o : na.owner) {
-                    vistor(o, 1);
-                }
-                if(vistor.total_weight == na.owner.size()) {
-                    return true;
-                }
-            }
-            EVT_RETHROW_EXCEPTIONS(chain_type_exception, "transation data is not valid, data cannot cast to `newaccount` type")
-        }
-        else if(action.name == N(updateowner)) {
-            bool result = false;
-            get_owner(action.domain, action.key, [&](const auto& owner) {
-                auto vistor = weight_tally_visitor(*this);
-                for(auto& o : owner) {
-                    vistor(o, 1);
-                }
-                if(vistor.total_weight == owner.size()) {
-                    result = true;
-                }
-            });
-            return result;
-        }
-        else if(action.name == N(transferevt)) {
-            bool result = false;
-            try {
-                auto te = action.data_as<contracts::transferevt>();
-                get_owner(N128(account), te.from, [&](const auto& owner) {
-                    auto vistor = weight_tally_visitor(*this);
-                    for(auto& o : owner) {
-                        vistor(o, 1);
-                    }
-                    if(vistor.total_weight == owner.size()) {
-                        result = true;
-                    }
-                });
-            }
-            EVT_RETHROW_EXCEPTIONS(chain_type_exception, "transation data is not valid, data cannot cast to `transferevt` type")
-            return result;
-        }
-        return false;
-    }
-
-    bool
     satisfied_node(const group& group, const group::node& node, uint32_t depth) {
         FC_ASSERT(depth < _max_recursion_depth);
         FC_ASSERT(!node.is_leaf());
@@ -216,66 +173,118 @@ private:
     }
 
     bool
-    satisfied_permission(const action& action, const permission_name& name) {
-        bool result = false;
-        get_permission(action.domain, name, [&](const auto& permission) {
-            uint32_t total_weight = 0;
-            for(const auto& aw : permission.authorizers) {
-                auto& ref        = aw.ref;
-                bool  ref_result = false;
+    satisfied_permission(const permission_def& permission, const action& action) {
+        uint32_t total_weight = 0;
+        for(const auto& aw : permission.authorizers) {
+            auto& ref        = aw.ref;
+            bool  ref_result = false;
 
-                switch(ref.type()) {
-                case authorizer_ref::account_t: {
-                    auto  vistor = weight_tally_visitor(*this);
-                    auto& key    = ref.get_account();
-                    if(vistor(key, 1) == 1) {
+            switch(ref.type()) {
+            case authorizer_ref::account_t: {
+                auto  vistor = weight_tally_visitor(*this);
+                auto& key    = ref.get_account();
+                if(vistor(key, 1) == 1) {
+                    ref_result = true;
+                }
+                break;
+            }
+            case authorizer_ref::owner_t: {
+                get_owner(action.domain, action.key, [&](const auto& owner) {
+                    auto vistor = weight_tally_visitor(*this);
+                    for(const auto& o : owner) {
+                        vistor(o, 1);
+                    }
+                    if(vistor.total_weight == owner.size()) {
                         ref_result = true;
                     }
-                    break;
-                }
-                case authorizer_ref::owner_t: {
-                    get_owner(action.domain, action.key, [&](const auto& owner) {
-                        auto vistor = weight_tally_visitor(*this);
-                        for(const auto& o : owner) {
-                            vistor(o, 1);
-                        }
-                        if(vistor.total_weight == owner.size()) {
-                            ref_result = true;
-                        }
-                    });
-                    break;
-                }
-                case authorizer_ref::group_t: {
-                    auto& name = ref.get_group();
-                    get_group(name, [&](const auto& group) {
-                        if(satisfied_node(group, group.root(), 0)) {
-                            ref_result = true;
-                        }
-                    });
-                    break;
-                }
-                }  // switch
-
-                if(ref_result) {
-                    total_weight += aw.weight;
-                    if(total_weight >= permission.threshold) {
-                        result = true;
-                        return;
+                });
+                break;
+            }
+            case authorizer_ref::group_t: {
+                auto& name = ref.get_group();
+                get_group(name, [&](const auto& group) {
+                    if(satisfied_node(group, group.root(), 0)) {
+                        ref_result = true;
                     }
+                });
+                break;
+            }
+            }  // switch
+
+            if(ref_result) {
+                total_weight += aw.weight;
+                if(total_weight >= permission.threshold) {
+                    return true;
                 }
             }
+        }
+        return false;
+    }
+
+    bool
+    satisfied_domain_permission(const action& action, const permission_name& name) {
+        bool result = false;
+        get_domain_permission(action.domain, name, [&](const auto& permission) {
+            result = satisfied_permission(permission, action);
         });
         return result;
     }
 
     bool
-    satisfied_token(const action& action) {
+    satisfied_fungible_permission(const fungible_name sym_name, const action& action, const permission_name& name) {
+        bool result = false;
+        get_fungible_permission(sym_name, name, [&](const auto& permission) {
+            result = satisfied_permission(permission, action);
+        });
+        return result;
+    }
+
+    bool
+    satisfied_fungible(const action& action) {
+        switch(action.name.value) {
+        case N(newfungible): {
+            try {
+                auto nf     = action.data_as<contracts::newfungible>();
+                auto vistor = weight_tally_visitor(*this);
+                if(vistor(nf.creator, 1) == 1) {
+                    return true;
+                }
+            }
+            EVT_RETHROW_EXCEPTIONS(chain_type_exception, "transation data is not valid, data cannot cast to `newfungible` type")
+            break;
+        }
+        case N(issuefungible): {
+            return satisfied_fungible_permission(action.key, action, N(issue));
+        }
+        case N(updfungible): {
+            return satisfied_fungible_permission(action.key, action, N(manage));
+        }
+        case N(transfer20): {
+            try {
+                auto t20    = action.data_as<contracts::transfer20>();
+                auto vistor = weight_tally_visitor(*this);
+                if(vistor(t20.from, 1) == 1) {
+                    return true;
+                }
+            }
+            EVT_RETHROW_EXCEPTIONS(chain_type_exception, "transation data is not valid, data cannot cast to `transfer20` type")
+            break;
+        }
+        default: {
+            FC_ASSERT(false, "Unknown action name: ${type}", ("type",action.name));
+        }
+        }  // switch
+        return false;
+    }
+
+    bool
+    satisfied_tokens(const action& action) {
         switch(action.name.value) {
         case N(newdomain): {
             try {
                 auto nd     = action.data_as<contracts::newdomain>();
                 auto vistor = weight_tally_visitor(*this);
-                if(vistor(nd.issuer, 1) == 1) {
+                if(vistor(nd.creator, 1) == 1) {
                     return true;
                 }
             }
@@ -294,14 +303,14 @@ private:
             break;
         }
         case N(updatedomain): {
-            return satisfied_permission(action, N(manage));
+            return satisfied_domain_permission(action, N(manage));
         }
         case N(issuetoken): {
-            return satisfied_permission(action, N(issue));
+            return satisfied_domain_permission(action, N(issue));
         }
         case N(transfer):
         case N(destroytoken): {
-            return satisfied_permission(action, N(transfer));
+            return satisfied_domain_permission(action, N(transfer));
         }
         default: {
             FC_ASSERT(false, "Unknown action name: ${type}", ("type",action.name));
@@ -322,11 +331,11 @@ public:
         if(action.domain == N128(group)) {
             result = satisfied_group(action);
         }
-        else if(action.domain == N128(account)) {
-            result = satisfied_account(action);
+        else if(action.domain == N128(fungible)) {
+            result = satisfied_fungible(action);
         }
         else {
-            result = satisfied_token(action);
+            result = satisfied_tokens(action);
         }
         if(result) {
             KeyReverter.cancel();

@@ -32,7 +32,7 @@ name128::set(const char* str) {
 }
 
 name::operator string() const {
-    static const char* charmap = ".12345abcdefghijklmnopqrstuvwxyz";
+    static const char* charmap = ".abcdefghijklmnopqrstuvwxyz12345";
 
     string str(13, '.');
 

@@ -115,12 +115,12 @@ apply_evt_newdomain(apply_context& context) {
         pchecker(ndact.manage, false);
 
         domain_def domain;
-        domain.name       = ndact.name;
-        domain.issuer     = ndact.issuer;
-        domain.issue_time = context.control.head_block_time();
-        domain.issue      = std::move(ndact.issue);
-        domain.transfer   = std::move(ndact.transfer);
-        domain.manage     = std::move(ndact.manage);
+        domain.name        = ndact.name;
+        domain.creator     = ndact.creator;
+        domain.create_time = context.control.head_block_time();
+        domain.issue       = std::move(ndact.issue);
+        domain.transfer    = std::move(ndact.transfer);
+        domain.manage      = std::move(ndact.manage);
         
         tokendb.add_domain(domain);       
     }
@@ -291,81 +291,55 @@ apply_evt_updatedomain(apply_context& context) {
 }
 
 void
-apply_evt_newaccount(apply_context& context) {
-    using namespace __internal;
+apply_evt_newfungible(apply_context& context) {
 
-    auto naact = context.act.data_as<newaccount>();
-    try {
-        EVT_ASSERT(context.has_authorized(N128(account), naact.name), action_validate_exception, "Authorized information doesn't match");
+}
 
-        auto& tokendb = context.token_db;
-        EVT_ASSERT(!naact.name.empty(), action_validate_exception, "Account name shouldn't be empty");
-        EVT_ASSERT(!tokendb.exists_account(naact.name), action_validate_exception, "Account ${name} already existed", ("name",naact.name));
+void
+apply_evt_updfungible(apply_context& context) {
+
+}
+
+void
+apply_evt_issuefungible(apply_context& context) {
+
+}
+
+void
+apply_evt_transfer20(apply_context& context) {
     
-        auto account = account_def();
-
-        account.name           = naact.name;
-        account.creator        = config::system_account_name;
-        account.create_time    = context.control.head_block_time();
-        account.balance        = asset(10000);
-        account.frozen_balance = asset(0);
-        account.owner          = std::move(naact.owner);
-
-        tokendb.add_account(account);
-    }
-    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
-void
-apply_evt_updateowner(apply_context& context) {
-    using namespace __internal;
+// void
+// apply_evt_transferevt(apply_context& context) {
+//     using namespace __internal;
 
-    auto uoact = context.act.data_as<updateowner>();
-    try {
-        EVT_ASSERT(context.has_authorized(N128(account), uoact.name), action_validate_exception, "Authorized information doesn't match");
+//     auto teact = context.act.data_as<transferevt>();
+//     try {
+//         EVT_ASSERT(context.has_authorized(N128(account), teact.from), action_validate_exception, "Authorized information doesn't match");
 
-        auto& tokendb = context.token_db;
-        EVT_ASSERT(uoact.owner.size() > 0, action_validate_exception, "Owner cannot be empty");
+//         auto& tokendb = context.token_db;
+//         EVT_ASSERT(teact.amount.get_amount() > 0, action_validate_exception, "Transfer amount must be positive");
 
-        account_def account;
-        tokendb.read_account(uoact.name, account);
+//         account_def facc, tacc;
+//         tokendb.read_account(teact.from, facc);
+//         tokendb.read_account(teact.to,   tacc);
 
-        account.owner = std::move(uoact.owner);
-        tokendb.update_account(account);
-    }
-    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
-}
-
-void
-apply_evt_transferevt(apply_context& context) {
-    using namespace __internal;
-
-    auto teact = context.act.data_as<transferevt>();
-    try {
-        EVT_ASSERT(context.has_authorized(N128(account), teact.from), action_validate_exception, "Authorized information doesn't match");
-
-        auto& tokendb = context.token_db;
-        EVT_ASSERT(teact.amount.get_amount() > 0, action_validate_exception, "Transfer amount must be positive");
-
-        account_def facc, tacc;
-        tokendb.read_account(teact.from, facc);
-        tokendb.read_account(teact.to,   tacc);
-
-        EVT_ASSERT(facc.balance >= teact.amount, action_validate_exception, "Account ${name} don't have enough balance left", ("name",teact.from));
+//         EVT_ASSERT(facc.balance >= teact.amount, action_validate_exception, "Account ${name} don't have enough balance left", ("name",teact.from));
         
-        bool r1, r2;
-        decltype(facc.balance.get_amount()) r;
-        r1 = safemath::test_sub(facc.balance.get_amount(), teact.amount.get_amount(), r);
-        r2 = safemath::test_add(tacc.balance.get_amount(), teact.amount.get_amount(), r);
-        EVT_ASSERT(r1 && r2, action_validate_exception, "Opeartions resulted in overflow results");
-        facc.balance -= teact.amount;
-        tacc.balance += teact.amount;
+//         bool r1, r2;
+//         decltype(facc.balance.get_amount()) r;
+//         r1 = safemath::test_sub(facc.balance.get_amount(), teact.amount.get_amount(), r);
+//         r2 = safemath::test_add(tacc.balance.get_amount(), teact.amount.get_amount(), r);
+//         EVT_ASSERT(r1 && r2, action_validate_exception, "Opeartions resulted in overflow results");
+//         facc.balance -= teact.amount;
+//         tacc.balance += teact.amount;
 
-        tokendb.update_account(facc);
-        tokendb.update_account(tacc);
-    }
-    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
-}
+//         tokendb.update_account(facc);
+//         tokendb.update_account(tacc);
+//     }
+//     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+// }
 
 namespace __internal {
 

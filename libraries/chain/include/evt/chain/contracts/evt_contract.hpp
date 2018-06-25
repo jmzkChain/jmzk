@@ -27,9 +27,10 @@ void apply_evt_newgroup(apply_context& context);
 void apply_evt_updategroup(apply_context& context);
 void apply_evt_updatedomain(apply_context& context);
 
-void apply_evt_newaccount(apply_context& context);
-void apply_evt_updateowner(apply_context& context);
-void apply_evt_transferevt(apply_context& context);
+void apply_evt_newfungible(apply_context& context);
+void apply_evt_updfungible(apply_context& context);
+void apply_evt_issuefungible(apply_context& context);
+void apply_evt_transfer20(apply_context& context);
 
 void apply_evt_addmeta(apply_context& context);
 
