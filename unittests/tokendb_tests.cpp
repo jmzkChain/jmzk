@@ -43,8 +43,8 @@ add_domain_data() {
     const char* test_data = R"=====(
     {
       "name" : "domain",
-      "issuer" : "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
-      "issue_time":"2018-06-09T09:06:27",
+      "creator" : "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+      "create_time":"2018-06-09T09:06:27",
       "issue" : {
         "name" : "issue",
         "threshold" : 1,
@@ -259,42 +259,6 @@ update_group_data() {
     return gp;
 }
 
-account_def
-add_account_data() {
-    const char* test_data = R"=====(
-    {
-      "name": "account",
-      "creator": "creator",
-      "create_time":"2018-06-09T09:06:27",
-      "balance": "12.00000 EVT",
-      "frozen_balance": "12.00000 EVT",
-      "owner": ["EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"]
-    }
-    )=====";
-
-    auto        var  = fc::json::from_string(test_data);
-    account_def acct = var.as<account_def>();
-    return acct;
-}
-
-account_def
-update_account_data() {
-    const char* test_data = R"=====(
-    {
-      "name": "account",
-      "creator": "creator",
-      "create_time":"2018-06-09T09:06:27",
-      "balance": "13.00000 EVT",
-      "frozen_balance": "12.00000 EVT",
-      "owner": ["EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"]
-    }
-    )=====";
-
-    auto        var  = fc::json::from_string(test_data);
-    account_def acct = var.as<account_def>();
-    return acct;
-}
-
 BOOST_FIXTURE_TEST_SUITE(tokendb_tests, tokendb_test)
 
 BOOST_AUTO_TEST_CASE(tokendb_adddomain_test) {
@@ -314,9 +278,9 @@ BOOST_AUTO_TEST_CASE(tokendb_adddomain_test) {
         domain_def dom_;
         tokendb.read_domain(dom.name, dom_);
         BOOST_TEST(dom.name == dom_.name);
-        BOOST_TEST(dom.issue_time.to_iso_string() == dom_.issue_time.to_iso_string());
+        BOOST_TEST(dom.create_time.to_iso_string() == dom_.create_time.to_iso_string());
 
-        BOOST_TEST("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)dom_.issuer);
+        BOOST_TEST("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)dom_.creator);
 
         BOOST_TEST("issue" == dom_.issue.name);
         BOOST_TEST(1 == dom_.issue.threshold);
@@ -574,65 +538,6 @@ BOOST_AUTO_TEST_CASE(tokendb_updategroup_test) {
     FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE(tokendb_addaccount_test) {
-    try {
-        account_def acct = add_account_data();
-        if(tokendb.exists_account(acct.name))
-            acct.name = "account" + boost::lexical_cast<std::string>(time(0));
-
-        auto re = tokendb.add_account(acct);
-
-        BOOST_TEST_REQUIRE(re == 0);
-        BOOST_TEST(tokendb.exists_account(acct.name));
-
-        account_def acct_;
-        tokendb.read_account(acct.name, acct_);
-
-        BOOST_TEST(acct.name == acct_.name);
-        BOOST_TEST(acct.creator == acct_.creator);
-        BOOST_TEST(acct.create_time.to_iso_string() == acct_.create_time.to_iso_string());
-
-        BOOST_TEST(1200000 == acct_.balance.get_amount());
-        BOOST_TEST("5,EVT" == acct_.balance.get_symbol().to_string());
-        BOOST_TEST("12.00000 EVT" == acct_.balance.to_string());
-        BOOST_TEST(1200000 == acct_.frozen_balance.get_amount());
-        BOOST_TEST("5,EVT" == acct_.frozen_balance.get_symbol().to_string());
-        BOOST_TEST("12.00000 EVT" == acct_.frozen_balance.to_string());
-
-        BOOST_TEST_REQUIRE(1 == acct_.owner.size());
-        BOOST_TEST("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)acct_.owner[0]);
-    }
-    FC_LOG_AND_RETHROW()
-}
-
-BOOST_AUTO_TEST_CASE(tokendb_updateaccount_test) {
-    try {
-        account_def acct = update_account_data();
-        acct.creator     = "creator" + boost::lexical_cast<std::string>(time(0));
-        auto re          = tokendb.update_account(acct);
-
-        BOOST_TEST_REQUIRE(re == 0);
-
-        account_def acct_;
-        tokendb.read_account(acct.name, acct_);
-
-        BOOST_TEST(acct.name == acct_.name);
-        BOOST_TEST(acct.creator == acct_.creator);
-        BOOST_TEST(acct.create_time.to_iso_string() == acct_.create_time.to_iso_string());
-
-        BOOST_TEST(1300000 == acct_.balance.get_amount());
-        BOOST_TEST("5,EVT" == acct_.balance.get_symbol().to_string());
-        BOOST_TEST("13.00000 EVT" == acct_.balance.to_string());
-        BOOST_TEST(1200000 == acct_.frozen_balance.get_amount());
-        BOOST_TEST("5,EVT" == acct_.frozen_balance.get_symbol().to_string());
-        BOOST_TEST("12.00000 EVT" == acct_.frozen_balance.to_string());
-
-        BOOST_TEST_REQUIRE(1 == acct_.owner.size());
-        BOOST_TEST("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)acct_.owner[0]);
-    }
-    FC_LOG_AND_RETHROW()
-}
-
 BOOST_AUTO_TEST_CASE(tokendb_checkpoint_test) {
     try {
         tokendb.add_savepoint(get_time());
@@ -675,26 +580,6 @@ BOOST_AUTO_TEST_CASE(tokendb_checkpoint_test) {
         BOOST_TEST_REQUIRE(0 == dom_.metas.size());
         tokendb.rollback_to_latest_savepoint();
         BOOST_TEST_REQUIRE(!tokendb.exists_domain(dom.name));
-
-        tokendb.add_savepoint(get_time());
-        account_def acct = add_account_data();
-        acct.name        = "account-" + boost::lexical_cast<std::string>(time(0));
-        tokendb.add_account(acct);
-        tokendb.add_savepoint(get_time());
-
-        account_def upacct = update_account_data();
-        upacct.name        = acct.name;
-        tokendb.update_account(upacct);
-
-        BOOST_TEST_REQUIRE(tokendb.exists_account(acct.name));
-        account_def acct_;
-        tokendb.read_account(acct.name, acct_);
-        BOOST_TEST(1300000 == acct_.balance.get_amount());
-        tokendb.rollback_to_latest_savepoint();
-        tokendb.read_account(acct.name, acct_);
-        BOOST_TEST(1200000 == acct_.balance.get_amount());
-        tokendb.rollback_to_latest_savepoint();
-        BOOST_TEST_REQUIRE(!tokendb.exists_account(acct.name));
 
         tokendb.add_savepoint(get_time());
         group_def gp = add_group_data();
