@@ -126,7 +126,7 @@ read_value(const V& value) {
 }
 
 enum dbaction_type {
-    none = 0,
+    kNone = 0,
     kNewDomain,
     kIssueToken,
     kAddGroup,
