@@ -79,7 +79,7 @@ BOOST_AUTO_TEST_CASE(newdomain_test) {
         const char* test_data = R"=====(
         {
           "name" : "cookie",
-          "issuer" : "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+          "creator" : "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
           "issue" : {
             "name" : "issue",
             "threshold" : 1,
@@ -113,7 +113,7 @@ BOOST_AUTO_TEST_CASE(newdomain_test) {
         auto var    = fc::json::from_string(test_data);
         auto newdom = var.as<newdomain>();
         BOOST_TEST("cookie" == newdom.name);
-        BOOST_TEST("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)newdom.issuer);
+        BOOST_TEST("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)newdom.creator);
 
         BOOST_TEST("issue" == newdom.issue.name);
         BOOST_TEST(1 == newdom.issue.threshold);
@@ -139,7 +139,7 @@ BOOST_AUTO_TEST_CASE(newdomain_test) {
         auto var2    = verify_byte_round_trip_conversion(abis, "newdomain", var);
         auto newdom2 = var2.as<newdomain>();
         BOOST_TEST(newdom2.name == newdom.name);
-        BOOST_TEST((std::string)newdom2.issuer == (std::string)newdom.issuer);
+        BOOST_TEST((std::string)newdom2.creator == (std::string)newdom.creator);
 
         BOOST_TEST(newdom2.issue.name == newdom.issue.name);
         BOOST_TEST(newdom2.issue.threshold == newdom.issue.threshold);
@@ -665,98 +665,6 @@ BOOST_AUTO_TEST_CASE(updategroup_test) {
         BOOST_TEST(2 == son2_son1.weight);
 
         verify_type_round_trip_conversion<updategroup>(abis, "updategroup", var);
-    }
-    FC_LOG_AND_RETHROW()
-}
-
-BOOST_AUTO_TEST_CASE(newaccount_test) {
-    try {
-        auto abis = get_evt_abi();
-
-        BOOST_CHECK(true);
-        const char* test_data = R"=====(
-        {
-          "name": "account",
-          "owner": ["EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"]
-        }
-        )=====";
-
-        auto var     = fc::json::from_string(test_data);
-        auto newacct = var.as<newaccount>();
-
-        BOOST_TEST("account" == newacct.name);
-        BOOST_TEST_REQUIRE(1 == newacct.owner.size());
-        BOOST_TEST("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)newacct.owner[0]);
-
-        auto var2     = verify_byte_round_trip_conversion(abis, "newaccount", var);
-        auto newacct2 = var2.as<newaccount>();
-
-        BOOST_TEST("account" == newacct2.name);
-        BOOST_TEST_REQUIRE(1 == newacct2.owner.size());
-        BOOST_TEST("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)newacct2.owner[0]);
-    }
-    FC_LOG_AND_RETHROW()
-}
-
-BOOST_AUTO_TEST_CASE(updateowner_test) {
-    try {
-        auto abis = get_evt_abi();
-
-        BOOST_CHECK(true);
-        const char* test_data = R"=====(
-        {
-          "name": "account",
-          "owner": ["EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"]
-        }
-        )=====";
-
-        auto var    = fc::json::from_string(test_data);
-        auto upower = var.as<updateowner>();
-
-        BOOST_TEST("account" == upower.name);
-        BOOST_TEST_REQUIRE(1 == upower.owner.size());
-        BOOST_TEST("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)upower.owner[0]);
-
-        auto var2    = verify_byte_round_trip_conversion(abis, "updateowner", var);
-        auto upower2 = var2.as<updateowner>();
-
-        BOOST_TEST("account" == upower2.name);
-        BOOST_TEST_REQUIRE(1 == upower2.owner.size());
-        BOOST_TEST("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)upower2.owner[0]);
-    }
-    FC_LOG_AND_RETHROW()
-}
-
-BOOST_AUTO_TEST_CASE(transferevt_test) {
-    try {
-        auto abis = get_evt_abi();
-
-        BOOST_CHECK(true);
-        const char* test_data = R"=====(
-        {
-          "from": "account1",
-          "to": "account2",
-          "amount": "12.00000 EVT"
-        }
-        )=====";
-
-        auto var   = fc::json::from_string(test_data);
-        auto trevt = var.as<transferevt>();
-
-        BOOST_TEST("account1" == trevt.from);
-        BOOST_TEST_REQUIRE("account2" == trevt.to);
-        BOOST_TEST(1200000 == trevt.amount.get_amount());
-        BOOST_TEST("5,EVT" == trevt.amount.get_symbol().to_string());
-        BOOST_TEST("12.00000 EVT" == trevt.amount.to_string());
-
-        auto var2   = verify_byte_round_trip_conversion(abis, "transferevt", var);
-        auto trevt2 = var2.as<transferevt>();
-
-        BOOST_TEST("account1" == trevt2.from);
-        BOOST_TEST_REQUIRE("account2" == trevt2.to);
-        BOOST_TEST(1200000 == trevt2.amount.get_amount());
-        BOOST_TEST("5,EVT" == trevt2.amount.get_symbol().to_string());
-        BOOST_TEST("12.00000 EVT" == trevt2.amount.to_string());
     }
     FC_LOG_AND_RETHROW()
 }
