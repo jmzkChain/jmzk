@@ -82,8 +82,25 @@ bool   tx_print_json     = false;
 bool   print_request     = false;
 bool   print_response    = false;
 
+bool
+detect_public_key(const std::string& pkey, bool &reserved) {
+    static public_key_type rkey;
+
+    if(pkey.size() != 42) {
+        return false;
+    }
+    try {
+        auto key = public_key_type(pkey);
+        reserved = (key == rkey);
+        return true;
+    }
+    catch(...) {
+        return false;
+    }
+}
+
 void
-print_info(const fc::variant& info, int indent) {
+print_info(const fc::variant& info, int indent = 0) {
     try {
         if(info.is_object()) {
             for(auto& obj : info.get_object()) {
@@ -107,8 +124,16 @@ print_info(const fc::variant& info, int indent) {
             }
         }
         else if(info.is_array()) {
-            for(auto& a : info.get_array()) {
+            auto& arr  = info.get_array();
+            auto  size = arr.size();
+
+            auto i = 1;
+            for(auto& a : arr) {
+                if(indent == 0) {
+                    cerr << "(" << i << " of " << size << ")" << endl;
+                }
                 print_info(a, indent);
+                i++;
             }
         }
         else {
@@ -117,7 +142,15 @@ print_info(const fc::variant& info, int indent) {
             for(int i = 0; i < indent; i++)
                 cerr << "|";
             cerr << "->";
-            cerr << info.as_string() << endl;
+            auto v = info.as_string();
+
+            bool reserved = false;
+            if(detect_public_key(v, reserved) && reserved) {
+                cerr << info.as_string() << " [destroyed]" << endl;
+            }
+            else {
+                cerr << info.as_string() << endl;
+            }
         }
     }
     FC_CAPTURE_AND_RETHROW((info))
@@ -130,11 +163,12 @@ print_action(const fc::variant& at) {
     auto        args    = act["data"];
     auto        console = at["console"].as_string();
 
-    std::cout << "action : " << func << std::endl;
-    std::cout << "domain : " << act["domain"].as_string() << std::endl;
-    std::cout << "key : " << act["key"].as_string() << std::endl;
-    std::cout << "details :" << std::endl;
-    print_info(args, 0);
+    std::cout << " action : " << func << std::endl;
+    std::cout << " domain : " << act["domain"].as_string() << std::endl;
+    std::cout << "    key : " << act["key"].as_string() << std::endl;
+    std::cout << "elapsed : " << at["elapsed"].as_string() << " " << "us" << std::endl;
+    std::cout << "details : " << std::endl;
+    print_info(args);
 
     if(console.size()) {
         std::stringstream ss(console);
@@ -153,8 +187,8 @@ print_result(const fc::variant& result) {
             string      status         = processed["receipt"].is_object()
                                 ? processed["receipt"]["status"].as_string()
                                 : "failed";
-
-            cerr << status << " transaction: " << transaction_id << "\n";
+            cerr << status << " transaction: " << transaction_id << std::endl;
+            cerr << "total elapsed: " << processed["elapsed"].as_string() << " us" << std::endl;
 
             if(status == "failed") {
                 auto soft_except = processed["except"].as<optional<fc::exception>>();
@@ -466,7 +500,7 @@ struct set_domain_subcommands {
             nd.transfer = (transfer == "default") ? get_default_permission("transfer", public_key_type()) : parse_permission(transfer);
             nd.manage   = (manage == "default") ? get_default_permission("manage", nd.issuer) : parse_permission(manage);
 
-            auto act = create_action("domain", (domain_key)nd.name, nd);
+            auto act = create_action((domain_name)nd.name, N128(.create), nd);
             send_actions({act});
         });
 
@@ -491,7 +525,7 @@ struct set_domain_subcommands {
                 ud.manage = parse_permission(manage);
             }
 
-            auto act = create_action("domain", (domain_key)ud.name, ud);
+            auto act = create_action((domain_name)ud.name, N128(.update), ud);
             send_actions({act});
         });
     }
@@ -516,18 +550,18 @@ struct set_issue_token_subcommand {
             std::transform(names.cbegin(), names.cend(), std::back_inserter(it.names), [](auto& str) { return name128(str); });
             std::transform(owner.cbegin(), owner.cend(), std::back_inserter(it.owner), [](auto& str) { return public_key_type(str); });
 
-            auto act = create_action(it.domain, N128(issue), it);
+            auto act = create_action(it.domain, N128(.issue), it);
             send_actions({act});
         });
     }
 };
 
-struct set_transfer_token_subcommand {
+struct set_token_subcommands {
     string              domain;
     string              name;
     std::vector<string> to;
 
-    set_transfer_token_subcommand(CLI::App* actionRoot) {
+    set_token_subcommands(CLI::App* actionRoot) {
         auto ttcmd = actionRoot->add_subcommand("transfer", localized("Transfer token"));
         ttcmd->add_option("domain", domain, localized("Name of the domain where token existed"))->required();
         ttcmd->add_option("name", name, localized("Name of the token to be transfered"))->required();
@@ -542,6 +576,21 @@ struct set_transfer_token_subcommand {
             std::transform(to.cbegin(), to.cend(), std::back_inserter(tt.to), [](auto& str) { return public_key_type(str); });
 
             auto act = create_action(tt.domain, (domain_key)tt.name, tt);
+            send_actions({act});
+        });
+
+        auto dtcmd = actionRoot->add_subcommand("destroy", localized("Destroy one token"));
+        dtcmd->add_option("domain", domain, localized("Name of the domain where token existed"))->required();
+        dtcmd->add_option("name", name, localized("Name of the token to be destroyed"))->required();
+
+        add_standard_transaction_options(dtcmd);
+
+        dtcmd->set_callback([this] {
+            destroytoken dt;
+            dt.domain = name128(domain);
+            dt.name   = name128(name);
+
+            auto act = create_action(dt.domain, (domain_key)dt.name, dt);
             send_actions({act});
         });
     }
@@ -655,6 +704,63 @@ struct set_account_subcommands {
     }
 };
 
+struct set_meta_subcommands {
+    string domain;
+    string key;
+    
+    string metakey;
+    string metavalue;
+    string creator;
+
+    set_meta_subcommands(CLI::App* actionRoot) {
+        auto addcmds = [&](auto subcmd) {
+            subcmd->add_option("meta-key", metakey, localized("Key of the metadata"))->required();
+            subcmd->add_option("meta-value", metavalue, localized("Value of the metadata"))->required();
+            subcmd->add_option("creator", creator, localized("Public key of the metadata creator"))->required();
+        };
+
+        auto dmcmd = actionRoot->add_subcommand("domain", localized("Add metadata to one domain"));
+        dmcmd->add_option("name", domain, localized("Name of domain adding to"))->required();
+        addcmds(dmcmd);
+        dmcmd->set_callback([this] {
+            addmeta am;
+            am.key = (meta_key)metakey;
+            am.value = metavalue;
+            am.creator = (public_key_type)creator;
+
+            auto act = create_action((domain_name)key, N128(.meta), am);
+            send_actions({act});
+        });
+
+        auto gmcmd = actionRoot->add_subcommand("group", localized("Add metadata to one group"));
+        gmcmd->add_option("name", key, localized("Name of group adding to"))->required();
+        addcmds(gmcmd);
+        gmcmd->set_callback([this] {
+            addmeta am;
+            am.key = (meta_key)metakey;
+            am.value = metavalue;
+            am.creator = (public_key_type)creator;
+
+            auto act = create_action(N128(group), (domain_key)key, am);
+            send_actions({act});
+        });
+
+        auto tmcmd = actionRoot->add_subcommand("token", localized("Add metadata to one token"));
+        tmcmd->add_option("domain", domain, localized("Domain name of token adding to"))->required();
+        tmcmd->add_option("name", key, localized("Name of token adding to"))->required();
+        addcmds(tmcmd);
+        tmcmd->set_callback([this] {
+            addmeta am;
+            am.key = (meta_key)metakey;
+            am.value = metavalue;
+            am.creator = (public_key_type)creator;
+
+            auto act = create_action((domain_name)domain, (domain_key)key, am);
+            send_actions({act});
+        });
+    }
+};
+
 struct set_get_domain_subcommand {
     string name;
 
@@ -664,7 +770,7 @@ struct set_get_domain_subcommand {
 
         gdcmd->set_callback([this] {
             auto arg = fc::mutable_variant_object("name", name);
-            print_info(call(get_domain_func, arg), 0);
+            print_info(call(get_domain_func, arg));
         });
     }
 };
@@ -682,7 +788,7 @@ struct set_get_token_subcommand {
             auto arg = fc::mutable_variant_object();
             arg.set("domain", domain);
             arg.set("name", name);
-            print_info(call(get_token_func, arg), 0);
+            print_info(call(get_token_func, arg));
         });
     }
 };
@@ -699,7 +805,7 @@ struct set_get_group_subcommand {
             FC_ASSERT(!name.empty(), "Group name cannot be empty");
 
             auto arg = fc::mutable_variant_object("name", name);
-            print_info(call(get_group_func, arg), 0);
+            print_info(call(get_group_func, arg));
         });
     }
 };
@@ -713,21 +819,29 @@ struct set_get_account_subcommand {
 
         gacmd->set_callback([this] {
             auto arg = fc::mutable_variant_object("name", name);
-            print_info(call(get_account_func, arg), 0);
+            print_info(call(get_account_func, arg));
         });
     }
 };
 
 void
 get_my_resources(const std::string& url) {
-    auto signatures = call(wallet_url, wallet_my_signatures);
-    auto args = fc::mutable_variant_object("signatures", signatures);
-    print_info(call(url, args), 0);
+    auto info = get_info();
+
+    auto signatures = call(wallet_url, wallet_my_signatures, info.chain_id);
+    auto my_args    = fc::mutable_variant_object("signatures", signatures);
+
+    print_info(call(url, my_args))
+    ;
 }
 
 struct set_get_my_subcommands {
+    int skip = -1;
+    int take = -1;
+
     set_get_my_subcommands(CLI::App* actionRoot) {
         auto mycmd = actionRoot->add_subcommand("my", localized("Retrieve domains, tokens and groups created by user"));
+        mycmd->require_subcommand();
 
         auto mydomain = mycmd->add_subcommand("domains", localized("Retrieve my created domains"));
         mydomain->set_callback([] {
@@ -742,8 +856,78 @@ struct set_get_my_subcommands {
         auto mygroup = mycmd->add_subcommand("groups", localized("Retrieve my created groups"));
         mygroup->set_callback([] {
             get_my_resources(get_my_groups);
-        });        
+        });
+
+        auto trxscmd = mycmd->add_subcommand("transactions", localized("Retrieve my transactions"));
+        trxscmd->add_option("--skip,-s", skip, localized("How many records should be skipped"));
+        trxscmd->add_option("--take,-t", take, localized("How many records should be returned"));
+
+        trxscmd->set_callback([this] {
+            auto args = mutable_variant_object();
+            args["keys"] = call(wallet_url, wallet_public_keys);
+            
+            if(skip > 0) {
+                args["skip"] = skip;
+            }
+            if(take > 0) {
+                args["take"] = take;
+            }
+
+            print_info(call(get_transactions, args));
+        });
     }
+};
+
+struct set_get_history_subcommands {
+    string domain;
+    string key;
+    bool   exclude_transfer = false;
+
+    string trx_id;
+    
+    int skip = -1;
+    int take = -1;
+
+    set_get_history_subcommands(CLI::App* actionRoot) {
+        auto hiscmd = actionRoot->add_subcommand("history", localized("Retrieve actions, transactions history"));
+        hiscmd->require_subcommand();
+
+        auto actscmd = hiscmd->add_subcommand("actions", localized("Retrieve actions by domian and key"));
+        actscmd->add_option("domain", domain, localized("Domain of acitons to be retrieved"))->required();
+        actscmd->add_option("key", key, localized("Key of acitons to be retrieved, if not specified, will return all the actions in this domain"));
+        actscmd->add_option("--exclude-transfer,-e", exclude_transfer, localized("Exclude transfer actions, only need to be specified when key is not provided"));
+        actscmd->add_option("--skip,-s", skip, localized("How many records should be skipped"));
+        actscmd->add_option("--take,-t", take, localized("How many records should be returned"));
+
+        actscmd->set_callback([this] {
+            auto args = mutable_variant_object();
+            args["domain"] = domain;
+            if(!key.empty()) {
+                args["key"] = key;
+            }
+            else if(exclude_transfer) {
+                args["exclude_transfer"] = true;
+            }
+
+            if(skip > 0) {
+                args["skip"] = skip;
+            }
+            if(take > 0) {
+                args["take"] = take;
+            }
+
+            print_info(call(get_actions, args));
+        });
+
+        auto trxcmd = hiscmd->add_subcommand("transaction", localized("Retrieve a transaction by its id"));
+        trxcmd->add_option("id", trx_id, localized("Id of transaction to be retrieved"))->required();
+
+        trxcmd->set_callback([this] {
+            auto args = mutable_variant_object("id", trx_id);
+            print_info(call(get_transaction, args));
+        });
+    }
+
 };
 
 CLI::callback_t header_opt_callback = [](CLI::results_t res) {
@@ -833,11 +1017,12 @@ main(int argc, char** argv) {
         std::cout << fc::json::to_pretty_string(call(get_block_func, arg)) << std::endl;
     });
 
-    set_get_domain_subcommand  get_domain(get);
-    set_get_token_subcommand   get_token(get);
-    set_get_group_subcommand   get_group(get);
-    set_get_account_subcommand get_account(get);
-    set_get_my_subcommands     get_my(get);
+    set_get_domain_subcommand   get_domain(get);
+    set_get_token_subcommand    get_token(get);
+    set_get_group_subcommand    get_group(get);
+    set_get_account_subcommand  get_account(get);
+    set_get_my_subcommands      get_my(get);
+    set_get_history_subcommands get_history(get); 
 
     // Net subcommand
     string new_host;
@@ -880,8 +1065,8 @@ main(int argc, char** argv) {
     auto token = app.add_subcommand("token", localized("Issue or transfer tokens"));
     token->require_subcommand();
 
-    auto set_issue_token    = set_issue_token_subcommand(token);
-    auto set_transfer_token = set_transfer_token_subcommand(token);
+    auto set_issue_token = set_issue_token_subcommand(token);
+    auto set_token = set_token_subcommands(token);
 
     // group subcommand
     auto group = app.add_subcommand("group", localized("Update pemission group"));
@@ -894,6 +1079,11 @@ main(int argc, char** argv) {
     account->require_subcommand();
 
     auto set_account = set_account_subcommands(account);
+
+    auto meta = app.add_subcommand("meta", localized("Add metadata to domain, group ot token"));
+    meta->require_subcommand();
+
+    auto set_meta = set_meta_subcommands(meta);
 
     // Wallet subcommand
     auto wallet = app.add_subcommand("wallet", localized("Interact with local wallet"));

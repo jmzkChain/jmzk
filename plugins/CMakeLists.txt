@@ -12,11 +12,12 @@ add_subdirectory(evt_plugin)
 add_subdirectory(evt_api_plugin)
 add_subdirectory(bnet_plugin)
 
-if(ENABLE_MONGO_DB_PLUGIN)
+if(ENABLE_MONGODB_SUPPORT)
     add_subdirectory(mongo_db_plugin)
-    set_target_properties(evt_plugin evt_api_plugin PROPERTIES COMPILE_DEFINITIONS "ENABLE_MONGODB")
+    add_subdirectory(history_plugin)
+    add_subdirectory(history_api_plugin)
 else()
-    message("mongo_db_plugin not selected and will be omitted.")
+    message("Not enabled mongo_db suuport, mongo_db_plugin and history_plguin will be omitted.")
 endif()
 
 # Forward variables to top level so packaging picks them up

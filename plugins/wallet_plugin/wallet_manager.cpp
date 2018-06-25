@@ -146,21 +146,18 @@ wallet_manager::get_public_keys() {
     return result;
 }
 
-static const char* EVERIWALLET_AUTH_STRING = "everiWallet";
-
 flat_set<signature_type>
-wallet_manager::get_my_signatures() {
+wallet_manager::get_my_signatures(const chain_id_type& chain_id) {
     check_timeout();
     EVT_ASSERT(!wallets.empty(), wallet_not_available_exception, "You don't have any wallet!");
     auto result = flat_set<signature_type>();
-    auto hash   = fc::sha256::hash(EVERIWALLET_AUTH_STRING, strlen(EVERIWALLET_AUTH_STRING));
 
     bool is_all_wallet_locked = true;
     for(const auto& i : wallets) {
         if(!i.second->is_locked()) {
             const auto& keys = i.second->list_keys();
             for(const auto& i : keys) {
-                result.emplace(i.second.sign(hash));
+                result.emplace(i.second.sign(chain_id));
             }
         }
         is_all_wallet_locked &= i.second->is_locked();

@@ -22,6 +22,7 @@ struct abi_def;
 void apply_evt_newdomain(apply_context& context);
 void apply_evt_issuetoken(apply_context& context);
 void apply_evt_transfer(apply_context& context);
+void apply_evt_destroytoken(apply_context& context);
 void apply_evt_newgroup(apply_context& context);
 void apply_evt_updategroup(apply_context& context);
 void apply_evt_updatedomain(apply_context& context);
@@ -29,6 +30,8 @@ void apply_evt_updatedomain(apply_context& context);
 void apply_evt_newaccount(apply_context& context);
 void apply_evt_updateowner(apply_context& context);
 void apply_evt_transferevt(apply_context& context);
+
+void apply_evt_addmeta(apply_context& context);
 
 void apply_evt_newdelay(apply_context& context);
 void apply_evt_approvedelay(apply_context& context);

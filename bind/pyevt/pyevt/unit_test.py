@@ -108,6 +108,8 @@ class TestPyEVT(unittest.TestCase):
 
         block_id = BlockId.from_string(
             '000000cabd11d7f8163d5586a4bb4ef6bb8d0581f03db67a04c285bbcb83f921')
+        self.assertEqual('000000cabd11d7f8163d5586a4bb4ef6bb8d0581f03db67a04c285bbcb83f921', block_id.to_hex_string())
+
         block_num = block_id.ref_block_num()
         self.assertTrue(block_num == 202)
         block_prefix = block_id.ref_block_prefix()

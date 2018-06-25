@@ -1,3 +1,5 @@
+from io import StringIO
+
 import evt_exception
 import libevt
 
@@ -10,3 +12,9 @@ class EvtData:
     def __del__(self):
         ret = self.evt.lib.evt_free(self.data)
         evt_exception.evt_exception_raiser(ret)
+
+    def to_hex_string(self):
+        hstr = StringIO()
+        for i in range(self.data.sz):
+            hstr.write(self.data.buf[i].hex())
+        return hstr.getvalue()

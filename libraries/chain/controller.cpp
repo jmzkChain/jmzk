@@ -111,12 +111,14 @@ struct controller_impl {
         SET_APP_HANDLER(newdomain);
         SET_APP_HANDLER(issuetoken);
         SET_APP_HANDLER(transfer);
+        SET_APP_HANDLER(destroytoken);
         SET_APP_HANDLER(newgroup);
         SET_APP_HANDLER(updategroup);
         SET_APP_HANDLER(updatedomain);
         SET_APP_HANDLER(newaccount);
         SET_APP_HANDLER(updateowner);
         SET_APP_HANDLER(transferevt);
+        SET_APP_HANDLER(addmeta);
         SET_APP_HANDLER(newdelay);
         SET_APP_HANDLER(approvedelay);
         SET_APP_HANDLER(canceldelay);
