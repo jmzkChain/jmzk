@@ -1,3 +1,4 @@
+import argparse
 import docker
 import sys
 import os
@@ -20,7 +21,7 @@ def free_container(name,client):
                 break
 
 #free the dir
-def free_dir(dir):
+def free_the_dir(dir):
     list=os.listdir(dir)
     print("remove the files in "+dir)
     for name in list:
@@ -41,8 +42,10 @@ def free_dir(dir):
 @click.option("--mongo_db_port",help="the begin port of mongodb port,port+1 ....",type=int,default=27017)
 @click.option("--evtd_dir",help="the data directory of the evtd",type=str,default="/home/harry/evtd_data")
 @click.option("--mongo_db_dir",help="the data directory of the mongodb",type=str,default="/home/harry/mongo_db_data")
-@click.option("--free_dir",help="delete the directory of the mongodb and evtd",type=bool,default=False)
-def run(mode,enable_mongodb,producer_number,nodes_number,evtd_port_http,evtd_port_p2p,mongo_db_port,evtd_dir,mongo_db_dir,free_dir):
+@click.option("--free_dir",help="delete the directory of the mongodb and evtd",type=bool,default=True)
+@click.option("--tmpfs_use",help="use the tmpfs or not",type=bool,default=False)
+@click.option("--tmpfs_use_size",help="the memory usage per node",type=int,default=1024)
+def run(mode,enable_mongodb,producer_number,nodes_number,evtd_port_http,evtd_port_p2p,mongo_db_port,evtd_dir,mongo_db_dir,free_dir,tmpfs_use,tmpfs_use_size):
     #get the client
     client=docker.from_env()
 
@@ -55,6 +58,11 @@ def run(mode,enable_mongodb,producer_number,nodes_number,evtd_port_http,evtd_por
         if(enable_mongodb):
             print("begin open the mongodb")
             for i in range(0,nodes_number):
+                print("*****mongodb "+str(i)+"**************")
+                print("name: "+"evtd_"+str(i))
+                print("nework: "+"evt-net")
+                print("mongodb port: "+str(mongo_db_port+i)+'/tcp:'+str(27017+i))
+                print("****************************")
 
                 #create files in mongo_db_dir
                 if(not os.path.exists(mongo_db_dir)):
@@ -108,22 +116,45 @@ def run(mode,enable_mongodb,producer_number,nodes_number,evtd_port_http,evtd_por
                 command+=(" --p2p-peer-address=evtd_"+str(j)+":"+str(9876+j))
 
             #run the image evtd in container
-            container=client.containers.run(image="everitoken/evt:latest",
-            name="evtd_"+str(i),
-            command=command,
-            network="evt-net",
-            ports={str(evtd_port_http+i):8888+i,str(evtd_port_p2p+i)+"/tcp":9876+i},
-            detach=True,
-            volumes={file:{'bind':'/opt/evtd/data','mode':'rw'}}
-            )
+            if(not tmpfs_use):
+                container=client.containers.run(image="everitoken/evt:latest",
+                name="evtd_"+str(i),
+                command=command,
+                network="evt-net",
+                ports={str(evtd_port_http+i):8888+i,str(evtd_port_p2p+i)+"/tcp":9876+i},
+                detach=True,
+                volumes={file:{'bind':'/opt/evtd/data','mode':'rw'}}
+                )
+            else:
+                print("********evtd "+str(i)+"**************")
+                print("name: "+"evtd_"+str(i))
+                print("nework: "+"evt-net")
+                print("http port: "+str(evtd_port_http+i)+'/tcp:'+str(8888+i))
+                print("p2p port: "+str(evtd_port_p2p+i)+"/tcp:"+str(9876+i))
+                print("tmpfs use size: "+str(tmpfs_use_size)+"M")
+                print("****************************")
+                container=client.containers.run(image="everitoken/evt:latest",
+                name="evtd_"+str(i),
+                command=command,
+                network="evt-net",
+                ports={str(evtd_port_http+i):8888+i,str(evtd_port_p2p+i)+"/tcp":9876+i},
+                detach=True,
+                tmpfs={'/opt/evtd/data':'size='+str(tmpfs_use_size)+'M'}
+                #
+                )
+
+
+
 
     if(mode=="free"):
         print("free the container")
         free_container("evtd_",client)
         free_container("mongodb_",client)
         if(free_dir):
-            free_dir(mongo_db_dir)
-            free_dir(evtd_dir)
+            print(mongo_db_dir)
+            free_the_dir(mongo_db_dir)
+            print(evtd_dir)
+            free_the_dir(evtd_dir)
 
 if __name__=='__main__':
     run()
