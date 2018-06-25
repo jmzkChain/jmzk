@@ -1,4 +1,3 @@
-import argparse
 import os
 import sys
 import time
@@ -36,19 +35,19 @@ def free_the_dir(dir):
 
 # format with the click
 @click.command()
-@click.option('--mode', help='the run or the free', type=str, default='run')
+@click.option('--mode', help='the run or the free', type=click.Choice(['run', 'free']), default='run')
 @click.option('--enable_mongodb', help='run the mongodb or not', type=bool, default=False)
-@click.option('--producer_number', help='the number of the producer', type=int, default=1)
-@click.option('--nodes_number', help='the number of nodes we run', type=int, default=1)
-@click.option('--evtd_port_http', help='the begin port of nodes port,port+1 ....', type=int, default=8888)
-@click.option('--evtd_port_p2p', help='the begin port of nodes port,port+1 ....', type=int, default=10000)
-@click.option('--mongo_db_port', help='the begin port of mongodb port,port+1 ....', type=int, default=27017)
+@click.option('--producer_number', help='the number of the producer', type=click.IntRange(1, 1000), default=1)
+@click.option('--nodes_number', help='the number of nodes we run', type=click.IntRange(1, 1000), default=1)
+@click.option('--evtd_port_http', help='the begin port of nodes port,port+1 ....', type=click.IntRange(0, 65535), default=8888)
+@click.option('--evtd_port_p2p', help='the begin port of nodes port,port+1 ....', type=click.IntRange(0, 65535), default=10000)
+@click.option('--mongo_db_port', help='the begin port of mongodb port,port+1 ....', type=click.IntRange(0, 65535), default=27017)
 @click.option('--evtd_dir', help='the data directory of the evtd', type=str, default='/home/harry/evtd_data')
 @click.option('--mongo_db_dir', help='the data directory of the mongodb', type=str, default='/home/harry/mongo_db_data')
 @click.option('--free_dir', help='delete the directory of the mongodb and evtd', type=bool, default=True)
-@click.option('--tmpfs_use', help='use the tmpfs or not', type=bool, default=False)
-@click.option('--tmpfs_use_size', help='the memory usage per node', type=int, default=1024)
-def run(mode, enable_mongodb, producer_number, nodes_number, evtd_port_http, evtd_port_p2p, mongo_db_port, evtd_dir, mongo_db_dir, free_dir, tmpfs_use, tmpfs_use_size):
+@click.option('--use_tmpfs', help='use the tmpfs or not', type=bool, default=False)
+@click.option('--tmpfs_size', help='the memory usage per node', type=click.IntRange(0, 1024*1024), default=1024)
+def run(mode, enable_mongodb, producer_number, nodes_number, evtd_port_http, evtd_port_p2p, mongo_db_port, evtd_dir, mongo_db_dir, free_dir, use_tmpfs, tmpfs_size):
     # get the client
     client = docker.from_env()
 
@@ -123,7 +122,7 @@ def run(mode, enable_mongodb, producer_number, nodes_number, evtd_port_http, evt
                 command += (' --p2p-peer-address=evtd_'+str(j)+':'+str(9876+j))
 
             # run the image evtd in container
-            if(not tmpfs_use):
+            if(not use_tmpfs):
                 print('********evtd '+str(i)+'**************')
                 print('name: '+'evtd_'+str(i))
                 print('nework: '+'evt-net')
@@ -147,7 +146,7 @@ def run(mode, enable_mongodb, producer_number, nodes_number, evtd_port_http, evt
                 print('nework: '+'evt-net')
                 print('http port: '+str(evtd_port_http+i)+'/tcp:'+str(8888+i))
                 print('p2p port: '+str(evtd_port_p2p+i)+'/tcp:'+str(9876+i))
-                print('tmpfs use size: '+str(tmpfs_use_size)+'M')
+                print('tmpfs use size: '+str(tmpfs_size)+'M')
                 print('****************************')
                 container = client.containers.run(image='everitoken/evt:latest',
                                                   name='evtd_'+str(i),
@@ -157,7 +156,7 @@ def run(mode, enable_mongodb, producer_number, nodes_number, evtd_port_http, evt
                                                       str(evtd_port_http+i): 8888+i, str(evtd_port_p2p+i)+'/tcp': 9876+i},
                                                   detach=True,
                                                   tmpfs={
-                                                      '/opt/evtd/data': 'size='+str(tmpfs_use_size)+'M'}
+                                                      '/opt/evtd/data': 'size='+str(tmpfs_size)+'M'}
                                                   #
                                                   )
 
