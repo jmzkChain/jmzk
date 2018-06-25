@@ -14,9 +14,9 @@ using uint128_t = __uint128_t;
 static constexpr uint64_t
 char_to_symbol(char c) {
     if(c >= 'a' && c <= 'z')
-        return (c - 'a') + 6;
+        return (c - 'a') + 1;
     if(c >= '1' && c <= '5')
-        return (c - '1') + 1;
+        return (c - '1') + 27;
     return 0;
 }
 
@@ -60,11 +60,8 @@ static constexpr uint128_t
 string_to_name128(const char* str) {
     uint128_t name = 0;
     int       i    = 0;
-    for(; str[i] && i < 20; ++i) {
+    for(; str[i] && i <= 20; ++i) {
         name |= (char_to_symbol128(str[i]) & 0x3f) << (128 - 6 * (i + 1));
-    }
-    if(i == 20) {
-        name |= (char_to_symbol128(str[20]) & 0x3f);
     }
     return name;
 }

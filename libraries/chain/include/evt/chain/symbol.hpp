@@ -15,7 +15,7 @@ namespace evt { namespace chain {
    When encoded as a uint64_t, first byte represents the number of decimals, remaining bytes
    represent token name.
    Name must only include upper case alphabets.
-   from_string constructs a symbol from an input a string of the form "4,EOS"
+   from_string constructs a symbol from an input a string of the form "4,EVT"
    where the integer represents number of decimals. Number of decimals must be larger than zero.
  */
 
@@ -70,7 +70,7 @@ public:
         FC_ASSERT(valid(), "invalid symbol: ${s}", ("s", s));
     }
 
-    explicit symbol(uint64_t v = SY(4, EOS))
+    explicit symbol(uint64_t v = SY(4, EVT))
         : _value(v) {
         FC_ASSERT(valid(), "invalid symbol: ${name}", ("name", name()));
     }
@@ -123,6 +123,7 @@ public:
         }
         return p10;
     }
+
     string
     name() const {
         uint64_t v = _value;
@@ -154,6 +155,7 @@ public:
     to_string() const {
         return string(*this);
     }
+
     template <typename DataStream>
     friend DataStream&
     operator<<(DataStream& ds, const symbol& s) {
@@ -171,23 +173,21 @@ private:
     friend struct fc::reflector<symbol>;
 };  // class symbol
 
-struct extended_symbol {
-    symbol       sym;
-    account_name contract;
-};
-
 inline bool
 operator==(const symbol& lhs, const symbol& rhs) {
     return lhs.value() == rhs.value();
 }
+
 inline bool
 operator!=(const symbol& lhs, const symbol& rhs) {
     return lhs.value() != rhs.value();
 }
+
 inline bool
 operator<(const symbol& lhs, const symbol& rhs) {
     return lhs.value() < rhs.value();
 }
+
 inline bool
 operator>(const symbol& lhs, const symbol& rhs) {
     return lhs.value() > rhs.value();
@@ -196,27 +196,32 @@ operator>(const symbol& lhs, const symbol& rhs) {
 }}  // namespace evt::chain
 
 namespace fc {
+
 inline void
 to_variant(const evt::chain::symbol& var, fc::variant& vo) {
     vo = var.to_string();
 }
+
 inline void
 from_variant(const fc::variant& var, evt::chain::symbol& vo) {
     vo = evt::chain::symbol::from_string(var.get_string());
 }
+
 }  // namespace fc
 
 namespace fc {
+
 inline void
 to_variant(const evt::chain::symbol_code& var, fc::variant& vo) {
     vo = evt::chain::symbol(var.value << 8).name();
 }
+
 inline void
 from_variant(const fc::variant& var, evt::chain::symbol_code& vo) {
     vo = evt::chain::symbol(0, var.get_string().c_str()).to_symbol_code();
 }
+
 }  // namespace fc
 
 FC_REFLECT(evt::chain::symbol_code, (value))
 FC_REFLECT(evt::chain::symbol, (_value))
-FC_REFLECT(evt::chain::extended_symbol, (sym)(contract))

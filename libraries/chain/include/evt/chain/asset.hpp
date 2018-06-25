@@ -73,6 +73,7 @@ struct asset {
         amount -= o.amount;
         return *this;
     }
+
     asset
     operator-() const { return asset(-amount, get_symbol()); }
 
@@ -86,6 +87,7 @@ struct asset {
         FC_ASSERT(a.get_symbol() == b.get_symbol());
         return std::tie(a.amount, a.get_symbol()) < std::tie(b.amount, b.get_symbol());
     }
+
     friend bool
     operator<=(const asset& a, const asset& b) { return (a == b) || (a < b); }
 
@@ -126,30 +128,23 @@ private:
     symbol     sym;
 };
 
-struct extended_asset {
-    extended_asset() {}
-    extended_asset(asset a, name n)
-        : quantity(a)
-        , contract(n) {}
-    asset quantity;
-    name  contract;
-};
-
 bool operator<(const asset& a, const asset& b);
 bool operator<=(const asset& a, const asset& b);
 
 }}  // namespace evt::chain
 
 namespace fc {
+
 inline void
 to_variant(const evt::chain::asset& var, fc::variant& vo) {
     vo = var.to_string();
 }
+
 inline void
 from_variant(const fc::variant& var, evt::chain::asset& vo) {
     vo = evt::chain::asset::from_string(var.get_string());
 }
+
 }  // namespace fc
 
 FC_REFLECT(evt::chain::asset, (amount)(sym))
-FC_REFLECT(evt::chain::extended_asset, (quantity)(contract))

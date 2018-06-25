@@ -115,9 +115,10 @@ struct controller_impl {
         SET_APP_HANDLER(newgroup);
         SET_APP_HANDLER(updategroup);
         SET_APP_HANDLER(updatedomain);
-        SET_APP_HANDLER(newaccount);
-        SET_APP_HANDLER(updateowner);
-        SET_APP_HANDLER(transferevt);
+        SET_APP_HANDLER(newfungible);
+        SET_APP_HANDLER(updfungible);
+        SET_APP_HANDLER(issuefungible);
+        SET_APP_HANDLER(transfer20);
         SET_APP_HANDLER(addmeta);
         SET_APP_HANDLER(newdelay);
         SET_APP_HANDLER(approvedelay);
@@ -322,34 +323,42 @@ struct controller_impl {
         if(!token_db.exists_domain("domain")) {
             auto dd = domain_def();
             dd.name = "domain";
-            dd.issuer = conf.genesis.initial_key;
-            dd.issue_time = conf.genesis.initial_timestamp;
+            dd.creator = conf.genesis.initial_key;
+            dd.create_time = conf.genesis.initial_timestamp;
             auto r = token_db.add_domain(dd);
             FC_ASSERT(r == 0, "Add `domain` domain failed");
         }
         if(!token_db.exists_domain("group")) {
             auto gd = domain_def();
             gd.name = "group";
-            gd.issuer = conf.genesis.initial_key;
-            gd.issue_time = conf.genesis.initial_timestamp;
+            gd.creator = conf.genesis.initial_key;
+            gd.create_time = conf.genesis.initial_timestamp;
             auto r = token_db.add_domain(gd);
             FC_ASSERT(r == 0, "Add `group` domain failed");
         }
         if(!token_db.exists_domain("account")) {
             auto ad = domain_def();
             ad.name = "account";
-            ad.issuer = conf.genesis.initial_key;
-            ad.issue_time = conf.genesis.initial_timestamp;
+            ad.creator = conf.genesis.initial_key;
+            ad.create_time = conf.genesis.initial_timestamp;
             auto r = token_db.add_domain(ad);
             FC_ASSERT(r == 0, "Add `account` domain failed");
         }
         if(!token_db.exists_domain("delay")) {
             auto dd = domain_def();
             dd.name = "delay";
-            dd.issuer = conf.genesis.initial_key;
-            dd.issue_time = conf.genesis.initial_timestamp;
+            dd.creator = conf.genesis.initial_key;
+            dd.create_time = conf.genesis.initial_timestamp;
             auto r = token_db.add_domain(dd);
             FC_ASSERT(r == 0, "Add `delay` domain failed");
+        }
+        if(!token_db.exists_domain("fungible")) {
+            auto dd = domain_def();
+            dd.name = "fungible";
+            dd.creator = conf.genesis.initial_key;
+            dd.create_time = conf.genesis.initial_timestamp;
+            auto r = token_db.add_domain(dd);
+            FC_ASSERT(r == 0, "Add `fungible` domain failed");
         }
     }
 
