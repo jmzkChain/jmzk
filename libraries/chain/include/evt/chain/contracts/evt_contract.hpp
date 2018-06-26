@@ -30,7 +30,7 @@ void apply_evt_updatedomain(apply_context& context);
 void apply_evt_newfungible(apply_context& context);
 void apply_evt_updfungible(apply_context& context);
 void apply_evt_issuefungible(apply_context& context);
-void apply_evt_transfer20(apply_context& context);
+void apply_evt_transferft(apply_context& context);
 
 void apply_evt_addmeta(apply_context& context);
 

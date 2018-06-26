@@ -306,7 +306,7 @@ apply_evt_issuefungible(apply_context& context) {
 }
 
 void
-apply_evt_transfer20(apply_context& context) {
+apply_evt_transferft(apply_context& context) {
     
 }
 

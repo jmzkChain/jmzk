@@ -259,15 +259,15 @@ private:
         case N(updfungible): {
             return satisfied_fungible_permission(action.key, action, N(manage));
         }
-        case N(transfer20): {
+        case N(transferft): {
             try {
-                auto t20    = action.data_as<contracts::transfer20>();
+                auto t20    = action.data_as<contracts::transferft>();
                 auto vistor = weight_tally_visitor(*this);
                 if(vistor(t20.from, 1) == 1) {
                     return true;
                 }
             }
-            EVT_RETHROW_EXCEPTIONS(chain_type_exception, "transation data is not valid, data cannot cast to `transfer20` type")
+            EVT_RETHROW_EXCEPTIONS(chain_type_exception, "transation data is not valid, data cannot cast to `transferft` type")
             break;
         }
         default: {
