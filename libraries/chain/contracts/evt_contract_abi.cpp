@@ -34,6 +34,7 @@ evt_contract_abi() {
     evt_abi.types.push_back( type_def{"token_name","name128"} );
     evt_abi.types.push_back( type_def{"account_name","name128"} );
     evt_abi.types.push_back( type_def{"proposal_name","name128"} );
+    evt_abi.types.push_back( type_def{"fungibal_name","name128"} );
     evt_abi.types.push_back( type_def{"balance_type","asset"} );
     evt_abi.types.push_back( type_def{"group_def","group"} );
     evt_abi.types.push_back( type_def{"meta_key","name128"} );
@@ -47,9 +48,10 @@ evt_contract_abi() {
     evt_abi.actions.push_back( action_def{name("newgroup"), "newgroup"} );
     evt_abi.actions.push_back( action_def{name("updategroup"), "updategroup"} );
     evt_abi.actions.push_back( action_def{name("updatedomain"), "updatedomain"} );
-    evt_abi.actions.push_back( action_def{name("newaccount"), "newaccount"} );
-    evt_abi.actions.push_back( action_def{name("updateowner"), "updateowner"} );
-    evt_abi.actions.push_back( action_def{name("transferevt"), "transferevt"} );
+    evt_abi.actions.push_back( action_def{name("newfungible"), "newfungible"} );
+    evt_abi.actions.push_back( action_def{name("updfungible"), "updfungible"} );
+    evt_abi.actions.push_back( action_def{name("issuefungible"), "issuefungible"} );
+    evt_abi.actions.push_back( action_def{name("transferft"), "transferft"} );
     evt_abi.actions.push_back( action_def{name("addmeta"), "addmeta"} );
     evt_abi.actions.push_back( action_def{name("newdelay"), "newdelay"} );
     evt_abi.actions.push_back( action_def{name("canceldelay"), "canceldelay"} );
@@ -99,8 +101,8 @@ evt_contract_abi() {
     evt_abi.structs.emplace_back( struct_def {
         "domain_def", "", {
             {"name", "domain_name"},
-            {"issuer", "user_id"},
-            {"issue_time", "time_point_sec"},
+            {"creator", "user_id"},
+            {"create_time", "time_point_sec"},
             {"issue", "permission_def"},
             {"transfer", "permission_def"},
             {"manage", "permission_def"},
@@ -109,12 +111,15 @@ evt_contract_abi() {
     });
 
     evt_abi.structs.emplace_back( struct_def {
-        "account_def", "", {
-            {"name", "account_name"},
-            {"creator", "account_name"},
+        "fungibal_def", "", {
+            {"sym", "symbol"},
+            {"creator", "user_id"},
             {"create_time", "time_point_sec"},
-            {"balance", "balance_type"},
-            {"frozen_balance", "balance_type"}
+            {"issue", "permission_def"},
+            {"manage", "permission_def"},
+            {"total_supply", "asset"},
+            {"current_supply", "asset"},
+            {"metas", "meta_list"}
         }
     });
 
@@ -130,7 +135,7 @@ evt_contract_abi() {
     evt_abi.structs.emplace_back( struct_def {
         "newdomain", "", {
             {"name", "domain_name"},
-            {"issuer", "user_id"},
+            {"creator", "user_id"},
             {"issue", "permission_def"},
             {"transfer", "permission_def"},
             {"manage", "permission_def"}
@@ -184,24 +189,35 @@ evt_contract_abi() {
     });
 
     evt_abi.structs.emplace_back( struct_def {
-        "newaccount", "", {
-            {"name", "account_name"},
-            {"owner", "user_list"}
+        "newfungible", "", {
+            {"sym", "symbol"},
+            {"creator", "user_id"},
+            {"issue", "permission_def"},
+            {"manage", "permission_def"},
+            {"total_supply", "asset"}
         }
     });
 
     evt_abi.structs.emplace_back( struct_def {
-        "updateowner", "", {
-            {"name", "account_name"},
-            {"owner", "user_list"}
+        "updfungible", "", {
+            {"name", "fungibal_name"},
+            {"issue", "permission_def?"},
+            {"manage", "permission_def?"}
         }
     });
 
     evt_abi.structs.emplace_back( struct_def {
-        "transferevt", "", {
-            {"from", "account_name"},
-            {"to", "account_name"},
-            {"amount", "balance_type"}
+        "issuefungible", "", {
+            {"address", "public_key"},
+            {"number", "asset"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "transferft", "", {
+            {"from", "public_key"},
+            {"to", "public_key"},
+            {"number", "asset"}
         }
     });
 
