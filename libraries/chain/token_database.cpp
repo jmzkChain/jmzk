@@ -409,6 +409,15 @@ token_database::exists_fungible(const symbol sym) const {
 }
 
 int
+token_database::exists_fungible(const fungible_name& sym_name) const {
+    using namespace __internal;
+    auto key    = get_fungible_key(sym_name);
+    auto value  = std::string();
+    auto status = db_->Get(read_opts_, key.as_slice(), &value);
+    return status.ok();
+}
+
+int
 token_database::update_asset(const public_key_type& address, const asset& asset) {
     using namespace __internal;
     auto key    = get_asset_key(address, asset);
@@ -537,6 +546,7 @@ token_database::read_asset(const public_key_type& address, const symbol symbol, 
     it->Seek(key.as_slice());
 
     if(!it->Valid() || it->key().compare(key.as_slice()) != 0) {
+        delete it;
         EVT_THROW(tokendb_asset_not_found, "Cannot find fungible: ${name} in address: {address}", ("name",symbol)("address",address));
     }
     v = read_value<asset>(it->value());

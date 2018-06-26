@@ -299,14 +299,14 @@ struct issuefungible {
     }
 };
 
-struct transfer20 {
+struct transferft {
     public_key_type from;
     public_key_type to;
     asset           number;
 
     static action_name
     get_name() {
-        return N(transfer20);
+        return N(transferft);
     }
 };
 
@@ -386,7 +386,7 @@ FC_REFLECT(evt::chain::contracts::updatedomain, (name)(issue)(transfer)(manage))
 FC_REFLECT(evt::chain::contracts::newfungible, (sym)(creator)(issue)(manage)(total_supply));
 FC_REFLECT(evt::chain::contracts::updfungible, (sym)(issue)(manage));
 FC_REFLECT(evt::chain::contracts::issuefungible, (address)(number));
-FC_REFLECT(evt::chain::contracts::transfer20, (from)(to)(number));
+FC_REFLECT(evt::chain::contracts::transferft, (from)(to)(number));
 FC_REFLECT(evt::chain::contracts::addmeta, (key)(value)(creator));
 FC_REFLECT(evt::chain::contracts::newdelay, (name)(proposer)(trx));
 FC_REFLECT(evt::chain::contracts::canceldelay, (name));

@@ -88,6 +88,7 @@ public:
     int exists_delay(const proposal_name&) const;
     int add_fungible(const fungible_def&);
     int exists_fungible(const symbol) const;
+    int exists_fungible(const fungible_name& sym_name) const;
 
     int update_asset(const public_key_type& address, const asset&);
     int exists_any_asset(const public_key_type& address) const;

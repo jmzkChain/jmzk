@@ -118,7 +118,7 @@ struct controller_impl {
         SET_APP_HANDLER(newfungible);
         SET_APP_HANDLER(updfungible);
         SET_APP_HANDLER(issuefungible);
-        SET_APP_HANDLER(transfer20);
+        SET_APP_HANDLER(transferft);
         SET_APP_HANDLER(addmeta);
         SET_APP_HANDLER(newdelay);
         SET_APP_HANDLER(approvedelay);

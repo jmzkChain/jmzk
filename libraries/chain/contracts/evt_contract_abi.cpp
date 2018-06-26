@@ -51,7 +51,7 @@ evt_contract_abi() {
     evt_abi.actions.push_back( action_def{name("newfungible"), "newfungible"} );
     evt_abi.actions.push_back( action_def{name("updfungible"), "updfungible"} );
     evt_abi.actions.push_back( action_def{name("issuefungible"), "issuefungible"} );
-    evt_abi.actions.push_back( action_def{name("transfer20"), "transfer20"} );
+    evt_abi.actions.push_back( action_def{name("transferft"), "transferft"} );
     evt_abi.actions.push_back( action_def{name("addmeta"), "addmeta"} );
     evt_abi.actions.push_back( action_def{name("newdelay"), "newdelay"} );
     evt_abi.actions.push_back( action_def{name("canceldelay"), "canceldelay"} );
@@ -208,15 +208,15 @@ evt_contract_abi() {
 
     evt_abi.structs.emplace_back( struct_def {
         "issuefungible", "", {
-            {"address", "public_key_type"},
+            {"address", "public_key"},
             {"number", "asset"}
         }
     });
 
     evt_abi.structs.emplace_back( struct_def {
-        "transfer20", "", {
-            {"from", "public_key_type"},
-            {"to", "public_key_type"},
+        "transferft", "", {
+            {"from", "public_key"},
+            {"to", "public_key"},
             {"number", "asset"}
         }
     });
