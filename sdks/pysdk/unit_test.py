@@ -1,5 +1,6 @@
 import datetime
 import json
+import time
 import unittest
 
 from pyevt import abi, ecc, libevt
@@ -9,7 +10,8 @@ import api
 import base
 import transaction
 
-api = api.Api()
+host_url = 'http://118.31.58.10:8888'
+api = api.Api(host_url)
 EvtAsset = base.EvtAsset
 AG = action.ActionGenerator()
 
@@ -29,7 +31,7 @@ class Test(unittest.TestCase):
 
         newdomain = AG.new_action('newdomain', name=name, issuer=pub_key)
 
-        trx = transaction.Transaction()
+        trx = transaction.Transaction(host_url)
         trx.add_action(newdomain)
         trx.add_sign(priv_key)
 
@@ -37,15 +39,16 @@ class Test(unittest.TestCase):
 
         resp = api.get_domain('''{"name": "%s"}''' % (name)).json()
         self.assertTrue(pub_key.to_string() == resp['issuer'])
+        time.sleep(1)
 
     def test_action_updatedomain(self):
-        # Example: Add another user into manage permimssion
+        # Example: Add another user into issue permimssion
 
         # Create a new domain
         pub_key, priv_key = ecc.generate_new_pair()
         name = fake_name()
         newdomain = AG.new_action('newdomain', name=name, issuer=pub_key)
-        trx = transaction.Transaction()
+        trx = transaction.Transaction(host_url)
         trx.add_action(newdomain)
         trx.add_sign(priv_key)
         api.push_transaction(data=trx.dumps())
@@ -60,7 +63,7 @@ class Test(unittest.TestCase):
 
         updatedomain = AG.new_action(
             'updatedomain', name=name, issue=issue_per)
-        trx = transaction.Transaction()
+        trx = transaction.Transaction(host_url)
         trx.add_action(updatedomain)
         trx.add_sign(priv_key)
         api.push_transaction(data=trx.dumps())
@@ -68,6 +71,7 @@ class Test(unittest.TestCase):
         resp = api.get_domain('{"name": "%s"}' % (name)).json()
         self.assertTrue({'ref': ar2.value(), 'weight': 1}
                         in resp['issue']['authorizers'])
+        time.sleep(1)
 
     def test_action_newgroup(self):
         pub_key, priv_key = ecc.generate_new_pair()
@@ -80,7 +84,7 @@ class Test(unittest.TestCase):
 
         newgroup = AG.new_action_from_json('newgroup', json.dumps(group_json))
 
-        trx = transaction.Transaction()
+        trx = transaction.Transaction(host_url)
         trx.add_action(newgroup)
         trx.add_sign(priv_key)
 
@@ -88,6 +92,7 @@ class Test(unittest.TestCase):
 
         resp = api.get_group('''{"name": "%s"}''' % (name)).json()
         self.assertTrue(pub_key.to_string() == resp['key'])
+        time.sleep(1)
 
     def test_action_updategroup(self):
         # It's the same as new group action
@@ -100,7 +105,7 @@ class Test(unittest.TestCase):
 
         newaccount = AG.new_action('newaccount', name=name, owner=[pub1, pub2])
 
-        trx = transaction.Transaction()
+        trx = transaction.Transaction(host_url)
         trx.add_action(newaccount)
         trx.add_sign(priv1)
         trx.add_sign(priv2)
@@ -109,6 +114,7 @@ class Test(unittest.TestCase):
 
         resp = api.get_account('''{"name": "%s"}''' % (name)).json()
         self.assertTrue(resp['name'] == name)
+        time.sleep(1)
 
     def test_action_updateowner(self):
         pub1, priv1 = ecc.generate_new_pair()
@@ -117,7 +123,7 @@ class Test(unittest.TestCase):
 
         # create a new account. Owner is pub1
         newaccount = AG.new_action('newaccount', name=name, owner=[pub1])
-        trx = transaction.Transaction()
+        trx = transaction.Transaction(host_url)
         trx.add_action(newaccount)
         trx.add_sign(priv1)
         api.push_transaction(trx.dumps())
@@ -125,13 +131,14 @@ class Test(unittest.TestCase):
         # update the owner, change the owner to be [pub1,pub2]
         updateowner = AG.new_action(
             'updateowner', name=name, owner=[pub1, pub2])
-        trx = transaction.Transaction()
+        trx = transaction.Transaction(host_url)
         trx.add_action(updateowner)
         trx.add_sign(priv1)  # sign with only original owner's priv_key
         resp = api.push_transaction(trx.dumps())
 
         resp = api.get_account('''{"name": "%s"}''' % (name)).json()
         self.assertTrue(pub2.to_string() in resp['owner'])
+        time.sleep(1)
 
     def test_action_transferevt(self):
         pub1, priv1 = ecc.generate_new_pair()
@@ -142,18 +149,18 @@ class Test(unittest.TestCase):
         # Create two new account. Also test trx with multiple actions
         newaccount1 = AG.new_action('newaccount', name=account1, owner=[pub1])
         newaccount2 = AG.new_action('newaccount', name=account2, owner=[pub2])
-        trx = transaction.Transaction()
+        trx = transaction.Transaction(host_url)
         trx.add_action(newaccount1)
         trx.add_action(newaccount2)
         trx.add_sign(priv1)
         trx.add_sign(priv2)
         api.push_transaction(data=trx.dumps())
 
-        # Each new account has 1.00000 EVT
+        # Each new account has 0.10000 EVT
         # Try to transfer 0.01000 EVT from account1 to account2
         transferevt = AG.new_action(
             'transferevt', _from=account1, to=account2, amount=EvtAsset('0.01000'))
-        trx = transaction.Transaction()
+        trx = transaction.Transaction(host_url)
         trx.add_action(transferevt)
         trx.add_sign(priv1)  # sign with account1's owner's priv_key
         api.push_transaction(data=trx.dumps())
@@ -163,7 +170,8 @@ class Test(unittest.TestCase):
                               (account1)).json()['balance']
         ac2 = api.get_account('''{"name": "%s"}''' %
                               (account2)).json()['balance']
-        self.assertTrue(ac1 == '0.99000 EVT' and ac2 == '1.01000 EVT')
+        self.assertTrue(ac1 == '0.09000 EVT' and ac2 == '0.11000 EVT')
+        time.sleep(1)
 
     def test_action_issuetoken(self):
         pub_key, priv_key = ecc.generate_new_pair()
@@ -175,15 +183,15 @@ class Test(unittest.TestCase):
         issuetoken = AG.new_action('issuetoken', domain=domain_name, names=[
                                    token_name], owner=[pub_key])
 
-        trx = transaction.Transaction()
+        trx = transaction.Transaction(host_url)
         trx.add_action(newdomain)
         trx.add_sign(priv_key)
         api.push_transaction(trx.dumps())
 
-        trx = transaction.Transaction()
+        trx = transaction.Transaction(host_url)
         trx.add_action(issuetoken)
         trx.add_sign(priv_key)
-        resp = api.push_transaction(trx.dumps())
+        api.push_transaction(trx.dumps())
 
         resp = api.get_token(
             '''
@@ -194,6 +202,7 @@ class Test(unittest.TestCase):
                 
         ''' % (token_name, domain_name)).json()
         self.assertTrue(resp['domain'] == domain_name)
+        time.sleep(1)
 
     def test_action_transfer(self):
         pub_key, priv_key = ecc.generate_new_pair()
@@ -206,13 +215,13 @@ class Test(unittest.TestCase):
                                    token_name], owner=[pub_key])
 
         # create a new domain
-        trx = transaction.Transaction()
+        trx = transaction.Transaction(host_url)
         trx.add_action(newdomain)
         trx.add_sign(priv_key)
         api.push_transaction(trx.dumps())
 
         # issue a new token
-        trx = transaction.Transaction()
+        trx = transaction.Transaction(host_url)
         trx.add_action(issuetoken)
         trx.add_sign(priv_key)
         api.push_transaction(trx.dumps())
@@ -221,7 +230,7 @@ class Test(unittest.TestCase):
         pub2, priv2 = ecc.generate_new_pair()
         transfer = AG.new_action(
             'transfer', domain=domain_name, name=token_name, to=[pub2])
-        trx = transaction.Transaction()
+        trx = transaction.Transaction(host_url)
         trx.add_action(transfer)
         trx.add_sign(priv_key)  # priv_key of the owner of this token
         api.push_transaction(trx.dumps())
@@ -235,6 +244,7 @@ class Test(unittest.TestCase):
                 
         ''' % (token_name, domain_name)).json()
         self.assertTrue(resp['owner'][0] == pub2.to_string())
+        time.sleep(1)
 
     def test_action_addmeta(self):
         pub_key, priv_key = ecc.generate_new_pair()
@@ -242,17 +252,19 @@ class Test(unittest.TestCase):
         domain_name = fake_name()
         newdomain = AG.new_action(
             'newdomain', name=domain_name, issuer=pub_key)
-        trx = transaction.Transaction()
+        trx = transaction.Transaction(host_url)
         trx.add_action(newdomain)
         trx.add_sign(priv_key)
         api.push_transaction(trx.dumps())
 
         # add meta to this domain
-        addmeta = AG.new_action(key="meta_key_test", value="meta_value_test", creator=pub_key, domain="domain", key=domain_name)
-        trx = transaction.Transaction()
+        addmeta = AG.new_action('addmeta', meta_key='meta-key-test',
+                                meta_value='meta-value-test', creator=pub_key, domain='domain', key=domain_name)
+        trx = transaction.Transaction(host_url)
         trx.add_action(addmeta)
         trx.add_sign(priv_key)
         api.push_transaction(trx.dumps())
+        time.sleep(1)
 
 
 if __name__ == '__main__':
