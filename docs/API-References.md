@@ -81,8 +81,8 @@ Request:
     "actions": [
         {
             "name": "newdomain",
-            "domain": "domain",
-            "key": "test2",
+            "domain": "test2",
+            "key": ".create",
             "data": "000000000000000000000000109f077d0003c7e3ff0060d848bd31bf53daf1d5fed7d82c9b1121394ee15dcafb07e913a9700000000000a5317601000000010100000003c7e3ff0060d848bd31bf53daf1d5fed7d82c9b1121394ee15dcafb07e913a9706d4859000000000100000000572d3ccdcd010000000102000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000000002866a69101000000010100000003c7e3ff0060d848bd31bf53daf1d5fed7d82c9b1121394ee15dcafb07e913a9706d4859000000000100"
         }
     ],
@@ -116,14 +116,14 @@ For the fields of an action, here is a quick reference guide.
 
 | Action Name | Domain | Key |
 |-------------|--------|-----|
-| `newdomain` | `domain` | name of new domain |
-| `updatedomain` | `domain` | name of updating domain |
+| `newdomain` | name of domain | `.issue` |
+| `updatedomain` | name of domain | `.update` |
 | `newgroup` | `group` | name of new group |
 | `updategroup` | `group` | name of updating group |
 | `newaccount` | `account` | name of new account |
 | `updateowner` | `account` | name of updating account |
 | `transferevt` | `account` | name of giving account |
-| `issuetoken` | name of domain | `issue` |
+| `issuetoken` | name of domain | `.issue` |
 | `transfer` | name of domain token belongs to | name of token |
 | `addmeta` | `domain`, `group` or name of domain | domain name, group name or token name |
 
@@ -151,8 +151,8 @@ Request:
         "actions": [
             {
                 "name": "newdomain",
-                "domain": "domain",
-                "key": "test2",
+                "domain": "test2",
+                "key": ".create",
                 "data": "000000000000000000000000109f077d0003c7e3ff0060d848bd31bf53daf1d5fed7d82c9b1121394ee15dcafb07e913a9700000000000a5317601000000010100000003c7e3ff0060d848bd31bf53daf1d5fed7d82c9b1121394ee15dcafb07e913a9706d4859000000000100000000572d3ccdcd010000000102000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000000002866a69101000000010100000003c7e3ff0060d848bd31bf53daf1d5fed7d82c9b1121394ee15dcafb07e913a9706d4859000000000100"
             }
         ],
@@ -194,8 +194,8 @@ Request:
         "actions": [
             {
                 "name": "newdomain",
-                "domain": "domain",
-                "key": "test2",
+                "domain": "test2",
+                "key": ".create",
                 "data": "000000000000000000000000109f077d0003c7e3ff0060d848bd31bf53daf1d5fed7d82c9b1121394ee15dcafb07e913a9700000000000a5317601000000010100000003c7e3ff0060d848bd31bf53daf1d5fed7d82c9b1121394ee15dcafb07e913a9706d4859000000000100000000572d3ccdcd010000000102000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000000002866a69101000000010100000003c7e3ff0060d848bd31bf53daf1d5fed7d82c9b1121394ee15dcafb07e913a9706d4859000000000100"
             }
         ],
@@ -222,8 +222,8 @@ Response:
         },
         "act": {
           "name": "newdomain",
-          "domain": "domain",
-          "key": "test2",
+          "domain": "test2",
+          "key": ".create",
           "data": {
             "name": "test2",
             "issuer": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
