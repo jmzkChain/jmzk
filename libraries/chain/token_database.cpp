@@ -141,13 +141,13 @@ enum dbaction_type {
     kIssueToken,
     kNewGroup,
     kNewDelay,
-    kNewfungible,
+    kNewFungible,
 
     kUpdateDomain,
     kUpdateGroup,
     kUpdateToken,
     kUpdateDelay,
-    kUpdatefungible,
+    kUpdateFungible,
     kUpdateAsset
 };
 
@@ -394,7 +394,7 @@ token_database::add_fungible(const fungible_def& fungible) {
     if(should_record()) {
         auto act  = (sp_fungible*)malloc(sizeof(sp_fungible));
         act->sym = fungible.sym;
-        record(kNewfungible, act);
+        record(kNewFungible, act);
     }
     return 0;
 }
@@ -670,7 +670,7 @@ token_database::update_fungible(const fungible_def& fungible) {
     if(should_record()) {
         auto act  = (sp_fungible*)malloc(sizeof(sp_fungible));
         act->sym = fungible.sym;
-        record(kUpdatefungible, act);
+        record(kUpdateFungible, act);
     }
     return 0;
 }
@@ -764,7 +764,7 @@ token_database::rollback_to_latest_savepoint() {
                 batch.Delete(key.as_slice());
                 break;
             }
-            case kNewfungible: {
+            case kNewFungible: {
                 auto act = (sp_fungible*)it->data;
                 auto key = get_fungible_key(act->sym);
                 batch.Delete(key.as_slice());
@@ -814,7 +814,7 @@ token_database::rollback_to_latest_savepoint() {
                 batch.Put(key.as_slice(), old_value);
                 break;
             }
-            case kUpdatefungible: {
+            case kUpdateFungible: {
                 auto act = (sp_fungible*)it->data;
                 auto key = get_fungible_key(act->sym);
 

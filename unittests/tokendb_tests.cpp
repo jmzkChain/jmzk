@@ -662,6 +662,34 @@ BOOST_AUTO_TEST_CASE(tokendb_checkpoint_test) {
         tokendb.add_savepoint(get_time());
         int pop_re = tokendb.pop_savepoints(get_time());
         BOOST_TEST_REQUIRE(pop_re == 0);
+
+        auto address = public_key_type((std::string)"EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX");
+        BOOST_TEST(!tokendb.exists_fungible("EVT"));
+        BOOST_TEST(!tokendb.exists_any_asset(address));
+        BOOST_TEST(!tokendb.exists_asset(address, symbol(SY(5,EVT))));
+        
+        fungible_def fungible;
+        fungible.sym = symbol(SY(5,EVT));
+        tokendb.add_fungible(fungible);
+        tokendb.update_asset(address, asset(1000,symbol(SY(5,EVT))));
+
+        BOOST_TEST(tokendb.exists_fungible("EVT"));
+        BOOST_TEST(tokendb.exists_asset(address, symbol(SY(5,EVT))));
+
+        tokendb.add_savepoint(get_time());
+        tokendb.update_asset(address, asset(2000,symbol(SY(5,EVT))));
+
+        tokendb.rollback_to_latest_savepoint();
+        asset a;
+        tokendb.read_asset(address, symbol(SY(5,EVT)), a);
+        BOOST_TEST(a == asset(1000,symbol(SY(5,EVT))));
+
+        tokendb.rollback_to_latest_savepoint();
+        BOOST_TEST(!tokendb.exists_fungible("EVT"));
+        BOOST_TEST(!tokendb.exists_any_asset(address));
+        BOOST_TEST(!tokendb.exists_asset(address, symbol(SY(5,EVT))));
+
+        tokendb.pop_savepoints(0);
     }
     FC_LOG_AND_RETHROW()
 }
