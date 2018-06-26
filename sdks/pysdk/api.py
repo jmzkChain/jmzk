@@ -19,8 +19,10 @@ class Api:
         }
 
     def __getattr__(self, api_name):
+        url = self.host + self.urls[api_name]
+
         def ret_func(data):
-            return requests.post(self.host+self.urls[api_name], data=data)
+            return requests.post(url, data=data)
         return ret_func
 
     def get_info(self):

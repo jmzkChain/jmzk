@@ -183,7 +183,7 @@ class TransferEvtAbi(BaseType):
         args = {'from': _from, 'to': to, 'amount': amount}
         super().__init__(**args)
 
+
 class AddMetaAbi(BaseType):
     def __init__(self, key, value, creator):
         super().__init__(key=key, value=value, creator=creator)
-
