@@ -555,6 +555,23 @@ token_database::read_asset(const public_key_type& address, const symbol symbol, 
 }
 
 int
+token_database::read_asset_no_throw(const public_key_type& address, const symbol symbol, asset& v) const {
+    using namespace __internal;
+    auto it  = db_->NewIterator(read_opts_, assets_handle_);
+    auto key = get_asset_key(address, symbol);
+    it->Seek(key.as_slice());
+
+    if(!it->Valid() || it->key().compare(key.as_slice()) != 0) {
+        delete it;
+        v = asset(0, symbol);
+        return 0;
+    }
+    v = read_value<asset>(it->value());
+    delete it;
+    return 0;
+}
+
+int
 token_database::read_all_assets(const public_key_type& address, const read_fungible_func& func) const {
     using namespace __internal;
     auto it  = db_->NewIterator(read_opts_, assets_handle_);

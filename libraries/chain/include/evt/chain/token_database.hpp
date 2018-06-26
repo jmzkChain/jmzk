@@ -102,6 +102,9 @@ public:
     int read_fungible(const symbol, fungible_def&) const;
     int read_fungible(const fungible_name& sym_name, fungible_def&) const;
     int read_asset(const public_key_type& address, const symbol, asset&) const;
+    // this function returns asset(0, symbol) when there's no asset key in address
+    // instead of throwing an exception
+    int read_asset_no_throw(const public_key_type& address, const symbol, asset&) const;
     int read_all_assets(const public_key_type& address, const read_fungible_func&) const;
 
     int update_domain(const domain_def&);

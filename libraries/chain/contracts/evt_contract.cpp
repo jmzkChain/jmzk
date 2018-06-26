@@ -292,54 +292,138 @@ apply_evt_updatedomain(apply_context& context) {
 
 void
 apply_evt_newfungible(apply_context& context) {
+    using namespace __internal;
 
+    auto nfact = context.act.data_as<newfungible>();
+    try {
+        EVT_ASSERT(context.has_authorized(N128(fungible), (fungible_name)nfact.sym.name()), action_validate_exception, "Authorized information doesn't match");
+
+        auto& tokendb = context.token_db;
+        EVT_ASSERT(!tokendb.exists_fungible(nfact.sym), action_validate_exception, "Fungible with symbol: ${syj} already existed", ("sym",nfact.sym.name()));
+        EVT_ASSERT(nfact.sym == nfact.total_supply.get_symbol(), action_validate_exception, "Symbols are not the same");
+
+        EVT_ASSERT(nfact.issue.name == "issue", action_validate_exception, "Name of issue permission is not valid, provided: ${name}", ("name",nfact.issue.name));
+        EVT_ASSERT(nfact.issue.threshold > 0 && validate(nfact.issue), action_validate_exception, "Issue permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
+        // manage permission's threshold can be 0 which means no one can update permission later.
+        EVT_ASSERT(nfact.manage.name == "manage", action_validate_exception, "Name of transfer permission is not valid, provided: ${name}", ("name",nfact.manage.name));
+        EVT_ASSERT(validate(nfact.manage), action_validate_exception, "Manage permission not valid, maybe exist duplicate keys.");
+
+        auto pchecker = make_permission_checker(tokendb);
+        pchecker(nfact.issue, false);
+        pchecker(nfact.manage, false);
+
+        fungible_def fungible;
+        fungible.sym            = nfact.sym;
+        fungible.creator        = nfact.creator;
+        fungible.create_time    = context.control.head_block_time();
+        fungible.issue          = std::move(nfact.issue);
+        fungible.manage         = std::move(nfact.manage);
+        fungible.total_supply   = nfact.total_supply;
+        fungible.current_supply = asset(0, fungible.sym);
+
+        tokendb.add_fungible(fungible);
+    }
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
 void
 apply_evt_updfungible(apply_context& context) {
+    using namespace __internal;
 
+    auto ufact = context.act.data_as<updfungible>();
+    try {
+        EVT_ASSERT(context.has_authorized(N128(fungible), (fungible_name)ufact.sym.name()), action_validate_exception, "Authorized information doesn't match");
+
+        auto& tokendb = context.token_db;
+
+        fungible_def fungible;
+        tokendb.read_fungible(ufact.sym, fungible);
+
+        EVT_ASSERT(fungible.sym == ufact.sym, action_validate_exception, "Symbols are not the same");
+
+        auto pchecker = make_permission_checker(tokendb);
+        if(ufact.issue.valid()) {
+            EVT_ASSERT(ufact.issue->name == "issue", action_validate_exception, "Name of issue permission is not valid, provided: ${name}", ("name",ufact.issue->name));
+            EVT_ASSERT(ufact.issue->threshold > 0 && validate(*ufact.issue), action_validate_exception, "Issue permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
+            pchecker(*ufact.issue, false);
+
+            fungible.issue = std::move(*ufact.issue);
+        }
+        if(ufact.manage.valid()) {
+            // manage permission's threshold can be 0 which means no one can update permission later.
+            EVT_ASSERT(ufact.manage->name == "manage", action_validate_exception, "Name of manage permission is not valid, provided: ${name}", ("name",ufact.manage->name));
+            EVT_ASSERT(validate(*ufact.manage), action_validate_exception, "Manage permission not valid, maybe exist duplicate keys.");
+            pchecker(*ufact.manage, false);
+
+            fungible.manage = std::move(*ufact.manage);
+        }
+
+        tokendb.update_fungible(fungible);
+    }
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
 void
 apply_evt_issuefungible(apply_context& context) {
+    auto ifact = context.act.data_as<issuefungible>();
 
+    try {
+        auto sym = ifact.number.get_symbol();
+        EVT_ASSERT(context.has_authorized(N128(fungible), (fungible_name)sym.name()), action_validate_exception, "Authorized information doesn't match");
+
+        auto& tokendb = context.token_db;
+
+        fungible_def fungible;
+        tokendb.read_fungible(sym, fungible);
+
+        decltype(ifact.number.get_amount()) rr;
+        auto r = safemath::test_add(fungible.current_supply.get_amount(), ifact.number.get_amount(), rr);
+        EVT_ASSERT(r, action_validate_exception, "Operations resulted in overflow results");
+
+        fungible.current_supply += ifact.number;
+        EVT_ASSERT(fungible.current_supply <= fungible.total_supply, action_validate_exception, "Overflow total supply");
+
+        auto as = asset(0, sym);
+        tokendb.read_asset_no_throw(ifact.address, sym, as);
+        as += ifact.number;
+
+        tokendb.update_fungible(fungible);
+        tokendb.update_asset(ifact.address, as);
+    }
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
 void
 apply_evt_transferft(apply_context& context) {
-    
-}
+    auto tfact = context.act.data_as<transferft>();
 
-// void
-// apply_evt_transferevt(apply_context& context) {
-//     using namespace __internal;
+    try {
+        auto sym = tfact.number.get_symbol();
+        EVT_ASSERT(context.has_authorized(N128(fungible), (fungible_name)sym.name()), action_validate_exception, "Authorized information doesn't match");
 
-//     auto teact = context.act.data_as<transferevt>();
-//     try {
-//         EVT_ASSERT(context.has_authorized(N128(account), teact.from), action_validate_exception, "Authorized information doesn't match");
-
-//         auto& tokendb = context.token_db;
-//         EVT_ASSERT(teact.amount.get_amount() > 0, action_validate_exception, "Transfer amount must be positive");
-
-//         account_def facc, tacc;
-//         tokendb.read_account(teact.from, facc);
-//         tokendb.read_account(teact.to,   tacc);
-
-//         EVT_ASSERT(facc.balance >= teact.amount, action_validate_exception, "Account ${name} don't have enough balance left", ("name",teact.from));
+        auto& tokendb = context.token_db;
         
-//         bool r1, r2;
-//         decltype(facc.balance.get_amount()) r;
-//         r1 = safemath::test_sub(facc.balance.get_amount(), teact.amount.get_amount(), r);
-//         r2 = safemath::test_add(tacc.balance.get_amount(), teact.amount.get_amount(), r);
-//         EVT_ASSERT(r1 && r2, action_validate_exception, "Opeartions resulted in overflow results");
-//         facc.balance -= teact.amount;
-//         tacc.balance += teact.amount;
+        auto facc = asset(0, sym);
+        auto tacc = asset(0, sym);
+        tokendb.read_asset(tfact.from, sym, facc);
+        tokendb.read_asset_no_throw(tfact.to, sym, tacc);
 
-//         tokendb.update_account(facc);
-//         tokendb.update_account(tacc);
-//     }
-//     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
-// }
+        EVT_ASSERT(facc >= tfact.number, action_validate_exception, "From address doesn't have enough balance left");
+
+        bool r1, r2;
+        decltype(facc.get_amount()) r;
+        r1 = safemath::test_sub(facc.get_amount(), tfact.number.get_amount(), r);
+        r2 = safemath::test_add(tacc.get_amount(), tfact.number.get_amount(), r);
+        EVT_ASSERT(r1 && r2, action_validate_exception, "Opeartions resulted in overflow results");
+        
+        facc -= tfact.number;
+        tacc += tfact.number;
+
+        tokendb.update_asset(tfact.from, facc);
+        tokendb.update_asset(tfact.to, tacc);
+    }
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+}
 
 namespace __internal {
 
@@ -401,6 +485,15 @@ auto check_involved_domain = [](const auto& tokendb, const auto& domain, auto pn
     return false;
 };
 
+auto check_involved_fungible = [](const auto& tokendb, const auto& fungible, auto pname, const auto& key) {
+    switch(pname) {
+    case N(manage): {
+        return check_involved_permission(tokendb, fungible.manage, key);
+    }
+    }  // switch
+    return false;
+};
+
 auto check_involved_group = [](const auto& group, const auto& key) {
     if(group.key() == key) {
         return true;
@@ -454,6 +547,17 @@ apply_evt_addmeta(apply_context& context) {
 
             group.metas_.emplace_back(meta(amact.key, amact.value, amact.creator));
             tokendb.update_group(group);
+        }
+        else if(act.key == N128(fungible)) {
+            fungible_def fungible;
+            tokendb.read_fungible(act.key, fungible);
+
+            EVT_ASSERT(!check_duplicate_meta(fungible, amact.key), action_validate_exception, "Metadata with key ${key} is already existed", ("key",amact.key));
+            // check involved, only group manager(aka. group key) can add meta
+            EVT_ASSERT(check_involved_fungible(tokendb, fungible, N(manage), amact.creator), action_validate_exception, "Creator is not involved in group ${name}", ("name",act.key));
+
+            fungible.metas.emplace_back(meta(amact.key, amact.value, amact.creator));
+            tokendb.update_fungible(fungible);
         }
         else if(act.key == N128(.meta)) {
             domain_def domain;

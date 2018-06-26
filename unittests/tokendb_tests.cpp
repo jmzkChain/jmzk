@@ -557,8 +557,10 @@ BOOST_AUTO_TEST_CASE(tokendb_fungible_test) {
     auto address1 = public_key_type(std::string("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"));
     auto address2 = public_key_type(std::string("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"));
     BOOST_TEST(!tokendb.exists_any_asset(address1));
-    BOOST_TEST(!tokendb.exists_asset(address1, symbol(SY(5, EVT))));
-    BOOST_CHECK_THROW(tokendb.read_asset(address1, symbol(SY(5, EVT)), tmp_asset), tokendb_asset_not_found);
+    BOOST_TEST(!tokendb.exists_asset(address1, symbol(SY(5,EVT))));
+    BOOST_CHECK_THROW(tokendb.read_asset(address1, symbol(SY(5,EVT)), tmp_asset), tokendb_asset_not_found);
+    BOOST_CHECK_NO_THROW(tokendb.read_asset_no_throw(address1, symbol(SY(5,EVT)), tmp_asset));
+    BOOST_CHECK(tmp_asset == asset(0, symbol(SY(5,EVT))));
     
     auto s = 0;
     tokendb.read_all_assets(address1, [&](const auto&) { s++; return true; });
