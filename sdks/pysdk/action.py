@@ -16,14 +16,14 @@ class Action(base.BaseType):
 
 class NewDomainAction(Action):
     # key: name of new domain
-    def __init__(self, key, data):
-        super().__init__('newdomain', 'domain', key, data)
+    def __init__(self, domain, data):
+        super().__init__('newdomain', domain, '.create', data)
 
 
 class UpdateDomainAction(Action):
     # key: name of updating domain
-    def __init__(self, key, data):
-        super().__init__('updatedomain', 'domain', key, data)
+    def __init__(self, domain, data):
+        super().__init__('updatedomain', domain, '.update', data)
 
 
 class NewGroupAction(Action):
@@ -59,7 +59,7 @@ class TransferEvtAction(Action):
 class IssueTokenAction(Action):
     # domain: name of domain
     def __init__(self, domain, data):
-        super().__init__('issuetoken', domain, 'issue', data)
+        super().__init__('issuetoken', domain, '.issue', data)
 
 
 class TransferAction(Action):
@@ -67,6 +67,7 @@ class TransferAction(Action):
     # key: name of token
     def __init__(self, domain, key, data):
         super().__init__('transfer', domain, key, data)
+
 
 class AddMetaAction(Action):
     # domain: domain, group of name of domain
@@ -172,8 +173,8 @@ class ActionGenerator:
             domain, name, to=[str(each) for each in to])
         return get_action_from_abi_json('transfer', abi_json.dumps())
 
-    def addmeta(self, key, value, creator, domain, key):
-        abi_json = base.AddMetaAbi(key, value, str(creator))
+    def addmeta(self, meta_key, meta_value, creator, domain, key):
+        abi_json = base.AddMetaAbi(meta_key, meta_value, str(creator))
         return get_action_from_abi_json('addmeta', abi_json.dumps(), domain, key)
 
     def new_action(self, action, **args):
