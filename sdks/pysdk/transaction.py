@@ -8,8 +8,8 @@ import api
 
 
 class Transaction:
-    def __init__(self, **kwargs):
-        self.api = api.Api()
+    def __init__(self, url, **kwargs):
+        self.api = api.Api(url)
         info = json.loads(self.api.get_info())
         chain_id_str = info['chain_id']
         block_id_str = info['head_block_id']
