@@ -1,11 +1,7 @@
-#define BOOST_TEST_MODULE unittests
-#define BOOST_TEST_DYN_LINK
-
 #include <algorithm>
 #include <cstdlib>
 #include <iterator>
 #include <vector>
-
 
 #include <fc/exception/exception.hpp>
 #include <fc/io/json.hpp>
@@ -22,8 +18,6 @@
 using namespace evt;
 using namespace chain;
 using namespace contracts;
-
-// BOOST_AUTO_TEST_SUITE(unittests)
 
 // verify that round trip conversion, via bytes, reproduces the exact same data
 fc::variant
@@ -70,6 +64,8 @@ verify_type_round_trip_conversion(const abi_serializer& abis, const type_name& t
     }
     FC_LOG_AND_RETHROW()
 }
+
+BOOST_AUTO_TEST_SUITE(abi_tests)
 
 BOOST_AUTO_TEST_CASE(newdomain_test) {
     try {
@@ -701,3 +697,5 @@ BOOST_AUTO_TEST_CASE(addmeta_test) {
     }
     FC_LOG_AND_RETHROW()
 }
+
+BOOST_AUTO_TEST_SUITE_END()
