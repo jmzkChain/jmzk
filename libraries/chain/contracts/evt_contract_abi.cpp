@@ -154,7 +154,8 @@ evt_contract_abi() {
         "transfer", "", {
             {"domain", "domain_name"},
             {"name", "token_name"},
-            {"to", "user_list"}
+            {"to", "user_list"},
+            {"memo", "string"}
         }
     });
 
@@ -209,7 +210,8 @@ evt_contract_abi() {
     evt_abi.structs.emplace_back( struct_def {
         "issuefungible", "", {
             {"address", "public_key"},
-            {"number", "asset"}
+            {"number", "asset"},
+            {"memo", "string"}
         }
     });
 
@@ -217,7 +219,8 @@ evt_contract_abi() {
         "transferft", "", {
             {"from", "public_key"},
             {"to", "public_key"},
-            {"number", "asset"}
+            {"number", "asset"},
+            {"memo", "string"}
         }
     });
 

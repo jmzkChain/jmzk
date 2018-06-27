@@ -212,6 +212,7 @@ struct transfer {
     domain_name domain;
     token_name  name;
     user_list   to;
+    string      memo;
 
     static action_name
     get_name() {
@@ -292,6 +293,7 @@ struct updfungible {
 struct issuefungible {
     public_key_type address;
     asset           number;
+    string          memo;
 
     static action_name
     get_name() {
@@ -303,6 +305,7 @@ struct transferft {
     public_key_type from;
     public_key_type to;
     asset           number;
+    string          memo;
 
     static action_name
     get_name() {
@@ -378,15 +381,15 @@ FC_REFLECT(evt::chain::contracts::delay_def, (name)(proposer)(status)(trx)(signe
 
 FC_REFLECT(evt::chain::contracts::newdomain, (name)(creator)(issue)(transfer)(manage));
 FC_REFLECT(evt::chain::contracts::issuetoken, (domain)(names)(owner));
-FC_REFLECT(evt::chain::contracts::transfer, (domain)(name)(to));
+FC_REFLECT(evt::chain::contracts::transfer, (domain)(name)(to)(memo));
 FC_REFLECT(evt::chain::contracts::destroytoken, (domain)(name));
 FC_REFLECT(evt::chain::contracts::newgroup, (name)(group));
 FC_REFLECT(evt::chain::contracts::updategroup, (name)(group));
 FC_REFLECT(evt::chain::contracts::updatedomain, (name)(issue)(transfer)(manage));
 FC_REFLECT(evt::chain::contracts::newfungible, (sym)(creator)(issue)(manage)(total_supply));
 FC_REFLECT(evt::chain::contracts::updfungible, (sym)(issue)(manage));
-FC_REFLECT(evt::chain::contracts::issuefungible, (address)(number));
-FC_REFLECT(evt::chain::contracts::transferft, (from)(to)(number));
+FC_REFLECT(evt::chain::contracts::issuefungible, (address)(number)(memo));
+FC_REFLECT(evt::chain::contracts::transferft, (from)(to)(number)(memo));
 FC_REFLECT(evt::chain::contracts::addmeta, (key)(value)(creator));
 FC_REFLECT(evt::chain::contracts::newdelay, (name)(proposer)(trx));
 FC_REFLECT(evt::chain::contracts::canceldelay, (name));

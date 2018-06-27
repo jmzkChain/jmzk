@@ -560,12 +560,14 @@ struct set_token_subcommands {
     string              domain;
     string              name;
     std::vector<string> to;
+    string              memo;
 
     set_token_subcommands(CLI::App* actionRoot) {
         auto ttcmd = actionRoot->add_subcommand("transfer", localized("Transfer token"));
         ttcmd->add_option("domain", domain, localized("Name of the domain where token existed"))->required();
         ttcmd->add_option("name", name, localized("Name of the token to be transfered"))->required();
         ttcmd->add_option("to", to, localized("User list receives this token"))->required();
+        ttcmd->add_option("--memo,-m", memo, localized("Memo for this transfer"));
 
         add_standard_transaction_options(ttcmd);
 
@@ -573,6 +575,7 @@ struct set_token_subcommands {
             transfer tt;
             tt.domain = name128(domain);
             tt.name   = name128(name);
+            tt.memo   = memo;
             std::transform(to.cbegin(), to.cend(), std::back_inserter(tt.to), [](auto& str) { return public_key_type(str); });
 
             auto act = create_action(tt.domain, (domain_key)tt.name, tt);
@@ -656,6 +659,7 @@ struct set_fungible_subcommands {
     string total_supply = "";
     string address;
     string number;
+    string memo;
 
     set_fungible_subcommands(CLI::App* actionRoot) {
         auto nfcmd = actionRoot->add_subcommand("create", localized("Create new fungible asset"));
@@ -705,6 +709,7 @@ struct set_fungible_subcommands {
         auto ifcmd = actionRoot->add_subcommand("issue", localized("Issue fungible tokens to specific address"));
         ifcmd->add_option("address", address, localized("Address to receive issued asset"))->required();
         ifcmd->add_option("number", number, localized("Number of issue asset"))->required();
+        ifcmd->add_option("--memo,-m", memo, localized("Memo for this transfer"));
 
         add_standard_transaction_options(ifcmd);
 
@@ -712,6 +717,7 @@ struct set_fungible_subcommands {
             issuefungible ifact;
             ifact.address = public_key_type(address);
             ifact.number  = asset::from_string(number);
+            ifact.memo    = memo;
 
             auto act = create_action(N128(fungible), (domain_key)ifact.number.get_symbol().name(), ifact);
             send_actions({act});
@@ -723,12 +729,14 @@ struct set_fungible_subcommands {
 struct set_assets_subcommands {
     std::string from, to;
     std::string number;
+    string      memo;
 
     set_assets_subcommands(CLI::App* actionRoot) {
         auto tfcmd = actionRoot->add_subcommand("transfer", localized("Transfer asset between addresses"));
         tfcmd->add_option("from", from, localized("Address where asset transfering from"))->required();
         tfcmd->add_option("to", to, localized("Address where asset transfering to"))->required();
         tfcmd->add_option("number", number, localized("Number of transfer asset"))->required();
+        tfcmd->add_option("--memo,-m", memo, localized("Memo for this transfer"));
 
         add_standard_transaction_options(tfcmd);
 
@@ -737,6 +745,7 @@ struct set_assets_subcommands {
             tf.from   = public_key_type(from);
             tf.to     = public_key_type(to);
             tf.number = asset::from_string(number);
+            tf.memo   = memo;
 
             auto act = create_action(N128(fungible), (domain_key)tf.number.get_symbol().name(), tf);
             send_actions({act});
