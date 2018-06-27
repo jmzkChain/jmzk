@@ -197,22 +197,6 @@ base_tester::set_transaction_headers(signed_transaction& trx, uint32_t expiratio
 }
 
 transaction_trace_ptr
-base_tester::create_account(account_name a) {
-    signed_transaction trx;
-    set_transaction_headers(trx);
-
-    trx.actions.emplace_back("account", a,
-                             newaccount{
-                                 .name    = a,
-                                 .owner   = { get_public_key(a) }
-                             });
-
-    set_transaction_headers(trx);
-    trx.sign(get_private_key(a), control->get_chain_id());
-    return push_transaction(trx);
-}
-
-transaction_trace_ptr
 base_tester::push_transaction(packed_transaction& trx,
                               fc::time_point      deadline) {
     try {
