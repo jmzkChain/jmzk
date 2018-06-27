@@ -17,6 +17,8 @@
 namespace evt {
 
 class history_plugin;
+using evt::chain::public_key_type;
+using evt::chain::action_name;
 
 namespace history_apis {
 
@@ -26,21 +28,21 @@ public:
         : plugin_(plugin) {}
 
 public:
-    struct get_my_params {
-        std::vector<std::string> signatures;
+    struct get_params {
+        std::vector<public_key_type> keys;
     };
-    using get_my_tokens_params = get_my_params;
-    using get_my_domains_params = get_my_params;
-    using get_my_groups_params = get_my_params;
+    using get_tokens_params = get_params;
+    using get_domains_params = get_params;
+    using get_groups_params = get_params;
 
-    fc::variant get_my_tokens(const get_my_params& params);
-    fc::variant get_my_domains(const get_my_params& params);
-    fc::variant get_my_groups(const get_my_params& params);
+    fc::variant get_tokens(const get_params& params);
+    fc::variant get_domains(const get_params& params);
+    fc::variant get_groups(const get_params& params);
 
     struct get_actions_params {
         std::string               domain;
         fc::optional<std::string> key;
-        fc::optional<bool>        exclude_transfer;
+        std::vector<action_name>  names;
         fc::optional<int>         skip;
         fc::optional<int>         take;
     };
@@ -65,8 +67,6 @@ private:
 
 }  // namespace history_apis
 
-using evt::chain::public_key_type;
-
 class history_plugin : public plugin<history_plugin> {
 public:
     APPBASE_PLUGIN_REQUIRES((chain_plugin)(mongo_db_plugin))
@@ -90,7 +90,7 @@ private:
 
 }  // namespace evt
 
-FC_REFLECT(evt::history_apis::read_only::get_my_params, (signatures));
-FC_REFLECT(evt::history_apis::read_only::get_actions_params, (domain)(key)(exclude_transfer)(skip)(take));
+FC_REFLECT(evt::history_apis::read_only::get_params, (keys));
+FC_REFLECT(evt::history_apis::read_only::get_actions_params, (domain)(key)(names)(skip)(take));
 FC_REFLECT(evt::history_apis::read_only::get_transaction_params, (id));
 FC_REFLECT(evt::history_apis::read_only::get_transactions_params, (keys)(skip)(take));
