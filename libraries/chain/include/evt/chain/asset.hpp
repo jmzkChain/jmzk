@@ -12,7 +12,7 @@
 static const evt::chain::symbol EVT_SYMBOL(EVT_SYMBOL_VALUE);
 
 /// Defined to be largest power of 10 that fits in 53 bits of precision
-#define EVT_MAX_SHARE_SUPPLY   int64_t(1'000'000'000'000'000ll)
+#define ASSET_MAX_SHARE_SUPPLY   int64_t(1'000'000'000'000'000ll)
 
 namespace evt { namespace chain {
 

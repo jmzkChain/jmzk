@@ -301,6 +301,7 @@ apply_evt_newfungible(apply_context& context) {
         auto& tokendb = context.token_db;
         EVT_ASSERT(!tokendb.exists_fungible(nfact.sym), action_validate_exception, "Fungible with symbol: ${syj} already existed", ("sym",nfact.sym.name()));
         EVT_ASSERT(nfact.sym == nfact.total_supply.get_symbol(), action_validate_exception, "Symbols are not the same");
+        EVT_ASSERT(nfact.total_supply.get_amount() <= ASSET_MAX_SHARE_SUPPLY, action_validate_exception, "Max supply exceeds max allowed supply");
 
         EVT_ASSERT(nfact.issue.name == "issue", action_validate_exception, "Name of issue permission is not valid, provided: ${name}", ("name",nfact.issue.name));
         EVT_ASSERT(nfact.issue.threshold > 0 && validate(nfact.issue), action_validate_exception, "Issue permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
@@ -381,7 +382,12 @@ apply_evt_issuefungible(apply_context& context) {
         EVT_ASSERT(r, action_validate_exception, "Operations resulted in overflow results");
 
         fungible.current_supply += ifact.number;
-        EVT_ASSERT(fungible.current_supply <= fungible.total_supply, action_validate_exception, "Overflow total supply");
+        if(fungible.total_supply.get_amount() > 0) {
+            EVT_ASSERT(fungible.current_supply <= fungible.total_supply, action_validate_exception, "Overflow total supply");
+        }
+        else {
+            EVT_ASSERT(fungible.current_supply.get_amount() <= ASSET_MAX_SHARE_SUPPLY, action_validate_exception, "Current supply exceeds max allowed supply");
+        }
 
         auto as = asset(0, sym);
         tokendb.read_asset_no_throw(ifact.address, sym, as);

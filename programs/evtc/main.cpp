@@ -665,7 +665,7 @@ struct set_fungible_subcommands {
         auto nfcmd = actionRoot->add_subcommand("create", localized("Create new fungible asset"));
         nfcmd->add_option("symbol", sym, localized("The symbol of the new fungible asset"))->required();
         nfcmd->add_option("creator", creator, localized("The public key of the creator"))->required();
-        nfcmd->add_option("total-supply", total_supply, localized("Total supply of this fungible asset"))->required();
+        nfcmd->add_option("total-supply", total_supply, localized("Total supply of this fungible asset, 0 means unlimited"))->required();
         nfcmd->add_option("issue", issue, localized("JSON string or filename defining ISSUE permission"), true);
         nfcmd->add_option("manage", manage, localized("JSON string or filename defining MANAGE permission"), true);
 
