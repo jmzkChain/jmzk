@@ -5,8 +5,8 @@
 #include <vector>
 
 #include <evt/chain/contracts/types.hpp>
-#include <evt/chain/token_database.hpp>
 #include <evt/chain/controller.hpp>
+#include <evt/chain/token_database.hpp>
 
 #include <boost/test/framework.hpp>
 #include <boost/test/unit_test.hpp>
@@ -262,7 +262,7 @@ update_group_data() {
 BOOST_FIXTURE_TEST_SUITE(tokendb_tests, tokendb_test)
 
 BOOST_AUTO_TEST_CASE(tokendb_adddomain_test) {
-    try{
+    try {
         BOOST_CHECK(true);
 
         auto dom = add_domain_data();
@@ -303,12 +303,12 @@ BOOST_AUTO_TEST_CASE(tokendb_adddomain_test) {
 }
 
 BOOST_AUTO_TEST_CASE(tokendb_updatedomain_test) {
-    try{
+    try {
         domain_def dom = update_domain_data();
         BOOST_TEST_REQUIRE(tokendb.exists_domain(dom.name));
         dom.metas[0].key = "key" + boost::lexical_cast<std::string>(time(0));
 
-        auto re          = tokendb.update_domain(dom);
+        auto re = tokendb.update_domain(dom);
         BOOST_TEST_REQUIRE(re == 0);
 
         domain_def dom_;
@@ -345,7 +345,7 @@ BOOST_AUTO_TEST_CASE(tokendb_updatedomain_test) {
 }
 
 BOOST_AUTO_TEST_CASE(tokendb_issuetoken_test) {
-    try{
+    try {
         issuetoken istk = issue_tokens_data();
         BOOST_TEST(!tokendb.exists_token(istk.domain, istk.names[0]));
         BOOST_TEST(!tokendb.exists_token(istk.domain, istk.names[1]));
@@ -374,11 +374,11 @@ BOOST_AUTO_TEST_CASE(tokendb_issuetoken_test) {
 }
 
 BOOST_AUTO_TEST_CASE(tokendb_updatetoken_test) {
-    try{
+    try {
         token_def tk    = update_token_data();
         tk.metas[0].key = "key" + boost::lexical_cast<std::string>(time(0));
 
-        auto re         = tokendb.update_token(tk);
+        auto re = tokendb.update_token(tk);
         BOOST_TEST_REQUIRE(re == 0);
 
         token_def tk_;
@@ -397,7 +397,7 @@ BOOST_AUTO_TEST_CASE(tokendb_updatetoken_test) {
 }
 
 BOOST_AUTO_TEST_CASE(tokendb_addgroup_test) {
-    try{
+    try {
         group_def gp = add_group_data();
         BOOST_TEST(!tokendb.exists_group(gp.name_));
 
@@ -465,7 +465,7 @@ BOOST_AUTO_TEST_CASE(tokendb_addgroup_test) {
 }
 
 BOOST_AUTO_TEST_CASE(tokendb_updategroup_test) {
-    try{
+    try {
         group_def gp = update_group_data();
         auto      re = tokendb.update_group(gp);
 
@@ -532,52 +532,52 @@ BOOST_AUTO_TEST_CASE(tokendb_updategroup_test) {
 }
 
 BOOST_AUTO_TEST_CASE(tokendb_fungible_test) {
-    try{
+    try {
         auto tmp_fungible = fungible_def();
 
         BOOST_TEST(!tokendb.exists_fungible("EVT"));
-        BOOST_TEST(!tokendb.exists_fungible(symbol(SY(5,EVT))));
+        BOOST_TEST(!tokendb.exists_fungible(symbol(SY(5, EVT))));
         BOOST_CHECK_THROW(tokendb.read_fungible("EVT", tmp_fungible), tokendb_fungible_not_found);
-        BOOST_CHECK_THROW(tokendb.read_fungible(symbol(SY(5,EVT)), tmp_fungible), tokendb_fungible_not_found);
+        BOOST_CHECK_THROW(tokendb.read_fungible(symbol(SY(5, EVT)), tmp_fungible), tokendb_fungible_not_found);
 
         auto evt_fungible = fungible_def();
-        evt_fungible.sym = symbol(SY(5,EVT));
-        auto r = tokendb.add_fungible(evt_fungible);
+        evt_fungible.sym  = symbol(SY(5, EVT));
+        auto r            = tokendb.add_fungible(evt_fungible);
         BOOST_TEST(r == 0);
 
         BOOST_TEST(tokendb.exists_fungible("EVT"));
-        BOOST_TEST(tokendb.exists_fungible(symbol(SY(5,EVT))));
-        BOOST_TEST(tokendb.exists_fungible(symbol(SY(4,EVT))));
-        
+        BOOST_TEST(tokendb.exists_fungible(symbol(SY(5, EVT))));
+        BOOST_TEST(tokendb.exists_fungible(symbol(SY(4, EVT))));
+
         BOOST_CHECK_NO_THROW(tokendb.read_fungible("EVT", tmp_fungible));
-        BOOST_TEST(tmp_fungible.sym == symbol(SY(5,EVT)));
-        BOOST_CHECK_NO_THROW(tokendb.read_fungible(symbol(SY(5,EVT)), tmp_fungible));
-        BOOST_TEST(tmp_fungible.sym == symbol(SY(5,EVT)));
+        BOOST_TEST(tmp_fungible.sym == symbol(SY(5, EVT)));
+        BOOST_CHECK_NO_THROW(tokendb.read_fungible(symbol(SY(5, EVT)), tmp_fungible));
+        BOOST_TEST(tmp_fungible.sym == symbol(SY(5, EVT)));
 
         auto tmp_asset = asset();
-        auto address1 = public_key_type(std::string("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"));
+        auto address1  = public_key_type(std::string("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"));
         BOOST_TEST(!tokendb.exists_any_asset(address1));
-        BOOST_TEST(!tokendb.exists_asset(address1, symbol(SY(5,EVT))));
-        BOOST_CHECK_THROW(tokendb.read_asset(address1, symbol(SY(5,EVT)), tmp_asset), tokendb_asset_not_found);
-        BOOST_CHECK_NO_THROW(tokendb.read_asset_no_throw(address1, symbol(SY(5,EVT)), tmp_asset));
-        BOOST_CHECK(tmp_asset == asset(0, symbol(SY(5,EVT))));
-        
+        BOOST_TEST(!tokendb.exists_asset(address1, symbol(SY(5, EVT))));
+        BOOST_CHECK_THROW(tokendb.read_asset(address1, symbol(SY(5, EVT)), tmp_asset), tokendb_asset_not_found);
+        BOOST_CHECK_NO_THROW(tokendb.read_asset_no_throw(address1, symbol(SY(5, EVT)), tmp_asset));
+        BOOST_CHECK(tmp_asset == asset(0, symbol(SY(5, EVT))));
+
         auto s = 0;
         tokendb.read_all_assets(address1, [&](const auto&) { s++; return true; });
         BOOST_TEST(s == 0);
 
-        auto r1 = tokendb.update_asset(address1, asset(2000, symbol(SY(5,EVT))));
-        auto r2 = tokendb.update_asset(address1, asset(1000, symbol(SY(8,ETH))));
+        auto r1 = tokendb.update_asset(address1, asset(2000, symbol(SY(5, EVT))));
+        auto r2 = tokendb.update_asset(address1, asset(1000, symbol(SY(8, ETH))));
 
         BOOST_TEST(r1 == 0);
         BOOST_TEST(r2 == 0);
 
         BOOST_TEST(tokendb.exists_any_asset(address1));
-        BOOST_TEST(tokendb.exists_asset(address1, symbol(SY(5,EVT))));
-        BOOST_TEST(tokendb.exists_asset(address1, symbol(SY(8,ETH))));
-        BOOST_TEST(!tokendb.exists_asset(address1, symbol(SY(4,EVT))));
-        BOOST_CHECK_NO_THROW(tokendb.read_asset(address1, symbol(SY(5,EVT)), tmp_asset));
-        BOOST_CHECK(tmp_asset == asset(2000, symbol(SY(5,EVT))));
+        BOOST_TEST(tokendb.exists_asset(address1, symbol(SY(5, EVT))));
+        BOOST_TEST(tokendb.exists_asset(address1, symbol(SY(8, ETH))));
+        BOOST_TEST(!tokendb.exists_asset(address1, symbol(SY(4, EVT))));
+        BOOST_CHECK_NO_THROW(tokendb.read_asset(address1, symbol(SY(5, EVT)), tmp_asset));
+        BOOST_CHECK(tmp_asset == asset(2000, symbol(SY(5, EVT))));
 
         auto s2 = 0;
         tokendb.read_all_assets(address1, [&](const auto& s) { BOOST_TEST_MESSAGE((std::string)s); s2++; return true; });
@@ -587,7 +587,7 @@ BOOST_AUTO_TEST_CASE(tokendb_fungible_test) {
 }
 
 BOOST_AUTO_TEST_CASE(tokendb_checkpoint_test) {
-    try{
+    try {
         tokendb.add_savepoint(get_time());
 
         domain_def dom = add_domain_data();
@@ -665,16 +665,16 @@ BOOST_AUTO_TEST_CASE(tokendb_checkpoint_test) {
         BOOST_TEST_REQUIRE(pop_re == 0);
 
         tokendb.add_savepoint(get_time());
-        auto pevt = symbol(SY(5,PEVT));
-        auto address = public_key_type((std::string)"EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV");
+        auto pevt    = symbol(SY(5, PEVT));
+        auto address = public_key_type((std::string) "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV");
         BOOST_TEST(!tokendb.exists_fungible("PEVT"));
         BOOST_TEST(!tokendb.exists_any_asset(address));
         BOOST_TEST(!tokendb.exists_asset(address, pevt));
-        
+
         fungible_def fungible;
-        fungible.sym = symbol(SY(5,EVT));
+        fungible.sym = symbol(SY(5, EVT));
         tokendb.add_fungible(fungible);
-        tokendb.update_asset(address, asset(1000,pevt));
+        tokendb.update_asset(address, asset(1000, pevt));
 
         BOOST_TEST(tokendb.exists_fungible("EVT"));
         BOOST_TEST(tokendb.exists_asset(address, pevt));
