@@ -187,7 +187,7 @@ struct sp_issuetoken {
 }  // namespace __internal
 
 token_database::token_database(const fc::path& dbpath)
-    : db_(nullptr) {
+    : token_database() {
     initialize(dbpath);
 }
 
