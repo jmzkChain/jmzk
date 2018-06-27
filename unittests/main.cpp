@@ -2,7 +2,7 @@
 #define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_TOOLS_DEBUGGABLE
 
-#include <boost/test/included/unit_test.hpp>
+#include <boost/test/unit_test.hpp>
 #include <fc/filesystem.hpp>
 
 std::string tokendb_dir = "tmp/evt_tokendb";
