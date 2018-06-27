@@ -12,12 +12,14 @@
 #include <evt/chain/contracts/evt_contract.hpp>
 #include <evt/chain/contracts/types.hpp>
 
-#include <boost/test/unit_test.hpp>
 #include <boost/test/framework.hpp>
+#include <boost/test/unit_test.hpp>
 
 using namespace evt;
 using namespace chain;
 using namespace contracts;
+
+// BOOST_AUTO_TEST_SUITE(unittests)
 
 // verify that round trip conversion, via bytes, reproduces the exact same data
 fc::variant
@@ -45,27 +47,22 @@ get_evt_abi() {
 template <typename T>
 fc::variant
 verify_type_round_trip_conversion(const abi_serializer& abis, const type_name& type, const fc::variant& var) {
-    try {
-        auto bytes = abis.variant_to_binary(type, var);
+    auto bytes = abis.variant_to_binary(type, var);
 
-        T obj;
-        fc::from_variant(var, obj);
+    T obj;
+    fc::from_variant(var, obj);
 
-        fc::variant var2;
-        fc::to_variant(obj, var2);
+    fc::variant var2;
+    fc::to_variant(obj, var2);
 
-        std::string r = fc::json::to_string(var2);
+    std::string r = fc::json::to_string(var2);
 
-        auto bytes2 = abis.variant_to_binary(type, var2);
+    auto bytes2 = abis.variant_to_binary(type, var2);
 
-        BOOST_TEST(fc::to_hex(bytes) == fc::to_hex(bytes2));
+    BOOST_TEST(fc::to_hex(bytes) == fc::to_hex(bytes2));
 
-        return var2;
-    }
-    FC_LOG_AND_RETHROW()
+    return var2;
 }
-
-BOOST_AUTO_TEST_SUITE(abi_tests)
 
 BOOST_AUTO_TEST_CASE(newdomain_test) {
     try {
@@ -122,7 +119,6 @@ BOOST_AUTO_TEST_CASE(newdomain_test) {
         BOOST_TEST(1 == newdom.transfer.threshold);
         BOOST_TEST_REQUIRE(1 == newdom.transfer.authorizers.size());
         BOOST_TEST(newdom.transfer.authorizers[0].ref.is_owner_ref());
-        // BOOST_TEST("OWNER" == (std::string)newdom.issue.authorizers[0].ref.get_group());
         BOOST_TEST(1 == newdom.transfer.authorizers[0].weight);
 
         BOOST_TEST("manage" == newdom.manage.name);
@@ -273,7 +269,8 @@ BOOST_AUTO_TEST_CASE(transfer_test) {
           "name": "t1",
           "to": [
             "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"
-          ]
+          ],
+          "memo":"memo"
         }
         )=====";
 
@@ -285,6 +282,7 @@ BOOST_AUTO_TEST_CASE(transfer_test) {
 
         BOOST_TEST_REQUIRE(1 == trf.to.size());
         BOOST_TEST("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)trf.to[0]);
+        BOOST_TEST("memo" == trf.memo);
 
         auto var2 = verify_byte_round_trip_conversion(abis, "transfer", var);
         auto trf2 = var2.as<transfer>();
@@ -294,6 +292,7 @@ BOOST_AUTO_TEST_CASE(transfer_test) {
 
         BOOST_TEST_REQUIRE(1 == trf2.to.size());
         BOOST_TEST("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)trf2.to[0]);
+        BOOST_TEST("memo" == trf2.memo);
 
         verify_type_round_trip_conversion<transfer>(abis, "transfer", var);
     }
@@ -312,13 +311,13 @@ BOOST_AUTO_TEST_CASE(destroytoken_test) {
         }
         )=====";
 
-        auto var = fc::json::from_string(test_data);
+        auto var   = fc::json::from_string(test_data);
         auto destk = var.as<destroytoken>();
 
         BOOST_TEST("cookie" == destk.domain);
         BOOST_TEST("t1" == destk.name);
 
-        auto var2 = verify_byte_round_trip_conversion(abis, "destroytoken", var);
+        auto var2   = verify_byte_round_trip_conversion(abis, "destroytoken", var);
         auto destk2 = var2.as<destroytoken>();
 
         BOOST_TEST("cookie" == destk2.domain);
@@ -665,10 +664,214 @@ BOOST_AUTO_TEST_CASE(updategroup_test) {
     FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE(addmeta_test) {
+BOOST_AUTO_TEST_CASE(newfungible_test) {
     try {
         auto abis = get_evt_abi();
 
+        const char* test_data = R"=====(
+        {
+          "sym": "5,EVT",
+          "creator": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+          "issue" : {
+            "name" : "issue",
+            "threshold" : 1,
+            "authorizers": [{
+                "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+                "weight": 1
+              }
+            ]
+          },
+          "manage": {
+            "name": "manage",
+            "threshold": 1,
+            "authorizers": [{
+                "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+                "weight": 1
+              }
+            ]
+          },
+          "total_supply":"12.00000 EVT"
+        }
+        )=====";
+
+        auto var   = fc::json::from_string(test_data);
+        auto newfg = var.as<newfungible>();
+
+        BOOST_TEST("5,EVT" == newfg.sym.to_string());
+        BOOST_TEST("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)newfg.creator);
+
+        BOOST_TEST("issue" == newfg.issue.name);
+        BOOST_TEST(1 == newfg.issue.threshold);
+        BOOST_TEST_REQUIRE(1 == newfg.issue.authorizers.size());
+        BOOST_TEST(newfg.issue.authorizers[0].ref.is_account_ref());
+        BOOST_TEST("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)newfg.issue.authorizers[0].ref.get_account());
+        BOOST_TEST(1 == newfg.issue.authorizers[0].weight);
+
+        BOOST_TEST("manage" == newfg.manage.name);
+        BOOST_TEST(1 == newfg.manage.threshold);
+        BOOST_TEST_REQUIRE(1 == newfg.manage.authorizers.size());
+        BOOST_TEST(newfg.manage.authorizers[0].ref.is_account_ref());
+        BOOST_TEST("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)newfg.manage.authorizers[0].ref.get_account());
+        BOOST_TEST(1 == newfg.manage.authorizers[0].weight);
+
+        BOOST_TEST(1200000 == newfg.total_supply.get_amount());
+        BOOST_TEST("5,EVT" == newfg.total_supply.get_symbol().to_string());
+        BOOST_TEST("12.00000 EVT" == newfg.total_supply.to_string());
+
+        auto var2 = verify_byte_round_trip_conversion(abis, "newfungible", var);
+
+        auto newfg2 = var2.as<newfungible>();
+
+        BOOST_TEST("5,EVT" == newfg2.sym.to_string());
+        BOOST_TEST("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)newfg2.creator);
+
+        BOOST_TEST("issue" == newfg2.issue.name);
+        BOOST_TEST(1 == newfg2.issue.threshold);
+        BOOST_TEST_REQUIRE(1 == newfg2.issue.authorizers.size());
+        BOOST_TEST(newfg2.issue.authorizers[0].ref.is_account_ref());
+        BOOST_TEST("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)newfg2.issue.authorizers[0].ref.get_account());
+        BOOST_TEST(1 == newfg2.issue.authorizers[0].weight);
+
+        BOOST_TEST("manage" == newfg2.manage.name);
+        BOOST_TEST(1 == newfg2.manage.threshold);
+        BOOST_TEST_REQUIRE(1 == newfg2.manage.authorizers.size());
+        BOOST_TEST(newfg2.manage.authorizers[0].ref.is_account_ref());
+        BOOST_TEST("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)newfg2.manage.authorizers[0].ref.get_account());
+        BOOST_TEST(1 == newfg2.manage.authorizers[0].weight);
+
+        BOOST_TEST(1200000 == newfg2.total_supply.get_amount());
+        BOOST_TEST("5,EVT" == newfg2.total_supply.get_symbol().to_string());
+        BOOST_TEST("12.00000 EVT" == newfg2.total_supply.to_string());
+    }
+    FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE(updfungible_test) {
+    try {
+        auto abis = get_evt_abi();
+
+        const char* test_data = R"=====(
+        {
+          "sym": "5,EVT",
+          "issue" : {
+            "name" : "issue2",
+            "threshold" : 1,
+            "authorizers": [{
+                "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+                "weight": 1
+              }
+            ]
+          },
+         "manage":{}
+        }
+        )=====";
+
+        auto var   = fc::json::from_string(test_data);
+        auto updfg = var.as<updfungible>();
+
+        BOOST_TEST("5,EVT" == updfg.sym.to_string());
+
+        BOOST_TEST("issue2" == updfg.issue->name);
+        BOOST_TEST(1 == updfg.issue->threshold);
+        BOOST_TEST_REQUIRE(1 == updfg.issue->authorizers.size());
+        BOOST_TEST(updfg.issue->authorizers[0].ref.is_account_ref());
+        BOOST_TEST("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)updfg.issue->authorizers[0].ref.get_account());
+        BOOST_TEST(1 == updfg.issue->authorizers[0].weight);
+
+        auto var2 = verify_byte_round_trip_conversion(abis, "updfungible", var);
+
+        auto updfg2 = var2.as<updfungible>();
+
+        BOOST_TEST("5,EVT" == updfg2.sym.to_string());
+
+        BOOST_TEST("issue2" == updfg2.issue->name);
+        BOOST_TEST(1 == updfg2.issue->threshold);
+        BOOST_TEST_REQUIRE(1 == updfg2.issue->authorizers.size());
+        BOOST_TEST(updfg2.issue->authorizers[0].ref.is_account_ref());
+        BOOST_TEST("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)updfg2.issue->authorizers[0].ref.get_account());
+        BOOST_TEST(1 == updfg2.issue->authorizers[0].weight);
+    }
+    FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE(issuefungible_test) {
+    try {
+        auto abis = get_evt_abi();
+
+        const char* test_data = R"=====(
+        {
+          "address": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+          "number" : "12.00000 EVT",
+          "memo": "memo"
+        }
+        )=====";
+
+        auto var   = fc::json::from_string(test_data);
+        auto issfg = var.as<issuefungible>();
+
+        BOOST_TEST("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)issfg.address);
+        BOOST_TEST("memo" == issfg.memo);
+
+        BOOST_TEST(1200000 == issfg.number.get_amount());
+        BOOST_TEST("5,EVT" == issfg.number.get_symbol().to_string());
+        BOOST_TEST("12.00000 EVT" == issfg.number.to_string());
+
+        auto var2 = verify_byte_round_trip_conversion(abis, "issuefungible", var);
+
+        auto issfg2 = var2.as<issuefungible>();
+
+        BOOST_TEST("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)issfg2.address);
+        BOOST_TEST("memo" == issfg2.memo);
+
+        BOOST_TEST(1200000 == issfg2.number.get_amount());
+        BOOST_TEST("5,EVT" == issfg2.number.get_symbol().to_string());
+        BOOST_TEST("12.00000 EVT" == issfg2.number.to_string());
+    }
+    FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE(transferft_test) {
+    try {
+        auto abis = get_evt_abi();
+
+        const char* test_data = R"=====(
+        {
+          "from": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+          "to": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+          "number" : "12.00000 EVT",
+          "memo": "memo"
+        }
+        )=====";
+
+        auto var  = fc::json::from_string(test_data);
+        auto trft = var.as<transferft>();
+
+        BOOST_TEST("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)trft.from);
+        BOOST_TEST("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)trft.to);
+        BOOST_TEST("memo" == trft.memo);
+
+        BOOST_TEST(1200000 == trft.number.get_amount());
+        BOOST_TEST("5,EVT" == trft.number.get_symbol().to_string());
+        BOOST_TEST("12.00000 EVT" == trft.number.to_string());
+
+        auto var2 = verify_byte_round_trip_conversion(abis, "transferft", var);
+
+        auto trft2 = var2.as<transferft>();
+
+        BOOST_TEST("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)trft2.from);
+        BOOST_TEST("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)trft2.to);
+        BOOST_TEST("memo" == trft2.memo);
+
+        BOOST_TEST(1200000 == trft2.number.get_amount());
+        BOOST_TEST("5,EVT" == trft2.number.get_symbol().to_string());
+        BOOST_TEST("12.00000 EVT" == trft2.number.to_string());
+    }
+    FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE(addmeta_test) {
+    try {
+        auto abis = get_evt_abi();
 
         BOOST_CHECK(true);
         const char* test_data = R"=====(
@@ -679,15 +882,14 @@ BOOST_AUTO_TEST_CASE(addmeta_test) {
         }
         )=====";
 
-        auto var   = fc::json::from_string(test_data);
+        auto var  = fc::json::from_string(test_data);
         auto admt = var.as<addmeta>();
 
         BOOST_TEST("key" == admt.key);
         BOOST_TEST("value" == admt.value);
         BOOST_TEST("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)admt.creator);
 
-
-        auto var2  = verify_byte_round_trip_conversion(abis, "addmeta", var);
+        auto var2 = verify_byte_round_trip_conversion(abis, "addmeta", var);
 
         auto admt2 = var2.as<addmeta>();
 
@@ -697,5 +899,3 @@ BOOST_AUTO_TEST_CASE(addmeta_test) {
     }
     FC_LOG_AND_RETHROW()
 }
-
-BOOST_AUTO_TEST_SUITE_END()

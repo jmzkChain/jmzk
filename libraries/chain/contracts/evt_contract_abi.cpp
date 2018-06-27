@@ -34,7 +34,7 @@ evt_contract_abi() {
     evt_abi.types.push_back( type_def{"token_name","name128"} );
     evt_abi.types.push_back( type_def{"account_name","name128"} );
     evt_abi.types.push_back( type_def{"proposal_name","name128"} );
-    evt_abi.types.push_back( type_def{"fungibal_name","name128"} );
+    evt_abi.types.push_back( type_def{"fungible_name","name128"} );
     evt_abi.types.push_back( type_def{"balance_type","asset"} );
     evt_abi.types.push_back( type_def{"group_def","group"} );
     evt_abi.types.push_back( type_def{"meta_key","name128"} );
@@ -201,7 +201,7 @@ evt_contract_abi() {
 
     evt_abi.structs.emplace_back( struct_def {
         "updfungible", "", {
-            {"name", "fungibal_name"},
+            {"sym", "symbol"},
             {"issue", "permission_def?"},
             {"manage", "permission_def?"}
         }
