@@ -1150,7 +1150,7 @@ controller::get_required_keys(const transaction& trx, const flat_set<public_key_
     auto checker = authority_checker(candidate_keys, my->token_db, max_authority_depth);
 
     for(const auto& act : trx.actions) {
-        EVT_ASSERT(checker.satisfied(act), tx_missing_sigs,
+        EVT_ASSERT(checker.satisfied(act), unsatisfied_authorization,
                    "${name} action in domain: ${domain} with key: ${key} authorized failed",
                    ("domain", act.domain)("key", act.key)("name", act.name));
     }

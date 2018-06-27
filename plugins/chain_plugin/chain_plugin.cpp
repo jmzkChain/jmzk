@@ -735,11 +735,11 @@ read_only::abi_json_to_bin(const read_only::abi_json_to_bin_params& params) cons
     auto  result      = abi_json_to_bin_result();
     auto& api         = system_api;
     auto  action_type = api.get_action_type(params.action);
-    EVT_ASSERT(!action_type.empty(), action_validate_exception, "Unknown action ${action}", ("action", params.action));
+    EVT_ASSERT(!action_type.empty(), action_exception, "Unknown action ${action}", ("action", params.action));
     try {
         result.binargs = api.variant_to_binary(action_type, params.args);
     }
-    EVT_RETHROW_EXCEPTIONS(chain::invalid_action_args_exception,
+    EVT_RETHROW_EXCEPTIONS(chain::action_args_exception,
                            "'${args}' is invalid args for action '${action}'. expected '${proto}'",
                            ("args", params.args)("action", params.action)("proto", action_abi_to_variant(api, action_type)))
     return result;

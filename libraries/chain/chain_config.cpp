@@ -10,7 +10,7 @@ namespace evt { namespace chain {
 
 void 
 chain_config::validate()const {
-    EVT_ASSERT(1 <= max_authority_depth, action_validate_exception,
+    EVT_ASSERT(1 <= max_authority_depth, action_exception,
               "max authority depth should be at least 1");
 }
 

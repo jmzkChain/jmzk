@@ -53,8 +53,8 @@ validate(const group& group, const group::node& node) {
 
 inline bool
 validate(const group& group) {
-    EVT_ASSERT(!group.name().empty(), action_validate_exception, "Group name cannot be empty");
-    EVT_ASSERT(!group.empty(), action_validate_exception, "Don't have root node");
+    EVT_ASSERT(!group.name().empty(), group_type_exception, "Group name cannot be empty");
+    EVT_ASSERT(!group.empty(), group_type_exception, "Don't have root node");
     auto& root = group.root();
     return validate(group, root);
 }
@@ -69,17 +69,17 @@ auto make_permission_checker = [](const auto& tokendb) {
                 continue;
             }
             case authorizer_ref::owner_t: {
-                EVT_ASSERT(allowed_owner, action_validate_exception, "Owner group is not allowed in ${name} permission", ("name", p.name));
+                EVT_ASSERT(allowed_owner, permission_type_exception, "Owner group is not allowed in ${name} permission", ("name", p.name));
                 continue;  
             }
             case authorizer_ref::group_t: {
                 auto& name = ref.get_group();
                 auto dbexisted = tokendb.exists_group(name);
-                EVT_ASSERT(dbexisted, action_validate_exception, "Group ${name} is not valid, should create group first", ("name", name));
+                EVT_ASSERT(dbexisted, group_not_existed_exception, "Group ${name} is not existed, should create group first", ("name", name));
                 break;
             }
             default: {
-                EVT_ASSERT(false, action_validate_exception, "Not valid authorizer ref");
+                EVT_ASSERT(false, authorizer_ref_type_exception, "Not valid authorizer ref");
             }
             }  // switch
         }
@@ -95,19 +95,19 @@ apply_evt_newdomain(apply_context& context) {
 
     auto ndact = context.act.data_as<newdomain>();
     try {
-        EVT_ASSERT(context.has_authorized(ndact.name, N128(.create)), action_validate_exception, "Authorized information doesn't match");
+        EVT_ASSERT(context.has_authorized(ndact.name, N128(.create)), action_authorize_exception, "Authorized information doesn't match");
 
         auto& tokendb = context.token_db;
-        EVT_ASSERT(!tokendb.exists_domain(ndact.name), action_validate_exception, "Domain ${name} already existed", ("name",ndact.name));
+        EVT_ASSERT(!tokendb.exists_domain(ndact.name), domain_exists_exception, "Domain ${name} already existed", ("name",ndact.name));
 
-        EVT_ASSERT(!ndact.name.empty(), action_validate_exception, "Domain name shouldn't be empty");
-        EVT_ASSERT(ndact.issue.name == "issue", action_validate_exception, "Name of issue permission is not valid, provided: ${name}", ("name",ndact.issue.name));
-        EVT_ASSERT(ndact.issue.threshold > 0 && validate(ndact.issue), action_validate_exception, "Issue permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
-        EVT_ASSERT(ndact.transfer.name == "transfer", action_validate_exception, "Name of transfer permission is not valid, provided: ${name}", ("name",ndact.transfer.name));
-        EVT_ASSERT(ndact.transfer.threshold > 0 && validate(ndact.transfer), action_validate_exception, "Transfer permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
+        EVT_ASSERT(!ndact.name.empty(), domain_name_exception, "Domain name shouldn't be empty");
+        EVT_ASSERT(ndact.issue.name == "issue", permission_type_exception, "Name of issue permission is not valid, provided: ${name}", ("name",ndact.issue.name));
+        EVT_ASSERT(ndact.issue.threshold > 0 && validate(ndact.issue), permission_type_exception, "Issue permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
+        EVT_ASSERT(ndact.transfer.name == "transfer", permission_type_exception, "Name of transfer permission is not valid, provided: ${name}", ("name",ndact.transfer.name));
+        EVT_ASSERT(ndact.transfer.threshold > 0 && validate(ndact.transfer), permission_type_exception, "Transfer permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
         // manage permission's threshold can be 0 which means no one can update permission later.
-        EVT_ASSERT(ndact.manage.name == "manage", action_validate_exception, "Name of transfer permission is not valid, provided: ${name}", ("name",ndact.manage.name));
-        EVT_ASSERT(validate(ndact.manage), action_validate_exception, "Manage permission not valid, maybe exist duplicate keys.");
+        EVT_ASSERT(ndact.manage.name == "manage", permission_type_exception, "Name of transfer permission is not valid, provided: ${name}", ("name",ndact.manage.name));
+        EVT_ASSERT(validate(ndact.manage), permission_type_exception, "Manage permission not valid, maybe exist duplicate keys.");
 
         auto pchecker = make_permission_checker(tokendb);
         pchecker(ndact.issue, false);
@@ -131,16 +131,16 @@ void
 apply_evt_issuetoken(apply_context& context) {
     auto itact = context.act.data_as<issuetoken>();
     try {
-        EVT_ASSERT(context.has_authorized(itact.domain, N128(.issue)), action_validate_exception, "Authorized information doesn't match");
+        EVT_ASSERT(context.has_authorized(itact.domain, N128(.issue)), action_authorize_exception, "Authorized information doesn't match");
         
         auto& tokendb = context.token_db;
-        EVT_ASSERT(tokendb.exists_domain(itact.domain), action_validate_exception, "Domain ${name} not existed", ("name", itact.domain));
-        EVT_ASSERT(!itact.owner.empty(), action_validate_exception, "Owner cannot be empty");
+        EVT_ASSERT(tokendb.exists_domain(itact.domain), domain_not_existed_exception, "Domain ${name} is not existed", ("name", itact.domain));
+        EVT_ASSERT(!itact.owner.empty(), token_owner_exception, "Owner cannot be empty");
 
         auto check_name = [&](const auto& name) {
             const uint128_t reserved_flag = ((uint128_t)0x3f << (128-6));
-            EVT_ASSERT(!name.empty() && (name.value & reserved_flag), action_validate_exception, "Token name starts with '.' is reserved for system usage");
-            EVT_ASSERT(!tokendb.exists_token(itact.domain, name), action_validate_exception, "Token ${domain}-${name} already existed", ("domain",itact.domain)("name",name));
+            EVT_ASSERT(!name.empty() && (name.value & reserved_flag), token_name_exception, "Token name starts with '.' is reserved for system usage");
+            EVT_ASSERT(!tokendb.exists_token(itact.domain, name), token_exists_exception, "Token ${domain}-${name} already existed", ("domain",itact.domain)("name",name));
         };
 
         for(auto& n : itact.names) {
@@ -176,14 +176,14 @@ apply_evt_transfer(apply_context& context) {
 
     auto ttact = context.act.data_as<transfer>();
     try {
-        EVT_ASSERT(context.has_authorized(ttact.domain, ttact.name), action_validate_exception, "Authorized information doesn't match");
+        EVT_ASSERT(context.has_authorized(ttact.domain, ttact.name), action_authorize_exception, "Authorized information doesn't match");
 
         auto& tokendb = context.token_db;
 
         token_def token;
         tokendb.read_token(ttact.domain, ttact.name, token);
 
-        EVT_ASSERT(!check_token_destroy(token), action_validate_exception, "Token is already destroyed");
+        EVT_ASSERT(!check_token_destroy(token), token_destoryed_exception, "Token is already destroyed");
 
         token.owner = std::move(ttact.to);
         tokendb.update_token(token);
@@ -197,14 +197,14 @@ apply_evt_destroytoken(apply_context& context) {
 
     auto dtact = context.act.data_as<destroytoken>();
     try {
-        EVT_ASSERT(context.has_authorized(dtact.domain, dtact.name), action_validate_exception, "Authorized information doesn't match");
+        EVT_ASSERT(context.has_authorized(dtact.domain, dtact.name), action_authorize_exception, "Authorized information doesn't match");
 
         auto& tokendb = context.token_db;
 
         token_def token;
         tokendb.read_token(dtact.domain, dtact.name, token);
 
-        EVT_ASSERT(!check_token_destroy(token), action_validate_exception, "Token is already destroyed");
+        EVT_ASSERT(!check_token_destroy(token), token_destoryed_exception, "Token is already destroyed");
 
         token.owner = user_list{ get_reservered_public_key() };
         tokendb.update_token(token);
@@ -218,12 +218,12 @@ apply_evt_newgroup(apply_context& context) {
 
     auto ngact = context.act.data_as<newgroup>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(group), ngact.name), action_validate_exception, "Authorized information doesn't match");
-        EVT_ASSERT(ngact.name == ngact.group.name(), action_validate_exception, "The names in action are not the same");
+        EVT_ASSERT(context.has_authorized(N128(group), ngact.name), action_authorize_exception, "Authorized information doesn't match");
+        EVT_ASSERT(ngact.name == ngact.group.name(), group_name_exception, "The names in action are not the same");
         
         auto& tokendb = context.token_db;
-        EVT_ASSERT(!tokendb.exists_group(ngact.name), action_validate_exception, "Group ${name} is already existed", ("name",ngact.name));
-        EVT_ASSERT(validate(ngact.group), action_validate_exception, "Input group is not valid");
+        EVT_ASSERT(!tokendb.exists_group(ngact.name), group_exists_exception, "Group ${name} is already existed", ("name",ngact.name));
+        EVT_ASSERT(validate(ngact.group), group_type_exception, "Input group is not valid");
 
         tokendb.add_group(std::move(ngact.group));
     }
@@ -236,12 +236,12 @@ apply_evt_updategroup(apply_context& context) {
 
     auto ugact = context.act.data_as<updategroup>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(group), ugact.name), action_validate_exception, "Authorized information doesn't match");
-        EVT_ASSERT(ugact.name == ugact.group.name(), action_validate_exception, "The names in action are not the same");
+        EVT_ASSERT(context.has_authorized(N128(group), ugact.name), action_authorize_exception, "Authorized information doesn't match");
+        EVT_ASSERT(ugact.name == ugact.group.name(), group_name_exception, "The names in action are not the same");
 
         auto& tokendb = context.token_db;
-        EVT_ASSERT(tokendb.exists_group(ugact.name), action_validate_exception, "Group ${name} not existed", ("name",ugact.name));
-        EVT_ASSERT(validate(ugact.group), action_validate_exception, "Updated group is not valid");
+        EVT_ASSERT(tokendb.exists_group(ugact.name), group_not_existed_exception, "Group ${name} not existed", ("name",ugact.name));
+        EVT_ASSERT(validate(ugact.group), group_type_exception, "Updated group is not valid");
 
         tokendb.update_group(std::move(ugact.group));
     }
@@ -254,7 +254,7 @@ apply_evt_updatedomain(apply_context& context) {
 
     auto udact = context.act.data_as<updatedomain>();
     try {
-        EVT_ASSERT(context.has_authorized(udact.name, N128(.update)), action_validate_exception, "Authorized information doesn't match");
+        EVT_ASSERT(context.has_authorized(udact.name, N128(.update)), action_authorize_exception, "Authorized information doesn't match");
 
         auto& tokendb = context.token_db;
 
@@ -263,23 +263,23 @@ apply_evt_updatedomain(apply_context& context) {
 
         auto pchecker = make_permission_checker(tokendb);
         if(udact.issue.valid()) {
-            EVT_ASSERT(udact.issue->name == "issue", action_validate_exception, "Name of issue permission is not valid, provided: ${name}", ("name",udact.issue->name));
-            EVT_ASSERT(udact.issue->threshold > 0 && validate(*udact.issue), action_validate_exception, "Issue permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
+            EVT_ASSERT(udact.issue->name == "issue", permission_type_exception, "Name of issue permission is not valid, provided: ${name}", ("name",udact.issue->name));
+            EVT_ASSERT(udact.issue->threshold > 0 && validate(*udact.issue), permission_type_exception, "Issue permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
             pchecker(*udact.issue, false);
 
             domain.issue = std::move(*udact.issue);
         }
         if(udact.transfer.valid()) {
-            EVT_ASSERT(udact.transfer->name == "transfer", action_validate_exception, "Name of transfer permission is not valid, provided: ${name}", ("name",udact.transfer->name));
-            EVT_ASSERT(udact.transfer->threshold > 0 && validate(*udact.transfer), action_validate_exception, "Transfer permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
+            EVT_ASSERT(udact.transfer->name == "transfer", permission_type_exception, "Name of transfer permission is not valid, provided: ${name}", ("name",udact.transfer->name));
+            EVT_ASSERT(udact.transfer->threshold > 0 && validate(*udact.transfer), permission_type_exception, "Transfer permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
             pchecker(*udact.transfer, true);
 
             domain.transfer = std::move(*udact.transfer);
         }
         if(udact.manage.valid()) {
             // manage permission's threshold can be 0 which means no one can update permission later.
-            EVT_ASSERT(udact.manage->name == "manage", action_validate_exception, "Name of manage permission is not valid, provided: ${name}", ("name",udact.manage->name));
-            EVT_ASSERT(validate(*udact.manage), action_validate_exception, "Manage permission not valid, maybe exist duplicate keys.");
+            EVT_ASSERT(udact.manage->name == "manage", permission_type_exception, "Name of manage permission is not valid, provided: ${name}", ("name",udact.manage->name));
+            EVT_ASSERT(validate(*udact.manage), permission_type_exception, "Manage permission not valid, maybe exist duplicate keys.");
             pchecker(*udact.manage, false);
 
             domain.manage = std::move(*udact.manage);
@@ -296,18 +296,18 @@ apply_evt_newfungible(apply_context& context) {
 
     auto nfact = context.act.data_as<newfungible>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(fungible), (fungible_name)nfact.sym.name()), action_validate_exception, "Authorized information doesn't match");
+        EVT_ASSERT(context.has_authorized(N128(fungible), (fungible_name)nfact.sym.name()), action_authorize_exception, "Authorized information doesn't match");
 
         auto& tokendb = context.token_db;
-        EVT_ASSERT(!tokendb.exists_fungible(nfact.sym), action_validate_exception, "Fungible with symbol: ${syj} already existed", ("sym",nfact.sym.name()));
-        EVT_ASSERT(nfact.sym == nfact.total_supply.get_symbol(), action_validate_exception, "Symbols are not the same");
-        EVT_ASSERT(nfact.total_supply.get_amount() <= ASSET_MAX_SHARE_SUPPLY, action_validate_exception, "Max supply exceeds max allowed supply");
+        EVT_ASSERT(!tokendb.exists_fungible(nfact.sym), fungible_exists_exception, "Fungible with symbol: ${sym} already existed", ("sym",nfact.sym.name()));
+        EVT_ASSERT(nfact.sym == nfact.total_supply.get_symbol(), fungible_symbol_exception, "Symbols are not the same");
+        EVT_ASSERT(nfact.total_supply.get_amount() <= ASSET_MAX_SHARE_SUPPLY, fungible_supply_exception, "Max supply exceeds max allowed supply");
 
-        EVT_ASSERT(nfact.issue.name == "issue", action_validate_exception, "Name of issue permission is not valid, provided: ${name}", ("name",nfact.issue.name));
-        EVT_ASSERT(nfact.issue.threshold > 0 && validate(nfact.issue), action_validate_exception, "Issue permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
+        EVT_ASSERT(nfact.issue.name == "issue", permission_type_exception, "Name of issue permission is not valid, provided: ${name}", ("name",nfact.issue.name));
+        EVT_ASSERT(nfact.issue.threshold > 0 && validate(nfact.issue), permission_type_exception, "Issue permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
         // manage permission's threshold can be 0 which means no one can update permission later.
-        EVT_ASSERT(nfact.manage.name == "manage", action_validate_exception, "Name of transfer permission is not valid, provided: ${name}", ("name",nfact.manage.name));
-        EVT_ASSERT(validate(nfact.manage), action_validate_exception, "Manage permission not valid, maybe exist duplicate keys.");
+        EVT_ASSERT(nfact.manage.name == "manage", permission_type_exception, "Name of transfer permission is not valid, provided: ${name}", ("name",nfact.manage.name));
+        EVT_ASSERT(validate(nfact.manage), permission_type_exception, "Manage permission not valid, maybe exist duplicate keys.");
 
         auto pchecker = make_permission_checker(tokendb);
         pchecker(nfact.issue, false);
@@ -333,27 +333,27 @@ apply_evt_updfungible(apply_context& context) {
 
     auto ufact = context.act.data_as<updfungible>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(fungible), (fungible_name)ufact.sym.name()), action_validate_exception, "Authorized information doesn't match");
+        EVT_ASSERT(context.has_authorized(N128(fungible), (fungible_name)ufact.sym.name()), action_authorize_exception, "Authorized information doesn't match");
 
         auto& tokendb = context.token_db;
 
         fungible_def fungible;
         tokendb.read_fungible(ufact.sym, fungible);
 
-        EVT_ASSERT(fungible.sym == ufact.sym, action_validate_exception, "Symbols are not the same");
+        EVT_ASSERT(fungible.sym == ufact.sym, fungible_symbol_exception, "Symbols are not the same");
 
         auto pchecker = make_permission_checker(tokendb);
         if(ufact.issue.valid()) {
-            EVT_ASSERT(ufact.issue->name == "issue", action_validate_exception, "Name of issue permission is not valid, provided: ${name}", ("name",ufact.issue->name));
-            EVT_ASSERT(ufact.issue->threshold > 0 && validate(*ufact.issue), action_validate_exception, "Issue permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
+            EVT_ASSERT(ufact.issue->name == "issue", permission_type_exception, "Name of issue permission is not valid, provided: ${name}", ("name",ufact.issue->name));
+            EVT_ASSERT(ufact.issue->threshold > 0 && validate(*ufact.issue), permission_type_exception, "Issue permission not valid, either threshold is not valid or exist duplicate or unordered keys.");
             pchecker(*ufact.issue, false);
 
             fungible.issue = std::move(*ufact.issue);
         }
         if(ufact.manage.valid()) {
             // manage permission's threshold can be 0 which means no one can update permission later.
-            EVT_ASSERT(ufact.manage->name == "manage", action_validate_exception, "Name of manage permission is not valid, provided: ${name}", ("name",ufact.manage->name));
-            EVT_ASSERT(validate(*ufact.manage), action_validate_exception, "Manage permission not valid, maybe exist duplicate keys.");
+            EVT_ASSERT(ufact.manage->name == "manage", permission_type_exception, "Name of manage permission is not valid, provided: ${name}", ("name",ufact.manage->name));
+            EVT_ASSERT(validate(*ufact.manage), permission_type_exception, "Manage permission not valid, maybe exist duplicate keys.");
             pchecker(*ufact.manage, false);
 
             fungible.manage = std::move(*ufact.manage);
@@ -370,7 +370,7 @@ apply_evt_issuefungible(apply_context& context) {
 
     try {
         auto sym = ifact.number.get_symbol();
-        EVT_ASSERT(context.has_authorized(N128(fungible), (fungible_name)sym.name()), action_validate_exception, "Authorized information doesn't match");
+        EVT_ASSERT(context.has_authorized(N128(fungible), (fungible_name)sym.name()), action_authorize_exception, "Authorized information doesn't match");
 
         auto& tokendb = context.token_db;
 
@@ -379,14 +379,14 @@ apply_evt_issuefungible(apply_context& context) {
 
         decltype(ifact.number.get_amount()) rr;
         auto r = safemath::test_add(fungible.current_supply.get_amount(), ifact.number.get_amount(), rr);
-        EVT_ASSERT(r, action_validate_exception, "Operations resulted in overflow results");
+        EVT_ASSERT(r, math_overflow_exception, "Operations resulted in overflow results");
 
         fungible.current_supply += ifact.number;
         if(fungible.total_supply.get_amount() > 0) {
-            EVT_ASSERT(fungible.current_supply <= fungible.total_supply, action_validate_exception, "Overflow total supply");
+            EVT_ASSERT(fungible.current_supply <= fungible.total_supply, fungible_supply_exception, "Overflow total supply");
         }
         else {
-            EVT_ASSERT(fungible.current_supply.get_amount() <= ASSET_MAX_SHARE_SUPPLY, action_validate_exception, "Current supply exceeds max allowed supply");
+            EVT_ASSERT(fungible.current_supply.get_amount() <= ASSET_MAX_SHARE_SUPPLY, fungible_supply_exception, "Current supply exceeds max allowed supply");
         }
 
         auto as = asset(0, sym);
@@ -405,7 +405,7 @@ apply_evt_transferft(apply_context& context) {
 
     try {
         auto sym = tfact.number.get_symbol();
-        EVT_ASSERT(context.has_authorized(N128(fungible), (fungible_name)sym.name()), action_validate_exception, "Authorized information doesn't match");
+        EVT_ASSERT(context.has_authorized(N128(fungible), (fungible_name)sym.name()), action_authorize_exception, "Authorized information doesn't match");
 
         auto& tokendb = context.token_db;
         
@@ -414,13 +414,13 @@ apply_evt_transferft(apply_context& context) {
         tokendb.read_asset(tfact.from, sym, facc);
         tokendb.read_asset_no_throw(tfact.to, sym, tacc);
 
-        EVT_ASSERT(facc >= tfact.number, action_validate_exception, "From address doesn't have enough balance left");
+        EVT_ASSERT(facc >= tfact.number, balance_exception, "From address doesn't have enough balance left");
 
         bool r1, r2;
         decltype(facc.get_amount()) r;
         r1 = safemath::test_sub(facc.get_amount(), tfact.number.get_amount(), r);
         r2 = safemath::test_add(tacc.get_amount(), tfact.number.get_amount(), r);
-        EVT_ASSERT(r1 && r2, action_validate_exception, "Opeartions resulted in overflow results");
+        EVT_ASSERT(r1 && r2, math_overflow_exception, "Opeartions resulted in overflow results");
         
         facc -= tfact.number;
         tacc += tfact.number;
@@ -547,9 +547,9 @@ apply_evt_addmeta(apply_context& context) {
             group_def group;
             tokendb.read_group(act.key, group);
 
-            EVT_ASSERT(!check_duplicate_meta(group, amact.key), action_validate_exception, "Metadata with key ${key} is already existed", ("key",amact.key));
+            EVT_ASSERT(!check_duplicate_meta(group, amact.key), meta_key_exception, "Metadata with key ${key} is already existed", ("key",amact.key));
             // check involved, only group manager(aka. group key) can add meta
-            EVT_ASSERT(check_involved_group(group, amact.creator), action_validate_exception, "Creator is not involved in group ${name}", ("name",act.key));
+            EVT_ASSERT(check_involved_group(group, amact.creator), meta_involve_exception, "Creator is not involved in group ${name}", ("name",act.key));
 
             group.metas_.emplace_back(meta(amact.key, amact.value, amact.creator));
             tokendb.update_group(group);
@@ -558,9 +558,9 @@ apply_evt_addmeta(apply_context& context) {
             fungible_def fungible;
             tokendb.read_fungible(act.key, fungible);
 
-            EVT_ASSERT(!check_duplicate_meta(fungible, amact.key), action_validate_exception, "Metadata with key ${key} is already existed", ("key",amact.key));
+            EVT_ASSERT(!check_duplicate_meta(fungible, amact.key), meta_key_exception, "Metadata with key ${key} is already existed", ("key",amact.key));
             // check involved, only group manager(aka. group key) can add meta
-            EVT_ASSERT(check_involved_fungible(tokendb, fungible, N(manage), amact.creator), action_validate_exception, "Creator is not involved in group ${name}", ("name",act.key));
+            EVT_ASSERT(check_involved_fungible(tokendb, fungible, N(manage), amact.creator), meta_involve_exception, "Creator is not involved in group ${name}", ("name",act.key));
 
             fungible.metas.emplace_back(meta(amact.key, amact.value, amact.creator));
             tokendb.update_fungible(fungible);
@@ -569,9 +569,9 @@ apply_evt_addmeta(apply_context& context) {
             domain_def domain;
             tokendb.read_domain(act.domain, domain);
 
-            EVT_ASSERT(!check_duplicate_meta(domain, amact.key), action_validate_exception, "Metadata with key ${key} is already existed", ("key",amact.key));
+            EVT_ASSERT(!check_duplicate_meta(domain, amact.key), meta_key_exception, "Metadata with key ${key} is already existed", ("key",amact.key));
             // check involved, only person involved in `manage` permission can add meta
-            EVT_ASSERT(check_involved_domain(tokendb, domain, N(manage), amact.creator), action_validate_exception, "Creator is not involved in domain ${name}", ("name",act.key));
+            EVT_ASSERT(check_involved_domain(tokendb, domain, N(manage), amact.creator), meta_involve_exception, "Creator is not involved in domain ${name}", ("name",act.key));
 
             domain.metas.emplace_back(meta(amact.key, amact.value, amact.creator));
             tokendb.update_domain(domain);
@@ -580,8 +580,8 @@ apply_evt_addmeta(apply_context& context) {
             token_def token;
             tokendb.read_token(act.domain, act.key, token);
 
-            EVT_ASSERT(!check_token_destroy(token), action_validate_exception, "Token is already destroyed");
-            EVT_ASSERT(!check_duplicate_meta(token, amact.key), action_validate_exception, "Metadata with key ${key} is already existed", ("key",amact.key));
+            EVT_ASSERT(!check_token_destroy(token), token_destoryed_exception, "Token is already destroyed");
+            EVT_ASSERT(!check_duplicate_meta(token, amact.key), meta_key_exception, "Metadata with key ${key} is already existed", ("key",amact.key));
 
             domain_def domain;
             tokendb.read_domain(act.domain, domain);
@@ -590,7 +590,7 @@ apply_evt_addmeta(apply_context& context) {
             auto involved = check_involved_owner(token, amact.creator)
                 || check_involved_domain(tokendb, domain, N(issue), amact.creator)
                 || check_involved_domain(tokendb, domain, N(transfer), amact.creator);
-            EVT_ASSERT(involved, action_validate_exception, "Creator is not involved in token ${domain}-${name}", ("domain",act.domain)("name",act.key));
+            EVT_ASSERT(involved, meta_involve_exception, "Creator is not involved in token ${domain}-${name}", ("domain",act.domain)("name",act.key));
 
             token.metas.emplace_back(meta(amact.key, amact.value, amact.creator));
             tokendb.update_token(token);
@@ -605,11 +605,11 @@ apply_evt_newdelay(apply_context& context) {
 
     auto ndact = context.act.data_as<newdelay>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(delay), ndact.name), action_validate_exception, "Authorized information doesn't match");
+        EVT_ASSERT(context.has_authorized(N128(delay), ndact.name), action_authorize_exception, "Authorized information doesn't match");
 
         auto& tokendb = context.token_db;
-        EVT_ASSERT(!ndact.name.empty(), action_validate_exception, "Proposal name shouldn't be empty");
-        EVT_ASSERT(!tokendb.exists_delay(ndact.name), action_validate_exception, "Delay ${name} already existed", ("name",ndact.name));
+        EVT_ASSERT(!ndact.name.empty(), proposal_name_exception, "Proposal name shouldn't be empty");
+        EVT_ASSERT(!tokendb.exists_delay(ndact.name), delay_exists_exception, "Delay ${name} already existed", ("name",ndact.name));
 
         auto delay = delay_def {
             ndact.name,
@@ -632,7 +632,7 @@ apply_evt_approvedelay(apply_context& context) {
 
     auto adact = context.act.data_as<approvedelay>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(delay), adact.name), action_validate_exception, "Authorized information doesn't match");
+        EVT_ASSERT(context.has_authorized(N128(delay), adact.name), action_authorize_exception, "Authorized information doesn't match");
 
         auto& tokendb = context.token_db;
         bool  existed = false;
@@ -640,18 +640,18 @@ apply_evt_approvedelay(apply_context& context) {
 
         delay_def delay;
         tokendb.read_delay(adact.name, delay);
-        EVT_ASSERT(delay.status == delay_status::proposed, action_validate_exception, "Delay is not in proper status");
+        EVT_ASSERT(delay.status == delay_status::proposed, delay_status_exception, "Delay is not in proper status");
         signed_keys = delay.trx.get_signature_keys(adact.signatures, context.control.get_chain_id());
 
-        EVT_ASSERT(existed, action_validate_exception, "Delay ${name} is not existed", ("name",adact.name));
+        EVT_ASSERT(existed, delay_not_existed_exception, "Delay ${name} is not existed", ("name",adact.name));
 
         auto& keys = context.trx_context.trx.recover_keys(context.control.get_chain_id());
-        EVT_ASSERT(signed_keys.size() == keys.size(), action_validate_exception, "Signed keys and signatures are not match");
+        EVT_ASSERT(signed_keys.size() == keys.size(), delay_sigs_exception, "Signed keys and signatures are not match");
 
         auto it  = signed_keys.cbegin();
         auto it2 = keys.cbegin();
         for(; it != signed_keys.cend(); it++, it2++) {
-            EVT_ASSERT(*it == *it2, action_validate_exception, "Signed keys and signatures are not match");
+            EVT_ASSERT(*it == *it2, delay_sigs_exception, "Signed keys and signatures are not match");
         }
 
         delay.signed_keys.reserve(delay.signed_keys.size() + signed_keys.size());
@@ -667,13 +667,13 @@ apply_evt_canceldelay(apply_context& context) {
 
     auto cdact = context.act.data_as<canceldelay>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(delay), cdact.name), action_validate_exception, "Authorized information doesn't match");
+        EVT_ASSERT(context.has_authorized(N128(delay), cdact.name), action_authorize_exception, "Authorized information doesn't match");
 
         auto& tokendb = context.token_db;
 
         delay_def delay;
         tokendb.read_delay(cdact.name, delay);
-        EVT_ASSERT(delay.status == delay_status::proposed, action_validate_exception, "Delay is not in proper status");
+        EVT_ASSERT(delay.status == delay_status::proposed, delay_status_exception, "Delay is not in proper status");
 
         delay.status = delay_status::cancelled;
         tokendb.update_delay(delay);

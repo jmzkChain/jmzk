@@ -30,7 +30,7 @@ apply_context::exec_one() {
     auto start = fc::time_point::now();
     try {
         auto func = control.find_apply_handler(act.name);
-        EVT_ASSERT(func != nullptr, action_validate_exception, "Action is not valid, ${name} doesn't exist",
+        EVT_ASSERT(func != nullptr, tx_apply_exception, "Action is not valid, ${name} doesn't exist",
                    ("name", act.name));
         (*func)(*this);
     }
