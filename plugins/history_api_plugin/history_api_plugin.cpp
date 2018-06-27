@@ -53,9 +53,9 @@ history_api_plugin::plugin_startup() {
     my.reset(new history_api_plugin_impl(app().get_plugin<chain_plugin>().chain()));
     auto ro_api = app().get_plugin<history_plugin>().get_read_only_api();
 
-    app().get_plugin<http_plugin>().add_api({HISTORY_RO_CALL(get_my_tokens, 200),
-                                             HISTORY_RO_CALL(get_my_domains, 200),
-                                             HISTORY_RO_CALL(get_my_groups, 200),
+    app().get_plugin<http_plugin>().add_api({HISTORY_RO_CALL(get_tokens, 200),
+                                             HISTORY_RO_CALL(get_domains, 200),
+                                             HISTORY_RO_CALL(get_groups, 200),
                                              HISTORY_RO_CALL(get_actions, 200),
                                              HISTORY_RO_CALL(get_transaction, 200),
                                              HISTORY_RO_CALL(get_transactions, 200),

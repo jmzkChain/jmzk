@@ -17,6 +17,8 @@
 namespace evt {
 
 class history_plugin;
+using evt::chain::public_key_type;
+using evt::chain::action_name;
 
 namespace history_apis {
 
@@ -64,8 +66,6 @@ private:
 };
 
 }  // namespace history_apis
-
-using evt::chain::public_key_type;
 
 class history_plugin : public plugin<history_plugin> {
 public:

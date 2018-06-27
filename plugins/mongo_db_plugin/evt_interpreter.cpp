@@ -33,36 +33,37 @@ private:
     void process_transfer(const transfer& tt);
     void process_newgroup(const newgroup& ng);
     void process_updategroup(const updategroup& ug);
-    void process_newaccount(const newaccount& na);
-    void process_updateowner(const updateowner& uo);
+    void process_newfungible(const newfungible& nf);
+    void process_updfungible(const updfungible& uf);
+    void process_issuefungible(const issuefungible& ifact);
 
 private:
     mongocxx::database    db_;
     mongocxx::collection  domains_collection_;
     mongocxx::collection  tokens_collection_;
     mongocxx::collection  groups_collection_;
-    mongocxx::collection  accounts_collection_;
+    mongocxx::collection  fungibles_collection_;
 
 public:
     static const std::string domains_col;
     static const std::string tokens_col;
     static const std::string groups_col;
-    static const std::string accounts_col;
+    static const std::string fungibles_col;
 };
 
 const std::string interpreter_impl::domains_col  = "Domains";
 const std::string interpreter_impl::tokens_col   = "Tokens";
 const std::string interpreter_impl::groups_col   = "Groups";
-const std::string interpreter_impl::accounts_col = "Accounts";
+const std::string interpreter_impl::fungibles_col = "Fungibles";
 
 void
 interpreter_impl::initialize_db(const mongocxx::database& db)
 {
     db_ = db;
-    domains_collection_  = db_[domains_col];
-    tokens_collection_   = db_[tokens_col];
-    groups_collection_   = db_[groups_col];
-    accounts_collection_ = db_[accounts_col];
+    domains_collection_   = db_[domains_col];
+    tokens_collection_    = db_[tokens_col];
+    groups_collection_    = db_[groups_col];
+    fungibles_collection_ = db_[fungibles_col];
 }
 
 #define CASE_N_CALL(name)                        \
@@ -82,8 +83,9 @@ interpreter_impl::process_trx(const transaction_trace& trx_trace) {
             CASE_N_CALL(transfer)
             CASE_N_CALL(newgroup)
             CASE_N_CALL(updategroup)
-            CASE_N_CALL(newaccount)
-            CASE_N_CALL(updateowner)
+            CASE_N_CALL(newfungible)
+            CASE_N_CALL(updfungible)
+            CASE_N_CALL(issuefungible)
             default: break;
         }
     }
@@ -128,15 +130,15 @@ find_group(mongocxx::collection& groups, const std::string& name) {
 }
 
 auto
-find_account(mongocxx::collection& accounts, const std::string& name) {
+find_fungible(mongocxx::collection& fungibles, const std::string& sym) {
     using bsoncxx::builder::stream::document;
     document find{};
-    find << "name" << name;
-    auto account = accounts.find_one(find.view());
-    if(!account) {
-        FC_THROW("Unable to find account ${name}", ("name", name));
+    find << "sym" << sym;
+    auto fungible = fungibles.find_one(find.view());
+    if(!fungible) {
+        FC_THROW("Unable to find fungible assets ${sym}", ("sym", sym));
     }
-    return *account;
+    return *fungible;
 }
 
 }  // namespace __internal
@@ -160,7 +162,7 @@ interpreter_impl::process_newdomain(const newdomain& nd) {
 
     doc.append(kvp("_id", oid),
                kvp("name", (std::string)nd.name),
-               kvp("issuer", (std::string)nd.issuer),
+               kvp("creator", (std::string)nd.creator),
                kvp("issue", bsoncxx::from_json(fc::json::to_string(issue))),
                kvp("transfer", bsoncxx::from_json(fc::json::to_string(transfer))),
                kvp("manage", bsoncxx::from_json(fc::json::to_string(manage))));
@@ -206,7 +208,7 @@ interpreter_impl::process_updatedomain(const updatedomain& ud) {
         update << "manage" << bsoncxx::from_json(fc::json::to_string(u));
     }
 
-    update << "updatedAt" << b_date{now}
+    update << "updated_at" << b_date{now}
            << close_document;
 
     if(!domains_collection_.update_one(document{} << "_id" << d.view()["_id"].get_oid() << finalize, update.view())) {
@@ -334,7 +336,7 @@ interpreter_impl::process_updategroup(const updategroup& ug) {
 }
 
 void
-interpreter_impl::process_newaccount(const newaccount& na) {
+interpreter_impl::process_newfungible(const newfungible& nf) {
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
     using bsoncxx::builder::basic::kvp;
@@ -345,25 +347,28 @@ interpreter_impl::process_newaccount(const newaccount& na) {
     auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
 
-    // NOTICE: balance below is defined the same as /chain/contracts/evt_contract.cpp:L249
+    fc::variant issue, manage;
+    fc::to_variant(nf.issue, issue);
+    fc::to_variant(nf.manage, manage);
+
+    auto cp = evt::chain::asset(0, nf.total_supply.get_symbol());
+
     doc.append(kvp("_id", oid),
-               kvp("name", (std::string)na.name),
-               kvp("balance", (std::string)balance_type(10000)),
-               kvp("frozen", (std::string)balance_type(0)));
-    doc.append(kvp("owner", [&na](bsoncxx::builder::basic::sub_array subarr) {
-           for(const auto& o : na.owner) {
-               subarr.append((std::string)o);
-           }
-       }));
+               kvp("sym", (std::string)nf.sym),
+               kvp("creator", (std::string)nf.creator),
+               kvp("issue", bsoncxx::from_json(fc::json::to_string(issue))),
+               kvp("manage", bsoncxx::from_json(fc::json::to_string(manage))),
+               kvp("total_supply", (std::string)nf.total_supply),
+               kvp("current_supply", (std::string)cp));
     doc.append(kvp("created_at", b_date{now}));
 
-    if(!accounts_collection_.insert_one(doc.view())) {
-        elog("Failed to insert account ${name}", ("name", na.name));
+    if(!fungibles_collection_.insert_one(doc.view())) {
+        elog("Failed to insert fungible assets ${sym}", ("sym", nf.sym));
     }
 }
 
 void
-interpreter_impl::process_updateowner(const updateowner& uo) {
+interpreter_impl::process_updfungible(const updfungible& uf) {
     using namespace __internal;
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
@@ -376,18 +381,69 @@ interpreter_impl::process_updateowner(const updateowner& uo) {
     auto now  = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
 
-    auto t = find_account(accounts_collection_, (std::string)uo.name);
+    auto sym = (std::string)uf.sym;
+    auto f   = find_fungible(fungibles_collection_, sym);
 
-    auto update = bsoncxx::builder::basic::document{};
-    update.append(kvp("owner", [&uo](bsoncxx::builder::basic::sub_array subarr) {
-           for(const auto& o : uo.owner) {
-               subarr.append((std::string)o);
-           }
-       }));
+    document update{};
+    update << "$set" << open_document;
+    if(uf.issue.valid()) {
+        fc::variant u;
+        fc::to_variant(*uf.issue, u);
+        update << "issue" << bsoncxx::from_json(fc::json::to_string(u));
+    }
+    if(uf.manage.valid()) {
+        fc::variant u;
+        fc::to_variant(*uf.manage, u);
+        update << "manage" << bsoncxx::from_json(fc::json::to_string(u));
+    }
 
-    update.append(kvp("updated_at", b_date{now}));
-    if(!accounts_collection_.update_one(document{} << "_id" << t.view()["_id"].get_oid() << finalize, update.view())) {
-        elog("Failed to update account ${name}", ("name", uo.name));
+    update << "updated_at" << b_date{now}
+           << close_document;
+
+    if(!fungibles_collection_.update_one(document{} << "_id" << f.view()["_id"].get_oid() << finalize, update.view())) {
+        elog("Failed to update fungible assets ${sym}", ("sym", sym));
+    }
+}
+
+namespace __internal {
+
+std::string
+get_bson_string_value(const bsoncxx::document::view& view, const std::string& key) {
+    auto v = (bsoncxx::stdx::string_view)view[key].get_utf8();
+    return std::string(v.data(), v.size());
+}
+
+}  // namespace __internal
+
+void
+interpreter_impl::process_issuefungible(const issuefungible& ifact) {
+    using namespace __internal;
+    using namespace bsoncxx::types;
+    using namespace bsoncxx::builder;
+    using bsoncxx::builder::basic::kvp;
+    using bsoncxx::builder::stream::close_document;
+    using bsoncxx::builder::stream::document;
+    using bsoncxx::builder::stream::finalize;
+    using bsoncxx::builder::stream::open_document;
+
+    auto now  = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
+
+    auto sym = (std::string)ifact.number.get_symbol();
+    auto f   = find_fungible(fungibles_collection_, sym);
+
+    auto cs = get_bson_string_value(f.view(), "current_supply");
+    auto csasset = evt::chain::asset::from_string(cs);
+    csasset += ifact.number;
+
+    document update{};
+    update << "$set" << open_document
+           << "current_supply" << (std::string)csasset
+           << "updated_at" << b_date{now}
+           << close_document;
+
+    if(!fungibles_collection_.update_one(document{} << "_id" << f.view()["_id"].get_oid() << finalize, update.view())) {
+        elog("Failed to update fungible assets ${sym}", ("sym", sym));
     }
 }
 

@@ -106,7 +106,7 @@ public:
     const std::string domains_col       = "Domains";
     const std::string tokens_col        = "Tokens";
     const std::string groups_col        = "Groups";
-    const std::string accounts_col      = "Accounts";
+    const std::string fungibles_col     = "Fungibles";
 };
 
 void
@@ -635,7 +635,7 @@ mongo_db_plugin_impl::wipe_database() {
     auto domains       = mongo_db[domains_col];
     auto tokens        = mongo_db[tokens_col];
     auto groups        = mongo_db[groups_col];
-    auto accounts      = mongo_db[accounts_col];
+    auto fungibles     = mongo_db[fungibles_col];
 
     blocks.drop();
     trans.drop();
@@ -644,14 +644,12 @@ mongo_db_plugin_impl::wipe_database() {
     domains.drop();
     tokens.drop();
     groups.drop();
-    accounts.drop();
+    fungibles.drop();
 }
 
 void
 mongo_db_plugin_impl::init() {
     using namespace bsoncxx::types;
-    // Create the native contract accounts manually; sadly, we can't run their contracts to make them create themselves
-    // See native_contract_chain_initializer::prepare_database()
 
     auto blocks = mongo_db[blocks_col];  // Blocks
     bsoncxx::builder::stream::document doc{};
@@ -685,9 +683,9 @@ mongo_db_plugin_impl::init() {
         auto groups = mongo_db[groups_col];
         groups.create_index(bsoncxx::from_json(R"xxx({ "name" : 1 })xxx"));
 
-        // Accounts indexes
-        auto accounts = mongo_db[accounts_col];
-        accounts.create_index(bsoncxx::from_json(R"xxx({ "name" : 1 })xxx"));
+        // Fungibles indexes
+        auto fungibles = mongo_db[fungibles_col];
+        fungibles.create_index(bsoncxx::from_json(R"xxx({ "sym" : 1 })xxx"));
     }
 
     // initilize evt interpreter

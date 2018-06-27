@@ -40,7 +40,7 @@ public:
     const string domains_col       = "Domains";
     const string tokens_col        = "Tokens";
     const string groups_col        = "Groups";
-    const string accounts_col      = "Accounts";
+    const string fungibles_col     = "Fungibles";
 
 public:
     history_plugin_impl(const mongocxx::database& db, const controller& chain)
@@ -164,6 +164,10 @@ history_plugin_impl::get_actions(const domain_name&             domain,
                                  const std::vector<action_name> names,
                                  const optional<int>            skip,
                                  const optional<int>            take) {
+    using namespace bsoncxx::types;
+    using namespace bsoncxx::builder;
+    using namespace bsoncxx::builder::stream;
+
     fc::variants result;
 
     int s = 0, t = 10;
@@ -181,7 +185,7 @@ history_plugin_impl::get_actions(const domain_name&             domain,
     }
     if(!names.empty()) {
         array ns;
-        for(auto& name : ns) {
+        for(auto& name : names) {
             ns << (std::string)name;
         }
         match << "name" << open_document << "$in" << ns << close_document;
@@ -345,7 +349,7 @@ read_only::get_groups(const get_params& params) {
 
 fc::variant
 read_only::get_actions(const get_actions_params& params) {
-    return plugin_.my_->get_actions(params.domain, params.key, params.exclude_transfer, params.skip, params.take);
+    return plugin_.my_->get_actions(params.domain, params.key, params.names, params.skip, params.take);
 }
 
 fc::variant
