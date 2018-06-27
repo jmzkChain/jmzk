@@ -1,5 +1,7 @@
 #define BOOST_TEST_MODULE evt unittests
 #define BOOST_TEST_DYN_LINK
+#define BOOST_TEST_TOOLS_DEBUGGABLE
+
 #include <boost/test/included/unit_test.hpp>
 #include <fc/filesystem.hpp>
 
