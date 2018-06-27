@@ -20,6 +20,8 @@ using namespace evt::chain;
 
 namespace __internal {
 
+static constexpr size_t PKEY_SIZE = sizeof(public_key_type::storage_type::type_at<0>);
+
 template <typename T>
 struct db_key {
     db_key(const char* prefix, const T& t)
@@ -51,8 +53,8 @@ struct db_key {
 struct db_asset_key {
     db_asset_key(const public_key_type& pkey, symbol symbol)
         : slice((const char*)this, sizeof(buf)) {
-        memcpy(buf, &pkey, sizeof(pkey));
-        memcpy(buf + sizeof(pkey), &symbol, sizeof(symbol));
+        memcpy(buf, &pkey, PKEY_SIZE);
+        memcpy(buf + PKEY_SIZE, &symbol, sizeof(symbol));
     }
 
     const rocksdb::Slice&
@@ -60,7 +62,7 @@ struct db_asset_key {
         return slice;
     }
 
-    char buf[sizeof(public_key_type) + sizeof(symbol)];
+    char buf[PKEY_SIZE + sizeof(symbol)];
 
     rocksdb::Slice slice;
 };
@@ -112,7 +114,7 @@ get_asset_key(const public_key_type& pkey, const symbol symbol) {
 
 rocksdb::Slice
 get_asset_prefix_key(const public_key_type& pkey) {
-    return rocksdb::Slice((const char*)&pkey, sizeof(pkey));
+    return rocksdb::Slice((const char*)&pkey, PKEY_SIZE);
 }
 
 template <typename T>
@@ -173,7 +175,7 @@ struct sp_fungible {
 };
 
 struct sp_asset {
-    char key[sizeof(public_key_type) + sizeof(symbol)];
+    char key[PKEY_SIZE + sizeof(symbol)];
 };
 
 struct sp_issuetoken {
@@ -219,7 +221,7 @@ token_database::initialize(const fc::path& dbpath) {
     auto tokens_plain_table_opts = PlainTableOptions();
     auto assets_plain_table_opts = PlainTableOptions();
     tokens_plain_table_opts.user_key_len = sizeof(name128) + sizeof(name128);
-    assets_plain_table_opts.user_key_len = sizeof(public_key_type) + sizeof(symbol);
+    assets_plain_table_opts.user_key_len = PKEY_SIZE + sizeof(symbol);
 
     options.create_if_missing      = true;
     options.compression            = CompressionType::kLZ4Compression;
@@ -230,7 +232,7 @@ token_database::initialize(const fc::path& dbpath) {
 
     auto assets_opts = ColumnFamilyOptions(options);
     assets_opts.table_factory.reset(NewPlainTableFactory(assets_plain_table_opts));
-    assets_opts.prefix_extractor.reset(NewFixedPrefixTransform(sizeof(public_key_type)));
+    assets_opts.prefix_extractor.reset(NewFixedPrefixTransform(PKEY_SIZE));
 
     read_opts_.prefix_same_as_start = true;
 
@@ -547,7 +549,7 @@ token_database::read_asset(const public_key_type& address, const symbol symbol, 
 
     if(!it->Valid() || it->key().compare(key.as_slice()) != 0) {
         delete it;
-        EVT_THROW(tokendb_asset_not_found, "Cannot find fungible: ${name} in address: {address}", ("name",symbol)("address",address));
+        EVT_THROW(tokendb_asset_not_found, "Cannot find fungible: ${sym} in address: {address}", ("sym",symbol)("address",address));
     }
     v = read_value<asset>(it->value());
     delete it;

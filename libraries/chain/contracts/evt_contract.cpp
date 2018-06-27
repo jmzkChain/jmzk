@@ -548,7 +548,7 @@ apply_evt_addmeta(apply_context& context) {
             group.metas_.emplace_back(meta(amact.key, amact.value, amact.creator));
             tokendb.update_group(group);
         }
-        else if(act.key == N128(fungible)) {
+        else if(act.domain == N128(fungible)) {
             fungible_def fungible;
             tokendb.read_fungible(act.key, fungible);
 

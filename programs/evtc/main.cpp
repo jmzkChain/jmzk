@@ -477,7 +477,7 @@ auto get_default_permission = [](const auto& pname, const auto& pkey) {
 
 struct set_domain_subcommands {
     string name;
-    string issuer;
+    string creator;
     string issue    = "default";
     string transfer = "default";
     string manage   = "default";
@@ -485,7 +485,7 @@ struct set_domain_subcommands {
     set_domain_subcommands(CLI::App* actionRoot) {
         auto ndcmd = actionRoot->add_subcommand("create", localized("Create new domain"));
         ndcmd->add_option("name", name, localized("The name of new domain"))->required();
-        ndcmd->add_option("issuer", issuer, localized("The public key of the issuer"))->required();
+        ndcmd->add_option("creator", creator, localized("The public key of the creator"))->required();
         ndcmd->add_option("issue", issue, localized("JSON string or filename defining ISSUE permission"), true);
         ndcmd->add_option("transfer", transfer, localized("JSON string or filename defining TRANSFER permission"), true);
         ndcmd->add_option("manage", manage, localized("JSON string or filename defining MANAGE permission"), true);
@@ -495,17 +495,17 @@ struct set_domain_subcommands {
         ndcmd->set_callback([&] {
             newdomain nd;
             nd.name     = name128(name);
-            nd.issuer   = public_key_type(issuer);
-            nd.issue    = (issue == "default") ? get_default_permission("issue", nd.issuer) : parse_permission(issue);
+            nd.creator  = public_key_type(creator);
+            nd.issue    = (issue == "default") ? get_default_permission("issue", nd.creator) : parse_permission(issue);
             nd.transfer = (transfer == "default") ? get_default_permission("transfer", public_key_type()) : parse_permission(transfer);
-            nd.manage   = (manage == "default") ? get_default_permission("manage", nd.issuer) : parse_permission(manage);
+            nd.manage   = (manage == "default") ? get_default_permission("manage", nd.creator) : parse_permission(manage);
 
             auto act = create_action((domain_name)nd.name, N128(.create), nd);
             send_actions({act});
         });
 
         auto udcmd = actionRoot->add_subcommand("update", localized("Update existing domain"));
-        udcmd->add_option("name", name, localized("The name of new domain"))->required();
+        udcmd->add_option("name", name, localized("The name of the updating domain"))->required();
         udcmd->add_option("-i,--issue", issue, localized("JSON string or filename defining ISSUE permission"), true);
         udcmd->add_option("-t,--transfer", transfer, localized("JSON string or filename defining TRANSFER permission"), true);
         udcmd->add_option("-m,--manage", manage, localized("JSON string or filename defining MANAGE permission"), true);
@@ -648,57 +648,97 @@ struct set_group_subcommands {
     }
 };
 
-struct set_account_subcommands {
-    string              name;
-    std::vector<string> owner;
-    std::string         from, to;
-    std::string         amount;
+struct set_fungible_subcommands {
+    string sym;
+    string creator;
+    string issue    = "default";
+    string manage   = "default";
+    string total_supply = "";
+    string address;
+    string number;
 
-    set_account_subcommands(CLI::App* actionRoot) {
-        auto nacmd = actionRoot->add_subcommand("create", localized("Create new account"));
-        nacmd->add_option("name", name, localized("Name of new account"))->required();
-        nacmd->add_option("owner", owner, localized("Owner that new account belongs to"))->required();
+    set_fungible_subcommands(CLI::App* actionRoot) {
+        auto nfcmd = actionRoot->add_subcommand("create", localized("Create new fungible asset"));
+        nfcmd->add_option("symbol", sym, localized("The symbol of the new fungible asset"))->required();
+        nfcmd->add_option("creator", creator, localized("The public key of the creator"))->required();
+        nfcmd->add_option("total-supply", total_supply, localized("Total supply of this fungible asset"))->required();
+        nfcmd->add_option("issue", issue, localized("JSON string or filename defining ISSUE permission"), true);
+        nfcmd->add_option("manage", manage, localized("JSON string or filename defining MANAGE permission"), true);
 
-        add_standard_transaction_options(nacmd);
+        add_standard_transaction_options(nfcmd);
 
-        nacmd->set_callback([this] {
-            newaccount na;
-            na.name = name128(name);
-            std::transform(owner.cbegin(), owner.cend(), std::back_inserter(na.owner), [](auto& str) { return public_key_type(str); });
+        nfcmd->set_callback([&] {
+            newfungible nf;
+            nf.sym          = symbol::from_string(sym);
+            nf.creator      = public_key_type(creator);
+            nf.issue        = (issue == "default") ? get_default_permission("issue", nf.creator) : parse_permission(issue);
+            nf.manage       = (manage == "default") ? get_default_permission("manage", nf.creator) : parse_permission(manage);
+            nf.total_supply = asset::from_string(total_supply);
 
-            auto act = create_action(N128(account), (domain_key)na.name, na);
+            EVT_ASSERT(nf.total_supply.get_symbol() == nf.sym, asset_type_exception, "Symbol and asset should be match");
+
+            auto act = create_action(N128(fungible), (domain_key)nf.sym.name(), nf);
             send_actions({act});
         });
 
-        auto tecmd = actionRoot->add_subcommand("transfer", localized("Transfer EVT between accounts"));
-        tecmd->add_option("from", from, localized("Name of account EVT from"))->required();
-        tecmd->add_option("to", to, localized("Name of account EVT to"))->required();
-        tecmd->add_option("amount", amount, localized("Total EVT transfers"))->required();
+        auto ufcmd = actionRoot->add_subcommand("update", localized("Update existing domain"));
+        ufcmd->add_option("symbol", sym, localized("The symbol of the updating fungible asset"))->required();
+        ufcmd->add_option("-i,--issue", issue, localized("JSON string or filename defining ISSUE permission"), true);
+        ufcmd->add_option("-m,--manage", manage, localized("JSON string or filename defining MANAGE permission"), true);
 
-        add_standard_transaction_options(tecmd);
+        add_standard_transaction_options(ufcmd);
 
-        tecmd->set_callback([this] {
-            transferevt te;
-            te.from   = name128(from);
-            te.to     = name128(to);
-            te.amount = asset::from_string(amount);
+        ufcmd->set_callback([&] {
+            updfungible uf;
+            uf.sym = symbol::from_string(sym);
+            if(issue != "default") {
+                uf.issue = parse_permission(issue);
+            }
+            if(manage != "default") {
+                uf.manage = parse_permission(manage);
+            }
 
-            auto act = create_action(N128(account), (domain_key)te.from, te);
+            auto act = create_action(N128(fungible), (domain_key)uf.sym.name(), uf);
             send_actions({act});
         });
 
-        auto uocmd = actionRoot->add_subcommand("update", localized("Update owner for specific account"));
-        uocmd->add_option("name", name, localized("Name of updated account"))->required();
-        uocmd->add_option("owner", owner, localized("Updated owner for account"))->required();
+        auto ifcmd = actionRoot->add_subcommand("issue", localized("Issue fungible tokens to specific address"));
+        ifcmd->add_option("address", address, localized("Address to receive issued asset"))->required();
+        ifcmd->add_option("number", number, localized("Number of issue asset"))->required();
 
-        add_standard_transaction_options(uocmd);
+        add_standard_transaction_options(ifcmd);
 
-        uocmd->set_callback([this] {
-            updateowner uo;
-            uo.name = name128(name);
-            std::transform(owner.cbegin(), owner.cend(), std::back_inserter(uo.owner), [](auto& str) { return public_key_type(str); });
+        ifcmd->set_callback([this] {
+            issuefungible ifact;
+            ifact.address = public_key_type(address);
+            ifact.number  = asset::from_string(number);
 
-            auto act = create_action(N128(account), (domain_key)uo.name, uo);
+            auto act = create_action(N128(fungible), (domain_key)ifact.number.get_symbol().name(), ifact);
+            send_actions({act});
+        });
+
+    }
+};
+
+struct set_assets_subcommands {
+    std::string from, to;
+    std::string number;
+
+    set_assets_subcommands(CLI::App* actionRoot) {
+        auto tfcmd = actionRoot->add_subcommand("transfer", localized("Transfer asset between addresses"));
+        tfcmd->add_option("from", from, localized("Address where asset transfering from"))->required();
+        tfcmd->add_option("to", to, localized("Address where asset transfering to"))->required();
+        tfcmd->add_option("number", number, localized("Number of transfer asset"))->required();
+
+        add_standard_transaction_options(tfcmd);
+
+        tfcmd->set_callback([this] {
+            transferft tf;
+            tf.from   = public_key_type(from);
+            tf.to     = public_key_type(to);
+            tf.number = asset::from_string(number);
+
+            auto act = create_action(N128(fungible), (domain_key)tf.number.get_symbol().name(), tf);
             send_actions({act});
         });
     }
@@ -758,6 +798,19 @@ struct set_meta_subcommands {
             auto act = create_action((domain_name)domain, (domain_key)key, am);
             send_actions({act});
         });
+
+        auto fmcmd = actionRoot->add_subcommand("fungible", localized("Add metadata to one fungible asset"));
+        fmcmd->add_option("name", key, localized("Name of fungible asset adding to"))->required();
+        addcmds(fmcmd);
+        fmcmd->set_callback([this] {
+            addmeta am;
+            am.key = (meta_key)metakey;
+            am.value = metavalue;
+            am.creator = (public_key_type)creator;
+
+            auto act = create_action(N128(fungible), (domain_key)key, am);
+            send_actions({act});
+        });
     }
 };
 
@@ -810,16 +863,43 @@ struct set_get_group_subcommand {
     }
 };
 
-struct set_get_account_subcommand {
+struct set_get_fungible_subcommand {
     string name;
 
-    set_get_account_subcommand(CLI::App* actionRoot) {
-        auto gacmd = actionRoot->add_subcommand("account", localized("Retrieve an account information"));
-        gacmd->add_option("name", name, localized("Name of account to be retrieved"))->required();
+    set_get_fungible_subcommand(CLI::App* actionRoot) {
+        auto gfcmd = actionRoot->add_subcommand("fungible", localized("Retrieve a fungible asset information"));
+        gfcmd->add_option("name", name, localized("Symbol or name of fungible asset to be retrieved"))->required();
+        
+        gfcmd->set_callback([this] {
+            try {
+                auto s = symbol::from_string(name);
+                name = s.name();
+            }
+            catch(...){}
+
+            auto arg = fc::mutable_variant_object("name", name);
+            print_info(call(get_fungible_func, arg));
+        });
+    }
+};
+
+struct set_get_assets_subcommand {
+    string address;
+    string sym;
+
+    set_get_assets_subcommand(CLI::App* actionRoot) {
+        auto gacmd = actionRoot->add_subcommand("assets", localized("Retrieve assets from an address"));
+        gacmd->add_option("address", address, localized("Address where assets stored"))->required();
+        gacmd->add_option("symbol", sym, localized("Specific symbol to be retrieved, leave empty to retrieve all assets"));
 
         gacmd->set_callback([this] {
-            auto arg = fc::mutable_variant_object("name", name);
-            print_info(call(get_account_func, arg));
+            FC_ASSERT(!address.empty(), "Address cannot be empty");
+
+            auto arg = fc::mutable_variant_object("address", public_key_type(address));
+            if(!sym.empty()) {
+                arg["sym"] = symbol::from_string(sym);
+            }
+            print_info(call(get_assets_func, arg));
         });
     }
 };
@@ -1020,7 +1100,8 @@ main(int argc, char** argv) {
     set_get_domain_subcommand   get_domain(get);
     set_get_token_subcommand    get_token(get);
     set_get_group_subcommand    get_group(get);
-    set_get_account_subcommand  get_account(get);
+    set_get_fungible_subcommand get_fungible(get);
+    set_get_assets_subcommand   get_assets(get);
     set_get_my_subcommands      get_my(get);
     set_get_history_subcommands get_history(get); 
 
@@ -1074,12 +1155,19 @@ main(int argc, char** argv) {
 
     auto set_group = set_group_subcommands(group);
 
-    // account subcommand
-    auto account = app.add_subcommand("account", localized("Create or update account and transfer EVT between accounts"));
-    account->require_subcommand();
+    // fungible subcommand
+    auto fungible = app.add_subcommand("fungible", localized("Create or update a fungible asset"));
+    fungible->require_subcommand();
 
-    auto set_account = set_account_subcommands(account);
+    auto set_fungible = set_fungible_subcommands(fungible);
 
+    // asset subcommand
+    auto assets = app.add_subcommand("assets", localized("Issue and transfer assets between addresses"));
+    assets->require_subcommand();
+
+    auto set_assets = set_assets_subcommands(assets);
+
+    // metas
     auto meta = app.add_subcommand("meta", localized("Add metadata to domain, group ot token"));
     meta->require_subcommand();
 

@@ -270,6 +270,17 @@ private:
             EVT_RETHROW_EXCEPTIONS(chain_type_exception, "transation data is not valid, data cannot cast to `transferft` type")
             break;
         }
+        case N(addmeta): {
+            try {
+                auto am     = action.data_as<contracts::addmeta>();
+                auto vistor = weight_tally_visitor(*this);
+                if(vistor(am.creator, 1) == 1) {
+                    return true;
+                }
+            }
+            EVT_RETHROW_EXCEPTIONS(chain_type_exception, "transaction data is not valid, data cannot cast to `addmeta` type.");
+            break;
+        }
         default: {
             FC_ASSERT(false, "Unknown action name: ${type}", ("type",action.name));
         }

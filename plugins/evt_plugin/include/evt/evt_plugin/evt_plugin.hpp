@@ -54,10 +54,16 @@ public:
 
     fc::variant get_token(const get_token_params& params);
 
-    struct get_account_params {
-        account_name name;
+    struct get_fungible_params {
+        fungible_name name;
     };
-    fc::variant get_account(const get_account_params& params);
+    fc::variant get_fungible(const get_fungible_params& params);
+
+    struct get_assets_params {
+        public_key_type      address;
+        fc::optional<symbol> sym;
+    };
+    fc::variant get_assets(const get_assets_params& params);
 
 private:
     const controller& db_;
@@ -99,4 +105,5 @@ private:
 FC_REFLECT(evt::evt_apis::read_only::get_domain_params, (name));
 FC_REFLECT(evt::evt_apis::read_only::get_group_params, (name));
 FC_REFLECT(evt::evt_apis::read_only::get_token_params, (domain)(name));
-FC_REFLECT(evt::evt_apis::read_only::get_account_params, (name));
+FC_REFLECT(evt::evt_apis::read_only::get_fungible_params, (name));
+FC_REFLECT(evt::evt_apis::read_only::get_assets_params, (address)(sym));

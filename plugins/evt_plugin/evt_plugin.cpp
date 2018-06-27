@@ -5,6 +5,7 @@
 
 #include <evt/evt_plugin/evt_plugin.hpp>
 #include <evt/chain/types.hpp>
+#include <evt/chain/asset.hpp>
 #include <evt/chain/token_database.hpp>
 
 #include <fc/container/flat.hpp>
@@ -90,13 +91,36 @@ read_only::get_token(const read_only::get_token_params& params) {
 }
 
 fc::variant
-read_only::get_account(const get_account_params& params) {
+read_only::get_fungible(const get_fungible_params& params) {
     const auto& db = db_.token_db();
-    variant     var;
-    account_def account;
-    db.read_account(params.name, account);
-    fc::to_variant(account, var);
+    variant      var;
+    fungible_def fungible;
+    db.read_fungible(params.name, fungible);
+    fc::to_variant(fungible, var);
     return var;
+}
+
+fc::variant
+read_only::get_assets(const get_assets_params& params) {
+    const auto& db = db_.token_db();
+
+    if(params.sym.valid()) {
+        variant var;
+        asset   as;
+        db.read_asset(params.address, *params.sym, as);
+        fc::to_variant(as, var);
+        return var;
+    }
+    else {
+        variants vars;
+        db.read_all_assets(params.address, [&vars](const auto& as) {
+            variant var;
+            fc::to_variant(as, var);
+            vars.emplace_back(std::move(var));
+            return true;
+        });
+        return vars;
+    }
 }
 
 }  // namespace evt_apis
