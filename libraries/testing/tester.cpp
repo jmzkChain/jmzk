@@ -413,36 +413,6 @@ fc_assert_exception_message_starts_with::operator()(const fc::assert_exception& 
     return match;
 }
 
-bool
-evt_assert_message_is::operator()(const evt_assert_message_exception& ex) {
-    auto message = ex.get_log().at(0).get_message();
-    bool match   = (message == expected);
-    if(!match) {
-        BOOST_TEST_MESSAGE("LOG: expected: " << expected << ", actual: " << message);
-    }
-    return match;
-}
-
-bool
-evt_assert_message_starts_with::operator()(const evt_assert_message_exception& ex) {
-    auto message = ex.get_log().at(0).get_message();
-    bool match   = boost::algorithm::starts_with(message, expected);
-    if(!match) {
-        BOOST_TEST_MESSAGE("LOG: expected: " << expected << ", actual: " << message);
-    }
-    return match;
-}
-
-bool
-evt_assert_code_is::operator()(const evt_assert_code_exception& ex) {
-    auto message = ex.get_log().at(0).get_message();
-    bool match   = (message == expected);
-    if(!match) {
-        BOOST_TEST_MESSAGE("LOG: expected: " << expected << ", actual: " << message);
-    }
-    return match;
-}
-
 }}  // namespace evt::testing
 
 std::ostream&

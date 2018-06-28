@@ -353,46 +353,4 @@ struct fc_assert_exception_message_starts_with {
     string expected;
 };
 
-/**
-   * Utility predicate to check whether an evt_assert message is equivalent to a given string
-   */
-struct evt_assert_message_is {
-    evt_assert_message_is(const string& msg)
-        : expected("assertion failure with message: ") {
-        expected.append(msg);
-    }
-
-    bool operator()(const evt_assert_message_exception& ex);
-
-    string expected;
-};
-
-/**
-   * Utility predicate to check whether an evt_assert message starts with a given string
-   */
-struct evt_assert_message_starts_with {
-    evt_assert_message_starts_with(const string& msg)
-        : expected("assertion failure with message: ") {
-        expected.append(msg);
-    }
-
-    bool operator()(const evt_assert_message_exception& ex);
-
-    string expected;
-};
-
-/**
-   * Utility predicate to check whether an evt_assert_code error code is equivalent to a given number
-   */
-struct evt_assert_code_is {
-    evt_assert_code_is(uint64_t error_code)
-        : expected("assertion failure with error code: ") {
-        expected.append(std::to_string(error_code));
-    }
-
-    bool operator()(const evt_assert_code_exception& ex);
-
-    string expected;
-};
-
 }}  // namespace evt::testing
