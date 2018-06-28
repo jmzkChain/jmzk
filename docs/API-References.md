@@ -120,11 +120,12 @@ For the fields of an action, here is a quick reference guide.
 | `updatedomain` | name of domain | `.update` |
 | `newgroup` | `group` | name of new group |
 | `updategroup` | `group` | name of updating group |
-| `newaccount` | `account` | name of new account |
-| `updateowner` | `account` | name of updating account |
-| `transferevt` | `account` | name of giving account |
+| `newfungible` | `fungible` | name of new fungible assets symbol |
+| `updfungible` | `fungible` | name of updating fungible assets symbol |
 | `issuetoken` | name of domain | `.issue` |
+| `issuefungible` | `fungible` | name of issuing fungible assets symbol |
 | `transfer` | name of domain token belongs to | name of token |
+| `transferft` | `fungible` | name of transfering assets symbol |
 | `addmeta` | `domain`, `group` or name of domain | domain name, group name or token name |
 
 After all that work, you can send transaction definition using this API to the chain, then the chain will response with the digest of the transaction. You can then sign this digest with your private key.
@@ -371,35 +372,53 @@ Request:
 }
 ```
 
-## POST /v1/evt/get_account
-This API is used to get specific account.
+## POST /v1/evt/get_fungible
+This API is used to get specific fungible.
 
 Request:
 ```
 {
-    "name": "harry"
+    "sym": "5,EVT"
 }
 ```
 Response:
 ```
 {
-    "name": "harry",
-    "creator": "evt",
-    "create_time": "2018-06-08T13:53:26",
-    "balance": "1.0000 EVT",
-    "frozen_balance": "0.0000 EVT",
-    "owner": ["EVT7WLUYMcF6XYYrogGzphNxhyUyBfNAVEw9jkH6YWroGPadwXCkN"]
+  "sym": "5,EVT",
+  "creator": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+  "create_time": "2018-06-28T05:31:09",
+  "issue": {
+    "name": "issue",
+    "threshold": 1,
+    "authorizers": [{
+        "ref": "[A] EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+        "weight": 1
+      }
+    ]
+  },
+  "manage": {
+    "name": "manage",
+    "threshold": 1,
+    "authorizers": [{
+        "ref": "[A] EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+        "weight": 1
+      }
+    ]
+  },
+  "total_supply": "100000.00000 EVT",
+  "current_supply": "0.00000 EVT",
+  "metas": []
 }
 ```
 
-## POST /v1/evt/get_my_tokens
-This API is special for wallet application and mongo_db_plugin is needed to be enabled.
-The wallet should use the account's private keys to sign sha256('everiWallet') and this API will response with all the tokens that account have.
+## POST /v1/history/get_tokens
+Provide all the public keys its has and this API will response with all the tokens that account have.
+> This API is only available when MONGO_DB_SUPPORT is ON.
 
 Request:
 ```
 {
-    "signatures":["SIG_K1_KAgh7zpYtSb1T53odh2xJtcCAXkTRS3qZ3Dj8DvPyx17AsEqxz79tSwKTjRzQbqiQvLyjQayXeLwT2nThkL6RUj9vBGtvo"]
+    "keys":["EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"]
 }
 ```
 Response:
@@ -407,14 +426,14 @@ Response:
 ["cookie-t1", "cookie-t2", "cookie-t3"]
 ```
 
-## POST /v1/evt/get_my_domains
-This API is special for wallet application and mongo_db_plugin is needed to be enabled.
-The wallet should use the account's private keys to sign sha256('everiWallet') and this API will response with all the domains that account issue.
+## POST /v1/history/get_domains
+Provide all the public keys its has and this API will response with all the domains that account issue.
+> This API is only available when MONGO_DB_SUPPORT is ON.
 
 Request:
 ```
 {
-    "signatures":["SIG_K1_KAgh7zpYtSb1T53odh2xJtcCAXkTRS3qZ3Dj8DvPyx17AsEqxz79tSwKTjRzQbqiQvLyjQayXeLwT2nThkL6RUj9vBGtvo"]
+    "keys":["EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"]
 }
 ```
 Response:
@@ -422,17 +441,181 @@ Response:
 ["cookie"]
 ```
 
-## POST /v1/evt/get_my_groups
-This API is special for wallet application and mongo_db_plugin is needed to be enabled.
-The wallet should use the account's private keys to sign sha256('everiWallet') and this API will response with all the groups that account manage (aka. the key of group is one of account's public keys).
+## POST /v1/history/get_groups
+Provide all the public keys its has and this API will response with all the groups that account manage (aka. the key of group is one of account's public keys).
+> This API is only available when MONGO_DB_SUPPORT is ON.
 
 Request:
 ```
 {
-    "signatures":["SIG_K1_KAgh7zpYtSb1T53odh2xJtcCAXkTRS3qZ3Dj8DvPyx17AsEqxz79tSwKTjRzQbqiQvLyjQayXeLwT2nThkL6RUj9vBGtvo"]
+    "keys":["EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"]
 }
 ```
 Response:
 ```
 ["testgroup"]
+```
+
+## POST /v1/history/get_actions
+Query actions by domain, key and action names.
+> This API is only available when MONGO_DB_SUPPORT is ON.
+> key and names are optional fields and only for filtering actions. if you don't provide them, API will return all the actions.
+
+Request:
+```
+{
+  "domain": "fungible",
+  "key": "EVT",
+  "names": [
+    "newfungible"
+  ],
+  "skip": 0
+  "take": 10
+}
+
+```
+Response:
+```
+[{
+    "name": "newfungible",
+    "domain": "fungible",
+    "key": "EVT",
+    "trx_id": "f0c789933e2b381e88281e8d8e750b561a4d447725fb0eb621f07f219fe2f738",
+    "data": {
+      "sym": "5,EVT",
+      "creator": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+      "issue": {
+        "name": "issue",
+        "threshold": 1,
+        "authorizers": [{
+            "ref": "[A] EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+            "weight": 1
+          }
+        ]
+      },
+      "manage": {
+        "name": "manage",
+        "threshold": 1,
+        "authorizers": [{
+            "ref": "[A] EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+            "weight": 1
+          }
+        ]
+      },
+      "total_supply": "100000.00000 EVT"
+    }
+  }
+]
+```
+
+## POST /v1/history/get_transaction
+Query transaction by its id.
+> This API is only available when MONGO_DB_SUPPORT is ON.
+
+Request:
+```
+{
+  "id": "f0c789933e2b381e88281e8d8e750b561a4d447725fb0eb621f07f219fe2f738"
+}
+```
+Response:
+```
+{
+  "id": "f0c789933e2b381e88281e8d8e750b561a4d447725fb0eb621f07f219fe2f738",
+  "signatures": [
+    "SIG_K1_K6hWsPBt7VfSrYDBZqCygWT8dbA6R3mpxKPjd3JUh18EQHfU55eVEkHgq8AR5odWjPXvYasZQ1LoNdaLKKhagJXXuXp3Y2"
+  ],
+  "compression": "none",
+  "packed_trx": "bb72345b050016ed2e620001000a13e9b86a6e7100000000000000000000d0d5505206460000000000000000000000000040beabb00105455654000000000003c7e3ff0060d848bd31bf53daf1d5fed7d82c9b1121394ee15dcafb07e913a970000000008052e74c01000000010100000003c7e3ff0060d848bd31bf53daf1d5fed7d82c9b1121394ee15dcafb07e913a9700000000000000001000000000094135c6801000000010100000003c7e3ff0060d848bd31bf53daf1d5fed7d82c9b1121394ee15dcafb07e913a97000000000000000010000e40b5402000000054556540000000000",
+  "transaction": {
+    "expiration": "2018-06-28T05:31:39",
+    "ref_block_num": 5,
+    "ref_block_prefix": 1647242518,
+    "delay_sec": 0,
+    "actions": [{
+        "name": "newfungible",
+        "domain": "fungible",
+        "key": "EVT",
+        "data": {
+          "sym": "5,EVT",
+          "creator": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+          "issue": {
+            "name": "issue",
+            "threshold": 1,
+            "authorizers": [{
+                "ref": "[A] EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+                "weight": 1
+              }
+            ]
+          },
+          "manage": {
+            "name": "manage",
+            "threshold": 1,
+            "authorizers": [{
+                "ref": "[A] EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+                "weight": 1
+              }
+            ]
+          },
+          "total_supply": "100000.00000 EVT"
+        },
+        "hex_data": "05455654000000000003c7e3ff0060d848bd31bf53daf1d5fed7d82c9b1121394ee15dcafb07e913a970000000008052e74c01000000010100000003c7e3ff0060d848bd31bf53daf1d5fed7d82c9b1121394ee15dcafb07e913a9700000000000000001000000000094135c6801000000010100000003c7e3ff0060d848bd31bf53daf1d5fed7d82c9b1121394ee15dcafb07e913a97000000000000000010000e40b54020000000545565400000000"
+      }
+    ],
+    "transaction_extensions": []
+  }
+}
+```
+
+## POST /v1/history/get_transactions
+Query transactions by posting all the public keys its has.
+> This API is only available when MONGO_DB_SUPPORT is ON.
+
+Request:
+```
+{
+  "keys": [
+    "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+    "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+    "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"
+  ],
+  "skip": 0,
+  "take": 10
+}
+```
+Response:
+```
+[{
+    "id": "0925740e3be034e4ac345461d6f5b95162a7cf1578a7ec3c7b9de0e9f0f84e3c",
+    "signatures": [
+      "SIG_K1_K1G7PJcRaTgw8RBDVvHsj2SEPZTcV5S8KgdrSmpD1oUd6fgVdwD3jSqL7zSkaFAV2zDPsr4pYTK1QkusALsEDGXk4PUC8y"
+    ],
+    "compression": "none",
+    "packed_trx": "9073345baf0105f3a965000100802bebd152e74c000000000000000000000000009f077d000000000000000000000000819e470164000000000000000000000000009f077d030000000000000000000000000000307c0000000000000000000000000000407c0000000000000000000000000000507c010003c7e3ff0060d848bd31bf53daf1d5fed7d82c9b1121394ee15dcafb07e913a97000",
+    "transaction": {
+      "expiration": "2018-06-28T05:35:12",
+      "ref_block_num": 431,
+      "ref_block_prefix": 1705636613,
+      "delay_sec": 0,
+      "actions": [{
+          "name": "issuetoken",
+          "domain": "test",
+          "key": ".issue",
+          "data": {
+            "domain": "test",
+            "names": [
+              "t1",
+              "t2",
+              "t3"
+            ],
+            "owner": [
+              "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"
+            ]
+          },
+          "hex_data": "000000000000000000000000009f077d030000000000000000000000000000307c0000000000000000000000000000407c0000000000000000000000000000507c010003c7e3ff0060d848bd31bf53daf1d5fed7d82c9b1121394ee15dcafb07e913a970"
+        }
+      ],
+      "transaction_extensions": []
+    }
+}]
 ```

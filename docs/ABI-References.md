@@ -25,6 +25,7 @@ Before describing the ABI for each action, it is necessary to introduce some Bas
 | `name` | A string encoded into a 64-bits value | Max length: 13 chars and value range: `[0-9a-z.]` |
 | `name128` | A string encoded into a 128-bits value | Max length: 21 chars and value range: `[0-9A-Za-z.-]` |
 | `asset` | A floating number value with `symbol` as suffix | See `asset` type section below |
+| `symbol` | Represents a token and contains precision and name. | See `symbol` type section below |
 | `authorizer_ref` | Reference to a authorizer | Valid authorizer including an account, a group or special `OWNER` group |
 | `group` | Authorize group tree | See `group` type section below |
 * __#1__: `EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX`
@@ -39,7 +40,14 @@ The number part is a number containing a `.` which introduces its precision. The
 
 The symbol part introduces the asset name, which is consisted of UPPERCASE alphabets, with a length less than 7 chars.
 
-Only the assets of the same type can be added up. The `EVT` asset is an asset type with the precision of 4 and `EVT` as symbol name. Therefore, `12.0000 EVT` is a valid `EVT` asset, but `12.000 EVT`, `12 EVT` or `12.00000 EVT` are invalid `EVT` asset due to the wrong precisions.
+Only the assets of the same type can be added up. The `EVT` asset is an asset type with the precision of 5 and `EVT` as symbol name. Therefore, `12.00000 EVT` is a valid `EVT` asset, but `12.000 EVT`, `12 EVT` or `12.0000 EVT` are invalid `EVT` asset due to the wrong precision.
+
+### `symbol` Type
+`symbol` type is the symbol part in `asset` type. It represents a token and contains precision and name. Precision is a number and should be less than __18__ and symbol name is consisted of UPPERCASE alphabets, with a length less than 7 chars.
+
+For example, `12.00000 EVT` is a valid `EVT` asset, and it has the precision of 5 and 'EVT' as symbol name. Its symbol expression is `5,EVT`.
+
+Then `7,COIN` represents a asset symbol with precision of 7 and 'COIN' as symbol name.
 
 ### `authorizer_ref` Type
 For the `authorizer_ref`, it's a reference to one authorizer. Current valid authorizer including an account, a group or special `OWNER` group (aka. owners field in one token).
@@ -154,22 +162,26 @@ A structure is a complex type consisted of base types or/and typedef types. Belo
 ```
 {
     "name": `domain_name`,
-    "issuer": `user_id`,
-    "issue_time": `time_point_sec`,
-    "issue", `permission_def`,
-    "transfer", `permission_def`,
-    "manage", `permission_def`
+    "creator": `user_id`,
+    "create_time": `time_point_sec`,
+    "issue": `permission_def`,
+    "transfer": `permission_def`,
+    "manage": `permission_def`,
+    "metas": `meta_list`
 }
 ```
 
-### `account_def` Struct
+### `fungible_def` Struct
 ```
 {
-    "name": `account_name`,
+    "sym": `symbol`,
     "creator": `account_name`,
     "create_time": `time_point_sec`,
-    "balance": `balance_type`,
-    "frozen_balance": `balance_type`
+    "issue": `permission_def`,
+    "manage": `permission_def`,
+    "total_supply": "asset",
+    "current_supply": "asset",
+    "metas": "meta_list"
 }
 ```
 
@@ -225,7 +237,8 @@ Transfer one token in specific domain to new owners.
 {
     "domain": `domain_name`,
     "name": `token_name`,
-    "to": `user_list`
+    "to": `user_list`,
+    "memo": `string`
 }
 ```
 
@@ -248,36 +261,51 @@ Update one specific group's structure
 }
 ```
 
-### `newaccount` Action
-Create a new account with a name and owner(s).
+### `newfungible` Action
+Create a new fungible assets definition with a specific total supply(0 means unlimited).
 ```
 {
-    "name": `account_name`,
-    "owner": `user_list`
+    "sym": `symbol`,
+    "creator": `account_name`,
+    "issue": `permission_def`,
+    "manage": `permission_def`,
+    "total_supply": "asset"
 }
 ```
 
-### `updateowner` Action
-Update owner(s) of a specific account.
+### `updfungible` Action
+Update one fungible assets definition.
 ```
 {
-    "name": `account_name`,
-    "owner": `user_list`
+    "sym": `symbol`,
+    "issue": `permission_def?`,
+    "manage": `permission_def?`
 }
 ```
 
-### `transferevt` Action
-Transfer `EVT` asset between accounts.
+### `issuefungible` Action
+Issue fungible assets
 ```
 {
-    "from": `account_name`,
-    "to": `account_name`,
-    "amount": `balance_type`
+    "address": `public_key`,
+    "number": `asset`,
+    "memo": `string`
+}
+```
+
+### `transferft` Action
+Transfer fungible assets between addresses.
+```
+{
+    "from": `public_key`,
+    "to": `public_key`,
+    "number": `asset`,
+    "memo": `string`
 }
 ```
 
 ### `addmeta` Action
-Add new metadata to one domain, group or token
+Add new metadata to one domain, group, token or fungible assets
 ```
 {
     "key": `meta_key`,
