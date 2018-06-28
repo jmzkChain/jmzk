@@ -118,6 +118,7 @@ chain_plugin::set_program_options(options_description& cli, options_description&
         ("blocks-dir", bpo::value<bfs::path>()->default_value("blocks"), "the location of the blocks directory (absolute path or relative to application data dir)")
         ("tokendb-dir", bpo::value<bfs::path>()->default_value("tokendb"), "the location of the token database directory (absolute path or relative to application data dir)")
         ("checkpoint", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
+        ("abi-serializer-max-time-ms", bpo::value<uint32_t>(), "Override default maximum ABI serialization time allowed in ms")
         ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024 * 1024)), "Maximum size (in MB) of the chain state database")
         ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_cache_size / (1024 * 1024)), "Maximum size (in MB) of the reversible blocks database")
         ("contracts-console", bpo::bool_switch()->default_value(false), "print contract's output to console");
@@ -196,6 +197,10 @@ chain_plugin::plugin_initialize(const variables_map& options) {
             auto item                          = fc::json::from_string(cp).as<std::pair<uint32_t, block_id_type>>();
             my->loaded_checkpoints[item.first] = item.second;
         }
+    }
+
+    if(options.count("abi-serializer-max-time-ms")) {
+        abi_serializer::set_max_serialization_time(fc::microseconds(options.at("abi-serializer-max-time-ms").as<uint32_t>() * 1000));
     }
 
     my->chain_config->blocks_dir  = my->blocks_dir;
