@@ -25,35 +25,22 @@ class AuthorizerRef:
         return '[%s] %s' % (self.type, self.key)
 
 
-class Asset:
-    def __init__(self, symbol, precision=5):
-        self.symbol = symbol
-        self.precision = precision
+class Symbol:
+    def __init__(self, expr):
+        self.precision = int(expr.split(',')[0])
+        self.name = expr.split(',')[1]
 
-    class AssetPrecisionException(Exception):
-        def __init__(self):
-            err = 'Asset_Precision_Exception'
-            super().__init__(self, err)
-
-    def check(self, num_str):
-        if '.' in num_str:
-            precision = len(num_str.split('.')[1])
-        else:
-            precision = 0
-        if precision != self.precision:
-            raise AssetPrecisionException
+    def value(self):
+        return '%d,%s' % (self.precision, self.name)
 
 
-def new_asset(symbol, **kwargs):
-    asset = Asset(symbol, **kwargs)
-
+def new_asset(symbol):
     def value(num_str):
-        asset.check(num_str)
-        return num_str + ' ' + asset.symbol
+        return num_str + ' ' + symbol.name
     return value
 
 
-EvtAsset = new_asset('EVT', precision=5)
+EvtAsset = new_asset('5,EVT')
 
 
 class AuthorizerWeight(BaseType):
@@ -123,9 +110,9 @@ class Group(BaseType):
 
 
 class NewDomainAbi(BaseType):
-    def __init__(self, name, issuer, issue, transfer, manage):
+    def __init__(self, name, creator, issue, transfer, manage):
         super().__init__(name=name,
-                         issuer=issuer,
+                         creator=creator,
                          issue=issue.dict(),
                          transfer=transfer.dict(),
                          manage=manage.dict())
@@ -147,10 +134,11 @@ class IssueTokenAbi(BaseType):
 
 
 class TransferAbi(BaseType):
-    def __init__(self, domain, name, to):
+    def __init__(self, domain, name, to, memo):
         super().__init__(domain=domain,
                          name=name,
-                         to=to)
+                         to=to,
+                         memo=memo)
 
 
 class NewGroupAbi(BaseType):
@@ -165,25 +153,30 @@ class UpdateGroupAbi(BaseType):
                          group=group)
 
 
-class NewAccountAbi(BaseType):
-    def __init__(self, name, owner):
-        super().__init__(name=name,
-                         owner=owner)
-
-
-class UpdateOwnerAbi(BaseType):
-    def __init__(self, name, owner):
-        super().__init__(name=name,
-                         owner=owner)
-
-
-class TransferEvtAbi(BaseType):
-    def __init__(self, _from, to, amount):
-        # since 'from' is a keyword of python
-        args = {'from': _from, 'to': to, 'amount': amount}
-        super().__init__(**args)
-
-
 class AddMetaAbi(BaseType):
     def __init__(self, key, value, creator):
         super().__init__(key=key, value=value, creator=creator)
+
+
+class NewFungibleAbi(BaseType):
+    def __init__(self, sym, creator, issue, manage, total_supply):
+        super().__init__(sym=sym, creator=creator, issue=issue.dict(),
+                         manage=manage.dict(), total_supply=total_supply)
+
+
+class UpdFungibleAbi(BaseType):
+    def __init__(self, sym, issue, manage):
+        super().__init__(sym=sym,
+                         issue={} if issue == None else issue.dict(),
+                         manage={} if manage == None else manage.dict())
+
+
+class IssueFungibleAbi(BaseType):
+    def __init__(self, address, number, memo):
+        super().__init__(address=address, number=number, memo=memo)
+
+
+class TransferFtAbi(BaseType):
+    def __init__(self, _from, to, number, memo):
+        args = {'from': _from, 'to': to, 'number': number, 'memo': memo}
+        super().__init__(**args)
