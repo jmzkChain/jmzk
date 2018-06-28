@@ -1,6 +1,10 @@
 version: 0.2
        
 phases:
+  pre_build:
+    commands:
+      - echo Cloning submodules...
+      - git submodule update --init
   build:
     commands:
       - echo Generating build files...
