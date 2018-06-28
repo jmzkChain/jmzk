@@ -121,7 +121,7 @@ history_plugin_impl::get_domains_by_public_keys(const vector<public_key_type>& p
     for(auto& pkey : pkeys) {
         using bsoncxx::builder::stream::document;
         document find{};
-        find << "issuer" << (string)pkey;
+        find << "creator" << (string)pkey;
         auto cursor = domains.find(find.view());
         try {
             for(auto it = cursor.begin(); it != cursor.end(); it++) {

@@ -728,9 +728,8 @@ read_write::push_transactions(const read_write::push_transactions_params& params
 static variant
 action_abi_to_variant(const abi_serializer& api, contracts::type_name action_type) {
     variant v;
-    auto    it = api.structs.find(action_type);
-    if(it != api.structs.end()) {
-        to_variant(it->second.fields, v);
+    if(api.is_struct(action_type)) {
+        to_variant(api.get_struct(action_type), v);
     }
     return v;
 };

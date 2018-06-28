@@ -289,7 +289,6 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
         fc::unsigned_int size;
         fc::raw::unpack(stream, size);
         vector<fc::variant> vars;
-        vars.resize(size);
         for(decltype(size.value) i = 0; i < size; ++i) {
             auto v = _binary_to_variant(ftype, stream, recursion_depth, deadline);
             FC_ASSERT(!v.is_null(), "Invalid packed array");

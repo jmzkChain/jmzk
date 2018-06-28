@@ -917,11 +917,10 @@ void
 get_my_resources(const std::string& url) {
     auto info = get_info();
 
-    auto signatures = call(wallet_url, wallet_my_signatures, info.chain_id);
-    auto my_args    = fc::mutable_variant_object("signatures", signatures);
+    auto keys = call(wallet_url, wallet_public_keys);
+    auto args = fc::mutable_variant_object("keys", keys);
 
-    print_info(call(url, my_args))
-    ;
+    print_info(call(url, args));
 }
 
 struct set_get_my_subcommands {
@@ -970,7 +969,8 @@ struct set_get_my_subcommands {
 struct set_get_history_subcommands {
     string domain;
     string key;
-    bool   exclude_transfer = false;
+
+    std::vector<std::string> names;
 
     string trx_id;
     
@@ -983,8 +983,8 @@ struct set_get_history_subcommands {
 
         auto actscmd = hiscmd->add_subcommand("actions", localized("Retrieve actions by domian and key"));
         actscmd->add_option("domain", domain, localized("Domain of acitons to be retrieved"))->required();
-        actscmd->add_option("key", key, localized("Key of acitons to be retrieved, if not specified, will return all the actions in this domain"));
-        actscmd->add_option("--exclude-transfer,-e", exclude_transfer, localized("Exclude transfer actions, only need to be specified when key is not provided"));
+        actscmd->add_option("key", key, localized("Key of acitons to be retrieved, leave empty to retrieve all actions"));
+        actscmd->add_option("names", names, localized("Names of actions to be retrieved, leave empty to retrieve all actions"));
         actscmd->add_option("--skip,-s", skip, localized("How many records should be skipped"));
         actscmd->add_option("--take,-t", take, localized("How many records should be returned"));
 
@@ -994,8 +994,9 @@ struct set_get_history_subcommands {
             if(!key.empty()) {
                 args["key"] = key;
             }
-            else if(exclude_transfer) {
-                args["exclude_transfer"] = true;
+
+            if(!names.empty()) {
+                args["names"] = names;
             }
 
             if(skip > 0) {
