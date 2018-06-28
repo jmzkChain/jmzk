@@ -7,6 +7,7 @@
 
 #include <queue>
 #include <tuple>
+#include <mutex>
 
 #include <evt/chain/config.hpp>
 #include <evt/chain/contracts/evt_contract.hpp>
@@ -243,12 +244,32 @@ mongo_db_plugin_impl::consume_queues() {
 
 namespace __internal {
 
+const auto&
+get_find_options() {
+    using bsoncxx::builder::stream::document;
+
+    static mongocxx::options::find opts;
+    static std::once_flag flag;
+    static document project;
+
+    std::call_once(flag, [&] {
+        project << "_id" << 1;
+        opts.projection(project.view());
+    });
+
+    return opts;
+}
+
 auto
 find_transaction(mongocxx::collection& transactions, const string& id) {
     using bsoncxx::builder::stream::document;
+
+    document project{};
+
+
     document find_trans{};
     find_trans << "trx_id" << id;
-    auto transaction = transactions.find_one(find_trans.view());
+    auto transaction = transactions.find_one(find_trans.view(), get_find_options());
     if(!transaction) {
         FC_THROW("Unable to find transaction ${id}", ("id", id));
     }
@@ -260,7 +281,7 @@ find_block(mongocxx::collection& blocks, const string& id) {
     using bsoncxx::builder::stream::document;
     document find_block{};
     find_block << "block_id" << id;
-    auto block = blocks.find_one(find_block.view());
+    auto block = blocks.find_one(find_block.view(), get_find_options());
     if(!block) {
         FC_THROW("Unable to find block ${id}", ("id", id));
     }

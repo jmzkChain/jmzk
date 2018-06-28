@@ -5,6 +5,8 @@
 #include <evt/mongo_db_plugin/evt_interpreter.hpp>
 #include <evt/chain/contracts/types.hpp>
 
+#include <mutex>
+
 #include <fc/io/json.hpp>
 
 #include <bsoncxx/builder/basic/document.hpp>
@@ -93,12 +95,44 @@ interpreter_impl::process_trx(const transaction_trace& trx_trace) {
 
 namespace __internal {
 
+const auto&
+get_default_find_options() {
+    using bsoncxx::builder::stream::document;
+
+    static mongocxx::options::find opts;
+    static std::once_flag flag;
+    static document project;
+
+    std::call_once(flag, [&] {
+        project << "_id" << 1;
+        opts.projection(project.view());
+    });
+
+    return opts;
+}
+
+const auto&
+get_fungible_find_options() {
+    using bsoncxx::builder::stream::document;
+
+    static mongocxx::options::find opts;
+    static std::once_flag flag;
+    static document project;
+
+    std::call_once(flag, [&] {
+        project << "_id" << 1 << "current_supply" << 1;
+        opts.projection(project.view());
+    });
+
+    return opts;
+}
+
 auto
 find_domain(mongocxx::collection& domains, const std::string& name) {
     using bsoncxx::builder::stream::document;
     document find{};
     find << "name" << name;
-    auto domain = domains.find_one(find.view());
+    auto domain = domains.find_one(find.view(), get_default_find_options());
     if(!domain) {
         FC_THROW("Unable to find domain ${name}", ("name", name));
     }
@@ -110,7 +144,7 @@ find_token(mongocxx::collection& tokens, const std::string& domain, const std::s
     using bsoncxx::builder::stream::document;
     document find{};
     find << "token_id" << domain + "-" + name;
-    auto token = tokens.find_one(find.view());
+    auto token = tokens.find_one(find.view(), get_default_find_options());
     if(!token) {
         FC_THROW("Unable to find token ${domain}-${name}", ("domain",domain)("name", name));
     }
@@ -122,7 +156,7 @@ find_group(mongocxx::collection& groups, const std::string& name) {
     using bsoncxx::builder::stream::document;
     document find{};
     find << "name" << name;
-    auto group = groups.find_one(find.view());
+    auto group = groups.find_one(find.view(), get_default_find_options());
     if(!group) {
         FC_THROW("Unable to find group ${name}", ("name", name));
     }
@@ -134,7 +168,7 @@ find_fungible(mongocxx::collection& fungibles, const std::string& sym) {
     using bsoncxx::builder::stream::document;
     document find{};
     find << "sym" << sym;
-    auto fungible = fungibles.find_one(find.view());
+    auto fungible = fungibles.find_one(find.view(), get_fungible_find_options());
     if(!fungible) {
         FC_THROW("Unable to find fungible assets ${sym}", ("sym", sym));
     }
