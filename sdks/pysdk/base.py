@@ -25,10 +25,20 @@ class AuthorizerRef:
         return '[%s] %s' % (self.type, self.key)
 
 
+class SymbolArgsErrorException(Exception):
+    def __init__(self):
+        err = 'Symobl_Args_Error'
+        super().__init__(self, err)
+
+
 class Symbol:
-    def __init__(self, expr):
-        self.precision = int(expr.split(',')[0])
-        self.name = expr.split(',')[1]
+    def __init__(self, name, precision=5):
+        if precision > 17 or precision < 0:
+            raise SymbolArgsErrorException
+        if len(name) > 6 or (not name.isupper()):
+            raise SymbolArgsErrorException
+        self.name = name
+        self.precision = precision
 
     def value(self):
         return '%d,%s' % (self.precision, self.name)

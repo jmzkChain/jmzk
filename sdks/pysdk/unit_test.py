@@ -25,7 +25,7 @@ def fake_name(prefix='test'):
 def fake_symbol():
     prec = random.randint(3, 10)
     name = ''.join(random.choice(string.ascii_letters[26:]) for _ in range(6))
-    return '%d,%s' % (prec, name)
+    return name, prec
 
 
 class Test(unittest.TestCase):
@@ -201,7 +201,8 @@ class Test(unittest.TestCase):
 
     def test_action_newfungible(self):
         pub_key, priv_key = ecc.generate_new_pair()
-        symbol = base.Symbol(fake_symbol())
+        sym_name, sym_prec = fake_symbol()
+        symbol = base.Symbol(name=sym_name, precision=sym_prec)
         asset = base.new_asset(symbol)
         newfungible = AG.new_action(
             'newfungible', sym=symbol, creator=pub_key, total_supply=asset(100000))
@@ -215,7 +216,8 @@ class Test(unittest.TestCase):
     def test_action_updfungible(self):
         # create a new fungible
         pub_key, priv_key = ecc.generate_new_pair()
-        symbol = base.Symbol(fake_symbol())
+        sym_name, sym_prec = fake_symbol()
+        symbol = base.Symbol(name=sym_name, precision=sym_prec)
         asset = base.new_asset(symbol)
         newfungible = AG.new_action(
             'newfungible', sym=symbol, creator=pub_key, total_supply=asset(100000))
@@ -243,7 +245,8 @@ class Test(unittest.TestCase):
     def test_action_issuefungible(self):
         # Create a fungible, and then use the issue fungible with the asset
         pub_key, priv_key = ecc.generate_new_pair()
-        symbol = base.Symbol(fake_symbol())
+        sym_name, sym_prec = fake_symbol()
+        symbol = base.Symbol(name=sym_name, precision=sym_prec)
         asset = base.new_asset(symbol)
         newfungible = AG.new_action(
             'newfungible', sym=symbol, creator=pub_key, total_supply=asset(100000))
@@ -265,7 +268,8 @@ class Test(unittest.TestCase):
     def test_action_transferft(self):
         # Create a fungible and issue
         pub_key, priv_key = ecc.generate_new_pair()
-        symbol = base.Symbol(fake_symbol())
+        sym_name, sym_prec = fake_symbol()
+        symbol = base.Symbol(name=sym_name, precision=sym_prec)
         asset = base.new_asset(symbol)
         newfungible = AG.new_action(
             'newfungible', sym=symbol, creator=pub_key, total_supply=asset(100000))
