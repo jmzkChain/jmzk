@@ -58,13 +58,6 @@ class AddMetaAction(Action):
         super().__init__('addmeta', domain, key, data)
 
 
-class AddMetaAction(Action):
-    # domain: domain, group of name of domain
-    # key: domain name, group name, or token name
-    def __init__(self, domain, key, data):
-        super().__init__('addmeta', domain, key, data)
-
-
 class NewFungibleAction(Action):
     # domain: fungible
     # key: name of new fungible

@@ -35,8 +35,9 @@ class Symbol:
 
 
 def new_asset(symbol):
-    def value(num_str):
-        return num_str + ' ' + symbol.name
+    def value(num):
+        fmt = '%%.%df %s' % (symbol.precision, symbol.name)
+        return fmt % (num)
     return value
 
 

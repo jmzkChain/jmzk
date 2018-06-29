@@ -203,8 +203,8 @@ class Test(unittest.TestCase):
         pub_key, priv_key = ecc.generate_new_pair()
         symbol = base.Symbol(fake_symbol())
         asset = base.new_asset(symbol)
-        newfungible = AG.new_action('newfungible', sym=symbol, creator=pub_key, total_supply=asset(
-            '100000.' + '0' * symbol.precision))
+        newfungible = AG.new_action(
+            'newfungible', sym=symbol, creator=pub_key, total_supply=asset(100000))
 
         trx = transaction.Transaction(host_url)
         trx.add_action(newfungible)
@@ -217,8 +217,8 @@ class Test(unittest.TestCase):
         pub_key, priv_key = ecc.generate_new_pair()
         symbol = base.Symbol(fake_symbol())
         asset = base.new_asset(symbol)
-        newfungible = AG.new_action('newfungible', sym=symbol, creator=pub_key, total_supply=asset(
-            '100000.' + '0' * symbol.precision))
+        newfungible = AG.new_action(
+            'newfungible', sym=symbol, creator=pub_key, total_supply=asset(100000))
 
         trx = transaction.Transaction(host_url)
         trx.add_action(newfungible)
@@ -245,8 +245,8 @@ class Test(unittest.TestCase):
         pub_key, priv_key = ecc.generate_new_pair()
         symbol = base.Symbol(fake_symbol())
         asset = base.new_asset(symbol)
-        newfungible = AG.new_action('newfungible', sym=symbol, creator=pub_key, total_supply=asset(
-            '100000.' + '0' * symbol.precision))
+        newfungible = AG.new_action(
+            'newfungible', sym=symbol, creator=pub_key, total_supply=asset(100000))
 
         trx = transaction.Transaction(host_url)
         trx.add_action(newfungible)
@@ -254,8 +254,8 @@ class Test(unittest.TestCase):
         api.push_transaction(trx.dumps())
 
         pub2, priv2 = ecc.generate_new_pair()
-        issuefungible = AG.new_action('issuefungible', address=pub2, number=asset(
-            '1.' + '0'*symbol.precision), memo='goodluck')
+        issuefungible = AG.new_action(
+            'issuefungible', address=pub2, number=asset(100), memo='goodluck')
         trx = transaction.Transaction(host_url)
         trx.add_action(issuefungible)
         trx.add_sign(priv_key)
@@ -267,16 +267,16 @@ class Test(unittest.TestCase):
         pub_key, priv_key = ecc.generate_new_pair()
         symbol = base.Symbol(fake_symbol())
         asset = base.new_asset(symbol)
-        newfungible = AG.new_action('newfungible', sym=symbol, creator=pub_key, total_supply=asset(
-            '100000.' + '0' * symbol.precision))
+        newfungible = AG.new_action(
+            'newfungible', sym=symbol, creator=pub_key, total_supply=asset(100000))
 
         trx = transaction.Transaction(host_url)
         trx.add_action(newfungible)
         trx.add_sign(priv_key)
         api.push_transaction(trx.dumps())
 
-        issuefungible = AG.new_action('issuefungible', address=pub_key, number=asset(
-            '100.' + '0'*symbol.precision), memo='goodluck')
+        issuefungible = AG.new_action(
+            'issuefungible', address=pub_key, number=asset(100), memo='goodluck')
         trx = transaction.Transaction(host_url)
         trx.add_action(issuefungible)
         trx.add_sign(priv_key)
@@ -284,8 +284,8 @@ class Test(unittest.TestCase):
 
         # Transfer asset to pub2
         pub2, priv2 = ecc.generate_new_pair()
-        transferft = AG.new_action('transferft', _from=pub_key, to=pub2, number=asset(
-            '1.' + '0'*symbol.precision), memo='goodjob')
+        transferft = AG.new_action(
+            'transferft', _from=pub_key, to=pub2, number=asset(1), memo='goodjob')
         trx = transaction.Transaction(host_url)
         trx.add_action(transferft)
         trx.add_sign(priv_key)
