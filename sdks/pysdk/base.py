@@ -2,6 +2,8 @@ import json
 
 from pyevt import abi, ecc, libevt
 
+libevt.init_lib()
+
 # Type and Structures
 
 
@@ -14,6 +16,11 @@ class BaseType:
 
     def dumps(self):
         return json.dumps(self.kwargs)
+
+
+class User:
+    def __init__(self):
+        self.pub_key, self.priv_key = ecc.generate_new_pair()
 
 
 class AuthorizerRef:
