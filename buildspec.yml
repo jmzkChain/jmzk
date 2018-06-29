@@ -8,10 +8,11 @@ phases:
   build:
     commands:
       - echo Generating build files...
-      - cmake -H. -B"/tmp/build" -G"Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/tmp/build  -DSecp256k1_ROOT_DIR=/usr/local -DENABLE_MONGODB_SUPPORT=ON
+      - mkdir build && cd build
+      - cmake ../ -G"Ninja" -DCMAKE_BUILD_TYPE=Release -DSecp256k1_ROOT_DIR=/usr/local -DENABLE_MONGODB_SUPPORT=ON -DENABLE_BIND_LIBRARIES=ON
       - echo Building...
-      - ninja -C /tmp/build -j$(nproc) all
+      - ninja -j$(nproc) all
   post_build:
     commands:
-      - echo Runing `tests`
-      - ninja -C /tmp/build test
+      - echo Runing tests
+      - ninja test
