@@ -13,5 +13,5 @@ phases:
       - ninja -C /tmp/build -j$(nproc) all
   post_build:
     commands:
-      - Runing `tests`
+      - echo Runing `tests`
       - ninja test
