@@ -58,7 +58,8 @@ def new_asset(symbol):
     return value
 
 
-EvtAsset = new_asset('5,EVT')
+EvtSymbol = Symbol(name='EVT', precision=5)
+EvtAsset = new_asset(EvtSymbol)
 
 
 class AuthorizerWeight(BaseType):
