@@ -38,24 +38,6 @@ class UpdateGroupAction(Action):
         super().__init__('updategroup', 'group', key, data)
 
 
-class NewAccountAction(Action):
-    # key: name of new account
-    def __init__(self, key, data):
-        super().__init__('newaccount', 'account', key, data)
-
-
-class UpdateOwnerAction(Action):
-    # key: name of updating account
-    def __init__(self, key, data):
-        super().__init__('updateowner', 'account', key, data)
-
-
-class TransferEvtAction(Action):
-    # key: name of giving account
-    def __init__(self, key, data):
-        super().__init__('transferevt', 'account', key, data)
-
-
 class IssueTokenAction(Action):
     # domain: name of domain
     def __init__(self, domain, data):
@@ -76,6 +58,28 @@ class AddMetaAction(Action):
         super().__init__('addmeta', domain, key, data)
 
 
+class NewFungibleAction(Action):
+    # domain: fungible
+    # key: name of new fungible
+    def __init__(self, key, data):
+        super().__init__('newfungible', 'fungible', key, data)
+
+
+class UpdFungibleAction(Action):
+    def __init__(self, key, data):
+        super().__init__('updfungible', 'fungible', key, data)
+
+
+class IssueFungibleAction(Action):
+    def __init__(self, key, data):
+        super().__init__('issuefungible', 'fungible', key, data)
+
+
+class TransferFtAction(Action):
+    def __init__(self, key, data):
+        super().__init__('transferft', 'fungible', key, data)
+
+
 class ActionTypeErrorException(Exception):
     def __init__(self):
         err = 'Action_Type_Error'
@@ -94,31 +98,33 @@ def get_action_from_abi_json(action, abi_json, domain=None, key=None):
         return NewGroupAction(abi_dict['name'], _bin)
     elif action == 'updategroup':
         return UpdateGroupAction(abi_dict['name'], _bin)
-    elif action == 'newaccount':
-        return NewAccountAction(abi_dict['name'], _bin)
-    elif action == 'updateowner':
-        return UpdateOwnerAction(abi_dict['name'], _bin)
-    elif action == 'transferevt':
-        return TransferEvtAction(abi_dict['from'], _bin)
     elif action == 'issuetoken':
         return IssueTokenAction(abi_dict['domain'], _bin)
     elif action == 'transfer':
         return TransferAction(abi_dict['domain'], abi_dict['name'], _bin)
     elif action == 'addmeta':
         return AddMetaAction(domain, key, _bin)
+    elif action == 'newfungible':
+        return NewFungibleAction(abi_dict['sym'].split(',')[1], _bin)
+    elif action == 'updfungible':
+        return UpdFungibleAction(abi_dict['sym'].split(',')[1], _bin)
+    elif action == 'issuefungible':
+        return IssueFungibleAction(abi_dict['number'].split(' ')[1], _bin)
+    elif action == 'transferft':
+        return TransferFtAction(abi_dict['number'].split(' ')[1], _bin)
     else:
         raise ActionTypeErrorException
 
 
 class ActionGenerator:
-    def newdomain(self, name, issuer, **kwargs):
-        auth_A = base.AuthorizerWeight(base.AuthorizerRef('A', issuer), 1)
+    def newdomain(self, name, creator, **kwargs):
+        auth_A = base.AuthorizerWeight(base.AuthorizerRef('A', creator), 1)
         auth_G = base.AuthorizerWeight(base.AuthorizerRef('G', 'OWNER'), 1)
         issue = kwargs['issue'] if 'issue' in kwargs else None
         transfer = kwargs['transfer'] if 'transfer' in kwargs else None
         manage = kwargs['manage'] if 'manage' in kwargs else None
         abi_json = base.NewDomainAbi(name=name,
-                                     issuer=str(issuer),
+                                     creator=str(creator),
                                      issue=issue or base.PermissionDef(
                                          'issue', 1, [auth_A]),
                                      transfer=transfer or base.PermissionDef(
@@ -149,29 +155,46 @@ class ActionGenerator:
         abi_json = base.UpdateGroupAbi(name=name, group=group.dict())
         return get_action_from_abi_json('updategroup', abi_json.dumps())
 
-    def newaccount(self, name, owner):
-        abi_json = base.NewAccountAbi(
-            name=name, owner=[str(each) for each in owner])
-        return get_action_from_abi_json('newaccount', abi_json.dumps())
-
-    def updateowner(self, name, owner):
-        abi_json = base.UpdateOwnerAbi(
-            name=name, owner=[str(each) for each in owner])
-        return get_action_from_abi_json('updateowner', abi_json.dumps())
-
-    def transferevt(self, _from, to, amount):
-        abi_json = base.TransferEvtAbi(_from, to, amount)
-        return get_action_from_abi_json('transferevt', abi_json.dumps())
-
     def issuetoken(self, domain, names, owner):
         abi_json = base.IssueTokenAbi(
             domain, names, owner=[str(each) for each in owner])
         return get_action_from_abi_json('issuetoken', abi_json.dumps())
 
-    def transfer(self, domain, name, to):
+    def transfer(self, domain, name, to, memo):
         abi_json = base.TransferAbi(
-            domain, name, to=[str(each) for each in to])
+            domain, name, to=[str(each) for each in to], memo=memo)
         return get_action_from_abi_json('transfer', abi_json.dumps())
+
+    def newfungible(self, sym, creator, total_supply, **kwargs):
+        auth_A = base.AuthorizerWeight(base.AuthorizerRef('A', creator), 1)
+        issue = kwargs['issue'] if 'issue' in kwargs else None
+        manage = kwargs['manage'] if 'manage' in kwargs else None
+        abi_json = base.NewFungibleAbi(sym=sym.value(),
+                                       creator=str(creator),
+                                       issue=issue or base.PermissionDef(
+            'issue', 1, [auth_A]),
+            manage=manage or base.PermissionDef(
+            'manage', 1, [auth_A]),
+            total_supply=total_supply)
+        return get_action_from_abi_json('newfungible', abi_json.dumps())
+
+    def updfungible(self, sym, **kwargs):
+        issue = kwargs['issue'] if 'issue' in kwargs else None
+        manage = kwargs['manage'] if 'manage' in kwargs else None
+        abi_json = base.UpdFungibleAbi(sym=sym.value(),
+                                       issue=issue,
+                                       manage=manage)
+        return get_action_from_abi_json('updfungible', abi_json.dumps())
+
+    def issuefungible(self, address, number, memo):
+        abi_json = base.IssueFungibleAbi(
+            address=str(address), number=number, memo=memo)
+        return get_action_from_abi_json('issuefungible', abi_json.dumps())
+
+    def transferft(self, _from, to, number, memo):
+        abi_json = base.TransferFtAbi(
+            _from=str(_from), to=str(to), number=number, memo=memo)
+        return get_action_from_abi_json('transferft', abi_json.dumps())
 
     def addmeta(self, meta_key, meta_value, creator, domain, key):
         abi_json = base.AddMetaAbi(meta_key, meta_value, str(creator))

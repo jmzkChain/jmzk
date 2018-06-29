@@ -12,10 +12,13 @@ class Api:
             'get_domain': '/v1/evt/get_domain',
             'get_group': '/v1/evt/get_group',
             'get_token': '/v1/evt/get_token',
-            'get_account': '/v1/evt/get_account',
-            'get_my_tokens': '/v1/evt/get_my_tokens',
-            'get_my_domains': '/v1/evt/get_my_domains',
-            'get_my_groups': '/v1/evt/get_my_groups'
+            'get_fungible': '/v1/evt/get_fungible',
+            'get_tokens': '/v1/history/get_my_tokens',
+            'get_domains': '/v1/history/get_domains',
+            'get_groups': '/v1/history/get_groups',
+            'get_actions': '/v1/history/get_actions',
+            'get_transaction': '/v1/history/get_transaction',
+            'get_transactions': '/v1/history/get_transactions'
         }
 
     def __getattr__(self, api_name):
