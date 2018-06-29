@@ -1,5 +1,9 @@
 version: 0.2
-       
+
+env:
+  parameter-store:
+    BEARCHAT_CHANNEL: "bearchat-codebuild-channel"
+
 phases:
   pre_build:
     commands:
@@ -16,3 +20,6 @@ phases:
     commands:
       - echo Runing tests
       - ninja test
+      - echo Posting build results
+      - URL="https://${AWS_REGION}.console.aws.amazon.com/codebuild/home?region=${AWS_REGION}#/builds/${CODEBUILD_BUILD_ID}/view/new"
+      - curl "${BEARCHAT_CHANNEL}" -H "Content-Type:application/json" -d "{\"text\":\"New build state:${CODEBUILD_LAST_EXIT}\",\"markdown\":true,\"channel\":\"evt-awscodebuild\",\"attachments\":[{\"text\":\"$URL\",\"url\":\"$URL\"}]}"

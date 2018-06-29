@@ -10,5 +10,5 @@ target_link_libraries( evt_unittests
 target_include_directories( evt_unittests PUBLIC ${Boost_INCLUDE_DIR} )
 
 add_test(NAME evt_unittests
-         COMMAND unittest/evt_unittests
+         COMMAND unittests/evt_unittests
          WORKING_DIRECTORY ${CMAKE_BINARY_DIR})

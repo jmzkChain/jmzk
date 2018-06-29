@@ -107,7 +107,7 @@ BOOST_AUTO_TEST_CASE( evtabi ) {
     auto j1 = R"(
     {
         "name": "test",
-        "issuer": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+        "creator": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
         "issue": {
             "name": "issue",
             "threshold": 1,
