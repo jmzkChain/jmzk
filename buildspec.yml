@@ -14,4 +14,4 @@ phases:
   post_build:
     commands:
       - echo Runing `tests`
-      - ninja test
+      - ninja -C /tmp/build test

@@ -55,8 +55,10 @@ public:
         }
 
     public:
-        void
-        accept() { _accept = 1; }
+        void accept() { _accept = 1; }
+        void squash() { _accept = 1; _token_db.pop_back_savepoint(); }
+
+        int seq() const { return _seq; }
 
     private:
         token_database& _token_db;
@@ -117,8 +119,12 @@ public:
     int add_savepoint(int32_t seq);
     int rollback_to_latest_savepoint();
     int pop_savepoints(int32_t until);
+    int pop_back_savepoint();
 
     session new_savepoint_session(int seq);
+    session new_savepoint_session();
+
+    size_t get_savepoints_size() const { return savepoints_.size(); }
 
 private:
     int should_record() { return !savepoints_.empty(); }

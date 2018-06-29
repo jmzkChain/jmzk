@@ -692,10 +692,21 @@ token_database::new_savepoint_session(int seq) {
     return session(*this, seq);
 }
 
+token_database::session
+token_database::new_savepoint_session() {
+    auto seq = 1;
+    if(!savepoints_.empty()) {
+        seq = savepoints_.back().seq + 1;
+    }
+    add_savepoint(seq);
+    return session(*this, seq);
+}
+
 int
 token_database::add_savepoint(int32_t seq) {
+    auto& b = savepoints_.back();
     if(!savepoints_.empty()) {
-        if(savepoints_.back().seq >= seq) {
+        if(b.seq >= seq) {
             EVT_THROW(tokendb_seq_not_valid, "Seq is not valid, prev: ${prev}, curr: ${curr}",
                       ("prev", savepoints_.back().seq)("curr", seq));
         }
@@ -723,6 +734,17 @@ token_database::pop_savepoints(int32_t until) {
         savepoints_.pop_front();
         free_savepoint(it);
     }
+    return 0;
+}
+
+int
+token_database::pop_back_savepoint() {
+    if(savepoints_.empty()) {
+        EVT_THROW(tokendb_no_savepoint, "There's no savepoints anymore");
+    }
+    auto it = std::move(savepoints_.back());
+    savepoints_.pop_back();
+    free_savepoint(it);
     return 0;
 }
 

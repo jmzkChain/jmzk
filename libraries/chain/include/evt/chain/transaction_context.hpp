@@ -5,6 +5,7 @@
 #pragma once
 #include <evt/chain/controller.hpp>
 #include <evt/chain/trace.hpp>
+#include <evt/chain/token_database.hpp>
 
 namespace evt { namespace chain {
 
@@ -22,6 +23,7 @@ public:
 
     void exec();
     void finalize();
+    void squash();
 
     void checktime() const;
 
@@ -34,11 +36,12 @@ private:
 
     /// Fields:
 public:
-    controller&           control;
-    transaction_metadata& trx;
-    transaction_trace_ptr trace;
-    fc::time_point        start;
-    fc::time_point        published;
+    controller&             control;
+    token_database::session undo_session;
+    transaction_metadata&   trx;
+    transaction_trace_ptr   trace;
+    fc::time_point          start;
+    fc::time_point          published;
 
     vector<action_receipt> executed;
 

@@ -628,13 +628,6 @@ mongo_db_plugin_impl::_process_transaction(const transaction_trace& trace) {
 
 mongo_db_plugin_impl::~mongo_db_plugin_impl() {
     try {
-        size_t bcount = 0, tcount = 0;
-        {
-            boost::mutex::scoped_lock lock(mtx);
-            bcount = block_state_queue.size();
-            tcount = transaction_trace_queue.size();
-        }
-        ilog("Shuting down... There're ${bc} blocks and ${tc} trxs in queues, waiting to process all the remains", ("bc",bcount)("tc",tcount));
         done = true;
         condition.notify_one();
 

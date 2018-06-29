@@ -484,6 +484,7 @@ struct controller_impl {
 
                 emit(self.applied_transaction, trace);
 
+                trx_context.squash();
                 restore.cancel();
 
                 if(!implicit) {

@@ -14,6 +14,7 @@ transaction_context::transaction_context(controller&           c,
                                          transaction_metadata& t,
                                          fc::time_point        s)
     : control(c)
+    , undo_session(c.token_db().new_savepoint_session())
     , trx(t)
     , trace(std::make_shared<transaction_trace>())
     , start(s) {
@@ -60,6 +61,11 @@ void
 transaction_context::finalize() {
     FC_ASSERT(is_initialized, "must first initialize");
     trace->elapsed = fc::time_point::now() - start;
+}
+
+void
+transaction_context::squash() {
+    undo_session.squash();
 }
 
 void

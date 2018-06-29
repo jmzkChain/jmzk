@@ -31,7 +31,7 @@ struct tokendb_test {
 
     int32_t
     get_time() {
-        return time(0) + (ti++);
+        return time(0) + (++ti);
     }
 
     token_database tokendb;
@@ -694,6 +694,49 @@ BOOST_AUTO_TEST_CASE(tokendb_checkpoint_test) {
         BOOST_TEST(!tokendb.exists_asset(address, pevt));
 
         BOOST_CHECK_THROW(tokendb.pop_savepoints(0), tokendb_no_savepoint);
+
+        tokendb.add_savepoint(get_time());
+        tokendb.add_savepoint(get_time());
+        tokendb.add_savepoint(get_time());
+        tokendb.add_savepoint(get_time());
+        tokendb.add_savepoint(get_time());
+        BOOST_CHECK_NO_THROW(tokendb.pop_savepoints(time(0) + ti + 1));
+
+        BOOST_TEST(tokendb.get_savepoints_size() == 0);
+        {
+            auto ss1 = tokendb.new_savepoint_session();
+            BOOST_TEST(ss1.seq() == 1);
+            tokendb.update_asset(address, asset(2000, pevt));
+            BOOST_TEST(tokendb.exists_any_asset(address));
+        }
+        BOOST_TEST(!tokendb.exists_any_asset(address));
+        BOOST_TEST(tokendb.get_savepoints_size() == 0);
+
+        tokendb.add_savepoint(get_time());
+        tokendb.update_asset(address, asset(2000, pevt));
+
+        {
+            auto ss1 = tokendb.new_savepoint_session();
+            BOOST_TEST(ss1.seq() == time(0) + ti + 1);
+            tokendb.update_asset(address, asset(4000, pevt));
+            ss1.accept();
+        }
+
+        tokendb.read_asset(address, pevt, a);
+        BOOST_TEST(a == asset(4000, pevt));
+        BOOST_TEST(tokendb.get_savepoints_size() == 2);
+
+        {
+            auto ss1 = tokendb.new_savepoint_session();
+            BOOST_TEST(ss1.seq() == time(0) + ti + 2);
+            tokendb.update_asset(address, asset(6000, pevt));
+            ss1.squash();
+        }
+        tokendb.read_asset(address, pevt, a);
+        BOOST_TEST(a == asset(6000, pevt));
+        BOOST_TEST(tokendb.get_savepoints_size() == 2);
+
+        BOOST_CHECK_NO_THROW(tokendb.pop_savepoints(0));
     }
     FC_LOG_AND_RETHROW()
 }
