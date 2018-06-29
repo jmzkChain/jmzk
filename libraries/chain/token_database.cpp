@@ -704,11 +704,11 @@ token_database::new_savepoint_session() {
 
 int
 token_database::add_savepoint(int32_t seq) {
-    auto& b = savepoints_.back();
     if(!savepoints_.empty()) {
+        auto& b = savepoints_.back();
         if(b.seq >= seq) {
             EVT_THROW(tokendb_seq_not_valid, "Seq is not valid, prev: ${prev}, curr: ${curr}",
-                      ("prev", savepoints_.back().seq)("curr", seq));
+                      ("prev", b.seq)("curr", seq));
         }
     }
     savepoints_.emplace_back(savepoint{.seq = seq, .rb_snapshot = (const void*)db_->GetSnapshot(), .actions = {}});

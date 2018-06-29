@@ -23,9 +23,8 @@ using namespace contracts;
 extern std::string tokendb_dir;
 
 struct tokendb_test {
-    tokendb_test() {
+    tokendb_test() : ti(0) {
         tokendb.initialize(tokendb_dir);
-        ti = 0;
     }
     ~tokendb_test() {}
 
