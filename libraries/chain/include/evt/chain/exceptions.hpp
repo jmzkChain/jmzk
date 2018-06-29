@@ -70,7 +70,7 @@
 namespace evt { namespace chain {
 
 FC_DECLARE_EXCEPTION( chain_exception, 3000000, "blockchain exception" );
-FC_DECLARE_DERIVED_EXCEPTION( database_query_exception,          chain_exception, 3010000, "database query exception" );
+FC_DECLARE_DERIVED_EXCEPTION( database_query_exception,          chain_exception, 3010000, "Database query exception" );
 FC_DECLARE_DERIVED_EXCEPTION( block_validate_exception,          chain_exception, 3020000, "block validation exception" );
 FC_DECLARE_DERIVED_EXCEPTION( transaction_exception,             chain_exception, 3030000, "transaction validation exception" );
 FC_DECLARE_DERIVED_EXCEPTION( action_exception,                  chain_exception, 3040000, "action validation exception" );
@@ -90,11 +90,11 @@ FC_DECLARE_DERIVED_EXCEPTION( account_query_exception,           database_query_
 FC_DECLARE_DERIVED_EXCEPTION( contract_table_query_exception,    database_query_exception, 3010003, "Contract Table Query Exception" );
 FC_DECLARE_DERIVED_EXCEPTION( contract_query_exception,          database_query_exception, 3010004, "Contract Query Exception" );
 
-FC_DECLARE_DERIVED_EXCEPTION( block_tx_output_exception,         block_validate_exception, 3020001, "transaction outputs in block do not match transaction outputs from applying block" );
-FC_DECLARE_DERIVED_EXCEPTION( block_concurrency_exception,       block_validate_exception, 3020002, "block does not guarantee concurrent exection without conflicts" );
-FC_DECLARE_DERIVED_EXCEPTION( block_lock_exception,              block_validate_exception, 3020003, "shard locks in block are incorrect or mal-formed" );
-FC_DECLARE_DERIVED_EXCEPTION( block_resource_exhausted,          block_validate_exception, 3020004, "block exhausted allowed resources" );
-FC_DECLARE_DERIVED_EXCEPTION( block_too_old_exception,           block_validate_exception, 3020005, "block is too old to push" );
+FC_DECLARE_DERIVED_EXCEPTION( block_tx_output_exception,         block_validate_exception, 3020001, "Transaction outputs in block do not match transaction outputs from applying block." );
+FC_DECLARE_DERIVED_EXCEPTION( block_concurrency_exception,       block_validate_exception, 3020002, "Block does not guarantee concurrent executions without conflicts." );
+FC_DECLARE_DERIVED_EXCEPTION( block_lock_exception,              block_validate_exception, 3020003, "Shard locks in block are incorrect or mal-formed." );
+FC_DECLARE_DERIVED_EXCEPTION( block_resource_exhausted,          block_validate_exception, 3020004, "Block exhausted allowed resources." );
+FC_DECLARE_DERIVED_EXCEPTION( block_too_old_exception,           block_validate_exception, 3020005, "Block is too old to push." );
 
 FC_DECLARE_DERIVED_EXCEPTION( tx_duplicate,                      transaction_exception, 3030001, "duplicate transaction" );
 FC_DECLARE_DERIVED_EXCEPTION( tx_decompression_error,            transaction_exception, 3030002, "Error decompressing transaction" );
@@ -102,39 +102,39 @@ FC_DECLARE_DERIVED_EXCEPTION( expired_tx_exception,              transaction_exc
 FC_DECLARE_DERIVED_EXCEPTION( tx_exp_too_far_exception,          transaction_exception, 3030004, "Transaction Expiration Too Far" );
 FC_DECLARE_DERIVED_EXCEPTION( invalid_ref_block_exception,       transaction_exception, 3030005, "Invalid Reference Block" );
 FC_DECLARE_DERIVED_EXCEPTION( tx_apply_exception,                transaction_exception, 3030006, "Transaction Apply Exception" );
-FC_DECLARE_DERIVED_EXCEPTION( tx_receipt_inconsistent_status,    transaction_exception, 3030007, "Transaction receipt applied status does not match received status" );
-FC_DECLARE_DERIVED_EXCEPTION( tx_no_action,                      transaction_exception, 3030008, "transaction should have at least one normal action" );
-FC_DECLARE_DERIVED_EXCEPTION( deadline_exception,                transaction_exception, 3030009, "transaction took too long");
+FC_DECLARE_DERIVED_EXCEPTION( tx_receipt_inconsistent_status,    transaction_exception, 3030007, "Transaction receipt applied status does not match received status." );
+FC_DECLARE_DERIVED_EXCEPTION( tx_no_action,                      transaction_exception, 3030008, "transaction should have at least one normal action." );
+FC_DECLARE_DERIVED_EXCEPTION( deadline_exception,                transaction_exception, 3030009, "transaction is timeout.");
 
 FC_DECLARE_DERIVED_EXCEPTION( action_authorize_exception,         action_exception, 3040001, "invalid action authorization" );
-FC_DECLARE_DERIVED_EXCEPTION( domain_not_existed_exception,       action_exception, 3040002, "domain is not existed" );
-FC_DECLARE_DERIVED_EXCEPTION( token_not_existed_exception,        action_exception, 3040003, "token is not existed" );
-FC_DECLARE_DERIVED_EXCEPTION( group_not_existed_exception,        action_exception, 3040004, "group is not existed" );
-FC_DECLARE_DERIVED_EXCEPTION( fungible_not_existed_exception,     action_exception, 3040005, "fungible assets is not existed" );
-FC_DECLARE_DERIVED_EXCEPTION( delay_not_existed_exception,        action_exception, 3040006, "delay is not existed" );
-FC_DECLARE_DERIVED_EXCEPTION( domain_exists_exception,            action_exception, 3040007, "domain already exists" );
-FC_DECLARE_DERIVED_EXCEPTION( token_exists_exception,             action_exception, 3040008, "token already exists" );
-FC_DECLARE_DERIVED_EXCEPTION( group_exists_exception,             action_exception, 3040009, "group already exists" );
-FC_DECLARE_DERIVED_EXCEPTION( fungible_exists_exception,          action_exception, 3040010, "fungible assets already exists" );
-FC_DECLARE_DERIVED_EXCEPTION( delay_exists_exception,             action_exception, 3040011, "delay already exists" );
+FC_DECLARE_DERIVED_EXCEPTION( domain_not_existed_exception,       action_exception, 3040002, "Domain does not exist." );
+FC_DECLARE_DERIVED_EXCEPTION( token_not_existed_exception,        action_exception, 3040003, "Token does not exist." );
+FC_DECLARE_DERIVED_EXCEPTION( group_not_existed_exception,        action_exception, 3040004, "Group does not exist." );
+FC_DECLARE_DERIVED_EXCEPTION( fungible_not_existed_exception,     action_exception, 3040005, "Fungible asset does not exist." );
+FC_DECLARE_DERIVED_EXCEPTION( delay_not_existed_exception,        action_exception, 3040006, "Delay does not exist." );
+FC_DECLARE_DERIVED_EXCEPTION( domain_exists_exception,            action_exception, 3040007, "Domain already exists." );
+FC_DECLARE_DERIVED_EXCEPTION( token_exists_exception,             action_exception, 3040008, "Token already exists." );
+FC_DECLARE_DERIVED_EXCEPTION( group_exists_exception,             action_exception, 3040009, "Group already exists." );
+FC_DECLARE_DERIVED_EXCEPTION( fungible_exists_exception,          action_exception, 3040010, "Fungible asset already exists." );
+FC_DECLARE_DERIVED_EXCEPTION( delay_exists_exception,             action_exception, 3040011, "Delay already exists." );
 FC_DECLARE_DERIVED_EXCEPTION( domain_name_exception,              action_exception, 3040012, "Invalid domain name" );
 FC_DECLARE_DERIVED_EXCEPTION( token_name_exception,               action_exception, 3040013, "Invalid token name" );
 FC_DECLARE_DERIVED_EXCEPTION( group_name_exception,               action_exception, 3040014, "Invalid group name" );
 FC_DECLARE_DERIVED_EXCEPTION( meta_key_exception,                 action_exception, 3040015, "Invalid meta key" );
 FC_DECLARE_DERIVED_EXCEPTION( proposal_name_exception,            action_exception, 3040016, "Invalid proposal name" );
-FC_DECLARE_DERIVED_EXCEPTION( fungible_name_exception,            action_exception, 3040017, "Invalid fungible assets name" );
-FC_DECLARE_DERIVED_EXCEPTION( fungible_symbol_exception,          action_exception, 3040018, "Invalid fungible assets symbol" );
+FC_DECLARE_DERIVED_EXCEPTION( fungible_name_exception,            action_exception, 3040017, "Invalid fungible asset name" );
+FC_DECLARE_DERIVED_EXCEPTION( fungible_symbol_exception,          action_exception, 3040018, "Invalid fungible asset symbol" );
 FC_DECLARE_DERIVED_EXCEPTION( fungible_supply_exception,          action_exception, 3040019, "Invalid fungible supply" );
-FC_DECLARE_DERIVED_EXCEPTION( token_owner_exception,              action_exception, 3040020, "token owner cannot be empty" );
-FC_DECLARE_DERIVED_EXCEPTION( token_destoryed_exception,          action_exception, 3040021, "token is destoryed" );
-FC_DECLARE_DERIVED_EXCEPTION( math_overflow_exception,            action_exception, 3040022, "Operations resulted in overflow" );
-FC_DECLARE_DERIVED_EXCEPTION( balance_exception,                  action_exception, 3040023, "No enough balance left" );
-FC_DECLARE_DERIVED_EXCEPTION( meta_involve_exception,             action_exception, 3040024, "Creator is not involved" );
-FC_DECLARE_DERIVED_EXCEPTION( delay_status_exception,             action_exception, 3040025, "Delay is not in proper status" );
-FC_DECLARE_DERIVED_EXCEPTION( delay_sigs_exception,               action_exception, 3040026, "Signed keys and signatures are not match" );
+FC_DECLARE_DERIVED_EXCEPTION( token_owner_exception,              action_exception, 3040020, "Token owner cannot be empty." );
+FC_DECLARE_DERIVED_EXCEPTION( token_destoryed_exception,          action_exception, 3040021, "Token is destroyed." );
+FC_DECLARE_DERIVED_EXCEPTION( math_overflow_exception,            action_exception, 3040022, "Operations resulted in overflow." );
+FC_DECLARE_DERIVED_EXCEPTION( balance_exception,                  action_exception, 3040023, "Not enough balance left." );
+FC_DECLARE_DERIVED_EXCEPTION( meta_involve_exception,             action_exception, 3040024, "Creator is not involved." );
+FC_DECLARE_DERIVED_EXCEPTION( delay_status_exception,             action_exception, 3040025, "Delay is not in proper status." );
+FC_DECLARE_DERIVED_EXCEPTION( delay_sigs_exception,               action_exception, 3040026, "Signed keys and signatures do not match." );
 FC_DECLARE_DERIVED_EXCEPTION( action_args_exception,              action_exception, 3040027, "Invalid arguments for action" );
 
-FC_DECLARE_DERIVED_EXCEPTION( pop_empty_chain,                   undo_database_exception, 3070001, "there are no blocks to pop" );
+FC_DECLARE_DERIVED_EXCEPTION( pop_empty_chain,                   undo_database_exception, 3070001, "There are no blocks to be popped." );
 
 FC_DECLARE_DERIVED_EXCEPTION( name_type_exception,               chain_type_exception, 3120001, "Invalid name" );
 FC_DECLARE_DERIVED_EXCEPTION( public_key_type_exception,         chain_type_exception, 3120002, "Invalid public key" );
@@ -171,24 +171,24 @@ FC_DECLARE_DERIVED_EXCEPTION( tokendb_group_existed,             tokendb_excepti
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_token_existed,             tokendb_exception, 3150003, "Token already exists" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_account_existed,           tokendb_exception, 3150004, "Account already exists" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_delay_existed,             tokendb_exception, 3150005, "Delay already exists" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_domain_not_found,          tokendb_exception, 3150006, "Not found specifc domain" );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_domain_not_found,          tokendb_exception, 3150006, "Not found specific domain" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_group_not_found,           tokendb_exception, 3150007, "Not found specific permission group" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_token_not_found,           tokendb_exception, 3150008, "Not found specific token" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_delay_not_found,           tokendb_exception, 3150009, "Not found specific delay" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_fungible_not_found,        tokendb_exception, 3150010, "Not found specific fungible" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_address_not_found,         tokendb_exception, 3150011, "Not found specific address" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_asset_not_found,           tokendb_exception, 3150012, "Not found specific asset in address" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_rocksdb_fail,              tokendb_exception, 3150013, "Rocksdb internal error occurred" );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_rocksdb_fail,              tokendb_exception, 3150013, "Rocksdb internal error occurred." );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_no_savepoint,              tokendb_exception, 3150014, "No savepoints anymore" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_seq_not_valid,             tokendb_exception, 3150015, "Seq for checkpoint is not valid" );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_seq_not_valid,             tokendb_exception, 3150015, "Seq for checkpoint is not valid." );
 
 FC_DECLARE_DERIVED_EXCEPTION( unknown_block_exception,           misc_exception, 3100002, "unknown block" );
 FC_DECLARE_DERIVED_EXCEPTION( unknown_transaction_exception,     misc_exception, 3100003, "unknown transaction" );
-FC_DECLARE_DERIVED_EXCEPTION( fixed_reversible_db_exception,     misc_exception, 3100004, "corrupted reversible block database was fixed" );
+FC_DECLARE_DERIVED_EXCEPTION( fixed_reversible_db_exception,     misc_exception, 3100004, "Corrupted reversible block database was fixed." );
 FC_DECLARE_DERIVED_EXCEPTION( extract_genesis_state_exception,   misc_exception, 3100005, "extracted genesis state from blocks.log" );
 
-FC_DECLARE_DERIVED_EXCEPTION( tx_duplicate_sig,                 authorization_exception, 3090001, "duplicate signature included" );
-FC_DECLARE_DERIVED_EXCEPTION( tx_irrelevant_sig,                authorization_exception, 3090002, "irrelevant signature included" );
-FC_DECLARE_DERIVED_EXCEPTION( unsatisfied_authorization,        authorization_exception, 3090003, "provided keys, permissions, and delays do not satisfy declared authorizations" );
+FC_DECLARE_DERIVED_EXCEPTION( tx_duplicate_sig,                 authorization_exception, 3090001, "Duplicate signature is included." );
+FC_DECLARE_DERIVED_EXCEPTION( tx_irrelevant_sig,                authorization_exception, 3090002, "Irrelevant signature is included." );
+FC_DECLARE_DERIVED_EXCEPTION( unsatisfied_authorization,        authorization_exception, 3090003, "Provided keys, permissions, and delays do not satisfy declared authorizations." );
 
 }} // evt::chain
