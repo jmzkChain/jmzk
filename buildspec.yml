@@ -23,5 +23,5 @@ phases:
     finally:
       - echo Posting build results
       - URL="https://${AWS_REGION}.console.aws.amazon.com/codebuild/home?region=${AWS_REGION}#/builds/${CODEBUILD_BUILD_ID}/view/new"
-      - curl "${BEARCHAT_CHANNEL}" -H "Content-Type:application/json" -d "{\"text\":\"Latest EVT built state:${CODEBUILD_LAST_EXIT}\",\"markdown\":true,\"channel\":\"evt-awscodebuild\",\"attachments\":[{\"text\":\"$URL\",\"url\":\"$URL\"}]}"
+      - curl "${BEARCHAT_CHANNEL}" -H "Content-Type:application/json" -d "{\"text\":\"latest EVT built finished\",\"markdown\":true,\"channel\":\"evt-awscodebuild\",\"attachments\":[{\"text\":\"$URL\",\"url\":\"$URL\"}]}"
  

@@ -179,8 +179,8 @@ struct delay_def {
     proposal_name                name;
     public_key_type              proposer;
     delay_status                 status;
-    transaction                  trx;
-    std::vector<public_key_type> signed_keys;
+    signed_transaction           trx;
+    flat_set<public_key_type>    signed_keys;
 };
 
 struct newdomain {
@@ -325,9 +325,10 @@ struct addmeta {
 };
 
 struct newdelay {
-    proposal_name   name;
-    public_key_type proposer;
-    transaction     trx;
+    proposal_name               name;
+    public_key_type             proposer;
+    transaction                 trx;
+    std::vector<signature_type> signatures;
 
     static action_name
     get_name() {
@@ -391,7 +392,7 @@ FC_REFLECT(evt::chain::contracts::updfungible, (sym)(issue)(manage));
 FC_REFLECT(evt::chain::contracts::issuefungible, (address)(number)(memo));
 FC_REFLECT(evt::chain::contracts::transferft, (from)(to)(number)(memo));
 FC_REFLECT(evt::chain::contracts::addmeta, (key)(value)(creator));
-FC_REFLECT(evt::chain::contracts::newdelay, (name)(proposer)(trx));
+FC_REFLECT(evt::chain::contracts::newdelay, (name)(proposer)(trx)(signatures));
 FC_REFLECT(evt::chain::contracts::canceldelay, (name));
 FC_REFLECT(evt::chain::contracts::approvedelay, (name)(signatures));
 FC_REFLECT(evt::chain::contracts::executedelay, (name));

@@ -123,6 +123,16 @@ read_only::get_assets(const get_assets_params& params) {
     }
 }
 
+fc::variant
+read_only::get_delay(const get_delay_params& params) {
+    const auto& db = db_.token_db();
+    variant   var;
+    delay_def delay;
+    db.read_delay(params.name, delay);
+    fc::to_variant(delay, var);
+    return var;
+}
+
 }  // namespace evt_apis
 
 }  // namespace evt

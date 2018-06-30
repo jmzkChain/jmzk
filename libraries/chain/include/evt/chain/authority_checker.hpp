@@ -109,6 +109,13 @@ private:
         cb(token.owner);
     }
 
+    void
+    get_delay(const proposal_name& proposal, std::function<void(const delay_def&)>&& cb) {
+        delay_def delay;
+        _token_db.read_delay(proposal, delay);
+        cb(delay);
+    }
+
 private:
     bool
     satisfied_group(const action& action) {
@@ -120,7 +127,7 @@ private:
                     return true;
                 }
             }
-            EVT_RETHROW_EXCEPTIONS(chain_type_exception, "transaction data is not valid, data cannot cast to `newgroup` type.");
+            EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `newgroup` type.");
         }
         else if(action.name == N(updategroup)) {
             bool result = false;
@@ -141,7 +148,7 @@ private:
                     return true;
                 }
             }
-            EVT_RETHROW_EXCEPTIONS(chain_type_exception, "transaction data is not valid, data cannot cast to `addmeta` type.");
+            EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `addmeta` type.");
         }
         return false;
     }
@@ -250,7 +257,7 @@ private:
                     return true;
                 }
             }
-            EVT_RETHROW_EXCEPTIONS(chain_type_exception, "transation data is not valid, data cannot cast to `newfungible` type")
+            EVT_RETHROW_EXCEPTIONS(action_type_exception, "transation data is not valid, data cannot cast to `newfungible` type");
             break;
         }
         case N(issuefungible): {
@@ -267,7 +274,7 @@ private:
                     return true;
                 }
             }
-            EVT_RETHROW_EXCEPTIONS(chain_type_exception, "transation data is not valid, data cannot cast to `transferft` type")
+            EVT_RETHROW_EXCEPTIONS(action_type_exception, "transation data is not valid, data cannot cast to `transferft` type");
             break;
         }
         case N(addmeta): {
@@ -278,11 +285,47 @@ private:
                     return true;
                 }
             }
-            EVT_RETHROW_EXCEPTIONS(chain_type_exception, "transaction data is not valid, data cannot cast to `addmeta` type.");
+            EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `addmeta` type.");
             break;
         }
         default: {
-            FC_ASSERT(false, "Unknown action name: ${type}", ("type",action.name));
+            EVT_THROW(action_type_exception, "Unknown action name: ${type}", ("type",action.name));
+        }
+        }  // switch
+        return false;
+    }
+
+    bool
+    satisfied_delay(const action& action) {
+        switch(action.name.value) {
+        case N(newdelay): {
+            try {
+                auto nd = action.data_as<contracts::newdelay>();
+                auto vistor = weight_tally_visitor(*this);
+                if(vistor(nd.proposer, 1) == 1) {
+                    return true;
+                }
+            }
+            EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `newdelay` type.");
+            break;
+        }
+        case N(approvedelay): {
+            // will check signatures when applying
+            return true;
+        }
+        case N(canceldelay): {
+            bool result = false;
+            get_delay(action.key, [&](const auto& delay) {
+                auto vistor = weight_tally_visitor(*this);
+                if(vistor(delay.proposer, 1) == 1) {
+                    result = true;
+                }
+            });
+            return result;
+            break;
+        }
+        default: {
+            EVT_THROW(action_type_exception, "Unknown action name: ${type}", ("type",action.name));
         }
         }  // switch
         return false;
@@ -299,7 +342,7 @@ private:
                     return true;
                 }
             }
-            EVT_RETHROW_EXCEPTIONS(chain_type_exception, "transaction data is not valid, data cannot cast to `newdomain` type.");
+            EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `newdomain` type.");
             break;
         }
         case N(addmeta): {
@@ -310,7 +353,7 @@ private:
                     return true;
                 }
             }
-            EVT_RETHROW_EXCEPTIONS(chain_type_exception, "transaction data is not valid, data cannot cast to `addmeta` type.");
+            EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `addmeta` type.");
             break;
         }
         case N(updatedomain): {
@@ -324,7 +367,7 @@ private:
             return satisfied_domain_permission(action, N(transfer));
         }
         default: {
-            FC_ASSERT(false, "Unknown action name: ${type}", ("type",action.name));
+            EVT_THROW(action_type_exception, "Unknown action name: ${type}", ("type",action.name));
         }
         }  // switch
         return false;
@@ -344,6 +387,9 @@ public:
         }
         else if(action.domain == N128(fungible)) {
             result = satisfied_fungible(action);
+        }
+        else if(action.domain == N128(delay)) {
+            result = satisfied_delay(action);
         }
         else {
             result = satisfied_tokens(action);
