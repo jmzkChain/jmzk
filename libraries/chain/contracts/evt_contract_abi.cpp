@@ -307,8 +307,7 @@ evt_contract_abi() {
         "transaction_header", "", {
             {"expiration", "time_point_sec"},
             {"ref_block_num", "uint16"},
-            {"ref_block_prefix", "uint32"},
-            {"delay_sec", "uint32"}
+            {"ref_block_prefix", "uint32"}
         }
     });
 
