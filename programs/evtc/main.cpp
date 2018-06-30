@@ -37,6 +37,8 @@
 
 #include <evt/chain/config.hpp>
 #include <evt/chain/contracts/types.hpp>
+#include <evt/chain/contracts/abi_serializer.hpp>
+#include <evt/chain/contracts/evt_contract.hpp>
 #include <evt/chain/exceptions.hpp>
 #include <evt/chain_plugin/chain_plugin.hpp>
 #include <evt/utilities/key_conversion.hpp>
@@ -862,14 +864,17 @@ struct set_delay_subcommands {
         auto adcmd = actionRoot->add_subcommand("approve", localized("Approve specific delay transaction"));
         adcmd->add_option("name", name, localized("Proposal name of specific delay transaction"))->required();
         adcmd->set_callback([this] {
-            auto delay = call(get_delay_func, fc::mutable_variant_object("name", (proposal_name)name)).as<delay_def>();
+            auto vardelay = call(get_delay_func, fc::mutable_variant_object("name", (proposal_name)name));
+            auto delay = delay_def();
+            auto evt_abi = abi_serializer(evt_contract_abi());
+            abi_serializer::from_variant(vardelay, delay, [&]{ return evt_abi; });
 
             auto public_keys = call(wallet_url, wallet_public_keys);
             auto get_arg     = fc::mutable_variant_object("name", (proposal_name)name)("available_keys", public_keys);
             
             auto required_keys = call(url, get_delay_required_keys, get_arg);
 
-            auto info = get_info(); 
+            auto info = get_info();
             fc::variants sign_args  = {fc::variant(delay.trx), required_keys["required_keys"], fc::variant(info.chain_id)};
             auto signed_trx = call(wallet_url, wallet_sign_trx, sign_args);
             
