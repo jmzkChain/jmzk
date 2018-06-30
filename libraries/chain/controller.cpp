@@ -1159,4 +1159,19 @@ controller::get_required_keys(const transaction& trx, const flat_set<public_key_
     return checker.used_keys();
 }
 
+flat_set<public_key_type>
+controller::get_delay_required_keys(const proposal_name& name, const flat_set<public_key_type>& candidate_keys) const {
+    const static uint32_t max_authority_depth = my->conf.genesis.initial_configuration.max_authority_depth;
+    auto checker = authority_checker(candidate_keys, my->token_db, max_authority_depth);
+
+    delay_def delay;
+    my->token_db.read_delay(name, delay);
+    
+    for(const auto& act : delay.trx.actions) {
+        checker.satisfied(act);
+    }
+
+    return checker.used_keys();
+}
+
 }}  // namespace evt::chain

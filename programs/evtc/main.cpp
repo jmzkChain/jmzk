@@ -82,6 +82,9 @@ bool   tx_print_json     = false;
 bool   print_request     = false;
 bool   print_response    = false;
 
+string propname;
+string proposer;
+
 bool
 detect_public_key(const std::string& pkey, bool &reserved) {
     static public_key_type rkey;
@@ -104,10 +107,10 @@ print_info(const fc::variant& info, int indent = 0) {
     try {
         if(info.is_object()) {
             for(auto& obj : info.get_object()) {
-                for(int i = 0; i < indent; i++)
+                for(int i = 0; i < indent; i++) {
                     cerr << "    ";
-                for(int i = 0; i < indent; i++)
-                    cerr << "|";
+                }
+                cerr << "|";
                 cerr << "->";
                 cerr << obj.key() << " : ";
                 if(obj.value().is_object()) {
@@ -137,10 +140,10 @@ print_info(const fc::variant& info, int indent = 0) {
             }
         }
         else {
-            for(int i = 0; i < indent; i++)
+            for(int i = 0; i < indent; i++) {
                 cerr << "      ";
-            for(int i = 0; i < indent; i++)
-                cerr << "|";
+            }
+            cerr << "|";
             cerr << "->";
             auto v = info.as_string();
 
@@ -215,7 +218,7 @@ print_result(const fc::variant& result) {
 evt::client::http::http_context context;
 
 void
-add_standard_transaction_options(CLI::App* cmd, string default_permission = "") {
+add_standard_transaction_options(CLI::App* cmd) {
     CLI::callback_t parse_expiration = [](CLI::results_t res) -> bool {
         double value_s;
         if(res.size() == 0 || !CLI::detail::lexical_cast(res[0], value_s)) {
@@ -226,10 +229,13 @@ add_standard_transaction_options(CLI::App* cmd, string default_permission = "") 
         return true;
     };
 
-    cmd->add_option("-x,--expiration", parse_expiration, localized("set the time in seconds before a transaction expires, defaults to 30s"));
+    cmd->add_option("-x,--expiration", parse_expiration, localized("Set the time in seconds before a transaction expires, defaults to 30s"));
     cmd->add_flag("-s,--skip-sign", tx_skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
-    cmd->add_flag("-d,--dont-broadcast", tx_dont_broadcast, localized("don't broadcast transaction to the network (just print to stdout)"));
-    cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id, (localized("set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)")));
+    cmd->add_flag("-d,--dont-broadcast", tx_dont_broadcast, localized("Don't broadcast transaction to the network (just print to stdout)"));
+    cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id, (localized("Set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)")));
+
+    auto popt = cmd->add_option("-p,--proposal-name", propname, localized("Push a delay transaction instead of normal transaction, specify its proposal name"));
+    cmd->add_option("-u,--proposer", proposer, localized("Proposer public key"))->needs(popt);
 }
 
 template <typename T>
@@ -266,6 +272,12 @@ call(const std::string& url,
     return call(url, path, fc::variant()); 
 }
 
+template <typename T>
+chain::action
+create_action(const domain_name& domain, const domain_key& key, const T& value) {
+    return action(domain, key, value);
+}
+
 evt::chain_apis::read_only::get_info_results
 get_info() {
     return ::call(url, get_info_func, fc::variant()).as<evt::chain_apis::read_only::get_info_results>();
@@ -283,11 +295,9 @@ sign_transaction(signed_transaction& trx, const chain_id_type& chain_id) {
     trx                     = signed_trx.as<signed_transaction>();
 }
 
-fc::variant
-push_transaction(signed_transaction& trx, packed_transaction::compression_type compression = packed_transaction::none) {
-    auto info      = get_info();
+void
+set_transaction_header(signed_transaction& trx, const evt::chain_apis::read_only::get_info_results& info) {
     trx.expiration = info.head_block_time + tx_expiration;
-    trx.set_reference_block(info.head_block_id);
 
     // Set tapos, default to last irreversible block if it's not specified by the user
     block_id_type ref_block_id = info.last_irreversible_block_id;
@@ -300,6 +310,34 @@ push_transaction(signed_transaction& trx, packed_transaction::compression_type c
     }
     EVT_RETHROW_EXCEPTIONS(invalid_ref_block_exception, "Invalid reference block num or id: ${block_num_or_id}", ("block_num_or_id", tx_ref_block_num_or_id));
     trx.set_reference_block(ref_block_id);
+}
+
+signed_transaction
+create_delay_transaction(transaction& trx) {
+    FC_ASSERT(!propname.empty());
+    FC_ASSERT(!proposer.empty());
+
+    auto nd = newdelay();
+    nd.name = (proposal_name)propname;
+    nd.proposer = (public_key_type)proposer;
+    nd.trx = std::move(trx);
+   
+    auto signed_trx = signed_transaction();
+    signed_trx.actions.emplace_back(create_action(N128(delay), (domain_key)propname, nd));
+    return signed_trx;
+}
+
+fc::variant
+push_transaction(signed_transaction& trx, packed_transaction::compression_type compression = packed_transaction::none) {
+    auto info = get_info(); 
+    set_transaction_header(trx, info);
+    if(!propname.empty()) {
+        // delay transaction
+        auto rtrx = (transaction)trx;
+        trx = create_delay_transaction(rtrx);
+        // needs to set new transaction's header
+        set_transaction_header(trx, info);
+    }
 
     if(!tx_skip_sign) {
         sign_transaction(trx, info.chain_id);
@@ -330,12 +368,6 @@ send_actions(std::vector<chain::action>&& actions, packed_transaction::compressi
 void
 send_transaction(signed_transaction& trx, packed_transaction::compression_type compression = packed_transaction::none) {
     std::cout << fc::json::to_pretty_string(push_transaction(trx, compression)) << std::endl;
-}
-
-template <typename T>
-chain::action
-create_action(const domain_name& domain, const domain_key& key, const T& value) {
-    return action(domain, key, value);
 }
 
 bool
@@ -823,6 +855,47 @@ struct set_meta_subcommands {
     }
 };
 
+struct set_delay_subcommands {
+    string name;
+
+    set_delay_subcommands(CLI::App* actionRoot) {
+        auto adcmd = actionRoot->add_subcommand("approve", localized("Approve specific delay transaction"));
+        adcmd->add_option("name", name, localized("Proposal name of specific delay transaction"))->required();
+        adcmd->set_callback([this] {
+            auto delay = call(get_delay_func, fc::mutable_variant_object("name", (proposal_name)name)).as<delay_def>();
+
+            auto public_keys = call(wallet_url, wallet_public_keys);
+            auto get_arg     = fc::mutable_variant_object("name", (proposal_name)name)("available_keys", public_keys);
+            
+            auto required_keys = call(url, get_delay_required_keys, get_arg);
+
+            auto info = get_info(); 
+            fc::variants sign_args  = {fc::variant(delay.trx), required_keys["required_keys"], fc::variant(info.chain_id)};
+            auto signed_trx = call(wallet_url, wallet_sign_trx, sign_args);
+            
+            auto trx = signed_trx.as<signed_transaction>();
+
+            auto adact = approvedelay();
+            adact.name = (proposal_name)name;
+            adact.signatures = std::move(trx.signatures);
+
+            auto act = create_action(N128(delay), (domain_key)adact.name, adact);
+            send_actions({act});
+        });
+
+        auto cdcmd = actionRoot->add_subcommand("cancel", localized("Cancel specific delay transaction"));
+        cdcmd->add_option("name", name, localized("Proposal name of specific delay transaction"))->required();
+        cdcmd->set_callback([this] {
+            auto cdact = canceldelay();
+            cdact.name = (proposal_name)name;
+
+            auto act = create_action(N128(delay), (domain_key)cdact.name, cdact);
+            send_actions({act});
+        });
+    }
+
+};
+
 struct set_get_domain_subcommand {
     string name;
 
@@ -909,6 +982,20 @@ struct set_get_assets_subcommand {
                 arg["sym"] = symbol::from_string(sym);
             }
             print_info(call(get_assets_func, arg));
+        });
+    }
+};
+
+struct set_get_delay_subcommand {
+    string name;
+
+    set_get_delay_subcommand(CLI::App* actionRoot) {
+        auto gdcmd = actionRoot->add_subcommand("delay", localized("Retrieve a delay transaction information"));
+        gdcmd->add_option("name", name, localized("Name of delay transaction to be retrieved"))->required();
+
+        gdcmd->set_callback([this] {
+            auto arg = fc::mutable_variant_object("name", name);
+            print_info(call(get_delay_func, arg));
         });
     }
 };
@@ -1114,6 +1201,7 @@ main(int argc, char** argv) {
     set_get_assets_subcommand   get_assets(get);
     set_get_my_subcommands      get_my(get);
     set_get_history_subcommands get_history(get); 
+    set_get_delay_subcommand    get_delay(get);
 
     // Net subcommand
     string new_host;
@@ -1182,6 +1270,12 @@ main(int argc, char** argv) {
     meta->require_subcommand();
 
     auto set_meta = set_meta_subcommands(meta);
+
+    // delay
+    auto delay = app.add_subcommand("delay", localized("Approve or cancel delay transactions"));
+    delay->require_subcommand();
+
+    auto set_delay = set_delay_subcommands(delay);
 
     // Wallet subcommand
     auto wallet = app.add_subcommand("wallet", localized("Interact with local wallet"));

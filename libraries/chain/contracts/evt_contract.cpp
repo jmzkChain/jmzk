@@ -616,15 +616,7 @@ apply_evt_newdelay(apply_context& context) {
         delay.name     = ndact.name;
         delay.proposer = ndact.proposer;
         delay.status   = delay_status::proposed;
-        delay.trx      = signed_transaction(std::move(ndact.trx), {});
-
-        auto signed_keys = delay.trx.get_signature_keys(ndact.signatures, context.control.get_chain_id());
-        EVT_ASSERT(signed_keys.find(delay.proposer) != signed_keys.end(), delay_proposer_key_exception, "Proposer ${key} needs to sign his key on delay transaction", ("key",delay.proposer));
-
-        delay.trx.signatures.reserve(signed_keys.size());
-        delay.trx.signatures.insert(delay.trx.signatures.end(), ndact.signatures.cbegin(), ndact.signatures.cend());
-        
-        delay.signed_keys = std::move(signed_keys);
+        delay.trx      = std::move(ndact.trx);
 
         tokendb.add_delay(delay);
     }
@@ -650,10 +642,10 @@ apply_evt_approvedelay(apply_context& context) {
             EVT_ASSERT(delay.signed_keys.find(*it) == delay.signed_keys.end(), delay_duplicate_key_exception, "Public key ${key} is already signed this delay transaction", ("key",*it)); 
         }
 
-        delay.trx.signatures.reserve(delay.trx.signatures.size() + signed_keys.size());
-        delay.trx.signatures.insert(delay.trx.signatures.end(), adact.signatures.cbegin(), adact.signatures.cend());
+        delay.signatures.reserve(delay.signatures.size() + signed_keys.size());
+        delay.signatures.insert(delay.signatures.end(), adact.signatures.cbegin(), adact.signatures.cend());
  
-        delay.signed_keys.insert(boost::ordered_unique_range_t, signed_keys.cbegin(), signed_keys.cend());
+        delay.signed_keys.merge(signed_keys);
         
         tokendb.update_delay(delay);
     }

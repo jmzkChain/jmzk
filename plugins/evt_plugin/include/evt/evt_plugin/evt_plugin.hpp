@@ -24,6 +24,7 @@ using namespace appbase;
 using namespace evt::chain;
 using namespace evt::chain::contracts;
 using evt::chain_plugin;
+using evt::contracts::abi_serializer;
 
 class evt_plugin;
 
@@ -31,8 +32,9 @@ namespace evt_apis {
 
 class read_only {
 public:
-    read_only(const controller& db)
-        : db_(db) {}
+    read_only(const controller& db, const abi_serializer& evt_abi)
+        : db_(db)
+        , evt_abi_(evt_abi) {}
 
 public:
     struct get_domain_params {
@@ -71,7 +73,8 @@ public:
     fc::variant get_delay(const get_delay_params& params);
 
 private:
-    const controller& db_;
+    const controller&     db_;
+    const abi_serializer& evt_abi_;
 };
 
 class read_write {

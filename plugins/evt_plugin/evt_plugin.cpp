@@ -7,6 +7,7 @@
 #include <evt/chain/types.hpp>
 #include <evt/chain/asset.hpp>
 #include <evt/chain/token_database.hpp>
+#include <evt/chain/contracts/evt_contract.hpp>
 
 #include <fc/container/flat.hpp>
 #include <fc/io/json.hpp>
@@ -22,10 +23,12 @@ using namespace evt::chain;
 class evt_plugin_impl {
 public:
     evt_plugin_impl(controller& db)
-        : db_(db) {}
+        : db_(db)
+        , evt_abi_(contracts::evt_contract_abi()) {}
 
 public:
     controller& db_;
+    contracts::abi_serializer evt_abi_;
 };
 
 evt_plugin::evt_plugin() {}
@@ -50,7 +53,7 @@ evt_plugin::plugin_shutdown() {
 
 evt_apis::read_only
 evt_plugin::get_read_only_api() const {
-    return evt_apis::read_only(my_->db_);
+    return evt_apis::read_only(my_->db_, my_->evt_abi_);
 }
 
 evt_apis::read_write
@@ -129,7 +132,7 @@ read_only::get_delay(const get_delay_params& params) {
     variant   var;
     delay_def delay;
     db.read_delay(params.name, delay);
-    fc::to_variant(delay, var);
+    abi_serializer::to_variant(delay, var, [this]{ return evt_abi_; });
     return var;
 }
 

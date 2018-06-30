@@ -150,6 +150,7 @@ public:
     signal<void(const int&)>                      bad_alloc;
 
     flat_set<public_key_type> get_required_keys(const transaction& trx, const flat_set<public_key_type>& candidate_keys) const;
+    flat_set<public_key_type> get_delay_required_keys(const proposal_name& name, const flat_set<public_key_type>& candidate_keys) const;
 
     const apply_handler* find_apply_handler(action_name act) const;
 
@@ -160,7 +161,7 @@ public:
     to_variant_with_abi(const T& obj) {
         // TODO: Remove account parameter
         fc::variant pretty_output;
-        abi_serializer::to_variant(obj, pretty_output, [&] { return get_abi_serializer(); });
+        abi_serializer::to_variant(obj, pretty_output, [this] { return get_abi_serializer(); });
         return pretty_output;
     }
 

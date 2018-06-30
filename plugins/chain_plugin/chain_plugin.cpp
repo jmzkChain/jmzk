@@ -673,7 +673,6 @@ read_write::push_transaction(const read_write::push_transaction_params& params, 
                 try {
                     fc::variant pretty_output;
                     pretty_output = db.to_variant_with_abi(*trx_trace_ptr);
-                    //abi_serializer::to_variant(*trx_trace_ptr, pretty_output, resolver);
 
                     chain::transaction_id_type id = trx_trace_ptr->id;
                     next(read_write::push_transaction_results{id, pretty_output});
@@ -790,7 +789,15 @@ read_only::get_required_keys(const get_required_keys_params& params) const {
 
     auto required_keys_set = db.get_required_keys(pretty_input, params.available_keys);
     get_required_keys_result result;
-    result.required_keys = required_keys_set;
+    result.required_keys = std::move(required_keys_set);
+    return result;
+}
+
+read_only::get_delay_required_keys_result
+read_only::get_delay_required_keys(const get_delay_required_keys_params& params) const {
+    auto required_keys_set = db.get_delay_required_keys(params.name, params.available_keys);
+    get_delay_required_keys_result result;
+    result.required_keys = std::move(required_keys_set);
     return result;
 }
 

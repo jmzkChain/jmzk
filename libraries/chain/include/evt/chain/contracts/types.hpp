@@ -176,11 +176,12 @@ enum delay_status {
 struct delay_def {
     delay_def() = default;
 
-    proposal_name                name;
-    public_key_type              proposer;
-    delay_status                 status;
-    signed_transaction           trx;
-    flat_set<public_key_type>    signed_keys;
+    proposal_name                        name;
+    public_key_type                      proposer;
+    fc::enum_type<uint8_t, delay_status> status;
+    transaction                          trx;
+    flat_set<public_key_type>            signed_keys;
+    std::vector<signature_type>          signatures;
 };
 
 struct newdomain {
@@ -326,9 +327,8 @@ struct addmeta {
 
 struct newdelay {
     proposal_name               name;
-    public_key_type             proposer;
+    user_id                     proposer;
     transaction                 trx;
-    std::vector<signature_type> signatures;
 
     static action_name
     get_name() {
@@ -378,7 +378,7 @@ FC_REFLECT(evt::chain::contracts::permission_def, (name)(threshold)(authorizers)
 FC_REFLECT(evt::chain::contracts::domain_def, (name)(creator)(create_time)(issue)(transfer)(manage)(metas));
 FC_REFLECT(evt::chain::contracts::fungible_def, (sym)(creator)(create_time)(issue)(manage)(total_supply)(current_supply)(metas));
 FC_REFLECT_ENUM(evt::chain::contracts::delay_status, (proposed)(executed)(cancelled));
-FC_REFLECT(evt::chain::contracts::delay_def, (name)(proposer)(status)(trx)(signed_keys));
+FC_REFLECT(evt::chain::contracts::delay_def, (name)(proposer)(status)(trx)(signed_keys)(signatures));
 
 FC_REFLECT(evt::chain::contracts::newdomain, (name)(creator)(issue)(transfer)(manage));
 FC_REFLECT(evt::chain::contracts::issuetoken, (domain)(names)(owner));
@@ -392,7 +392,7 @@ FC_REFLECT(evt::chain::contracts::updfungible, (sym)(issue)(manage));
 FC_REFLECT(evt::chain::contracts::issuefungible, (address)(number)(memo));
 FC_REFLECT(evt::chain::contracts::transferft, (from)(to)(number)(memo));
 FC_REFLECT(evt::chain::contracts::addmeta, (key)(value)(creator));
-FC_REFLECT(evt::chain::contracts::newdelay, (name)(proposer)(trx)(signatures));
+FC_REFLECT(evt::chain::contracts::newdelay, (name)(proposer)(trx));
 FC_REFLECT(evt::chain::contracts::canceldelay, (name));
 FC_REFLECT(evt::chain::contracts::approvedelay, (name)(signatures));
 FC_REFLECT(evt::chain::contracts::executedelay, (name));
