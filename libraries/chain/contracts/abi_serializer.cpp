@@ -344,9 +344,6 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
             if(var.is_null()) {
                 flag = 0;
             }
-            else if(var.is_object() && var.get_object().size() == 0) {
-                flag = 0;
-            }
             fc::raw::pack(ds, flag);
             if(flag) {
                 _variant_to_binary(fundamental_type(rtype), var, ds, recursion_depth, deadline);
@@ -365,9 +362,13 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
                         _variant_to_binary(field.type, vo[field.name], ds, recursion_depth, deadline);
                     }
                     else {
-                        _variant_to_binary(field.type, fc::variant(), ds, recursion_depth, deadline);
-                        /// TODO: default construct field and write it out
-                        FC_THROW("Missing '${f}' in variant object", ("f", field.name));
+                        if(is_optional(field.type)) {
+                            _variant_to_binary(field.type, fc::variant(), ds, recursion_depth, deadline);
+                        }
+                        else {
+                            /// TODO: default construct field and write it out
+                            FC_THROW("Missing '${f}' in variant object", ("f", field.name));
+                        }
                     }
                 }
             }

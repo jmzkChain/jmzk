@@ -306,9 +306,9 @@ evt_contract_abi() {
     evt_abi.structs.emplace_back( struct_def {
         "transaction_header", "", {
             {"expiration", "time_point_sec"},
-            {"region", "uint16"},
             {"ref_block_num", "uint16"},
-            {"ref_block_prefix", "uint16"}
+            {"ref_block_prefix", "uint32"},
+            {"delay_sec", "uint32"}
         }
     });
 

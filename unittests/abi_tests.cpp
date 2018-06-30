@@ -59,9 +59,84 @@ verify_type_round_trip_conversion(const abi_serializer& abis, const type_name& t
 
     auto bytes2 = abis.variant_to_binary(type, var2);
 
+    BOOST_TEST(bytes.size() == bytes2.size());
     BOOST_TEST(fc::to_hex(bytes) == fc::to_hex(bytes2));
 
     return var2;
+}
+
+struct optionaltest {
+    fc::optional<int> a;
+    fc::optional<int> b;
+};
+FC_REFLECT(optionaltest, (a)(b));
+
+struct optionaltest2 {
+    fc::optional<optionaltest> a;
+    fc::optional<optionaltest> b;
+};
+FC_REFLECT(optionaltest2, (a)(b));
+
+BOOST_AUTO_TEST_CASE(optional_test) {
+    try {
+        auto abi = abi_def();
+        abi.structs.emplace_back( struct_def {
+            "optionaltest", "", {
+                {"a", "int32?"},
+                {"b", "int32?"}
+            }
+        });
+        abi.structs.emplace_back( struct_def {
+            "optionaltest2", "", {
+                {"a", "optionaltest?"},
+                {"b", "optionaltest?"}
+            }
+        });
+
+        auto abis = abi_serializer(abi);
+
+        auto json = R"( { "a": 0 } )";
+        auto json2 = R"( {"a": { "a": 0 } } )";
+        auto var1 = fc::json::from_string(json);
+        auto var2 = fc::json::from_string(json2);
+        auto bytes1  = abis.variant_to_binary("optionaltest", var1);
+        auto bytes2 = abis.variant_to_binary("optionaltest2", var2);
+
+        BOOST_TEST(var1["a"].is_integer());
+        BOOST_CHECK_THROW(var1["b"].is_null(), fc::key_not_found_exception);
+
+        BOOST_TEST((var2["a"].is_object() && var2["a"].get_object().size() > 0));
+        BOOST_CHECK_THROW((var2["b"].is_object() && var2["b"].get_object().size() == 0), fc::key_not_found_exception);
+
+        optionaltest ot;
+        fc::from_variant(var1, ot);
+
+        optionaltest2 ot2;
+        fc::from_variant(var2, ot2);
+
+        BOOST_CHECK(ot.a.valid());
+        BOOST_CHECK(!ot.b.valid());
+
+        BOOST_CHECK(ot2.a.valid());
+        BOOST_CHECK(!ot2.b.valid());
+
+        fc::variant var21, var22;
+        fc::to_variant(ot, var21);
+        fc::to_variant(ot2, var22);
+
+        BOOST_TEST(var21["a"].is_integer());
+        BOOST_CHECK_THROW(var21["b"].is_null(), fc::key_not_found_exception);
+
+        BOOST_TEST((var22["a"].is_object() && var22["a"].get_object().size() > 0));
+        BOOST_CHECK_THROW((var22["b"].is_object() && var22["b"].get_object().size() == 0), fc::key_not_found_exception);  
+
+        auto bytes21 = abis.variant_to_binary("optionaltest", var21);
+        BOOST_TEST(fc::to_hex(bytes1) == fc::to_hex(bytes21));
+
+        auto bytes22 = abis.variant_to_binary("optionaltest2", var22);
+        BOOST_TEST(fc::to_hex(bytes2) == fc::to_hex(bytes22));
+    }
+    FC_LOG_AND_RETHROW()
 }
 
 BOOST_AUTO_TEST_CASE(newdomain_test) {
@@ -176,8 +251,6 @@ BOOST_AUTO_TEST_CASE(updatedomain_test) {
                 "weight": 1
               } ]
           }
-          "transfer":{},
-          "manage":{}
         }
         )=====";
 
@@ -204,6 +277,8 @@ BOOST_AUTO_TEST_CASE(updatedomain_test) {
         BOOST_TEST_REQUIRE(updom2.issue->authorizers[0].ref.is_account_ref());
         BOOST_TEST("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)updom2.issue->authorizers[0].ref.get_account());
         BOOST_TEST(1 == updom2.issue->authorizers[0].weight);
+
+        verify_type_round_trip_conversion<updatedomain>(abis, "updatedomain", var);
     }
     FC_LOG_AND_RETHROW()
 }
@@ -742,6 +817,8 @@ BOOST_AUTO_TEST_CASE(newfungible_test) {
         BOOST_TEST(1200000 == newfg2.total_supply.get_amount());
         BOOST_TEST("5,EVT" == newfg2.total_supply.get_symbol().to_string());
         BOOST_TEST("12.00000 EVT" == newfg2.total_supply.to_string());
+
+        verify_type_round_trip_conversion<newfungible>(abis, "newfungible", var);
     }
     FC_LOG_AND_RETHROW()
 }
@@ -761,8 +838,7 @@ BOOST_AUTO_TEST_CASE(updfungible_test) {
                 "weight": 1
               }
             ]
-          },
-         "manage":{}
+          }
         }
         )=====";
 
@@ -790,6 +866,8 @@ BOOST_AUTO_TEST_CASE(updfungible_test) {
         BOOST_TEST(updfg2.issue->authorizers[0].ref.is_account_ref());
         BOOST_TEST("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)updfg2.issue->authorizers[0].ref.get_account());
         BOOST_TEST(1 == updfg2.issue->authorizers[0].weight);
+
+        verify_type_round_trip_conversion<updfungible>(abis, "updfungible", var);
     }
     FC_LOG_AND_RETHROW()
 }
@@ -826,6 +904,8 @@ BOOST_AUTO_TEST_CASE(issuefungible_test) {
         BOOST_TEST(1200000 == issfg2.number.get_amount());
         BOOST_TEST("5,EVT" == issfg2.number.get_symbol().to_string());
         BOOST_TEST("12.00000 EVT" == issfg2.number.to_string());
+
+        verify_type_round_trip_conversion<issuefungible>(abis, "issuefungible", var);
     }
     FC_LOG_AND_RETHROW()
 }
@@ -865,6 +945,8 @@ BOOST_AUTO_TEST_CASE(transferft_test) {
         BOOST_TEST(1200000 == trft2.number.get_amount());
         BOOST_TEST("5,EVT" == trft2.number.get_symbol().to_string());
         BOOST_TEST("12.00000 EVT" == trft2.number.to_string());
+
+        verify_type_round_trip_conversion<transferft>(abis, "transferft", var);
     }
     FC_LOG_AND_RETHROW()
 }
@@ -896,6 +978,44 @@ BOOST_AUTO_TEST_CASE(addmeta_test) {
         BOOST_TEST("key" == admt2.key);
         BOOST_TEST("value" == admt2.value);
         BOOST_TEST("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)admt2.creator);
+
+        verify_type_round_trip_conversion<addmeta>(abis, "addmeta", var);
+    }
+    FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE(newdelay_test) {
+    try {
+        auto abis = get_evt_abi();
+        BOOST_CHECK(true);
+        const char* test_data = R"=======(
+        {
+            "name": "testdelay",
+            "proposer": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+            "trx": {
+                "expiration": "2018-06-30T12:43:24",
+                "ref_block_num": 212,
+                "ref_block_prefix": 3641962205,
+                "delay_sec": 0,
+                "actions": [{
+                    "name": "newdelay",
+                    "domain": "delay",
+                    "key": "delay1",
+                    "data": "00000000000000000000003090cc053d0002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cfec7a375bd400ddee13d9000100007029b4476e71000000000000000000000000009f077d0000000000000000000000f43150e700e301000000000000000000000000009f077d0002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf000000008052e74c01000000010100000002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf44a2ec000000000100000000b298e982a40100000001020000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000000000094135c6801000000010100000002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf44a2ec00000000010000"
+                }],
+                "transaction_extensions": []
+            }
+        }
+        )=======";
+
+        auto var  = fc::json::from_string(test_data);
+        auto ndact = var.as<newdelay>();
+
+        BOOST_TEST("testdelay" == (std::string)ndact.name);
+        BOOST_TEST(ndact.trx.actions.size() == 1);
+
+        verify_byte_round_trip_conversion(abis, "newdelay", var);
+        verify_type_round_trip_conversion<newdelay>(abis, "newdelay", var);
     }
     FC_LOG_AND_RETHROW()
 }
