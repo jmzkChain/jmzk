@@ -170,7 +170,7 @@ struct fungible_def {
 };
 
 enum delay_status {
-    proposed = 0, executed, cancelled
+    proposed = 0, executed, failed, cancelled
 };
 
 struct delay_def {
@@ -377,7 +377,7 @@ FC_REFLECT(evt::chain::contracts::authorizer_weight, (ref)(weight));
 FC_REFLECT(evt::chain::contracts::permission_def, (name)(threshold)(authorizers));
 FC_REFLECT(evt::chain::contracts::domain_def, (name)(creator)(create_time)(issue)(transfer)(manage)(metas));
 FC_REFLECT(evt::chain::contracts::fungible_def, (sym)(creator)(create_time)(issue)(manage)(total_supply)(current_supply)(metas));
-FC_REFLECT_ENUM(evt::chain::contracts::delay_status, (proposed)(executed)(cancelled));
+FC_REFLECT_ENUM(evt::chain::contracts::delay_status, (proposed)(executed)(failed)(cancelled));
 FC_REFLECT(evt::chain::contracts::delay_def, (name)(proposer)(status)(trx)(signed_keys)(signatures));
 
 FC_REFLECT(evt::chain::contracts::newdomain, (name)(creator)(issue)(transfer)(manage));

@@ -674,7 +674,30 @@ apply_evt_canceldelay(apply_context& context) {
 
 void
 apply_evt_executedelay(apply_context& context) {
+    auto edact = context.act.data_as<executedelay>();
+    try {
+        EVT_ASSERT(context.has_authorized(N128(delay), edact.name), action_authorize_exception, "Authorized information does not match.");
 
+        auto& tokendb = context.token_db;
+
+        delay_def delay;
+        tokendb.read_delay(edact.name, delay);
+        EVT_ASSERT(delay.status == delay_status::proposed, delay_status_exception, "Delay is not in proper status.");
+
+        auto strx = signed_transaction(delay.trx, delay.signatures);
+        auto mtrx = std::make_shared<transaction_metadata>(strx);
+        auto trace = context.control.push_transaction(mtrx, context.control.head_block_time() + fc::seconds(5));
+        bool transaction_failed = trace && trace->except;
+        if(transaction_failed) {
+            delay.status = delay_status::failed;
+            context.console_append(trace->except->to_string());
+        }
+        else {
+            delay.status = delay_status::executed;
+        }
+        tokendb.update_delay(delay);
+    }
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
 }}} // namespace evt::chain::contracts

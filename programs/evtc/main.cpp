@@ -897,6 +897,16 @@ struct set_delay_subcommands {
             auto act = create_action(N128(delay), (domain_key)cdact.name, cdact);
             send_actions({act});
         });
+
+        auto edcmd = actionRoot->add_subcommand("execute", localized("Execute specific delay transaction"));
+        edcmd->add_option("name", name, localized("Proposal name of specific delay transaction"))->required();
+        edcmd->set_callback([this] {
+            auto edact = executedelay();
+            edact.name = (proposal_name)name;
+
+            auto act = create_action(N128(delay), (domain_key)edact.name, edact);
+            send_actions({act});
+        });
     }
 
 };

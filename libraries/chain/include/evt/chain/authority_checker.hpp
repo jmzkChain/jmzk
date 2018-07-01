@@ -309,7 +309,8 @@ private:
             EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `newdelay` type.");
             break;
         }
-        case N(approvedelay): {
+        case N(approvedelay):
+        case N(executedelay): {
             // will check signatures when applying
             return true;
         }

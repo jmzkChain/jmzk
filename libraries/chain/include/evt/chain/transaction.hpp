@@ -67,6 +67,9 @@ struct transaction : public transaction_header {
 
 struct signed_transaction : public transaction {
     signed_transaction() = default;
+    signed_transaction(const transaction& trx, const vector<signature_type>& signatures)
+        : transaction(trx)
+        , signatures(signatures) {}
     signed_transaction(transaction&& trx, const vector<signature_type>& signatures)
         : transaction(std::move(trx))
         , signatures(signatures) {}
