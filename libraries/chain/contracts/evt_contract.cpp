@@ -612,15 +612,11 @@ apply_evt_newdelay(apply_context& context) {
         EVT_ASSERT(!ndact.name.empty(), proposal_name_exception, "Proposal name cannot be empty.");
         EVT_ASSERT(!tokendb.exists_delay(ndact.name), delay_exists_exception, "Delay ${name} already exists.", ("name",ndact.name));
 
-        auto delay = delay_def {
-            ndact.name,
-            ndact.proposer,
-            delay_status::proposed,
-            ndact.trx
-        };
-        auto& keys = context.trx_context.trx.recover_keys(context.control.get_chain_id());
-        delay.signed_keys.reserve(delay.signed_keys.size() + keys.size());
-        delay.signed_keys.insert(delay.signed_keys.end(), keys.cbegin(), keys.cend());
+        delay_def delay;
+        delay.name     = ndact.name;
+        delay.proposer = ndact.proposer;
+        delay.status   = delay_status::proposed;
+        delay.trx      = std::move(ndact.trx);
 
         tokendb.add_delay(delay);
     }
@@ -636,27 +632,21 @@ apply_evt_approvedelay(apply_context& context) {
         EVT_ASSERT(context.has_authorized(N128(delay), adact.name), action_authorize_exception, "Authorized information does not match.");
 
         auto& tokendb = context.token_db;
-        bool  existed = false;
-        flat_set<public_key_type> signed_keys;
 
         delay_def delay;
         tokendb.read_delay(adact.name, delay);
         EVT_ASSERT(delay.status == delay_status::proposed, delay_status_exception, "Delay is not in proper status.");
-        signed_keys = delay.trx.get_signature_keys(adact.signatures, context.control.get_chain_id());
 
-        EVT_ASSERT(existed, delay_not_existed_exception, "Delay ${name} does not exist.", ("name",adact.name));
-
-        auto& keys = context.trx_context.trx.recover_keys(context.control.get_chain_id());
-        EVT_ASSERT(signed_keys.size() == keys.size(), delay_sigs_exception, "Signed keys and signatures do not match.");
-
-        auto it  = signed_keys.cbegin();
-        auto it2 = keys.cbegin();
-        for(; it != signed_keys.cend(); it++, it2++) {
-            EVT_ASSERT(*it == *it2, delay_sigs_exception, "Signed keys and signatures do not match.");
+        auto signed_keys = delay.trx.get_signature_keys(adact.signatures, context.control.get_chain_id());
+        for(auto it = signed_keys.cbegin(); it != signed_keys.cend(); it++) {
+            EVT_ASSERT(delay.signed_keys.find(*it) == delay.signed_keys.end(), delay_duplicate_key_exception, "Public key ${key} is already signed this delay transaction", ("key",*it)); 
         }
 
-        delay.signed_keys.reserve(delay.signed_keys.size() + signed_keys.size());
-        delay.signed_keys.insert(delay.signed_keys.end(), signed_keys.cbegin(), signed_keys.cend());
+        delay.signatures.reserve(delay.signatures.size() + signed_keys.size());
+        delay.signatures.insert(delay.signatures.end(), adact.signatures.cbegin(), adact.signatures.cend());
+ 
+        delay.signed_keys.merge(signed_keys);
+        
         tokendb.update_delay(delay);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
@@ -684,7 +674,30 @@ apply_evt_canceldelay(apply_context& context) {
 
 void
 apply_evt_executedelay(apply_context& context) {
+    auto edact = context.act.data_as<executedelay>();
+    try {
+        EVT_ASSERT(context.has_authorized(N128(delay), edact.name), action_authorize_exception, "Authorized information does not match.");
 
+        auto& tokendb = context.token_db;
+
+        delay_def delay;
+        tokendb.read_delay(edact.name, delay);
+        EVT_ASSERT(delay.status == delay_status::proposed, delay_status_exception, "Delay is not in proper status.");
+
+        auto strx = signed_transaction(delay.trx, delay.signatures);
+        auto mtrx = std::make_shared<transaction_metadata>(strx);
+        auto trace = context.control.push_transaction(mtrx, context.control.head_block_time() + fc::seconds(5));
+        bool transaction_failed = trace && trace->except;
+        if(transaction_failed) {
+            delay.status = delay_status::failed;
+            context.console_append(trace->except->to_string());
+        }
+        else {
+            delay.status = delay_status::executed;
+        }
+        tokendb.update_delay(delay);
+    }
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
 }}} // namespace evt::chain::contracts

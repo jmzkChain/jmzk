@@ -280,7 +280,7 @@ struct controller_impl {
     */
     void
     initialize_fork_db() {
-        wlog(" Initializing new blockchain with genesis state                  ");
+        wlog(" Initializing new blockchain with genesis state");
         producer_schedule_type initial_schedule{0, {{N128(evt), conf.genesis.initial_key}}};
 
         block_header_state genheader;
@@ -1154,6 +1154,21 @@ controller::get_required_keys(const transaction& trx, const flat_set<public_key_
         EVT_ASSERT(checker.satisfied(act), unsatisfied_authorization,
                    "${name} action in domain: ${domain} with key: ${key} authorized failed",
                    ("domain", act.domain)("key", act.key)("name", act.name));
+    }
+
+    return checker.used_keys();
+}
+
+flat_set<public_key_type>
+controller::get_delay_required_keys(const proposal_name& name, const flat_set<public_key_type>& candidate_keys) const {
+    const static uint32_t max_authority_depth = my->conf.genesis.initial_configuration.max_authority_depth;
+    auto checker = authority_checker(candidate_keys, my->token_db, max_authority_depth);
+
+    delay_def delay;
+    my->token_db.read_delay(name, delay);
+    
+    for(const auto& act : delay.trx.actions) {
+        checker.satisfied(act);
     }
 
     return checker.used_keys();
