@@ -29,18 +29,15 @@ struct transaction_trace {
     transaction_id_type                      id;
     fc::optional<transaction_receipt_header> receipt;
     fc::microseconds                         elapsed;
-    uint64_t                                 net_usage = 0;
-    bool                                     scheduled = false;
+    bool                                     is_delay = false;
     vector<action_trace>                     action_traces;  ///< disposable
 
-    transaction_trace_ptr       failed_dtrx_trace;
     fc::optional<fc::exception> except;
     std::exception_ptr          except_ptr;
 };
 
 struct block_trace {
     fc::microseconds              elapsed;
-    uint64_t                      billed_cpu_usage_us;
     vector<transaction_trace_ptr> trx_traces;
 };
 using block_trace_ptr = std::shared_ptr<block_trace>;
@@ -48,6 +45,5 @@ using block_trace_ptr = std::shared_ptr<block_trace>;
 }}  // namespace evt::chain
 
 FC_REFLECT(evt::chain::action_trace, (receipt)(act)(elapsed)(console)(trx_id))
-FC_REFLECT(evt::chain::transaction_trace,
-           (id)(receipt)(elapsed)(net_usage)(scheduled)(action_traces)(failed_dtrx_trace)(except))
-FC_REFLECT(evt::chain::block_trace, (elapsed)(billed_cpu_usage_us)(trx_traces))
+FC_REFLECT(evt::chain::transaction_trace, (id)(receipt)(elapsed)(is_delay)(action_traces)(except))
+FC_REFLECT(evt::chain::block_trace, (elapsed)(trx_traces))

@@ -59,6 +59,7 @@ struct controller_impl {
     controller::config      conf;
     chain_id_type           chain_id;
     bool                    replaying = false;
+    bool                    in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
     abi_serializer          system_api;
 
     map<action_name, apply_handler> apply_handlers;
@@ -280,7 +281,7 @@ struct controller_impl {
     */
     void
     initialize_fork_db() {
-        wlog(" Initializing new blockchain with genesis state                  ");
+        wlog(" Initializing new blockchain with genesis state");
         producer_schedule_type initial_schedule{0, {{N128(evt), conf.genesis.initial_key}}};
 
         block_header_state genheader;
@@ -411,18 +412,75 @@ struct controller_impl {
     */
     template <typename T>
     const transaction_receipt&
-    push_receipt(const T& trx, transaction_receipt_header::status_enum status) {
+    push_receipt(const T& trx, transaction_receipt_header::status_enum status, transaction_receipt_header::type_enum type) {
         pending->_pending_block_state->block->transactions.emplace_back(trx);
         transaction_receipt& r = pending->_pending_block_state->block->transactions.back();
         r.status               = status;
+        r.type                 = type;
         return r;
     }
 
     bool
-    failure_is_subjective( const fc::exception& e ) {
+    failure_is_subjective(const fc::exception& e) {
         auto code = e.code();
         return (code == deadline_exception::code_value);
     }
+
+    transaction_trace_ptr
+    push_delay_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline) {
+        try {
+            auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks,this] {
+                in_trx_requiring_checks = old_value;
+            });
+            in_trx_requiring_checks = true;
+
+            transaction_context trx_context(self, *trx);
+            trx_context.deadline = deadline;
+
+            auto trace = trx_context.trace;
+            try {
+                trx_context.init_for_deferred_trx();
+                trx_context.exec();
+                trx_context.finalize();
+
+                auto restore = make_block_restore_point();
+
+                trace->receipt = push_receipt(trx->packed_trx,
+                                              transaction_receipt::executed,
+                                              transaction_receipt::delay);
+
+                fc::move_append(pending->_actions, move(trx_context.executed));
+
+                emit(self.applied_transaction, trace);
+
+                trx_context.squash();
+                restore.cancel();
+                return trace;
+            }
+            catch(const fc::exception& e) {
+                trace->except     = e;
+                trace->except_ptr = std::current_exception();
+                trace->elapsed    = fc::time_point::now() - trx_context.start;
+            }
+            trx_context.undo_session.undo();
+
+            trace->elapsed = fc::time_point::now() - trx_context.start;
+
+            if(failure_is_subjective(*trace->except)) {
+                trace->receipt = push_receipt(trx->packed_trx,
+                                              transaction_receipt::soft_fail,
+                                              transaction_receipt::delay);
+            }
+            else {
+                trace->receipt = push_receipt(trx->packed_trx,
+                                              transaction_receipt::hard_fail,
+                                              transaction_receipt::delay);
+            }
+            emit(self.applied_transaction, trace);
+            return trace;
+       }
+       FC_CAPTURE_AND_RETHROW()
+   } /// push_scheduled_transaction
 
     /**
     *  This is the entry point for new transactions to the block state. It will check authorization and
@@ -466,7 +524,9 @@ struct controller_impl {
                 auto restore = make_block_restore_point();
 
                 if(!implicit) {
-                    trace->receipt = push_receipt(trx->packed_trx, transaction_receipt::executed);
+                    trace->receipt = push_receipt(trx->packed_trx,
+                                                  transaction_receipt::executed,
+                                                  transaction_receipt::input);
                     pending->_pending_block_state->trxs.emplace_back(trx);
                 }
                 else {
@@ -570,13 +630,22 @@ struct controller_impl {
                 transaction_trace_ptr trace;
                 for(const auto& receipt : b->transactions) {
                     auto num_pending_receipts = pending->_pending_block_state->block->transactions.size();
-                    auto& pt   = receipt.trx;
-                    auto  mtrx = std::make_shared<transaction_metadata>(pt);
-                    trace = push_transaction(mtrx, fc::time_point::maximum(), false);
+                    if(receipt.type == transaction_receipt::input) {
+                        auto& pt = receipt.trx;
+                        auto mtrx = std::make_shared<transaction_metadata>(pt);
+                        trace = push_transaction( mtrx, fc::time_point::maximum(), false);
+                    }
+                    else if(receipt.type == transaction_receipt::delay) {
+                        // delay transaction is executed in its parent transaction
+                        // so don't execute here
+                        continue;
+                    }
+                    else {
+                        EVT_ASSERT(false, block_validate_exception, "encountered unexpected receipt type");
+                    }
 
-                    bool transaction_failed   = trace && trace->except;
-                    bool transaction_can_fail = receipt.status == transaction_receipt_header::hard_fail;
-                    if(transaction_failed && !transaction_can_fail) {
+                    bool transaction_failed = trace && trace->except;
+                    if(transaction_failed) {
                         edump((*trace));
                         throw *trace->except;
                     }
@@ -866,26 +935,36 @@ controller::push_transaction(const transaction_metadata_ptr& trx, fc::time_point
     return my->push_transaction(trx, deadline, false);
 }
 
+transaction_trace_ptr
+controller::push_delay_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline) {
+    return my->push_delay_transaction(trx, deadline);
+}
+
 uint32_t
 controller::head_block_num() const {
     return my->head->block_num;
 }
+
 time_point
 controller::head_block_time() const {
     return my->head->header.timestamp;
 }
+
 block_id_type
 controller::head_block_id() const {
     return my->head->id;
 }
+
 account_name
 controller::head_block_producer() const {
     return my->head->header.producer;
 }
+
 const block_header&
 controller::head_block_header() const {
     return my->head->header;
 }
+
 block_state_ptr
 controller::head_block_state() const {
     return my->head;
@@ -923,6 +1002,7 @@ const dynamic_global_property_object&
 controller::get_dynamic_global_properties() const {
     return my->db.get<dynamic_global_property_object>();
 }
+
 const global_property_object&
 controller::get_global_properties() const {
     return my->db.get<global_property_object>();
@@ -1060,7 +1140,7 @@ controller::proposed_producers() const {
 
 bool
 controller::skip_auth_check()const {
-    return my->replaying && !my->conf.force_all_checks;
+    return my->replaying && !my->conf.force_all_checks && !my->in_trx_requiring_checks;
 }
 
 bool
@@ -1155,6 +1235,21 @@ controller::get_required_keys(const transaction& trx, const flat_set<public_key_
         EVT_ASSERT(checker.satisfied(act), unsatisfied_authorization,
                    "${name} action in domain: ${domain} with key: ${key} authorized failed",
                    ("domain", act.domain)("key", act.key)("name", act.name));
+    }
+
+    return checker.used_keys();
+}
+
+flat_set<public_key_type>
+controller::get_delay_required_keys(const proposal_name& name, const flat_set<public_key_type>& candidate_keys) const {
+    const static uint32_t max_authority_depth = my->conf.genesis.initial_configuration.max_authority_depth;
+    auto checker = authority_checker(candidate_keys, my->token_db, max_authority_depth);
+
+    delay_def delay;
+    my->token_db.read_delay(name, delay);
+    
+    for(const auto& act : delay.trx.actions) {
+        checker.satisfied(act);
     }
 
     return checker.used_keys();

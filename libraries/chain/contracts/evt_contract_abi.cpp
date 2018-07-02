@@ -40,6 +40,7 @@ evt_contract_abi() {
     evt_abi.types.push_back( type_def{"meta_key","name128"} );
     evt_abi.types.push_back( type_def{"meta_value","string"} );
     evt_abi.types.push_back( type_def{"meta_list","meta[]"} );
+    evt_abi.types.push_back( type_def{"delay_status","uint8"} );
 
     evt_abi.actions.push_back( action_def{name("newdomain"), "newdomain"} );
     evt_abi.actions.push_back( action_def{name("issuetoken"), "issuetoken"} );
@@ -126,8 +127,11 @@ evt_contract_abi() {
     evt_abi.structs.emplace_back( struct_def {
         "delay_def", "", {
             {"name", "proposal_name"},
-            {"proposer", "public_key"},
-            {"trx", "transaction"}
+            {"proposer", "user_id"},
+            {"status", "delay_status"},
+            {"trx", "transaction"},
+            {"signed_keys","public_key[]"},
+            {"signatures","signature[]"}
         }
     });
 
@@ -235,7 +239,7 @@ evt_contract_abi() {
     evt_abi.structs.emplace_back( struct_def {
         "newdelay", "", {
             {"name", "proposal_name"},
-            {"proposer", "public_key"},
+            {"proposer", "user_id"},
             {"trx", "transaction"}
         }
     });
@@ -302,9 +306,8 @@ evt_contract_abi() {
     evt_abi.structs.emplace_back( struct_def {
         "transaction_header", "", {
             {"expiration", "time_point_sec"},
-            {"region", "uint16"},
             {"ref_block_num", "uint16"},
-            {"ref_block_prefix", "uint16"}
+            {"ref_block_prefix", "uint32"}
         }
     });
 

@@ -31,8 +31,6 @@ struct transaction_header {
     time_point_sec   expiration;              ///< the time at which a transaction expires
     uint16_t         ref_block_num    = 0U;   ///< specifies a block num in the last 2^16 blocks.
     uint32_t         ref_block_prefix = 0UL;  ///< specifies the lower 32 bits of the blockid at get_ref_blocknum
-    fc::unsigned_int delay_sec
-        = 0UL;  /// number of seconds to delay this transaction for during which it may be canceled.
 
     /**
      * @return the absolute block number given the relative ref_block_num
@@ -69,6 +67,9 @@ struct transaction : public transaction_header {
 
 struct signed_transaction : public transaction {
     signed_transaction() = default;
+    signed_transaction(const transaction& trx, const vector<signature_type>& signatures)
+        : transaction(trx)
+        , signatures(signatures) {}
     signed_transaction(transaction&& trx, const vector<signature_type>& signatures)
         : transaction(std::move(trx))
         , signatures(signatures) {}
@@ -130,8 +131,7 @@ uint128_t transaction_id_to_sender_id(const transaction_id_type& tid);
 
 }}  // namespace evt::chain
 
-FC_REFLECT(evt::chain::transaction_header,
-           (expiration)(ref_block_num)(ref_block_prefix)(delay_sec))
+FC_REFLECT(evt::chain::transaction_header, (expiration)(ref_block_num)(ref_block_prefix))
 FC_REFLECT_DERIVED(evt::chain::transaction, (evt::chain::transaction_header), (actions)(transaction_extensions))
 FC_REFLECT_DERIVED(evt::chain::signed_transaction, (evt::chain::transaction), (signatures))
 FC_REFLECT_ENUM(evt::chain::packed_transaction::compression_type, (none)(zlib))

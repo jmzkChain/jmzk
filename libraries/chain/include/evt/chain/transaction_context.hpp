@@ -20,6 +20,7 @@ public:
 
     void init_for_implicit_trx();
     void init_for_input_trx(uint32_t num_signatures);
+    void init_for_deferred_trx();
 
     void exec();
     void finalize();
@@ -41,7 +42,6 @@ public:
     transaction_metadata&   trx;
     transaction_trace_ptr   trace;
     fc::time_point          start;
-    fc::time_point          published;
 
     vector<action_receipt> executed;
 
