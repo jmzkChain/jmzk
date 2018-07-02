@@ -40,7 +40,7 @@ base_tester::init(bool push_genesis) {
 
     cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
     cfg.genesis.initial_key       = get_public_key(config::system_account_name, "active");
-
+    evt_abi = abi_serializer(evt_contract_abi());
     open();
 
     if(push_genesis)
@@ -50,6 +50,7 @@ base_tester::init(bool push_genesis) {
 void
 base_tester::init(controller::config config) {
     cfg = config;
+    evt_abi = abi_serializer(evt_contract_abi());
     open();
 }
 
@@ -106,7 +107,7 @@ base_tester::_produce_block(fc::microseconds skip_time, bool skip_pending_trxs, 
     else {
         priv_key = private_key_itr->second;
     }
-
+    
     if(!skip_pending_trxs) {
         auto unapplied_trxs = control->get_unapplied_transactions();
         for(const auto& trx : unapplied_trxs) {
