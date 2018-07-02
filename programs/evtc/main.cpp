@@ -859,6 +859,7 @@ struct set_meta_subcommands {
 
 struct set_delay_subcommands {
     string name;
+    string executor;
 
     set_delay_subcommands(CLI::App* actionRoot) {
         auto adcmd = actionRoot->add_subcommand("approve", localized("Approve specific delay transaction"));
@@ -900,9 +901,11 @@ struct set_delay_subcommands {
 
         auto edcmd = actionRoot->add_subcommand("execute", localized("Execute specific delay transaction"));
         edcmd->add_option("name", name, localized("Proposal name of specific delay transaction"))->required();
+        edcmd->add_option("executor", executor, localized("Public key of executor for this delay transaction"))->required();
         edcmd->set_callback([this] {
             auto edact = executedelay();
             edact.name = (proposal_name)name;
+            edact.executor = (public_key_type)edact.executor;
 
             auto act = create_action(N128(delay), (domain_key)edact.name, edact);
             send_actions({act});

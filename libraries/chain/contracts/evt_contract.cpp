@@ -635,7 +635,7 @@ apply_evt_approvedelay(apply_context& context) {
 
         delay_def delay;
         tokendb.read_delay(adact.name, delay);
-        EVT_ASSERT(delay.status == delay_status::proposed, delay_status_exception, "Delay is not in proper status.");
+        EVT_ASSERT(delay.status == delay_status::proposed, delay_status_exception, "Delay is not in 'proposed' status.");
 
         auto signed_keys = delay.trx.get_signature_keys(adact.signatures, context.control.get_chain_id());
         for(auto it = signed_keys.cbegin(); it != signed_keys.cend(); it++) {
@@ -664,7 +664,7 @@ apply_evt_canceldelay(apply_context& context) {
 
         delay_def delay;
         tokendb.read_delay(cdact.name, delay);
-        EVT_ASSERT(delay.status == delay_status::proposed, delay_status_exception, "Delay is not in proper status.");
+        EVT_ASSERT(delay.status == delay_status::proposed, delay_status_exception, "Delay is not in 'proposed' status.");
 
         delay.status = delay_status::cancelled;
         tokendb.update_delay(delay);
@@ -684,12 +684,12 @@ apply_evt_executedelay(apply_context& context) {
         tokendb.read_delay(edact.name, delay);
 
         auto now = context.control.head_block_time();
-        EVT_ASSERT(delay.status == delay_status::proposed, delay_status_exception, "Delay is not in proper status.");
+        EVT_ASSERT(delay.status == delay_status::proposed, delay_status_exception, "Delay is not in 'proposed' status.");
         EVT_ASSERT(delay.trx.expiration > now, delay_expired_tx_exception, "Delay transaction is expired at ${expir}, now is ${now}", ("expir",delay.trx.expiration)("now",now));
 
         auto strx = signed_transaction(delay.trx, delay.signatures);
         auto mtrx = std::make_shared<transaction_metadata>(strx);
-        auto trace = context.control.push_delay_transaction(mtrx, now);
+        auto trace = context.control.push_delay_transaction(mtrx, fc::time_point::maximum());
         bool transaction_failed = trace && trace->except;
         if(transaction_failed) {
             delay.status = delay_status::failed;
