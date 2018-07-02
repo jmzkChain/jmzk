@@ -363,12 +363,12 @@ Response:
 
 ## POST /v1/evt/get_token
 This API is used to get specific token in specific domain
+
 Request:
 ```
 {
     "domain": "cookie",
-    "name": "t8",
-    "owner": ["EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"]
+    "name": "t8"
 }
 ```
 
@@ -378,7 +378,7 @@ This API is used to get specific fungible.
 Request:
 ```
 {
-    "sym": "5,EVT"
+    "name": "EVT"
 }
 ```
 Response:
