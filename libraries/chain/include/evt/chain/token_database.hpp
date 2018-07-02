@@ -57,6 +57,7 @@ public:
     public:
         void accept() { _accept = 1; }
         void squash() { _accept = 1; _token_db.pop_back_savepoint(); }
+        void undo()   { _accept = 1; _token_db.rollback_to_latest_savepoint(); }
 
         int seq() const { return _seq; }
 

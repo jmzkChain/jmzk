@@ -76,10 +76,8 @@ public:
     vector<transaction_metadata_ptr> get_unapplied_transactions() const;
     void                             drop_unapplied_transaction(const transaction_metadata_ptr& trx);
 
-    /**
-          *
-          */
     transaction_trace_ptr push_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline);
+    transaction_trace_ptr push_delay_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline);
 
     void finalize_block();
     void sign_block(const std::function<signature_type(const digest_type&)>& signer_callback);

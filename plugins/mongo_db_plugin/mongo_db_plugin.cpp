@@ -382,6 +382,10 @@ mongo_db_plugin_impl::process_block(const signed_block& block) {
 void
 mongo_db_plugin_impl::process_transaction(const transaction_trace& trace) {
     try {
+        if(trace.except) {
+            // failed transaction
+            return;
+        }
         _process_transaction(trace);
         interpreter.process_trx(trace);
     }
@@ -470,7 +474,7 @@ mongo_db_plugin_impl::_process_block(const signed_block& block) {
     int32_t trx_num = 0;
     bool    transactions_in_block = false;
 
-    auto process_trx = [&](const chain::transaction& trx) -> auto {
+    auto process_trx = [&](const chain::transaction& trx, auto status) -> auto {
         auto       txn_oid      = bsoncxx::oid{};
         auto       doc          = bsoncxx::builder::basic::document{};
         auto       trx_id       = trx.id();
@@ -486,7 +490,7 @@ mongo_db_plugin_impl::_process_block(const signed_block& block) {
                    kvp("pending", b_bool{true}));
         doc.append(kvp("created_at", b_date{now}));
 
-        if(!trx.actions.empty()) {
+        if(status == transaction_receipt_header::executed && !trx.actions.empty()) {
             act_num = 0;
             for(const auto& act : trx.actions) {
                 process_action(trans_id_str, act);
@@ -500,8 +504,11 @@ mongo_db_plugin_impl::_process_block(const signed_block& block) {
     trx_num = 0;
     for(const auto& trx_receipt : block.transactions) {
         const auto& trx = trx_receipt.trx.get_signed_transaction();
-        auto        doc = process_trx(trx);
-        doc.append(kvp("type", "input"));
+        auto        doc = process_trx(trx, trx_receipt.status);
+
+        doc.append(kvp("type", (std::string)trx_receipt.type));
+        doc.append(kvp("status", (std::string)trx_receipt.status));
+
         doc.append(kvp("signatures", [&trx](bsoncxx::builder::basic::sub_array subarr) {
             for(const auto& sig : trx.signatures) {
                 subarr.append((std::string)sig);

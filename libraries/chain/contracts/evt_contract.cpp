@@ -682,11 +682,14 @@ apply_evt_executedelay(apply_context& context) {
 
         delay_def delay;
         tokendb.read_delay(edact.name, delay);
+
+        auto now = context.control.head_block_time();
         EVT_ASSERT(delay.status == delay_status::proposed, delay_status_exception, "Delay is not in proper status.");
+        EVT_ASSERT(delay.trx.expiration > now, delay_expired_tx_exception, "Delay transaction is expired at ${expir}, now is ${now}", ("expir",delay.trx.expiration)("now",now));
 
         auto strx = signed_transaction(delay.trx, delay.signatures);
         auto mtrx = std::make_shared<transaction_metadata>(strx);
-        auto trace = context.control.push_transaction(mtrx, context.control.head_block_time() + fc::seconds(5));
+        auto trace = context.control.push_delay_transaction(mtrx, now);
         bool transaction_failed = trace && trace->except;
         if(transaction_failed) {
             delay.status = delay_status::failed;

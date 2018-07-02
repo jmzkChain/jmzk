@@ -2706,7 +2706,8 @@ net_plugin_impl::handle_message(connection_ptr c, const signed_block& msg) {
     update_block_num ubn(blk_num);
     if(reason == no_reason) {
         for(const auto& recpt : msg.transactions) {
-            auto id  = recpt.trx.id();
+            // TODO: Need to clarify delay transaction?
+            auto id = recpt.trx.id();
             auto ltx = local_txns.get<by_id>().find(id);
             if(ltx != local_txns.end()) {
                 local_txns.modify(ltx, ubn);

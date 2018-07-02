@@ -133,7 +133,8 @@ FC_DECLARE_DERIVED_EXCEPTION( meta_involve_exception,             action_excepti
 FC_DECLARE_DERIVED_EXCEPTION( delay_status_exception,             action_exception, 3040025, "Delay is not in proper status." );
 FC_DECLARE_DERIVED_EXCEPTION( delay_proposer_key_exception,       action_exception, 3040026, "Proposer needs to sign his key." );
 FC_DECLARE_DERIVED_EXCEPTION( delay_duplicate_key_exception,      action_exception, 3040027, "Some keys are already signed this delay trx." );
-FC_DECLARE_DERIVED_EXCEPTION( action_args_exception,              action_exception, 3040028, "Invalid arguments for action" );
+FC_DECLARE_DERIVED_EXCEPTION( delay_expired_tx_exception,         action_exception, 3040028, "Delay transaction is expired." );
+FC_DECLARE_DERIVED_EXCEPTION( action_args_exception,              action_exception, 3040029, "Invalid arguments for action" );
 
 FC_DECLARE_DERIVED_EXCEPTION( pop_empty_chain,                   undo_database_exception, 3070001, "There are no blocks to be popped." );
 

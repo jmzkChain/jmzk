@@ -564,10 +564,12 @@ public:
             * in the future unless peer tells me they already have block.
             */
         for(const auto& receipt : s->block->transactions) {
+            // TODO: Need to clarify delay transaction? 
             auto id  = receipt.trx.id();
             auto itr = _transaction_status.find(id);
-            if(itr != _transaction_status.end())
+            if(itr != _transaction_status.end()) {
                 _transaction_status.erase(itr);
+            }
         }
 
         maybe_send_next_message();  /// attempt to send if we are idle
@@ -1074,6 +1076,7 @@ public:
     void
     mark_block_transactions_known_by_peer(const signed_block_ptr& b) {
         for(const auto& receipt : b->transactions) {
+            // TODO: Need to clarify delay transaction? 
             auto id = receipt.trx.id();
             mark_transaction_known_by_peer(id);
         }

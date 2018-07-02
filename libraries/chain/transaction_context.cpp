@@ -32,19 +32,23 @@ transaction_context::init() {
 
 void
 transaction_context::init_for_implicit_trx() {
-    published = control.pending_block_time();
     init();
 }
 
 void
 transaction_context::init_for_input_trx(uint32_t num_signatures) {
     auto& t = trx.trx;
-    published = control.pending_block_time();
     is_input  = true;
     control.validate_expiration(t);
     control.validate_tapos(t);
     init();
     record_transaction(trx.id, t.expiration);  /// checks for dupes
+}
+
+void
+transaction_context::init_for_deferred_trx() {
+    trace->is_delay = true;
+    init();
 }
 
 void
