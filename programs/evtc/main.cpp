@@ -314,6 +314,33 @@ set_transaction_header(signed_transaction& trx, const evt::chain_apis::read_only
     trx.set_reference_block(ref_block_id);
 }
 
+public_key_type
+get_public_key(const std::string& key_or_ref) {
+    static fc::optional<fc::variant> pkeys;
+
+    try {
+        auto pkey = (public_key_type)key_or_ref;
+        return pkey;
+    }
+    catch(...) {}
+
+    if(!pkeys.valid()) {
+        pkeys = call(wallet_url, wallet_public_keys);
+    }
+
+    FC_ASSERT(key_or_ref.size() >= 2, "Not valid key reference");
+    FC_ASSERT(key_or_ref[0] == '@', "Not valid key reference");
+
+    try {
+        int i = std::stoi(key_or_ref.substr(1));
+        FC_ASSERT(i < pkeys->size(), "Not valid key reference");
+        return (*pkeys)[i].as<public_key_type>();
+    }
+    catch(...) {
+        FC_ASSERT(false, "Not valid key reference");
+    }
+}
+
 signed_transaction
 create_delay_transaction(transaction& trx) {
     FC_ASSERT(!propname.empty());
@@ -321,7 +348,7 @@ create_delay_transaction(transaction& trx) {
 
     auto nd = newdelay();
     nd.name = (proposal_name)propname;
-    nd.proposer = (public_key_type)proposer;
+    nd.proposer = get_public_key(proposer);
     nd.trx = std::move(trx);
    
     auto signed_trx = signed_transaction();
@@ -529,7 +556,7 @@ struct set_domain_subcommands {
         ndcmd->set_callback([&] {
             newdomain nd;
             nd.name     = name128(name);
-            nd.creator  = public_key_type(creator);
+            nd.creator  = get_public_key(creator);
             nd.issue    = (issue == "default") ? get_default_permission("issue", nd.creator) : parse_permission(issue);
             nd.transfer = (transfer == "default") ? get_default_permission("transfer", public_key_type()) : parse_permission(transfer);
             nd.manage   = (manage == "default") ? get_default_permission("manage", nd.creator) : parse_permission(manage);
@@ -582,7 +609,7 @@ struct set_issue_token_subcommand {
             issuetoken it;
             it.domain = name128(domain);
             std::transform(names.cbegin(), names.cend(), std::back_inserter(it.names), [](auto& str) { return name128(str); });
-            std::transform(owner.cbegin(), owner.cend(), std::back_inserter(it.owner), [](auto& str) { return public_key_type(str); });
+            std::transform(owner.cbegin(), owner.cend(), std::back_inserter(it.owner), [](auto& str) { return get_public_key(str); });
 
             auto act = create_action(it.domain, N128(.issue), it);
             send_actions({act});
@@ -610,7 +637,7 @@ struct set_token_subcommands {
             tt.domain = name128(domain);
             tt.name   = name128(name);
             tt.memo   = memo;
-            std::transform(to.cbegin(), to.cend(), std::back_inserter(tt.to), [](auto& str) { return public_key_type(str); });
+            std::transform(to.cbegin(), to.cend(), std::back_inserter(tt.to), [](auto& str) { return get_public_key(str); });
 
             auto act = create_action(tt.domain, (domain_key)tt.name, tt);
             send_actions({act});
@@ -708,7 +735,7 @@ struct set_fungible_subcommands {
         nfcmd->set_callback([&] {
             newfungible nf;
             nf.sym          = symbol::from_string(sym);
-            nf.creator      = public_key_type(creator);
+            nf.creator      = get_public_key(creator);
             nf.issue        = (issue == "default") ? get_default_permission("issue", nf.creator) : parse_permission(issue);
             nf.manage       = (manage == "default") ? get_default_permission("manage", nf.creator) : parse_permission(manage);
             nf.total_supply = asset::from_string(total_supply);
@@ -749,7 +776,7 @@ struct set_fungible_subcommands {
 
         ifcmd->set_callback([this] {
             issuefungible ifact;
-            ifact.address = public_key_type(address);
+            ifact.address = get_public_key(address);
             ifact.number  = asset::from_string(number);
             ifact.memo    = memo;
 
@@ -776,8 +803,8 @@ struct set_assets_subcommands {
 
         tfcmd->set_callback([this] {
             transferft tf;
-            tf.from   = public_key_type(from);
-            tf.to     = public_key_type(to);
+            tf.from   = get_public_key(from);
+            tf.to     = get_public_key(to);
             tf.number = asset::from_string(number);
             tf.memo   = memo;
 
@@ -809,7 +836,7 @@ struct set_meta_subcommands {
             addmeta am;
             am.key = (meta_key)metakey;
             am.value = metavalue;
-            am.creator = (public_key_type)creator;
+            am.creator = get_public_key(creator);
 
             auto act = create_action((domain_name)key, N128(.meta), am);
             send_actions({act});
@@ -822,7 +849,7 @@ struct set_meta_subcommands {
             addmeta am;
             am.key = (meta_key)metakey;
             am.value = metavalue;
-            am.creator = (public_key_type)creator;
+            am.creator = get_public_key(creator);
 
             auto act = create_action(N128(group), (domain_key)key, am);
             send_actions({act});
@@ -836,7 +863,7 @@ struct set_meta_subcommands {
             addmeta am;
             am.key = (meta_key)metakey;
             am.value = metavalue;
-            am.creator = (public_key_type)creator;
+            am.creator = get_public_key(creator);
 
             auto act = create_action((domain_name)domain, (domain_key)key, am);
             send_actions({act});
@@ -849,7 +876,7 @@ struct set_meta_subcommands {
             addmeta am;
             am.key = (meta_key)metakey;
             am.value = metavalue;
-            am.creator = (public_key_type)creator;
+            am.creator = get_public_key(creator);
 
             auto act = create_action(N128(fungible), (domain_key)key, am);
             send_actions({act});
@@ -905,7 +932,7 @@ struct set_delay_subcommands {
         edcmd->set_callback([this] {
             auto edact = executedelay();
             edact.name = (proposal_name)name;
-            edact.executor = (public_key_type)executor;
+            edact.executor = get_public_key(executor);
 
             auto act = create_action(N128(delay), (domain_key)edact.name, edact);
             send_actions({act});
