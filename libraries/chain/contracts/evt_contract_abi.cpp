@@ -229,6 +229,15 @@ evt_contract_abi() {
     });
 
     evt_abi.structs.emplace_back( struct_def {
+        "evt2pevt", "", {
+            {"from", "public_key"},
+            {"to", "public_key"},
+            {"number", "asset"},
+            {"memo", "string"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
         "addmeta", "", {
             {"key", "meta_key"},
             {"value", "meta_value"},

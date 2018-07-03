@@ -6,7 +6,7 @@
 
 namespace evt { namespace chain {
 class token_database;
-class genesis_state;
+struct genesis_state;
 }}  // namespace evt::chain
 
 namespace evt { namespace chain { namespace contracts {

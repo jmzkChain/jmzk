@@ -423,7 +423,6 @@ apply_evt_transferft(apply_context& context) {
         tokendb.read_asset(tfact.from, sym, facc);
         tokendb.read_asset_no_throw(tfact.to, sym, tacc);
 
-
         EVT_ASSERT(facc >= tfact.number, balance_exception, "Address does not have enough balance left.");
 
         bool r1, r2;
@@ -437,6 +436,40 @@ apply_evt_transferft(apply_context& context) {
 
         tokendb.update_asset(tfact.from, facc);
         tokendb.update_asset(tfact.to, tacc);
+    }
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+}
+
+void
+apply_evt_evt2pevt(apply_context& context) {
+    auto epact = context.act.data_as<evt2pevt>();
+
+    try {
+        auto evtsym = epact.number.get_symbol();
+        auto pevtsym = symbol(SY(5,PEVT));
+        EVT_ASSERT(evtsym == symbol(SY(5,EVT)), fungible_symbol_exception, "Only EVT tokens can be converted to Pinned EVT tokens");
+        EVT_ASSERT(context.has_authorized(N128(fungible), (fungible_name)evtsym.name()), action_authorize_exception, "Authorized information does not match.");
+
+        auto& tokendb = context.token_db;
+        
+        auto facc = asset(0, evtsym);
+        auto tacc = asset(0, pevtsym);
+        tokendb.read_asset(epact.from, evtsym, facc);
+        tokendb.read_asset_no_throw(epact.to, pevtsym, tacc);
+
+        EVT_ASSERT(facc >= epact.number, balance_exception, "Address does not have enough balance left.");
+
+        bool r1, r2;
+        decltype(facc.get_amount()) r;
+        r1 = safemath::test_sub(facc.get_amount(), epact.number.get_amount(), r);
+        r2 = safemath::test_add(tacc.get_amount(), epact.number.get_amount(), r);
+        EVT_ASSERT(r1 && r2, math_overflow_exception, "Opeartions resulted in overflows.");
+        
+        facc -= epact.number;
+        tacc += asset(epact.number.get_amount(), pevtsym);
+
+        tokendb.update_asset(epact.from, facc);
+        tokendb.update_asset(epact.to, tacc);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
