@@ -20,6 +20,7 @@
 #include <fc/scoped_exit.hpp>
 
 #include <evt/chain/contracts/evt_contract.hpp>
+#include <evt/chain/contracts/evt_org.hpp>
 
 namespace evt { namespace chain {
 
@@ -321,46 +322,40 @@ struct controller_impl {
 
     void
     initialize_token_db() {
-        if(!token_db.exists_domain("domain")) {
+        if(!token_db.exists_domain(".domain")) {
             auto dd = domain_def();
-            dd.name = "domain";
+            dd.name = ".domain";
             dd.creator = conf.genesis.initial_key;
             dd.create_time = conf.genesis.initial_timestamp;
             auto r = token_db.add_domain(dd);
-            FC_ASSERT(r == 0, "Add `domain` domain failed");
+            FC_ASSERT(r == 0, "Add `.domain` domain failed");
         }
-        if(!token_db.exists_domain("group")) {
+        if(!token_db.exists_domain(".group")) {
             auto gd = domain_def();
-            gd.name = "group";
+            gd.name = ".group";
             gd.creator = conf.genesis.initial_key;
             gd.create_time = conf.genesis.initial_timestamp;
             auto r = token_db.add_domain(gd);
-            FC_ASSERT(r == 0, "Add `group` domain failed");
+            FC_ASSERT(r == 0, "Add `.group` domain failed");
         }
-        if(!token_db.exists_domain("account")) {
-            auto ad = domain_def();
-            ad.name = "account";
-            ad.creator = conf.genesis.initial_key;
-            ad.create_time = conf.genesis.initial_timestamp;
-            auto r = token_db.add_domain(ad);
-            FC_ASSERT(r == 0, "Add `account` domain failed");
-        }
-        if(!token_db.exists_domain("delay")) {
+        if(!token_db.exists_domain(".delay")) {
             auto dd = domain_def();
-            dd.name = "delay";
+            dd.name = ".delay";
             dd.creator = conf.genesis.initial_key;
             dd.create_time = conf.genesis.initial_timestamp;
             auto r = token_db.add_domain(dd);
-            FC_ASSERT(r == 0, "Add `delay` domain failed");
+            FC_ASSERT(r == 0, "Add `.delay` domain failed");
         }
-        if(!token_db.exists_domain("fungible")) {
+        if(!token_db.exists_domain(".fungible")) {
             auto dd = domain_def();
-            dd.name = "fungible";
+            dd.name = ".fungible";
             dd.creator = conf.genesis.initial_key;
             dd.create_time = conf.genesis.initial_timestamp;
             auto r = token_db.add_domain(dd);
-            FC_ASSERT(r == 0, "Add `fungible` domain failed");
+            FC_ASSERT(r == 0, "Add `.fungible` domain failed");
         }
+
+        initialize_evt_org(token_db, conf.genesis);
     }
 
     void

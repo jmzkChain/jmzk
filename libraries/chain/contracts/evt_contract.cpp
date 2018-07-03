@@ -87,6 +87,12 @@ auto make_permission_checker = [](const auto& tokendb) {
     return checker;
 };
 
+inline void
+check_name_reserved(const name128& name) {
+    const uint128_t reserved_flag = ((uint128_t)0x3f << (128-6));
+    EVT_ASSERT(!name.empty() && (name.value & reserved_flag), name_reserved_exception, "Name starting with '.' is reserved for system usages.");
+}
+
 } // namespace __internal
 
 void
@@ -97,10 +103,11 @@ apply_evt_newdomain(apply_context& context) {
     try {
         EVT_ASSERT(context.has_authorized(ndact.name, N128(.create)), action_authorize_exception, "Authorized information does not match.");
 
+        check_name_reserved(ndact.name);
+
         auto& tokendb = context.token_db;
         EVT_ASSERT(!tokendb.exists_domain(ndact.name), domain_exists_exception, "Domain ${name} already exists.", ("name",ndact.name));
 
-        EVT_ASSERT(!ndact.name.empty(), domain_name_exception, "Domain name cannot be empty.");
         EVT_ASSERT(ndact.issue.name == "issue", permission_type_exception, "Name ${name} does not match with the name of issue permission.", ("name",ndact.issue.name));
         EVT_ASSERT(ndact.issue.threshold > 0 && validate(ndact.issue), permission_type_exception, "Issue permission is not valid, which may be caused by invalid threshold, duplicated keys or unordered keys.");
         EVT_ASSERT(ndact.transfer.name == "transfer", permission_type_exception, "Name ${name} does not match with the name of transfer permission.", ("name",ndact.transfer.name));
@@ -129,6 +136,8 @@ apply_evt_newdomain(apply_context& context) {
 
 void
 apply_evt_issuetoken(apply_context& context) {
+    using namespace __internal;
+
     auto itact = context.act.data_as<issuetoken>();
     try {
         EVT_ASSERT(context.has_authorized(itact.domain, N128(.issue)), action_authorize_exception, "Authorized information does not match.");
@@ -138,8 +147,7 @@ apply_evt_issuetoken(apply_context& context) {
         EVT_ASSERT(!itact.owner.empty(), token_owner_exception, "Owner cannot be empty.");
 
         auto check_name = [&](const auto& name) {
-            const uint128_t reserved_flag = ((uint128_t)0x3f << (128-6));
-            EVT_ASSERT(!name.empty() && (name.value & reserved_flag), token_name_exception, "Name starting with '.' is reserved for system usages.");
+            check_name_reserved(name);
             EVT_ASSERT(!tokendb.exists_token(itact.domain, name), token_exists_exception, "Token ${domain}-${name} already exists.", ("domain",itact.domain)("name",name));
         };
 
@@ -219,7 +227,8 @@ apply_evt_newgroup(apply_context& context) {
     auto ngact = context.act.data_as<newgroup>();
     try {
         EVT_ASSERT(context.has_authorized(N128(group), ngact.name), action_authorize_exception, "Authorized information does not match.");
-        EVT_ASSERT(ngact.name == ngact.group.name(), group_name_exception, "Names in action are not the same.");
+        
+        check_name_reserved(ngact.name);
         
         auto& tokendb = context.token_db;
         EVT_ASSERT(!tokendb.exists_group(ngact.name), group_exists_exception, "Group ${name} already exists.", ("name",ngact.name));
@@ -544,6 +553,8 @@ apply_evt_addmeta(apply_context& context) {
     try {
         auto& tokendb = context.token_db;
 
+        check_name_reserved(amact.key);
+
         if(act.domain == N128(group)) {
             group_def group;
             tokendb.read_group(act.key, group);
@@ -608,8 +619,9 @@ apply_evt_newdelay(apply_context& context) {
     try {
         EVT_ASSERT(context.has_authorized(N128(delay), ndact.name), action_authorize_exception, "Authorized information does not match.");
 
+        check_name_reserved(ndact.name);
+
         auto& tokendb = context.token_db;
-        EVT_ASSERT(!ndact.name.empty(), proposal_name_exception, "Proposal name cannot be empty.");
         EVT_ASSERT(!tokendb.exists_delay(ndact.name), delay_exists_exception, "Delay ${name} already exists.", ("name",ndact.name));
 
         delay_def delay;

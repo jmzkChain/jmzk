@@ -69,7 +69,7 @@ struct db_asset_key {
 
 db_key<domain_name>
 get_domain_key(const domain_name& name) {
-    return db_key<domain_name>(N128(domain), name);
+    return db_key<domain_name>(N128(.domain), name);
 }
 
 db_key<token_name>
@@ -79,27 +79,22 @@ get_token_key(const domain_name& domain, const token_name& name) {
 
 db_key<group_name>
 get_group_key(const group_name& name) {
-    return db_key<group_name>(N128(group), name);
-}
-
-db_key<account_name>
-get_account_key(const account_name& account) {
-    return db_key<account_name>(N128(account), account);
+    return db_key<group_name>(N128(.group), name);
 }
 
 db_key<proposal_name>
 get_delay_key(const proposal_name& delay) {
-    return db_key<proposal_name>(N128(delay), delay);
+    return db_key<proposal_name>(N128(.delay), delay);
 }
 
 db_key<fungible_name>
 get_fungible_key(const symbol sym) {
-    return db_key<fungible_name>(N128(fungible), (fungible_name)sym.name());
+    return db_key<fungible_name>(N128(.fungible), (fungible_name)sym.name());
 }
 
 db_key<fungible_name>
 get_fungible_key(const fungible_name& sym_name) {
-    return db_key<fungible_name>(N128(fungible), sym_name);
+    return db_key<fungible_name>(N128(.fungible), sym_name);
 }
 
 db_asset_key
