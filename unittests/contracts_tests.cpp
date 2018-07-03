@@ -13,9 +13,9 @@ using namespace crypto;
 struct contracts_test {
     contracts_test() {
         controller::config cfg;
-        cfg.blocks_dir            = "/tmp/evt_unittests/blocks68";   //strcat("/tmp/evt_unittests/", chain::config::default_blocks_dir_name);
-        cfg.state_dir             = "/tmp/evt_unittests/state68";    //strcat("/tmp/evt_unittests/" , chain::config::default_state_dir_name);
-        cfg.tokendb_dir           = "/tmp/evt_unittests/tokendb68";  //strcat("/tmp/evt_unittests/" , chain::config::default_tokendb_dir_name);
+        cfg.blocks_dir            = "/tmp/evt_unittests/blocks86";   
+        cfg.state_dir             = "/tmp/evt_unittests/state86";    
+        cfg.tokendb_dir           = "/tmp/evt_unittests/tokendb86";  
         cfg.state_size            = 1024 * 1024 * 8;
         cfg.reversible_cache_size = 1024 * 1024 * 8;
         cfg.contracts_console     = true;
@@ -66,10 +66,10 @@ struct contracts_test {
         return time(0) + (++ti);
     }
 
-    public_key_type            key;
-    std::vector<account_name>  key_seeds;
-    std::unique_ptr<tester> my_tester;
-    int                        ti;
+    public_key_type           key;
+    std::vector<account_name> key_seeds;
+    std::unique_ptr<tester>   my_tester;
+    int                       ti;
 };
 
 BOOST_FIXTURE_TEST_SUITE(contracts_tests, contracts_test)
@@ -360,13 +360,8 @@ BOOST_AUTO_TEST_CASE(contract_updategroup_test) {
         auto var   = fc::json::from_string(test_data);
         auto upgrp = var.as<updategroup>();
 
-        // int index=0;
-        // for(auto& k:upgrp.group.keys_) {
-        //     k = tester::get_public_key(string_to_name((string("key")+std::to_string(index++)).c_str()));
-        // }
-        upgrp.group.keys_ = {tester::get_public_key(N(key0)),tester::get_public_key(N(key1)),
-            tester::get_public_key(N(key2)),tester::get_public_key(N(key3)),tester::get_public_key(N(key4))};
-
+        upgrp.group.keys_ = {tester::get_public_key(N(key0)), tester::get_public_key(N(key1)),
+                             tester::get_public_key(N(key2)), tester::get_public_key(N(key3)), tester::get_public_key(N(key4))};
         upgrp.name        = get_group_name();
         upgrp.group.name_ = get_group_name();
         to_variant(upgrp, var);
@@ -463,14 +458,10 @@ BOOST_AUTO_TEST_CASE(contract_updfungible_test) {
         BOOST_CHECK_THROW(my_tester->push_action(N(updfungible), N128(fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds), action_authorize_exception);
 
         updfg.sym = symbol::from_string(string("5,") + get_symbol_name());
+        updfg.manage->authorizers[0].ref.set_account(key);
         to_variant(updfg, var);
 
         my_tester->push_action(N(updfungible), N128(fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds);
-
-        //updfungible authorization test
-        updfg.manage->authorizers[0].ref.set_account(key);
-        to_variant(updfg, var);
-        BOOST_CHECK_THROW(my_tester->push_action(N(updfungible), N128(fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds), unsatisfied_authorization);
 
         my_tester->produce_blocks();
     }
@@ -580,14 +571,10 @@ BOOST_AUTO_TEST_CASE(contract_updatedomain_test) {
 
         updom.name = get_domain_name();
         updom.issue->authorizers[0].ref.set_group(get_group_name());
+        updom.manage->authorizers[0].ref.set_account(key);
         to_variant(updom, var);
 
         my_tester->push_action(N(updatedomain), string_to_name128(get_domain_name()), N128(.update), var.get_object(), key_seeds);
-
-        //updatedomian authorization test
-        updom.manage->authorizers[0].ref.set_account(key);
-        to_variant(updom, var);
-        BOOST_CHECK_THROW(my_tester->push_action(N(updatedomain), string_to_name128(get_domain_name()), N128(.update), var.get_object(), key_seeds), unsatisfied_authorization);
 
         my_tester->produce_blocks();
     }
@@ -616,18 +603,51 @@ BOOST_AUTO_TEST_CASE(contract_group_auth_test) {
         istk.owner[0] = key;
         to_variant(istk, var);
 
-        std::vector<account_name>  seeds1 = {N(key0),N(key1),N(key2),N(key3)};
-        BOOST_CHECK_THROW(my_tester->push_action(N(issuetoken), string_to_name128(get_domain_name()), N128(.issue), var.get_object(), seeds1),unsatisfied_authorization);
+        std::vector<account_name> seeds1 = {N(key0), N(key1), N(key2), N(key3)};
+        BOOST_CHECK_THROW(my_tester->push_action(N(issuetoken), string_to_name128(get_domain_name()), N128(.issue), var.get_object(), seeds1), unsatisfied_authorization);
 
         istk.names[0] = "authorizers2";
         to_variant(istk, var);
-        std::vector<account_name>  seeds2 = {N(key1),N(key2),N(key3),N(key4)};
-        BOOST_CHECK_THROW(my_tester->push_action(N(issuetoken), string_to_name128(get_domain_name()), N128(.issue), var.get_object(), seeds2),unsatisfied_authorization);
+        std::vector<account_name> seeds2 = {N(key1), N(key2), N(key3), N(key4)};
+        BOOST_CHECK_THROW(my_tester->push_action(N(issuetoken), string_to_name128(get_domain_name()), N128(.issue), var.get_object(), seeds2), unsatisfied_authorization);
 
         istk.names[0] = "authorizers3";
         to_variant(istk, var);
-        std::vector<account_name>  seeds3 = {N(key0),N(key1),N(key2),N(key3),N(key4)};
+        std::vector<account_name> seeds3 = {N(key0), N(key1), N(key2), N(key3), N(key4)};
         my_tester->push_action(N(issuetoken), string_to_name128(get_domain_name()), N128(.issue), var.get_object(), seeds3);
+
+        my_tester->produce_blocks();
+    }
+    FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE(contract_addmeta_test) {
+    try {
+        BOOST_CHECK(true);
+        const char* test_data = R"=====(
+        {
+          "key": "key",
+          "value": "value",
+          "creator": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+        }
+        )=====";
+
+        auto var     = fc::json::from_string(test_data);
+        auto admt    = var.as<addmeta>();
+        admt.creator = key;
+        to_variant(admt, var);
+
+        my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds);
+
+        my_tester->push_action(N(addmeta), N128(group), string_to_name128(get_group_name()), var.get_object(), key_seeds); 
+
+        my_tester->push_action(N(addmeta), N128(fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds);
+
+        admt.value = "value2";
+        to_variant(admt, var);
+        BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds),meta_key_exception);
+        BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), N128(group), string_to_name128(get_group_name()), var.get_object(), key_seeds),meta_key_exception);
+        BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), N128(fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds),meta_key_exception);
 
         my_tester->produce_blocks();
     }
