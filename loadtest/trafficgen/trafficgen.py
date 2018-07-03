@@ -1,15 +1,12 @@
-EVT_SDK_PATH = '../../sdks/pysdk'
 import json
 import random
-import sys
 from collections import deque
 
 import randompool
-from action import ActionGenerator
-from transaction import TrxGenerator
+from pysdk.action import ActionGenerator
+from pysdk.transaction import TrxGenerator
 from utils import Writer
 
-sys.path.append(EVT_SDK_PATH)
 
 AG = ActionGenerator()
 Trx = TrxGenerator('http://118.31.58.10:8888')

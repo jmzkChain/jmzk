@@ -3,10 +3,7 @@ import string
 import sys
 import time
 
-import base
-
-EVT_SDK_PATH = '../../sdks/pysdk'
-sys.path.append(EVT_SDK_PATH)
+from pysdk import base
 
 ITEM_TYPES = ['domain', 'group', 'fungible', 'token']
 REQUIREMENTS = {
