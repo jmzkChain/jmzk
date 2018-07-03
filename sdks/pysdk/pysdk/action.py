@@ -200,6 +200,22 @@ class ActionGenerator:
         abi_json = base.AddMetaAbi(meta_key, meta_value, str(creator))
         return get_action_from_abi_json('addmeta', abi_json.dumps(), domain, key)
 
+    def newdelay(self, name, proposer, trx):
+        abi_json = base.NewDelayAbi(name, proposer, trx.dumps())
+        return get_action_from_abi_json('newdelay', abi_json.dumps())
+
+    def approve(self, name, signatures):
+        abi_json = base.ApproveAbi(name, [str(sig) for sig in signatures])
+        return get_action_from_abi_json('approve', abi_json.dumps())
+
+    def canceldelay(self, name):
+        abi_json = base.CancelDelayAbi(name)
+        return get_action_from_abi_json('canceldelay', abi_json.dumps())
+
+    def executedelay(self, name, executor):
+        abi_json = base.executedelay(name, str(executor))
+        return get_action_from_abi_json('executedelay', abi_json.dumps())
+
     def new_action(self, action, **args):
         func = getattr(self, action)
         return func(**args)

@@ -199,3 +199,23 @@ class TransferFtAbi(BaseType):
     def __init__(self, _from, to, number, memo):
         args = {'from': _from, 'to': to, 'number': number, 'memo': memo}
         super().__init__(**args)
+
+
+class NewDelayAbi(BaseType):
+    def __init__(self, name, proposer, trx):
+        super().__init__(name, proposer, trx)
+
+
+class ApproveAction(BaseType):
+    def __init__(self, name, signatures):
+        super().__init__(name, signatures)
+
+
+class CancelDelayAction(BaseType):
+    def __init__(self, name):
+        super().__init__(name)
+
+
+class ExecuteDelay(BaseType):
+    def __init__(self, name, executor):
+        super().__init__(name, executor)
