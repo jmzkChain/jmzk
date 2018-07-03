@@ -293,7 +293,8 @@ struct controller_impl {
         genheader.header.action_mroot   = conf.genesis.compute_chain_id();
         genheader.id                    = genheader.header.id();
         genheader.block_num             = genheader.header.block_num();
-
+        genheader.block_signing_key     = conf.genesis.initial_key;
+        
         head        = std::make_shared<block_state>(genheader);
         head->block = std::make_shared<signed_block>(genheader.header);
         fork_db.set(head);
