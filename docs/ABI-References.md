@@ -124,6 +124,7 @@ A type with `?` as suffix means it is an optional type whose value can be undefi
 | `group_name` | `name128` |
 | `token_name` | `name128` |
 | `account_name` | `name128` |
+| `proposal_name` | `name128` |
 | `balance_type` | `asset` |
 | `group_def` | `group` |
 | `meta_key` | `name128` |
@@ -175,7 +176,7 @@ A structure is a complex type consisted of base types or/and typedef types. Belo
 ```
 {
     "sym": `symbol`,
-    "creator": `account_name`,
+    "creator": `user_id`,
     "create_time": `time_point_sec`,
     "issue": `permission_def`,
     "manage": `permission_def`,
@@ -244,7 +245,8 @@ Transfer one token in specific domain to new owners.
 
 ### `newgroup` Action
 Create a new group with a name.
-> NOTICE: `group_def` is a special type defined in Base Types section.
+> `group_def` is a special type defined in Base Types section.
+
 ```
 {
     "name": `group_name`,
@@ -266,7 +268,7 @@ Create a new fungible assets definition with a specific total supply(0 means unl
 ```
 {
     "sym": `symbol`,
-    "creator": `account_name`,
+    "creator": `user_id`,
     "issue": `permission_def`,
     "manage": `permission_def`,
     "total_supply": "asset"
@@ -311,5 +313,50 @@ Add new metadata to one domain, group, token or fungible assets
     "key": `meta_key`,
     "value": `meta_value`,
     "creator": `user_id`
+}
+```
+
+### `newdelay` Action
+Add new delay transaction (In-chain delay-signing transaction)
+> `trx` should be valid transaction defiintion
+
+```
+{
+    "name": `proposal_name`,
+    "proposer": `user_id`,
+    "trx": `transaction`
+}
+```
+
+### `approve` Action
+Approve one delay transaction
+> `signatures` are the signatures of the delayed transaction.
+> And the keys used to sign transaction must be required keys while authorizing the delayed transaction.
+
+```
+{
+    "name": `proposal_name`,
+    "signatures": `signature[]`
+}
+```
+
+### `canceldelay` Action
+Cancel one delay transaction
+> Only the `proposer` can cancel his proposed delay transaction.
+
+```
+{
+    "name": `proposal_name`
+}
+```
+
+### `executedelay` Action
+Execute one delay transaction
+> The `executor` must be one of the valid authorizers while authorizing the delayed transaction. 
+
+```
+{
+    "name": `proposal_name`,
+    "executor": `user_id`
 }
 ```

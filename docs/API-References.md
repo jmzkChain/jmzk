@@ -127,6 +127,10 @@ For the fields of an action, here is a quick reference guide.
 | `transfer` | name of domain token belongs to | name of token |
 | `transferft` | `fungible` | name of transfering assets symbol |
 | `addmeta` | `domain`, `group` or name of domain | domain name, group name or token name |
+| `newdelay` | `delay` | proposal name of delay transaction |
+| `approvedelay` | `delay` | proposal name of delay transaction |
+| `canceldelay` | `delay` | proposal name of delay transaction |
+| `executedelay` | `delay` | proposal name of delay transaction |
 
 After all that work, you can send transaction definition using this API to the chain, then the chain will response with the digest of the transaction. You can then sign this digest with your private key.
 
@@ -265,6 +269,30 @@ Response:
     ],
     "except": null
   }
+}
+```
+
+## GET /v1/chain/get_delay_required_keys
+This API is specific used for getting required keys for delay transaction. Other than the normal `get_required_keys` API, this API will not throw exception when your keys don't satisfies the permission requirments for one action, but instead returns the proper keys taking part in authorizing the delayed transaction.
+
+Request:
+```
+{
+  "name": "delay3",
+  "available_keys": [
+    "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+    "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+    "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"
+  ]
+}
+```
+
+Response:
+```
+{
+  "required_keys": [
+    "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+  ]
 }
 ```
 
@@ -408,6 +436,75 @@ Response:
   "total_supply": "100000.00000 EVT",
   "current_supply": "0.00000 EVT",
   "metas": []
+}
+```
+
+## POST /v1/evt/get_delay
+This API is usded to get specific delay proposal
+
+Request:
+```
+{
+    "name": "delay3"
+}
+```
+
+Response: 
+```
+{
+  "name": "delay3",
+  "proposer": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+  "status": "proposed",
+  "trx": {
+    "expiration": "2018-07-03T07:34:14",
+    "ref_block_num": 23618,
+    "ref_block_prefix": 1259088709,
+    "actions": [{
+        "name": "newdomain",
+        "domain": "test4",
+        "key": ".create",
+        "data": {
+          "name": "test4",
+          "creator": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+          "issue": {
+            "name": "issue",
+            "threshold": 1,
+            "authorizers": [{
+                "ref": "[A] EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+                "weight": 1
+              }
+            ]
+          },
+          "transfer": {
+            "name": "transfer",
+            "threshold": 1,
+            "authorizers": [{
+                "ref": "[G] OWNER",
+                "weight": 1
+              }
+            ]
+          },
+          "manage": {
+            "name": "manage",
+            "threshold": 1,
+            "authorizers": [{
+                "ref": "[A] EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+                "weight": 1
+              }
+            ]
+          }
+        },
+        "hex_data": "000000000000000000000000189f077d0002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf000000008052e74c01000000010100000002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf000000000000000100000000b298e982a40100000001020000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000000000094135c6801000000010100000002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf000000000000000100"
+      }
+    ],
+    "transaction_extensions": []
+  },
+  "signed_keys": [
+    "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+  ],
+  "signatures": [
+    "SIG_K1_K1x3vANVU1H9zxKutyRUB4kHKqMLBCaohqPwEsit9oNL8j5SUgMxxgDFA7hwCz9DkrrpaLJSndqcxy3Rmy5qfQw21qHpiJ"
+  ]
 }
 ```
 
