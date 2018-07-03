@@ -19,7 +19,7 @@ phases:
   post_build:
     commands:
       - echo Runing tests
-      - ninja test
+      - ctest --verbose
     finally:
       - echo Posting build results
       - URL="https://${AWS_REGION}.console.aws.amazon.com/codebuild/home?region=${AWS_REGION}#/builds/${CODEBUILD_BUILD_ID}/view/new"

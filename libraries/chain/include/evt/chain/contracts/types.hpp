@@ -357,6 +357,7 @@ struct approvedelay {
 
 struct executedelay {
     proposal_name name;
+    user_id       executor;
 
     static action_name
     get_name() {
@@ -395,4 +396,4 @@ FC_REFLECT(evt::chain::contracts::addmeta, (key)(value)(creator));
 FC_REFLECT(evt::chain::contracts::newdelay, (name)(proposer)(trx));
 FC_REFLECT(evt::chain::contracts::canceldelay, (name));
 FC_REFLECT(evt::chain::contracts::approvedelay, (name)(signatures));
-FC_REFLECT(evt::chain::contracts::executedelay, (name));
+FC_REFLECT(evt::chain::contracts::executedelay, (name)(executor));

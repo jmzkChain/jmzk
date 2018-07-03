@@ -201,6 +201,10 @@ endif()
 
 message( STATUS "Using '${EVT_ROOT_KEY}' as public key for evt account" )
 
+if(ENABLE_TESTING)
+    enable_testing()
+endif()
+
 add_subdirectory( libraries )
 add_subdirectory( plugins )
 add_subdirectory( programs )
@@ -214,7 +218,6 @@ if(ENABLE_BENCHMARKS)
 endif()
 
 if(ENABLE_TESTING)
-    enable_testing()
     add_subdirectory(unittests)
 endif()
 

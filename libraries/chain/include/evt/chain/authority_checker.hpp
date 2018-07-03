@@ -309,8 +309,7 @@ private:
             EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `newdelay` type.");
             break;
         }
-        case N(approvedelay):
-        case N(executedelay): {
+        case N(approvedelay): {
             // will check signatures when applying
             return true;
         }
@@ -323,6 +322,17 @@ private:
                 }
             });
             return result;
+            break;
+        }
+        case N(executedelay): {
+            try {
+                auto ed = action.data_as<contracts::executedelay>();
+                auto vistor = weight_tally_visitor(*this);
+                if(vistor(ed.executor, 1) == 1) {
+                    return true;
+                }
+            }
+            EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `executedelay` type.");
             break;
         }
         default: {

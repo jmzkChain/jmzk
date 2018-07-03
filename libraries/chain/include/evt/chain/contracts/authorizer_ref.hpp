@@ -43,9 +43,11 @@ public:
 
     void
     set_account(const public_key_type& pkey) {
+        const size_t PKEY_SIZE = sizeof(public_key_type::storage_type::type_at<0>);
+
         type_ = account_t;
         memset(storage_.data, 0, sizeof(storage_));
-        memcpy(storage_.data, &pkey, sizeof(pkey));
+        memcpy(storage_.data, &pkey, PKEY_SIZE);
     }
 
     void

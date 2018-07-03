@@ -134,7 +134,9 @@ FC_DECLARE_DERIVED_EXCEPTION( delay_status_exception,             action_excepti
 FC_DECLARE_DERIVED_EXCEPTION( delay_proposer_key_exception,       action_exception, 3040026, "Proposer needs to sign his key." );
 FC_DECLARE_DERIVED_EXCEPTION( delay_duplicate_key_exception,      action_exception, 3040027, "Some keys are already signed this delay trx." );
 FC_DECLARE_DERIVED_EXCEPTION( delay_expired_tx_exception,         action_exception, 3040028, "Delay transaction is expired." );
-FC_DECLARE_DERIVED_EXCEPTION( action_args_exception,              action_exception, 3040029, "Invalid arguments for action" );
+FC_DECLARE_DERIVED_EXCEPTION( delay_not_required_keys_exception,  action_exception, 3040029, "Provided keys are not required." );
+FC_DECLARE_DERIVED_EXCEPTION( delay_executor_exception,           action_exception, 3040030, "Invalid executor." );
+FC_DECLARE_DERIVED_EXCEPTION( action_args_exception,              action_exception, 3040031, "Invalid arguments for action" );
 
 FC_DECLARE_DERIVED_EXCEPTION( pop_empty_chain,                   undo_database_exception, 3070001, "There are no blocks to be popped." );
 
@@ -191,6 +193,6 @@ FC_DECLARE_DERIVED_EXCEPTION( extract_genesis_state_exception,   misc_exception,
 
 FC_DECLARE_DERIVED_EXCEPTION( tx_duplicate_sig,                 authorization_exception, 3090001, "Duplicate signature is included." );
 FC_DECLARE_DERIVED_EXCEPTION( tx_irrelevant_sig,                authorization_exception, 3090002, "Irrelevant signature is included." );
-FC_DECLARE_DERIVED_EXCEPTION( unsatisfied_authorization,        authorization_exception, 3090003, "Provided keys, permissions, and delays do not satisfy declared authorizations." );
+FC_DECLARE_DERIVED_EXCEPTION( unsatisfied_authorization,        authorization_exception, 3090003, "Provided keys do not satisfy declared authorizations." );
 
 }} // evt::chain
