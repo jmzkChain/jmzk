@@ -905,7 +905,7 @@ struct set_delay_subcommands {
         edcmd->set_callback([this] {
             auto edact = executedelay();
             edact.name = (proposal_name)name;
-            edact.executor = (public_key_type)edact.executor;
+            edact.executor = (public_key_type)executor;
 
             auto act = create_action(N128(delay), (domain_key)edact.name, edact);
             send_actions({act});
