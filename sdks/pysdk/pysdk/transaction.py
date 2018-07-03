@@ -3,8 +3,8 @@ import json
 
 from pyevt import abi, ecc
 
-import action
-import api
+import pysdk.action as action
+import pysdk.api as api
 
 
 class Transaction:
