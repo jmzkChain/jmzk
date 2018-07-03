@@ -53,6 +53,14 @@ class Transaction:
         }
         return json.dumps(ret)
 
+class TrxGenerator:
+    def __init__(self, url):
+        self.kwargs = {}
+        self.kwargs['url'] = url
+
+    def new_trx(self):
+        return Transaction(**self.kwargs)
+
 
 def get_sign_transaction(priv_keys, transaction):
     digest = abi.trx_json_to_digest(transaction.dumps(), transaction.chain_id)
