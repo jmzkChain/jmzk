@@ -94,6 +94,7 @@ abi_serializer::configure_built_in_types() {
     built_in_types.emplace("group", pack_unpack<group>());
     built_in_types.emplace("authorizer_ref", pack_unpack<authorizer_ref>());
     built_in_types.emplace("producer_schedule", pack_unpack<producer_schedule_type>());
+    built_in_types.emplace("extensions", pack_unpack<extensions_type>());
 }
 
 void

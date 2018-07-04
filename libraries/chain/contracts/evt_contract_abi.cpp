@@ -322,7 +322,8 @@ evt_contract_abi() {
 
     evt_abi.structs.emplace_back( struct_def {
         "transaction", "transaction_header", {
-            {"actions", "action[]"}
+            {"actions", "action[]"},
+            {"transaction_extensions", "extensions"}
         }
     });
 
