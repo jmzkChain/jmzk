@@ -3,7 +3,7 @@ import json
 import pyevt
 from pyevt import abi, ecc, libevt
 
-import pysdk.base as base
+import base
 
 
 class Action(base.BaseType):
@@ -80,6 +80,26 @@ class TransferFtAction(Action):
         super().__init__('transferft', 'fungible', key, data)
 
 
+class NewDelayAction(Action):
+    def __init__(self, key, data):
+        super().__init__('newdelay', 'delay', key, data)
+
+
+class ApproveAction(Action):
+    def __init__(self, key, data):
+        super().__init__('approve', 'delay', key, data)
+
+
+class CancelDelayAction(Action):
+    def __init__(self, key, data):
+        super().__init__('canceldelay', 'delay', key, data)
+
+
+class ExecuteDelayAction(Action):
+    def __init__(self, key, data):
+        super().__init__('executedelay', 'delay', key, data)
+
+
 class ActionTypeErrorException(Exception):
     def __init__(self):
         err = 'Action_Type_Error'
@@ -112,6 +132,14 @@ def get_action_from_abi_json(action, abi_json, domain=None, key=None):
         return IssueFungibleAction(abi_dict['number'].split(' ')[1], _bin)
     elif action == 'transferft':
         return TransferFtAction(abi_dict['number'].split(' ')[1], _bin)
+    elif action == 'newdelay':
+        return NewDelayAction(abi_dict['name'], _bin)
+    elif action == 'approve':
+        return ApproveAction(abi_dict['name'], _bin)
+    elif action == 'canceldelay':
+        return CancelDelayAction(abi_dict['name'], _bin)
+    elif action == 'executedelay':
+        return ExecuteDelayAction(abi_dict['name'], _bin)
     else:
         raise ActionTypeErrorException
 
@@ -201,7 +229,8 @@ class ActionGenerator:
         return get_action_from_abi_json('addmeta', abi_json.dumps(), domain, key)
 
     def newdelay(self, name, proposer, trx):
-        abi_json = base.NewDelayAbi(name, proposer, trx.dumps())
+        abi_json = base.NewDelayAbi(name, str(proposer), trx=trx.dict())
+        print(abi_json.dumps())
         return get_action_from_abi_json('newdelay', abi_json.dumps())
 
     def approve(self, name, signatures):

@@ -203,19 +203,19 @@ class TransferFtAbi(BaseType):
 
 class NewDelayAbi(BaseType):
     def __init__(self, name, proposer, trx):
-        super().__init__(name, proposer, trx)
+        super().__init__(name=name, proposer=proposer, trx=trx)
 
 
 class ApproveAction(BaseType):
     def __init__(self, name, signatures):
-        super().__init__(name, signatures)
+        super().__init__(name=name, signatures=signatures)
 
 
 class CancelDelayAction(BaseType):
     def __init__(self, name):
-        super().__init__(name)
+        super().__init__(name=name)
 
 
 class ExecuteDelay(BaseType):
     def __init__(self, name, executor):
-        super().__init__(name, executor)
+        super().__init__(name=name, executor=executor)

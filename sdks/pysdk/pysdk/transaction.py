@@ -42,6 +42,17 @@ class Transaction:
         }
         return ret
 
+    def delay_dict(self):
+        ret = {
+            'expiration': self.expiration,
+            **self.kwargs,
+            'ref_block_num': str(self.block_id.ref_block_num()),
+            'ref_block_prefix': str(self.block_id.ref_block_prefix()),
+            'actions': self.actions,
+        }
+        return ret
+
+
     def dumps(self):
         digest = abi.trx_json_to_digest(json.dumps(self.dict()), self.chain_id)
         self.signatures = [priv_key.sign_hash(
