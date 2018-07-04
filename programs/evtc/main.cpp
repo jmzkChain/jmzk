@@ -120,6 +120,10 @@ print_info(const fc::variant& info, int indent = 0) {
                     print_info(obj.value(), indent + 1);
                 }
                 else if(obj.value().is_array()) {
+                    if(obj.value().get_array().size() == 0) {
+                        cerr << "(empty)" << endl;
+                        return;
+                    }
                     cerr << endl;
                     print_info(obj.value(), indent + 1);
                 }
