@@ -21,51 +21,10 @@ moc_*
 *.moc
 
 genesis.json
-hardfork.hpp
 
 libraries/utilities/git_revision.cpp
-libraries/egenesis/egenesis_brief.cpp
-libraries/egenesis/egenesis_full.cpp
-libraries/egenesis/embed_genesis
-libraries/types/type_generator
-libraries/types/types_test
-libraries/types/include/eos/types/generated.hpp
-
-libraries/wallet/Doxyfile
-libraries/wallet/api_documentation.cpp
-libraries/wallet/doxygen
-
-libraries/wasm-jit/Source/Programs/Assemble
-libraries/wasm-jit/Source/Programs/Disassemble
-libraries/wasm-jit/Source/Programs/Test
-libraries/wasm-jit/Source/Programs/wavm
-
-programs/cli_wallet/cli_wallet
-programs/js_operation_serializer/js_operation_serializer programs/witness_node/witness_node
-programs/data-dir
-programs/eos-walletd/eos-walletd
-programs/eosiod/eosiod
-programs/eosioc/eosioc
-programs/launcher/launcher
-programs/eosio-abigen/eosio-abigen
-
-tests/app_test
-tests/chain_bench
-tests/chain_test
-tests/intense_test
-tests/performance_test
-tests/tests/config.hpp
 
 doxygen
-
-wallet.json
-witness_node_data_dir
-
-*.wallet
-
-programs/witness_node/object_database/*
-
-object_database/*
 
 *.pyc
 *.pyo
@@ -83,6 +42,6 @@ cmake-build-debug/
 cmake-build-release/
 diff/
 
-GPATH
-GRTAGS
-GTAGS
+sdks/pysdk/build
+sdks/pysdk/dist
+sdks/pysdk/pysdk.egg-info

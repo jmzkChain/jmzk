@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="pysdk",
+    name="evt-pysdk",
     version="0.1",
     author="everiToken",
     author_email="help@everitoken.io",
