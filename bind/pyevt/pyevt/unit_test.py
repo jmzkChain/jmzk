@@ -38,7 +38,7 @@ class TestPyEVT(unittest.TestCase):
         j = r'''
         {
         "name": "test",
-        "issuer": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+        "creator": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
         "issue": {
             "name": "issue",
             "threshold": 1,
