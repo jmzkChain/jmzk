@@ -178,7 +178,7 @@ FC_DECLARE_DERIVED_EXCEPTION( tokendb_token_existed,             tokendb_excepti
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_account_existed,           tokendb_exception, 3150004, "Account already exists" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_delay_existed,             tokendb_exception, 3150005, "Delay already exists" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_domain_not_found,          tokendb_exception, 3150006, "Not found specific domain" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_group_not_found,           tokendb_exception, 3150007, "Not found specific permission group" );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_group_not_found,           tokendb_exception, 3150007, "Not found specific group" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_token_not_found,           tokendb_exception, 3150008, "Not found specific token" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_delay_not_found,           tokendb_exception, 3150009, "Not found specific delay" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_fungible_not_found,        tokendb_exception, 3150010, "Not found specific fungible" );
