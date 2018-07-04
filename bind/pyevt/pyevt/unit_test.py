@@ -1,8 +1,8 @@
 import unittest
 
-import abi
-from abi import *
-from ecc import *
+from . import abi
+from .abi import *
+from .ecc import *
 
 
 class TestPyEVT(unittest.TestCase):

@@ -2,7 +2,7 @@ import os
 
 from cffi import FFI
 
-import evt_exception
+from . import evt_exception
 
 
 class LibEVT:
