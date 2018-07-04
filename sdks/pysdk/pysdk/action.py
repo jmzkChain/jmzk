@@ -3,7 +3,7 @@ import json
 import pyevt
 from pyevt import abi, ecc, libevt
 
-import base
+import pysdk.base as base
 
 
 class Action(base.BaseType):
