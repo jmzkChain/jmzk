@@ -241,7 +241,7 @@ evt_contract_abi() {
         "addmeta", "", {
             {"key", "meta_key"},
             {"value", "meta_value"},
-            {"creator", "user_id"}
+            {"creator", "authorizer_ref"}
         }
     });
 

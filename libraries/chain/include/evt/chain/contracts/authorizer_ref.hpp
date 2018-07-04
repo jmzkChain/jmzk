@@ -43,8 +43,6 @@ public:
 
     void
     set_account(const public_key_type& pkey) {
-        const size_t PKEY_SIZE = sizeof(public_key_type::storage_type::type_at<0>);
-
         type_ = account_t;
         memset(storage_.data, 0, sizeof(storage_));
         memcpy(storage_.data, &pkey, PKEY_SIZE);
@@ -69,8 +67,10 @@ public:
     bool is_group_ref() const { return type_ == group_t; }
 
 private:
+    static constexpr size_t PKEY_SIZE = sizeof(public_key_type::storage_type::type_at<0>);
+
     int  type_;
-    fc::array<char, sizeof(public_key_type)> storage_;
+    fc::array<char, PKEY_SIZE> storage_;
 
     friend struct fc::reflector<authorizer_ref>;
 };

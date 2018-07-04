@@ -507,46 +507,55 @@ check_involved_node(const group& group, const group::node& node, const public_ke
     return result;
 }
 
-auto check_involved_permission = [](const auto& tokendb, const auto& permission, const auto& key) {
+auto check_involved_permission = [](const auto& tokendb, const auto& permission, const auto& creator) {
     for(auto& a : permission.authorizers) {
         auto& ref = a.ref;
         switch(ref.type()) {
         case authorizer_ref::account_t: {
-            if(ref.get_account() == key) {
+            if(creator.is_account_ref() && ref.get_account() == creator.get_account()) {
                 return true;
             }
             break;
         }
         case authorizer_ref::group_t: {
             const auto& name = ref.get_group();
-            group_def group;
-            tokendb.read_group(name, group);
-            return check_involved_node(group, group.root(), key);
+            if(creator.is_account_ref()) {
+                group_def group;
+                tokendb.read_group(name, group);
+                if(check_involved_node(group, group.root(), creator.get_account())) {
+                    return true;
+                }
+            }
+            else {
+                if(name == creator.get_group()) {
+                    return true;
+                }
+            }
         }
         }  // switch
     }
     return false;
 };
 
-auto check_involved_domain = [](const auto& tokendb, const auto& domain, auto pname, const auto& key) {
+auto check_involved_domain = [](const auto& tokendb, const auto& domain, auto pname, const auto& creator) {
     switch(pname) {
     case N(issue): {
-        return check_involved_permission(tokendb, domain.issue, key);
+        return check_involved_permission(tokendb, domain.issue, creator);
     }
     case N(transfer): {
-        return check_involved_permission(tokendb, domain.transfer, key);
+        return check_involved_permission(tokendb, domain.transfer, creator);
     }
     case N(manage): {
-        return check_involved_permission(tokendb, domain.manage, key);
+        return check_involved_permission(tokendb, domain.manage, creator);
     }
     }  // switch
     return false;
 };
 
-auto check_involved_fungible = [](const auto& tokendb, const auto& fungible, auto pname, const auto& key) {
+auto check_involved_fungible = [](const auto& tokendb, const auto& fungible, auto pname, const auto& creator) {
     switch(pname) {
     case N(manage): {
-        return check_involved_permission(tokendb, fungible.manage, key);
+        return check_involved_permission(tokendb, fungible.manage, creator);
     }
     }  // switch
     return false;
@@ -602,9 +611,13 @@ apply_evt_addmeta(apply_context& context) {
             tokendb.read_group(act.key, group);
 
             EVT_ASSERT(!check_duplicate_meta(group, amact.key), meta_key_exception, "Metadata with key ${key} already exists.", ("key",amact.key));
-            // check involved, only group manager(aka. group key) can add meta
-            EVT_ASSERT(check_involved_group(group, amact.creator), meta_involve_exception, "Creator is not involved in group ${name}.", ("name",act.key));
-
+            if(amact.creator.is_group_ref()) {
+                EVT_ASSERT(amact.creator.get_group() == group.name_, meta_involve_exception, "Only group itself can add its own metadata");
+            }
+            else {
+                // check involved, only group manager(aka. group key) can add meta
+                EVT_ASSERT(check_involved_group(group, amact.creator.get_account()), meta_involve_exception, "Creator is not involved in group ${name}.", ("name",act.key));
+            }
             group.metas_.emplace_back(meta(amact.key, amact.value, amact.creator));
             tokendb.update_group(group);
         }
@@ -640,12 +653,19 @@ apply_evt_addmeta(apply_context& context) {
             domain_def domain;
             tokendb.read_domain(act.domain, domain);
 
-            // check involved, only person involved in `issue` and `transfer` permissions or `owners` can add meta
-            auto involved = check_involved_owner(token, amact.creator)
-                || check_involved_domain(tokendb, domain, N(issue), amact.creator)
-                || check_involved_domain(tokendb, domain, N(transfer), amact.creator);
-            EVT_ASSERT(involved, meta_involve_exception, "Creator is not involved in token ${domain}-${name}.", ("domain",act.domain)("name",act.key));
-
+            if(amact.creator.is_account_ref()) {
+                // check involved, only person involved in `issue` and `transfer` permissions or `owners` can add meta
+                auto involved = check_involved_owner(token, amact.creator.get_account())
+                    || check_involved_domain(tokendb, domain, N(issue), amact.creator)
+                    || check_involved_domain(tokendb, domain, N(transfer), amact.creator);
+                EVT_ASSERT(involved, meta_involve_exception, "Creator is not involved in token ${domain}-${name}.", ("domain",act.domain)("name",act.key));
+            }
+            else {
+                // check involved, only group involved in `issue` and `transfer` permissions can add meta
+                auto involved = check_involved_domain(tokendb, domain, N(issue), amact.creator)
+                    || check_involved_domain(tokendb, domain, N(transfer), amact.creator);
+                EVT_ASSERT(involved, meta_involve_exception, "Creator is not involved in token ${domain}-${name}.", ("domain",act.domain)("name",act.key));
+            }
             token.metas.emplace_back(meta(amact.key, amact.value, amact.creator));
             tokendb.update_token(token);
         }
