@@ -811,6 +811,28 @@ struct set_assets_subcommands {
             auto act = create_action(N128(fungible), (domain_key)tf.number.get_symbol().name(), tf);
             send_actions({act});
         });
+
+        auto epcmd = actionRoot->add_subcommand("2pevt", localized("Convert EVT tokens to Pinned EVT tokens"));
+        epcmd->add_option("from", from, localized("Address where asset transfering from"))->required();
+        epcmd->add_option("to", to, localized("Address where asset transfering to"))->required();
+        epcmd->add_option("number", number, localized("Number of transfer asset"))->required();
+        epcmd->add_option("--memo,-m", memo, localized("Memo for this transfer"));
+
+        add_standard_transaction_options(epcmd);
+
+        epcmd->set_callback([this] {
+            evt2pevt ep;
+            ep.from   = get_public_key(from);
+            ep.to     = get_public_key(to);
+            ep.number = asset::from_string(number);
+            ep.memo   = memo;
+
+            FC_ASSERT(ep.number.get_symbol() == symbol(SY(5,EVT)), "Only EVT can be converted to Pinned EVT");
+
+            auto act = create_action(N128(fungible), (domain_key)ep.number.get_symbol().name(), ep);
+            send_actions({act});
+        });
+
     }
 };
 
@@ -1022,7 +1044,7 @@ struct set_get_assets_subcommand {
         gacmd->set_callback([this] {
             FC_ASSERT(!address.empty(), "Address cannot be empty");
 
-            auto arg = fc::mutable_variant_object("address", public_key_type(address));
+            auto arg = fc::mutable_variant_object("address", get_public_key(address));
             if(!sym.empty()) {
                 arg["sym"] = symbol::from_string(sym);
             }

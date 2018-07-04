@@ -314,6 +314,18 @@ struct transferft {
     }
 };
 
+struct evt2pevt {
+    public_key_type from;
+    public_key_type to;
+    asset           number;
+    string          memo;
+
+    static action_name
+    get_name() {
+        return N(evt2pevt);
+    }
+};
+
 struct addmeta {
     meta_key    key;
     meta_value  value;
@@ -392,6 +404,7 @@ FC_REFLECT(evt::chain::contracts::newfungible, (sym)(creator)(issue)(manage)(tot
 FC_REFLECT(evt::chain::contracts::updfungible, (sym)(issue)(manage));
 FC_REFLECT(evt::chain::contracts::issuefungible, (address)(number)(memo));
 FC_REFLECT(evt::chain::contracts::transferft, (from)(to)(number)(memo));
+FC_REFLECT(evt::chain::contracts::evt2pevt, (from)(to)(number)(memo));
 FC_REFLECT(evt::chain::contracts::addmeta, (key)(value)(creator));
 FC_REFLECT(evt::chain::contracts::newdelay, (name)(proposer)(trx));
 FC_REFLECT(evt::chain::contracts::canceldelay, (name));

@@ -88,7 +88,7 @@ public:
             FC_ASSERT(p <= max_precision, "precision ${p} should be <= 18", ("p",p));
             return symbol(string_to_symbol(p, name_part.c_str()));
         }
-        FC_CAPTURE_LOG_AND_RETHROW((from))
+        FC_CAPTURE_AND_RETHROW((from))
     }
 
     uint64_t

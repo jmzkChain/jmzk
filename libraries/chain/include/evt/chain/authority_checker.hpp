@@ -268,9 +268,20 @@ private:
         }
         case N(transferft): {
             try {
-                auto t20    = action.data_as<contracts::transferft>();
+                auto tf     = action.data_as<contracts::transferft>();
                 auto vistor = weight_tally_visitor(*this);
-                if(vistor(t20.from, 1) == 1) {
+                if(vistor(tf.from, 1) == 1) {
+                    return true;
+                }
+            }
+            EVT_RETHROW_EXCEPTIONS(action_type_exception, "transation data is not valid, data cannot cast to `transferft` type");
+            break;
+        }
+        case N(evt2pevt): {
+            try {
+                auto ep     = action.data_as<contracts::evt2pevt>();
+                auto vistor = weight_tally_visitor(*this);
+                if(vistor(ep.from, 1) == 1) {
                     return true;
                 }
             }

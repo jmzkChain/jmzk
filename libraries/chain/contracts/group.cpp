@@ -49,7 +49,9 @@ to_variant(const group& group, const group::node& node, fc::variant& v) {
     }
     
     mv["threshold"] = node.threshold;
-    mv["weight"] = node.weight;
+    if(node.weight > 0) {
+        mv["weight"] = node.weight;
+    }
 
     fc::variants cvs;
     cvs.reserve(node.size);

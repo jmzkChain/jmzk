@@ -136,7 +136,8 @@ FC_DECLARE_DERIVED_EXCEPTION( delay_duplicate_key_exception,      action_excepti
 FC_DECLARE_DERIVED_EXCEPTION( delay_expired_tx_exception,         action_exception, 3040028, "Delay transaction is expired." );
 FC_DECLARE_DERIVED_EXCEPTION( delay_not_required_keys_exception,  action_exception, 3040029, "Provided keys are not required." );
 FC_DECLARE_DERIVED_EXCEPTION( delay_executor_exception,           action_exception, 3040030, "Invalid executor." );
-FC_DECLARE_DERIVED_EXCEPTION( action_args_exception,              action_exception, 3040031, "Invalid arguments for action" );
+FC_DECLARE_DERIVED_EXCEPTION( name_reserved_exception,            action_exception, 3040031, "Name is reserved." );
+FC_DECLARE_DERIVED_EXCEPTION( action_args_exception,              action_exception, 3040032, "Invalid arguments for action" );
 
 FC_DECLARE_DERIVED_EXCEPTION( pop_empty_chain,                   undo_database_exception, 3070001, "There are no blocks to be popped." );
 
