@@ -7,9 +7,11 @@
 #include <evt/chain/asset.hpp>
 #include <evt/chain/chain_config.hpp>
 #include <evt/chain/config.hpp>
+#include <evt/chain/types.hpp>
+
 #include <evt/chain/contracts/authorizer_ref.hpp>
 #include <evt/chain/contracts/group.hpp>
-#include <evt/chain/types.hpp>
+#include <evt/chain/contracts/metadata.hpp>
 
 namespace evt { namespace chain { namespace contracts {
 
@@ -28,9 +30,6 @@ using group_name      = evt::chain::group_name;
 using group_key       = public_key_type;
 using group_def       = group;
 using balance_type    = evt::chain::asset;
-using meta_key        = evt::chain::meta_key;
-using meta_value      = evt::chain::meta_value;
-using meta_list       = evt::chain::meta_list;
 
 struct type_def {
     type_def() = default;
@@ -327,9 +326,9 @@ struct evt2pevt {
 };
 
 struct addmeta {
-    meta_key    key;
-    meta_value  value;
-    user_id     creator;
+    meta_key       key;
+    meta_value     value;
+    authorizer_ref creator;
 
     static action_name
     get_name() {

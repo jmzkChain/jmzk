@@ -8,6 +8,7 @@
 #include <functional>
 #include <fc/reflect/reflect.hpp>
 #include <evt/chain/types.hpp>
+#include <evt/chain/contracts/metadata.hpp>
 
 namespace evt { namespace chain { namespace contracts {
 

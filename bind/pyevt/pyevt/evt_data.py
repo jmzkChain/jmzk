@@ -1,7 +1,6 @@
 from io import StringIO
 
-import evt_exception
-import libevt
+from . import evt_exception, libevt
 
 
 class EvtData:

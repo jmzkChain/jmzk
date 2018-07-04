@@ -119,7 +119,8 @@ private:
 private:
     bool
     satisfied_group(const action& action) {
-        if(action.name == N(newgroup)) {
+        switch(action.name.value) {
+        case N(newgroup): {
             try {
                 auto ng     = action.data_as<contracts::newgroup>();
                 auto vistor = weight_tally_visitor(*this);
@@ -129,7 +130,7 @@ private:
             }
             EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `newgroup` type.");
         }
-        else if(action.name == N(updategroup)) {
+        case N(updategroup): {
             bool result = false;
             get_group(action.key, [&](const auto& group) {
                 auto& gkey   = group.key();
@@ -140,16 +141,13 @@ private:
             });
             return result;
         }
-        else if(action.name == N(addmeta)) {
-            try {
-                auto am     = action.data_as<contracts::addmeta>();
-                auto vistor = weight_tally_visitor(*this);
-                if(vistor(am.creator, 1) == 1) {
-                    return true;
-                }
-            }
-            EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `addmeta` type.");
+        case N(addmeta): {
+            return satisfied_meta(action);
         }
+        default: {
+            EVT_THROW(action_type_exception, "Unknown action name: ${type}", ("type",action.name));
+        }
+        }  // switch
         return false;
     }
 
@@ -289,21 +287,48 @@ private:
             break;
         }
         case N(addmeta): {
-            try {
-                auto am     = action.data_as<contracts::addmeta>();
-                auto vistor = weight_tally_visitor(*this);
-                if(vistor(am.creator, 1) == 1) {
-                    return true;
-                }
-            }
-            EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `addmeta` type.");
-            break;
+            return satisfied_meta(action);
         }
         default: {
             EVT_THROW(action_type_exception, "Unknown action name: ${type}", ("type",action.name));
         }
         }  // switch
         return false;
+    }
+
+    bool
+    satisfied_meta(const action& action) {
+        try {
+            auto am = action.data_as<contracts::addmeta>();
+
+            auto& ref        = am.creator;
+            bool  ref_result = false;
+
+            switch(ref.type()) {
+            case authorizer_ref::account_t: {
+                auto  vistor = weight_tally_visitor(*this);
+                auto& key    = ref.get_account();
+                if(vistor(key, 1) == 1) {
+                    ref_result = true;
+                }
+                break;
+            }
+            case authorizer_ref::owner_t: {
+                return false;
+            }
+            case authorizer_ref::group_t: {
+                auto& name = ref.get_group();
+                get_group(name, [&](const auto& group) {
+                    if(satisfied_node(group, group.root(), 0)) {
+                        ref_result = true;
+                    }
+                });
+                break;
+            }
+            }  // switch
+            return ref_result;
+        }
+        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `addmeta` type.");
     }
 
     bool
@@ -368,15 +393,7 @@ private:
             break;
         }
         case N(addmeta): {
-            try {
-                auto am     = action.data_as<contracts::addmeta>();
-                auto vistor = weight_tally_visitor(*this);
-                if(vistor(am.creator, 1) == 1) {
-                    return true;
-                }
-            }
-            EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `addmeta` type.");
-            break;
+            return satisfied_meta(action);
         }
         case N(updatedomain): {
             return satisfied_domain_permission(action, N(manage));
@@ -402,20 +419,27 @@ public:
         auto KeyReverter = fc::make_scoped_exit([this, keys = _used_keys]() mutable {
             _used_keys = keys;
         });
-        bool result      = false;
 
-        if(action.domain == N128(group)) {
+        bool result = false;
+        switch(action.domain.value) {
+        case N128(group): {
             result = satisfied_group(action);
+            break;
         }
-        else if(action.domain == N128(fungible)) {
+        case N128(fungible): {
             result = satisfied_fungible(action);
+            break;
         }
-        else if(action.domain == N128(delay)) {
+        case N128(delay): {
             result = satisfied_delay(action);
+            break;
         }
-        else {
+        default: {
             result = satisfied_tokens(action);
+            break;
         }
+        }  // switch
+
         if(result) {
             KeyReverter.cancel();
             return true;

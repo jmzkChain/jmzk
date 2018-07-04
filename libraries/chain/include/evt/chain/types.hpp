@@ -111,21 +111,6 @@ using group_name      = name128;
 using proposal_name   = name128;
 using fungible_name   = name128;
 using user_id         = public_key_type;
-using meta_key        = name128;
-using meta_value      = string;
-
-struct meta {
-    meta() = default;
-    meta(const meta_key& key, const string& value, const user_id& creator)
-        : key(key)
-        , value(value)
-        , creator(creator) {}
-
-    meta_key   key;
-    meta_value value;
-    user_id    creator;
-};
-using meta_list = std::vector<meta>;
 
 /**
  * List all object types from all namespaces here so they can
@@ -195,5 +180,4 @@ FC_REFLECT_ENUM(
     (null_object_type)(global_property_object_type)(dynamic_global_property_object_type)
     (block_summary_object_type)(transaction_object_type)(reversible_block_object_type)
     (OBJECT_TYPE_COUNT))
-FC_REFLECT(evt::chain::meta, (key)(value)(creator))
 FC_REFLECT(evt::chain::void_t, )

@@ -1,6 +1,5 @@
-import evt_exception
-import libevt
-from evt_data import EvtData
+from . import evt_exception, libevt
+from .evt_data import EvtData
 
 
 def json_to_bin(action, json):

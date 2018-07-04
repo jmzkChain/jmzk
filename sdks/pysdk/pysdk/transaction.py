@@ -3,8 +3,8 @@ import json
 
 from pyevt import abi, ecc
 
-import action
-import api
+import pysdk.action as action
+import pysdk.api as api
 
 
 class Transaction:
@@ -52,6 +52,14 @@ class Transaction:
             'transaction': self.dict()
         }
         return json.dumps(ret)
+
+class TrxGenerator:
+    def __init__(self, url):
+        self.kwargs = {}
+        self.kwargs['url'] = url
+
+    def new_trx(self):
+        return Transaction(**self.kwargs)
 
 
 def get_sign_transaction(priv_keys, transaction):
