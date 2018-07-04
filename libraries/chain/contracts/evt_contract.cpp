@@ -93,6 +93,17 @@ check_name_reserved(const name128& name) {
     EVT_ASSERT(!name.empty() && (name.value & reserved_flag), name_reserved_exception, "Name starting with '.' is reserved for system usages.");
 }
 
+public_key_type
+get_reserved_public_key() {
+    static public_key_type pkey;
+    return pkey;
+}
+
+bool
+is_reserved_public_key(const public_key_type& pkey) {
+    return pkey == get_reserved_public_key();
+}
+
 } // namespace __internal
 
 void
@@ -162,18 +173,12 @@ apply_evt_issuetoken(apply_context& context) {
 
 namespace __internal {
 
-public_key_type
-get_reservered_public_key() {
-    static public_key_type pkey;
-    return pkey;
-}
-
 bool
 check_token_destroy(const token_def& token) {
     if(token.owner.size() > 1) {
         return false;
     }
-    return token.owner[0] == get_reservered_public_key();
+    return token.owner[0] == get_reserved_public_key();
 }
 
 }  // namespace __internal
@@ -214,7 +219,7 @@ apply_evt_destroytoken(apply_context& context) {
 
         EVT_ASSERT(!check_token_destroy(token), token_destoryed_exception, "Token is already destroyed.");
 
-        token.owner = user_list{ get_reservered_public_key() };
+        token.owner = user_list{ get_reserved_public_key() };
         tokendb.update_token(token);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
@@ -249,7 +254,11 @@ apply_evt_updategroup(apply_context& context) {
         EVT_ASSERT(ugact.name == ugact.group.name(), group_name_exception, "Names in action are not the same.");
 
         auto& tokendb = context.token_db;
-        EVT_ASSERT(tokendb.exists_group(ugact.name), group_not_existed_exception, "Group ${name} does not exist.", ("name",ugact.name));
+        
+        group_def group;
+        tokendb.read_group(ugact.name, group);
+        
+        EVT_ASSERT(!is_reserved_public_key(group.key()), group_key_exception, "Reserved group key cannot be used to udpate group");
         EVT_ASSERT(validate(ugact.group), group_type_exception, "Updated group is not valid.");
 
         tokendb.update_group(std::move(ugact.group));
