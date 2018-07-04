@@ -10,9 +10,6 @@ setup(
     license="MIT",
     url="https://github.com/everitoken/evt/tree/master/bind/pyevt",
     packages=find_packages(),
-    package_data={
-        '': ['*.so']
-    },
     install_requires=['cffi'],
     classifiers=[
         "Programming Language :: Python :: 3",

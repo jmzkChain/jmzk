@@ -1,7 +1,7 @@
 FROM everitoken/builder:latest as builder
 ARG branch=master
 
-RUN git clone -b $branch https://github.com/everitoken/evt.git --recursive \
+RUN git clone -b $branch https://github.com/everitoken/evt.git \
     && cd evt && echo "$branch:$(git rev-parse HEAD)" > /etc/evt-version \
     && cmake -H. -B"/tmp/build" -G"Ninja" -DCMAKE_BUILD_TYPE=Release \
        -DCMAKE_INSTALL_PREFIX=/tmp/build  -DSecp256k1_ROOT_DIR=/usr/local -DENABLE_BIND_LIBRARIES=ON
@@ -15,12 +15,9 @@ RUN pip3 install cffi wheel
 
 WORKDIR /pyevt
 COPY --from=builder /usr/local/lib/*.so* /usr/local/lib/
-COPY --from=builder /tmp/build/lib/libevt.so lib/
-COPY --from=builder /tmp/build/lib/libfc_lite.so lib/
-COPY --from=builder /tmp/build/lib/libevt_chain_lite.so lib/
-COPY --from=builder /evt/bind/pyevt/pyevt/* ./
+COPY --from=builder /evt/bind/pyevt ./
 
-ENV LD_LIBRARY_PATH /pyevt/lib:/usr/local/lib
+ENV LD_LIBRARY_PATH /usr/local/lib
 ENV PATH /usr/sbin:/usr/bin:/sbin:/bin
 
-ENTRYPOINT ["python3", "/pyevt/unit_test.py"]
+ENTRYPOINT ["python3", "/pyevt/pyevt/unit_test.py"]

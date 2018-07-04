@@ -42,6 +42,10 @@ cmake-build-debug/
 cmake-build-release/
 diff/
 
+bind/pyevt/build
+bind/pyevt/dist
+bind/pyevt/pyevt.egg-info
+
 sdks/pysdk/build
 sdks/pysdk/dist
 sdks/pysdk/pysdk.egg-info

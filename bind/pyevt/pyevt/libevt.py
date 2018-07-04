@@ -1,3 +1,5 @@
+import os
+
 from cffi import FFI
 
 import evt_exception
@@ -78,5 +80,10 @@ def init_lib():
                 int evt_ref_block_num(evt_block_id_t* block_id, uint16_t* ref_block_num);
                 int evt_ref_block_prefix(evt_block_id_t* block_id, uint32_t* ref_block_prefix);
                 """)
-        LibEVT.lib = LibEVT.ffi.dlopen('./lib/libevt.so')
+
+        if "LIBEVT_PATH" in os.environ:
+            LibEVT.lib = LibEVT.ffi.dlopen(os.environ["LIBEVT_PATH"] + '/libevt.so')
+        else:
+            LibEVT.lib = LibEVT.ffi.dlopen('libevt.so')
+
         LibEVT.abi = LibEVT.lib.evt_abi()
