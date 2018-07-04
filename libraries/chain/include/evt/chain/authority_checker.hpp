@@ -127,6 +127,7 @@ private:
                 if(vistor(ng.group.key(), 1) == 1) {
                     return true;
                 }
+                break;
             }
             EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `newgroup` type.");
         }

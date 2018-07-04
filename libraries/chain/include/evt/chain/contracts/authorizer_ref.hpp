@@ -70,7 +70,7 @@ private:
     static constexpr size_t PKEY_SIZE = sizeof(public_key_type::storage_type::type_at<0>);
 
     int  type_;
-    fc::array<char, PKEY_SIZE> storage_;
+    fc::array<char, sizeof(public_key_type)> storage_;
 
     friend struct fc::reflector<authorizer_ref>;
 };

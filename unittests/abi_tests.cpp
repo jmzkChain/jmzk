@@ -960,7 +960,7 @@ BOOST_AUTO_TEST_CASE(addmeta_test) {
         {
           "key": "key",
           "value": "value",
-          "creator": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+          "creator": "[A] EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
         }
         )=====";
 
@@ -969,7 +969,8 @@ BOOST_AUTO_TEST_CASE(addmeta_test) {
 
         BOOST_TEST("key" == admt.key);
         BOOST_TEST("value" == admt.value);
-        BOOST_TEST("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)admt.creator);
+        BOOST_TEST(admt.creator.is_account_ref());
+        BOOST_TEST("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)admt.creator.get_account());
 
         auto var2 = verify_byte_round_trip_conversion(abis, "addmeta", var);
 
@@ -977,7 +978,8 @@ BOOST_AUTO_TEST_CASE(addmeta_test) {
 
         BOOST_TEST("key" == admt2.key);
         BOOST_TEST("value" == admt2.value);
-        BOOST_TEST("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)admt2.creator);
+        BOOST_TEST(admt2.creator.is_account_ref());
+        BOOST_TEST("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)admt2.creator.get_account());
 
         verify_type_round_trip_conversion<addmeta>(abis, "addmeta", var);
     }
@@ -991,18 +993,19 @@ BOOST_AUTO_TEST_CASE(newdelay_test) {
         const char* test_data = R"=======(
         {
             "name": "testdelay",
-            "proposer": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+            "proposer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
             "trx": {
-                "expiration": "2018-06-30T12:43:24",
-                "ref_block_num": 212,
-                "ref_block_prefix": 3641962205,
-                "delay_sec": 0,
-                "actions": [{
-                    "name": "newdelay",
-                    "domain": "delay",
-                    "key": "delay1",
-                    "data": "00000000000000000000003090cc053d0002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cfec7a375bd400ddee13d9000100007029b4476e71000000000000000000000000009f077d0000000000000000000000f43150e700e301000000000000000000000000009f077d0002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf000000008052e74c01000000010100000002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf44a2ec000000000100000000b298e982a40100000001020000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000000000094135c6801000000010100000002c0ded2bc1f1305fb0faac5e6c03ee3a1924234985427b6167ca569d13df435cf44a2ec00000000010000"
-                }],
+                "expiration": "2018-07-04T05:14:12",
+                "ref_block_num": "3432",
+                "ref_block_prefix": "291678901",
+                "actions": [
+                    {
+                        "name": "newdomain",
+                        "domain": "test1530681222",
+                        "key": ".create",
+                        "data": "00000000004010c4a02042710c9f077d0002e07ae3ed523dba04dc9d718d94abcd1bea3da38176f4b775b818200c01a149b1000000008052e74c01000000010100000002e07ae3ed523dba04dc9d718d94abcd1bea3da38176f4b775b818200c01a149b1000000000000000100000000b298e982a40100000001020000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000000000094135c6801000000010100000002e07ae3ed523dba04dc9d718d94abcd1bea3da38176f4b775b818200c01a149b1000000000000000100"
+                    }
+                ],
                 "transaction_extensions": []
             }
         }

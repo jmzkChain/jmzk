@@ -114,7 +114,7 @@ update_domain_data() {
       "metas":[{
       	"key": "key",
       	"value": "value",
-      	"creator": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK"
+      	"creator": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK"
       }]
     }
     )=====";
@@ -156,7 +156,7 @@ update_token_data() {
         "metas":[{
       	"key": "key",
       	"value": "value",
-      	"creator": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK"
+      	"creator": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK"
       }]
     }
     )=====";
@@ -338,7 +338,8 @@ BOOST_AUTO_TEST_CASE(tokendb_updatedomain_test) {
         BOOST_TEST_REQUIRE(1 == dom_.metas.size());
         BOOST_TEST(dom.metas[0].key == dom_.metas[0].key);
         BOOST_TEST("value" == dom_.metas[0].value);
-        BOOST_TEST("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)dom_.metas[0].creator);
+        BOOST_TEST(dom_.metas[0].creator.is_account_ref());
+        BOOST_TEST("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)dom_.metas[0].creator.get_account());
     }
     FC_LOG_AND_RETHROW()
 }
@@ -390,7 +391,8 @@ BOOST_AUTO_TEST_CASE(tokendb_updatetoken_test) {
         BOOST_TEST_REQUIRE(1 == tk_.metas.size());
         BOOST_TEST(tk.metas[0].key == tk_.metas[0].key);
         BOOST_TEST("value" == tk_.metas[0].value);
-        BOOST_TEST("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)tk_.metas[0].creator);
+        BOOST_TEST(tk_.metas[0].creator.is_account_ref());
+        BOOST_TEST("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)tk_.metas[0].creator.get_account());
     }
     FC_LOG_AND_RETHROW()
 }
