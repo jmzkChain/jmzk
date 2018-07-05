@@ -268,7 +268,8 @@ evt_contract_abi() {
 
     evt_abi.structs.emplace_back( struct_def {
         "executedelay", "", {
-           {"name", "proposal_name"}
+           {"name", "proposal_name"},
+           {"executor", "user_id"}
         }
     });
 

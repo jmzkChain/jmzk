@@ -20,11 +20,11 @@ using namespace evt;
 using namespace chain;
 using namespace contracts;
 
-extern std::string tokendb_dir;
+extern std::string evt_unittests_dir;
 
 struct tokendb_test {
     tokendb_test() : ti(0) {
-        tokendb.initialize(tokendb_dir);
+        tokendb.initialize(evt_unittests_dir + "/tokendb_tests");
     }
     ~tokendb_test() {}
 

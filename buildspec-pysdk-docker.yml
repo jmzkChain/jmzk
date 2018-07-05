@@ -12,9 +12,9 @@ phases:
       - docker login -u $LOGIN_USERID -p $LOGIN_PASSWORD
   build:
     commands:
-      - echo Start building latest pyevt Docker image...
-      - cd Docker && docker build pyevt -t everitoken/pyevt:latest
+      - echo Start building latest pysdk Docker image...
+      - cd Docker && docker build pysdk -t everitoken/pysdk:latest
   post_build:
     commands:
       - echo Publish to Docker Hub...
-      - docker push everitoken/pyevt:latest
+      - docker push everitoken/pysdk:latest

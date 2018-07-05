@@ -116,7 +116,7 @@ For the fields of an action, here is a quick reference guide.
 
 | Action Name | Domain | Key |
 |-------------|--------|-----|
-| `newdomain` | name of domain | `.issue` |
+| `newdomain` | name of domain | `.create` |
 | `updatedomain` | name of domain | `.update` |
 | `newgroup` | `group` | name of new group |
 | `updategroup` | `group` | name of updating group |
@@ -125,8 +125,10 @@ For the fields of an action, here is a quick reference guide.
 | `issuetoken` | name of domain | `.issue` |
 | `issuefungible` | `fungible` | name of issuing fungible assets symbol |
 | `transfer` | name of domain token belongs to | name of token |
+| `destroytoken` | name of domain token belongs to | name of token |
 | `transferft` | `fungible` | name of transfering assets symbol |
-| `addmeta` | `domain`, `group` or name of domain | domain name, group name or token name |
+| `evt2pevt` | `fungible` | `EVT` |
+| `addmeta` | `domain`, `group`, `fungible` or token's domain | domain name, group name, fungible name or token name |
 | `newdelay` | `delay` | proposal name of delay transaction |
 | `approvedelay` | `delay` | proposal name of delay transaction |
 | `canceldelay` | `delay` | proposal name of delay transaction |
@@ -309,7 +311,7 @@ Response:
 ```
 {
     "name": "cookie",
-    "issuer": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+    "creator": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
     "issue_time": "2018-06-09T09:06:27",
     "issue": {
         "name": "issue",

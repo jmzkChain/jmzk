@@ -39,6 +39,7 @@ public:
         uint64_t reversible_cache_size  = chain::config::default_reversible_cache_size;
         bool     read_only              = false;
         bool     force_all_checks       = false;
+        bool     loadtest_mode          = false;
         bool     contracts_console      = false;
 
         genesis_state genesis;
@@ -134,7 +135,7 @@ public:
     int64_t set_proposed_producers(vector<producer_key> producers);
 
     bool skip_auth_check() const;
-
+    bool loadtest_mode() const;
     bool contracts_console() const;
 
     chain_id_type get_chain_id() const;
@@ -171,4 +172,4 @@ private:
 }}  // namespace evt::chain
 
 FC_REFLECT(evt::chain::controller::config,
-           (blocks_dir)(state_dir)(tokendb_dir)(state_size)(reversible_cache_size)(read_only)(force_all_checks)(contracts_console)(genesis))
+           (blocks_dir)(state_dir)(tokendb_dir)(state_size)(reversible_cache_size)(read_only)(force_all_checks)(loadtest_mode)(contracts_console)(genesis))

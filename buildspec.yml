@@ -12,7 +12,7 @@ phases:
   build:
     commands:
       - echo Generating build files...
-      - mkdir build && cd build
+      - mkdir -p build && cd build
       - cmake ../ -G"Ninja" -DCMAKE_BUILD_TYPE=Release -DSecp256k1_ROOT_DIR=/usr/local -DENABLE_MONGODB_SUPPORT=ON -DENABLE_BIND_LIBRARIES=ON
       - echo Building...
       - ninja -j$(nproc) all
@@ -24,4 +24,9 @@ phases:
       - echo Posting build results
       - URL="https://${AWS_REGION}.console.aws.amazon.com/codebuild/home?region=${AWS_REGION}#/builds/${CODEBUILD_BUILD_ID}/view/new"
       - curl "${BEARCHAT_CHANNEL}" -H "Content-Type:application/json" -d "{\"text\":\"latest EVT built finished\",\"markdown\":true,\"channel\":\"evt-awscodebuild\",\"attachments\":[{\"text\":\"$URL\",\"url\":\"$URL\"}]}"
- 
+artifacts:
+  files:
+    - 'build/bind/libevt/libevt.so'
+    - 'build/libraries/chain/libevt_chain_lite.so'
+    - 'build/libraries/fc/libfc_lite.so'
+  discard-paths: yes

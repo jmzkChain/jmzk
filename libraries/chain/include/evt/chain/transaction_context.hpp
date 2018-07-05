@@ -20,7 +20,7 @@ public:
 
     void init_for_implicit_trx();
     void init_for_input_trx(uint32_t num_signatures);
-    void init_for_deferred_trx();
+    void init_for_delay_trx();
 
     void exec();
     void finalize();

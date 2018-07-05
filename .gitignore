@@ -48,4 +48,4 @@ bind/pyevt/pyevt.egg-info
 
 sdks/pysdk/build
 sdks/pysdk/dist
-sdks/pysdk/pysdk.egg-info
+sdks/pysdk/pyevtsdk.egg-info

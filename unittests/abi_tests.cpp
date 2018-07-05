@@ -1030,6 +1030,7 @@ BOOST_AUTO_TEST_CASE(newdelay_test) {
     FC_LOG_AND_RETHROW()
 }
 
+
 BOOST_AUTO_TEST_CASE(canceldelay_test) {
     try {
         auto abis = get_evt_abi();
@@ -1057,9 +1058,9 @@ BOOST_AUTO_TEST_CASE(approvedelay_test) {
         BOOST_CHECK(true);
         const char* test_data = R"=======(
         {
-            "name": "testdelay",
-            "signatures":[
-                "SIG_K1_JzrdhWW46N5nFUZzTUmhg2sK4nKNGktPz2UdRz9bSAP5pY4nhicKWCuo6Uc6U7KBBwD8VfjsSxzHWT87R41xMaubnzMq8w"
+            "name": "test1530718665",
+            "signatures": [
+                "SIG_K1_KXjtmeihJi1qnSs7vmqJDRJoZ1nSEPeeRjsKJRpm24g8yhFtAepkRDR4nVFbXjvoaQvT4QrzuNWCbuEhceYpGmAvsG47Fj"
             ]
         }
         )=======";
@@ -1067,8 +1068,9 @@ BOOST_AUTO_TEST_CASE(approvedelay_test) {
         auto var  = fc::json::from_string(test_data);
         auto adact = var.as<approvedelay>();
 
-        BOOST_TEST("testdelay" == (std::string)adact.name);
-        BOOST_TEST("SIG_K1_JzrdhWW46N5nFUZzTUmhg2sK4nKNGktPz2UdRz9bSAP5pY4nhicKWCuo6Uc6U7KBBwD8VfjsSxzHWT87R41xMaubnzMq8w" == (std::string)adact.signatures[0]);
+        BOOST_TEST("test1530718665" == (std::string)adact.name);
+        BOOST_TEST(adact.signatures.size() == 1);
+        BOOST_TEST((std::string)adact.signatures[0] == "SIG_K1_KXjtmeihJi1qnSs7vmqJDRJoZ1nSEPeeRjsKJRpm24g8yhFtAepkRDR4nVFbXjvoaQvT4QrzuNWCbuEhceYpGmAvsG47Fj");
 
         verify_byte_round_trip_conversion(abis, "approvedelay", var);
         verify_type_round_trip_conversion<approvedelay>(abis, "approvedelay", var);
@@ -1082,16 +1084,17 @@ BOOST_AUTO_TEST_CASE(executedelay_test) {
         BOOST_CHECK(true);
         const char* test_data = R"=======(
         {
-            "name": "testdelay",
-            "executor": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3"
+            "name": "test1530718626",
+            "executor": "EVT548LviBDF6EcknKnKUMeaPUrZN2uhfCB1XrwHsURZngakYq9Vx"
+
         }
         )=======";
 
         auto var  = fc::json::from_string(test_data);
         auto edact = var.as<executedelay>();
 
-        BOOST_TEST("testdelay" == (std::string)edact.name);
-        BOOST_TEST("EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3" == (std::string)edact.executor);
+        BOOST_TEST("test1530718626" == (std::string)edact.name);
+        BOOST_TEST((std::string)edact.executor == "EVT548LviBDF6EcknKnKUMeaPUrZN2uhfCB1XrwHsURZngakYq9Vx");
 
         verify_byte_round_trip_conversion(abis, "executedelay", var);
         verify_type_round_trip_conversion<executedelay>(abis, "executedelay", var);

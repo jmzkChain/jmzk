@@ -15,9 +15,6 @@ void
 initialize_evt_org(token_database& token_db, const genesis_state& genesis) {
     // Add reserved everiToken foundation group
     if(!token_db.exists_group(".everiToken")) {
-        auto strkey = (std::string)public_key_type();
-        printf("%s\n", strkey.c_str());
-
         const char* def = R"(
         {
             "name": ".everiToken",
