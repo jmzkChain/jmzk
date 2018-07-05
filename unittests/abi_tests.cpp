@@ -1022,3 +1022,52 @@ BOOST_AUTO_TEST_CASE(newdelay_test) {
     }
     FC_LOG_AND_RETHROW()
 }
+
+BOOST_AUTO_TEST_CASE(approvedelay_test) {
+    try {
+        auto abis = get_evt_abi();
+        BOOST_CHECK(true);
+        const char* test_data = R"=======(
+        {
+            "name": "test1530718665",
+            "signatures": [
+                "SIG_K1_KXjtmeihJi1qnSs7vmqJDRJoZ1nSEPeeRjsKJRpm24g8yhFtAepkRDR4nVFbXjvoaQvT4QrzuNWCbuEhceYpGmAvsG47Fj"
+            ]
+        }
+        )=======";
+
+        auto var  = fc::json::from_string(test_data);
+        auto adact = var.as<approvedelay>();
+
+        BOOST_TEST("test1530718665" == (std::string)adact.name);
+        BOOST_TEST(adact.signatures.size() == 1);
+        BOOST_TEST((std::string)adact.signatures[0] == "SIG_K1_KXjtmeihJi1qnSs7vmqJDRJoZ1nSEPeeRjsKJRpm24g8yhFtAepkRDR4nVFbXjvoaQvT4QrzuNWCbuEhceYpGmAvsG47Fj");
+
+        verify_byte_round_trip_conversion(abis, "approvedelay", var);
+        verify_type_round_trip_conversion<approvedelay>(abis, "approvedelay", var);
+    }
+    FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE(executedelay_test) {
+    try {
+        auto abis = get_evt_abi();
+        BOOST_CHECK(true);
+        const char* test_data = R"=======(
+        {
+            "name": "test1530718626",
+            "executor": "EVT548LviBDF6EcknKnKUMeaPUrZN2uhfCB1XrwHsURZngakYq9Vx"
+        }
+        )=======";
+
+        auto var  = fc::json::from_string(test_data);
+        auto edact = var.as<executedelay>();
+
+        BOOST_TEST("test1530718626" == (std::string)edact.name);
+        BOOST_TEST((std::string)edact.executor == "EVT548LviBDF6EcknKnKUMeaPUrZN2uhfCB1XrwHsURZngakYq9Vx");
+
+        verify_byte_round_trip_conversion(abis, "executedelay", var);
+        verify_type_round_trip_conversion<executedelay>(abis, "executedelay", var);
+    }
+    FC_LOG_AND_RETHROW()
+}

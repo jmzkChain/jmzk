@@ -353,7 +353,7 @@ Add new delay transaction (In-chain delay-signing transaction)
 }
 ```
 
-### `approve` Action
+### `approvedelay` Action
 Approve one delay transaction
 > `signatures` are the signatures of the delayed transaction.
 > And the keys used to sign transaction must be required keys while authorizing the delayed transaction.

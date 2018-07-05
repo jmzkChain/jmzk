@@ -198,10 +198,23 @@ BOOST_AUTO_TEST_CASE( evtabi ) {
     BOOST_TEST_REQUIRE(r7 == EVT_OK);
     BOOST_TEST_CHECK(ref_block_prefix == 2253733142);
 
+    auto j3 = R"(
+    {
+        "name": "test1530718665",
+        "signatures": [
+            "SIG_K1_KXjtmeihJi1qnSs7vmqJDRJoZ1nSEPeeRjsKJRpm24g8yhFtAepkRDR4nVFbXjvoaQvT4QrzuNWCbuEhceYpGmAvsG47Fj"
+        ]
+    }
+    )";
+    evt_bin_t* bin3 = nullptr;
+    auto r8 = evt_abi_json_to_bin(abi, "approvedelay", j3, &bin3);
+    BOOST_TEST_REQUIRE(r8 == EVT_OK);
+
     evt_free(bin);
     evt_free(j1restore);
     evt_free(chain_id);
     evt_free(digest);
     evt_free(block_id);
+    evt_free(bin3);
     evt_free_abi(abi);
 }
