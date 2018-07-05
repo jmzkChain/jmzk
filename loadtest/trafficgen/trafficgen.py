@@ -3,8 +3,8 @@ import random
 from collections import deque
 
 import randompool
-from pysdk.action import ActionGenerator
-from pysdk.transaction import TrxGenerator
+from pyevtsdk.action import ActionGenerator
+from pyevtsdk.transaction import TrxGenerator
 from utils import Writer
 
 
