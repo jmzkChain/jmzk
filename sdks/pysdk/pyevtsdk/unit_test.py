@@ -7,10 +7,7 @@ import unittest
 
 from pyevt import abi, ecc, libevt
 
-import action
-import api
-import base
-import transaction
+from . import action, api, base, transaction
 
 host_url = 'http://118.31.58.10:8888'
 api = api.Api(host_url)
