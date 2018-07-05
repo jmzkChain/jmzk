@@ -13,9 +13,9 @@ using namespace crypto;
 struct contracts_test {
     contracts_test() {
         controller::config cfg;
-        cfg.blocks_dir            = "/tmp/evt_unittests/blocks86";   
-        cfg.state_dir             = "/tmp/evt_unittests/state86";    
-        cfg.tokendb_dir           = "/tmp/evt_unittests/tokendb86";  
+        cfg.blocks_dir            = "/tmp/evt_unittests/blocks101";
+        cfg.state_dir             = "/tmp/evt_unittests/state101";
+        cfg.tokendb_dir           = "/tmp/evt_unittests/tokendb101";
         cfg.state_size            = 1024 * 1024 * 8;
         cfg.reversible_cache_size = 1024 * 1024 * 8;
         cfg.contracts_console     = true;
@@ -48,6 +48,13 @@ struct contracts_test {
         static std::string group_name = "group" + boost::lexical_cast<std::string>(time(0));
         ;
         return group_name.c_str();
+    }
+
+    const char*
+    get_delay_name() {
+        static std::string delay_name = "delay" + boost::lexical_cast<std::string>(time(0));
+        ;
+        return delay_name.c_str();
     }
 
     const char*
@@ -628,26 +635,146 @@ BOOST_AUTO_TEST_CASE(contract_addmeta_test) {
         {
           "key": "key",
           "value": "value",
-          "creator": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+          "creator": "[A] EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
         }
         )=====";
 
-        auto var     = fc::json::from_string(test_data);
-        auto admt    = var.as<addmeta>();
+        auto var  = fc::json::from_string(test_data);
+        auto admt = var.as<addmeta>();
+
+        //meta authorizers test
+        BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds), unsatisfied_authorization);
+        BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), N128(group), string_to_name128(get_group_name()), var.get_object(), key_seeds), unsatisfied_authorization);
+        BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), N128(fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds), unsatisfied_authorization);
+
         admt.creator = key;
         to_variant(admt, var);
 
         my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds);
 
-        my_tester->push_action(N(addmeta), N128(group), string_to_name128(get_group_name()), var.get_object(), key_seeds); 
+        my_tester->push_action(N(addmeta), N128(group), string_to_name128(get_group_name()), var.get_object(), key_seeds);
 
         my_tester->push_action(N(addmeta), N128(fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds);
 
+        //meta_key_exception test
         admt.value = "value2";
         to_variant(admt, var);
-        BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds),meta_key_exception);
-        BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), N128(group), string_to_name128(get_group_name()), var.get_object(), key_seeds),meta_key_exception);
-        BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), N128(fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds),meta_key_exception);
+        BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds), meta_key_exception);
+        BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), N128(group), string_to_name128(get_group_name()), var.get_object(), key_seeds), meta_key_exception);
+        BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), N128(fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds), meta_key_exception);
+
+        my_tester->produce_blocks();
+    }
+    FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE(contract_newdelay_test) {
+    try {
+        BOOST_CHECK(true);
+        const char* test_data = R"=======(
+        {
+            "name": "testdelay",
+            "proposer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
+            "trx": {
+                "expiration": "2018-07-04T05:14:12",
+                "ref_block_num": "3432",
+                "ref_block_prefix": "291678901",
+                "actions": [
+                ],
+                "transaction_extensions": []
+            }
+        }
+        )=======";
+
+        auto var  = fc::json::from_string(test_data);
+        auto ndact = var.as<newdelay>();
+        ndact.name = get_delay_name();
+
+        const char* newdomain_test_data = R"=====(
+            {
+              "name" : "domain",
+              "creator" : "EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
+              "issue" : {
+                "name" : "issue",
+                "threshold" : 1,
+                "authorizers": [{
+                    "ref": "[A] EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
+                    "weight": 1
+                  }
+                ]
+              },
+              "transfer": {
+                "name": "transfer",
+                "threshold": 1,
+                "authorizers": [{
+                    "ref": "[G] OWNER",
+                    "weight": 1
+                  }
+                ]
+              },
+              "manage": {
+                "name": "manage",
+                "threshold": 1,
+                "authorizers": [{
+                    "ref": "[A] EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
+                    "weight": 1
+                  }
+                ]
+              }
+            }
+            )=====";
+
+        auto newdomain_var    = fc::json::from_string(newdomain_test_data);
+        auto newdom = newdomain_var.as<newdomain>();
+        newdom.creator = tester::get_public_key(N(key));
+        to_variant(newdom, newdomain_var);
+        // ndact.trx.actions.push_back(my_tester->get_action(N(newdomain), string_to_name128(get_domain_name()), N128(.create), newdomain_var.get_object()));
+
+        to_variant(ndact, var);
+        BOOST_CHECK_THROW(my_tester->push_action(N(newdelay), N128(delay), string_to_name128(get_delay_name()), var.get_object(), key_seeds), unsatisfied_authorization);
+
+        ndact.proposer = key;
+        to_variant(ndact, var);
+
+        my_tester->push_action(N(newdelay), N128(delay),  string_to_name128(get_delay_name()), var.get_object(), key_seeds);
+
+        my_tester->produce_blocks();
+    }
+    FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE(contract_executedelay_test) {
+    try {
+        BOOST_CHECK(true);
+        const char* test_data = R"=======(
+        {
+            "name": "testdelay",
+            "executor": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3"
+        }
+        )=======";
+
+        auto var  = fc::json::from_string(test_data);
+        auto edact = var.as<executedelay>();
+        edact.name = get_delay_name();
+        edact.executor = key;
+        to_variant(edact, var);
+
+        BOOST_TEST((std::string)key == (std::string)edact.executor);
+        BOOST_TEST(get_delay_name() == edact.name);
+        auto ac = my_tester->get_action(N(executedelay), N128(delay), string_to_name128(get_delay_name()), var.get_object());
+        auto ed = ac.data_as<contracts::executedelay>();
+        // BOOST_CHECK_THROW(my_tester->push_action(N(executedelay), N128(delay), string_to_name128(get_delay_name()), var.get_object(), key_seeds), unsatisfied_authorization);
+
+        // auto newdomain_var    = fc::json::from_string(newdomain_test_data);
+        // auto newdom = newdomain_var.as<newdomain>();
+        // newdom.creator = tester::get_public_key(N(trx_key));
+        // to_variant(newdom, newdomain_var);
+        // edact.trx.actions.push_back(my_tester->get_action(N(newdomain), string_to_name128(get_domain_name()), N128(.create), newdomain_var.get_object()));
+
+        // edact.proposer = key;
+        // to_variant(edact, var);
+
+        // my_tester->push_action(N(executedelay), N128(delay),  string_to_name128(get_delay_name()), var.get_object(), key_seeds);
 
         my_tester->produce_blocks();
     }

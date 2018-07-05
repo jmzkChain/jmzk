@@ -258,6 +258,68 @@ update_group_data() {
     return gp;
 }
 
+delay_def
+add_delay_data() {
+    const char* test_data = R"=======(
+        {
+            "name": "testdelay",
+            "proposer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
+            "status": "proposed",
+            "trx": {
+                "expiration": "2018-07-04T05:14:12",
+                "ref_block_num": "3432",
+                "ref_block_prefix": "291678901",
+                "actions": [
+                    {
+                        "name": "newdomain",
+                        "domain": "test1530681222",
+                        "key": ".create",
+                        "data": "00000000004010c4a02042710c9f077d0002e07ae3ed523dba04dc9d718d94abcd1bea3da38176f4b775b818200c01a149b1000000008052e74c01000000010100000002e07ae3ed523dba04dc9d718d94abcd1bea3da38176f4b775b818200c01a149b1000000000000000100000000b298e982a40100000001020000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000000000094135c6801000000010100000002e07ae3ed523dba04dc9d718d94abcd1bea3da38176f4b775b818200c01a149b1000000000000000100"
+                    }
+                ],
+                "transaction_extensions": []
+            }
+            "signed_keys": [],
+            "signatures": []
+        }
+        )=======";
+
+    auto      var = fc::json::from_string(test_data);
+    delay_def dl  = var.as<delay_def>();
+    return dl;
+}
+
+delay_def
+update_delay_data() {
+    const char* test_data = R"=======(
+        {
+            "name": "testdelay",
+            "proposer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
+            "status": "executed",
+            "trx": {
+                "expiration": "2018-07-04T05:14:12",
+                "ref_block_num": "3432",
+                "ref_block_prefix": "291678901",
+                "actions": [
+                    {
+                        "name": "newdomain",
+                        "domain": "test1530681222",
+                        "key": ".create",
+                        "data": "00000000004010c4a02042710c9f077d0002e07ae3ed523dba04dc9d718d94abcd1bea3da38176f4b775b818200c01a149b1000000008052e74c01000000010100000002e07ae3ed523dba04dc9d718d94abcd1bea3da38176f4b775b818200c01a149b1000000000000000100000000b298e982a40100000001020000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000000000094135c6801000000010100000002e07ae3ed523dba04dc9d718d94abcd1bea3da38176f4b775b818200c01a149b1000000000000000100"
+                    }
+                ],
+                "transaction_extensions": []
+            }
+            "signed_keys": [],
+            "signatures": []
+        }
+        )=======";
+
+    auto      var = fc::json::from_string(test_data);
+    delay_def dl  = var.as<delay_def>();
+    return dl;
+}
+
 BOOST_FIXTURE_TEST_SUITE(tokendb_tests, tokendb_test)
 
 BOOST_AUTO_TEST_CASE(tokendb_adddomain_test) {
@@ -738,6 +800,60 @@ BOOST_AUTO_TEST_CASE(tokendb_checkpoint_test) {
         BOOST_TEST(tokendb.get_savepoints_size() == 2);
 
         BOOST_CHECK_NO_THROW(tokendb.pop_savepoints(0));
+    }
+    FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE(tokendb_adddelay_test) {
+    try {
+        BOOST_CHECK(true);
+
+        auto dl = add_delay_data();
+        BOOST_TEST(!tokendb.exists_delay(dl.name));
+
+        auto re = tokendb.add_delay(dl);
+        BOOST_TEST_REQUIRE(re == 0);
+        BOOST_TEST(tokendb.exists_delay(dl.name));
+
+        delay_def dl_;
+        tokendb.read_delay(dl.name, dl_);
+
+        BOOST_TEST(proposed == dl_.status);
+        BOOST_TEST(dl.name == dl_.name);
+        BOOST_TEST("EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3" == (std::string)dl_.proposer);
+        BOOST_TEST("2018-07-04T05:14:12" == dl_.trx.expiration.to_iso_string());
+        BOOST_TEST(3432 == dl_.trx.ref_block_num);
+        BOOST_TEST(291678901 == dl_.trx.ref_block_prefix);
+        BOOST_TEST(dl_.trx.actions.size() == 1);
+        BOOST_TEST("newdomain" == dl_.trx.actions[0].name);
+        BOOST_TEST("test1530681222" == dl_.trx.actions[0].domain);
+        BOOST_TEST(".create" == dl_.trx.actions[0].key);
+    }
+    FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE(tokendb_updatedelay_test) {
+    try {
+        BOOST_CHECK(true);
+
+        auto dl = update_delay_data();
+
+        auto re = tokendb.update_delay(dl);
+        BOOST_TEST_REQUIRE(re == 0);
+
+        delay_def dl_;
+        tokendb.read_delay(dl.name, dl_);
+
+        BOOST_TEST(executed == dl_.status);
+        BOOST_TEST(dl.name == dl_.name);
+        BOOST_TEST("EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3" == (std::string)dl_.proposer);
+        BOOST_TEST("2018-07-04T05:14:12" == dl_.trx.expiration.to_iso_string());
+        BOOST_TEST(3432 == dl_.trx.ref_block_num);
+        BOOST_TEST(291678901 == dl_.trx.ref_block_prefix);
+        BOOST_TEST(dl_.trx.actions.size() == 1);
+        BOOST_TEST("newdomain" == dl_.trx.actions[0].name);
+        BOOST_TEST("test1530681222" == dl_.trx.actions[0].domain);
+        BOOST_TEST(".create" == dl_.trx.actions[0].key);
     }
     FC_LOG_AND_RETHROW()
 }
