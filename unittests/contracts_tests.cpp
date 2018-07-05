@@ -10,12 +10,19 @@ using namespace testing;
 using namespace fc;
 using namespace crypto;
 
+extern std::string evt_unittests_dir;
+
 struct contracts_test {
     contracts_test() {
+        auto basedir = evt_unittests_dir + "/contracts_tests";
+        if(!fc::exists(basedir)) {
+            fc::create_directories(basedir);
+        }
+
         controller::config cfg;
-        cfg.blocks_dir            = "/tmp/evt_unittests/blocks59";   //strcat("/tmp/evt_unittests/", chain::config::default_blocks_dir_name);
-        cfg.state_dir             = "/tmp/evt_unittests/state59";    //strcat("/tmp/evt_unittests/" , chain::config::default_state_dir_name);
-        cfg.tokendb_dir           = "/tmp/evt_unittests/tokendb59";  //strcat("/tmp/evt_unittests/" , chain::config::default_tokendb_dir_name);
+        cfg.blocks_dir            = basedir + "blocks";
+        cfg.state_dir             = basedir + "state";
+        cfg.tokendb_dir           = basedir + "tokendb";
         cfg.state_size            = 1024 * 1024 * 8;
         cfg.reversible_cache_size = 1024 * 1024 * 8;
         cfg.contracts_console     = true;

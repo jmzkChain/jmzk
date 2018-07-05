@@ -5,19 +5,19 @@
 #include <boost/test/unit_test.hpp>
 #include <fc/filesystem.hpp>
 
-std::string tokendb_dir = "tmp/evt_tokendb";
+std::string evt_unittests_dir = "tmp/evt_unittests";
 
 struct GlobalFixture {
     void
     setup() {
-        if(fc::exists(tokendb_dir)) {
-            fc::remove_all(tokendb_dir);
+        if(fc::exists(evt_unittests_dir)) {
+            fc::remove_all(evt_unittests_dir);
         }
     }
 
     void
     teardown() {
-        fc::remove_all(tokendb_dir);
+        fc::remove_all(evt_unittests_dir);
     }
 };
 
