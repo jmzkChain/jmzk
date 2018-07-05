@@ -23,4 +23,4 @@ COPY --from=builder /evt/sdks/pysdk ./
 ENV LD_LIBRARY_PATH /usr/local/lib
 ENV PATH /usr/sbin:/usr/bin:/sbin:/bin
 
-ENTRYPOINT ["python3", "-m", "pyevtsdk.unit_test"]
+ENTRYPOINT ["python3", "-m", "pyevtsdk.unit_test", "http://118.31.58.10:8888"]
