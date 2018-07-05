@@ -24,4 +24,12 @@ phases:
       - echo Posting build results
       - URL="https://${AWS_REGION}.console.aws.amazon.com/codebuild/home?region=${AWS_REGION}#/builds/${CODEBUILD_BUILD_ID}/view/new"
       - curl "${BEARCHAT_CHANNEL}" -H "Content-Type:application/json" -d "{\"text\":\"latest EVT built finished\",\"markdown\":true,\"channel\":\"evt-awscodebuild\",\"attachments\":[{\"text\":\"$URL\",\"url\":\"$URL\"}]}"
- 
+  artifacts:
+    files:
+      - build/bind/libevt/libevt.so
+      - build/libraries/chain/libevt_chain_lite.so
+      - build/libraries/fc/libfc_lite.so
+    discard-paths: yes
+  cache:
+    paths:
+      - build/**/*
