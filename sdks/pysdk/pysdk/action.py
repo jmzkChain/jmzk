@@ -85,9 +85,9 @@ class NewDelayAction(Action):
         super().__init__('newdelay', 'delay', key, data)
 
 
-class ApproveAction(Action):
+class ApproveDelayAction(Action):
     def __init__(self, key, data):
-        super().__init__('approve', 'delay', key, data)
+        super().__init__('approvedelay', 'delay', key, data)
 
 
 class CancelDelayAction(Action):
@@ -134,8 +134,8 @@ def get_action_from_abi_json(action, abi_json, domain=None, key=None):
         return TransferFtAction(abi_dict['number'].split(' ')[1], _bin)
     elif action == 'newdelay':
         return NewDelayAction(abi_dict['name'], _bin)
-    elif action == 'approve':
-        return ApproveAction(abi_dict['name'], _bin)
+    elif action == 'approvedelay':
+        return ApproveDelayAction(abi_dict['name'], _bin)
     elif action == 'canceldelay':
         return CancelDelayAction(abi_dict['name'], _bin)
     elif action == 'executedelay':
@@ -225,24 +225,23 @@ class ActionGenerator:
         return get_action_from_abi_json('transferft', abi_json.dumps())
 
     def addmeta(self, meta_key, meta_value, creator, domain, key):
-        abi_json = base.AddMetaAbi(meta_key, meta_value, str(creator))
+        abi_json = base.AddMetaAbi(meta_key, meta_value, creator.value())
         return get_action_from_abi_json('addmeta', abi_json.dumps(), domain, key)
 
     def newdelay(self, name, proposer, trx):
         abi_json = base.NewDelayAbi(name, str(proposer), trx=trx.dict())
-        print(abi_json.dumps())
         return get_action_from_abi_json('newdelay', abi_json.dumps())
 
-    def approve(self, name, signatures):
-        abi_json = base.ApproveAbi(name, [str(sig) for sig in signatures])
-        return get_action_from_abi_json('approve', abi_json.dumps())
+    def approvedelay(self, name, signatures):
+        abi_json = base.ApproveDelayAbi(name, [str(sig) for sig in signatures])
+        return get_action_from_abi_json('approvedelay', abi_json.dumps())
 
     def canceldelay(self, name):
         abi_json = base.CancelDelayAbi(name)
         return get_action_from_abi_json('canceldelay', abi_json.dumps())
 
     def executedelay(self, name, executor):
-        abi_json = base.executedelay(name, str(executor))
+        abi_json = base.ExecuteDelayAbi(name, str(executor))
         return get_action_from_abi_json('executedelay', abi_json.dumps())
 
     def new_action(self, action, **args):

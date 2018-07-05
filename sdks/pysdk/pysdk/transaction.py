@@ -18,7 +18,7 @@ class Transaction:
 
         self.kwargs = kwargs
         self.expiration = (datetime.datetime.utcnow(
-        ) + datetime.timedelta(seconds=30)).strftime('%Y-%m-%dT%H:%M:%S')
+        ) + datetime.timedelta(hours=1)).strftime('%Y-%m-%dT%H:%M:%S')
         self.actions = []
         self.transaction_extensions = []
 

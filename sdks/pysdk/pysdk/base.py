@@ -140,9 +140,9 @@ class NewDomainAbi(BaseType):
 class UpdateDomainAbi(BaseType):
     def __init__(self, name, issue, transfer, manage):
         super().__init__(name=name,
-                         issue={} if issue == None else issue.dict(),
-                         transfer={} if transfer == None else transfer.dict(),
-                         manage={} if manage == None else manage.dict())
+                         issue=None if issue == None else issue.dict(),
+                         transfer=None if transfer == None else transfer.dict(),
+                         manage=None if manage == None else manage.dict())
 
 
 class IssueTokenAbi(BaseType):
@@ -186,8 +186,8 @@ class NewFungibleAbi(BaseType):
 class UpdFungibleAbi(BaseType):
     def __init__(self, sym, issue, manage):
         super().__init__(sym=sym,
-                         issue={} if issue == None else issue.dict(),
-                         manage={} if manage == None else manage.dict())
+                         issue=None if issue == None else issue.dict(),
+                         manage=None if manage == None else manage.dict())
 
 
 class IssueFungibleAbi(BaseType):
@@ -206,16 +206,16 @@ class NewDelayAbi(BaseType):
         super().__init__(name=name, proposer=proposer, trx=trx)
 
 
-class ApproveAction(BaseType):
+class ApproveDelayAbi(BaseType):
     def __init__(self, name, signatures):
         super().__init__(name=name, signatures=signatures)
 
 
-class CancelDelayAction(BaseType):
+class CancelDelayAbi(BaseType):
     def __init__(self, name):
         super().__init__(name=name)
 
 
-class ExecuteDelay(BaseType):
+class ExecuteDelayAbi(BaseType):
     def __init__(self, name, executor):
         super().__init__(name=name, executor=executor)
