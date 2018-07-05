@@ -3,7 +3,7 @@ import string
 import sys
 import time
 
-from pysdk import base
+from pyevtsdk import base
 
 ITEM_TYPES = ['domain', 'group', 'fungible', 'token']
 REQUIREMENTS = {
@@ -200,10 +200,11 @@ class RandomPool:
                 item_type = it if item_type == None else random.choice([
                                                                        item_type, it])
         item = self.get_item(item_type)
+        ar = base.AuthorizerRef('A', item.pub_keys())
         return {
             'meta_key': fake_name('meta.key'),
             'meta_value': fake_name('meta.value'),
-            'creator': item.pub_keys(),
+            'creator': ar,
             'domain': item_type if item_type != 'token' else item.domain.name,
             'key': item.name
         }, item.priv_keys()
