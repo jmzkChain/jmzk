@@ -190,9 +190,11 @@ class Test(unittest.TestCase):
         trx.add_sign(priv_key)
         api.push_transaction(trx.dumps())
 
+        ar = base.AuthorizerRef('A', pub_key)
+
         # add meta to this domain
         addmeta = AG.new_action('addmeta', meta_key='meta-key-test',
-                                meta_value='meta-value-test', creator=pub_key, domain='domain', key=domain_name)
+                                meta_value='meta-value-test', creator=ar, domain='domain', key=domain_name)
         trx = transaction.Transaction(host_url)
         trx.add_action(addmeta)
         trx.add_sign(priv_key)
@@ -293,6 +295,103 @@ class Test(unittest.TestCase):
         trx = transaction.Transaction(host_url)
         trx.add_action(transferft)
         trx.add_sign(priv_key)
+        resp = api.push_transaction(trx.dumps()).text
+        self.assertTrue('transaction_id' in resp)
+
+    def test_action_newdelay(self):
+        user = base.User()
+        # Create a trx with newdomain action
+        newdomain = AG.new_action(
+            'newdomain', name=fake_name(), creator=user.pub_key)
+        trx = transaction.Transaction(host_url)
+        trx.add_action(newdomain)
+        trx.add_sign(user.priv_key)
+
+        newdelay = AG.new_action(
+            'newdelay', name=fake_name(), proposer=user.pub_key, trx=trx)
+        trx = transaction.Transaction(host_url)
+        trx.add_action(newdelay)
+        trx.add_sign(user.priv_key)
+        resp = api.push_transaction(trx.dumps()).text
+        self.assertTrue('transaction_id' in resp)
+
+    def test_action_approvedelay(self):
+        user = base.User()
+        newdomain = AG.new_action(
+            'newdomain', name=fake_name(), creator=user.pub_key)
+        trx = transaction.Transaction(host_url)
+        trx.add_action(newdomain)
+        trx.add_sign(user.priv_key)
+        signatures = json.loads(trx.dumps())['signatures']
+
+        delay_name = fake_name()
+        newdelay = AG.new_action(
+            'newdelay', name=delay_name, proposer=user.pub_key, trx=trx)
+        trx = transaction.Transaction(host_url)
+        trx.add_action(newdelay)
+        trx.add_sign(user.priv_key)
+        api.push_transaction(trx.dumps())
+
+        approve = AG.new_action(
+            'approvedelay', name=delay_name, signatures=signatures)
+        trx = transaction.Transaction(host_url)
+        trx.add_action(approve)
+        trx.add_sign(user.priv_key)
+        resp = api.push_transaction(trx.dumps()).text
+        self.assertTrue('transaction_id' in resp)
+
+    def test_action_canceldelay(self):
+        user = base.User()
+        newdomain = AG.new_action(
+            'newdomain', name=fake_name(), creator=user.pub_key)
+        trx = transaction.Transaction(host_url)
+        trx.add_action(newdomain)
+        trx.add_sign(user.priv_key)
+
+        delay_name = fake_name()
+        newdelay = AG.new_action(
+            'newdelay', name=delay_name, proposer=user.pub_key, trx=trx)
+        trx = transaction.Transaction(host_url)
+        trx.add_action(newdelay)
+        trx.add_sign(user.priv_key)
+        api.push_transaction(trx.dumps())
+
+        canceldelay = AG.new_action('canceldelay', name=delay_name)
+        trx = transaction.Transaction(host_url)
+        trx.add_action(canceldelay)
+        trx.add_sign(user.priv_key)
+        resp = api.push_transaction(trx.dumps()).text
+        self.assertTrue('transaction_id' in resp)
+
+    def test_action_executedelay(self):
+        user = base.User()
+        newdomain = AG.new_action(
+            'newdomain', name=fake_name(), creator=user.pub_key)
+        trx = transaction.Transaction(host_url)
+        trx.add_action(newdomain)
+        trx.add_sign(user.priv_key)
+        signatures = json.loads(trx.dumps())['signatures']
+
+        delay_name = fake_name()
+        newdelay = AG.new_action(
+            'newdelay', name=delay_name, proposer=user.pub_key, trx=trx)
+        trx = transaction.Transaction(host_url)
+        trx.add_action(newdelay)
+        trx.add_sign(user.priv_key)
+        api.push_transaction(trx.dumps())
+
+        approve = AG.new_action(
+            'approvedelay', name=delay_name, signatures=signatures)
+        trx = transaction.Transaction(host_url)
+        trx.add_action(approve)
+        trx.add_sign(user.priv_key)
+        api.push_transaction(trx.dumps())
+
+        executedelay = AG.new_action(
+            'executedelay', name=delay_name, executor=user.pub_key)
+        trx = transaction.Transaction(host_url)
+        trx.add_action(executedelay)
+        trx.add_sign(user.priv_key)
         resp = api.push_transaction(trx.dumps()).text
         self.assertTrue('transaction_id' in resp)
 

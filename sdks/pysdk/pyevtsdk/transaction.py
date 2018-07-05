@@ -18,7 +18,7 @@ class Transaction:
 
         self.kwargs = kwargs
         self.expiration = (datetime.datetime.utcnow(
-        ) + datetime.timedelta(seconds=30)).strftime('%Y-%m-%dT%H:%M:%S')
+        ) + datetime.timedelta(hours=1)).strftime('%Y-%m-%dT%H:%M:%S')
         self.actions = []
         self.transaction_extensions = []
 
@@ -42,6 +42,16 @@ class Transaction:
         }
         return ret
 
+    def delay_dict(self):
+        ret = {
+            'expiration': self.expiration,
+            **self.kwargs,
+            'ref_block_num': str(self.block_id.ref_block_num()),
+            'ref_block_prefix': str(self.block_id.ref_block_prefix()),
+            'actions': self.actions,
+        }
+        return ret
+
     def dumps(self):
         digest = abi.trx_json_to_digest(json.dumps(self.dict()), self.chain_id)
         self.signatures = [priv_key.sign_hash(
@@ -52,6 +62,7 @@ class Transaction:
             'transaction': self.dict()
         }
         return json.dumps(ret)
+
 
 class TrxGenerator:
     def __init__(self, url):

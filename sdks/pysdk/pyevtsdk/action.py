@@ -3,7 +3,7 @@ import json
 import pyevt
 from pyevt import abi, ecc, libevt
 
-import pysdk.base as base
+import base
 
 
 class Action(base.BaseType):
@@ -80,6 +80,26 @@ class TransferFtAction(Action):
         super().__init__('transferft', 'fungible', key, data)
 
 
+class NewDelayAction(Action):
+    def __init__(self, key, data):
+        super().__init__('newdelay', 'delay', key, data)
+
+
+class ApproveDelayAction(Action):
+    def __init__(self, key, data):
+        super().__init__('approvedelay', 'delay', key, data)
+
+
+class CancelDelayAction(Action):
+    def __init__(self, key, data):
+        super().__init__('canceldelay', 'delay', key, data)
+
+
+class ExecuteDelayAction(Action):
+    def __init__(self, key, data):
+        super().__init__('executedelay', 'delay', key, data)
+
+
 class ActionTypeErrorException(Exception):
     def __init__(self):
         err = 'Action_Type_Error'
@@ -112,6 +132,14 @@ def get_action_from_abi_json(action, abi_json, domain=None, key=None):
         return IssueFungibleAction(abi_dict['number'].split(' ')[1], _bin)
     elif action == 'transferft':
         return TransferFtAction(abi_dict['number'].split(' ')[1], _bin)
+    elif action == 'newdelay':
+        return NewDelayAction(abi_dict['name'], _bin)
+    elif action == 'approvedelay':
+        return ApproveDelayAction(abi_dict['name'], _bin)
+    elif action == 'canceldelay':
+        return CancelDelayAction(abi_dict['name'], _bin)
+    elif action == 'executedelay':
+        return ExecuteDelayAction(abi_dict['name'], _bin)
     else:
         raise ActionTypeErrorException
 
@@ -197,8 +225,24 @@ class ActionGenerator:
         return get_action_from_abi_json('transferft', abi_json.dumps())
 
     def addmeta(self, meta_key, meta_value, creator, domain, key):
-        abi_json = base.AddMetaAbi(meta_key, meta_value, str(creator))
+        abi_json = base.AddMetaAbi(meta_key, meta_value, creator.value())
         return get_action_from_abi_json('addmeta', abi_json.dumps(), domain, key)
+
+    def newdelay(self, name, proposer, trx):
+        abi_json = base.NewDelayAbi(name, str(proposer), trx=trx.dict())
+        return get_action_from_abi_json('newdelay', abi_json.dumps())
+
+    def approvedelay(self, name, signatures):
+        abi_json = base.ApproveDelayAbi(name, [str(sig) for sig in signatures])
+        return get_action_from_abi_json('approvedelay', abi_json.dumps())
+
+    def canceldelay(self, name):
+        abi_json = base.CancelDelayAbi(name)
+        return get_action_from_abi_json('canceldelay', abi_json.dumps())
+
+    def executedelay(self, name, executor):
+        abi_json = base.ExecuteDelayAbi(name, str(executor))
+        return get_action_from_abi_json('executedelay', abi_json.dumps())
 
     def new_action(self, action, **args):
         func = getattr(self, action)
