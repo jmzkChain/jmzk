@@ -191,7 +191,7 @@ A structure is a complex type consisted of base types or/and typedef types. Belo
 {
     "key": `meta_key`,
     "value": `meta_value`,
-    "creator": `user_id`
+    "creator": `authorizer_ref`
 }
 ```
 
@@ -203,7 +203,7 @@ Create a new domain with name and permisson set of `issue`, `transfer` and `mana
 ```
 {
     "name": `domain_name`,
-    "issuer": `user_id`,
+    "creator": `user_id`,
     "issue", `permission_def`,
     "transfer", `permission_def`,
     "manage", `permission_def`
@@ -240,6 +240,15 @@ Transfer one token in specific domain to new owners.
     "name": `token_name`,
     "to": `user_list`,
     "memo": `string`
+}
+```
+
+### `destroytoken` Action
+Destroy one token (aka. Cannot be used anymore)
+```
+{
+    "domain": `domain_name`,
+    "name": `token_name`
 }
 ```
 
@@ -306,13 +315,29 @@ Transfer fungible assets between addresses.
 }
 ```
 
+### `evt2pevt` Action
+Convert `EVT` fungible tokens to `Pined EVT`(symbol: `PEVT`) fungible tokens.
+>This operation is not irreversible and `to` address is not limited to the giver.
+
+```
+{
+    "from": `public_key`,
+    "to": `public_key`,
+    "number": `asset`,
+    "memo": `string`
+}
+```
+
 ### `addmeta` Action
 Add new metadata to one domain, group, token or fungible assets
+>Creator is `authorizer_ref` which means that the creator can be one account(aka. public key) or one group.
+>And it must be involved in the attached domain, token, group or fungible.
+
 ```
 {
     "key": `meta_key`,
     "value": `meta_value`,
-    "creator": `user_id`
+    "creator": `authorizer_ref`
 }
 ```
 
