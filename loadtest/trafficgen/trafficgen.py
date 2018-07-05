@@ -4,8 +4,8 @@ from collections import deque
 
 from pyevtsdk.action import ActionGenerator
 from pyevtsdk.transaction import TrxGenerator
-from . import randompool, utils
 
+from . import randompool, utils
 
 AG = ActionGenerator()
 Trx = TrxGenerator('http://118.31.58.10:8888')
