@@ -2,10 +2,9 @@ import json
 import random
 from collections import deque
 
-import randompool
 from pyevtsdk.action import ActionGenerator
 from pyevtsdk.transaction import TrxGenerator
-from utils import Writer
+from . import randompool, utils
 
 
 AG = ActionGenerator()
@@ -20,7 +19,7 @@ class TrafficGen:
             tg_name=self.name, max_user_num=self.conf['max_user_number'])
         self.action_queue = self.make_queue(
             self.conf['total'], self.conf['actions'])
-        self.writer = Writer(self.name+'_'+output)
+        self.writer = utils.Writer(self.name+'_'+output)
 
     def handle_conf(self, config):
         with open(config, 'r') as f:
