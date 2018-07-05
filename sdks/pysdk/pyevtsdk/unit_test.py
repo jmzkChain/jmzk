@@ -2,13 +2,14 @@ import datetime
 import json
 import random
 import string
+import sys
 import unittest
 
 from pyevt import abi, ecc, libevt
 
 from . import action, api, base, transaction
 
-host_url = 'http://118.31.58.10:8888'
+host_url = sys.argv[-1] if len(sys.argv) > 1 else 'http://118.31.58.10:8888'
 api = api.Api(host_url)
 EvtAsset = base.EvtAsset
 AG = action.ActionGenerator()
@@ -387,4 +388,6 @@ class Test(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    suite = unittest.TestLoader().loadTestsFromTestCase(Test)
+    runner = unittest.TextTestRunner()
+    runner.run(suite)
