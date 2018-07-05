@@ -1,4 +1,4 @@
-from . import requests
+import requests
 
 
 class Api:
