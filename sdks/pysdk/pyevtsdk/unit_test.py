@@ -25,6 +25,56 @@ def fake_symbol():
     return name, prec
 
 
+group_json_raw = '''
+{
+   "name":"5jxX",
+   "group":{
+      "name":"5jxXg",
+      "key":"EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+      "root":{
+         "threshold":6,
+         "weight":0,
+         "nodes":[
+            {
+               "type":"branch",
+               "threshold":1,
+               "weight":3,
+               "nodes":[
+                  {
+                     "key":"EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+                     "weight":1
+                  },
+                  {
+                     "key":"EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+                     "weight":1
+                  }
+               ]
+            },
+            {
+               "key":"EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+               "weight":3
+            },
+            {
+               "threshold":1,
+               "weight":3,
+               "nodes":[
+                  {
+                     "key":"EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+                     "weight":1
+                  },
+                  {
+                     "key":"EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+                     "weight":2
+                  }
+               ]
+            }
+         ]
+      }
+   }
+}
+'''
+
+
 class Test(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -79,8 +129,7 @@ class Test(unittest.TestCase):
     def test_action_newgroup(self):
         pub_key, priv_key = ecc.generate_new_pair()
         name = fake_name('group')
-        with open('group.json', 'r') as f:
-            group_json = json.load(f)
+        group_json = json.loads(group_json_raw)
         group_json['name'] = name
         group_json['group']['name'] = name
         group_json['group']['key'] = str(pub_key)
