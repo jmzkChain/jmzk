@@ -39,14 +39,16 @@ void
 transaction_context::init_for_input_trx(uint32_t num_signatures) {
     auto& t = trx.trx;
     is_input  = true;
-    control.validate_expiration(t);
-    control.validate_tapos(t);
+    if(!control.loadtest_mode()) {
+        control.validate_expiration(t);
+        control.validate_tapos(t);
+    }
     init();
     record_transaction(trx.id, t.expiration);  /// checks for dupes
 }
 
 void
-transaction_context::init_for_deferred_trx() {
+transaction_context::init_for_delay_trx() {
     trace->is_delay = true;
     init();
 }

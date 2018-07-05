@@ -130,6 +130,7 @@ chain_plugin::set_program_options(options_description& cli, options_description&
         ("extract-genesis-json", bpo::value<bfs::path>(), "extract genesis_state from blocks.log as JSON, write into specified file, and exit")
         ("fix-reversible-blocks", bpo::bool_switch()->default_value(false), "recovers reversible block database if that database is in a bad state")
         ("force-all-checks", bpo::bool_switch()->default_value(false), "do not skip any checks that can be skipped while replaying irreversible blocks")
+        ("loadtest-mode", bpo::bool_switch()->default_value(false), "special for load-testing, skip expiration and reference block checks")
         ("replay-blockchain", bpo::bool_switch()->default_value(false), "clear chain state database and token database and replay all blocks")
         ("hard-replay-blockchain", bpo::bool_switch()->default_value(false), "clear chain state database and token database, recover as many blocks as possible from the block log, and then replay those blocks")
         ("delete-all-blocks", bpo::bool_switch()->default_value(false), "clear chain state database, token database and block log")
@@ -215,6 +216,7 @@ chain_plugin::plugin_initialize(const variables_map& options) {
         my->chain_config->reversible_cache_size = options.at("reversible-blocks-db-size-mb").as<uint64_t>() * 1024 * 1024;
 
     my->chain_config->force_all_checks  = options.at("force-all-checks").as<bool>();
+    my->chain_config->loadtest_mode     = options.at("loadtest-mode").as<bool>();
     my->chain_config->contracts_console = options.at("contracts-console").as<bool>();
 
     if(options.count("extract-genesis-json") || options.at("print-genesis-json").as<bool>()) {

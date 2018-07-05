@@ -435,7 +435,7 @@ struct controller_impl {
 
             auto trace = trx_context.trace;
             try {
-                trx_context.init_for_deferred_trx();
+                trx_context.init_for_delay_trx();
                 trx_context.exec();
                 trx_context.finalize();
 
@@ -1135,12 +1135,17 @@ controller::proposed_producers() const {
 }
 
 bool
-controller::skip_auth_check()const {
+controller::skip_auth_check() const {
     return my->replaying && !my->conf.force_all_checks && !my->in_trx_requiring_checks;
 }
 
 bool
-controller::contracts_console()const {
+controller::loadtest_mode() const {
+    return my->conf.loadtest_mode;
+}
+
+bool
+controller::contracts_console() const {
     return my->conf.contracts_console;
 }
 
