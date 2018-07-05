@@ -52,7 +52,6 @@ class Transaction:
         }
         return ret
 
-
     def dumps(self):
         digest = abi.trx_json_to_digest(json.dumps(self.dict()), self.chain_id)
         self.signatures = [priv_key.sign_hash(
@@ -63,6 +62,7 @@ class Transaction:
             'transaction': self.dict()
         }
         return json.dumps(ret)
+
 
 class TrxGenerator:
     def __init__(self, url):
