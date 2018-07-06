@@ -1,4 +1,5 @@
 #include <evt/testing/tester.hpp>
+#include <evt/chain/token_database.hpp>
 
 #include <boost/test/framework.hpp>
 #include <boost/test/unit_test.hpp>
@@ -743,7 +744,7 @@ BOOST_AUTO_TEST_CASE(contract_newdelay_test) {
         auto newdom = newdomain_var.as<newdomain>();
         newdom.creator = tester::get_public_key(N(delay_key));
         to_variant(newdom, newdomain_var);
-        ndact.trx.actions.push_back(my_tester->get_action(N(newdomain), string_to_name128(get_domain_name()), N128(.create), newdomain_var.get_object()));
+        ndact.trx.actions.push_back(my_tester->get_action(N(newdomain), N128(domain), N128(.create), newdomain_var.get_object()));
 
         to_variant(ndact, var);
         BOOST_CHECK_THROW(my_tester->push_action(N(newdelay), N128(delay), string_to_name128(get_delay_name()), var.get_object(), key_seeds), unsatisfied_authorization);
@@ -774,39 +775,82 @@ BOOST_AUTO_TEST_CASE(contract_executedelay_test) {
         edact.executor = key;
         to_variant(edact, var);
 
-        my_tester->push_action(N(executedelay), N128(delay), string_to_name128(get_delay_name()), var.get_object(), {N(key)});
+        BOOST_CHECK_THROW(my_tester->push_action(N(executedelay), N128(delay), string_to_name128(get_delay_name()), var.get_object(), {N(key)}),unsatisfied_authorization);
 
-        // const char* test_data = R"=======(
+        auto& tokendb = my_tester->control->token_db();
+        delay_def delay;
+        tokendb.read_delay(edact.name, delay);
+        BOOST_TEST(delay.status == delay_status::executed);
+        BOOST_TEST(delay.signed_keys.size() == 0);
+        BOOST_TEST(delay.trx.actions.size() == 1);
+        
+
+        // auto sig= tester::get_private_key(N(delay_key)).sign(delay.trx.sig_digest(my_tester->control->get_chain_id()));
+        // const char* approve_test_data = R"=======(
         // {
         //     "name": "test1530718665",
         //     "signatures": [
-        //         "SIG_K1_KXjtmeihJi1qnSs7vmqJDRJoZ1nSEPeeRjsKJRpm24g8yhFtAepkRDR4nVFbXjvoaQvT4QrzuNWCbuEhceYpGmAvsG47Fj"
         //     ]
         // }
         // )=======";
 
-        // auto var  = fc::json::from_string(test_data);
+        // auto approve_var  = fc::json::from_string(approve_test_data);
         // auto adact = var.as<approvedelay>();
         // adact.name = get_delay_name();
-        // adact.signatures[0] = tester::get_private_key(N(delay_key)).sign();
+        // adact.signatures = {sig};
+        // to_variant(adact, approve_var);
 
-        // const char* cancel_test_data = R"=======(
-        // {
-        //     "name": "testdelay"
-        // }
-        // )=======";
-        // auto cancel_var  = fc::json::from_string(test_data);
-        // auto cdact = var.as<canceldelay>();
-        // cdact.name = get_delay_name();
-        // to_variant(cdact, cancel_var);
+        // my_tester->push_action(N(approvedelay), N128(delay),  string_to_name128(get_delay_name()), approve_var.get_object(), {N(delay_key)});
 
-        // my_tester->push_action(N(canceldelay), N128(delay), string_to_name128(get_delay_name()), var.get_object(), key_seeds);
-
-        // my_tester->push_action(N(executedelay), N128(delay), string_to_name128(get_delay_name()), var.get_object(), key_seeds);
+        // my_tester->push_action(N(executedelay), N128(delay), string_to_name128(get_delay_name()), var.get_object(), {N(key)});
 
         my_tester->produce_blocks();
     }
     FC_LOG_AND_RETHROW()
 }
+
+// BOOST_AUTO_TEST_CASE(contract_canceldelay_test) {
+//     try {
+//         BOOST_CHECK(true);     
+
+//         const char* test_data = R"=======(
+//         {
+//             "name": "testdelay",
+//             "proposer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
+//             "trx": {
+//                 "expiration": "2021-07-04T05:14:12",
+//                 "ref_block_num": "3432",
+//                 "ref_block_prefix": "291678901",
+//                 "actions": [
+//                 ],
+//                 "transaction_extensions": []
+//             }
+//         }
+//         )=======";
+
+//         auto var  = fc::json::from_string(test_data);
+//         auto ndact = var.as<newdelay>();
+//         ndact.name = get_delay_name();
+//         ndact.proposer = key;
+//         to_variant(ndact, var);
+//         my_tester->push_action(N(newdelay), N128(delay), string_to_name128(get_delay_name()), var.get_object(), key_seeds);
+
+
+//         const char* cancel_test_data = R"=======(
+//         {
+//             "name": "testdelay"
+//         }
+//         )=======";
+//         auto cancel_var  = fc::json::from_string(test_data);
+//         auto cdact = var.as<canceldelay>();
+//         cdact.name = get_delay_name();
+//         to_variant(cdact, cancel_var);
+
+//         my_tester->push_action(N(canceldelay), N128(delay), string_to_name128(get_delay_name()), cancel_var.get_object(), key_seeds);
+
+//         my_tester->produce_blocks();
+//     }
+//     FC_LOG_AND_RETHROW()
+// }
 
 BOOST_AUTO_TEST_SUITE_END()
