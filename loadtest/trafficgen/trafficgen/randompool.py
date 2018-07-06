@@ -1,6 +1,5 @@
 import random
 import string
-import sys
 import time
 
 from pyevtsdk import base
@@ -17,7 +16,7 @@ REQUIREMENTS = {
     'transferft': ['fungible'],
     'issuetoken': ['domain'],
     'transfer': ['token'],
-    'addmeta': ['domain|group|token']
+    'addmeta': ['domain', 'group', 'token', 'fungible']
 }
 
 
@@ -25,11 +24,16 @@ def fake_name(prefix):
     return prefix + ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(8))
 
 
-def fake_symbol(prefix):
-    prec = random.randint(5, 10)
-    prefix = prefix.upper()
-    name = ''.join(random.choice(string.ascii_letters[26:]) for _ in range(2))
-    return base.Symbol(name=prefix+name, precision=prec)
+def fake_symbol(prefix, syms):
+    while True:
+        sym = prefix.upper() + ''.join(random.choice(string.ascii_letters[26:]) for _ in range(2))
+        if sym in syms:
+            continue
+        syms.add(sym)
+        prec = random.randint(5, 10)
+        break
+
+    return base.Symbol(name=sym, precision=prec)
 
 
 class Item:
@@ -81,28 +85,23 @@ class RandomPool:
         for item in ITEM_TYPES:
             self.pool[item] = []
         self.users = [base.User() for _ in range(max_user_num)]
+        self.symbols = set()
 
     def satisfy(self, item_type, num=1):
         return len(self.pool[item_type]) >= num
 
     def satisfy_action(self, action):
-        for item in REQUIREMENTS[action]:
-            if '|' not in item:
-                if self.satisfy(item) == False:
-                    return False
-            else:
-                flag = False
-                for each in item.split('|'):
-                    flag = flag or self.satisfy(each)
-                return flag
-        # special cases:
         if action == 'transferft':
-            flag = False
             for fung in self.pool['fungible']:
                 if len(fung.accounts) > 0:
                     return True
-            return flag
-        return True
+            return False
+
+        for item in REQUIREMENTS[action]:
+            if self.satisfy(item):
+                return True
+
+        return False
 
     def add_item(self, item_type, item):
         self.pool[item_type].append(item)
@@ -132,7 +131,7 @@ class RandomPool:
         pass
 
     def newfungible(self):
-        sym = fake_symbol(self.tg_name)
+        sym = fake_symbol(self.tg_name, self.symbols)
         asset = base.new_asset(sym)
         fungible = Fungible(sym, self.get_user(), total_supply=100000)
         self.add_item('fungible', fungible)
@@ -195,18 +194,27 @@ class RandomPool:
 
     def addmeta(self):
         item_type = None
-        for it in ['domain', 'group', 'token']:
-            if len(self.pool[it]) > 0:
-                item_type = it if item_type == None else random.choice([
-                                                                       item_type, it])
+        for t in random.shuffle(['domain', 'token', 'group', 'fungible']):
+            if len(self.pool[t]) > 0:
+                item_type = t
+                break
+
         item = self.get_item(item_type)
         ar = base.AuthorizerRef('A', item.pub_keys())
+
+        get_domain = {
+            'domain': lambda i: i.name,
+            'token': lambda i: i.domain.name,
+            'group': lambda _: 'group',
+            'fungible': lambda _: 'fungible'
+        }
+
         return {
             'meta_key': fake_name('meta.key'),
             'meta_value': fake_name('meta.value'),
             'creator': ar,
-            'domain': item_type if item_type != 'token' else item.domain.name,
-            'key': item.name
+            'domain': get_domain[item_type](item),
+            'key': item.name if item_type != 'domain' else '.meta'
         }, item.priv_keys()
 
     def require(self, action_type):

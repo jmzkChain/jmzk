@@ -10,7 +10,7 @@ setup(
     license='MIT',
     url='https://github.com/everitoken/evt/tree/master/sdks/pysdk',
     packages=find_packages(),
-    install_requires=['pyevt'],
+    install_requires=['pyevt', 'requests'],
     classifiers=[
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: MIT License',
