@@ -682,6 +682,9 @@ apply_evt_newdelay(apply_context& context) {
         EVT_ASSERT(context.has_authorized(N128(delay), ndact.name), action_authorize_exception, "Authorized information does not match.");
 
         check_name_reserved(ndact.name);
+        for(auto& act : ndact.trx.actions) {
+            EVT_ASSERT(act.domain != N128(delay), delay_invalid_action_exception, "Actions in 'delay' domain are not allowd delay-signning");
+        }
 
         auto& tokendb = context.token_db;
         EVT_ASSERT(!tokendb.exists_delay(ndact.name), delay_exists_exception, "Delay ${name} already exists.", ("name",ndact.name));
@@ -719,9 +722,6 @@ apply_evt_approvedelay(apply_context& context) {
             EVT_ASSERT(delay.signed_keys.find(*it) == delay.signed_keys.end(), delay_duplicate_key_exception, "Public key ${key} is already signed this delay transaction", ("key",*it)); 
         }
 
-        delay.signatures.reserve(delay.signatures.size() + signed_keys.size());
-        delay.signatures.insert(delay.signatures.end(), adact.signatures.cbegin(), adact.signatures.cend());
- 
         delay.signed_keys.merge(signed_keys);
         
         tokendb.update_delay(delay);
@@ -766,7 +766,9 @@ apply_evt_executedelay(apply_context& context) {
         EVT_ASSERT(delay.status == delay_status::proposed, delay_status_exception, "Delay is not in 'proposed' status.");
         EVT_ASSERT(delay.trx.expiration > now, delay_expired_tx_exception, "Delay transaction is expired at ${expir}, now is ${now}", ("expir",delay.trx.expiration)("now",now));
 
-        auto strx = signed_transaction(delay.trx, delay.signatures);
+        context.control.check_authorization(delay.signed_keys, delay.trx);
+
+        auto strx = signed_transaction(delay.trx, {});
         auto mtrx = std::make_shared<transaction_metadata>(strx);
         auto trace = context.control.push_delay_transaction(mtrx, fc::time_point::maximum());
         bool transaction_failed = trace && trace->except;

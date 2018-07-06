@@ -80,6 +80,8 @@ public:
     transaction_trace_ptr push_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline);
     transaction_trace_ptr push_delay_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline);
 
+    void check_authorization(const flat_set<public_key_type>& signed_keys, const transaction& trx);
+
     void finalize_block();
     void sign_block(const std::function<signature_type(const digest_type&)>& signer_callback);
     void commit_block();
