@@ -422,6 +422,18 @@ struct controller_impl {
         return (code == deadline_exception::code_value);
     }
 
+    void
+    check_authorization(const flat_set<public_key_type>& signed_keys, const transaction& trx) {
+        const static uint32_t max_authority_depth = conf.genesis.initial_configuration.max_authority_depth;
+        
+        auto checker = authority_checker(signed_keys, token_db, max_authority_depth);
+        for(const auto& act : trx.actions) {
+            EVT_ASSERT(checker.satisfied(act), unsatisfied_authorization,
+                       "${name} action in domain: ${domain} with key: ${key} authorized failed",
+                       ("domain", act.domain)("key", act.key)("name", act.name));
+        }
+    }
+
     transaction_trace_ptr
     push_delay_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline) {
         try {
@@ -503,15 +515,8 @@ struct controller_impl {
                 }
 
                 if(!self.skip_auth_check() && !implicit) {
-                    const static uint32_t max_authority_depth = conf.genesis.initial_configuration.max_authority_depth;
-                    // NOTICE: Expose keys when authorized failed is temporarily, for better debuging
                     const auto& keys = trx->recover_keys(chain_id);
-                    auto checker = authority_checker(keys, token_db, max_authority_depth);
-                    for(const auto& act : trx->trx.actions) {
-                        EVT_ASSERT(checker.satisfied(act), unsatisfied_authorization,
-                                   "${name} action in domain: ${domain} with key: ${key} authorized failed, provided keys: ${keys}",
-                                   ("domain", act.domain)("key", act.key)("name", act.name)("keys", keys));
-                    }
+                    check_authorization(keys, trx->trx);
                 }
 
                 trx_context.exec();
@@ -934,6 +939,11 @@ controller::push_transaction(const transaction_metadata_ptr& trx, fc::time_point
 transaction_trace_ptr
 controller::push_delay_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline) {
     return my->push_delay_transaction(trx, deadline);
+}
+
+void
+controller::check_authorization(const flat_set<public_key_type>& signed_keys, const transaction& trx) {
+    return my->check_authorization(signed_keys, trx);
 }
 
 uint32_t

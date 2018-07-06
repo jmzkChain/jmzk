@@ -1,6 +1,7 @@
-FROM everitoken/builder:latest as builder
+FROM ubuntu:18.04 as source
 ARG branch=master
 
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive && apt-get install -y git
 RUN git clone -b $branch https://github.com/everitoken/evt.git
 
 FROM everitoken/pyevt:latest as pyevt
@@ -8,8 +9,7 @@ RUN python3 /pyevt/setup.py bdist_wheel
 
 FROM ubuntu:18.04
 
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive && apt-get install -y python3 python3-pip openssl libssl1.1 && rm -rf /var/lib/apt/lists/*
-RUN pip3 install cffi wheel requests
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive && apt-get install -y python3 python3-pip python3-setuptools python3-wheel python3-cffi python3-requests openssl libssl1.1 --no-install-recommends && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /pysdk
 
@@ -18,9 +18,9 @@ RUN pip3 install *.whl
 RUN rm *.whl
 
 COPY --from=pyevt /usr/local/lib/*.so* /usr/local/lib/
-COPY --from=builder /evt/sdks/pysdk ./
+COPY --from=source /evt/sdks/pysdk ./
 
 ENV LD_LIBRARY_PATH /usr/local/lib
 ENV PATH /usr/sbin:/usr/bin:/sbin:/bin
 
-ENTRYPOINT ["python3", "-m", "pyevtsdk.unit_test"]
+ENTRYPOINT ["python3", "-m", "pyevtsdk.unit_test", "http://118.31.58.10:8888"]

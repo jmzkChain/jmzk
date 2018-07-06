@@ -684,7 +684,7 @@ BOOST_AUTO_TEST_CASE(contract_addmeta_test) {
     FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE(contract_newdelay_test) {
+BOOST_AUTO_TEST_CASE(contract_faildelay_test) {
     try {
         BOOST_CHECK(true);
         const char* test_data = R"=======(
@@ -754,103 +754,185 @@ BOOST_AUTO_TEST_CASE(contract_newdelay_test) {
 
         my_tester->push_action(N(newdelay), N128(delay),  string_to_name128(get_delay_name()), var.get_object(), key_seeds);
 
-        my_tester->produce_blocks();
-    }
-    FC_LOG_AND_RETHROW()
-}
-
-BOOST_AUTO_TEST_CASE(contract_executedelay_test) {
-    try {
-        BOOST_CHECK(true);
-        const char* test_data = R"=======(
+        const char* execute_test_data = R"=======(
         {
             "name": "testdelay",
             "executor": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3"
         }
         )=======";
 
-        auto var  = fc::json::from_string(test_data);
-        auto edact = var.as<executedelay>();
-        edact.name = get_delay_name();
+        auto execute_tvar  = fc::json::from_string(execute_test_data);
+        auto edact = execute_tvar.as<executedelay>();
         edact.executor = key;
-        to_variant(edact, var);
+        edact.name = get_delay_name();
+        to_variant(edact, execute_tvar);
 
-        BOOST_CHECK_THROW(my_tester->push_action(N(executedelay), N128(delay), string_to_name128(get_delay_name()), var.get_object(), {N(key)}),unsatisfied_authorization);
+        //delay_executor_exception
+        BOOST_CHECK_THROW(my_tester->push_action(N(executedelay), N128(delay), string_to_name128(get_delay_name()), execute_tvar.get_object(), {N(key)}),delay_executor_exception);
 
         auto& tokendb = my_tester->control->token_db();
         delay_def delay;
         tokendb.read_delay(edact.name, delay);
-        BOOST_TEST(delay.status == delay_status::executed);
-        BOOST_TEST(delay.signed_keys.size() == 0);
-        BOOST_TEST(delay.trx.actions.size() == 1);
-        
+        BOOST_TEST(delay.status == delay_status::proposed);
 
-        // auto sig= tester::get_private_key(N(delay_key)).sign(delay.trx.sig_digest(my_tester->control->get_chain_id()));
-        // const char* approve_test_data = R"=======(
-        // {
-        //     "name": "test1530718665",
-        //     "signatures": [
-        //     ]
-        // }
-        // )=======";
+        auto sig= tester::get_private_key(N(delay_key)).sign(delay.trx.sig_digest(my_tester->control->get_chain_id()));
+        auto sig2= tester::get_private_key(N(key)).sign(delay.trx.sig_digest(my_tester->control->get_chain_id()));
+        const char* approve_test_data = R"=======(
+        {
+            "name": "testdelay",
+            "signatures": [
+            ]
+        }
+        )=======";
 
-        // auto approve_var  = fc::json::from_string(approve_test_data);
-        // auto adact = var.as<approvedelay>();
-        // adact.name = get_delay_name();
-        // adact.signatures = {sig};
-        // to_variant(adact, approve_var);
+        auto approve_var  = fc::json::from_string(approve_test_data);
+        auto adact = approve_var.as<approvedelay>();
+        adact.name = get_delay_name();
+        adact.signatures = {sig,sig2};
+        to_variant(adact, approve_var);
 
-        // my_tester->push_action(N(approvedelay), N128(delay),  string_to_name128(get_delay_name()), approve_var.get_object(), {N(delay_key)});
+        BOOST_CHECK_THROW(my_tester->push_action(N(approvedelay), N128(delay),  string_to_name128(get_delay_name()), approve_var.get_object(), key_seeds),delay_not_required_keys_exception);
 
-        // my_tester->push_action(N(executedelay), N128(delay), string_to_name128(get_delay_name()), var.get_object(), {N(key)});
+        tokendb.read_delay(edact.name, delay);
+        BOOST_TEST(delay.status == delay_status::proposed);
+
+                const char* cancel_test_data = R"=======(
+        {
+            "name": "testdelay"
+        }
+        )=======";
+        auto cancel_var  = fc::json::from_string(test_data);
+        auto cdact = var.as<canceldelay>();
+        cdact.name = get_delay_name();
+        to_variant(cdact, cancel_var);
+
+        my_tester->push_action(N(canceldelay), N128(delay), string_to_name128(get_delay_name()), cancel_var.get_object(), key_seeds);
+
+        tokendb.read_delay(edact.name, delay);
+        BOOST_TEST(delay.status == delay_status::cancelled);
 
         my_tester->produce_blocks();
     }
     FC_LOG_AND_RETHROW()
 }
 
-// BOOST_AUTO_TEST_CASE(contract_canceldelay_test) {
-//     try {
-//         BOOST_CHECK(true);     
+BOOST_AUTO_TEST_CASE(contract_successdelay_test) {
+    try {
+        BOOST_CHECK(true);
+        const char* test_data = R"=======(
+        {
+            "name": "testdelay",
+            "proposer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
+            "trx": {
+                "expiration": "2021-07-04T05:14:12",
+                "ref_block_num": "3432",
+                "ref_block_prefix": "291678901",
+                "actions": [
+                ],
+                "transaction_extensions": []
+            }
+        }
+        )=======";
 
-//         const char* test_data = R"=======(
-//         {
-//             "name": "testdelay",
-//             "proposer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
-//             "trx": {
-//                 "expiration": "2021-07-04T05:14:12",
-//                 "ref_block_num": "3432",
-//                 "ref_block_prefix": "291678901",
-//                 "actions": [
-//                 ],
-//                 "transaction_extensions": []
-//             }
-//         }
-//         )=======";
+        auto var  = fc::json::from_string(test_data);
+        auto ndact = var.as<newdelay>();
 
-//         auto var  = fc::json::from_string(test_data);
-//         auto ndact = var.as<newdelay>();
-//         ndact.name = get_delay_name();
-//         ndact.proposer = key;
-//         to_variant(ndact, var);
-//         my_tester->push_action(N(newdelay), N128(delay), string_to_name128(get_delay_name()), var.get_object(), key_seeds);
+        const char* newdomain_test_data = R"=====(
+            {
+              "name" : "domain",
+              "creator" : "EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
+              "issue" : {
+                "name" : "issue",
+                "threshold" : 1,
+                "authorizers": [{
+                    "ref": "[A] EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
+                    "weight": 1
+                  }
+                ]
+              },
+              "transfer": {
+                "name": "transfer",
+                "threshold": 1,
+                "authorizers": [{
+                    "ref": "[G] OWNER",
+                    "weight": 1
+                  }
+                ]
+              },
+              "manage": {
+                "name": "manage",
+                "threshold": 1,
+                "authorizers": [{
+                    "ref": "[A] EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
+                    "weight": 1
+                  }
+                ]
+              }
+            }
+            )=====";
+
+        auto newdomain_var    = fc::json::from_string(newdomain_test_data);
+        auto newdom = newdomain_var.as<newdomain>();
+        newdom.creator = tester::get_public_key(N(delay_key));
+        to_variant(newdom, newdomain_var);
+        ndact.trx.actions.push_back(my_tester->get_action(N(newdomain), N128(domain), N128(.create), newdomain_var.get_object()));
+
+        to_variant(ndact, var);
+        BOOST_CHECK_THROW(my_tester->push_action(N(newdelay), N128(delay), N128(testdelay), var.get_object(), key_seeds), unsatisfied_authorization);
+
+        ndact.proposer = key;
+        to_variant(ndact, var);
+
+        my_tester->push_action(N(newdelay), N128(delay), N128(testdelay), var.get_object(), key_seeds);
+
+        
+
+        auto& tokendb = my_tester->control->token_db();
+        delay_def delay;
+        tokendb.read_delay(ndact.name, delay);
+        BOOST_TEST(delay.status == delay_status::proposed);
+
+        auto sig= tester::get_private_key(N(delay_key)).sign(delay.trx.sig_digest(my_tester->control->get_chain_id()));
+        auto sig2= tester::get_private_key(N(key)).sign(delay.trx.sig_digest(my_tester->control->get_chain_id()));
+        const char* approve_test_data = R"=======(
+        {
+            "name": "testdelay",
+            "signatures": [
+            ]
+        }
+        )=======";
+
+        auto approve_var  = fc::json::from_string(approve_test_data);
+        auto adact = approve_var.as<approvedelay>();
+        adact.signatures = {sig};
+        to_variant(adact, approve_var);
+
+        my_tester->push_action(N(approvedelay), N128(delay),  N128(testdelay), approve_var.get_object(), {});
+
+        tokendb.read_delay(adact.name, delay);
+        BOOST_TEST(delay.status == delay_status::proposed);
+
+        const char* execute_test_data = R"=======(
+        {
+            "name": "testdelay",
+            "executor": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3"
+        }
+        )=======";
+
+        auto execute_tvar  = fc::json::from_string(execute_test_data);
+        auto edact = execute_tvar.as<executedelay>();
+        edact.executor = tester::get_public_key(N(delay_key));
+        to_variant(edact, execute_tvar);
+
+        my_tester->push_action(N(executedelay), N128(delay), N128(testdelay), execute_tvar.get_object(), {N(delay_key)});
+
+        tokendb.read_delay(edact.name, delay);
+        BOOST_TEST(delay.status == delay_status::executed);
 
 
-//         const char* cancel_test_data = R"=======(
-//         {
-//             "name": "testdelay"
-//         }
-//         )=======";
-//         auto cancel_var  = fc::json::from_string(test_data);
-//         auto cdact = var.as<canceldelay>();
-//         cdact.name = get_delay_name();
-//         to_variant(cdact, cancel_var);
-
-//         my_tester->push_action(N(canceldelay), N128(delay), string_to_name128(get_delay_name()), cancel_var.get_object(), key_seeds);
-
-//         my_tester->produce_blocks();
-//     }
-//     FC_LOG_AND_RETHROW()
-// }
+        my_tester->produce_blocks();
+    }
+    FC_LOG_AND_RETHROW()
+}
 
 BOOST_AUTO_TEST_SUITE_END()

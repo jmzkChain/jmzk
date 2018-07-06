@@ -2,27 +2,77 @@ import datetime
 import json
 import random
 import string
-import time
+import sys
 import unittest
 
 from pyevt import abi, ecc, libevt
 
 from . import action, api, base, transaction
 
-host_url = 'http://118.31.58.10:8888'
+host_url = sys.argv[-1] if len(sys.argv) > 1 else 'http://118.31.58.10:8888'
 api = api.Api(host_url)
 EvtAsset = base.EvtAsset
 AG = action.ActionGenerator()
 
 
 def fake_name(prefix='test'):
-    return prefix + str(int(datetime.datetime.now().timestamp()))
+    return prefix + ''.join(random.choice(string.hexdigits) for _ in range(8)) + str(int(datetime.datetime.now().timestamp()))[:-5]
 
 
 def fake_symbol():
     prec = random.randint(3, 10)
     name = ''.join(random.choice(string.ascii_letters[26:]) for _ in range(6))
     return name, prec
+
+
+group_json_raw = '''
+{
+   "name":"5jxX",
+   "group":{
+      "name":"5jxXg",
+      "key":"EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+      "root":{
+         "threshold":6,
+         "weight":0,
+         "nodes":[
+            {
+               "type":"branch",
+               "threshold":1,
+               "weight":3,
+               "nodes":[
+                  {
+                     "key":"EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+                     "weight":1
+                  },
+                  {
+                     "key":"EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+                     "weight":1
+                  }
+               ]
+            },
+            {
+               "key":"EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+               "weight":3
+            },
+            {
+               "threshold":1,
+               "weight":3,
+               "nodes":[
+                  {
+                     "key":"EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+                     "weight":1
+                  },
+                  {
+                     "key":"EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+                     "weight":2
+                  }
+               ]
+            }
+         ]
+      }
+   }
+}
+'''
 
 
 class Test(unittest.TestCase):
@@ -44,7 +94,6 @@ class Test(unittest.TestCase):
 
         resp = api.get_domain('''{"name": "%s"}''' % (name)).json()
         self.assertTrue(pub_key.to_string() == resp['creator'])
-        time.sleep(1)
 
     def test_action_updatedomain(self):
         # Example: Add another user into issue permimssion
@@ -76,13 +125,11 @@ class Test(unittest.TestCase):
         resp = api.get_domain('{"name": "%s"}' % (name)).json()
         self.assertTrue({'ref': ar2.value(), 'weight': 1}
                         in resp['issue']['authorizers'])
-        time.sleep(1)
 
     def test_action_newgroup(self):
         pub_key, priv_key = ecc.generate_new_pair()
         name = fake_name('group')
-        with open('group.json', 'r') as f:
-            group_json = json.load(f)
+        group_json = json.loads(group_json_raw)
         group_json['name'] = name
         group_json['group']['name'] = name
         group_json['group']['key'] = str(pub_key)
@@ -97,7 +144,6 @@ class Test(unittest.TestCase):
 
         resp = api.get_group('''{"name": "%s"}''' % (name)).json()
         self.assertTrue(pub_key.to_string() == resp['key'])
-        time.sleep(1)
 
     def test_action_updategroup(self):
         # It's the same as new group action
@@ -132,7 +178,6 @@ class Test(unittest.TestCase):
                 
         ''' % (token_name, domain_name)).json()
         self.assertTrue(resp['domain'] == domain_name)
-        time.sleep(1)
 
     def test_action_transfer(self):
         pub_key, priv_key = ecc.generate_new_pair()
@@ -174,7 +219,6 @@ class Test(unittest.TestCase):
                 
         ''' % (token_name, domain_name)).json()
         self.assertTrue(resp['owner'][0] == pub2.to_string())
-        time.sleep(1)
 
     def test_action_addmeta(self):
         pub_key, priv_key = ecc.generate_new_pair()
@@ -196,7 +240,6 @@ class Test(unittest.TestCase):
         trx.add_action(addmeta)
         trx.add_sign(priv_key)
         api.push_transaction(trx.dumps())
-        time.sleep(1)
 
     def test_action_newfungible(self):
         pub_key, priv_key = ecc.generate_new_pair()
@@ -394,4 +437,6 @@ class Test(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    suite = unittest.TestLoader().loadTestsFromTestCase(Test)
+    runner = unittest.TextTestRunner()
+    runner.run(suite)
