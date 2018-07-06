@@ -1015,10 +1015,39 @@ BOOST_AUTO_TEST_CASE(newdelay_test) {
         auto ndact = var.as<newdelay>();
 
         BOOST_TEST("testdelay" == (std::string)ndact.name);
+        BOOST_TEST("EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3" == (std::string)ndact.proposer);
+        BOOST_TEST("2018-07-04T05:14:12" == ndact.trx.expiration.to_iso_string());
+        BOOST_TEST(3432 == ndact.trx.ref_block_num);
+        BOOST_TEST(291678901 == ndact.trx.ref_block_prefix);
         BOOST_TEST(ndact.trx.actions.size() == 1);
-
+        BOOST_TEST("newdomain" == ndact.trx.actions[0].name);
+        BOOST_TEST("test1530681222" == ndact.trx.actions[0].domain);
+        BOOST_TEST(".create" == ndact.trx.actions[0].key);
+        
         verify_byte_round_trip_conversion(abis, "newdelay", var);
         verify_type_round_trip_conversion<newdelay>(abis, "newdelay", var);
+    }
+    FC_LOG_AND_RETHROW()
+}
+
+
+BOOST_AUTO_TEST_CASE(canceldelay_test) {
+    try {
+        auto abis = get_evt_abi();
+        BOOST_CHECK(true);
+        const char* test_data = R"=======(
+        {
+            "name": "testdelay",
+        }
+        )=======";
+
+        auto var  = fc::json::from_string(test_data);
+        auto cdact = var.as<canceldelay>();
+
+        BOOST_TEST("testdelay" == (std::string)cdact.name);
+
+        verify_byte_round_trip_conversion(abis, "canceldelay", var);
+        verify_type_round_trip_conversion<canceldelay>(abis, "canceldelay", var);
     }
     FC_LOG_AND_RETHROW()
 }
@@ -1057,6 +1086,7 @@ BOOST_AUTO_TEST_CASE(executedelay_test) {
         {
             "name": "test1530718626",
             "executor": "EVT548LviBDF6EcknKnKUMeaPUrZN2uhfCB1XrwHsURZngakYq9Vx"
+
         }
         )=======";
 
