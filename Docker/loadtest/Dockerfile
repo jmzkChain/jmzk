@@ -1,25 +1,42 @@
+FROM ubuntu:18.04 as source
+ARG branch=master
+ARG host=http://127.0.0.1
+
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive && apt-get install -y git
+RUN git clone -b $branch https://github.com/everitoken/evt.git
+
 FROM everitoken/pyevt:latest as pyevt
 RUN python3 /pyevt/setup.py bdist_wheel
 
 FROM everitoken/pysdk:latest as pysdk
 RUN python3 /pysdk/setup.py bdist_wheel
 
+FROM everitoken/locust:latest as locust
+RUN python3 /locust/setup.py bdist_wheel
+
 FROM ubuntu:18.04
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive \
-    && apt-get install -y python3 python3-pip python3-setuptools python3-wheel python3-cffi python3-requests openssl libssl1.1 --no-install-recommends \
+    && apt-get install -y python3 python3-pip python3-setuptools python3-wheel python3-cffi \
+    python3-requests python3-gevent python3-flask python3-msgpack python3-six python3-zmq python3-lz4 \
+    openssl libssl1.1 --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
+
+RUN pip3 install geventhttpclient-wheels
 
 WORKDIR /loadtest
 
 COPY --from=pyevt /pyevt/dist/*.whl ./
 COPY --from=pysdk /pysdk/dist/*.whl ./
+COPY --from=locust /locust/dist/*.whl ./
+
 RUN pip3 install *.whl
 RUN rm *.whl
 
+COPY --from=source /loadtest/taskset ./
 COPY --from=pyevt /usr/local/lib/*.so* /usr/local/lib/
 
 ENV LD_LIBRARY_PATH /usr/local/lib
 ENV PATH /usr/sbin:/usr/bin:/sbin:/bin
 
-ENTRYPOINT ["python3", "-m", "pysdk.unit_test"]
+ENTRYPOINT ["locust", "-f", "evt_taskset.py", "--host=$host"]

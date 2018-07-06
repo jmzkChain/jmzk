@@ -9,13 +9,8 @@ from locust.contrib.fasthttp import FastHttpLocust
 from trafficgen.generator import TrafficGenerator
 from trafficgen.utils import Reader
 
-hosturl = 'http://127.0.0.1:8888'
 
-if len(sys.argv) > 0:
-    hosturl = sys.argv[1]
-
-
-def generate_traffic():
+def generate_traffic(hosturl):
     nonce = ''.join(random.choice(string.ascii_letters[26:]) for _ in range(5))
 
     path = '/tmp/evt_loadtest'
@@ -41,7 +36,7 @@ class EVTTaskSet(TaskSet):
         self.stop = False
 
     def on_start(self):
-        self.reader, self.nonce = generate_traffic()
+        self.reader, self.nonce = generate_traffic(self.locust.host)
 
     @task(1)
     def push_trx(self):
@@ -62,6 +57,5 @@ class EVTTaskSet(TaskSet):
 
 class WebsiteUser(FastHttpLocust):
     task_set = EVTTaskSet
-    host = hosturl
     min_wait = 0
     max_wait = 1000
