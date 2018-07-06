@@ -49,3 +49,7 @@ bind/pyevt/pyevt.egg-info
 sdks/pysdk/build
 sdks/pysdk/dist
 sdks/pysdk/pyevtsdk.egg-info
+
+loadtest/trafficgen/build
+loadtest/trafficgen/dist
+loadtest/trafficgen/trafficgen.egg-info
