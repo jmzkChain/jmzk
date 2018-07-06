@@ -13,7 +13,6 @@ class Reader:
     def read_trx(self):
         header = self.file.read(4)
         size = struct.unpack('i', header)
-        print(size)
         content = self.file.read(size[0])
         return str(content, encoding='utf-8')
 

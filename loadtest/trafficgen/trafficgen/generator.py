@@ -7,12 +7,9 @@ from pyevtsdk.transaction import TrxGenerator
 
 from . import randompool, utils
 
-AG = ActionGenerator()
-Trx = TrxGenerator('http://118.31.58.10:8888')
 
-
-class TrafficGen:
-    def __init__(self, name, config='actions.config', output='traffic_data.lz4'):
+class TrafficGenerator:
+    def __init__(self, name, url, config='actions.config', output='traffic_data.lz4'):
         self.conf = self.handle_conf(config)
         self.name = name
         self.rp = randompool.RandomPool(
@@ -20,6 +17,9 @@ class TrafficGen:
         self.action_queue = self.make_queue(
             self.conf['total'], self.conf['actions'])
         self.writer = utils.Writer(self.name+'_'+output)
+
+        self.trxgen = TrxGenerator(url)
+        self.actgen = ActionGenerator()
 
     def handle_conf(self, config):
         with open(config, 'r') as f:
@@ -40,9 +40,11 @@ class TrafficGen:
             if not self.rp.satisfy_action(action_type):
                 self.action_queue.append(action_type)
                 continue
+            
             args, priv_keys = self.rp.require(action_type)
-            action = AG.new_action(action_type, **args)
-            trx = Trx.new_trx()
+            action = self.actgen.new_action(action_type, **args)
+            
+            trx = self.trxgen.new_trx()
             trx.add_action(action)
             [trx.add_sign(priv_key) for priv_key in priv_keys]
 
