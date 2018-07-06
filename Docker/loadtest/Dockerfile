@@ -6,8 +6,9 @@ RUN python3 /pysdk/setup.py bdist_wheel
 
 FROM ubuntu:18.04
 
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive && apt-get install -y python3 python3-pip openssl libssl1.1 && rm -rf /var/lib/apt/lists/*
-RUN pip3 install cffi wheel requests
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive \
+    && apt-get install -y python3 python3-pip python3-setuptools python3-wheel python3-cffi python3-requests openssl libssl1.1 --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /loadtest
 
