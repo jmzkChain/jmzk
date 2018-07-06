@@ -25,7 +25,7 @@ struct block_header_state {
     producer_schedule_type           active_schedule;
     incremental_merkle               blockroot_merkle;
     flat_map<account_name, uint32_t> producer_to_last_produced;
-    flat_map<account_name,uint32_t>  producer_to_last_implied_irb;
+    flat_map<account_name, uint32_t> producer_to_last_implied_irb;
     public_key_type                  block_signing_key;
     vector<uint8_t>                  confirm_count;
     vector<header_confirmation>      confirmations;
@@ -42,6 +42,7 @@ struct block_header_state {
     has_pending_producers() const {
         return pending_schedule.producers.size();
     }
+
     uint32_t calc_dpos_last_irreversible() const;
     bool is_active_producer(account_name n) const;
 
@@ -53,10 +54,12 @@ struct block_header_state {
     */
 
     producer_key get_scheduled_producer(block_timestamp_type t) const;
+
     const block_id_type&
     prev() const {
         return header.previous;
     }
+
     digest_type     sig_digest() const;
     void            sign(const std::function<signature_type(const digest_type&)>& signer, bool trust = false);
     public_key_type signee() const;

@@ -30,4 +30,4 @@ using block_state_ptr = std::shared_ptr<block_state>;
 
 }}  // namespace evt::chain
 
-FC_REFLECT_DERIVED(evt::chain::block_state, (evt::chain::block_header_state), (block)(validated))
+FC_REFLECT_DERIVED(evt::chain::block_state, (evt::chain::block_header_state), (block)(validated)(in_current_chain))
