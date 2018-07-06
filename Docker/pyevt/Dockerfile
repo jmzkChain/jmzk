@@ -10,7 +10,7 @@ RUN ninja -C /tmp/build -j $(nproc) libevt && ninja -C /tmp/build install
 
 FROM ubuntu:18.04
 
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive && apt-get install -y python3 python3-pip openssl libssl1.1 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive && apt-get install -y python3 python3-pip openssl libssl1.1 --no-install-recommends && rm -rf /var/lib/apt/lists/*
 RUN pip3 install cffi wheel
 
 WORKDIR /pyevt
