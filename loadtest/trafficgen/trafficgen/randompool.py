@@ -73,7 +73,8 @@ class Token(Item):
 
 class Fungible(Item):
     def __init__(self, sym, user, total_supply):
-        super().__init__(sym, user)
+        super().__init__(sym.name, user)
+        self.sym = sym
         self.total_supply = total_supply
         self.accounts = []
 
@@ -91,13 +92,17 @@ class RandomPool:
         return len(self.pool[item_type]) >= num
 
     def satisfy_action(self, action):
+        requires = REQUIREMENTS[action]
+        if len(requires) == 0:
+            return True
+
         if action == 'transferft':
             for fung in self.pool['fungible']:
                 if len(fung.accounts) > 0:
                     return True
             return False
 
-        for item in REQUIREMENTS[action]:
+        for item in requires:
             if self.satisfy(item):
                 return True
 
@@ -144,7 +149,7 @@ class RandomPool:
 
     def issuefungible(self):
         fungible = self.get_item('fungible')
-        asset = base.new_asset(fungible.name)
+        asset = base.new_asset(fungible.sym)
         user = self.get_user()
         fungible.accounts.append(user)
         return {'address': user.pub_key, 'number': asset(1), 'memo': fake_name('memo')}, fungible.priv_keys()
@@ -156,7 +161,7 @@ class RandomPool:
             if len(fung.accounts) > 0:
                 fungible = fung
                 break
-        asset = base.new_asset(fungible.name)
+        asset = base.new_asset(fungible.sym)
         user1 = random.choice(fungible.accounts)
         user2 = self.get_user()  # not add user2 into accounts for convinient
         return {
@@ -194,7 +199,11 @@ class RandomPool:
 
     def addmeta(self):
         item_type = None
-        for t in random.shuffle(['domain', 'token', 'group', 'fungible']):
+
+        items = ['domain', 'token', 'group', 'fungible']
+        random.shuffle(items)
+
+        for t in items:
             if len(self.pool[t]) > 0:
                 item_type = t
                 break

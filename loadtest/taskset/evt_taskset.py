@@ -2,7 +2,7 @@ import os
 import random
 import shutil
 import string
-import sys
+import tqdm
 
 from locust import TaskSet, task
 from locust.contrib.fasthttp import FastHttpLocust
@@ -22,8 +22,8 @@ def generate_traffic(hosturl):
     gen = TrafficGenerator(nonce, hosturl, 'actions.config', traffic)
 
     print('{} Generating traffic'.format(nonce))
-    gen.generator()
-    print('{} Generating traffic - OK'.format(nonce))
+    with tqdm.tqdm(total=100) as pbar:
+        gen.generate(True, lambda x: pbar.update(x))
 
     return Reader(traffic), nonce
 
