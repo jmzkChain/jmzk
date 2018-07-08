@@ -19,7 +19,7 @@ class Transaction:
         self.priv_keys = []
         self.signatures = []
 
-    def set_refs(self, **kwargs):
+    def set_header(self, **kwargs):
         if 'url' in kwargs:
             evtapi = api.Api(kwargs['url'])
             info = json.loads(evtapi.get_info())
@@ -79,7 +79,7 @@ class TrxGenerator:
 
     def new_trx(self):
         trx = Transaction()
-        trx.set_refs(chain_id=self.chain_id, block_id=self.block_id)
+        trx.set_header(chain_id=self.chain_id, block_id=self.block_id)
         return trx
 
 

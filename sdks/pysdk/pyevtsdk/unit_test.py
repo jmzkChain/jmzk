@@ -87,7 +87,7 @@ class Test(unittest.TestCase):
         newdomain = AG.new_action('newdomain', name=name, creator=pub_key)
 
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(newdomain)
         trx.add_sign(priv_key)
 
@@ -104,7 +104,7 @@ class Test(unittest.TestCase):
         name = fake_name()
         newdomain = AG.new_action('newdomain', name=name, creator=pub_key)
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(newdomain)
         trx.add_sign(priv_key)
         api.push_transaction(data=trx.dumps())
@@ -121,7 +121,7 @@ class Test(unittest.TestCase):
             'updatedomain', name=name, issue=issue_per)
 
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(updatedomain)
         trx.add_sign(priv_key)
         api.push_transaction(data=trx.dumps())
@@ -141,7 +141,7 @@ class Test(unittest.TestCase):
         newgroup = AG.new_action_from_json('newgroup', json.dumps(group_json))
 
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(newgroup)
         trx.add_sign(priv_key)
 
@@ -165,13 +165,13 @@ class Test(unittest.TestCase):
                                    token_name], owner=[pub_key])
 
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(newdomain)
         trx.add_sign(priv_key)
         api.push_transaction(trx.dumps())
 
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(issuetoken)
         trx.add_sign(priv_key)
         api.push_transaction(trx.dumps())
@@ -198,14 +198,14 @@ class Test(unittest.TestCase):
 
         # create a new domain
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(newdomain)
         trx.add_sign(priv_key)
         api.push_transaction(trx.dumps())
 
         # issue a new token
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(issuetoken)
         trx.add_sign(priv_key)
         api.push_transaction(trx.dumps())
@@ -215,7 +215,7 @@ class Test(unittest.TestCase):
         transfer = AG.new_action(
             'transfer', domain=domain_name, name=token_name, to=[pub2], memo='haha')
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(transfer)
         trx.add_sign(priv_key)  # priv_key of the owner of this token
         api.push_transaction(trx.dumps())
@@ -237,7 +237,7 @@ class Test(unittest.TestCase):
         newdomain = AG.new_action(
             'newdomain', name=domain_name, creator=pub_key)
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(newdomain)
         trx.add_sign(priv_key)
         api.push_transaction(trx.dumps())
@@ -248,7 +248,7 @@ class Test(unittest.TestCase):
         addmeta = AG.new_action('addmeta', meta_key='meta-key-test',
                                 meta_value='meta-value-test', creator=ar, domain='domain', key=domain_name)
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(addmeta)
         trx.add_sign(priv_key)
         api.push_transaction(trx.dumps())
@@ -262,7 +262,7 @@ class Test(unittest.TestCase):
             'newfungible', sym=symbol, creator=pub_key, total_supply=asset(100000))
 
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(newfungible)
         trx.add_sign(priv_key)
         resp = api.push_transaction(trx.dumps()).text
@@ -278,7 +278,7 @@ class Test(unittest.TestCase):
             'newfungible', sym=symbol, creator=pub_key, total_supply=asset(100000))
 
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(newfungible)
         trx.add_sign(priv_key)
         api.push_transaction(trx.dumps())
@@ -293,7 +293,7 @@ class Test(unittest.TestCase):
 
         updfungible = AG.new_action('updfungible', sym=symbol, manage=manage)
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(updfungible)
         trx.add_sign(priv_key)
         resp = api.push_transaction(trx.dumps()).text
@@ -309,7 +309,7 @@ class Test(unittest.TestCase):
             'newfungible', sym=symbol, creator=pub_key, total_supply=asset(100000))
 
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(newfungible)
         trx.add_sign(priv_key)
         api.push_transaction(trx.dumps())
@@ -318,7 +318,7 @@ class Test(unittest.TestCase):
         issuefungible = AG.new_action(
             'issuefungible', address=pub2, number=asset(100), memo='goodluck')
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(issuefungible)
         trx.add_sign(priv_key)
         resp = api.push_transaction(trx.dumps()).text
@@ -334,7 +334,7 @@ class Test(unittest.TestCase):
             'newfungible', sym=symbol, creator=pub_key, total_supply=asset(100000))
 
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(newfungible)
         trx.add_sign(priv_key)
         api.push_transaction(trx.dumps())
@@ -342,7 +342,7 @@ class Test(unittest.TestCase):
         issuefungible = AG.new_action(
             'issuefungible', address=pub_key, number=asset(100), memo='goodluck')
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(issuefungible)
         trx.add_sign(priv_key)
         api.push_transaction(trx.dumps())
@@ -352,7 +352,7 @@ class Test(unittest.TestCase):
         transferft = AG.new_action(
             'transferft', _from=pub_key, to=pub2, number=asset(1), memo='goodjob')
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(transferft)
         trx.add_sign(priv_key)
         resp = api.push_transaction(trx.dumps()).text
@@ -364,14 +364,14 @@ class Test(unittest.TestCase):
         newdomain = AG.new_action(
             'newdomain', name=fake_name(), creator=user.pub_key)
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(newdomain)
         trx.add_sign(user.priv_key)
 
         newdelay = AG.new_action(
             'newdelay', name=fake_name(), proposer=user.pub_key, trx=trx)
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(newdelay)
         trx.add_sign(user.priv_key)
         resp = api.push_transaction(trx.dumps()).text
@@ -382,7 +382,7 @@ class Test(unittest.TestCase):
         newdomain = AG.new_action(
             'newdomain', name=fake_name(), creator=user.pub_key)
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(newdomain)
         trx.add_sign(user.priv_key)
         signatures = json.loads(trx.dumps())['signatures']
@@ -391,7 +391,7 @@ class Test(unittest.TestCase):
         newdelay = AG.new_action(
             'newdelay', name=delay_name, proposer=user.pub_key, trx=trx)
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(newdelay)
         trx.add_sign(user.priv_key)
         api.push_transaction(trx.dumps())
@@ -399,7 +399,7 @@ class Test(unittest.TestCase):
         approve = AG.new_action(
             'approvedelay', name=delay_name, signatures=signatures)
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(approve)
         trx.add_sign(user.priv_key)
         resp = api.push_transaction(trx.dumps()).text
@@ -410,7 +410,7 @@ class Test(unittest.TestCase):
         newdomain = AG.new_action(
             'newdomain', name=fake_name(), creator=user.pub_key)
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(newdomain)
         trx.add_sign(user.priv_key)
 
@@ -418,14 +418,14 @@ class Test(unittest.TestCase):
         newdelay = AG.new_action(
             'newdelay', name=delay_name, proposer=user.pub_key, trx=trx)
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(newdelay)
         trx.add_sign(user.priv_key)
         api.push_transaction(trx.dumps())
 
         canceldelay = AG.new_action('canceldelay', name=delay_name)
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(canceldelay)
         trx.add_sign(user.priv_key)
         resp = api.push_transaction(trx.dumps()).text
@@ -436,7 +436,7 @@ class Test(unittest.TestCase):
         newdomain = AG.new_action(
             'newdomain', name=fake_name(), creator=user.pub_key)
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(newdomain)
         trx.add_sign(user.priv_key)
         signatures = json.loads(trx.dumps())['signatures']
@@ -445,7 +445,7 @@ class Test(unittest.TestCase):
         newdelay = AG.new_action(
             'newdelay', name=delay_name, proposer=user.pub_key, trx=trx)
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(newdelay)
         trx.add_sign(user.priv_key)
         api.push_transaction(trx.dumps())
@@ -453,7 +453,7 @@ class Test(unittest.TestCase):
         approve = AG.new_action(
             'approvedelay', name=delay_name, signatures=signatures)
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(approve)
         trx.add_sign(user.priv_key)
         api.push_transaction(trx.dumps())
@@ -461,7 +461,7 @@ class Test(unittest.TestCase):
         executedelay = AG.new_action(
             'executedelay', name=delay_name, executor=user.pub_key)
         trx = transaction.Transaction()
-        trx.set_refs(url=host_url)
+        trx.set_header(url=host_url)
         trx.add_action(executedelay)
         trx.add_sign(user.priv_key)
         resp = api.push_transaction(trx.dumps()).text
