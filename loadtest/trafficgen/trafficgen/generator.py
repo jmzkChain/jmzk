@@ -5,7 +5,7 @@ from collections import OrderedDict
 from pyevtsdk.action import ActionGenerator
 from pyevtsdk.transaction import TrxGenerator
 
-import utils, randompool
+from . import utils, randompool
 
 
 class InvalidActionsOrder(Exception):
