@@ -23,13 +23,8 @@ struct genesis_state {
         .target_block_net_usage_pct     = config::default_target_block_net_usage_pct,
         .max_transaction_net_usage      = config::default_max_transaction_net_usage,
         .base_per_transaction_net_usage = config::default_base_per_transaction_net_usage,
-        .net_usage_leeway               = config::default_net_usage_leeway,
 
         .max_transaction_lifetime       = config::default_max_trx_lifetime,
-        .deferred_trx_expiration_window = config::default_deferred_trx_expiration_window,
-        .max_transaction_delay          = config::default_max_trx_delay,
-        .max_inline_action_size         = config::default_max_inline_action_size,
-        .max_inline_action_depth        = config::default_max_inline_action_depth,
         .max_authority_depth            = config::default_max_auth_depth};
 
     time_point      initial_timestamp;
