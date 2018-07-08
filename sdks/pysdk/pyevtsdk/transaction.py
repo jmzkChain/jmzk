@@ -7,15 +7,10 @@ from . import action, api
 
 
 class Transaction:
-    def __init__(self, url, **kwargs):
-        self.api = api.Api(url)
-        info = json.loads(self.api.get_info())
-        chain_id_str = info['chain_id']
-        block_id_str = info['head_block_id']
-        self.chain_id = abi.ChainId.from_string(chain_id_str)
-        self.block_id = abi.BlockId.from_string(block_id_str)
+    def __init__(self):
+        self.chain_id = None
+        self.block_id = None
 
-        self.kwargs = kwargs
         self.expiration = (datetime.datetime.utcnow(
         ) + datetime.timedelta(hours=1)).strftime('%Y-%m-%dT%H:%M:%S')
         self.actions = []
@@ -23,6 +18,18 @@ class Transaction:
 
         self.priv_keys = []
         self.signatures = []
+
+    def set_refs(self, **kwargs):
+        if 'url' in kwargs:
+            evtapi = api.Api(kwargs['url'])
+            info = json.loads(evtapi.get_info())
+            chain_id_str = info['chain_id']
+            block_id_str = info['head_block_id']
+            self.chain_id = abi.ChainId.from_string(chain_id_str)
+            self.block_id = abi.BlockId.from_string(block_id_str)
+        else:
+            self.chain_id = kwargs['chain_id']
+            self.block_id = kwargs['block_id']
 
     def add_action(self, _action):
         self.actions.append(_action.dict())
@@ -33,7 +40,6 @@ class Transaction:
     def dict(self):
         ret = {
             'expiration': self.expiration,
-            **self.kwargs,
             'ref_block_num': str(self.block_id.ref_block_num()),
             'ref_block_prefix': str(self.block_id.ref_block_prefix()),
             'actions': self.actions,
@@ -44,7 +50,6 @@ class Transaction:
     def delay_dict(self):
         ret = {
             'expiration': self.expiration,
-            **self.kwargs,
             'ref_block_num': str(self.block_id.ref_block_num()),
             'ref_block_prefix': str(self.block_id.ref_block_prefix()),
             'actions': self.actions,
@@ -65,11 +70,17 @@ class Transaction:
 
 class TrxGenerator:
     def __init__(self, url):
-        self.kwargs = {}
-        self.kwargs['url'] = url
+        evtapi = api.Api(url)
+        info = json.loads(evtapi.get_info())
+        chain_id_str = info['chain_id']
+        block_id_str = info['head_block_id']
+        self.chain_id = abi.ChainId.from_string(chain_id_str)
+        self.block_id = abi.BlockId.from_string(block_id_str)
 
     def new_trx(self):
-        return Transaction(**self.kwargs)
+        trx = Transaction()
+        trx.set_refs(chain_id=self.chain_id, block_id=self.block_id)
+        return trx
 
 
 def get_sign_transaction(priv_keys, transaction):
