@@ -201,21 +201,21 @@ class TransferFtAbi(BaseType):
         super().__init__(**args)
 
 
-class NewDelayAbi(BaseType):
+class NewSuspendAbi(BaseType):
     def __init__(self, name, proposer, trx):
         super().__init__(name=name, proposer=proposer, trx=trx)
 
 
-class ApproveDelayAbi(BaseType):
+class AprvSuspendAbi(BaseType):
     def __init__(self, name, signatures):
         super().__init__(name=name, signatures=signatures)
 
 
-class CancelDelayAbi(BaseType):
+class CancelSuspendAbi(BaseType):
     def __init__(self, name):
         super().__init__(name=name)
 
 
-class ExecuteDelayAbi(BaseType):
+class ExecSuspendAbi(BaseType):
     def __init__(self, name, executor):
         super().__init__(name=name, executor=executor)
