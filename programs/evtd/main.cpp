@@ -17,6 +17,14 @@
 #include <boost/dll/runtime_symbol_info.hpp>
 #include <boost/exception/diagnostic_information.hpp>
 
+#ifdef BREAKPAD_SUPPORT
+#ifdef __linux__
+#include <breakpad/client/linux/handler/exception_handler.h>
+#elif __APPLE__
+#include <breakpad/client/mac/handler/exception_handler.h>
+#endif
+#endif
+
 #include "config.hpp"
 
 using namespace appbase;
@@ -82,6 +90,16 @@ initialize_logging() {
     logging_conf_loop();
 }
 
+#ifdef BREAKPAD_SUPPORT
+
+static bool
+dump_callback(const google_breakpad::MinidumpDescriptor& descriptor, void* context, bool succeeded) {
+    fprintf(stderr, "minicore dumped, path: %s\n", descriptor.path());
+    return succeeded;
+}
+
+#endif
+
 enum return_codes {
     OTHER_FAIL        = -2,
     INITIALIZE_FAIL   = -1,
@@ -103,6 +121,16 @@ main(int argc, char** argv) {
         if(!app().initialize<chain_plugin, http_plugin, net_plugin, producer_plugin>(argc, argv))
             return INITIALIZE_FAIL;
         initialize_logging();
+
+#ifdef BREAKPAD_SUPPORT
+        auto dumps_path = app().data_dir() / "dumps";
+        if(!fc::exists(dumps_path)) {
+            fc::create_directories(dumps_path);
+        }
+        google_breakpad::MinidumpDescriptor descriptor(dumps_path.string());
+        google_breakpad::ExceptionHandler eh(descriptor, NULL, dump_callback, NULL, true, -1);
+#endif
+
         ilog("evtd version ${ver}", ("ver", evt::utilities::common::itoh(static_cast<uint32_t>(app().version()))));
         ilog("evt root is ${root}", ("root", root.string()));
         app().startup();

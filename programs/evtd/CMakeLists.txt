@@ -66,6 +66,14 @@ if(ENABLE_MONGODB_SUPPORT)
     )
 endif()
 
+if(ENABLE_BREAKPAD_SUPPORT)
+    find_package(breakpad REQUIRED)
+
+    target_compile_definitions(evtd PUBLIC BREAKPAD_SUPPORT)
+    target_link_libraries(evtd PRIVATE ${BREAKPAD_LIBRARIES})
+    target_include_directories(evtd PUBLIC ${BREAKPAD_INCLUDE_DIR})
+endif()
+
 install( TARGETS evtd
    RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} OPTIONAL
    LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} OPTIONAL

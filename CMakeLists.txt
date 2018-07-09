@@ -4,6 +4,7 @@ cmake_minimum_required( VERSION 3.5 )
 project( EVT )
 
 option(ENABLE_MONGODB_SUPPORT   "Build with mongodb support, this enables both mongo_db_plugin and history_plugin" OFF)
+option(ENABLE_BREAKPAD_SUPPORT  "Build with breakpad support, this enables minidump when crash" OFF)
 option(ENABLE_BIND_LIBRARIES    "Build bind libraries" OFF)
 option(ENABLE_BENCHMARKS        "Build benchmarks" OFF)
 option(ENABLE_COVERAGE_TESTING  "Build EVT for code coverage analysis" OFF)
@@ -191,6 +192,10 @@ if(ENABLE_COVERAGE_TESTING)
   SET(CMAKE_CXX_FLAGS "--coverage ${CMAKE_CXX_FLAGS}")
   find_program( LCOV_PATH  lcov )
   find_program( GENHTML_PATH NAMES genhtml)
+endif()
+
+if(ENABLE_BREAKPAD_SUPPORT)
+    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g" )
 endif()
 
 include_directories(libraries/rocksdb/include)
