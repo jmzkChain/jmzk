@@ -368,7 +368,7 @@ class Test(unittest.TestCase):
         trx.add_action(newdomain)
         trx.add_sign(user.priv_key)
 
-        newdelay = AG.new_action(
+        newsuspend = AG.new_action(
             'newsuspend', name=fake_name(), proposer=user.pub_key, trx=trx)
         trx = transaction.Transaction()
         trx.set_header(url=host_url)
@@ -441,9 +441,9 @@ class Test(unittest.TestCase):
         trx.add_sign(user.priv_key)
         signatures = json.loads(trx.dumps())['signatures']
 
-        delay_name = fake_name()
+        suspend_name = fake_name()
         newsuspend = AG.new_action(
-            'newsuspend', name=delay_name, proposer=user.pub_key, trx=trx)
+            'newsuspend', name=suspend_name, proposer=user.pub_key, trx=trx)
         trx = transaction.Transaction()
         trx.set_header(url=host_url)
         trx.add_action(newsuspend)
@@ -451,7 +451,7 @@ class Test(unittest.TestCase):
         api.push_transaction(trx.dumps())
 
         aprvsuspend = AG.new_action(
-            'aprvsuspend', name=delay_name, signatures=signatures)
+            'aprvsuspend', name=suspend_name, signatures=signatures)
         trx = transaction.Transaction()
         trx.set_header(url=host_url)
         trx.add_action(aprvsuspend)
@@ -459,7 +459,7 @@ class Test(unittest.TestCase):
         api.push_transaction(trx.dumps())
 
         execsuspend = AG.new_action(
-            'execsuspend', name=delay_name, executor=user.pub_key)
+            'execsuspend', name=suspend_name, executor=user.pub_key)
         trx = transaction.Transaction()
         trx.set_header(url=host_url)
         trx.add_action(execsuspend)
