@@ -10,8 +10,17 @@ from trafficgen.generator import TrafficGenerator
 from trafficgen.utils import Reader
 
 
+regions = set()
+
+
 def generate_traffic(hosturl):
-    nonce = ''.join(random.choice(string.ascii_letters[26:]) for _ in range(5))
+    while True:
+        nonce = ''.join(random.choice(
+            string.ascii_letters[26:]) for _ in range(2))
+        if nonce in regions:
+            continue
+        regions.add(nonce)
+        break
 
     path = '/tmp/evt_loadtest'
     if not os.path.exists(path):
@@ -19,9 +28,10 @@ def generate_traffic(hosturl):
 
     traffic = '{}/{}.lz4'.format(path, nonce)
     gen = TrafficGenerator(nonce, hosturl, 'actions.config', traffic)
+    gen.initialize()
 
     print('{} Generating traffic'.format(nonce))
-    with tqdm.tqdm(total=100) as pbar:
+    with tqdm.tqdm(total=gen.total) as pbar:
         gen.generate(True, lambda x: pbar.update(x))
 
     return Reader(traffic), nonce
@@ -57,4 +67,4 @@ class EVTTaskSet(TaskSet):
 class WebsiteUser(FastHttpLocust):
     task_set = EVTTaskSet
     min_wait = 0
-    max_wait = 1000
+    max_wait = 0

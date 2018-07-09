@@ -15,23 +15,31 @@ class InvalidActionsOrder(Exception):
 
 class TrafficGenerator:
     def __init__(self, name, url, config='actions.config', output='traffic_data.lz4'):
+        assert len(name) <= 2, "Length of region name should be less than 2"
+
         self.conf = self.load_conf(config)
         self.name = name
 
-        self.rp = randompool.RandomPool(
-            tg_name=self.name, max_user_num=self.conf['max_user_number'])
+        self.rp = None
         self.writer = utils.Writer(output)
 
         self.trxgen = TrxGenerator(url)
         self.actgen = ActionGenerator()
 
-        self.limits, self.currs, self.total = self.init_actions()
+        self.limits = None
+        self.currs = None
+        self.total = 0
 
     @staticmethod
     def load_conf(config):
         with open(config, 'r') as f:
             conf = json.load(f, object_pairs_hook=OrderedDict)
         return conf
+
+    def initialize(self):
+        self.rp = randompool.RandomPool(
+            tg_name=self.name, max_user_num=self.conf['max_user_number'])
+        self.init_actions()
 
     def init_actions(self):
         limits = {}
@@ -43,11 +51,13 @@ class TrafficGenerator:
         for action, ratio in actions.items():
             if ratio == 0:
                 continue
-            limits[action] = ratio / ratio_sum * total
+            limits[action] = round(ratio / ratio_sum * total)
             currs[action] = 0
 
         total = sum(limits.values())
-        return limits, currs, total
+        self.limits = limits
+        self.currs = currs
+        self.total = total
 
     def generate(self, shuffle=True, process_cb=None):
         actions = list(self.limits.keys())
@@ -79,11 +89,16 @@ class TrafficGenerator:
 
             i = i + 1
             if process_cb is not None:
-                process_cb(i / self.total)
+                process_cb(1)
 
         self.writer.close()
 
 
 if __name__ == '__main__':
-    TG = TrafficGenerator(name='TESTA', url="http://127.0.0.1:8888")
-    TG.generate()
+    import tqdm
+
+    gen = TrafficGenerator(name='TE', url="http://127.0.0.1:8888")
+    gen.initialize()
+
+    with tqdm.tqdm(total=gen.total) as pbar:
+        gen.generate(True, lambda x: pbar.update(x))

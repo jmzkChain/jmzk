@@ -26,7 +26,7 @@ def fake_name(prefix):
 
 def fake_symbol(prefix, syms):
     while True:
-        sym = prefix.upper() + ''.join(random.choice(string.ascii_letters[26:]) for _ in range(2))
+        sym = prefix.upper() + ''.join(random.choice(string.ascii_letters[26:]) for _ in range(5))
         if sym in syms:
             continue
         syms.add(sym)
@@ -42,6 +42,10 @@ class Item:
         self.users = users
         self.create_time = time.time()
 
+    def pub_key(self):
+        assert len(self.users) == 1
+        return str(self.users[0].pub_key)
+
     def pub_keys(self):
         return [str(user.pub_key) for user in self.users]
 
@@ -52,6 +56,7 @@ class Item:
 class Domain(Item):
     def __init__(self, name, user):
         super().__init__(name, [user])
+
 
 class Group(Item):
     def __init__(self, name, user):
@@ -117,7 +122,7 @@ class RandomPool:
     def newdomain(self):
         domain = Domain(fake_name(self.tg_name), self.get_user())
         self.add_item('domain', domain)
-        return {'name': domain.name, 'creator': domain.pub_keys()}, domain.priv_keys()
+        return {'name': domain.name, 'creator': domain.pub_key()}, domain.priv_keys()
 
     def updatedomain(self):
         pass
@@ -133,7 +138,7 @@ class RandomPool:
         asset = base.new_asset(sym)
         fungible = Fungible(sym, self.get_user(), total_supply=100000)
         self.add_item('fungible', fungible)
-        return {'sym': sym, 'creator': fungible.pub_keys(), 'total_supply': asset(100000)}, fungible.priv_keys()
+        return {'sym': sym, 'creator': fungible.pub_key(), 'total_supply': asset(100000)}, fungible.priv_keys()
 
     def updfungible(self):
         pass
@@ -158,7 +163,7 @@ class RandomPool:
         user1 = random.choice(fungible.accounts)
         user2 = self.get_user()  # not add user2 into accounts for convinient
         return {
-            'from': str(user1.pub_key),
+            '_from': str(user1.pub_key),
             'to': str(user2.pub_key),
             'number': asset(0.0001),
             'memo': fake_name('memo')
@@ -172,7 +177,7 @@ class RandomPool:
         return {
             'domain': domain.name,
             'names': [token.name],
-            'owner': [token.pub_keys()]
+            'owner': token.pub_keys()
         }, domain.priv_keys()
 
     def transfer(self):
@@ -202,7 +207,7 @@ class RandomPool:
                 break
 
         item = self.get_item(item_type)
-        ar = base.AuthorizerRef('A', item.pub_keys())
+        ar = base.AuthorizerRef('A', item.pub_key())
 
         get_domain = {
             'domain': lambda i: i.name,
