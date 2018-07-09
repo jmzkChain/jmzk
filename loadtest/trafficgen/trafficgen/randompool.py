@@ -43,37 +43,30 @@ class Item:
         self.create_time = time.time()
 
     def pub_keys(self):
-        if type(self.users) == list:
-            return [str(user.pub_key) for user in self.users]
-        else:
-            return str(self.users.pub_key)
+        return [str(user.pub_key) for user in self.users]
 
     def priv_keys(self):
-        if type(self.users) == list:
-            return [user.priv_key for user in self.users]
-        else:
-            return [self.users.priv_key]
+        return [user.priv_key for user in self.users]
 
 
 class Domain(Item):
     def __init__(self, name, user):
-        super().__init__(name, user)
-
+        super().__init__(name, [user])
 
 class Group(Item):
     def __init__(self, name, user):
-        super().__init__(name, user)
+        super().__init__(name, [user])
 
 
 class Token(Item):
     def __init__(self, name, user, domain):
-        super().__init__(name, user)
+        super().__init__(name, [user])
         self.domain = domain
 
 
 class Fungible(Item):
     def __init__(self, sym, user, total_supply):
-        super().__init__(sym.name, user)
+        super().__init__(sym.name, [user])
         self.sym = sym
         self.total_supply = total_supply
         self.accounts = []
@@ -165,7 +158,7 @@ class RandomPool:
         user1 = random.choice(fungible.accounts)
         user2 = self.get_user()  # not add user2 into accounts for convinient
         return {
-            '_from': str(user1.pub_key),
+            'from': str(user1.pub_key),
             'to': str(user2.pub_key),
             'number': asset(0.0001),
             'memo': fake_name('memo')
@@ -187,7 +180,7 @@ class RandomPool:
         to_user = self.get_user()
 
         old_priv = token.priv_keys()
-        token.user = to_user
+        token.users = [to_user]
         self.add_item('token', token)
 
         return {
