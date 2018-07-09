@@ -12,6 +12,8 @@ RUN ninja -C /tmp/build -j$(nproc) evtd evtwd evtc && ninja -C /tmp/build instal
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive && apt-get install -y python3 python3-click
 
 RUN mkdir /tmp/build/symbols
+ENV LC_ALL=C.UTF-8
+ENV LANG=C.UTF-8
 RUN python3 /evt/scripts/symbolstore.py -s /tmp/build/symbols /tmp/build/bin/evtd
 RUN python3 /evt/scripts/symbolstore.py -s /tmp/build/symbols /tmp/build/bin/evtc
 RUN python3 /evt/scripts/symbolstore.py -s /tmp/build/symbols /tmp/build/bin/evtwd
