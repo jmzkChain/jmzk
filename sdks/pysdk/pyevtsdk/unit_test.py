@@ -358,7 +358,7 @@ class Test(unittest.TestCase):
         resp = api.push_transaction(trx.dumps()).text
         self.assertTrue('transaction_id' in resp)
 
-    def test_action_newdelay(self):
+    def test_action_newsuspend(self):
         user = base.User()
         # Create a trx with newdomain action
         newdomain = AG.new_action(
@@ -368,16 +368,16 @@ class Test(unittest.TestCase):
         trx.add_action(newdomain)
         trx.add_sign(user.priv_key)
 
-        newdelay = AG.new_action(
-            'newdelay', name=fake_name(), proposer=user.pub_key, trx=trx)
+        newsuspend = AG.new_action(
+            'newsuspend', name=fake_name(), proposer=user.pub_key, trx=trx)
         trx = transaction.Transaction()
         trx.set_header(url=host_url)
-        trx.add_action(newdelay)
+        trx.add_action(newsuspend)
         trx.add_sign(user.priv_key)
         resp = api.push_transaction(trx.dumps()).text
         self.assertTrue('transaction_id' in resp)
 
-    def test_action_approvedelay(self):
+    def test_action_aprvsuspend(self):
         user = base.User()
         newdomain = AG.new_action(
             'newdomain', name=fake_name(), creator=user.pub_key)
@@ -387,25 +387,25 @@ class Test(unittest.TestCase):
         trx.add_sign(user.priv_key)
         signatures = json.loads(trx.dumps())['signatures']
 
-        delay_name = fake_name()
-        newdelay = AG.new_action(
-            'newdelay', name=delay_name, proposer=user.pub_key, trx=trx)
+        suspend_name = fake_name()
+        newsuspend = AG.new_action(
+            'newsuspend', name=suspend_name, proposer=user.pub_key, trx=trx)
         trx = transaction.Transaction()
         trx.set_header(url=host_url)
-        trx.add_action(newdelay)
+        trx.add_action(newsuspend)
         trx.add_sign(user.priv_key)
         api.push_transaction(trx.dumps())
 
-        approve = AG.new_action(
-            'approvedelay', name=delay_name, signatures=signatures)
+        aprvsuspend = AG.new_action(
+            'aprvsuspend', name=suspend_name, signatures=signatures)
         trx = transaction.Transaction()
         trx.set_header(url=host_url)
-        trx.add_action(approve)
+        trx.add_action(aprvsuspend)
         trx.add_sign(user.priv_key)
         resp = api.push_transaction(trx.dumps()).text
         self.assertTrue('transaction_id' in resp)
 
-    def test_action_canceldelay(self):
+    def test_action_cancelsuspend(self):
         user = base.User()
         newdomain = AG.new_action(
             'newdomain', name=fake_name(), creator=user.pub_key)
@@ -414,24 +414,24 @@ class Test(unittest.TestCase):
         trx.add_action(newdomain)
         trx.add_sign(user.priv_key)
 
-        delay_name = fake_name()
-        newdelay = AG.new_action(
-            'newdelay', name=delay_name, proposer=user.pub_key, trx=trx)
+        suspend_name = fake_name()
+        newsuspend= AG.new_action(
+            'newsuspend', name=suspend_name, proposer=user.pub_key, trx=trx)
         trx = transaction.Transaction()
         trx.set_header(url=host_url)
-        trx.add_action(newdelay)
+        trx.add_action(newsuspend)
         trx.add_sign(user.priv_key)
         api.push_transaction(trx.dumps())
 
-        canceldelay = AG.new_action('canceldelay', name=delay_name)
+        cancelsuspend = AG.new_action('cancelsuspend', name=suspend_name)
         trx = transaction.Transaction()
         trx.set_header(url=host_url)
-        trx.add_action(canceldelay)
+        trx.add_action(cancelsuspend)
         trx.add_sign(user.priv_key)
         resp = api.push_transaction(trx.dumps()).text
         self.assertTrue('transaction_id' in resp)
 
-    def test_action_executedelay(self):
+    def test_action_execsuspend(self):
         user = base.User()
         newdomain = AG.new_action(
             'newdomain', name=fake_name(), creator=user.pub_key)
@@ -441,28 +441,28 @@ class Test(unittest.TestCase):
         trx.add_sign(user.priv_key)
         signatures = json.loads(trx.dumps())['signatures']
 
-        delay_name = fake_name()
-        newdelay = AG.new_action(
-            'newdelay', name=delay_name, proposer=user.pub_key, trx=trx)
+        suspend_name = fake_name()
+        newsuspend = AG.new_action(
+            'newsuspend', name=suspend_name, proposer=user.pub_key, trx=trx)
         trx = transaction.Transaction()
         trx.set_header(url=host_url)
-        trx.add_action(newdelay)
+        trx.add_action(newsuspend)
         trx.add_sign(user.priv_key)
         api.push_transaction(trx.dumps())
 
-        approve = AG.new_action(
-            'approvedelay', name=delay_name, signatures=signatures)
+        aprvsuspend = AG.new_action(
+            'aprvsuspend', name=suspend_name, signatures=signatures)
         trx = transaction.Transaction()
         trx.set_header(url=host_url)
-        trx.add_action(approve)
+        trx.add_action(aprvsuspend)
         trx.add_sign(user.priv_key)
         api.push_transaction(trx.dumps())
 
-        executedelay = AG.new_action(
-            'executedelay', name=delay_name, executor=user.pub_key)
+        execsuspend = AG.new_action(
+            'execsuspend', name=suspend_name, executor=user.pub_key)
         trx = transaction.Transaction()
         trx.set_header(url=host_url)
-        trx.add_action(executedelay)
+        trx.add_action(execsuspend)
         trx.add_sign(user.priv_key)
         resp = api.push_transaction(trx.dumps()).text
         self.assertTrue('transaction_id' in resp)
