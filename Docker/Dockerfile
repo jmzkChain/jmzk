@@ -5,15 +5,16 @@ ARG rootkey
 RUN git clone -b $branch https://github.com/everitoken/evt.git --recursive \
     && cd evt && echo "$branch:$(git rev-parse HEAD)" > /etc/evt-version \
     && cmake -H. -B"/tmp/build" -G"Ninja" -DCMAKE_BUILD_TYPE=Release \
-       -DCMAKE_INSTALL_PREFIX=/tmp/build  -DSecp256k1_ROOT_DIR=/usr/local -DENABLE_MONGODB_SUPPORT=ON
+       -DCMAKE_INSTALL_PREFIX=/tmp/build  -DSecp256k1_ROOT_DIR=/usr/local -DENABLE_MONGODB_SUPPORT=ON \
        -DENABLE_BREAKPAD_SUPPORT=ON -DEVT_ROOT_KEY=$rootkey
 RUN ninja -C /tmp/build -j$(nproc) evtd evtwd evtc && ninja -C /tmp/build install
 
-RUN api install python3 python3-click
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive && apt-get install -y python3 python3-click
+
 RUN mkdir /tmp/build/symbols
-RUN python3 -s /tmp/build/symbols /tmp/build/bin/evtd
-RUN python3 -s /tmp/build/symbols /tmp/build/bin/evtc
-RUN python3 -s /tmp/build/symbols /tmp/build/bin/evtwd
+RUN python3 scripts/symbolstore.py -s /tmp/build/symbols /tmp/build/bin/evtd
+RUN python3 scripts/symbolstore.py -s /tmp/build/symbols /tmp/build/bin/evtc
+RUN python3 scripts/symbolstore.py -s /tmp/build/symbols /tmp/build/bin/evtwd
 
 FROM ubuntu:18.04
 

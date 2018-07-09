@@ -8,7 +8,7 @@
 namespace evt { namespace chain { namespace contracts {
 
 static auto evt_abi_version       = 2;
-static auto evt_abi_minor_version = 0;
+static auto evt_abi_minor_version = 2;
 static auto evt_abi_patch_version = 0;
 
 version
@@ -40,7 +40,7 @@ evt_contract_abi() {
     evt_abi.types.push_back( type_def{"meta_key","name128"} );
     evt_abi.types.push_back( type_def{"meta_value","string"} );
     evt_abi.types.push_back( type_def{"meta_list","meta[]"} );
-    evt_abi.types.push_back( type_def{"delay_status","uint8"} );
+    evt_abi.types.push_back( type_def{"suspend_status","uint8"} );
 
     evt_abi.actions.push_back( action_def{name("newdomain"), "newdomain"} );
     evt_abi.actions.push_back( action_def{name("issuetoken"), "issuetoken"} );
@@ -125,10 +125,10 @@ evt_contract_abi() {
     });
 
     evt_abi.structs.emplace_back( struct_def {
-        "delay_def", "", {
+        "suspend_def", "", {
             {"name", "proposal_name"},
             {"proposer", "user_id"},
-            {"status", "delay_status"},
+            {"status", "suspend_status"},
             {"trx", "transaction"},
             {"signed_keys","public_key[]"},
             {"signatures","signature[]"}
