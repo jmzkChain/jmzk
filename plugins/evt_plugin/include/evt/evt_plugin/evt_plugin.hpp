@@ -67,10 +67,10 @@ public:
     };
     fc::variant get_assets(const get_assets_params& params);
 
-    struct get_delay_params {
+    struct get_suspend_params {
         proposal_name name;
     };
-    fc::variant get_delay(const get_delay_params& params);
+    fc::variant get_suspend(const get_suspend_params& params);
 
 private:
     const controller&     db_;
@@ -115,4 +115,4 @@ FC_REFLECT(evt::evt_apis::read_only::get_group_params, (name));
 FC_REFLECT(evt::evt_apis::read_only::get_token_params, (domain)(name));
 FC_REFLECT(evt::evt_apis::read_only::get_fungible_params, (name));
 FC_REFLECT(evt::evt_apis::read_only::get_assets_params, (address)(sym));
-FC_REFLECT(evt::evt_apis::read_only::get_delay_params, (name));
+FC_REFLECT(evt::evt_apis::read_only::get_suspend_params, (name));

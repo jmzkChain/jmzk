@@ -87,8 +87,8 @@ public:
     int exists_token(const domain_name&, const token_name&) const;
     int add_group(const group_def&);
     int exists_group(const group_name&) const;
-    int add_delay(const delay_def&);
-    int exists_delay(const proposal_name&) const;
+    int add_suspend(const suspend_def&);
+    int exists_suspend(const proposal_name&) const;
     int add_fungible(const fungible_def&);
     int exists_fungible(const symbol) const;
     int exists_fungible(const fungible_name& sym_name) const;
@@ -100,7 +100,7 @@ public:
     int read_domain(const domain_name&, domain_def&) const;
     int read_token(const domain_name&, const token_name&, token_def&) const;
     int read_group(const group_name&, group_def&) const;
-    int read_delay(const proposal_name&, delay_def&) const;
+    int read_suspend(const proposal_name&, suspend_def&) const;
 
     int read_fungible(const symbol, fungible_def&) const;
     int read_fungible(const fungible_name& sym_name, fungible_def&) const;
@@ -113,7 +113,7 @@ public:
     int update_domain(const domain_def&);
     int update_group(const group_def&);
     int update_token(const token_def&);
-    int update_delay(const delay_def&);
+    int update_suspend(const suspend_def&);
     int update_fungible(const fungible_def&);
 
 public:

@@ -123,10 +123,10 @@ struct controller_impl {
         SET_APP_HANDLER(transferft);
         SET_APP_HANDLER(evt2pevt);
         SET_APP_HANDLER(addmeta);
-        SET_APP_HANDLER(newdelay);
-        SET_APP_HANDLER(approvedelay);
-        SET_APP_HANDLER(canceldelay);
-        SET_APP_HANDLER(executedelay);
+        SET_APP_HANDLER(newsuspend);
+        SET_APP_HANDLER(aprvdsuspend);
+        SET_APP_HANDLER(cancelsuspend);
+        SET_APP_HANDLER(execsuspend);
 
         fork_db.irreversible.connect([&](auto b) {
             on_irreversible(b);
@@ -340,13 +340,13 @@ struct controller_impl {
             auto r = token_db.add_domain(gd);
             FC_ASSERT(r == 0, "Add `.group` domain failed");
         }
-        if(!token_db.exists_domain(".delay")) {
+        if(!token_db.exists_domain(".suspend")) {
             auto dd = domain_def();
-            dd.name = ".delay";
+            dd.name = ".suspend";
             dd.creator = conf.genesis.initial_key;
             dd.create_time = conf.genesis.initial_timestamp;
             auto r = token_db.add_domain(dd);
-            FC_ASSERT(r == 0, "Add `.delay` domain failed");
+            FC_ASSERT(r == 0, "Add `.suspend` domain failed");
         }
         if(!token_db.exists_domain(".fungible")) {
             auto dd = domain_def();
@@ -435,7 +435,7 @@ struct controller_impl {
     }
 
     transaction_trace_ptr
-    push_delay_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline) {
+    push_suspend_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline) {
         try {
             auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks,this] {
                 in_trx_requiring_checks = old_value;
@@ -447,7 +447,7 @@ struct controller_impl {
 
             auto trace = trx_context.trace;
             try {
-                trx_context.init_for_delay_trx();
+                trx_context.init_for_suspend_trx();
                 trx_context.exec();
                 trx_context.finalize();
 
@@ -455,7 +455,7 @@ struct controller_impl {
 
                 trace->receipt = push_receipt(trx->packed_trx,
                                               transaction_receipt::executed,
-                                              transaction_receipt::delay);
+                                              transaction_receipt::suspend);
 
                 fc::move_append(pending->_actions, move(trx_context.executed));
 
@@ -477,23 +477,22 @@ struct controller_impl {
             if(failure_is_subjective(*trace->except)) {
                 trace->receipt = push_receipt(trx->packed_trx,
                                               transaction_receipt::soft_fail,
-                                              transaction_receipt::delay);
+                                              transaction_receipt::suspend);
             }
             else {
                 trace->receipt = push_receipt(trx->packed_trx,
                                               transaction_receipt::hard_fail,
-                                              transaction_receipt::delay);
+                                              transaction_receipt::suspend);
             }
             emit(self.applied_transaction, trace);
             return trace;
-       }
-       FC_CAPTURE_AND_RETHROW()
-   } /// push_scheduled_transaction
+        }
+        FC_CAPTURE_AND_RETHROW()
+    } /// push_scheduled_transaction
 
     /**
-    *  This is the entry point for new transactions to the block state. It will check authorization and
-    *  determine whether to execute it now or to delay it. Lastly it inserts a transaction receipt into
-    *  the pending block.
+    *  This is the entry point for new transactions to the block state. It will check authorization
+    *  and insert a transaction receipt into the pending block.
     */
     transaction_trace_ptr
     push_transaction(const transaction_metadata_ptr& trx,
@@ -636,8 +635,8 @@ struct controller_impl {
                         auto mtrx = std::make_shared<transaction_metadata>(pt);
                         trace = push_transaction( mtrx, fc::time_point::maximum(), false);
                     }
-                    else if(receipt.type == transaction_receipt::delay) {
-                        // delay transaction is executed in its parent transaction
+                    else if(receipt.type == transaction_receipt::suspend) {
+                        // suspend transaction is executed in its parent transaction
                         // so don't execute here
                         continue;
                     }
@@ -937,8 +936,8 @@ controller::push_transaction(const transaction_metadata_ptr& trx, fc::time_point
 }
 
 transaction_trace_ptr
-controller::push_delay_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline) {
-    return my->push_delay_transaction(trx, deadline);
+controller::push_suspend_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline) {
+    return my->push_suspend_transaction(trx, deadline);
 }
 
 void
@@ -1252,7 +1251,7 @@ controller::get_required_keys(const transaction& trx, const flat_set<public_key_
 }
 
 flat_set<public_key_type>
-controller::get_delay_required_keys(const transaction& trx, const flat_set<public_key_type>& candidate_keys) const {
+controller::get_suspend_required_keys(const transaction& trx, const flat_set<public_key_type>& candidate_keys) const {
     const static uint32_t max_authority_depth = my->conf.genesis.initial_configuration.max_authority_depth;
     auto checker = authority_checker(candidate_keys, my->token_db, max_authority_depth);
 
@@ -1264,11 +1263,11 @@ controller::get_delay_required_keys(const transaction& trx, const flat_set<publi
 }
 
 flat_set<public_key_type>
-controller::get_delay_required_keys(const proposal_name& name, const flat_set<public_key_type>& candidate_keys) const {
-    delay_def delay;
-    my->token_db.read_delay(name, delay);
+controller::get_suspend_required_keys(const proposal_name& name, const flat_set<public_key_type>& candidate_keys) const {
+    suspend_def suspend;
+    my->token_db.read_suspend(name, suspend);
     
-    return get_delay_required_keys(delay.trx, candidate_keys);
+    return get_suspend_required_keys(suspend.trx, candidate_keys);
 }
 
 }}  // namespace evt::chain

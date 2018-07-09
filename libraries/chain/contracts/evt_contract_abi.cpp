@@ -54,10 +54,10 @@ evt_contract_abi() {
     evt_abi.actions.push_back( action_def{name("issuefungible"), "issuefungible"} );
     evt_abi.actions.push_back( action_def{name("transferft"), "transferft"} );
     evt_abi.actions.push_back( action_def{name("addmeta"), "addmeta"} );
-    evt_abi.actions.push_back( action_def{name("newdelay"), "newdelay"} );
-    evt_abi.actions.push_back( action_def{name("canceldelay"), "canceldelay"} );
-    evt_abi.actions.push_back( action_def{name("approvedelay"), "approvedelay"} );
-    evt_abi.actions.push_back( action_def{name("executedelay"), "executedelay"} );
+    evt_abi.actions.push_back( action_def{name("newsuspend"), "newsuspend"} );
+    evt_abi.actions.push_back( action_def{name("cancelsuspend"), "cancelsuspend"} );
+    evt_abi.actions.push_back( action_def{name("aprvdsuspend"), "aprvdsuspend"} );
+    evt_abi.actions.push_back( action_def{name("execsuspend"), "execsuspend"} );
 
     // structures def
     evt_abi.structs.emplace_back( struct_def {
@@ -246,7 +246,7 @@ evt_contract_abi() {
     });
 
     evt_abi.structs.emplace_back( struct_def {
-        "newdelay", "", {
+        "newsuspend", "", {
             {"name", "proposal_name"},
             {"proposer", "user_id"},
             {"trx", "transaction"}
@@ -254,20 +254,20 @@ evt_contract_abi() {
     });
 
     evt_abi.structs.emplace_back( struct_def {
-        "canceldelay", "", {
+        "cancelsuspend", "", {
             {"name", "proposal_name"}
         }
     });
 
     evt_abi.structs.emplace_back( struct_def {
-        "approvedelay", "", {
+        "aprvdsuspend", "", {
             {"name", "proposal_name"},
             {"signatures", "signature[]"}
         }
     });
 
     evt_abi.structs.emplace_back( struct_def {
-        "executedelay", "", {
+        "execsuspend", "", {
            {"name", "proposal_name"},
            {"executor", "user_id"}
         }

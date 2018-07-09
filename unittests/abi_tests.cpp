@@ -986,13 +986,13 @@ BOOST_AUTO_TEST_CASE(addmeta_test) {
     FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE(newdelay_test) {
+BOOST_AUTO_TEST_CASE(newsuspend_test) {
     try {
         auto abis = get_evt_abi();
         BOOST_CHECK(true);
         const char* test_data = R"=======(
         {
-            "name": "testdelay",
+            "name": "testsuspend",
             "proposer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
             "trx": {
                 "expiration": "2018-07-04T05:14:12",
@@ -1012,9 +1012,9 @@ BOOST_AUTO_TEST_CASE(newdelay_test) {
         )=======";
 
         auto var  = fc::json::from_string(test_data);
-        auto ndact = var.as<newdelay>();
+        auto ndact = var.as<newsuspend>();
 
-        BOOST_TEST("testdelay" == (std::string)ndact.name);
+        BOOST_TEST("testsuspend" == (std::string)ndact.name);
         BOOST_TEST("EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3" == (std::string)ndact.proposer);
         BOOST_TEST("2018-07-04T05:14:12" == ndact.trx.expiration.to_iso_string());
         BOOST_TEST(3432 == ndact.trx.ref_block_num);
@@ -1024,35 +1024,35 @@ BOOST_AUTO_TEST_CASE(newdelay_test) {
         BOOST_TEST("test1530681222" == ndact.trx.actions[0].domain);
         BOOST_TEST(".create" == ndact.trx.actions[0].key);
         
-        verify_byte_round_trip_conversion(abis, "newdelay", var);
-        verify_type_round_trip_conversion<newdelay>(abis, "newdelay", var);
+        verify_byte_round_trip_conversion(abis, "newsuspend", var);
+        verify_type_round_trip_conversion<newsuspend>(abis, "newsuspend", var);
     }
     FC_LOG_AND_RETHROW()
 }
 
 
-BOOST_AUTO_TEST_CASE(canceldelay_test) {
+BOOST_AUTO_TEST_CASE(cancelsuspend_test) {
     try {
         auto abis = get_evt_abi();
         BOOST_CHECK(true);
         const char* test_data = R"=======(
         {
-            "name": "testdelay",
+            "name": "testsuspend",
         }
         )=======";
 
         auto var  = fc::json::from_string(test_data);
-        auto cdact = var.as<canceldelay>();
+        auto cdact = var.as<cancelsuspend>();
 
-        BOOST_TEST("testdelay" == (std::string)cdact.name);
+        BOOST_TEST("testsuspend" == (std::string)cdact.name);
 
-        verify_byte_round_trip_conversion(abis, "canceldelay", var);
-        verify_type_round_trip_conversion<canceldelay>(abis, "canceldelay", var);
+        verify_byte_round_trip_conversion(abis, "cancelsuspend", var);
+        verify_type_round_trip_conversion<cancelsuspend>(abis, "cancelsuspend", var);
     }
     FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE(approvedelay_test) {
+BOOST_AUTO_TEST_CASE(aprvdsuspend_test) {
     try {
         auto abis = get_evt_abi();
         BOOST_CHECK(true);
@@ -1066,19 +1066,19 @@ BOOST_AUTO_TEST_CASE(approvedelay_test) {
         )=======";
 
         auto var  = fc::json::from_string(test_data);
-        auto adact = var.as<approvedelay>();
+        auto adact = var.as<aprvdsuspend>();
 
         BOOST_TEST("test1530718665" == (std::string)adact.name);
         BOOST_TEST(adact.signatures.size() == 1);
         BOOST_TEST((std::string)adact.signatures[0] == "SIG_K1_KXjtmeihJi1qnSs7vmqJDRJoZ1nSEPeeRjsKJRpm24g8yhFtAepkRDR4nVFbXjvoaQvT4QrzuNWCbuEhceYpGmAvsG47Fj");
 
-        verify_byte_round_trip_conversion(abis, "approvedelay", var);
-        verify_type_round_trip_conversion<approvedelay>(abis, "approvedelay", var);
+        verify_byte_round_trip_conversion(abis, "aprvdsuspend", var);
+        verify_type_round_trip_conversion<aprvdsuspend>(abis, "aprvdsuspend", var);
     }
     FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE(executedelay_test) {
+BOOST_AUTO_TEST_CASE(execsuspend_test) {
     try {
         auto abis = get_evt_abi();
         BOOST_CHECK(true);
@@ -1091,13 +1091,13 @@ BOOST_AUTO_TEST_CASE(executedelay_test) {
         )=======";
 
         auto var  = fc::json::from_string(test_data);
-        auto edact = var.as<executedelay>();
+        auto edact = var.as<execsuspend>();
 
         BOOST_TEST("test1530718626" == (std::string)edact.name);
         BOOST_TEST((std::string)edact.executor == "EVT548LviBDF6EcknKnKUMeaPUrZN2uhfCB1XrwHsURZngakYq9Vx");
 
-        verify_byte_round_trip_conversion(abis, "executedelay", var);
-        verify_type_round_trip_conversion<executedelay>(abis, "executedelay", var);
+        verify_byte_round_trip_conversion(abis, "execsuspend", var);
+        verify_type_round_trip_conversion<execsuspend>(abis, "execsuspend", var);
     }
     FC_LOG_AND_RETHROW()
 }

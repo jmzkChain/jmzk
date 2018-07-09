@@ -60,10 +60,10 @@ struct contracts_test {
     }
 
     const char*
-    get_delay_name() {
-        static std::string delay_name = "delay" + boost::lexical_cast<std::string>(time(0));
+    get_suspend_name() {
+        static std::string suspend_name = "suspend" + boost::lexical_cast<std::string>(time(0));
         ;
-        return delay_name.c_str();
+        return suspend_name.c_str();
     }
 
     const char*
@@ -684,12 +684,12 @@ BOOST_AUTO_TEST_CASE(contract_addmeta_test) {
     FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE(contract_faildelay_test) {
+BOOST_AUTO_TEST_CASE(contract_failsuspend_test) {
     try {
         BOOST_CHECK(true);
         const char* test_data = R"=======(
         {
-            "name": "testdelay",
+            "name": "testsuspend",
             "proposer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
             "trx": {
                 "expiration": "2021-07-04T05:14:12",
@@ -703,8 +703,8 @@ BOOST_AUTO_TEST_CASE(contract_faildelay_test) {
         )=======";
 
         auto var  = fc::json::from_string(test_data);
-        auto ndact = var.as<newdelay>();
-        ndact.name = get_delay_name();
+        auto ndact = var.as<newsuspend>();
+        ndact.name = get_suspend_name();
 
         const char* newdomain_test_data = R"=====(
             {
@@ -742,86 +742,86 @@ BOOST_AUTO_TEST_CASE(contract_faildelay_test) {
 
         auto newdomain_var    = fc::json::from_string(newdomain_test_data);
         auto newdom = newdomain_var.as<newdomain>();
-        newdom.creator = tester::get_public_key(N(delay_key));
+        newdom.creator = tester::get_public_key(N(suspend_key));
         to_variant(newdom, newdomain_var);
         ndact.trx.actions.push_back(my_tester->get_action(N(newdomain), N128(domain), N128(.create), newdomain_var.get_object()));
 
         to_variant(ndact, var);
-        BOOST_CHECK_THROW(my_tester->push_action(N(newdelay), N128(delay), string_to_name128(get_delay_name()), var.get_object(), key_seeds), unsatisfied_authorization);
+        BOOST_CHECK_THROW(my_tester->push_action(N(newsuspend), N128(suspend), string_to_name128(get_suspend_name()), var.get_object(), key_seeds), unsatisfied_authorization);
 
         ndact.proposer = key;
         to_variant(ndact, var);
 
-        my_tester->push_action(N(newdelay), N128(delay),  string_to_name128(get_delay_name()), var.get_object(), key_seeds);
+        my_tester->push_action(N(newsuspend), N128(suspend),  string_to_name128(get_suspend_name()), var.get_object(), key_seeds);
 
         const char* execute_test_data = R"=======(
         {
-            "name": "testdelay",
+            "name": "testsuspend",
             "executor": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3"
         }
         )=======";
 
         auto execute_tvar  = fc::json::from_string(execute_test_data);
-        auto edact = execute_tvar.as<executedelay>();
+        auto edact = execute_tvar.as<execsuspend>();
         edact.executor = key;
-        edact.name = get_delay_name();
+        edact.name = get_suspend_name();
         to_variant(edact, execute_tvar);
 
-        //delay_executor_exception
-        BOOST_CHECK_THROW(my_tester->push_action(N(executedelay), N128(delay), string_to_name128(get_delay_name()), execute_tvar.get_object(), {N(key)}),delay_executor_exception);
+        //suspend_executor_exception
+        BOOST_CHECK_THROW(my_tester->push_action(N(execsuspend), N128(suspend), string_to_name128(get_suspend_name()), execute_tvar.get_object(), {N(key)}),suspend_executor_exception);
 
         auto& tokendb = my_tester->control->token_db();
-        delay_def delay;
-        tokendb.read_delay(edact.name, delay);
-        BOOST_TEST(delay.status == delay_status::proposed);
+        suspend_def suspend;
+        tokendb.read_suspend(edact.name, suspend);
+        BOOST_TEST(suspend.status == suspend_status::proposed);
 
-        auto sig= tester::get_private_key(N(delay_key)).sign(delay.trx.sig_digest(my_tester->control->get_chain_id()));
-        auto sig2= tester::get_private_key(N(key)).sign(delay.trx.sig_digest(my_tester->control->get_chain_id()));
+        auto sig= tester::get_private_key(N(suspend_key)).sign(suspend.trx.sig_digest(my_tester->control->get_chain_id()));
+        auto sig2= tester::get_private_key(N(key)).sign(suspend.trx.sig_digest(my_tester->control->get_chain_id()));
         const char* approve_test_data = R"=======(
         {
-            "name": "testdelay",
+            "name": "testsuspend",
             "signatures": [
             ]
         }
         )=======";
 
         auto approve_var  = fc::json::from_string(approve_test_data);
-        auto adact = approve_var.as<approvedelay>();
-        adact.name = get_delay_name();
+        auto adact = approve_var.as<aprvdsuspend>();
+        adact.name = get_suspend_name();
         adact.signatures = {sig,sig2};
         to_variant(adact, approve_var);
 
-        BOOST_CHECK_THROW(my_tester->push_action(N(approvedelay), N128(delay),  string_to_name128(get_delay_name()), approve_var.get_object(), key_seeds),delay_not_required_keys_exception);
+        BOOST_CHECK_THROW(my_tester->push_action(N(aprvdsuspend), N128(suspend),  string_to_name128(get_suspend_name()), approve_var.get_object(), key_seeds),suspend_not_required_keys_exception);
 
-        tokendb.read_delay(edact.name, delay);
-        BOOST_TEST(delay.status == delay_status::proposed);
+        tokendb.read_suspend(edact.name, suspend);
+        BOOST_TEST(suspend.status == suspend_status::proposed);
 
                 const char* cancel_test_data = R"=======(
         {
-            "name": "testdelay"
+            "name": "testsuspend"
         }
         )=======";
         auto cancel_var  = fc::json::from_string(test_data);
-        auto cdact = var.as<canceldelay>();
-        cdact.name = get_delay_name();
+        auto cdact = var.as<cancelsuspend>();
+        cdact.name = get_suspend_name();
         to_variant(cdact, cancel_var);
 
-        my_tester->push_action(N(canceldelay), N128(delay), string_to_name128(get_delay_name()), cancel_var.get_object(), key_seeds);
+        my_tester->push_action(N(cancelsuspend), N128(suspend), string_to_name128(get_suspend_name()), cancel_var.get_object(), key_seeds);
 
-        tokendb.read_delay(edact.name, delay);
-        BOOST_TEST(delay.status == delay_status::cancelled);
+        tokendb.read_suspend(edact.name, suspend);
+        BOOST_TEST(suspend.status == suspend_status::cancelled);
 
         my_tester->produce_blocks();
     }
     FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE(contract_successdelay_test) {
+BOOST_AUTO_TEST_CASE(contract_successsuspend_test) {
     try {
         BOOST_CHECK(true);
         const char* test_data = R"=======(
         {
-            "name": "testdelay",
+            "name": "testsuspend",
             "proposer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
             "trx": {
                 "expiration": "2021-07-04T05:14:12",
@@ -835,7 +835,7 @@ BOOST_AUTO_TEST_CASE(contract_successdelay_test) {
         )=======";
 
         auto var  = fc::json::from_string(test_data);
-        auto ndact = var.as<newdelay>();
+        auto ndact = var.as<newsuspend>();
 
         const char* newdomain_test_data = R"=====(
             {
@@ -873,61 +873,61 @@ BOOST_AUTO_TEST_CASE(contract_successdelay_test) {
 
         auto newdomain_var    = fc::json::from_string(newdomain_test_data);
         auto newdom = newdomain_var.as<newdomain>();
-        newdom.creator = tester::get_public_key(N(delay_key));
+        newdom.creator = tester::get_public_key(N(suspend_key));
         to_variant(newdom, newdomain_var);
         ndact.trx.actions.push_back(my_tester->get_action(N(newdomain), N128(domain), N128(.create), newdomain_var.get_object()));
 
         to_variant(ndact, var);
-        BOOST_CHECK_THROW(my_tester->push_action(N(newdelay), N128(delay), N128(testdelay), var.get_object(), key_seeds), unsatisfied_authorization);
+        BOOST_CHECK_THROW(my_tester->push_action(N(newsuspend), N128(suspend), N128(testsuspend), var.get_object(), key_seeds), unsatisfied_authorization);
 
         ndact.proposer = key;
         to_variant(ndact, var);
 
-        my_tester->push_action(N(newdelay), N128(delay), N128(testdelay), var.get_object(), key_seeds);
+        my_tester->push_action(N(newsuspend), N128(suspend), N128(testsuspend), var.get_object(), key_seeds);
 
         
 
         auto& tokendb = my_tester->control->token_db();
-        delay_def delay;
-        tokendb.read_delay(ndact.name, delay);
-        BOOST_TEST(delay.status == delay_status::proposed);
+        suspend_def suspend;
+        tokendb.read_suspend(ndact.name, suspend);
+        BOOST_TEST(suspend.status == suspend_status::proposed);
 
-        auto sig= tester::get_private_key(N(delay_key)).sign(delay.trx.sig_digest(my_tester->control->get_chain_id()));
-        auto sig2= tester::get_private_key(N(key)).sign(delay.trx.sig_digest(my_tester->control->get_chain_id()));
+        auto sig= tester::get_private_key(N(suspend_key)).sign(suspend.trx.sig_digest(my_tester->control->get_chain_id()));
+        auto sig2= tester::get_private_key(N(key)).sign(suspend.trx.sig_digest(my_tester->control->get_chain_id()));
         const char* approve_test_data = R"=======(
         {
-            "name": "testdelay",
+            "name": "testsuspend",
             "signatures": [
             ]
         }
         )=======";
 
         auto approve_var  = fc::json::from_string(approve_test_data);
-        auto adact = approve_var.as<approvedelay>();
+        auto adact = approve_var.as<aprvdsuspend>();
         adact.signatures = {sig};
         to_variant(adact, approve_var);
 
-        my_tester->push_action(N(approvedelay), N128(delay),  N128(testdelay), approve_var.get_object(), {});
+        my_tester->push_action(N(aprvdsuspend), N128(suspend),  N128(testsuspend), approve_var.get_object(), {});
 
-        tokendb.read_delay(adact.name, delay);
-        BOOST_TEST(delay.status == delay_status::proposed);
+        tokendb.read_suspend(adact.name, suspend);
+        BOOST_TEST(suspend.status == suspend_status::proposed);
 
         const char* execute_test_data = R"=======(
         {
-            "name": "testdelay",
+            "name": "testsuspend",
             "executor": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3"
         }
         )=======";
 
         auto execute_tvar  = fc::json::from_string(execute_test_data);
-        auto edact = execute_tvar.as<executedelay>();
-        edact.executor = tester::get_public_key(N(delay_key));
+        auto edact = execute_tvar.as<execsuspend>();
+        edact.executor = tester::get_public_key(N(suspend_key));
         to_variant(edact, execute_tvar);
 
-        my_tester->push_action(N(executedelay), N128(delay), N128(testdelay), execute_tvar.get_object(), {N(delay_key)});
+        my_tester->push_action(N(execsuspend), N128(suspend), N128(testsuspend), execute_tvar.get_object(), {N(suspend_key)});
 
-        tokendb.read_delay(edact.name, delay);
-        BOOST_TEST(delay.status == delay_status::executed);
+        tokendb.read_suspend(edact.name, suspend);
+        BOOST_TEST(suspend.status == suspend_status::executed);
 
 
         my_tester->produce_blocks();

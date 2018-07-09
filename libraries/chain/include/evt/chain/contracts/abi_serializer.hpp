@@ -152,7 +152,7 @@ single_type_requires_abi_v() {
            std::is_same<T, signed_transaction>::value || 
            std::is_same<T, signed_block>::value || 
            std::is_same<T, action>::value ||
-           std::is_same<T, contracts::delay_def>::value;
+           std::is_same<T, contracts::suspend_def>::value;
 }
 
 /**

@@ -258,11 +258,11 @@ update_group_data() {
     return gp;
 }
 
-delay_def
-add_delay_data() {
+suspend_def
+add_suspend_data() {
     const char* test_data = R"=======(
         {
-            "name": "testdelay",
+            "name": "testsuspend",
             "proposer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
             "status": "proposed",
             "trx": {
@@ -285,15 +285,15 @@ add_delay_data() {
         )=======";
 
     auto      var = fc::json::from_string(test_data);
-    delay_def dl  = var.as<delay_def>();
+    suspend_def dl  = var.as<suspend_def>();
     return dl;
 }
 
-delay_def
-update_delay_data() {
+suspend_def
+update_suspend_data() {
     const char* test_data = R"=======(
         {
-            "name": "testdelay",
+            "name": "testsuspend",
             "proposer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
             "status": "executed",
             "trx": {
@@ -316,7 +316,7 @@ update_delay_data() {
         )=======";
 
     auto      var = fc::json::from_string(test_data);
-    delay_def dl  = var.as<delay_def>();
+    suspend_def dl  = var.as<suspend_def>();
     return dl;
 }
 
@@ -804,19 +804,19 @@ BOOST_AUTO_TEST_CASE(tokendb_checkpoint_test) {
     FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE(tokendb_adddelay_test) {
+BOOST_AUTO_TEST_CASE(tokendb_addsuspend_test) {
     try {
         BOOST_CHECK(true);
 
-        auto dl = add_delay_data();
-        BOOST_TEST(!tokendb.exists_delay(dl.name));
+        auto dl = add_suspend_data();
+        BOOST_TEST(!tokendb.exists_suspend(dl.name));
 
-        auto re = tokendb.add_delay(dl);
+        auto re = tokendb.add_suspend(dl);
         BOOST_TEST_REQUIRE(re == 0);
-        BOOST_TEST(tokendb.exists_delay(dl.name));
+        BOOST_TEST(tokendb.exists_suspend(dl.name));
 
-        delay_def dl_;
-        tokendb.read_delay(dl.name, dl_);
+        suspend_def dl_;
+        tokendb.read_suspend(dl.name, dl_);
 
         BOOST_TEST(proposed == dl_.status);
         BOOST_TEST(dl.name == dl_.name);
@@ -832,17 +832,17 @@ BOOST_AUTO_TEST_CASE(tokendb_adddelay_test) {
     FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE(tokendb_updatedelay_test) {
+BOOST_AUTO_TEST_CASE(tokendb_updatesuspend_test) {
     try {
         BOOST_CHECK(true);
 
-        auto dl = update_delay_data();
+        auto dl = update_suspend_data();
 
-        auto re = tokendb.update_delay(dl);
+        auto re = tokendb.update_suspend(dl);
         BOOST_TEST_REQUIRE(re == 0);
 
-        delay_def dl_;
-        tokendb.read_delay(dl.name, dl_);
+        suspend_def dl_;
+        tokendb.read_suspend(dl.name, dl_);
 
         BOOST_TEST(executed == dl_.status);
         BOOST_TEST(dl.name == dl_.name);

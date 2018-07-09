@@ -240,7 +240,7 @@ add_standard_transaction_options(CLI::App* cmd) {
     cmd->add_flag("-d,--dont-broadcast", tx_dont_broadcast, localized("Don't broadcast transaction to the network (just print to stdout)"));
     cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id, (localized("Set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)")));
 
-    auto popt = cmd->add_option("-p,--proposal-name", propname, localized("Push a delay transaction instead of normal transaction, specify its proposal name"));
+    auto popt = cmd->add_option("-p,--proposal-name", propname, localized("Push a suspend transaction instead of normal transaction, specify its proposal name"));
     cmd->add_option("-u,--proposer", proposer, localized("Proposer public key"))->needs(popt);
 }
 
@@ -346,17 +346,17 @@ get_public_key(const std::string& key_or_ref) {
 }
 
 signed_transaction
-create_delay_transaction(transaction& trx) {
+create_suspend_transaction(transaction& trx) {
     FC_ASSERT(!propname.empty());
     FC_ASSERT(!proposer.empty());
 
-    auto nd = newdelay();
-    nd.name = (proposal_name)propname;
-    nd.proposer = get_public_key(proposer);
-    nd.trx = std::move(trx);
+    auto ns = newsuspend();
+    ns.name = (proposal_name)propname;
+    ns.proposer = get_public_key(proposer);
+    ns.trx = std::move(trx);
    
     auto signed_trx = signed_transaction();
-    signed_trx.actions.emplace_back(create_action(N128(delay), (domain_key)propname, nd));
+    signed_trx.actions.emplace_back(create_action(N128(suspend), (domain_key)propname, ns));
     return signed_trx;
 }
 
@@ -365,9 +365,9 @@ push_transaction(signed_transaction& trx, packed_transaction::compression_type c
     auto info = get_info(); 
     set_transaction_header(trx, info);
     if(!propname.empty()) {
-        // delay transaction
+        // suspend transaction
         auto rtrx = (transaction)trx;
-        trx = create_delay_transaction(rtrx);
+        trx = create_suspend_transaction(rtrx);
         // needs to set new transaction's header
         set_transaction_header(trx, info);
     }
@@ -910,57 +910,57 @@ struct set_meta_subcommands {
     }
 };
 
-struct set_delay_subcommands {
+struct set_suspend_subcommands {
     string name;
     string executor;
 
-    set_delay_subcommands(CLI::App* actionRoot) {
-        auto adcmd = actionRoot->add_subcommand("approve", localized("Approve specific delay transaction"));
-        adcmd->add_option("name", name, localized("Proposal name of specific delay transaction"))->required();
+    set_suspend_subcommands(CLI::App* actionRoot) {
+        auto adcmd = actionRoot->add_subcommand("approve", localized("Approve specific suspend transaction"));
+        adcmd->add_option("name", name, localized("Proposal name of specific suspend transaction"))->required();
         adcmd->set_callback([this] {
-            auto vardelay = call(get_delay_func, fc::mutable_variant_object("name", (proposal_name)name));
-            auto delay = delay_def();
+            auto varsuspend = call(get_suspend_func, fc::mutable_variant_object("name", (proposal_name)name));
+            auto suspend = suspend_def();
             auto evt_abi = abi_serializer(evt_contract_abi());
-            abi_serializer::from_variant(vardelay, delay, [&]{ return evt_abi; });
+            abi_serializer::from_variant(varsuspend, suspend, [&]{ return evt_abi; });
 
             auto public_keys = call(wallet_url, wallet_public_keys);
             auto get_arg     = fc::mutable_variant_object("name", (proposal_name)name)("available_keys", public_keys);
             
-            auto required_keys = call(url, get_delay_required_keys, get_arg);
+            auto required_keys = call(url, get_suspend_required_keys, get_arg);
 
             auto info = get_info();
-            fc::variants sign_args  = {fc::variant(delay.trx), required_keys["required_keys"], fc::variant(info.chain_id)};
+            fc::variants sign_args  = {fc::variant(suspend.trx), required_keys["required_keys"], fc::variant(info.chain_id)};
             auto signed_trx = call(wallet_url, wallet_sign_trx, sign_args);
             
             auto trx = signed_trx.as<signed_transaction>();
 
-            auto adact = approvedelay();
-            adact.name = (proposal_name)name;
-            adact.signatures = std::move(trx.signatures);
+            auto asact = aprvdsuspend();
+            asact.name = (proposal_name)name;
+            asact.signatures = std::move(trx.signatures);
 
-            auto act = create_action(N128(delay), (domain_key)adact.name, adact);
+            auto act = create_action(N128(suspend), (domain_key)asact.name, asact);
             send_actions({act});
         });
 
-        auto cdcmd = actionRoot->add_subcommand("cancel", localized("Cancel specific delay transaction"));
-        cdcmd->add_option("name", name, localized("Proposal name of specific delay transaction"))->required();
+        auto cdcmd = actionRoot->add_subcommand("cancel", localized("Cancel specific suspend transaction"));
+        cdcmd->add_option("name", name, localized("Proposal name of specific suspend transaction"))->required();
         cdcmd->set_callback([this] {
-            auto cdact = canceldelay();
+            auto cdact = cancelsuspend();
             cdact.name = (proposal_name)name;
 
-            auto act = create_action(N128(delay), (domain_key)cdact.name, cdact);
+            auto act = create_action(N128(suspend), (domain_key)cdact.name, cdact);
             send_actions({act});
         });
 
-        auto edcmd = actionRoot->add_subcommand("execute", localized("Execute specific delay transaction"));
-        edcmd->add_option("name", name, localized("Proposal name of specific delay transaction"))->required();
-        edcmd->add_option("executor", executor, localized("Public key of executor for this delay transaction"))->required();
+        auto edcmd = actionRoot->add_subcommand("execute", localized("Execute specific suspend transaction"));
+        edcmd->add_option("name", name, localized("Proposal name of specific suspend transaction"))->required();
+        edcmd->add_option("executor", executor, localized("Public key of executor for this suspend transaction"))->required();
         edcmd->set_callback([this] {
-            auto edact = executedelay();
-            edact.name = (proposal_name)name;
-            edact.executor = get_public_key(executor);
+            auto esact = execsuspend(); 
+            esact.name = (proposal_name)name;
+            esact.executor = get_public_key(executor);
 
-            auto act = create_action(N128(delay), (domain_key)edact.name, edact);
+            auto act = create_action(N128(suspend), (domain_key)esact.name, esact);
             send_actions({act});
         });
     }
@@ -1057,16 +1057,16 @@ struct set_get_assets_subcommand {
     }
 };
 
-struct set_get_delay_subcommand {
+struct set_get_suspend_subcommand {
     string name;
 
-    set_get_delay_subcommand(CLI::App* actionRoot) {
-        auto gdcmd = actionRoot->add_subcommand("delay", localized("Retrieve a delay transaction information"));
-        gdcmd->add_option("name", name, localized("Name of delay transaction to be retrieved"))->required();
+    set_get_suspend_subcommand(CLI::App* actionRoot) {
+        auto gdcmd = actionRoot->add_subcommand("suspend", localized("Retrieve a suspend transaction information"));
+        gdcmd->add_option("name", name, localized("Name of suspend transaction to be retrieved"))->required();
 
         gdcmd->set_callback([this] {
             auto arg = fc::mutable_variant_object("name", name);
-            print_info(call(get_delay_func, arg));
+            print_info(call(get_suspend_func, arg));
         });
     }
 };
@@ -1272,7 +1272,7 @@ main(int argc, char** argv) {
     set_get_assets_subcommand   get_assets(get);
     set_get_my_subcommands      get_my(get);
     set_get_history_subcommands get_history(get); 
-    set_get_delay_subcommand    get_delay(get);
+    set_get_suspend_subcommand  get_suspend(get);
 
     // Net subcommand
     string new_host;
@@ -1342,11 +1342,11 @@ main(int argc, char** argv) {
 
     auto set_meta = set_meta_subcommands(meta);
 
-    // delay
-    auto delay = app.add_subcommand("delay", localized("Approve or cancel delay transactions"));
-    delay->require_subcommand();
+    // suspend
+    auto suspend = app.add_subcommand("suspend", localized("Approve or cancel suspend transactions"));
+    suspend->require_subcommand();
 
-    auto set_delay = set_delay_subcommands(delay);
+    auto set_suspend = set_suspend_subcommands(suspend);
 
     // Wallet subcommand
     auto wallet = app.add_subcommand("wallet", localized("Interact with local wallet"));

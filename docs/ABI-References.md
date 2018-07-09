@@ -341,8 +341,8 @@ Add new metadata to one domain, group, token or fungible assets
 }
 ```
 
-### `newdelay` Action
-Add new delay transaction (In-chain delay-signing transaction)
+### `newsuspend` Action
+Add new suspend transaction (In-chain deferred-signning transaction)
 > `trx` should be valid transaction defiintion
 
 ```
@@ -353,10 +353,10 @@ Add new delay transaction (In-chain delay-signing transaction)
 }
 ```
 
-### `approvedelay` Action
-Approve one delay transaction
-> `signatures` are the signatures of the delayed transaction.
-> And the keys used to sign transaction must be required keys while authorizing the delayed transaction.
+### `aprvdsuspend` Action
+Approve one suspend transaction
+> `signatures` are the signatures of the suspend transaction.
+> And the keys used to sign transaction must be required keys while authorizing the suspend transaction.
 
 ```
 {
@@ -365,9 +365,9 @@ Approve one delay transaction
 }
 ```
 
-### `canceldelay` Action
-Cancel one delay transaction
-> Only the `proposer` can cancel his proposed delay transaction.
+### `cancelsuspend` Action
+Cancel one suspend transaction
+> Only the `proposer` can cancel his proposed suspend transaction.
 
 ```
 {
@@ -375,9 +375,9 @@ Cancel one delay transaction
 }
 ```
 
-### `executedelay` Action
-Execute one delay transaction
-> The `executor` must be one of the valid authorizers while authorizing the delayed transaction. 
+### `execsuspend` Action
+Execute one suspend transaction
+> The `executor` must be one of the valid authorizers while authorizing the suspend transaction. 
 
 ```
 {

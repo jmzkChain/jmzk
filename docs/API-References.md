@@ -129,10 +129,10 @@ For the fields of an action, here is a quick reference guide.
 | `transferft` | `fungible` | name of transfering assets symbol |
 | `evt2pevt` | `fungible` | `EVT` |
 | `addmeta` | `domain`, `group`, `fungible` or token's domain | domain name, group name, fungible name or token name |
-| `newdelay` | `delay` | proposal name of delay transaction |
-| `approvedelay` | `delay` | proposal name of delay transaction |
-| `canceldelay` | `delay` | proposal name of delay transaction |
-| `executedelay` | `delay` | proposal name of delay transaction |
+| `newsuspend` | `suspend` | proposal name of suspend transaction |
+| `aprvdsuspend` | `suspend` | proposal name of suspend transaction |
+| `cancelsuspend` | `suspend` | proposal name of suspend transaction |
+| `execsuspend` | `suspend` | proposal name of suspend transaction |
 
 After all that work, you can send transaction definition using this API to the chain, then the chain will response with the digest of the transaction. You can then sign this digest with your private key.
 
@@ -154,7 +154,7 @@ Request:
         "expiration": "2018-05-20T12:25:51",
         "ref_block_num": 8643,
         "ref_block_prefix": 842752750,
-        "delay_sec": 0,
+        "suspend_sec": 0,
         "actions": [
             {
                 "name": "newdomain",
@@ -197,7 +197,7 @@ Request:
         "ref_block_prefix": 842752750,
         "max_net_usage_words": 0,
         "max_cpu_usage_ms": 0,
-        "delay_sec": 0,
+        "suspend_sec": 0,
         "actions": [
             {
                 "name": "newdomain",
@@ -274,13 +274,13 @@ Response:
 }
 ```
 
-## GET /v1/chain/get_delay_required_keys
-This API is specific used for getting required keys for delay transaction. Other than the normal `get_required_keys` API, this API will not throw exception when your keys don't satisfies the permission requirments for one action, but instead returns the proper keys taking part in authorizing the delayed transaction.
+## GET /v1/chain/get_suspend_required_keys
+This API is specific used for getting required keys for suspend transaction. Other than the normal `get_required_keys` API, this API will not throw exception when your keys don't satisfies the permission requirments for one action, but instead returns the proper keys taking part in authorizing the suspended transaction.
 
 Request:
 ```
 {
-  "name": "delay3",
+  "name": "suspend3",
   "available_keys": [
     "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
     "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
@@ -441,20 +441,20 @@ Response:
 }
 ```
 
-## POST /v1/evt/get_delay
-This API is usded to get specific delay proposal
+## POST /v1/evt/get_suspend
+This API is usded to get specific suspend proposal
 
 Request:
 ```
 {
-    "name": "delay3"
+    "name": "suspend3"
 }
 ```
 
 Response: 
 ```
 {
-  "name": "delay3",
+  "name": "suspend3",
   "proposer": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
   "status": "proposed",
   "trx": {
@@ -630,7 +630,6 @@ Response:
     "expiration": "2018-06-28T05:31:39",
     "ref_block_num": 5,
     "ref_block_prefix": 1647242518,
-    "delay_sec": 0,
     "actions": [{
         "name": "newfungible",
         "domain": "fungible",
@@ -695,7 +694,6 @@ Response:
       "expiration": "2018-06-28T05:35:12",
       "ref_block_num": 431,
       "ref_block_prefix": 1705636613,
-      "delay_sec": 0,
       "actions": [{
           "name": "issuetoken",
           "domain": "test",

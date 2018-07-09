@@ -795,10 +795,10 @@ read_only::get_required_keys(const get_required_keys_params& params) const {
     return result;
 }
 
-read_only::get_delay_required_keys_result
-read_only::get_delay_required_keys(const get_delay_required_keys_params& params) const {
-    auto required_keys_set = db.get_delay_required_keys(params.name, params.available_keys);
-    get_delay_required_keys_result result;
+read_only::get_suspend_required_keys_result
+read_only::get_suspend_required_keys(const get_suspend_required_keys_params& params) const {
+    auto required_keys_set = db.get_suspend_required_keys(params.name, params.available_keys);
+    get_suspend_required_keys_result result;
     result.required_keys = std::move(required_keys_set);
     return result;
 }

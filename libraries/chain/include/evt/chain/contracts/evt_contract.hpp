@@ -35,10 +35,10 @@ void apply_evt_evt2pevt(apply_context& context);
 
 void apply_evt_addmeta(apply_context& context);
 
-void apply_evt_newdelay(apply_context& context);
-void apply_evt_approvedelay(apply_context& context);
-void apply_evt_canceldelay(apply_context& context);
-void apply_evt_executedelay(apply_context& context);
+void apply_evt_newsuspend(apply_context& context);
+void apply_evt_aprvdsuspend(apply_context& context);
+void apply_evt_cancelsuspend(apply_context& context);
+void apply_evt_execsuspend(apply_context& context);
 
 abi_def evt_contract_abi();
 version evt_contract_abi_version();

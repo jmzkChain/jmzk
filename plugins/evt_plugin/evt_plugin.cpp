@@ -127,12 +127,12 @@ read_only::get_assets(const get_assets_params& params) {
 }
 
 fc::variant
-read_only::get_delay(const get_delay_params& params) {
+read_only::get_suspend(const get_suspend_params& params) {
     const auto& db = db_.token_db();
-    variant   var;
-    delay_def delay;
-    db.read_delay(params.name, delay);
-    abi_serializer::to_variant(delay, var, [this]{ return evt_abi_; });
+    variant     var;
+    suspend_def suspend;
+    db.read_suspend(params.name, suspend);
+    abi_serializer::to_variant(suspend, var, [this]{ return evt_abi_; });
     return var;
 }
 

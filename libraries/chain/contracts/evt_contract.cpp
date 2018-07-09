@@ -674,112 +674,112 @@ apply_evt_addmeta(apply_context& context) {
 }
 
 void
-apply_evt_newdelay(apply_context& context) {
+apply_evt_newsuspend(apply_context& context) {
     using namespace __internal;
 
-    auto ndact = context.act.data_as<newdelay>();
+    auto nsact = context.act.data_as<newsuspend>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(delay), ndact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(suspend), nsact.name), action_authorize_exception, "Authorized information does not match.");
 
-        check_name_reserved(ndact.name);
-        for(auto& act : ndact.trx.actions) {
-            EVT_ASSERT(act.domain != N128(delay), delay_invalid_action_exception, "Actions in 'delay' domain are not allowd delay-signning");
+        check_name_reserved(nsact.name);
+        for(auto& act : nsact.trx.actions) {
+            EVT_ASSERT(act.domain != N128(suspend), suspend_invalid_action_exception, "Actions in 'suspend' domain are not allowd deferred-signning");
         }
 
         auto& tokendb = context.token_db;
-        EVT_ASSERT(!tokendb.exists_delay(ndact.name), delay_exists_exception, "Delay ${name} already exists.", ("name",ndact.name));
+        EVT_ASSERT(!tokendb.exists_suspend(nsact.name), suspend_exists_exception, "Suspend ${name} already exists.", ("name",nsact.name));
 
-        delay_def delay;
-        delay.name     = ndact.name;
-        delay.proposer = ndact.proposer;
-        delay.status   = delay_status::proposed;
-        delay.trx      = std::move(ndact.trx);
+        suspend_def suspend;
+        suspend.name     = nsact.name;
+        suspend.proposer = nsact.proposer;
+        suspend.status   = suspend_status::proposed;
+        suspend.trx      = std::move(nsact.trx);
 
-        tokendb.add_delay(delay);
+        tokendb.add_suspend(suspend);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
 void
-apply_evt_approvedelay(apply_context& context) {
+apply_evt_aprvdsuspend(apply_context& context) {
     using namespace __internal;
 
-    auto adact = context.act.data_as<approvedelay>();
+    auto aeact = context.act.data_as<aprvdsuspend>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(delay), adact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(suspend), aeact.name), action_authorize_exception, "Authorized information does not match.");
 
         auto& tokendb = context.token_db;
 
-        delay_def delay;
-        tokendb.read_delay(adact.name, delay);
-        EVT_ASSERT(delay.status == delay_status::proposed, delay_status_exception, "Delay is not in 'proposed' status.");
+        suspend_def suspend;
+        tokendb.read_suspend(aeact.name, suspend);
+        EVT_ASSERT(suspend.status == suspend_status::proposed, suspend_status_exception, "Suspend transaction is not in 'proposed' status.");
 
-        auto signed_keys = delay.trx.get_signature_keys(adact.signatures, context.control.get_chain_id());
-        auto required_keys = context.control.get_delay_required_keys(delay.trx, signed_keys);
-        EVT_ASSERT(signed_keys == required_keys, delay_not_required_keys_exception, "Provided keys are not required in this delay transaction, provided keys: ${keys}", ("keys",signed_keys));
+        auto signed_keys = suspend.trx.get_signature_keys(aeact.signatures, context.control.get_chain_id());
+        auto required_keys = context.control.get_suspend_required_keys(suspend.trx, signed_keys);
+        EVT_ASSERT(signed_keys == required_keys, suspend_not_required_keys_exception, "Provided keys are not required in this suspend transaction, provided keys: ${keys}", ("keys",signed_keys));
        
         for(auto it = signed_keys.cbegin(); it != signed_keys.cend(); it++) {
-            EVT_ASSERT(delay.signed_keys.find(*it) == delay.signed_keys.end(), delay_duplicate_key_exception, "Public key ${key} is already signed this delay transaction", ("key",*it)); 
+            EVT_ASSERT(suspend.signed_keys.find(*it) == suspend.signed_keys.end(), suspend_duplicate_key_exception, "Public key ${key} is already signed this suspend transaction", ("key",*it)); 
         }
 
-        delay.signed_keys.merge(signed_keys);
+        suspend.signed_keys.merge(signed_keys);
         
-        tokendb.update_delay(delay);
+        tokendb.update_suspend(suspend);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
 void
-apply_evt_canceldelay(apply_context& context) {
+apply_evt_cancelsuspend(apply_context& context) {
     using namespace __internal;
 
-    auto cdact = context.act.data_as<canceldelay>();
+    auto csact = context.act.data_as<cancelsuspend>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(delay), cdact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(suspend), csact.name), action_authorize_exception, "Authorized information does not match.");
 
         auto& tokendb = context.token_db;
 
-        delay_def delay;
-        tokendb.read_delay(cdact.name, delay);
-        EVT_ASSERT(delay.status == delay_status::proposed, delay_status_exception, "Delay is not in 'proposed' status.");
+        suspend_def suspend;
+        tokendb.read_suspend(csact.name, suspend);
+        EVT_ASSERT(suspend.status == suspend_status::proposed, suspend_status_exception, "Suspend transaction is not in 'proposed' status.");
 
-        delay.status = delay_status::cancelled;
-        tokendb.update_delay(delay);
+        suspend.status = suspend_status::cancelled;
+        tokendb.update_suspend(suspend);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
 void
-apply_evt_executedelay(apply_context& context) {
-    auto edact = context.act.data_as<executedelay>();
+apply_evt_execsuspend(apply_context& context) {
+    auto esact = context.act.data_as<execsuspend>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(delay), edact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(suspend), esact.name), action_authorize_exception, "Authorized information does not match.");
 
         auto& tokendb = context.token_db;
 
-        delay_def delay;
-        tokendb.read_delay(edact.name, delay);
+        suspend_def suspend;
+        tokendb.read_suspend(esact.name, suspend);
 
-        EVT_ASSERT(delay.signed_keys.find(edact.executor) != delay.signed_keys.end(), delay_executor_exception, "Executor hasn't sign his key on this delay transaction");
+        EVT_ASSERT(suspend.signed_keys.find(esact.executor) != suspend.signed_keys.end(), suspend_executor_exception, "Executor hasn't sign his key on this suspend transaction");
 
         auto now = context.control.head_block_time();
-        EVT_ASSERT(delay.status == delay_status::proposed, delay_status_exception, "Delay is not in 'proposed' status.");
-        EVT_ASSERT(delay.trx.expiration > now, delay_expired_tx_exception, "Delay transaction is expired at ${expir}, now is ${now}", ("expir",delay.trx.expiration)("now",now));
+        EVT_ASSERT(suspend.status == suspend_status::proposed, suspend_status_exception, "Suspend transaction is not in 'proposed' status.");
+        EVT_ASSERT(suspend.trx.expiration > now, suspend_expired_tx_exception, "Suspend transaction is expired at ${expir}, now is ${now}", ("expir",suspend.trx.expiration)("now",now));
 
-        context.control.check_authorization(delay.signed_keys, delay.trx);
+        context.control.check_authorization(suspend.signed_keys, suspend.trx);
 
-        auto strx = signed_transaction(delay.trx, {});
+        auto strx = signed_transaction(suspend.trx, {});
         auto mtrx = std::make_shared<transaction_metadata>(strx);
-        auto trace = context.control.push_delay_transaction(mtrx, fc::time_point::maximum());
+        auto trace = context.control.push_suspend_transaction(mtrx, fc::time_point::maximum());
         bool transaction_failed = trace && trace->except;
         if(transaction_failed) {
-            delay.status = delay_status::failed;
+            suspend.status = suspend_status::failed;
             context.console_append(trace->except->to_string());
         }
         else {
-            delay.status = delay_status::executed;
+            suspend.status = suspend_status::executed;
         }
-        tokendb.update_delay(delay);
+        tokendb.update_suspend(suspend);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }

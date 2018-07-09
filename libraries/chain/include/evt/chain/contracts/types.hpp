@@ -168,18 +168,18 @@ struct fungible_def {
     meta_list metas;
 };
 
-enum delay_status {
+enum suspend_status {
     proposed = 0, executed, failed, cancelled
 };
 
-struct delay_def {
-    delay_def() = default;
+struct suspend_def {
+    suspend_def() = default;
 
-    proposal_name                        name;
-    public_key_type                      proposer;
-    fc::enum_type<uint8_t, delay_status> status;
-    transaction                          trx;
-    flat_set<public_key_type>            signed_keys;
+    proposal_name                          name;
+    public_key_type                        proposer;
+    fc::enum_type<uint8_t, suspend_status> status;
+    transaction                            trx;
+    flat_set<public_key_type>              signed_keys;
 };
 
 struct newdomain {
@@ -335,43 +335,43 @@ struct addmeta {
     }
 };
 
-struct newdelay {
+struct newsuspend {
     proposal_name               name;
     user_id                     proposer;
     transaction                 trx;
 
     static action_name
     get_name() {
-        return N(newdelay);
+        return N(newsuspend);
     }
 };
 
-struct canceldelay {
+struct cancelsuspend {
     proposal_name name;
 
     static action_name
     get_name() {
-        return N(canceldelay);
+        return N(cancelsuspend);
     }
 };
 
-struct approvedelay {
+struct aprvdsuspend {
     proposal_name               name;
     std::vector<signature_type> signatures;
 
     static action_name
     get_name() {
-        return N(approvedelay);
+        return N(aprvdsuspend);
     }
 };
 
-struct executedelay {
+struct execsuspend {
     proposal_name name;
     user_id       executor;
 
     static action_name
     get_name() {
-        return N(executedelay);
+        return N(execsuspend);
     }
 };
 
@@ -388,8 +388,8 @@ FC_REFLECT(evt::chain::contracts::authorizer_weight, (ref)(weight));
 FC_REFLECT(evt::chain::contracts::permission_def, (name)(threshold)(authorizers));
 FC_REFLECT(evt::chain::contracts::domain_def, (name)(creator)(create_time)(issue)(transfer)(manage)(metas));
 FC_REFLECT(evt::chain::contracts::fungible_def, (sym)(creator)(create_time)(issue)(manage)(total_supply)(current_supply)(metas));
-FC_REFLECT_ENUM(evt::chain::contracts::delay_status, (proposed)(executed)(failed)(cancelled));
-FC_REFLECT(evt::chain::contracts::delay_def, (name)(proposer)(status)(trx)(signed_keys));
+FC_REFLECT_ENUM(evt::chain::contracts::suspend_status, (proposed)(executed)(failed)(cancelled));
+FC_REFLECT(evt::chain::contracts::suspend_def, (name)(proposer)(status)(trx)(signed_keys));
 
 FC_REFLECT(evt::chain::contracts::newdomain, (name)(creator)(issue)(transfer)(manage));
 FC_REFLECT(evt::chain::contracts::issuetoken, (domain)(names)(owner));
@@ -404,7 +404,7 @@ FC_REFLECT(evt::chain::contracts::issuefungible, (address)(number)(memo));
 FC_REFLECT(evt::chain::contracts::transferft, (from)(to)(number)(memo));
 FC_REFLECT(evt::chain::contracts::evt2pevt, (from)(to)(number)(memo));
 FC_REFLECT(evt::chain::contracts::addmeta, (key)(value)(creator));
-FC_REFLECT(evt::chain::contracts::newdelay, (name)(proposer)(trx));
-FC_REFLECT(evt::chain::contracts::canceldelay, (name));
-FC_REFLECT(evt::chain::contracts::approvedelay, (name)(signatures));
-FC_REFLECT(evt::chain::contracts::executedelay, (name)(executor));
+FC_REFLECT(evt::chain::contracts::newsuspend, (name)(proposer)(trx));
+FC_REFLECT(evt::chain::contracts::cancelsuspend, (name));
+FC_REFLECT(evt::chain::contracts::aprvdsuspend, (name)(signatures));
+FC_REFLECT(evt::chain::contracts::execsuspend, (name)(executor));

@@ -110,10 +110,10 @@ private:
     }
 
     void
-    get_delay(const proposal_name& proposal, std::function<void(const delay_def&)>&& cb) {
-        delay_def delay;
-        _token_db.read_delay(proposal, delay);
-        cb(delay);
+    get_suspend(const proposal_name& proposal, std::function<void(const suspend_def&)>&& cb) {
+        suspend_def suspend;
+        _token_db.read_suspend(proposal, suspend);
+        cb(suspend);
     }
 
 private:
@@ -333,43 +333,43 @@ private:
     }
 
     bool
-    satisfied_delay(const action& action) {
+    satisfied_suspend(const action& action) {
         switch(action.name.value) {
-        case N(newdelay): {
+        case N(newsuspend): {
             try {
-                auto nd = action.data_as<contracts::newdelay>();
+                auto ns = action.data_as<contracts::newsuspend>();
                 auto vistor = weight_tally_visitor(*this);
-                if(vistor(nd.proposer, 1) == 1) {
+                if(vistor(ns.proposer, 1) == 1) {
                     return true;
                 }
             }
-            EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `newdelay` type.");
+            EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `newsuspend` type.");
             break;
         }
-        case N(approvedelay): {
+        case N(aprvdsuspend): {
             // will check signatures when applying
             return true;
         }
-        case N(canceldelay): {
+        case N(cancelsuspend): {
             bool result = false;
-            get_delay(action.key, [&](const auto& delay) {
+            get_suspend(action.key, [&](const auto& suspend) {
                 auto vistor = weight_tally_visitor(*this);
-                if(vistor(delay.proposer, 1) == 1) {
+                if(vistor(suspend.proposer, 1) == 1) {
                     result = true;
                 }
             });
             return result;
             break;
         }
-        case N(executedelay): {
+        case N(execsuspend): {
             try {
-                auto ed = action.data_as<contracts::executedelay>();
+                auto es = action.data_as<contracts::execsuspend>();
                 auto vistor = weight_tally_visitor(*this);
-                if(vistor(ed.executor, 1) == 1) {
+                if(vistor(es.executor, 1) == 1) {
                     return true;
                 }
             }
-            EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `executedelay` type.");
+            EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `execsuspend` type.");
             break;
         }
         default: {
@@ -431,8 +431,8 @@ public:
             result = satisfied_fungible(action);
             break;
         }
-        case N128(delay): {
-            result = satisfied_delay(action);
+        case N128(suspend): {
+            result = satisfied_suspend(action);
             break;
         }
         default: {

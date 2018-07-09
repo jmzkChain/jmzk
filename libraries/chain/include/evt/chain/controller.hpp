@@ -78,7 +78,7 @@ public:
     void                             drop_unapplied_transaction(const transaction_metadata_ptr& trx);
 
     transaction_trace_ptr push_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline);
-    transaction_trace_ptr push_delay_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline);
+    transaction_trace_ptr push_suspend_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline);
 
     void check_authorization(const flat_set<public_key_type>& signed_keys, const transaction& trx);
 
@@ -151,8 +151,8 @@ public:
     signal<void(const int&)>                      bad_alloc;
 
     flat_set<public_key_type> get_required_keys(const transaction& trx, const flat_set<public_key_type>& candidate_keys) const;
-    flat_set<public_key_type> get_delay_required_keys(const transaction& trx, const flat_set<public_key_type>& candidate_keys) const;
-    flat_set<public_key_type> get_delay_required_keys(const proposal_name& name, const flat_set<public_key_type>& candidate_keys) const;
+    flat_set<public_key_type> get_suspend_required_keys(const transaction& trx, const flat_set<public_key_type>& candidate_keys) const;
+    flat_set<public_key_type> get_suspend_required_keys(const proposal_name& name, const flat_set<public_key_type>& candidate_keys) const;
 
     const apply_handler* find_apply_handler(action_name act) const;
 

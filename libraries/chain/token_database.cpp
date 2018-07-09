@@ -83,8 +83,8 @@ get_group_key(const group_name& name) {
 }
 
 db_key<proposal_name>
-get_delay_key(const proposal_name& delay) {
-    return db_key<proposal_name>(N128(.delay), delay);
+get_suspend_key(const proposal_name& suspend) {
+    return db_key<proposal_name>(N128(.suspend), suspend);
 }
 
 db_key<fungible_name>
@@ -137,13 +137,13 @@ enum dbaction_type {
     kNewDomain,
     kIssueToken,
     kNewGroup,
-    kNewDelay,
+    kNewSuspend,
     kNewFungible,
 
     kUpdateDomain,
     kUpdateGroup,
     kUpdateToken,
-    kUpdateDelay,
+    kUpdateSuspend,
     kUpdateFungible,
     kUpdateAsset
 };
@@ -161,7 +161,7 @@ struct sp_token {
     token_name  name;
 };
 
-struct sp_delay {
+struct sp_suspend {
     proposal_name name;
 };
 
@@ -354,26 +354,26 @@ token_database::exists_group(const group_name& name) const {
 }
 
 int
-token_database::add_delay(const delay_def& delay) {
+token_database::add_suspend(const suspend_def& suspend) {
     using namespace __internal;
-    auto key    = get_delay_key(delay.name);
-    auto value  = get_value(delay);
+    auto key    = get_suspend_key(suspend.name);
+    auto value  = get_value(suspend);
     auto status = db_->Put(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
         EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
     if(should_record()) {
-        auto act  = (sp_delay*)malloc(sizeof(sp_delay));
-        act->name = delay.name;
-        record(kNewDelay, act);
+        auto act  = (sp_suspend*)malloc(sizeof(sp_suspend));
+        act->name = suspend.name;
+        record(kNewSuspend, act);
     }
     return 0;
 }
 
 int
-token_database::exists_delay(const proposal_name& name) const {
+token_database::exists_suspend(const proposal_name& name) const {
     using namespace __internal;
-    auto key    = get_delay_key(name);
+    auto key    = get_suspend_key(name);
     auto value  = std::string();
     auto status = db_->Get(read_opts_, key.as_slice(), &value);
     return status.ok();
@@ -497,15 +497,15 @@ token_database::read_group(const group_name& id, group_def& group) const {
 }
 
 int
-token_database::read_delay(const proposal_name& name, delay_def& delay) const {
+token_database::read_suspend(const proposal_name& name, suspend_def& suspend) const {
     using namespace __internal;
     auto value  = std::string();
-    auto key    = get_delay_key(name);
+    auto key    = get_suspend_key(name);
     auto status = db_->Get(read_opts_, key.as_slice(), &value);
     if(!status.ok()) {
-        EVT_THROW(tokendb_delay_not_found, "Cannot find delay: ${name}", ("name",name));
+        EVT_THROW(tokendb_suspend_not_found, "Cannot find suspend: ${name}", ("name",name));
     }
-    delay = read_value<delay_def>(value);
+    suspend = read_value<suspend_def>(value);
     return 0;
 }
 
@@ -639,18 +639,18 @@ token_database::update_token(const token_def& token) {
 }
 
 int
-token_database::update_delay(const delay_def& delay) {
+token_database::update_suspend(const suspend_def& suspend) {
     using namespace __internal;
-    auto key    = get_delay_key(delay.name);
-    auto value  = get_value(delay);
+    auto key    = get_suspend_key(suspend.name);
+    auto value  = get_value(suspend);
     auto status = db_->Put(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
         EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
     if(should_record()) {
-        auto act  = (sp_delay*)malloc(sizeof(sp_delay));
-        act->name = delay.name;
-        record(kUpdateDelay, act);
+        auto act  = (sp_suspend*)malloc(sizeof(sp_suspend));
+        act->name = suspend.name;
+        record(kUpdateSuspend, act);
     }
     return 0;
 }
@@ -777,9 +777,9 @@ token_database::rollback_to_latest_savepoint() {
                 batch.Delete(key.as_slice());
                 break;
             }
-            case kNewDelay: {
-                auto act = (sp_delay*)it->data;
-                auto key = get_delay_key(act->name);
+            case kNewSuspend: {
+                auto act = (sp_suspend*)it->data;
+                auto key = get_suspend_key(act->name);
                 batch.Delete(key.as_slice());
                 break;
             }
@@ -822,9 +822,9 @@ token_database::rollback_to_latest_savepoint() {
                 batch.Put(key.as_slice(), old_value);
                 break;
             }
-            case kUpdateDelay: {
-                auto act = (sp_delay*)it->data;
-                auto key = get_delay_key(act->name);
+            case kUpdateSuspend: {
+                auto act = (sp_suspend*)it->data;
+                auto key = get_suspend_key(act->name);
 
                 auto old_value = std::string();
                 auto status    = db_->Get(snapshot_read_opts_, key.as_slice(), &old_value);

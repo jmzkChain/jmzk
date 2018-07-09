@@ -48,8 +48,8 @@ transaction_context::init_for_input_trx(uint32_t num_signatures) {
 }
 
 void
-transaction_context::init_for_delay_trx() {
-    trace->is_delay = true;
+transaction_context::init_for_suspend_trx() {
+    trace->is_suspend = true;
     init();
 }
 

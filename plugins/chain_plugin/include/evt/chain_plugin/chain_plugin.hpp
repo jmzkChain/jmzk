@@ -108,15 +108,15 @@ public:
 
     get_required_keys_result get_required_keys(const get_required_keys_params& params) const;
 
-    struct get_delay_required_keys_params {
+    struct get_suspend_required_keys_params {
         proposal_name             name;
         flat_set<public_key_type> available_keys;
     };
-    struct get_delay_required_keys_result {
+    struct get_suspend_required_keys_result {
         flat_set<public_key_type> required_keys;
     };
 
-    get_delay_required_keys_result get_delay_required_keys(const get_delay_required_keys_params& params) const;
+    get_suspend_required_keys_result get_suspend_required_keys(const get_suspend_required_keys_params& params) const;
 
     struct get_block_params {
         string block_num_or_id;
@@ -215,6 +215,6 @@ FC_REFLECT(evt::chain_apis::read_only::abi_bin_to_json_result, (args))
 FC_REFLECT(evt::chain_apis::read_only::trx_json_to_digest_result, (digest))
 FC_REFLECT(evt::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys))
 FC_REFLECT(evt::chain_apis::read_only::get_required_keys_result, (required_keys))
-FC_REFLECT(evt::chain_apis::read_only::get_delay_required_keys_params, (name)(available_keys))
-FC_REFLECT(evt::chain_apis::read_only::get_delay_required_keys_result, (required_keys))
+FC_REFLECT(evt::chain_apis::read_only::get_suspend_required_keys_params, (name)(available_keys))
+FC_REFLECT(evt::chain_apis::read_only::get_suspend_required_keys_result, (required_keys))
 FC_REFLECT(evt::chain_apis::read_write::push_transaction_results, (transaction_id)(processed))
