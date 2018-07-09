@@ -410,12 +410,12 @@ mongo_db_plugin_impl::_process_block(const signed_block& block) {
     mongocxx::options::bulk_write bulk_opts;
     bulk_opts.ordered(false);
 
-    auto bulk_trans = mongocxx::bulk_write(bulk_opts);
-    auto bulk_acts  = mongocxx::bulk_write(bulk_opts);
-
     auto blocks        = mongo_db[blocks_col];         // Blocks
     auto trans         = mongo_db[trans_col];          // Transactions
     auto actions       = mongo_db[actions_col];        // Actions
+
+    auto bulk_trans = trans.create_bulk_write(bulk_opts);
+    auto bulk_acts  = actions.create_bulk_write(bulk_opts);
 
     auto       block_doc         = bsoncxx::builder::basic::document{};
     const auto block_id          = block.id();
@@ -528,13 +528,13 @@ mongo_db_plugin_impl::_process_block(const signed_block& block) {
     }
 
     if(actions_to_write) {
-        auto result = actions.bulk_write(bulk_acts);
+        auto result = bulk_acts.execute();
         if(!result) {
             elog("Bulk actions insert failed for block: ${bid}", ("bid", block_id));
         }
     }
     if(transactions_in_block) {
-        auto result = trans.bulk_write(bulk_trans);
+        auto result = bulk_trans.execute();
         if(!result) {
             elog("Bulk transaction insert failed for block: ${bid}", ("bid", block_id));
         }
@@ -619,14 +619,14 @@ mongo_db_plugin_impl::_process_transaction(const transaction_trace& trace) {
     mongocxx::options::bulk_write bulk_opts;
     bulk_opts.ordered(false);
 
-    auto bulk_acts  = mongocxx::bulk_write(bulk_opts);
+    auto bulk_acts  = action_traces.create_bulk_write(bulk_opts);
     for(auto& at : trace.action_traces) {
         process_action_trace(trx_id_str, bulk_acts, at);
         seq_num++;
     }
 
     if(action_traces_to_write) {
-        auto result = action_traces.bulk_write(bulk_acts);
+        auto result = bulk_acts.execute();
         if(!result) {
             elog("Bulk action traces insert failed for transaction: ${tid}", ("tid", trx_id_str));
         }

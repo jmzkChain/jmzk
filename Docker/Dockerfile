@@ -12,9 +12,9 @@ RUN ninja -C /tmp/build -j$(nproc) evtd evtwd evtc && ninja -C /tmp/build instal
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive && apt-get install -y python3 python3-click
 
 RUN mkdir /tmp/build/symbols
-RUN python3 scripts/symbolstore.py -s /tmp/build/symbols /tmp/build/bin/evtd
-RUN python3 scripts/symbolstore.py -s /tmp/build/symbols /tmp/build/bin/evtc
-RUN python3 scripts/symbolstore.py -s /tmp/build/symbols /tmp/build/bin/evtwd
+RUN python3 /evt/scripts/symbolstore.py -s /tmp/build/symbols /tmp/build/bin/evtd
+RUN python3 /evt/scripts/symbolstore.py -s /tmp/build/symbols /tmp/build/bin/evtc
+RUN python3 /evt/scripts/symbolstore.py -s /tmp/build/symbols /tmp/build/bin/evtwd
 
 FROM ubuntu:18.04
 

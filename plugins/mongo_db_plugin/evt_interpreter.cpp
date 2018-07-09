@@ -259,7 +259,11 @@ interpreter_impl::process_issuetoken(const issuetoken& it) {
     auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
 
-    mongocxx::bulk_write bulk{};
+    mongocxx::options::bulk_write bulk_opts;
+    bulk_opts.ordered(false);
+
+    auto bulk = tokens_collection_.create_bulk_write(bulk_opts);
+
     auto d = (std::string)it.domain;
     for(auto& n : it.names) {
         auto doc = bsoncxx::builder::basic::document{};
@@ -280,7 +284,7 @@ interpreter_impl::process_issuetoken(const issuetoken& it) {
         bulk.append(insert_op);
     }
 
-    if(!tokens_collection_.bulk_write(bulk)) {
+    if(!bulk.execute()) {
         elog("Bulk insert tokens failed for domain: ${name}", ("name", d));
     }
 }
