@@ -14,9 +14,8 @@ def generate_traffic(hosturl):
     nonce = ''.join(random.choice(string.ascii_letters[26:]) for _ in range(5))
 
     path = '/tmp/evt_loadtest'
-    if os.path.exists(path):
-        shutil.rmtree(path)
-    os.mkdir(path)
+    if not os.path.exists(path):
+        os.mkdir(path)
 
     traffic = '{}/{}.lz4'.format(path, nonce)
     gen = TrafficGenerator(nonce, hosturl, 'actions.config', traffic)

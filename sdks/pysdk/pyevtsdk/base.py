@@ -42,7 +42,7 @@ class Symbol:
     def __init__(self, name, precision=5):
         if precision > 17 or precision < 0:
             raise SymbolArgsErrorException
-        if len(name) > 6 or (not name.isupper()):
+        if len(name) > 7 or (not name.isupper()):
             raise SymbolArgsErrorException
         self.name = name
         self.precision = precision

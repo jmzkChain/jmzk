@@ -3,11 +3,14 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #pragma once
+#include <type_traits>
 #include <evt/chain/types.hpp>
+#include <boost/any.hpp>
 
 namespace evt { namespace chain {
 
 struct action {
+public:
     action_name name;
     domain_name domain;
     domain_key  key;
@@ -29,12 +32,22 @@ struct action {
         , key(key)
         , data(data) {}
 
+    // if T is a reference, will return the reference to the internal cache value
+    // Otherwise if T is a value type, will return new copy. 
     template <typename T>
     T
     data_as() const {
-        FC_ASSERT(name == T::get_name());
-        return fc::raw::unpack<T>(data);
+        if(cache_.empty()) {
+            using raw_type = std::remove_const_t<std::remove_reference_t<T>>;
+            FC_ASSERT(name == raw_type::get_name());
+            cache_ = fc::raw::unpack<raw_type>(data);
+        }
+        // no need to check name here, `any_cast` will throws exception if types don't match
+        return boost::any_cast<T>(cache_);
     }
+
+private:
+    mutable boost::any cache_;
 };
 
 }}  // namespace evt::chain

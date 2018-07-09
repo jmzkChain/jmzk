@@ -122,7 +122,7 @@ private:
         switch(action.name.value) {
         case N(newgroup): {
             try {
-                auto ng     = action.data_as<contracts::newgroup>();
+                auto ng     = action.data_as<const contracts::newgroup&>();
                 auto vistor = weight_tally_visitor(*this);
                 if(vistor(ng.group.key(), 1) == 1) {
                     return true;
@@ -250,7 +250,7 @@ private:
         switch(action.name.value) {
         case N(newfungible): {
             try {
-                auto nf     = action.data_as<contracts::newfungible>();
+                auto nf     = action.data_as<const contracts::newfungible&>();
                 auto vistor = weight_tally_visitor(*this);
                 if(vistor(nf.creator, 1) == 1) {
                     return true;
@@ -267,7 +267,7 @@ private:
         }
         case N(transferft): {
             try {
-                auto tf     = action.data_as<contracts::transferft>();
+                auto tf     = action.data_as<const contracts::transferft&>();
                 auto vistor = weight_tally_visitor(*this);
                 if(vistor(tf.from, 1) == 1) {
                     return true;
@@ -278,7 +278,7 @@ private:
         }
         case N(evt2pevt): {
             try {
-                auto ep     = action.data_as<contracts::evt2pevt>();
+                auto ep     = action.data_as<const contracts::evt2pevt&>();
                 auto vistor = weight_tally_visitor(*this);
                 if(vistor(ep.from, 1) == 1) {
                     return true;
@@ -300,7 +300,7 @@ private:
     bool
     satisfied_meta(const action& action) {
         try {
-            auto am = action.data_as<contracts::addmeta>();
+            auto am = action.data_as<const contracts::addmeta&>();
 
             auto& ref        = am.creator;
             bool  ref_result = false;
@@ -337,7 +337,7 @@ private:
         switch(action.name.value) {
         case N(newsuspend): {
             try {
-                auto ns = action.data_as<contracts::newsuspend>();
+                auto ns = action.data_as<const contracts::newsuspend&>();
                 auto vistor = weight_tally_visitor(*this);
                 if(vistor(ns.proposer, 1) == 1) {
                     return true;
@@ -363,7 +363,7 @@ private:
         }
         case N(execsuspend): {
             try {
-                auto es = action.data_as<contracts::execsuspend>();
+                auto es = action.data_as<const contracts::execsuspend&>();
                 auto vistor = weight_tally_visitor(*this);
                 if(vistor(es.executor, 1) == 1) {
                     return true;
@@ -384,7 +384,7 @@ private:
         switch(action.name.value) {
         case N(newdomain): {
             try {
-                auto nd     = action.data_as<contracts::newdomain>();
+                auto nd     = action.data_as<const contracts::newdomain&>();
                 auto vistor = weight_tally_visitor(*this);
                 if(vistor(nd.creator, 1) == 1) {
                     return true;

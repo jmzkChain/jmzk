@@ -21,8 +21,8 @@ RUN python3 /evt/scripts/symbolstore.py -s /tmp/build/symbols /tmp/build/bin/evt
 FROM ubuntu:18.04
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive && apt-get install -y openssl libssl1.1 && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /usr/local/bin/minidump_stackwalk /usr/local/bin/
 COPY --from=builder /usr/local/lib/* /usr/local/lib/
-COPY --from=builder /usr/local/bin/* /usr/local/bin/
 COPY --from=builder /tmp/build/bin /opt/evt/bin
 COPY --from=builder /tmp/build/symbols /opt/evt/symbols
 COPY --from=builder /etc/evt-version /etc
