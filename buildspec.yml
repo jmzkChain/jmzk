@@ -13,6 +13,7 @@ phases:
     commands:
       - echo Generating build files...
       - mkdir -p build && cd build
+      - rm -f CMakeCache.txt
       - cmake ../ -G"Ninja" -DCMAKE_BUILD_TYPE=Release -DSecp256k1_ROOT_DIR=/usr/local -DENABLE_MONGODB_SUPPORT=ON -DENABLE_BIND_LIBRARIES=ON
       - echo Building...
       - ninja -j$(nproc) all
@@ -30,3 +31,6 @@ artifacts:
     - 'build/libraries/chain/libevt_chain_lite.so'
     - 'build/libraries/fc/libfc_lite.so'
   discard-paths: yes
+cache:
+  paths:
+    - 'build/**/*'
