@@ -160,7 +160,6 @@ BOOST_AUTO_TEST_CASE( evtabi ) {
         "expiration": "2018-05-20T12:25:51",
         "ref_block_num": 8643,
         "ref_block_prefix": 842752750,
-        "delay_sec": 0,
         "actions": [
             {
                 "name": "newdomain",
@@ -207,7 +206,7 @@ BOOST_AUTO_TEST_CASE( evtabi ) {
     }
     )";
     evt_bin_t* bin3 = nullptr;
-    auto r8 = evt_abi_json_to_bin(abi, "approvedelay", j3, &bin3);
+    auto r8 = evt_abi_json_to_bin(abi, "aprvdsuspend", j3, &bin3);
     BOOST_TEST_REQUIRE(r8 == EVT_OK);
 
     evt_free(bin);
