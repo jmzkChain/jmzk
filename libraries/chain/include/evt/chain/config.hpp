@@ -42,7 +42,10 @@ const static uint32_t default_max_trx_lifetime               = 60*60; // 1 hour
 const static uint16_t default_max_auth_depth                 = 6;
 
 // Should be large enough to allow recovery from badly set blockchain parameters without a hard fork
-const static uint32_t fixed_net_overhead_of_packed_trx = 16;  // TODO: is this reasonable?
+const static uint32_t fixed_net_overhead_of_packed_trx = 16;
+const static uint32_t network_factor = 1;
+const static uint32_t storage_factor = 1;
+const static uint32_t cpu_factor     = 1;
 
 /**
  *  The number of sequential blocks produced by a single producer
