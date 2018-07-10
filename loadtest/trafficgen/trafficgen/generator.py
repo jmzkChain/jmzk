@@ -1,5 +1,6 @@
 import json
 import multiprocessing as mp
+import os
 import random
 import string
 from collections import OrderedDict
@@ -117,12 +118,12 @@ class TrafficGenerator:
         self.writer.close()
 
 
-def worker(q, id, url, config):
+def worker(q, id, url, config, output_folder):
     while True:
         name = q.get()
         if name == None:
             break
-        gen = TrafficGenerator(name=name, url=url, config=config, output=name+'_traffic_data.lz4')
+        gen = TrafficGenerator(name=name, url=url, config=config, output=os.path.join(output_folder, name+'_traffic_data.lz4'))
         gen.initialize()
 
         with tqdm.tqdm(total=gen.total) as pbar:
@@ -144,8 +145,8 @@ def worker(q, id, url, config):
 @click.option('--action-issuefungible', default=0)
 @click.option('--action-transferft', default=0)
 @click.option('--action-addmeta', default=0)
-@click.option('--output', default='traffic_data.lz4')
-def main(url, region_num, thread_num, total, max_user_number, action_newdomain, action_issuetoken, action_transfer, action_newfungible, action_issuefungible, action_transferft, action_addmeta, output):
+@click.option('--output-folder', default='./')
+def main(url, region_num, thread_num, total, max_user_number, action_newdomain, action_issuetoken, action_transfer, action_newfungible, action_issuefungible, action_transferft, action_addmeta, output_folder):
     gen_config = GeneratorConfig()
     gen_config.set_args('total', total // region_num)
     gen_config.set_args('max_user_number', max_user_number)
@@ -156,13 +157,15 @@ def main(url, region_num, thread_num, total, max_user_number, action_newdomain, 
     gen_config.set_action('issuefungible', action_issuefungible)
     gen_config.set_action('transferft', action_transferft)
     gen_config.set_action('addmeta', action_addmeta)
-    gen_config.set_args('output', output)
+
+    if not os.path.exists(output_folder):
+        os.mkdir(output_folder)
 
     q = mp.JoinableQueue()
     threads = []
     
     for i in range(thread_num):
-        t = mp.Process(target=worker, args=(q, i, url, gen_config))
+        t = mp.Process(target=worker, args=(q, i, url, gen_config, output_folder))
         t.start()
         threads.append(t)
 
