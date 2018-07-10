@@ -117,30 +117,37 @@ class TrafficGenerator:
         self.writer.close()
 
 
-def worker(id, name, url, config, output):
-    gen = TrafficGenerator(name=name, url=url, config=config, output=output)
-    gen.initialize()
+def worker(q, id, url, config):
+    while True:
+        name = q.get()
+        if name == None:
+            break
+        gen = TrafficGenerator(name=name, url=url, config=config, output=name+'_traffic_data.lz4')
+        gen.initialize()
 
-    with tqdm.tqdm(total=gen.total) as pbar:
-        gen.generate(True, lambda x: pbar.update(x))
+        with tqdm.tqdm(total=gen.total) as pbar:
+            gen.generate(True, lambda x: pbar.update(x))
+
+        q.task_done()
 
 
 @click.command()
 @click.option('--url', default='http://127.0.0.1:8888')
-@click.option('--thread_num', default=1)
+@click.option('--region-num', default=1)
+@click.option('--thread-num', default=1)
 @click.option('--total', default=10)
-@click.option('--max_user_number', default=10)
-@click.option('--action_newdomain', default=0)
-@click.option('--action_issuetoken', default=0)
-@click.option('--action_transfer', default=0)
-@click.option('--action_newfungible', default=0)
-@click.option('--action_issuefungible', default=0)
-@click.option('--action_transferft', default=0)
-@click.option('--action_addmeta', default=0)
+@click.option('--max-user-number', default=10)
+@click.option('--action-newdomain', default=0)
+@click.option('--action-issuetoken', default=0)
+@click.option('--action-transfer', default=0)
+@click.option('--action-newfungible', default=0)
+@click.option('--action-issuefungible', default=0)
+@click.option('--action-transferft', default=0)
+@click.option('--action-addmeta', default=0)
 @click.option('--output', default='traffic_data.lz4')
-def main(url, thread_num, total, max_user_number, action_newdomain, action_issuetoken, action_transfer, action_newfungible, action_issuefungible, action_transferft, action_addmeta, output):
+def main(url, region_num, thread_num, total, max_user_number, action_newdomain, action_issuetoken, action_transfer, action_newfungible, action_issuefungible, action_transferft, action_addmeta, output):
     gen_config = GeneratorConfig()
-    gen_config.set_args('total', total // thread_num)
+    gen_config.set_args('total', total // region_num)
     gen_config.set_args('max_user_number', max_user_number)
     gen_config.set_action('newdomain', action_newdomain)
     gen_config.set_action('issuetoken', action_issuetoken)
@@ -151,14 +158,23 @@ def main(url, thread_num, total, max_user_number, action_newdomain, action_issue
     gen_config.set_action('addmeta', action_addmeta)
     gen_config.set_args('output', output)
 
+    q = mp.JoinableQueue()
     threads = []
+    
     for i in range(thread_num):
-        region_name = ''.join(random.choice(
-            string.ascii_letters[26:]) for __ in range(2))
-        t = mp.Process(target=worker, args=(i, region_name, url,
-                                            gen_config, region_name+'_traffic_data.lz4'))
+        t = mp.Process(target=worker, args=(q, i, url, gen_config))
         t.start()
         threads.append(t)
+
+    for _ in range(region_num):
+        region_name = ''.join(random.choice(
+            string.ascii_letters[26:]) for __ in range(2))
+        q.put(region_name)
+    q.join()
+
+
+    for i in range(region_num):
+        q.put(None)
 
     for t in threads:
         t.join()
