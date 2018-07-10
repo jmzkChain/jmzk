@@ -2,7 +2,6 @@ import os
 import random
 import shutil
 import string
-import tqdm
 
 from locust import TaskSet, task
 from locust.contrib.fasthttp import FastHttpLocust
@@ -10,31 +9,26 @@ from trafficgen.generator import TrafficGenerator
 from trafficgen.utils import Reader
 
 
-regions = set()
+regions = []
+started = 0
 
 
-def generate_traffic(hosturl):
-    while True:
-        nonce = ''.join(random.choice(
-            string.ascii_letters[26:]) for _ in range(2))
-        if nonce in regions:
-            continue
-        regions.add(nonce)
-        break
+def get_traffic(folder):
+    assert os.path.exists(folder)
+    if len(regions) == 0:
+        files = os.listdir(folder)
+        for file in files:
+            if file.endswith('_traffic_data.lz4'):
+                region = os.path.basename(file)[:2]
+                regions.append((region, file))
+        raise Exception("There's not any traffic files")
 
-    path = '/tmp/evt_loadtest'
-    if not os.path.exists(path):
-        os.mkdir(path)
+    assert started < len(regions)
 
-    traffic = '{}/{}.lz4'.format(path, nonce)
-    gen = TrafficGenerator(nonce, hosturl, 'actions.config', traffic)
-    gen.initialize()
+    region, file = regions[started]
+    started += 1
 
-    print('{} Generating traffic'.format(nonce))
-    with tqdm.tqdm(total=gen.total) as pbar:
-        gen.generate(True, lambda x: pbar.update(x))
-
-    return Reader(traffic), nonce
+    return region, file
 
 
 class EVTTaskSet(TaskSet):
@@ -45,7 +39,8 @@ class EVTTaskSet(TaskSet):
         self.stop = False
 
     def on_start(self):
-        self.reader, self.nonce = generate_traffic(self.locust.host)
+        folder = self.locust.user_config.traffic_folder
+        self.reader, self.nonce = get_traffic(folder)
 
     @task(1)
     def push_trx(self):
