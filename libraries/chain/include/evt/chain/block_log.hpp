@@ -3,9 +3,9 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #pragma once
-#include <fc/filesystem.hpp>
 #include <evt/chain/block.hpp>
 #include <evt/chain/genesis_state.hpp>
+#include <fc/filesystem.hpp>
 
 namespace evt { namespace chain {
 
@@ -40,7 +40,7 @@ class block_log_impl;
 
 class block_log {
 public:
-    block_log(const fc::path& data_dir);
+    block_log(const std::vector<fc::path> data_dirs);
     block_log(block_log&& other);
     ~block_log();
 
@@ -72,10 +72,11 @@ public:
     static genesis_state extract_genesis_state(const fc::path& data_dir);
 
 private:
-    void open(const fc::path& data_dir);
+    // void open(const fc::path& data_dir);
+    void open(const std::vector<fc::path> data_dirs);
     void construct_index();
 
-    std::unique_ptr<detail::block_log_impl> my;
+    std::vector<std::unique_ptr<detail::block_log_impl>> mys;
 };
 
 }}  // namespace evt::chain
