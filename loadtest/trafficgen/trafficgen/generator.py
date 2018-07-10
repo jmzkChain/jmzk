@@ -1,5 +1,9 @@
+import click
 import json
+import multiprocessing as mp
 import random
+import string
+import tqdm
 from collections import OrderedDict
 
 from pyevtsdk.action import ActionGenerator
@@ -11,13 +15,30 @@ from . import utils, randompool
 class InvalidActionsOrder(Exception):
     def __init__(self, message):
         self.message = message
+        
+
+class GeneratorConfig:
+    def __init__(self):
+        self.total = 0
+        self.max_user_number = 0
+        self.actions = {}
+        self.output = ''
+
+    def set_args(self, attr, value):
+        self.__setattr__(attr, value)
+
+    def set_action(self, action, value):
+        self.actions[action] = value
+
+    def dict(self):
+        return {'total': self.total, 'max_user_number':self.max_user_number, 'actions':self.actions}
 
 
 class TrafficGenerator:
-    def __init__(self, name, url, config='actions.config', output='traffic_data.lz4'):
+    def __init__(self, name, url, config, output='traffic_data.lz4'):
         assert len(name) <= 2, "Length of region name should be less than 2"
 
-        self.conf = self.load_conf(config)
+        self.conf = config.dict()
         self.name = name
 
         self.rp = None
@@ -93,12 +114,51 @@ class TrafficGenerator:
 
         self.writer.close()
 
-
-if __name__ == '__main__':
-    import tqdm
-
-    gen = TrafficGenerator(name='TE', url="http://127.0.0.1:8888")
+def worker(id, name, url, config, output):
+    gen = TrafficGenerator(name=name, url=url, config=config, output=output)
     gen.initialize()
+    print(id, gen.total)
+    return 
 
     with tqdm.tqdm(total=gen.total) as pbar:
         gen.generate(True, lambda x: pbar.update(x))
+
+
+@click.command()
+@click.option('--url', default='http://127.0.0.1:8888')
+@click.option('--thread_num', default=1)
+@click.option('--total', default=10)
+@click.option('--max_user_number', default=10)
+@click.option('--action_newdomain', default=0)
+@click.option('--action_issuetoken', default=0)
+@click.option('--action_transfer', default=0)
+@click.option('--action_newfungible', default=0)
+@click.option('--action_issuefungible', default=0)
+@click.option('--action_transferft', default=0)
+@click.option('--action_addmeta', default=0)
+@click.option('--output', default='traffic_data.lz4')
+def main(url, thread_num, total, max_user_number, action_newdomain, action_issuetoken, action_transfer, action_newfungible, action_issuefungible, action_transferft, action_addmeta, output):
+    gen_config = GeneratorConfig()
+    gen_config.set_args('total', total // thread_num)
+    gen_config.set_args('max_user_number', max_user_number)
+    gen_config.set_action('newdomain', action_newdomain)
+    gen_config.set_action('issuetoken', action_issuetoken)
+    gen_config.set_action('transfer', action_transfer)
+    gen_config.set_action('newfungible', action_newfungible)
+    gen_config.set_action('issuefungible', action_issuefungible)
+    gen_config.set_action('transferft', action_transferft)
+    gen_config.set_action('addmeta', action_addmeta)
+    gen_config.set_args('output', output)
+
+    threads = []
+    for i in range(thread_num):
+        region_name = ''.join(random.choice(string.ascii_letters[26:]) for __ in range(2))
+        t = mp.Process(target=worker, args=(i, region_name, url, gen_config, region_name+'_traffic_data.lz4'))
+        t.start()
+        threads.append(t)
+
+    for t in threads:
+        t.join()
+
+if __name__ == '__main__':
+    main()
