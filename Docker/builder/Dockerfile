@@ -6,7 +6,7 @@ LABEL author="Harry <harrywong@live.com>" maintainer="Harry <harrywong@live.com>
 RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
   && echo 'APT::Install-Suggests 0;' >> /etc/apt/apt.conf.d/01norecommends \
   && apt-get update \
-  && DEBIAN_FRONTEND=noninteractive apt-get install -y sudo wget curl net-tools ninja-build ca-certificates unzip gnupg git build-essential libtool autoconf automake m4 openssl libssl1.1 libssl-dev libgmp-dev zlib1g-dev
+  && DEBIAN_FRONTEND=noninteractive apt-get install -y sudo wget curl net-tools ccache ninja-build ca-certificates unzip gnupg git build-essential libtool autoconf automake m4 openssl libssl1.1 libssl-dev libgmp-dev zlib1g-dev
 
 RUN wget --no-check-certificate https://cmake.org/files/v3.11/cmake-3.11.0-Linux-x86_64.sh \
     && bash cmake-3.11.0-Linux-x86_64.sh --prefix=/usr/local --exclude-subdir --skip-license \
@@ -67,3 +67,8 @@ RUN git clone -b master https://github.com/everitoken/breakpad.git \
     && make -j$(nproc) install \
     && cd .. && rm -rf breakpad
 
+RUN cp /usr/bin/ccache /usr/local/bin/
+RUN ln -s ccache /usr/local/bin/gcc
+RUN ln -s ccache /usr/local/bin/g++
+RUN ln -s ccache /usr/local/bin/cc
+RUN ln -s ccache /usr/local/bin/c++

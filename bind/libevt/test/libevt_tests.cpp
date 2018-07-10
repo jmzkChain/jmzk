@@ -206,7 +206,7 @@ BOOST_AUTO_TEST_CASE( evtabi ) {
     }
     )";
     evt_bin_t* bin3 = nullptr;
-    auto r8 = evt_abi_json_to_bin(abi, "aprvdsuspend", j3, &bin3);
+    auto r8 = evt_abi_json_to_bin(abi, "aprvsuspend", j3, &bin3);
     BOOST_TEST_REQUIRE(r8 == EVT_OK);
 
     evt_free(bin);
