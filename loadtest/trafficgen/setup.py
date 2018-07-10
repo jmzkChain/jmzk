@@ -17,4 +17,9 @@ setup(
         'Operating System :: POSIX :: Linux',
         'Operating System :: MacOS :: MacOS X'
     ],
+    entry_points={
+        'console_scripts': [
+            'trafficgen = trafficgen.generator:main',
+        ]
+    },
 )
