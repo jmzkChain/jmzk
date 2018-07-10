@@ -1,21 +1,22 @@
-import click
 import json
 import multiprocessing as mp
 import random
 import string
-import tqdm
 from collections import OrderedDict
+
+import click
+import tqdm
 
 from pyevtsdk.action import ActionGenerator
 from pyevtsdk.transaction import TrxGenerator
 
-from . import utils, randompool
+from . import randompool, utils
 
 
 class InvalidActionsOrder(Exception):
     def __init__(self, message):
         self.message = message
-        
+
 
 class GeneratorConfig:
     def __init__(self):
@@ -31,12 +32,12 @@ class GeneratorConfig:
         self.actions[action] = value
 
     def dict(self):
-        return {'total': self.total, 'max_user_number':self.max_user_number, 'actions':self.actions}
+        return {'total': self.total, 'max_user_number': self.max_user_number, 'actions': self.actions}
 
 
 class TrafficGenerator:
     def __init__(self, name, url, config, output='traffic_data.lz4'):
-        assert len(name) <= 2, "Length of region name should be less than 2"
+        assert len(name) <= 2, 'Length of region name should be less than 2'
 
         self.conf = config.dict()
         self.name = name
@@ -92,7 +93,8 @@ class TrafficGenerator:
             else:
                 act = actions[0]
                 if not self.rp.satisfy_action(act):
-                    raise InvalidActionsOrder("{} action is not satisfied in current order, try to adjust".format(act))
+                    raise InvalidActionsOrder(
+                        '{} action is not satisfied in current order, try to adjust'.format(act))
 
             self.currs[act] += 1
             if self.currs[act] >= self.limits[act]:
@@ -100,7 +102,7 @@ class TrafficGenerator:
 
             args, priv_keys = self.rp.require(act)
             action = self.actgen.new_action(act, **args)
-            
+
             trx = self.trxgen.new_trx()
             trx.add_action(action)
             for priv_key in priv_keys:
@@ -114,6 +116,7 @@ class TrafficGenerator:
 
         self.writer.close()
 
+
 def worker(id, name, url, config, output):
     gen = TrafficGenerator(name=name, url=url, config=config, output=output)
     gen.initialize()
@@ -123,7 +126,7 @@ def worker(id, name, url, config, output):
 
 
 @click.command()
-@click.option('--url', default='http://118.31.58.10:8888')
+@click.option('--url', default='http://127.0.0.1:8888')
 @click.option('--thread_num', default=1)
 @click.option('--total', default=10)
 @click.option('--max_user_number', default=10)
@@ -150,13 +153,16 @@ def main(url, thread_num, total, max_user_number, action_newdomain, action_issue
 
     threads = []
     for i in range(thread_num):
-        region_name = ''.join(random.choice(string.ascii_letters[26:]) for __ in range(2))
-        t = mp.Process(target=worker, args=(i, region_name, url, gen_config, region_name+'_traffic_data.lz4'))
+        region_name = ''.join(random.choice(
+            string.ascii_letters[26:]) for __ in range(2))
+        t = mp.Process(target=worker, args=(i, region_name, url,
+                                            gen_config, region_name+'_traffic_data.lz4'))
         t.start()
         threads.append(t)
 
     for t in threads:
         t.join()
+
 
 if __name__ == '__main__':
     main()
