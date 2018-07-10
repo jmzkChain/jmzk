@@ -109,7 +109,11 @@ class ActionTypeErrorException(Exception):
 def get_action_from_abi_json(action, abi_json, domain=None, key=None):
     libevt.init_lib()
     abi_dict = json.loads(abi_json)
-    _bin = abi.json_to_bin(action, abi_json).to_hex_string()
+    try:
+        _bin = abi.json_to_bin(action, abi_json).to_hex_string()
+    except:
+        raise Exception('Invalid abi json', action, abi_json)
+
     if action == 'newdomain':
         return NewDomainAction(abi_dict['name'], _bin)
     elif action == 'updatedomain':

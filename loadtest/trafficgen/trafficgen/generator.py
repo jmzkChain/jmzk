@@ -23,7 +23,7 @@ class GeneratorConfig:
     def __init__(self):
         self.total = 0
         self.max_user_number = 0
-        self.actions = {}
+        self.actions = OrderedDict()
         self.output = ''
 
     def set_args(self, attr, value):
@@ -52,12 +52,6 @@ class TrafficGenerator:
         self.limits = None
         self.currs = None
         self.total = 0
-
-    @staticmethod
-    def load_conf(config):
-        with open(config, 'r') as f:
-            conf = json.load(f, object_pairs_hook=OrderedDict)
-        return conf
 
     def initialize(self):
         self.rp = randompool.RandomPool(
@@ -118,70 +112,81 @@ class TrafficGenerator:
         self.writer.close()
 
 
-def worker(q, id, url, config, output_folder):
+def worker(q, url, shuffle, config, output_folder):
     while True:
-        name = q.get()
-        if name == None:
+        name, i = q.get()
+        if name is None:
             break
-        gen = TrafficGenerator(name=name, url=url, config=config, output=os.path.join(output_folder, name+'_traffic_data.lz4'))
+
+        gen = TrafficGenerator(name=name, url=url, config=config,
+                               output=os.path.join(output_folder, name + '_traffic_data.lz4'))
         gen.initialize()
 
-        with tqdm.tqdm(total=gen.total) as pbar:
-            gen.generate(True, lambda x: pbar.update(x))
+        with tqdm.tqdm(total=gen.total, desc=name, unit='trx', position=i) as pbar:
+            gen.generate(shuffle, lambda x: pbar.update(x))
 
         q.task_done()
 
 
-@click.command()
-@click.option('--url', default='http://127.0.0.1:8888')
-@click.option('--region-num', default=1)
-@click.option('--thread-num', default=1)
-@click.option('--total', default=10)
-@click.option('--max-user-number', default=10)
-@click.option('--action-newdomain', default=0)
-@click.option('--action-issuetoken', default=0)
-@click.option('--action-transfer', default=0)
-@click.option('--action-newfungible', default=0)
-@click.option('--action-issuefungible', default=0)
-@click.option('--action-transferft', default=0)
-@click.option('--action-addmeta', default=0)
-@click.option('--output-folder', default='./')
-def main(url, region_num, thread_num, total, max_user_number, action_newdomain, action_issuetoken, action_transfer, action_newfungible, action_issuefungible, action_transferft, action_addmeta, output_folder):
+@click.command(context_settings=dict(
+    ignore_unknown_options=True,
+))
+@click.option('--url', '-u', default='http://127.0.0.1:8888')
+@click.option('--region-num', '-r', default=1)
+@click.option('--thread-num', '-j', default=1)
+@click.option('--total', '-n', default=10, help='Total number of transactions each region will generate')
+@click.option('--max-user-number', '-m', default=10)
+@click.option('--shuffle', '-s', is_flag=True, default=True)
+@click.option('--output-folder', '-o', type=click.Path('rw'), default='./')
+@click.argument('actions', nargs=-1)
+def generate(url, region_num, thread_num, total, max_user_number, shuffle, output_folder, actions):
     gen_config = GeneratorConfig()
-    gen_config.set_args('total', total // region_num)
+    gen_config.set_args('total', total)
     gen_config.set_args('max_user_number', max_user_number)
-    gen_config.set_action('newdomain', action_newdomain)
-    gen_config.set_action('issuetoken', action_issuetoken)
-    gen_config.set_action('transfer', action_transfer)
-    gen_config.set_action('newfungible', action_newfungible)
-    gen_config.set_action('issuefungible', action_issuefungible)
-    gen_config.set_action('transferft', action_transferft)
-    gen_config.set_action('addmeta', action_addmeta)
+
+    if len(actions) == 0:
+        raise Exception('No actions configured')
+
+    acttypes = ['newdomain', 'issuetoken', 'transfer', 'newfungible', 'issuefungible', 'transferft', 'addmeta']
+
+    for actopt in actions:
+        if not actopt.startswith('--act-'):
+            raise Exception('Invalid action option')
+
+        acttype, weight = actopt[6:].split('=')
+        if acttype not in acttypes:
+            raise Exception('Invalid action type')
+
+        gen_config.set_action(acttype, int(weight))
+
+    if sum(gen_config.actions.values()) == 0:
+        raise Exception("")
 
     if not os.path.exists(output_folder):
         os.mkdir(output_folder)
 
+    print('Generating {} regions with config:'.format(region_num), gen_config.dict())
+
     q = mp.JoinableQueue()
     threads = []
-    
+
     for i in range(thread_num):
-        t = mp.Process(target=worker, args=(q, i, url, gen_config, output_folder))
+        t = mp.Process(target=worker, args=(q, url, shuffle, gen_config, output_folder))
         t.start()
         threads.append(t)
 
-    for _ in range(region_num):
-        region_name = ''.join(random.choice(
-            string.ascii_letters[26:]) for __ in range(2))
-        q.put(region_name)
+    for i in range(region_num):
+        region_name = ''.join(random.choice(string.ascii_letters[26:]) for __ in range(2))
+        q.put((region_name, i))
+    
     q.join()
 
-
-    for i in range(region_num):
-        q.put(None)
+    for i in range(thread_num):
+        q.put((None, None))
 
     for t in threads:
         t.join()
 
 
 if __name__ == '__main__':
-    main()
+    generate()
