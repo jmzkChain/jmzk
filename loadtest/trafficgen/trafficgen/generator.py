@@ -117,15 +117,13 @@ class TrafficGenerator:
 def worker(id, name, url, config, output):
     gen = TrafficGenerator(name=name, url=url, config=config, output=output)
     gen.initialize()
-    print(id, gen.total)
-    return 
 
     with tqdm.tqdm(total=gen.total) as pbar:
         gen.generate(True, lambda x: pbar.update(x))
 
 
 @click.command()
-@click.option('--url', default='http://127.0.0.1:8888')
+@click.option('--url', default='http://118.31.58.10:8888')
 @click.option('--thread_num', default=1)
 @click.option('--total', default=10)
 @click.option('--max_user_number', default=10)
