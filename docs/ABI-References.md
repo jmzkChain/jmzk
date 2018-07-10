@@ -353,7 +353,7 @@ Add new suspend transaction (In-chain deferred-signning transaction)
 }
 ```
 
-### `aprvdsuspend` Action
+### `aprvsuspend` Action
 Approve one suspend transaction
 > `signatures` are the signatures of the suspend transaction.
 > And the keys used to sign transaction must be required keys while authorizing the suspend transaction.

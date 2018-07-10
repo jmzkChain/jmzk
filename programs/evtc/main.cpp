@@ -934,7 +934,7 @@ struct set_suspend_subcommands {
             
             auto trx = signed_trx.as<signed_transaction>();
 
-            auto asact = aprvdsuspend();
+            auto asact = aprvsuspend();
             asact.name = (proposal_name)name;
             asact.signatures = std::move(trx.signatures);
 

@@ -56,7 +56,7 @@ evt_contract_abi() {
     evt_abi.actions.push_back( action_def{name("addmeta"), "addmeta"} );
     evt_abi.actions.push_back( action_def{name("newsuspend"), "newsuspend"} );
     evt_abi.actions.push_back( action_def{name("cancelsuspend"), "cancelsuspend"} );
-    evt_abi.actions.push_back( action_def{name("aprvdsuspend"), "aprvdsuspend"} );
+    evt_abi.actions.push_back( action_def{name("aprvsuspend"), "aprvsuspend"} );
     evt_abi.actions.push_back( action_def{name("execsuspend"), "execsuspend"} );
 
     // structures def
@@ -260,7 +260,7 @@ evt_contract_abi() {
     });
 
     evt_abi.structs.emplace_back( struct_def {
-        "aprvdsuspend", "", {
+        "aprvsuspend", "", {
             {"name", "proposal_name"},
             {"signatures", "signature[]"}
         }

@@ -124,7 +124,7 @@ struct controller_impl {
         SET_APP_HANDLER(evt2pevt);
         SET_APP_HANDLER(addmeta);
         SET_APP_HANDLER(newsuspend);
-        SET_APP_HANDLER(aprvdsuspend);
+        SET_APP_HANDLER(aprvsuspend);
         SET_APP_HANDLER(cancelsuspend);
         SET_APP_HANDLER(execsuspend);
 

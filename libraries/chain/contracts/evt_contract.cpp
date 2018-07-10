@@ -701,10 +701,10 @@ apply_evt_newsuspend(apply_context& context) {
 }
 
 void
-apply_evt_aprvdsuspend(apply_context& context) {
+apply_evt_aprvsuspend(apply_context& context) {
     using namespace __internal;
 
-    auto aeact = context.act.data_as<aprvdsuspend>();
+    auto aeact = context.act.data_as<aprvsuspend>();
     try {
         EVT_ASSERT(context.has_authorized(N128(suspend), aeact.name), action_authorize_exception, "Authorized information does not match.");
 

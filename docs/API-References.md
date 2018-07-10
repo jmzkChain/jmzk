@@ -130,7 +130,7 @@ For the fields of an action, here is a quick reference guide.
 | `evt2pevt` | `fungible` | `EVT` |
 | `addmeta` | `domain`, `group`, `fungible` or token's domain | domain name, group name, fungible name or token name |
 | `newsuspend` | `suspend` | proposal name of suspend transaction |
-| `aprvdsuspend` | `suspend` | proposal name of suspend transaction |
+| `aprvsuspend` | `suspend` | proposal name of suspend transaction |
 | `cancelsuspend` | `suspend` | proposal name of suspend transaction |
 | `execsuspend` | `suspend` | proposal name of suspend transaction |
 

@@ -355,13 +355,13 @@ struct cancelsuspend {
     }
 };
 
-struct aprvdsuspend {
+struct aprvsuspend {
     proposal_name               name;
     std::vector<signature_type> signatures;
 
     static action_name
     get_name() {
-        return N(aprvdsuspend);
+        return N(aprvsuspend);
     }
 };
 
@@ -406,5 +406,5 @@ FC_REFLECT(evt::chain::contracts::evt2pevt, (from)(to)(number)(memo));
 FC_REFLECT(evt::chain::contracts::addmeta, (key)(value)(creator));
 FC_REFLECT(evt::chain::contracts::newsuspend, (name)(proposer)(trx));
 FC_REFLECT(evt::chain::contracts::cancelsuspend, (name));
-FC_REFLECT(evt::chain::contracts::aprvdsuspend, (name)(signatures));
+FC_REFLECT(evt::chain::contracts::aprvsuspend, (name)(signatures));
 FC_REFLECT(evt::chain::contracts::execsuspend, (name)(executor));

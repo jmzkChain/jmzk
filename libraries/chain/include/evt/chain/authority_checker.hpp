@@ -346,7 +346,7 @@ private:
             EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `newsuspend` type.");
             break;
         }
-        case N(aprvdsuspend): {
+        case N(aprvsuspend): {
             // will check signatures when applying
             return true;
         }

@@ -786,12 +786,12 @@ BOOST_AUTO_TEST_CASE(contract_failsuspend_test) {
         )=======";
 
         auto approve_var  = fc::json::from_string(approve_test_data);
-        auto adact = approve_var.as<aprvdsuspend>();
+        auto adact = approve_var.as<aprvsuspend>();
         adact.name = get_suspend_name();
         adact.signatures = {sig,sig2};
         to_variant(adact, approve_var);
 
-        BOOST_CHECK_THROW(my_tester->push_action(N(aprvdsuspend), N128(suspend),  string_to_name128(get_suspend_name()), approve_var.get_object(), key_seeds),suspend_not_required_keys_exception);
+        BOOST_CHECK_THROW(my_tester->push_action(N(aprvsuspend), N128(suspend),  string_to_name128(get_suspend_name()), approve_var.get_object(), key_seeds),suspend_not_required_keys_exception);
 
         tokendb.read_suspend(edact.name, suspend);
         BOOST_TEST(suspend.status == suspend_status::proposed);
@@ -903,11 +903,11 @@ BOOST_AUTO_TEST_CASE(contract_successsuspend_test) {
         )=======";
 
         auto approve_var  = fc::json::from_string(approve_test_data);
-        auto adact = approve_var.as<aprvdsuspend>();
+        auto adact = approve_var.as<aprvsuspend>();
         adact.signatures = {sig};
         to_variant(adact, approve_var);
 
-        my_tester->push_action(N(aprvdsuspend), N128(suspend),  N128(testsuspend), approve_var.get_object(), {});
+        my_tester->push_action(N(aprvsuspend), N128(suspend),  N128(testsuspend), approve_var.get_object(), {});
 
         tokendb.read_suspend(adact.name, suspend);
         BOOST_TEST(suspend.status == suspend_status::proposed);

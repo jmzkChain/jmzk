@@ -36,7 +36,7 @@ void apply_evt_evt2pevt(apply_context& context);
 void apply_evt_addmeta(apply_context& context);
 
 void apply_evt_newsuspend(apply_context& context);
-void apply_evt_aprvdsuspend(apply_context& context);
+void apply_evt_aprvsuspend(apply_context& context);
 void apply_evt_cancelsuspend(apply_context& context);
 void apply_evt_execsuspend(apply_context& context);
 
