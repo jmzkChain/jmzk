@@ -33,7 +33,7 @@ COPY --from=locust /locust/dist/*.whl ./
 RUN pip3 install *.whl
 RUN rm *.whl
 
-COPY --from=source /loadtest/taskset ./
+COPY --from=source /evt/loadtest/taskset ./
 COPY --from=pyevt /usr/local/lib/*.so* /usr/local/lib/
 
 ENV LD_LIBRARY_PATH /usr/local/lib
