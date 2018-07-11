@@ -9,6 +9,7 @@
 #include <evt/chain/block_log.hpp>
 #include <evt/chain/fork_database.hpp>
 #include <evt/chain/token_database.hpp>
+#include <evt/chain/charge_manager.hpp>
 
 #include <evt/chain/block_summary_object.hpp>
 #include <evt/chain/global_property_object.hpp>
@@ -57,6 +58,7 @@ struct controller_impl {
     block_state_ptr         head;
     fork_database           fork_db;
     token_database          token_db;
+    charge_manager          charge;
     controller::config      conf;
     chain_id_type           chain_id;
     bool                    replaying = false;
@@ -104,6 +106,7 @@ struct controller_impl {
         , blog(cfg.blocks_dir)
         , fork_db(cfg.state_dir)
         , token_db(cfg.tokendb_dir)
+        , charge(cfg.genesis.initial_configuration)
         , conf(cfg)
         , chain_id(cfg.genesis.compute_chain_id())
         , system_api(contracts::evt_contract_abi()) {
