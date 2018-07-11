@@ -39,4 +39,6 @@ COPY --from=pyevt /usr/local/lib/*.so* /usr/local/lib/
 ENV LD_LIBRARY_PATH /usr/local/lib
 ENV PATH /usr/sbin:/usr/bin:/sbin:/bin
 
-ENTRYPOINT ["locust", "-f", "evt_taskset.py", "--host=$host"]
+VOLUME /opt/traffic
+
+ENTRYPOINT ["locust", "-f", "evt_taskset.py", "--host=$host", "--user-folder=/opt/traffic"]
