@@ -1,46 +1,43 @@
 import os
-import random
-import shutil
-import string
 
 from locust import TaskSet, task
 from locust.contrib.fasthttp import FastHttpLocust
-from trafficgen.generator import TrafficGenerator
 from trafficgen.utils import Reader
 
 
 regions = []
-started = 0
+rindex = 0
 
 
 def get_traffic(folder):
     assert os.path.exists(folder)
     if len(regions) == 0:
         files = os.listdir(folder)
+        if len(files) == 0:
+            raise Exception("There's not any traffic files")
+
         for file in files:
             if file.endswith('_traffic_data.lz4'):
                 region = os.path.basename(file)[:2]
-                regions.append((region, file))
-        raise Exception("There's not any traffic files")
+                regions.append((region, os.path.join(folder, file)))
 
-    assert started < len(regions)
+    global rindex
+    assert rindex < len(regions)
+    region, file = regions[rindex]
 
-    region, file = regions[started]
-    started += 1
-
-    return region, file
+    return region, Reader(file)
 
 
 class EVTTaskSet(TaskSet):
     def __init__(self, parent):
         super().__init__(parent)
         self.reader = None
-        self.nonce = None
+        self.region = None
         self.stop = False
 
     def on_start(self):
-        folder = self.locust.user_config.traffic_folder
-        self.reader, self.nonce = get_traffic(folder)
+        folder = self.locust.user_config.folder
+        self.region, self.reader = get_traffic(folder)
 
     @task(1)
     def push_trx(self):
@@ -50,7 +47,7 @@ class EVTTaskSet(TaskSet):
         try:
             trx = self.reader.read_trx()
         except:
-            print('{} Traffic has been sent completed'.format(self.nonce))
+            print('{} Traffic has been sent completed'.format(self.region))
             self.stop = True
             return
 

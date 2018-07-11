@@ -112,9 +112,9 @@ class TrafficGenerator:
         self.writer.close()
 
 
-def worker(q, url, shuffle, config, output_folder):
+def worker(q, i, url, shuffle, config, output_folder):
     while True:
-        name, i = q.get()
+        name = q.get()
         if name is None:
             break
 
@@ -122,8 +122,9 @@ def worker(q, url, shuffle, config, output_folder):
                                output=os.path.join(output_folder, name + '_traffic_data.lz4'))
         gen.initialize()
 
-        with tqdm.tqdm(total=gen.total, desc=name, unit='trx', position=i) as pbar:
-            gen.generate(shuffle, lambda x: pbar.update(x))
+        pbar = tqdm.tqdm(total=gen.total, desc=name, unit='trx', position=i, ascii=True, leave=False)
+        gen.generate(shuffle, lambda x: pbar.update(x))
+        pbar.close()
 
         q.task_done()
 
@@ -136,8 +137,8 @@ def worker(q, url, shuffle, config, output_folder):
 @click.option('--thread-num', '-j', default=1)
 @click.option('--total', '-n', default=10, help='Total number of transactions each region will generate')
 @click.option('--max-user-number', '-m', default=10)
-@click.option('--shuffle', '-s', is_flag=True, default=True)
-@click.option('--output-folder', '-o', type=click.Path('rw'), default='./')
+@click.option('--shuffle', '-s', is_flag=True)
+@click.option('--output-folder', '-o', type=click.Path(exists=False), default='./')
 @click.argument('actions', nargs=-1)
 def generate(url, region_num, thread_num, total, max_user_number, shuffle, output_folder, actions):
     gen_config = GeneratorConfig()
@@ -171,18 +172,24 @@ def generate(url, region_num, thread_num, total, max_user_number, shuffle, outpu
     threads = []
 
     for i in range(thread_num):
-        t = mp.Process(target=worker, args=(q, url, shuffle, gen_config, output_folder))
+        t = mp.Process(target=worker, args=(q, i, url, shuffle, gen_config, output_folder))
         t.start()
         threads.append(t)
 
+    regions = set()
     for i in range(region_num):
-        region_name = ''.join(random.choice(string.ascii_letters[26:]) for __ in range(2))
-        q.put((region_name, i))
+        while True:
+            re = ''.join(random.choice(string.ascii_letters[26:]) for __ in range(2))
+            if re in regions:
+                continue
+            regions.add(re)
+            break
+        q.put(re)
     
     q.join()
 
     for i in range(thread_num):
-        q.put((None, None))
+        q.put(None)
 
     for t in threads:
         t.join()
