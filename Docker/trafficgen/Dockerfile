@@ -10,15 +10,13 @@ RUN python3 /pyevt/setup.py bdist_wheel
 FROM everitoken/pysdk:latest as pysdk
 RUN python3 /pysdk/setup.py bdist_wheel
 
-FROM ubuntu:18.04
-
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive && apt-get install -y python3 python3-pip python3-setuptools python3-wheel python3-lz4 python3-cffi python3-tqdm python3-click python3-requests openssl libssl1.1 --no-install-recommends && rm -rf /var/lib/apt/lists/*
+FROM everitoken/pyenv
 
 WORKDIR /trafficgen
 
 COPY --from=pyevt /pyevt/dist/*.whl ./
 COPY --from=pysdk /pysdk/dist/*.whl ./
-RUN pip3 install *.whl
+RUN pip3 --no-cache-dir install *.whl
 RUN rm *.whl
 
 COPY --from=pyevt /usr/local/lib/*.so* /usr/local/lib/
