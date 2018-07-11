@@ -1,6 +1,6 @@
 FROM ubuntu:18.04 as source
 ARG branch=master
-ARG host=http://127.0.0.1
+ARG host=http://127.0.0.1:8888
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive && apt-get install -y git
 RUN git clone -b $branch https://github.com/everitoken/evt.git
