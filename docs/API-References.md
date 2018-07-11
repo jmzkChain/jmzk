@@ -441,6 +441,36 @@ Response:
 }
 ```
 
+## POST /v1/evt/get_assets
+This API is used to get assets for an address
+
+Request:
+```
+{
+    "address": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"
+}
+```
+Response:
+```
+[
+  "2.00000 EVT", "1.00000 PEVT"
+]
+```
+
+You can also only query assets for specific symbol
+
+Request:
+```
+{
+    "address": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+    "sym": "5,EVT"
+}
+```
+Response:
+```
+"2.00000 EVT"
+```
+
 ## POST /v1/evt/get_suspend
 This API is usded to get specific suspend proposal
 
