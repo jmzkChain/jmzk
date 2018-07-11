@@ -44,6 +44,8 @@ extern "C" {
 
 void*
 evt_abi() {
+    abi_serializer::set_max_serialization_time(fc::hours(1));
+    
     auto abi = new abi_def(evt::chain::contracts::evt_contract_abi());
     return (void*)abi;
 }

@@ -106,31 +106,37 @@ BOOST_AUTO_TEST_CASE( evtabi ) {
 
     auto j1 = R"(
     {
-        "name": "test",
-        "creator": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+        "name": "RD0G5W3jPw",
+        "creator": "EVT6QqRegP6k3ot13kMwUjz5aad1F1SaizoeBPqh1ge9iGEeUaZa7",
         "issue": {
             "name": "issue",
             "threshold": 1,
-            "authorizers": [{
-                "ref": "[A] EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
-                "weight": 1
-            }]
+            "authorizers": [
+                {
+                    "ref": "[A] EVT6QqRegP6k3ot13kMwUjz5aad1F1SaizoeBPqh1ge9iGEeUaZa7",
+                    "weight": 1
+                }
+            ]
         },
         "transfer": {
             "name": "transfer",
             "threshold": 1,
-            "authorizers": [{
-                "ref": "[G] OWNER",
-                "weight": 1
-            }]
+            "authorizers": [
+                {
+                    "ref": "[G] OWNER",
+                    "weight": 1
+                }
+            ]
         },
         "manage": {
             "name": "manage",
             "threshold": 1,
-            "authorizers": [{
-                "ref": "[A] EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
-                "weight": 1
-            }]
+            "authorizers": [
+                {
+                    "ref": "[A] EVT6QqRegP6k3ot13kMwUjz5aad1F1SaizoeBPqh1ge9iGEeUaZa7",
+                    "weight": 1
+                }
+            ]
         }
     }
     )";
@@ -209,10 +215,32 @@ BOOST_AUTO_TEST_CASE( evtabi ) {
     auto r8 = evt_abi_json_to_bin(abi, "aprvsuspend", j3, &bin3);
     BOOST_TEST_REQUIRE(r8 == EVT_OK);
 
+    auto j4 = R"(
+    {
+        "expiration": "2018-07-11T02:48:54",
+        "ref_block_num": "58678",
+        "ref_block_prefix": "2495876290",
+        "actions": [
+            {
+                "name": "issuetoken",
+                "domain": "JFaL0nLyip",
+                "key": ".issue",
+                "data": "0000000000000000b051649c0931b3be01000000000000c4f0776ff9fa6490a57d010003e6cc7f10174005461fe73b8051dad4e5858b77176f22db6ebfd15fb19d414984"
+            }
+        ],
+        "transaction_extensions": []
+    }
+    )";
+    evt_checksum_t* digest2 = nullptr;
+    auto r9 = evt_trx_json_to_digest(abi, j4, chain_id, &digest2);
+    BOOST_TEST_REQUIRE(r9 == EVT_OK);
+    BOOST_TEST_REQUIRE(digest2 != nullptr);
+
     evt_free(bin);
     evt_free(j1restore);
     evt_free(chain_id);
     evt_free(digest);
+    evt_free(digest2);
     evt_free(block_id);
     evt_free(bin3);
     evt_free_abi(abi);
