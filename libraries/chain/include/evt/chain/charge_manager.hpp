@@ -13,7 +13,7 @@
 
 namespace evt { namespace chain {
 
-using namespace contracts;
+namespace __internal {
 
 struct base_act_charge {
     static size_t
@@ -32,11 +32,6 @@ struct base_act_charge {
 template<typename T>
 struct act_charge : public base_act_charge {};
 
-template<>
-struct act_charge<addmeta> : public base_act_charge {
-    static size_t extra_factor() { return 10; }
-};
-
 template<typename T>
 struct get_act_charge {
     static size_t
@@ -52,6 +47,8 @@ struct get_act_charge {
         return s * charge::extra_factor();
     }
 };
+
+}  // namespace __internal
 
 class charge_manager {
 public:
@@ -80,6 +77,8 @@ private:
 public:
     size_t
     calculate(const transaction_metadata& trx) {
+        using namespace __internal;
+
         size_t s = 0;
 
         s += network(trx) * config_.base_network_charge_factor;
@@ -94,5 +93,16 @@ public:
 private:
     const chain_config& config_;
 };
+
+namespace __internal {
+
+using namespace contracts;
+
+template<>
+struct act_charge<addmeta> : public base_act_charge {
+    static size_t extra_factor() { return 10; }
+};
+
+}  // namespace __internal
 
 }}  // namespace evt::chain

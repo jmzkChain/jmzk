@@ -7,6 +7,7 @@
 
 #include <evt/chain/config.hpp>
 #include <evt/chain/contracts/types.hpp>
+#include <evt/chain/contracts/types_invoker.hpp>
 #include <evt/chain/token_database.hpp>
 #include <evt/chain/types.hpp>
 #include <evt/utilities/parallel_markers.hpp>
@@ -18,7 +19,14 @@
 
 namespace evt { namespace chain {
 
-using namespace evt::chain::contracts;
+class authority_checker;
+
+namespace __internal {
+
+template<typename T>
+struct check_authority {};
+
+}  // namespace __internal
 
 /**
 * @brief This class determines whether a set of signing keys are sufficient to satisfy an authority or not
@@ -30,19 +38,16 @@ using namespace evt::chain::contracts;
 */
 class authority_checker {
 private:
-    const flat_set<public_key_type>& _signing_keys;
-    const token_database&            _token_db;
-    const uint32_t                   _max_recursion_depth;
-    vector<bool>                     _used_keys;
+    const flat_set<public_key_type>& signing_keys_;
+    const token_database&            token_db_;
+    const uint32_t                   max_recursion_depth_;
+    vector<bool>                     used_keys_;
 
+public:
     struct weight_tally_visitor {
-        using result_type = uint32_t;
-
-        authority_checker& checker;
-        uint32_t           total_weight = 0;
-
-        weight_tally_visitor(authority_checker& checker)
-            : checker(checker) {}
+    public:
+        weight_tally_visitor(authority_checker* checker)
+            : checker_(checker) {}
 
         uint32_t
         operator()(const key_weight& permission) {
@@ -51,27 +56,38 @@ private:
 
         uint32_t
         operator()(const public_key_type& key, const weight_type weight) {
-            auto itr = boost::find(checker._signing_keys, key);
-            if(itr != checker._signing_keys.end()) {
-                checker._used_keys[itr - checker._signing_keys.begin()] = true;
-                total_weight += weight;
+            auto itr = boost::find(checker_->signing_keys_, key);
+            if(itr != checker_->signing_keys_.end()) {
+                checker_->used_keys_[itr - checker_->signing_keys_.begin()] = true;
+                total_weight_ += weight;
             }
-            return total_weight;
+            return total_weight_;
         }
+
+    public:
+        uint32_t total_weight() const { return total_weight_; }
+        void add_weight(uint32_t weight) { total_weight_ += weight; }
+
+    private:
+        authority_checker* checker_;
+        uint32_t           total_weight_ = 0;
     };
 
 public:
+    template<typename> friend struct __internal::check_authority;
+
+public:
     authority_checker(const flat_set<public_key_type>& signing_keys, const token_database& token_db, uint32_t max_recursion_depth)
-        : _signing_keys(signing_keys)
-        , _token_db(token_db)
-        , _max_recursion_depth(max_recursion_depth)
-        , _used_keys(signing_keys.size(), false) {}
+        : signing_keys_(signing_keys)
+        , token_db_(token_db)
+        , max_recursion_depth_(max_recursion_depth)
+        , used_keys_(signing_keys.size(), false) {}
 
 private:
     void
     get_domain_permission(const domain_name& domain_name, const permission_name name, std::function<void(const permission_def&)>&& cb) {
         domain_def domain;
-        _token_db.read_domain(domain_name, domain);
+        token_db_.read_domain(domain_name, domain);
         if(name == N(issue)) {
             cb(domain.issue);
         }
@@ -86,7 +102,7 @@ private:
     void
     get_fungible_permission(const fungible_name& sym_name, const permission_name name, std::function<void(const permission_def&)>&& cb) {
         fungible_def fungible;
-        _token_db.read_fungible(sym_name, fungible);
+        token_db_.read_fungible(sym_name, fungible);
         if(name == N(issue)) {
             cb(fungible.issue);
         }
@@ -98,65 +114,30 @@ private:
     void
     get_group(const group_name& name, std::function<void(const group_def&)>&& cb) {
         group_def group;
-        _token_db.read_group(name, group);
+        token_db_.read_group(name, group);
         cb(group);
     }
 
     void
     get_owner(const domain_name& domain, const name128& name, std::function<void(const user_list&)>&& cb) {
         token_def token;
-        _token_db.read_token(domain, name, token);
+        token_db_.read_token(domain, name, token);
         cb(token.owner);
     }
 
     void
     get_suspend(const proposal_name& proposal, std::function<void(const suspend_def&)>&& cb) {
         suspend_def suspend;
-        _token_db.read_suspend(proposal, suspend);
+        token_db_.read_suspend(proposal, suspend);
         cb(suspend);
     }
 
 private:
     bool
-    satisfied_group(const action& action) {
-        switch(action.name.value) {
-        case N(newgroup): {
-            try {
-                auto ng     = action.data_as<const contracts::newgroup&>();
-                auto vistor = weight_tally_visitor(*this);
-                if(vistor(ng.group.key(), 1) == 1) {
-                    return true;
-                }
-                break;
-            }
-            EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `newgroup` type.");
-        }
-        case N(updategroup): {
-            bool result = false;
-            get_group(action.key, [&](const auto& group) {
-                auto& gkey   = group.key();
-                auto  vistor = weight_tally_visitor(*this);
-                if(vistor(gkey, 1) == 1) {
-                    result = true;
-                }
-            });
-            return result;
-        }
-        case N(addmeta): {
-            return satisfied_meta(action);
-        }
-        default: {
-            EVT_THROW(action_type_exception, "Unknown action name: ${type}", ("type",action.name));
-        }
-        }  // switch
-        return false;
-    }
-
-    bool
     satisfied_node(const group& group, const group::node& node, uint32_t depth) {
-        FC_ASSERT(depth < _max_recursion_depth);
+        FC_ASSERT(depth < max_recursion_depth_);
         FC_ASSERT(!node.is_leaf());
-        auto vistor = weight_tally_visitor(*this);
+        auto vistor = weight_tally_visitor(this);
         group.visit_node(node, [&](const auto& n) {
             FC_ASSERT(!n.is_root());
             if(n.is_leaf()) {
@@ -164,15 +145,15 @@ private:
             }
             else {
                 if(satisfied_node(group, n, depth + 1)) {
-                    vistor.total_weight += n.weight;
+                    vistor.add_weight(n.weight);
                 }
             }
-            if(vistor.total_weight >= node.threshold) {
+            if(vistor.total_weight() >= node.threshold) {
                 return false;  // no need to visit more nodes
             }
             return true;
         });
-        if(vistor.total_weight >= node.threshold) {
+        if(vistor.total_weight() >= node.threshold) {
             return true;
         }
         return false;
@@ -187,7 +168,7 @@ private:
 
             switch(ref.type()) {
             case authorizer_ref::account_t: {
-                auto  vistor = weight_tally_visitor(*this);
+                auto  vistor = weight_tally_visitor(this);
                 auto& key    = ref.get_account();
                 if(vistor(key, 1) == 1) {
                     ref_result = true;
@@ -196,11 +177,11 @@ private:
             }
             case authorizer_ref::owner_t: {
                 get_owner(action.domain, action.key, [&](const auto& owner) {
-                    auto vistor = weight_tally_visitor(*this);
+                    auto vistor = weight_tally_visitor(this);
                     for(const auto& o : owner) {
                         vistor(o, 1);
                     }
-                    if(vistor.total_weight == owner.size()) {
+                    if(vistor.total_weight() == owner.size()) {
                         ref_result = true;
                     }
                 });
@@ -245,69 +226,258 @@ private:
         return result;
     }
 
+public:
     bool
-    satisfied_fungible(const action& action) {
-        switch(action.name.value) {
-        case N(newfungible): {
-            try {
-                auto nf     = action.data_as<const contracts::newfungible&>();
-                auto vistor = weight_tally_visitor(*this);
-                if(vistor(nf.creator, 1) == 1) {
-                    return true;
-                }
-            }
-            EVT_RETHROW_EXCEPTIONS(action_type_exception, "transation data is not valid, data cannot cast to `newfungible` type");
-            break;
+    satisfied(const action& act) {
+        using namespace __internal;
+
+        // Save the current used keys; if we do not satisfy this authority, the newly used keys aren't actually used
+        auto KeyReverter = fc::make_scoped_exit([this, keys = used_keys_]() mutable {
+            used_keys_ = keys;
+        });
+
+        bool result = types_invoker<bool, check_authority>::invoke(act.name, act, this);
+
+        if(result) {
+            KeyReverter.cancel();
+            return true;
         }
-        case N(issuefungible): {
-            return satisfied_fungible_permission(action.key, action, N(issue));
-        }
-        case N(updfungible): {
-            return satisfied_fungible_permission(action.key, action, N(manage));
-        }
-        case N(transferft): {
-            try {
-                auto tf     = action.data_as<const contracts::transferft&>();
-                auto vistor = weight_tally_visitor(*this);
-                if(vistor(tf.from, 1) == 1) {
-                    return true;
-                }
-            }
-            EVT_RETHROW_EXCEPTIONS(action_type_exception, "transation data is not valid, data cannot cast to `transferft` type");
-            break;
-        }
-        case N(evt2pevt): {
-            try {
-                auto ep     = action.data_as<const contracts::evt2pevt&>();
-                auto vistor = weight_tally_visitor(*this);
-                if(vistor(ep.from, 1) == 1) {
-                    return true;
-                }
-            }
-            EVT_RETHROW_EXCEPTIONS(action_type_exception, "transation data is not valid, data cannot cast to `transferft` type");
-            break;
-        }
-        case N(addmeta): {
-            return satisfied_meta(action);
-        }
-        default: {
-            EVT_THROW(action_type_exception, "Unknown action name: ${type}", ("type",action.name));
-        }
-        }  // switch
         return false;
     }
 
     bool
-    satisfied_meta(const action& action) {
+    all_keys_used() const { return boost::algorithm::all_of_equal(used_keys_, true); }
+
+    flat_set<public_key_type>
+    used_keys() const {
+        auto range = utilities::filter_data_by_marker(signing_keys_, used_keys_, true);
+        return range;
+    }
+
+    flat_set<public_key_type>
+    unused_keys() const {
+        auto range = utilities::filter_data_by_marker(signing_keys_, used_keys_, false);
+        return range;
+    }
+};  /// authority_checker
+
+namespace __internal {
+
+using namespace contracts;
+
+template<>
+struct check_authority<newdomain> {
+    static bool
+    invoke(const action& act, authority_checker* checker) {
         try {
-            auto am = action.data_as<const contracts::addmeta&>();
+            auto nd     = act.data_as<const newdomain&>();
+            auto vistor = authority_checker::weight_tally_visitor(checker);
+            if(vistor(nd.creator, 1) == 1) {
+                return true;
+            }
+        }
+        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `newdomain` type.");
+        return false;
+    }
+};
+
+template<>
+struct check_authority<issuetoken> {
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        return checker->satisfied_domain_permission(act, N(issue));
+    }
+};
+
+template<>
+struct check_authority<transfer> {
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        return checker->satisfied_domain_permission(act, N(transfer));
+    }
+};
+
+template<>
+struct check_authority<destroytoken> {
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        return checker->satisfied_domain_permission(act, N(transfer));
+    }
+};
+
+template<>
+struct check_authority<newgroup> {
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        try {
+            auto ng     = act.data_as<const newgroup&>();
+            auto vistor = authority_checker::weight_tally_visitor(checker);
+            if(vistor(ng.group.key(), 1) == 1) {
+                return true;
+            }
+        }
+        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `newgroup` type.");
+        return false;
+    }
+};
+
+template<>
+struct check_authority<updategroup> {
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        bool result = false;
+        checker->get_group(act.key, [&](const auto& group) {
+            auto& gkey   = group.key();
+            auto  vistor = authority_checker::weight_tally_visitor(checker);
+            if(vistor(gkey, 1) == 1) {
+                result = true;
+            }
+        });
+        return result;
+    }
+};
+
+template<>
+struct check_authority<updatedomain> {
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        return checker->satisfied_domain_permission(act, N(manage));
+    }
+};
+
+template<>
+struct check_authority<newfungible> {
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        try {
+            auto nf     = act.data_as<const newfungible&>();
+            auto vistor = authority_checker::weight_tally_visitor(checker);
+            if(vistor(nf.creator, 1) == 1) {
+                return true;
+            }
+        }
+        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transation data is not valid, data cannot cast to `newfungible` type");
+        return true;
+    }
+};
+
+template<>
+struct check_authority<issuefungible> {
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        return checker->satisfied_fungible_permission(act.key, act, N(issue));
+    }
+};
+
+template<>
+struct check_authority<updfungible> {
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        return checker->satisfied_fungible_permission(act.key, act, N(manage));
+    }
+};
+
+template<>
+struct check_authority<transferft> {
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        try {
+            auto tf     = act.data_as<const transferft&>();
+            auto vistor = authority_checker::weight_tally_visitor(checker);
+            if(vistor(tf.from, 1) == 1) {
+                return true;
+            }
+        }
+        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transation data is not valid, data cannot cast to `transferft` type");
+        return false;
+    }
+};
+
+template<>
+struct check_authority<evt2pevt> {
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        try {
+            auto ep     = act.data_as<const evt2pevt&>();
+            auto vistor = authority_checker::weight_tally_visitor(checker);
+            if(vistor(ep.from, 1) == 1) {
+                return true;
+            }
+        }
+        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transation data is not valid, data cannot cast to `transferft` type");
+        return false;
+    }
+};
+
+template<>
+struct check_authority<newsuspend> {
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        try {
+            auto ns = act.data_as<const newsuspend&>();
+            auto vistor = authority_checker::weight_tally_visitor(checker);
+            if(vistor(ns.proposer, 1) == 1) {
+                return true;
+            }
+        }
+        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `newsuspend` type.");
+        return false;
+    }
+};
+
+template<>
+struct check_authority<aprvsuspend> {
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        // will check signatures when applying
+        return true;
+    }
+};
+
+template<>
+struct check_authority<cancelsuspend> {
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        bool result = false;
+        checker->get_suspend(act.key, [&](const auto& suspend) {
+            auto vistor = authority_checker::weight_tally_visitor(checker);
+            if(vistor(suspend.proposer, 1) == 1) {
+                result = true;
+            }
+        });
+        return result;
+    }
+};
+
+template<>
+struct check_authority<execsuspend> {
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        try {
+            auto es = act.data_as<const execsuspend&>();
+            auto vistor = authority_checker::weight_tally_visitor(checker);
+            if(vistor(es.executor, 1) == 1) {
+                return true;
+            }
+        }
+        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `execsuspend` type.");
+        return false;
+    }
+};
+
+template<>
+struct check_authority<addmeta> {
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        try {
+            auto am = act.data_as<const addmeta&>();
 
             auto& ref        = am.creator;
             bool  ref_result = false;
 
             switch(ref.type()) {
             case authorizer_ref::account_t: {
-                auto  vistor = weight_tally_visitor(*this);
+                auto  vistor = authority_checker::weight_tally_visitor(checker);
                 auto& key    = ref.get_account();
                 if(vistor(key, 1) == 1) {
                     ref_result = true;
@@ -319,8 +489,8 @@ private:
             }
             case authorizer_ref::group_t: {
                 auto& name = ref.get_group();
-                get_group(name, [&](const auto& group) {
-                    if(satisfied_node(group, group.root(), 0)) {
+                checker->get_group(name, [&](const auto& group) {
+                    if(checker->satisfied_node(group, group.root(), 0)) {
                         ref_result = true;
                     }
                 });
@@ -331,137 +501,8 @@ private:
         }
         EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `addmeta` type.");
     }
+};
 
-    bool
-    satisfied_suspend(const action& action) {
-        switch(action.name.value) {
-        case N(newsuspend): {
-            try {
-                auto ns = action.data_as<const contracts::newsuspend&>();
-                auto vistor = weight_tally_visitor(*this);
-                if(vistor(ns.proposer, 1) == 1) {
-                    return true;
-                }
-            }
-            EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `newsuspend` type.");
-            break;
-        }
-        case N(aprvsuspend): {
-            // will check signatures when applying
-            return true;
-        }
-        case N(cancelsuspend): {
-            bool result = false;
-            get_suspend(action.key, [&](const auto& suspend) {
-                auto vistor = weight_tally_visitor(*this);
-                if(vistor(suspend.proposer, 1) == 1) {
-                    result = true;
-                }
-            });
-            return result;
-            break;
-        }
-        case N(execsuspend): {
-            try {
-                auto es = action.data_as<const contracts::execsuspend&>();
-                auto vistor = weight_tally_visitor(*this);
-                if(vistor(es.executor, 1) == 1) {
-                    return true;
-                }
-            }
-            EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `execsuspend` type.");
-            break;
-        }
-        default: {
-            EVT_THROW(action_type_exception, "Unknown action name: ${type}", ("type",action.name));
-        }
-        }  // switch
-        return false;
-    }
-
-    bool
-    satisfied_tokens(const action& action) {
-        switch(action.name.value) {
-        case N(newdomain): {
-            try {
-                auto nd     = action.data_as<const contracts::newdomain&>();
-                auto vistor = weight_tally_visitor(*this);
-                if(vistor(nd.creator, 1) == 1) {
-                    return true;
-                }
-            }
-            EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `newdomain` type.");
-            break;
-        }
-        case N(addmeta): {
-            return satisfied_meta(action);
-        }
-        case N(updatedomain): {
-            return satisfied_domain_permission(action, N(manage));
-        }
-        case N(issuetoken): {
-            return satisfied_domain_permission(action, N(issue));
-        }
-        case N(transfer):
-        case N(destroytoken): {
-            return satisfied_domain_permission(action, N(transfer));
-        }
-        default: {
-            EVT_THROW(action_type_exception, "Unknown action name: ${type}", ("type",action.name));
-        }
-        }  // switch
-        return false;
-    }
-
-public:
-    bool
-    satisfied(const action& action) {
-        // Save the current used keys; if we do not satisfy this authority, the newly used keys aren't actually used
-        auto KeyReverter = fc::make_scoped_exit([this, keys = _used_keys]() mutable {
-            _used_keys = keys;
-        });
-
-        bool result = false;
-        switch(action.domain.value) {
-        case N128(group): {
-            result = satisfied_group(action);
-            break;
-        }
-        case N128(fungible): {
-            result = satisfied_fungible(action);
-            break;
-        }
-        case N128(suspend): {
-            result = satisfied_suspend(action);
-            break;
-        }
-        default: {
-            result = satisfied_tokens(action);
-            break;
-        }
-        }  // switch
-
-        if(result) {
-            KeyReverter.cancel();
-            return true;
-        }
-        return false;
-    }
-
-    bool
-    all_keys_used() const { return boost::algorithm::all_of_equal(_used_keys, true); }
-
-    flat_set<public_key_type>
-    used_keys() const {
-        auto range = utilities::filter_data_by_marker(_signing_keys, _used_keys, true);
-        return range;
-    }
-
-    flat_set<public_key_type>
-    unused_keys() const {
-        auto range = utilities::filter_data_by_marker(_signing_keys, _used_keys, false);
-        return range;
-    }
-};  /// authority_checker
+}  // namespace __internal
 
 }}  // namespace evt::chain
