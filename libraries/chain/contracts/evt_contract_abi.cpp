@@ -19,6 +19,7 @@ evt_contract_abi_version() {
 abi_def
 evt_contract_abi() {
     abi_def evt_abi;
+    evt_abi.types.push_back( type_def{"address_list","address[]"} );
     evt_abi.types.push_back( type_def{"user_id","public_key"} );
     evt_abi.types.push_back( type_def{"user_list","public_key[]"} );
     evt_abi.types.push_back( type_def{"group_key","public_key"} );
@@ -72,7 +73,7 @@ evt_contract_abi() {
         "token_def", "", {
             {"domain", "domain_name"},
             {"name", "token_name"},
-            {"owner", "user_list"},
+            {"owner", "address_list"},
             {"metas", "meta_list"}
         }
     });
@@ -150,7 +151,7 @@ evt_contract_abi() {
         "issuetoken", "", {
             {"domain", "domain_name"},
             {"names", "token_name[]"},
-            {"owner", "user_list"}
+            {"owner", "address_list"}
         }
     });
 
@@ -158,7 +159,7 @@ evt_contract_abi() {
         "transfer", "", {
             {"domain", "domain_name"},
             {"name", "token_name"},
-            {"to", "user_list"},
+            {"to", "address_list"},
             {"memo", "string"}
         }
     });
@@ -213,7 +214,7 @@ evt_contract_abi() {
 
     evt_abi.structs.emplace_back( struct_def {
         "issuefungible", "", {
-            {"address", "public_key"},
+            {"address", "address"},
             {"number", "asset"},
             {"memo", "string"}
         }
@@ -221,8 +222,8 @@ evt_contract_abi() {
 
     evt_abi.structs.emplace_back( struct_def {
         "transferft", "", {
-            {"from", "public_key"},
-            {"to", "public_key"},
+            {"from", "address"},
+            {"to", "address"},
             {"number", "asset"},
             {"memo", "string"}
         }
@@ -230,8 +231,8 @@ evt_contract_abi() {
 
     evt_abi.structs.emplace_back( struct_def {
         "evt2pevt", "", {
-            {"from", "public_key"},
-            {"to", "public_key"},
+            {"from", "address"},
+            {"to", "address"},
             {"number", "asset"},
             {"memo", "string"}
         }

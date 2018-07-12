@@ -4,6 +4,7 @@
  */
 #pragma once
 
+#include <evt/chain/address.hpp>
 #include <evt/chain/asset.hpp>
 #include <evt/chain/chain_config.hpp>
 #include <evt/chain/config.hpp>
@@ -24,12 +25,14 @@ using token_name      = evt::chain::token_name;
 using permission_name = evt::chain::permission_name;
 using account_name    = evt::chain::account_name;
 using fungible_name   = evt::chain::fungible_name;
-using user_id         = evt::chain::user_id;
+using user_id         = evt::chain::public_key_type;
 using user_list       = std::vector<user_id>;
 using group_name      = evt::chain::group_name;
-using group_key       = public_key_type;
+using group_key       = evt::chain::address;
 using group_def       = group;
 using balance_type    = evt::chain::asset;
+using address_type    = evt::chain::address;
+using address_list    = std::vector<address_type>;
 
 struct type_def {
     type_def() = default;
@@ -97,14 +100,14 @@ struct abi_def {
 
 struct token_def {
     token_def() = default;
-    token_def(domain_name domain, token_name name, user_list owner)
+    token_def(const domain_name& domain, const token_name& name, const address_list& owner)
         : domain(domain)
         , name(name)
         , owner(owner) {}
 
-    domain_name domain;
-    token_name  name;
-    user_list   owner;
+    domain_name  domain;
+    token_name   name;
+    address_list owner;
 
     meta_list metas;
 };
@@ -116,9 +119,8 @@ struct key_weight {
 
 struct authorizer_weight {
     authorizer_weight() = default;
-    authorizer_weight(authorizer_ref ref, weight_type weight)
-        : ref(ref)
-        , weight(weight) {}
+    authorizer_weight(const authorizer_ref& ref, weight_type weight)
+        : ref(ref), weight(weight) {}
 
     authorizer_ref ref;
     weight_type    weight;
@@ -126,10 +128,6 @@ struct authorizer_weight {
 
 struct permission_def {
     permission_def() = default;
-    permission_def(permission_name name, uint32_t threshold, const vector<authorizer_weight>& authorizers)
-        : name(name)
-        , threshold(threshold)
-        , authorizers(authorizers) {}
 
     permission_name           name;
     uint32_t                  threshold;
@@ -138,8 +136,6 @@ struct permission_def {
 
 struct domain_def {
     domain_def() = default;
-    domain_def(const domain_name& name)
-        : name(name) {}
 
     domain_name    name;
     user_id        creator;
@@ -199,7 +195,7 @@ struct newdomain {
 struct issuetoken {
     domain_name             domain;
     std::vector<token_name> names;
-    user_list               owner;
+    address_list            owner;
 
     static action_name
     get_name() {
@@ -208,10 +204,10 @@ struct issuetoken {
 };
 
 struct transfer {
-    domain_name domain;
-    token_name  name;
-    user_list   to;
-    string      memo;
+    domain_name  domain;
+    token_name   name;
+    address_list to;
+    string       memo;
 
     static action_name
     get_name() {
@@ -220,8 +216,8 @@ struct transfer {
 };
 
 struct destroytoken {
-    domain_name             domain;
-    token_name              name;
+    domain_name domain;
+    token_name  name;
 
     static action_name
     get_name() {
@@ -290,9 +286,9 @@ struct updfungible {
 };
 
 struct issuefungible {
-    public_key_type address;
-    asset           number;
-    string          memo;
+    address_type address;
+    asset        number;
+    string       memo;
 
     static action_name
     get_name() {
@@ -301,10 +297,10 @@ struct issuefungible {
 };
 
 struct transferft {
-    public_key_type from;
-    public_key_type to;
-    asset           number;
-    string          memo;
+    address_type from;
+    address_type to;
+    asset        number;
+    string       memo;
 
     static action_name
     get_name() {
@@ -313,10 +309,10 @@ struct transferft {
 };
 
 struct evt2pevt {
-    public_key_type from;
-    public_key_type to;
-    asset           number;
-    string          memo;
+    address_type from;
+    address_type to;
+    asset        number;
+    string       memo;
 
     static action_name
     get_name() {
@@ -336,9 +332,9 @@ struct addmeta {
 };
 
 struct newsuspend {
-    proposal_name               name;
-    user_id                     proposer;
-    transaction                 trx;
+    proposal_name name;
+    user_id       proposer;
+    transaction   trx;
 
     static action_name
     get_name() {

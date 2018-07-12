@@ -55,6 +55,15 @@ public:
         }
 
         uint32_t
+        operator()(const address& addr, const weight_type weight) {
+            if(!addr.is_public_key()) {
+                // will not add weight when it's not valid public key address
+                return total_weight_;
+            }
+            return this->operator()(addr.get_public_key(), weight);
+        }
+
+        uint32_t
         operator()(const public_key_type& key, const weight_type weight) {
             auto itr = boost::find(checker_->signing_keys_, key);
             if(itr != checker_->signing_keys_.end()) {
@@ -119,7 +128,7 @@ private:
     }
 
     void
-    get_owner(const domain_name& domain, const name128& name, std::function<void(const user_list&)>&& cb) {
+    get_owner(const domain_name& domain, const name128& name, std::function<void(const address_list&)>&& cb) {
         token_def token;
         token_db_.read_token(domain, name, token);
         cb(token.owner);

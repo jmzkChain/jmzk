@@ -93,17 +93,6 @@ check_name_reserved(const name128& name) {
     EVT_ASSERT(!name.empty() && (name.value & reserved_flag), name_reserved_exception, "Name starting with '.' is reserved for system usages.");
 }
 
-public_key_type
-get_reserved_public_key() {
-    static public_key_type pkey;
-    return pkey;
-}
-
-bool
-is_reserved_public_key(const public_key_type& pkey) {
-    return pkey == get_reserved_public_key();
-}
-
 } // namespace __internal
 
 void
@@ -178,7 +167,7 @@ check_token_destroy(const token_def& token) {
     if(token.owner.size() > 1) {
         return false;
     }
-    return token.owner[0] == get_reserved_public_key();
+    return token.owner[0].is_reserved();
 }
 
 }  // namespace __internal
@@ -219,7 +208,7 @@ apply_evt_destroytoken(apply_context& context) {
 
         EVT_ASSERT(!check_token_destroy(token), token_destoryed_exception, "Token is already destroyed.");
 
-        token.owner = user_list{ get_reserved_public_key() };
+        token.owner = address_list{ address() };
         tokendb.update_token(token);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
@@ -258,7 +247,7 @@ apply_evt_updategroup(apply_context& context) {
         group_def group;
         tokendb.read_group(ugact.name, group);
         
-        EVT_ASSERT(!is_reserved_public_key(group.key()), group_key_exception, "Reserved group key cannot be used to udpate group");
+        EVT_ASSERT(!group.key().is_reserved(), group_key_exception, "Reserved group key cannot be used to udpate group");
         EVT_ASSERT(validate(ugact.group), group_type_exception, "Updated group is not valid.");
 
         tokendb.update_group(std::move(ugact.group));
@@ -562,15 +551,17 @@ auto check_involved_fungible = [](const auto& tokendb, const auto& fungible, aut
 };
 
 auto check_involved_group = [](const auto& group, const auto& key) {
-    if(group.key() == key) {
+    if(group.key().get_public_key() == key) {
         return true;
     }
     return false;
 };
 
 auto check_involved_owner = [](const auto& token, const auto& key) {
-    if(std::find(token.owner.cbegin(), token.owner.cend(), key) != token.owner.cend()) {
-        return true;
+    for(auto& addr : token.owner) {
+        if(addr.is_public_key() && addr.get_public_key() == key) {
+            return true;
+        }
     }
     return false;
 };

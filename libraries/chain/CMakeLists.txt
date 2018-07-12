@@ -4,6 +4,7 @@ file(GLOB HEADERS "include/evt/chain/*.hpp" "include/evt/chain/contracts/*.hpp")
 
 ## SORT .cpp by most likely to change / break compile
 add_library( evt_chain
+             address.cpp
              asset.cpp
              merkle.cpp
              name.cpp
@@ -36,6 +37,7 @@ add_library( evt_chain
              )
 
 add_library( evt_chain_lite SHARED
+             address.cpp
              asset.cpp
              name.cpp
              transaction.cpp

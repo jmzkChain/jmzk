@@ -6,10 +6,6 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <evt/chain/exceptions.hpp>
 
-namespace evt { namespace chain { namespace contracts {
-
-}}}  // namespac evt::chain::contracts
-
 namespace fc {
 
 using namespace evt::chain;

@@ -77,6 +77,8 @@ struct optionaltest2 {
 };
 FC_REFLECT(optionaltest2, (a)(b));
 
+BOOST_AUTO_TEST_SUITE(abi_tests)
+
 BOOST_AUTO_TEST_CASE(optional_test) {
     try {
         auto abi = abi_def();
@@ -1101,3 +1103,5 @@ BOOST_AUTO_TEST_CASE(execsuspend_test) {
     }
     FC_LOG_AND_RETHROW()
 }
+
+BOOST_AUTO_TEST_SUITE_END()

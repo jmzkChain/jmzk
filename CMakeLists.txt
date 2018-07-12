@@ -9,6 +9,7 @@ option(ENABLE_BIND_LIBRARIES    "Build bind libraries" OFF)
 option(ENABLE_BENCHMARKS        "Build benchmarks" OFF)
 option(ENABLE_COVERAGE_TESTING  "Build EVT for code coverage analysis" OFF)
 option(ENABLE_TESTING           "Enable testing targets" ON)
+option(ENABLE_COLOR_OUTPUT      "Enable diagnostics color output from compiler" ON)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libraries/fc/CMakeModules")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
@@ -174,7 +175,7 @@ else( WIN32 ) # Apple AND Linux
         set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-builtin-memcmp" )
     endif()
 
-    if( "${CMAKE_GENERATOR}" STREQUAL "Ninja" )
+    if(ENABLE_COLOR_OUTPUT)
         if( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" )
             set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcolor-diagnostics" )
         elseif( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" )
