@@ -428,7 +428,7 @@ struct check_authority<newsuspend> {
 template<>
 struct check_authority<aprvsuspend> {
     static bool
-    invoke(const action& act, authority_checker* checker) {
+    invoke(const action&, authority_checker*) {
         // will check signatures when applying
         return true;
     }
