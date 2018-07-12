@@ -357,7 +357,7 @@ struct check_authority<newfungible> {
             }
         }
         EVT_RETHROW_EXCEPTIONS(action_type_exception, "transation data is not valid, data cannot cast to `newfungible` type");
-        return true;
+        return false;
     }
 };
 

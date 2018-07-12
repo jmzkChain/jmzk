@@ -34,6 +34,7 @@ invoke(name n, Args... args) {
     case_act(destroytoken)
     case_act(newgroup)
     case_act(updategroup)
+    case_act(updatedomain)
     case_act(newfungible)
     case_act(updfungible)
     case_act(issuefungible)
