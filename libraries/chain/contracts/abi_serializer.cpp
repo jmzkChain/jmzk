@@ -14,11 +14,11 @@ using namespace boost;
 
 namespace evt { namespace chain { namespace contracts {
 
-const size_t abi_serializer::max_recursion_depth;
-fc::microseconds abi_serializer::max_serialization_time = fc::microseconds(15*1000); // 15 ms
-
 using boost::algorithm::ends_with;
 using std::string;
+
+const size_t abi_serializer::max_recursion_depth;
+fc::microseconds abi_serializer::max_serialization_time;
 
 template <typename T>
 inline fc::variant
@@ -50,6 +50,7 @@ pack_unpack() {
 }
 
 abi_serializer::abi_serializer(const abi_def& abi) {
+    set_max_serialization_time(fc::milliseconds(15)); // 15ms
     configure_built_in_types();
     set_abi(abi);
 }
@@ -107,7 +108,7 @@ abi_serializer::set_abi(const abi_def& abi) {
         structs[st.name] = st;
 
     for(const auto& td : abi.types) {
-        FC_ASSERT(is_type(td.type), "invalid type", ("type", td.type));
+        FC_ASSERT(is_type(td.type), "invalid type", ("type",td.type));
         FC_ASSERT(!is_type(td.new_type_name), "type already exists", ("new_type_name",td.new_type_name));
         typedefs[td.new_type_name] = td.type;
     }
@@ -178,14 +179,15 @@ abi_serializer::fundamental_type(const type_name& type) const {
 }
 
 bool
-abi_serializer::_is_type(const type_name& rtype, size_t recursion_depth) const {
+abi_serializer::_is_type(const type_name& rtype, size_t recursion_depth, const fc::time_point& deadline) const {
+    FC_ASSERT(fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time));
     if(++recursion_depth > max_recursion_depth)
         return false;
     auto type = fundamental_type(rtype);
     if(built_in_types.find(type) != built_in_types.end())
         return true;
     if(typedefs.find(type) != typedefs.end())
-        return _is_type(typedefs.find(type)->second, recursion_depth);
+        return _is_type(typedefs.find(type)->second, recursion_depth, deadline);
     if(structs.find(type) != structs.end())
         return true;
     return false;
@@ -200,11 +202,13 @@ abi_serializer::get_struct(const type_name& type) const {
 
 void
 abi_serializer::validate() const {
+    const fc::time_point deadline = fc::time_point::now() + max_serialization_time;
     for(const auto& t : typedefs) {
         try {
             vector<type_name> types_seen{t.first, t.second};
             auto              itr = typedefs.find(t.second);
             while(itr != typedefs.end()) {
+                FC_ASSERT(fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time));
                 FC_ASSERT(find(types_seen.begin(), types_seen.end(), itr->second) == types_seen.end(), "Circular reference in type ${type}", ("type", t.first));
                 types_seen.emplace_back(itr->second);
                 itr = typedefs.find(itr->second);
@@ -224,6 +228,7 @@ abi_serializer::validate() const {
                 struct_def        current = s.second;
                 vector<type_name> types_seen{current.name};
                 while(current.base != type_name()) {
+                    FC_ASSERT(fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time));
                     const auto& base = get_struct(current.base);  //<-- force struct to inherit from another struct
                     FC_ASSERT(find(types_seen.begin(), types_seen.end(), base.name) == types_seen.end(), "Circular reference in struct ${type}", ("type", s.second.name));
                     types_seen.emplace_back(base.name);
@@ -231,6 +236,7 @@ abi_serializer::validate() const {
                 }
             }
             for(const auto& field : s.second.fields) {
+                FC_ASSERT(fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time));
                 try {
                     FC_ASSERT(is_type(field.type));
                 }
@@ -240,6 +246,7 @@ abi_serializer::validate() const {
         FC_CAPTURE_AND_RETHROW((s))
     }
     for(const auto& a : actions) {
+        FC_ASSERT(fc::time_point::now() < deadline, "serialization time limit ${t}us exceeded", ("t", max_serialization_time));
         try {
             FC_ASSERT(is_type(a.second), "", ("type", a.second));
         }

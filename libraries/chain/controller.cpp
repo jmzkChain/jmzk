@@ -9,6 +9,7 @@
 #include <evt/chain/block_log.hpp>
 #include <evt/chain/fork_database.hpp>
 #include <evt/chain/token_database.hpp>
+#include <evt/chain/charge_manager.hpp>
 
 #include <evt/chain/block_summary_object.hpp>
 #include <evt/chain/global_property_object.hpp>
@@ -57,6 +58,7 @@ struct controller_impl {
     block_state_ptr         head;
     fork_database           fork_db;
     token_database          token_db;
+    charge_manager          charge;
     controller::config      conf;
     chain_id_type           chain_id;
     bool                    replaying = false;
@@ -104,6 +106,7 @@ struct controller_impl {
         , blog(cfg.blocks_dir)
         , fork_db(cfg.state_dir)
         , token_db(cfg.tokendb_dir)
+        , charge(cfg.genesis.initial_configuration)
         , conf(cfg)
         , chain_id(cfg.genesis.compute_chain_id())
         , system_api(contracts::evt_contract_abi()) {
@@ -360,28 +363,42 @@ struct controller_impl {
         initialize_evt_org(token_db, conf.genesis);
     }
 
+    /**
+     * @post regardless of the success of commit block there is no active pending block
+     */
     void
     commit_block(bool add_to_fork_db) {
-        if(add_to_fork_db) {
-            pending->_pending_block_state->validated = true;
-            auto new_bsp                             = fork_db.add(pending->_pending_block_state);
-            emit(self.accepted_block_header, pending->_pending_block_state);
-            head = fork_db.head();
-            FC_ASSERT(new_bsp == head, "committed block did not become the new head in fork database");
+        auto reset_pending_on_exit = fc::make_scoped_exit([this] {
+            pending.reset();
+        });
+
+        try {
+            if(add_to_fork_db) {
+                pending->_pending_block_state->validated = true;
+                auto new_bsp = fork_db.add(pending->_pending_block_state);
+                emit(self.accepted_block_header, pending->_pending_block_state);
+                head = fork_db.head();
+                FC_ASSERT(new_bsp == head, "committed block did not become the new head in fork database");
+            }
+
+            if(!replaying) {
+                reversible_blocks.create<reversible_block_object>([&](auto& ubo) {
+                    ubo.blocknum = pending->_pending_block_state->block_num;
+                    ubo.set_block(pending->_pending_block_state->block);
+                });
+            }
+
+            emit(self.accepted_block, pending->_pending_block_state);
+        }
+        catch (...) {
+            // dont bother resetting pending, instead abort the block
+            reset_pending_on_exit.cancel();
+            abort_block();
+            throw;
         }
 
-        //    ilog((fc::json::to_pretty_string(*pending->_pending_block_state->block)));
-        emit(self.accepted_block, pending->_pending_block_state);
-
-        if(!replaying) {
-            reversible_blocks.create<reversible_block_object>([&](auto& ubo) {
-                ubo.blocknum = pending->_pending_block_state->block_num;
-                ubo.set_block(pending->_pending_block_state->block);
-            });
-        }
-
+        // push the state for pending.
         pending->push();
-        pending.reset();
     }
 
     // The returned scoped_exit should not exceed the lifetime of the pending which existed when make_block_restore_point was called.

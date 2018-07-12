@@ -200,7 +200,7 @@ print_result(const fc::variant& result) {
             cerr << "total elapsed: " << processed["elapsed"].as_string() << " us" << std::endl;
 
             if(status == "failed") {
-                auto soft_except = processed["except"].as<optional<fc::exception>>();
+                auto soft_except = processed["except"].as<fc::optional<fc::exception>>();
                 if(soft_except) {
                     edump((soft_except->to_detail_string()));
                 }
@@ -1200,6 +1200,8 @@ main(int argc, char** argv) {
     bindtextdomain(locale_domain, locale_path);
     textdomain(locale_domain);
     context = evt::client::http::create_http_context();
+
+    abi_serializer::set_max_serialization_time(fc::hours(1)); // No risk to client side serialization taking a long time
 
     CLI::App app{"Command Line Interface to everiToken Client"};
     app.require_subcommand();

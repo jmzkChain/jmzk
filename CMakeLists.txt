@@ -19,7 +19,7 @@ include( SetupTargetMacros )
 include( InstallDirectoryPermissions )
 
 set( BLOCKCHAIN_NAME "EVT" )
-set( CMAKE_CXX_STANDARD 14 )
+set( CMAKE_CXX_STANDARD 17 )
 set( CMAKE_CXX_EXTENSIONS ON )
 set( CXX_STANDARD_REQUIRED ON)
 

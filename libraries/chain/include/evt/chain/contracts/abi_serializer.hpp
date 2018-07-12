@@ -29,6 +29,7 @@ struct abi_to_variant;
 struct abi_serializer {
 private:
     static constexpr size_t max_recursion_depth = 32; // arbitrary depth to prevent infinite recursion
+    static fc::microseconds max_serialization_time;
    
 public:
     abi_serializer() { configure_built_in_types(); }
@@ -50,7 +51,7 @@ public:
     type_name resolve_type(const type_name& t) const;
     bool      is_array(const type_name& type) const;
     bool      is_optional(const type_name& type) const;
-    bool      is_type(const type_name& type) const { return _is_type(type, 0); }
+    bool      is_type(const type_name& type) const { return _is_type(type, 0, fc::time_point::now() + max_serialization_time); }
     bool      is_builtin_type(const type_name& type) const;
     bool      is_integer(const type_name& type) const;
     int       get_integer_size(const type_name& type) const;
@@ -115,8 +116,6 @@ private:
     map<type_name, pair<unpack_function, pack_function>> built_in_types;
     void configure_built_in_types();
 
-    static fc::microseconds max_serialization_time;
-
     fc::variant _binary_to_variant(const type_name& type, const bytes& binary,
                                   size_t recursion_depth, const fc::time_point& deadline) const;
     bytes       _variant_to_binary(const type_name& type, const fc::variant& var,
@@ -130,7 +129,7 @@ private:
    void _binary_to_variant(const type_name& type, fc::datastream<const char*>& stream, fc::mutable_variant_object& obj,
                            size_t recursion_depth, const fc::time_point& deadline) const;
 
-    bool _is_type(const type_name& type, size_t recursion_depth) const;
+    bool _is_type(const type_name& type, size_t recursion_depth, const fc::time_point& deadline) const;
 
     friend struct impl::abi_from_variant;
     friend struct impl::abi_to_variant;

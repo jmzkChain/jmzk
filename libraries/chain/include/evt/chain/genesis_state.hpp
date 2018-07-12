@@ -24,8 +24,13 @@ struct genesis_state {
         .max_transaction_net_usage      = config::default_max_transaction_net_usage,
         .base_per_transaction_net_usage = config::default_base_per_transaction_net_usage,
 
+        .base_network_charge_factor     = config::default_base_network_charge_factor,
+        .base_storage_charge_factor     = config::default_base_storage_charge_factor,
+        .base_cpu_charge_factor         = config::default_base_cpu_charge_factor,
+
         .max_transaction_lifetime       = config::default_max_trx_lifetime,
-        .max_authority_depth            = config::default_max_auth_depth};
+        .max_authority_depth            = config::default_max_auth_depth
+    };
 
     time_point      initial_timestamp;
     public_key_type initial_key;
