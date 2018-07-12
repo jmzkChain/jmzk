@@ -1201,6 +1201,8 @@ main(int argc, char** argv) {
     textdomain(locale_domain);
     context = evt::client::http::create_http_context();
 
+    abi_serializer::set_max_serialization_time(fc::hours(1)); // No risk to client side serialization taking a long time
+
     CLI::App app{"Command Line Interface to everiToken Client"};
     app.require_subcommand();
 

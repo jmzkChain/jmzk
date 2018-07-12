@@ -22,6 +22,7 @@
 
 #include <memory>
 #include <thread>
+#include <regex>
 
 namespace evt {
 
@@ -31,9 +32,10 @@ namespace asio = boost::asio;
 
 using boost::optional;
 using boost::asio::ip::tcp;
-using std::map;
-using std::shared_ptr;
+using std::vector;
+using std::set;
 using std::string;
+using std::regex;
 using websocketpp::connection_hdl;
 
 namespace detail {
@@ -96,6 +98,31 @@ public:
     string                  https_key;
 
     websocket_server_tls_type https_server;
+
+    bool                     validate_host;
+    set<string>              valid_hosts;
+
+    bool
+    host_port_is_valid(const std::string& host_port) {
+        return !validate_host || valid_hosts.find(host_port) != valid_hosts.end();
+    }
+
+    bool
+    host_is_valid(const std::string& host, bool secure) {
+        if(!validate_host) {
+            return true;
+        }
+
+        // normalise the incoming host so that it always has the explicit port
+        static auto has_port_expr = regex("[^:]:[0-9]+$"); /// ends in :<number> without a preceeding colon which implies ipv6
+        if(std::regex_search(host, has_port_expr)) {
+            return host_port_is_valid( host );
+        }
+        else {
+            // according to RFC 2732 ipv6 addresses should always be enclosed with brackets so we shouldn't need to special case here
+            return host_port_is_valid(host + ":" + std::to_string(secure ? websocketpp::uri_default_secure_port : websocketpp::uri_default_port));
+        }
+    }
 
     ssl_context_ptr
     on_tls_init(websocketpp::connection_hdl hdl) {
@@ -179,6 +206,13 @@ public:
     void
     handle_http_request(typename websocketpp::server<detail::asio_with_stub_log<T>>::connection_ptr con) {
         try {
+            auto& req = con->get_request();
+            const auto& host_str = req.get_header("Host");
+            if(host_str.empty() || !host_is_valid(host_str, con->get_uri()->get_secure())) {
+                con->set_status(websocketpp::http::status_code::bad_request);
+                return;
+            }
+
             if(!access_control_allow_origin.empty()) {
                 con->append_header("Access-Control-Allow-Origin", access_control_allow_origin);
             }
@@ -191,7 +225,7 @@ public:
             if(access_control_allow_credentials) {
                 con->append_header("Access-Control-Allow-Credentials", "true");
             }
-            auto& req = con->get_request();
+
             if(req.get_method() == "OPTIONS") {
                 con->set_status(websocketpp::http::status_code::ok);
                 return;
@@ -276,11 +310,19 @@ http_plugin::set_program_options(options_description&, options_description& cfg)
             })->default_value(false), "Specify if Access-Control-Allow-Credentials: true should be returned on each request.")
         ("max-body-size", bpo::value<uint32_t>()->default_value(1024*1024), "The maximum body size in bytes allowed for incoming RPC requests")
         ("verbose-http-errors", bpo::bool_switch()->default_value(false), "Append the error log to HTTP responses")
+        ("http-validate-host", boost::program_options::value<bool>()->default_value(true), "If set to false, then any incoming \"Host\" header is considered valid")
+        ("http-alias", bpo::value<std::vector<string>>()->composing(), "Additionaly acceptable values for the \"Host\" header of incoming HTTP requests, can be specified multiple times.  Includes http/s_server_address by default.")
         ;
 }
 
 void
 http_plugin::plugin_initialize(const variables_map& options) {
+    my->validate_host = options.at("http-validate-host").as<bool>();
+    if(options.count("http-alias")) {
+        const auto& aliases = options["http-alias"].as<vector<string>>();
+        my->valid_hosts.insert(aliases.begin(), aliases.end());
+    }
+
     tcp::resolver resolver(app().get_io_service());
     if(options.count("http-server-address") && options.at("http-server-address").as<string>().length()) {
         string               lipstr = options.at("http-server-address").as<string>();
@@ -294,6 +336,8 @@ http_plugin::plugin_initialize(const variables_map& options) {
         catch(const boost::system::system_error& ec) {
             elog("failed to configure http to listen on ${h}:${p} (${m})", ("h", host)("p", port)("m", ec.what()));
         }
+
+        my->valid_hosts.emplace(lipstr);
     }
 
     if(options.count("https-server-address") && options.at("https-server-address").as<string>().length()) {
@@ -319,6 +363,8 @@ http_plugin::plugin_initialize(const variables_map& options) {
         catch(const boost::system::system_error& ec) {
             elog("failed to configure https to listen on ${h}:${p} (${m})", ("h", host)("p", port)("m", ec.what()));
         }
+
+        my->valid_hosts.emplace(lipstr);
     }
 
     my->max_body_size = options.at("max-body-size").as<uint32_t>();
