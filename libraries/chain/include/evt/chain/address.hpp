@@ -18,16 +18,16 @@ template<typename Storage>
 struct eq_comparator {
     struct visitor : public fc::visitor<bool> {
         visitor(const Storage &b)
-            : _b(b) {}
+            : b_(b) {}
 
         template<typename ValueType>
         bool
-        operator()(const ValueType &a) const {
-            const auto &b = _b.template get<ValueType>();
-            return memcmp(&a, &b, sizeof(ValueType)) == 0;
+        operator()(const ValueType& a) const {
+            const auto& b = b_.template get<ValueType>();
+            return a == b;
         }
 
-        const Storage &_b;
+        const Storage& b_;
     };
 
     static bool
@@ -136,6 +136,22 @@ public:
     friend bool
     operator!=(const address& a, const address& b) {
         return !(a == b);
+    }
+
+    friend bool
+    operator==(const address& a, const public_key_type& b) {
+        return a.type() == public_key_t && a.get_public_key() == b;
+    }
+
+    friend bool
+    operator!=(const address& a, const public_key_type& b) {
+        return !(a == b);
+    }
+
+    friend std::ostream&
+    operator<< (std::ostream& s, const address& k) {
+        s << k.to_string();
+        return s;
     }
 
 private:

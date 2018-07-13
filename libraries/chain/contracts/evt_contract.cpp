@@ -141,10 +141,10 @@ apply_evt_issuetoken(apply_context& context) {
     auto itact = context.act.data_as<issuetoken>();
     try {
         EVT_ASSERT(context.has_authorized(itact.domain, N128(.issue)), action_authorize_exception, "Authorized information does not match.");
-        
+        EVT_ASSERT(!itact.owner.empty(), token_owner_exception, "Owner cannot be empty.");
+
         auto& tokendb = context.token_db;
         EVT_ASSERT(tokendb.exists_domain(itact.domain), domain_not_existed_exception, "Domain ${name} does not exist.", ("name", itact.domain));
-        EVT_ASSERT(!itact.owner.empty(), token_owner_exception, "Owner cannot be empty.");
 
         auto check_name = [&](const auto& name) {
             check_name_reserved(name);
@@ -164,7 +164,7 @@ namespace __internal {
 
 bool
 check_token_destroy(const token_def& token) {
-    if(token.owner.size() > 1) {
+    if(token.owner.size() != 1) {
         return false;
     }
     return token.owner[0].is_reserved();
@@ -179,6 +179,7 @@ apply_evt_transfer(apply_context& context) {
     auto ttact = context.act.data_as<transfer>();
     try {
         EVT_ASSERT(context.has_authorized(ttact.domain, ttact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(!ttact.to.empty(), token_owner_exception, "New owner cannot be empty.");
 
         auto& tokendb = context.token_db;
 
@@ -378,6 +379,7 @@ apply_evt_issuefungible(apply_context& context) {
     try {
         auto sym = ifact.number.get_symbol();
         EVT_ASSERT(context.has_authorized(N128(fungible), (fungible_name)sym.name()), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(!ifact.address.is_reserved(), fungible_address_exception, "Cannot issue fungible tokens to reserved address");
 
         auto& tokendb = context.token_db;
 
@@ -413,6 +415,7 @@ apply_evt_transferft(apply_context& context) {
     try {
         auto sym = tfact.number.get_symbol();
         EVT_ASSERT(context.has_authorized(N128(fungible), (fungible_name)sym.name()), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(!tfact.to.is_reserved(), fungible_address_exception, "Cannot transfer fungible tokens to reserved address");
 
         auto& tokendb = context.token_db;
         
@@ -447,6 +450,7 @@ apply_evt_evt2pevt(apply_context& context) {
         auto pevtsym = symbol(SY(5,PEVT));
         EVT_ASSERT(evtsym == symbol(SY(5,EVT)), fungible_symbol_exception, "Only EVT tokens can be converted to Pinned EVT tokens");
         EVT_ASSERT(context.has_authorized(N128(fungible), (fungible_name)evtsym.name()), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(!epact.to.is_reserved(), fungible_address_exception, "Cannot convert Pinned EVT tokens to reserved address");
 
         auto& tokendb = context.token_db;
         
@@ -551,7 +555,7 @@ auto check_involved_fungible = [](const auto& tokendb, const auto& fungible, aut
 };
 
 auto check_involved_group = [](const auto& group, const auto& key) {
-    if(group.key().get_public_key() == key) {
+    if(group.key().is_public_key() && group.key().get_public_key() == key) {
         return true;
     }
     return false;

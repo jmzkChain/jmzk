@@ -18,7 +18,7 @@ initialize_evt_org(token_database& token_db, const genesis_state& genesis) {
         const char* def = R"(
         {
             "name": ".everiToken",
-            "key": "EVT1111111111111111111111111111111114T1Anm",
+            "key": "EVT00000000000000000000000000000000000000000000000000",
             "root": {
                 "threshold": 19,
                 "nodes": [

@@ -70,8 +70,8 @@ FC_DECLARE_EXCEPTION(localized_exception, 10000000, "an error occured");
         } FC_MULTILINE_MACRO_END)
 
 string program    = "evtc";
-string url        = "http://localhost:8888";
-string wallet_url = "http://localhost:9999";
+string url        = "http://127.0.0.1:8888";
+string wallet_url = "http://127.0.0.1:9999";
 
 bool no_verify = false;
 vector<string> headers;
@@ -86,23 +86,6 @@ bool   print_response    = false;
 
 string propname;
 string proposer;
-
-bool
-detect_public_key(const std::string& pkey, bool &reserved) {
-    static public_key_type rkey;
-
-    if(pkey.size() != 42) {
-        return false;
-    }
-    try {
-        auto key = public_key_type(pkey);
-        reserved = (key == rkey);
-        return true;
-    }
-    catch(...) {
-        return false;
-    }
-}
 
 void
 print_info(const fc::variant& info, int indent = 0) {
@@ -151,15 +134,7 @@ print_info(const fc::variant& info, int indent = 0) {
             }
             cerr << "|";
             cerr << "->";
-            auto v = info.as_string();
-
-            bool reserved = false;
-            if(detect_public_key(v, reserved) && reserved) {
-                cerr << info.as_string() << " [destroyed]" << endl;
-            }
-            else {
-                cerr << info.as_string() << endl;
-            }
+            cerr << info.as_string() << endl;
         }
     }
     FC_CAPTURE_AND_RETHROW((info))
@@ -437,6 +412,8 @@ ensure_evtwd_running(CLI::App* app) {
     if(tx_skip_sign || app->got_subcommand("version") || app->got_subcommand("net"))
         return;
     if(app->get_subcommand("create")->got_subcommand("key")) // create key does not require wallet
+        return;
+    if(app->get_subcommand("wallet")->got_subcommand("stop")) // stop wallet not require wallet
         return;
 
     auto parsed_url = parse_url(wallet_url);

@@ -25,6 +25,8 @@ BOOST_AUTO_TEST_CASE(test_address) {
         fc::from_variant(var1, addr2);
         BOOST_TEST(addr2.is_reserved());
 
+        BOOST_TEST(addr == addr2);
+
         auto keystr = std::string("EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3");
         auto pkey = public_key_type(keystr);
 
@@ -40,7 +42,9 @@ BOOST_AUTO_TEST_CASE(test_address) {
         BOOST_TEST(addr3.is_public_key());
         BOOST_TEST(addr3.get_public_key() == pkey);
 
-        addr.set_generated("domain", "testdomain");
+        BOOST_TEST(addr == addr3);
+
+        addr.set_generated("xxxxxxxxxxxx", "xxxxxxxxxxxxxxxxxxxxx");
         BOOST_TEST(addr.is_generated());
         auto var3 = fc::variant();
         fc::to_variant(addr, var3);
@@ -48,8 +52,11 @@ BOOST_AUTO_TEST_CASE(test_address) {
         address addr4;
         fc::from_variant(var3, addr4);
         BOOST_TEST(addr4.is_generated());
-        BOOST_TEST(addr4.get_prefix() == "domain");
-        BOOST_TEST(addr4.get_key() == "testdomain");
+        BOOST_TEST(addr4.get_prefix() == "xxxxxxxxxxxx");
+        BOOST_TEST(addr4.get_key() == "xxxxxxxxxxxxxxxxxxxxx");
+
+        BOOST_TEST(addr == addr4);
+        BOOST_TEST_MESSAGE(addr4.to_string());
     }
     FC_LOG_AND_RETHROW()
 }

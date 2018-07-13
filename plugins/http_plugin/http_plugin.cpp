@@ -231,7 +231,7 @@ public:
                 return;
             }
 
-            con->append_header("Content-type", "application/json");
+            con->append_header("Content-Type", "application/json");
             auto body        = con->get_request_body();
             auto resource    = con->get_uri()->get_resource();
             auto handler_itr = url_handlers.find(resource);

@@ -127,19 +127,20 @@ FC_DECLARE_DERIVED_EXCEPTION( proposal_name_exception,             action_except
 FC_DECLARE_DERIVED_EXCEPTION( fungible_name_exception,             action_exception, 3040019, "Invalid fungible asset name" );
 FC_DECLARE_DERIVED_EXCEPTION( fungible_symbol_exception,           action_exception, 3040020, "Invalid fungible asset symbol" );
 FC_DECLARE_DERIVED_EXCEPTION( fungible_supply_exception,           action_exception, 3040021, "Invalid fungible supply" );
-FC_DECLARE_DERIVED_EXCEPTION( token_owner_exception,               action_exception, 3040022, "Token owner cannot be empty." );
-FC_DECLARE_DERIVED_EXCEPTION( token_destoryed_exception,           action_exception, 3040023, "Token is destroyed." );
-FC_DECLARE_DERIVED_EXCEPTION( math_overflow_exception,             action_exception, 3040024, "Operations resulted in overflow." );
-FC_DECLARE_DERIVED_EXCEPTION( balance_exception,                   action_exception, 3040025, "Not enough balance left." );
-FC_DECLARE_DERIVED_EXCEPTION( meta_involve_exception,              action_exception, 3040026, "Creator is not involved." );
-FC_DECLARE_DERIVED_EXCEPTION( suspend_status_exception,            action_exception, 3040027, "Suspend transaction is not in proper status." );
-FC_DECLARE_DERIVED_EXCEPTION( suspend_proposer_key_exception,      action_exception, 3040028, "Proposer needs to sign his key." );
-FC_DECLARE_DERIVED_EXCEPTION( suspend_duplicate_key_exception,     action_exception, 3040029, "Some keys are already signed this suspend transaction." );
-FC_DECLARE_DERIVED_EXCEPTION( suspend_expired_tx_exception,        action_exception, 3040030, "Suspend transaction is expired." );
-FC_DECLARE_DERIVED_EXCEPTION( suspend_not_required_keys_exception, action_exception, 3040031, "Provided keys are not required." );
-FC_DECLARE_DERIVED_EXCEPTION( suspend_executor_exception,          action_exception, 3040032, "Invalid executor." );
-FC_DECLARE_DERIVED_EXCEPTION( suspend_invalid_action_exception,    action_exception, 3040033, "Action is not valid for suspend transaction." );
-FC_DECLARE_DERIVED_EXCEPTION( name_reserved_exception,             action_exception, 3040034, "Name is reserved." );
+FC_DECLARE_DERIVED_EXCEPTION( fungible_address_exception,          action_exception, 3040022, "Invalid address" );
+FC_DECLARE_DERIVED_EXCEPTION( token_owner_exception,               action_exception, 3040023, "Token owner cannot be empty." );
+FC_DECLARE_DERIVED_EXCEPTION( token_destoryed_exception,           action_exception, 3040024, "Token is destroyed." );
+FC_DECLARE_DERIVED_EXCEPTION( math_overflow_exception,             action_exception, 3040025, "Operations resulted in overflow." );
+FC_DECLARE_DERIVED_EXCEPTION( balance_exception,                   action_exception, 3040026, "Not enough balance left." );
+FC_DECLARE_DERIVED_EXCEPTION( meta_involve_exception,              action_exception, 3040027, "Creator is not involved." );
+FC_DECLARE_DERIVED_EXCEPTION( suspend_status_exception,            action_exception, 3040028, "Suspend transaction is not in proper status." );
+FC_DECLARE_DERIVED_EXCEPTION( suspend_proposer_key_exception,      action_exception, 3040029, "Proposer needs to sign his key." );
+FC_DECLARE_DERIVED_EXCEPTION( suspend_duplicate_key_exception,     action_exception, 3040030, "Some keys are already signed this suspend transaction." );
+FC_DECLARE_DERIVED_EXCEPTION( suspend_expired_tx_exception,        action_exception, 3040031, "Suspend transaction is expired." );
+FC_DECLARE_DERIVED_EXCEPTION( suspend_not_required_keys_exception, action_exception, 3040032, "Provided keys are not required." );
+FC_DECLARE_DERIVED_EXCEPTION( suspend_executor_exception,          action_exception, 3040033, "Invalid executor." );
+FC_DECLARE_DERIVED_EXCEPTION( suspend_invalid_action_exception,    action_exception, 3040034, "Action is not valid for suspend transaction." );
+FC_DECLARE_DERIVED_EXCEPTION( name_reserved_exception,             action_exception, 3040035, "Name is reserved." );
 
 FC_DECLARE_DERIVED_EXCEPTION( pop_empty_chain,                   undo_database_exception, 3070001, "There are no blocks to be popped." );
 

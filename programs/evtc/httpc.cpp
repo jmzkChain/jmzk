@@ -81,13 +81,13 @@ do_txrx(T& socket, boost::asio::streambuf& request_buff, unsigned int& status_co
     // Process the response headers.
     std::string header;
     int         response_content_length = -1;
-    std::regex  clregex(R"xx(^content-length:\s+(\d+))xx", std::regex_constants::icase);
+    std::regex  clregex(R"xx(^Content-Length:\s+(\d+))xx", std::regex_constants::icase);
     while(std::getline(response_stream, header) && header != "\r") {
         std::smatch match;
         if(std::regex_search(header, match, clregex))
             response_content_length = std::stoi(match[1]);
     }
-    FC_ASSERT(response_content_length >= 0, "Invalid content-length response");
+    FC_ASSERT(response_content_length >= 0, "Invalid Content-Length response, header: ${h}", ("h",header));
 
     std::stringstream re;
     // Write whatever content we already have to output.
@@ -186,7 +186,7 @@ do_http_call(const connection_param& cp,
     auto host_header_value = format_host_header(url);
     request_stream << "POST " << url.path << " HTTP/1.0\r\n";
     request_stream << "Host: " << host_header_value << "\r\n";
-    request_stream << "content-length: " << postjson.size() << "\r\n";
+    request_stream << "Content-Length: " << postjson.size() << "\r\n";
     request_stream << "Accept: */*\r\n";
     request_stream << "Connection: close\r\n";
     request_stream << "\r\n";
