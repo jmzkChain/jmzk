@@ -104,7 +104,7 @@ read_only::get_fungible(const get_fungible_params& params) {
 }
 
 fc::variant
-read_only::get_assets(const get_assets_params& params) {
+read_only::get_fungible_balance(const get_fungible_balance_params& params) {
     const auto& db = db_.token_db();
 
     if(params.sym.valid()) {

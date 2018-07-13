@@ -61,11 +61,11 @@ public:
     };
     fc::variant get_fungible(const get_fungible_params& params);
 
-    struct get_assets_params {
+    struct get_fungible_balance_params {
         public_key_type      address;
         fc::optional<symbol> sym;
     };
-    fc::variant get_assets(const get_assets_params& params);
+    fc::variant get_fungible_balance(const get_fungible_balance_params& params);
 
     struct get_suspend_params {
         proposal_name name;
@@ -114,5 +114,5 @@ FC_REFLECT(evt::evt_apis::read_only::get_domain_params, (name));
 FC_REFLECT(evt::evt_apis::read_only::get_group_params, (name));
 FC_REFLECT(evt::evt_apis::read_only::get_token_params, (domain)(name));
 FC_REFLECT(evt::evt_apis::read_only::get_fungible_params, (name));
-FC_REFLECT(evt::evt_apis::read_only::get_assets_params, (address)(sym));
+FC_REFLECT(evt::evt_apis::read_only::get_fungible_balance_params, (address)(sym));
 FC_REFLECT(evt::evt_apis::read_only::get_suspend_params, (name));

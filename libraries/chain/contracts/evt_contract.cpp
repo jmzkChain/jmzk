@@ -143,6 +143,13 @@ apply_evt_issuetoken(apply_context& context) {
         EVT_ASSERT(context.has_authorized(itact.domain, N128(.issue)), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(!itact.owner.empty(), token_owner_exception, "Owner cannot be empty.");
 
+        auto check_owner = [](const auto& addr) {
+            EVT_ASSERT(addr.is_public_key(), token_owner_exception, "Owner should be public key address");
+        };
+        for(auto& addr : itact.owner) {
+            check_owner(addr);
+        }
+
         auto& tokendb = context.token_db;
         EVT_ASSERT(tokendb.exists_domain(itact.domain), domain_not_existed_exception, "Domain ${name} does not exist.", ("name", itact.domain));
 
@@ -150,7 +157,6 @@ apply_evt_issuetoken(apply_context& context) {
             check_name_reserved(name);
             EVT_ASSERT(!tokendb.exists_token(itact.domain, name), token_exists_exception, "Token ${domain}-${name} already exists.", ("domain",itact.domain)("name",name));
         };
-
         for(auto& n : itact.names) {
             check_name(n);
         }
@@ -180,6 +186,13 @@ apply_evt_transfer(apply_context& context) {
     try {
         EVT_ASSERT(context.has_authorized(ttact.domain, ttact.name), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(!ttact.to.empty(), token_owner_exception, "New owner cannot be empty.");
+
+        auto check_owner = [](const auto& addr) {
+            EVT_ASSERT(addr.is_public_key(), token_owner_exception, "Owner should be public key address");
+        };
+        for(auto& addr : ttact.to) {
+            check_owner(addr);
+        }
 
         auto& tokendb = context.token_db;
 
@@ -222,6 +235,7 @@ apply_evt_newgroup(apply_context& context) {
     auto ngact = context.act.data_as<newgroup>();
     try {
         EVT_ASSERT(context.has_authorized(N128(group), ngact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(!ngact.group.key().is_generated(), group_key_exception, "Group key cannot be generated key");
         
         check_name_reserved(ngact.name);
         

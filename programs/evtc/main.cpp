@@ -1013,23 +1013,23 @@ struct set_get_fungible_subcommand {
     }
 };
 
-struct set_get_assets_subcommand {
+struct set_get_balance_subcommand {
     string address;
     string sym;
 
-    set_get_assets_subcommand(CLI::App* actionRoot) {
-        auto gacmd = actionRoot->add_subcommand("assets", localized("Retrieve assets from an address"));
-        gacmd->add_option("address", address, localized("Address where assets stored"))->required();
-        gacmd->add_option("symbol", sym, localized("Specific symbol to be retrieved, leave empty to retrieve all assets"));
+    set_get_balance_subcommand(CLI::App* actionRoot) {
+        auto gbcmd = actionRoot->add_subcommand("balance", localized("Retrieve fungible balance from an address"));
+        gbcmd->add_option("address", address, localized("Address where assets stored"))->required();
+        gbcmd->add_option("symbol", sym, localized("Specific symbol to be retrieved, leave empty to retrieve all assets"));
 
-        gacmd->set_callback([this] {
+        gbcmd->set_callback([this] {
             FC_ASSERT(!address.empty(), "Address cannot be empty");
 
             auto arg = fc::mutable_variant_object("address", get_public_key(address));
             if(!sym.empty()) {
                 arg["sym"] = symbol::from_string(sym);
             }
-            print_info(call(get_assets_func, arg));
+            print_info(call(get_fungible_balance_func, arg));
         });
     }
 };
@@ -1236,7 +1236,7 @@ main(int argc, char** argv) {
     set_get_token_subcommand    get_token(get);
     set_get_group_subcommand    get_group(get);
     set_get_fungible_subcommand get_fungible(get);
-    set_get_assets_subcommand   get_assets(get);
+    set_get_balance_subcommand  get_balance(get);
     set_get_my_subcommands      get_my(get);
     set_get_history_subcommands get_history(get); 
     set_get_suspend_subcommand  get_suspend(get);

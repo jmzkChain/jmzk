@@ -163,7 +163,7 @@ BOOST_AUTO_TEST_CASE(newdomain_test) {
             "name": "transfer",
             "threshold": 1,
             "authorizers": [{
-                "ref": "[G] OWNER",
+                "ref": "[G] .OWNER",
                 "weight": 1
               }
             ]

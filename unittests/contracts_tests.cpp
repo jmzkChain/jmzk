@@ -110,7 +110,7 @@ BOOST_AUTO_TEST_CASE(contract_newdomain_test) {
                 "name": "transfer",
                 "threshold": 1,
                 "authorizers": [{
-                    "ref": "[G] OWNER",
+                    "ref": "[G] .OWNER",
                     "weight": 1
                   }
                 ]
@@ -562,7 +562,7 @@ BOOST_AUTO_TEST_CASE(contract_updatedomain_test) {
                 "name": "transfer",
                 "threshold": 1,
                 "authorizers": [{
-                    "ref": "[G] OWNER",
+                    "ref": "[G] .OWNER",
                     "weight": 1
                   }
                 ]
@@ -723,7 +723,7 @@ BOOST_AUTO_TEST_CASE(contract_failsuspend_test) {
                 "name": "transfer",
                 "threshold": 1,
                 "authorizers": [{
-                    "ref": "[G] OWNER",
+                    "ref": "[G] .OWNER",
                     "weight": 1
                   }
                 ]
@@ -854,7 +854,7 @@ BOOST_AUTO_TEST_CASE(contract_successsuspend_test) {
                 "name": "transfer",
                 "threshold": 1,
                 "authorizers": [{
-                    "ref": "[G] OWNER",
+                    "ref": "[G] .OWNER",
                     "weight": 1
                   }
                 ]
