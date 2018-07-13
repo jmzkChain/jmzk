@@ -108,7 +108,8 @@ evt_contract_abi() {
             {"issue", "permission_def"},
             {"transfer", "permission_def"},
             {"manage", "permission_def"},
-            {"metas", "meta_list"}
+            {"metas", "meta_list"},
+            {"pay_address", "address"}
         }
     });
 

@@ -128,6 +128,7 @@ apply_evt_newdomain(apply_context& context) {
         domain.issue       = std::move(ndact.issue);
         domain.transfer    = std::move(ndact.transfer);
         domain.manage      = std::move(ndact.manage);
+        domain.pay_address = address(N(domain), ndact.name, 0);
         
         tokendb.add_domain(domain);       
     }
