@@ -5,6 +5,7 @@
 #pragma once
 
 #include <evt/chain/action.hpp>
+#include <evt/chain/address.hpp>
 #include <numeric>
 
 namespace evt { namespace chain {
@@ -31,6 +32,7 @@ struct transaction_header {
     time_point_sec   expiration;              ///< the time at which a transaction expires
     uint16_t         ref_block_num    = 0U;   ///< specifies a block num in the last 2^16 blocks.
     uint32_t         ref_block_prefix = 0UL;  ///< specifies the lower 32 bits of the blockid at get_ref_blocknum
+    uint32_t         max_charge       = 0;    ///< upper limit on the total charge billed for this transaction
 
     /**
      * @return the absolute block number given the relative ref_block_num
@@ -51,6 +53,7 @@ struct transaction_header {
  */
 struct transaction : public transaction_header {
     vector<action>  actions;
+    address         payer;
     extensions_type transaction_extensions;
 
     transaction_id_type id() const;
@@ -131,8 +134,8 @@ uint128_t transaction_id_to_sender_id(const transaction_id_type& tid);
 
 }}  // namespace evt::chain
 
-FC_REFLECT(evt::chain::transaction_header, (expiration)(ref_block_num)(ref_block_prefix))
-FC_REFLECT_DERIVED(evt::chain::transaction, (evt::chain::transaction_header), (actions)(transaction_extensions))
+FC_REFLECT(evt::chain::transaction_header, (expiration)(ref_block_num)(ref_block_prefix)(max_charge))
+FC_REFLECT_DERIVED(evt::chain::transaction, (evt::chain::transaction_header), (actions)(payer)(transaction_extensions))
 FC_REFLECT_DERIVED(evt::chain::signed_transaction, (evt::chain::transaction), (signatures))
 FC_REFLECT_ENUM(evt::chain::packed_transaction::compression_type, (none)(zlib))
 FC_REFLECT(evt::chain::packed_transaction, (signatures)(compression)(packed_trx))
