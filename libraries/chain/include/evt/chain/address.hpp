@@ -4,7 +4,7 @@
  */
 #pragma once
 
-#include <utility>
+#include <tuple>
 #include <fc/reflect/reflect.hpp>
 #include <fc/variant.hpp>
 #include <fc/array.hpp>
@@ -43,10 +43,10 @@ public:
     enum addr_type { reserved_t = 0, public_key_t, generated_t };
 
 private:
-    enum { prefix_idx = 0, key_idx = 1 };
+    enum { prefix_idx = 0, nonce_idx, key_idx };
 
     using reserved_type = uint8_t;
-    using generated_type = std::pair<name, name128>;
+    using generated_type = std::tuple<name, uint32_t, name128>;
     using storage_type = static_variant<reserved_type, public_key_type, generated_type>;
 
 public:
@@ -56,8 +56,8 @@ public:
     address(const public_key_type& pkey)
         : storage_(pkey) {}
 
-    address(name prefix, const name128& key)
-        : storage_(std::make_pair(prefix, key)) {}
+    address(name prefix, const name128& key, uint32_t nonce)
+        : storage_(std::make_tuple(prefix, nonce, key)) {}
 
     address(const address&) = default;
     address(address&&) = default;
@@ -84,8 +84,8 @@ public:
     }
 
     void
-    set_generated(name prefix, const name128& key) {
-        storage_ = std::make_pair(prefix, key);
+    set_generated(name prefix, const name128& key, uint32_t nonce) {
+        storage_ = std::make_tuple(prefix, nonce, key);
     }
     
 public:
@@ -102,6 +102,11 @@ public:
     const name128&
     get_key() const {
         return std::get<key_idx>(storage_.get<generated_type>());
+    }
+
+    uint32_t
+    get_nonce() const {
+        return std::get<nonce_idx>(storage_.get<generated_type>());
     }
 
 public:

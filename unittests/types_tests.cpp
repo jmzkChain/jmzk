@@ -44,7 +44,7 @@ BOOST_AUTO_TEST_CASE(test_address) {
 
         BOOST_TEST(addr == addr3);
 
-        addr.set_generated("xxxxxxxxxxxx", "xxxxxxxxxxxxxxxxxxxxx");
+        addr.set_generated("xxxxxxxxxxxx", "xxxxxxxxxxxxxxxxxxxxx", 1234);
         BOOST_TEST(addr.is_generated());
         auto var3 = fc::variant();
         fc::to_variant(addr, var3);
@@ -54,6 +54,7 @@ BOOST_AUTO_TEST_CASE(test_address) {
         BOOST_TEST(addr4.is_generated());
         BOOST_TEST(addr4.get_prefix() == "xxxxxxxxxxxx");
         BOOST_TEST(addr4.get_key() == "xxxxxxxxxxxxxxxxxxxxx");
+        BOOST_TEST(addr4.get_nonce() == 1234);
 
         BOOST_TEST(addr == addr4);
         BOOST_TEST_MESSAGE(addr4.to_string());

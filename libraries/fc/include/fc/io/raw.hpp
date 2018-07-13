@@ -14,6 +14,7 @@
 #include <fc/io/raw_fwd.hpp>
 #include <map>
 #include <deque>
+#include <tuple>
 
 #include <boost/multiprecision/cpp_int.hpp>
 #include <boost/interprocess/containers/string.hpp>
@@ -477,6 +478,24 @@ namespace fc {
     {
        fc::raw::unpack( s, value.first );
        fc::raw::unpack( s, value.second );
+    }
+
+    template<typename Stream, int N = 0, typename... Types>
+    inline void pack( Stream& s, const std::tuple<Types...>& value ) {
+        fc::raw::pack( s, std::get<N>(value) );
+        if constexpr (N + 1 < std::tuple_size<std::remove_reference_t<decltype(value)>>::value) {
+           fc::raw::pack<Stream, N + 1, Types...>( s, value );
+        }
+    }
+
+
+    template<typename Stream, int N = 0, typename... Types>
+    inline void unpack( Stream& s, std::tuple<Types...>& value )
+    {
+       fc::raw::unpack( s, std::get<N>(value) );
+       if constexpr (N + 1 < std::tuple_size<std::remove_reference_t<decltype(value)>>::value) {
+          fc::raw::unpack<Stream, N + 1, Types...>( s, value );
+       }
     }
 
    template<typename Stream, typename K, typename V>

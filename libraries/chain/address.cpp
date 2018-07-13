@@ -15,9 +15,10 @@ namespace __internal {
 
 struct gen_wrapper {
 public:
-    uint32_t checksum;
-    name     prefix;
-    name128  key;
+    uint32_t  checksum;
+    uint32_t  nonce;
+    uint64_t  prefix;
+    uint128_t key;
 
 public:
     uint32_t
@@ -25,11 +26,12 @@ public:
          auto encoder = fc::ripemd160::encoder();
          encoder.write((const char*)&prefix, sizeof(prefix));
          encoder.write((const char*)&key, sizeof(key));
+         encoder.write((const char*)&nonce, sizeof(nonce));
 
          checksum = encoder.result()._hash[0];
          return checksum;
     }
-};
+} __attribute__((packed));
 
 }  // namespace __internal
 
@@ -51,8 +53,9 @@ address::to_string() const {
         str.append("EVT0");
 
         auto gen = gen_wrapper();
-        gen.prefix = this->get_prefix();
-        gen.key = this->get_key();
+        gen.prefix = this->get_prefix().value;
+        gen.key = this->get_key().value;
+        gen.nonce = this->get_nonce();
         gen.checksum = gen.calculate_checksum();
 
         auto hash = fc::to_base58((char*)&gen, sizeof(gen));
@@ -92,7 +95,7 @@ address::from_string(const std::string& str) {
 
     EVT_ASSERT(gen.checksum == gen.calculate_checksum(), address_type_exception, "Checksum doesn't match");
 
-    addr.set_generated(gen.prefix, gen.key);
+    addr.set_generated(gen.prefix, gen.key, gen.nonce);
     return addr;
 }
 
