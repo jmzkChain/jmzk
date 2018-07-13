@@ -48,7 +48,6 @@ public:
     bool is_input = false;
 
     fc::time_point   deadline = fc::time_point::maximum();
-    fc::microseconds leeway   = fc::microseconds(3000);
 
 private:
     bool is_initialized = false;
