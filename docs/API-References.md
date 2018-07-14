@@ -130,7 +130,7 @@ For the fields of an action, here is a quick reference guide.
 | `evt2pevt` | `fungible` | `EVT` |
 | `addmeta` | `domain`, `group`, `fungible` or token's domain | domain name, group name, fungible name or token name |
 | `newsuspend` | `suspend` | proposal name of suspend transaction |
-| `aprvdsuspend` | `suspend` | proposal name of suspend transaction |
+| `aprvsuspend` | `suspend` | proposal name of suspend transaction |
 | `cancelsuspend` | `suspend` | proposal name of suspend transaction |
 | `execsuspend` | `suspend` | proposal name of suspend transaction |
 
@@ -439,6 +439,36 @@ Response:
   "current_supply": "0.00000 EVT",
   "metas": []
 }
+```
+
+## POST /v1/evt/get_assets
+This API is used to get assets for an address
+
+Request:
+```
+{
+    "address": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"
+}
+```
+Response:
+```
+[
+  "2.00000 EVT", "1.00000 PEVT"
+]
+```
+
+You can also only query assets for specific symbol
+
+Request:
+```
+{
+    "address": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+    "sym": "5,EVT"
+}
+```
+Response:
+```
+"2.00000 EVT"
 ```
 
 ## POST /v1/evt/get_suspend

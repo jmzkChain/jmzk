@@ -93,17 +93,6 @@ check_name_reserved(const name128& name) {
     EVT_ASSERT(!name.empty() && (name.value & reserved_flag), name_reserved_exception, "Name starting with '.' is reserved for system usages.");
 }
 
-public_key_type
-get_reserved_public_key() {
-    static public_key_type pkey;
-    return pkey;
-}
-
-bool
-is_reserved_public_key(const public_key_type& pkey) {
-    return pkey == get_reserved_public_key();
-}
-
 } // namespace __internal
 
 void
@@ -139,6 +128,7 @@ apply_evt_newdomain(apply_context& context) {
         domain.issue       = std::move(ndact.issue);
         domain.transfer    = std::move(ndact.transfer);
         domain.manage      = std::move(ndact.manage);
+        domain.pay_address = address(N(domain), ndact.name, 0);
         
         tokendb.add_domain(domain);       
     }
@@ -152,16 +142,22 @@ apply_evt_issuetoken(apply_context& context) {
     auto itact = context.act.data_as<issuetoken>();
     try {
         EVT_ASSERT(context.has_authorized(itact.domain, N128(.issue)), action_authorize_exception, "Authorized information does not match.");
-        
+        EVT_ASSERT(!itact.owner.empty(), token_owner_exception, "Owner cannot be empty.");
+
+        auto check_owner = [](const auto& addr) {
+            EVT_ASSERT(addr.is_public_key(), token_owner_exception, "Owner should be public key address");
+        };
+        for(auto& addr : itact.owner) {
+            check_owner(addr);
+        }
+
         auto& tokendb = context.token_db;
         EVT_ASSERT(tokendb.exists_domain(itact.domain), domain_not_existed_exception, "Domain ${name} does not exist.", ("name", itact.domain));
-        EVT_ASSERT(!itact.owner.empty(), token_owner_exception, "Owner cannot be empty.");
 
         auto check_name = [&](const auto& name) {
             check_name_reserved(name);
             EVT_ASSERT(!tokendb.exists_token(itact.domain, name), token_exists_exception, "Token ${domain}-${name} already exists.", ("domain",itact.domain)("name",name));
         };
-
         for(auto& n : itact.names) {
             check_name(n);
         }
@@ -175,10 +171,10 @@ namespace __internal {
 
 bool
 check_token_destroy(const token_def& token) {
-    if(token.owner.size() > 1) {
+    if(token.owner.size() != 1) {
         return false;
     }
-    return token.owner[0] == get_reserved_public_key();
+    return token.owner[0].is_reserved();
 }
 
 }  // namespace __internal
@@ -190,6 +186,14 @@ apply_evt_transfer(apply_context& context) {
     auto ttact = context.act.data_as<transfer>();
     try {
         EVT_ASSERT(context.has_authorized(ttact.domain, ttact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(!ttact.to.empty(), token_owner_exception, "New owner cannot be empty.");
+
+        auto check_owner = [](const auto& addr) {
+            EVT_ASSERT(addr.is_public_key(), token_owner_exception, "Owner should be public key address");
+        };
+        for(auto& addr : ttact.to) {
+            check_owner(addr);
+        }
 
         auto& tokendb = context.token_db;
 
@@ -219,7 +223,7 @@ apply_evt_destroytoken(apply_context& context) {
 
         EVT_ASSERT(!check_token_destroy(token), token_destoryed_exception, "Token is already destroyed.");
 
-        token.owner = user_list{ get_reserved_public_key() };
+        token.owner = address_list{ address() };
         tokendb.update_token(token);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
@@ -232,6 +236,7 @@ apply_evt_newgroup(apply_context& context) {
     auto ngact = context.act.data_as<newgroup>();
     try {
         EVT_ASSERT(context.has_authorized(N128(group), ngact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(!ngact.group.key().is_generated(), group_key_exception, "Group key cannot be generated key");
         
         check_name_reserved(ngact.name);
         
@@ -258,7 +263,7 @@ apply_evt_updategroup(apply_context& context) {
         group_def group;
         tokendb.read_group(ugact.name, group);
         
-        EVT_ASSERT(!is_reserved_public_key(group.key()), group_key_exception, "Reserved group key cannot be used to udpate group");
+        EVT_ASSERT(!group.key().is_reserved(), group_key_exception, "Reserved group key cannot be used to udpate group");
         EVT_ASSERT(validate(ugact.group), group_type_exception, "Updated group is not valid.");
 
         tokendb.update_group(std::move(ugact.group));
@@ -389,6 +394,7 @@ apply_evt_issuefungible(apply_context& context) {
     try {
         auto sym = ifact.number.get_symbol();
         EVT_ASSERT(context.has_authorized(N128(fungible), (fungible_name)sym.name()), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(!ifact.address.is_reserved(), fungible_address_exception, "Cannot issue fungible tokens to reserved address");
 
         auto& tokendb = context.token_db;
 
@@ -424,6 +430,7 @@ apply_evt_transferft(apply_context& context) {
     try {
         auto sym = tfact.number.get_symbol();
         EVT_ASSERT(context.has_authorized(N128(fungible), (fungible_name)sym.name()), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(!tfact.to.is_reserved(), fungible_address_exception, "Cannot transfer fungible tokens to reserved address");
 
         auto& tokendb = context.token_db;
         
@@ -458,6 +465,7 @@ apply_evt_evt2pevt(apply_context& context) {
         auto pevtsym = symbol(SY(5,PEVT));
         EVT_ASSERT(evtsym == symbol(SY(5,EVT)), fungible_symbol_exception, "Only EVT tokens can be converted to Pinned EVT tokens");
         EVT_ASSERT(context.has_authorized(N128(fungible), (fungible_name)evtsym.name()), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(!epact.to.is_reserved(), fungible_address_exception, "Cannot convert Pinned EVT tokens to reserved address");
 
         auto& tokendb = context.token_db;
         
@@ -562,15 +570,17 @@ auto check_involved_fungible = [](const auto& tokendb, const auto& fungible, aut
 };
 
 auto check_involved_group = [](const auto& group, const auto& key) {
-    if(group.key() == key) {
+    if(group.key().is_public_key() && group.key().get_public_key() == key) {
         return true;
     }
     return false;
 };
 
 auto check_involved_owner = [](const auto& token, const auto& key) {
-    if(std::find(token.owner.cbegin(), token.owner.cend(), key) != token.owner.cend()) {
-        return true;
+    for(auto& addr : token.owner) {
+        if(addr.is_public_key() && addr.get_public_key() == key) {
+            return true;
+        }
     }
     return false;
 };
@@ -701,10 +711,10 @@ apply_evt_newsuspend(apply_context& context) {
 }
 
 void
-apply_evt_aprvdsuspend(apply_context& context) {
+apply_evt_aprvsuspend(apply_context& context) {
     using namespace __internal;
 
-    auto aeact = context.act.data_as<aprvdsuspend>();
+    auto aeact = context.act.data_as<aprvsuspend>();
     try {
         EVT_ASSERT(context.has_authorized(N128(suspend), aeact.name), action_authorize_exception, "Authorized information does not match.");
 

@@ -121,13 +121,13 @@ const std::string wallet_remove_key    = wallet_func_base + "/remove_key";
 const std::string wallet_create_key    = wallet_func_base + "/create_key";
 const std::string wallet_sign_trx      = wallet_func_base + "/sign_transaction";
 
-const std::string evt_func_base     = "/v1/evt";
-const std::string get_domain_func   = evt_func_base + "/get_domain";
-const std::string get_token_func    = evt_func_base + "/get_token";
-const std::string get_group_func    = evt_func_base + "/get_group";
-const std::string get_fungible_func = evt_func_base + "/get_fungible";
-const std::string get_assets_func   = evt_func_base + "/get_assets";
-const std::string get_suspend_func  = evt_func_base + "/get_suspend";
+const std::string evt_func_base             = "/v1/evt";
+const std::string get_domain_func           = evt_func_base + "/get_domain";
+const std::string get_token_func            = evt_func_base + "/get_token";
+const std::string get_group_func            = evt_func_base + "/get_group";
+const std::string get_fungible_func         = evt_func_base + "/get_fungible";
+const std::string get_fungible_balance_func = evt_func_base + "/get_fungible_balance";
+const std::string get_suspend_func          = evt_func_base + "/get_suspend";
 
 const std::string history_func_base = "/v1/history";
 const std::string get_my_domains    = history_func_base + "/get_domains";

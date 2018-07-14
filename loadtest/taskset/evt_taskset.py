@@ -1,51 +1,43 @@
 import os
-import random
-import shutil
-import string
-import tqdm
 
 from locust import TaskSet, task
 from locust.contrib.fasthttp import FastHttpLocust
-from trafficgen.generator import TrafficGenerator
 from trafficgen.utils import Reader
 
 
-regions = set()
+regions = []
+rindex = 0
 
 
-def generate_traffic(hosturl):
-    while True:
-        nonce = ''.join(random.choice(
-            string.ascii_letters[26:]) for _ in range(2))
-        if nonce in regions:
-            continue
-        regions.add(nonce)
-        break
+def get_traffic(folder):
+    assert os.path.exists(folder)
+    if len(regions) == 0:
+        files = os.listdir(folder)
+        if len(files) == 0:
+            raise Exception("There's not any traffic files")
 
-    path = '/tmp/evt_loadtest'
-    if not os.path.exists(path):
-        os.mkdir(path)
+        for file in files:
+            if file.endswith('_traffic_data.lz4'):
+                region = os.path.basename(file)[:2]
+                regions.append((region, os.path.join(folder, file)))
 
-    traffic = '{}/{}.lz4'.format(path, nonce)
-    gen = TrafficGenerator(nonce, hosturl, 'actions.config', traffic)
-    gen.initialize()
+    global rindex
+    assert rindex < len(regions)
+    region, file = regions[rindex]
 
-    print('{} Generating traffic'.format(nonce))
-    with tqdm.tqdm(total=gen.total) as pbar:
-        gen.generate(True, lambda x: pbar.update(x))
-
-    return Reader(traffic), nonce
+    return region, Reader(file)
 
 
 class EVTTaskSet(TaskSet):
     def __init__(self, parent):
         super().__init__(parent)
         self.reader = None
-        self.nonce = None
+        self.region = None
         self.stop = False
 
     def on_start(self):
-        self.reader, self.nonce = generate_traffic(self.locust.host)
+        folder = self.locust.user_config.folder
+        self.region, self.reader = get_traffic(folder)
 
     @task(1)
     def push_trx(self):
@@ -55,7 +47,7 @@ class EVTTaskSet(TaskSet):
         try:
             trx = self.reader.read_trx()
         except:
-            print('{} Traffic has been sent completed'.format(self.nonce))
+            print('{} Traffic has been sent completed'.format(self.region))
             self.stop = True
             return
 

@@ -8,6 +8,7 @@
 #include <functional>
 #include <fc/reflect/reflect.hpp>
 #include <evt/chain/types.hpp>
+#include <evt/chain/address.hpp>
 #include <evt/chain/contracts/metadata.hpp>
 
 namespace evt { namespace chain { namespace contracts {
@@ -41,7 +42,7 @@ public:
 
 public:
     const group_name& name() const { return name_; }
-    const public_key_type& key() const { return key_; }
+    const address& key() const { return key_; }
     const node& root() const { FC_ASSERT(nodes_.size() > 0); return nodes_[0]; }
     const bool empty() const { return nodes_.empty(); }
     const auto metas() const { return metas_; }
@@ -66,7 +67,7 @@ public:
 
 public:
     group_name                      name_;
-    public_key_type                 key_;
+    address                         key_;
     std::vector<node>               nodes_;
     std::vector<public_key_type>    keys_;
     meta_list                       metas_;

@@ -81,13 +81,13 @@ do_txrx(T& socket, boost::asio::streambuf& request_buff, unsigned int& status_co
     // Process the response headers.
     std::string header;
     int         response_content_length = -1;
-    std::regex  clregex(R"xx(^content-length:\s+(\d+))xx", std::regex_constants::icase);
+    std::regex  clregex(R"xx(^Content-Length:\s+(\d+))xx", std::regex_constants::icase);
     while(std::getline(response_stream, header) && header != "\r") {
         std::smatch match;
         if(std::regex_search(header, match, clregex))
             response_content_length = std::stoi(match[1]);
     }
-    FC_ASSERT(response_content_length >= 0, "Invalid content-length response");
+    FC_ASSERT(response_content_length >= 0, "Invalid Content-Length response, header: ${h}", ("h",header));
 
     std::stringstream re;
     // Write whatever content we already have to output.
@@ -157,6 +157,17 @@ resolve_url(const http_context& context, const parsed_url& url) {
     return resolved_url(url, std::move(resolved_addresses), *resolved_port, is_loopback);
 }
 
+string
+format_host_header(const resolved_url& url) {
+    // common practice is to only make the port explicit when it is the non-default port
+    if((url.scheme == "https" && url.resolved_port == 443) || (url.scheme == "http" && url.resolved_port == 80)) {
+        return url.server;
+    }
+    else {
+        return url.server + ":" + url.port;
+    }
+}
+
 fc::variant
 do_http_call(const connection_param& cp,
              const fc::variant&      postdata,
@@ -171,9 +182,11 @@ do_http_call(const connection_param& cp,
 
     boost::asio::streambuf request;
     std::ostream           request_stream(&request);
+
+    auto host_header_value = format_host_header(url);
     request_stream << "POST " << url.path << " HTTP/1.0\r\n";
-    request_stream << "Host: " << url.server << "\r\n";
-    request_stream << "content-length: " << postjson.size() << "\r\n";
+    request_stream << "Host: " << host_header_value << "\r\n";
+    request_stream << "Content-Length: " << postjson.size() << "\r\n";
     request_stream << "Accept: */*\r\n";
     request_stream << "Connection: close\r\n";
     request_stream << "\r\n";

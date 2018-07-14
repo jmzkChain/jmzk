@@ -6,10 +6,6 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <evt/chain/exceptions.hpp>
 
-namespace evt { namespace chain { namespace contracts {
-
-}}}  // namespac evt::chain::contracts
-
 namespace fc {
 
 using namespace evt::chain;
@@ -25,7 +21,7 @@ to_variant(const authorizer_ref& ref, fc::variant& v) {
         break;
     }
     case authorizer_ref::owner_t: {
-        v = "[G] OWNER";
+        v = "[G] .OWNER";
         break;
     }
     case authorizer_ref::group_t: {
@@ -49,7 +45,7 @@ from_variant(const fc::variant& v, authorizer_ref& ref) {
         return;
     }
     else if(boost::starts_with(str, "[G] ")) {
-        if(str == "[G] OWNER") {
+        if(str == "[G] .OWNER") {
             ref.set_owner();
         }
         else {

@@ -10,11 +10,16 @@ setup(
     license='MIT',
     url='https://github.com/everitoken/evt/tree/master/loadtest/trafficgen',
     packages=find_packages(),
-    install_requires=['pyevtsdk'],
+    install_requires=['pyevtsdk', 'lz4'],
     classifiers=[
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: MIT License',
         'Operating System :: POSIX :: Linux',
         'Operating System :: MacOS :: MacOS X'
     ],
+    entry_points={
+        'console_scripts': [
+            'trafficgen = trafficgen.generator:main',
+        ]
+    },
 )

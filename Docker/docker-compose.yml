@@ -17,7 +17,7 @@ services:
 
   evtwd:
     image: everitoken/evt:latest
-    command: /opt/evt/bin/evtwd --wallet-dir /opt/evt/data
+    command: /opt/evt/bin/evtwd --wallet-dir /opt/evt/data --http-server-address=127.0.0.1:9999
     hostname: evtwd
     links:
       - evtd

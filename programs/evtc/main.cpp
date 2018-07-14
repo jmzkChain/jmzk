@@ -70,8 +70,8 @@ FC_DECLARE_EXCEPTION(localized_exception, 10000000, "an error occured");
         } FC_MULTILINE_MACRO_END)
 
 string program    = "evtc";
-string url        = "http://localhost:8888";
-string wallet_url = "http://localhost:9999";
+string url        = "http://127.0.0.1:8888";
+string wallet_url = "http://127.0.0.1:9999";
 
 bool no_verify = false;
 vector<string> headers;
@@ -86,23 +86,6 @@ bool   print_response    = false;
 
 string propname;
 string proposer;
-
-bool
-detect_public_key(const std::string& pkey, bool &reserved) {
-    static public_key_type rkey;
-
-    if(pkey.size() != 42) {
-        return false;
-    }
-    try {
-        auto key = public_key_type(pkey);
-        reserved = (key == rkey);
-        return true;
-    }
-    catch(...) {
-        return false;
-    }
-}
 
 void
 print_info(const fc::variant& info, int indent = 0) {
@@ -122,7 +105,7 @@ print_info(const fc::variant& info, int indent = 0) {
                 else if(obj.value().is_array()) {
                     if(obj.value().get_array().size() == 0) {
                         cerr << "(empty)" << endl;
-                        return;
+                        continue;
                     }
                     cerr << endl;
                     print_info(obj.value(), indent + 1);
@@ -151,15 +134,7 @@ print_info(const fc::variant& info, int indent = 0) {
             }
             cerr << "|";
             cerr << "->";
-            auto v = info.as_string();
-
-            bool reserved = false;
-            if(detect_public_key(v, reserved) && reserved) {
-                cerr << info.as_string() << " [destroyed]" << endl;
-            }
-            else {
-                cerr << info.as_string() << endl;
-            }
+            cerr << info.as_string() << endl;
         }
     }
     FC_CAPTURE_AND_RETHROW((info))
@@ -200,7 +175,7 @@ print_result(const fc::variant& result) {
             cerr << "total elapsed: " << processed["elapsed"].as_string() << " us" << std::endl;
 
             if(status == "failed") {
-                auto soft_except = processed["except"].as<optional<fc::exception>>();
+                auto soft_except = processed["except"].as<fc::optional<fc::exception>>();
                 if(soft_except) {
                     edump((soft_except->to_detail_string()));
                 }
@@ -437,6 +412,8 @@ ensure_evtwd_running(CLI::App* app) {
     if(tx_skip_sign || app->got_subcommand("version") || app->got_subcommand("net"))
         return;
     if(app->get_subcommand("create")->got_subcommand("key")) // create key does not require wallet
+        return;
+    if(app->get_subcommand("wallet")->got_subcommand("stop")) // stop wallet not require wallet
         return;
 
     auto parsed_url = parse_url(wallet_url);
@@ -934,7 +911,7 @@ struct set_suspend_subcommands {
             
             auto trx = signed_trx.as<signed_transaction>();
 
-            auto asact = aprvdsuspend();
+            auto asact = aprvsuspend();
             asact.name = (proposal_name)name;
             asact.signatures = std::move(trx.signatures);
 
@@ -1036,23 +1013,23 @@ struct set_get_fungible_subcommand {
     }
 };
 
-struct set_get_assets_subcommand {
+struct set_get_balance_subcommand {
     string address;
     string sym;
 
-    set_get_assets_subcommand(CLI::App* actionRoot) {
-        auto gacmd = actionRoot->add_subcommand("assets", localized("Retrieve assets from an address"));
-        gacmd->add_option("address", address, localized("Address where assets stored"))->required();
-        gacmd->add_option("symbol", sym, localized("Specific symbol to be retrieved, leave empty to retrieve all assets"));
+    set_get_balance_subcommand(CLI::App* actionRoot) {
+        auto gbcmd = actionRoot->add_subcommand("balance", localized("Retrieve fungible balance from an address"));
+        gbcmd->add_option("address", address, localized("Address where assets stored"))->required();
+        gbcmd->add_option("symbol", sym, localized("Specific symbol to be retrieved, leave empty to retrieve all assets"));
 
-        gacmd->set_callback([this] {
+        gbcmd->set_callback([this] {
             FC_ASSERT(!address.empty(), "Address cannot be empty");
 
             auto arg = fc::mutable_variant_object("address", get_public_key(address));
             if(!sym.empty()) {
                 arg["sym"] = symbol::from_string(sym);
             }
-            print_info(call(get_assets_func, arg));
+            print_info(call(get_fungible_balance_func, arg));
         });
     }
 };
@@ -1201,6 +1178,8 @@ main(int argc, char** argv) {
     textdomain(locale_domain);
     context = evt::client::http::create_http_context();
 
+    abi_serializer::set_max_serialization_time(fc::hours(1)); // No risk to client side serialization taking a long time
+
     CLI::App app{"Command Line Interface to everiToken Client"};
     app.require_subcommand();
 
@@ -1227,26 +1206,14 @@ main(int argc, char** argv) {
     auto create = app.add_subcommand("create", localized("Create various items, on and off the blockchain"));
     create->require_subcommand();
 
-    bool r1 = false;
     // create key
-    auto create_key = create->add_subcommand("key", localized("Create a new keypair and print the public and private keys"))->set_callback( [&r1](){
-        if(r1) {
-            auto pk    = private_key_type::generate_r1();
-            auto privs = string(pk);
-            auto pubs  = string(pk.get_public_key());
-            std::cout << localized("Private key: ${key}", ("key", privs)) << std::endl;
-            std::cout << localized("Public key: ${key}",  ("key", pubs))  << std::endl;
-        }
-        else {
-            auto pk    = private_key_type::generate();
-            auto privs = string(pk);
-            auto pubs  = string(pk.get_public_key());
-            std::cout << localized("Private key: ${key}", ("key", privs)) << std::endl;
-            std::cout << localized("Public key: ${key}",  ("key", pubs))  << std::endl;
-        }
+    auto create_key = create->add_subcommand("key", localized("Create a new keypair and print the public and private keys"))->set_callback([](){
+        auto pk    = private_key_type::generate();
+        auto privs = string(pk);
+        auto pubs  = string(pk.get_public_key());
+        std::cout << localized("Private key: ${key}", ("key", privs)) << std::endl;
+        std::cout << localized("Public key: ${key}",  ("key", pubs))  << std::endl;
     });
-    create_key->add_flag("--r1", r1, "Generate a key using the R1 curve (iPhone), instead of the K1 curve (Bitcoin)");
-
     // Get subcommand
     auto get = app.add_subcommand("get", localized("Retrieve various items and information from the blockchain"));
     get->require_subcommand();
@@ -1269,7 +1236,7 @@ main(int argc, char** argv) {
     set_get_token_subcommand    get_token(get);
     set_get_group_subcommand    get_group(get);
     set_get_fungible_subcommand get_fungible(get);
-    set_get_assets_subcommand   get_assets(get);
+    set_get_balance_subcommand  get_balance(get);
     set_get_my_subcommands      get_my(get);
     set_get_history_subcommands get_history(get); 
     set_get_suspend_subcommand  get_suspend(get);

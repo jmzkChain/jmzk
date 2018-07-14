@@ -77,6 +77,8 @@ struct optionaltest2 {
 };
 FC_REFLECT(optionaltest2, (a)(b));
 
+BOOST_AUTO_TEST_SUITE(abi_tests)
+
 BOOST_AUTO_TEST_CASE(optional_test) {
     try {
         auto abi = abi_def();
@@ -161,7 +163,7 @@ BOOST_AUTO_TEST_CASE(newdomain_test) {
             "name": "transfer",
             "threshold": 1,
             "authorizers": [{
-                "ref": "[G] OWNER",
+                "ref": "[G] .OWNER",
                 "weight": 1
               }
             ]
@@ -1052,7 +1054,7 @@ BOOST_AUTO_TEST_CASE(cancelsuspend_test) {
     FC_LOG_AND_RETHROW()
 }
 
-BOOST_AUTO_TEST_CASE(aprvdsuspend_test) {
+BOOST_AUTO_TEST_CASE(aprvsuspend_test) {
     try {
         auto abis = get_evt_abi();
         BOOST_CHECK(true);
@@ -1066,14 +1068,14 @@ BOOST_AUTO_TEST_CASE(aprvdsuspend_test) {
         )=======";
 
         auto var  = fc::json::from_string(test_data);
-        auto adact = var.as<aprvdsuspend>();
+        auto adact = var.as<aprvsuspend>();
 
         BOOST_TEST("test1530718665" == (std::string)adact.name);
         BOOST_TEST(adact.signatures.size() == 1);
         BOOST_TEST((std::string)adact.signatures[0] == "SIG_K1_KXjtmeihJi1qnSs7vmqJDRJoZ1nSEPeeRjsKJRpm24g8yhFtAepkRDR4nVFbXjvoaQvT4QrzuNWCbuEhceYpGmAvsG47Fj");
 
-        verify_byte_round_trip_conversion(abis, "aprvdsuspend", var);
-        verify_type_round_trip_conversion<aprvdsuspend>(abis, "aprvdsuspend", var);
+        verify_byte_round_trip_conversion(abis, "aprvsuspend", var);
+        verify_type_round_trip_conversion<aprvsuspend>(abis, "aprvsuspend", var);
     }
     FC_LOG_AND_RETHROW()
 }
@@ -1101,3 +1103,5 @@ BOOST_AUTO_TEST_CASE(execsuspend_test) {
     }
     FC_LOG_AND_RETHROW()
 }
+
+BOOST_AUTO_TEST_SUITE_END()
