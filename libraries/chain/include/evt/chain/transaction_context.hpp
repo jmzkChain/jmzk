@@ -26,8 +26,6 @@ public:
     void finalize();
     void squash();
 
-    void checktime() const;
-
 private:
     friend struct controller_impl;
     friend class apply_context;
@@ -35,7 +33,10 @@ private:
     void dispatch_action(action_trace& trace, const action& a);
     void record_transaction(const transaction_id_type& id, fc::time_point_sec expire);
 
-    /// Fields:
+    void check_time() const;
+    void check_charge();
+    void check_paid() const;
+
 public:
     controller&             control;
     token_database::session undo_session;
@@ -45,7 +46,8 @@ public:
 
     vector<action_receipt> executed;
 
-    bool is_input = false;
+    bool     is_input = false;
+    uint32_t charge   = 0;
 
     fc::time_point   deadline = fc::time_point::maximum();
 

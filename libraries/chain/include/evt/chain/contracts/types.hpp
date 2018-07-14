@@ -372,6 +372,11 @@ struct execsuspend {
     }
 };
 
+struct paycharge {
+    address  payer;
+    uint32_t charge;
+};
+
 }}}  // namespace evt::chain::contracts
 
 FC_REFLECT(evt::chain::contracts::type_def, (new_type_name)(type));
@@ -405,3 +410,4 @@ FC_REFLECT(evt::chain::contracts::newsuspend, (name)(proposer)(trx));
 FC_REFLECT(evt::chain::contracts::cancelsuspend, (name));
 FC_REFLECT(evt::chain::contracts::aprvsuspend, (name)(signatures));
 FC_REFLECT(evt::chain::contracts::execsuspend, (name)(executor));
+FC_REFLECT(evt:;chain::contracts::paycharge, (payer)(charge));
