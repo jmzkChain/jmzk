@@ -179,6 +179,12 @@ struct suspend_def {
     flat_set<public_key_type>              signed_keys;
 };
 
+#define define_action(typename)  \
+    static constexpr action_name \
+    get_name() {                 \
+        return N(typename);      \
+    }
+
 struct newdomain {
     domain_name name;
     user_id     creator;
@@ -187,10 +193,7 @@ struct newdomain {
     permission_def transfer;
     permission_def manage;
 
-    static action_name
-    get_name() {
-        return N(newdomain);
-    }
+    define_action(newdomain);
 };
 
 struct issuetoken {
@@ -198,10 +201,7 @@ struct issuetoken {
     std::vector<token_name> names;
     address_list            owner;
 
-    static action_name
-    get_name() {
-        return N(issuetoken);
-    }
+    define_action(issuetoken);
 };
 
 struct transfer {
@@ -210,40 +210,28 @@ struct transfer {
     address_list to;
     string       memo;
 
-    static action_name
-    get_name() {
-        return N(transfer);
-    }
+    define_action(transfer);
 };
 
 struct destroytoken {
     domain_name domain;
     token_name  name;
 
-    static action_name
-    get_name() {
-        return N(destroytoken);
-    }
+    define_action(destroytoken);
 };
 
 struct newgroup {
     group_name name;
     group_def  group;
 
-    static action_name
-    get_name() {
-        return N(newgroup);
-    }
+    define_action(newgroup);
 };
 
 struct updategroup {
     group_name name;
     group_def  group;
 
-    static action_name
-    get_name() {
-        return N(updategroup);
-    }
+    define_action(updategroup);
 };
 
 struct updatedomain {
@@ -253,10 +241,7 @@ struct updatedomain {
     fc::optional<permission_def> transfer;
     fc::optional<permission_def> manage;
 
-    static action_name
-    get_name() {
-        return N(updatedomain);
-    }
+    define_action(updatedomain);
 };
 
 struct newfungible {
@@ -268,10 +253,7 @@ struct newfungible {
 
     asset total_supply;
 
-    static action_name
-    get_name() {
-        return N(newfungible);
-    }
+    define_action(newfungible);
 };
 
 struct updfungible {
@@ -280,10 +262,7 @@ struct updfungible {
     fc::optional<permission_def> issue;
     fc::optional<permission_def> manage;
 
-    static action_name
-    get_name() {
-        return N(updfungible);
-    }
+    define_action(updfungible);
 };
 
 struct issuefungible {
@@ -291,10 +270,7 @@ struct issuefungible {
     asset        number;
     string       memo;
 
-    static action_name
-    get_name() {
-        return N(issuefungible);
-    }
+    define_action(issuefungible);
 };
 
 struct transferft {
@@ -303,10 +279,7 @@ struct transferft {
     asset        number;
     string       memo;
 
-    static action_name
-    get_name() {
-        return N(transferft);
-    }
+    define_action(transferft);
 };
 
 struct evt2pevt {
@@ -315,10 +288,7 @@ struct evt2pevt {
     asset        number;
     string       memo;
 
-    static action_name
-    get_name() {
-        return N(evt2pevt);
-    }
+    define_action(evt2pevt);
 };
 
 struct addmeta {
@@ -326,10 +296,7 @@ struct addmeta {
     meta_value     value;
     authorizer_ref creator;
 
-    static action_name
-    get_name() {
-        return N(addmeta);
-    }
+    define_action(addmeta);
 };
 
 struct newsuspend {
@@ -337,44 +304,34 @@ struct newsuspend {
     user_id       proposer;
     transaction   trx;
 
-    static action_name
-    get_name() {
-        return N(newsuspend);
-    }
+    define_action(newsuspend);
 };
 
 struct cancelsuspend {
     proposal_name name;
 
-    static action_name
-    get_name() {
-        return N(cancelsuspend);
-    }
+    define_action(cancelsuspend);
 };
 
 struct aprvsuspend {
     proposal_name               name;
     std::vector<signature_type> signatures;
 
-    static action_name
-    get_name() {
-        return N(aprvsuspend);
-    }
+    define_action(aprvsuspend);
 };
 
 struct execsuspend {
     proposal_name name;
     user_id       executor;
 
-    static action_name
-    get_name() {
-        return N(execsuspend);
-    }
+    define_action(execsuspend);
 };
 
 struct paycharge {
     address  payer;
-    uint32_t charge;
+    uint64_t charge;
+
+    define_action(paycharge);
 };
 
 }}}  // namespace evt::chain::contracts
@@ -410,4 +367,4 @@ FC_REFLECT(evt::chain::contracts::newsuspend, (name)(proposer)(trx));
 FC_REFLECT(evt::chain::contracts::cancelsuspend, (name));
 FC_REFLECT(evt::chain::contracts::aprvsuspend, (name)(signatures));
 FC_REFLECT(evt::chain::contracts::execsuspend, (name)(executor));
-FC_REFLECT(evt:;chain::contracts::paycharge, (payer)(charge));
+FC_REFLECT(evt::chain::contracts::paycharge, (payer)(charge));

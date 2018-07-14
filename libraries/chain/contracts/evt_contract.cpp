@@ -794,4 +794,33 @@ apply_evt_execsuspend(apply_context& context) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
+void
+apply_evt_paycharge(apply_context& context) {
+    auto pcact = context.act.data_as<const paycharge&>();
+    try {
+        auto& tokendb = context.token_db;
+
+        uint64_t paid = 0;
+
+        asset evt, pevt;
+        tokendb.read_asset_no_throw(pcact.payer, symbol(SY(5,PEVT)), pevt);
+        paid = std::min(pcact.charge, (uint64_t)pevt.get_amount());
+        if(paid > 0) {
+            pevt -= asset(paid, pevt.get_symbol());
+            tokendb.update_asset(pcact.payer, pevt);
+        }
+
+        if(paid < pcact.charge) {
+            tokendb.read_asset_no_throw(pcact.payer, symbol(SY(5,EVT)), evt);
+            uint64_t remain = pcact.charge - paid;
+            if(evt.get_amount() < remain) {
+                EVT_THROW(charge_exceeded_exception, "There are ${e} EVT and ${p} Pinned EVT left, but charge is ${c}", ("e",evt)("p",pevt)("c",pcact.charge));
+            }
+            evt -= asset(remain, evt.get_symbol());
+            tokendb.update_asset(pcact.payer, evt);
+        }
+    }
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+}
+
 }}} // namespace evt::chain::contracts

@@ -104,10 +104,10 @@ FC_DECLARE_DERIVED_EXCEPTION( invalid_ref_block_exception,       transaction_exc
 FC_DECLARE_DERIVED_EXCEPTION( tx_apply_exception,                transaction_exception, 3030006, "Transaction Apply Exception" );
 FC_DECLARE_DERIVED_EXCEPTION( tx_receipt_inconsistent_status,    transaction_exception, 3030007, "Transaction receipt applied status does not match received status." );
 FC_DECLARE_DERIVED_EXCEPTION( tx_no_action,                      transaction_exception, 3030008, "transaction should have at least one normal action." );
-FC_DECLARE_DERIVED_EXCEPTION( deadline_exception,                transaction_exception, 3030009, "transaction is timeout.");
+FC_DECLARE_DERIVED_EXCEPTION( deadline_exception,                transaction_exception, 3030009, "transaction is timeout." );
 FC_DECLARE_DERIVED_EXCEPTION( max_charge_exceeded_exception,     transaction_exception, 3030010, "exceeded max charge paid");
-FC_DECLARE_DERIVED_EXCEPTION( charge_exceeded_exception,         transaction_exception, 3030011, "exceeded remaining EVT & Pinned EVT tokens");
-FC_DECLARE_DERIVED_EXCEPTION( payer_not_signed_exception,        transaction_exception, 3030012, "Payer doesn't sign this transaction");
+FC_DECLARE_DERIVED_EXCEPTION( charge_exceeded_exception,         transaction_exception, 3030011, "exceeded remaining EVT & Pinned EVT tokens" );
+FC_DECLARE_DERIVED_EXCEPTION( payer_exception,                   transaction_exception, 3030012, "Invalid payer" );
 
 FC_DECLARE_DERIVED_EXCEPTION( action_authorize_exception,          action_exception, 3040001, "invalid action authorization" );
 FC_DECLARE_DERIVED_EXCEPTION( action_args_exception,               action_exception, 3040002, "Invalid arguments for action" );

@@ -84,8 +84,10 @@ bool   tx_print_json     = false;
 bool   print_request     = false;
 bool   print_response    = false;
 
-string propname;
-string proposer;
+string   propname;
+string   proposer;
+string   payer;
+uint32_t max_charge = 10000;
 
 void
 print_info(const fc::variant& info, int indent = 0) {
@@ -213,9 +215,11 @@ add_standard_transaction_options(CLI::App* cmd) {
     cmd->add_option("-x,--expiration", parse_expiration, localized("Set the time in seconds before a transaction expires, defaults to 30s"));
     cmd->add_flag("-s,--skip-sign", tx_skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
     cmd->add_flag("-d,--dont-broadcast", tx_dont_broadcast, localized("Don't broadcast transaction to the network (just print to stdout)"));
-    cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id, (localized("Set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)")));
+    cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id, localized("Set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)"));
+    cmd->add_option("-p,--payer", payer, localized("Payer address to be billed for this transaction"))->required();
+    cmd->add_option("-c,--max-charge", max_charge, localized("Max charge to be payed for this transaction"));
 
-    auto popt = cmd->add_option("-p,--proposal-name", propname, localized("Push a suspend transaction instead of normal transaction, specify its proposal name"));
+    auto popt = cmd->add_option("-a,--proposal-name", propname, localized("Push a suspend transaction instead of normal transaction, specify its proposal name"));
     cmd->add_option("-u,--proposer", proposer, localized("Proposer public key"))->needs(popt);
 }
 
@@ -291,6 +295,9 @@ set_transaction_header(signed_transaction& trx, const evt::chain_apis::read_only
     }
     EVT_RETHROW_EXCEPTIONS(invalid_ref_block_exception, "Invalid reference block num or id: ${block_num_or_id}", ("block_num_or_id", tx_ref_block_num_or_id));
     trx.set_reference_block(ref_block_id);
+
+    trx.max_charge = max_charge;
+    trx.payer = (address)payer;
 }
 
 public_key_type

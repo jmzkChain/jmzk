@@ -75,7 +75,24 @@ transaction_context::finalize() {
     pcact.payer  = trx.trx.payer;
     pcact.charge = charge;
 
-    auto act = action(N128(.charge), )
+    auto act = action();
+    act.name = paycharge::get_name();
+    act.data = fc::raw::pack(pcact);
+    act.domain = N128(.charge);
+    
+    switch(pcact.payer.type()) {
+    case address::public_key_t: {
+        act.key = N128(.public-key);
+        break;
+    }
+    case address::generated_t: {
+        act.key = N128(.generated);
+        break;
+    }
+    }  // switch
+
+    trace->action_traces.emplace_back();
+    dispatch_action(trace->action_traces.back(), act);
 
     trace->elapsed = fc::time_point::now() - start;
 }
@@ -108,10 +125,26 @@ transaction_context::check_paid() const {
     auto& tokendb = control.token_db();
     auto& payer = trx.trx.payer;
 
-    auto& keys = trx.recover_keys(control.get_chain_id());
-    if(keys.find(payer) == keys.end()) {
-        EVT_THROW(payer_not_signed_exception, "Payer: ${p} needs to sign this transaction.", ("p",payer));
+    switch(payer.type()) {
+    case address::reserved_t: {
+        EVT_THROW(payer_exception, "Reserved address cannot be used to be payer");
     }
+    case address::public_key_t: {
+        auto& keys = trx.recover_keys(control.get_chain_id());
+        if(keys.find(payer.get_public_key()) == keys.end()) {
+            EVT_THROW(payer_exception, "Payer: ${p} needs to sign this transaction.", ("p",payer));
+        }
+        break;
+    }
+    case address::generated_t: {
+        EVT_ASSERT(payer.get_prefix() == N(domain), payer_exception, "Only domain generated address can be used to be payer");
+        auto& key = payer.get_key();
+        for(auto& act : trx.trx.actions) {
+            EVT_ASSERT(act.domain == key, payer_exception, "Only actions in '{}'' domain can be paid by it");
+        }
+        break;
+    }
+    }  // switch
     
     asset evt, pevt;
     tokendb.read_asset_no_throw(payer, symbol(SY(5,PEVT)), pevt);
@@ -122,8 +155,7 @@ transaction_context::check_paid() const {
     if(pevt.get_amount() + evt.get_amount() >= charge) {
         return;
     }
-    EVT_THROW(charge_exceeded_exception, "charge exceeded, you have ${e} EVT and ${p} Pinned EVT, but charge is ${c}",
-        ("e",evt)("p",pevt)("c",charge));
+    EVT_THROW(charge_exceeded_exception, "There are ${e} EVT and ${p} Pinned EVT left, but charge is ${c}", ("e",evt)("p",pevt)("c",charge));
 }
 
 void

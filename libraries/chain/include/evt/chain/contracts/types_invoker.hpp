@@ -12,6 +12,7 @@ namespace evt { namespace chain { namespace contracts {
 
 #define case_act(name)                                                 \
     case N(name): {                                                    \
+        static_assert(name::get_name().value == N(name));              \
         if constexpr (std::is_void<RType>::value) {                    \
             Invoker<name>::invoke(std::forward<Args>(args)...);        \
         }                                                              \
@@ -44,6 +45,7 @@ invoke(name n, Args... args) {
     case_act(cancelsuspend)
     case_act(aprvsuspend)
     case_act(execsuspend)
+    case_act(paycharge)
     default: {
         EVT_THROW(action_type_exception, "Unknown action name: ${name}", ("name",n));
     }

@@ -49,7 +49,7 @@ public:
     bool     is_input = false;
     uint32_t charge   = 0;
 
-    fc::time_point   deadline = fc::time_point::maximum();
+    fc::time_point deadline = fc::time_point::maximum();
 
 private:
     bool is_initialized = false;
