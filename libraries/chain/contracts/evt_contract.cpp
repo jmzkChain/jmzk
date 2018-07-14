@@ -235,7 +235,7 @@ apply_evt_newgroup(apply_context& context) {
 
     auto ngact = context.act.data_as<newgroup>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(group), ngact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.group), ngact.name), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(!ngact.group.key().is_generated(), group_key_exception, "Group key cannot be generated key");
         
         check_name_reserved(ngact.name);
@@ -255,7 +255,7 @@ apply_evt_updategroup(apply_context& context) {
 
     auto ugact = context.act.data_as<updategroup>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(group), ugact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.group), ugact.name), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(ugact.name == ugact.group.name(), group_name_exception, "Names in action are not the same.");
 
         auto& tokendb = context.token_db;
@@ -319,7 +319,7 @@ apply_evt_newfungible(apply_context& context) {
 
     auto nfact = context.act.data_as<newfungible>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(fungible), (fungible_name)nfact.sym.name()), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), (fungible_name)nfact.sym.name()), action_authorize_exception, "Authorized information does not match.");
 
         auto& tokendb = context.token_db;
         EVT_ASSERT(!tokendb.exists_fungible(nfact.sym), fungible_exists_exception, "Fungible with symbol: ${sym} already exists.", ("sym",nfact.sym.name()));
@@ -356,7 +356,7 @@ apply_evt_updfungible(apply_context& context) {
 
     auto ufact = context.act.data_as<updfungible>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(fungible), (fungible_name)ufact.sym.name()), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), (fungible_name)ufact.sym.name()), action_authorize_exception, "Authorized information does not match.");
 
         auto& tokendb = context.token_db;
 
@@ -393,7 +393,7 @@ apply_evt_issuefungible(apply_context& context) {
 
     try {
         auto sym = ifact.number.get_symbol();
-        EVT_ASSERT(context.has_authorized(N128(fungible), (fungible_name)sym.name()), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), (fungible_name)sym.name()), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(!ifact.address.is_reserved(), fungible_address_exception, "Cannot issue fungible tokens to reserved address");
 
         auto& tokendb = context.token_db;
@@ -429,7 +429,7 @@ apply_evt_transferft(apply_context& context) {
 
     try {
         auto sym = tfact.number.get_symbol();
-        EVT_ASSERT(context.has_authorized(N128(fungible), (fungible_name)sym.name()), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), (fungible_name)sym.name()), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(!tfact.to.is_reserved(), fungible_address_exception, "Cannot transfer fungible tokens to reserved address");
 
         auto& tokendb = context.token_db;
@@ -464,7 +464,7 @@ apply_evt_evt2pevt(apply_context& context) {
         auto evtsym = epact.number.get_symbol();
         auto pevtsym = symbol(SY(5,PEVT));
         EVT_ASSERT(evtsym == symbol(SY(5,EVT)), fungible_symbol_exception, "Only EVT tokens can be converted to Pinned EVT tokens");
-        EVT_ASSERT(context.has_authorized(N128(fungible), (fungible_name)evtsym.name()), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), (fungible_name)evtsym.name()), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(!epact.to.is_reserved(), fungible_address_exception, "Cannot convert Pinned EVT tokens to reserved address");
 
         auto& tokendb = context.token_db;
@@ -616,7 +616,7 @@ apply_evt_addmeta(apply_context& context) {
 
         check_name_reserved(amact.key);
 
-        if(act.domain == N128(group)) {
+        if(act.domain == N128(.group)) {
             group_def group;
             tokendb.read_group(act.key, group);
 
@@ -631,7 +631,7 @@ apply_evt_addmeta(apply_context& context) {
             group.metas_.emplace_back(meta(amact.key, amact.value, amact.creator));
             tokendb.update_group(group);
         }
-        else if(act.domain == N128(fungible)) {
+        else if(act.domain == N128(.fungible)) {
             fungible_def fungible;
             tokendb.read_fungible(act.key, fungible);
 
@@ -689,7 +689,7 @@ apply_evt_newsuspend(apply_context& context) {
 
     auto nsact = context.act.data_as<newsuspend>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(suspend), nsact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.suspend), nsact.name), action_authorize_exception, "Authorized information does not match.");
 
         check_name_reserved(nsact.name);
         for(auto& act : nsact.trx.actions) {
@@ -716,7 +716,7 @@ apply_evt_aprvsuspend(apply_context& context) {
 
     auto aeact = context.act.data_as<aprvsuspend>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(suspend), aeact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.suspend), aeact.name), action_authorize_exception, "Authorized information does not match.");
 
         auto& tokendb = context.token_db;
 
@@ -745,7 +745,7 @@ apply_evt_cancelsuspend(apply_context& context) {
 
     auto csact = context.act.data_as<cancelsuspend>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(suspend), csact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.suspend), csact.name), action_authorize_exception, "Authorized information does not match.");
 
         auto& tokendb = context.token_db;
 
@@ -763,7 +763,7 @@ void
 apply_evt_execsuspend(apply_context& context) {
     auto esact = context.act.data_as<execsuspend>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(suspend), esact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.suspend), esact.name), action_authorize_exception, "Authorized information does not match.");
 
         auto& tokendb = context.token_db;
 

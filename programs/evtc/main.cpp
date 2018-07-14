@@ -331,7 +331,7 @@ create_suspend_transaction(transaction& trx) {
     ns.trx = std::move(trx);
    
     auto signed_trx = signed_transaction();
-    signed_trx.actions.emplace_back(create_action(N128(suspend), (domain_key)propname, ns));
+    signed_trx.actions.emplace_back(create_action(N128(.suspend), (domain_key)propname, ns));
     return signed_trx;
 }
 
@@ -665,7 +665,7 @@ struct set_group_subcommands {
             EVT_RETHROW_EXCEPTIONS(group_type_exception, "Fail to parse Group JSON")
             ng.group.name_ = name;
 
-            auto act = create_action("group", (domain_key)ng.name, ng);
+            auto act = create_action(N128(.group), (domain_key)ng.name, ng);
             send_actions({act});
         });
 
@@ -687,7 +687,7 @@ struct set_group_subcommands {
             EVT_RETHROW_EXCEPTIONS(group_type_exception, "Fail to parse Group JSON")
             ug.group.name_ = name;
 
-            auto act = create_action("group", (domain_key)ug.name, ug);
+            auto act = create_action(N128(.group), (domain_key)ug.name, ug);
             send_actions({act});
         });
     }
@@ -723,7 +723,7 @@ struct set_fungible_subcommands {
 
             EVT_ASSERT(nf.total_supply.get_symbol() == nf.sym, asset_type_exception, "Symbol and asset should be match");
 
-            auto act = create_action(N128(fungible), (domain_key)nf.sym.name(), nf);
+            auto act = create_action(N128(.fungible), (domain_key)nf.sym.name(), nf);
             send_actions({act});
         });
 
@@ -744,7 +744,7 @@ struct set_fungible_subcommands {
                 uf.manage = parse_permission(manage);
             }
 
-            auto act = create_action(N128(fungible), (domain_key)uf.sym.name(), uf);
+            auto act = create_action(N128(.fungible), (domain_key)uf.sym.name(), uf);
             send_actions({act});
         });
 
@@ -761,7 +761,7 @@ struct set_fungible_subcommands {
             ifact.number  = asset::from_string(number);
             ifact.memo    = memo;
 
-            auto act = create_action(N128(fungible), (domain_key)ifact.number.get_symbol().name(), ifact);
+            auto act = create_action(N128(.fungible), (domain_key)ifact.number.get_symbol().name(), ifact);
             send_actions({act});
         });
 
@@ -789,7 +789,7 @@ struct set_assets_subcommands {
             tf.number = asset::from_string(number);
             tf.memo   = memo;
 
-            auto act = create_action(N128(fungible), (domain_key)tf.number.get_symbol().name(), tf);
+            auto act = create_action(N128(.fungible), (domain_key)tf.number.get_symbol().name(), tf);
             send_actions({act});
         });
 
@@ -810,7 +810,7 @@ struct set_assets_subcommands {
 
             FC_ASSERT(ep.number.get_symbol() == symbol(SY(5,EVT)), "Only EVT can be converted to Pinned EVT");
 
-            auto act = create_action(N128(fungible), (domain_key)ep.number.get_symbol().name(), ep);
+            auto act = create_action(N128(.fungible), (domain_key)ep.number.get_symbol().name(), ep);
             send_actions({act});
         });
 
@@ -854,7 +854,7 @@ struct set_meta_subcommands {
             am.value = metavalue;
             am.creator = get_public_key(creator);
 
-            auto act = create_action(N128(group), (domain_key)key, am);
+            auto act = create_action(N128(.group), (domain_key)key, am);
             send_actions({act});
         });
 
@@ -881,7 +881,7 @@ struct set_meta_subcommands {
             am.value = metavalue;
             am.creator = get_public_key(creator);
 
-            auto act = create_action(N128(fungible), (domain_key)key, am);
+            auto act = create_action(N128(.fungible), (domain_key)key, am);
             send_actions({act});
         });
     }
@@ -915,7 +915,7 @@ struct set_suspend_subcommands {
             asact.name = (proposal_name)name;
             asact.signatures = std::move(trx.signatures);
 
-            auto act = create_action(N128(suspend), (domain_key)asact.name, asact);
+            auto act = create_action(N128(.suspend), (domain_key)asact.name, asact);
             send_actions({act});
         });
 
@@ -925,7 +925,7 @@ struct set_suspend_subcommands {
             auto cdact = cancelsuspend();
             cdact.name = (proposal_name)name;
 
-            auto act = create_action(N128(suspend), (domain_key)cdact.name, cdact);
+            auto act = create_action(N128(.suspend), (domain_key)cdact.name, cdact);
             send_actions({act});
         });
 
@@ -937,7 +937,7 @@ struct set_suspend_subcommands {
             esact.name = (proposal_name)name;
             esact.executor = get_public_key(executor);
 
-            auto act = create_action(N128(suspend), (domain_key)esact.name, esact);
+            auto act = create_action(N128(.suspend), (domain_key)esact.name, esact);
             send_actions({act});
         });
     }
