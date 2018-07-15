@@ -102,18 +102,22 @@ public:
     transaction_trace_ptr push_transaction(packed_transaction& trx, fc::time_point deadline = fc::time_point::maximum());
     transaction_trace_ptr push_transaction(signed_transaction& trx, fc::time_point deadline = fc::time_point::maximum());
 
-    typename base_tester::action_result push_action(action&& act, std::vector<account_name>& auths);
+    typename base_tester::action_result push_action(action&& act, std::vector<account_name>& auths, const address& payer);
 
     transaction_trace_ptr push_action(const action_name&               acttype,
                                       const domain_name&               domain,
                                       const domain_key&                key,
                                       const variant_object&            data,
                                       const std::vector<account_name>& auths,
+                                      const address&                   payer,
+                                      uint32_t                         max_charge = 10000,
                                       uint32_t                         expiration = DEFAULT_EXPIRATION_DELTA);
 
     action get_action(action_name acttype, const domain_name& domain, const domain_key& key, const variant_object& data) const;
 
     void set_transaction_headers(signed_transaction& trx,
+                                 const address&      payer,
+                                 uint32_t            max_charge = 10000,
                                  uint32_t            expiration = DEFAULT_EXPIRATION_DELTA) const;
 
     vector<transaction_trace_ptr>
@@ -125,13 +129,15 @@ public:
         return traces;
     }
 
-    void                  push_genesis_block();
+    void push_genesis_block();
 
     transaction_trace_ptr create_account(account_name name);
 
     transaction_trace_ptr new_domain(domain_name& name, std::vector<account_name> owners);
     transaction_trace_ptr issue_tokens(domain_name& name, std::vector<token_name> tokens, std::vector<account_name> owners);
     transaction_trace_ptr transfer_token(domain_name& name, std::vector<token_name> tokens, std::vector<account_name> to);
+
+    void add_money(const address& addr, const asset& number);
 
 
     template <typename KeyType = fc::ecc::private_key_shim>

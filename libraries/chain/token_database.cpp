@@ -53,7 +53,7 @@ struct db_key {
 struct db_asset_key {
     db_asset_key(const address& addr, symbol symbol)
         : slice((const char*)this, sizeof(buf)) {
-        memcpy(buf, &addr.get_public_key(), PKEY_SIZE);
+        addr.to_bytes(buf, PKEY_SIZE);
         memcpy(buf + PKEY_SIZE, &symbol, sizeof(symbol));
     }
 

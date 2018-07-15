@@ -885,6 +885,11 @@ controller::token_db() const {
     return my->token_db;
 }
 
+charge_manager&
+controller::get_charge_manager() const {
+    return my->charge;
+}
+
 void
 controller::start_block(block_timestamp_type when, uint16_t confirm_block_count) {
     my->start_block(when, confirm_block_count, block_status::incomplete);
@@ -1228,7 +1233,11 @@ controller::get_required_keys(const transaction& trx, const flat_set<public_key_
                    ("domain", act.domain)("key", act.key)("name", act.name));
     }
 
-    return checker.used_keys();
+    auto keys = checker.used_keys();
+    if(trx.payer.type() == address::public_key_t) {
+        keys.emplace(trx.payer.get_public_key());
+    }
+    return keys;
 }
 
 flat_set<public_key_type>
@@ -1240,7 +1249,11 @@ controller::get_suspend_required_keys(const transaction& trx, const flat_set<pub
         checker.satisfied(act);
     }
 
-    return checker.used_keys();
+    auto keys = checker.used_keys();
+    if(trx.payer.type() == address::public_key_t) {
+        keys.emplace(trx.payer.get_public_key());
+    }
+    return keys;
 }
 
 flat_set<public_key_type>

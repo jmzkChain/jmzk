@@ -98,7 +98,6 @@ struct fungible_def {
     permission_def manage;
 
     asset total_supply;
-    asset current_supply;
     
     meta_list metas;
 };
@@ -273,7 +272,7 @@ FC_REFLECT(evt::chain::contracts::key_weight, (key)(weight));
 FC_REFLECT(evt::chain::contracts::authorizer_weight, (ref)(weight));
 FC_REFLECT(evt::chain::contracts::permission_def, (name)(threshold)(authorizers));
 FC_REFLECT(evt::chain::contracts::domain_def, (name)(creator)(create_time)(issue)(transfer)(manage)(metas));
-FC_REFLECT(evt::chain::contracts::fungible_def, (sym)(creator)(create_time)(issue)(manage)(total_supply)(current_supply)(metas));
+FC_REFLECT(evt::chain::contracts::fungible_def, (sym)(creator)(create_time)(issue)(manage)(total_supply)(metas));
 FC_REFLECT_ENUM(evt::chain::contracts::suspend_status, (proposed)(executed)(failed)(cancelled));
 FC_REFLECT(evt::chain::contracts::suspend_def, (name)(proposer)(status)(trx)(signed_keys));
 

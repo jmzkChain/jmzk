@@ -315,12 +315,35 @@ EVT_ACTION_IMPL(updatedomain) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
+namespace __internal {
+
+address
+get_fungible_address(symbol sym) {
+    return address(N(fungible), (fungible_name)sym.name(), 0);
+}
+
+void
+transfer_fungible(asset& from, asset& to, uint64_t total) {
+    bool r1, r2;
+    decltype(from.get_amount()) r;
+
+    r1 = safemath::test_sub(from.get_amount(), total, r);
+    r2 = safemath::test_add(to.get_amount(), total, r);
+    EVT_ASSERT(r1 && r2, math_overflow_exception, "Opeartions resulted in overflows.");
+    
+    from -= asset(total, from.get_symbol());
+    to += asset(total, to.get_symbol());
+}
+
+}  // namespace __internal
+
 EVT_ACTION_IMPL(newfungible) {
     using namespace __internal;
 
     auto nfact = context.act.data_as<newfungible>();
     try {
         EVT_ASSERT(context.has_authorized(N128(.fungible), (fungible_name)nfact.sym.name()), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(nfact.total_supply.get_amount() > 0, fungible_supply_exception, "Total supply cannot be zero");
 
         auto& tokendb = context.token_db;
         EVT_ASSERT(!tokendb.exists_fungible(nfact.sym), fungible_exists_exception, "Fungible with symbol: ${sym} already exists.", ("sym",nfact.sym.name()));
@@ -344,9 +367,11 @@ EVT_ACTION_IMPL(newfungible) {
         fungible.issue          = std::move(nfact.issue);
         fungible.manage         = std::move(nfact.manage);
         fungible.total_supply   = nfact.total_supply;
-        fungible.current_supply = asset(0, fungible.sym);
 
         tokendb.add_fungible(fungible);
+
+        auto addr = get_fungible_address(nfact.sym);
+        tokendb.update_asset(addr, nfact.total_supply);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -388,6 +413,8 @@ EVT_ACTION_IMPL(updfungible) {
 }
 
 EVT_ACTION_IMPL(issuefungible) {
+    using namespace __internal;
+
     auto ifact = context.act.data_as<issuefungible>();
 
     try {
@@ -396,33 +423,27 @@ EVT_ACTION_IMPL(issuefungible) {
         EVT_ASSERT(!ifact.address.is_reserved(), fungible_address_exception, "Cannot issue fungible tokens to reserved address");
 
         auto& tokendb = context.token_db;
+        EVT_ASSERT(tokendb.exists_fungible(sym), fungible_exists_exception, "${sym} fungible tokens doesn't exist", ("sym",sym));
 
-        fungible_def fungible;
-        tokendb.read_fungible(sym, fungible);
+        auto addr = get_fungible_address(sym);
 
-        decltype(ifact.number.get_amount()) rr;
-        auto r = safemath::test_add(fungible.current_supply.get_amount(), ifact.number.get_amount(), rr);
-        EVT_ASSERT(r, math_overflow_exception, "Operations resulted in overflows.");
+        asset from, to;
+        tokendb.read_asset(addr, sym, from);
+        tokendb.read_asset_no_throw(ifact.address, sym, to);
 
-        fungible.current_supply += ifact.number;
-        if(fungible.total_supply.get_amount() > 0) {
-            EVT_ASSERT(fungible.current_supply <= fungible.total_supply, fungible_supply_exception, "Total supply overflows.");
-        }
-        else {
-            EVT_ASSERT(fungible.current_supply.get_amount() <= ASSET_MAX_SHARE_SUPPLY, fungible_supply_exception, "Current supply exceeds the maximum allowed.");
-        }
+        EVT_ASSERT(from >= ifact.number, fungible_supply_exception, "Exceeds total supply of ${sym} fungible tokens.", ("sym",sym));
 
-        auto as = asset(0, sym);
-        tokendb.read_asset_no_throw(ifact.address, sym, as);
-        as += ifact.number;
+        transfer_fungible(from, to, ifact.number.get_amount());
 
-        tokendb.update_fungible(fungible);
-        tokendb.update_asset(ifact.address, as);
+        tokendb.update_asset(addr, from);
+        tokendb.update_asset(ifact.address, to);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
 EVT_ACTION_IMPL(transferft) {
+    using namespace __internal;
+
     auto tfact = context.act.data_as<transferft>();
 
     try {
@@ -439,14 +460,7 @@ EVT_ACTION_IMPL(transferft) {
 
         EVT_ASSERT(facc >= tfact.number, balance_exception, "Address does not have enough balance left.");
 
-        bool r1, r2;
-        decltype(facc.get_amount()) r;
-        r1 = safemath::test_sub(facc.get_amount(), tfact.number.get_amount(), r);
-        r2 = safemath::test_add(tacc.get_amount(), tfact.number.get_amount(), r);
-        EVT_ASSERT(r1 && r2, math_overflow_exception, "Opeartions resulted in overflows.");
-        
-        facc -= tfact.number;
-        tacc += tfact.number;
+        transfer_fungible(facc, tacc, tfact.number.get_amount());
 
         tokendb.update_asset(tfact.from, facc);
         tokendb.update_asset(tfact.to, tacc);
@@ -455,6 +469,8 @@ EVT_ACTION_IMPL(transferft) {
 }
 
 EVT_ACTION_IMPL(evt2pevt) {
+    using namespace __internal;
+
     auto epact = context.act.data_as<evt2pevt>();
 
     try {
@@ -473,14 +489,7 @@ EVT_ACTION_IMPL(evt2pevt) {
 
         EVT_ASSERT(facc >= epact.number, balance_exception, "Address does not have enough balance left.");
 
-        bool r1, r2;
-        decltype(facc.get_amount()) r;
-        r1 = safemath::test_sub(facc.get_amount(), epact.number.get_amount(), r);
-        r2 = safemath::test_add(tacc.get_amount(), epact.number.get_amount(), r);
-        EVT_ASSERT(r1 && r2, math_overflow_exception, "Opeartions resulted in overflows.");
-        
-        facc -= epact.number;
-        tacc += asset(epact.number.get_amount(), pevtsym);
+        transfer_fungible(facc, tacc, epact.number.get_amount());
 
         tokendb.update_asset(epact.from, facc);
         tokendb.update_asset(epact.to, tacc);
@@ -768,7 +777,11 @@ EVT_ACTION_IMPL(execsuspend) {
         EVT_ASSERT(suspend.status == suspend_status::proposed, suspend_status_exception, "Suspend transaction is not in 'proposed' status.");
         EVT_ASSERT(suspend.trx.expiration > now, suspend_expired_tx_exception, "Suspend transaction is expired at ${expir}, now is ${now}", ("expir",suspend.trx.expiration)("now",now));
 
+        // instead of add signatures to transaction, check authorization and payer here
         context.control.check_authorization(suspend.signed_keys, suspend.trx);
+        if(suspend.trx.payer.type() == address::public_key_t) {
+            EVT_ASSERT(suspend.signed_keys.find(suspend.trx.payer.get_public_key()) != suspend.signed_keys.end(), payer_exception, "Payer ${pay} needs to sign this suspend transaction", ("pay",suspend.trx.payer));
+        }
 
         auto strx = signed_transaction(suspend.trx, {});
         auto mtrx = std::make_shared<transaction_metadata>(strx);
@@ -787,14 +800,19 @@ EVT_ACTION_IMPL(execsuspend) {
 }
 
 EVT_ACTION_IMPL(paycharge) {
+    using namespace __internal;
+    
     auto pcact = context.act.data_as<const paycharge&>();
     try {
         auto& tokendb = context.token_db;
 
+        auto evt_symbol = symbol(SY(5,EVT));
+        auto pevt_symbol = symbol(SY(5,PEVT));
+
         uint64_t paid = 0;
 
         asset evt, pevt;
-        tokendb.read_asset_no_throw(pcact.payer, symbol(SY(5,PEVT)), pevt);
+        tokendb.read_asset_no_throw(pcact.payer, pevt_symbol, pevt);
         paid = std::min(pcact.charge, (uint64_t)pevt.get_amount());
         if(paid > 0) {
             pevt -= asset(paid, pevt.get_symbol());
@@ -802,7 +820,7 @@ EVT_ACTION_IMPL(paycharge) {
         }
 
         if(paid < pcact.charge) {
-            tokendb.read_asset_no_throw(pcact.payer, symbol(SY(5,EVT)), evt);
+            tokendb.read_asset_no_throw(pcact.payer, evt_symbol, evt);
             uint64_t remain = pcact.charge - paid;
             if(evt.get_amount() < remain) {
                 EVT_THROW(charge_exceeded_exception, "There are ${e} EVT and ${p} Pinned EVT left, but charge is ${c}", ("e",evt)("p",pevt)("c",pcact.charge));
@@ -810,6 +828,11 @@ EVT_ACTION_IMPL(paycharge) {
             evt -= asset(remain, evt.get_symbol());
             tokendb.update_asset(pcact.payer, evt);
         }
+
+        asset evt_asset;
+        auto addr = get_fungible_address(evt_symbol);
+        tokendb.read_asset(addr, evt_symbol, evt_asset);
+        evt_asset += asset(paid, evt_symbol);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }

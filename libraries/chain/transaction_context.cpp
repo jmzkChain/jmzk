@@ -130,6 +130,11 @@ transaction_context::check_paid() const {
         EVT_THROW(payer_exception, "Reserved address cannot be used to be payer");
     }
     case address::public_key_t: {
+        if(!is_input) {
+            // if it's not input transaction (suspend transaction)
+            // no need to check signature here, have checked in contract
+            break;
+        }
         auto& keys = trx.recover_keys(control.get_chain_id());
         if(keys.find(payer.get_public_key()) == keys.end()) {
             EVT_THROW(payer_exception, "Payer: ${p} needs to sign this transaction.", ("p",payer));
