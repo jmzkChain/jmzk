@@ -4,6 +4,7 @@
  */
 #pragma once
 #include <evt/chain/contracts/types.hpp>
+#include <evt/chain/contracts/abi_types.hpp>
 #include <evt/chain/exceptions.hpp>
 #include <evt/chain/trace.hpp>
 

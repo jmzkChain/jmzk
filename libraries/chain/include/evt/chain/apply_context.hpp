@@ -4,6 +4,7 @@
  */
 #pragma once
 #include <algorithm>
+#include <boost/noncopyable.hpp>
 #include <evt/chain/controller.hpp>
 #include <fc/utility.hpp>
 #include <sstream>
@@ -16,7 +17,7 @@ namespace evt { namespace chain {
 
 class transaction_context;
 
-class apply_context {
+class apply_context : boost::noncopyable {
 public:
     apply_context(controller& con, transaction_context& trx_ctx, const action& action)
         : control(con)
@@ -77,7 +78,5 @@ public:
 private:
     std::ostringstream _pending_console_output;
 };
-
-using apply_handler = std::function<void(apply_context&)>;
 
 }}  // namespace evt::chain

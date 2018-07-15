@@ -18,7 +18,7 @@ initialize_evt_org(token_database& token_db, const genesis_state& genesis) {
         const char* def = R"(
         {
             "name": ".everiToken",
-            "key": "EVT1111111111111111111111111111111114T1Anm",
+            "key": "EVT00000000000000000000000000000000000000000000000000",
             "root": {
                 "threshold": 19,
                 "nodes": [
@@ -57,9 +57,10 @@ initialize_evt_org(token_database& token_db, const genesis_state& genesis) {
         evt.manage = manage;
 
         evt.total_supply = asset(100'000'000'000'000L, evt.sym);
-        evt.current_supply = asset(0, evt.sym);
-
         token_db.add_fungible(evt);
+
+        auto addr = address(N(fungible), N128(EVT), 0);
+        token_db.update_asset(addr, evt.total_supply);
     }
 
     // Add reserved Pined EVT fungible tokens
@@ -81,7 +82,6 @@ initialize_evt_org(token_database& token_db, const genesis_state& genesis) {
         pevt.manage = manage;
 
         pevt.total_supply = asset(0, pevt.sym);
-        pevt.current_supply = asset(0, pevt.sym);
 
         token_db.add_fungible(pevt);
     }

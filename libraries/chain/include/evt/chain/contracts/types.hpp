@@ -4,6 +4,7 @@
  */
 #pragma once
 
+#include <evt/chain/address.hpp>
 #include <evt/chain/asset.hpp>
 #include <evt/chain/chain_config.hpp>
 #include <evt/chain/config.hpp>
@@ -15,96 +16,37 @@
 
 namespace evt { namespace chain { namespace contracts {
 
-using type_name       = string;
-using field_name      = string;
-using action_name     = evt::chain::action_name;
+#define EVT_ACTION_NAME(typename)  \
+    static constexpr action_name   \
+    get_name() {                   \
+        return N(typename);        \
+    }
+
 using domain_name     = evt::chain::domain_name;
 using domian_key      = evt::chain::domain_key;
 using token_name      = evt::chain::token_name;
 using permission_name = evt::chain::permission_name;
 using account_name    = evt::chain::account_name;
 using fungible_name   = evt::chain::fungible_name;
-using user_id         = evt::chain::user_id;
+using user_id         = evt::chain::public_key_type;
 using user_list       = std::vector<user_id>;
 using group_name      = evt::chain::group_name;
-using group_key       = public_key_type;
+using group_key       = evt::chain::address;
 using group_def       = group;
 using balance_type    = evt::chain::asset;
-
-struct type_def {
-    type_def() = default;
-    type_def(const type_name& new_type_name, const type_name& type)
-        : new_type_name(new_type_name)
-        , type(type) {}
-
-    type_name new_type_name;
-    type_name type;
-};
-
-struct field_def {
-    field_def() = default;
-    field_def(const field_name& name, const type_name& type)
-        : name(name)
-        , type(type) {}
-
-    field_name name;
-    type_name  type;
-
-    bool
-    operator==(const field_def& other) const {
-        return std::tie(name, type) == std::tie(other.name, other.type);
-    }
-};
-
-struct struct_def {
-    struct_def() = default;
-    struct_def(const type_name& name, const type_name& base, const vector<field_def>& fields)
-        : name(name)
-        , base(base)
-        , fields(fields) {}
-
-    type_name         name;
-    type_name         base;
-    vector<field_def> fields;
-
-    bool
-    operator==(const struct_def& other) const {
-        return std::tie(name, base, fields) == std::tie(other.name, other.base, other.fields);
-    }
-};
-
-struct action_def {
-    action_def() = default;
-    action_def(const action_name& name, const type_name& type)
-        : name(name)
-        , type(type) {}
-
-    action_name name;
-    type_name   type;
-};
-
-struct abi_def {
-    abi_def() = default;
-    abi_def(const vector<type_def>& types, const vector<struct_def>& structs, const vector<action_def>& actions)
-        : types(types)
-        , structs(structs)
-        , actions(actions) {}
-
-    vector<type_def>   types;
-    vector<struct_def> structs;
-    vector<action_def> actions;
-};
+using address_type    = evt::chain::address;
+using address_list    = std::vector<address_type>;
 
 struct token_def {
     token_def() = default;
-    token_def(domain_name domain, token_name name, user_list owner)
+    token_def(const domain_name& domain, const token_name& name, const address_list& owner)
         : domain(domain)
         , name(name)
         , owner(owner) {}
 
-    domain_name domain;
-    token_name  name;
-    user_list   owner;
+    domain_name  domain;
+    token_name   name;
+    address_list owner;
 
     meta_list metas;
 };
@@ -116,9 +58,8 @@ struct key_weight {
 
 struct authorizer_weight {
     authorizer_weight() = default;
-    authorizer_weight(authorizer_ref ref, weight_type weight)
-        : ref(ref)
-        , weight(weight) {}
+    authorizer_weight(const authorizer_ref& ref, weight_type weight)
+        : ref(ref), weight(weight) {}
 
     authorizer_ref ref;
     weight_type    weight;
@@ -126,10 +67,6 @@ struct authorizer_weight {
 
 struct permission_def {
     permission_def() = default;
-    permission_def(permission_name name, uint32_t threshold, const vector<authorizer_weight>& authorizers)
-        : name(name)
-        , threshold(threshold)
-        , authorizers(authorizers) {}
 
     permission_name           name;
     uint32_t                  threshold;
@@ -138,8 +75,6 @@ struct permission_def {
 
 struct domain_def {
     domain_def() = default;
-    domain_def(const domain_name& name)
-        : name(name) {}
 
     domain_name    name;
     user_id        creator;
@@ -163,7 +98,6 @@ struct fungible_def {
     permission_def manage;
 
     asset total_supply;
-    asset current_supply;
     
     meta_list metas;
 };
@@ -190,63 +124,45 @@ struct newdomain {
     permission_def transfer;
     permission_def manage;
 
-    static action_name
-    get_name() {
-        return N(newdomain);
-    }
+    EVT_ACTION_NAME(newdomain);
 };
 
 struct issuetoken {
     domain_name             domain;
     std::vector<token_name> names;
-    user_list               owner;
+    address_list            owner;
 
-    static action_name
-    get_name() {
-        return N(issuetoken);
-    }
+    EVT_ACTION_NAME(issuetoken);
 };
 
 struct transfer {
-    domain_name domain;
-    token_name  name;
-    user_list   to;
-    string      memo;
+    domain_name  domain;
+    token_name   name;
+    address_list to;
+    string       memo;
 
-    static action_name
-    get_name() {
-        return N(transfer);
-    }
+    EVT_ACTION_NAME(transfer);
 };
 
 struct destroytoken {
-    domain_name             domain;
-    token_name              name;
+    domain_name domain;
+    token_name  name;
 
-    static action_name
-    get_name() {
-        return N(destroytoken);
-    }
+    EVT_ACTION_NAME(destroytoken);
 };
 
 struct newgroup {
     group_name name;
     group_def  group;
 
-    static action_name
-    get_name() {
-        return N(newgroup);
-    }
+    EVT_ACTION_NAME(newgroup);
 };
 
 struct updategroup {
     group_name name;
     group_def  group;
 
-    static action_name
-    get_name() {
-        return N(updategroup);
-    }
+    EVT_ACTION_NAME(updategroup);
 };
 
 struct updatedomain {
@@ -256,10 +172,7 @@ struct updatedomain {
     fc::optional<permission_def> transfer;
     fc::optional<permission_def> manage;
 
-    static action_name
-    get_name() {
-        return N(updatedomain);
-    }
+    EVT_ACTION_NAME(updatedomain);
 };
 
 struct newfungible {
@@ -271,10 +184,7 @@ struct newfungible {
 
     asset total_supply;
 
-    static action_name
-    get_name() {
-        return N(newfungible);
-    }
+    EVT_ACTION_NAME(newfungible);
 };
 
 struct updfungible {
@@ -283,45 +193,33 @@ struct updfungible {
     fc::optional<permission_def> issue;
     fc::optional<permission_def> manage;
 
-    static action_name
-    get_name() {
-        return N(updfungible);
-    }
+    EVT_ACTION_NAME(updfungible);
 };
 
 struct issuefungible {
-    public_key_type address;
-    asset           number;
-    string          memo;
+    address_type address;
+    asset        number;
+    string       memo;
 
-    static action_name
-    get_name() {
-        return N(issuefungible);
-    }
+    EVT_ACTION_NAME(issuefungible);
 };
 
 struct transferft {
-    public_key_type from;
-    public_key_type to;
-    asset           number;
-    string          memo;
+    address_type from;
+    address_type to;
+    asset        number;
+    string       memo;
 
-    static action_name
-    get_name() {
-        return N(transferft);
-    }
+    EVT_ACTION_NAME(transferft);
 };
 
 struct evt2pevt {
-    public_key_type from;
-    public_key_type to;
-    asset           number;
-    string          memo;
+    address_type from;
+    address_type to;
+    asset        number;
+    string       memo;
 
-    static action_name
-    get_name() {
-        return N(evt2pevt);
-    }
+    EVT_ACTION_NAME(evt2pevt);
 };
 
 struct addmeta {
@@ -329,65 +227,52 @@ struct addmeta {
     meta_value     value;
     authorizer_ref creator;
 
-    static action_name
-    get_name() {
-        return N(addmeta);
-    }
+    EVT_ACTION_NAME(addmeta);
 };
 
 struct newsuspend {
-    proposal_name               name;
-    user_id                     proposer;
-    transaction                 trx;
+    proposal_name name;
+    user_id       proposer;
+    transaction   trx;
 
-    static action_name
-    get_name() {
-        return N(newsuspend);
-    }
+    EVT_ACTION_NAME(newsuspend);
 };
 
 struct cancelsuspend {
     proposal_name name;
 
-    static action_name
-    get_name() {
-        return N(cancelsuspend);
-    }
+    EVT_ACTION_NAME(cancelsuspend);
 };
 
 struct aprvsuspend {
     proposal_name               name;
     std::vector<signature_type> signatures;
 
-    static action_name
-    get_name() {
-        return N(aprvsuspend);
-    }
+    EVT_ACTION_NAME(aprvsuspend);
 };
 
 struct execsuspend {
     proposal_name name;
     user_id       executor;
 
-    static action_name
-    get_name() {
-        return N(execsuspend);
-    }
+    EVT_ACTION_NAME(execsuspend);
+};
+
+struct paycharge {
+    address  payer;
+    uint32_t charge;
+
+    EVT_ACTION_NAME(paycharge);
 };
 
 }}}  // namespace evt::chain::contracts
 
-FC_REFLECT(evt::chain::contracts::type_def, (new_type_name)(type));
-FC_REFLECT(evt::chain::contracts::field_def, (name)(type));
-FC_REFLECT(evt::chain::contracts::struct_def, (name)(base)(fields));
-FC_REFLECT(evt::chain::contracts::action_def, (name)(type));
-FC_REFLECT(evt::chain::contracts::abi_def, (types)(structs)(actions));
 FC_REFLECT(evt::chain::contracts::token_def, (domain)(name)(owner)(metas));
 FC_REFLECT(evt::chain::contracts::key_weight, (key)(weight));
 FC_REFLECT(evt::chain::contracts::authorizer_weight, (ref)(weight));
 FC_REFLECT(evt::chain::contracts::permission_def, (name)(threshold)(authorizers));
 FC_REFLECT(evt::chain::contracts::domain_def, (name)(creator)(create_time)(issue)(transfer)(manage)(metas));
-FC_REFLECT(evt::chain::contracts::fungible_def, (sym)(creator)(create_time)(issue)(manage)(total_supply)(current_supply)(metas));
+FC_REFLECT(evt::chain::contracts::fungible_def, (sym)(creator)(create_time)(issue)(manage)(total_supply)(metas));
 FC_REFLECT_ENUM(evt::chain::contracts::suspend_status, (proposed)(executed)(failed)(cancelled));
 FC_REFLECT(evt::chain::contracts::suspend_def, (name)(proposer)(status)(trx)(signed_keys));
 
@@ -408,3 +293,4 @@ FC_REFLECT(evt::chain::contracts::newsuspend, (name)(proposer)(trx));
 FC_REFLECT(evt::chain::contracts::cancelsuspend, (name));
 FC_REFLECT(evt::chain::contracts::aprvsuspend, (name)(signatures));
 FC_REFLECT(evt::chain::contracts::execsuspend, (name)(executor));
+FC_REFLECT(evt::chain::contracts::paycharge, (payer)(charge));

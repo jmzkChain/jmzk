@@ -15,6 +15,16 @@
 
 namespace evt { namespace chain { namespace contracts {
 
+#define EVT_ACTION_IMPL(name)                         \
+    template<>                                        \
+    struct apply_action<name> {                       \
+        static void invoke(apply_context&);           \
+    };                                                \
+    template struct apply_action<name>;               \
+                                                      \
+    void                                              \
+    apply_action<name>::invoke(apply_context& context)
+
 namespace __internal {
 
 inline bool 
@@ -93,21 +103,9 @@ check_name_reserved(const name128& name) {
     EVT_ASSERT(!name.empty() && (name.value & reserved_flag), name_reserved_exception, "Name starting with '.' is reserved for system usages.");
 }
 
-public_key_type
-get_reserved_public_key() {
-    static public_key_type pkey;
-    return pkey;
-}
-
-bool
-is_reserved_public_key(const public_key_type& pkey) {
-    return pkey == get_reserved_public_key();
-}
-
 } // namespace __internal
 
-void
-apply_evt_newdomain(apply_context& context) {
+EVT_ACTION_IMPL(newdomain) {
     using namespace __internal;
 
     auto ndact = context.act.data_as<newdomain>();
@@ -145,23 +143,28 @@ apply_evt_newdomain(apply_context& context) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
-void
-apply_evt_issuetoken(apply_context& context) {
+EVT_ACTION_IMPL(issuetoken) {
     using namespace __internal;
 
     auto itact = context.act.data_as<issuetoken>();
     try {
         EVT_ASSERT(context.has_authorized(itact.domain, N128(.issue)), action_authorize_exception, "Authorized information does not match.");
-        
+        EVT_ASSERT(!itact.owner.empty(), token_owner_exception, "Owner cannot be empty.");
+
+        auto check_owner = [](const auto& addr) {
+            EVT_ASSERT(addr.is_public_key(), token_owner_exception, "Owner should be public key address");
+        };
+        for(auto& addr : itact.owner) {
+            check_owner(addr);
+        }
+
         auto& tokendb = context.token_db;
         EVT_ASSERT(tokendb.exists_domain(itact.domain), domain_not_existed_exception, "Domain ${name} does not exist.", ("name", itact.domain));
-        EVT_ASSERT(!itact.owner.empty(), token_owner_exception, "Owner cannot be empty.");
 
         auto check_name = [&](const auto& name) {
             check_name_reserved(name);
             EVT_ASSERT(!tokendb.exists_token(itact.domain, name), token_exists_exception, "Token ${domain}-${name} already exists.", ("domain",itact.domain)("name",name));
         };
-
         for(auto& n : itact.names) {
             check_name(n);
         }
@@ -175,21 +178,28 @@ namespace __internal {
 
 bool
 check_token_destroy(const token_def& token) {
-    if(token.owner.size() > 1) {
+    if(token.owner.size() != 1) {
         return false;
     }
-    return token.owner[0] == get_reserved_public_key();
+    return token.owner[0].is_reserved();
 }
 
 }  // namespace __internal
 
-void
-apply_evt_transfer(apply_context& context) {
+EVT_ACTION_IMPL(transfer) {
     using namespace __internal;
 
     auto ttact = context.act.data_as<transfer>();
     try {
         EVT_ASSERT(context.has_authorized(ttact.domain, ttact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(!ttact.to.empty(), token_owner_exception, "New owner cannot be empty.");
+
+        auto check_owner = [](const auto& addr) {
+            EVT_ASSERT(addr.is_public_key(), token_owner_exception, "Owner should be public key address");
+        };
+        for(auto& addr : ttact.to) {
+            check_owner(addr);
+        }
 
         auto& tokendb = context.token_db;
 
@@ -204,8 +214,7 @@ apply_evt_transfer(apply_context& context) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
-void
-apply_evt_destroytoken(apply_context& context) {
+EVT_ACTION_IMPL(destroytoken) {
     using namespace __internal;
 
     auto dtact = context.act.data_as<destroytoken>();
@@ -219,19 +228,19 @@ apply_evt_destroytoken(apply_context& context) {
 
         EVT_ASSERT(!check_token_destroy(token), token_destoryed_exception, "Token is already destroyed.");
 
-        token.owner = user_list{ get_reserved_public_key() };
+        token.owner = address_list{ address() };
         tokendb.update_token(token);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
-void
-apply_evt_newgroup(apply_context& context) {
+EVT_ACTION_IMPL(newgroup) {
     using namespace __internal;
 
     auto ngact = context.act.data_as<newgroup>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(group), ngact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.group), ngact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(!ngact.group.key().is_generated(), group_key_exception, "Group key cannot be generated key");
         
         check_name_reserved(ngact.name);
         
@@ -244,13 +253,12 @@ apply_evt_newgroup(apply_context& context) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
-void
-apply_evt_updategroup(apply_context& context) {
+EVT_ACTION_IMPL(updategroup) {
     using namespace __internal;
 
     auto ugact = context.act.data_as<updategroup>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(group), ugact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.group), ugact.name), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(ugact.name == ugact.group.name(), group_name_exception, "Names in action are not the same.");
 
         auto& tokendb = context.token_db;
@@ -258,7 +266,7 @@ apply_evt_updategroup(apply_context& context) {
         group_def group;
         tokendb.read_group(ugact.name, group);
         
-        EVT_ASSERT(!is_reserved_public_key(group.key()), group_key_exception, "Reserved group key cannot be used to udpate group");
+        EVT_ASSERT(!group.key().is_reserved(), group_key_exception, "Reserved group key cannot be used to udpate group");
         EVT_ASSERT(validate(ugact.group), group_type_exception, "Updated group is not valid.");
 
         tokendb.update_group(std::move(ugact.group));
@@ -266,8 +274,7 @@ apply_evt_updategroup(apply_context& context) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
-void
-apply_evt_updatedomain(apply_context& context) {
+EVT_ACTION_IMPL(updatedomain) {
     using namespace __internal;
 
     auto udact = context.act.data_as<updatedomain>();
@@ -308,13 +315,35 @@ apply_evt_updatedomain(apply_context& context) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
+namespace __internal {
+
+address
+get_fungible_address(symbol sym) {
+    return address(N(fungible), (fungible_name)sym.name(), 0);
+}
+
 void
-apply_evt_newfungible(apply_context& context) {
+transfer_fungible(asset& from, asset& to, uint64_t total) {
+    bool r1, r2;
+    decltype(from.get_amount()) r;
+
+    r1 = safemath::test_sub(from.get_amount(), total, r);
+    r2 = safemath::test_add(to.get_amount(), total, r);
+    EVT_ASSERT(r1 && r2, math_overflow_exception, "Opeartions resulted in overflows.");
+    
+    from -= asset(total, from.get_symbol());
+    to += asset(total, to.get_symbol());
+}
+
+}  // namespace __internal
+
+EVT_ACTION_IMPL(newfungible) {
     using namespace __internal;
 
     auto nfact = context.act.data_as<newfungible>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(fungible), (fungible_name)nfact.sym.name()), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), (fungible_name)nfact.sym.name()), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(nfact.total_supply.get_amount() > 0, fungible_supply_exception, "Total supply cannot be zero");
 
         auto& tokendb = context.token_db;
         EVT_ASSERT(!tokendb.exists_fungible(nfact.sym), fungible_exists_exception, "Fungible with symbol: ${sym} already exists.", ("sym",nfact.sym.name()));
@@ -338,20 +367,21 @@ apply_evt_newfungible(apply_context& context) {
         fungible.issue          = std::move(nfact.issue);
         fungible.manage         = std::move(nfact.manage);
         fungible.total_supply   = nfact.total_supply;
-        fungible.current_supply = asset(0, fungible.sym);
 
         tokendb.add_fungible(fungible);
+
+        auto addr = get_fungible_address(nfact.sym);
+        tokendb.update_asset(addr, nfact.total_supply);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
-void
-apply_evt_updfungible(apply_context& context) {
+EVT_ACTION_IMPL(updfungible) {
     using namespace __internal;
 
     auto ufact = context.act.data_as<updfungible>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(fungible), (fungible_name)ufact.sym.name()), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), (fungible_name)ufact.sym.name()), action_authorize_exception, "Authorized information does not match.");
 
         auto& tokendb = context.token_db;
 
@@ -382,48 +412,44 @@ apply_evt_updfungible(apply_context& context) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
-void
-apply_evt_issuefungible(apply_context& context) {
+EVT_ACTION_IMPL(issuefungible) {
+    using namespace __internal;
+
     auto ifact = context.act.data_as<issuefungible>();
 
     try {
         auto sym = ifact.number.get_symbol();
-        EVT_ASSERT(context.has_authorized(N128(fungible), (fungible_name)sym.name()), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), (fungible_name)sym.name()), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(!ifact.address.is_reserved(), fungible_address_exception, "Cannot issue fungible tokens to reserved address");
 
         auto& tokendb = context.token_db;
+        EVT_ASSERT(tokendb.exists_fungible(sym), fungible_exists_exception, "${sym} fungible tokens doesn't exist", ("sym",sym));
 
-        fungible_def fungible;
-        tokendb.read_fungible(sym, fungible);
+        auto addr = get_fungible_address(sym);
 
-        decltype(ifact.number.get_amount()) rr;
-        auto r = safemath::test_add(fungible.current_supply.get_amount(), ifact.number.get_amount(), rr);
-        EVT_ASSERT(r, math_overflow_exception, "Operations resulted in overflows.");
+        asset from, to;
+        tokendb.read_asset(addr, sym, from);
+        tokendb.read_asset_no_throw(ifact.address, sym, to);
 
-        fungible.current_supply += ifact.number;
-        if(fungible.total_supply.get_amount() > 0) {
-            EVT_ASSERT(fungible.current_supply <= fungible.total_supply, fungible_supply_exception, "Total supply overflows.");
-        }
-        else {
-            EVT_ASSERT(fungible.current_supply.get_amount() <= ASSET_MAX_SHARE_SUPPLY, fungible_supply_exception, "Current supply exceeds the maximum allowed.");
-        }
+        EVT_ASSERT(from >= ifact.number, fungible_supply_exception, "Exceeds total supply of ${sym} fungible tokens.", ("sym",sym));
 
-        auto as = asset(0, sym);
-        tokendb.read_asset_no_throw(ifact.address, sym, as);
-        as += ifact.number;
+        transfer_fungible(from, to, ifact.number.get_amount());
 
-        tokendb.update_fungible(fungible);
-        tokendb.update_asset(ifact.address, as);
+        tokendb.update_asset(addr, from);
+        tokendb.update_asset(ifact.address, to);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
-void
-apply_evt_transferft(apply_context& context) {
+EVT_ACTION_IMPL(transferft) {
+    using namespace __internal;
+
     auto tfact = context.act.data_as<transferft>();
 
     try {
         auto sym = tfact.number.get_symbol();
-        EVT_ASSERT(context.has_authorized(N128(fungible), (fungible_name)sym.name()), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), (fungible_name)sym.name()), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(!tfact.to.is_reserved(), fungible_address_exception, "Cannot transfer fungible tokens to reserved address");
 
         auto& tokendb = context.token_db;
         
@@ -434,14 +460,7 @@ apply_evt_transferft(apply_context& context) {
 
         EVT_ASSERT(facc >= tfact.number, balance_exception, "Address does not have enough balance left.");
 
-        bool r1, r2;
-        decltype(facc.get_amount()) r;
-        r1 = safemath::test_sub(facc.get_amount(), tfact.number.get_amount(), r);
-        r2 = safemath::test_add(tacc.get_amount(), tfact.number.get_amount(), r);
-        EVT_ASSERT(r1 && r2, math_overflow_exception, "Opeartions resulted in overflows.");
-        
-        facc -= tfact.number;
-        tacc += tfact.number;
+        transfer_fungible(facc, tacc, tfact.number.get_amount());
 
         tokendb.update_asset(tfact.from, facc);
         tokendb.update_asset(tfact.to, tacc);
@@ -449,15 +468,17 @@ apply_evt_transferft(apply_context& context) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
-void
-apply_evt_evt2pevt(apply_context& context) {
+EVT_ACTION_IMPL(evt2pevt) {
+    using namespace __internal;
+
     auto epact = context.act.data_as<evt2pevt>();
 
     try {
         auto evtsym = epact.number.get_symbol();
         auto pevtsym = symbol(SY(5,PEVT));
         EVT_ASSERT(evtsym == symbol(SY(5,EVT)), fungible_symbol_exception, "Only EVT tokens can be converted to Pinned EVT tokens");
-        EVT_ASSERT(context.has_authorized(N128(fungible), (fungible_name)evtsym.name()), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), (fungible_name)evtsym.name()), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(!epact.to.is_reserved(), fungible_address_exception, "Cannot convert Pinned EVT tokens to reserved address");
 
         auto& tokendb = context.token_db;
         
@@ -468,14 +489,7 @@ apply_evt_evt2pevt(apply_context& context) {
 
         EVT_ASSERT(facc >= epact.number, balance_exception, "Address does not have enough balance left.");
 
-        bool r1, r2;
-        decltype(facc.get_amount()) r;
-        r1 = safemath::test_sub(facc.get_amount(), epact.number.get_amount(), r);
-        r2 = safemath::test_add(tacc.get_amount(), epact.number.get_amount(), r);
-        EVT_ASSERT(r1 && r2, math_overflow_exception, "Opeartions resulted in overflows.");
-        
-        facc -= epact.number;
-        tacc += asset(epact.number.get_amount(), pevtsym);
+        transfer_fungible(facc, tacc, epact.number.get_amount());
 
         tokendb.update_asset(epact.from, facc);
         tokendb.update_asset(epact.to, tacc);
@@ -562,15 +576,17 @@ auto check_involved_fungible = [](const auto& tokendb, const auto& fungible, aut
 };
 
 auto check_involved_group = [](const auto& group, const auto& key) {
-    if(group.key() == key) {
+    if(group.key().is_public_key() && group.key().get_public_key() == key) {
         return true;
     }
     return false;
 };
 
 auto check_involved_owner = [](const auto& token, const auto& key) {
-    if(std::find(token.owner.cbegin(), token.owner.cend(), key) != token.owner.cend()) {
-        return true;
+    for(auto& addr : token.owner) {
+        if(addr.is_public_key() && addr.get_public_key() == key) {
+            return true;
+        }
     }
     return false;
 };
@@ -595,8 +611,7 @@ check_duplicate_meta<group_def>(const group_def& v, const meta_key& key) {
 
 }  // namespace __internal
 
-void
-apply_evt_addmeta(apply_context& context) {
+EVT_ACTION_IMPL(addmeta) {
     using namespace __internal;
 
     const auto& act   = context.act;
@@ -606,7 +621,7 @@ apply_evt_addmeta(apply_context& context) {
 
         check_name_reserved(amact.key);
 
-        if(act.domain == N128(group)) {
+        if(act.domain == N128(.group)) {
             group_def group;
             tokendb.read_group(act.key, group);
 
@@ -621,7 +636,7 @@ apply_evt_addmeta(apply_context& context) {
             group.metas_.emplace_back(meta(amact.key, amact.value, amact.creator));
             tokendb.update_group(group);
         }
-        else if(act.domain == N128(fungible)) {
+        else if(act.domain == N128(.fungible)) {
             fungible_def fungible;
             tokendb.read_fungible(act.key, fungible);
 
@@ -673,13 +688,12 @@ apply_evt_addmeta(apply_context& context) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
-void
-apply_evt_newsuspend(apply_context& context) {
+EVT_ACTION_IMPL(newsuspend) {
     using namespace __internal;
 
     auto nsact = context.act.data_as<newsuspend>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(suspend), nsact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.suspend), nsact.name), action_authorize_exception, "Authorized information does not match.");
 
         check_name_reserved(nsact.name);
         for(auto& act : nsact.trx.actions) {
@@ -700,13 +714,12 @@ apply_evt_newsuspend(apply_context& context) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
-void
-apply_evt_aprvsuspend(apply_context& context) {
+EVT_ACTION_IMPL(aprvsuspend) {
     using namespace __internal;
 
     auto aeact = context.act.data_as<aprvsuspend>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(suspend), aeact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.suspend), aeact.name), action_authorize_exception, "Authorized information does not match.");
 
         auto& tokendb = context.token_db;
 
@@ -729,13 +742,12 @@ apply_evt_aprvsuspend(apply_context& context) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
-void
-apply_evt_cancelsuspend(apply_context& context) {
+EVT_ACTION_IMPL(cancelsuspend) {
     using namespace __internal;
 
     auto csact = context.act.data_as<cancelsuspend>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(suspend), csact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.suspend), csact.name), action_authorize_exception, "Authorized information does not match.");
 
         auto& tokendb = context.token_db;
 
@@ -749,11 +761,10 @@ apply_evt_cancelsuspend(apply_context& context) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
-void
-apply_evt_execsuspend(apply_context& context) {
+EVT_ACTION_IMPL(execsuspend) {
     auto esact = context.act.data_as<execsuspend>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(suspend), esact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.suspend), esact.name), action_authorize_exception, "Authorized information does not match.");
 
         auto& tokendb = context.token_db;
 
@@ -766,7 +777,11 @@ apply_evt_execsuspend(apply_context& context) {
         EVT_ASSERT(suspend.status == suspend_status::proposed, suspend_status_exception, "Suspend transaction is not in 'proposed' status.");
         EVT_ASSERT(suspend.trx.expiration > now, suspend_expired_tx_exception, "Suspend transaction is expired at ${expir}, now is ${now}", ("expir",suspend.trx.expiration)("now",now));
 
+        // instead of add signatures to transaction, check authorization and payer here
         context.control.check_authorization(suspend.signed_keys, suspend.trx);
+        if(suspend.trx.payer.type() == address::public_key_t) {
+            EVT_ASSERT(suspend.signed_keys.find(suspend.trx.payer.get_public_key()) != suspend.signed_keys.end(), payer_exception, "Payer ${pay} needs to sign this suspend transaction", ("pay",suspend.trx.payer));
+        }
 
         auto strx = signed_transaction(suspend.trx, {});
         auto mtrx = std::make_shared<transaction_metadata>(strx);
@@ -780,6 +795,44 @@ apply_evt_execsuspend(apply_context& context) {
             suspend.status = suspend_status::executed;
         }
         tokendb.update_suspend(suspend);
+    }
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+}
+
+EVT_ACTION_IMPL(paycharge) {
+    using namespace __internal;
+    
+    auto pcact = context.act.data_as<const paycharge&>();
+    try {
+        auto& tokendb = context.token_db;
+
+        auto evt_symbol = symbol(SY(5,EVT));
+        auto pevt_symbol = symbol(SY(5,PEVT));
+
+        uint64_t paid = 0;
+
+        asset evt, pevt;
+        tokendb.read_asset_no_throw(pcact.payer, pevt_symbol, pevt);
+        paid = std::min(pcact.charge, (uint32_t)pevt.get_amount());
+        if(paid > 0) {
+            pevt -= asset(paid, pevt.get_symbol());
+            tokendb.update_asset(pcact.payer, pevt);
+        }
+
+        if(paid < pcact.charge) {
+            tokendb.read_asset_no_throw(pcact.payer, evt_symbol, evt);
+            uint64_t remain = pcact.charge - paid;
+            if(evt.get_amount() < remain) {
+                EVT_THROW(charge_exceeded_exception, "There are ${e} EVT and ${p} Pinned EVT left, but charge is ${c}", ("e",evt)("p",pevt)("c",pcact.charge));
+            }
+            evt -= asset(remain, evt.get_symbol());
+            tokendb.update_asset(pcact.payer, evt);
+        }
+
+        asset evt_asset;
+        auto addr = get_fungible_address(evt_symbol);
+        tokendb.read_asset(addr, evt_symbol, evt_asset);
+        evt_asset += asset(paid, evt_symbol);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }

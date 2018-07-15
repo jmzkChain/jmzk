@@ -122,6 +122,7 @@ from_variant(const fc::variant& v, evt::chain::contracts::group& group) {
     if(vo.find("name") != vo.end()) {
         from_variant(vo["name"], group.name_);
     }
+    EVT_ASSERT(!group.key_.is_generated(), group_type_exception, "Generated group key is not allowed here");
     from_variant(vo["key"], group.key_);
     group.nodes_.resize(1);
     from_variant(vo["root"], group, group.nodes_[0], 0);

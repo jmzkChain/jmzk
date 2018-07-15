@@ -49,7 +49,7 @@ public:
         , evt_abi_(contracts::evt_contract_abi()) {}
 
 public:
-    flat_set<string> get_tokens_by_public_keys(const vector<public_key_type>& pkeys);
+    variant get_tokens_by_public_keys(const vector<public_key_type>& pkeys);
     flat_set<string> get_domains_by_public_keys(const vector<public_key_type>& pkeys);
     flat_set<string> get_groups_by_public_keys(const vector<public_key_type>& pkeys);
 
@@ -90,9 +90,9 @@ history_plugin_impl::transaction_to_variant(const packed_transaction& ptrx) {
 }
 
 
-flat_set<string>
+variant
 history_plugin_impl::get_tokens_by_public_keys(const vector<public_key_type>& pkeys) {
-    flat_set<string> results;
+    auto results = fc::mutable_variant_object();
 
     auto tokens = db_[tokens_col];
     for(auto& pkey : pkeys) {
@@ -102,8 +102,13 @@ history_plugin_impl::get_tokens_by_public_keys(const vector<public_key_type>& pk
         auto cursor = tokens.find(find.view());
         try {
             for(auto it = cursor.begin(); it != cursor.end(); it++) {
-                auto id = get_bson_string_value(it, "token_id");
-                results.insert(string(id.data(), id.size()));
+                auto domain = get_bson_string_value(it, "domain");
+                auto name = get_bson_string_value(it, "name");
+
+                if(results.find(domain) == results.end()) {
+                    results.set(domain, fc::variants());
+                }
+                results[domain].get_array().emplace_back(std::move(name));
             }
         }
         catch(mongocxx::query_exception e) {
@@ -325,10 +330,7 @@ namespace history_apis {
 
 fc::variant
 read_only::get_tokens(const get_params& params) {
-    auto tokens = plugin_.my_->get_tokens_by_public_keys(params.keys);
-    fc::variant result;
-    fc::to_variant(tokens, result);
-    return result;
+    return plugin_.my_->get_tokens_by_public_keys(params.keys);
 }
 
 fc::variant

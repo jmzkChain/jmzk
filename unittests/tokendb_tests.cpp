@@ -57,7 +57,7 @@ add_domain_data() {
         "name": "transfer",
         "threshold": 1,
         "authorizers": [{
-            "ref": "[G] OWNER",
+            "ref": "[G] .OWNER",
             "weight": 1
           }
         ]
@@ -97,7 +97,7 @@ update_domain_data() {
         "name": "transfer",
         "threshold": 1,
         "authorizers": [{
-            "ref": "[G] OWNER",
+            "ref": "[G] .OWNER",
             "weight": 1
           }
         ]

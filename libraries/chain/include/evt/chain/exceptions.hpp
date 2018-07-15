@@ -104,7 +104,10 @@ FC_DECLARE_DERIVED_EXCEPTION( invalid_ref_block_exception,       transaction_exc
 FC_DECLARE_DERIVED_EXCEPTION( tx_apply_exception,                transaction_exception, 3030006, "Transaction Apply Exception" );
 FC_DECLARE_DERIVED_EXCEPTION( tx_receipt_inconsistent_status,    transaction_exception, 3030007, "Transaction receipt applied status does not match received status." );
 FC_DECLARE_DERIVED_EXCEPTION( tx_no_action,                      transaction_exception, 3030008, "transaction should have at least one normal action." );
-FC_DECLARE_DERIVED_EXCEPTION( deadline_exception,                transaction_exception, 3030009, "transaction is timeout.");
+FC_DECLARE_DERIVED_EXCEPTION( deadline_exception,                transaction_exception, 3030009, "transaction is timeout." );
+FC_DECLARE_DERIVED_EXCEPTION( max_charge_exceeded_exception,     transaction_exception, 3030010, "exceeded max charge paid");
+FC_DECLARE_DERIVED_EXCEPTION( charge_exceeded_exception,         transaction_exception, 3030011, "exceeded remaining EVT & Pinned EVT tokens" );
+FC_DECLARE_DERIVED_EXCEPTION( payer_exception,                   transaction_exception, 3030012, "Invalid payer" );
 
 FC_DECLARE_DERIVED_EXCEPTION( action_authorize_exception,          action_exception, 3040001, "invalid action authorization" );
 FC_DECLARE_DERIVED_EXCEPTION( action_args_exception,               action_exception, 3040002, "Invalid arguments for action" );
@@ -127,19 +130,20 @@ FC_DECLARE_DERIVED_EXCEPTION( proposal_name_exception,             action_except
 FC_DECLARE_DERIVED_EXCEPTION( fungible_name_exception,             action_exception, 3040019, "Invalid fungible asset name" );
 FC_DECLARE_DERIVED_EXCEPTION( fungible_symbol_exception,           action_exception, 3040020, "Invalid fungible asset symbol" );
 FC_DECLARE_DERIVED_EXCEPTION( fungible_supply_exception,           action_exception, 3040021, "Invalid fungible supply" );
-FC_DECLARE_DERIVED_EXCEPTION( token_owner_exception,               action_exception, 3040022, "Token owner cannot be empty." );
-FC_DECLARE_DERIVED_EXCEPTION( token_destoryed_exception,           action_exception, 3040023, "Token is destroyed." );
-FC_DECLARE_DERIVED_EXCEPTION( math_overflow_exception,             action_exception, 3040024, "Operations resulted in overflow." );
-FC_DECLARE_DERIVED_EXCEPTION( balance_exception,                   action_exception, 3040025, "Not enough balance left." );
-FC_DECLARE_DERIVED_EXCEPTION( meta_involve_exception,              action_exception, 3040026, "Creator is not involved." );
-FC_DECLARE_DERIVED_EXCEPTION( suspend_status_exception,            action_exception, 3040027, "Suspend transaction is not in proper status." );
-FC_DECLARE_DERIVED_EXCEPTION( suspend_proposer_key_exception,      action_exception, 3040028, "Proposer needs to sign his key." );
-FC_DECLARE_DERIVED_EXCEPTION( suspend_duplicate_key_exception,     action_exception, 3040029, "Some keys are already signed this suspend transaction." );
-FC_DECLARE_DERIVED_EXCEPTION( suspend_expired_tx_exception,        action_exception, 3040030, "Suspend transaction is expired." );
-FC_DECLARE_DERIVED_EXCEPTION( suspend_not_required_keys_exception, action_exception, 3040031, "Provided keys are not required." );
-FC_DECLARE_DERIVED_EXCEPTION( suspend_executor_exception,          action_exception, 3040032, "Invalid executor." );
-FC_DECLARE_DERIVED_EXCEPTION( suspend_invalid_action_exception,    action_exception, 3040033, "Action is not valid for suspend transaction." );
-FC_DECLARE_DERIVED_EXCEPTION( name_reserved_exception,             action_exception, 3040034, "Name is reserved." );
+FC_DECLARE_DERIVED_EXCEPTION( fungible_address_exception,          action_exception, 3040022, "Invalid address" );
+FC_DECLARE_DERIVED_EXCEPTION( token_owner_exception,               action_exception, 3040023, "Token owner cannot be empty." );
+FC_DECLARE_DERIVED_EXCEPTION( token_destoryed_exception,           action_exception, 3040024, "Token is destroyed." );
+FC_DECLARE_DERIVED_EXCEPTION( math_overflow_exception,             action_exception, 3040025, "Operations resulted in overflow." );
+FC_DECLARE_DERIVED_EXCEPTION( balance_exception,                   action_exception, 3040026, "Not enough balance left." );
+FC_DECLARE_DERIVED_EXCEPTION( meta_involve_exception,              action_exception, 3040027, "Creator is not involved." );
+FC_DECLARE_DERIVED_EXCEPTION( suspend_status_exception,            action_exception, 3040028, "Suspend transaction is not in proper status." );
+FC_DECLARE_DERIVED_EXCEPTION( suspend_proposer_key_exception,      action_exception, 3040029, "Proposer needs to sign his key." );
+FC_DECLARE_DERIVED_EXCEPTION( suspend_duplicate_key_exception,     action_exception, 3040030, "Some keys are already signed this suspend transaction." );
+FC_DECLARE_DERIVED_EXCEPTION( suspend_expired_tx_exception,        action_exception, 3040031, "Suspend transaction is expired." );
+FC_DECLARE_DERIVED_EXCEPTION( suspend_not_required_keys_exception, action_exception, 3040032, "Provided keys are not required." );
+FC_DECLARE_DERIVED_EXCEPTION( suspend_executor_exception,          action_exception, 3040033, "Invalid executor." );
+FC_DECLARE_DERIVED_EXCEPTION( suspend_invalid_action_exception,    action_exception, 3040034, "Action is not valid for suspend transaction." );
+FC_DECLARE_DERIVED_EXCEPTION( name_reserved_exception,             action_exception, 3040035, "Name is reserved." );
 
 FC_DECLARE_DERIVED_EXCEPTION( pop_empty_chain,                   undo_database_exception, 3070001, "There are no blocks to be popped." );
 
@@ -158,6 +162,7 @@ FC_DECLARE_DERIVED_EXCEPTION( asset_type_exception,              chain_type_exce
 FC_DECLARE_DERIVED_EXCEPTION( permission_type_exception,         chain_type_exception, 3120013, "Invalid permission" );
 FC_DECLARE_DERIVED_EXCEPTION( group_type_exception,              chain_type_exception, 3120014, "Invalid group" );
 FC_DECLARE_DERIVED_EXCEPTION( authorizer_ref_type_exception,     chain_type_exception, 3120015, "Invalid authorizer ref" );
+FC_DECLARE_DERIVED_EXCEPTION( address_type_exception,            chain_type_exception, 3120016, "Invalid address" );
 
 FC_DECLARE_DERIVED_EXCEPTION( missing_chain_api_plugin_exception,   missing_plugin_exception, 3130001, "Missing Chain API Plugin" );
 FC_DECLARE_DERIVED_EXCEPTION( missing_wallet_api_plugin_exception,  missing_plugin_exception, 3130002, "Missing Wallet API Plugin" );

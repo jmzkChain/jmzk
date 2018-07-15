@@ -15,10 +15,11 @@ struct action_trace {
         : receipt(r) {}
     action_trace() {}
 
-    action_receipt      receipt;
-    action              act;
-    fc::microseconds    elapsed;
-    string              console;
+    action_receipt   receipt;
+    action           act;
+    fc::microseconds elapsed;
+    string           console;
+
     transaction_id_type trx_id;
 };
 
@@ -31,6 +32,8 @@ struct transaction_trace {
     fc::microseconds                         elapsed;
     bool                                     is_suspend = false;
     vector<action_trace>                     action_traces;  ///< disposable
+
+    uint32_t charge;
 
     fc::optional<fc::exception> except;
     std::exception_ptr          except_ptr;
@@ -45,5 +48,5 @@ using block_trace_ptr = std::shared_ptr<block_trace>;
 }}  // namespace evt::chain
 
 FC_REFLECT(evt::chain::action_trace, (receipt)(act)(elapsed)(console)(trx_id))
-FC_REFLECT(evt::chain::transaction_trace, (id)(receipt)(elapsed)(is_suspend)(action_traces)(except))
+FC_REFLECT(evt::chain::transaction_trace, (id)(receipt)(elapsed)(is_suspend)(action_traces)(charge)(except))
 FC_REFLECT(evt::chain::block_trace, (elapsed)(trx_traces))

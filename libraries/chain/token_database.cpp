@@ -51,9 +51,9 @@ struct db_key {
 };
 
 struct db_asset_key {
-    db_asset_key(const public_key_type& pkey, symbol symbol)
+    db_asset_key(const address& addr, symbol symbol)
         : slice((const char*)this, sizeof(buf)) {
-        memcpy(buf, &pkey, PKEY_SIZE);
+        addr.to_bytes(buf, PKEY_SIZE);
         memcpy(buf + PKEY_SIZE, &symbol, sizeof(symbol));
     }
 
@@ -63,6 +63,22 @@ struct db_asset_key {
     }
 
     char buf[PKEY_SIZE + sizeof(symbol)];
+
+    rocksdb::Slice slice;
+};
+
+struct db_asset_prefix_key {
+    db_asset_prefix_key(const address& addr)
+        : slice((const char*)this, sizeof(buf)) {
+        addr.to_bytes(buf, PKEY_SIZE);
+    }
+
+    const rocksdb::Slice&
+    as_slice() const {
+        return slice;
+    }
+
+    char buf[PKEY_SIZE];
 
     rocksdb::Slice slice;
 };
@@ -98,18 +114,18 @@ get_fungible_key(const fungible_name& sym_name) {
 }
 
 db_asset_key
-get_asset_key(const public_key_type& pkey, const asset& asset) {
-    return db_asset_key(pkey, asset.get_symbol());
+get_asset_key(const address& addr, const asset& asset) {
+    return db_asset_key(addr, asset.get_symbol());
 }
 
 db_asset_key
-get_asset_key(const public_key_type& pkey, const symbol symbol) {
-    return db_asset_key(pkey, symbol);
+get_asset_key(const address& addr, const symbol symbol) {
+    return db_asset_key(addr, symbol);
 }
 
-rocksdb::Slice
-get_asset_prefix_key(const public_key_type& pkey) {
-    return rocksdb::Slice((const char*)&pkey, PKEY_SIZE);
+db_asset_prefix_key
+get_asset_prefix_key(const address& addr) {
+    return db_asset_prefix_key(addr);
 }
 
 template <typename T>
@@ -415,9 +431,9 @@ token_database::exists_fungible(const fungible_name& sym_name) const {
 }
 
 int
-token_database::update_asset(const public_key_type& address, const asset& asset) {
+token_database::update_asset(const address& addr, const asset& asset) {
     using namespace __internal;
-    auto key    = get_asset_key(address, asset);
+    auto key    = get_asset_key(addr, asset);
     auto value  = get_value(asset);
     auto status = db_->Put(write_opts_, assets_handle_, key.as_slice(), value);
     if(!status.ok()) {
@@ -432,11 +448,11 @@ token_database::update_asset(const public_key_type& address, const asset& asset)
 }
 
 int
-token_database::exists_any_asset(const public_key_type& address) const {
+token_database::exists_any_asset(const address& addr) const {
     using namespace __internal;
     auto it  = db_->NewIterator(read_opts_, assets_handle_);
-    auto key = get_asset_prefix_key(address);
-    it->Seek(key);
+    auto key = get_asset_prefix_key(addr);
+    it->Seek(key.as_slice());
 
     auto existed = it->Valid();
     delete it;
@@ -445,10 +461,10 @@ token_database::exists_any_asset(const public_key_type& address) const {
 }
 
 int
-token_database::exists_asset(const public_key_type& address, const symbol symbol) const {
+token_database::exists_asset(const address& addr, const symbol symbol) const {
     using namespace __internal;
     auto it  = db_->NewIterator(read_opts_, assets_handle_);
-    auto key = get_asset_key(address, symbol);
+    auto key = get_asset_key(addr, symbol);
     it->Seek(key.as_slice());
 
     auto existed = it->Valid() && it->key().compare(key.as_slice()) == 0;
@@ -536,15 +552,15 @@ token_database::read_fungible(const fungible_name& sym_name, fungible_def& fungi
 }
 
 int
-token_database::read_asset(const public_key_type& address, const symbol symbol, asset& v) const {
+token_database::read_asset(const address& addr, const symbol symbol, asset& v) const {
     using namespace __internal;
     auto it  = db_->NewIterator(read_opts_, assets_handle_);
-    auto key = get_asset_key(address, symbol);
+    auto key = get_asset_key(addr, symbol);
     it->Seek(key.as_slice());
 
     if(!it->Valid() || it->key().compare(key.as_slice()) != 0) {
         delete it;
-        EVT_THROW(tokendb_asset_not_found, "Cannot find fungible: ${sym} in address: {address}", ("sym",symbol)("address",address));
+        EVT_THROW(tokendb_asset_not_found, "Cannot find fungible: ${sym} in address: {addr}", ("sym",symbol)("addr",addr));
     }
     v = read_value<asset>(it->value());
     delete it;
@@ -552,10 +568,10 @@ token_database::read_asset(const public_key_type& address, const symbol symbol, 
 }
 
 int
-token_database::read_asset_no_throw(const public_key_type& address, const symbol symbol, asset& v) const {
+token_database::read_asset_no_throw(const address& addr, const symbol symbol, asset& v) const {
     using namespace __internal;
     auto it  = db_->NewIterator(read_opts_, assets_handle_);
-    auto key = get_asset_key(address, symbol);
+    auto key = get_asset_key(addr, symbol);
     it->Seek(key.as_slice());
 
     if(!it->Valid() || it->key().compare(key.as_slice()) != 0) {
@@ -569,11 +585,11 @@ token_database::read_asset_no_throw(const public_key_type& address, const symbol
 }
 
 int
-token_database::read_all_assets(const public_key_type& address, const read_fungible_func& func) const {
+token_database::read_all_assets(const address& addr, const read_fungible_func& func) const {
     using namespace __internal;
     auto it  = db_->NewIterator(read_opts_, assets_handle_);
-    auto key = get_asset_prefix_key(address);
-    it->Seek(key);
+    auto key = get_asset_prefix_key(addr);
+    it->Seek(key.as_slice());
 
     while(it->Valid()) {
         auto v = read_value<asset>(it->value());

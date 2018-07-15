@@ -77,6 +77,8 @@ struct optionaltest2 {
 };
 FC_REFLECT(optionaltest2, (a)(b));
 
+BOOST_AUTO_TEST_SUITE(abi_tests)
+
 BOOST_AUTO_TEST_CASE(optional_test) {
     try {
         auto abi = abi_def();
@@ -161,7 +163,7 @@ BOOST_AUTO_TEST_CASE(newdomain_test) {
             "name": "transfer",
             "threshold": 1,
             "authorizers": [{
-                "ref": "[G] OWNER",
+                "ref": "[G] .OWNER",
                 "weight": 1
               }
             ]
@@ -998,6 +1000,8 @@ BOOST_AUTO_TEST_CASE(newsuspend_test) {
                 "expiration": "2018-07-04T05:14:12",
                 "ref_block_num": "3432",
                 "ref_block_prefix": "291678901",
+                "max_charge": 10000,
+                "payer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
                 "actions": [
                     {
                         "name": "newdomain",
@@ -1101,3 +1105,5 @@ BOOST_AUTO_TEST_CASE(execsuspend_test) {
     }
     FC_LOG_AND_RETHROW()
 }
+
+BOOST_AUTO_TEST_SUITE_END()

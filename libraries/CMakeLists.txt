@@ -11,7 +11,7 @@ set( WITH_TOOLS OFF CACHE BOOL "build RocksDB with Tools" FORCE )
 set( PORTABLE ON CACHE BOOL "build a portable RocksDB library" FORCE )
 set( FORCE_SSE42 ON CACHE BOOL "force building RocksDB with SSE4.2" FORCE )
 add_subdirectory( rocksdb EXCLUDE_FROM_ALL )
-target_compile_options( rocksdb PRIVATE "--std=c++11")
+set_property(TARGET rocksdb PROPERTY CXX_STANDARD 11)
 
 add_subdirectory( chain )
 add_subdirectory( testing)

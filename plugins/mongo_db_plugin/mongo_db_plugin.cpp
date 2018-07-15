@@ -402,7 +402,7 @@ mongo_db_plugin_impl::process_transaction(const transaction_trace& trace) {
 
 void
 mongo_db_plugin_impl::_process_block(const signed_block& block) {
-    using namespace __internal;
+    using namespace evt::__internal;
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
     using bsoncxx::builder::basic::kvp;
@@ -545,7 +545,7 @@ mongo_db_plugin_impl::_process_block(const signed_block& block) {
 
 void
 mongo_db_plugin_impl::_process_irreversible_block(const signed_block& block) {
-    using namespace __internal;
+    using namespace evt::__internal;
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
     using bsoncxx::builder::basic::kvp;

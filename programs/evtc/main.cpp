@@ -70,8 +70,8 @@ FC_DECLARE_EXCEPTION(localized_exception, 10000000, "an error occured");
         } FC_MULTILINE_MACRO_END)
 
 string program    = "evtc";
-string url        = "http://localhost:8888";
-string wallet_url = "http://localhost:9999";
+string url        = "http://127.0.0.1:8888";
+string wallet_url = "http://127.0.0.1:9999";
 
 bool no_verify = false;
 vector<string> headers;
@@ -84,25 +84,10 @@ bool   tx_print_json     = false;
 bool   print_request     = false;
 bool   print_response    = false;
 
-string propname;
-string proposer;
-
-bool
-detect_public_key(const std::string& pkey, bool &reserved) {
-    static public_key_type rkey;
-
-    if(pkey.size() != 42) {
-        return false;
-    }
-    try {
-        auto key = public_key_type(pkey);
-        reserved = (key == rkey);
-        return true;
-    }
-    catch(...) {
-        return false;
-    }
-}
+string   propname;
+string   proposer;
+string   payer;
+uint32_t max_charge = 10000;
 
 void
 print_info(const fc::variant& info, int indent = 0) {
@@ -122,7 +107,7 @@ print_info(const fc::variant& info, int indent = 0) {
                 else if(obj.value().is_array()) {
                     if(obj.value().get_array().size() == 0) {
                         cerr << "(empty)" << endl;
-                        return;
+                        continue;
                     }
                     cerr << endl;
                     print_info(obj.value(), indent + 1);
@@ -151,15 +136,7 @@ print_info(const fc::variant& info, int indent = 0) {
             }
             cerr << "|";
             cerr << "->";
-            auto v = info.as_string();
-
-            bool reserved = false;
-            if(detect_public_key(v, reserved) && reserved) {
-                cerr << info.as_string() << " [destroyed]" << endl;
-            }
-            else {
-                cerr << info.as_string() << endl;
-            }
+            cerr << info.as_string() << endl;
         }
     }
     FC_CAPTURE_AND_RETHROW((info))
@@ -172,11 +149,11 @@ print_action(const fc::variant& at) {
     auto        args    = act["data"];
     auto        console = at["console"].as_string();
 
-    std::cout << " action : " << func << std::endl;
-    std::cout << " domain : " << act["domain"].as_string() << std::endl;
-    std::cout << "    key : " << act["key"].as_string() << std::endl;
-    std::cout << "elapsed : " << at["elapsed"].as_string() << " " << "us" << std::endl;
-    std::cout << "details : " << std::endl;
+    std::cout << "   action : " << func << std::endl;
+    std::cout << "   domain : " << act["domain"].as_string() << std::endl;
+    std::cout << "      key : " << act["key"].as_string() << std::endl;
+    std::cout << "  elapsed : " << at["elapsed"].as_string() << " " << "us" << std::endl;
+    std::cout << "  details : " << std::endl;
     print_info(args);
 
     if(console.size()) {
@@ -199,6 +176,8 @@ print_result(const fc::variant& result) {
             cerr << status << " transaction: " << transaction_id << std::endl;
             cerr << "total elapsed: " << processed["elapsed"].as_string() << " us" << std::endl;
 
+            cerr << "total charge: " << asset(processed["charge"].as_int64(), symbol(SY(5,EVT))) << std::endl;
+
             if(status == "failed") {
                 auto soft_except = processed["except"].as<fc::optional<fc::exception>>();
                 if(soft_except) {
@@ -207,8 +186,14 @@ print_result(const fc::variant& result) {
             }
             else {
                 const auto& actions = processed["action_traces"].get_array();
+
+                auto i    = 1;
+                auto size = actions.size();
+                
                 for(const auto& a : actions) {
+                    cerr << "(" << i << " of " << size << ")" << endl;
                     print_action(a);
+                    i++;
                 }
                 wlog("\rwarning: transaction executed locally, but may not be "
                      "confirmed by the network yet");
@@ -238,9 +223,11 @@ add_standard_transaction_options(CLI::App* cmd) {
     cmd->add_option("-x,--expiration", parse_expiration, localized("Set the time in seconds before a transaction expires, defaults to 30s"));
     cmd->add_flag("-s,--skip-sign", tx_skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
     cmd->add_flag("-d,--dont-broadcast", tx_dont_broadcast, localized("Don't broadcast transaction to the network (just print to stdout)"));
-    cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id, (localized("Set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)")));
+    cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id, localized("Set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)"));
+    cmd->add_option("-p,--payer", payer, localized("Payer address to be billed for this transaction"))->required();
+    cmd->add_option("-c,--max-charge", max_charge, localized("Max charge to be payed for this transaction"));
 
-    auto popt = cmd->add_option("-p,--proposal-name", propname, localized("Push a suspend transaction instead of normal transaction, specify its proposal name"));
+    auto popt = cmd->add_option("-a,--proposal-name", propname, localized("Push a suspend transaction instead of normal transaction, specify its proposal name"));
     cmd->add_option("-u,--proposer", proposer, localized("Proposer public key"))->needs(popt);
 }
 
@@ -289,35 +276,6 @@ get_info() {
     return ::call(url, get_info_func, fc::variant()).as<evt::chain_apis::read_only::get_info_results>();
 }
 
-void
-sign_transaction(signed_transaction& trx, const chain_id_type& chain_id) {
-    // TODO better error checking
-    const auto& public_keys   = call(wallet_url, wallet_public_keys);
-    auto        get_arg       = fc::mutable_variant_object("transaction", (transaction)trx)("available_keys", public_keys);
-    const auto& required_keys = call(url, get_required_keys, get_arg);
-    // TODO determine chain id
-    fc::variants sign_args  = {fc::variant(trx), required_keys["required_keys"], fc::variant(chain_id)};
-    const auto&  signed_trx = call(wallet_url, wallet_sign_trx, sign_args);
-    trx                     = signed_trx.as<signed_transaction>();
-}
-
-void
-set_transaction_header(signed_transaction& trx, const evt::chain_apis::read_only::get_info_results& info) {
-    trx.expiration = info.head_block_time + tx_expiration;
-
-    // Set tapos, default to last irreversible block if it's not specified by the user
-    block_id_type ref_block_id = info.last_irreversible_block_id;
-    try {
-        fc::variant ref_block;
-        if(!tx_ref_block_num_or_id.empty()) {
-            ref_block    = call(get_block_func, fc::mutable_variant_object("block_num_or_id", tx_ref_block_num_or_id));
-            ref_block_id = ref_block["id"].as<block_id_type>();
-        }
-    }
-    EVT_RETHROW_EXCEPTIONS(invalid_ref_block_exception, "Invalid reference block num or id: ${block_num_or_id}", ("block_num_or_id", tx_ref_block_num_or_id));
-    trx.set_reference_block(ref_block_id);
-}
-
 public_key_type
 get_public_key(const std::string& key_or_ref) {
     static fc::optional<fc::variant> pkeys;
@@ -345,6 +303,65 @@ get_public_key(const std::string& key_or_ref) {
     }
 }
 
+address
+get_address(const std::string& addr_or_ref) {
+    static fc::optional<fc::variant> pkeys;
+
+    try {
+        auto addr = (address)addr_or_ref;
+        return addr;
+    }
+    catch(...) {}
+
+    if(!pkeys.valid()) {
+        pkeys = call(wallet_url, wallet_public_keys);
+    }
+
+    FC_ASSERT(addr_or_ref.size() >= 2, "Not valid key reference");
+    FC_ASSERT(addr_or_ref[0] == '@', "Not valid key reference");
+
+    try {
+        int i = std::stoi(addr_or_ref.substr(1));
+        FC_ASSERT(i < pkeys->size(), "Not valid key reference");
+        return address((*pkeys)[i].as<public_key_type>());
+    }
+    catch(...) {
+        FC_ASSERT(false, "Not valid key reference");
+    }
+}
+
+void
+sign_transaction(signed_transaction& trx, const chain_id_type& chain_id) {
+    // TODO better error checking
+    const auto& public_keys   = call(wallet_url, wallet_public_keys);
+    auto        get_arg       = fc::mutable_variant_object("transaction", (transaction)trx)("available_keys", public_keys);
+    const auto& required_keys = call(url, get_required_keys, get_arg);
+    // TODO determine chain id
+    fc::variants sign_args  = {fc::variant(trx), required_keys["required_keys"], fc::variant(chain_id)};
+    const auto&  signed_trx = call(wallet_url, wallet_sign_trx, sign_args);
+    trx                     = signed_trx.as<signed_transaction>();
+}
+
+void
+set_transaction_header(signed_transaction& trx, const evt::chain_apis::read_only::get_info_results& info) {
+    trx.expiration = info.head_block_time + tx_expiration;
+
+    // Set tapos, default to last irreversible block if it's not specified by the user
+    block_id_type ref_block_id = info.last_irreversible_block_id;
+    try {
+        fc::variant ref_block;
+        if(!tx_ref_block_num_or_id.empty()) {
+            ref_block    = call(get_block_func, fc::mutable_variant_object("block_num_or_id", tx_ref_block_num_or_id));
+            ref_block_id = ref_block["id"].as<block_id_type>();
+        }
+    }
+    EVT_RETHROW_EXCEPTIONS(invalid_ref_block_exception, "Invalid reference block num or id: ${block_num_or_id}", ("block_num_or_id", tx_ref_block_num_or_id));
+    trx.set_reference_block(ref_block_id);
+
+    trx.max_charge = max_charge;
+    trx.payer = get_address(payer);
+}
+
 signed_transaction
 create_suspend_transaction(transaction& trx) {
     FC_ASSERT(!propname.empty());
@@ -356,7 +373,7 @@ create_suspend_transaction(transaction& trx) {
     ns.trx = std::move(trx);
    
     auto signed_trx = signed_transaction();
-    signed_trx.actions.emplace_back(create_action(N128(suspend), (domain_key)propname, ns));
+    signed_trx.actions.emplace_back(create_action(N128(.suspend), (domain_key)propname, ns));
     return signed_trx;
 }
 
@@ -437,6 +454,8 @@ ensure_evtwd_running(CLI::App* app) {
     if(tx_skip_sign || app->got_subcommand("version") || app->got_subcommand("net"))
         return;
     if(app->get_subcommand("create")->got_subcommand("key")) // create key does not require wallet
+        return;
+    if(app->get_subcommand("wallet")->got_subcommand("stop")) // stop wallet not require wallet
         return;
 
     auto parsed_url = parse_url(wallet_url);
@@ -688,7 +707,7 @@ struct set_group_subcommands {
             EVT_RETHROW_EXCEPTIONS(group_type_exception, "Fail to parse Group JSON")
             ng.group.name_ = name;
 
-            auto act = create_action("group", (domain_key)ng.name, ng);
+            auto act = create_action(N128(.group), (domain_key)ng.name, ng);
             send_actions({act});
         });
 
@@ -710,7 +729,7 @@ struct set_group_subcommands {
             EVT_RETHROW_EXCEPTIONS(group_type_exception, "Fail to parse Group JSON")
             ug.group.name_ = name;
 
-            auto act = create_action("group", (domain_key)ug.name, ug);
+            auto act = create_action(N128(.group), (domain_key)ug.name, ug);
             send_actions({act});
         });
     }
@@ -746,7 +765,7 @@ struct set_fungible_subcommands {
 
             EVT_ASSERT(nf.total_supply.get_symbol() == nf.sym, asset_type_exception, "Symbol and asset should be match");
 
-            auto act = create_action(N128(fungible), (domain_key)nf.sym.name(), nf);
+            auto act = create_action(N128(.fungible), (domain_key)nf.sym.name(), nf);
             send_actions({act});
         });
 
@@ -767,7 +786,7 @@ struct set_fungible_subcommands {
                 uf.manage = parse_permission(manage);
             }
 
-            auto act = create_action(N128(fungible), (domain_key)uf.sym.name(), uf);
+            auto act = create_action(N128(.fungible), (domain_key)uf.sym.name(), uf);
             send_actions({act});
         });
 
@@ -780,11 +799,11 @@ struct set_fungible_subcommands {
 
         ifcmd->set_callback([this] {
             issuefungible ifact;
-            ifact.address = get_public_key(address);
+            ifact.address = get_address(address);
             ifact.number  = asset::from_string(number);
             ifact.memo    = memo;
 
-            auto act = create_action(N128(fungible), (domain_key)ifact.number.get_symbol().name(), ifact);
+            auto act = create_action(N128(.fungible), (domain_key)ifact.number.get_symbol().name(), ifact);
             send_actions({act});
         });
 
@@ -807,12 +826,12 @@ struct set_assets_subcommands {
 
         tfcmd->set_callback([this] {
             transferft tf;
-            tf.from   = get_public_key(from);
-            tf.to     = get_public_key(to);
+            tf.from   = get_address(from);
+            tf.to     = get_address(to);
             tf.number = asset::from_string(number);
             tf.memo   = memo;
 
-            auto act = create_action(N128(fungible), (domain_key)tf.number.get_symbol().name(), tf);
+            auto act = create_action(N128(.fungible), (domain_key)tf.number.get_symbol().name(), tf);
             send_actions({act});
         });
 
@@ -826,14 +845,14 @@ struct set_assets_subcommands {
 
         epcmd->set_callback([this] {
             evt2pevt ep;
-            ep.from   = get_public_key(from);
-            ep.to     = get_public_key(to);
+            ep.from   = get_address(from);
+            ep.to     = get_address(to);
             ep.number = asset::from_string(number);
             ep.memo   = memo;
 
             FC_ASSERT(ep.number.get_symbol() == symbol(SY(5,EVT)), "Only EVT can be converted to Pinned EVT");
 
-            auto act = create_action(N128(fungible), (domain_key)ep.number.get_symbol().name(), ep);
+            auto act = create_action(N128(.fungible), (domain_key)ep.number.get_symbol().name(), ep);
             send_actions({act});
         });
 
@@ -877,7 +896,7 @@ struct set_meta_subcommands {
             am.value = metavalue;
             am.creator = get_public_key(creator);
 
-            auto act = create_action(N128(group), (domain_key)key, am);
+            auto act = create_action(N128(.group), (domain_key)key, am);
             send_actions({act});
         });
 
@@ -904,7 +923,7 @@ struct set_meta_subcommands {
             am.value = metavalue;
             am.creator = get_public_key(creator);
 
-            auto act = create_action(N128(fungible), (domain_key)key, am);
+            auto act = create_action(N128(.fungible), (domain_key)key, am);
             send_actions({act});
         });
     }
@@ -938,7 +957,7 @@ struct set_suspend_subcommands {
             asact.name = (proposal_name)name;
             asact.signatures = std::move(trx.signatures);
 
-            auto act = create_action(N128(suspend), (domain_key)asact.name, asact);
+            auto act = create_action(N128(.suspend), (domain_key)asact.name, asact);
             send_actions({act});
         });
 
@@ -948,7 +967,7 @@ struct set_suspend_subcommands {
             auto cdact = cancelsuspend();
             cdact.name = (proposal_name)name;
 
-            auto act = create_action(N128(suspend), (domain_key)cdact.name, cdact);
+            auto act = create_action(N128(.suspend), (domain_key)cdact.name, cdact);
             send_actions({act});
         });
 
@@ -960,7 +979,7 @@ struct set_suspend_subcommands {
             esact.name = (proposal_name)name;
             esact.executor = get_public_key(executor);
 
-            auto act = create_action(N128(suspend), (domain_key)esact.name, esact);
+            auto act = create_action(N128(.suspend), (domain_key)esact.name, esact);
             send_actions({act});
         });
     }
@@ -1036,23 +1055,23 @@ struct set_get_fungible_subcommand {
     }
 };
 
-struct set_get_assets_subcommand {
+struct set_get_balance_subcommand {
     string address;
     string sym;
 
-    set_get_assets_subcommand(CLI::App* actionRoot) {
-        auto gacmd = actionRoot->add_subcommand("assets", localized("Retrieve assets from an address"));
-        gacmd->add_option("address", address, localized("Address where assets stored"))->required();
-        gacmd->add_option("symbol", sym, localized("Specific symbol to be retrieved, leave empty to retrieve all assets"));
+    set_get_balance_subcommand(CLI::App* actionRoot) {
+        auto gbcmd = actionRoot->add_subcommand("balance", localized("Retrieve fungible balance from an address"));
+        gbcmd->add_option("address", address, localized("Address where assets stored"))->required();
+        gbcmd->add_option("symbol", sym, localized("Specific symbol to be retrieved, leave empty to retrieve all assets"));
 
-        gacmd->set_callback([this] {
+        gbcmd->set_callback([this] {
             FC_ASSERT(!address.empty(), "Address cannot be empty");
 
-            auto arg = fc::mutable_variant_object("address", get_public_key(address));
+            auto arg = fc::mutable_variant_object("address", get_address(address));
             if(!sym.empty()) {
                 arg["sym"] = symbol::from_string(sym);
             }
-            print_info(call(get_assets_func, arg));
+            print_info(call(get_fungible_balance_func, arg));
         });
     }
 };
@@ -1229,26 +1248,14 @@ main(int argc, char** argv) {
     auto create = app.add_subcommand("create", localized("Create various items, on and off the blockchain"));
     create->require_subcommand();
 
-    bool r1 = false;
     // create key
-    auto create_key = create->add_subcommand("key", localized("Create a new keypair and print the public and private keys"))->set_callback( [&r1](){
-        if(r1) {
-            auto pk    = private_key_type::generate_r1();
-            auto privs = string(pk);
-            auto pubs  = string(pk.get_public_key());
-            std::cout << localized("Private key: ${key}", ("key", privs)) << std::endl;
-            std::cout << localized("Public key: ${key}",  ("key", pubs))  << std::endl;
-        }
-        else {
-            auto pk    = private_key_type::generate();
-            auto privs = string(pk);
-            auto pubs  = string(pk.get_public_key());
-            std::cout << localized("Private key: ${key}", ("key", privs)) << std::endl;
-            std::cout << localized("Public key: ${key}",  ("key", pubs))  << std::endl;
-        }
+    auto create_key = create->add_subcommand("key", localized("Create a new keypair and print the public and private keys"))->set_callback([](){
+        auto pk    = private_key_type::generate();
+        auto privs = string(pk);
+        auto pubs  = string(pk.get_public_key());
+        std::cout << localized("Private key: ${key}", ("key", privs)) << std::endl;
+        std::cout << localized("Public key: ${key}",  ("key", pubs))  << std::endl;
     });
-    create_key->add_flag("--r1", r1, "Generate a key using the R1 curve (iPhone), instead of the K1 curve (Bitcoin)");
-
     // Get subcommand
     auto get = app.add_subcommand("get", localized("Retrieve various items and information from the blockchain"));
     get->require_subcommand();
@@ -1271,7 +1278,7 @@ main(int argc, char** argv) {
     set_get_token_subcommand    get_token(get);
     set_get_group_subcommand    get_group(get);
     set_get_fungible_subcommand get_fungible(get);
-    set_get_assets_subcommand   get_assets(get);
+    set_get_balance_subcommand  get_balance(get);
     set_get_my_subcommands      get_my(get);
     set_get_history_subcommands get_history(get); 
     set_get_suspend_subcommand  get_suspend(get);

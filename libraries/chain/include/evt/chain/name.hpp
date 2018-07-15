@@ -87,8 +87,7 @@ struct name {
 
     void set(const char* str);
 
-    template <typename T>
-    name(T v)
+    constexpr name(uint64_t v)
         : value(v) {}
     name() {}
 
@@ -190,8 +189,7 @@ struct name128 {
 
     void set(const char* str);
 
-    template <typename T>
-    name128(T v)
+    constexpr name128(uint128_t v)
         : value(v) {}
     name128() {}
 
