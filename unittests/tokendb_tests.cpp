@@ -645,6 +645,28 @@ BOOST_AUTO_TEST_CASE(tokendb_fungible_test) {
         auto s2 = 0;
         tokendb.read_all_assets(address1, [&](const auto& s) { BOOST_TEST_MESSAGE((std::string)s); s2++; return true; });
         BOOST_TEST(s2 == 2);
+
+        auto address2 = address(N(domain),"domain",0);
+        tokendb.read_all_assets(address2, [&](const auto&) { s++; return true; });
+        BOOST_TEST(s == 0);
+
+        r1 = tokendb.update_asset(address2, asset(2000, symbol(SY(5, EVT))));
+        r2 = tokendb.update_asset(address2, asset(1000, symbol(SY(8, ETH))));
+
+        BOOST_TEST(r1 == 0);
+        BOOST_TEST(r2 == 0);
+
+        BOOST_TEST(tokendb.exists_any_asset(address2));
+        BOOST_TEST(tokendb.exists_asset(address2, symbol(SY(5, EVT))));
+        BOOST_TEST(tokendb.exists_asset(address2, symbol(SY(8, ETH))));
+        BOOST_TEST(!tokendb.exists_asset(address2, symbol(SY(4, EVT))));
+        BOOST_CHECK_NO_THROW(tokendb.read_asset(address2, symbol(SY(5, EVT)), tmp_asset));
+        BOOST_CHECK(tmp_asset == asset(2000, symbol(SY(5, EVT))));
+
+        s2 = 0;
+        tokendb.read_all_assets(address2, [&](const auto& s) { BOOST_TEST_MESSAGE((std::string)s); s2++; return true; });
+        BOOST_TEST(s2 == 2);
+
     }
     FC_LOG_AND_RETHROW()
 }

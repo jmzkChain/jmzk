@@ -68,12 +68,12 @@ public:
 };
 }  // namespace detail
 
-block_log::block_log(std::vector<fc::path> data_dirs)
+block_log::block_log(std::vector<fc::path>& data_dirs)
     : my(new detail::block_log_impl()) {
     my->data_dirs = data_dirs;
     my->block_stream.exceptions(std::fstream::failbit | std::fstream::badbit);
     my->index_stream.exceptions(std::fstream::failbit | std::fstream::badbit);
-    for(auto data_dir : data_dirs) 
+    for(auto& data_dir : data_dirs) 
         open(data_dir);
 }
 

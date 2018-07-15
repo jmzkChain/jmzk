@@ -545,7 +545,7 @@ BOOST_AUTO_TEST_CASE(contract_issuefungible_test) {
         auto& tokendb = my_tester->control->token_db();
         domain_def dom;
         tokendb.read_domain(get_domain_name(), dom);
-        // issfg.address = dom.pay_address;
+        // issfg.address = address(N(domain),dom.name,0);
         issfg.address.set_reserved();
         to_variant(issfg, var);
         BOOST_CHECK_THROW(my_tester->push_action(N(issuefungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer),fungible_address_exception);
@@ -1019,20 +1019,17 @@ BOOST_AUTO_TEST_CASE(contract_charge_test) {
 
         std::vector<account_name> tmp_seeds = {N(key),N(payer)};
         BOOST_CHECK_THROW(my_tester->push_action(N(issuefungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), tmp_seeds, pooler),payer_exception);
-            
-        // auto& tokendb = my_tester->control->token_db();
-        // domain_def dom;
-        // tokendb.read_domain(get_domain_name(), dom);
-        // // issfg.address = dom.pay_address;
-        // issfg.address.set_reserved();
-        // to_variant(issfg, var);
-        // BOOST_CHECK_THROW(my_tester->push_action(N(issuefungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer),fungible_address_exception);
+        
+        BOOST_CHECK_THROW(my_tester->push_action(N(issuefungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, address()),payer_exception);
 
-        // issfg.number  = asset::from_string(string("15.00000 ") + "EVTD");
-        // to_variant(issfg, var);
-        // BOOST_CHECK_THROW(my_tester->push_action(N(issuefungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer), action_authorize_exception);
+        BOOST_CHECK_THROW(my_tester->push_action(N(issuefungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, address(N(notdomain),"domain",0)),payer_exception);
+
+        BOOST_CHECK_THROW(my_tester->push_action(N(issuefungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, address(N(domain),"domain",0)),payer_exception);
+
+        my_tester->push_action(N(issuefungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer);
 
         my_tester->produce_blocks();
+
     }
     FC_LOG_AND_RETHROW()
 }
