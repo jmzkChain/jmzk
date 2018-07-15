@@ -15,6 +15,16 @@
 
 namespace evt { namespace chain { namespace contracts {
 
+#define EVT_ACTION_IMPL(name)                         \
+    template<>                                        \
+    struct apply_action<name> {                       \
+        static void invoke(apply_context&);           \
+    };                                                \
+    template struct apply_action<name>;               \
+                                                      \
+    void                                              \
+    apply_action<name>::invoke(apply_context& context)
+
 namespace __internal {
 
 inline bool 
@@ -95,8 +105,7 @@ check_name_reserved(const name128& name) {
 
 } // namespace __internal
 
-void
-apply_evt_newdomain(apply_context& context) {
+EVT_ACTION_IMPL(newdomain) {
     using namespace __internal;
 
     auto ndact = context.act.data_as<newdomain>();
@@ -128,15 +137,13 @@ apply_evt_newdomain(apply_context& context) {
         domain.issue       = std::move(ndact.issue);
         domain.transfer    = std::move(ndact.transfer);
         domain.manage      = std::move(ndact.manage);
-        domain.pay_address = address(N(domain), ndact.name, 0);
         
         tokendb.add_domain(domain);       
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
-void
-apply_evt_issuetoken(apply_context& context) {
+EVT_ACTION_IMPL(issuetoken) {
     using namespace __internal;
 
     auto itact = context.act.data_as<issuetoken>();
@@ -179,8 +186,7 @@ check_token_destroy(const token_def& token) {
 
 }  // namespace __internal
 
-void
-apply_evt_transfer(apply_context& context) {
+EVT_ACTION_IMPL(transfer) {
     using namespace __internal;
 
     auto ttact = context.act.data_as<transfer>();
@@ -208,8 +214,7 @@ apply_evt_transfer(apply_context& context) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
-void
-apply_evt_destroytoken(apply_context& context) {
+EVT_ACTION_IMPL(destroytoken) {
     using namespace __internal;
 
     auto dtact = context.act.data_as<destroytoken>();
@@ -229,8 +234,7 @@ apply_evt_destroytoken(apply_context& context) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
-void
-apply_evt_newgroup(apply_context& context) {
+EVT_ACTION_IMPL(newgroup) {
     using namespace __internal;
 
     auto ngact = context.act.data_as<newgroup>();
@@ -249,8 +253,7 @@ apply_evt_newgroup(apply_context& context) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
-void
-apply_evt_updategroup(apply_context& context) {
+EVT_ACTION_IMPL(updategroup) {
     using namespace __internal;
 
     auto ugact = context.act.data_as<updategroup>();
@@ -271,8 +274,7 @@ apply_evt_updategroup(apply_context& context) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
-void
-apply_evt_updatedomain(apply_context& context) {
+EVT_ACTION_IMPL(updatedomain) {
     using namespace __internal;
 
     auto udact = context.act.data_as<updatedomain>();
@@ -313,8 +315,7 @@ apply_evt_updatedomain(apply_context& context) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
-void
-apply_evt_newfungible(apply_context& context) {
+EVT_ACTION_IMPL(newfungible) {
     using namespace __internal;
 
     auto nfact = context.act.data_as<newfungible>();
@@ -350,8 +351,7 @@ apply_evt_newfungible(apply_context& context) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
-void
-apply_evt_updfungible(apply_context& context) {
+EVT_ACTION_IMPL(updfungible) {
     using namespace __internal;
 
     auto ufact = context.act.data_as<updfungible>();
@@ -387,8 +387,7 @@ apply_evt_updfungible(apply_context& context) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
-void
-apply_evt_issuefungible(apply_context& context) {
+EVT_ACTION_IMPL(issuefungible) {
     auto ifact = context.act.data_as<issuefungible>();
 
     try {
@@ -423,8 +422,7 @@ apply_evt_issuefungible(apply_context& context) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
-void
-apply_evt_transferft(apply_context& context) {
+EVT_ACTION_IMPL(transferft) {
     auto tfact = context.act.data_as<transferft>();
 
     try {
@@ -456,8 +454,7 @@ apply_evt_transferft(apply_context& context) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
-void
-apply_evt_evt2pevt(apply_context& context) {
+EVT_ACTION_IMPL(evt2pevt) {
     auto epact = context.act.data_as<evt2pevt>();
 
     try {
@@ -605,8 +602,7 @@ check_duplicate_meta<group_def>(const group_def& v, const meta_key& key) {
 
 }  // namespace __internal
 
-void
-apply_evt_addmeta(apply_context& context) {
+EVT_ACTION_IMPL(addmeta) {
     using namespace __internal;
 
     const auto& act   = context.act;
@@ -683,8 +679,7 @@ apply_evt_addmeta(apply_context& context) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
-void
-apply_evt_newsuspend(apply_context& context) {
+EVT_ACTION_IMPL(newsuspend) {
     using namespace __internal;
 
     auto nsact = context.act.data_as<newsuspend>();
@@ -710,8 +705,7 @@ apply_evt_newsuspend(apply_context& context) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
-void
-apply_evt_aprvsuspend(apply_context& context) {
+EVT_ACTION_IMPL(aprvsuspend) {
     using namespace __internal;
 
     auto aeact = context.act.data_as<aprvsuspend>();
@@ -739,8 +733,7 @@ apply_evt_aprvsuspend(apply_context& context) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
-void
-apply_evt_cancelsuspend(apply_context& context) {
+EVT_ACTION_IMPL(cancelsuspend) {
     using namespace __internal;
 
     auto csact = context.act.data_as<cancelsuspend>();
@@ -759,8 +752,7 @@ apply_evt_cancelsuspend(apply_context& context) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
-void
-apply_evt_execsuspend(apply_context& context) {
+EVT_ACTION_IMPL(execsuspend) {
     auto esact = context.act.data_as<execsuspend>();
     try {
         EVT_ASSERT(context.has_authorized(N128(.suspend), esact.name), action_authorize_exception, "Authorized information does not match.");
@@ -794,8 +786,7 @@ apply_evt_execsuspend(apply_context& context) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
-void
-apply_evt_paycharge(apply_context& context) {
+EVT_ACTION_IMPL(paycharge) {
     auto pcact = context.act.data_as<const paycharge&>();
     try {
         auto& tokendb = context.token_db;

@@ -27,7 +27,7 @@ struct types_invoker {
 
 template<typename ... Args>
 static RType
-invoke(name n, Args... args) {
+invoke(name n, Args&&... args) {
     switch(n.value) {
     case_act(newdomain)
     case_act(issuetoken)

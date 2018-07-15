@@ -4,6 +4,8 @@
  */
 #include <evt/chain/contracts/evt_contract.hpp>
 #include <evt/chain/contracts/types.hpp>
+#include <evt/chain/contracts/abi_types.hpp>
+#include <evt/chain/version.hpp>
 
 namespace evt { namespace chain { namespace contracts {
 

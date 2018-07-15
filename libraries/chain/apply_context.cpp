@@ -7,6 +7,8 @@
 #include <evt/chain/controller.hpp>
 #include <evt/chain/transaction_context.hpp>
 #include <evt/chain/global_property_object.hpp>
+#include <evt/chain/contracts/types_invoker.hpp>
+#include <evt/chain/contracts/evt_contract.hpp>
 
 namespace evt { namespace chain {
 
@@ -27,12 +29,11 @@ print_debug(const action_trace& ar) {
 
 action_trace
 apply_context::exec_one() {
+    using namespace contracts;
+
     auto start = fc::time_point::now();
     try {
-        auto func = control.find_apply_handler(act.name);
-        EVT_ASSERT(func != nullptr, tx_apply_exception, "Action is not valid, ${name} doesn't exist",
-                   ("name", act.name));
-        (*func)(*this);
+        types_invoker<void, apply_action>::invoke(act.name, *this);
     }
     FC_CAPTURE_AND_RETHROW((_pending_console_output.str()));
 

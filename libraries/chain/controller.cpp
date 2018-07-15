@@ -65,8 +65,6 @@ struct controller_impl {
     bool                    in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
     abi_serializer          system_api;
 
-    map<action_name, apply_handler> apply_handlers;
-
     /**
     *  Transactions that were undone by pop_block or abort_block, transactions
     *  are removed from this list if they are re-applied in other blocks. Producers
@@ -90,11 +88,6 @@ struct controller_impl {
         token_db.rollback_to_latest_savepoint();
     }
 
-    void
-    set_apply_handler(action_name action, apply_handler v) {
-        apply_handlers[action] = v;
-    }
-
     controller_impl(const controller::config& cfg, controller& s)
         : self(s)
         , db(cfg.state_dir,
@@ -110,26 +103,6 @@ struct controller_impl {
         , conf(cfg)
         , chain_id(cfg.genesis.compute_chain_id())
         , system_api(contracts::evt_contract_abi()) {
-#define SET_APP_HANDLER(action) \
-    set_apply_handler(#action, &BOOST_PP_CAT(contracts::apply_evt, BOOST_PP_CAT(_, action)))
-
-        SET_APP_HANDLER(newdomain);
-        SET_APP_HANDLER(issuetoken);
-        SET_APP_HANDLER(transfer);
-        SET_APP_HANDLER(destroytoken);
-        SET_APP_HANDLER(newgroup);
-        SET_APP_HANDLER(updategroup);
-        SET_APP_HANDLER(updatedomain);
-        SET_APP_HANDLER(newfungible);
-        SET_APP_HANDLER(updfungible);
-        SET_APP_HANDLER(issuefungible);
-        SET_APP_HANDLER(transferft);
-        SET_APP_HANDLER(evt2pevt);
-        SET_APP_HANDLER(addmeta);
-        SET_APP_HANDLER(newsuspend);
-        SET_APP_HANDLER(aprvsuspend);
-        SET_APP_HANDLER(cancelsuspend);
-        SET_APP_HANDLER(execsuspend);
 
         fork_db.irreversible.connect([&](auto b) {
             on_irreversible(b);
@@ -1178,15 +1151,6 @@ controller::contracts_console() const {
 chain_id_type
 controller::get_chain_id() const {
     return my->chain_id;
-}
-
-const apply_handler*
-controller::find_apply_handler(action_name act) const {
-    auto handler = my->apply_handlers.find(act);
-    if(handler != my->apply_handlers.end()) {
-        return &handler->second;
-    }
-    return nullptr;
 }
 
 const abi_serializer&

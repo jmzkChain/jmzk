@@ -28,7 +28,6 @@ using contracts::abi_serializer;
 
 class dynamic_global_property_object;
 class global_property_object;
-using apply_handler = std::function<void(apply_context&)>;
 
 class controller {
 public:
@@ -156,8 +155,6 @@ public:
     flat_set<public_key_type> get_required_keys(const transaction& trx, const flat_set<public_key_type>& candidate_keys) const;
     flat_set<public_key_type> get_suspend_required_keys(const transaction& trx, const flat_set<public_key_type>& candidate_keys) const;
     flat_set<public_key_type> get_suspend_required_keys(const proposal_name& name, const flat_set<public_key_type>& candidate_keys) const;
-
-    const apply_handler* find_apply_handler(action_name act) const;
 
     const abi_serializer& get_abi_serializer() const;
 
