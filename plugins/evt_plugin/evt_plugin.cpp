@@ -70,7 +70,10 @@ read_only::get_domain(const read_only::get_domain_params& params) {
     domain_def domain;
     db.read_domain(params.name, domain);
     fc::to_variant(domain, var);
-    return var;
+
+    auto mvar = fc::mutable_variant_object(var);
+    mvar["address"] = address(N(domain), domain.name, 0);
+    return mvar;
 }
 
 fc::variant
@@ -100,7 +103,15 @@ read_only::get_fungible(const get_fungible_params& params) {
     fungible_def fungible;
     db.read_fungible(params.name, fungible);
     fc::to_variant(fungible, var);
-    return var;
+
+    auto mvar = fc::mutable_variant_object(var);
+    auto addr = address(N(fungible), params.name, 0);
+
+    asset as;
+    db_.token_db().read_asset_no_throw(addr, fungible.sym, as);
+    mvar["current_supply"] = fungible.total_supply - as;
+    mvar["address"] = addr;
+    return mvar;
 }
 
 fc::variant

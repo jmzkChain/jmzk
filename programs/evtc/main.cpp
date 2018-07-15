@@ -149,11 +149,11 @@ print_action(const fc::variant& at) {
     auto        args    = act["data"];
     auto        console = at["console"].as_string();
 
-    std::cout << " action : " << func << std::endl;
-    std::cout << " domain : " << act["domain"].as_string() << std::endl;
-    std::cout << "    key : " << act["key"].as_string() << std::endl;
-    std::cout << "elapsed : " << at["elapsed"].as_string() << " " << "us" << std::endl;
-    std::cout << "details : " << std::endl;
+    std::cout << "   action : " << func << std::endl;
+    std::cout << "   domain : " << act["domain"].as_string() << std::endl;
+    std::cout << "      key : " << act["key"].as_string() << std::endl;
+    std::cout << "  elapsed : " << at["elapsed"].as_string() << " " << "us" << std::endl;
+    std::cout << "  details : " << std::endl;
     print_info(args);
 
     if(console.size()) {
@@ -176,6 +176,8 @@ print_result(const fc::variant& result) {
             cerr << status << " transaction: " << transaction_id << std::endl;
             cerr << "total elapsed: " << processed["elapsed"].as_string() << " us" << std::endl;
 
+            cerr << "total charge: " << asset(processed["charge"].as_int64(), symbol(SY(5,EVT))) << std::endl;
+
             if(status == "failed") {
                 auto soft_except = processed["except"].as<fc::optional<fc::exception>>();
                 if(soft_except) {
@@ -184,8 +186,14 @@ print_result(const fc::variant& result) {
             }
             else {
                 const auto& actions = processed["action_traces"].get_array();
+
+                auto i    = 1;
+                auto size = actions.size();
+                
                 for(const auto& a : actions) {
+                    cerr << "(" << i << " of " << size << ")" << endl;
                     print_action(a);
+                    i++;
                 }
                 wlog("\rwarning: transaction executed locally, but may not be "
                      "confirmed by the network yet");
@@ -268,6 +276,60 @@ get_info() {
     return ::call(url, get_info_func, fc::variant()).as<evt::chain_apis::read_only::get_info_results>();
 }
 
+public_key_type
+get_public_key(const std::string& key_or_ref) {
+    static fc::optional<fc::variant> pkeys;
+
+    try {
+        auto pkey = (public_key_type)key_or_ref;
+        return pkey;
+    }
+    catch(...) {}
+
+    if(!pkeys.valid()) {
+        pkeys = call(wallet_url, wallet_public_keys);
+    }
+
+    FC_ASSERT(key_or_ref.size() >= 2, "Not valid key reference");
+    FC_ASSERT(key_or_ref[0] == '@', "Not valid key reference");
+
+    try {
+        int i = std::stoi(key_or_ref.substr(1));
+        FC_ASSERT(i < pkeys->size(), "Not valid key reference");
+        return (*pkeys)[i].as<public_key_type>();
+    }
+    catch(...) {
+        FC_ASSERT(false, "Not valid key reference");
+    }
+}
+
+address
+get_address(const std::string& addr_or_ref) {
+    static fc::optional<fc::variant> pkeys;
+
+    try {
+        auto addr = (address)addr_or_ref;
+        return addr;
+    }
+    catch(...) {}
+
+    if(!pkeys.valid()) {
+        pkeys = call(wallet_url, wallet_public_keys);
+    }
+
+    FC_ASSERT(addr_or_ref.size() >= 2, "Not valid key reference");
+    FC_ASSERT(addr_or_ref[0] == '@', "Not valid key reference");
+
+    try {
+        int i = std::stoi(addr_or_ref.substr(1));
+        FC_ASSERT(i < pkeys->size(), "Not valid key reference");
+        return address((*pkeys)[i].as<public_key_type>());
+    }
+    catch(...) {
+        FC_ASSERT(false, "Not valid key reference");
+    }
+}
+
 void
 sign_transaction(signed_transaction& trx, const chain_id_type& chain_id) {
     // TODO better error checking
@@ -297,34 +359,7 @@ set_transaction_header(signed_transaction& trx, const evt::chain_apis::read_only
     trx.set_reference_block(ref_block_id);
 
     trx.max_charge = max_charge;
-    trx.payer = (address)payer;
-}
-
-public_key_type
-get_public_key(const std::string& key_or_ref) {
-    static fc::optional<fc::variant> pkeys;
-
-    try {
-        auto pkey = (public_key_type)key_or_ref;
-        return pkey;
-    }
-    catch(...) {}
-
-    if(!pkeys.valid()) {
-        pkeys = call(wallet_url, wallet_public_keys);
-    }
-
-    FC_ASSERT(key_or_ref.size() >= 2, "Not valid key reference");
-    FC_ASSERT(key_or_ref[0] == '@', "Not valid key reference");
-
-    try {
-        int i = std::stoi(key_or_ref.substr(1));
-        FC_ASSERT(i < pkeys->size(), "Not valid key reference");
-        return (*pkeys)[i].as<public_key_type>();
-    }
-    catch(...) {
-        FC_ASSERT(false, "Not valid key reference");
-    }
+    trx.payer = get_address(payer);
 }
 
 signed_transaction
@@ -764,7 +799,7 @@ struct set_fungible_subcommands {
 
         ifcmd->set_callback([this] {
             issuefungible ifact;
-            ifact.address = get_public_key(address);
+            ifact.address = get_address(address);
             ifact.number  = asset::from_string(number);
             ifact.memo    = memo;
 
@@ -791,8 +826,8 @@ struct set_assets_subcommands {
 
         tfcmd->set_callback([this] {
             transferft tf;
-            tf.from   = get_public_key(from);
-            tf.to     = get_public_key(to);
+            tf.from   = get_address(from);
+            tf.to     = get_address(to);
             tf.number = asset::from_string(number);
             tf.memo   = memo;
 
@@ -810,8 +845,8 @@ struct set_assets_subcommands {
 
         epcmd->set_callback([this] {
             evt2pevt ep;
-            ep.from   = get_public_key(from);
-            ep.to     = get_public_key(to);
+            ep.from   = get_address(from);
+            ep.to     = get_address(to);
             ep.number = asset::from_string(number);
             ep.memo   = memo;
 
@@ -1032,7 +1067,7 @@ struct set_get_balance_subcommand {
         gbcmd->set_callback([this] {
             FC_ASSERT(!address.empty(), "Address cannot be empty");
 
-            auto arg = fc::mutable_variant_object("address", get_public_key(address));
+            auto arg = fc::mutable_variant_object("address", get_address(address));
             if(!sym.empty()) {
                 arg["sym"] = symbol::from_string(sym);
             }

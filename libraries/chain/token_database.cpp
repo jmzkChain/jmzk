@@ -67,6 +67,22 @@ struct db_asset_key {
     rocksdb::Slice slice;
 };
 
+struct db_asset_prefix_key {
+    db_asset_prefix_key(const address& addr)
+        : slice((const char*)this, sizeof(buf)) {
+        addr.to_bytes(buf, PKEY_SIZE);
+    }
+
+    const rocksdb::Slice&
+    as_slice() const {
+        return slice;
+    }
+
+    char buf[PKEY_SIZE];
+
+    rocksdb::Slice slice;
+};
+
 db_key<domain_name>
 get_domain_key(const domain_name& name) {
     return db_key<domain_name>(N128(.domain), name);
@@ -107,9 +123,9 @@ get_asset_key(const address& addr, const symbol symbol) {
     return db_asset_key(addr, symbol);
 }
 
-rocksdb::Slice
+db_asset_prefix_key
 get_asset_prefix_key(const address& addr) {
-    return rocksdb::Slice((const char*)&addr.get_public_key(), PKEY_SIZE);
+    return db_asset_prefix_key(addr);
 }
 
 template <typename T>
@@ -436,7 +452,7 @@ token_database::exists_any_asset(const address& addr) const {
     using namespace __internal;
     auto it  = db_->NewIterator(read_opts_, assets_handle_);
     auto key = get_asset_prefix_key(addr);
-    it->Seek(key);
+    it->Seek(key.as_slice());
 
     auto existed = it->Valid();
     delete it;
@@ -573,7 +589,7 @@ token_database::read_all_assets(const address& addr, const read_fungible_func& f
     using namespace __internal;
     auto it  = db_->NewIterator(read_opts_, assets_handle_);
     auto key = get_asset_prefix_key(addr);
-    it->Seek(key);
+    it->Seek(key.as_slice());
 
     while(it->Valid()) {
         auto v = read_value<asset>(it->value());

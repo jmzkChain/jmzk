@@ -61,6 +61,7 @@ evt_contract_abi() {
     evt_abi.actions.push_back( action_def{name("cancelsuspend"), "cancelsuspend"} );
     evt_abi.actions.push_back( action_def{name("aprvsuspend"), "aprvsuspend"} );
     evt_abi.actions.push_back( action_def{name("execsuspend"), "execsuspend"} );
+    evt_abi.actions.push_back( action_def{name("paycharge"), "paycharge"} );
 
     // structures def
     evt_abi.structs.emplace_back( struct_def {
@@ -272,6 +273,13 @@ evt_contract_abi() {
         "execsuspend", "", {
            {"name", "proposal_name"},
            {"executor", "user_id"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "paycharge", "", {
+           {"payer", "address"},
+           {"charge", "uint32"}
         }
     });
 
