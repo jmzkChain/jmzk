@@ -512,6 +512,15 @@ struct check_authority<addmeta> {
     }
 };
 
+template<>
+struct check_authority<paycharge> {
+    static bool
+    invoke(const action&, authority_checker*) {
+        // not allowed user to use this action
+        return false;
+    }
+};
+
 }  // namespace __internal
 
 }}  // namespace evt::chain

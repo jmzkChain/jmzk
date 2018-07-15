@@ -110,6 +110,9 @@ public:
     }
 
 public:
+    size_t get_bytes_size() const;
+    void to_bytes(char* buf, size_t sz) const;
+
     std::string to_string() const;
 
     explicit

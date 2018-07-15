@@ -84,8 +84,10 @@ bool   tx_print_json     = false;
 bool   print_request     = false;
 bool   print_response    = false;
 
-string propname;
-string proposer;
+string   propname;
+string   proposer;
+string   payer;
+uint32_t max_charge = 10000;
 
 void
 print_info(const fc::variant& info, int indent = 0) {
@@ -213,9 +215,11 @@ add_standard_transaction_options(CLI::App* cmd) {
     cmd->add_option("-x,--expiration", parse_expiration, localized("Set the time in seconds before a transaction expires, defaults to 30s"));
     cmd->add_flag("-s,--skip-sign", tx_skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
     cmd->add_flag("-d,--dont-broadcast", tx_dont_broadcast, localized("Don't broadcast transaction to the network (just print to stdout)"));
-    cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id, (localized("Set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)")));
+    cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id, localized("Set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)"));
+    cmd->add_option("-p,--payer", payer, localized("Payer address to be billed for this transaction"))->required();
+    cmd->add_option("-c,--max-charge", max_charge, localized("Max charge to be payed for this transaction"));
 
-    auto popt = cmd->add_option("-p,--proposal-name", propname, localized("Push a suspend transaction instead of normal transaction, specify its proposal name"));
+    auto popt = cmd->add_option("-a,--proposal-name", propname, localized("Push a suspend transaction instead of normal transaction, specify its proposal name"));
     cmd->add_option("-u,--proposer", proposer, localized("Proposer public key"))->needs(popt);
 }
 
@@ -291,6 +295,9 @@ set_transaction_header(signed_transaction& trx, const evt::chain_apis::read_only
     }
     EVT_RETHROW_EXCEPTIONS(invalid_ref_block_exception, "Invalid reference block num or id: ${block_num_or_id}", ("block_num_or_id", tx_ref_block_num_or_id));
     trx.set_reference_block(ref_block_id);
+
+    trx.max_charge = max_charge;
+    trx.payer = (address)payer;
 }
 
 public_key_type
@@ -331,7 +338,7 @@ create_suspend_transaction(transaction& trx) {
     ns.trx = std::move(trx);
    
     auto signed_trx = signed_transaction();
-    signed_trx.actions.emplace_back(create_action(N128(suspend), (domain_key)propname, ns));
+    signed_trx.actions.emplace_back(create_action(N128(.suspend), (domain_key)propname, ns));
     return signed_trx;
 }
 
@@ -665,7 +672,7 @@ struct set_group_subcommands {
             EVT_RETHROW_EXCEPTIONS(group_type_exception, "Fail to parse Group JSON")
             ng.group.name_ = name;
 
-            auto act = create_action("group", (domain_key)ng.name, ng);
+            auto act = create_action(N128(.group), (domain_key)ng.name, ng);
             send_actions({act});
         });
 
@@ -687,7 +694,7 @@ struct set_group_subcommands {
             EVT_RETHROW_EXCEPTIONS(group_type_exception, "Fail to parse Group JSON")
             ug.group.name_ = name;
 
-            auto act = create_action("group", (domain_key)ug.name, ug);
+            auto act = create_action(N128(.group), (domain_key)ug.name, ug);
             send_actions({act});
         });
     }
@@ -723,7 +730,7 @@ struct set_fungible_subcommands {
 
             EVT_ASSERT(nf.total_supply.get_symbol() == nf.sym, asset_type_exception, "Symbol and asset should be match");
 
-            auto act = create_action(N128(fungible), (domain_key)nf.sym.name(), nf);
+            auto act = create_action(N128(.fungible), (domain_key)nf.sym.name(), nf);
             send_actions({act});
         });
 
@@ -744,7 +751,7 @@ struct set_fungible_subcommands {
                 uf.manage = parse_permission(manage);
             }
 
-            auto act = create_action(N128(fungible), (domain_key)uf.sym.name(), uf);
+            auto act = create_action(N128(.fungible), (domain_key)uf.sym.name(), uf);
             send_actions({act});
         });
 
@@ -761,7 +768,7 @@ struct set_fungible_subcommands {
             ifact.number  = asset::from_string(number);
             ifact.memo    = memo;
 
-            auto act = create_action(N128(fungible), (domain_key)ifact.number.get_symbol().name(), ifact);
+            auto act = create_action(N128(.fungible), (domain_key)ifact.number.get_symbol().name(), ifact);
             send_actions({act});
         });
 
@@ -789,7 +796,7 @@ struct set_assets_subcommands {
             tf.number = asset::from_string(number);
             tf.memo   = memo;
 
-            auto act = create_action(N128(fungible), (domain_key)tf.number.get_symbol().name(), tf);
+            auto act = create_action(N128(.fungible), (domain_key)tf.number.get_symbol().name(), tf);
             send_actions({act});
         });
 
@@ -810,7 +817,7 @@ struct set_assets_subcommands {
 
             FC_ASSERT(ep.number.get_symbol() == symbol(SY(5,EVT)), "Only EVT can be converted to Pinned EVT");
 
-            auto act = create_action(N128(fungible), (domain_key)ep.number.get_symbol().name(), ep);
+            auto act = create_action(N128(.fungible), (domain_key)ep.number.get_symbol().name(), ep);
             send_actions({act});
         });
 
@@ -854,7 +861,7 @@ struct set_meta_subcommands {
             am.value = metavalue;
             am.creator = get_public_key(creator);
 
-            auto act = create_action(N128(group), (domain_key)key, am);
+            auto act = create_action(N128(.group), (domain_key)key, am);
             send_actions({act});
         });
 
@@ -881,7 +888,7 @@ struct set_meta_subcommands {
             am.value = metavalue;
             am.creator = get_public_key(creator);
 
-            auto act = create_action(N128(fungible), (domain_key)key, am);
+            auto act = create_action(N128(.fungible), (domain_key)key, am);
             send_actions({act});
         });
     }
@@ -915,7 +922,7 @@ struct set_suspend_subcommands {
             asact.name = (proposal_name)name;
             asact.signatures = std::move(trx.signatures);
 
-            auto act = create_action(N128(suspend), (domain_key)asact.name, asact);
+            auto act = create_action(N128(.suspend), (domain_key)asact.name, asact);
             send_actions({act});
         });
 
@@ -925,7 +932,7 @@ struct set_suspend_subcommands {
             auto cdact = cancelsuspend();
             cdact.name = (proposal_name)name;
 
-            auto act = create_action(N128(suspend), (domain_key)cdact.name, cdact);
+            auto act = create_action(N128(.suspend), (domain_key)cdact.name, cdact);
             send_actions({act});
         });
 
@@ -937,7 +944,7 @@ struct set_suspend_subcommands {
             esact.name = (proposal_name)name;
             esact.executor = get_public_key(executor);
 
-            auto act = create_action(N128(suspend), (domain_key)esact.name, esact);
+            auto act = create_action(N128(.suspend), (domain_key)esact.name, esact);
             send_actions({act});
         });
     }

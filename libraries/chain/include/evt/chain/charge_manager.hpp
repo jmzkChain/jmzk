@@ -26,7 +26,10 @@ struct base_act_charge {
         return 1;
     }
 
-    static size_t extra_factor() { return 1; }
+    static size_t
+    extra_factor(const action& act) {
+        return 1;
+    }
 };
 
 template<typename T>
@@ -43,8 +46,9 @@ struct get_act_charge {
 
         s += charge::storage(act) * config.base_storage_charge_factor;
         s += charge::cpu(act) * config.base_cpu_charge_factor;
+        s *= charge::extra_factor(act);
 
-        return s * charge::extra_factor();
+        return s;
     }
 };
 
@@ -100,7 +104,24 @@ using namespace contracts;
 
 template<>
 struct act_charge<addmeta> : public base_act_charge {
-    static size_t extra_factor() { return 10; }
+    static size_t
+    extra_factor(const action& act) {
+        return 100;
+    }
+};
+
+template<>
+struct act_charge<issuefungible> : public base_act_charge {
+    static size_t
+    extra_factor(const action& act) {
+        auto& ifact = act.data_as<const issuefungible&>();
+        auto sym = ifact.number.get_symbol();
+        // set charge to zero when issuing EVT
+        if(sym == symbol(SY(5,EVT))) {
+            return 0;
+        }
+        return 1;
+    }
 };
 
 }  // namespace __internal

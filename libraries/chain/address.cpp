@@ -35,6 +35,44 @@ public:
 
 }  // namespace __internal
 
+size_t
+address::get_bytes_size() const {
+    using namespace __internal;
+    
+    constexpr size_t pkey_size = sizeof(public_key_type::storage_type::type_at<0>);
+    static_assert(sizeof(gen_wrapper) <= pkey_size);
+    return pkey_size;
+}
+
+void
+address::to_bytes(char* buf, size_t sz) const {
+    using namespace __internal;
+
+    FC_ASSERT(sz == get_bytes_size());
+    switch(this->type()) {
+    case reserved_t: {
+        memset(buf, 0, sz);
+        break;
+    }
+    case public_key_t: {
+        memcpy(buf, &this->get_public_key(), sizeof(public_key_type::storage_type::type_at<0>));
+        break;
+    }
+    case generated_t: {
+        memset(buf, 0, sz);
+
+        auto gen = gen_wrapper();
+        gen.prefix = this->get_prefix().value;
+        gen.key = this->get_key().value;
+        gen.nonce = this->get_nonce();
+        gen.checksum = gen.calculate_checksum();
+
+        memcpy(buf, &gen, sizeof(gen));
+        break;
+    }
+    }  // switch
+}
+
 std::string
 address::to_string() const {
     using namespace __internal;

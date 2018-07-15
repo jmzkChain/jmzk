@@ -4,6 +4,8 @@
  */
 #include <evt/chain/contracts/evt_contract.hpp>
 #include <evt/chain/contracts/types.hpp>
+#include <evt/chain/contracts/abi_types.hpp>
+#include <evt/chain/version.hpp>
 
 namespace evt { namespace chain { namespace contracts {
 
@@ -108,8 +110,7 @@ evt_contract_abi() {
             {"issue", "permission_def"},
             {"transfer", "permission_def"},
             {"manage", "permission_def"},
-            {"metas", "meta_list"},
-            {"pay_address", "address"}
+            {"metas", "meta_list"}
         }
     });
 
@@ -121,7 +122,6 @@ evt_contract_abi() {
             {"issue", "permission_def"},
             {"manage", "permission_def"},
             {"total_supply", "asset"},
-            {"current_supply", "asset"},
             {"metas", "meta_list"}
         }
     });
@@ -319,13 +319,15 @@ evt_contract_abi() {
         "transaction_header", "", {
             {"expiration", "time_point_sec"},
             {"ref_block_num", "uint16"},
-            {"ref_block_prefix", "uint32"}
+            {"ref_block_prefix", "uint32"},
+            {"max_charge", "uint32"}
         }
     });
 
     evt_abi.structs.emplace_back( struct_def {
         "transaction", "transaction_header", {
             {"actions", "action[]"},
+            {"payer", "address"},
             {"transaction_extensions", "extensions"}
         }
     });

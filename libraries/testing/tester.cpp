@@ -1,7 +1,10 @@
+#include <evt/testing/tester.hpp>
+
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/test/unit_test.hpp>
+
+#include <evt/chain/token_database.hpp>
 #include <evt/chain/contracts/evt_contract.hpp>
-#include <evt/testing/tester.hpp>
 
 using namespace evt::chain::contracts;
 
@@ -192,8 +195,10 @@ base_tester::produce_min_num_of_blocks_to_spend_time_wo_inactive_prod(const fc::
 }
 
 void
-base_tester::set_transaction_headers(signed_transaction& trx, uint32_t expiration) const {
+base_tester::set_transaction_headers(signed_transaction& trx, const address& payer, uint32_t max_charge, uint32_t expiration) const {
     trx.expiration = control->head_block_time() + fc::seconds(expiration);
+    trx.payer      = payer;
+    trx.max_charge = max_charge;
     trx.set_reference_block(control->head_block_id());
 }
 
@@ -236,10 +241,10 @@ base_tester::push_transaction(signed_transaction& trx,
 }
 
 typename base_tester::action_result
-base_tester::push_action(action&& act, std::vector<account_name>& auths) {
+base_tester::push_action(action&& act, std::vector<account_name>& auths, const address& payer) {
     signed_transaction trx;
     trx.actions.emplace_back(std::move(act));
-    set_transaction_headers(trx);
+    set_transaction_headers(trx, payer);
     if(!auths.empty()) {
         for(auto& au : auths) {
             trx.sign(get_private_key(au), control->get_chain_id());
@@ -264,12 +269,14 @@ base_tester::push_action(const action_name&               acttype,
                          const domain_key&                key,
                          const variant_object&            data,
                          const std::vector<account_name>& auths,
+                         const address&                   payer,
+                         uint32_t                         max_charge,
                          uint32_t                         expiration)
 {
     try {
         signed_transaction trx;
         trx.actions.emplace_back(get_action(acttype, domain, key, data));
-        set_transaction_headers(trx, expiration);
+        set_transaction_headers(trx, payer, max_charge, expiration);
         for(const auto& auth : auths) {
             trx.sign(get_private_key(auth), control->get_chain_id());
         }
@@ -362,6 +369,15 @@ base_tester::sync_with(base_tester& other) {
 void
 base_tester::push_genesis_block() {
     //produce_block();
+}
+
+void
+base_tester::add_money(const address& addr, const asset& number) {
+    auto& tokendb = control->token_db();
+    auto as = asset();
+    tokendb.read_asset_no_throw(addr, number.get_symbol(), as);
+    as += number;
+    tokendb.update_asset(addr, as);
 }
 
 bool
