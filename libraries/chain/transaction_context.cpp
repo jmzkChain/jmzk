@@ -146,7 +146,7 @@ transaction_context::check_paid() const {
         EVT_ASSERT(payer.get_prefix() == N(domain), payer_exception, "Only domain generated address can be used to be payer");
         auto& key = payer.get_key();
         for(auto& act : trx.trx.actions) {
-            EVT_ASSERT(act.domain == key, payer_exception, "Only actions in '{}'' domain can be paid by it");
+            EVT_ASSERT(act.domain == key, payer_exception, "Only actions in '${d}' domain can be paid by it", ("d",act.domain));
         }
         break;
     }
