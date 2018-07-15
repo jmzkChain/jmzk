@@ -94,6 +94,7 @@ transaction_context::finalize() {
     trace->action_traces.emplace_back();
     dispatch_action(trace->action_traces.back(), act);
 
+    trace->charge  = charge;
     trace->elapsed = fc::time_point::now() - start;
 }
 

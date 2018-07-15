@@ -44,7 +44,7 @@ struct contracts_test {
         payer = address(tester::get_public_key(N(payer)));
         pooler = address(tester::get_public_key(N(pooler)));
         
-        my_tester->add_money(payer, asset(10000, symbol(SY(5,EVT))));
+        my_tester->add_money(payer, asset(100000, symbol(SY(5,EVT))));
 
         ti  = 0;
     }
@@ -1009,11 +1009,14 @@ BOOST_AUTO_TEST_CASE(contract_charge_test) {
 
         auto var   = fc::json::from_string(test_data);
         auto issfg = var.as<issuefungible>();
-        
+
         issfg.number  = asset::from_string(string("5.00000 ") + get_symbol_name());
         issfg.address = key;
         to_variant(issfg, var);
-        my_tester->push_action(N(issuefungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, pooler);
+        BOOST_CHECK_THROW(my_tester->push_action(N(issuefungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, pooler),charge_exceeded_exception);
+
+        std::vector<account_name> tmp_seeds = {N(key),N(payer)};
+        BOOST_CHECK_THROW(my_tester->push_action(N(issuefungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), tmp_seeds, pooler),payer_exception);
             
         // auto& tokendb = my_tester->control->token_db();
         // domain_def dom;

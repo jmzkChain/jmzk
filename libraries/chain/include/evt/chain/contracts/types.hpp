@@ -260,7 +260,7 @@ struct execsuspend {
 
 struct paycharge {
     address  payer;
-    uint64_t charge;
+    uint32_t charge;
 
     EVT_ACTION_NAME(paycharge);
 };

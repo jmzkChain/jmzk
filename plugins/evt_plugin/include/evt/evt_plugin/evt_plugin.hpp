@@ -62,7 +62,7 @@ public:
     fc::variant get_fungible(const get_fungible_params& params);
 
     struct get_fungible_balance_params {
-        public_key_type      address;
+        address_type         address;
         fc::optional<symbol> sym;
     };
     fc::variant get_fungible_balance(const get_fungible_balance_params& params);

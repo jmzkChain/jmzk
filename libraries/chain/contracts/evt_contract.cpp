@@ -813,7 +813,7 @@ EVT_ACTION_IMPL(paycharge) {
 
         asset evt, pevt;
         tokendb.read_asset_no_throw(pcact.payer, pevt_symbol, pevt);
-        paid = std::min(pcact.charge, (uint64_t)pevt.get_amount());
+        paid = std::min(pcact.charge, (uint32_t)pevt.get_amount());
         if(paid > 0) {
             pevt -= asset(paid, pevt.get_symbol());
             tokendb.update_asset(pcact.payer, pevt);
