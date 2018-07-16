@@ -16,7 +16,9 @@
 
 namespace evt { namespace chain { namespace contracts {
 
-#define EVT_ACTION_NAME(typename)  \
+#define EVT_ACTION(typename)       \
+    typename() = default;          \
+                                   \
     static constexpr action_name   \
     get_name() {                   \
         return N(typename);        \
@@ -124,7 +126,7 @@ struct newdomain {
     permission_def transfer;
     permission_def manage;
 
-    EVT_ACTION_NAME(newdomain);
+    EVT_ACTION(newdomain);
 };
 
 struct issuetoken {
@@ -132,7 +134,7 @@ struct issuetoken {
     std::vector<token_name> names;
     address_list            owner;
 
-    EVT_ACTION_NAME(issuetoken);
+    EVT_ACTION(issuetoken);
 };
 
 struct transfer {
@@ -141,28 +143,28 @@ struct transfer {
     address_list to;
     string       memo;
 
-    EVT_ACTION_NAME(transfer);
+    EVT_ACTION(transfer);
 };
 
 struct destroytoken {
     domain_name domain;
     token_name  name;
 
-    EVT_ACTION_NAME(destroytoken);
+    EVT_ACTION(destroytoken);
 };
 
 struct newgroup {
     group_name name;
     group_def  group;
 
-    EVT_ACTION_NAME(newgroup);
+    EVT_ACTION(newgroup);
 };
 
 struct updategroup {
     group_name name;
     group_def  group;
 
-    EVT_ACTION_NAME(updategroup);
+    EVT_ACTION(updategroup);
 };
 
 struct updatedomain {
@@ -172,7 +174,7 @@ struct updatedomain {
     fc::optional<permission_def> transfer;
     fc::optional<permission_def> manage;
 
-    EVT_ACTION_NAME(updatedomain);
+    EVT_ACTION(updatedomain);
 };
 
 struct newfungible {
@@ -184,7 +186,7 @@ struct newfungible {
 
     asset total_supply;
 
-    EVT_ACTION_NAME(newfungible);
+    EVT_ACTION(newfungible);
 };
 
 struct updfungible {
@@ -193,7 +195,7 @@ struct updfungible {
     fc::optional<permission_def> issue;
     fc::optional<permission_def> manage;
 
-    EVT_ACTION_NAME(updfungible);
+    EVT_ACTION(updfungible);
 };
 
 struct issuefungible {
@@ -201,7 +203,7 @@ struct issuefungible {
     asset        number;
     string       memo;
 
-    EVT_ACTION_NAME(issuefungible);
+    EVT_ACTION(issuefungible);
 };
 
 struct transferft {
@@ -210,7 +212,7 @@ struct transferft {
     asset        number;
     string       memo;
 
-    EVT_ACTION_NAME(transferft);
+    EVT_ACTION(transferft);
 };
 
 struct evt2pevt {
@@ -219,7 +221,7 @@ struct evt2pevt {
     asset        number;
     string       memo;
 
-    EVT_ACTION_NAME(evt2pevt);
+    EVT_ACTION(evt2pevt);
 };
 
 struct addmeta {
@@ -227,7 +229,7 @@ struct addmeta {
     meta_value     value;
     authorizer_ref creator;
 
-    EVT_ACTION_NAME(addmeta);
+    EVT_ACTION(addmeta);
 };
 
 struct newsuspend {
@@ -235,34 +237,34 @@ struct newsuspend {
     user_id       proposer;
     transaction   trx;
 
-    EVT_ACTION_NAME(newsuspend);
+    EVT_ACTION(newsuspend);
 };
 
 struct cancelsuspend {
     proposal_name name;
 
-    EVT_ACTION_NAME(cancelsuspend);
+    EVT_ACTION(cancelsuspend);
 };
 
 struct aprvsuspend {
     proposal_name               name;
     std::vector<signature_type> signatures;
 
-    EVT_ACTION_NAME(aprvsuspend);
+    EVT_ACTION(aprvsuspend);
 };
 
 struct execsuspend {
     proposal_name name;
     user_id       executor;
 
-    EVT_ACTION_NAME(execsuspend);
+    EVT_ACTION(execsuspend);
 };
 
 struct paycharge {
     address  payer;
     uint32_t charge;
 
-    EVT_ACTION_NAME(paycharge);
+    EVT_ACTION(paycharge);
 };
 
 }}}  // namespace evt::chain::contracts
