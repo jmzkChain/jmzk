@@ -1149,6 +1149,11 @@ controller::loadtest_mode() const {
 }
 
 bool
+controller::charge_free_mode() const {
+    return my->conf.charge_free_mode;
+}
+
+bool
 controller::contracts_console() const {
     return my->conf.contracts_console;
 }

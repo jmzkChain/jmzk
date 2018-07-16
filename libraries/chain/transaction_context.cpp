@@ -28,8 +28,10 @@ void
 transaction_context::init() {
     FC_ASSERT(!is_initialized, "cannot initialize twice");
     check_time();    // Fail early if deadline has already been exceeded
-    check_charge();  // Fail early if max charge has already been exceeded
-    check_paid();    // Fail early if theren't no remainning avaiable EVT & Pinned EVT tokens
+    if(!control.charge_free_mode()) {
+        check_charge();  // Fail early if max charge has already been exceeded
+        check_paid();    // Fail early if theren't no remainning avaiable EVT & Pinned EVT tokens
+    }
     is_initialized = true;
 }
 
@@ -40,8 +42,8 @@ transaction_context::init_for_implicit_trx() {
 
 void
 transaction_context::init_for_input_trx(uint32_t num_signatures) {
-    auto& t = trx.trx;
-    is_input  = true;
+    auto& t  = trx.trx;
+    is_input = true;
     if(!control.loadtest_mode()) {
         control.validate_expiration(t);
         control.validate_tapos(t);
@@ -70,29 +72,10 @@ void
 transaction_context::finalize() {
     FC_ASSERT(is_initialized, "must first initialize");
 
-    auto pcact = paycharge();
-
-    pcact.payer  = trx.trx.payer;
-    pcact.charge = charge;
-
-    auto act = action();
-    act.name = paycharge::get_name();
-    act.data = fc::raw::pack(pcact);
-    act.domain = N128(.charge);
-    
-    switch(pcact.payer.type()) {
-    case address::public_key_t: {
-        act.key = N128(.public-key);
-        break;
+    if(charge) {
+        // in charge-free mode, charge always be zero
+        finalize_pay();
     }
-    case address::generated_t: {
-        act.key = N128(.generated);
-        break;
-    }
-    }  // switch
-
-    trace->action_traces.emplace_back();
-    dispatch_action(trace->action_traces.back(), act);
 
     trace->charge  = charge;
     trace->elapsed = fc::time_point::now() - start;
@@ -162,6 +145,33 @@ transaction_context::check_paid() const {
         return;
     }
     EVT_THROW(charge_exceeded_exception, "There are ${e} EVT and ${p} Pinned EVT left, but charge is ${c}", ("e",evt)("p",pevt)("c",charge));
+}
+
+void
+transaction_context::finalize_pay() {
+    auto pcact = paycharge();
+
+    pcact.payer  = trx.trx.payer;
+    pcact.charge = charge;
+
+    auto act = action();
+    act.name = paycharge::get_name();
+    act.data = fc::raw::pack(pcact);
+    act.domain = N128(.charge);
+    
+    switch(pcact.payer.type()) {
+    case address::public_key_t: {
+        act.key = N128(.public-key);
+        break;
+    }
+    case address::generated_t: {
+        act.key = N128(.generated);
+        break;
+    }
+    }  // switch
+
+    trace->action_traces.emplace_back();
+    dispatch_action(trace->action_traces.back(), act);
 }
 
 void

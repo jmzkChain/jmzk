@@ -37,6 +37,8 @@ private:
     void check_charge();
     void check_paid() const;
 
+    void finalize_pay();
+
 public:
     controller&             control;
     token_database::session undo_session;
