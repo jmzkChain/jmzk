@@ -365,6 +365,7 @@ class Test(unittest.TestCase):
             'newdomain', name=fake_name(), creator=user.pub_key)
         trx = transaction.Transaction()
         trx.set_header(url=host_url)
+        trx.set_payer(str(user.pub_key))
         trx.add_action(newdomain)
         trx.add_sign(user.priv_key)
 
@@ -383,6 +384,7 @@ class Test(unittest.TestCase):
             'newdomain', name=fake_name(), creator=user.pub_key)
         trx = transaction.Transaction()
         trx.set_header(url=host_url)
+        trx.set_payer(str(user.pub_key))
         trx.add_action(newdomain)
         trx.add_sign(user.priv_key)
         signatures = json.loads(trx.dumps())['signatures']
@@ -411,6 +413,7 @@ class Test(unittest.TestCase):
             'newdomain', name=fake_name(), creator=user.pub_key)
         trx = transaction.Transaction()
         trx.set_header(url=host_url)
+        trx.set_payer(str(user.pub_key))
         trx.add_action(newdomain)
         trx.add_sign(user.priv_key)
 
@@ -437,6 +440,7 @@ class Test(unittest.TestCase):
             'newdomain', name=fake_name(), creator=user.pub_key)
         trx = transaction.Transaction()
         trx.set_header(url=host_url)
+        trx.set_payer(str(user.pub_key))
         trx.add_action(newdomain)
         trx.add_sign(user.priv_key)
         signatures = json.loads(trx.dumps())['signatures']

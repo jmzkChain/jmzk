@@ -6,8 +6,8 @@ from . import evt_exception
 
 
 class LibEVT:
+    ffi = FFI()
     lib = None
-    ffi = None
     abi = None
 
 
@@ -19,9 +19,8 @@ def check_lib_init():
 
 
 def init_evt_lib():
-    assert LibEVT.lib is None
+    assert LibEVT.abi is None
 
-    LibEVT.ffi = FFI()
     LibEVT.ffi.cdef("""
             typedef struct {
                 size_t  sz;
@@ -90,6 +89,7 @@ def init_evt_lib():
 
     LibEVT.abi = LibEVT.lib.evt_abi()
 
+
 def init_lib():
-    FFI().init_once(init_evt_lib, "init_evt")
-    return LibEVT.lib.evt_version();    
+    LibEVT.ffi.init_once(init_evt_lib, "init_evt")
+    return LibEVT.lib.evt_version()

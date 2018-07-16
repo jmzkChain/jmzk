@@ -201,6 +201,11 @@ class TransferFtAbi(BaseType):
         super().__init__(**args)
 
 
+class EVT2PEVTAbi(BaseType):
+    def __init__(self, _from, to, number, memo):
+        args = {'from': _from, 'to': to, 'number': number, 'memo': memo}
+        super().__init__(**args)
+
 class NewSuspendAbi(BaseType):
     def __init__(self, name, proposer, trx):
         super().__init__(name=name, proposer=proposer, trx=trx)

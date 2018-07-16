@@ -9,6 +9,7 @@ class TestPyEVT(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         ver = libevt.init_lib()
+        assert ver == abi.version()
         print("EVT Api Version:", ver)
 
     def test_evtecc(self):

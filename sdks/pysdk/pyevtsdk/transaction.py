@@ -16,6 +16,9 @@ class Transaction:
         self.actions = []
         self.transaction_extensions = []
 
+        self.max_charge = "10000"
+        self.payer = None
+
         self.priv_keys = []
         self.signatures = []
 
@@ -31,6 +34,12 @@ class Transaction:
             self.chain_id = kwargs['chain_id']
             self.block_id = kwargs['block_id']
 
+        if 'max_charge' in kwargs:
+            self.max_charge = kwargs['max_charge']
+
+    def set_payer(self, payer):
+        self.payer = payer
+
     def add_action(self, _action):
         self.actions.append(_action.dict())
 
@@ -42,18 +51,13 @@ class Transaction:
             'expiration': self.expiration,
             'ref_block_num': str(self.block_id.ref_block_num()),
             'ref_block_prefix': str(self.block_id.ref_block_prefix()),
+            'max_charge': self.max_charge,
             'actions': self.actions,
+            'payer': self.payer,
             'transaction_extensions': self.transaction_extensions
         }
-        return ret
-
-    def delay_dict(self):
-        ret = {
-            'expiration': self.expiration,
-            'ref_block_num': str(self.block_id.ref_block_num()),
-            'ref_block_prefix': str(self.block_id.ref_block_prefix()),
-            'actions': self.actions,
-        }
+        if self.payer is None:
+            del ret['payer']
         return ret
 
     def dumps(self):
