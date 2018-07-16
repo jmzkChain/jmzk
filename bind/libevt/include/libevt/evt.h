@@ -29,6 +29,7 @@ typedef struct {
 
 int evt_free(void*);
 int evt_equals(evt_data_t* rhs, evt_data_t* lhs);
+int evt_version();
 
 #ifdef __cplusplus
 } // extern "C"
