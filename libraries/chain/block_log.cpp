@@ -22,7 +22,6 @@ public:
     std::fstream     index_stream;
     fc::path         block_file;
     fc::path         index_file;
-    std::vector<fc::path> data_dirs;
     bool             block_write;
     bool             index_write;
     bool             genesis_written_to_block_log = false;
@@ -68,13 +67,11 @@ public:
 };
 }  // namespace detail
 
-block_log::block_log(std::vector<fc::path>& data_dirs)
+block_log::block_log(const fc::path& data_dir)
     : my(new detail::block_log_impl()) {
-    my->data_dirs = data_dirs;
     my->block_stream.exceptions(std::fstream::failbit | std::fstream::badbit);
     my->index_stream.exceptions(std::fstream::failbit | std::fstream::badbit);
-    for(auto& data_dir : data_dirs) 
-        open(data_dir);
+    open(data_dir);
 }
 
 block_log::block_log(block_log&& other) {
@@ -183,29 +180,17 @@ block_log::append(const signed_block_ptr& b) {
     try {
         FC_ASSERT(my->genesis_written_to_block_log, "Cannot append to block log until the genesis is first written");
 
-        uint64_t pos;
-        for(auto data_dir : my->data_dirs) {
-            if(my->block_stream.is_open())
-            my->block_stream.close();
-            if(my->index_stream.is_open())
-            my->index_stream.close();
-            my->block_file = data_dir / "blocks.log";
-            my->index_file = data_dir / "blocks.index";
-            my->block_stream.open(my->block_file.generic_string().c_str(), LOG_WRITE);
-            my->index_stream.open(my->index_file.generic_string().c_str(), LOG_WRITE);
+        my->check_block_write();
+        my->check_index_write();
 
-            my->check_block_write();
-            my->check_index_write();
-
-            pos = my->block_stream.tellp();
-            FC_ASSERT(my->index_stream.tellp() == sizeof(uint64_t) * (b->block_num() - 1),
-                      "Append to index file occuring at wrong position.",
-                      ("position", (uint64_t)my->index_stream.tellp())("expected", (b->block_num() - 1) * sizeof(uint64_t)));
-            auto data = fc::raw::pack(*b);
-            my->block_stream.write(data.data(), data.size());
-            my->block_stream.write((char*)&pos, sizeof(pos));
-            my->index_stream.write((char*)&pos, sizeof(pos));
-        }
+        uint64_t pos = my->block_stream.tellp();
+        FC_ASSERT(my->index_stream.tellp() == sizeof(uint64_t) * (b->block_num() - 1),
+                  "Append to index file occuring at wrong position.",
+                  ("position", (uint64_t)my->index_stream.tellp())("expected", (b->block_num() - 1) * sizeof(uint64_t)));
+        auto data = fc::raw::pack(*b);
+        my->block_stream.write(data.data(), data.size());
+        my->block_stream.write((char*)&pos, sizeof(pos));
+        my->index_stream.write((char*)&pos, sizeof(pos));
         my->head    = b;
         my->head_id = b->id();
 
@@ -224,48 +209,41 @@ block_log::flush() {
 
 uint64_t
 block_log::reset_to_genesis(const genesis_state& gs, const signed_block_ptr& genesis_block) {
-    for(auto data_dir : my->data_dirs) {
-        if(my->block_stream.is_open())
+    if(my->block_stream.is_open())
         my->block_stream.close();
-        if(my->index_stream.is_open())
+    if(my->index_stream.is_open())
         my->index_stream.close();
-        my->block_file = data_dir / "blocks.log";
-        my->index_file = data_dir / "blocks.index";
-        fc::remove_all(my->block_file);
-        fc::remove_all(my->index_file);
 
-        my->block_stream.open(my->block_file.generic_string().c_str(), LOG_WRITE);
-        my->index_stream.open(my->index_file.generic_string().c_str(), LOG_WRITE);
-        my->block_write = true;
-        my->index_write = true;
+    fc::remove_all(my->block_file);
+    fc::remove_all(my->index_file);
 
-        auto     data    = fc::raw::pack(gs);
-        uint32_t version = 0;  // version of 0 is invalid; it indicates that the genesis was not properly written to the block log
-        my->block_stream.write((char*)&version, sizeof(version));
-        my->block_stream.write(data.data(), data.size());
-        my->genesis_written_to_block_log = true;
-    }
+    my->block_stream.open(my->block_file.generic_string().c_str(), LOG_WRITE);
+    my->index_stream.open(my->index_file.generic_string().c_str(), LOG_WRITE);
+    my->block_write = true;
+    my->index_write = true;
+
+    auto     data    = fc::raw::pack(gs);
+    uint32_t version = 0;  // version of 0 is invalid; it indicates that the genesis was not properly written to the block log
+    my->block_stream.write((char*)&version, sizeof(version));
+    my->block_stream.write(data.data(), data.size());
+    my->genesis_written_to_block_log = true;
 
     auto ret = append(genesis_block);
 
     auto pos = my->block_stream.tellp();
 
-    for(auto data_dir : my->data_dirs) {
-        if(my->block_stream.is_open())
-        my->block_stream.close();
-        my->block_file = data_dir / "blocks.log";
-        my->block_stream.open(my->block_file.generic_string().c_str(), std::ios::in | std::ios::out | std::ios::binary);  // Bypass append-only writing just once
+    my->block_stream.close();
+    my->block_stream.open(my->block_file.generic_string().c_str(), std::ios::in | std::ios::out | std::ios::binary);  // Bypass append-only writing just once
 
-        static_assert(block_log::supported_version > 0, "a version number of zero is not supported");
-        uint32_t version = block_log::supported_version;
-        my->block_stream.seekp(0);
-        my->block_stream.write((char*)&version, sizeof(version));  // Finally write actual version to disk.
-        my->block_stream.seekp(pos);
-        flush();
+    static_assert(block_log::supported_version > 0, "a version number of zero is not supported");
+    version = block_log::supported_version;
+    my->block_stream.seekp(0);
+    my->block_stream.write((char*)&version, sizeof(version));  // Finally write actual version to disk.
+    my->block_stream.seekp(pos);
+    flush();
 
-        my->block_write = false;
-        my->check_block_write();  // Reset to append-only writing.
-    }
+    my->block_write = false;
+    my->check_block_write();  // Reset to append-only writing.
 
     return ret;
 }
