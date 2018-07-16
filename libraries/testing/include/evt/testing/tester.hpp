@@ -110,7 +110,7 @@ public:
                                       const variant_object&            data,
                                       const std::vector<account_name>& auths,
                                       const address&                   payer,
-                                      uint32_t                         max_charge = 10000,
+                                      uint32_t                         max_charge = 100000,
                                       uint32_t                         expiration = DEFAULT_EXPIRATION_DELTA);
 
     action get_action(action_name acttype, const domain_name& domain, const domain_key& key, const variant_object& data) const;

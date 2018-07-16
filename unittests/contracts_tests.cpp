@@ -38,11 +38,13 @@ struct contracts_test {
 
         key_seeds.push_back(N(key));
         key_seeds.push_back(N(payer));
+        key_seeds.push_back(N(pooler));
 
         key   = tester::get_public_key(N(key));
         payer = address(tester::get_public_key(N(payer)));
+        pooler = address(tester::get_public_key(N(pooler)));
         
-        my_tester->add_money(payer, asset(10000, symbol(SY(5,EVT))));
+        my_tester->add_money(payer, asset(100000, symbol(SY(5,EVT))));
 
         ti  = 0;
     }
@@ -89,6 +91,7 @@ struct contracts_test {
 
     public_key_type           key;
     address                   payer;
+    address                   pooler;
     std::vector<account_name> key_seeds;
     std::unique_ptr<tester>   my_tester;
     int                       ti;
@@ -144,6 +147,10 @@ BOOST_AUTO_TEST_CASE(contract_newdomain_test) {
         //action_authorize_exception test
         BOOST_CHECK_THROW(my_tester->push_action(N(newdomain), string_to_name128(get_domain_name()), N128(.create), var.get_object(), key_seeds, payer), action_authorize_exception);
 
+        newdom.name = ".domain";
+        to_variant(newdom, var);
+        BOOST_CHECK_THROW(my_tester->push_action(N(newdomain), string_to_name128(".domain"), N128(.create), var.get_object(), key_seeds, payer), name_reserved_exception);
+
         newdom.name = get_domain_name();
         newdom.issue.authorizers[0].ref.set_account(key);
         newdom.manage.authorizers[0].ref.set_account(key);
@@ -189,6 +196,10 @@ BOOST_AUTO_TEST_CASE(contract_issuetoken_test) {
 
         my_tester->push_action(N(issuetoken), string_to_name128(get_domain_name()), N128(.issue), var.get_object(), key_seeds, payer);
 
+        istk.names = {".t1", ".t2", ".t3"};
+        to_variant(istk, var);
+        BOOST_CHECK_THROW(my_tester->push_action(N(issuetoken), string_to_name128(get_domain_name()), N128(.issue), var.get_object(), key_seeds, payer), name_reserved_exception);
+
         //issue token authorization test
         istk.names = {"r1", "r2", "r3"};
         to_variant(istk, var);
@@ -210,11 +221,16 @@ BOOST_AUTO_TEST_CASE(contract_transfer_test) {
           "domain": "cookie",
           "name": "t1",
           "to": [
-            "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"
+            "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+            "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
           ],
           "memo":"memo"
         }
         )=====";
+        auto& tokendb = my_tester->control->token_db();
+        token_def tk;
+        tokendb.read_token(get_domain_name(), "t1", tk);
+        BOOST_TEST(1 == tk.owner.size());
 
         auto var = fc::json::from_string(test_data);
         auto trf = var.as<transfer>();
@@ -227,10 +243,10 @@ BOOST_AUTO_TEST_CASE(contract_transfer_test) {
 
         my_tester->push_action(N(transfer), string_to_name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer);
 
-        //transfer token to == from test
-        BOOST_CHECK_THROW(my_tester->push_action(N(transfer), string_to_name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer), tx_duplicate);
-        //
-        trf.to[0] = key;
+        tokendb.read_token(get_domain_name(), "t1", tk);
+        BOOST_TEST(2 == tk.owner.size());
+
+        trf.to[1] = key;
         to_variant(trf, var);
         BOOST_CHECK_THROW(my_tester->push_action(N(transfer), string_to_name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer), unsatisfied_authorization);
 
@@ -331,6 +347,13 @@ BOOST_AUTO_TEST_CASE(contract_newgroup_test) {
         to_variant(gp, var);
 
         my_tester->push_action(N(newgroup), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer);
+
+        gp.name        = ".gp";
+        gp.group.name_ = ".gp";
+        to_variant(gp, var);
+        BOOST_CHECK_THROW(my_tester->push_action(N(newgroup), N128(.group), string_to_name128(".gp"), var.get_object(), key_seeds, payer), name_reserved_exception);
+
+
         my_tester->produce_blocks();
     }
     FC_LOG_AND_RETHROW()
@@ -425,7 +448,7 @@ BOOST_AUTO_TEST_CASE(contract_newfungible_test) {
               }
             ]
           },
-          "total_supply":"15.00000 EVT"
+          "total_supply":"100.00000 EVT"
         }
         )=====";
 
@@ -433,15 +456,19 @@ BOOST_AUTO_TEST_CASE(contract_newfungible_test) {
         auto newfg = var.as<newfungible>();
 
         newfg.sym          = symbol::from_string(string("5,") + get_symbol_name());
-        newfg.total_supply = asset::from_string(string("15.00000 ") + get_symbol_name());
+        newfg.total_supply = asset::from_string(string("100.00000 ") + get_symbol_name());
         to_variant(newfg, var);
         //new fungible authorization test
         BOOST_CHECK_THROW(my_tester->push_action(N(newfungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer), unsatisfied_authorization);
 
         newfg.creator = key;
         to_variant(newfg, var);
-
         my_tester->push_action(N(newfungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer);
+
+        newfg.total_supply = asset::from_string(string("0.00000 ") + get_symbol_name());
+        to_variant(newfg, var);
+        BOOST_CHECK_THROW(my_tester->push_action(N(newfungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer),fungible_supply_exception);
+
         my_tester->produce_blocks();
     }
     FC_LOG_AND_RETHROW()
@@ -510,12 +537,23 @@ BOOST_AUTO_TEST_CASE(contract_issuefungible_test) {
         //issue rft more than balance exception
         BOOST_CHECK_THROW(my_tester->push_action(N(issuefungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer), fungible_supply_exception);
 
-        issfg.number  = asset::from_string(string("15.00000 ") + get_symbol_name());
+        issfg.number  = asset::from_string(string("50.00000 ") + get_symbol_name());
         issfg.address = key;
         to_variant(issfg, var);
         my_tester->push_action(N(issuefungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer);
 
+        auto& tokendb = my_tester->control->token_db();
+        domain_def dom;
+        tokendb.read_domain(get_domain_name(), dom);
+        // issfg.address = address(N(domain),dom.name,0);
+        issfg.address.set_reserved();
         to_variant(issfg, var);
+        BOOST_CHECK_THROW(my_tester->push_action(N(issuefungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer),fungible_address_exception);
+
+        issfg.number  = asset::from_string(string("15.00000 ") + "EVTD");
+        to_variant(issfg, var);
+        BOOST_CHECK_THROW(my_tester->push_action(N(issuefungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer), action_authorize_exception);
+
         my_tester->produce_blocks();
     }
     FC_LOG_AND_RETHROW()
@@ -544,6 +582,16 @@ BOOST_AUTO_TEST_CASE(contract_transferft_test) {
         trft.number = asset::from_string(string("15.00000 ") + get_symbol_name());
         to_variant(trft, var);
         my_tester->push_action(N(transferft), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer);
+
+        // auto& tokendb = my_tester->control->token_db();
+        // domain_def dom;
+        // tokendb.read_domain(get_domain_name(), dom);
+        // trft.to = dom.pay_address;
+        // to_variant(trft, var);
+        // my_tester->push_action(N(transferft), N128(fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds);
+
+        // trft.to = from;
+        // trf.from = 
 
         my_tester->produce_blocks();
     }
@@ -946,6 +994,42 @@ BOOST_AUTO_TEST_CASE(contract_successsuspend_test) {
 
 
         my_tester->produce_blocks();
+    }
+    FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE(contract_charge_test) {
+    try {
+        BOOST_CHECK(true);
+        const char* test_data = R"=====(
+        {
+          "address": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+          "number" : "12.00000 EVT",
+          "memo": "memo"
+        }
+        )=====";
+
+        auto var   = fc::json::from_string(test_data);
+        auto issfg = var.as<issuefungible>();
+
+        issfg.number  = asset::from_string(string("5.00000 ") + get_symbol_name());
+        issfg.address = key;
+        to_variant(issfg, var);
+        BOOST_CHECK_THROW(my_tester->push_action(N(issuefungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, pooler),charge_exceeded_exception);
+
+        std::vector<account_name> tmp_seeds = {N(key),N(payer)};
+        BOOST_CHECK_THROW(my_tester->push_action(N(issuefungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), tmp_seeds, pooler),payer_exception);
+        
+        BOOST_CHECK_THROW(my_tester->push_action(N(issuefungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, address()),payer_exception);
+
+        BOOST_CHECK_THROW(my_tester->push_action(N(issuefungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, address(N(notdomain),"domain",0)),payer_exception);
+
+        BOOST_CHECK_THROW(my_tester->push_action(N(issuefungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, address(N(domain),"domain",0)),payer_exception);
+
+        my_tester->push_action(N(issuefungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer);
+
+        my_tester->produce_blocks();
+
     }
     FC_LOG_AND_RETHROW()
 }
