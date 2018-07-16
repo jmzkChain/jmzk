@@ -40,11 +40,11 @@ struct contracts_test {
 
         key_seeds.push_back(N(key));
         key_seeds.push_back(N(payer));
-        key_seeds.push_back(N(pooler));
+        key_seeds.push_back(N(poorer));
 
         key   = tester::get_public_key(N(key));
         payer = address(tester::get_public_key(N(payer)));
-        pooler = address(tester::get_public_key(N(pooler)));
+        poorer = address(tester::get_public_key(N(poorer)));
         
         my_tester->add_money(payer, asset(100000, symbol(SY(5,EVT))));
 
@@ -93,7 +93,7 @@ struct contracts_test {
 
     public_key_type           key;
     address                   payer;
-    address                   pooler;
+    address                   poorer;
     std::vector<account_name> key_seeds;
     std::unique_ptr<tester>   my_tester;
     int                       ti;
@@ -1017,10 +1017,10 @@ BOOST_AUTO_TEST_CASE(contract_charge_test) {
         issfg.number  = asset::from_string(string("5.00000 ") + get_symbol_name());
         issfg.address = key;
         to_variant(issfg, var);
-        BOOST_CHECK_THROW(my_tester->push_action(N(issuefungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, pooler),charge_exceeded_exception);
+        BOOST_CHECK_THROW(my_tester->push_action(N(issuefungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, poorer),charge_exceeded_exception);
 
         std::vector<account_name> tmp_seeds = {N(key),N(payer)};
-        BOOST_CHECK_THROW(my_tester->push_action(N(issuefungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), tmp_seeds, pooler),payer_exception);
+        BOOST_CHECK_THROW(my_tester->push_action(N(issuefungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), tmp_seeds, poorer),payer_exception);
         
         BOOST_CHECK_THROW(my_tester->push_action(N(issuefungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, address()),payer_exception);
 
@@ -1029,6 +1029,41 @@ BOOST_AUTO_TEST_CASE(contract_charge_test) {
         BOOST_CHECK_THROW(my_tester->push_action(N(issuefungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, address(N(domain),"domain",0)),payer_exception);
 
         my_tester->push_action(N(issuefungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer);
+
+        my_tester->produce_blocks();
+
+    }
+    FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE(contract_evt2pevt_test) {
+    try {
+        BOOST_CHECK(true);
+        const char* test_data = R"=======(
+        {
+            "from": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
+            "to": "EVT548LviBDF6EcknKnKUMeaPUrZN2uhfCB1XrwHsURZngakYq9Vx",
+            "number": "5.00000 EVTD",
+            "memo": "memo"
+        }
+        )=======";
+
+        auto var   = fc::json::from_string(test_data);
+        auto e2p = var.as<evt2pevt>();
+
+        e2p.from = payer;
+        to_variant(e2p, var);
+        BOOST_CHECK_THROW(my_tester->push_action(N(evt2pevt), N128(.fungible), string_to_name128("EVT"), var.get_object(), key_seeds, payer),fungible_symbol_exception);
+
+        e2p.number = asset::from_string(string("5.00000 EVT"));
+        e2p.to.set_reserved();
+        to_variant(e2p, var);
+
+        BOOST_CHECK_THROW(my_tester->push_action(N(evt2pevt), N128(.fungible), string_to_name128("EVT"), var.get_object(), key_seeds, payer),fungible_address_exception);
+
+        e2p.to = payer;
+        to_variant(e2p, var);
+        my_tester->push_action(N(evt2pevt), N128(.fungible), string_to_name128("EVT"), var.get_object(), key_seeds, payer);
 
         my_tester->produce_blocks();
 

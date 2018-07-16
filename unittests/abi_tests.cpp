@@ -1106,4 +1106,30 @@ BOOST_AUTO_TEST_CASE(execsuspend_test) {
     FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE(evt2pevt_test) {
+    try {
+        auto abis = get_evt_abi();
+        BOOST_CHECK(true);
+        const char* test_data = R"=======(
+        {
+            "from": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
+            "to": "EVT548LviBDF6EcknKnKUMeaPUrZN2uhfCB1XrwHsURZngakYq9Vx",
+            "number": "5.00000 EVT",
+            "memo": "memo"
+        }
+        )=======";
+
+        auto var  = fc::json::from_string(test_data);
+        auto e2p = var.as<evt2pevt>();
+
+        BOOST_TEST("EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3" == (std::string)e2p.from);
+        BOOST_TEST("EVT548LviBDF6EcknKnKUMeaPUrZN2uhfCB1XrwHsURZngakYq9Vx" == (std::string)e2p.to);
+        BOOST_TEST((std::string)e2p.number.to_string() == "5.00000 EVT");
+
+        verify_byte_round_trip_conversion(abis, "evt2pevt", var);
+        verify_type_round_trip_conversion<evt2pevt>(abis, "evt2pevt", var);
+    }
+    FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
