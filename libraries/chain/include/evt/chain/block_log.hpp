@@ -40,7 +40,7 @@ class block_log_impl;
 
 class block_log {
 public:
-    block_log(const fc::path& data_dir);
+    block_log(std::vector<fc::path> data_dirs);
     block_log(block_log&& other);
     ~block_log();
 
