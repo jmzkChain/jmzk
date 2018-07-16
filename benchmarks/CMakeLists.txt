@@ -1,6 +1,8 @@
 find_package( benchmark REQUIRED )
 
-add_executable( benchmarks 
+add_executable( evt_benchmarks 
     main.cpp
-    json.cpp)
-target_link_libraries( benchmarks evt_chain fc ${BENCHMARK_LIBRARIES} )
+    json.cpp
+    actions.cpp
+    )
+target_link_libraries( evt_benchmarks evt_chain evt_testing fc ${BENCHMARK_LIBRARIES} )

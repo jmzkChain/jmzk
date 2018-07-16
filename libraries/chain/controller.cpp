@@ -865,7 +865,7 @@ controller::startup() {
 
     my->head = my->fork_db.head();
     if(!my->head) {
-        elog("No head block in fork db, perhaps we need to replay");
+        wlog("No head block in fork db, perhaps we need to replay");
     }
     my->init();
 }
