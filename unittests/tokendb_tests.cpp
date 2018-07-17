@@ -878,4 +878,67 @@ BOOST_AUTO_TEST_CASE(tokendb_updatesuspend_test) {
     FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE(tokendb_persist_savepoints_1) {
+    try {
+        BOOST_CHECK(true);
+
+        tokendb.add_savepoint(get_time());
+
+        domain_def dom = add_domain_data();
+        dom.name       = "domain-p1";
+        tokendb.add_domain(dom);
+        tokendb.add_savepoint(get_time());
+
+        domain_def updom = update_domain_data();
+        updom.name       = dom.name;
+        tokendb.update_domain(updom);
+        tokendb.add_savepoint(get_time());
+
+        issuetoken istk = issue_tokens_data();
+        istk.domain     = dom.name;
+        tokendb.issue_tokens(istk);
+        tokendb.add_savepoint(get_time());
+
+        token_def tk = update_token_data();
+        tk.domain    = dom.name;
+        tokendb.update_token(tk);
+
+        BOOST_TEST_REQUIRE(tokendb.exists_token(dom.name, "t1"));
+        token_def tk_;
+        tokendb.read_token(dom.name, "t1", tk_);
+        BOOST_TEST_REQUIRE(1 == tk_.metas.size());
+    }
+    FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE(tokendb_persist_savepoints_2) {
+    try {
+        BOOST_CHECK(true);
+
+        domain_def dom = add_domain_data();
+        dom.name       = "domain-p1";
+
+        token_def tk_;
+        tokendb.read_token(dom.name, "t1", tk_);
+        BOOST_TEST_REQUIRE(1 == tk_.metas.size());
+        
+        tokendb.rollback_to_latest_savepoint();
+        tokendb.read_token(dom.name, "t1", tk_);
+        BOOST_TEST(0 == tk_.metas.size());
+        tokendb.rollback_to_latest_savepoint();
+        BOOST_TEST_REQUIRE(!tokendb.exists_token(dom.name, "t1"));
+
+        BOOST_TEST_REQUIRE(tokendb.exists_domain(dom.name));
+        domain_def dom_;
+        tokendb.read_domain(dom.name, dom_);
+        BOOST_TEST_REQUIRE(1 == dom_.metas.size());
+        tokendb.rollback_to_latest_savepoint();
+        tokendb.read_domain(dom.name, dom_);
+        BOOST_TEST_REQUIRE(0 == dom_.metas.size());
+        tokendb.rollback_to_latest_savepoint();
+        BOOST_TEST_REQUIRE(!tokendb.exists_domain(dom.name));
+    }
+    FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()

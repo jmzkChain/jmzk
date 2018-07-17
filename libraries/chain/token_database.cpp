@@ -269,6 +269,7 @@ token_database::initialize(const fc::path& dbpath) {
         if(!status.ok()) {
             EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
         }
+
         load_savepoints();
         return 0;
     }
@@ -969,7 +970,13 @@ token_database::persist_savepoints() {
     }
     auto fs = std::fstream();
     fs.exceptions(std::fstream::failbit | std::fstream::badbit);
-    fs.open(filename.to_native_ansi_path(), (std::ios::out | std::ios::binary | std::ios::app));
+    fs.open(filename.to_native_ansi_path(), (std::ios::out | std::ios::binary));
+
+    auto h = psp_header {
+        .dirty_flag = 1
+    };
+    // set dirty first
+    fc::raw::pack(fs, h);
 
     // write savepoints, save old psps first
     auto psps = std::deque<psp_savepoint>(std::move(persistent_savepoints_));
@@ -1044,12 +1051,8 @@ token_database::persist_savepoints() {
     fc::raw::pack(fs, psps);
     fs.seekp(0);
 
-    auto h = psp_header {
-        .dirty_flag = 0
-    };
+    h.dirty_flag = 0;
     fc::raw::pack(fs, h);
-
-    printf("save savepoints: %ld\n", psps.size());
 
     fs.flush();
     fs.close();
@@ -1064,7 +1067,6 @@ token_database::load_savepoints() {
     auto filename = fc::path(db_path_) / "savepoints.log";
     if(!fc::exists(filename)) {
         wlog("No savepoints log in token database");
-        printf("No savepoints log in token database\n");
         return 0;
     }
 
@@ -1074,19 +1076,20 @@ token_database::load_savepoints() {
 
     auto h = psp_header();
     fc::raw::unpack(fs, h);
-    printf("dirty flag: %d\n", h.dirty_flag);
     EVT_ASSERT(h.dirty_flag == 0, tokendb_dirty_flag_exception, "checkpoints log file dirty flag set");
 
-    fc::raw::unpack(fs, persistent_savepoints_);
-    printf("load savepoints: %ld\n", persistent_savepoints_.size());
+    auto psps = std::deque<psp_savepoint>();
+    fc::raw::unpack(fs, psps);
+
+    persistent_savepoints_ = std::move(psps);
     fs.close();
 
     return 0;
 }
-
 
 }}  // namespace evt::chain
 
 FC_REFLECT(evt::chain::__internal::psp_header, (dirty_flag));
 FC_REFLECT(evt::chain::token_database::psp_action, (op)(key)(value));
 FC_REFLECT(evt::chain::token_database::psp_savepoint, (seq)(actions));
+
