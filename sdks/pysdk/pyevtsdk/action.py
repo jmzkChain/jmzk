@@ -29,13 +29,13 @@ class UpdateDomainAction(Action):
 class NewGroupAction(Action):
     # key: name of new group
     def __init__(self, key, data):
-        super().__init__('newgroup', 'group', key, data)
+        super().__init__('newgroup', '.group', key, data)
 
 
 class UpdateGroupAction(Action):
     # key: name of updating group
     def __init__(self, key, data):
-        super().__init__('updategroup', 'group', key, data)
+        super().__init__('updategroup', '.group', key, data)
 
 
 class IssueTokenAction(Action):
@@ -62,42 +62,47 @@ class NewFungibleAction(Action):
     # domain: fungible
     # key: name of new fungible
     def __init__(self, key, data):
-        super().__init__('newfungible', 'fungible', key, data)
+        super().__init__('newfungible', '.fungible', key, data)
 
 
 class UpdFungibleAction(Action):
     def __init__(self, key, data):
-        super().__init__('updfungible', 'fungible', key, data)
+        super().__init__('updfungible', '.fungible', key, data)
 
 
 class IssueFungibleAction(Action):
     def __init__(self, key, data):
-        super().__init__('issuefungible', 'fungible', key, data)
+        super().__init__('issuefungible', '.fungible', key, data)
 
 
 class TransferFtAction(Action):
     def __init__(self, key, data):
-        super().__init__('transferft', 'fungible', key, data)
+        super().__init__('transferft', '.fungible', key, data)
+
+
+class EVT2PEVTAction(Action):
+    def __init__(self, key, data):
+        super().__init__('evt2pevt', '.fungible', key, data)
 
 
 class NewSuspendAction(Action):
     def __init__(self, key, data):
-        super().__init__('newsuspend', 'delay', key, data)
+        super().__init__('newsuspend', '.suspend', key, data)
 
 
 class AprvSuspendAction(Action):
     def __init__(self, key, data):
-        super().__init__('aprvsuspend', 'delay', key, data)
+        super().__init__('aprvsuspend', '.suspend', key, data)
 
 
 class CancelSuspendAction(Action):
     def __init__(self, key, data):
-        super().__init__('cancelsuspend', 'delay', key, data)
+        super().__init__('cancelsuspend', '.suspend', key, data)
 
 
 class ExecSuspendAction(Action):
     def __init__(self, key, data):
-        super().__init__('execsuspend', 'delay', key, data)
+        super().__init__('execsuspend', '.suspend', key, data)
 
 
 class ActionTypeErrorException(Exception):
@@ -136,6 +141,8 @@ def get_action_from_abi_json(action, abi_json, domain=None, key=None):
         return IssueFungibleAction(abi_dict['number'].split(' ')[1], _bin)
     elif action == 'transferft':
         return TransferFtAction(abi_dict['number'].split(' ')[1], _bin)
+    elif action == 'evt2pevt':
+        return EVT2PEVTAction(abi_dict['number'].split(' ')[1], _bin)
     elif action == 'newsuspend':
         return NewSuspendAction(abi_dict['name'], _bin)
     elif action == 'aprvsuspend':
@@ -151,7 +158,7 @@ def get_action_from_abi_json(action, abi_json, domain=None, key=None):
 class ActionGenerator:
     def newdomain(self, name, creator, **kwargs):
         auth_A = base.AuthorizerWeight(base.AuthorizerRef('A', creator), 1)
-        auth_G = base.AuthorizerWeight(base.AuthorizerRef('G', 'OWNER'), 1)
+        auth_G = base.AuthorizerWeight(base.AuthorizerRef('G', '.OWNER'), 1)
         issue = kwargs['issue'] if 'issue' in kwargs else None
         transfer = kwargs['transfer'] if 'transfer' in kwargs else None
         manage = kwargs['manage'] if 'manage' in kwargs else None
@@ -227,6 +234,11 @@ class ActionGenerator:
         abi_json = base.TransferFtAbi(
             _from=str(_from), to=str(to), number=number, memo=memo)
         return get_action_from_abi_json('transferft', abi_json.dumps())
+
+    def evt2pevt(self, _from, to, number, memo):
+        abi_json = base.EVT2PEVTAbi(
+            _from=str(_from), to=str(to), number=number, memo=memo)
+        return get_action_from_abi_json('evt2pevt', abi_json.dumps())
 
     def addmeta(self, meta_key, meta_value, creator, domain, key):
         abi_json = base.AddMetaAbi(meta_key, meta_value, creator.value())

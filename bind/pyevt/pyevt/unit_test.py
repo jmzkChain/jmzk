@@ -8,7 +8,9 @@ from .ecc import *
 class TestPyEVT(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        libevt.init_lib()
+        ver = libevt.init_lib()
+        assert ver == abi.version()
+        print("EVT Api Version:", ver)
 
     def test_evtecc(self):
         pub_key, priv_key = generate_new_pair()

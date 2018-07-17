@@ -1,6 +1,8 @@
 #include <libevt/evt.h>
 #include <string.h>
 #include <stdlib.h>
+#include <evt/chain/version.hpp>
+#include <evt/chain/contracts/evt_contract.hpp>
 
 extern "C" {
 
@@ -28,6 +30,12 @@ evt_equals(evt_data_t* rhs, evt_data_t* lhs) {
         return EVT_OK;
     }
     return memcmp(rhs->buf, lhs->buf, rhs->sz) == 0 ? EVT_OK : EVT_DATA_NOT_EQUALS;
+}
+
+int
+evt_version() {
+    auto ver = evt::chain::contracts::evt_contract_abi_version();
+    return ver.get_version();
 }
 
 }  // extern "C"

@@ -27,7 +27,7 @@ public:
     int get_major()  const { return v_ / 10000; }
     int get_minor()  const { return (v_ / 100) % 100; }
     int get_patch()  const { return v_ % 100; }
-    int get_verion() const { return v_; }
+    int get_version() const { return v_; }
 
 public:
     std::string

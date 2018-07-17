@@ -118,6 +118,16 @@ public:
 
     get_suspend_required_keys_result get_suspend_required_keys(const get_suspend_required_keys_params& params) const;
 
+    struct get_charge_params {
+        fc::variant transaction;
+        int         sigs_num;      
+    };
+    struct get_charge_result {
+        uint32_t    charge;
+    };
+
+    get_charge_result get_charge(const get_charge_params& params) const;
+
     struct get_block_params {
         string block_num_or_id;
     };
@@ -217,4 +227,6 @@ FC_REFLECT(evt::chain_apis::read_only::get_required_keys_params, (transaction)(a
 FC_REFLECT(evt::chain_apis::read_only::get_required_keys_result, (required_keys))
 FC_REFLECT(evt::chain_apis::read_only::get_suspend_required_keys_params, (name)(available_keys))
 FC_REFLECT(evt::chain_apis::read_only::get_suspend_required_keys_result, (required_keys))
+FC_REFLECT(evt::chain_apis::read_only::get_charge_params, (transaction)(sigs_num))
+FC_REFLECT(evt::chain_apis::read_only::get_charge_result, (charge))
 FC_REFLECT(evt::chain_apis::read_write::push_transaction_results, (transaction_id)(processed))

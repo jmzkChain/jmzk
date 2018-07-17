@@ -40,6 +40,7 @@ public:
         bool     read_only              = false;
         bool     force_all_checks       = false;
         bool     loadtest_mode          = false;
+        bool     charge_free_mode       = false;
         bool     contracts_console      = false;
 
         genesis_state genesis;
@@ -140,6 +141,7 @@ public:
 
     bool skip_auth_check() const;
     bool loadtest_mode() const;
+    bool charge_free_mode() const;
     bool contracts_console() const;
 
     chain_id_type get_chain_id() const;
@@ -155,6 +157,8 @@ public:
     flat_set<public_key_type> get_required_keys(const transaction& trx, const flat_set<public_key_type>& candidate_keys) const;
     flat_set<public_key_type> get_suspend_required_keys(const transaction& trx, const flat_set<public_key_type>& candidate_keys) const;
     flat_set<public_key_type> get_suspend_required_keys(const proposal_name& name, const flat_set<public_key_type>& candidate_keys) const;
+
+    uint32_t get_charge(const transaction& trx, size_t signautres_num) const;
 
     const abi_serializer& get_abi_serializer() const;
 
@@ -174,4 +178,4 @@ private:
 }}  // namespace evt::chain
 
 FC_REFLECT(evt::chain::controller::config,
-           (blocks_dir)(state_dir)(tokendb_dir)(state_size)(reversible_cache_size)(read_only)(force_all_checks)(loadtest_mode)(contracts_console)(genesis))
+           (blocks_dir)(state_dir)(tokendb_dir)(state_size)(reversible_cache_size)(read_only)(force_all_checks)(loadtest_mode)(charge_free_mode)(contracts_console)(genesis))

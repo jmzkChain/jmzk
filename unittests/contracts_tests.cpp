@@ -20,7 +20,7 @@ struct contracts_test {
             fc::create_directories(basedir);
         }
 
-        controller::config cfg;
+        auto cfg = controller::config();
 
         cfg.blocks_dir            = basedir + "blocks";
         cfg.state_dir             = basedir + "state";
@@ -28,6 +28,8 @@ struct contracts_test {
         cfg.state_size            = 1024 * 1024 * 8;
         cfg.reversible_cache_size = 1024 * 1024 * 8;
         cfg.contracts_console     = true;
+        cfg.charge_free_mode      = false;
+        cfg.loadtest_mode         = false;
 
         cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
         cfg.genesis.initial_key       = tester::get_public_key("evt");

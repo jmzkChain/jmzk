@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="pyevt",
-    version="0.1",
+    version="0.2",
     author="everiToken",
     author_email="help@everitoken.io",
     description="Python bind library for everiToken",

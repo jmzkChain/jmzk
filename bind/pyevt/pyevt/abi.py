@@ -2,6 +2,10 @@ from . import evt_exception, libevt
 from .evt_data import EvtData
 
 
+def version():
+    return libevt.init_lib()
+
+
 def json_to_bin(action, json):
     evt = libevt.check_lib_init()
     action_c = bytes(action, encoding='utf-8')

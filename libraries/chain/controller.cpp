@@ -865,7 +865,7 @@ controller::startup() {
 
     my->head = my->fork_db.head();
     if(!my->head) {
-        elog("No head block in fork db, perhaps we need to replay");
+        wlog("No head block in fork db, perhaps we need to replay");
     }
     my->init();
 }
@@ -1149,6 +1149,11 @@ controller::loadtest_mode() const {
 }
 
 bool
+controller::charge_free_mode() const {
+    return my->conf.charge_free_mode;
+}
+
+bool
 controller::contracts_console() const {
     return my->conf.contracts_console;
 }
@@ -1262,6 +1267,12 @@ controller::get_suspend_required_keys(const proposal_name& name, const flat_set<
     my->token_db.read_suspend(name, suspend);
     
     return get_suspend_required_keys(suspend.trx, candidate_keys);
+}
+
+uint32_t
+controller::get_charge(const transaction& trx, size_t signautres_num) const {   
+    auto packed_trx = packed_transaction(trx);
+    return my->charge.calculate(packed_trx, signautres_num);
 }
 
 }}  // namespace evt::chain
