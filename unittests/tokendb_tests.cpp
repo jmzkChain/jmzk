@@ -778,8 +778,6 @@ BOOST_AUTO_TEST_CASE(tokendb_checkpoint_test) {
         BOOST_TEST(!tokendb.exists_any_asset(address));
         BOOST_TEST(!tokendb.exists_asset(address, pevt));
 
-        BOOST_CHECK_THROW(tokendb.pop_savepoints(0), tokendb_no_savepoint);
-
         tokendb.add_savepoint(get_time());
         tokendb.add_savepoint(get_time());
         tokendb.add_savepoint(get_time());

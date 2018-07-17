@@ -182,17 +182,20 @@ FC_DECLARE_DERIVED_EXCEPTION( tokendb_domain_existed,            tokendb_excepti
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_group_existed,             tokendb_exception, 3150002, "Permission Group already exists" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_token_existed,             tokendb_exception, 3150003, "Token already exists" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_account_existed,           tokendb_exception, 3150004, "Account already exists" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_suspend_existed,             tokendb_exception, 3150005, "Delay already exists" );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_suspend_existed,           tokendb_exception, 3150005, "Delay already exists" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_domain_not_found,          tokendb_exception, 3150006, "Not found specific domain" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_group_not_found,           tokendb_exception, 3150007, "Not found specific group" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_token_not_found,           tokendb_exception, 3150008, "Not found specific token" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_suspend_not_found,           tokendb_exception, 3150009, "Not found specific suspend" );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_suspend_not_found,         tokendb_exception, 3150009, "Not found specific suspend" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_fungible_not_found,        tokendb_exception, 3150010, "Not found specific fungible" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_address_not_found,         tokendb_exception, 3150011, "Not found specific address" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_asset_not_found,           tokendb_exception, 3150012, "Not found specific asset in address" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_rocksdb_fail,              tokendb_exception, 3150013, "Rocksdb internal error occurred." );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_no_savepoint,              tokendb_exception, 3150014, "No savepoints anymore" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_seq_not_valid,             tokendb_exception, 3150015, "Seq for checkpoint is not valid." );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_db_action_exception,       tokendb_exception, 3150016, "Unknown db action type." );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_status_exception,          tokendb_exception, 3150017, "Rocksdb is in unexpected state." );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_dirty_flag_exception,      tokendb_exception, 3150018, "Checkspoints log file is in dirty." );
 
 FC_DECLARE_DERIVED_EXCEPTION( unknown_block_exception,           misc_exception, 3100002, "unknown block" );
 FC_DECLARE_DERIVED_EXCEPTION( unknown_transaction_exception,     misc_exception, 3100003, "unknown transaction" );

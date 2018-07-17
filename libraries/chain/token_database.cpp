@@ -2,6 +2,7 @@
  *  @file
  *  @copyright defined in evt/LICENSE.txt
  */
+#include <fstream>
 #include <boost/foreach.hpp>
 #include <evt/chain/exceptions.hpp>
 #include <evt/chain/token_database.hpp>
@@ -22,8 +23,8 @@ namespace __internal {
 
 const size_t PKEY_SIZE = sizeof(public_key_type::storage_type::type_at<0>);
 
-template <typename T>
-struct db_key {
+struct db_key : boost::noncopyable {
+    template<typename T>
     db_key(const char* prefix, const T& t)
         : prefix(prefix)
         , slice((const char*)this, 16 + sizeof(T)) {
@@ -33,6 +34,7 @@ struct db_key {
         memcpy(data, &t, sizeof(T));
     }
 
+    template<typename T>
     db_key(name128 prefix, const T& t)
         : prefix(prefix)
         , slice((const char*)this, 16 + sizeof(T)) {
@@ -45,12 +47,12 @@ struct db_key {
     }
 
     name128 prefix;
-    char    data[sizeof(T)];
+    char    data[16];
 
     rocksdb::Slice slice;
 };
 
-struct db_asset_key {
+struct db_asset_key : boost::noncopyable {
     db_asset_key(const address& addr, symbol symbol)
         : slice((const char*)this, sizeof(buf)) {
         addr.to_bytes(buf, PKEY_SIZE);
@@ -83,47 +85,47 @@ struct db_asset_prefix_key {
     rocksdb::Slice slice;
 };
 
-db_key<domain_name>
+inline db_key
 get_domain_key(const domain_name& name) {
-    return db_key<domain_name>(N128(.domain), name);
+    return db_key(N128(.domain), name);
 }
 
-db_key<token_name>
+inline db_key
 get_token_key(const domain_name& domain, const token_name& name) {
-    return db_key<token_name>(domain, name);
+    return db_key(domain, name);
 }
 
-db_key<group_name>
+inline db_key
 get_group_key(const group_name& name) {
-    return db_key<group_name>(N128(.group), name);
+    return db_key(N128(.group), name);
 }
 
-db_key<proposal_name>
+inline db_key
 get_suspend_key(const proposal_name& suspend) {
-    return db_key<proposal_name>(N128(.suspend), suspend);
+    return db_key(N128(.suspend), suspend);
 }
 
-db_key<fungible_name>
+inline db_key
 get_fungible_key(const symbol sym) {
-    return db_key<fungible_name>(N128(.fungible), (fungible_name)sym.name());
+    return db_key(N128(.fungible), (fungible_name)sym.name());
 }
 
-db_key<fungible_name>
+inline db_key
 get_fungible_key(const fungible_name& sym_name) {
-    return db_key<fungible_name>(N128(.fungible), sym_name);
+    return db_key(N128(.fungible), sym_name);
 }
 
-db_asset_key
+inline db_asset_key
 get_asset_key(const address& addr, const asset& asset) {
     return db_asset_key(addr, asset.get_symbol());
 }
 
-db_asset_key
+inline db_asset_key
 get_asset_key(const address& addr, const symbol symbol) {
     return db_asset_key(addr, symbol);
 }
 
-db_asset_prefix_key
+inline db_asset_prefix_key
 get_asset_prefix_key(const address& addr) {
     return db_asset_prefix_key(addr);
 }
@@ -150,18 +152,23 @@ read_value(const V& value) {
 
 enum dbaction_type {
     kNone = 0,
-    kNewDomain,
-    kIssueToken,
-    kNewGroup,
-    kNewSuspend,
-    kNewFungible,
 
-    kUpdateDomain,
-    kUpdateGroup,
-    kUpdateToken,
-    kUpdateSuspend,
-    kUpdateFungible,
-    kUpdateAsset
+    kNewDomain = 1,
+    kUpdateDomain = 2,
+
+    kIssueToken = 3,
+    kUpdateToken = 4,
+
+    kNewGroup = 5,
+    kUpdateGroup = 6,
+
+    kNewSuspend = 7,
+    kUpdateSuspend = 8,
+
+    kNewFungible = 9,
+    kUpdateFungible = 10,
+
+    kUpdateAsset = 11
 };
 
 struct sp_domain {
@@ -203,6 +210,7 @@ token_database::token_database(const fc::path& dbpath)
 }
 
 token_database::~token_database() {
+    persist_savepoints();
     if(db_ != nullptr) {
         if(tokens_handle_ != nullptr) {
             delete tokens_handle_;
@@ -247,12 +255,12 @@ token_database::initialize(const fc::path& dbpath) {
 
     read_opts_.prefix_same_as_start = true;
 
-    auto native_path = dbpath.to_native_ansi_path();
-    if(!fc::exists(dbpath)) {
+    db_path_ = dbpath.to_native_ansi_path();
+    if(!fc::exists(db_path_)) {
         // create new databse and open
-        fc::create_directories(dbpath);
+        fc::create_directories(db_path_);
 
-        auto status = DB::Open(options, native_path, &db_);
+        auto status = DB::Open(options, db_path_, &db_);
         if(!status.ok()) {
             EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
         }
@@ -261,6 +269,7 @@ token_database::initialize(const fc::path& dbpath) {
         if(!status.ok()) {
             EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
         }
+        load_savepoints();
         return 0;
     }
 
@@ -270,7 +279,7 @@ token_database::initialize(const fc::path& dbpath) {
 
     auto handles = std::vector<ColumnFamilyHandle*>();
 
-    auto status = DB::Open(options, native_path, columns, &handles, &db_);
+    auto status = DB::Open(options, db_path_, columns, &handles, &db_);
     if(!status.ok()) {
         EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
@@ -279,6 +288,7 @@ token_database::initialize(const fc::path& dbpath) {
     tokens_handle_ = handles[0];
     assets_handle_ = handles[1];
 
+    load_savepoints();
     return 0;
 }
 
@@ -698,23 +708,26 @@ token_database::record(int type, void* data) {
 }
 
 token_database::session
-token_database::new_savepoint_session(int seq) {
+token_database::new_savepoint_session(int64_t seq) {
     add_savepoint(seq);
     return session(*this, seq);
 }
 
 token_database::session
 token_database::new_savepoint_session() {
-    auto seq = 1;
+    int64_t seq = 1;
     if(!savepoints_.empty()) {
         seq = savepoints_.back().seq + 1;
+    }
+    else if(!persistent_savepoints_.empty()) {
+        seq = persistent_savepoints_.back().seq + 1;
     }
     add_savepoint(seq);
     return session(*this, seq);
 }
 
 int
-token_database::add_savepoint(int32_t seq) {
+token_database::add_savepoint(int64_t seq) {
     if(!savepoints_.empty()) {
         auto& b = savepoints_.back();
         if(b.seq >= seq) {
@@ -736,131 +749,109 @@ token_database::free_savepoint(savepoint& cp) {
 }
 
 int
-token_database::pop_savepoints(int32_t until) {
-    if(savepoints_.empty()) {
-        EVT_THROW(tokendb_no_savepoint, "There's no savepoints anymore");
+token_database::pop_savepoints(int64_t until) {
+    if(!persistent_savepoints_.empty()) {
+        while(!persistent_savepoints_.empty() && persistent_savepoints_.front().seq < until) {
+            persistent_savepoints_.pop_front();
+        }
     }
-    while(!savepoints_.empty() && savepoints_.front().seq < until) {
-        auto it = std::move(savepoints_.front());
-        savepoints_.pop_front();
-        free_savepoint(it);
+    if(!savepoints_.empty()) {
+        while(!savepoints_.empty() && savepoints_.front().seq < until) {
+            auto it = std::move(savepoints_.front());
+            savepoints_.pop_front();
+            free_savepoint(it);
+        }
     }
     return 0;
 }
 
 int
 token_database::pop_back_savepoint() {
-    if(savepoints_.empty()) {
-        EVT_THROW(tokendb_no_savepoint, "There's no savepoints anymore");
+    if(!savepoints_.empty()) {
+        auto it = std::move(savepoints_.back());
+        savepoints_.pop_back();
+        free_savepoint(it);
+        return 0;
     }
-    auto it = std::move(savepoints_.back());
-    savepoints_.pop_back();
-    free_savepoint(it);
-    return 0;
+    if(!persistent_savepoints_.empty()) {
+        persistent_savepoints_.pop_back();
+        return 0;
+    }
+    EVT_THROW(tokendb_no_savepoint, "There's no savepoints anymore");
 }
 
+namespace __internal {
+
+enum KeyOp : int {
+    kRevert = 0,
+    kRemove,
+    kRemoveOrRevert
+};
+
+db_key
+get_sp_keyop(const token_database::dbaction& it, int& op) {
+    // for the db action type, New-Ops are odd and Update-Ops are even
+    // for Update-Ops return kRevert(0) and returns kRemove(1) for New-Ops
+    op = it.type % 2;
+
+    switch(it.type) {
+    case kNewDomain:
+    case kUpdateDomain: {
+        auto act = (sp_domain*)it.data;
+        return get_domain_key(act->name);
+    }
+    case kNewGroup:
+    case kUpdateGroup: {
+        auto act = (sp_group*)it.data;
+        return get_group_key(act->name);
+    }
+    case kNewSuspend:
+    case kUpdateSuspend: {
+        auto act = (sp_suspend*)it.data;
+        return get_suspend_key(act->name);
+    }
+    case kNewFungible:
+    case kUpdateFungible: {
+        auto act = (sp_fungible*)it.data;
+        return get_fungible_key(act->sym);
+    }
+    case kUpdateToken: {
+        auto act = (sp_token*)it.data;
+        return get_token_key(act->domain, act->name);
+    }
+    default: {
+        EVT_THROW(tokendb_db_action_exception, "Unexpected action type: ${type}", ("type", it.type));
+        break;
+    }
+    }  // switch
+}
+
+}  // namespace __internal
+
 int
-token_database::rollback_to_latest_savepoint() {
+token_database::rollback_latest_savepoint() {
     using namespace __internal;
 
-    if(savepoints_.empty()) {
-        EVT_THROW(tokendb_no_savepoint, "There's no savepoints anymore");
-    }
     auto& cp = savepoints_.back();
     if(cp.actions.size() > 0) {
         auto snapshot_read_opts_     = read_opts_;
         snapshot_read_opts_.snapshot = (const rocksdb::Snapshot*)cp.rb_snapshot;
         rocksdb::WriteBatch batch;
+
         for(auto it = --cp.actions.end(); it >= cp.actions.begin(); it--) {
-            switch(it->type) {
-            case kNewDomain: {
-                auto act = (sp_domain*)it->data;
-                auto key = get_domain_key(act->name);
-                batch.Delete(key.as_slice());
-                break;
-            }
-            case kIssueToken: {
+            if(it->type == kIssueToken) {
+                // special process issue token action, cuz it's multiple keys
                 auto act = (sp_issuetoken*)it->data;
                 for(size_t i = 0; i < act->size; i++) {
                     auto key = get_token_key(act->domain, act->names[i]);
                     batch.Delete(key.as_slice());
                 }
-                break;
+
+                free(it->data);
+                continue;
             }
-            case kNewGroup: {
-                auto act = (sp_group*)it->data;
-                auto key = get_group_key(act->name);
-                batch.Delete(key.as_slice());
-                break;
-            }
-            case kNewSuspend: {
-                auto act = (sp_suspend*)it->data;
-                auto key = get_suspend_key(act->name);
-                batch.Delete(key.as_slice());
-                break;
-            }
-            case kNewFungible: {
-                auto act = (sp_fungible*)it->data;
-                auto key = get_fungible_key(act->sym);
-                batch.Delete(key.as_slice());
-                break;
-            }
-            case kUpdateDomain: {
-                auto act = (sp_domain*)it->data;
-                auto key = get_domain_key(act->name);
-
-                auto old_value = std::string();
-                auto status    = db_->Get(snapshot_read_opts_, key.as_slice(), &old_value);
-
-                FC_ASSERT(status.ok(), "Not expected rocksdb status: ${status}", ("status",status.getState()));
-                batch.Put(key.as_slice(), old_value);
-                break;
-            }
-            case kUpdateGroup: {
-                auto act = (sp_group*)it->data;
-                auto key = get_group_key(act->name);
-
-                auto old_value = std::string();
-                auto status    = db_->Get(snapshot_read_opts_, key.as_slice(), &old_value);
-
-                FC_ASSERT(status.ok(), "Not expected rocksdb status: ${status}", ("status",status.getState()));
-                batch.Put(key.as_slice(), old_value);
-                break;
-            }
-            case kUpdateToken: {
-                auto act = (sp_token*)it->data;
-                auto key = get_token_key(act->domain, act->name);
-
-                auto old_value = std::string();
-                auto status    = db_->Get(snapshot_read_opts_, key.as_slice(), &old_value);
-
-                FC_ASSERT(status.ok(), "Not expected rocksdb status: ${status}", ("status",status.getState()));
-                batch.Put(key.as_slice(), old_value);
-                break;
-            }
-            case kUpdateSuspend: {
-                auto act = (sp_suspend*)it->data;
-                auto key = get_suspend_key(act->name);
-
-                auto old_value = std::string();
-                auto status    = db_->Get(snapshot_read_opts_, key.as_slice(), &old_value);
-
-                FC_ASSERT(status.ok(), "Not expected rocksdb status: ${status}", ("status",status.getState()));
-                batch.Put(key.as_slice(), old_value);
-                break;
-            }
-            case kUpdateFungible: {
-                auto act = (sp_fungible*)it->data;
-                auto key = get_fungible_key(act->sym);
-
-                auto old_value = std::string();
-                auto status    = db_->Get(snapshot_read_opts_, key.as_slice(), &old_value);
-
-                FC_ASSERT(status.ok(), "Not expected rocksdb status: ${status}", ("status",status.getState()));
-                batch.Put(key.as_slice(), old_value);
-                break;
-            }
-            case kUpdateAsset: {
+            else if(it->type == kUpdateAsset) {
+                // special process update asset action, cuz it's asset key and need to check existed
                 auto act = (sp_asset*)it->data;
                 auto key = rocksdb::Slice(act->key, sizeof(act->key));
 
@@ -868,20 +859,36 @@ token_database::rollback_to_latest_savepoint() {
                 auto status    = db_->Get(snapshot_read_opts_, assets_handle_, key, &old_value);
                 if(!status.ok()) {
                     // key may not existed in latest snapshot, remove it
-                    FC_ASSERT(status.code() == rocksdb::Status::kNotFound, "Not expected rocksdb status: ${status}", ("status",status.getState()));
+                    EVT_ASSERT(status.code() == rocksdb::Status::kNotFound, tokendb_status_exception, "Not expected rocksdb status: ${status}", ("status",status.getState()));
                     batch.Delete(assets_handle_, key);
                     break;
                 }
                 batch.Put(assets_handle_, key, old_value);
+
+                free(it->data);
+                continue;
+            }
+
+            int  op  = 0;
+            auto key = get_sp_keyop(*it, op);
+
+            switch(op) {
+            case kRevert: {
+                auto old_value = std::string();
+                auto status    = db_->Get(snapshot_read_opts_, key.as_slice(), &old_value);
+                EVT_ASSERT(status.ok(), tokendb_status_exception, "Not expected rocksdb status: ${status}", ("status",status.getState()));
+                batch.Put(key.as_slice(), old_value);
                 break;
             }
-            default: {
-                FC_ASSERT(false, "Unexpected action type: ${type}", ("type", it->type));
+            case kRemove: {
+                batch.Delete(key.as_slice());
                 break;
             }
             }  // switch
+
             free(it->data);
         }  // for
+
         auto sync_write_opts = write_opts_;
         sync_write_opts.sync = true;
         db_->Write(sync_write_opts, &batch);
@@ -892,4 +899,194 @@ token_database::rollback_to_latest_savepoint() {
     return 0;
 }
 
+int
+token_database::rollback_latest_persistent_savepoint() {
+    using namespace __internal;
+    auto& psp = persistent_savepoints_.back();
+    if(psp.actions.size() > 0) {
+        rocksdb::WriteBatch batch;
+
+        for(auto it = --psp.actions.end(); it >= psp.actions.begin(); it--) {
+            switch(it->op) {
+            case kRevert: {
+                FC_ASSERT(!it->value.empty());
+                batch.Put(it->key, it->value);
+                break;
+            }
+            case kRemove: {
+                FC_ASSERT(it->value.empty());
+                batch.Delete(it->key);
+                break;
+            }
+            case kRemoveOrRevert: {
+                // update asset action
+                if(it->value.empty()) {
+                    batch.Delete(assets_handle_, it->key);
+                }
+                else {
+                    batch.Put(assets_handle_, it->key, it->value);
+                }
+                break;
+            }
+            }  // switch
+        }
+
+        auto sync_write_opts = write_opts_;
+        sync_write_opts.sync = true;
+        db_->Write(sync_write_opts, &batch);
+    }
+
+    persistent_savepoints_.pop_back();
+    return 0;
+}
+
+int
+token_database::rollback_to_latest_savepoint() {
+    if(!savepoints_.empty()) {
+        return rollback_latest_savepoint();
+    }
+    if(!persistent_savepoints_.empty()) {
+        return rollback_latest_persistent_savepoint();
+    }
+    EVT_THROW(tokendb_no_savepoint, "There's no savepoints anymore");
+}
+
+namespace __internal {
+
+struct psp_header {
+    int dirty_flag;
+};
+
+}  // namespace __internal
+
+int
+token_database::persist_savepoints() {
+    using namespace __internal;
+
+    auto filename = fc::path(db_path_) / "savepoints.log";
+    if(fc::exists(filename)) {
+        fc::remove(filename);
+    }
+    auto fs = std::fstream();
+    fs.exceptions(std::fstream::failbit | std::fstream::badbit);
+    fs.open(filename.to_native_ansi_path(), (std::ios::out | std::ios::binary | std::ios::app));
+
+    // write savepoints, save old psps first
+    auto psps = std::deque<psp_savepoint>(std::move(persistent_savepoints_));
+
+    for(auto& sp : savepoints_) {
+        auto psp = psp_savepoint();
+        psp.seq  = sp.seq;
+
+        auto snapshot_read_opts_     = read_opts_;
+        snapshot_read_opts_.snapshot = (const rocksdb::Snapshot*)sp.rb_snapshot;
+
+        for(auto& act : sp.actions) {
+            if(act.type == kIssueToken) {
+                // special process issue token action, cuz it's multiple keys
+                auto itact = (sp_issuetoken*)act.data;
+                for(size_t i = 0; i < itact->size; i++) {
+                    auto key    = get_token_key(itact->domain, itact->names[i]);
+                    auto pspact = psp_action();
+                    pspact.op   = kRemove;
+                    pspact.key  = key.as_slice().ToString();
+
+                    psp.actions.emplace_back(pspact);
+                }
+
+                free(act.data);
+                continue;
+            }
+            else if(act.type == kUpdateAsset) {
+                // special process update asset action, cuz it's asset key and need to check existed
+                auto uaact  = (sp_asset*)act.data;
+                auto key    = rocksdb::Slice(uaact->key, sizeof(uaact->key));
+                auto pspact = psp_action();
+                pspact.op   = kRemoveOrRevert;
+                pspact.key  = key.ToString();
+                auto status = db_->Get(snapshot_read_opts_, assets_handle_, key, &pspact.value);
+                if(!status.ok()) {
+                    // key may not existed in latest snapshot, remove it
+                    EVT_ASSERT(status.code() == rocksdb::Status::kNotFound, tokendb_status_exception, "Not expected rocksdb status: ${status}", ("status",status.getState()));
+                }
+                psp.actions.emplace_back(pspact);
+
+                free(act.data);
+                continue;
+            }
+
+            auto pspact = psp_action();
+            int  op     = 0;
+            auto key    = get_sp_keyop(act, op);
+
+            pspact.op  = op;
+            pspact.key = key.as_slice().ToString();
+
+            switch(op) {
+            case kRevert: {
+                auto status = db_->Get(snapshot_read_opts_, key.as_slice(), &pspact.value);
+                EVT_ASSERT(status.ok(), tokendb_status_exception, "Not expected rocksdb status: ${status}", ("status",status.getState()));
+                break;
+            }
+            case kRemove: {
+                // no need to read value
+                break;
+            }
+            }  // switch
+            
+            psp.actions.emplace_back(pspact);
+            free(act.data);
+        }
+
+        db_->ReleaseSnapshot((const rocksdb::Snapshot*)sp.rb_snapshot);
+        psps.emplace_back(std::move(psp));
+    }
+    fc::raw::pack(fs, psps);
+    fs.seekp(0);
+
+    auto h = psp_header {
+        .dirty_flag = 0
+    };
+    fc::raw::pack(fs, h);
+
+    printf("save savepoints: %ld\n", psps.size());
+
+    fs.flush();
+    fs.close();
+
+    return 0;
+}
+
+int
+token_database::load_savepoints() {
+    using namespace __internal;
+
+    auto filename = fc::path(db_path_) / "savepoints.log";
+    if(!fc::exists(filename)) {
+        wlog("No savepoints log in token database");
+        printf("No savepoints log in token database\n");
+        return 0;
+    }
+
+    auto fs = std::fstream();
+    fs.exceptions(std::fstream::failbit | std::fstream::badbit);
+    fs.open(filename.to_native_ansi_path(), (std::ios::in | std::ios::binary));
+
+    auto h = psp_header();
+    fc::raw::unpack(fs, h);
+    printf("dirty flag: %d\n", h.dirty_flag);
+    EVT_ASSERT(h.dirty_flag == 0, tokendb_dirty_flag_exception, "checkpoints log file dirty flag set");
+
+    fc::raw::unpack(fs, persistent_savepoints_);
+    printf("load savepoints: %ld\n", persistent_savepoints_.size());
+    fs.close();
+
+    return 0;
+}
+
+
 }}  // namespace evt::chain
+
+FC_REFLECT(evt::chain::__internal::psp_header, (dirty_flag));
+FC_REFLECT(evt::chain::token_database::psp_action, (op)(key)(value));
+FC_REFLECT(evt::chain::token_database::psp_savepoint, (seq)(actions));
