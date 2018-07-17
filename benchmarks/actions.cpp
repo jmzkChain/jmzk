@@ -9,6 +9,7 @@
 #include <fc/io/json.hpp>
 #include <evt/testing/tester.hpp>
 #include <evt/chain/token_database.hpp>
+#include <evt/chain/transaction_context.hpp>
 
 /*
  * Benchmarks for actions to measure the caclulation complexity
@@ -52,9 +53,9 @@ create_tester() {
 
 static name128
 get_nonce_name(const char* prefix) {
-    auto n = std::string(prefix);
+    static auto dre = std::default_random_engine(std::chrono::system_clock::now().time_since_epoch().count());
 
-    auto dre = std::default_random_engine(std::chrono::system_clock::now().time_since_epoch().count());
+    auto n    = std::string(prefix);
     auto dist = std::uniform_int_distribution<int>(0, 25);
 
     n.reserve(n.size() + 10);
@@ -63,6 +64,24 @@ get_nonce_name(const char* prefix) {
     }
 
     return name128(n);
+}
+
+static transaction_metadata
+get_trx_meta(controller& control, const action& act, const std::vector<account_name>& auths) {
+    auto signed_trx = signed_transaction();
+    signed_trx.actions.emplace_back(act);
+
+    for(auto& auth : auths) {
+        auto privkey = evt::testing::tester::get_private_key(auth);
+        signed_trx.sign(privkey, control.get_chain_id());
+    }
+
+    return transaction_metadata(signed_trx);
+}
+
+static transaction_context
+get_trx_ctx(controller& control, transaction_metadata& trx_meta) {
+    return transaction_context(control, trx_meta);
 }
 
 const char* ndjson = R"=====(
@@ -110,12 +129,17 @@ BM_Action_newdomain(benchmark::State& state) {
     for(auto _ : state) {
         state.PauseTiming();
 
-        nd.name    = get_nonce_name("domain");
-        auto ndact = action(nd.name, N128(.create), nd);
+        nd.name       = get_nonce_name("domain");
+        auto ndact    = action(nd.name, N128(.create), nd);
+        auto trx_meta = get_trx_meta(*tester->control, ndact, auths);
+        auto trx_ctx  = get_trx_ctx(*tester->control, trx_meta);
+
+        trx_ctx.init_for_implicit_trx();
         
         state.ResumeTiming();
 
-        tester->push_action(std::move(ndact), auths, address());
+        trx_ctx.exec();
+        trx_ctx.squash();
     }
     state.SetItemsProcessed(state.iterations());
 }
@@ -149,15 +173,22 @@ BM_Action_issuetoken(benchmark::State& state) {
         for(int i = 0; i < state.range(0); i++) {
             it.names.emplace_back(get_nonce_name("token"));
         }
-        auto itact = action(nd.name, N128(.issue), it);
+        auto itact    = action(nd.name, N128(.issue), it);
+        auto trx_meta = get_trx_meta(*tester->control, itact, auths);
+        auto trx_ctx  = get_trx_ctx(*tester->control, trx_meta);
+
+        trx_ctx.init_for_implicit_trx();
 
         state.ResumeTiming();
 
-        tester->push_action(std::move(itact), auths, address());
+        trx_ctx.exec();
+        trx_ctx.squash();
     }
     state.SetItemsProcessed(state.iterations());
+
+    state.SetLabel(std::string("total: ") + std::to_string(state.iterations() * state.range(0)));
 }
-BENCHMARK(BM_Action_issuetoken)->Range(8, 8<<10);
+BENCHMARK(BM_Action_issuetoken)->Range(1, 8<<10);
 
 static void
 BM_Action_transfer(benchmark::State& state) {
@@ -196,11 +227,16 @@ BM_Action_transfer(benchmark::State& state) {
         state.PauseTiming();
 
         tt.name = it.names[dist(dre)];
-        auto ttact = action(tt.domain, tt.name, tt);
+        auto ttact    = action(tt.domain, tt.name, tt);
+        auto trx_meta = get_trx_meta(*tester->control, ttact, auths);
+        auto trx_ctx  = get_trx_ctx(*tester->control, trx_meta);
+
+        trx_ctx.init_for_implicit_trx();
 
         state.ResumeTiming();
 
-        tester->push_action(std::move(ttact), auths, address());
+        trx_ctx.exec();
+        trx_ctx.squash();
     }
     state.SetItemsProcessed(state.iterations());
 }
