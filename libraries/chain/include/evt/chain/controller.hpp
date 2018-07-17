@@ -158,6 +158,8 @@ public:
     flat_set<public_key_type> get_suspend_required_keys(const transaction& trx, const flat_set<public_key_type>& candidate_keys) const;
     flat_set<public_key_type> get_suspend_required_keys(const proposal_name& name, const flat_set<public_key_type>& candidate_keys) const;
 
+    uint32_t get_charge(const transaction& trx, size_t signautres_num) const;
+
     const abi_serializer& get_abi_serializer() const;
 
     template <typename T>

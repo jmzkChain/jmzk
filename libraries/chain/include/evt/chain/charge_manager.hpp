@@ -63,34 +63,35 @@ public:
 
 private:
     uint32_t
-    network(const transaction_metadata& trx) {
-        auto&    ptrx = trx.packed_trx;
-        uint32_t s    = 0;
+    network(const packed_transaction& ptrx, size_t sig_num) {
+        uint32_t s = 0;
 
         s += ptrx.packed_trx.size();
-        s += ptrx.signatures.size() * sizeof(signature_type);
+        s += sig_num * sizeof(signature_type);
         s += config::fixed_net_overhead_of_packed_trx;
 
         return s;
     }
 
     uint32_t
-    cpu(const transaction_metadata& trx) {
-        auto& ptrx = trx.packed_trx;
-        return ptrx.signatures.size();
+    cpu(const packed_transaction&, size_t sig_num) {
+        return sig_num;
     }
 
 public:
     uint32_t
-    calculate(const transaction_metadata& trx) {
+    calculate(const packed_transaction& ptrx, size_t sig_num = 0) {
         using namespace __internal;
 
-        uint32_t ts = 0, s = 0;
-        ts += network(trx) * config_.base_network_charge_factor;
-        ts += cpu(trx) * config_.base_cpu_charge_factor;
+        sig_num = std::max(sig_num, ptrx.signatures.size());
 
-        auto pts = ts / trx.trx.actions.size();
-        for(auto& act : trx.trx.actions) {
+        uint32_t ts = 0, s = 0;
+        ts += network(ptrx, sig_num) * config_.base_network_charge_factor;
+        ts += cpu(ptrx, sig_num) * config_.base_cpu_charge_factor;
+
+        const auto& trx = ptrx.get_transaction();
+        auto        pts = ts / trx.actions.size();
+        for(auto& act : trx.actions) {
             auto as = types_invoker<act_charge_result, get_act_charge>::invoke(act.name, act, config_);
             s += (std::get<0>(as) + pts) * std::get<1>(as);
         }

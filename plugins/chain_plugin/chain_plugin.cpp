@@ -784,16 +784,16 @@ read_only::trx_json_to_digest(const trx_json_to_digest_params& params) const {
 
 read_only::get_required_keys_result
 read_only::get_required_keys(const get_required_keys_params& params) const {
-    auto pretty_input = transaction();
-    auto resolver     = make_resolver(this);
+    auto trx      = transaction();
+    auto resolver = make_resolver(this);
     try {
-        abi_serializer::from_variant(params.transaction, pretty_input, resolver);
+        abi_serializer::from_variant(params.transaction, trx, resolver);
     }
     EVT_RETHROW_EXCEPTIONS(chain::transaction_type_exception, "Invalid transaction");
 
-    auto required_keys_set = db.get_required_keys(pretty_input, params.available_keys);
-    get_required_keys_result result;
-    result.required_keys = std::move(required_keys_set);
+    auto result = get_required_keys_result();
+    result.required_keys = db.get_required_keys(trx, params.available_keys);
+
     return result;
 }
 
@@ -802,6 +802,21 @@ read_only::get_suspend_required_keys(const get_suspend_required_keys_params& par
     auto required_keys_set = db.get_suspend_required_keys(params.name, params.available_keys);
     get_suspend_required_keys_result result;
     result.required_keys = std::move(required_keys_set);
+    return result;
+}
+
+read_only::get_charge_result
+read_only::get_charge(const get_charge_params& params) const {
+    auto trx      = transaction();
+    auto resolver = make_resolver(this);
+    try {
+        abi_serializer::from_variant(params.transaction, trx, resolver);
+    }
+    EVT_RETHROW_EXCEPTIONS(chain::transaction_type_exception, "Invalid transaction");
+
+    auto result   = get_charge_result();
+    result.charge = db.get_charge(trx, params.sigs_num);
+
     return result;
 }
 

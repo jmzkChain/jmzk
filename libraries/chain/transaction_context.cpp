@@ -97,7 +97,7 @@ transaction_context::check_time() const {
 void
 transaction_context::check_charge() {
     auto& cm = control.get_charge_manager();
-    charge = cm.calculate(trx);
+    charge = cm.calculate(trx.packed_trx);
     if(charge > trx.trx.max_charge) {
         EVT_THROW(max_charge_exceeded_exception, "max charge exceeded, expected: ${ex}, max provided: ${mp}",
             ("ex",charge)("mp",trx.trx.max_charge));

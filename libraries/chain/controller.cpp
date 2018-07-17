@@ -1269,4 +1269,10 @@ controller::get_suspend_required_keys(const proposal_name& name, const flat_set<
     return get_suspend_required_keys(suspend.trx, candidate_keys);
 }
 
+uint32_t
+controller::get_charge(const transaction& trx, size_t signautres_num) const {   
+    auto packed_trx = packed_transaction(trx);
+    return my->charge.calculate(packed_trx, signautres_num);
+}
+
 }}  // namespace evt::chain
