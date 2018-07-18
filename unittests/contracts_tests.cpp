@@ -606,9 +606,7 @@ BOOST_AUTO_TEST_CASE(contract_transferft_test) {
         //from == to test
         trft.from = address(tester::get_public_key(N(to)));
         to_variant(trft, var);
-        my_tester->push_action(N(transferft), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer);
-        tokendb.read_asset(address(tester::get_public_key(N(to))), symbol::from_string(string("5,") + get_symbol_name()), ast);
-        BOOST_TEST(1500000 == ast.get_amount());
+        BOOST_CHECK_THROW(my_tester->push_action(N(transferft), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer), fungible_address_exception);
 
         my_tester->produce_blocks();
     }
