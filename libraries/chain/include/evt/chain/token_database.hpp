@@ -20,15 +20,27 @@ using namespace evt::chain::contracts;
 using read_fungible_func = std::function<bool(const asset&)>;
 
 class token_database : boost::noncopyable {
-private:
+public:
     struct dbaction {
-        int   type;
-        void* data;
+        int32_t type;
+        void*   data;
     };
+    
     struct savepoint {
-        int32_t               seq;
+        int64_t               seq;
         const void*           rb_snapshot;
         std::vector<dbaction> actions;
+    };
+
+    struct psp_action {
+        int         op;
+        std::string key;
+        std::string value;
+    };
+
+    struct psp_savepoint {
+        int64_t                 seq;
+        std::vector<psp_action> actions;
     };
 
 public:
@@ -73,7 +85,9 @@ public:
         , read_opts_()
         , write_opts_()
         , tokens_handle_(nullptr)
-        , assets_handle_(nullptr) {}
+        , assets_handle_(nullptr)
+        , savepoints_()
+        , persistent_savepoints_() {}
     token_database(const fc::path& dbpath);
     ~token_database();
 
@@ -117,15 +131,19 @@ public:
     int update_fungible(const fungible_def&);
 
 public:
-    int add_savepoint(int32_t seq);
+    int add_savepoint(int64_t seq);
     int rollback_to_latest_savepoint();
-    int pop_savepoints(int32_t until);
+    int pop_savepoints(int64_t until);
     int pop_back_savepoint();
 
-    session new_savepoint_session(int seq);
+    session new_savepoint_session(int64_t seq);
     session new_savepoint_session();
 
     size_t get_savepoints_size() const { return savepoints_.size(); }
+
+private:
+    int rollback_latest_savepoint();
+    int rollback_latest_persistent_savepoint();
 
 private:
     int should_record() { return !savepoints_.empty(); }
@@ -133,6 +151,12 @@ private:
     int free_savepoint(savepoint&);
 
 private:
+    int persist_savepoints();
+    int load_savepoints();
+
+private:
+    std::string                  db_path_;
+
     rocksdb::DB*                 db_;
     rocksdb::ReadOptions         read_opts_;
     rocksdb::WriteOptions        write_opts_;
@@ -141,6 +165,7 @@ private:
     rocksdb::ColumnFamilyHandle* assets_handle_;  
 
     std::deque<savepoint>        savepoints_;
+    std::deque<psp_savepoint>    persistent_savepoints_;
 };
 
 }}  // namespace evt::chain
