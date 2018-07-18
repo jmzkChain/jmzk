@@ -3,13 +3,13 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 
-#include <chrono>
-#include <random>
 #include <benchmark/benchmark.h>
-#include <fc/io/json.hpp>
-#include <evt/testing/tester.hpp>
+#include <chrono>
 #include <evt/chain/token_database.hpp>
 #include <evt/chain/transaction_context.hpp>
+#include <evt/testing/tester.hpp>
+#include <fc/io/json.hpp>
+#include <random>
 
 /*
  * Benchmarks for actions to measure the caclulation complexity
@@ -50,6 +50,22 @@ create_tester() {
 
     return t;
 }
+
+std::string
+get_nonce_sym(const char* prefix) {
+    static auto dre = std::default_random_engine(std::chrono::system_clock::now().time_since_epoch().count());
+
+    auto n    = std::string(prefix);
+    auto dist = std::uniform_int_distribution<int>(0, 25);
+
+    n.reserve(n.size() + 7);
+    for(int i = 0; i < 7; i++) {
+        n.push_back('A' + dist(dre));
+    }
+
+    return n;
+}
+
 
 static name128
 get_nonce_name(const char* prefix) {
@@ -118,13 +134,81 @@ const char* ndjson = R"=====(
 }
 )=====";
 
+const char* ngjson = R"=====(
+{
+  "name" : "5jxX",
+  "group" : {
+    "name": "5jxXg",
+    "key": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+    "root": {
+      "threshold": 6,
+      "weight": 0,
+      "nodes": [{
+          "type": "branch",
+          "threshold": 1,
+          "weight": 3,
+          "nodes": [{
+              "key": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+              "weight": 1
+            },{
+              "key": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+              "weight": 1
+            }
+          ]
+        },{
+          "key": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+          "weight": 3
+        },{
+          "threshold": 1,
+          "weight": 3,
+          "nodes": [{
+              "key": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+              "weight": 1
+            },{
+              "key": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+              "weight": 2
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
+)=====";
+
+const char* nfjson = R"=====(
+{
+  "sym": "5,EVT",
+  "creator": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+  "issue" : {
+    "name" : "issue",
+    "threshold" : 1,
+    "authorizers": [{
+        "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+        "weight": 1
+      }
+    ]
+  },
+  "manage": {
+    "name": "manage",
+    "threshold": 1,
+    "authorizers": [{
+        "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+        "weight": 1
+      }
+    ]
+  },
+  "total_supply":"12.00000 EVT"
+}
+)=====";
+
 static void
 BM_Action_newdomain(benchmark::State& state) {
     auto tester = create_tester();
     auto var    = fc::json::from_string(ndjson);
     auto nd     = var.as<newdomain>();
     nd.creator  = evt::testing::tester::get_public_key("evt");
-    auto auths  = std::vector<account_name> { N128(evt) };
+    auto auths  = std::vector<account_name>{N128(evt)};
 
     for(auto _ : state) {
         state.PauseTiming();
@@ -135,7 +219,7 @@ BM_Action_newdomain(benchmark::State& state) {
         auto trx_ctx  = get_trx_ctx(*tester->control, trx_meta);
 
         trx_ctx.init_for_implicit_trx();
-        
+
         state.ResumeTiming();
 
         trx_ctx.exec();
@@ -144,6 +228,45 @@ BM_Action_newdomain(benchmark::State& state) {
     state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_Action_newdomain);
+
+static void
+BM_Action_updatedomain(benchmark::State& state) {
+    auto tester = create_tester();
+    auto var    = fc::json::from_string(ndjson);
+    auto nd     = var.as<newdomain>();
+
+    nd.creator = evt::testing::tester::get_public_key("evt");
+    nd.name    = get_nonce_name("domain");
+    nd.issue.authorizers[0].ref.set_account(nd.creator);
+
+    auto ndact = action(nd.name, N128(.create), nd);
+    auto auths = std::vector<account_name>{N128(evt)};
+
+    tester->push_action(std::move(ndact), auths, address());
+
+    auto ud     = updatedomain();
+    ud.name     = nd.name;
+    ud.issue    = nd.issue;
+    ud.transfer = nd.transfer;
+    ud.manage   = nd.manage;
+
+    for(auto _ : state) {
+        state.PauseTiming();
+
+        auto ndact    = action(ud.name, N128(.update), ud);
+        auto trx_meta = get_trx_meta(*tester->control, ndact, auths);
+        auto trx_ctx  = get_trx_ctx(*tester->control, trx_meta);
+
+        trx_ctx.init_for_implicit_trx();
+
+        state.ResumeTiming();
+
+        trx_ctx.exec();
+        trx_ctx.squash();
+    }
+    state.SetItemsProcessed(state.iterations());
+}
+BENCHMARK(BM_Action_updatedomain);
 
 static void
 BM_Action_issuetoken(benchmark::State& state) {
@@ -241,3 +364,177 @@ BM_Action_transfer(benchmark::State& state) {
     state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_Action_transfer);
+
+static void
+BM_Action_destroytoken(benchmark::State& state) {
+    auto tester = create_tester();
+    auto var    = fc::json::from_string(ndjson);
+    auto nd     = var.as<newdomain>();
+
+    nd.creator  = evt::testing::tester::get_public_key("evt");
+    nd.name     = get_nonce_name("domain");
+    nd.issue.authorizers[0].ref.set_account(nd.creator);
+
+    auto ndact  = action(nd.name, N128(.create), nd);
+    auto auths  = std::vector<account_name> { N128(evt) };
+
+    tester->push_action(std::move(ndact), auths, address());
+
+    auto it   = issuetoken();
+    it.domain = nd.name;
+    it.owner  = { nd.creator };
+
+    for(int i = 0; i < 1'000'000; i++) {
+        it.names.emplace_back(get_nonce_name("token"));
+    }
+    auto itact = action(nd.name, N128(.issue), it);
+    tester->push_action(std::move(itact), auths, address());
+
+    auto dt = destroytoken();
+    dt.domain = nd.name;
+
+    int index =0;
+    for(auto _ : state) {
+        state.PauseTiming();
+
+        dt.name = it.names[index++];
+        auto dtact    = action(dt.domain, dt.name, dt);
+        auto trx_meta = get_trx_meta(*tester->control, dtact, auths);
+        auto trx_ctx  = get_trx_ctx(*tester->control, trx_meta);
+
+        trx_ctx.init_for_implicit_trx();
+
+        state.ResumeTiming();
+
+        trx_ctx.exec();
+        trx_ctx.squash();
+    }
+    state.SetItemsProcessed(state.iterations());
+}
+BENCHMARK(BM_Action_destroytoken);
+
+static void
+BM_Action_newgroup(benchmark::State& state) {
+    auto tester = create_tester();
+    auto var    = fc::json::from_string(ngjson);
+    auto ng     = var.as<newgroup>();
+    ng.group.key_  = evt::testing::tester::get_public_key("evt");
+    auto auths  = std::vector<account_name> { N128(evt) };
+
+    for(auto _ : state) {
+        state.PauseTiming();
+
+        ng.name       = get_nonce_name("group");
+        ng.group.name_= ng.name;
+        auto ngact    = action(N128(.group), ng.name, ng);
+        auto trx_meta = get_trx_meta(*tester->control, ngact, auths);
+        auto trx_ctx  = get_trx_ctx(*tester->control, trx_meta);
+
+        trx_ctx.init_for_implicit_trx();
+
+        state.ResumeTiming();
+
+        trx_ctx.exec();
+        trx_ctx.squash();
+    }
+    state.SetItemsProcessed(state.iterations());
+}
+BENCHMARK(BM_Action_newgroup);
+
+static void
+BM_Action_updategroup(benchmark::State& state) {
+    auto tester = create_tester();
+    auto var    = fc::json::from_string(ngjson);
+    auto ng     = var.as<newgroup>();
+    ng.group.key_  = evt::testing::tester::get_public_key("evt");
+    ng.name       = get_nonce_name("group");
+    ng.group.name_= ng.name;
+    auto ngact    = action(N128(.group), ng.name, ng);
+    auto auths  = std::vector<account_name> { N128(evt) };
+
+    tester->push_action(std::move(ngact), auths, address());
+
+    auto ug   = updategroup();
+    ug.group = ng.group;
+    ug.name = ng.name;
+
+    for(auto _ : state) {
+        state.PauseTiming();
+
+        auto ugact    = action(N128(.group), ug.name, ug);
+        auto trx_meta = get_trx_meta(*tester->control, ugact, auths);
+        auto trx_ctx  = get_trx_ctx(*tester->control, trx_meta);
+
+        trx_ctx.init_for_implicit_trx();
+
+        state.ResumeTiming();
+
+        trx_ctx.exec();
+        trx_ctx.squash();
+    }
+    state.SetItemsProcessed(state.iterations());
+}
+BENCHMARK(BM_Action_updategroup);
+
+static void
+BM_Action_newfungible(benchmark::State& state) {
+    auto tester = create_tester();
+    auto var    = fc::json::from_string(nfjson);
+    auto nf     = var.as<newfungible>();
+    nf.creator  = evt::testing::tester::get_public_key("evt");
+    auto auths  = std::vector<account_name>{N128(evt)};
+
+    for(auto _ : state) {
+        state.PauseTiming();
+
+        nf.sym        = symbol::from_string(string("5,") + get_nonce_sym(""));
+        nf.total_supply = asset::from_string(string("100.00000 ") + nf.sym.name());
+        auto nfact    = action(N128(.fungible), nf.sym.name(), nf);
+        auto trx_meta = get_trx_meta(*tester->control, nfact, auths);
+        auto trx_ctx  = get_trx_ctx(*tester->control, trx_meta);
+
+        trx_ctx.init_for_implicit_trx();
+
+        state.ResumeTiming();
+
+        trx_ctx.exec();
+        trx_ctx.squash();
+    }
+    state.SetItemsProcessed(state.iterations());
+}
+BENCHMARK(BM_Action_newfungible);
+
+static void
+BM_Action_updfungible(benchmark::State& state) {
+    auto tester = create_tester();
+    auto var    = fc::json::from_string(nfjson);
+    auto nf     = var.as<newfungible>();
+    nf.creator  = evt::testing::tester::get_public_key("evt");
+    nf.sym        = symbol::from_string(string("5,") + get_nonce_sym(""));
+    nf.total_supply = asset::from_string(string("100.00000 ") + nf.sym.name());
+    auto nfact    = action(N128(.fungible), nf.sym.name(), nf);
+    auto auths  = std::vector<account_name>{N128(evt)};
+
+    tester->push_action(std::move(nfact), auths, address());
+
+    auto uf = updfungible();
+    uf.sym = nf.sym;
+    uf.issue = nf.issue;
+    uf.manage = nf.manage;
+    for(auto _ : state) {
+        state.PauseTiming();
+
+        auto ufact    = action(N128(.fungible), uf.sym.name(), uf);
+        auto trx_meta = get_trx_meta(*tester->control, ufact, auths);
+        auto trx_ctx  = get_trx_ctx(*tester->control, trx_meta);
+
+        trx_ctx.init_for_implicit_trx();
+
+        state.ResumeTiming();
+
+        trx_ctx.exec();
+        trx_ctx.squash();
+    }
+    state.SetItemsProcessed(state.iterations());
+}
+BENCHMARK(BM_Action_updfungible);
