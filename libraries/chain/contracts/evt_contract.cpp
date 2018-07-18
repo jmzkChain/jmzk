@@ -437,8 +437,8 @@ EVT_ACTION_IMPL(issuefungible) {
 
         transfer_fungible(from, to, ifact.number.get_amount());
 
-        tokendb.update_asset(addr, from);
         tokendb.update_asset(ifact.address, to);
+        tokendb.update_asset(addr, from);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -465,8 +465,8 @@ EVT_ACTION_IMPL(transferft) {
 
         transfer_fungible(facc, tacc, tfact.number.get_amount());
 
-        tokendb.update_asset(tfact.from, facc);
         tokendb.update_asset(tfact.to, tacc);
+        tokendb.update_asset(tfact.from, facc);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -494,8 +494,8 @@ EVT_ACTION_IMPL(evt2pevt) {
 
         transfer_fungible(facc, tacc, epact.number.get_amount());
 
-        tokendb.update_asset(epact.from, facc);
         tokendb.update_asset(epact.to, tacc);
+        tokendb.update_asset(epact.from, facc);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
