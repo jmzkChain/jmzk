@@ -902,11 +902,6 @@ BOOST_AUTO_TEST_CASE(tokendb_persist_savepoints_1) {
         token_def tk = update_token_data();
         tk.domain    = dom.name;
         tokendb.update_token(tk);
-
-        BOOST_TEST_REQUIRE(tokendb.exists_token(dom.name, "t1"));
-        token_def tk_;
-        tokendb.read_token(dom.name, "t1", tk_);
-        BOOST_TEST_REQUIRE(1 == tk_.metas.size());
     }
     FC_LOG_AND_RETHROW()
 }
@@ -918,6 +913,7 @@ BOOST_AUTO_TEST_CASE(tokendb_persist_savepoints_2) {
         domain_def dom = add_domain_data();
         dom.name       = "domain-p1";
 
+        BOOST_TEST_REQUIRE(tokendb.exists_token(dom.name, "t1"));
         token_def tk_;
         tokendb.read_token(dom.name, "t1", tk_);
         BOOST_TEST_REQUIRE(1 == tk_.metas.size());
@@ -937,6 +933,103 @@ BOOST_AUTO_TEST_CASE(tokendb_persist_savepoints_2) {
         BOOST_TEST_REQUIRE(0 == dom_.metas.size());
         tokendb.rollback_to_latest_savepoint();
         BOOST_TEST_REQUIRE(!tokendb.exists_domain(dom.name));
+
+        tokendb.add_savepoint(get_time());
+        group_def gp = add_group_data();
+        gp.name_     = "group-p1";
+        tokendb.add_group(gp);
+        tokendb.add_savepoint(get_time());
+
+        group_def upgp = update_group_data();
+        upgp.name_     = gp.name();
+        tokendb.update_group(upgp);
+    }
+    FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE(tokendb_persist_savepoints_3) {
+    try {
+        group_def gp = add_group_data();
+        gp.name_     = "group-p1";
+
+        BOOST_TEST_REQUIRE(tokendb.exists_group(gp.name()));
+        group_def gp_;
+        tokendb.read_group(gp.name(), gp_);
+        auto root = gp_.root();
+        BOOST_TEST(5 == root.threshold);
+        tokendb.rollback_to_latest_savepoint();
+        tokendb.read_group(gp.name(), gp_);
+        root = gp_.root();
+        BOOST_TEST(6 == root.threshold);
+        tokendb.rollback_to_latest_savepoint();
+        BOOST_TEST_REQUIRE(!tokendb.exists_group(gp.name()));
+
+        tokendb.add_savepoint(get_time());
+        gp       = add_group_data();
+        gp.name_ = "group--" + boost::lexical_cast<std::string>(time(0));
+        tokendb.add_group(gp);
+
+        tokendb.add_savepoint(get_time());
+        auto upgp  = update_group_data();
+        upgp.name_ = gp.name();
+        tokendb.update_group(upgp);
+    }
+    FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE(tokendb_persist_savepoints_4) {
+    try {
+        int pop_re = tokendb.pop_savepoints(get_time());
+        BOOST_TEST_REQUIRE(pop_re == 0);
+
+        tokendb.add_savepoint(get_time());
+        auto pevt    = symbol(SY(5, PPEVT));
+        auto address = public_key_type((std::string) "EVT5tRjHNDPMxQfmejsGzNyQHRBiLAYEU7YZLfyHjvygnmmAUfYpX");
+        BOOST_TEST(!tokendb.exists_fungible("PPEVT"));
+        BOOST_TEST(!tokendb.exists_any_asset(address));
+        BOOST_TEST(!tokendb.exists_asset(address, pevt));
+
+        fungible_def fungible;
+        fungible.sym = symbol(SY(5, EVT));
+        tokendb.add_fungible(fungible);
+        tokendb.update_asset(address, asset(1000, pevt));
+
+        BOOST_TEST(tokendb.exists_fungible("EVT"));
+        BOOST_TEST(tokendb.exists_asset(address, pevt));
+
+        tokendb.add_savepoint(get_time());
+        tokendb.update_asset(address, asset(2000, pevt));
+    }
+    FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE(tokendb_persist_savepoints_5) {
+    try {
+        tokendb.rollback_to_latest_savepoint();
+        auto pevt    = symbol(SY(5, PPEVT));
+        auto address = public_key_type((std::string) "EVT5tRjHNDPMxQfmejsGzNyQHRBiLAYEU7YZLfyHjvygnmmAUfYpX");
+        auto a       = asset();
+        tokendb.read_asset(address, pevt, a);
+        BOOST_TEST(a == asset(1000, pevt));
+
+        auto r = tokendb.rollback_to_latest_savepoint();
+        BOOST_TEST(r == 0);
+        BOOST_TEST(!tokendb.exists_fungible("PPEVT"));
+        BOOST_TEST(!tokendb.exists_any_asset(address));
+        BOOST_TEST(!tokendb.exists_asset(address, pevt));
+
+        tokendb.add_savepoint(get_time());
+        tokendb.add_savepoint(get_time());
+        tokendb.add_savepoint(get_time());
+        tokendb.add_savepoint(get_time());
+        tokendb.add_savepoint(get_time());
+    }
+    FC_LOG_AND_RETHROW()
+}
+
+BOOST_AUTO_TEST_CASE(tokendb_persist_savepoints_6) {
+    try {
+        BOOST_CHECK_NO_THROW(tokendb.pop_savepoints(time(0) + ti + 1));
     }
     FC_LOG_AND_RETHROW()
 }
