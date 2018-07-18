@@ -344,6 +344,13 @@ BOOST_AUTO_TEST_CASE(contract_newgroup_test) {
         //action_authorize_exception test
         BOOST_CHECK_THROW(my_tester->push_action(N(newgroup), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer), action_authorize_exception);
 
+        gp.name = "xxx";
+        to_variant(gp, var);
+
+        //name match test
+        BOOST_CHECK_THROW(my_tester->push_action(N(newgroup), N128(.group), string_to_name128("xxx"), var.get_object(), key_seeds, payer), group_name_exception);
+
+
         gp.name        = get_group_name();
         gp.group.name_ = get_group_name();
         to_variant(gp, var);
