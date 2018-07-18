@@ -243,6 +243,7 @@ EVT_ACTION_IMPL(newgroup) {
         EVT_ASSERT(!ngact.group.key().is_generated(), group_key_exception, "Group key cannot be generated key");
         
         check_name_reserved(ngact.name);
+        EVT_ASSERT(ngact.name == ngact.group.name(), group_name_exception, "Group name not match, act: ${n1}, group: ${n2}", ("n1",ngact.name)("n2",ngact.group.name()));
         
         auto& tokendb = context.token_db;
         EVT_ASSERT(!tokendb.exists_group(ngact.name), group_exists_exception, "Group ${name} already exists.", ("name",ngact.name));
