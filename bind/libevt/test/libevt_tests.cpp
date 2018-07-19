@@ -25,7 +25,8 @@ BOOST_AUTO_TEST_CASE( evtaddress ) {
 
     addr = nullptr;
     auto str = "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3";
-    auto pub_key = evt_public_key_from_string(str);
+    evt_public_key_t* pub_key;
+    auto r121 = evt_public_key_from_string(str, &pub_key);
     auto r12 = evt_address_public_key(pub_key, &addr);
     BOOST_TEST_REQUIRE(r12 == EVT_OK);
     BOOST_TEST_REQUIRE(addr != nullptr);
