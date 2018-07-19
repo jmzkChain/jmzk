@@ -39,7 +39,15 @@ evt_address_to_string(evt_address_t* addr, char** str /* out */) {
     if (addr == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
-    auto _addr = address();
+    
+    if (addr->sz == 2) 
+        auto _addr = address();
+    else if (addr->sz == 35)
+        auto _addr = address(std::string("EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3"));
+    else if (addr->sz == 29)
+        auto _addr = address(std::string("EVT0xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"));
+    else return EVT_INVALID_ADDRESS;
+
     if(extract_data(addr, _addr) != EVT_OK) {
         return EVT_INVALID_ADDRESS;
     }
