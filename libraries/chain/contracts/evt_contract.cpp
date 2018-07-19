@@ -241,6 +241,7 @@ EVT_ACTION_IMPL(newgroup) {
     try {
         EVT_ASSERT(context.has_authorized(N128(.group), ngact.name), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(!ngact.group.key().is_generated(), group_key_exception, "Group key cannot be generated key");
+        EVT_ASSERT(ngact.name == ngact.group.name(), group_name_exception, "Group name not match, act: ${n1}, group: ${n2}", ("n1",ngact.name)("n2",ngact.group.name()));
         
         check_name_reserved(ngact.name);
         
@@ -426,6 +427,7 @@ EVT_ACTION_IMPL(issuefungible) {
         EVT_ASSERT(tokendb.exists_fungible(sym), fungible_exists_exception, "${sym} fungible tokens doesn't exist", ("sym",sym));
 
         auto addr = get_fungible_address(sym);
+        EVT_ASSERT(addr != ifact.address, fungible_address_exception, "From and to are the same address");
 
         asset from, to;
         tokendb.read_asset(addr, sym, from);
@@ -435,8 +437,8 @@ EVT_ACTION_IMPL(issuefungible) {
 
         transfer_fungible(from, to, ifact.number.get_amount());
 
-        tokendb.update_asset(addr, from);
         tokendb.update_asset(ifact.address, to);
+        tokendb.update_asset(addr, from);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -450,6 +452,7 @@ EVT_ACTION_IMPL(transferft) {
         auto sym = tfact.number.get_symbol();
         EVT_ASSERT(context.has_authorized(N128(.fungible), (fungible_name)sym.name()), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(!tfact.to.is_reserved(), fungible_address_exception, "Cannot transfer fungible tokens to reserved address");
+        EVT_ASSERT(tfact.from != tfact.to, fungible_address_exception, "From and to are the same address");
 
         auto& tokendb = context.token_db;
         
@@ -462,8 +465,8 @@ EVT_ACTION_IMPL(transferft) {
 
         transfer_fungible(facc, tacc, tfact.number.get_amount());
 
-        tokendb.update_asset(tfact.from, facc);
         tokendb.update_asset(tfact.to, tacc);
+        tokendb.update_asset(tfact.from, facc);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -491,8 +494,8 @@ EVT_ACTION_IMPL(evt2pevt) {
 
         transfer_fungible(facc, tacc, epact.number.get_amount());
 
-        tokendb.update_asset(epact.from, facc);
         tokendb.update_asset(epact.to, tacc);
+        tokendb.update_asset(epact.from, facc);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }

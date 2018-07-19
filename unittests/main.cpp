@@ -14,7 +14,7 @@ struct GlobalFixture {
         if(fc::exists(evt_unittests_dir)) {
             fc::remove_all(evt_unittests_dir);
         }
-        fc::logger::get().set_log_level(fc::log_level(fc::log_level::error));
+        fc::logger::get().set_log_level(fc::log_level(fc::log_level::warn));
     }
 
     void

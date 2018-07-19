@@ -19,27 +19,6 @@ using evt::chain::transaction;
 using evt::chain::chain_id_type;
 using fc::sha256;
 
-template <>
-evt_data_t*
-get_evt_data<bytes>(const bytes& b) {
-    auto sz = sizeof(evt_data_t) + b.size();
-    auto data = (evt_data_t*)malloc(sz);
-    data->sz = b.size();
-    memcpy((char*)data + sizeof(evt_data_t), b.data(), b.size());
-    return data;
-}
-
-template <>
-int
-extract_data<bytes>(evt_data_t* data, bytes& val) {
-    if(data->sz == 0) {
-        return EVT_INVALID_ARGUMENT;
-    }
-    val.resize(data->sz);
-    memcpy(&val[0], data->buf, data->sz);
-    return EVT_OK;
-}
-
 extern "C" {
 
 void*
