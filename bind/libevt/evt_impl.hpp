@@ -8,30 +8,35 @@
 #include <string.h>
 #include <string>
 #include <libevt/evt.h>
-
-template <typename T>
-size_t
-get_type_size() {
-    return sizeof(T);
-}
+#include <fc/io/raw.hpp>
 
 template <typename T>
 evt_data_t*
 get_evt_data(const T& val) {
-    auto sz = sizeof(evt_data_t) + get_type_size<T>();
+    auto rsz = fc::raw::pack_size<T>(val);
+    auto sz  = sizeof(evt_data_t) + rsz;
+
     auto data = (evt_data_t*)malloc(sz);
-    data->sz = get_type_size<T>();
-    memcpy((char*)data + sizeof(evt_data_t), &val, get_type_size<T>());
+    data->sz  = rsz;
+
+    auto ds = fc::datastream<char*>(data->buf, rsz);
+    fc::raw::pack(ds, val);
+
     return data;
 }
 
 template <typename T>
 int
 extract_data(evt_data_t* data, T& val) {
-    if(data->sz != get_type_size<T>()) {
+    auto rsz = fc::raw::pack_size<T>(val);
+
+    if(data->sz != rsz) {
         return EVT_INVALID_ARGUMENT;
     }
-    memcpy(&val, data->buf, get_type_size<T>());
+
+    auto ds = fc::datastream<char*>(data->buf, rsz);
+    fc::raw::unpack(ds, val);
+
     return EVT_OK;
 }
 
