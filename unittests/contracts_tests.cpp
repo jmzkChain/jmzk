@@ -160,6 +160,7 @@ BOOST_AUTO_TEST_CASE(contract_newdomain_test) {
         to_variant(newdom, var);
 
         my_tester->push_action(N(newdomain), string_to_name128(get_domain_name()), N128(.create), var.get_object(), key_seeds, payer);
+        my_tester->add_money(address(N(domain), string_to_name128(get_domain_name()), 0), asset(100000, symbol(SY(5, EVT))));
 
         //domain_exists_exception test
         BOOST_CHECK_THROW(my_tester->push_action(N(newdomain), string_to_name128(get_domain_name()), N128(.create), var.get_object(), key_seeds, payer), tx_duplicate);
@@ -196,7 +197,7 @@ BOOST_AUTO_TEST_CASE(contract_issuetoken_test) {
         istk.owner[0] = key;
         to_variant(istk, var);
 
-        my_tester->push_action(N(issuetoken), string_to_name128(get_domain_name()), N128(.issue), var.get_object(), key_seeds, payer);
+        my_tester->push_action(N(issuetoken), string_to_name128(get_domain_name()), N128(.issue), var.get_object(), key_seeds, address(N(domain), string_to_name128(get_domain_name()), 0));
 
         istk.names = {".t1", ".t2", ".t3"};
         to_variant(istk, var);
@@ -727,6 +728,7 @@ BOOST_AUTO_TEST_CASE(contract_addmeta_test) {
         BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds, payer, 50000), unsatisfied_authorization);
         BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer, 50000), unsatisfied_authorization);
         BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer, 50000), unsatisfied_authorization);
+        BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer, 50000), unsatisfied_authorization);
 
         //meta authorizers test
         admt.creator = tester::get_public_key(N(other));
@@ -734,6 +736,7 @@ BOOST_AUTO_TEST_CASE(contract_addmeta_test) {
         BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), {N(other), N(payer)}, payer, 50000), meta_involve_exception);
         BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), N128(.group), string_to_name128(get_group_name()), var.get_object(), {N(other), N(payer)}, payer, 50000), meta_involve_exception);
         BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), {N(other), N(payer)}, payer, 50000), meta_involve_exception);
+        BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(t1), var.get_object(), {N(other), N(payer)}, payer, 50000), meta_involve_exception);
 
         admt.creator = key;
         to_variant(admt, var);
@@ -743,13 +746,15 @@ BOOST_AUTO_TEST_CASE(contract_addmeta_test) {
         my_tester->push_action(N(addmeta), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer, 50000);
 
         my_tester->push_action(N(addmeta), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer, 50000);
-
+        
+        my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer, 50000);
         //meta_key_exception test
         admt.value = "value2";
         to_variant(admt, var);
         BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds, payer, 50000), meta_key_exception);
         BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer, 50000), meta_key_exception);
         BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer, 50000), meta_key_exception);
+        BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer, 50000), meta_key_exception);
 
         my_tester->produce_blocks();
     }
