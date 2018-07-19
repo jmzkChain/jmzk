@@ -71,7 +71,7 @@ class EVTInvalidJsonException(Exception):
 
 class EVTInvalidAddressException(Exception):
     def __init__(self):
-        err = 'EVT_INVALID_JSON'
+        err = 'EVT_INVALID_ADDRESS'
         super().__init__(self, err)
 
 
