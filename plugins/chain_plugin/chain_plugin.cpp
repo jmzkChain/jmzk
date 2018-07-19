@@ -654,6 +654,9 @@ read_write::push_block(const read_write::push_block_params& params, next_functio
     catch(boost::interprocess::bad_alloc&) {
         raise(SIGUSR1);
     }
+    catch(fc::unrecoverable_exception&) {
+        raise(SIGUSR1);
+    }
     CATCH_AND_CALL(next);
 }
 
@@ -686,6 +689,9 @@ read_write::push_transaction(const read_write::push_transaction_params& params, 
         });
     }
     catch(boost::interprocess::bad_alloc&) {
+        raise(SIGUSR1);
+    }
+    catch(fc::unrecoverable_exception&) {
         raise(SIGUSR1);
     }
     CATCH_AND_CALL(next);
@@ -774,6 +780,9 @@ read_only::trx_json_to_digest(const trx_json_to_digest_params& params) const {
         result.digest = trx->sig_digest(db.get_chain_id());
     }
     catch(boost::interprocess::bad_alloc&) {
+        raise(SIGUSR1);
+    }
+    catch(fc::unrecoverable_exception&) {
         raise(SIGUSR1);
     }
     catch(...) {

@@ -319,7 +319,12 @@ struct check_authority<newgroup> {
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto ng     = act.data_as<const newgroup&>();
+            auto ng = act.data_as<const newgroup&>();
+            if(ng.group.key().is_reserved()) {
+                // if group key is reserved, no need to check authority
+                return true;
+            }
+
             auto vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(ng.group.key(), 1) == 1) {
                 return true;

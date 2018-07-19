@@ -3,13 +3,13 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 
-#include <benchmark/benchmark.h>
 #include <chrono>
+#include <random>
+#include <benchmark/benchmark.h>
 #include <evt/chain/token_database.hpp>
 #include <evt/chain/transaction_context.hpp>
 #include <evt/testing/tester.hpp>
 #include <fc/io/json.hpp>
-#include <random>
 
 /*
  * Benchmarks for actions to measure the caclulation complexity

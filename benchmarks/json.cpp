@@ -86,7 +86,7 @@ auto json2 = R"(
 )";
 
 static void
-BM_Json_Serialzie_FC(benchmark::State& state) {
+BM_Json_Deserialzie_FC(benchmark::State& state) {
     auto json = state.range(0) == 1 ? json1 : json2;
     auto strjson = std::string((const char*)json);
     fc::variant v;
@@ -96,10 +96,10 @@ BM_Json_Serialzie_FC(benchmark::State& state) {
         (void)v;
     }
 }
-BENCHMARK(BM_Json_Serialzie_FC)->Arg(1)->Arg(2);
+BENCHMARK(BM_Json_Deserialzie_FC)->Arg(1)->Arg(2);
 
 static void
-BM_Json_Serialzie_RJ(benchmark::State& state) {
+BM_Json_Deserialzie_RJ(benchmark::State& state) {
     auto json = state.range(0) == 1 ? json1 : json2;
     auto strjson = std::string((const char*)json);
     fc::variant v;
@@ -109,4 +109,4 @@ BM_Json_Serialzie_RJ(benchmark::State& state) {
         (void)v;
     }
 }
-BENCHMARK(BM_Json_Serialzie_RJ)->Arg(1)->Arg(2);
+BENCHMARK(BM_Json_Deserialzie_RJ)->Arg(1)->Arg(2);

@@ -262,12 +262,12 @@ token_database::initialize(const fc::path& dbpath) {
 
         auto status = DB::Open(options, db_path_, &db_);
         if(!status.ok()) {
-            EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
+            EVT_THROW(tokendb_rocksdb_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
         }
 
         status = db_->CreateColumnFamily(assets_opts, AssetsColumnFamilyName, &assets_handle_);
         if(!status.ok()) {
-            EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
+            EVT_THROW(tokendb_rocksdb_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
         }
 
         load_savepoints();
@@ -282,7 +282,7 @@ token_database::initialize(const fc::path& dbpath) {
 
     auto status = DB::Open(options, db_path_, columns, &handles, &db_);
     if(!status.ok()) {
-        EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
+        EVT_THROW(tokendb_rocksdb_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
 
     asset(handles.size() == 2);
@@ -300,7 +300,7 @@ token_database::add_domain(const domain_def& domain) {
     auto value  = get_value(domain);
     auto status = db_->Put(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
-        EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
+        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
     if(should_record()) {
         auto act  = (sp_domain*)malloc(sizeof(sp_domain));
@@ -333,7 +333,7 @@ token_database::issue_tokens(const issuetoken& issue) {
     }
     auto status = db_->Write(write_opts_, &batch);
     if(!status.ok()) {
-        EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
+        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
     if(should_record()) {
         auto act    = (sp_issuetoken*)malloc(sizeof(sp_issuetoken) + sizeof(token_name) * issue.names.size());
@@ -361,7 +361,7 @@ token_database::add_group(const group_def& group) {
     auto value  = get_value(group);
     auto status = db_->Put(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
-        EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
+        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
     if(should_record()) {
         auto act  = (sp_group*)malloc(sizeof(sp_group));
@@ -387,7 +387,7 @@ token_database::add_suspend(const suspend_def& suspend) {
     auto value  = get_value(suspend);
     auto status = db_->Put(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
-        EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
+        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
     if(should_record()) {
         auto act  = (sp_suspend*)malloc(sizeof(sp_suspend));
@@ -413,7 +413,7 @@ token_database::add_fungible(const fungible_def& fungible) {
     auto value  = get_value(fungible);
     auto status = db_->Put(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
-        EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
+        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
     if(should_record()) {
         auto act  = (sp_fungible*)malloc(sizeof(sp_fungible));
@@ -448,7 +448,7 @@ token_database::update_asset(const address& addr, const asset& asset) {
     auto value  = get_value(asset);
     auto status = db_->Put(write_opts_, assets_handle_, key.as_slice(), value);
     if(!status.ok()) {
-        EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
+        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
     if(should_record()) {
         auto act  = (sp_asset*)malloc(sizeof(sp_asset));
@@ -620,7 +620,7 @@ token_database::update_domain(const domain_def& domain) {
     auto value  = get_value(domain);
     auto status = db_->Put(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
-        EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
+        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
     if(should_record()) {
         auto act  = (sp_domain*)malloc(sizeof(sp_domain));
@@ -637,7 +637,7 @@ token_database::update_group(const group& group) {
     auto value  = get_value(group);
     auto status = db_->Put(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
-        EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
+        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
     if(should_record()) {
         auto act  = (sp_group*)malloc(sizeof(sp_group));
@@ -654,7 +654,7 @@ token_database::update_token(const token_def& token) {
     auto value  = get_value(token);
     auto status = db_->Put(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
-        EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
+        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
     if(should_record()) {
         auto act    = (sp_token*)malloc(sizeof(sp_token));
@@ -672,7 +672,7 @@ token_database::update_suspend(const suspend_def& suspend) {
     auto value  = get_value(suspend);
     auto status = db_->Put(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
-        EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
+        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
     if(should_record()) {
         auto act  = (sp_suspend*)malloc(sizeof(sp_suspend));
@@ -689,7 +689,7 @@ token_database::update_fungible(const fungible_def& fungible) {
     auto value  = get_value(fungible);
     auto status = db_->Put(write_opts_, key.as_slice(), value);
     if(!status.ok()) {
-        EVT_THROW(tokendb_rocksdb_fail, "Rocksdb internal error: ${err}", ("err", status.getState()));
+        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
     if(should_record()) {
         auto act  = (sp_fungible*)malloc(sizeof(sp_fungible));
@@ -858,9 +858,12 @@ token_database::rollback_latest_savepoint() {
 
                 auto old_value = std::string();
                 auto status    = db_->Get(snapshot_read_opts_, assets_handle_, key, &old_value);
+
+                // key may not existed in latest snapshot, remove it
                 if(!status.ok()) {
-                    // key may not existed in latest snapshot, remove it
-                    EVT_ASSERT(status.code() == rocksdb::Status::kNotFound, tokendb_status_exception, "Not expected rocksdb status: ${status}", ("status",status.getState()));
+                    if(status.code() != rocksdb::Status::kNotFound) {
+                        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+                    }
                     batch.Delete(assets_handle_, key);
                     break;
                 }
@@ -877,7 +880,9 @@ token_database::rollback_latest_savepoint() {
             case kRevert: {
                 auto old_value = std::string();
                 auto status    = db_->Get(snapshot_read_opts_, key.as_slice(), &old_value);
-                EVT_ASSERT(status.ok(), tokendb_status_exception, "Not expected rocksdb status: ${status}", ("status",status.getState()));
+                if(!status.ok()) {
+                    FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+                }
                 batch.Put(key.as_slice(), old_value);
                 break;
             }
@@ -1012,9 +1017,9 @@ token_database::persist_savepoints() {
                 pspact.op   = kRemoveOrRevert;
                 pspact.key  = key.ToString();
                 auto status = db_->Get(snapshot_read_opts_, assets_handle_, key, &pspact.value);
-                if(!status.ok()) {
-                    // key may not existed in latest snapshot, remove it
-                    EVT_ASSERT(status.code() == rocksdb::Status::kNotFound, tokendb_status_exception, "Not expected rocksdb status: ${status}", ("status",status.getState()));
+                // key may not existed in latest snapshot
+                if(!status.ok() && status.code() != rocksdb::Status::kNotFound) {
+                    FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
                 }
                 psp.actions.emplace_back(pspact);
 
@@ -1032,7 +1037,9 @@ token_database::persist_savepoints() {
             switch(op) {
             case kRevert: {
                 auto status = db_->Get(snapshot_read_opts_, key.as_slice(), &pspact.value);
-                EVT_ASSERT(status.ok(), tokendb_status_exception, "Not expected rocksdb status: ${status}", ("status",status.getState()));
+                if(!status.ok()) {
+                    FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+                }
                 break;
             }
             case kRemove: {
@@ -1092,4 +1099,3 @@ token_database::load_savepoints() {
 FC_REFLECT(evt::chain::__internal::psp_header, (dirty_flag));
 FC_REFLECT(evt::chain::token_database::psp_action, (op)(key)(value));
 FC_REFLECT(evt::chain::token_database::psp_savepoint, (seq)(actions));
-
