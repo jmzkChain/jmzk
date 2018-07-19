@@ -89,6 +89,10 @@ def init_evt_lib():
             int evt_address_public_key(evt_public_key_t *pub_key, evt_address_t** addr/* out */);
             int evt_address_reserved(evt_address_t** addr/* out */);
             int evt_address_generated(const char* prefix, const char* key, uint32_t nonce, evt_address_t** addr/* out */);
+            int evt_address_get_public_key(evt_address_t* addr, evt_public_key **pub_key/* out */);
+            int evt_address_get_prefix(evt_address_t* addr, char** str/* out */);
+            int evt_address_get_key(evt_address_t* addr, char** str/* out */);
+            int evt_address_get_nonce(evt_address_t* addr, uint32_t* nonce);
             """)
 
     if "LIBEVT_PATH" in os.environ:

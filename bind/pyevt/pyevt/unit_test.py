@@ -110,6 +110,12 @@ class TestPyEVT(unittest.TestCase):
         self.assertEqual('EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3', public_key_addr.to_string())
 
         generated_addr = Address.generated('xxxxxxxxxxxx', 'xxxxxxxxxxxxxxxxxxxxx', 1234)
+        prefix = generated_addr.get_prefix()
+        key = generated_addr.get_key()
+        nonce = generated_addr.get_nonce()
+        self.assertEqual(prefix, 'xxxxxxxxxxxx')
+        self.assertEqual(key, 'xxxxxxxxxxxxxxxxxxxxx')
+        self.assertEqual(nonce, 1234)
 
 if __name__ == '__main__':
     unittest.main()

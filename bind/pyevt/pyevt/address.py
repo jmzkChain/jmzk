@@ -1,4 +1,5 @@
 from . import evt_exception, libevt
+from .ecc import PublicKey
 from .evt_data import EvtData
 
 
@@ -52,3 +53,33 @@ class Address(EvtData):
         ret = evt.lib.evt_address_generated(prefix_c, key_c, nonce, addr_c)
         evt_exception.evt_exception_raiser(ret)
         return Address(addr_c[0])
+
+    def get_public_key(self):
+        pub_key_c = self.evt.ffi.new('evt_public_key_t**')
+        ret = self.evt.lib.evt_address_get_public_key(self.data, pub_key_c)
+        evt_exception.evt_exception_raiser(ret)
+        return PublicKey(pub_key_c[0])
+
+    def get_prefix(self):
+        str_c = self.evt.ffi.new('char**')
+        ret = self.evt.lib.evt_address_get_prefix(self.data, str_c)
+        evt_exception.evt_exception_raiser(ret)
+        str = self.evt.ffi.string(str_c[0]).decode('utf-8')
+        ret = self.evt.lib.evt_free(str_c[0])
+        evt_exception.evt_exception_raiser(ret)
+        return str
+
+    def get_key(self):
+        str_c = self.evt.ffi.new('char**')
+        ret = self.evt.lib.evt_address_get_key(self.data, str_c)
+        evt_exception.evt_exception_raiser(ret)
+        str = self.evt.ffi.string(str_c[0]).decode('utf-8')
+        ret = self.evt.lib.evt_free(str_c[0])
+        evt_exception.evt_exception_raiser(ret)
+        return str
+
+    def get_nonce(self):
+        nonce_c = self.evt.ffi.new('uint32_t*')
+        ret = self.evt.lib.evt_address_get_nonce(self.data, nonce_c)
+        evt_exception.evt_exception_raiser(ret)
+        return int(nonce_c[0])
