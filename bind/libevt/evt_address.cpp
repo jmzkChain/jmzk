@@ -7,9 +7,11 @@
 #include "evt_impl.hpp"
 
 #include <string.h>
+#include <evt/chain/name.hpp>
 #include <evt/chain/address.hpp>
 #include <fc/crypto/public_key.hpp>
 
+using evt::chain;
 using evt::chain::address;
 using fc::crypto::public_key;
 
@@ -77,16 +79,10 @@ evt_address_reserved(evt_address_t** addr/* out */) {
 }
 
 int
-evt_address_generated(evt_name_t* prefix, evt_name128_t key, uint32_t nonce, evt_address_t** addr/* out */) {
-    auto _prefix = name();
-    if(extract_data(prefix, _prefix) != EVT_OK) {
-        return EVT_INVALID_ARGUMENT;
-    }
-    auto _key = name128();
-    if(extract_data(key, _key) != EVT_OK) {
-        return EVT_INVALID_ARGUMENT;
-    }
+evt_address_generated(const char* prefix, const char* key, uint32_t nonce, evt_address_t** addr/* out */) {
     try {
+        _prefix = string_to_name(prefix);
+        _key = string_to_name128(key);
         _addr = address(_prefix, _key, nonce);
         *addr = get_evt_data(_addr);
     }

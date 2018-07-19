@@ -3,6 +3,7 @@ import unittest
 from . import abi
 from .abi import *
 from .ecc import *
+from .address import *
 
 
 class TestPyEVT(unittest.TestCase):
@@ -100,6 +101,15 @@ class TestPyEVT(unittest.TestCase):
         block_prefix = block_id.ref_block_prefix()
         self.assertTrue(block_prefix == 2253733142)
 
+    def test_evtaddress(self):
+        reserved_addr = Address.reserved()
+        self.assertEqual('EVT00000000000000000000000000000000000000000000000000', reserved_addr.to_string())
+
+        pub_key = PublicKey.from_string('EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3')
+        public_key_addr = Address.public_key(pub_key)
+        self.assertEqual('EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3', public_key_addr.to_string())
+
+        generated_addr = Address.generated('xxxxxxxxxxxx', 'xxxxxxxxxxxxxxxxxxxxx', 1234)
 
 if __name__ == '__main__':
     unittest.main()
