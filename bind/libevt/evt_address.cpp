@@ -44,7 +44,7 @@ evt_address_to_string(evt_address_t* addr, char** str /* out */) {
     if (addr->sz == 35)
         _addr = address(std::string("EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3"));
     else if (addr->sz == 29)
-        _addr = address(std::string("EVT0xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"));
+        _addr = address(std::string("EVT0000007EWoypBxpF8dWMb3xPoGdAMpPU3wehZqmD7VDgzsGyVi"));
 
     if(extract_data(addr, _addr) != EVT_OK) {
         return EVT_INVALID_ADDRESS;
@@ -105,7 +105,7 @@ evt_address_generated(const char* prefix, const char* key, uint32_t nonce, evt_a
 }
 
 int
-evt_address_get_public_key(evt_address_t* addr, evt_public_key **pub_key/* out */) {
+evt_address_get_public_key(evt_address_t* addr, evt_public_key_t **pub_key/* out */) {
     if (addr == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
@@ -113,7 +113,7 @@ evt_address_get_public_key(evt_address_t* addr, evt_public_key **pub_key/* out *
     if (addr->sz == 35)
         _addr = address(std::string("EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3"));
     else if (addr->sz == 29)
-        _addr = address(std::string("EVT0xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"));
+        _addr = address(std::string("EVT0000007EWoypBxpF8dWMb3xPoGdAMpPU3wehZqmD7VDgzsGyVi"));
 
     if(extract_data(addr, _addr) != EVT_OK) {
         return EVT_INVALID_ADDRESS;
@@ -138,7 +138,7 @@ evt_address_get_prefix(evt_address_t* addr, char** str/* out */) {
     if (addr->sz == 35)
         _addr = address(std::string("EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3"));
     else if (addr->sz == 29)
-        _addr = address(std::string("EVT0xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"));
+        _addr = address(std::string("EVT0000007EWoypBxpF8dWMb3xPoGdAMpPU3wehZqmD7VDgzsGyVi"));
 
     if(extract_data(addr, _addr) != EVT_OK) {
         return EVT_INVALID_ADDRESS;
@@ -151,6 +151,7 @@ evt_address_get_prefix(evt_address_t* addr, char** str/* out */) {
     catch(...) {
         return EVT_INTERNAL_ERROR;
     }
+    return EVT_OK;
 }
 
 int
@@ -162,7 +163,7 @@ evt_address_get_key(evt_address_t* addr, char** str/* out */) {
     if (addr->sz == 35)
         _addr = address(std::string("EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3"));
     else if (addr->sz == 29)
-        _addr = address(std::string("EVT0xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"));
+        _addr = address(std::string("EVT0000007EWoypBxpF8dWMb3xPoGdAMpPU3wehZqmD7VDgzsGyVi"));
 
     if(extract_data(addr, _addr) != EVT_OK) {
         return EVT_INVALID_ADDRESS;
@@ -175,6 +176,7 @@ evt_address_get_key(evt_address_t* addr, char** str/* out */) {
     catch(...) {
         return EVT_INTERNAL_ERROR;
     }
+    return EVT_OK;
 }
 
 int
@@ -186,7 +188,7 @@ evt_address_get_nonce(evt_address_t* addr, uint32_t* nonce) {
     if (addr->sz == 35)
         _addr = address(std::string("EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3"));
     else if (addr->sz == 29)
-        _addr = address(std::string("EVT0xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"));
+        _addr = address(std::string("EVT0000007EWoypBxpF8dWMb3xPoGdAMpPU3wehZqmD7VDgzsGyVi"));
 
     if(extract_data(addr, _addr) != EVT_OK) {
         return EVT_INVALID_ADDRESS;
@@ -199,6 +201,7 @@ evt_address_get_nonce(evt_address_t* addr, uint32_t* nonce) {
     catch(...) {
         return EVT_INTERNAL_ERROR;
     }
+    return EVT_OK;
 }
 
 }
