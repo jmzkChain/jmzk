@@ -7,11 +7,13 @@
 #include "evt_impl.hpp"
 
 #include <string.h>
+#include <stddef.h>
 #include <evt/chain/name.hpp>
 #include <evt/chain/address.hpp>
 #include <fc/crypto/public_key.hpp>
 
-using evt::chain;
+using evt::chain::name;
+using evt::chain::name128;
 using evt::chain::address;
 using fc::crypto::public_key;
 
