@@ -26,6 +26,10 @@ evt_address_from_string(const char* str, evt_address_t** addr /* out */) {
         auto _addr = address(std::string(str));
         *addr = get_evt_data(_addr);
     }
+    catch(...) {
+        return EVT_INTERNAL_ERROR;
+    }
+    return EVT_OK;
 }
 
 int
@@ -81,9 +85,9 @@ evt_address_reserved(evt_address_t** addr/* out */) {
 int
 evt_address_generated(const char* prefix, const char* key, uint32_t nonce, evt_address_t** addr/* out */) {
     try {
-        _prefix = string_to_name(prefix);
-        _key = string_to_name128(key);
-        _addr = address(_prefix, _key, nonce);
+        auto _prefix = name(prefix);
+        auto _key = name128(key);
+        auto _addr = address(_prefix, _key, nonce);
         *addr = get_evt_data(_addr);
     }
     catch(...) {
