@@ -30,7 +30,7 @@ class Address(EvtData):
     @staticmethod
     def public_key(pub_key):
         evt = libevt.check_lib_init()
-        addr_c = evt.ffi.new('evt_address_t')
+        addr_c = evt.ffi.new('evt_address_t**')
         ret = evt.lib.evt_address_public_key(pub_key.data, addr_c)
         evt_exception.evt_exception_raiser(ret)
         return Address(addr_c[0])
@@ -38,7 +38,7 @@ class Address(EvtData):
     @staticmethod
     def reserved():
         evt = libevt.check_lib_init()
-        addr_c = evt.ffi.new('evt_address_t')
+        addr_c = evt.ffi.new('evt_address_t**')
         ret = evt.lib.evt_address_reserved(addr_c)
         evt_exception.evt_exception_raiser(ret)
         return Address(addr_c[0])
@@ -46,7 +46,7 @@ class Address(EvtData):
     @staticmethod
     def generated(prefix, key, nonce):
         evt = libevt.check_lib_init()
-        addr_c = evt.ffi.new('evt_address_t')
+        addr_c = evt.ffi.new('evt_address_t**')
         prefix_c = bytes(prefix, encoding='utf-8')
         key_c = bytes(key, encoding='utf-8')
         ret = evt.lib.evt_address_generated(prefix_c, key_c, nonce, addr_c)
