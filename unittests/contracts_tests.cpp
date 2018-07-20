@@ -196,7 +196,10 @@ BOOST_AUTO_TEST_CASE(contract_issuetoken_test) {
         istk.owner[0] = key;
         to_variant(istk, var);
 
-        my_tester->push_action(N(issuetoken), string_to_name128(get_domain_name()), N128(.issue), var.get_object(), key_seeds, payer);
+        BOOST_CHECK_THROW(my_tester->push_action(N(issuetoken), string_to_name128(get_domain_name()), N128(.issue), var.get_object(), key_seeds, address(N(domain), string_to_name128(get_domain_name()), 0)),charge_exceeded_exception);
+       
+        my_tester->add_money(address(N(domain), string_to_name128(get_domain_name()), 0), asset(100000, symbol(SY(5, EVT))));
+        my_tester->push_action(N(issuetoken), string_to_name128(get_domain_name()), N128(.issue), var.get_object(), key_seeds, address(N(domain), string_to_name128(get_domain_name()), 0));
 
         istk.names = {".t1", ".t2", ".t3"};
         to_variant(istk, var);
@@ -333,38 +336,40 @@ BOOST_AUTO_TEST_CASE(contract_newgroup_test) {
         )=====";
 
         auto var = fc::json::from_string(test_data);
+        auto group_payer  = address(N(domain),".group",0);
+        my_tester->add_money(group_payer, asset(100000, symbol(SY(5, EVT))));
         auto gp  = var.as<newgroup>();
 
         //new group authorization test
-        BOOST_CHECK_THROW(my_tester->push_action(N(newgroup), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer), unsatisfied_authorization);
+        BOOST_CHECK_THROW(my_tester->push_action(N(newgroup), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, group_payer), unsatisfied_authorization);
 
         gp.group.key_ = key;
         to_variant(gp, var);
 
         //action_authorize_exception test
-        BOOST_CHECK_THROW(my_tester->push_action(N(newgroup), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer), action_authorize_exception);
+        BOOST_CHECK_THROW(my_tester->push_action(N(newgroup), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, group_payer), action_authorize_exception);
 
         gp.name = "xxx";
         to_variant(gp, var);
 
         //name match test
-        BOOST_CHECK_THROW(my_tester->push_action(N(newgroup), N128(.group), string_to_name128("xxx"), var.get_object(), key_seeds, payer), group_name_exception);
+        BOOST_CHECK_THROW(my_tester->push_action(N(newgroup), N128(.group), string_to_name128("xxx"), var.get_object(), key_seeds, group_payer), group_name_exception);
 
 
         gp.name        = get_group_name();
         gp.group.name_ = "sdf";
         to_variant(gp, var);
 
-        BOOST_CHECK_THROW(my_tester->push_action(N(newgroup), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer),group_name_exception);
+        BOOST_CHECK_THROW(my_tester->push_action(N(newgroup), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, group_payer),group_name_exception);
 
         gp.group.name_ = get_group_name();
         to_variant(gp, var);
-        my_tester->push_action(N(newgroup), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer);
+        my_tester->push_action(N(newgroup), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, group_payer);
 
         gp.name        = ".gp";
         gp.group.name_ = ".gp";
         to_variant(gp, var);
-        BOOST_CHECK_THROW(my_tester->push_action(N(newgroup), N128(.group), string_to_name128(".gp"), var.get_object(), key_seeds, payer), name_reserved_exception);
+        BOOST_CHECK_THROW(my_tester->push_action(N(newgroup), N128(.group), string_to_name128(".gp"), var.get_object(), key_seeds, group_payer), name_reserved_exception);
 
         my_tester->produce_blocks();
     }
@@ -465,21 +470,23 @@ BOOST_AUTO_TEST_CASE(contract_newfungible_test) {
         )=====";
 
         auto var   = fc::json::from_string(test_data);
+        auto fungible_payer  = address(N(domain),".fungible",0);
+        my_tester->add_money(fungible_payer, asset(100000, symbol(SY(5, EVT))));
         auto newfg = var.as<newfungible>();
 
         newfg.sym          = symbol::from_string(string("5,") + get_symbol_name());
         newfg.total_supply = asset::from_string(string("100.00000 ") + get_symbol_name());
         to_variant(newfg, var);
         //new fungible authorization test
-        BOOST_CHECK_THROW(my_tester->push_action(N(newfungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer), unsatisfied_authorization);
+        BOOST_CHECK_THROW(my_tester->push_action(N(newfungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, fungible_payer), unsatisfied_authorization);
 
         newfg.creator = key;
         to_variant(newfg, var);
-        my_tester->push_action(N(newfungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer);
+        my_tester->push_action(N(newfungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, fungible_payer);
 
         newfg.total_supply = asset::from_string(string("0.00000 ") + get_symbol_name());
         to_variant(newfg, var);
-        BOOST_CHECK_THROW(my_tester->push_action(N(newfungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer), fungible_supply_exception);
+        BOOST_CHECK_THROW(my_tester->push_action(N(newfungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, fungible_payer), fungible_supply_exception);
 
         my_tester->produce_blocks();
     }
@@ -727,6 +734,7 @@ BOOST_AUTO_TEST_CASE(contract_addmeta_test) {
         BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds, payer, 50000), unsatisfied_authorization);
         BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer, 50000), unsatisfied_authorization);
         BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer, 50000), unsatisfied_authorization);
+        BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer, 50000), unsatisfied_authorization);
 
         //meta authorizers test
         admt.creator = tester::get_public_key(N(other));
@@ -734,6 +742,7 @@ BOOST_AUTO_TEST_CASE(contract_addmeta_test) {
         BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), {N(other), N(payer)}, payer, 50000), meta_involve_exception);
         BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), N128(.group), string_to_name128(get_group_name()), var.get_object(), {N(other), N(payer)}, payer, 50000), meta_involve_exception);
         BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), {N(other), N(payer)}, payer, 50000), meta_involve_exception);
+        BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(t1), var.get_object(), {N(other), N(payer)}, payer, 50000), meta_involve_exception);
 
         admt.creator = key;
         to_variant(admt, var);
@@ -744,12 +753,14 @@ BOOST_AUTO_TEST_CASE(contract_addmeta_test) {
 
         my_tester->push_action(N(addmeta), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer, 50000);
 
+        my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer, 50000);
         //meta_key_exception test
         admt.value = "value2";
         to_variant(admt, var);
         BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds, payer, 50000), meta_key_exception);
         BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer, 50000), meta_key_exception);
         BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer, 50000), meta_key_exception);
+        BOOST_CHECK_THROW(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer, 50000), meta_key_exception);
 
         my_tester->produce_blocks();
     }
