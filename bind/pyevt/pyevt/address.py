@@ -91,4 +91,4 @@ class Address(EvtData):
         str = self.evt.ffi.string(str_c[0]).decode('utf-8')
         ret = self.evt.lib.evt_free(str_c[0])
         evt_exception.evt_exception_raiser(ret)
-        return ret
+        return str
