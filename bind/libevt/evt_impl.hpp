@@ -28,14 +28,13 @@ get_evt_data(const T& val) {
 template <typename T>
 int
 extract_data(evt_data_t* data, T& val) {
-    auto rsz = fc::raw::pack_size<T>(val);
-
-    if(data->sz != rsz) {
-        return EVT_INVALID_ARGUMENT;
+    auto ds = fc::datastream<char*>(data->buf, data->sz);
+    try {
+        fc::raw::unpack(ds, val);
     }
-
-    auto ds = fc::datastream<char*>(data->buf, rsz);
-    fc::raw::unpack(ds, val);
+    catch(...) {
+        return EVT_INVALID_BINARY;
+    }
 
     return EVT_OK;
 }
