@@ -163,7 +163,7 @@ evt_address_get_key(evt_address_t* addr, char** str/* out */) {
 }
 
 int
-evt_address_get_nonce(evt_address_t* addr, uint32_t* nonce) {
+evt_address_get_nonce(evt_address_t* addr, uint32_t* nonce/* out */) {
     if (addr == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
@@ -176,6 +176,34 @@ evt_address_get_nonce(evt_address_t* addr, uint32_t* nonce) {
     try {
         auto out = _addr.get_nonce();
         *nonce = out;
+    }
+    catch(...) {
+        return EVT_INTERNAL_ERROR;
+    }
+    return EVT_OK;
+}
+
+int
+evt_address_get_type(evt_address_t* addr, char** str/* out */) {
+    if (addr == nullptr) {
+        return EVT_INVALID_ARGUMENT;
+    }
+
+    auto _addr = address();
+    if (extract_data(addr, _addr) != EVT_OK) {
+        return EVT_INVALID_ADDRESS;
+    }
+
+    try {
+        if (_addr.is_reserved()) {
+            *str = strdup("reserved");
+        }
+        else if (_addr.is_public_key()) {
+            *str = strdup("public_key");
+        }
+        else {
+            *str = strdup("generated");
+        }
     }
     catch(...) {
         return EVT_INTERNAL_ERROR;

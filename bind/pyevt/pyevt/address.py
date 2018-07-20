@@ -83,3 +83,12 @@ class Address(EvtData):
         ret = self.evt.lib.evt_address_get_nonce(self.data, nonce_c)
         evt_exception.evt_exception_raiser(ret)
         return int(nonce_c[0])
+
+    def get_type(self):
+        str_c = self.evt.ffi.new('char**')
+        ret = self.evt.lib.evt_address_get_type(self.data, str_c)
+        evt_exception.evt_exception_raiser(ret)
+        str = self.evt.ffi.string(str_c[0]).decode('utf-8')
+        ret = self.evt.lib.evt_free(str_c[0])
+        evt_exception.evt_exception_raiser(ret)
+        return ret

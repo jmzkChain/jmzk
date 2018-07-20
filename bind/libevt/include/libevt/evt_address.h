@@ -21,7 +21,8 @@ int evt_address_generated(const char* prefix, const char* key, uint32_t nonce, e
 int evt_address_get_public_key(evt_address_t* addr, evt_public_key_t **pub_key/* out */);
 int evt_address_get_prefix(evt_address_t* addr, char** str/* out */);
 int evt_address_get_key(evt_address_t* addr, char** str/* out */);
-int evt_address_get_nonce(evt_address_t* addr, uint32_t* nonce);
+int evt_address_get_nonce(evt_address_t* addr, uint32_t* nonce/* out */);
+int evt_address_get_type(evt_address_t* addr, char** str/* out */);
 
 #ifdef __cplusplus
 } // extern "C"
