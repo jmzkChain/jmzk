@@ -44,7 +44,7 @@ BOOST_AUTO_TEST_CASE( evtaddress ) {
     char* ret;
     auto r3 = evt_address_to_string(addr, &ret);
     BOOST_TEST_REQUIRE(r3 == EVT_OK);
-    BOOST_TEST_REQUIRE(evt_equals(str, ret) == EVT_OK, "\nlhs is " << str << "\nrhs is " << ret);
+    BOOST_TEST_REQUIRE(std::string(str) == std::string(ret), "\nlhs is " << str << "\nrhs is " << ret);
 }
 
 BOOST_AUTO_TEST_CASE( evtecc ) {
