@@ -4,6 +4,7 @@
 #include <boost/test/unit_test.hpp>
 #include <libevt/evt_ecc.h>
 #include <libevt/evt_abi.h>
+#include <libevt/evt_address.h>
 #include <iostream>
 
 void
@@ -14,6 +15,46 @@ dump_mem(evt_data_t* data) {
         printf(" %02hhx", (unsigned char)*ptr);
     }
     printf("\n");
+}
+
+BOOST_AUTO_TEST_CASE( evtaddress ) {
+    evt_address_t* addr = nullptr;
+    auto r11 = evt_address_reserved(&addr);
+    BOOST_TEST_REQUIRE(r11 == EVT_OK);
+    BOOST_TEST_REQUIRE(addr != nullptr);
+    char* type = nullptr;
+    auto r111 = evt_address_get_type(addr, &type);
+    BOOST_TEST_REQUIRE(r111 == EVT_OK);
+    BOOST_TEST_REQUIRE(std::string("reserved")==std::string(type));
+
+    addr = nullptr;
+    auto str = "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3";
+    evt_public_key_t* pub_key;
+    auto r121 = evt_public_key_from_string(str, &pub_key);
+    auto r12 = evt_address_public_key(pub_key, &addr);
+    BOOST_TEST_REQUIRE(r12 == EVT_OK);
+    BOOST_TEST_REQUIRE(addr != nullptr);
+    auto r122 = evt_address_get_type(addr, &type);
+    BOOST_TEST_REQUIRE(r122 == EVT_OK);
+    BOOST_TEST_REQUIRE(std::string("public_key")==std::string(type));
+
+    addr = nullptr;
+    auto r13 = evt_address_generated("evt", "everitoken", 8888, &addr);
+    BOOST_TEST_REQUIRE(r13 == EVT_OK);
+    BOOST_TEST_REQUIRE(addr != nullptr);
+    auto r131 = evt_address_get_type(addr, &type);
+    BOOST_TEST_REQUIRE(r131 == EVT_OK);
+    BOOST_TEST_REQUIRE(std::string("generated")==std::string(type));
+
+    addr = nullptr;
+    auto r2 = evt_address_from_string(str, &addr);
+    BOOST_TEST_REQUIRE(r2 == EVT_OK);
+    BOOST_TEST_REQUIRE(addr != nullptr);
+
+    char* ret;
+    auto r3 = evt_address_to_string(addr, &ret);
+    BOOST_TEST_REQUIRE(r3 == EVT_OK);
+    BOOST_TEST_REQUIRE(std::string(str) == std::string(ret), "\nlhs is " << str << "\nrhs is " << ret);
 }
 
 BOOST_AUTO_TEST_CASE( evtecc ) {

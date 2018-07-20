@@ -9,6 +9,7 @@ class EVTErrCode:
     EVT_INVALID_ACTION = -7
     EVT_INVALID_BINARY = -8
     EVT_INVALID_JSON = -9
+    EVT_INVALID_ADDRESS = -10
     EVT_SIZE_NOT_EQUALS = -11
     EVT_DATA_NOT_EQUALS = -12
     EVT_NOT_INIT = -15
@@ -68,6 +69,12 @@ class EVTInvalidJsonException(Exception):
         super().__init__(self, err)
 
 
+class EVTInvalidAddressException(Exception):
+    def __init__(self):
+        err = 'EVT_INVALID_ADDRESS'
+        super().__init__(self, err)
+
+
 class EVTSizeNotEqualsException(Exception):
     def __init__(self):
         err = 'EVT_SIZE_NOT_EQUALS'
@@ -96,6 +103,7 @@ ex_map = {
     EVTErrCode.EVT_INVALID_ACTION: EVTInvalidActionException,
     EVTErrCode.EVT_INVALID_BINARY: EVTInvalidBinaryException,
     EVTErrCode.EVT_INVALID_JSON: EVTInvalidJsonException,
+    EVTErrCode.EVT_INVALID_ADDRESS: EVTInvalidAddressException,
     EVTErrCode.EVT_SIZE_NOT_EQUALS: EVTSizeNotEqualsException,
     EVTErrCode.EVT_DATA_NOT_EQUALS: EVTDataNotEqualsException,
     EVTErrCode.EVT_NOT_INIT: EVTNotInitException
