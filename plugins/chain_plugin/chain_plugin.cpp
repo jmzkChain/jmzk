@@ -619,7 +619,8 @@ read_only::get_block(const read_only::get_block_params& params) const {
     return fc::mutable_variant_object(pretty_output.get_object())("id", block->id())("block_num", block->block_num())("ref_block_prefix", ref_block_prefix);
 }
 
-fc::variant read_only::get_block_header_state(const get_block_header_state_params& params) const {
+fc::variant
+read_only::get_block_header_state(const get_block_header_state_params& params) const {
     block_state_ptr b;
     optional<uint64_t> block_num;
     std::exception_ptr e;
@@ -639,6 +640,16 @@ fc::variant read_only::get_block_header_state(const get_block_header_state_param
     }
 
     EVT_ASSERT(b, unknown_block_exception, "Could not find reversible block: ${block}", ("block", params.block_num_or_id));
+
+    fc::variant vo;
+    fc::to_variant(static_cast<const block_header_state&>(*b), vo);
+    return vo;
+}
+
+fc::variant
+read_only::get_head_block_header_state(const get_head_block_header_state_params& params) const {
+    auto b = db.head_block_state();
+    EVT_ASSERT(b, unknown_block_exception, "Could not find head block");
 
     fc::variant vo;
     fc::to_variant(static_cast<const block_header_state&>(*b), vo);
