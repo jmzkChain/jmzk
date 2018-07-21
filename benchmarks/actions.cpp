@@ -846,7 +846,19 @@ BM_Action_newsuspend(benchmark::State& state) {
     for(auto _ : state) {
         state.PauseTiming();
 
-        ns.name = get_nonce_name("suspend");
+        ns.name            = get_nonce_name("suspend");
+        auto newdomain_var = fc::json::from_string(ndjson);
+        auto newdom        = newdomain_var.as<newdomain>();
+        newdom.name        = get_nonce_name("");
+        newdom.creator     = evt::testing::tester::get_public_key("evt");
+        newdom.issue.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
+        newdom.manage.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
+        newdom.transfer.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
+
+        for(int i = 0; i < state.range(0); i++) {
+            newdom.name = get_nonce_name("");
+            ns.trx.actions.push_back(action(newdom.name, N128(.create), newdom));
+        }
 
         auto nsact    = action(N128(.suspend), ns.name, ns);
         auto trx_meta = get_trx_meta(*tester->control, nsact, auths);
@@ -860,8 +872,62 @@ BM_Action_newsuspend(benchmark::State& state) {
         trx_ctx.squash();
     }
     state.SetItemsProcessed(state.iterations());
+
+    state.SetLabel(std::string("total: ") + std::to_string(state.iterations() * state.range(0)));
 }
-BENCHMARK(BM_Action_newsuspend);
+BENCHMARK(BM_Action_newsuspend)->Range(1, 8 << 10);
+
+static void
+BM_Action_newsuspend_serialiazition(benchmark::State& state) {
+    auto        tester    = create_tester();
+    const char* test_data = R"=======(
+      {
+          "name": "testsuspend",
+          "proposer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
+          "trx": {
+              "expiration": "2021-07-04T05:14:12",
+              "ref_block_num": "3432",
+              "ref_block_prefix": "291678901",
+              "actions": [
+              ],
+              "transaction_extensions": []
+          }
+      }
+      )=======";
+
+    auto var    = fc::json::from_string(test_data);
+    auto ns     = var.as<newsuspend>();
+    ns.proposer = evt::testing::tester::get_public_key("evt");
+
+    auto auths = std::vector<account_name>{N128(evt)};
+
+    for(auto _ : state) {
+        state.PauseTiming();
+
+        ns.name            = get_nonce_name("suspend");
+        auto newdomain_var = fc::json::from_string(ndjson);
+        auto newdom        = newdomain_var.as<newdomain>();
+        newdom.name        = get_nonce_name("");
+        newdom.creator     = evt::testing::tester::get_public_key("evt");
+        newdom.issue.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
+        newdom.manage.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
+        newdom.transfer.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
+
+        for(int i = 0; i < state.range(0); i++) {
+            newdom.name = get_nonce_name("");
+            ns.trx.actions.push_back(action(newdom.name, N128(.create), newdom));
+        }
+
+        auto nsact = action(N128(.suspend), ns.name, ns);
+        state.ResumeTiming();
+
+        nsact.data_as<newsuspend>();
+    }
+    state.SetItemsProcessed(state.iterations());
+
+    state.SetLabel(std::string("total: ") + std::to_string(state.iterations() * state.range(0)));
+}
+BENCHMARK(BM_Action_newsuspend_serialiazition)->Range(1, 8 << 10);
 
 static void
 BM_Action_cancelsuspend(benchmark::State& state) {
@@ -888,7 +954,18 @@ BM_Action_cancelsuspend(benchmark::State& state) {
     for(auto _ : state) {
         state.PauseTiming();
 
-        ns.name    = get_nonce_name("suspend");
+        ns.name            = get_nonce_name("suspend");
+        auto newdomain_var = fc::json::from_string(ndjson);
+        auto newdom        = newdomain_var.as<newdomain>();
+        newdom.creator     = evt::testing::tester::get_public_key("evt");
+        newdom.issue.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
+        newdom.manage.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
+        newdom.transfer.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
+
+        for(int i = 0; i < state.range(0); i++) {
+            newdom.name = get_nonce_name("");
+            ns.trx.actions.push_back(action(newdom.name, N128(.create), newdom));
+        }
         auto nsact = action(N128(.suspend), ns.name, ns);
         auto auths = std::vector<account_name>{N128(evt)};
 
@@ -909,8 +986,10 @@ BM_Action_cancelsuspend(benchmark::State& state) {
         trx_ctx.squash();
     }
     state.SetItemsProcessed(state.iterations());
+
+    state.SetLabel(std::string("total: ") + std::to_string(state.iterations() * state.range(0)));
 }
-BENCHMARK(BM_Action_cancelsuspend);
+BENCHMARK(BM_Action_cancelsuspend)->Range(1, 8 << 5);
 
 static void
 BM_Action_aprvsuspend(benchmark::State& state) {
@@ -947,9 +1026,11 @@ BM_Action_aprvsuspend(benchmark::State& state) {
         newdom.issue.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
         newdom.manage.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
         newdom.transfer.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
-        to_variant(newdom, newdomain_var);
-        // ns.trx.actions.push_back(tester->get_action(N(newdomain), N128(domain), N128(.create), newdomain_var.get_object()));
-        ns.trx.actions.push_back(action(newdom.name, N128(.create), newdom));
+
+        for(int i = 0; i < state.range(0); i++) {
+            newdom.name = get_nonce_name("");
+            ns.trx.actions.push_back(action(newdom.name, N128(.create), newdom));
+        }
         auto nsact = action(N128(.suspend), ns.name, ns);
 
         tester->push_action(std::move(nsact), auths, address());
@@ -971,8 +1052,75 @@ BM_Action_aprvsuspend(benchmark::State& state) {
         trx_ctx.squash();
     }
     state.SetItemsProcessed(state.iterations());
+
+    state.SetLabel(std::string("total: ") + std::to_string(state.iterations() * state.range(0)));
 }
-BENCHMARK(BM_Action_aprvsuspend);
+BENCHMARK(BM_Action_aprvsuspend)->Range(1, 8 << 10);
+
+static void
+BM_Action_get_signature_keys(benchmark::State& state) {
+    auto        tester    = create_tester();
+    const char* test_data = R"=======(
+      {
+          "name": "testsuspend",
+          "proposer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
+          "trx": {
+              "expiration": "2021-07-04T05:14:12",
+              "ref_block_num": "3432",
+              "ref_block_prefix": "291678901",
+              "actions": [
+              ],
+              "transaction_extensions": []
+          }
+      }
+      )=======";
+
+    auto var    = fc::json::from_string(test_data);
+    auto ns     = var.as<newsuspend>();
+    ns.proposer = evt::testing::tester::get_public_key("evt");
+
+    for(auto _ : state) {
+        state.PauseTiming();
+
+        ns.name    = get_nonce_name("suspend");
+        auto auths = std::vector<account_name>{N128(evt)};
+
+        auto newdomain_var = fc::json::from_string(ndjson);
+        auto newdom        = newdomain_var.as<newdomain>();
+        newdom.name        = get_nonce_name("");
+        newdom.creator     = evt::testing::tester::get_public_key("evt");
+        newdom.issue.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
+        newdom.manage.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
+        newdom.transfer.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
+
+        for(int i = 0; i < state.range(0); i++) {
+            newdom.name = get_nonce_name("");
+            ns.trx.actions.push_back(action(newdom.name, N128(.create), newdom));
+        }
+        auto nsact = action(N128(.suspend), ns.name, ns);
+
+        tester->push_action(std::move(nsact), auths, address());
+
+        auto as       = aprvsuspend();
+        as.name       = ns.name;
+        auto sig      = evt::testing::tester::get_private_key("evt").sign(ns.trx.sig_digest(tester->control->get_chain_id()));
+        as.signatures = {sig};
+
+        auto asact    = action(N128(.suspend), as.name, as);
+        auto trx_meta = get_trx_meta(*tester->control, asact, auths);
+        auto trx_ctx  = get_trx_ctx(*tester->control, trx_meta);
+
+        trx_ctx.init_for_implicit_trx();
+
+        state.ResumeTiming();
+
+        auto signed_keys = ns.trx.get_signature_keys(as.signatures, tester->control->get_chain_id());;
+    }
+    state.SetItemsProcessed(state.iterations());
+
+    state.SetLabel(std::string("total: ") + std::to_string(state.iterations() * state.range(0)));
+}
+BENCHMARK(BM_Action_get_signature_keys)->Range(1, 8 << 10);
 
 static void
 BM_Action_execsuspend(benchmark::State& state) {
@@ -1009,9 +1157,11 @@ BM_Action_execsuspend(benchmark::State& state) {
         newdom.issue.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
         newdom.manage.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
         newdom.transfer.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
-        to_variant(newdom, newdomain_var);
-        // ns.trx.actions.push_back(tester->get_action(N(newdomain), N128(domain), N128(.create), newdomain_var.get_object()));
-        ns.trx.actions.push_back(action(newdom.name, N128(.create), newdom));
+
+        for(int i = 0; i < state.range(0); i++) {
+            newdom.name = get_nonce_name("");
+            ns.trx.actions.push_back(action(newdom.name, N128(.create), newdom));
+        }
         auto nsact = action(N128(.suspend), ns.name, ns);
 
         tester->push_action(std::move(nsact), auths, address());
@@ -1025,7 +1175,7 @@ BM_Action_execsuspend(benchmark::State& state) {
         tester->push_action(std::move(asact), auths, address());
 
         auto es     = execsuspend();
-        es.name     = as.name;
+        es.name     = ns.name;
         es.executor = evt::testing::tester::get_public_key("evt");
 
         auto esact    = action(N128(.suspend), es.name, es);
@@ -1040,5 +1190,7 @@ BM_Action_execsuspend(benchmark::State& state) {
         trx_ctx.squash();
     }
     state.SetItemsProcessed(state.iterations());
+
+    state.SetLabel(std::string("total: ") + std::to_string(state.iterations() * state.range(0)));
 }
-BENCHMARK(BM_Action_execsuspend);
+BENCHMARK(BM_Action_execsuspend)->Range(1, 8 << 10);
