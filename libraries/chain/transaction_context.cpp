@@ -27,6 +27,8 @@ transaction_context::transaction_context(controller&           c,
 void
 transaction_context::init() {
     FC_ASSERT(!is_initialized, "cannot initialize twice");
+    EVT_ASSERT(!trx.trx.actions.empty(), tx_no_action, "There's any actions in this transaction");
+    
     check_time();    // Fail early if deadline has already been exceeded
     if(!control.charge_free_mode()) {
         check_charge();  // Fail early if max charge has already been exceeded
