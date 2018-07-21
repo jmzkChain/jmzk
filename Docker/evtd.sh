@@ -25,4 +25,6 @@ else
     CONFIG_DIR=""
 fi
 
-exec /opt/evt/bin/evtd $CONFIG_DIR $@
+DATA_DIR="--data-dir=/opt/evt/data"
+
+exec /opt/evt/bin/evtd $CONFIG_DIR $DATA_DIR $@

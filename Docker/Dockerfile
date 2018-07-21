@@ -21,15 +21,20 @@ RUN python3 /evt/scripts/symbolstore.py -s /tmp/build/symbols /tmp/build/bin/evt
 FROM ubuntu:18.04
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive && apt-get install -y openssl libssl1.1 && rm -rf /var/lib/apt/lists/*
+
 COPY --from=builder /usr/local/bin/minidump_stackwalk /usr/local/bin/
 COPY --from=builder /usr/local/lib/* /usr/local/lib/
 COPY --from=builder /tmp/build/bin /opt/evt/bin
 COPY --from=builder /tmp/build/symbols /opt/evt/symbols
 COPY --from=builder /etc/evt-version /etc
+
 COPY config.ini /
 COPY evtd.sh /opt/evt/bin/evtd.sh
 RUN chmod +x /opt/evt/bin/evtd.sh
+
 ENV EVT_ROOT=/opt/evt
 ENV LD_LIBRARY_PATH /usr/local/lib
+
 VOLUME /opt/evt/data
+
 ENV PATH /opt/evt/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
