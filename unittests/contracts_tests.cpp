@@ -1090,4 +1090,15 @@ BOOST_AUTO_TEST_CASE(contract_evt2pevt_test) {
     FC_LOG_AND_RETHROW()
 }
 
+BOOST_AUTO_TEST_CASE(empty_action_test) {
+    try {
+        BOOST_CHECK(true);
+        auto trx = signed_transaction();
+        my_tester->set_transaction_headers(trx, payer);
+
+        BOOST_CHECK_THROW(my_tester->push_transaction(trx), tx_no_action);
+    }
+    FC_LOG_AND_RETHROW()
+}
+
 BOOST_AUTO_TEST_SUITE_END()
