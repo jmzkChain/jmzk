@@ -1058,71 +1058,6 @@ BM_Action_aprvsuspend(benchmark::State& state) {
 BENCHMARK(BM_Action_aprvsuspend)->Range(1, 8 << 10);
 
 static void
-BM_Action_get_signature_keys(benchmark::State& state) {
-    auto        tester    = create_tester();
-    const char* test_data = R"=======(
-      {
-          "name": "testsuspend",
-          "proposer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
-          "trx": {
-              "expiration": "2021-07-04T05:14:12",
-              "ref_block_num": "3432",
-              "ref_block_prefix": "291678901",
-              "actions": [
-              ],
-              "transaction_extensions": []
-          }
-      }
-      )=======";
-
-    auto var    = fc::json::from_string(test_data);
-    auto ns     = var.as<newsuspend>();
-    ns.proposer = evt::testing::tester::get_public_key("evt");
-
-    for(auto _ : state) {
-        state.PauseTiming();
-
-        ns.name    = get_nonce_name("suspend");
-        auto auths = std::vector<account_name>{N128(evt)};
-
-        auto newdomain_var = fc::json::from_string(ndjson);
-        auto newdom        = newdomain_var.as<newdomain>();
-        newdom.name        = get_nonce_name("");
-        newdom.creator     = evt::testing::tester::get_public_key("evt");
-        newdom.issue.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
-        newdom.manage.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
-        newdom.transfer.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
-
-        for(int i = 0; i < state.range(0); i++) {
-            newdom.name = get_nonce_name("");
-            ns.trx.actions.push_back(action(newdom.name, N128(.create), newdom));
-        }
-        auto nsact = action(N128(.suspend), ns.name, ns);
-
-        tester->push_action(std::move(nsact), auths, address());
-
-        auto as       = aprvsuspend();
-        as.name       = ns.name;
-        auto sig      = evt::testing::tester::get_private_key("evt").sign(ns.trx.sig_digest(tester->control->get_chain_id()));
-        as.signatures = {sig};
-
-        auto asact    = action(N128(.suspend), as.name, as);
-        auto trx_meta = get_trx_meta(*tester->control, asact, auths);
-        auto trx_ctx  = get_trx_ctx(*tester->control, trx_meta);
-
-        trx_ctx.init_for_implicit_trx();
-
-        state.ResumeTiming();
-
-        auto signed_keys = ns.trx.get_signature_keys(as.signatures, tester->control->get_chain_id());;
-    }
-    state.SetItemsProcessed(state.iterations());
-
-    state.SetLabel(std::string("total: ") + std::to_string(state.iterations() * state.range(0)));
-}
-BENCHMARK(BM_Action_get_signature_keys)->Range(1, 8 << 10);
-
-static void
 BM_Action_execsuspend(benchmark::State& state) {
     auto        tester    = create_tester();
     const char* test_data = R"=======(
@@ -1194,3 +1129,79 @@ BM_Action_execsuspend(benchmark::State& state) {
     state.SetLabel(std::string("total: ") + std::to_string(state.iterations() * state.range(0)));
 }
 BENCHMARK(BM_Action_execsuspend)->Range(1, 8 << 10);
+
+static void
+BM_Action_get_signature_keys(benchmark::State& state) {
+    auto tester = create_tester();
+
+    auto newdomain_var = fc::json::from_string(ndjson);
+    auto newdom        = newdomain_var.as<newdomain>();
+    newdom.name        = get_nonce_name("");
+    newdom.creator     = evt::testing::tester::get_public_key("evt");
+
+    newdom.issue.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
+    newdom.manage.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
+    newdom.transfer.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
+
+    auto trx = transaction();
+
+    for(auto _ : state) {
+        state.PauseTiming();
+
+        auto sigs = std::vector<signature_type>();
+        sigs.reserve(state.range(1));
+
+        for(int i = 0; i < state.range(0); i++) {
+            newdom.name = get_nonce_name("");
+            trx.actions.push_back(action(newdom.name, N128(.create), newdom));
+        }
+
+        auto chain_id = tester->control->get_chain_id();
+        auto digest   = trx.sig_digest(chain_id);
+        
+        for(int i = 0; i < state.range(1); i++) {
+            auto pkey = private_key_type::generate();
+            sigs.emplace_back(pkey.sign(digest));
+        }
+
+        state.ResumeTiming();
+
+        auto signed_keys = trx.get_signature_keys(sigs, chain_id);;
+    }
+    state.SetItemsProcessed(state.iterations());
+}
+BENCHMARK(BM_Action_get_signature_keys)->Ranges({{1, 8 << 4}, {1, 8}});
+
+static void
+BM_Action_trx_sig_digest(benchmark::State& state) {
+    auto tester = create_tester();
+
+    auto newdomain_var = fc::json::from_string(ndjson);
+    auto newdom        = newdomain_var.as<newdomain>();
+    newdom.name        = get_nonce_name("");
+    newdom.creator     = evt::testing::tester::get_public_key("evt");
+
+    newdom.issue.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
+    newdom.manage.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
+    newdom.transfer.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
+
+    auto trx = transaction();
+
+    for(auto _ : state) {
+        state.PauseTiming();
+
+        for(int i = 0; i < state.range(0); i++) {
+            newdom.name = get_nonce_name("");
+            trx.actions.push_back(action(newdom.name, N128(.create), newdom));
+        }
+
+        auto chain_id = tester->control->get_chain_id();
+
+        state.ResumeTiming();
+
+        auto digest = trx.sig_digest(chain_id);
+        (void)digest;
+    }
+    state.SetItemsProcessed(state.iterations());
+}
+BENCHMARK(BM_Action_trx_sig_digest)->Range(1, 8 << 10);
