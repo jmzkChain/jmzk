@@ -82,6 +82,7 @@ public:
     uint32_t
     calculate(const packed_transaction& ptrx, size_t sig_num = 0) {
         using namespace __internal;
+        EVT_ASSERT(!ptrx.get_transaction().actions.empty(), tx_no_action, "There's any actions in this transaction");
 
         sig_num = std::max(sig_num, ptrx.signatures.size());
 
