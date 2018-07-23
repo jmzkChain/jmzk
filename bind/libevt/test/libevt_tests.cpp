@@ -29,11 +29,16 @@ BOOST_AUTO_TEST_CASE( evtaddress ) {
 
     addr = nullptr;
     auto str = "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3";
+
     evt_public_key_t* pub_key;
     auto r121 = evt_public_key_from_string(str, &pub_key);
+    BOOST_TEST_REQUIRE(r121 == EVT_OK);
+    BOOST_TEST_REQUIRE(pub_key != nullptr);
+
     auto r12 = evt_address_public_key(pub_key, &addr);
     BOOST_TEST_REQUIRE(r12 == EVT_OK);
     BOOST_TEST_REQUIRE(addr != nullptr);
+
     auto r122 = evt_address_get_type(addr, &type);
     BOOST_TEST_REQUIRE(r122 == EVT_OK);
     BOOST_TEST_REQUIRE(std::string("public_key")==std::string(type));
@@ -42,6 +47,7 @@ BOOST_AUTO_TEST_CASE( evtaddress ) {
     auto r13 = evt_address_generated("evt", "everitoken", 8888, &addr);
     BOOST_TEST_REQUIRE(r13 == EVT_OK);
     BOOST_TEST_REQUIRE(addr != nullptr);
+    
     auto r131 = evt_address_get_type(addr, &type);
     BOOST_TEST_REQUIRE(r131 == EVT_OK);
     BOOST_TEST_REQUIRE(std::string("generated")==std::string(type));

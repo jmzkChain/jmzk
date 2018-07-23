@@ -17,7 +17,7 @@ class Transaction:
         self.transaction_extensions = []
 
         self.max_charge = "10000"
-        self.payer = None
+        self.payer = "EVT00000000000000000000000000000000000000000000000000"
 
         self.priv_keys = []
         self.signatures = []
@@ -56,8 +56,6 @@ class Transaction:
             'payer': self.payer,
             'transaction_extensions': self.transaction_extensions
         }
-        if self.payer is None:
-            del ret['payer']
         return ret
 
     def dumps(self):
