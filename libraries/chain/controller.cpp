@@ -1012,12 +1012,10 @@ signed_block_ptr
 controller::fetch_block_by_id(block_id_type id) const {
     auto state = my->fork_db.get_block(id);
     if(state) {
-        printf("%s\n", "1");
         return state->block;
     }
     auto bptr = fetch_block_by_number(block_header::num_from_id(id));
     if(bptr && bptr->id() == id) {
-        printf("%s\n", "2");
         return bptr;
     }
     return signed_block_ptr();
@@ -1028,11 +1026,9 @@ controller::fetch_block_by_number(uint32_t block_num) const {
     try {
         auto blk_state = my->fork_db.get_block_in_current_chain_by_num(block_num);
         if(blk_state) {
-            printf("%s\n", "3");
             return blk_state->block;
         }
 
-        printf("%s\n", "4");
         return my->blog.read_block_by_num(block_num);
     }
     FC_CAPTURE_AND_RETHROW((block_num))
