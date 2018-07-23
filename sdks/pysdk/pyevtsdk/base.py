@@ -1,6 +1,6 @@
 import json
 
-from pyevt import abi, ecc, libevt
+from pyevt import abi, address, ecc, libevt
 
 libevt.init_lib()
 
@@ -30,6 +30,28 @@ class AuthorizerRef:
 
     def value(self):
         return '[%s] %s' % (self.type, self.key)
+
+
+class Address:
+    def __init__(self, from_string=None):
+        if from_string == None:
+            self.addr = address.Address.reserved()
+        else:
+            self.addr = address.Address.from_string(from_string)
+
+    def set_public_key(self, pub_key):
+        self.addr = address.Address.public_key(pub_key)
+        return self.addr
+
+    def set_generated(self, prefix, key, nonce):
+        self.addr = address.Address.generated(prefix, key, nonce)
+        return self.addr
+
+    def get_type(self):
+        return self.addr.get_type()
+
+    def __str__(self):
+        return self.addr.to_string()
 
 
 class SymbolArgsErrorException(Exception):
@@ -205,6 +227,7 @@ class EVT2PEVTAbi(BaseType):
     def __init__(self, _from, to, number, memo):
         args = {'from': _from, 'to': to, 'number': number, 'memo': memo}
         super().__init__(**args)
+
 
 class NewSuspendAbi(BaseType):
     def __init__(self, name, proposer, trx):
