@@ -33,6 +33,9 @@ decode(const std::string& nums, int pos, int end) {
     }
 
     auto b = bytes();
+    for(auto i = 0u; i < nums.find_first_not_of('0'); i++) {
+        b.emplace_back(0);
+    }
     boost::multiprecision::export_bits(num, std::back_inserter(b), 8);
 
     return b;
@@ -63,9 +66,13 @@ parse_segments(const bytes& b) {
         else if(k <= 180) {
             FC_ASSERT(b.size() > i + 1); // first read length byte
             auto sz = (uint8_t)b[i + 1];
-            FC_ASSERT(sz > 0);
-            FC_ASSERT(b.size() > i + 1 + sz);
-            segs.emplace(k, evt_link::segment(k, std::string(&b[0] + i + 2, sz)));
+            if(sz > 0) {
+                FC_ASSERT(b.size() > i + 1 + sz);
+                segs.emplace(k, evt_link::segment(k, std::string(&b[0] + i + 2, sz)));
+            }
+            else {
+                segs.emplace(k, evt_link::segment(k, std::string()));
+            }
 
             i += 2 + sz;
         }
@@ -118,8 +125,10 @@ evt_link::parse_from_evtli(const std::string& str) {
     }
 
     auto link = evt_link();
-    link.segments_   = parse_segments(bsegs);
-    link.signatures_ = parse_signatures(bsigs);
+
+    link.segments_       = parse_segments(bsegs);
+    link.signatures_     = parse_signatures(bsigs);
+    link.segments_bytes_ = std::move(bsegs);
 
     return link;
 }
@@ -135,6 +144,16 @@ evt_link::get_segment(uint32_t key) const {
 bool
 evt_link::has_segment(uint32_t key) const {
     return segments_.find(key) != segments_.end();
+}
+
+fc::flat_set<public_key_type>
+evt_link::restore_keys() const {
+    auto keys = fc::flat_set<public_key_type>();
+    auto hash = fc::sha256::hash(&segments_bytes_[0], segments_bytes_.size());
+    for(auto& sig : signatures_) {
+        keys.emplace(public_key_type(sig, hash));
+    }
+    return keys;
 }
 
 }}}  // namespac evt::chain::contracts

@@ -32,9 +32,14 @@ public:
     const fc::flat_map<uint32_t, segment>& get_segments() const { return segments_; }
     const fc::flat_set<signature_type>& get_signatures() const {return signatures_; }
 
+public:
+    fc::flat_set<public_key_type> restore_keys() const;
+
 private:
     fc::flat_map<uint32_t, segment> segments_;
     fc::flat_set<signature_type>    signatures_;
+
+    bytes segments_bytes_;
 };
 
 }}}  // namespac evt::chain::contracts
