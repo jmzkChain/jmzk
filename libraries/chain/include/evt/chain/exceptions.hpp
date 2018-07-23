@@ -156,6 +156,8 @@ FC_DECLARE_DERIVED_EXCEPTION( suspend_not_required_keys_exception, action_except
 FC_DECLARE_DERIVED_EXCEPTION( suspend_executor_exception,          action_exception, 3040033, "Invalid executor." );
 FC_DECLARE_DERIVED_EXCEPTION( suspend_invalid_action_exception,    action_exception, 3040034, "Action is not valid for suspend transaction." );
 FC_DECLARE_DERIVED_EXCEPTION( name_reserved_exception,             action_exception, 3040035, "Name is reserved." );
+FC_DECLARE_DERIVED_EXCEPTION( evt_link_exception,                  action_exception, 3040036, "EVT-Link is not valid." );
+FC_DECLARE_DERIVED_EXCEPTION( evt_link_no_key_exception,           action_exception, 3040037, "Specific segment key is not in this evt-link." );
 
 FC_DECLARE_DERIVED_EXCEPTION( pop_empty_chain,                   undo_database_exception, 3070001, "There are no blocks to be popped." );
 
