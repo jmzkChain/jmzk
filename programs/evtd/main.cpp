@@ -94,7 +94,12 @@ initialize_logging() {
 
 static bool
 dump_callback(const google_breakpad::MinidumpDescriptor& descriptor, void* context, bool succeeded) {
-    fprintf(stderr, "minicore dumped, path: %s\n", descriptor.path());
+    if(succeeded) {
+        fprintf(stderr, "minicore dumped, path: %s\n", descriptor.path());
+    }
+    else {
+        fprintf(stderr, "minicore-dumping failed\n");
+    }
     return succeeded;
 }
 
@@ -118,8 +123,9 @@ main(int argc, char** argv) {
         auto root = fc::app_path();
         app().set_default_data_dir(root / "evt/evtd/data");
         app().set_default_config_dir(root / "evt/evtd/config");
-        if(!app().initialize<chain_plugin, http_plugin, net_plugin, producer_plugin>(argc, argv))
+        if(!app().initialize<chain_plugin, http_plugin, net_plugin, producer_plugin>(argc, argv)) {
             return INITIALIZE_FAIL;
+        }
         initialize_logging();
 
 #ifdef BREAKPAD_SUPPORT

@@ -26,7 +26,7 @@ struct base_act_charge {
 
     static uint32_t
     cpu(const action& act) {
-        return 1;
+        return 15;
     }
 
     static uint32_t
@@ -75,7 +75,7 @@ private:
 
     uint32_t
     cpu(const packed_transaction&, size_t sig_num) {
-        return sig_num;
+        return sig_num * 60;
     }
 
 public:
@@ -107,10 +107,27 @@ namespace __internal {
 using namespace contracts;
 
 template<>
+struct act_charge<issuetoken> : public base_act_charge {
+    static uint32_t
+    cpu(const action& act) {
+        auto& itact = act.data_as<const issuetoken&>();
+        if(itact.names.empty()) {
+            return 15;
+        }
+        return 15 + (itact.names.size() - 1) * 3;
+    }
+};
+
+template<>
 struct act_charge<addmeta> : public base_act_charge {
     static uint32_t
+    cpu(const action& act) {
+        return 600;
+    }
+
+    static uint32_t
     extra_factor(const action& act) {
-        return 100;
+        return 1;
     }
 };
 
