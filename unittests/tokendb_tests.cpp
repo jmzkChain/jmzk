@@ -324,713 +324,665 @@ update_suspend_data() {
 }
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_adddomain_test", "[tokendb]") {
-    try {
-        CHECK(true);
+    CHECK(true);
 
-        auto dom = add_domain_data();
-        CHECK(!tokendb.exists_domain(dom.name));
+    auto dom = add_domain_data();
+    CHECK(!tokendb.exists_domain(dom.name));
 
-        auto re = tokendb.add_domain(dom);
-        REQUIRE(re == 0);
-        CHECK(tokendb.exists_domain(dom.name));
+    auto re = tokendb.add_domain(dom);
+    REQUIRE(re == 0);
+    CHECK(tokendb.exists_domain(dom.name));
 
-        domain_def dom_;
-        tokendb.read_domain(dom.name, dom_);
-        CHECK(dom.name == dom_.name);
-        CHECK(dom.create_time.to_iso_string() == dom_.create_time.to_iso_string());
+    domain_def dom_;
+    tokendb.read_domain(dom.name, dom_);
+    CHECK(dom.name == dom_.name);
+    CHECK(dom.create_time.to_iso_string() == dom_.create_time.to_iso_string());
 
-        CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)dom_.creator);
+    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)dom_.creator);
 
-        CHECK("issue" == dom_.issue.name);
-        CHECK(1 == dom_.issue.threshold);
-        REQUIRE(1 == dom_.issue.authorizers.size());
-        CHECK(dom_.issue.authorizers[0].ref.is_account_ref());
-        CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)dom_.issue.authorizers[0].ref.get_account());
-        CHECK(1 == dom_.issue.authorizers[0].weight);
+    CHECK("issue" == dom_.issue.name);
+    CHECK(1 == dom_.issue.threshold);
+    REQUIRE(1 == dom_.issue.authorizers.size());
+    CHECK(dom_.issue.authorizers[0].ref.is_account_ref());
+    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)dom_.issue.authorizers[0].ref.get_account());
+    CHECK(1 == dom_.issue.authorizers[0].weight);
 
-        CHECK("transfer" == dom_.transfer.name);
-        CHECK(1 == dom_.transfer.threshold);
-        REQUIRE(1 == dom_.transfer.authorizers.size());
-        CHECK(dom_.transfer.authorizers[0].ref.is_owner_ref());
-        CHECK(1 == dom_.transfer.authorizers[0].weight);
+    CHECK("transfer" == dom_.transfer.name);
+    CHECK(1 == dom_.transfer.threshold);
+    REQUIRE(1 == dom_.transfer.authorizers.size());
+    CHECK(dom_.transfer.authorizers[0].ref.is_owner_ref());
+    CHECK(1 == dom_.transfer.authorizers[0].weight);
 
-        CHECK("manage" == dom_.manage.name);
-        CHECK(1 == dom_.manage.threshold);
-        REQUIRE(1 == dom_.manage.authorizers.size());
-        CHECK(dom_.manage.authorizers[0].ref.is_account_ref());
-        CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)dom_.manage.authorizers[0].ref.get_account());
-        CHECK(1 == dom_.manage.authorizers[0].weight);
-    }
-    FC_LOG_AND_RETHROW()
+    CHECK("manage" == dom_.manage.name);
+    CHECK(1 == dom_.manage.threshold);
+    REQUIRE(1 == dom_.manage.authorizers.size());
+    CHECK(dom_.manage.authorizers[0].ref.is_account_ref());
+    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)dom_.manage.authorizers[0].ref.get_account());
+    CHECK(1 == dom_.manage.authorizers[0].weight);
 }
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_updatedomain_test", "[tokendb]") {
-    try {
-        domain_def dom = update_domain_data();
-        REQUIRE(tokendb.exists_domain(dom.name));
-        dom.metas[0].key = "key" + boost::lexical_cast<std::string>(time(0));
+    domain_def dom = update_domain_data();
+    REQUIRE(tokendb.exists_domain(dom.name));
+    dom.metas[0].key = "key" + boost::lexical_cast<std::string>(time(0));
 
-        auto re = tokendb.update_domain(dom);
-        REQUIRE(re == 0);
+    auto re = tokendb.update_domain(dom);
+    REQUIRE(re == 0);
 
-        domain_def dom_;
-        tokendb.read_domain(dom.name, dom_);
+    domain_def dom_;
+    tokendb.read_domain(dom.name, dom_);
 
-        CHECK(dom.name == dom_.name);
+    CHECK(dom.name == dom_.name);
 
-        CHECK("issue" == dom_.issue.name);
-        CHECK(1 == dom_.issue.threshold);
-        REQUIRE(1 == dom_.issue.authorizers.size());
-        CHECK(dom_.issue.authorizers[0].ref.is_account_ref());
-        CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)dom_.issue.authorizers[0].ref.get_account());
-        CHECK(1 == dom_.issue.authorizers[0].weight);
+    CHECK("issue" == dom_.issue.name);
+    CHECK(1 == dom_.issue.threshold);
+    REQUIRE(1 == dom_.issue.authorizers.size());
+    CHECK(dom_.issue.authorizers[0].ref.is_account_ref());
+    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)dom_.issue.authorizers[0].ref.get_account());
+    CHECK(1 == dom_.issue.authorizers[0].weight);
 
-        CHECK("transfer" == dom_.transfer.name);
-        CHECK(1 == dom_.transfer.threshold);
-        REQUIRE(1 == dom_.transfer.authorizers.size());
-        CHECK(dom_.transfer.authorizers[0].ref.is_owner_ref());
-        CHECK(1 == dom_.transfer.authorizers[0].weight);
+    CHECK("transfer" == dom_.transfer.name);
+    CHECK(1 == dom_.transfer.threshold);
+    REQUIRE(1 == dom_.transfer.authorizers.size());
+    CHECK(dom_.transfer.authorizers[0].ref.is_owner_ref());
+    CHECK(1 == dom_.transfer.authorizers[0].weight);
 
-        CHECK("manage" == dom_.manage.name);
-        CHECK(1 == dom_.manage.threshold);
-        REQUIRE(1 == dom_.manage.authorizers.size());
-        CHECK(dom_.manage.authorizers[0].ref.is_account_ref());
-        CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)dom_.manage.authorizers[0].ref.get_account());
-        CHECK(1 == dom_.manage.authorizers[0].weight);
+    CHECK("manage" == dom_.manage.name);
+    CHECK(1 == dom_.manage.threshold);
+    REQUIRE(1 == dom_.manage.authorizers.size());
+    CHECK(dom_.manage.authorizers[0].ref.is_account_ref());
+    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)dom_.manage.authorizers[0].ref.get_account());
+    CHECK(1 == dom_.manage.authorizers[0].weight);
 
-        REQUIRE(1 == dom_.metas.size());
-        CHECK(dom.metas[0].key == dom_.metas[0].key);
-        CHECK("value" == dom_.metas[0].value);
-        CHECK(dom_.metas[0].creator.is_account_ref());
-        CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)dom_.metas[0].creator.get_account());
-    }
-    FC_LOG_AND_RETHROW()
+    REQUIRE(1 == dom_.metas.size());
+    CHECK(dom.metas[0].key == dom_.metas[0].key);
+    CHECK("value" == dom_.metas[0].value);
+    CHECK(dom_.metas[0].creator.is_account_ref());
+    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)dom_.metas[0].creator.get_account());
 }
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_issuetoken_test", "[tokendb]") {
-    try {
-        issuetoken istk = issue_tokens_data();
-        CHECK(!tokendb.exists_token(istk.domain, istk.names[0]));
-        CHECK(!tokendb.exists_token(istk.domain, istk.names[1]));
+    issuetoken istk = issue_tokens_data();
+    CHECK(!tokendb.exists_token(istk.domain, istk.names[0]));
+    CHECK(!tokendb.exists_token(istk.domain, istk.names[1]));
 
-        auto re = tokendb.issue_tokens(istk);
-        REQUIRE(re == 0);
+    auto re = tokendb.issue_tokens(istk);
+    REQUIRE(re == 0);
 
-        CHECK(tokendb.exists_token(istk.domain, istk.names[0]));
-        CHECK(tokendb.exists_token(istk.domain, istk.names[1]));
+    CHECK(tokendb.exists_token(istk.domain, istk.names[0]));
+    CHECK(tokendb.exists_token(istk.domain, istk.names[1]));
 
-        token_def tk1_;
-        token_def tk2_;
-        tokendb.read_token(istk.domain, istk.names[0], tk1_);
+    token_def tk1_;
+    token_def tk2_;
+    tokendb.read_token(istk.domain, istk.names[0], tk1_);
 
-        CHECK("domain" == tk1_.domain);
-        CHECK(istk.names[0] == tk1_.name);
-        CHECK(istk.owner == tk1_.owner);
+    CHECK("domain" == tk1_.domain);
+    CHECK(istk.names[0] == tk1_.name);
+    CHECK(istk.owner == tk1_.owner);
 
-        tokendb.read_token(istk.domain, istk.names[1], tk2_);
+    tokendb.read_token(istk.domain, istk.names[1], tk2_);
 
-        CHECK("domain" == tk2_.domain);
-        CHECK(istk.names[1] == tk2_.name);
-        CHECK(istk.owner == tk2_.owner);
-    }
-    FC_LOG_AND_RETHROW()
+    CHECK("domain" == tk2_.domain);
+    CHECK(istk.names[1] == tk2_.name);
+    CHECK(istk.owner == tk2_.owner);
 }
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_updatetoken_test", "[tokendb]") {
-    try {
-        token_def tk    = update_token_data();
-        tk.metas[0].key = "key" + boost::lexical_cast<std::string>(time(0));
+    token_def tk    = update_token_data();
+    tk.metas[0].key = "key" + boost::lexical_cast<std::string>(time(0));
 
-        auto re = tokendb.update_token(tk);
-        REQUIRE(re == 0);
+    auto re = tokendb.update_token(tk);
+    REQUIRE(re == 0);
 
-        token_def tk_;
-        tokendb.read_token(tk.domain, tk.name, tk_);
+    token_def tk_;
+    tokendb.read_token(tk.domain, tk.name, tk_);
 
-        CHECK("domain" == tk_.domain);
-        CHECK(tk.name == tk_.name);
-        CHECK(tk.owner == tk_.owner);
+    CHECK("domain" == tk_.domain);
+    CHECK(tk.name == tk_.name);
+    CHECK(tk.owner == tk_.owner);
 
-        REQUIRE(1 == tk_.metas.size());
-        CHECK(tk.metas[0].key == tk_.metas[0].key);
-        CHECK("value" == tk_.metas[0].value);
-        CHECK(tk_.metas[0].creator.is_account_ref());
-        CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)tk_.metas[0].creator.get_account());
-    }
-    FC_LOG_AND_RETHROW()
+    REQUIRE(1 == tk_.metas.size());
+    CHECK(tk.metas[0].key == tk_.metas[0].key);
+    CHECK("value" == tk_.metas[0].value);
+    CHECK(tk_.metas[0].creator.is_account_ref());
+    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)tk_.metas[0].creator.get_account());
 }
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_addgroup_test", "[tokendb]") {
-    try {
-        group_def gp = add_group_data();
-        CHECK(!tokendb.exists_group(gp.name_));
+    group_def gp = add_group_data();
+    CHECK(!tokendb.exists_group(gp.name_));
 
-        auto re = tokendb.add_group(gp);
-        REQUIRE(re == 0);
-        CHECK(tokendb.exists_group(gp.name_));
+    auto re = tokendb.add_group(gp);
+    REQUIRE(re == 0);
+    CHECK(tokendb.exists_group(gp.name_));
 
-        group_def gp_;
-        tokendb.read_group(gp.name(), gp_);
+    group_def gp_;
+    tokendb.read_group(gp.name(), gp_);
 
-        CHECK(gp.name() == gp_.name());
-        CHECK("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)gp_.key());
+    CHECK(gp.name() == gp_.name());
+    CHECK("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)gp_.key());
 
-        auto root = gp_.root();
-        REQUIRE(root.validate());
-        REQUIRE(root.is_root());
-        REQUIRE(3 == root.size);
-        CHECK(1 == root.index);
-        CHECK(6 == root.threshold);
-        CHECK(0 == root.weight);
+    auto root = gp_.root();
+    REQUIRE(root.validate());
+    REQUIRE(root.is_root());
+    REQUIRE(3 == root.size);
+    CHECK(1 == root.index);
+    CHECK(6 == root.threshold);
+    CHECK(0 == root.weight);
 
-        auto son0 = gp_.get_child_node(root, 0);
-        REQUIRE(son0.validate());
-        REQUIRE(2 == son0.size);
-        CHECK(1 == son0.threshold);
-        CHECK(3 == son0.weight);
+    auto son0 = gp_.get_child_node(root, 0);
+    REQUIRE(son0.validate());
+    REQUIRE(2 == son0.size);
+    CHECK(1 == son0.threshold);
+    CHECK(3 == son0.weight);
 
-        auto son0_son0 = gp_.get_child_node(son0, 0);
-        REQUIRE(son0_son0.validate());
-        REQUIRE(son0_son0.is_leaf());
-        CHECK("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)gp_.get_leaf_key(son0_son0));
-        CHECK(1 == son0_son0.weight);
+    auto son0_son0 = gp_.get_child_node(son0, 0);
+    REQUIRE(son0_son0.validate());
+    REQUIRE(son0_son0.is_leaf());
+    CHECK("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)gp_.get_leaf_key(son0_son0));
+    CHECK(1 == son0_son0.weight);
 
-        auto son0_son1 = gp_.get_child_node(son0, 1);
-        REQUIRE(son0_son1.validate());
-        REQUIRE(son0_son1.is_leaf());
-        CHECK("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)gp_.get_leaf_key(son0_son1));
-        CHECK(1 == son0_son1.weight);
+    auto son0_son1 = gp_.get_child_node(son0, 1);
+    REQUIRE(son0_son1.validate());
+    REQUIRE(son0_son1.is_leaf());
+    CHECK("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)gp_.get_leaf_key(son0_son1));
+    CHECK(1 == son0_son1.weight);
 
-        auto son1 = gp_.get_child_node(root, 1);
-        REQUIRE(son1.validate());
-        REQUIRE(son1.is_leaf());
-        CHECK("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)gp_.get_leaf_key(son1));
-        CHECK(3 == son1.weight);
+    auto son1 = gp_.get_child_node(root, 1);
+    REQUIRE(son1.validate());
+    REQUIRE(son1.is_leaf());
+    CHECK("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)gp_.get_leaf_key(son1));
+    CHECK(3 == son1.weight);
 
-        auto son2 = gp_.get_child_node(root, 2);
-        REQUIRE(son2.validate());
-        REQUIRE(2 == son2.size);
-        CHECK(1 == son2.threshold);
-        CHECK(3 == son2.weight);
+    auto son2 = gp_.get_child_node(root, 2);
+    REQUIRE(son2.validate());
+    REQUIRE(2 == son2.size);
+    CHECK(1 == son2.threshold);
+    CHECK(3 == son2.weight);
 
-        auto son2_son0 = gp_.get_child_node(son2, 0);
-        REQUIRE(son2_son0.validate());
-        REQUIRE(son2_son0.is_leaf());
-        CHECK("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)gp_.get_leaf_key(son2_son0));
-        CHECK(1 == son2_son0.weight);
+    auto son2_son0 = gp_.get_child_node(son2, 0);
+    REQUIRE(son2_son0.validate());
+    REQUIRE(son2_son0.is_leaf());
+    CHECK("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)gp_.get_leaf_key(son2_son0));
+    CHECK(1 == son2_son0.weight);
 
-        auto son2_son1 = gp_.get_child_node(son2, 1);
-        REQUIRE(son2_son1.validate());
-        REQUIRE(son2_son1.is_leaf());
-        CHECK("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)gp_.get_leaf_key(son2_son1));
-        CHECK(2 == son2_son1.weight);
-    }
-    FC_LOG_AND_RETHROW()
+    auto son2_son1 = gp_.get_child_node(son2, 1);
+    REQUIRE(son2_son1.validate());
+    REQUIRE(son2_son1.is_leaf());
+    CHECK("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)gp_.get_leaf_key(son2_son1));
+    CHECK(2 == son2_son1.weight);
 }
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_updategroup_test", "[tokendb]") {
-    try {
-        group_def gp = update_group_data();
-        auto      re = tokendb.update_group(gp);
+    group_def gp = update_group_data();
+    auto      re = tokendb.update_group(gp);
 
-        REQUIRE(re == 0);
-        CHECK(tokendb.exists_group(gp.name_));
+    REQUIRE(re == 0);
+    CHECK(tokendb.exists_group(gp.name_));
 
-        group_def gp_;
-        tokendb.read_group(gp.name(), gp_);
+    group_def gp_;
+    tokendb.read_group(gp.name(), gp_);
 
-        CHECK(gp.name() == gp_.name());
-        CHECK("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)gp_.key());
+    CHECK(gp.name() == gp_.name());
+    CHECK("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)gp_.key());
 
-        auto root = gp_.root();
-        REQUIRE(root.validate());
-        REQUIRE(root.is_root());
-        REQUIRE(3 == root.size);
-        CHECK(1 == root.index);
-        CHECK(5 == root.threshold);
-        CHECK(0 == root.weight);
+    auto root = gp_.root();
+    REQUIRE(root.validate());
+    REQUIRE(root.is_root());
+    REQUIRE(3 == root.size);
+    CHECK(1 == root.index);
+    CHECK(5 == root.threshold);
+    CHECK(0 == root.weight);
 
-        auto son0 = gp_.get_child_node(root, 0);
-        REQUIRE(son0.validate());
-        REQUIRE(2 == son0.size);
-        CHECK(1 == son0.threshold);
-        CHECK(3 == son0.weight);
+    auto son0 = gp_.get_child_node(root, 0);
+    REQUIRE(son0.validate());
+    REQUIRE(2 == son0.size);
+    CHECK(1 == son0.threshold);
+    CHECK(3 == son0.weight);
 
-        auto son0_son0 = gp_.get_child_node(son0, 0);
-        REQUIRE(son0_son0.validate());
-        REQUIRE(son0_son0.is_leaf());
-        CHECK("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)gp_.get_leaf_key(son0_son0));
-        CHECK(1 == son0_son0.weight);
+    auto son0_son0 = gp_.get_child_node(son0, 0);
+    REQUIRE(son0_son0.validate());
+    REQUIRE(son0_son0.is_leaf());
+    CHECK("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)gp_.get_leaf_key(son0_son0));
+    CHECK(1 == son0_son0.weight);
 
-        auto son0_son1 = gp_.get_child_node(son0, 1);
-        REQUIRE(son0_son1.validate());
-        REQUIRE(son0_son1.is_leaf());
-        CHECK("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)gp_.get_leaf_key(son0_son1));
-        CHECK(1 == son0_son1.weight);
+    auto son0_son1 = gp_.get_child_node(son0, 1);
+    REQUIRE(son0_son1.validate());
+    REQUIRE(son0_son1.is_leaf());
+    CHECK("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)gp_.get_leaf_key(son0_son1));
+    CHECK(1 == son0_son1.weight);
 
-        auto son1 = gp_.get_child_node(root, 1);
-        REQUIRE(son1.validate());
-        REQUIRE(son1.is_leaf());
-        CHECK("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)gp_.get_leaf_key(son1));
-        CHECK(3 == son1.weight);
+    auto son1 = gp_.get_child_node(root, 1);
+    REQUIRE(son1.validate());
+    REQUIRE(son1.is_leaf());
+    CHECK("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)gp_.get_leaf_key(son1));
+    CHECK(3 == son1.weight);
 
-        auto son2 = gp_.get_child_node(root, 2);
-        REQUIRE(son2.validate());
-        REQUIRE(2 == son2.size);
-        CHECK(1 == son2.threshold);
-        CHECK(3 == son2.weight);
+    auto son2 = gp_.get_child_node(root, 2);
+    REQUIRE(son2.validate());
+    REQUIRE(2 == son2.size);
+    CHECK(1 == son2.threshold);
+    CHECK(3 == son2.weight);
 
-        auto son2_son0 = gp_.get_child_node(son2, 0);
-        REQUIRE(son2_son0.validate());
-        REQUIRE(son2_son0.is_leaf());
-        CHECK("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)gp_.get_leaf_key(son2_son0));
-        CHECK(1 == son2_son0.weight);
+    auto son2_son0 = gp_.get_child_node(son2, 0);
+    REQUIRE(son2_son0.validate());
+    REQUIRE(son2_son0.is_leaf());
+    CHECK("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)gp_.get_leaf_key(son2_son0));
+    CHECK(1 == son2_son0.weight);
 
-        auto son2_son1 = gp_.get_child_node(son2, 1);
-        REQUIRE(son2_son1.validate());
-        REQUIRE(son2_son1.is_leaf());
-        CHECK("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)gp_.get_leaf_key(son2_son1));
-        CHECK(2 == son2_son1.weight);
-    }
-    FC_LOG_AND_RETHROW()
+    auto son2_son1 = gp_.get_child_node(son2, 1);
+    REQUIRE(son2_son1.validate());
+    REQUIRE(son2_son1.is_leaf());
+    CHECK("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)gp_.get_leaf_key(son2_son1));
+    CHECK(2 == son2_son1.weight);
 }
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_fungible_test", "[tokendb]") {
-    try {
-        auto tmp_fungible = fungible_def();
+    auto tmp_fungible = fungible_def();
 
-        CHECK(!tokendb.exists_fungible("EVT"));
-        CHECK(!tokendb.exists_fungible(symbol(SY(5, EVT))));
-        CHECK_THROWS_AS(tokendb.read_fungible("EVT", tmp_fungible), tokendb_fungible_not_found);
-        CHECK_THROWS_AS(tokendb.read_fungible(symbol(SY(5, EVT)), tmp_fungible), tokendb_fungible_not_found);
+    CHECK(!tokendb.exists_fungible("EVT"));
+    CHECK(!tokendb.exists_fungible(symbol(SY(5, EVT))));
+    CHECK_THROWS_AS(tokendb.read_fungible("EVT", tmp_fungible), tokendb_fungible_not_found);
+    CHECK_THROWS_AS(tokendb.read_fungible(symbol(SY(5, EVT)), tmp_fungible), tokendb_fungible_not_found);
 
-        auto evt_fungible = fungible_def();
-        evt_fungible.sym  = symbol(SY(5, EVT));
-        auto r            = tokendb.add_fungible(evt_fungible);
-        CHECK(r == 0);
+    auto evt_fungible = fungible_def();
+    evt_fungible.sym  = symbol(SY(5, EVT));
+    auto r            = tokendb.add_fungible(evt_fungible);
+    CHECK(r == 0);
 
-        CHECK(tokendb.exists_fungible("EVT"));
-        CHECK(tokendb.exists_fungible(symbol(SY(5, EVT))));
-        CHECK(tokendb.exists_fungible(symbol(SY(4, EVT))));
+    CHECK(tokendb.exists_fungible("EVT"));
+    CHECK(tokendb.exists_fungible(symbol(SY(5, EVT))));
+    CHECK(tokendb.exists_fungible(symbol(SY(4, EVT))));
 
-        CHECK_NOTHROW(tokendb.read_fungible("EVT", tmp_fungible));
-        CHECK(tmp_fungible.sym == symbol(SY(5, EVT)));
-        CHECK_NOTHROW(tokendb.read_fungible(symbol(SY(5, EVT)), tmp_fungible));
-        CHECK(tmp_fungible.sym == symbol(SY(5, EVT)));
+    CHECK_NOTHROW(tokendb.read_fungible("EVT", tmp_fungible));
+    CHECK(tmp_fungible.sym == symbol(SY(5, EVT)));
+    CHECK_NOTHROW(tokendb.read_fungible(symbol(SY(5, EVT)), tmp_fungible));
+    CHECK(tmp_fungible.sym == symbol(SY(5, EVT)));
 
-        auto tmp_asset = asset();
-        auto address1  = public_key_type(std::string("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"));
-        CHECK(!tokendb.exists_any_asset(address1));
-        CHECK(!tokendb.exists_asset(address1, symbol(SY(5, EVT))));
-        CHECK_THROWS_AS(tokendb.read_asset(address1, symbol(SY(5, EVT)), tmp_asset), tokendb_asset_not_found);
-        CHECK_NOTHROW(tokendb.read_asset_no_throw(address1, symbol(SY(5, EVT)), tmp_asset));
-        CHECK(tmp_asset == asset(0, symbol(SY(5, EVT))));
+    auto tmp_asset = asset();
+    auto address1  = public_key_type(std::string("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"));
+    CHECK(!tokendb.exists_any_asset(address1));
+    CHECK(!tokendb.exists_asset(address1, symbol(SY(5, EVT))));
+    CHECK_THROWS_AS(tokendb.read_asset(address1, symbol(SY(5, EVT)), tmp_asset), tokendb_asset_not_found);
+    CHECK_NOTHROW(tokendb.read_asset_no_throw(address1, symbol(SY(5, EVT)), tmp_asset));
+    CHECK(tmp_asset == asset(0, symbol(SY(5, EVT))));
 
-        auto s = 0;
-        tokendb.read_all_assets(address1, [&](const auto&) { s++; return true; });
-        CHECK(s == 0);
+    auto s = 0;
+    tokendb.read_all_assets(address1, [&](const auto&) { s++; return true; });
+    CHECK(s == 0);
 
-        auto r1 = tokendb.update_asset(address1, asset(2000, symbol(SY(5, EVT))));
-        auto r2 = tokendb.update_asset(address1, asset(1000, symbol(SY(8, ETH))));
+    auto r1 = tokendb.update_asset(address1, asset(2000, symbol(SY(5, EVT))));
+    auto r2 = tokendb.update_asset(address1, asset(1000, symbol(SY(8, ETH))));
 
-        CHECK(r1 == 0);
-        CHECK(r2 == 0);
+    CHECK(r1 == 0);
+    CHECK(r2 == 0);
 
-        CHECK(tokendb.exists_any_asset(address1));
-        CHECK(tokendb.exists_asset(address1, symbol(SY(5, EVT))));
-        CHECK(tokendb.exists_asset(address1, symbol(SY(8, ETH))));
-        CHECK(!tokendb.exists_asset(address1, symbol(SY(4, EVT))));
-        CHECK_NOTHROW(tokendb.read_asset(address1, symbol(SY(5, EVT)), tmp_asset));
-        CHECK(tmp_asset == asset(2000, symbol(SY(5, EVT))));
+    CHECK(tokendb.exists_any_asset(address1));
+    CHECK(tokendb.exists_asset(address1, symbol(SY(5, EVT))));
+    CHECK(tokendb.exists_asset(address1, symbol(SY(8, ETH))));
+    CHECK(!tokendb.exists_asset(address1, symbol(SY(4, EVT))));
+    CHECK_NOTHROW(tokendb.read_asset(address1, symbol(SY(5, EVT)), tmp_asset));
+    CHECK(tmp_asset == asset(2000, symbol(SY(5, EVT))));
 
-        auto s2 = 0;
-        tokendb.read_all_assets(address1, [&](const auto& s) { INFO((std::string)s); s2++; return true; });
-        CHECK(s2 == 2);
+    auto s2 = 0;
+    tokendb.read_all_assets(address1, [&](const auto& s) { INFO((std::string)s); s2++; return true; });
+    CHECK(s2 == 2);
 
-        auto address2 = address(N(domain),"domain",0);
-        tokendb.read_all_assets(address2, [&](const auto&) { s++; return true; });
-        CHECK(s == 0);
+    auto address2 = address(N(domain),"domain",0);
+    tokendb.read_all_assets(address2, [&](const auto&) { s++; return true; });
+    CHECK(s == 0);
 
-        r1 = tokendb.update_asset(address2, asset(2000, symbol(SY(5, EVT))));
-        r2 = tokendb.update_asset(address2, asset(1000, symbol(SY(8, ETH))));
+    r1 = tokendb.update_asset(address2, asset(2000, symbol(SY(5, EVT))));
+    r2 = tokendb.update_asset(address2, asset(1000, symbol(SY(8, ETH))));
 
-        CHECK(r1 == 0);
-        CHECK(r2 == 0);
+    CHECK(r1 == 0);
+    CHECK(r2 == 0);
 
-        CHECK(tokendb.exists_any_asset(address2));
-        CHECK(tokendb.exists_asset(address2, symbol(SY(5, EVT))));
-        CHECK(tokendb.exists_asset(address2, symbol(SY(8, ETH))));
-        CHECK(!tokendb.exists_asset(address2, symbol(SY(4, EVT))));
-        CHECK_NOTHROW(tokendb.read_asset(address2, symbol(SY(5, EVT)), tmp_asset));
-        CHECK(tmp_asset == asset(2000, symbol(SY(5, EVT))));
+    CHECK(tokendb.exists_any_asset(address2));
+    CHECK(tokendb.exists_asset(address2, symbol(SY(5, EVT))));
+    CHECK(tokendb.exists_asset(address2, symbol(SY(8, ETH))));
+    CHECK(!tokendb.exists_asset(address2, symbol(SY(4, EVT))));
+    CHECK_NOTHROW(tokendb.read_asset(address2, symbol(SY(5, EVT)), tmp_asset));
+    CHECK(tmp_asset == asset(2000, symbol(SY(5, EVT))));
 
-        s2 = 0;
-        tokendb.read_all_assets(address2, [&](const auto& s) { INFO((std::string)s); s2++; return true; });
-        CHECK(s2 == 2);
-
-    }
-    FC_LOG_AND_RETHROW()
+    s2 = 0;
+    tokendb.read_all_assets(address2, [&](const auto& s) { INFO((std::string)s); s2++; return true; });
+    CHECK(s2 == 2);
 }
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_checkpoint_test", "[tokendb]") {
-    try {
-        tokendb.add_savepoint(get_time());
+    tokendb.add_savepoint(get_time());
 
-        domain_def dom = add_domain_data();
-        dom.name       = "domain-" + boost::lexical_cast<std::string>(time(0));
-        tokendb.add_domain(dom);
-        tokendb.add_savepoint(get_time());
+    domain_def dom = add_domain_data();
+    dom.name       = "domain-" + boost::lexical_cast<std::string>(time(0));
+    tokendb.add_domain(dom);
+    tokendb.add_savepoint(get_time());
 
-        domain_def updom = update_domain_data();
-        updom.name       = dom.name;
-        tokendb.update_domain(updom);
-        tokendb.add_savepoint(get_time());
+    domain_def updom = update_domain_data();
+    updom.name       = dom.name;
+    tokendb.update_domain(updom);
+    tokendb.add_savepoint(get_time());
 
-        issuetoken istk = issue_tokens_data();
-        istk.domain     = dom.name;
-        tokendb.issue_tokens(istk);
-        tokendb.add_savepoint(get_time());
+    issuetoken istk = issue_tokens_data();
+    istk.domain     = dom.name;
+    tokendb.issue_tokens(istk);
+    tokendb.add_savepoint(get_time());
 
-        token_def tk = update_token_data();
-        tk.domain    = dom.name;
-        tokendb.update_token(tk);
+    token_def tk = update_token_data();
+    tk.domain    = dom.name;
+    tokendb.update_token(tk);
 
-        REQUIRE(tokendb.exists_token(dom.name, "t1"));
-        token_def tk_;
-        tokendb.read_token(dom.name, "t1", tk_);
-        REQUIRE(1 == tk_.metas.size());
-        tokendb.rollback_to_latest_savepoint();
-        tokendb.read_token(dom.name, "t1", tk_);
-        CHECK(0 == tk_.metas.size());
-        tokendb.rollback_to_latest_savepoint();
-        REQUIRE(!tokendb.exists_token(dom.name, "t1"));
+    REQUIRE(tokendb.exists_token(dom.name, "t1"));
+    token_def tk_;
+    tokendb.read_token(dom.name, "t1", tk_);
+    REQUIRE(1 == tk_.metas.size());
+    tokendb.rollback_to_latest_savepoint();
+    tokendb.read_token(dom.name, "t1", tk_);
+    CHECK(0 == tk_.metas.size());
+    tokendb.rollback_to_latest_savepoint();
+    REQUIRE(!tokendb.exists_token(dom.name, "t1"));
 
-        REQUIRE(tokendb.exists_domain(dom.name));
-        domain_def dom_;
-        tokendb.read_domain(dom.name, dom_);
-        REQUIRE(1 == dom_.metas.size());
-        tokendb.rollback_to_latest_savepoint();
-        tokendb.read_domain(dom.name, dom_);
-        REQUIRE(0 == dom_.metas.size());
-        tokendb.rollback_to_latest_savepoint();
-        REQUIRE(!tokendb.exists_domain(dom.name));
+    REQUIRE(tokendb.exists_domain(dom.name));
+    domain_def dom_;
+    tokendb.read_domain(dom.name, dom_);
+    REQUIRE(1 == dom_.metas.size());
+    tokendb.rollback_to_latest_savepoint();
+    tokendb.read_domain(dom.name, dom_);
+    REQUIRE(0 == dom_.metas.size());
+    tokendb.rollback_to_latest_savepoint();
+    REQUIRE(!tokendb.exists_domain(dom.name));
 
-        tokendb.add_savepoint(get_time());
-        group_def gp = add_group_data();
-        gp.name_     = "group-" + boost::lexical_cast<std::string>(time(0));
-        tokendb.add_group(gp);
-        tokendb.add_savepoint(get_time());
+    tokendb.add_savepoint(get_time());
+    group_def gp = add_group_data();
+    gp.name_     = "group-" + boost::lexical_cast<std::string>(time(0));
+    tokendb.add_group(gp);
+    tokendb.add_savepoint(get_time());
 
-        group_def upgp = update_group_data();
-        upgp.name_     = gp.name();
-        tokendb.update_group(upgp);
+    group_def upgp = update_group_data();
+    upgp.name_     = gp.name();
+    tokendb.update_group(upgp);
 
-        REQUIRE(tokendb.exists_group(gp.name()));
-        group_def gp_;
-        tokendb.read_group(gp.name(), gp_);
-        auto root = gp_.root();
-        CHECK(5 == root.threshold);
-        tokendb.rollback_to_latest_savepoint();
-        tokendb.read_group(gp.name(), gp_);
-        root = gp_.root();
-        CHECK(6 == root.threshold);
-        tokendb.rollback_to_latest_savepoint();
-        REQUIRE(!tokendb.exists_group(gp.name()));
+    REQUIRE(tokendb.exists_group(gp.name()));
+    group_def gp_;
+    tokendb.read_group(gp.name(), gp_);
+    auto root = gp_.root();
+    CHECK(5 == root.threshold);
+    tokendb.rollback_to_latest_savepoint();
+    tokendb.read_group(gp.name(), gp_);
+    root = gp_.root();
+    CHECK(6 == root.threshold);
+    tokendb.rollback_to_latest_savepoint();
+    REQUIRE(!tokendb.exists_group(gp.name()));
 
-        tokendb.add_savepoint(get_time());
-        gp       = add_group_data();
-        gp.name_ = "group--" + boost::lexical_cast<std::string>(time(0));
-        tokendb.add_group(gp);
+    tokendb.add_savepoint(get_time());
+    gp       = add_group_data();
+    gp.name_ = "group--" + boost::lexical_cast<std::string>(time(0));
+    tokendb.add_group(gp);
 
-        tokendb.add_savepoint(get_time());
-        upgp       = update_group_data();
-        upgp.name_ = gp.name();
-        tokendb.update_group(upgp);
+    tokendb.add_savepoint(get_time());
+    upgp       = update_group_data();
+    upgp.name_ = gp.name();
+    tokendb.update_group(upgp);
 
-        int pop_re = tokendb.pop_savepoints(get_time());
-        REQUIRE(pop_re == 0);
+    int pop_re = tokendb.pop_savepoints(get_time());
+    REQUIRE(pop_re == 0);
 
-        tokendb.add_savepoint(get_time());
-        auto pevt    = symbol(SY(5, PEVT));
-        auto address = public_key_type((std::string) "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV");
-        CHECK(!tokendb.exists_fungible("PEVT"));
-        CHECK(!tokendb.exists_any_asset(address));
-        CHECK(!tokendb.exists_asset(address, pevt));
+    tokendb.add_savepoint(get_time());
+    auto pevt    = symbol(SY(5, PEVT));
+    auto address = public_key_type((std::string) "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV");
+    CHECK(!tokendb.exists_fungible("PEVT"));
+    CHECK(!tokendb.exists_any_asset(address));
+    CHECK(!tokendb.exists_asset(address, pevt));
 
-        fungible_def fungible;
-        fungible.sym = symbol(SY(5, EVT));
-        tokendb.add_fungible(fungible);
-        tokendb.update_asset(address, asset(1000, pevt));
+    fungible_def fungible;
+    fungible.sym = symbol(SY(5, EVT));
+    tokendb.add_fungible(fungible);
+    tokendb.update_asset(address, asset(1000, pevt));
 
-        CHECK(tokendb.exists_fungible("EVT"));
-        CHECK(tokendb.exists_asset(address, pevt));
+    CHECK(tokendb.exists_fungible("EVT"));
+    CHECK(tokendb.exists_asset(address, pevt));
 
-        tokendb.add_savepoint(get_time());
+    tokendb.add_savepoint(get_time());
+    tokendb.update_asset(address, asset(2000, pevt));
+
+    tokendb.rollback_to_latest_savepoint();
+    asset a;
+    tokendb.read_asset(address, pevt, a);
+    CHECK(a == asset(1000, pevt));
+
+    auto r = tokendb.rollback_to_latest_savepoint();
+    CHECK(r == 0);
+    CHECK(!tokendb.exists_fungible("PEVT"));
+    CHECK(!tokendb.exists_any_asset(address));
+    CHECK(!tokendb.exists_asset(address, pevt));
+
+    tokendb.add_savepoint(get_time());
+    tokendb.add_savepoint(get_time());
+    tokendb.add_savepoint(get_time());
+    tokendb.add_savepoint(get_time());
+    tokendb.add_savepoint(get_time());
+    CHECK_NOTHROW(tokendb.pop_savepoints(time(0) + ti + 1));
+
+    CHECK(tokendb.get_savepoints_size() == 0);
+    {
+        auto ss1 = tokendb.new_savepoint_session();
+        CHECK(ss1.seq() == 1);
         tokendb.update_asset(address, asset(2000, pevt));
-
-        tokendb.rollback_to_latest_savepoint();
-        asset a;
-        tokendb.read_asset(address, pevt, a);
-        CHECK(a == asset(1000, pevt));
-
-        auto r = tokendb.rollback_to_latest_savepoint();
-        CHECK(r == 0);
-        CHECK(!tokendb.exists_fungible("PEVT"));
-        CHECK(!tokendb.exists_any_asset(address));
-        CHECK(!tokendb.exists_asset(address, pevt));
-
-        tokendb.add_savepoint(get_time());
-        tokendb.add_savepoint(get_time());
-        tokendb.add_savepoint(get_time());
-        tokendb.add_savepoint(get_time());
-        tokendb.add_savepoint(get_time());
-        CHECK_NOTHROW(tokendb.pop_savepoints(time(0) + ti + 1));
-
-        CHECK(tokendb.get_savepoints_size() == 0);
-        {
-            auto ss1 = tokendb.new_savepoint_session();
-            CHECK(ss1.seq() == 1);
-            tokendb.update_asset(address, asset(2000, pevt));
-            CHECK(tokendb.exists_any_asset(address));
-        }
-        CHECK(!tokendb.exists_any_asset(address));
-        CHECK(tokendb.get_savepoints_size() == 0);
-
-        tokendb.add_savepoint(get_time());
-        tokendb.update_asset(address, asset(2000, pevt));
-
-        {
-            auto ss1 = tokendb.new_savepoint_session();
-            CHECK(ss1.seq() == time(0) + ti + 1);
-            tokendb.update_asset(address, asset(4000, pevt));
-            ss1.accept();
-        }
-
-        tokendb.read_asset(address, pevt, a);
-        CHECK(a == asset(4000, pevt));
-        CHECK(tokendb.get_savepoints_size() == 2);
-
-        {
-            auto ss1 = tokendb.new_savepoint_session();
-            CHECK(ss1.seq() == time(0) + ti + 2);
-            tokendb.update_asset(address, asset(6000, pevt));
-            ss1.squash();
-        }
-        tokendb.read_asset(address, pevt, a);
-        CHECK(a == asset(6000, pevt));
-        CHECK(tokendb.get_savepoints_size() == 2);
-
-        CHECK_NOTHROW(tokendb.pop_savepoints(0));
+        CHECK(tokendb.exists_any_asset(address));
     }
-    FC_LOG_AND_RETHROW()
+    CHECK(!tokendb.exists_any_asset(address));
+    CHECK(tokendb.get_savepoints_size() == 0);
+
+    tokendb.add_savepoint(get_time());
+    tokendb.update_asset(address, asset(2000, pevt));
+
+    {
+        auto ss1 = tokendb.new_savepoint_session();
+        CHECK(ss1.seq() == time(0) + ti + 1);
+        tokendb.update_asset(address, asset(4000, pevt));
+        ss1.accept();
+    }
+
+    tokendb.read_asset(address, pevt, a);
+    CHECK(a == asset(4000, pevt));
+    CHECK(tokendb.get_savepoints_size() == 2);
+
+    {
+        auto ss1 = tokendb.new_savepoint_session();
+        CHECK(ss1.seq() == time(0) + ti + 2);
+        tokendb.update_asset(address, asset(6000, pevt));
+        ss1.squash();
+    }
+    tokendb.read_asset(address, pevt, a);
+    CHECK(a == asset(6000, pevt));
+    CHECK(tokendb.get_savepoints_size() == 2);
+
+    CHECK_NOTHROW(tokendb.pop_savepoints(0));
 }
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_addsuspend_test", "[tokendb]") {
-    try {
-        CHECK(true);
+    CHECK(true);
 
-        auto dl = add_suspend_data();
-        CHECK(!tokendb.exists_suspend(dl.name));
+    auto dl = add_suspend_data();
+    CHECK(!tokendb.exists_suspend(dl.name));
 
-        auto re = tokendb.add_suspend(dl);
-        REQUIRE(re == 0);
-        CHECK(tokendb.exists_suspend(dl.name));
+    auto re = tokendb.add_suspend(dl);
+    REQUIRE(re == 0);
+    CHECK(tokendb.exists_suspend(dl.name));
 
-        suspend_def dl_;
-        tokendb.read_suspend(dl.name, dl_);
+    suspend_def dl_;
+    tokendb.read_suspend(dl.name, dl_);
 
-        CHECK(proposed == dl_.status);
-        CHECK(dl.name == dl_.name);
-        CHECK("EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3" == (std::string)dl_.proposer);
-        CHECK("2018-07-04T05:14:12" == dl_.trx.expiration.to_iso_string());
-        CHECK(3432 == dl_.trx.ref_block_num);
-        CHECK(291678901 == dl_.trx.ref_block_prefix);
-        CHECK(dl_.trx.actions.size() == 1);
-        CHECK("newdomain" == dl_.trx.actions[0].name);
-        CHECK("test1530681222" == dl_.trx.actions[0].domain);
-        CHECK(".create" == dl_.trx.actions[0].key);
-    }
-    FC_LOG_AND_RETHROW()
+    CHECK(proposed == dl_.status);
+    CHECK(dl.name == dl_.name);
+    CHECK("EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3" == (std::string)dl_.proposer);
+    CHECK("2018-07-04T05:14:12" == dl_.trx.expiration.to_iso_string());
+    CHECK(3432 == dl_.trx.ref_block_num);
+    CHECK(291678901 == dl_.trx.ref_block_prefix);
+    CHECK(dl_.trx.actions.size() == 1);
+    CHECK("newdomain" == dl_.trx.actions[0].name);
+    CHECK("test1530681222" == dl_.trx.actions[0].domain);
+    CHECK(".create" == dl_.trx.actions[0].key);
 }
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_updatesuspend_test", "[tokendb]") {
-    try {
-        CHECK(true);
+    CHECK(true);
 
-        auto dl = update_suspend_data();
+    auto dl = update_suspend_data();
 
-        auto re = tokendb.update_suspend(dl);
-        REQUIRE(re == 0);
+    auto re = tokendb.update_suspend(dl);
+    REQUIRE(re == 0);
 
-        suspend_def dl_;
-        tokendb.read_suspend(dl.name, dl_);
+    suspend_def dl_;
+    tokendb.read_suspend(dl.name, dl_);
 
-        CHECK(executed == dl_.status);
-        CHECK(dl.name == dl_.name);
-        CHECK("EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3" == (std::string)dl_.proposer);
-        CHECK("2018-07-04T05:14:12" == dl_.trx.expiration.to_iso_string());
-        CHECK(3432 == dl_.trx.ref_block_num);
-        CHECK(291678901 == dl_.trx.ref_block_prefix);
-        CHECK(dl_.trx.actions.size() == 1);
-        CHECK("newdomain" == dl_.trx.actions[0].name);
-        CHECK("test1530681222" == dl_.trx.actions[0].domain);
-        CHECK(".create" == dl_.trx.actions[0].key);
-    }
-    FC_LOG_AND_RETHROW()
+    CHECK(executed == dl_.status);
+    CHECK(dl.name == dl_.name);
+    CHECK("EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3" == (std::string)dl_.proposer);
+    CHECK("2018-07-04T05:14:12" == dl_.trx.expiration.to_iso_string());
+    CHECK(3432 == dl_.trx.ref_block_num);
+    CHECK(291678901 == dl_.trx.ref_block_prefix);
+    CHECK(dl_.trx.actions.size() == 1);
+    CHECK("newdomain" == dl_.trx.actions[0].name);
+    CHECK("test1530681222" == dl_.trx.actions[0].domain);
+    CHECK(".create" == dl_.trx.actions[0].key);
 }
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_persist_savepoints_1", "[tokendb]") {
-    try {
-        CHECK(true);
+    CHECK(true);
 
-        tokendb.add_savepoint(get_time());
+    tokendb.add_savepoint(get_time());
 
-        domain_def dom = add_domain_data();
-        dom.name       = "domain-p1";
-        tokendb.add_domain(dom);
-        tokendb.add_savepoint(get_time());
+    domain_def dom = add_domain_data();
+    dom.name       = "domain-p1";
+    tokendb.add_domain(dom);
+    tokendb.add_savepoint(get_time());
 
-        domain_def updom = update_domain_data();
-        updom.name       = dom.name;
-        tokendb.update_domain(updom);
-        tokendb.add_savepoint(get_time());
+    domain_def updom = update_domain_data();
+    updom.name       = dom.name;
+    tokendb.update_domain(updom);
+    tokendb.add_savepoint(get_time());
 
-        issuetoken istk = issue_tokens_data();
-        istk.domain     = dom.name;
-        tokendb.issue_tokens(istk);
-        tokendb.add_savepoint(get_time());
+    issuetoken istk = issue_tokens_data();
+    istk.domain     = dom.name;
+    tokendb.issue_tokens(istk);
+    tokendb.add_savepoint(get_time());
 
-        token_def tk = update_token_data();
-        tk.domain    = dom.name;
-        tokendb.update_token(tk);
-    }
-    FC_LOG_AND_RETHROW()
+    token_def tk = update_token_data();
+    tk.domain    = dom.name;
+    tokendb.update_token(tk);
 }
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_persist_savepoints_2", "[tokendb]") {
-    try {
-        CHECK(true);
+    CHECK(true);
 
-        domain_def dom = add_domain_data();
-        dom.name       = "domain-p1";
+    domain_def dom = add_domain_data();
+    dom.name       = "domain-p1";
 
-        REQUIRE(tokendb.exists_token(dom.name, "t1"));
-        token_def tk_;
-        tokendb.read_token(dom.name, "t1", tk_);
-        REQUIRE(1 == tk_.metas.size());
-        
-        tokendb.rollback_to_latest_savepoint();
-        tokendb.read_token(dom.name, "t1", tk_);
-        CHECK(0 == tk_.metas.size());
-        tokendb.rollback_to_latest_savepoint();
-        REQUIRE(!tokendb.exists_token(dom.name, "t1"));
+    REQUIRE(tokendb.exists_token(dom.name, "t1"));
+    token_def tk_;
+    tokendb.read_token(dom.name, "t1", tk_);
+    REQUIRE(1 == tk_.metas.size());
+    
+    tokendb.rollback_to_latest_savepoint();
+    tokendb.read_token(dom.name, "t1", tk_);
+    CHECK(0 == tk_.metas.size());
+    tokendb.rollback_to_latest_savepoint();
+    REQUIRE(!tokendb.exists_token(dom.name, "t1"));
 
-        REQUIRE(tokendb.exists_domain(dom.name));
-        domain_def dom_;
-        tokendb.read_domain(dom.name, dom_);
-        REQUIRE(1 == dom_.metas.size());
-        tokendb.rollback_to_latest_savepoint();
-        tokendb.read_domain(dom.name, dom_);
-        REQUIRE(0 == dom_.metas.size());
-        tokendb.rollback_to_latest_savepoint();
-        REQUIRE(!tokendb.exists_domain(dom.name));
+    REQUIRE(tokendb.exists_domain(dom.name));
+    domain_def dom_;
+    tokendb.read_domain(dom.name, dom_);
+    REQUIRE(1 == dom_.metas.size());
+    tokendb.rollback_to_latest_savepoint();
+    tokendb.read_domain(dom.name, dom_);
+    REQUIRE(0 == dom_.metas.size());
+    tokendb.rollback_to_latest_savepoint();
+    REQUIRE(!tokendb.exists_domain(dom.name));
 
-        tokendb.add_savepoint(get_time());
-        group_def gp = add_group_data();
-        gp.name_     = "group-p1";
-        tokendb.add_group(gp);
-        tokendb.add_savepoint(get_time());
+    tokendb.add_savepoint(get_time());
+    group_def gp = add_group_data();
+    gp.name_     = "group-p1";
+    tokendb.add_group(gp);
+    tokendb.add_savepoint(get_time());
 
-        group_def upgp = update_group_data();
-        upgp.name_     = gp.name();
-        tokendb.update_group(upgp);
-    }
-    FC_LOG_AND_RETHROW()
+    group_def upgp = update_group_data();
+    upgp.name_     = gp.name();
+    tokendb.update_group(upgp);
 }
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_persist_savepoints_3", "[tokendb]") {
-    try {
-        group_def gp = add_group_data();
-        gp.name_     = "group-p1";
+    group_def gp = add_group_data();
+    gp.name_     = "group-p1";
 
-        REQUIRE(tokendb.exists_group(gp.name()));
-        group_def gp_;
-        tokendb.read_group(gp.name(), gp_);
-        auto root = gp_.root();
-        CHECK(5 == root.threshold);
-        tokendb.rollback_to_latest_savepoint();
-        tokendb.read_group(gp.name(), gp_);
-        root = gp_.root();
-        CHECK(6 == root.threshold);
-        tokendb.rollback_to_latest_savepoint();
-        REQUIRE(!tokendb.exists_group(gp.name()));
+    REQUIRE(tokendb.exists_group(gp.name()));
+    group_def gp_;
+    tokendb.read_group(gp.name(), gp_);
+    auto root = gp_.root();
+    CHECK(5 == root.threshold);
+    tokendb.rollback_to_latest_savepoint();
+    tokendb.read_group(gp.name(), gp_);
+    root = gp_.root();
+    CHECK(6 == root.threshold);
+    tokendb.rollback_to_latest_savepoint();
+    REQUIRE(!tokendb.exists_group(gp.name()));
 
-        tokendb.add_savepoint(get_time());
-        gp       = add_group_data();
-        gp.name_ = "group--" + boost::lexical_cast<std::string>(time(0));
-        tokendb.add_group(gp);
+    tokendb.add_savepoint(get_time());
+    gp       = add_group_data();
+    gp.name_ = "group--" + boost::lexical_cast<std::string>(time(0));
+    tokendb.add_group(gp);
 
-        tokendb.add_savepoint(get_time());
-        auto upgp  = update_group_data();
-        upgp.name_ = gp.name();
-        tokendb.update_group(upgp);
-    }
-    FC_LOG_AND_RETHROW()
+    tokendb.add_savepoint(get_time());
+    auto upgp  = update_group_data();
+    upgp.name_ = gp.name();
+    tokendb.update_group(upgp);
 }
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_persist_savepoints_4", "[tokendb]") {
-    try {
-        int pop_re = tokendb.pop_savepoints(get_time());
-        REQUIRE(pop_re == 0);
+    int pop_re = tokendb.pop_savepoints(get_time());
+    REQUIRE(pop_re == 0);
 
-        tokendb.add_savepoint(get_time());
-        auto pevt    = symbol(SY(5, PPEVT));
-        auto address = public_key_type((std::string) "EVT5tRjHNDPMxQfmejsGzNyQHRBiLAYEU7YZLfyHjvygnmmAUfYpX");
-        CHECK(!tokendb.exists_fungible("PPEVT"));
-        CHECK(!tokendb.exists_any_asset(address));
-        CHECK(!tokendb.exists_asset(address, pevt));
+    tokendb.add_savepoint(get_time());
+    auto pevt    = symbol(SY(5, PPEVT));
+    auto address = public_key_type((std::string) "EVT5tRjHNDPMxQfmejsGzNyQHRBiLAYEU7YZLfyHjvygnmmAUfYpX");
+    CHECK(!tokendb.exists_fungible("PPEVT"));
+    CHECK(!tokendb.exists_any_asset(address));
+    CHECK(!tokendb.exists_asset(address, pevt));
 
-        fungible_def fungible;
-        fungible.sym = symbol(SY(5, EVT));
-        tokendb.add_fungible(fungible);
-        tokendb.update_asset(address, asset(1000, pevt));
+    fungible_def fungible;
+    fungible.sym = symbol(SY(5, EVT));
+    tokendb.add_fungible(fungible);
+    tokendb.update_asset(address, asset(1000, pevt));
 
-        CHECK(tokendb.exists_fungible("EVT"));
-        CHECK(tokendb.exists_asset(address, pevt));
+    CHECK(tokendb.exists_fungible("EVT"));
+    CHECK(tokendb.exists_asset(address, pevt));
 
-        tokendb.add_savepoint(get_time());
-        tokendb.update_asset(address, asset(2000, pevt));
-    }
-    FC_LOG_AND_RETHROW()
+    tokendb.add_savepoint(get_time());
+    tokendb.update_asset(address, asset(2000, pevt));
 }
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_persist_savepoints_5", "[tokendb]") {
-    try {
-        tokendb.rollback_to_latest_savepoint();
-        auto pevt    = symbol(SY(5, PPEVT));
-        auto address = public_key_type((std::string) "EVT5tRjHNDPMxQfmejsGzNyQHRBiLAYEU7YZLfyHjvygnmmAUfYpX");
-        auto a       = asset();
-        tokendb.read_asset(address, pevt, a);
-        CHECK(a == asset(1000, pevt));
+    tokendb.rollback_to_latest_savepoint();
+    auto pevt    = symbol(SY(5, PPEVT));
+    auto address = public_key_type((std::string) "EVT5tRjHNDPMxQfmejsGzNyQHRBiLAYEU7YZLfyHjvygnmmAUfYpX");
+    auto a       = asset();
+    tokendb.read_asset(address, pevt, a);
+    CHECK(a == asset(1000, pevt));
 
-        auto r = tokendb.rollback_to_latest_savepoint();
-        CHECK(r == 0);
-        CHECK(!tokendb.exists_fungible("PPEVT"));
-        CHECK(!tokendb.exists_any_asset(address));
-        CHECK(!tokendb.exists_asset(address, pevt));
+    auto r = tokendb.rollback_to_latest_savepoint();
+    CHECK(r == 0);
+    CHECK(!tokendb.exists_fungible("PPEVT"));
+    CHECK(!tokendb.exists_any_asset(address));
+    CHECK(!tokendb.exists_asset(address, pevt));
 
-        tokendb.add_savepoint(get_time());
-        tokendb.add_savepoint(get_time());
-        tokendb.add_savepoint(get_time());
-        tokendb.add_savepoint(get_time());
-        tokendb.add_savepoint(get_time());
-    }
-    FC_LOG_AND_RETHROW()
+    tokendb.add_savepoint(get_time());
+    tokendb.add_savepoint(get_time());
+    tokendb.add_savepoint(get_time());
+    tokendb.add_savepoint(get_time());
+    tokendb.add_savepoint(get_time());
 }
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_persist_savepoints_6", "[tokendb]") {
-    try {
-        CHECK_NOTHROW(tokendb.pop_savepoints(time(0) + ti + 1));
-    }
-    FC_LOG_AND_RETHROW()
+
+    CHECK_NOTHROW(tokendb.pop_savepoints(time(0) + ti + 1));
 }
