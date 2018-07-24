@@ -1,26 +1,25 @@
-#define BOOST_TEST_MODULE evt unittests
-#define BOOST_TEST_DYN_LINK
-#define BOOST_TEST_TOOLS_DEBUGGABLE
+#define CATCH_CONFIG_RUNNER
+#include <catch/catch.hpp>
 
-#include <boost/test/unit_test.hpp>
 #include <fc/filesystem.hpp>
 #include <fc/log/logger.hpp>
+#include <fc/exception/exception.hpp>
 
 std::string evt_unittests_dir = "tmp/evt_unittests";
 
-struct GlobalFixture {
-    void
-    setup() {
-        if(fc::exists(evt_unittests_dir)) {
-            fc::remove_all(evt_unittests_dir);
-        }
-        fc::logger::get().set_log_level(fc::log_level(fc::log_level::warn));
-    }
+CATCH_TRANSLATE_EXCEPTION(fc::exception& e) {
+    return e.to_detail_string();
+}
 
-    void
-    teardown() {
+int
+main(int argc, char* argv[]) {
+    if(fc::exists(evt_unittests_dir)) {
         fc::remove_all(evt_unittests_dir);
     }
-};
+    fc::logger::get().set_log_level(fc::log_level(fc::log_level::error));
 
-BOOST_TEST_GLOBAL_FIXTURE(GlobalFixture);
+    auto result = Catch::Session().run(argc, argv);
+
+    fc::remove_all(evt_unittests_dir);
+    return result;
+}
