@@ -208,13 +208,17 @@ transaction_trace_ptr
 base_tester::push_transaction(packed_transaction& trx,
                               fc::time_point      deadline) {
     try {
-        if(!control->pending_block_state())
+        if(!control->pending_block_state()) {
             _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
+        }
         auto r = control->push_transaction(std::make_shared<transaction_metadata>(trx), deadline);
-        if(r->except_ptr)
+
+        if(r->except_ptr) {
             std::rethrow_exception(r->except_ptr);
-        if(r->except)
+        }
+        if(r->except) {
             throw *r->except;
+        }
         return r;
     }
     FC_CAPTURE_AND_RETHROW((transaction_header(trx.get_transaction())))
@@ -233,10 +237,13 @@ base_tester::push_transaction(signed_transaction& trx,
         }
 
         auto r = control->push_transaction(std::make_shared<transaction_metadata>(trx, c), deadline);
-        if(r->except_ptr)
+        
+        if(r->except_ptr) {
             std::rethrow_exception(r->except_ptr);
-        if(r->except)
+        }
+        if(r->except) {
             throw *r->except;
+        }
         return r;
     }
     FC_CAPTURE_AND_RETHROW((transaction_header(trx)))

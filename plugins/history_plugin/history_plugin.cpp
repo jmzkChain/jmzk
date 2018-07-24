@@ -64,6 +64,7 @@ public:
 private:
     block_id_type get_block_id_by_trx_id(const transaction_id_type& trx_id);
     string get_bson_string_value(const mongocxx::cursor::iterator& it, const std::string& key);
+    string get_date_string_value(const mongocxx::cursor::iterator& it, const std::string& key);
     variant transaction_to_variant(const packed_transaction& ptrx);
 
 public:
@@ -76,6 +77,13 @@ string
 history_plugin_impl::get_bson_string_value(const mongocxx::cursor::iterator& it, const std::string& key) {
     auto v = (bsoncxx::stdx::string_view)(*it)[key].get_utf8();
     return string(v.data(), v.size());
+}
+
+string
+history_plugin_impl::get_date_string_value(const mongocxx::cursor::iterator& it, const std::string& key) {
+    auto date = (*it)[key].get_date();
+    auto tp = fc::time_point(fc::milliseconds(date.to_int64()));
+    return (std::string)tp;
 }
 
 fc::variant
@@ -212,6 +220,7 @@ history_plugin_impl::get_actions(const domain_name&             domain,
             v["key"] = get_bson_string_value(it, "key");
             v["trx_id"] = get_bson_string_value(it, "trx_id");
             v["data"] = fc::json::from_string(bsoncxx::to_json((*it)["data"].get_document().view()));
+            v["created_at"] = get_date_string_value(it, "created_at");
 
             result.emplace_back(std::move(v));
         }

@@ -26,12 +26,13 @@ add_library( evt_chain
              apply_context.cpp
              controller.cpp
 
+             contracts/authorizer_ref.cpp
+             contracts/group.cpp
+             contracts/evt_link.cpp
              contracts/evt_org.cpp
              contracts/evt_contract.cpp
              contracts/evt_contract_abi.cpp
              contracts/abi_serializer.cpp
-             contracts/group.cpp
-             contracts/authorizer_ref.cpp
 
              ${HEADERS}
              )
@@ -49,7 +50,8 @@ add_library( evt_chain_lite SHARED
              contracts/authorizer_ref.cpp
              contracts/evt_contract_abi.cpp
 
-             ${HEADERS})
+             ${HEADERS}
+             )
 
 target_link_libraries( evt_chain evt_utilities fc chainbase rocksdb )
 target_include_directories( evt_chain

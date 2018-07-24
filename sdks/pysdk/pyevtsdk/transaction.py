@@ -3,7 +3,7 @@ import json
 
 from pyevt import abi, ecc
 
-from . import action, api
+from . import action, api, base
 
 
 class Transaction:
@@ -16,8 +16,8 @@ class Transaction:
         self.actions = []
         self.transaction_extensions = []
 
-        self.max_charge = "10000"
-        self.payer = None
+        self.max_charge = '10000'
+        self.payer = str(base.Address())
 
         self.priv_keys = []
         self.signatures = []
@@ -56,15 +56,15 @@ class Transaction:
             'payer': self.payer,
             'transaction_extensions': self.transaction_extensions
         }
-        if self.payer is None:
-            del ret['payer']
         return ret
 
     def dumps(self):
         try:
-            digest = abi.trx_json_to_digest(json.dumps(self.dict()), self.chain_id)
+            digest = abi.trx_json_to_digest(
+                json.dumps(self.dict()), self.chain_id)
         except:
-            raise Exception('Invalid transaction', json.dumps(self.dict()), self.chain_id)
+            raise Exception('Invalid transaction',
+                            json.dumps(self.dict()), self.chain_id)
 
         self.signatures = [priv_key.sign_hash(
             digest).to_string() for priv_key in self.priv_keys]

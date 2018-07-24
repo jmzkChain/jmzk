@@ -28,6 +28,7 @@ Before describing the ABI for each action, it is necessary to introduce some Bas
 | `symbol` | Represents a token and contains precision and name. | See `symbol` type section below |
 | `authorizer_ref` | Reference to a authorizer | Valid authorizer including an account, a group or special `OWNER` group |
 | `group` | Authorize group tree | See `group` type section below |
+| `address` | Address type | See `address` type section below |
 * __#1__: `EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX`
 * __#2__: `SIG_K1_JzrdhWW46N5nFUZzTUmhg2sK4nKNGktPz2UdRz9bSAP5pY4nhicKWCuo6Uc6U7KBBwD8VfjsSxzHWT87R41xMaubnzMq8w`
 
@@ -54,7 +55,26 @@ For the `authorizer_ref`, it's a reference to one authorizer. Current valid auth
 All the three formats will describe below:
 1. Refs to an account named 'evtaccount', it starts with "[A]": `[A] evtaccount`.
 2. Refs to a group named 'evtgroup', it starts with "[G]": `[G] evtgroup`.
-3. Refs to `OWNER` group, it's just: `[G] OWNER`.
+3. Refs to `OWNER` group, it's just: `[G] .OWNER`.
+
+### `address` Type
+`address` type is used to replace old public key address, and it has three possible types.
+
+* public key: As the same as old public key address
+* reserved: 'EVT00000000000000000000000000000000000000000000000000', this type is used for representing destroyed token and cannot-updated group.
+* generated: generated from three values: `prefix`(name), `key`(name128), `nonce`(uint32), this type is designed for some special usages.
+
+All address has the length of 53 and has the prefix with 'EVT' and can be distinguished from the public key type by checking the forth char character, '0' or not. Because '0' cannot be used in normal public key representation.
+
+Now we have two generated address usages:
+
+#### Domain pay address
+Used for the situation that domain can pay for the charge fees for its tokens.
+You can get this address by call `/v1/evt/get_domain` API.
+
+#### Fungible reserved address
+Now initial fungible tokens are stored in special fungible reserved address. And the `issuefungible` will transfer fungible tokens from the reserved address to issue address.
+You can get this address by call `/v1/evt/get_fungible` API.
 
 ### `group` Type
 A authorizer group is a tree structure, each leaf node is a reference to one authorizer and also attached with a weight and non-leaf nodes behaves a `switch`, it has a threshold value, and only turned on if the sum of weights of all the authorized child nodes large than its threshold value. So a non-leaf node also has a weight value and a root node only has threshold value.
@@ -105,6 +125,8 @@ A sample group is defined as below:
 ```
 This sample group has the name `testgroup` and key `EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV`. Threshold of root node is 6 and it has 3 child nodes, with the weight is all the value of 3.
 
+> The key of group is an `address` type. So it can be a reserved type address, representing that this group cannot be updated.
+
 ## Typedefs
 Normally `typedef` is a keyword in C and C++. And it shares the same meaning here. It means that each type of the followings is the same type as its relative original type, or can be considered as an alias of the original type.
 
@@ -130,6 +152,7 @@ A type with `?` as suffix means it is an optional type whose value can be undefi
 | `meta_key` | `name128` |
 | `meat_value` | `string` |
 | `meta_list` | `meta[]` |
+| `address_list` | `address[]` |
 
 ## Structures
 A structure is a complex type consisted of base types or/and typedef types. Below are all the structures used in everiToken ABI interface. 
@@ -139,7 +162,7 @@ A structure is a complex type consisted of base types or/and typedef types. Belo
 {
     "domain": `domain_name`,
     "name": `token_name`,
-    "owner": `user_list`
+    "owner": `address_list`
 }
 ```
 ### `authorizer_weight` Struct
@@ -181,7 +204,6 @@ A structure is a complex type consisted of base types or/and typedef types. Belo
     "issue": `permission_def`,
     "manage": `permission_def`,
     "total_supply": "asset",
-    "current_supply": "asset",
     "metas": "meta_list"
 }
 ```
@@ -228,7 +250,7 @@ Issue one or more tokens in a specific domain, the default owners are also speci
 {
     "domain": `domain_name`,
     "names": `token_name[]`,
-    "owner": `user_list`
+    "owner": `address_list`
 }
 ```
 
@@ -238,7 +260,7 @@ Transfer one token in specific domain to new owners.
 {
     "domain": `domain_name`,
     "name": `token_name`,
-    "to": `user_list`,
+    "to": `address_list`,
     "memo": `string`
 }
 ```
@@ -298,7 +320,7 @@ Update one fungible assets definition.
 Issue fungible assets
 ```
 {
-    "address": `public_key`,
+    "address": `address`,
     "number": `asset`,
     "memo": `string`
 }
@@ -308,8 +330,8 @@ Issue fungible assets
 Transfer fungible assets between addresses.
 ```
 {
-    "from": `public_key`,
-    "to": `public_key`,
+    "from": `address`,
+    "to": `address`,
     "number": `asset`,
     "memo": `string`
 }
@@ -321,8 +343,8 @@ Convert `EVT` fungible tokens to `Pined EVT`(symbol: `PEVT`) fungible tokens.
 
 ```
 {
-    "from": `public_key`,
-    "to": `public_key`,
+    "from": `address`,
+    "to": `address`,
     "number": `asset`,
     "memo": `string`
 }

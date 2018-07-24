@@ -1011,11 +1011,13 @@ controller::get_global_properties() const {
 signed_block_ptr
 controller::fetch_block_by_id(block_id_type id) const {
     auto state = my->fork_db.get_block(id);
-    if(state)
+    if(state) {
         return state->block;
+    }
     auto bptr = fetch_block_by_number(block_header::num_from_id(id));
-    if(bptr && bptr->id() == id)
+    if(bptr && bptr->id() == id) {
         return bptr;
+    }
     return signed_block_ptr();
 }
 

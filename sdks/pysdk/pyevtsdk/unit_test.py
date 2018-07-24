@@ -162,7 +162,7 @@ class Test(unittest.TestCase):
         newdomain = AG.new_action(
             'newdomain', name=domain_name, creator=pub_key)
         issuetoken = AG.new_action('issuetoken', domain=domain_name, names=[
-                                   token_name], owner=[pub_key])
+                                   token_name], owner=[base.Address().set_public_key(pub_key)])
 
         trx = transaction.Transaction()
         trx.set_header(url=host_url)
@@ -194,7 +194,7 @@ class Test(unittest.TestCase):
         newdomain = AG.new_action(
             'newdomain', name=domain_name, creator=pub_key)
         issuetoken = AG.new_action('issuetoken', domain=domain_name, names=[
-                                   token_name], owner=[pub_key])
+                                   token_name], owner=[base.Address().set_public_key(pub_key)])
 
         # create a new domain
         trx = transaction.Transaction()
@@ -316,7 +316,7 @@ class Test(unittest.TestCase):
 
         pub2, priv2 = ecc.generate_new_pair()
         issuefungible = AG.new_action(
-            'issuefungible', address=pub2, number=asset(100), memo='goodluck')
+            'issuefungible', address=base.Address().set_public_key(pub2), number=asset(100), memo='goodluck')
         trx = transaction.Transaction()
         trx.set_header(url=host_url)
         trx.add_action(issuefungible)
@@ -418,7 +418,7 @@ class Test(unittest.TestCase):
         trx.add_sign(user.priv_key)
 
         suspend_name = fake_name()
-        newsuspend= AG.new_action(
+        newsuspend = AG.new_action(
             'newsuspend', name=suspend_name, proposer=user.pub_key, trx=trx)
         trx = transaction.Transaction()
         trx.set_header(url=host_url)
