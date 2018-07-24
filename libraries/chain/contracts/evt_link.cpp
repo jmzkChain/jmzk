@@ -14,7 +14,7 @@
 
 using namespace boost::multiprecision;
 
-using bigint_segs = number<cpp_int_backend<448, 448, unsigned_magnitude, checked, void>>;
+using bigint_segs = number<cpp_int_backend<576, 576, unsigned_magnitude, checked, void>>;
 using bigint_sigs = number<cpp_int_backend<1560, 1560, unsigned_magnitude, checked, void>>;
 
 namespace evt { namespace chain { namespace contracts {
@@ -104,7 +104,7 @@ evt_link
 evt_link::parse_from_evtli(const std::string& str) {
     using namespace __internal;
 
-    EVT_ASSERT(str.size() < 600, evt_link_exception, "Link is too long, max length allowed: 600");
+    EVT_ASSERT(str.size() < 650, evt_link_exception, "Link is too long, max length allowed: 650");
 
     const char* uri_schema = "https://evt.li/";
     if(memcmp(str.data(), uri_schema, strlen(uri_schema)) != 0) {
