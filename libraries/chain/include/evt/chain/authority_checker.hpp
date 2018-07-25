@@ -279,8 +279,8 @@ struct check_authority<newdomain> {
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto nd     = act.data_as<const newdomain&>();
-            auto vistor = authority_checker::weight_tally_visitor(checker);
+            auto& nd     = act.data_as<const newdomain&>();
+            auto  vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(nd.creator, 1) == 1) {
                 return true;
             }
@@ -319,7 +319,7 @@ struct check_authority<newgroup> {
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto ng = act.data_as<const newgroup&>();
+            auto& ng = act.data_as<const newgroup&>();
             if(ng.group.key().is_reserved()) {
                 // if group key is reserved, no need to check authority
                 return true;
@@ -364,7 +364,7 @@ struct check_authority<newfungible> {
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto nf     = act.data_as<const newfungible&>();
+            auto& nf    = act.data_as<const newfungible&>();
             auto vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(nf.creator, 1) == 1) {
                 return true;
@@ -396,7 +396,7 @@ struct check_authority<transferft> {
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto tf     = act.data_as<const transferft&>();
+            auto& tf    = act.data_as<const transferft&>();
             auto vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(tf.from, 1) == 1) {
                 return true;
@@ -412,7 +412,7 @@ struct check_authority<evt2pevt> {
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto ep     = act.data_as<const evt2pevt&>();
+            auto& ep    = act.data_as<const evt2pevt&>();
             auto vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(ep.from, 1) == 1) {
                 return true;
@@ -428,7 +428,7 @@ struct check_authority<newsuspend> {
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto ns = act.data_as<const newsuspend&>();
+            auto& ns    = act.data_as<const newsuspend&>();
             auto vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(ns.proposer, 1) == 1) {
                 return true;
@@ -468,7 +468,7 @@ struct check_authority<execsuspend> {
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto es = act.data_as<const execsuspend&>();
+            auto& es    = act.data_as<const execsuspend&>();
             auto vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(es.executor, 1) == 1) {
                 return true;
@@ -484,7 +484,7 @@ struct check_authority<addmeta> {
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto am = act.data_as<const addmeta&>();
+            auto& am = act.data_as<const addmeta&>();
 
             auto& ref        = am.creator;
             bool  ref_result = false;
@@ -514,6 +514,24 @@ struct check_authority<addmeta> {
             return ref_result;
         }
         EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `addmeta` type.");
+    }
+};
+
+template<>
+struct check_authority<everipass> {
+    static bool
+    invoke(const action&, authority_checker*) {
+        // check authority when apply
+        return true;
+    }
+};
+
+template<>
+struct check_authority<everipay> {
+    static bool
+    invoke(const action&, authority_checker*) {
+        // check authority when apply
+        return true;
     }
 };
 
