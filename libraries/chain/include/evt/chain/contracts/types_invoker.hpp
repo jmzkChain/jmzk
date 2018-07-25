@@ -47,6 +47,8 @@ invoke(name n, Args&&... args) {
     case_act(aprvsuspend)
     case_act(execsuspend)
     case_act(paycharge)
+    case_act(everipass)
+    case_act(everipay)
     default: {
         EVT_THROW(action_type_exception, "Unknown action name: ${name}", ("name",n));
     }

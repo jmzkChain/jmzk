@@ -4,36 +4,45 @@
  */
 #include <evt/chain/contracts/evt_link.hpp>
 
+#include <string.h>
 #include <algorithm>
 
 #include <boost/multiprecision/cpp_int.hpp>
 #include <boost/endian/conversion.hpp>
 
+#include <fc/crypto/hex.hpp>
 #include <fc/crypto/elliptic.hpp>
 #include <evt/chain/exceptions.hpp>
 
 using namespace boost::multiprecision;
 
-using bigint_segs = number<cpp_int_backend<576, 576, unsigned_magnitude, checked, void>>;
+// pay: 2(header) + 5(time) + 5(max_pay) + 7(symbol) + 16(link-id)  = 35
+// pass: 2(header) + 5(time) + 22(domain) + 22(token) + 16(link-id) = 67
+// sigs: 65 * 3 = 195
+using bigint_segs = number<cpp_int_backend<536, 536, unsigned_magnitude, checked, void>>;
 using bigint_sigs = number<cpp_int_backend<1560, 1560, unsigned_magnitude, checked, void>>;
 
 namespace evt { namespace chain { namespace contracts {
 
 namespace __internal {
 
+const char* ALPHABETS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ$+-/:*";
+
 template<typename T>
 bytes
 decode(const std::string& nums, int pos, int end) {
     auto num = T{0};
-    for(auto i = pos; i < end; i++) {
-        auto c = nums[i];
-        FC_ASSERT(c >= '0' && c <= '9', "invalid character in evt-link");
-        num *= 10;
-        num += (c - '0');
+    auto pz  = (int)nums.find_first_not_of('0', pos);
+
+    for(auto i = pz; i < end; i++) {
+        auto c = strchr(ALPHABETS, nums[i]);
+        FC_ASSERT(c != nullptr, "invalid character in evt-link");
+        num *= 42;
+        num += (c - ALPHABETS);
     }
 
     auto b = bytes();
-    for(auto i = 0u; i < nums.find_first_not_of('0'); i++) {
+    for(auto i = 0; i < (pz - pos); i++) {
         b.emplace_back(0);
     }
     boost::multiprecision::export_bits(num, std::back_inserter(b), 8);
@@ -41,40 +50,62 @@ decode(const std::string& nums, int pos, int end) {
     return b;
 }
 
-fc::flat_map<uint32_t, evt_link::segment>
-parse_segments(const bytes& b) {
-    FC_ASSERT(b.size() > 0);
-    auto segs = fc::flat_map<uint32_t, evt_link::segment>();
+fc::flat_map<uint8_t, evt_link::segment>
+parse_segments(const bytes& b, uint16_t& header) {
+    FC_ASSERT(b.size() > 2);
 
-    auto i = 0u;
+    auto h  = *(uint16_t*)&b[0];
+    header  = boost::endian::big_to_native(h);
+
+    auto segs = fc::flat_map<uint8_t, evt_link::segment>();
+
+    auto i = 2u;
     while(i < b.size()) {
         auto k = (uint8_t)b[i];
-        if(k <= 40) {
+        if(k <= 20) {
             FC_ASSERT(b.size() > i + 1); // value is 1 byte
-            auto v = b[i + 1];
+            auto v = (uint8_t)b[i + 1];
             segs.emplace(k, evt_link::segment(k, v));
 
             i += 2;
         }
+        else if(k <= 40) {
+            FC_ASSERT(b.size() > i + 2); // value is 2 byte
+            auto v = *(uint16_t*)(&b[i] + 1);
+            segs.emplace(k, evt_link::segment(k, boost::endian::big_to_native(v)));
+
+            i += 3;
+        }
         else if(k <= 90) {
             FC_ASSERT(b.size() > i + 4); // value is 4 byte
-            auto v = *(uint32_t*)(&b[0] + i + 1);
+            auto v = *(uint32_t*)(&b[i] + 1);
             segs.emplace(k, evt_link::segment(k, boost::endian::big_to_native(v)));
 
             i += 5;
         }
         else if(k <= 180) {
-            FC_ASSERT(b.size() > i + 1); // first read length byte
-            auto sz = (uint8_t)b[i + 1];
+            auto sz = 0u;
+            auto s  = 0u;
+
+            if(k > 155 && k <= 165) {
+                sz = 16;
+            }
+            else {
+                FC_ASSERT(b.size() > i + 1); // first read length byte
+                sz = (uint8_t)b[i + 1];
+                s  = 1;
+            }
+
+
             if(sz > 0) {
-                FC_ASSERT(b.size() > i + 1 + sz);
-                segs.emplace(k, evt_link::segment(k, std::string(&b[0] + i + 2, sz)));
+                FC_ASSERT(b.size() > i + s + sz);
+                segs.emplace(k, evt_link::segment(k, std::string(&b[i] + 1 + s, sz)));
             }
             else {
                 segs.emplace(k, evt_link::segment(k, std::string()));
             }
 
-            i += 2 + sz;
+            i += 1 + s + sz;
         }
         else {
             EVT_THROW(evt_link_exception, "Invalid key type: ${k}", ("k",k));
@@ -104,29 +135,31 @@ evt_link
 evt_link::parse_from_evtli(const std::string& str) {
     using namespace __internal;
 
-    EVT_ASSERT(str.size() < 650, evt_link_exception, "Link is too long, max length allowed: 650");
+    EVT_ASSERT(str.size() < 400, evt_link_exception, "Link is too long, max length allowed: 400");
+    EVT_ASSERT(str.size() > 20, evt_link_exception, "Link is too short");
 
+    size_t start = 0;
     const char* uri_schema = "https://evt.li/";
-    if(memcmp(str.data(), uri_schema, strlen(uri_schema)) != 0) {
-        EVT_THROW(evt_link_exception, "Link uri schema is not valid");
+    if(memcmp(str.data(), uri_schema, strlen(uri_schema)) == 0) {
+        start = strlen(uri_schema);
     }
 
-    auto d = str.find_first_of('-', strlen(uri_schema));
+    auto d = str.find_first_of('_', start);
     
     auto bsegs = bytes();
     auto bsigs = bytes();
 
     if(d == std::string::npos) {
-        bsegs = decode<bigint_segs>(str, strlen(uri_schema), str.size());
+        bsegs = decode<bigint_segs>(str, start, str.size());
     }
     else {
-        bsegs = decode<bigint_segs>(str, strlen(uri_schema), d);
+        bsegs = decode<bigint_segs>(str, start, d);
         bsigs = decode<bigint_sigs>(str, d + 1, str.size());
     }
 
     auto link = evt_link();
 
-    link.segments_       = parse_segments(bsegs);
+    link.segments_       = parse_segments(bsegs, link.header_);
     link.signatures_     = parse_signatures(bsigs);
     link.segments_bytes_ = std::move(bsegs);
 
@@ -134,7 +167,7 @@ evt_link::parse_from_evtli(const std::string& str) {
 }
 
 const evt_link::segment&
-evt_link::get_segment(uint32_t key) const {
+evt_link::get_segment(uint8_t key) const {
     auto it = segments_.find(key);
     EVT_ASSERT(it != segments_.end(), evt_link_no_key_exception, "Cannot find segment for key: ${k}", ("k",key));
 
@@ -142,7 +175,7 @@ evt_link::get_segment(uint32_t key) const {
 }
 
 bool
-evt_link::has_segment(uint32_t key) const {
+evt_link::has_segment(uint8_t key) const {
     return segments_.find(key) != segments_.end();
 }
 
@@ -157,3 +190,48 @@ evt_link::restore_keys() const {
 }
 
 }}}  // namespac evt::chain::contracts
+
+namespace fc {
+
+using evt::chain::contracts::evt_link;
+
+void
+from_variant(const fc::variant& v, evt_link& link) {
+    link = evt_link::parse_from_evtli(v.get_string());
+}
+
+void
+to_variant(const evt::chain::contracts::evt_link& link, fc::variant& v) {
+    auto vo   = fc::mutable_variant_object();
+    auto segs = fc::variants();
+    auto sigs = fc::variants();
+    
+    for(auto& it : link.get_segments()) {
+        auto  sego = fc::mutable_variant_object();
+        auto& seg  = it.second;
+
+        sego["key"] = seg.key;
+        if(seg.key <= 90) {
+            sego["value"] = *seg.intv;
+        }
+        else if(seg.key <= 155) {
+            sego["value"] = *seg.strv;
+        }
+        else if(seg.key <= 180) {
+            sego["value"] = fc::to_hex(seg.strv->c_str(), seg.strv->size());
+        }
+        segs.emplace_back(std::move(sego));
+    }
+
+    for(auto& sig : link.get_signatures()) {
+        sigs.emplace_back((std::string)sig);
+    }
+
+    vo["header"]     = link.get_header();
+    vo["segments"]   = segs;
+    vo["signatures"] = sigs;
+
+    v = std::move(vo);
+}
+
+}  // namespace fc

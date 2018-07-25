@@ -15,6 +15,7 @@
 #include <evt/chain/global_property_object.hpp>
 #include <evt/chain/transaction_object.hpp>
 #include <evt/chain/reversible_block_object.hpp>
+#include <evt/chain/contracts/evt_link_object.hpp>
 
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
@@ -252,6 +253,7 @@ struct controller_impl {
         db.add_index<dynamic_global_property_multi_index>();
         db.add_index<block_summary_multi_index>();
         db.add_index<transaction_multi_index>();
+        db.add_index<evt_link_multi_index>();
     }
 
     /**
@@ -422,6 +424,16 @@ struct controller_impl {
                        "${name} action in domain: ${domain} with key: ${key} authorized failed",
                        ("domain", act.domain)("key", act.key)("name", act.name));
         }
+    }
+
+    void
+    check_authorization(const flat_set<public_key_type>& signed_keys, const action& act) {
+        const static uint32_t max_authority_depth = conf.genesis.initial_configuration.max_authority_depth;
+
+        auto checker = authority_checker(signed_keys, token_db, max_authority_depth);
+        EVT_ASSERT(checker.satisfied(act), unsatisfied_authorization,
+                   "${name} action in domain: ${domain} with key: ${key} authorized failed",
+                   ("domain", act.domain)("key", act.key)("name", act.name));
     }
 
     transaction_trace_ptr
@@ -938,6 +950,11 @@ controller::push_suspend_transaction(const transaction_metadata_ptr& trx, fc::ti
 void
 controller::check_authorization(const flat_set<public_key_type>& signed_keys, const transaction& trx) {
     return my->check_authorization(signed_keys, trx);
+}
+
+void
+controller::check_authorization(const flat_set<public_key_type>& signed_keys, const action& act) {
+    return my->check_authorization(signed_keys, act);
 }
 
 uint32_t

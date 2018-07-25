@@ -158,6 +158,13 @@ FC_DECLARE_DERIVED_EXCEPTION( suspend_invalid_action_exception,    action_except
 FC_DECLARE_DERIVED_EXCEPTION( name_reserved_exception,             action_exception, 3040035, "Name is reserved." );
 FC_DECLARE_DERIVED_EXCEPTION( evt_link_exception,                  action_exception, 3040036, "EVT-Link is not valid." );
 FC_DECLARE_DERIVED_EXCEPTION( evt_link_no_key_exception,           action_exception, 3040037, "Specific segment key is not in this evt-link." );
+FC_DECLARE_DERIVED_EXCEPTION( evt_link_version_exception,          action_exception, 3040038, "EVT-Link version is not valid");
+FC_DECLARE_DERIVED_EXCEPTION( evt_link_id_exception,               action_exception, 3040039, "EVT-Link id is not valid");
+FC_DECLARE_DERIVED_EXCEPTION( evt_link_dupe_exception,             action_exception, 3040040, "Duplicate EVT-Link");
+FC_DECLARE_DERIVED_EXCEPTION( evt_link_type_exception,             action_exception, 3040041, "Invalid EVT-Link type");
+FC_DECLARE_DERIVED_EXCEPTION( evt_link_expiration_exception,       action_exception, 3040042, "EVT-Link is expired");
+FC_DECLARE_DERIVED_EXCEPTION( everipass_exception,                 action_exception, 3040043, "everiPass failed");
+FC_DECLARE_DERIVED_EXCEPTION( everipay_exception,                  action_exception, 3040044, "everiPay failed");
 
 FC_DECLARE_DERIVED_EXCEPTION( pop_empty_chain,                   undo_database_exception, 3070001, "There are no blocks to be popped." );
 
