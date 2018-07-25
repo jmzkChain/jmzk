@@ -146,7 +146,7 @@ transaction_context::check_paid() const {
     if(pevt.get_amount() + evt.get_amount() >= charge) {
         return;
     }
-    EVT_THROW(charge_exceeded_exception, "There are ${e} EVT and ${p} Pinned EVT left, but charge is ${c}", ("e",evt)("p",pevt)("c",charge));
+    EVT_THROW(charge_exceeded_exception, "There are only ${e} and ${p} left, but charge is ${c}", ("e",evt)("p",pevt)("c",charge));
 }
 
 void
