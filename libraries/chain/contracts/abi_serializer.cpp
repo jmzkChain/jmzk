@@ -2,13 +2,15 @@
  *  @file
  *  @copyright defined in evt/LICENSE.txt
  */
-#include <boost/algorithm/string/predicate.hpp>
-#include <evt/chain/chain_config.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
-#include <evt/chain/contracts/types.hpp>
-#include <evt/chain/transaction.hpp>
+
+#include <boost/algorithm/string/predicate.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/io/varint.hpp>
+
+#include <evt/chain/chain_config.hpp>
+#include <evt/chain/transaction.hpp>
+#include <evt/chain/contracts/types.hpp>
 
 using namespace boost;
 
@@ -97,6 +99,7 @@ abi_serializer::configure_built_in_types() {
     built_in_types.emplace("authorizer_ref", pack_unpack<authorizer_ref>());
     built_in_types.emplace("producer_schedule", pack_unpack<producer_schedule_type>());
     built_in_types.emplace("extensions", pack_unpack<extensions_type>());
+    built_in_types.emplace("evt_link", pack_unpack<evt_link>());
 }
 
 void
