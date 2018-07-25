@@ -57,50 +57,136 @@ TEST_CASE("test_address", "[types]") {
     INFO(addr4.to_string());
 }
 
-TEST_CASE("test_link", "[types]") {
-    auto str = "https://evt.li/105872245008276224820591850571406257599055110087309045699"
-               "857346357746726272659157993059159349575304490639719329170682417766-50650"
-               "888506055079811583602057798359777036080208936513190985560278747067750843"
-               "546989807062585779161049048705714969431924010459958553375007765386537646"
-               "589480404085653550805144861548482671327759747922103129049559214656483145"
-               "652620127881665022904010501332559092813546656391959204942463147561690656"
-               "761339314412424841775995984000887229638084203771090463957213545978606258"
-               "503004791138876832340228078575546381687000899946944997703639139337718538"
-               "94308706279167138159625333661707";
+TEST_CASE("test_link_1", "[types]") {
+    auto str = "03XBY4E/KTS:PNHVA3JP9QG258F08JHYOYR5SLJGN0EA-C3J6S:2G:T1SX7WA1"
+               "4KH9ETLZ97TUX9R9JJA6+06$E/_PYNX-/152P4CTC:WKXLK$/7G-K:89+::2K4"
+               "C-KZ2**HI-P8CYJ**XGFO1K5:$E*SOY8MFYWMNHP*BHX2U8$$FTFI81YDP1HT";
     auto link = evt_link::parse_from_evtli(str);
 
-    CHECK(link.get_segment(41).intv == 11);
-    CHECK(link.get_segment(42).intv == 1532413494);
-    CHECK(link.get_segment(91).intv == 0);
-    CHECK(link.get_segment(91).strv == "testdomain");
-    CHECK(link.get_segment(92).strv == "testtoken");
+    CHECK(link.get_header() == 3);
+    CHECK(*link.get_segment(evt_link::timestamp).intv == 1532465234);
+    CHECK(link.get_segment(evt_link::domain).intv.valid() == false);
+    CHECK(*link.get_segment(evt_link::domain).strv == "nd1532465232490");
+    CHECK(*link.get_segment(evt_link::token).strv == "tk3064930465.8381");
 
     auto uid = std::string();
-    uid.push_back(220);
-    uid.push_back(178);
-    uid.push_back(159);
-    uid.push_back(254);
-    uid.push_back(169);
+    uid.push_back(249);
     uid.push_back(136);
-    uid.push_back(34);
-    uid.push_back(185);
-    uid.push_back(65);
-    uid.push_back(18);
-    uid.push_back(98);
-    uid.push_back(248);
-    uid.push_back(71);
-    uid.push_back(246);
-    uid.push_back(18);
-    uid.push_back(102);
+    uid.push_back(100);
+    uid.push_back(134);
+    uid.push_back(20);
+    uid.push_back(86);
+    uid.push_back(38);
+    uid.push_back(125);
+    uid.push_back(124);
+    uid.push_back(173);
+    uid.push_back(243);
+    uid.push_back(124);
+    uid.push_back(140);
+    uid.push_back(182);
+    uid.push_back(117);
+    uid.push_back(147);
 
-    CHECK(link.get_segment(156).strv == uid);
+    CHECK(link.get_segment(evt_link::link_id).strv == uid);
+
+    auto& sigs = link.get_signatures();
+    CHECK(sigs.size() == 1);
+
+    CHECK(sigs.find(signature_type(std::string("SIG_K1_JyyaM7x9a4AjaD8yaG6iczgHskUFPvkWEk7X5DPkdZfRGBxYTbpLJ1y7gvmeL4vMqrMmw6QwtErfKUds5L7sxwU2nR7mvu"))) != sigs.end());
+
+    auto pkeys = link.restore_keys();
+    CHECK(pkeys.size() == 1);
+
+    CHECK(pkeys.find(public_key_type(std::string("EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"))) != pkeys.end());
+}
+
+TEST_CASE("test_link_2", "[types]") {
+    auto str = "https://evt.li/04OH4QSYU-9:0ISOMCF2AY*JO/O/7VTMZLC6W*F0NQ831F+60"
+               "7/$9/9F/T6HT:FU*W99Q_PWV-SEQQOBAI6AXPY-32ZV:DTQ8BNCA$Z15-OHQ7*9O"
+               "+CGUBIMTB261AT$6:*I+UKBHSQP3D84/JEZDG7BEJ5OUD$ZINCC24";
+
+    auto link = evt_link::parse_from_evtli(str);
+
+    CHECK(link.get_header() == 11);
+    CHECK(*link.get_segment(evt_link::timestamp).intv == 1532465608);
+    CHECK(link.get_segment(evt_link::domain).intv.valid() == false);
+    CHECK(*link.get_segment(evt_link::domain).strv == "testdomain");
+    CHECK(*link.get_segment(evt_link::token).strv == "testtoken");
+
+
+    auto uid = std::string();
+    uid.push_back(102);
+    uid.push_back(24);
+    uid.push_back(21);
+    uid.push_back(81);
+    uid.push_back(221);
+    uid.push_back(147);
+    uid.push_back(189);
+    uid.push_back(88);
+    uid.push_back(93);
+    uid.push_back(215);
+    uid.push_back(204);
+    uid.push_back(121);
+    uid.push_back(77);
+    uid.push_back(131);
+    uid.push_back(249);
+    uid.push_back(168);
+
+    CHECK(link.get_segment(evt_link::link_id).strv == uid);
+
+    auto& sigs = link.get_signatures();
+    CHECK(sigs.size() == 1);
+
+    CHECK(sigs.find(signature_type(std::string("SIG_K1_JxEoFdWMsK9dsmqWKrouhkE7qdj1Up8Er4R1jrUiL3zqEm3pmiPGpriJeVP4Fx2TceYX7iVaNjAsjBdiaJSgqSiwJKatNz"))) != sigs.end());
+
+    auto pkeys = link.restore_keys();
+    CHECK(pkeys.size() == 1);
+
+    CHECK(pkeys.find(public_key_type(std::string("EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"))) != pkeys.end());
+}
+
+TEST_CASE("test_link_3", "[types]") {
+    auto str = "04OH4QS:OERU*WONPUIU+Z3BQE6C4QG7ONJ16GUBT2HE5XCN87ZG651*OV-VLBH69RNB0_FWFIIX04G6X-28M"
+               "HW*EO/$JB2+GM-OK8N52EKZP471H4Q96T*3CD:*ITVNM7$WWAWZTPQKN4LUSBH+*9KXEYAJ9R$5R32LFISP0W"
+               "J*KXXMX8$C8*005AX-VCA60JJFBZ6+T$7CLHKPH2W-4I93I+I5ZPUYR1O6X:8A/+TYKIWG88UE$M74URQ:TEJ"
+               "SK+N5*WJZ:6H3I$RLQZ*Y7-OO8G1060NLL5+RRVJTJXF0Y0:0MYM0/EF+/KJUY79G9WD8R0IVA2TA$2/1JLAS"
+               "Y6$3M9-RP-6/YPM7:3P";
+
+    auto link = evt_link::parse_from_evtli(str);
+
+    CHECK(link.get_header() == 11);
+    CHECK(*link.get_segment(evt_link::timestamp).intv == 1532468461);
+    CHECK(link.get_segment(evt_link::domain).intv.valid() == false);
+    CHECK(*link.get_segment(evt_link::domain).strv == "testdomain");
+    CHECK(*link.get_segment(evt_link::token).strv == "testtoken");
+
+
+    auto uid = std::string();
+    uid.push_back(249);
+    uid.push_back(31);
+    uid.push_back(135);
+    uid.push_back(246);
+    uid.push_back(101);
+    uid.push_back(32);
+    uid.push_back(91);
+    uid.push_back(177);
+    uid.push_back(24);
+    uid.push_back(132);
+    uid.push_back(216);
+    uid.push_back(242);
+    uid.push_back(244);
+    uid.push_back(141);
+    uid.push_back(118);
+    uid.push_back(82);
+
+    CHECK(link.get_segment(evt_link::link_id).strv == uid);
 
     auto& sigs = link.get_signatures();
     CHECK(sigs.size() == 3);
 
-    CHECK(sigs.find(signature_type(std::string("SIG_K1_KWvwzRSLgJQJbvTGEoo5TqKwSiSHJnPfKBct6H1ArfVrQsWUEuy1eK6p6cvCpsEnbZbm89ffqKNu8BbQwkyW4pL8C7s7QW"))) != sigs.end());
-    CHECK(sigs.find(signature_type(std::string("SIG_K1_KfkVBKNvDKXhPksdvAMhDViooMt4fRhsSnh5Bx9VqcKoeAf8ZnKo1MPQZMV7rskgTbu36nGjh6jpRf6rLoHEvLrzGgn1ub"))) != sigs.end());
-    CHECK(sigs.find(signature_type(std::string("SIG_K1_K36D1VmoWrzEqi8uQ1ysT3wagj1HcrrCUwo582hQRGV39Q7xT3J3BgigypvqJtNQjUzgmrNEaSrS81AAbe2EFeBXTvckSR"))) != sigs.end());
+    CHECK(sigs.find(signature_type(std::string("SIG_K1_K4DGNFAAV4B8M1KmcE7Xy8o75God5eZMfWRXyCxbjwjDH8KEfnMQtzGoKMqR8xbLm3rdLJb3ZyXgHweVaX89Lq1LdxFEg8"))) != sigs.end());
+    CHECK(sigs.find(signature_type(std::string("SIG_K1_KVFibY5eWJ3UTCmxKiWpd2PigYGynQ9NjwxENg6GD41VfKDxhG9wdoaUEfXMpc3ANYQ2pSyb9t9ZkmV7AgawpShDfVVf7H"))) != sigs.end());
+    CHECK(sigs.find(signature_type(std::string("SIG_K1_K1FnY42qkeu9Pa1NAGGu9baehuyZNTWtYAsYddRgMQoXVqdZ4Zp9dngY9xbsoAHjvQvuNp5a9Fr89NE4YtMZkWTZcNfHFc"))) != sigs.end());
 
     auto pkeys = link.restore_keys();
     CHECK(pkeys.size() == 3);
@@ -109,3 +195,4 @@ TEST_CASE("test_link", "[types]") {
     CHECK(pkeys.find(public_key_type(std::string("EVT6MYSkiBHNDLxE6JfTmSA1FxwZCgBnBYvCo7snSQEQ2ySBtpC6s"))) != pkeys.end());
     CHECK(pkeys.find(public_key_type(std::string("EVT7bUYEdpHiKcKT9Yi794MiwKzx5tGY3cHSh4DoCrL4B2LRjRgnt"))) != pkeys.end());
 }
+
