@@ -60,6 +60,11 @@ public:
     const fc::flat_set<signature_type>& get_signatures() const {return signatures_; }
 
 public:
+    void set_header(uint16_t header) { header_ = header; }
+    void add_segment(const segment&);
+    void add_signature(const signature_type&);
+
+public:
     fc::flat_set<public_key_type> restore_keys() const;
 
 private:
