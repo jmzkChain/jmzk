@@ -63,6 +63,8 @@ evt_contract_abi() {
     evt_abi.actions.push_back( action_def{name("aprvsuspend"), "aprvsuspend"} );
     evt_abi.actions.push_back( action_def{name("execsuspend"), "execsuspend"} );
     evt_abi.actions.push_back( action_def{name("paycharge"), "paycharge"} );
+    evt_abi.actions.push_back( action_def{name("everipass"), "everipass"} );
+    evt_abi.actions.push_back( action_def{name("everipay"), "everipay"} );
 
     // structures def
     evt_abi.structs.emplace_back( struct_def {
@@ -281,6 +283,20 @@ evt_contract_abi() {
         "paycharge", "", {
            {"payer", "address"},
            {"charge", "uint32"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "everipass", "", {
+           {"link", "evt_link"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "everipay", "", {
+           {"link", "evt_link"},
+           {"payee", "address"},
+           {"number", "asset"}
         }
     });
 

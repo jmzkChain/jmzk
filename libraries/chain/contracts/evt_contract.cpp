@@ -859,7 +859,7 @@ EVT_ACTION_IMPL(everipass) {
         auto ts    = *link.get_segment(evt_link::timestamp).intv;
         auto since = context.control.head_block_time() - fc::time_point_sec(ts);
         if(since > fc::seconds(config::evt_link_expired_secs)) {
-            EVT_THROW(evt_link_expiration_exception, "EVT-Link is expired, diff secs: ${s}", ("s",since.to_seconds()))
+            EVT_THROW(evt_link_expiration_exception, "EVT-Link is expired, now: ${n}, timestamp: ${t}", ("n",context.control.head_block_time())("t",fc::time_point_sec(ts)))
         }
 
         auto keys = link.restore_keys();

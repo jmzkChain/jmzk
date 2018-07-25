@@ -31,7 +31,7 @@ public:
         cfg.charge_free_mode      = false;
         cfg.loadtest_mode         = false;
 
-        cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
+        cfg.genesis.initial_timestamp = fc::time_point::now();
         cfg.genesis.initial_key       = tester::get_public_key("evt");
         auto privkey                  = tester::get_private_key("evt");
         my_tester.reset(new tester(cfg));
@@ -42,9 +42,10 @@ public:
         key_seeds.push_back(N(payer));
         key_seeds.push_back(N(poorer));
 
-        key    = tester::get_public_key(N(key));
-        payer  = address(tester::get_public_key(N(payer)));
-        poorer = address(tester::get_public_key(N(poorer)));
+        key         = tester::get_public_key(N(key));
+        private_key = tester::get_private_key(N(key));
+        payer       = address(tester::get_public_key(N(payer)));
+        poorer      = address(tester::get_public_key(N(poorer)));
 
         my_tester->add_money(payer, asset(100000, symbol(SY(5, EVT))));
 
@@ -92,6 +93,7 @@ protected:
 
 protected:
     public_key_type           key;
+    private_key_type          private_key;
     address                   payer;
     address                   poorer;
     std::vector<account_name> key_seeds;
@@ -1036,6 +1038,31 @@ TEST_CASE_METHOD(contracts_test, "contract_evt2pevt_test", "[contracts]") {
     my_tester->push_action(N(evt2pevt), N128(.fungible), string_to_name128("EVT"), var.get_object(), key_seeds, payer);
 
     my_tester->produce_blocks();
+}
+
+TEST_CASE_METHOD(contracts_test, "everipass_test", "[contracts]") {
+    auto link = evt_link();
+    auto header = 0;
+    header |= evt_link::version1;
+    header |= evt_link::everiPass;
+
+    link.set_header(header);
+    link.add_segment(evt_link::segment(evt_link::timestamp, fc::time_point::now().sec_since_epoch()));
+    link.add_segment(evt_link::segment(evt_link::domain, get_domain_name()));
+    link.add_segment(evt_link::segment(evt_link::token, "t1"));
+
+    auto hash = fc::sha256::hash(std::string());
+    link.add_signature(private_key.sign(hash));
+
+    auto ep = everipass();
+    ep.link = link;
+
+    auto epact = action(N128(everipass), name128(), ep);
+    // because t1 has two owners, here we only provide one
+    CHECK_THROWS_AS(my_tester->push_action(action(N128(everipass), name128(), ep), key_seeds, payer), everipass_exception);
+    // replace old segment value
+    ep.link.add_segment(evt_link::segment(evt_link::token, "t3"));
+    CHECK_NOTHROW(my_tester->push_action(action(N128(everipass), name128(), ep), key_seeds, payer));
 }
 
 TEST_CASE_METHOD(contracts_test, "empty_action_test", "[contracts]") {

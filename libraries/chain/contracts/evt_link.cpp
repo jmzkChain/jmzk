@@ -189,6 +189,20 @@ evt_link::restore_keys() const {
     return keys;
 }
 
+void
+evt_link::add_segment(const segment& seg) {
+    auto it = segments_.emplace(seg.key, seg);
+    if(!it.second) {
+        // existed, replace old one
+        it.first->second = seg;
+    }
+}
+
+void
+evt_link::add_signature(const signature_type& sig) {
+    signatures_.emplace(sig);
+}
+
 }}}  // namespac evt::chain::contracts
 
 namespace fc {
