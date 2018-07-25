@@ -191,7 +191,11 @@ evt_link::restore_keys() const {
 
 void
 evt_link::add_segment(const segment& seg) {
-    segments_.emplace(seg.key, seg);
+    auto it = segments_.emplace(seg.key, seg);
+    if(!it.second) {
+        // existed, replace old one
+        it.first->second = seg;
+    }
 }
 
 void
