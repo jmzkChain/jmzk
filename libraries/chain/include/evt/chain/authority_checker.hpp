@@ -227,7 +227,7 @@ private:
     }
 
     bool
-    satisfied_fungible_permission(const fungible_name sym_name, const action& action, const permission_name& name) {
+    satisfied_fungible_permission(const fungible_name& sym_name, const action& action, const permission_name& name) {
         bool result = false;
         get_fungible_permission(sym_name, name, [&](const auto& permission) {
             result = satisfied_permission(permission, action);

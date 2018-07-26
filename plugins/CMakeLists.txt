@@ -17,7 +17,7 @@ if(ENABLE_MONGODB_SUPPORT)
     add_subdirectory(history_plugin)
     add_subdirectory(history_api_plugin)
 else()
-    message("Not enabled mongo_db suuport, mongo_db_plugin and history_plguin will be omitted.")
+    message(STATUS "Not enabled mongo_db suuport, mongo_db_plugin and history_plguin will be omitted.")
 endif()
 
 # Forward variables to top level so packaging picks them up

@@ -27,6 +27,7 @@
 #include <fc/string.hpp>
 
 #include <evt/chain/name.hpp>
+#include <evt/chain/name128.hpp>
 #include <evt/chain/chain_id_type.hpp>
 
 #define OBJECT_CTOR1(NAME)                                   \

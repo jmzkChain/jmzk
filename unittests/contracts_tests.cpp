@@ -463,6 +463,8 @@ TEST_CASE_METHOD(contracts_test, "contract_newfungible_test", "[contracts]") {
     CHECK_THROWS_AS(my_tester->push_action(N(newfungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, fungible_payer), unsatisfied_authorization);
 
     newfg.creator = key;
+    newfg.issue.authorizers[0].ref.set_account(key);
+    newfg.manage.authorizers[0].ref.set_account(key);
     to_variant(newfg, var);
     my_tester->push_action(N(newfungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, fungible_payer);
 
@@ -503,10 +505,12 @@ TEST_CASE_METHOD(contracts_test, "contract_updfungible_test", "[contracts]") {
     auto updfg = var.as<updfungible>();
 
     //action_authorize_exception test
+    auto strkey = (std::string)key;
     CHECK_THROWS_AS(my_tester->push_action(N(updfungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer), action_authorize_exception);
 
     updfg.sym = symbol::from_string(string("5,") + get_symbol_name());
-    updfg.manage->authorizers[0].ref.set_account(key);
+    updfg.issue->authorizers[0].ref.set_account(key);
+    updfg.manage->authorizers[0].ref.set_account(tester::get_public_key(N(key2)));
     to_variant(updfg, var);
 
     my_tester->push_action(N(updfungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer);
@@ -712,19 +716,25 @@ TEST_CASE_METHOD(contracts_test, "contract_addmeta_test", "[contracts]") {
     to_variant(admt, var);
 
     my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds, payer, 50000);
-
     my_tester->push_action(N(addmeta), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer, 50000);
-
-    my_tester->push_action(N(addmeta), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer, 50000);
-
     my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer, 50000);
+
+    admt.creator = tester::get_public_key(N(key2));
+    to_variant(admt, var);
+    my_tester->push_action(N(addmeta), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), { N(key2), N(payer) }, payer, 50000);
+
     //meta_key_exception test
-    admt.value = "value2";
+
+    admt.creator = key;
+    admt.value   = "value2";
     to_variant(admt, var);
     CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds, payer, 50000), meta_key_exception);
     CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer, 50000), meta_key_exception);
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer, 50000), meta_key_exception);
     CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer, 50000), meta_key_exception);
+
+    admt.creator = tester::get_public_key(N(key2));
+    to_variant(admt, var);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), { N(key2), N(payer) }, payer, 50000), meta_key_exception);
 
     my_tester->produce_blocks();
 }

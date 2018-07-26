@@ -8,6 +8,7 @@ add_library( evt_chain
              asset.cpp
              merkle.cpp
              name.cpp
+             name128.cpp
              transaction.cpp
              transaction_context.cpp
              block_header.cpp
@@ -41,6 +42,7 @@ add_library( evt_chain_lite SHARED
              address.cpp
              asset.cpp
              name.cpp
+             name128.cpp
              transaction.cpp
              chain_id_type.cpp
              genesis_state.cpp
@@ -48,6 +50,7 @@ add_library( evt_chain_lite SHARED
              contracts/abi_serializer.cpp
              contracts/group.cpp
              contracts/authorizer_ref.cpp
+             contracts/evt_link.cpp
              contracts/evt_contract_abi.cpp
 
              ${HEADERS}

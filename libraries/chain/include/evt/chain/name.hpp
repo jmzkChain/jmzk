@@ -9,7 +9,6 @@
 
 namespace evt { namespace chain {
 using std::string;
-using uint128_t = __uint128_t;
 
 static constexpr uint64_t
 char_to_symbol(char c) {
@@ -17,23 +16,6 @@ char_to_symbol(char c) {
         return (c - 'a') + 1;
     if(c >= '1' && c <= '5')
         return (c - '1') + 27;
-    return 0;
-}
-
-static constexpr uint128_t
-char_to_symbol128(char c) {
-    if(c >= 'a' && c <= 'z') {
-        return (c - 'a' + 12);
-    }
-    if(c >= 'A' && c <= 'Z') {
-        return (c - 'A' + 38);
-    }
-    if(c >= '0' && c <= '9') {
-        return (c - '0' + 2);
-    }
-    if(c == '-') {
-        return 1;
-    }
     return 0;
 }
 
@@ -56,18 +38,7 @@ string_to_name(const char* str) {
     return name;
 }
 
-static constexpr uint128_t
-string_to_name128(const char* str) {
-    uint128_t name = 0;
-    int       i    = 0;
-    for(; str[i] && i <= 20; ++i) {
-        name |= (char_to_symbol128(str[i]) & 0x3f) << (128 - 6 * (i + 1));
-    }
-    return name;
-}
-
 #define N(X) evt::chain::string_to_name(#X)
-#define N128(X) evt::chain::string_to_name128(#X)
 
 struct name {
     uint64_t value = 0;
@@ -171,139 +142,28 @@ sort_names(std::vector<name>&& names) {
     return names;
 }
 
-struct name128 {
-    uint128_t value = 0;
-
-    bool
-    empty() const {
-        return 0 == value;
-    }
-
-    bool
-    good() const {
-        return !empty();
-    }
-
-    name128(const char* str) { set(str); }
-    name128(const string& str) { set(str.c_str()); }
-
-    void set(const char* str);
-
-    constexpr name128(uint128_t v)
-        : value(v) {}
-    name128() {}
-
-    explicit operator string() const;
-
-    string
-    to_string() const {
-        return string(*this);
-    }
-
-    name128&
-    operator=(uint128_t v) {
-        value = v;
-        return *this;
-    }
-
-    name128&
-    operator=(const string& n) {
-        value = name128(n).value;
-        return *this;
-    }
-
-    name128&
-    operator=(const char* n) {
-        value = name128(n).value;
-        return *this;
-    }
-
-    friend std::ostream&
-    operator<<(std::ostream& out, const name128& n) {
-        return out << string(n);
-    }
-
-    friend bool
-    operator<(const name128& a, const name128& b) {
-        return a.value < b.value;
-    }
-
-    friend bool
-    operator<=(const name128& a, const name128& b) {
-        return a.value <= b.value;
-    }
-
-    friend bool
-    operator>(const name128& a, const name128& b) {
-        return a.value > b.value;
-    }
-
-    friend bool
-    operator>=(const name128& a, const name128& b) {
-        return a.value >= b.value;
-    }
-
-    friend bool
-    operator==(const name128& a, const name128& b) {
-        return a.value == b.value;
-    }
-
-    friend bool
-    operator==(const name128& a, uint128_t b) {
-        return a.value == b;
-    }
-    
-    friend bool
-    operator!=(const name128& a, uint128_t b) {
-        return a.value != b;
-    }
-
-    friend bool
-    operator!=(const name128& a, const name128& b) {
-        return a.value != b.value;
-    }
-
-    operator bool() const { return value; }
-    operator uint128_t() const { return value; }
-};
-
-inline std::vector<name128>
-sort_names(std::vector<name128>&& names) {
-    fc::deduplicate(names);
-    return names;
-}
-
 }}  // namespace evt::chain
 
 namespace std {
 template <>
 struct hash<evt::chain::name> : private hash<uint64_t> {
-    typedef evt::chain::name                     argument_type;
-    typedef typename hash<uint64_t>::result_type result_type;
+    using argument_type = evt::chain::name;
+    using result_type   = typename hash<uint64_t>::result_type;
+
     result_type
     operator()(const argument_type& name) const noexcept {
         return hash<uint64_t>::operator()(name.value);
     }
 };
 
-template <>
-struct hash<evt::chain::name128> : private hash<uint64_t> {
-    typedef evt::chain::name128                  argument_type;
-    typedef typename hash<uint64_t>::result_type result_type;
-    result_type
-    operator()(const argument_type& name) const noexcept {
-        return hash<uint64_t>::operator()(name.value);
-    }
-};
 };  // namespace std
 
 namespace fc {
+
 class variant;
-void to_variant(const evt::chain::name& c, fc::variant& v);
-void from_variant(const fc::variant& v, evt::chain::name& check);
-void to_variant(const evt::chain::name128& c, fc::variant& v);
-void from_variant(const fc::variant& v, evt::chain::name128& check);
+void to_variant(const evt::chain::name& name, fc::variant& v);
+void from_variant(const fc::variant& v, evt::chain::name& name);
+
 }  // namespace fc
 
-FC_REFLECT(evt::chain::name, (value))
-FC_REFLECT(evt::chain::name128, (value))
+FC_REFLECT(evt::chain::name, (value));

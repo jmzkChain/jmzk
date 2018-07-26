@@ -195,13 +195,14 @@ if(ENABLE_COVERAGE_TESTING)
   find_program( GENHTML_PATH NAMES genhtml)
 endif()
 
-if(ENABLE_BREAKPAD_SUPPORT)
+if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug" OR ENABLE_BREAKPAD_SUPPORT)
+    message(STATUS "Build EVT with symbols")
     set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g" )
 endif()
 
 include_directories(libraries/rocksdb/include)
 
-if ("${EVT_ROOT_KEY}" STREQUAL "")
+if("${EVT_ROOT_KEY}" STREQUAL "")
    set(EVT_ROOT_KEY "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV")
 endif()
 
