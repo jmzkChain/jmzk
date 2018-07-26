@@ -20,7 +20,7 @@ evt_link_parse_from_evtli(const char* str, evt_link_t** link/* out */) {
         return EVT_INVALID_ARGUMENT;
     }
     try {
-        auto _link = parse_from_evtli(std::string(str));
+        auto _link = evt_link::parse_from_evtli(std::string(str));
         *link = get_evt_data(_link);
     }
     catch(...) {
@@ -61,7 +61,7 @@ evt_link_set_header(evt_link_t** link/* in&out */, uint16_t header) {
 
     try {
         _link.set_header(header);
-        *link = _link;
+        *link = get_evt_data(_link);
     }
     catch(...) {
         return EVT_INTERNAL_ERROR;
