@@ -409,16 +409,21 @@ TEST_CASE_METHOD(contracts_test, "contract_updategroup_test", "[contracts]") {
 
     upgrp.group.keys_ = {tester::get_public_key(N(key0)), tester::get_public_key(N(key1)),
                          tester::get_public_key(N(key2)), tester::get_public_key(N(key3)), tester::get_public_key(N(key4))};
-
+    
     to_variant(upgrp, var);
+
+    CHECK_THROWS_AS(my_tester->push_action(N(updategroup), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer),action_authorize_exception);
+
     //updategroup group authorization test
-    CHECK_THROWS_AS(my_tester->push_action(N(updategroup), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer), action_authorize_exception);
+    upgrp.name        = get_group_name();
+    upgrp.group.name_ = get_group_name();
+    to_variant(upgrp, var);
+    // CHECK_THROWS_AS(my_tester->push_action(N(updategroup), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer),unsatisfied_authorization);
 
     upgrp.name        = get_group_name();
     upgrp.group.name_ = get_group_name();
     upgrp.group.key_  = key;
     to_variant(upgrp, var);
-
     my_tester->push_action(N(updategroup), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer);
     my_tester->produce_blocks();
 }
