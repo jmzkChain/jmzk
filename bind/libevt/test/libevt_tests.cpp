@@ -5,6 +5,7 @@
 #include <libevt/evt_ecc.h>
 #include <libevt/evt_abi.h>
 #include <libevt/evt_address.h>
+#include <libevt/evt_evtlink.h>
 #include <iostream>
 
 void
@@ -15,6 +16,29 @@ dump_mem(evt_data_t* data) {
         printf(" %02hhx", (unsigned char)*ptr);
     }
     printf("\n");
+}
+
+BOOST_AUTO_TEST_CASE( evtlink ) {
+    evt_link_t* link = nullptr;
+    auto r1 = evt_link_parse_from_evtli("0Q:MMV*39PPS6SQNF74OVVJVIA/W2H:6I4QR6M$-W4HN8VQ421WX_Q/VQG2BWLMWKV73$953S5HR677KCP3G7MYWZMPWYZSN48KW1-2A9PDX1B-RD470*4D1RR*5M*L6HH7/05KW:T51Y*C46D01B",
+        &link);
+    BOOST_TEST_REQUIRE(r1 == EVT_OK);
+    BOOST_TEST_REQUIRE(link != nullptr);
+
+    uint32_t header;
+    auto r2 = evt_link_get_header(link, &header);
+    BOOST_TEST_REQUIRE(r2 == EVT_OK);
+    BOOST_TEST_REQUIRE(header == 5);
+
+    uint32_t intv;
+    char* strv;
+    auto r3 = evt_link_get_segment(link, 42, &intv, &strv);
+    BOOST_TEST_REQUIRE(r3 == EVT_OK);
+    BOOST_TEST_REQUIRE(intv == 1532582224);
+
+    auto r4 = evt_link_get_segment(link, 93, &intv, &strv);
+    BOOST_TEST_REQUIRE(r4 == EVT_OK);
+    BOOST_TEST_REQUIRE(strv == "5,EVT");
 }
 
 BOOST_AUTO_TEST_CASE( evtaddress ) {
