@@ -1073,3 +1073,52 @@ TEST_CASE("evt2pevt_test", "[abis]") {
     verify_byte_round_trip_conversion(abis, "evt2pevt", var);
     verify_type_round_trip_conversion<evt2pevt>(abis, "evt2pevt", var);
 }
+
+TEST_CASE("everipass_abi_test", "[abis]") {
+    auto abis = get_evt_abi();
+    CHECK(true);
+    auto link = evt_link();
+    auto header = 0;
+    header |= evt_link::version1;
+    header |= evt_link::everiPass;
+
+    link.set_header(header);
+    link.add_segment(evt_link::segment(evt_link::timestamp, fc::time_point::now().sec_since_epoch()));
+    link.add_segment(evt_link::segment(evt_link::domain, "domain"));
+    link.add_segment(evt_link::segment(evt_link::token, "t1"));
+
+    link.add_signature(signature_type(std::string("SIG_K1_KXjtmeihJi1qnSs7vmqJDRJoZ1nSEPeeRjsKJRpm24g8yhFtAepkRDR4nVFbXjvoaQvT4QrzuNWCbuEhceYpGmAvsG47Fj")));
+
+    auto ep = everipass();
+    ep.link = link;
+
+    CHECK("domain" == (std::string)*ep.link.get_segment(evt_link::domain).strv);
+    CHECK("t1" == (std::string)*ep.link.get_segment(evt_link::token).strv);
+}
+
+TEST_CASE("everipay_abi_test", "[abis]") {
+    auto abis = get_evt_abi();
+    CHECK(true);
+    auto link = evt_link();
+    auto header = 0;
+    header |= evt_link::version1;
+    header |= evt_link::everiPay;
+
+    link.set_header(header);
+    link.add_segment(evt_link::segment(evt_link::timestamp, fc::time_point::now().sec_since_epoch()));
+    link.add_segment(evt_link::segment(evt_link::address, "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3"));
+    link.add_segment(evt_link::segment(evt_link::max_pay_str, "50000000"));
+    link.add_segment(evt_link::segment(evt_link::symbol, "EVT"));
+    link.add_segment(evt_link::segment(evt_link::link_id, "KIJHNHFMJDUKJU"));
+
+    link.add_signature(signature_type(std::string("SIG_K1_KXjtmeihJi1qnSs7vmqJDRJoZ1nSEPeeRjsKJRpm24g8yhFtAepkRDR4nVFbXjvoaQvT4QrzuNWCbuEhceYpGmAvsG47Fj")));
+
+    auto ep = everipay();
+    ep.link = link;
+    ep.payee = "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3";
+    ep.number = asset::from_string(string("500.00000 EVT"));
+
+    CHECK("EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3" == (std::string)*ep.link.get_segment(evt_link::address).strv);
+    CHECK("50000000" == (std::string)*ep.link.get_segment(evt_link::max_pay_str).strv);
+    // CHECK((std::string)e2p.number.to_string() == "5.00000 EVT");
+}
