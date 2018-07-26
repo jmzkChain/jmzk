@@ -1123,3 +1123,55 @@ TEST_CASE("everipass_abi_test", "[abis]") {
 
     CHECK(pkeys.find(public_key_type(std::string("EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"))) != pkeys.end());
 }
+
+TEST_CASE("everipay_abi_test", "[abis]") {
+    auto abis = get_evt_abi();
+    const char* test_data = R"=======(
+    {
+        "link": "0Q:MMV*39PPS6SQNF74OVVJVIA/W2H:6I4QR6M$-W4HN8VQ421WX_Q/VQG2BWLMWKV73$953S5HR677KCP3G7MYWZMPWYZSN48KW1-2A9PDX1B-RD470*4D1RR*5M*L6HH7/05KW:T51Y*C46D01B",
+        "payee": "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC",
+        "number": "5.00000 EVT"
+    }
+    )=======";
+
+    auto var = fc::json::from_string(test_data);
+    auto ep  = var.as<everipay>();
+
+    auto& link = ep.link;
+
+    CHECK(link.get_header() == 5);
+    CHECK(*link.get_segment(evt_link::timestamp).intv == 1532582224);
+    CHECK(link.get_segment(evt_link::symbol).intv.valid() == false);
+    CHECK(*link.get_segment(evt_link::symbol).strv == "5,EVT");
+    CHECK(*link.get_segment(evt_link::max_pay).intv == 100000);
+
+    auto uid = std::string();
+    uid.push_back(5);
+    uid.push_back(219);
+    uid.push_back(61);
+    uid.push_back(10);
+    uid.push_back(255);
+    uid.push_back(105);
+    uid.push_back(229);
+    uid.push_back(118);
+    uid.push_back(60);
+    uid.push_back(141);
+    uid.push_back(100);
+    uid.push_back(188);
+    uid.push_back(190);
+    uid.push_back(201);
+    uid.push_back(30);
+    uid.push_back(85);
+
+    CHECK(link.get_segment(evt_link::link_id).strv == uid);
+
+    auto& sigs = link.get_signatures();
+    CHECK(sigs.size() == 1);
+
+    CHECK(sigs.find(signature_type(std::string("SIG_K1_KmMRWXDnuPJxgvrDMdZdmYApj5QbnAaj3HqiVLkLgwYfwLBcjHuWVZ3gjiLB9DmahxcXs57eazN5Snk7rBtYMk1S9cv6Js"))) != sigs.end());
+
+    auto pkeys = link.restore_keys();
+    CHECK(pkeys.size() == 1);
+
+    CHECK(pkeys.find(public_key_type(std::string("EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"))) != pkeys.end());
+}
