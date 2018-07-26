@@ -859,9 +859,9 @@ EVT_ACTION_IMPL(everipass) {
         EVT_ASSERT(flags & evt_link::everiPass, evt_link_type_exception, "Not a everiPass link");
 
         auto ts    = *link.get_segment(evt_link::timestamp).intv;
-        auto since = context.control.head_block_time() - fc::time_point_sec(ts);
-        if(since > fc::seconds(config::evt_link_expired_secs)) {
-            EVT_THROW(evt_link_expiration_exception, "EVT-Link is expired, now: ${n}, timestamp: ${t}", ("n",context.control.head_block_time())("t",fc::time_point_sec(ts)))
+        auto since = std::abs((context.control.head_block_time() - fc::time_point_sec(ts)).to_seconds());
+        if(since > config::evt_link_expired_secs) {
+            EVT_THROW(evt_link_expiration_exception, "EVT-Link is expired, now: ${n}, timestamp: ${t}", ("n",context.control.head_block_time())("t",fc::time_point_sec(ts)));
         }
 
         auto keys = link.restore_keys();
@@ -913,9 +913,9 @@ EVT_ACTION_IMPL(everipay) {
         EVT_ASSERT(flags & evt_link::everiPay, evt_link_type_exception, "Not a everiPay link");
 
         auto ts    = *link.get_segment(evt_link::timestamp).intv;
-        auto since = context.control.head_block_time() - fc::time_point_sec(ts);
-        if(since > fc::seconds(config::evt_link_expired_secs)) {
-            EVT_THROW(evt_link_expiration_exception, "EVT-Link is expired, diff secs: ${s}", ("s",since.to_seconds()))
+        auto since = std::abs((context.control.head_block_time() - fc::time_point_sec(ts)).to_seconds());
+        if(since > config::evt_link_expired_secs) {
+            EVT_THROW(evt_link_expiration_exception, "EVT-Link is expired, now: ${n}, timestamp: ${t}", ("n",context.control.head_block_time())("t",fc::time_point_sec(ts)));
         }
 
         auto& link_id_str = *link.get_segment(evt_link::link_id).strv;
