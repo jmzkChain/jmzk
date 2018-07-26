@@ -208,13 +208,17 @@ transaction_trace_ptr
 base_tester::push_transaction(packed_transaction& trx,
                               fc::time_point      deadline) {
     try {
-        if(!control->pending_block_state())
+        if(!control->pending_block_state()) {
             _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
+        }
         auto r = control->push_transaction(std::make_shared<transaction_metadata>(trx), deadline);
-        if(r->except_ptr)
+
+        if(r->except_ptr) {
             std::rethrow_exception(r->except_ptr);
-        if(r->except)
+        }
+        if(r->except) {
             throw *r->except;
+        }
         return r;
     }
     FC_CAPTURE_AND_RETHROW((transaction_header(trx.get_transaction())))
@@ -233,36 +237,32 @@ base_tester::push_transaction(signed_transaction& trx,
         }
 
         auto r = control->push_transaction(std::make_shared<transaction_metadata>(trx, c), deadline);
-        if(r->except_ptr)
+        
+        if(r->except_ptr) {
             std::rethrow_exception(r->except_ptr);
-        if(r->except)
+        }
+        if(r->except) {
             throw *r->except;
+        }
         return r;
     }
     FC_CAPTURE_AND_RETHROW((transaction_header(trx)))
 }
 
-typename base_tester::action_result
+transaction_trace_ptr
 base_tester::push_action(action&& act, std::vector<account_name>& auths, const address& payer) {
-    signed_transaction trx;
-    trx.actions.emplace_back(std::move(act));
-    set_transaction_headers(trx, payer);
-    if(!auths.empty()) {
-        for(auto& au : auths) {
-            trx.sign(get_private_key(au), control->get_chain_id());
-        }
-    }
     try {
-        push_transaction(trx);
+        signed_transaction trx;
+        trx.actions.emplace_back(std::move(act));
+        set_transaction_headers(trx, payer);
+        if(!auths.empty()) {
+            for(auto& au : auths) {
+                trx.sign(get_private_key(au), control->get_chain_id());
+            }
+        }
+        return push_transaction(trx);
     }
-    catch(const fc::exception& ex) {
-        edump((ex.to_detail_string()));
-        return error(ex.top_message());  // top_message() is assumed by many tests; otherwise they fail
-                                         //return error(ex.to_detail_string());
-    }
-    produce_block();
-    BOOST_REQUIRE_EQUAL(true, chain_has_transaction(trx.id()));
-    return success();
+    FC_CAPTURE_AND_RETHROW((act)(auths)(payer))
 }
 
 transaction_trace_ptr
@@ -285,7 +285,7 @@ base_tester::push_action(const action_name&               acttype,
 
         return push_transaction(trx);
     }
-    FC_CAPTURE_AND_RETHROW((acttype)(domain)(key)(data)(auths)(expiration))
+    FC_CAPTURE_AND_RETHROW((acttype)(domain)(key)(data)(auths)(payer)(max_charge)(expiration))
 }
 
 action

@@ -82,6 +82,7 @@ public:
     transaction_trace_ptr push_suspend_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline);
 
     void check_authorization(const flat_set<public_key_type>& signed_keys, const transaction& trx);
+    void check_authorization(const flat_set<public_key_type>& signed_keys, const action& act);
 
     void finalize_block();
     void sign_block(const std::function<signature_type(const digest_type&)>& signer_callback);

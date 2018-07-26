@@ -139,6 +139,9 @@ public:
     };
 
     fc::variant get_block_header_state(const get_block_header_state_params& params) const;
+
+    using get_head_block_header_state_params = empty;
+    fc::variant get_head_block_header_state(const get_head_block_header_state_params& params) const;
 };
 
 class read_write {

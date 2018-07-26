@@ -36,6 +36,8 @@ def init_evt_lib():
             #define EVT_INVALID_HASH            -6
             #define EVT_INVALID_ACTION          -7
             #define EVT_INVALID_BINARY          -8
+            #define EVT_INVALID_JSON            -9
+            #define EVT_INVALID_ADDRESS         -10
             #define EVT_SIZE_NOT_EQUALS         -11
             #define EVT_DATA_NOT_EQUALS         -12
 
@@ -51,6 +53,7 @@ def init_evt_lib():
             typedef evt_data_t evt_private_key_t;
             typedef evt_data_t evt_signature_t;
             typedef evt_data_t evt_checksum_t;
+            typedef evt_data_t evt_address_t;
 
 
             void* evt_abi();
@@ -80,6 +83,17 @@ def init_evt_lib():
             int evt_block_id_from_string(const char* str, evt_block_id_t** block_id /* out */);
             int evt_ref_block_num(evt_block_id_t* block_id, uint16_t* ref_block_num);
             int evt_ref_block_prefix(evt_block_id_t* block_id, uint32_t* ref_block_prefix);
+            
+            int evt_address_from_string(const char* str, evt_address_t** addr /* out */);
+            int evt_address_to_string(evt_address_t* addr, char** str /* out */);
+            int evt_address_public_key(evt_public_key_t *pub_key, evt_address_t** addr/* out */);
+            int evt_address_reserved(evt_address_t** addr/* out */);
+            int evt_address_generated(const char* prefix, const char* key, uint32_t nonce, evt_address_t** addr/* out */);
+            int evt_address_get_public_key(evt_address_t* addr, evt_public_key_t **pub_key/* out */);
+            int evt_address_get_prefix(evt_address_t* addr, char** str/* out */);
+            int evt_address_get_key(evt_address_t* addr, char** str/* out */);
+            int evt_address_get_nonce(evt_address_t* addr, uint32_t* nonce/* out */);
+            int evt_address_get_type(evt_address_t* addr, char** str/* out */);
             """)
 
     if "LIBEVT_PATH" in os.environ:

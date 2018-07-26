@@ -78,6 +78,8 @@ Request:
     "expiration": "2018-05-20T12:25:51",
     "ref_block_num": 8643,
     "ref_block_prefix": 842752750,
+    "max_charge": 10000,
+    "payer": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
     "actions": [
         {
             "name": "newdomain",
@@ -118,21 +120,21 @@ For the fields of an action, here is a quick reference guide.
 |-------------|--------|-----|
 | `newdomain` | name of domain | `.create` |
 | `updatedomain` | name of domain | `.update` |
-| `newgroup` | `group` | name of new group |
-| `updategroup` | `group` | name of updating group |
-| `newfungible` | `fungible` | name of new fungible assets symbol |
-| `updfungible` | `fungible` | name of updating fungible assets symbol |
+| `newgroup` | `.group` | name of new group |
+| `updategroup` | `.group` | name of updating group |
+| `newfungible` | `.fungible` | name of new fungible assets symbol |
+| `updfungible` | `.fungible` | name of updating fungible assets symbol |
 | `issuetoken` | name of domain | `.issue` |
-| `issuefungible` | `fungible` | name of issuing fungible assets symbol |
+| `issuefungible` | `.fungible` | name of issuing fungible assets symbol |
 | `transfer` | name of domain token belongs to | name of token |
 | `destroytoken` | name of domain token belongs to | name of token |
-| `transferft` | `fungible` | name of transfering assets symbol |
-| `evt2pevt` | `fungible` | `EVT` |
-| `addmeta` | `domain`, `group`, `fungible` or token's domain | domain name, group name, fungible name or token name |
-| `newsuspend` | `suspend` | proposal name of suspend transaction |
-| `aprvsuspend` | `suspend` | proposal name of suspend transaction |
-| `cancelsuspend` | `suspend` | proposal name of suspend transaction |
-| `execsuspend` | `suspend` | proposal name of suspend transaction |
+| `transferft` | `.fungible` | name of transfering assets symbol |
+| `evt2pevt` | `.fungible` | `EVT` |
+| `addmeta` | `.group`, `.fungible` or token's domain | group name, fungible name or token name |
+| `newsuspend` | `.suspend` | proposal name of suspend transaction |
+| `aprvsuspend` | `.suspend` | proposal name of suspend transaction |
+| `cancelsuspend` | `.suspend` | proposal name of suspend transaction |
+| `execsuspend` | `.suspend` | proposal name of suspend transaction |
 
 After all that work, you can send transaction definition using this API to the chain, then the chain will response with the digest of the transaction. You can then sign this digest with your private key.
 
@@ -154,7 +156,8 @@ Request:
         "expiration": "2018-05-20T12:25:51",
         "ref_block_num": 8643,
         "ref_block_prefix": 842752750,
-        "suspend_sec": 0,
+        "max_charge": 10000,
+        "payer": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
         "actions": [
             {
                 "name": "newdomain",
@@ -195,9 +198,8 @@ Request:
         "expiration": "2018-05-20T12:25:51",
         "ref_block_num": 8643,
         "ref_block_prefix": 842752750,
-        "max_net_usage_words": 0,
-        "max_cpu_usage_ms": 0,
-        "suspend_sec": 0,
+        "max_charge": 10000,
+        "payer": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
         "actions": [
             {
                 "name": "newdomain",
@@ -298,6 +300,25 @@ Response:
 }
 ```
 
+## GET /v1/chain/get_charge
+This API is used to  query the accurate charge for one transaction.
+
+Request:
+```
+{
+    "transaction": { ... },
+    "sigs_num": number of signatures
+}
+```
+
+Response
+```
+{
+    "charge": 12345
+}
+```
+> 12345 represents for '0.12345' EVT(PEVT).
+
 ## POST /v1/evt/get_domain
 This API is used to get specific domain.
 
@@ -339,7 +360,8 @@ Response:
                 "weight": 1
             }
         ]
-    }
+    },
+    "address": "EVT0000007EWoypBxpF8dWMb3xPoGdAMpPU3wehZqmD7VDgzsGyVi"
 }
 ```
 
@@ -437,7 +459,8 @@ Response:
   },
   "total_supply": "100000.00000 EVT",
   "current_supply": "0.00000 EVT",
-  "metas": []
+  "metas": [],
+  "address": "EVT000000GAei9YYTQuZsNdcK5bPQNAK4ADtgzT8x52hz4b4FnYRQ"
 }
 ```
 
@@ -491,6 +514,8 @@ Response:
     "expiration": "2018-07-03T07:34:14",
     "ref_block_num": 23618,
     "ref_block_prefix": 1259088709,
+    "max_charge": 10000,
+    "payer": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
     "actions": [{
         "name": "newdomain",
         "domain": "test4",
@@ -610,6 +635,7 @@ Response:
     "domain": "fungible",
     "key": "EVT",
     "trx_id": "f0c789933e2b381e88281e8d8e750b561a4d447725fb0eb621f07f219fe2f738",
+    "created_at": "2018-06-28T05:35:12",
     "data": {
       "sym": "5,EVT",
       "creator": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
@@ -660,6 +686,8 @@ Response:
     "expiration": "2018-06-28T05:31:39",
     "ref_block_num": 5,
     "ref_block_prefix": 1647242518,
+    "max_charge": 10000,
+    "payer": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
     "actions": [{
         "name": "newfungible",
         "domain": "fungible",

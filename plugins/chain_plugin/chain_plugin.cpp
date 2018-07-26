@@ -619,7 +619,8 @@ read_only::get_block(const read_only::get_block_params& params) const {
     return fc::mutable_variant_object(pretty_output.get_object())("id", block->id())("block_num", block->block_num())("ref_block_prefix", ref_block_prefix);
 }
 
-fc::variant read_only::get_block_header_state(const get_block_header_state_params& params) const {
+fc::variant
+read_only::get_block_header_state(const get_block_header_state_params& params) const {
     block_state_ptr b;
     optional<uint64_t> block_num;
     std::exception_ptr e;
@@ -645,6 +646,16 @@ fc::variant read_only::get_block_header_state(const get_block_header_state_param
     return vo;
 }
 
+fc::variant
+read_only::get_head_block_header_state(const get_head_block_header_state_params& params) const {
+    auto b = db.head_block_state();
+    EVT_ASSERT(b, unknown_block_exception, "Could not find head block");
+
+    fc::variant vo;
+    fc::to_variant(static_cast<const block_header_state&>(*b), vo);
+    return vo;
+}
+
 void
 read_write::push_block(const read_write::push_block_params& params, next_function<read_write::push_block_results> next) {
     try {
@@ -652,6 +663,9 @@ read_write::push_block(const read_write::push_block_params& params, next_functio
         next(read_write::push_block_results{});
     }
     catch(boost::interprocess::bad_alloc&) {
+        raise(SIGUSR1);
+    }
+    catch(fc::unrecoverable_exception&) {
         raise(SIGUSR1);
     }
     CATCH_AND_CALL(next);
@@ -686,6 +700,9 @@ read_write::push_transaction(const read_write::push_transaction_params& params, 
         });
     }
     catch(boost::interprocess::bad_alloc&) {
+        raise(SIGUSR1);
+    }
+    catch(fc::unrecoverable_exception&) {
         raise(SIGUSR1);
     }
     CATCH_AND_CALL(next);
@@ -774,6 +791,9 @@ read_only::trx_json_to_digest(const trx_json_to_digest_params& params) const {
         result.digest = trx->sig_digest(db.get_chain_id());
     }
     catch(boost::interprocess::bad_alloc&) {
+        raise(SIGUSR1);
+    }
+    catch(fc::unrecoverable_exception&) {
         raise(SIGUSR1);
     }
     catch(...) {

@@ -11,6 +11,8 @@
 #include <evt/chain/token_database.hpp>
 #include <evt/chain/transaction_context.hpp>
 #include <evt/chain/contracts/types.hpp>
+#include <evt/chain/contracts/evt_link.hpp>
+#include <evt/chain/contracts/evt_link_object.hpp>
 #include <evt/utilities/safemath.hpp>
 
 namespace evt { namespace chain { namespace contracts {
@@ -241,6 +243,7 @@ EVT_ACTION_IMPL(newgroup) {
     try {
         EVT_ASSERT(context.has_authorized(N128(.group), ngact.name), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(!ngact.group.key().is_generated(), group_key_exception, "Group key cannot be generated key");
+        EVT_ASSERT(ngact.name == ngact.group.name(), group_name_exception, "Group name not match, act: ${n1}, group: ${n2}", ("n1",ngact.name)("n2",ngact.group.name()));
         
         check_name_reserved(ngact.name);
         
@@ -426,6 +429,7 @@ EVT_ACTION_IMPL(issuefungible) {
         EVT_ASSERT(tokendb.exists_fungible(sym), fungible_exists_exception, "${sym} fungible tokens doesn't exist", ("sym",sym));
 
         auto addr = get_fungible_address(sym);
+        EVT_ASSERT(addr != ifact.address, fungible_address_exception, "From and to are the same address");
 
         asset from, to;
         tokendb.read_asset(addr, sym, from);
@@ -435,8 +439,8 @@ EVT_ACTION_IMPL(issuefungible) {
 
         transfer_fungible(from, to, ifact.number.get_amount());
 
-        tokendb.update_asset(addr, from);
         tokendb.update_asset(ifact.address, to);
+        tokendb.update_asset(addr, from);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -450,6 +454,7 @@ EVT_ACTION_IMPL(transferft) {
         auto sym = tfact.number.get_symbol();
         EVT_ASSERT(context.has_authorized(N128(.fungible), (fungible_name)sym.name()), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(!tfact.to.is_reserved(), fungible_address_exception, "Cannot transfer fungible tokens to reserved address");
+        EVT_ASSERT(tfact.from != tfact.to, fungible_address_exception, "From and to are the same address");
 
         auto& tokendb = context.token_db;
         
@@ -462,8 +467,8 @@ EVT_ACTION_IMPL(transferft) {
 
         transfer_fungible(facc, tacc, tfact.number.get_amount());
 
-        tokendb.update_asset(tfact.from, facc);
         tokendb.update_asset(tfact.to, tacc);
+        tokendb.update_asset(tfact.from, facc);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -491,8 +496,8 @@ EVT_ACTION_IMPL(evt2pevt) {
 
         transfer_fungible(facc, tacc, epact.number.get_amount());
 
-        tokendb.update_asset(epact.from, facc);
         tokendb.update_asset(epact.to, tacc);
+        tokendb.update_asset(epact.from, facc);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -802,7 +807,7 @@ EVT_ACTION_IMPL(execsuspend) {
 EVT_ACTION_IMPL(paycharge) {
     using namespace __internal;
     
-    auto pcact = context.act.data_as<const paycharge&>();
+    auto& pcact = context.act.data_as<const paycharge&>();
     try {
         auto& tokendb = context.token_db;
 
@@ -833,6 +838,132 @@ EVT_ACTION_IMPL(paycharge) {
         auto addr = get_fungible_address(evt_symbol);
         tokendb.read_asset(addr, evt_symbol, evt_asset);
         evt_asset += asset(paid, evt_symbol);
+    }
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+}
+
+EVT_ACTION_IMPL(everipass) {
+    using namespace __internal;
+
+    auto& epact = context.act.data_as<const everipass&>();
+    try {
+        EVT_ASSERT(context.has_authorized(N128(.everiPass), name128()), action_authorize_exception, "Authorized information does not match.");
+
+        auto& tokendb = context.token_db;
+        auto& db      = context.db;
+
+        auto& link  = epact.link;
+        auto  flags = link.get_header();
+
+        EVT_ASSERT(flags & evt_link::version1, evt_link_version_exception, "EVT-Link version is not expected, current supported version is Versoin-1");
+        EVT_ASSERT(flags & evt_link::everiPass, evt_link_type_exception, "Not a everiPass link");
+
+        auto ts    = *link.get_segment(evt_link::timestamp).intv;
+        auto since = context.control.head_block_time() - fc::time_point_sec(ts);
+        if(since > fc::seconds(config::evt_link_expired_secs)) {
+            EVT_THROW(evt_link_expiration_exception, "EVT-Link is expired, now: ${n}, timestamp: ${t}", ("n",context.control.head_block_time())("t",fc::time_point_sec(ts)))
+        }
+
+        auto keys = link.restore_keys();
+
+        auto& d = *link.get_segment(evt_link::domain).strv;
+        auto& t = *link.get_segment(evt_link::token).strv;
+
+        token_def token;
+        tokendb.read_token(d, t, token);
+
+        EVT_ASSERT(!check_token_destroy(token), token_destoryed_exception, "Token is already destroyed.");
+
+        if(flags & evt_link::destroy) {
+            auto dt   = destroytoken();
+            dt.domain = d;
+            dt.name   = t;
+
+            auto dtact = action(dt.domain, dt.name, dt);
+            context.control.check_authorization(keys, dtact);
+
+            token.owner = address_list{ address() };
+            tokendb.update_token(token);
+        }
+        else {
+            // only check owner
+            EVT_ASSERT(token.owner.size() == keys.size(), everipass_exception, "Owner size and keys size don't match");
+            for(auto& o : token.owner) {
+                EVT_ASSERT(keys.find(o.get_public_key()) != keys.end(), everipass_exception, "Owner didn't sign");
+            }
+        }
+    }
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+}
+
+EVT_ACTION_IMPL(everipay) {
+    using namespace __internal;
+
+    auto& epact = context.act.data_as<const everipay&>();
+    try {
+        EVT_ASSERT(context.has_authorized(N128(.everiPay), name128()), action_authorize_exception, "Authorized information does not match.");
+
+        auto& tokendb = context.token_db;
+        auto& db      = context.db;
+
+        auto& link  = epact.link;
+        auto  flags = link.get_header();
+
+        EVT_ASSERT(flags & evt_link::version1, evt_link_version_exception, "EVT-Link version is not expected, current supported version is Versoin-1");
+        EVT_ASSERT(flags & evt_link::everiPay, evt_link_type_exception, "Not a everiPay link");
+
+        auto ts    = *link.get_segment(evt_link::timestamp).intv;
+        auto since = context.control.head_block_time() - fc::time_point_sec(ts);
+        if(since > fc::seconds(config::evt_link_expired_secs)) {
+            EVT_THROW(evt_link_expiration_exception, "EVT-Link is expired, diff secs: ${s}", ("s",since.to_seconds()))
+        }
+
+        auto& link_id_str = *link.get_segment(evt_link::link_id).strv;
+        EVT_ASSERT(link_id_str.size() == sizeof(link_id_type), evt_link_id_exception, "EVT-Link id is not in valid length, provided: ${p}, expected: ${e}", ("p",link_id_str.size())("e",sizeof(link_id_type)));
+
+        try {
+            db.create<evt_link_object>([&](evt_link_object& li) {
+                li.link_id = *(link_id_type*)(link_id_str.data());
+                li.trx_id  = context.trx_context.trx.id;
+            });
+        }
+        catch(const boost::interprocess::bad_alloc&) {
+            throw;
+        }
+        catch(...) {
+            EVT_ASSERT(false, evt_link_dupe_exception, "Duplicate EVT-Link ${id}", ("id", fc::to_hex(link_id_str.data(), link_id_str.size())));
+        }
+
+        auto keys = link.restore_keys();
+        EVT_ASSERT(keys.size() == 1, evt_link_id_exception, "There're more than one signature on everiPay link, which is invalid");
+
+        auto& lsym = *link.get_segment(evt_link::symbol).strv;
+        auto  sym  = epact.number.get_symbol();
+        EVT_ASSERT(lsym == sym.name(), everipay_exception, "Symbols don't match, provided: ${p}, expected: ${e}", ("p",lsym)("e",sym.name()));
+
+        auto max_pay = uint32_t(0);
+        if(link.has_segment(evt_link::max_pay)) {
+            max_pay = *link.get_segment(evt_link::max_pay).intv;
+        }
+        else {
+            max_pay = std::stoul(*link.get_segment(evt_link::max_pay_str).strv);
+        }
+        EVT_ASSERT(epact.number.get_amount() <= max_pay, everipay_exception, "Exceed max pay number: ${m}, expected: ${e}", ("m",max_pay)("e",epact.number.get_amount()));
+
+        auto payer = address(*keys.begin());
+        EVT_ASSERT(payer != epact.payee, everipay_exception, "Payer and payee shouldn't be the same one");
+
+        auto facc = asset(0, sym);
+        auto tacc = asset(0, sym);
+        tokendb.read_asset(payer, sym, facc);
+        tokendb.read_asset_no_throw(epact.payee, sym, tacc);
+
+        EVT_ASSERT(facc >= epact.number, everipay_exception, "Payer does not have enough balance left.");
+
+        transfer_fungible(facc, tacc, epact.number.get_amount());
+
+        tokendb.update_asset(epact.payee, tacc);
+        tokendb.update_asset(payer, facc);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }

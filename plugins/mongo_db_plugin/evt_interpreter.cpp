@@ -389,15 +389,12 @@ interpreter_impl::process_newfungible(const newfungible& nf) {
     fc::to_variant(nf.issue, issue);
     fc::to_variant(nf.manage, manage);
 
-    auto cp = evt::chain::asset(0, nf.total_supply.get_symbol());
-
     doc.append(kvp("_id", oid),
                kvp("sym", (std::string)nf.sym),
                kvp("creator", (std::string)nf.creator),
                kvp("issue", bsoncxx::from_json(fc::json::to_string(issue))),
                kvp("manage", bsoncxx::from_json(fc::json::to_string(manage))),
-               kvp("total_supply", (std::string)nf.total_supply),
-               kvp("current_supply", (std::string)cp));
+               kvp("total_supply", (std::string)nf.total_supply));
     doc.append(kvp("created_at", b_date{now}));
 
     if(!fungibles_collection_.insert_one(doc.view())) {
@@ -455,34 +452,7 @@ get_bson_string_value(const bsoncxx::document::view& view, const std::string& ke
 
 void
 interpreter_impl::process_issuefungible(const issuefungible& ifact) {
-    using namespace __internal;
-    using namespace bsoncxx::types;
-    using namespace bsoncxx::builder;
-    using bsoncxx::builder::basic::kvp;
-    using bsoncxx::builder::stream::close_document;
-    using bsoncxx::builder::stream::document;
-    using bsoncxx::builder::stream::finalize;
-    using bsoncxx::builder::stream::open_document;
-
-    auto now  = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
-
-    auto sym = (std::string)ifact.number.get_symbol();
-    auto f   = find_fungible(fungibles_collection_, sym);
-
-    auto cs = get_bson_string_value(f.view(), "current_supply");
-    auto csasset = evt::chain::asset::from_string(cs);
-    csasset += ifact.number;
-
-    document update{};
-    update << "$set" << open_document
-           << "current_supply" << (std::string)csasset
-           << "updated_at" << b_date{now}
-           << close_document;
-
-    if(!fungibles_collection_.update_one(document{} << "_id" << f.view()["_id"].get_oid() << finalize, update.view())) {
-        elog("Failed to update fungible assets ${sym}", ("sym", sym));
-    }
+    return;
 }
 
 evt_interpreter::evt_interpreter() : my_(new interpreter_impl()) {}

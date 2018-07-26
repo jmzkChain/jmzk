@@ -273,13 +273,17 @@ public:
         try {
             chain.push_block(block);
         }
-        catch(const fc::exception& e) {
-            elog((e.to_detail_string()));
-            except = true;
-        }
         catch(boost::interprocess::bad_alloc&) {
             raise(SIGUSR1);
             return;
+        }
+        catch(fc::unrecoverable_exception&) {
+            raise(SIGUSR1);
+            return;
+        }
+        catch(const fc::exception& e) {
+            elog((e.to_detail_string()));
+            except = true;
         }
 
         if(except) {
@@ -356,6 +360,9 @@ public:
             }
         }
         catch(boost::interprocess::bad_alloc&) {
+            raise(SIGUSR1);
+        }
+        catch(fc::unrecoverable_exception&) {
             raise(SIGUSR1);
         }
         CATCH_AND_CALL(send_response);
@@ -923,6 +930,10 @@ producer_plugin_impl::start_block() {
             raise(SIGUSR1);
             return start_block_result::failed;
         }
+        catch(fc::unrecoverable_exception&) {
+            raise(SIGUSR1);
+            return start_block_result::failed;
+        }
     }
 
     return start_block_result::failed;
@@ -1018,6 +1029,10 @@ producer_plugin_impl::maybe_produce_block() {
         return true;
     }
     catch(boost::interprocess::bad_alloc&) {
+        raise(SIGUSR1);
+        return false;
+    }
+    catch(fc::unrecoverable_exception&) {
         raise(SIGUSR1);
         return false;
     }

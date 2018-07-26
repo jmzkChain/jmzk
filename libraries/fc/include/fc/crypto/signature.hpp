@@ -26,6 +26,7 @@ namespace fc { namespace crypto {
 
          // serialize to/from string
          explicit signature(const string& base58str);
+         explicit signature(ecc::signature_shim&&);
          explicit operator string() const;
 
       private:

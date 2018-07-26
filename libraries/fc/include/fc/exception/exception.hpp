@@ -38,7 +38,8 @@ namespace fc
        aes_error_code                    = 18,
        overflow_code                     = 19,
        underflow_code                    = 20,
-       divide_by_zero_code               = 21
+       divide_by_zero_code               = 21,
+       unrecoverable_exception_code      = 22  ///< special exception, application should be abored when face this eception
    };
 
    /**
@@ -307,6 +308,8 @@ namespace fc
   FC_DECLARE_EXCEPTION( underflow_exception, underflow_code, "Integer Underflow" );
   FC_DECLARE_EXCEPTION( divide_by_zero_exception, divide_by_zero_code, "Integer Divide By Zero" );
 
+  FC_DECLARE_EXCEPTION( unrecoverable_exception, unrecoverable_exception_code, "Encounter unrecoverable error" );
+
   std::string except_str();
 
   void record_assert_trip(
@@ -322,8 +325,8 @@ namespace fc
     #define LIKELY(x)    __builtin_expect((long)!!(x), 1L)
     #define UNLIKELY(x)  __builtin_expect((long)!!(x), 0L)
 #else
-    #define LIKELY(x)   (x)
-    #define UNLIKELY(x) (x)
+    #define LIKELY(x)    __glibc_likely(x)
+    #define UNLIKELY(x)  __glibc_unlikely(x)
 #endif
 
 /**
@@ -385,6 +388,8 @@ namespace fc
 #define FC_LOG_AND_RETHROW( )  \
    catch( const boost::interprocess::bad_alloc& ) {\
       throw;\
+   } catch( const fc::unrecoverable_exception& ) {\
+      throw;\
    } catch( fc::exception& er ) { \
       wlog( "${details}", ("details",er.to_detail_string()) ); \
       FC_RETHROW_EXCEPTION( er, warn, "rethrow" ); \
@@ -406,6 +411,8 @@ namespace fc
 
 #define FC_CAPTURE_LOG_AND_RETHROW( ... )  \
    catch( const boost::interprocess::bad_alloc& ) {\
+      throw;\
+   } catch( const fc::unrecoverable_exception& ) {\
       throw;\
    } catch( fc::exception& er ) { \
       wlog( "${details}", ("details",er.to_detail_string()) ); \
@@ -432,6 +439,8 @@ namespace fc
 #define FC_CAPTURE_AND_LOG( ... )  \
    catch( const boost::interprocess::bad_alloc& ) {\
       throw;\
+   } catch( const fc::unrecoverable_exception& ) {\
+      throw;\
    } catch( fc::exception& er ) { \
       wlog( "${details}", ("details",er.to_detail_string()) ); \
       wdump( __VA_ARGS__ ); \
@@ -453,6 +462,8 @@ namespace fc
 
 #define FC_LOG_AND_DROP( ... )  \
    catch( const boost::interprocess::bad_alloc& ) {\
+      throw;\
+   } catch( const fc::unrecoverable_exception& ) {\
       throw;\
    } catch( fc::exception& er ) { \
       wlog( "${details}", ("details",er.to_detail_string()) ); \
@@ -479,6 +490,8 @@ namespace fc
 #define FC_RETHROW_EXCEPTIONS( LOG_LEVEL, FORMAT, ... ) \
    catch( const boost::interprocess::bad_alloc& ) {\
       throw;\
+   } catch( const fc::unrecoverable_exception& ) {\
+      throw;\
    } catch( fc::exception& er ) { \
       FC_RETHROW_EXCEPTION( er, LOG_LEVEL, FORMAT, __VA_ARGS__ ); \
    } catch( const std::exception& e ) {  \
@@ -495,6 +508,8 @@ namespace fc
 
 #define FC_CAPTURE_AND_RETHROW( ... ) \
    catch( const boost::interprocess::bad_alloc& ) {\
+      throw;\
+   } catch( const fc::unrecoverable_exception& ) {\
       throw;\
    } catch( fc::exception& er ) { \
       FC_RETHROW_EXCEPTION( er, warn, "", FC_FORMAT_ARG_PARAMS(__VA_ARGS__) ); \
