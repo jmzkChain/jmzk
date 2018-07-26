@@ -25,7 +25,7 @@ BOOST_AUTO_TEST_CASE( evtlink ) {
     BOOST_TEST_REQUIRE(r1 == EVT_OK);
     BOOST_TEST_REQUIRE(link != nullptr);
 
-    uint32_t header;
+    uint16_t header;
     auto r2 = evt_link_get_header(link, &header);
     BOOST_TEST_REQUIRE(r2 == EVT_OK);
     BOOST_TEST_REQUIRE(header == 5);
