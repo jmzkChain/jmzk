@@ -847,6 +847,8 @@ EVT_ACTION_IMPL(everipass) {
 
     auto& epact = context.act.data_as<const everipass&>();
     try {
+        EVT_ASSERT(context.has_authorized(N128(.everiPass), name128()), action_authorize_exception, "Authorized information does not match.");
+
         auto& tokendb = context.token_db;
         auto& db      = context.db;
 
@@ -899,6 +901,8 @@ EVT_ACTION_IMPL(everipay) {
 
     auto& epact = context.act.data_as<const everipay&>();
     try {
+        EVT_ASSERT(context.has_authorized(N128(.everiPay), name128()), action_authorize_exception, "Authorized information does not match.");
+
         auto& tokendb = context.token_db;
         auto& db      = context.db;
 

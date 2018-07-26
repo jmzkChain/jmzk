@@ -1046,10 +1046,12 @@ TEST_CASE_METHOD(contracts_test, "everipass_test", "[contracts]") {
     header |= evt_link::version1;
     header |= evt_link::everiPass;
 
+    auto head_ts = my_tester->control->head_block_time().sec_since_epoch();
+
     link.set_header(header);
-    link.add_segment(evt_link::segment(evt_link::timestamp, fc::time_point::now().sec_since_epoch()));
+    link.add_segment(evt_link::segment(evt_link::timestamp, head_ts));
     link.add_segment(evt_link::segment(evt_link::domain, get_domain_name()));
-    link.add_segment(evt_link::segment(evt_link::token, "t1"));
+    link.add_segment(evt_link::segment(evt_link::token, "t3"));
 
     auto hash = fc::sha256::hash(std::string());
     link.add_signature(private_key.sign(hash));
@@ -1057,12 +1059,42 @@ TEST_CASE_METHOD(contracts_test, "everipass_test", "[contracts]") {
     auto ep = everipass();
     ep.link = link;
 
-    auto epact = action(N128(everipass), name128(), ep);
+    CHECK_THROWS_AS(my_tester->push_action(action(N128(everiPass), name128(), ep), key_seeds, payer), action_authorize_exception);
+
+    ep.link.set_header(0);
+    CHECK_THROWS_AS(my_tester->push_action(action(N128(.everiPass), name128(), ep), key_seeds, payer), evt_link_version_exception);
+
+    ep.link.set_header(evt_link::version1);
+    CHECK_THROWS_AS(my_tester->push_action(action(N128(.everiPass), name128(), ep), key_seeds, payer), evt_link_type_exception);
+
+    ep.link.set_header(evt_link::version1 | evt_link::everiPay);
+    CHECK_THROWS_AS(my_tester->push_action(action(N128(.everiPass), name128(), ep), key_seeds, payer), evt_link_type_exception);
+    
+    ep.link.set_header(header);
+    ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts - 15));
+    CHECK_THROWS_AS(my_tester->push_action(action(N128(.everiPass), name128(), ep), key_seeds, payer), evt_link_expiration_exception);
+    
+    ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts - 5));
+    CHECK_NOTHROW(my_tester->push_action(action(N128(.everiPass), name128(), ep), key_seeds, payer));
+
     // because t1 has two owners, here we only provide one
-    CHECK_THROWS_AS(my_tester->push_action(action(N128(everipass), name128(), ep), key_seeds, payer), everipass_exception);
-    // replace old segment value
+    ep.link.add_segment(evt_link::segment(evt_link::token, "t1"));
+    CHECK_THROWS_AS(my_tester->push_action(action(N128(.everiPass), name128(), ep), key_seeds, payer), everipass_exception);
+
     ep.link.add_segment(evt_link::segment(evt_link::token, "t3"));
-    CHECK_NOTHROW(my_tester->push_action(action(N128(everipass), name128(), ep), key_seeds, payer));
+    ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts));
+    CHECK_NOTHROW(my_tester->push_action(action(N128(.everiPass), name128(), ep), key_seeds, payer));
+
+    ep.link.add_segment(evt_link::segment(evt_link::token, "t4"));
+    CHECK_THROWS_AS(my_tester->push_action(action(N128(.everiPass), name128(), ep), key_seeds, payer), tokendb_token_not_found);
+
+    header |= evt_link::destroy;
+    ep.link.set_header(header);
+    ep.link.add_segment(evt_link::segment(evt_link::token, "t3"));
+    CHECK_NOTHROW(my_tester->push_action(action(N128(.everiPass), name128(), ep), key_seeds, payer));
+
+    ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts - 1));
+    CHECK_THROWS_AS(my_tester->push_action(action(N128(.everiPass), name128(), ep), key_seeds, payer), token_destoryed_exception);
 }
 
 TEST_CASE_METHOD(contracts_test, "everipay_test", "[contracts]") {
@@ -1086,14 +1118,13 @@ TEST_CASE_METHOD(contracts_test, "everipay_test", "[contracts]") {
     ep.payee = payer;
     ep.number = asset::from_string(string("500.00000 ")+get_symbol_name());
 
-    auto epact = action(N128(everipay), name128(), ep);
     // because t1 has two owners, here we only provide one
-    CHECK_THROWS_AS(my_tester->push_action(action(N128(everipay), name128(), ep), key_seeds, payer), evt_link_id_exception);
+    CHECK_THROWS_AS(my_tester->push_action(action(N128(.everiPay), name128(), ep), key_seeds, payer), evt_link_id_exception);
     ep.link.add_segment(evt_link::segment(evt_link::link_id, "KIJHNHFMJDFFUKJU"));
-    CHECK_THROWS_AS(my_tester->push_action(action(N128(everipay), name128(), ep), key_seeds, payer), everipay_exception);
+    CHECK_THROWS_AS(my_tester->push_action(action(N128(.everiPay), name128(), ep), key_seeds, payer), everipay_exception);
     ep.link.add_segment(evt_link::segment(evt_link::link_id, "JKHBJKBJKGJHGJKG"));
     ep.number = asset::from_string(string("5.00000 ")+get_symbol_name());
-    CHECK_NOTHROW(my_tester->push_action(action(N128(everipay), name128(), ep), key_seeds, payer));
+    CHECK_NOTHROW(my_tester->push_action(action(N128(.everiPay), name128(), ep), key_seeds, payer));
 }
 
 TEST_CASE_METHOD(contracts_test, "empty_action_test", "[contracts]") {

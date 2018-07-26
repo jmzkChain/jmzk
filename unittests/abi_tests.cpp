@@ -1076,49 +1076,50 @@ TEST_CASE("evt2pevt_test", "[abis]") {
 
 TEST_CASE("everipass_abi_test", "[abis]") {
     auto abis = get_evt_abi();
-    CHECK(true);
-    auto link = evt_link();
-    auto header = 0;
-    header |= evt_link::version1;
-    header |= evt_link::everiPass;
+    const char* test_data = R"=======(
+    {
+        "link": "03XBY4E/KTS:PNHVA3JP9QG258F08JHYOYR5SLJGN0EA-C3J6S:2G:T1SX7WA14KH9ETLZ97TUX9R9JJA6+06$E/_PYNX-/152P4CTC:WKXLK$/7G-K:89+::2K4C-KZ2**HI-P8CYJ**XGFO1K5:$E*SOY8MFYWMNHP*BHX2U8$$FTFI81YDP1HT"
+    }
+    )=======";
 
-    link.set_header(header);
-    link.add_segment(evt_link::segment(evt_link::timestamp, fc::time_point::now().sec_since_epoch()));
-    link.add_segment(evt_link::segment(evt_link::domain, "domain"));
-    link.add_segment(evt_link::segment(evt_link::token, "t1"));
+    auto var = fc::json::from_string(test_data);
+    auto ep  = var.as<everipass>();
 
-    link.add_signature(signature_type(std::string("SIG_K1_KXjtmeihJi1qnSs7vmqJDRJoZ1nSEPeeRjsKJRpm24g8yhFtAepkRDR4nVFbXjvoaQvT4QrzuNWCbuEhceYpGmAvsG47Fj")));
+    auto& link = ep.link;
 
-    auto ep = everipass();
-    ep.link = link;
+    CHECK(link.get_header() == 3);
+    CHECK(*link.get_segment(evt_link::timestamp).intv == 1532465234);
+    CHECK(link.get_segment(evt_link::domain).intv.valid() == false);
+    CHECK(*link.get_segment(evt_link::domain).strv == "nd1532465232490");
+    CHECK(*link.get_segment(evt_link::token).strv == "tk3064930465.8381");
 
-    CHECK("domain" == (std::string)*ep.link.get_segment(evt_link::domain).strv);
-    CHECK("t1" == (std::string)*ep.link.get_segment(evt_link::token).strv);
-}
+    auto uid = std::string();
+    uid.push_back(249);
+    uid.push_back(136);
+    uid.push_back(100);
+    uid.push_back(134);
+    uid.push_back(20);
+    uid.push_back(86);
+    uid.push_back(38);
+    uid.push_back(125);
+    uid.push_back(124);
+    uid.push_back(173);
+    uid.push_back(243);
+    uid.push_back(124);
+    uid.push_back(140);
+    uid.push_back(182);
+    uid.push_back(117);
+    uid.push_back(147);
 
-TEST_CASE("everipay_abi_test", "[abis]") {
-    auto abis = get_evt_abi();
-    CHECK(true);
-    auto link = evt_link();
-    auto header = 0;
-    header |= evt_link::version1;
-    header |= evt_link::everiPay;
+    CHECK(link.get_segment(evt_link::link_id).strv == uid);
 
-    link.set_header(header);
-    link.add_segment(evt_link::segment(evt_link::timestamp, fc::time_point::now().sec_since_epoch()));
-    link.add_segment(evt_link::segment(evt_link::address, "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3"));
-    link.add_segment(evt_link::segment(evt_link::max_pay_str, "50000000"));
-    link.add_segment(evt_link::segment(evt_link::symbol, "EVT"));
-    link.add_segment(evt_link::segment(evt_link::link_id, "KIJHNHFMJDUKJU"));
+    auto& sigs = link.get_signatures();
+    CHECK(sigs.size() == 1);
 
-    link.add_signature(signature_type(std::string("SIG_K1_KXjtmeihJi1qnSs7vmqJDRJoZ1nSEPeeRjsKJRpm24g8yhFtAepkRDR4nVFbXjvoaQvT4QrzuNWCbuEhceYpGmAvsG47Fj")));
+    CHECK(sigs.find(signature_type(std::string("SIG_K1_JyyaM7x9a4AjaD8yaG6iczgHskUFPvkWEk7X5DPkdZfRGBxYTbpLJ1y7gvmeL4vMqrMmw6QwtErfKUds5L7sxwU2nR7mvu"))) != sigs.end());
 
-    auto ep = everipay();
-    ep.link = link;
-    ep.payee = "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3";
-    ep.number = asset::from_string(string("500.00000 EVT"));
+    auto pkeys = link.restore_keys();
+    CHECK(pkeys.size() == 1);
 
-    CHECK("EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3" == (std::string)*ep.link.get_segment(evt_link::address).strv);
-    CHECK("50000000" == (std::string)*ep.link.get_segment(evt_link::max_pay_str).strv);
-    // CHECK((std::string)e2p.number.to_string() == "5.00000 EVT");
+    CHECK(pkeys.find(public_key_type(std::string("EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"))) != pkeys.end());
 }
