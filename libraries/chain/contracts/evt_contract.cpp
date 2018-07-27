@@ -120,9 +120,9 @@ EVT_ACTION_IMPL(newdomain) {
         EVT_ASSERT(!tokendb.exists_domain(ndact.name), domain_exists_exception, "Domain ${name} already exists.", ("name",ndact.name));
 
         EVT_ASSERT(ndact.issue.name == "issue", permission_type_exception, "Name ${name} does not match with the name of issue permission.", ("name",ndact.issue.name));
-        EVT_ASSERT(ndact.issue.threshold > 0 && validate(ndact.issue), permission_type_exception, "Issue permission is not valid, which may be caused by invalid threshold, duplicated keys or unordered keys.");
+        EVT_ASSERT(ndact.issue.threshold > 0 && validate(ndact.issue), permission_type_exception, "Issue permission is not valid, which may be caused by invalid threshold, duplicated keys.");
         EVT_ASSERT(ndact.transfer.name == "transfer", permission_type_exception, "Name ${name} does not match with the name of transfer permission.", ("name",ndact.transfer.name));
-        EVT_ASSERT(ndact.transfer.threshold > 0 && validate(ndact.transfer), permission_type_exception, "Transfer permission is not valid, which may be caused by invalid threshold, duplicated keys or unordered keys.");
+        EVT_ASSERT(validate(ndact.transfer), permission_type_exception, "Transfer permission is not valid, which may be caused by duplicated keys.");
         // manage permission's threshold can be 0 which means no one can update permission later.
         EVT_ASSERT(ndact.manage.name == "manage", permission_type_exception, "Name ${name} does not match with the name of manage permission.", ("name",ndact.manage.name));
         EVT_ASSERT(validate(ndact.manage), permission_type_exception, "Manage permission is not valid, which may be caused by duplicated keys.");
@@ -292,14 +292,14 @@ EVT_ACTION_IMPL(updatedomain) {
         auto pchecker = make_permission_checker(tokendb);
         if(udact.issue.valid()) {
             EVT_ASSERT(udact.issue->name == "issue", permission_type_exception, "Name ${name} does not match with the name of issue permission.", ("name",udact.issue->name));
-            EVT_ASSERT(udact.issue->threshold > 0 && validate(*udact.issue), permission_type_exception, "Issue permission is not valid, which may be caused by invalid threshold, duplicated keys or unordered keys.");
+            EVT_ASSERT(udact.issue->threshold > 0 && validate(*udact.issue), permission_type_exception, "Issue permission is not valid, which may be caused by invalid threshold, duplicated keys.");
             pchecker(*udact.issue, false);
 
             domain.issue = std::move(*udact.issue);
         }
         if(udact.transfer.valid()) {
             EVT_ASSERT(udact.transfer->name == "transfer", permission_type_exception, "Name ${name} does not match with the name of transfer permission.", ("name",udact.transfer->name));
-            EVT_ASSERT(udact.transfer->threshold > 0 && validate(*udact.transfer), permission_type_exception, "Transfer permission is not valid, which may be caused by invalid threshold, duplicated keys or unordered keys.");
+            EVT_ASSERT(validate(*udact.transfer), permission_type_exception, "Transfer permission is not valid, which may be caused by duplicated keys.");
             pchecker(*udact.transfer, true);
 
             domain.transfer = std::move(*udact.transfer);
@@ -354,7 +354,7 @@ EVT_ACTION_IMPL(newfungible) {
         EVT_ASSERT(nfact.total_supply.get_amount() <= ASSET_MAX_SHARE_SUPPLY, fungible_supply_exception, "Supply exceeds the maximum allowed.");
 
         EVT_ASSERT(nfact.issue.name == "issue", permission_type_exception, "Name ${name} does not match with the name of issue permission.", ("name",nfact.issue.name));
-        EVT_ASSERT(nfact.issue.threshold > 0 && validate(nfact.issue), permission_type_exception, "Issue permission is not valid, which may be caused by invalid threshold, duplicated keys or unordered keys.");
+        EVT_ASSERT(nfact.issue.threshold > 0 && validate(nfact.issue), permission_type_exception, "Issue permission is not valid, which may be caused by invalid threshold, duplicated keys.");
         // manage permission's threshold can be 0 which means no one can update permission later.
         EVT_ASSERT(nfact.manage.name == "manage", permission_type_exception, "Name ${name} does not match with the name of manage permission.", ("name",nfact.manage.name));
         EVT_ASSERT(validate(nfact.manage), permission_type_exception, "Manage permission is not valid, which may be caused by duplicated keys.");
@@ -396,7 +396,7 @@ EVT_ACTION_IMPL(updfungible) {
         auto pchecker = make_permission_checker(tokendb);
         if(ufact.issue.valid()) {
             EVT_ASSERT(ufact.issue->name == "issue", permission_type_exception, "Name ${name} does not match with the name of issue permission.", ("name",ufact.issue->name));
-            EVT_ASSERT(ufact.issue->threshold > 0 && validate(*ufact.issue), permission_type_exception, "Issue permission is not valid, which may be caused by invalid threshold, duplicated keys or unordered keys.");
+            EVT_ASSERT(ufact.issue->threshold > 0 && validate(*ufact.issue), permission_type_exception, "Issue permission is not valid, which may be caused by invalid threshold, duplicated keys.");
             pchecker(*ufact.issue, false);
 
             fungible.issue = std::move(*ufact.issue);
