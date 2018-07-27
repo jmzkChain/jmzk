@@ -4,6 +4,7 @@ env:
   parameter-store:
     LOGIN_USERID: "docker-userid"
     LOGIN_PASSWORD: "docker-password"
+    BUILD_JOBS: "docker-build-jobs"
 
 phases:
   pre_build:
@@ -13,7 +14,7 @@ phases:
   build:
     commands:
       - echo Start building latest evt...
-      - cd Docker && docker build . -t everitoken/evt:latest
+      - cd Docker && docker build . -t everitoken/evt:latest --build-arg jobs=$BUILD_JOBS
   post_build:
     commands:
       - echo Publish to Docker Hub...
