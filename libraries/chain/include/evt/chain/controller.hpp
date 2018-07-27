@@ -82,6 +82,7 @@ public:
     transaction_trace_ptr push_suspend_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline);
 
     void check_authorization(const flat_set<public_key_type>& signed_keys, const transaction& trx);
+    void check_authorization(const flat_set<public_key_type>& signed_keys, const action& act);
 
     void finalize_block();
     void sign_block(const std::function<signature_type(const digest_type&)>& signer_callback);
@@ -129,6 +130,7 @@ public:
     block_state_ptr fetch_block_state_by_id(block_id_type id) const;
 
     block_id_type get_block_id_for_num(uint32_t block_num) const;
+    transaction_id_type get_trx_id_for_link_id(const link_id_type&) const;
 
     bool is_producing_block() const;
 

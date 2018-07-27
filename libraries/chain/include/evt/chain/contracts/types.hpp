@@ -13,6 +13,7 @@
 #include <evt/chain/contracts/authorizer_ref.hpp>
 #include <evt/chain/contracts/group.hpp>
 #include <evt/chain/contracts/metadata.hpp>
+#include <evt/chain/contracts/evt_link.hpp>
 
 namespace evt { namespace chain { namespace contracts {
 
@@ -267,6 +268,20 @@ struct paycharge {
     EVT_ACTION(paycharge);
 };
 
+struct everipass {
+    evt_link link;
+
+    EVT_ACTION(everipass);
+};
+
+struct everipay {
+    evt_link link;
+    address  payee;
+    asset    number;
+
+    EVT_ACTION(everipay);
+};
+
 }}}  // namespace evt::chain::contracts
 
 FC_REFLECT(evt::chain::contracts::token_def, (domain)(name)(owner)(metas));
@@ -296,3 +311,5 @@ FC_REFLECT(evt::chain::contracts::cancelsuspend, (name));
 FC_REFLECT(evt::chain::contracts::aprvsuspend, (name)(signatures));
 FC_REFLECT(evt::chain::contracts::execsuspend, (name)(executor));
 FC_REFLECT(evt::chain::contracts::paycharge, (payer)(charge));
+FC_REFLECT(evt::chain::contracts::everipass, (link));
+FC_REFLECT(evt::chain::contracts::everipay, (link)(payee)(number));

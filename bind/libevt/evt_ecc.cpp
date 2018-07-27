@@ -18,27 +18,6 @@ using fc::crypto::private_key;
 using fc::crypto::public_key;
 using fc::crypto::signature;
 
-template<>
-size_t
-get_type_size<public_key>() {
-    // static variant: int + first type
-    return sizeof(public_key::storage_type::type_at<0>);
-}
-
-template<>
-size_t
-get_type_size<private_key>() {
-    // static variant: int + first type
-    return sizeof(private_key::storage_type::type_at<0>);
-}
-
-template<>
-size_t
-get_type_size<signature>() {
-    // static variant: int + first type
-    return sizeof(signature::storage_type::type_at<0>);
-}
-
 extern "C" {
 
 int

@@ -15,6 +15,7 @@
 #include <evt/chain/global_property_object.hpp>
 #include <evt/chain/transaction_object.hpp>
 #include <evt/chain/reversible_block_object.hpp>
+#include <evt/chain/contracts/evt_link_object.hpp>
 
 #include <chainbase/chainbase.hpp>
 #include <fc/io/json.hpp>
@@ -252,6 +253,7 @@ struct controller_impl {
         db.add_index<dynamic_global_property_multi_index>();
         db.add_index<block_summary_multi_index>();
         db.add_index<transaction_multi_index>();
+        db.add_index<evt_link_multi_index>();
     }
 
     /**
@@ -422,6 +424,16 @@ struct controller_impl {
                        "${name} action in domain: ${domain} with key: ${key} authorized failed",
                        ("domain", act.domain)("key", act.key)("name", act.name));
         }
+    }
+
+    void
+    check_authorization(const flat_set<public_key_type>& signed_keys, const action& act) {
+        const static uint32_t max_authority_depth = conf.genesis.initial_configuration.max_authority_depth;
+
+        auto checker = authority_checker(signed_keys, token_db, max_authority_depth);
+        EVT_ASSERT(checker.satisfied(act), unsatisfied_authorization,
+                   "${name} action in domain: ${domain} with key: ${key} authorized failed",
+                   ("domain", act.domain)("key", act.key)("name", act.name));
     }
 
     transaction_trace_ptr
@@ -940,6 +952,11 @@ controller::check_authorization(const flat_set<public_key_type>& signed_keys, co
     return my->check_authorization(signed_keys, trx);
 }
 
+void
+controller::check_authorization(const flat_set<public_key_type>& signed_keys, const action& act) {
+    return my->check_authorization(signed_keys, act);
+}
+
 uint32_t
 controller::head_block_num() const {
     return my->head->block_num;
@@ -1011,11 +1028,13 @@ controller::get_global_properties() const {
 signed_block_ptr
 controller::fetch_block_by_id(block_id_type id) const {
     auto state = my->fork_db.get_block(id);
-    if(state)
+    if(state) {
         return state->block;
+    }
     auto bptr = fetch_block_by_number(block_header::num_from_id(id));
-    if(bptr && bptr->id() == id)
+    if(bptr && bptr->id() == id) {
         return bptr;
+    }
     return signed_block_ptr();
 }
 
@@ -1062,6 +1081,17 @@ controller::get_block_id_for_num(uint32_t block_num) const {
         return signed_blk->id();
     }
     FC_CAPTURE_AND_RETHROW((block_num))
+}
+
+transaction_id_type
+controller::get_trx_id_for_link_id(const link_id_type& link_id) const {
+    try {
+        if(const auto* l = my->db.find<evt_link_object, by_link_id>(link_id)) {
+            return l->trx_id;
+        }
+        EVT_THROW(evt_link_exception, "EVT-Link is not existed");
+    }
+    FC_CAPTURE_AND_RETHROW((link_id))
 }
 
 void

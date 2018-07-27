@@ -31,6 +31,10 @@ namespace fc { namespace crypto {
       :_storage(parse_base58(base58str))
    {}
 
+   signature::signature(ecc::signature_shim&& ecc_shim)
+      :_storage(std::move(ecc_shim)) 
+   {}
+
    signature::operator std::string() const
    {
       auto data_str = _storage.visit(base58str_visitor<storage_type, config::signature_prefix>());

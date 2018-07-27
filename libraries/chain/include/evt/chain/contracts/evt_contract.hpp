@@ -6,7 +6,7 @@
 
 namespace evt { namespace chain {
 class apply_context;
-struct version;
+class version;
 }}  // namespace evt::chain
 
 namespace evt { namespace chain { namespace contracts {

@@ -27,6 +27,7 @@
 #include <fc/string.hpp>
 
 #include <evt/chain/name.hpp>
+#include <evt/chain/name128.hpp>
 #include <evt/chain/chain_id_type.hpp>
 
 #define OBJECT_CTOR1(NAME)                                   \
@@ -126,6 +127,7 @@ enum object_type {
     block_summary_object_type,
     transaction_object_type,
     reversible_block_object_type,
+    evt_link_object_type,
     OBJECT_TYPE_COUNT  ///< Sentry value which contains the number of different object types
 };
 
@@ -144,6 +146,7 @@ using block_num_type      = uint32_t;
 using share_type          = int64_t;
 using int128_t            = __int128_t;
 using uint128_t           = __uint128_t;
+using link_id_type        = uint128_t;
 using bytes               = vector<char>;
 
 /**
@@ -178,6 +181,6 @@ operator<<(std::ostream& o, const __uint128_t v) {
 FC_REFLECT_ENUM(
     evt::chain::object_type,
     (null_object_type)(global_property_object_type)(dynamic_global_property_object_type)
-    (block_summary_object_type)(transaction_object_type)(reversible_block_object_type)
+    (block_summary_object_type)(transaction_object_type)(reversible_block_object_type)(evt_link_object_type)
     (OBJECT_TYPE_COUNT))
 FC_REFLECT(evt::chain::void_t, )

@@ -22,8 +22,9 @@ public:
     action(const domain_name& domain, const domain_key& key, const T& value)
         : domain(domain)
         , key(key) {
-        name = T::get_name();
-        data = fc::raw::pack(value);
+        name   = T::get_name();
+        data   = fc::raw::pack(value);
+        cache_ = value;
     }
 
     action(const action_name name, const domain_name& domain, const domain_key& key, const bytes& data)

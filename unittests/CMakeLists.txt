@@ -6,11 +6,12 @@ add_executable(evt_unittests
     types_tests.cpp
     )
 
-target_link_libraries( evt_unittests
-                        PRIVATE ${Boost_LIBRARIES} appbase evt_chain evt_testing fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} ${Intl_LIBRARIES} )
+target_link_libraries(evt_unittests
+        PRIVATE appbase evt_chain evt_testing fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} ${Intl_LIBRARIES})
 
 
-target_include_directories( evt_unittests PUBLIC ${Boost_INCLUDE_DIR} )
+target_include_directories(evt_unittests 
+        PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../libraries/catch/include)
 
 add_test(NAME evt_unittests
          COMMAND unittests/evt_unittests

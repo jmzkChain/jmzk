@@ -3,15 +3,11 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #pragma once
-#include <fc/io/raw.hpp>
-
-#include <evt/chain/transaction.hpp>
-#include <fc/uint128.hpp>
-
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/mem_fun.hpp>
 
-#include "multi_index_includes.hpp"
+#include <evt/chain/transaction.hpp>
+#include <evt/chain/multi_index_includes.hpp>
 
 namespace evt { namespace chain {
 using boost::multi_index_container;
@@ -42,6 +38,7 @@ using transaction_multi_index = chainbase::shared_multi_index_container<
                           BOOST_MULTI_INDEX_MEMBER(transaction_object, transaction_object::id_type, id)>>>>;
 
 typedef chainbase::generic_index<transaction_multi_index> transaction_index;
+
 }}  // namespace evt::chain
 
 CHAINBASE_SET_INDEX_TYPE(evt::chain::transaction_object, evt::chain::transaction_multi_index)
