@@ -76,26 +76,18 @@ FC_REFLECT(optionaltest2, (a)(b));
 
 TEST_CASE("optional_test", "[abis]") {
     auto abi = abi_def();
-    abi.structs.emplace_back( struct_def {
-        "optionaltest", "", {
-            {"a", "int32?"},
-            {"b", "int32?"}
-        }
-    });
-    abi.structs.emplace_back( struct_def {
-        "optionaltest2", "", {
-            {"a", "optionaltest?"},
-            {"b", "optionaltest?"}
-        }
-    });
+    abi.structs.emplace_back(struct_def{
+        "optionaltest", "", {{"a", "int32?"}, {"b", "int32?"}}});
+    abi.structs.emplace_back(struct_def{
+        "optionaltest2", "", {{"a", "optionaltest?"}, {"b", "optionaltest?"}}});
 
     auto abis = abi_serializer(abi);
 
-    auto json = R"( { "a": 0 } )";
-    auto json2 = R"( {"a": { "a": 0 } } )";
-    auto var1 = fc::json::from_string(json);
-    auto var2 = fc::json::from_string(json2);
-    auto bytes1  = abis.variant_to_binary("optionaltest", var1);
+    auto json   = R"( { "a": 0 } )";
+    auto json2  = R"( {"a": { "a": 0 } } )";
+    auto var1   = fc::json::from_string(json);
+    auto var2   = fc::json::from_string(json2);
+    auto bytes1 = abis.variant_to_binary("optionaltest", var1);
     auto bytes2 = abis.variant_to_binary("optionaltest2", var2);
 
     CHECK(var1["a"].is_integer());
@@ -124,7 +116,7 @@ TEST_CASE("optional_test", "[abis]") {
     CHECK_THROWS_AS(var21["b"].is_null(), fc::key_not_found_exception);
 
     CHECK((var22["a"].is_object() && var22["a"].get_object().size() > 0));
-    CHECK_THROWS_AS((var22["b"].is_object() && var22["b"].get_object().size() == 0), fc::key_not_found_exception);  
+    CHECK_THROWS_AS((var22["b"].is_object() && var22["b"].get_object().size() == 0), fc::key_not_found_exception);
 
     auto bytes21 = abis.variant_to_binary("optionaltest", var21);
     CHECK(fc::to_hex(bytes1) == fc::to_hex(bytes21));
@@ -970,7 +962,7 @@ TEST_CASE("newsuspend_test", "[abis]") {
     }
     )=======";
 
-    auto var  = fc::json::from_string(test_data);
+    auto var   = fc::json::from_string(test_data);
     auto ndact = var.as<newsuspend>();
 
     CHECK("testsuspend" == (std::string)ndact.name);
@@ -982,11 +974,10 @@ TEST_CASE("newsuspend_test", "[abis]") {
     CHECK("newdomain" == ndact.trx.actions[0].name);
     CHECK("test1530681222" == ndact.trx.actions[0].domain);
     CHECK(".create" == ndact.trx.actions[0].key);
-    
+
     verify_byte_round_trip_conversion(abis, "newsuspend", var);
     verify_type_round_trip_conversion<newsuspend>(abis, "newsuspend", var);
 }
-
 
 TEST_CASE("cancelsuspend_test", "[abis]") {
     auto abis = get_evt_abi();
@@ -997,7 +988,7 @@ TEST_CASE("cancelsuspend_test", "[abis]") {
     }
     )=======";
 
-    auto var  = fc::json::from_string(test_data);
+    auto var   = fc::json::from_string(test_data);
     auto cdact = var.as<cancelsuspend>();
 
     CHECK("testsuspend" == (std::string)cdact.name);
@@ -1018,7 +1009,7 @@ TEST_CASE("aprvsuspend_test", "[abis]") {
     }
     )=======";
 
-    auto var  = fc::json::from_string(test_data);
+    auto var   = fc::json::from_string(test_data);
     auto adact = var.as<aprvsuspend>();
 
     CHECK("test1530718665" == (std::string)adact.name);
@@ -1040,7 +1031,7 @@ TEST_CASE("execsuspend_test", "[abis]") {
     }
     )=======";
 
-    auto var  = fc::json::from_string(test_data);
+    auto var   = fc::json::from_string(test_data);
     auto edact = var.as<execsuspend>();
 
     CHECK("test1530718626" == (std::string)edact.name);
@@ -1048,7 +1039,6 @@ TEST_CASE("execsuspend_test", "[abis]") {
 
     verify_byte_round_trip_conversion(abis, "execsuspend", var);
     verify_type_round_trip_conversion<execsuspend>(abis, "execsuspend", var);
-
 }
 
 TEST_CASE("evt2pevt_test", "[abis]") {
@@ -1063,7 +1053,7 @@ TEST_CASE("evt2pevt_test", "[abis]") {
     }
     )=======";
 
-    auto var  = fc::json::from_string(test_data);
+    auto var = fc::json::from_string(test_data);
     auto e2p = var.as<evt2pevt>();
 
     CHECK("EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3" == (std::string)e2p.from);
@@ -1075,7 +1065,7 @@ TEST_CASE("evt2pevt_test", "[abis]") {
 }
 
 TEST_CASE("everipass_abi_test", "[abis]") {
-    auto abis = get_evt_abi();
+    auto        abis      = get_evt_abi();
     const char* test_data = R"=======(
     {
         "link": "03XBY4E/KTS:PNHVA3JP9QG258F08JHYOYR5SLJGN0EA-C3J6S:2G:T1SX7WA14KH9ETLZ97TUX9R9JJA6+06$E/_PYNX-/152P4CTC:WKXLK$/7G-K:89+::2K4C-KZ2**HI-P8CYJ**XGFO1K5:$E*SOY8MFYWMNHP*BHX2U8$$FTFI81YDP1HT"
@@ -1125,7 +1115,7 @@ TEST_CASE("everipass_abi_test", "[abis]") {
 }
 
 TEST_CASE("everipay_abi_test", "[abis]") {
-    auto abis = get_evt_abi();
+    auto        abis      = get_evt_abi();
     const char* test_data = R"=======(
     {
         "link": "0Q:MMV*39PPS6SQNF74OVVJVIA/W2H:6I4QR6M$-W4HN8VQ421WX_Q/VQG2BWLMWKV73$953S5HR677KCP3G7MYWZMPWYZSN48KW1-2A9PDX1B-RD470*4D1RR*5M*L6HH7/05KW:T51Y*C46D01B",
