@@ -1,10 +1,10 @@
 #include <catch/catch.hpp>
 
-#include <evt/chain/types.hpp>
 #include <evt/chain/address.hpp>
-#include <evt/chain/contracts/types.hpp>
 #include <evt/chain/contracts/authorizer_ref.hpp>
 #include <evt/chain/contracts/evt_link.hpp>
+#include <evt/chain/contracts/types.hpp>
+#include <evt/chain/types.hpp>
 
 using namespace evt::chain;
 using namespace evt::chain::contracts;
@@ -25,7 +25,7 @@ TEST_CASE("test_address", "[types]") {
     CHECK(addr == addr2);
 
     auto keystr = std::string("EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3");
-    auto pkey = public_key_type(keystr);
+    auto pkey   = public_key_type(keystr);
 
     addr.set_public_key(pkey);
     CHECK(addr.is_public_key());
@@ -113,7 +113,6 @@ TEST_CASE("test_link_2", "[types]") {
     CHECK(*link.get_segment(evt_link::domain).strv == "testdomain");
     CHECK(*link.get_segment(evt_link::token).strv == "testtoken");
 
-
     auto uid = std::string();
     uid.push_back(102);
     uid.push_back(24);
@@ -159,7 +158,6 @@ TEST_CASE("test_link_3", "[types]") {
     CHECK(link.get_segment(evt_link::domain).intv.valid() == false);
     CHECK(*link.get_segment(evt_link::domain).strv == "testdomain");
     CHECK(*link.get_segment(evt_link::token).strv == "testtoken");
-
 
     auto uid = std::string();
     uid.push_back(249);
