@@ -23,13 +23,13 @@ extern std::string evt_unittests_dir;
 
 class tokendb_test {
 public:
-    tokendb_test() : ti(0) {
+    tokendb_test()
+        : ti(0) {
         tokendb.initialize(evt_unittests_dir + "/tokendb_tests");
     }
     ~tokendb_test() {}
 
 protected:
-
     int32_t
     get_time() {
         return time(0) + (++ti);
@@ -287,7 +287,7 @@ add_suspend_data() {
         }
         )=======";
 
-    auto      var = fc::json::from_string(test_data);
+    auto        var = fc::json::from_string(test_data);
     suspend_def dl  = var.as<suspend_def>();
     return dl;
 }
@@ -318,7 +318,7 @@ update_suspend_data() {
         }
         )=======";
 
-    auto      var = fc::json::from_string(test_data);
+    auto        var = fc::json::from_string(test_data);
     suspend_def dl  = var.as<suspend_def>();
     return dl;
 }
@@ -628,7 +628,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_fungible_test", "[tokendb]") {
     tokendb.read_all_assets(address1, [&](const auto& s) { INFO((std::string)s); s2++; return true; });
     CHECK(s2 == 2);
 
-    auto address2 = address(N(domain),"domain",0);
+    auto address2 = address(N(domain), "domain", 0);
     tokendb.read_all_assets(address2, [&](const auto&) { s++; return true; });
     CHECK(s == 0);
 
@@ -883,7 +883,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_persist_savepoints_2", "[tokendb]") {
     token_def tk_;
     tokendb.read_token(dom.name, "t1", tk_);
     REQUIRE(1 == tk_.metas.size());
-    
+
     tokendb.rollback_to_latest_savepoint();
     tokendb.read_token(dom.name, "t1", tk_);
     CHECK(0 == tk_.metas.size());
@@ -983,6 +983,5 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_persist_savepoints_5", "[tokendb]") {
 }
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_persist_savepoints_6", "[tokendb]") {
-
     CHECK_NOTHROW(tokendb.pop_savepoints(time(0) + ti + 1));
 }
