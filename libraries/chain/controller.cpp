@@ -1083,6 +1083,17 @@ controller::get_block_id_for_num(uint32_t block_num) const {
     FC_CAPTURE_AND_RETHROW((block_num))
 }
 
+transaction_id_type
+controller::get_trx_id_for_link_id(const link_id_type& link_id) const {
+    try {
+        if(const auto* l = my->db.find<evt_link_object, by_link_id>(link_id)) {
+            return l->trx_id;
+        }
+        EVT_THROW(evt_link_exception, "EVT-Link is not existed");
+    }
+    FC_CAPTURE_AND_RETHROW((link_id))
+}
+
 void
 controller::pop_block() {
     my->pop_block();

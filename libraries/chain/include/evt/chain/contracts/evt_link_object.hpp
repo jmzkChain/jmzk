@@ -15,8 +15,6 @@ namespace evt { namespace chain { namespace contracts {
 using boost::multi_index_container;
 using namespace boost::multi_index;
 
-using link_id_type = uint128_t;
-
 class evt_link_object : public chainbase::object<evt_link_object_type, evt_link_object> {
     OBJECT_CTOR(evt_link_object)
 

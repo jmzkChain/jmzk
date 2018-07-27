@@ -656,6 +656,16 @@ read_only::get_head_block_header_state(const get_head_block_header_state_params&
     return vo;
 }
 
+fc::variant
+read_only::get_trx_id_for_link_id(const get_trx_id_for_link_id_params& params) const {
+    if(params.link_id.size() != sizeof(link_id_type)) {
+        EVT_THROW(evt_link_id_exception, "EVT-Link id is not in proper length");
+    }
+    auto vo = fc::mutable_variant_object();
+    vo["trx_id"] = db.get_trx_id_for_link_id(*(link_id_type*)(&params.link_id[0]));
+    return vo;
+}
+
 void
 read_write::push_block(const read_write::push_block_params& params, next_function<read_write::push_block_results> next) {
     try {

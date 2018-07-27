@@ -919,7 +919,7 @@ EVT_ACTION_IMPL(everipay) {
         }
 
         auto& link_id_str = *link.get_segment(evt_link::link_id).strv;
-        EVT_ASSERT(link_id_str.size() == sizeof(link_id_type), evt_link_id_exception, "EVT-Link id is not in valid length, provided: ${p}, expected: ${e}", ("p",link_id_str.size())("e",sizeof(link_id_type)));
+        EVT_ASSERT(link_id_str.size() == sizeof(link_id_type), evt_link_id_exception, "EVT-Link id is not in proper length, provided: ${p}, expected: ${e}", ("p",link_id_str.size())("e",sizeof(link_id_type)));
 
         try {
             db.create<evt_link_object>([&](evt_link_object& li) {

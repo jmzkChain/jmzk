@@ -40,7 +40,7 @@ struct async_result_visitor : public fc::visitor<std::string> {
 #define CALL(api_name, api_handle, api_namespace, call_name, http_response_code)                                             \
     {                                                                                                                        \
         std::string("/v1/" #api_name "/" #call_name),                                                                        \
-            [api_handle](string, string body, url_response_callback cb) mutable {                                      \
+            [api_handle](string, string body, url_response_callback cb) mutable {                                            \
                 try {                                                                                                        \
                     if(body.empty())                                                                                         \
                         body = "{}";                                                                                         \
@@ -56,7 +56,7 @@ struct async_result_visitor : public fc::visitor<std::string> {
 #define CALL_ASYNC(api_name, api_handle, api_namespace, call_name, call_result, http_response_code)                 \
     {                                                                                                               \
         std::string("/v1/" #api_name "/" #call_name),                                                               \
-            [api_handle](string, string body, url_response_callback cb) mutable {                             \
+            [api_handle](string, string body, url_response_callback cb) mutable {                                   \
                 if(body.empty())                                                                                    \
                     body = "{}";                                                                                    \
                 api_handle.call_name(fc::json::from_string(body).as<api_namespace::call_name##_params>(),           \
@@ -92,6 +92,7 @@ chain_api_plugin::plugin_startup() {
                                              CHAIN_RO_CALL(get_block, 200),
                                              CHAIN_RO_CALL(get_block_header_state, 200),
                                              CHAIN_RO_CALL(get_head_block_header_state, 200),
+                                             CHAIN_RO_CALL(get_trx_id_for_link_id, 200),
                                              CHAIN_RO_CALL(abi_json_to_bin, 200),
                                              CHAIN_RO_CALL(abi_bin_to_json, 200),
                                              CHAIN_RO_CALL(trx_json_to_digest, 200),

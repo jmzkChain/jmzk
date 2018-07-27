@@ -23,15 +23,18 @@ class variant;
 namespace evt {
 using namespace appbase;
 using std::unique_ptr;
-using chain::controller;
+
 using fc::optional;
 using boost::container::flat_set;
-using chain::name;
+
 using chain::account_name;
+using chain::bytes;
+using chain::controller;
+using chain::digest_type;
+using chain::name;
 using chain::proposal_name;
 using chain::public_key_type;
 using chain::version;
-using chain::digest_type;
 using chain::contracts::abi_serializer;
 
 namespace chain_apis {
@@ -142,6 +145,11 @@ public:
 
     using get_head_block_header_state_params = empty;
     fc::variant get_head_block_header_state(const get_head_block_header_state_params& params) const;
+
+    struct get_trx_id_for_link_id_params {
+        bytes link_id;
+    };
+    fc::variant get_trx_id_for_link_id(const get_trx_id_for_link_id_params& params) const;
 };
 
 class read_write {
@@ -214,22 +222,23 @@ private:
 
 }  // namespace evt
 
-FC_REFLECT(evt::chain_apis::empty, )
+FC_REFLECT(evt::chain_apis::empty, );
 FC_REFLECT(evt::chain_apis::read_only::get_info_results,
           (server_version)(chain_id)(evt_api_version)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)
-          (head_block_id)(head_block_time)(head_block_producer)(recent_slots)(participation_rate))
-FC_REFLECT(evt::chain_apis::read_only::get_block_params, (block_num_or_id))
-FC_REFLECT(evt::chain_apis::read_only::get_block_header_state_params, (block_num_or_id))
-FC_REFLECT(evt::chain_apis::read_only::producer_info, (producer_name))
-FC_REFLECT(evt::chain_apis::read_only::abi_json_to_bin_params, (action)(args))
-FC_REFLECT(evt::chain_apis::read_only::abi_json_to_bin_result, (binargs))
-FC_REFLECT(evt::chain_apis::read_only::abi_bin_to_json_params, (action)(binargs))
-FC_REFLECT(evt::chain_apis::read_only::abi_bin_to_json_result, (args))
-FC_REFLECT(evt::chain_apis::read_only::trx_json_to_digest_result, (digest))
-FC_REFLECT(evt::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys))
-FC_REFLECT(evt::chain_apis::read_only::get_required_keys_result, (required_keys))
-FC_REFLECT(evt::chain_apis::read_only::get_suspend_required_keys_params, (name)(available_keys))
-FC_REFLECT(evt::chain_apis::read_only::get_suspend_required_keys_result, (required_keys))
-FC_REFLECT(evt::chain_apis::read_only::get_charge_params, (transaction)(sigs_num))
-FC_REFLECT(evt::chain_apis::read_only::get_charge_result, (charge))
-FC_REFLECT(evt::chain_apis::read_write::push_transaction_results, (transaction_id)(processed))
+          (head_block_id)(head_block_time)(head_block_producer)(recent_slots)(participation_rate));
+FC_REFLECT(evt::chain_apis::read_only::get_block_params, (block_num_or_id));
+FC_REFLECT(evt::chain_apis::read_only::get_block_header_state_params, (block_num_or_id));
+FC_REFLECT(evt::chain_apis::read_only::get_trx_id_for_link_id_params, (link_id));
+FC_REFLECT(evt::chain_apis::read_only::producer_info, (producer_name));
+FC_REFLECT(evt::chain_apis::read_only::abi_json_to_bin_params, (action)(args));
+FC_REFLECT(evt::chain_apis::read_only::abi_json_to_bin_result, (binargs));
+FC_REFLECT(evt::chain_apis::read_only::abi_bin_to_json_params, (action)(binargs));
+FC_REFLECT(evt::chain_apis::read_only::abi_bin_to_json_result, (args));
+FC_REFLECT(evt::chain_apis::read_only::trx_json_to_digest_result, (digest));
+FC_REFLECT(evt::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys));
+FC_REFLECT(evt::chain_apis::read_only::get_required_keys_result, (required_keys));
+FC_REFLECT(evt::chain_apis::read_only::get_suspend_required_keys_params, (name)(available_keys));
+FC_REFLECT(evt::chain_apis::read_only::get_suspend_required_keys_result, (required_keys));
+FC_REFLECT(evt::chain_apis::read_only::get_charge_params, (transaction)(sigs_num));
+FC_REFLECT(evt::chain_apis::read_only::get_charge_result, (charge));
+FC_REFLECT(evt::chain_apis::read_write::push_transaction_results, (transaction_id)(processed));
