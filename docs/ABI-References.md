@@ -29,6 +29,7 @@ Before describing the ABI for each action, it is necessary to introduce some Bas
 | `authorizer_ref` | Reference to a authorizer | Valid authorizer including an account, a group or special `OWNER` group |
 | `group` | Authorize group tree | See `group` type section below |
 | `address` | Address type | See `address` type section below |
+| `evt_link` | EVT-Link type | |
 * __#1__: `EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX`
 * __#2__: `SIG_K1_JzrdhWW46N5nFUZzTUmhg2sK4nKNGktPz2UdRz9bSAP5pY4nhicKWCuo6Uc6U7KBBwD8VfjsSxzHWT87R41xMaubnzMq8w`
 
@@ -405,5 +406,24 @@ Execute one suspend transaction
 {
     "name": `proposal_name`,
     "executor": `user_id`
+}
+```
+
+### `everipass` Action
+Execute everipass
+```
+{
+    "link": `evt_link`
+}
+```
+
+### `everipay` Action
+Execute everipay
+```
+{
+    "link": `evt_link`,
+    "payee": `address`,
+    "number": `asset`
+
 }
 ```

@@ -23,8 +23,8 @@ everiToken currently supports the following operating systems:
 1. [everiToken Website](https://everitoken.io/)
 2. [everiToken Documentation Wiki](https://github.com/everitoken/evt/wiki)
 3. [White Paper](https://everitoken.io/docs/whitepaper.pdf)
-4. [API References](https://github.com/everitoken/evt/blob/master/docs/API-References.md)
-5. [ABI References](https://github.com/everitoken/evt/blob/master/docs/ABI-References.md)
+4. [API References](docs/API-References.md)
+5. [ABI References](docs/ABI-References.md)
 
 ## Getting Started
 Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, domain creation and issue and transfer tokens to the blockchain can be found on the [Wiki](https://github.com/everitoken/evt/wiki) for this GitHub repository.
