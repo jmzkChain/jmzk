@@ -19,14 +19,16 @@ everiToken currently supports the following operating systems:
 5. Ubuntu 16.04 and higher
 6. MacOS Darwin 10.12 and higher (MacOS 10.13.x recommended)
 
-# Resources
+## Resources
 1. [everiToken Website](https://everitoken.io/)
 2. [everiToken Documentation Wiki](https://github.com/everitoken/evt/wiki)
 3. [White Paper](https://everitoken.io/docs/whitepaper.pdf)
 4. [API References](https://github.com/everitoken/evt/blob/master/docs/API-References.md)
 5. [ABI References](https://github.com/everitoken/evt/blob/master/docs/ABI-References.md)
-6. [TestNet Guide](https://github.com/everitoken/evt/wiki/Single-Node-Test-Guide)
 
-<a name="gettingstarted"></a>
 ## Getting Started
 Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, domain creation and issue and transfer tokens to the blockchain can be found on the [Wiki](https://github.com/everitoken/evt/wiki) for this GitHub repository.
+
+## SDKs
+* [JaveScript SDK](https://github.com/everitoken/evtjs)
+* [Python SDK](sdks/pysdk)
