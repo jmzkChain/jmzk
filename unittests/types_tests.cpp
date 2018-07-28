@@ -208,51 +208,33 @@ TEST_CASE("test_name128", "[types]") {
         CHECK(memcmp((char*)&raw[0], (char*)&raw2[0], raw.size()) == 0);
     };
 
-    auto n1 = name128(N128());
-    CHECK((std::string)n1 == "");
-    auto r1 = get_raw(n1);
-    CHECK(r1.size() == 1);
-    CHECK_RAW(r1, n1);
+    auto CHECK_N128 = [&](const auto& str, auto size) {
+        auto n = name128(str);
+        CHECK((std::string)n == str);
+        auto r = get_raw(n);
+        CHECK(r.size() == size);
+        CHECK_RAW(r, n);
+    };
 
-    auto n2 = name128(N128(123));
-    CHECK((std::string)n2 == "123");
-    auto r2 = get_raw(n2);
-    CHECK(r2.size() == 4);
-    CHECK_RAW(r2, n2);
+    CHECK_N128("", 4);
+    CHECK_N128("123", 4);
+    CHECK_N128("12345", 4);
+    CHECK_N128("123456", 8);
+    CHECK_N128("1234567890", 8);
+    CHECK_N128("1234567890A", 12);
+    CHECK_N128("1234567890ABCDE", 12);
+    CHECK_N128("1234567890ABCDEF", 16);
+    CHECK_N128("1234567890ABCDEFGHIJK", 16);
 
-    auto n3 = name128(N128(1234));
-    CHECK((std::string)n3 == "1234");
-    auto r3 = get_raw(n3);
-    CHECK(r3.size() == 4);
-    CHECK_RAW(r3, n3);
+    auto n1 = name128(N128(12345.67890));
+    CHECK((std::string)n1 == "12345.67890");
 
-    auto n4 = name128(N128(12345));
-    CHECK((std::string)n4 == "12345");
-    auto r4 = get_raw(n4);
-    CHECK(r4.size() == 4);
-    CHECK_RAW(r4, n4);
+    auto n2 = name128(N128(12345...));
+    CHECK((std::string)n2 == "12345");
 
-    auto n5 = name128(N128(1234567890));
-    CHECK((std::string)n5 == "1234567890");
-    auto r5 = get_raw(n5);
-    CHECK(r5.size() == 8);
-    CHECK_RAW(r5, n5);
+    auto n3 = name128(N128(.12345));
+    CHECK((std::string)n3 == ".12345");
 
-    auto n6 = name128(N128(1234567890a));
-    CHECK((std::string)n6 == "1234567890a");
-    auto r6 = get_raw(n6);
-    CHECK(r6.size() == 16);
-    CHECK_RAW(r6, n6);
-
-    auto n7 = name128(N128(12345.67890));
-    CHECK((std::string)n7 == "12345.67890");
-
-    auto n8 = name128(N128(12345...));
-    CHECK((std::string)n8 == "12345");
-
-    auto n9 = name128(N128(.12345));
-    CHECK((std::string)n9 == ".12345");
-
-    auto n10 = name128(N128(ABCDEFGZZ));
-    CHECK((std::string)n10 == "ABCDEFGZZ");
+    auto n4 = name128(N128(ABCDEFGZZ));
+    CHECK((std::string)n4 == "ABCDEFGZZ");
 }

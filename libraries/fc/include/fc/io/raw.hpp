@@ -26,9 +26,21 @@ namespace fc {
     namespace raw {
 
     namespace bip = boost::interprocess;
+    using namespace boost::multiprecision;
     using shared_string = bip::basic_string< char, std::char_traits< char >, bip::allocator<char, bip::managed_mapped_file::segment_manager> >;
 
-    using namespace boost::multiprecision;
+    template<typename T> struct packer { enum { empty = 0 }; };
+    template<typename T> struct unpacker { enum { empty = 0 }; };
+
+    template<typename T, typename R = decltype(packer<T>::empty), typename S = decltype(unpacker<T>::empty)>
+    constexpr bool has_custom_function_helper(int) { return false; }
+
+    template<typename T>
+    constexpr bool has_custom_function_helper(...) { return true; }
+
+    template<typename T>
+    constexpr bool has_custom_function() { return has_custom_function_helper<T>(0); }
+
     template<size_t Size>
     using UInt = number<cpp_int_backend<Size, Size, unsigned_magnitude, unchecked, void> >;
     template<size_t Size>
@@ -372,12 +384,35 @@ namespace fc {
           Stream& s;
       };
 
+      template<typename HasCustom=fc::true_type>
+      struct has_custom {
+        template<typename Stream, typename T>
+        static inline void pack( Stream& s, const T& v ) { packer<T>::pack(s, v); }
+
+        template<typename Stream, typename T>
+        static inline void unpack( Stream& s, T& v ) { unpacker<T>::unpack(s, v); }
+      };
+
+      template<>
+      struct has_custom<fc::false_type> {
+        template<typename Stream, typename T>
+        static inline void pack( Stream& s, const T& v ) { s << v; }
+
+        template<typename Stream, typename T>
+        static inline void unpack( Stream& s, T& v ) { s >> v; }
+      };
+
       template<typename IsClass=fc::true_type>
       struct if_class{
         template<typename Stream, typename T>
-        static inline void pack( Stream& s, const T& v ) { s << v; }
+        static inline void pack( Stream& s, const T& v ) {
+          has_custom<std::conditional_t<has_custom_function<T>(), fc::true_type, fc::false_type>>::pack(s, v);
+        }
+
         template<typename Stream, typename T>
-        static inline void unpack( Stream& s, T& v ) { s >> v; }
+        static inline void unpack( Stream& s, T& v ) {
+          has_custom<std::conditional_t<has_custom_function<T>(), fc::true_type, fc::false_type>>::unpack(s, v);
+        }
       };
 
       template<>
