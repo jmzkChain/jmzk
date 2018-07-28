@@ -355,7 +355,7 @@ base_tester::sync_with(base_tester& other) {
         return other.sync_with(*this);
 
     auto sync_dbs = [](base_tester& a, base_tester& b) {
-        for(int i = 1; i <= a.control->head_block_num(); ++i) {
+        for(auto i = 1u; i <= a.control->head_block_num(); ++i) {
             auto block = a.control->fetch_block_by_number(i);
             if(block) {  //&& !b.control->is_known_block(block->id()) ) {
                 b.control->abort_block();

@@ -826,8 +826,8 @@ EVT_ACTION_IMPL(paycharge) {
 
         if(paid < pcact.charge) {
             tokendb.read_asset_no_throw(pcact.payer, evt_symbol, evt);
-            uint64_t remain = pcact.charge - paid;
-            if(evt.get_amount() < remain) {
+            auto remain = pcact.charge - paid;
+            if(evt.get_amount() < (int64_t)remain) {
                 EVT_THROW(charge_exceeded_exception, "There are ${e} EVT and ${p} Pinned EVT left, but charge is ${c}", ("e",evt)("p",pevt)("c",pcact.charge));
             }
             evt -= asset(remain, evt.get_symbol());
