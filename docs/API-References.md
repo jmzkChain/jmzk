@@ -21,6 +21,69 @@ Response:
 }
 ```
 
+## GET /v1/chain/get_head_block_header_state
+Used to get latest block header state.
+
+Response:
+```
+{
+    "id": "00000042452cd340f429846f292686c92fcf71c5743fc10f48b4192d69f2d67d",
+    "block_num": 66,
+    "header": {
+        "timestamp": "2018-07-27T10:18:08.500",
+        "producer": "evt",
+        "confirmed": 0,
+        "previous": "000000416651e2ed1cf0ea97cf8563200778cc2f09ef905c1ef55fb95c6843bd",
+        "transaction_mroot": "0000000000000000000000000000000000000000000000000000000000000000",
+        "action_mroot": "0000000000000000000000000000000000000000000000000000000000000000",
+        "schedule_version": 0,
+        "header_extensions": [],
+        "producer_signature": "SIG_K1_KdLVwPJECYcnoTjaPqhQwWDvFJAkpYPfRNHwAAQQDyua58nju1dpTgwKkLxkwjDivkpW4nyc1JmRrXLA9CLmFhQXAuNZko"
+    },
+    "dpos_proposed_irreversible_blocknum": 66,
+    "dpos_irreversible_blocknum": 65,
+    "bft_irreversible_blocknum": 0,
+    "pending_schedule_lib_num": 0,
+    "pending_schedule_hash": "73965d02d55e9fb68d87aea8b85400b8cc014dd777b1366bf123b73c72aff712",
+    "pending_schedule": {
+        "version": 0,
+        "producers": []
+    },
+    "active_schedule": {
+        "version": 0,
+        "producers": [
+            {
+                "producer_name": "evt",
+                "block_signing_key": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+            }
+        ]
+    },
+    "blockroot_merkle": {
+        "_active_nodes": [
+            "000000416651e2ed1cf0ea97cf8563200778cc2f09ef905c1ef55fb95c6843bd",
+            "b4412cfcf063a3ceb483e23cbf4601e377e5de25bfe4d101d463fe3f224bdf4c",
+            "db4dd95a06e9969440a211dd38741152d4259306f6a1ce0e38a694daa4019251"
+        ],
+        "_node_count": 65
+    },
+    "producer_to_last_produced": [
+        [
+            "evt",
+            66
+        ]
+    ],
+    "producer_to_last_implied_irb": [
+        [
+            "evt",
+            65
+        ]
+    ],
+    "block_signing_key": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+    "confirm_count": [],
+    "confirmations": []
+}
+```
+
 ## POST /v1/chain/abi_json_to_bin
 This API is used to convert the abi formatted json data into binary data. And it also can be used to check if your input action data is well-formatted and correct. The `action` below is the name of one action and args is the json definitions.
 
@@ -318,6 +381,23 @@ Response
 }
 ```
 > 12345 represents for '0.12345' EVT(PEVT).
+
+## POST /v1/evt/get_trx_id_for_link_id
+Used to fetch transaction id for one EVT-Link id. Only sucessful executing everiPay actions can be queried by this API.
+
+Request:
+```
+{
+    "link_id": "16951b9b653947955faa6c3cb3e506b6"
+}
+```
+
+Response:
+```
+{
+    "trx_id": "9f2ea4b512f49d2f3ff2be24e9cc4296ee0749b33bb9b1c06ae45a664bb00397"
+}
+```
 
 ## POST /v1/evt/get_domain
 This API is used to get specific domain.

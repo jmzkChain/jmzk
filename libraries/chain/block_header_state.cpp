@@ -68,8 +68,6 @@ block_header_state::generate_next(block_timestamp_type when) const {
     result.blockroot_merkle                                = blockroot_merkle;
     result.blockroot_merkle.append(id);
 
-    auto block_mroot = result.blockroot_merkle.get_root();
-
     result.active_schedule                     = active_schedule;
     result.pending_schedule                    = pending_schedule;
     result.dpos_proposed_irreversible_blocknum = dpos_proposed_irreversible_blocknum;
@@ -219,7 +217,7 @@ block_header_state::set_confirmed(uint16_t num_prev_blocks) {
             dpos_proposed_irreversible_blocknum = block_num_for_i;
             //idump((dpos2_lib)(block_num)(dpos_irreversible_blocknum));
 
-            if(i == confirm_count.size() - 1) {
+            if((uint32_t)i == confirm_count.size() - 1) {
                 confirm_count.resize(0);
             }
             else {

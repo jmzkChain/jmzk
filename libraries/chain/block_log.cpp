@@ -184,7 +184,7 @@ block_log::append(const signed_block_ptr& b) {
         my->check_index_write();
 
         uint64_t pos = my->block_stream.tellp();
-        FC_ASSERT(my->index_stream.tellp() == sizeof(uint64_t) * (b->block_num() - 1),
+        FC_ASSERT((size_t)my->index_stream.tellp() == sizeof(uint64_t) * (b->block_num() - 1),
                   "Append to index file occuring at wrong position.",
                   ("position", (uint64_t)my->index_stream.tellp())("expected", (b->block_num() - 1) * sizeof(uint64_t)));
         auto data = fc::raw::pack(*b);
@@ -295,7 +295,7 @@ block_log::read_head() const {
 
     // Check that the file is not empty
     my->block_stream.seekg(0, std::ios::end);
-    if(my->block_stream.tellg() <= sizeof(pos))
+    if((size_t)my->block_stream.tellg() <= sizeof(pos))
         return {};
 
     my->block_stream.seekg(-sizeof(pos), std::ios::end);
