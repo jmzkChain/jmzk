@@ -847,7 +847,6 @@ EVT_ACTION_IMPL(everipass) {
 
     auto& epact = context.act.data_as<const everipass&>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.everiPass), name128()), action_authorize_exception, "Authorized information does not match.");
 
         auto& tokendb = context.token_db;
         auto& db      = context.db;
@@ -858,6 +857,11 @@ EVT_ACTION_IMPL(everipass) {
         EVT_ASSERT(flags & evt_link::version1, evt_link_version_exception, "EVT-Link version is not expected, current supported version is Versoin-1");
         EVT_ASSERT(flags & evt_link::everiPass, evt_link_type_exception, "Not a everiPass link");
 
+        auto& d = *link.get_segment(evt_link::domain).strv;
+        auto& t = *link.get_segment(evt_link::token).strv;
+
+        EVT_ASSERT(context.has_authorized(name128(d), name128(t)), action_authorize_exception, "Authorized information does not match.");
+
         auto ts    = *link.get_segment(evt_link::timestamp).intv;
         auto since = std::abs((context.control.head_block_time() - fc::time_point_sec(ts)).to_seconds());
         if(since > config::evt_link_expired_secs) {
@@ -865,9 +869,6 @@ EVT_ACTION_IMPL(everipass) {
         }
 
         auto keys = link.restore_keys();
-
-        auto& d = *link.get_segment(evt_link::domain).strv;
-        auto& t = *link.get_segment(evt_link::token).strv;
 
         token_def token;
         tokendb.read_token(d, t, token);
@@ -901,8 +902,6 @@ EVT_ACTION_IMPL(everipay) {
 
     auto& epact = context.act.data_as<const everipay&>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.everiPay), name128()), action_authorize_exception, "Authorized information does not match.");
-
         auto& tokendb = context.token_db;
         auto& db      = context.db;
 
@@ -911,6 +910,9 @@ EVT_ACTION_IMPL(everipay) {
 
         EVT_ASSERT(flags & evt_link::version1, evt_link_version_exception, "EVT-Link version is not expected, current supported version is Versoin-1");
         EVT_ASSERT(flags & evt_link::everiPay, evt_link_type_exception, "Not a everiPay link");
+
+        auto& lsym = *link.get_segment(evt_link::symbol).strv;
+        EVT_ASSERT(context.has_authorized(N128(.fungible), name128(lsym)), action_authorize_exception, "Authorized information does not match.");
 
         auto ts    = *link.get_segment(evt_link::timestamp).intv;
         auto since = std::abs((context.control.head_block_time() - fc::time_point_sec(ts)).to_seconds());
@@ -937,8 +939,8 @@ EVT_ACTION_IMPL(everipay) {
         auto keys = link.restore_keys();
         EVT_ASSERT(keys.size() == 1, evt_link_id_exception, "There're more than one signature on everiPay link, which is invalid");
 
-        auto& lsym = *link.get_segment(evt_link::symbol).strv;
-        auto  sym  = epact.number.get_symbol();
+        
+        auto sym = epact.number.get_symbol();
         EVT_ASSERT(lsym == sym.name(), everipay_exception, "Symbols don't match, provided: ${p}, expected: ${e}", ("p",lsym)("e",sym.name()));
 
         auto max_pay = uint32_t(0);
