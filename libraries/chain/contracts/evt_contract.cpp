@@ -374,7 +374,12 @@ EVT_ACTION_IMPL(newfungible) {
         fungible.issue          = std::move(nfact.issue);
         fungible.manage         = std::move(nfact.manage);
 
-        auto sym_id = 0;
+        // HACK: Use special address to store current largest symbol id
+        auto sym_id_addr  = address(N(fungible), name128(), 0);
+        auto sym_id_asset = asset();
+        tokendb.read_asset(sym_id_addr, symbol(), sym_id_asset);
+
+        auto sym_id = sym_id_asset.amount() + 1;
         fungible.sym          = symbol(nfact.total_supply.precision(), sym_id);
         fungible.total_supply = asset(nfact.total_supply.amount(), fungible.sym);
 
@@ -382,6 +387,10 @@ EVT_ACTION_IMPL(newfungible) {
 
         auto addr = get_fungible_address(fungible.sym);
         tokendb.update_asset(addr, fungible.total_supply);
+
+        // HACK: Update max symbol id
+        sym_id_asset += asset(1, sym_id_asset.sym());
+        tokendb.update_asset(sym_id_addr, sym_id_asset);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }

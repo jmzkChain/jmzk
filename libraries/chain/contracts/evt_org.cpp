@@ -61,6 +61,11 @@ initialize_evt_org(token_database& token_db, const genesis_state& genesis) {
 
         auto addr = address(N(fungible), N128(EVT), 0);
         token_db.update_asset(addr, evt.total_supply);
+
+        // HACK: Use special address to store current largest symbol id
+        auto sym_id_addr  = address(N(fungible), name128(), 0);
+        auto sym_id_asset = asset(evt_sym().id(), symbol());
+        token_db.update_asset(sym_id_addr, sym_id_asset);
     }
 
     // Add reserved Pined EVT fungible tokens
@@ -84,6 +89,11 @@ initialize_evt_org(token_database& token_db, const genesis_state& genesis) {
         pevt.total_supply = asset(0, pevt.sym);
 
         token_db.add_fungible(pevt);
+
+        // HACK: Use special address to store current largest symbol id
+        auto sym_id_addr  = address(N(fungible), name128(), 0);
+        auto sym_id_asset = asset(pevt_sym().id(), symbol());
+        token_db.update_asset(sym_id_addr, sym_id_asset);
     }
 }
 
