@@ -105,7 +105,7 @@ public:
     int exists_suspend(const proposal_name&) const;
     int add_fungible(const fungible_def&);
     int exists_fungible(const symbol) const;
-    int exists_fungible(const fungible_name& sym_name) const;
+    int exists_fungible(const symbol_id_type) const;
 
     int update_asset(const address& addr, const asset&);
     int exists_any_asset(const address& addr) const;
@@ -117,7 +117,7 @@ public:
     int read_suspend(const proposal_name&, suspend_def&) const;
 
     int read_fungible(const symbol, fungible_def&) const;
-    int read_fungible(const fungible_name& sym_name, fungible_def&) const;
+    int read_fungible(const symbol_id_type, fungible_def&) const;
     int read_asset(const address& addr, const symbol, asset&) const;
     // this function returns asset(0, symbol) when there's no asset key in address
     // instead of throwing an exception

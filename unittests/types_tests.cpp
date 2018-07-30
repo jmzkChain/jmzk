@@ -212,7 +212,7 @@ TEST_CASE("test_name128", "[types]") {
         auto n = name128(str);
         CHECK((std::string)n == str);
         auto r = get_raw(n);
-        CHECK(r.size() == size);
+        CHECK(r.size() == (size_t)size);
         CHECK_RAW(r, n);
     };
 
