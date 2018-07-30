@@ -40,6 +40,7 @@ def init_evt_lib():
             #define EVT_INVALID_ADDRESS         -10
             #define EVT_SIZE_NOT_EQUALS         -11
             #define EVT_DATA_NOT_EQUALS         -12
+            #define EVT_INVALID_LINK            -13
 
             int evt_free(void*);
             int evt_equals(evt_data_t* rhs, evt_data_t* lhs);
@@ -54,6 +55,7 @@ def init_evt_lib():
             typedef evt_data_t evt_signature_t;
             typedef evt_data_t evt_checksum_t;
             typedef evt_data_t evt_address_t;
+            typedef evt_data_t evt_link_t;
 
 
             void* evt_abi();
@@ -94,6 +96,10 @@ def init_evt_lib():
             int evt_address_get_key(evt_address_t* addr, char** str/* out */);
             int evt_address_get_nonce(evt_address_t* addr, uint32_t* nonce/* out */);
             int evt_address_get_type(evt_address_t* addr, char** str/* out */);
+
+            int evt_link_parse_from_evtli(const char* str, evt_link_t** link/* out */);
+            int evt_link_get_header(evt_link_t* link, uint16_t* header/* out */);
+            int evt_link_get_segment(evt_link_t* link, uint8_t key, uint32_t* intv, char** strv);
             """)
 
     if "LIBEVT_PATH" in os.environ:
