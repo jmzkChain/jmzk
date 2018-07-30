@@ -59,9 +59,13 @@ parse_segments(const bytes& b, uint16_t& header) {
 
     auto segs = fc::flat_map<uint8_t, evt_link::segment>();
 
-    auto i = 2u;
+    auto i  = 2u;
+    auto pk = 0u;
     while(i < b.size()) {
         auto k = (uint8_t)b[i];
+        EVT_ASSERT(k > pk, evt_link_exception, "Segments are not ordered by keys");
+        pk = k;
+
         if(k <= 20) {
             FC_ASSERT(b.size() > i + 1); // value is 1 byte
             auto v = (uint8_t)b[i + 1];
