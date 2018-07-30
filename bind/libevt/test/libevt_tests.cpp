@@ -20,7 +20,7 @@ dump_mem(evt_data_t* data) {
 
 BOOST_AUTO_TEST_CASE( evtlink ) {
     evt_link_t* link = nullptr;
-    auto r1 = evt_link_parse_from_evtli("0Q:MMV*39PPS6SQNF74OVVJVIA/W2H:6I4QR6M$-W4HN8VQ421WX_Q/VQG2BWLMWKV73$953S5HR677KCP3G7MYWZMPWYZSN48KW1-2A9PDX1B-RD470*4D1RR*5M*L6HH7/05KW:T51Y*C46D01B",
+    auto r1 = evt_link_parse_from_evtli("03XBY4E/KTS:PNHVA3JP9QG258F08JHYOYR5SLJGN0EA-C3J6S:2G:T1SX7WA14KH9ETLZ97TUX9R9JJA6+06$E/_PYNX-/152P4CTC:WKXLK$/7G-K:89+::2K4C-KZ2**HI-P8CYJ**XGFO1K5:$E*SOY8MFYWMNHP*BHX2U8$$FTFI81YDP1HT",
         &link);
     BOOST_TEST_REQUIRE(r1 == EVT_OK);
     BOOST_TEST_REQUIRE(link != nullptr);
@@ -28,17 +28,17 @@ BOOST_AUTO_TEST_CASE( evtlink ) {
     uint16_t header;
     auto r2 = evt_link_get_header(link, &header);
     BOOST_TEST_REQUIRE(r2 == EVT_OK);
-    BOOST_TEST_REQUIRE(header == 5);
+    BOOST_TEST_REQUIRE(header == 3);
 
     uint32_t intv;
     char* strv;
     auto r3 = evt_link_get_segment(link, 42, &intv, &strv);
     BOOST_TEST_REQUIRE(r3 == EVT_OK);
-    BOOST_TEST_REQUIRE(intv == 1532582224);
+    BOOST_TEST_REQUIRE(intv == 1532465234);
 
-    auto r4 = evt_link_get_segment(link, 93, &intv, &strv);
+    auto r4 = evt_link_get_segment(link, 91, &intv, &strv);
     BOOST_TEST_REQUIRE(r4 == EVT_OK);
-    BOOST_TEST_REQUIRE(strv == "5,EVT");
+    BOOST_TEST_REQUIRE(strv == "nd1532465232490");
 }
 
 BOOST_AUTO_TEST_CASE( evtaddress ) {

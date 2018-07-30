@@ -78,8 +78,6 @@ evt_link_get_segment(evt_link_t* link, uint8_t key, uint32_t* intv /* out */, ch
     if (extract_data(link, _link) != EVT_OK) {
         return EVT_INVALID_LINK;
     }
-    intv = nullptr;
-    strv = nullptr;
     
     try {
         auto _segment = _link.get_segment(key);
