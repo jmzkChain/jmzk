@@ -24,6 +24,7 @@ def get_traffic(folder):
     global rindex
     assert rindex < len(regions)
     region, file = regions[rindex]
+    rindex += 1
 
     return region, Reader(file)
 
