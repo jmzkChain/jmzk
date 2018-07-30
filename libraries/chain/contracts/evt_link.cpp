@@ -298,6 +298,7 @@ to_variant(const evt::chain::contracts::evt_link& link, fc::variant& v) {
     vo["header"]     = link.get_header();
     vo["segments"]   = segs;
     vo["signatures"] = sigs;
+    vo["keys"]       = link.restore_keys();
 
     v = std::move(vo);
 }

@@ -111,6 +111,7 @@ using account_name    = name128;
 using group_name      = name128;
 using proposal_name   = name128;
 using fungible_name   = name128;
+using symbol_name     = name128;
 using user_id         = public_key_type;
 
 /**

@@ -63,8 +63,6 @@ abi_serializer::configure_built_in_types() {
     built_in_types.emplace("signature", pack_unpack<signature_type>());
 
     built_in_types.emplace("address", pack_unpack<address>());
-    built_in_types.emplace("symbol", pack_unpack<symbol>());
-    built_in_types.emplace("symbol_code", pack_unpack<symbol_code>());
     built_in_types.emplace("asset", pack_unpack<asset>());
 
     built_in_types.emplace("bytes", pack_unpack<bytes>());

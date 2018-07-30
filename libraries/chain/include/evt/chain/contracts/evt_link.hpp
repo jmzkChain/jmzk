@@ -33,9 +33,9 @@ public:
     enum type_id {
         timestamp   = 42,
         max_pay     = 43,
+        symbol_id   = 44,
         domain      = 91,
         token       = 92,
-        symbol      = 93,
         max_pay_str = 94,
         address     = 95,
         link_id     = 156
