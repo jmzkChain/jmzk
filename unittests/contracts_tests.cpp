@@ -47,7 +47,7 @@ public:
         payer       = address(tester::get_public_key(N(payer)));
         poorer      = address(tester::get_public_key(N(poorer)));
 
-        my_tester->add_money(payer, asset(100000, symbol(SY(5, EVT))));
+        my_tester->add_money(payer, asset(100000, symbol(5, EVT_SYM_ID)));
 
         ti = 0;
     }
@@ -85,6 +85,16 @@ protected:
         }
         return symbol_name.c_str();
     }
+    const symbol_id_type
+    get_sym_id() {
+        auto& tokendb = my_tester->control->token_db();
+        auto sym_id_addr  = address(N(fungible), name128(), 0);
+        auto sym_id_asset = asset();
+        tokendb.read_asset(sym_id_addr, symbol(), sym_id_asset);
+        auto sym_id = sym_id_asset.amount();
+
+        return sym_id;
+    }
 
     int32_t
     get_time() {
@@ -99,6 +109,7 @@ protected:
     std::vector<account_name> key_seeds;
     std::unique_ptr<tester>   my_tester;
     int                       ti;
+    symbol_id_type            sym_id;
 };
 
 TEST_CASE_METHOD(contracts_test, "contract_newdomain_test", "[contracts]") {
@@ -202,7 +213,7 @@ TEST_CASE_METHOD(contracts_test, "contract_issuetoken_test", "[contracts]") {
 
     CHECK_THROWS_AS(my_tester->push_action(N(issuetoken), string_to_name128(get_domain_name()), N128(.issue), var.get_object(), key_seeds, address(N(domain), string_to_name128(get_domain_name()), 0)), charge_exceeded_exception);
 
-    my_tester->add_money(address(N(domain), string_to_name128(get_domain_name()), 0), asset(100000, symbol(SY(5, EVT))));
+    my_tester->add_money(address(N(domain), string_to_name128(get_domain_name()), 0), asset(100000, symbol(5, EVT_SYM_ID)));
     my_tester->push_action(N(issuetoken), string_to_name128(get_domain_name()), N128(.issue), var.get_object(), key_seeds, address(N(domain), string_to_name128(get_domain_name()), 0));
 
     istk.names = {".t1", ".t2", ".t3"};
@@ -344,7 +355,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newgroup_test", "[contracts]") {
     auto& tokendb     = my_tester->control->token_db();
 
     CHECK(!tokendb.exists_group(get_group_name()));
-    my_tester->add_money(group_payer, asset(100000, symbol(SY(5, EVT))));
+    my_tester->add_money(group_payer, asset(100000, symbol(5, EVT_SYM_ID)));
 
     auto gp = var.as<newgroup>();
 
@@ -465,7 +476,8 @@ TEST_CASE_METHOD(contracts_test, "contract_newfungible_test", "[contracts]") {
     CHECK(true);
     const char* test_data = R"=====(
     {
-      "sym": "5,EVT",
+      "name": "EVT",
+      "sym_name": "EVT",
       "creator": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
       "issue" : {
         "name" : "issue",
@@ -491,14 +503,15 @@ TEST_CASE_METHOD(contracts_test, "contract_newfungible_test", "[contracts]") {
 
     auto var            = fc::json::from_string(test_data);
     auto fungible_payer = address(N(domain), ".fungible", 0);
-    my_tester->add_money(fungible_payer, asset(100000, symbol(SY(5, EVT))));
+    my_tester->add_money(fungible_payer, asset(100000, symbol(5, EVT_SYM_ID)));
     auto& tokendb = my_tester->control->token_db();
 
-    CHECK(!tokendb.exists_fungible(get_symbol_name()));
+    // CHECK(!tokendb.exists_fungible(get_symbol_name()));
 
     auto newfg = var.as<newfungible>();
 
-    newfg.sym          = symbol::from_string(string("5,") + get_symbol_name());
+    newfg.name          = get_symbol_name();
+    newfg.sym_name      = get_symbol_name();
     newfg.total_supply = asset::from_string(string("100.00000 ") + get_symbol_name());
     to_variant(newfg, var);
     //new fungible authorization test
@@ -514,7 +527,12 @@ TEST_CASE_METHOD(contracts_test, "contract_newfungible_test", "[contracts]") {
     to_variant(newfg, var);
     CHECK_THROWS_AS(my_tester->push_action(N(newfungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, fungible_payer), fungible_supply_exception);
 
-    CHECK(tokendb.exists_fungible(get_symbol_name()));
+    auto sym_id_addr  = address(N(fungible), name128(), 0);
+    auto sym_id_asset = asset();
+    tokendb.read_asset(sym_id_addr, symbol(), sym_id_asset);
+    auto sym_id = sym_id_asset.amount();
+
+    CHECK(tokendb.exists_fungible(sym_id));
 
     my_tester->produce_blocks();
 }
@@ -550,21 +568,21 @@ TEST_CASE_METHOD(contracts_test, "contract_updfungible_test", "[contracts]") {
     auto& tokendb = my_tester->control->token_db();
 
     fungible_def fg;
-    tokendb.read_fungible(get_symbol_name(), fg);
+    tokendb.read_fungible(get_sym_id(), fg);
     CHECK(1 == fg.issue.authorizers[0].weight);
 
     //action_authorize_exception test
     auto strkey = (std::string)key;
     CHECK_THROWS_AS(my_tester->push_action(N(updfungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer), action_authorize_exception);
 
-    updfg.sym = symbol::from_string(string("5,") + get_symbol_name());
+    updfg.sym_id = get_sym_id();
     updfg.issue->authorizers[0].ref.set_account(key);
     updfg.manage->authorizers[0].ref.set_account(tester::get_public_key(N(key2)));
     to_variant(updfg, var);
 
     my_tester->push_action(N(updfungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer);
 
-    tokendb.read_fungible(get_symbol_name(), fg);
+    tokendb.read_fungible(get_sym_id(), fg);
     CHECK(2 == fg.issue.authorizers[0].weight);
 
     my_tester->produce_blocks();
@@ -583,7 +601,7 @@ TEST_CASE_METHOD(contracts_test, "contract_issuefungible_test", "[contracts]") {
     auto  var     = fc::json::from_string(test_data);
     auto  issfg   = var.as<issuefungible>();
     auto& tokendb = my_tester->control->token_db();
-    CHECK(!tokendb.exists_asset(key, symbol::from_string(string("5,") + get_symbol_name())));
+    CHECK(!tokendb.exists_asset(key, symbol(5, get_sym_id())));
 
     issfg.number = asset::from_string(string("150.00000 ") + get_symbol_name());
     to_variant(issfg, var);
@@ -605,8 +623,8 @@ TEST_CASE_METHOD(contracts_test, "contract_issuefungible_test", "[contracts]") {
     CHECK_THROWS_AS(my_tester->push_action(N(issuefungible), N128(.fungible), string_to_name128(get_symbol_name()), var.get_object(), key_seeds, payer), action_authorize_exception);
 
     asset ast;
-    tokendb.read_asset(key, symbol::from_string(string("5,") + get_symbol_name()), ast);
-    CHECK(5000000 == ast.get_amount());
+    tokendb.read_asset(key, symbol(5, get_sym_id()), ast);
+    CHECK(5000000 == ast.amount());
 
     my_tester->produce_blocks();
 }
@@ -639,8 +657,8 @@ TEST_CASE_METHOD(contracts_test, "contract_transferft_test", "[contracts]") {
 
     auto& tokendb = my_tester->control->token_db();
     asset ast;
-    tokendb.read_asset(address(tester::get_public_key(N(to))), symbol::from_string(string("5,") + get_symbol_name()), ast);
-    CHECK(1500000 == ast.get_amount());
+    tokendb.read_asset(address(tester::get_public_key(N(to))), symbol(5, get_sym_id()), ast);
+    CHECK(1500000 == ast.amount());
 
     //from == to test
     trft.from = address(tester::get_public_key(N(to)));
@@ -748,7 +766,7 @@ TEST_CASE_METHOD(contracts_test, "contract_group_auth_test", "[contracts]") {
 
 TEST_CASE_METHOD(contracts_test, "contract_addmeta_test", "[contracts]") {
     CHECK(true);
-    my_tester->add_money(payer, asset(100000, symbol(SY(5, EVT))));
+    my_tester->add_money(payer, asset(100000, symbol(5, EVT_SYM_ID)));
 
     const char* test_data = R"=====(
     {
@@ -1097,8 +1115,6 @@ TEST_CASE_METHOD(contracts_test, "contract_evt2pevt_test", "[contracts]") {
     auto  e2p     = var.as<evt2pevt>();
     auto& tokendb = my_tester->control->token_db();
 
-    CHECK(!tokendb.exists_asset(payer, symbol::from_string("5,PEVT")));
-
     e2p.from = payer;
     to_variant(e2p, var);
     CHECK_THROWS_AS(my_tester->push_action(N(evt2pevt), N128(.fungible), string_to_name128("EVT"), var.get_object(), key_seeds, payer), fungible_symbol_exception);
@@ -1114,8 +1130,8 @@ TEST_CASE_METHOD(contracts_test, "contract_evt2pevt_test", "[contracts]") {
     my_tester->push_action(N(evt2pevt), N128(.fungible), string_to_name128("EVT"), var.get_object(), key_seeds, payer);
 
     asset ast;
-    tokendb.read_asset(key, symbol::from_string("5,PEVT"), ast);
-    CHECK(500000 == ast.get_amount());
+    tokendb.read_asset(key, symbol(5, get_sym_id()), ast);
+    CHECK(500000 == ast.amount());
 
     my_tester->produce_blocks();
 }
@@ -1209,7 +1225,7 @@ TEST_CASE_METHOD(contracts_test, "everipay_test", "[contracts]") {
     link.set_header(header);
     link.add_segment(evt_link::segment(evt_link::timestamp, head_ts));
     link.add_segment(evt_link::segment(evt_link::max_pay_str, "50000000"));
-    link.add_segment(evt_link::segment(evt_link::symbol, "EVT"));
+    link.add_segment(evt_link::segment(evt_link::symbol_id, get_sym_id()));
     link.add_segment(evt_link::segment(evt_link::link_id, "KIJHNHFMJDUKJUAA"));
 
     auto ep   = everipay();

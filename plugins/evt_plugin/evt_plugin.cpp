@@ -101,11 +101,11 @@ read_only::get_fungible(const get_fungible_params& params) {
     const auto& db = db_.token_db();
     variant      var;
     fungible_def fungible;
-    db.read_fungible(params.name, fungible);
+    db.read_fungible(params.id, fungible);
     fc::to_variant(fungible, var);
 
     auto mvar = fc::mutable_variant_object(var);
-    auto addr = address(N(fungible), params.name, 0);
+    auto addr = address(N(fungible), (fungible_name)std::to_string(params.id), 0);
 
     asset as;
     db_.token_db().read_asset_no_throw(addr, fungible.sym, as);

@@ -57,7 +57,7 @@ public:
     fc::variant get_token(const get_token_params& params);
 
     struct get_fungible_params {
-        fungible_name name;
+        symbol_id_type id;
     };
     fc::variant get_fungible(const get_fungible_params& params);
 
@@ -113,6 +113,6 @@ private:
 FC_REFLECT(evt::evt_apis::read_only::get_domain_params, (name));
 FC_REFLECT(evt::evt_apis::read_only::get_group_params, (name));
 FC_REFLECT(evt::evt_apis::read_only::get_token_params, (domain)(name));
-FC_REFLECT(evt::evt_apis::read_only::get_fungible_params, (name));
+FC_REFLECT(evt::evt_apis::read_only::get_fungible_params, (id));
 FC_REFLECT(evt::evt_apis::read_only::get_fungible_balance_params, (address)(sym));
 FC_REFLECT(evt::evt_apis::read_only::get_suspend_params, (name));
