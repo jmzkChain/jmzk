@@ -1,6 +1,5 @@
 FROM ubuntu:18.04 as source
 ARG branch=master
-ARG host=http://127.0.0.1:8888
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive && apt-get install -y git
 RUN git clone -b $branch https://github.com/everitoken/evt.git
@@ -37,4 +36,4 @@ ENV PATH /usr/sbin:/usr/bin:/sbin:/bin:/usr/local/bin
 
 VOLUME /opt/traffic
 
-ENTRYPOINT ["locust", "-f", "evt_taskset.py", "--host=$host", "--user-folder=/opt/traffic"]
+ENTRYPOINT ["locust", "-f", "evt_taskset.py", "--user-folder=/opt/traffic"]

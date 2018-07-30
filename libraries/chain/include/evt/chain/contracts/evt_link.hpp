@@ -6,8 +6,9 @@
 #include <fc/container/flat_fwd.hpp>
 #include <fc/static_variant.hpp>
 #include <fc/optional.hpp>
-#include <fc/reflect/reflect.hpp>
 #include <fc/variant.hpp>
+#include <fc/reflect/reflect.hpp>
+#include <fc/crypto/sha256.hpp>
 #include <evt/chain/types.hpp>
 
 namespace evt { namespace chain { namespace contracts {
@@ -32,9 +33,9 @@ public:
     enum type_id {
         timestamp   = 42,
         max_pay     = 43,
+        symbol_id   = 44,
         domain      = 91,
         token       = 92,
-        symbol      = 93,
         max_pay_str = 94,
         address     = 95,
         link_id     = 156
@@ -63,16 +64,17 @@ public:
     void set_header(uint16_t header) { header_ = header; }
     void add_segment(const segment&);
     void add_signature(const signature_type&);
+    void clear_signatures() { signatures_.clear(); }
+    void sign(const private_key_type&);
 
 public:
+    fc::sha256 digest() const;
     fc::flat_set<public_key_type> restore_keys() const;
 
 private:
     uint16_t                       header_;
     fc::flat_map<uint8_t, segment> segments_;
     fc::flat_set<signature_type>   signatures_;
-
-    bytes segments_bytes_;
 
 private:
     friend struct fc::reflector<evt_link>;

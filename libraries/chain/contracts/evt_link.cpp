@@ -59,9 +59,13 @@ parse_segments(const bytes& b, uint16_t& header) {
 
     auto segs = fc::flat_map<uint8_t, evt_link::segment>();
 
-    auto i = 2u;
+    auto i  = 2u;
+    auto pk = 0u;
     while(i < b.size()) {
         auto k = (uint8_t)b[i];
+        EVT_ASSERT(k > pk, evt_link_exception, "Segments are not ordered by keys");
+        pk = k;
+
         if(k <= 20) {
             FC_ASSERT(b.size() > i + 1); // value is 1 byte
             auto v = (uint8_t)b[i + 1];
@@ -88,7 +92,7 @@ parse_segments(const bytes& b, uint16_t& header) {
             auto s  = 0u;
 
             if(k > 155 && k <= 165) {
-                sz = 16;
+                sz = 16;  // uuid, sizeof(uint128_t)
             }
             else {
                 FC_ASSERT(b.size() > i + 1); // first read length byte
@@ -161,7 +165,6 @@ evt_link::parse_from_evtli(const std::string& str) {
 
     link.segments_       = parse_segments(bsegs, link.header_);
     link.signatures_     = parse_signatures(bsigs);
-    link.segments_bytes_ = std::move(bsegs);
 
     return link;
 }
@@ -179,10 +182,56 @@ evt_link::has_segment(uint8_t key) const {
     return segments_.find(key) != segments_.end();
 }
 
+fc::sha256
+evt_link::digest() const {
+    auto enc = fc::sha256::encoder();
+
+    auto h = boost::endian::native_to_big(header_);
+    static_assert(sizeof(h) == 2);  // uint16_t
+    enc.write((char*)&h, sizeof(h));
+
+    for(auto& seg_ : segments_) {
+        auto  key = seg_.first;
+        auto& seg = seg_.second;
+
+        static_assert(sizeof(key) == 1);  // uint8_t
+        enc.write((char*)&key, sizeof(key));
+        if(key <= 20) {
+            auto v = *seg.intv;
+            enc.write((char*)&v, 1);
+        }
+        else if(key <= 40) {
+            auto v = boost::endian::native_to_big((uint16_t)*seg.intv);
+            enc.write((char*)&v, 2);
+        }
+        else if(key <= 90) {
+            auto v = boost::endian::native_to_big((uint32_t)*seg.intv);
+            enc.write((char*)&v, 4);
+        }
+        else if(key <= 180) {
+            if(key > 155 && key <= 165) {
+                FC_ASSERT(seg.strv->size() == 16);
+                enc.write((char*)seg.strv->data(), 16);
+            }
+            else {
+                auto s = seg.strv->size();
+                FC_ASSERT(s < 255); // 1 byte length
+
+                enc.write((char*)&s, 1);
+                enc.write(seg.strv->data(), s);
+            }
+        }
+    }
+
+    return enc.result();
+}
+
 fc::flat_set<public_key_type>
 evt_link::restore_keys() const {
+    auto hash = digest();
     auto keys = fc::flat_set<public_key_type>();
-    auto hash = fc::sha256::hash(&segments_bytes_[0], segments_bytes_.size());
+
+    keys.reserve(signatures_.size());
     for(auto& sig : signatures_) {
         keys.emplace(public_key_type(sig, hash));
     }
@@ -201,6 +250,11 @@ evt_link::add_segment(const segment& seg) {
 void
 evt_link::add_signature(const signature_type& sig) {
     signatures_.emplace(sig);
+}
+
+void
+evt_link::sign(const private_key_type& pkey) {
+    signatures_.emplace(pkey.sign(digest()));
 }
 
 }}}  // namespac evt::chain::contracts
@@ -244,6 +298,7 @@ to_variant(const evt::chain::contracts::evt_link& link, fc::variant& v) {
     vo["header"]     = link.get_header();
     vo["segments"]   = segs;
     vo["signatures"] = sigs;
+    vo["keys"]       = link.restore_keys();
 
     v = std::move(vo);
 }

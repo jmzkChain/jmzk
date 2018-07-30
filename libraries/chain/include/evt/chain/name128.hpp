@@ -17,9 +17,9 @@ public:
 
 public:
     enum {
-        i8 = 0,  // <=  0 chars (8 +  0     =   8)
-        i32,     // <=  5 chars (2 +  5 * 6 =  32)
+        i32 = 0, // <=  5 chars (2 +  5 * 6 =  32)
         i64,     // <= 10 chars (2 + 10 * 6 =  62)
+        i96,     // <= 15 chars (2 + 15 * 6 =  92)
         i128     // <= 21 chars (2 + 21 * 6 = 128)
     };
 
@@ -49,6 +49,11 @@ public:
     string
     to_string() const {
         return string(*this);
+    }
+
+    friend std::ostream&
+    operator<<(std::ostream& out, const name128& n) {
+        return out << string(n);
     }
 
     name128&
@@ -108,59 +113,6 @@ public:
     operator!=(const name128& a, const name128& b) {
         return a.value != b.value;
     }
-
-    template<typename Stream>
-    friend Stream&
-    operator<<(Stream& out, const name128& n) {
-        auto tag = (int)n.value & 0x03;
-        switch(tag) {
-        case name128::i8: {
-            out.write((char*)&n, 1);
-            break;
-        }
-        case name128::i32: {
-            out.write((char*)&n, 4);
-            break;
-        }
-        case name128::i64: {
-            out.write((char*)&n, 8);
-            break;
-        }
-        case name128::i128: {
-            out.write((char*)&n, 16);
-            break;
-        }
-        }  // switch
-
-        return out;
-    }
-
-    template<typename Stream>
-    friend Stream&
-    operator>>(Stream& in, name128& n) {
-        in.read((char*)&n, 1);
-
-        auto tag = (int)n.value & 0x03;
-        switch(tag) {
-        case name128::i8: {
-            break;
-        }
-        case name128::i32: {
-            in.read((char*)&n + 1, 3);
-            break;
-        }
-        case name128::i64: {
-            in.read((char*)&n + 1, 7);
-            break;
-        }
-        case name128::i128: {
-            in.read((char*)&n + 1, 15);
-            break;
-        }
-        }  // switch
-
-        return in;
-    }
 };
 
 static constexpr uint128_t
@@ -199,6 +151,9 @@ string_to_name128(const char* str) {
     }
     else if(len <= 10) {
         name |= name128::i64;
+    }
+    else if(len <= 15) {
+        name |= name128::i96;
     }
     else {
         name |= name128::i128;
@@ -239,5 +194,66 @@ class variant;
 
 void to_variant(const evt::chain::name128& name, fc::variant& v);
 void from_variant(const fc::variant& v, evt::chain::name128& name);
+
+namespace raw {
+
+using evt::chain::name128;
+
+template<>
+struct packer<name128> {
+    template<typename Stream>
+    static void
+    pack(Stream& out, const name128& n) {
+        auto tag = (int)n.value & 0x03;
+        switch(tag) {
+        case name128::i32: {
+            out.write((char*)&n, 4);
+            break;
+        }
+        case name128::i64: {
+            out.write((char*)&n, 8);
+            break;
+        }
+        case name128::i96: {
+            out.write((char*)&n, 12);
+            break;
+        }
+        case name128::i128: {
+            out.write((char*)&n, 16);
+            break;
+        }
+        }  // switch
+    }
+};
+
+template<>
+struct unpacker<name128> {
+    template<typename Stream>
+    static void
+    unpack(Stream& in, name128& n) {
+        in.read((char*)&n, 4);
+
+        auto tag = (int)n.value & 0x03;
+        switch(tag) {
+        case name128::i32: {
+            break;
+        }
+        case name128::i64: {
+            in.read((char*)&n + 4, 4);
+            break;
+        }
+        case name128::i96: {
+            in.read((char*)&n + 4, 8);
+            break;
+        }
+        case name128::i128: {
+            in.read((char*)&n + 4, 12);
+            break;
+        }
+        }  // switch
+    }
+};
+
+}  // namespace raw
 
 }  // namespace fc

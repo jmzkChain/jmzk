@@ -198,6 +198,8 @@ For the fields of an action, here is a quick reference guide.
 | `aprvsuspend` | `.suspend` | proposal name of suspend transaction |
 | `cancelsuspend` | `.suspend` | proposal name of suspend transaction |
 | `execsuspend` | `.suspend` | proposal name of suspend transaction |
+| `everipass` | name of domain | name of token |
+| `everipay` | `.fungible` | name of fungible assets symbol |
 
 After all that work, you can send transaction definition using this API to the chain, then the chain will response with the digest of the transaction. You can then sign this digest with your private key.
 
