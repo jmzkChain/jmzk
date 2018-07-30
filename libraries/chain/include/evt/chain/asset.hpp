@@ -35,6 +35,9 @@ public:
     bool valid() const { return precision() <= max_precision; }
 
 public:
+    string to_string() const;
+
+public:
     friend inline bool
     operator==(const symbol& lhs, const symbol& rhs) {
         return lhs.value_ == rhs.value_;
@@ -44,6 +47,9 @@ public:
     operator!=(const symbol& lhs, const symbol& rhs) {
         return !(lhs == rhs);
     }
+
+    friend std::ostream&
+    operator<<(std::ostream& out, const symbol& s) { return out << s.to_string(); }
 
 private:
     uint64_t value_;

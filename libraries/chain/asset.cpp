@@ -9,6 +9,14 @@
 namespace evt { namespace chain {
 
 string
+symbol::to_string() const {
+    auto str = fc::to_string(precision());
+    str.append(",S#");
+    str.append(fc::to_string(id()));
+    return str;
+}
+
+string
 asset::to_string() const {
     auto sign = amount_ < 0 ? "-" : "";
     auto abs_amount = std::abs(amount_);
