@@ -109,9 +109,9 @@ private:
     }
 
     void
-    get_fungible_permission(const fungible_name& sym_name, const permission_name name, std::function<void(const permission_def&)>&& cb) {
+    get_fungible_permission(const symbol_id_type sym_id, const permission_name name, std::function<void(const permission_def&)>&& cb) {
         fungible_def fungible;
-        token_db_.read_fungible(sym_name, fungible);
+        token_db_.read_fungible(sym_id, fungible);
         if(name == N(issue)) {
             cb(fungible.issue);
         }
@@ -227,9 +227,9 @@ private:
     }
 
     bool
-    satisfied_fungible_permission(const fungible_name& sym_name, const action& action, const permission_name& name) {
+    satisfied_fungible_permission(const symbol_id_type sym_id, const action& action, const permission_name& name) {
         bool result = false;
-        get_fungible_permission(sym_name, name, [&](const auto& permission) {
+        get_fungible_permission(sym_id, name, [&](const auto& permission) {
             result = satisfied_permission(permission, action);
         });
         return result;
@@ -375,11 +375,17 @@ struct check_authority<newfungible> {
     }
 };
 
+symbol_id_type
+get_symbol_id(const name128& key) {
+    auto str = (std::string)key;
+    return (symbol_id_type)std::stoul(str);
+}
+
 template<>
 struct check_authority<issuefungible> {
     static bool
     invoke(const action& act, authority_checker* checker) {
-        return checker->satisfied_fungible_permission(act.key, act, N(issue));
+        return checker->satisfied_fungible_permission(get_symbol_id(act.key), act, N(issue));
     }
 };
 
@@ -387,7 +393,7 @@ template<>
 struct check_authority<updfungible> {
     static bool
     invoke(const action& act, authority_checker* checker) {
-        return checker->satisfied_fungible_permission(act.key, act, N(manage));
+        return checker->satisfied_fungible_permission(get_symbol_id(act.key), act, N(manage));
     }
 };
 

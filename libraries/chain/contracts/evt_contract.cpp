@@ -5,6 +5,7 @@
 #include <evt/chain/contracts/evt_contract.hpp>
 
 #include <algorithm>
+#include <string>
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/ripemd160.hpp>
 #include <evt/chain/apply_context.hpp>
@@ -322,20 +323,20 @@ namespace __internal {
 
 address
 get_fungible_address(symbol sym) {
-    return address(N(fungible), (fungible_name)sym.name(), 0);
+    return address(N(fungible), (fungible_name)std::to_string(sym.id()), 0);
 }
 
 void
 transfer_fungible(asset& from, asset& to, uint64_t total) {
     bool r1, r2;
-    decltype(from.get_amount()) r;
+    decltype(from.amount()) r;
 
-    r1 = safemath::test_sub(from.get_amount(), total, r);
-    r2 = safemath::test_add(to.get_amount(), total, r);
+    r1 = safemath::test_sub(from.amount(), total, r);
+    r2 = safemath::test_add(to.amount(), total, r);
     EVT_ASSERT(r1 && r2, math_overflow_exception, "Opeartions resulted in overflows.");
     
-    from -= asset(total, from.get_symbol());
-    to += asset(total, to.get_symbol());
+    from -= asset(total, from.sym());
+    to += asset(total, to.sym());
 }
 
 }  // namespace __internal
@@ -345,13 +346,14 @@ EVT_ACTION_IMPL(newfungible) {
 
     auto nfact = context.act.data_as<newfungible>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.fungible), (fungible_name)nfact.sym.name()), action_authorize_exception, "Authorized information does not match.");
-        EVT_ASSERT(nfact.total_supply.get_amount() > 0, fungible_supply_exception, "Total supply cannot be zero");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), N128(.create)), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(!nfact.name.empty(), fungible_name_exception, "Fungible name cannot be empty");
+        EVT_ASSERT(!nfact.sym_name.empty(), fungible_symbol_exception, "Fungible symbol cannot be empty");
+        EVT_ASSERT(nfact.total_supply.symbol_id() == 0, fungible_symbol_exception, "Symbol id of supply should 0.");
+        EVT_ASSERT(nfact.total_supply.amount() > 0, fungible_supply_exception, "Supply cannot be zero");
+        EVT_ASSERT(nfact.total_supply.amount() <= ASSET_MAX_SHARE_SUPPLY, fungible_supply_exception, "Supply exceeds the maximum allowed.");
 
         auto& tokendb = context.token_db;
-        EVT_ASSERT(!tokendb.exists_fungible(nfact.sym), fungible_exists_exception, "Fungible with symbol: ${sym} already exists.", ("sym",nfact.sym.name()));
-        EVT_ASSERT(nfact.sym == nfact.total_supply.get_symbol(), fungible_symbol_exception, "Symbols are not the same.");
-        EVT_ASSERT(nfact.total_supply.get_amount() <= ASSET_MAX_SHARE_SUPPLY, fungible_supply_exception, "Supply exceeds the maximum allowed.");
 
         EVT_ASSERT(nfact.issue.name == "issue", permission_type_exception, "Name ${name} does not match with the name of issue permission.", ("name",nfact.issue.name));
         EVT_ASSERT(nfact.issue.threshold > 0 && validate(nfact.issue), permission_type_exception, "Issue permission is not valid, which may be caused by invalid threshold, duplicated keys.");
@@ -364,17 +366,22 @@ EVT_ACTION_IMPL(newfungible) {
         pchecker(nfact.manage, false);
 
         fungible_def fungible;
-        fungible.sym            = nfact.sym;
+
+        fungible.name           = nfact.name;
+        fungible.sym_name       = nfact.sym_name;
         fungible.creator        = nfact.creator;
         fungible.create_time    = context.control.head_block_time();
         fungible.issue          = std::move(nfact.issue);
         fungible.manage         = std::move(nfact.manage);
-        fungible.total_supply   = nfact.total_supply;
+
+        auto sym_id = 0;
+        fungible.sym          = symbol(nfact.total_supply.precision(), sym_id);
+        fungible.total_supply = asset(nfact.total_supply.amount(), fungible.sym);
 
         tokendb.add_fungible(fungible);
 
-        auto addr = get_fungible_address(nfact.sym);
-        tokendb.update_asset(addr, nfact.total_supply);
+        auto addr = get_fungible_address(fungible.sym);
+        tokendb.update_asset(addr, fungible.total_supply);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -384,14 +391,12 @@ EVT_ACTION_IMPL(updfungible) {
 
     auto ufact = context.act.data_as<updfungible>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.fungible), (fungible_name)ufact.sym.name()), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), (name128)std::to_string(ufact.sym_id)), action_authorize_exception, "Authorized information does not match.");
 
         auto& tokendb = context.token_db;
 
         fungible_def fungible;
-        tokendb.read_fungible(ufact.sym, fungible);
-
-        EVT_ASSERT(fungible.sym == ufact.sym, fungible_symbol_exception, "Symbols are not the same.");
+        tokendb.read_fungible(ufact.sym_id, fungible);
 
         auto pchecker = make_permission_checker(tokendb);
         if(ufact.issue.valid()) {
@@ -421,12 +426,12 @@ EVT_ACTION_IMPL(issuefungible) {
     auto ifact = context.act.data_as<issuefungible>();
 
     try {
-        auto sym = ifact.number.get_symbol();
-        EVT_ASSERT(context.has_authorized(N128(.fungible), (fungible_name)sym.name()), action_authorize_exception, "Authorized information does not match.");
+        auto sym = ifact.number.sym();
+        EVT_ASSERT(context.has_authorized(N128(.fungible), (name128)std::to_string(sym.id())), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(!ifact.address.is_reserved(), fungible_address_exception, "Cannot issue fungible tokens to reserved address");
 
         auto& tokendb = context.token_db;
-        EVT_ASSERT(tokendb.exists_fungible(sym), fungible_exists_exception, "${sym} fungible tokens doesn't exist", ("sym",sym));
+        EVT_ASSERT(tokendb.exists_fungible(sym), fungible_exists_exception, "{sym} fungible tokens doesn't exist", ("sym",sym));
 
         auto addr = get_fungible_address(sym);
         EVT_ASSERT(addr != ifact.address, fungible_address_exception, "From and to are the same address");
@@ -437,7 +442,7 @@ EVT_ACTION_IMPL(issuefungible) {
 
         EVT_ASSERT(from >= ifact.number, fungible_supply_exception, "Exceeds total supply of ${sym} fungible tokens.", ("sym",sym));
 
-        transfer_fungible(from, to, ifact.number.get_amount());
+        transfer_fungible(from, to, ifact.number.amount());
 
         tokendb.update_asset(ifact.address, to);
         tokendb.update_asset(addr, from);
@@ -451,8 +456,8 @@ EVT_ACTION_IMPL(transferft) {
     auto tfact = context.act.data_as<transferft>();
 
     try {
-        auto sym = tfact.number.get_symbol();
-        EVT_ASSERT(context.has_authorized(N128(.fungible), (fungible_name)sym.name()), action_authorize_exception, "Authorized information does not match.");
+        auto sym = tfact.number.sym();
+        EVT_ASSERT(context.has_authorized(N128(.fungible), (name128)std::to_string(sym.id())), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(!tfact.to.is_reserved(), fungible_address_exception, "Cannot transfer fungible tokens to reserved address");
         EVT_ASSERT(tfact.from != tfact.to, fungible_address_exception, "From and to are the same address");
 
@@ -465,7 +470,7 @@ EVT_ACTION_IMPL(transferft) {
 
         EVT_ASSERT(facc >= tfact.number, balance_exception, "Address does not have enough balance left.");
 
-        transfer_fungible(facc, tacc, tfact.number.get_amount());
+        transfer_fungible(facc, tacc, tfact.number.amount());
 
         tokendb.update_asset(tfact.to, tacc);
         tokendb.update_asset(tfact.from, facc);
@@ -479,22 +484,20 @@ EVT_ACTION_IMPL(evt2pevt) {
     auto epact = context.act.data_as<evt2pevt>();
 
     try {
-        auto evtsym = epact.number.get_symbol();
-        auto pevtsym = symbol(SY(5,PEVT));
-        EVT_ASSERT(evtsym == symbol(SY(5,EVT)), fungible_symbol_exception, "Only EVT tokens can be converted to Pinned EVT tokens");
-        EVT_ASSERT(context.has_authorized(N128(.fungible), (fungible_name)evtsym.name()), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(epact.number.sym() == evt_sym(), fungible_symbol_exception, "Only EVT tokens can be converted to Pinned EVT tokens");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), (name128)std::to_string(evt_sym().id())), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(!epact.to.is_reserved(), fungible_address_exception, "Cannot convert Pinned EVT tokens to reserved address");
 
         auto& tokendb = context.token_db;
         
-        auto facc = asset(0, evtsym);
-        auto tacc = asset(0, pevtsym);
-        tokendb.read_asset(epact.from, evtsym, facc);
-        tokendb.read_asset_no_throw(epact.to, pevtsym, tacc);
+        auto facc = asset(0, evt_sym());
+        auto tacc = asset(0, pevt_sym());
+        tokendb.read_asset(epact.from, evt_sym(), facc);
+        tokendb.read_asset_no_throw(epact.to, pevt_sym(), tacc);
 
         EVT_ASSERT(facc >= epact.number, balance_exception, "Address does not have enough balance left.");
 
-        transfer_fungible(facc, tacc, epact.number.get_amount());
+        transfer_fungible(facc, tacc, epact.number.amount());
 
         tokendb.update_asset(epact.to, tacc);
         tokendb.update_asset(epact.from, facc);
@@ -643,7 +646,7 @@ EVT_ACTION_IMPL(addmeta) {
         }
         else if(act.domain == N128(.fungible)) {
             fungible_def fungible;
-            tokendb.read_fungible(act.key, fungible);
+            tokendb.read_fungible((symbol_id_type)std::stoul((std::string)amact.key), fungible);
 
             EVT_ASSERT(!check_duplicate_meta(fungible, amact.key), meta_key_exception, "Metadata with key ${key} already exists.", ("key",amact.key));
             // check involved, only group manager(aka. group key) can add meta
@@ -811,33 +814,30 @@ EVT_ACTION_IMPL(paycharge) {
     try {
         auto& tokendb = context.token_db;
 
-        auto evt_symbol = symbol(SY(5,EVT));
-        auto pevt_symbol = symbol(SY(5,PEVT));
-
         uint64_t paid = 0;
 
         asset evt, pevt;
-        tokendb.read_asset_no_throw(pcact.payer, pevt_symbol, pevt);
-        paid = std::min(pcact.charge, (uint32_t)pevt.get_amount());
+        tokendb.read_asset_no_throw(pcact.payer, pevt_sym(), pevt);
+        paid = std::min(pcact.charge, (uint32_t)pevt.amount());
         if(paid > 0) {
-            pevt -= asset(paid, pevt.get_symbol());
+            pevt -= asset(paid, pevt_sym());
             tokendb.update_asset(pcact.payer, pevt);
         }
 
         if(paid < pcact.charge) {
-            tokendb.read_asset_no_throw(pcact.payer, evt_symbol, evt);
+            tokendb.read_asset_no_throw(pcact.payer, evt_sym(), evt);
             auto remain = pcact.charge - paid;
-            if(evt.get_amount() < (int64_t)remain) {
+            if(evt.amount() < (int64_t)remain) {
                 EVT_THROW(charge_exceeded_exception, "There are ${e} EVT and ${p} Pinned EVT left, but charge is ${c}", ("e",evt)("p",pevt)("c",pcact.charge));
             }
-            evt -= asset(remain, evt.get_symbol());
+            evt -= asset(remain, evt_sym());
             tokendb.update_asset(pcact.payer, evt);
         }
 
         asset evt_asset;
-        auto addr = get_fungible_address(evt_symbol);
-        tokendb.read_asset(addr, evt_symbol, evt_asset);
-        evt_asset += asset(paid, evt_symbol);
+        auto addr = get_fungible_address(evt_sym());
+        tokendb.read_asset(addr, evt_sym(), evt_asset);
+        evt_asset += asset(paid, evt_sym());
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -911,8 +911,8 @@ EVT_ACTION_IMPL(everipay) {
         EVT_ASSERT(flags & evt_link::version1, evt_link_version_exception, "EVT-Link version is not expected, current supported version is Versoin-1");
         EVT_ASSERT(flags & evt_link::everiPay, evt_link_type_exception, "Not a everiPay link");
 
-        auto& lsym = *link.get_segment(evt_link::symbol).strv;
-        EVT_ASSERT(context.has_authorized(N128(.fungible), name128(lsym)), action_authorize_exception, "Authorized information does not match.");
+        auto& lsym_id = *link.get_segment(evt_link::symbol_id).intv;
+        EVT_ASSERT(context.has_authorized(N128(.fungible), name128(std::to_string(lsym_id))), action_authorize_exception, "Authorized information does not match.");
 
         auto ts    = *link.get_segment(evt_link::timestamp).intv;
         auto since = std::abs((context.control.head_block_time() - fc::time_point_sec(ts)).to_seconds());
@@ -940,8 +940,8 @@ EVT_ACTION_IMPL(everipay) {
         EVT_ASSERT(keys.size() == 1, evt_link_id_exception, "There're more than one signature on everiPay link, which is invalid");
 
         
-        auto sym = epact.number.get_symbol();
-        EVT_ASSERT(lsym == sym.name(), everipay_exception, "Symbols don't match, provided: ${p}, expected: ${e}", ("p",lsym)("e",sym.name()));
+        auto sym = epact.number.sym();
+        EVT_ASSERT(lsym_id == sym.id(), everipay_exception, "Symbol ids don't match, provided: ${p}, expected: ${e}", ("p",lsym_id)("e",sym.id()));
 
         auto max_pay = uint32_t(0);
         if(link.has_segment(evt_link::max_pay)) {
@@ -950,7 +950,7 @@ EVT_ACTION_IMPL(everipay) {
         else {
             max_pay = std::stoul(*link.get_segment(evt_link::max_pay_str).strv);
         }
-        EVT_ASSERT(epact.number.get_amount() <= max_pay, everipay_exception, "Exceed max pay number: ${m}, expected: ${e}", ("m",max_pay)("e",epact.number.get_amount()));
+        EVT_ASSERT(epact.number.amount() <= max_pay, everipay_exception, "Exceed max pay number: ${m}, expected: ${e}", ("m",max_pay)("e",epact.number.amount()));
 
         auto payer = address(*keys.begin());
         EVT_ASSERT(payer != epact.payee, everipay_exception, "Payer and payee shouldn't be the same one");
@@ -962,7 +962,7 @@ EVT_ACTION_IMPL(everipay) {
 
         EVT_ASSERT(facc >= epact.number, everipay_exception, "Payer does not have enough balance left.");
 
-        transfer_fungible(facc, tacc, epact.number.get_amount());
+        transfer_fungible(facc, tacc, epact.number.amount());
 
         tokendb.update_asset(epact.payee, tacc);
         tokendb.update_asset(payer, facc);

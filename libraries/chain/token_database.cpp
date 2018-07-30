@@ -189,7 +189,7 @@ struct sp_suspend {
 };
 
 struct sp_fungible {
-    symbol sym;
+    symbol_id_type sym_id;
 };
 
 struct sp_asset {
@@ -417,7 +417,7 @@ token_database::add_fungible(const fungible_def& fungible) {
     }
     if(should_record()) {
         auto act  = (sp_fungible*)malloc(sizeof(sp_fungible));
-        act->sym = fungible.sym;
+        act->sym_id = fungible.sym.id();
         record(kNewFungible, act);
     }
     return 0;
@@ -693,7 +693,7 @@ token_database::update_fungible(const fungible_def& fungible) {
     }
     if(should_record()) {
         auto act  = (sp_fungible*)malloc(sizeof(sp_fungible));
-        act->sym = fungible.sym;
+        act->sym_id = fungible.sym.id();
         record(kUpdateFungible, act);
     }
     return 0;
@@ -814,7 +814,7 @@ get_sp_keyop(const token_database::dbaction& it, int& op) {
     case kNewFungible:
     case kUpdateFungible: {
         auto act = (sp_fungible*)it.data;
-        return get_fungible_key(act->sym);
+        return get_fungible_key(act->sym_id);
     }
     case kUpdateToken: {
         auto act = (sp_token*)it.data;
