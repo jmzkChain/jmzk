@@ -180,10 +180,11 @@ FC_DECLARE_DERIVED_EXCEPTION( block_id_type_exception,           chain_type_exce
 FC_DECLARE_DERIVED_EXCEPTION( transaction_id_type_exception,     chain_type_exception, 3120010, "Invalid transaction ID" );
 FC_DECLARE_DERIVED_EXCEPTION( packed_transaction_type_exception, chain_type_exception, 3120011, "Invalid packed transaction" );
 FC_DECLARE_DERIVED_EXCEPTION( asset_type_exception,              chain_type_exception, 3120012, "Invalid asset" );
-FC_DECLARE_DERIVED_EXCEPTION( permission_type_exception,         chain_type_exception, 3120013, "Invalid permission" );
-FC_DECLARE_DERIVED_EXCEPTION( group_type_exception,              chain_type_exception, 3120014, "Invalid group" );
-FC_DECLARE_DERIVED_EXCEPTION( authorizer_ref_type_exception,     chain_type_exception, 3120015, "Invalid authorizer ref" );
-FC_DECLARE_DERIVED_EXCEPTION( address_type_exception,            chain_type_exception, 3120016, "Invalid address" );
+FC_DECLARE_DERIVED_EXCEPTION( symbol_type_exception,             chain_type_exception, 3120013, "Invalid symbol" );
+FC_DECLARE_DERIVED_EXCEPTION( permission_type_exception,         chain_type_exception, 3120014, "Invalid permission" );
+FC_DECLARE_DERIVED_EXCEPTION( group_type_exception,              chain_type_exception, 3120015, "Invalid group" );
+FC_DECLARE_DERIVED_EXCEPTION( authorizer_ref_type_exception,     chain_type_exception, 3120016, "Invalid authorizer ref" );
+FC_DECLARE_DERIVED_EXCEPTION( address_type_exception,            chain_type_exception, 3120017, "Invalid address" );
 
 FC_DECLARE_DERIVED_EXCEPTION( missing_chain_api_plugin_exception,   missing_plugin_exception, 3130001, "Missing Chain API Plugin" );
 FC_DECLARE_DERIVED_EXCEPTION( missing_wallet_api_plugin_exception,  missing_plugin_exception, 3130002, "Missing Wallet API Plugin" );

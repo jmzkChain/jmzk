@@ -5,16 +5,59 @@
 #pragma once
 #include <evt/chain/exceptions.hpp>
 #include <evt/chain/types.hpp>
-#include <evt/chain/symbol.hpp>
-
-/// 'EVT' with 5 digits of precision
-#define EVT_SYMBOL_VALUE  (int64_t(5) | (uint64_t('E') << 8) | (uint64_t('V') << 16) | (uint64_t('T') << 24))
-static const evt::chain::symbol EVT_SYMBOL(EVT_SYMBOL_VALUE);
-
-/// Defined to be largest power of 10 that fits in 53 bits of precision
-#define ASSET_MAX_SHARE_SUPPLY   int64_t(1'000'000'000'000'000ll)
 
 namespace evt { namespace chain {
+
+#define EVT_SYM_ID  1
+#define PEVT_SYM_ID 2
+
+class symbol {
+private:
+    static constexpr uint8_t max_precision = 18;
+
+public:
+    symbol() = default;
+
+    constexpr symbol(uint8_t p, uint32_t id)
+        : value_(0) {
+        EVT_ASSERT(p <= max_precision, symbol_type_exception, "Exceed max precision");
+        value_  = ((uint64_t)p << 32);
+        value_ |= id;
+    }
+
+public:
+    uint8_t  precision() const { return (uint8_t)(value_ >> 32); }
+    uint32_t id() const { return (uint32_t)value_; }
+
+    bool valid() const { return precision() <= max_precision; }
+
+public:
+    friend inline bool
+    operator==(const symbol& lhs, const symbol& rhs) {
+        return lhs.value_ == rhs.value_;
+    }
+
+    friend inline bool
+    operator!=(const symbol& lhs, const symbol& rhs) {
+        return !(lhs == rhs);
+    }
+
+private:
+    uint64_t value_;
+
+private:
+    friend struct fc::reflector<symbol>;
+};
+
+static constexpr symbol
+evt_sym() {
+    return symbol(5, EVT_SYM_ID);
+}
+
+static constexpr symbol
+pevt_sym() {
+    return symbol(5, PEVT_SYM_ID);
+}
 
 /**
 
@@ -25,34 +68,32 @@ with amount = 10 and symbol(4,"CUR")
 
 */
 struct asset {
+private:
     static constexpr int64_t max_amount = (1LL << 62) - 1;
 
-    explicit asset(share_type a = 0, symbol id = EVT_SYMBOL)
-        : amount(a)
-        , sym(id) {
+public:
+    asset() = default;
+
+    asset(share_type a, symbol sym)
+        : amount_(a)
+        , sym_(sym) {
         EVT_ASSERT(is_amount_within_range(), asset_type_exception, "magnitude of asset amount must be less than 2^62");
-        EVT_ASSERT(sym.valid(), asset_type_exception, "invalid symbol");
+        EVT_ASSERT(sym_.valid(), asset_type_exception, "invalid symbol");
     }
 
-    bool
-    is_amount_within_range() const { return -max_amount <= amount && amount <= max_amount; }
+public:
+    bool is_amount_within_range() const { return -max_amount <= amount_ && amount_ <= max_amount; }
+    bool is_valid() const { return is_amount_within_range() && sym_.valid(); }
 
-    bool
-    is_valid() const { return is_amount_within_range() && sym.valid(); }
+    double to_real() const { return static_cast<double>(amount_) / precision(); }
 
-    double
-    to_real() const { return static_cast<double>(amount) / precision(); }
+    uint32_t symbol_id() const { return sym_.id(); };
+    uint8_t  precision() const { return sym_.precision(); };
 
-    uint8_t decimals() const;
-    string  symbol_name() const;
-    int64_t precision() const;
+    symbol     sym() const { return sym_; }
+    share_type amount() const { return amount_; }
 
-    const symbol&
-    get_symbol() const { return sym; }
-
-    share_type
-    get_amount() const { return amount; }
-
+public:
     static asset from_string(const string& from);
     string       to_string() const;
 
@@ -62,30 +103,29 @@ struct asset {
 
     asset&
     operator+=(const asset& o) {
-        FC_ASSERT(get_symbol() == o.get_symbol());
-        amount += o.amount;
+        FC_ASSERT(sym() == o.sym());
+        amount_ += o.amount();
         return *this;
     }
 
     asset&
     operator-=(const asset& o) {
-        FC_ASSERT(get_symbol() == o.get_symbol());
-        amount -= o.amount;
+        FC_ASSERT(sym() == o.sym());
+        amount_ -= o.amount();
         return *this;
     }
 
-    asset
-    operator-() const { return asset(-amount, get_symbol()); }
+    asset operator-() const { return asset(-amount(), sym()); }
 
     friend bool
     operator==(const asset& a, const asset& b) {
-        return std::tie(a.get_symbol(), a.amount) == std::tie(b.get_symbol(), b.amount);
+        return a.sym() == b.sym() && a.amount() == b.amount();
     }
 
     friend bool
     operator<(const asset& a, const asset& b) {
-        FC_ASSERT(a.get_symbol() == b.get_symbol());
-        return std::tie(a.amount, a.get_symbol()) < std::tie(b.amount, b.get_symbol());
+        FC_ASSERT(a.sym() == b.sym());
+        return a.amount() < b.amount();
     }
 
     friend bool
@@ -102,34 +142,32 @@ struct asset {
 
     friend asset
     operator-(const asset& a, const asset& b) {
-        FC_ASSERT(a.get_symbol() == b.get_symbol());
-        return asset(a.amount - b.amount, a.get_symbol());
+        FC_ASSERT(a.sym() == b.sym());
+        return asset(a.amount() - b.amount(), a.sym());
     }
 
     friend asset
     operator+(const asset& a, const asset& b) {
-        FC_ASSERT(a.get_symbol() == b.get_symbol());
-        return asset(a.amount + b.amount, a.get_symbol());
+        FC_ASSERT(a.sym() == b.sym());
+        return asset(a.amount() + b.amount(), a.sym());
     }
 
     friend std::ostream&
     operator<<(std::ostream& out, const asset& a) { return out << a.to_string(); }
     
+public:
     friend struct fc::reflector<asset>;
 
     void
     reflector_verify() const {
         EVT_ASSERT(is_amount_within_range(), asset_type_exception, "magnitude of asset amount must be less than 2^62");
-        EVT_ASSERT(sym.valid(), asset_type_exception, "invalid symbol");
+        EVT_ASSERT(sym_.valid(), asset_type_exception, "invalid symbol");
     }
 
 private:
-    share_type amount;
-    symbol     sym;
+    share_type amount_;
+    symbol     sym_;
 };
-
-bool operator<(const asset& a, const asset& b);
-bool operator<=(const asset& a, const asset& b);
 
 }}  // namespace evt::chain
 
@@ -147,4 +185,5 @@ from_variant(const fc::variant& var, evt::chain::asset& vo) {
 
 }  // namespace fc
 
-FC_REFLECT(evt::chain::asset, (amount)(sym))
+FC_REFLECT(evt::chain::symbol, (value_));
+FC_REFLECT(evt::chain::asset, (amount_)(sym_));

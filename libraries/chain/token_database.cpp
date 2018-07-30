@@ -107,17 +107,17 @@ get_suspend_key(const proposal_name& suspend) {
 
 inline db_key
 get_fungible_key(const symbol sym) {
-    return db_key(N128(.fungible), (fungible_name)sym.name());
+    return db_key(N128(.fungible), (uint128_t)sym.id());
 }
 
 inline db_key
-get_fungible_key(const fungible_name& sym_name) {
-    return db_key(N128(.fungible), sym_name);
+get_fungible_key(const symbol_id_type& sym_id) {
+    return db_key(N128(.fungible), (uint128_t)sym_id);
 }
 
 inline db_asset_key
 get_asset_key(const address& addr, const asset& asset) {
-    return db_asset_key(addr, asset.get_symbol());
+    return db_asset_key(addr, asset.sym());
 }
 
 inline db_asset_key
@@ -285,7 +285,7 @@ token_database::initialize(const fc::path& dbpath) {
         EVT_THROW(tokendb_rocksdb_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
 
-    asset(handles.size() == 2);
+    assert(handles.size() == 2);
     tokens_handle_ = handles[0];
     assets_handle_ = handles[1];
 
@@ -433,9 +433,9 @@ token_database::exists_fungible(const symbol sym) const {
 }
 
 int
-token_database::exists_fungible(const fungible_name& sym_name) const {
+token_database::exists_fungible(const symbol_id_type sym_id) const {
     using namespace __internal;
-    auto key    = get_fungible_key(sym_name);
+    auto key    = get_fungible_key(sym_id);
     auto value  = std::string();
     auto status = db_->Get(read_opts_, key.as_slice(), &value);
     return status.ok();
@@ -550,13 +550,13 @@ token_database::read_fungible(const symbol sym, fungible_def& fungible) const {
 }
 
 int
-token_database::read_fungible(const fungible_name& sym_name, fungible_def& fungible) const {
+token_database::read_fungible(const symbol_id_type sym_id, fungible_def& fungible) const {
     using namespace __internal;
     auto value  = std::string();
-    auto key    = get_fungible_key(sym_name);
+    auto key    = get_fungible_key(sym_id);
     auto status = db_->Get(read_opts_, key.as_slice(), &value);
     if(!status.ok()) {
-        EVT_THROW(tokendb_fungible_not_found, "Cannot find fungible def: ${name}", ("name",sym_name));
+        EVT_THROW(tokendb_fungible_not_found, "Cannot find fungible def: ${id}", ("id",sym_id));
     }
     fungible = read_value<fungible_def>(value);
     return 0;
