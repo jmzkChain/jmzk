@@ -4,11 +4,13 @@
  */
 #pragma once
 
+#include <memory>
+
 #include <appbase/application.hpp>
+#include <mongocxx/client.hpp>
+
 #include <evt/chain_plugin/chain_plugin.hpp>
 #include <evt/chain/types.hpp>
-#include <mongocxx/database.hpp>
-#include <memory>
 
 namespace evt {
 
@@ -28,7 +30,7 @@ public:
     void plugin_shutdown();
 
 public:
-    const mongocxx::database& db() const;
+    const mongocxx::uri& uri() const;
 
 private:
     std::unique_ptr<class mongo_db_plugin_impl> my_;

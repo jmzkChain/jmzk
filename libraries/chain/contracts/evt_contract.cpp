@@ -102,7 +102,7 @@ auto make_permission_checker = [](const auto& tokendb) {
 
 inline void
 check_name_reserved(const name128& name) {
-    EVT_ASSERT(!name.empty() && name.reserved(), name_reserved_exception, "Name starting with '.' is reserved for system usages.");
+    EVT_ASSERT(!name.empty() && !name.reserved(), name_reserved_exception, "Name starting with '.' is reserved for system usages.");
 }
 
 } // namespace __internal
@@ -836,7 +836,7 @@ EVT_ACTION_IMPL(paycharge) {
 
         asset evt_asset;
         auto addr = get_fungible_address(evt_sym());
-        tokendb.read_asset_no_throw(addr, evt_sym(), evt_asset);
+        tokendb.read_asset(addr, evt_sym(), evt_asset);
         evt_asset += asset(paid, evt_sym());
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
