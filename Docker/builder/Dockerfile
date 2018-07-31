@@ -8,9 +8,9 @@ RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
   && apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y sudo wget curl net-tools ccache ninja-build ca-certificates unzip gnupg git build-essential libtool autoconf automake m4 openssl libssl1.1 libssl-dev libgmp-dev zlib1g-dev
 
-RUN wget --no-check-certificate https://cmake.org/files/v3.11/cmake-3.11.0-Linux-x86_64.sh \
-    && bash cmake-3.11.0-Linux-x86_64.sh --prefix=/usr/local --exclude-subdir --skip-license \
-    && rm cmake-3.11.0-Linux-x86_64.sh
+RUN wget --no-check-certificate https://cmake.org/files/v3.12/cmake-3.12.0-Linux-x86_64.sh \
+    && bash cmake-3.12.0-Linux-x86_64.sh --prefix=/usr/local --exclude-subdir --skip-license \
+    && rm cmake-3.12.0-Linux-x86_64.sh
 
 RUN wget https://dl.bintray.com/boostorg/release/1.67.0/source/boost_1_67_0.tar.bz2 -O - | tar -xj \
     && cd boost_1_67_0 \
@@ -26,7 +26,7 @@ RUN git clone --depth 1 git://github.com/cryptonomex/secp256k1-zkp \
     && make -j$(nproc) install \
     && cd .. && rm -rf secp256k1-zkp
 
-RUN git clone --depth 1 -b r1.10 git://github.com/mongodb/mongo-c-driver \
+RUN git clone --depth 1 -b r1.12 git://github.com/mongodb/mongo-c-driver \
     && cd mongo-c-driver \
     && cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=Release -DENABLE_SSL=OPENSSL -DENABLE_STATIC=OFF -DENABLE_BSON=ON -DENABLE_TESTS=OFF \
     && cmake --build build --target install \
