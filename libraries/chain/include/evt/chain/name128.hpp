@@ -37,7 +37,7 @@ public:
     bool
     reserved() const {
         constexpr auto flag = ((uint128_t)0x3f << 2);
-        return value & flag;
+        return !(value & flag);
     }
 
     constexpr name128() = default;

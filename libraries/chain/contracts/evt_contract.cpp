@@ -646,7 +646,7 @@ EVT_ACTION_IMPL(addmeta) {
         }
         else if(act.domain == N128(.fungible)) {
             fungible_def fungible;
-            tokendb.read_fungible((symbol_id_type)std::stoul((std::string)amact.key), fungible);
+            tokendb.read_fungible((symbol_id_type)std::stoul((std::string)act.key), fungible);
 
             EVT_ASSERT(!check_duplicate_meta(fungible, amact.key), meta_key_exception, "Metadata with key ${key} already exists.", ("key",amact.key));
             // check involved, only group manager(aka. group key) can add meta
