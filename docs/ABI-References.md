@@ -40,16 +40,16 @@ ABIs are built on Base Types given above.
 
 The number part is a number containing a `.` which introduces its precision. The precision is determined by the digits after the `.`. That is, `0.300` has the precision of 3, while `0.3` only has the precision of 1. The precision of an asset should be less than __18__.
 
-The symbol part introduces the asset name, which is consisted of UPPERCASE alphabets, with a length less than 7 chars.
+The symbol part introduces the symbol id, which is an integer number representing one unqiue fungible symbol.
 
-Only the assets of the same type can be added up. The `EVT` asset is an asset type with the precision of 5 and `EVT` as symbol name. Therefore, `12.00000 EVT` is a valid `EVT` asset, but `12.000 EVT`, `12 EVT` or `12.0000 EVT` are invalid `EVT` asset due to the wrong precision.
+Only the assets of the same type can be added up. The `EVT` asset is an asset type with the precision of 5 and `1` as symbol id. Therefore, `12.00000 S#1` is a valid `EVT` asset, but `12.000 S#1`, `12 S#1` or `12.0000 S#1` are invalid `EVT` asset due to the wrong precision.
 
 ### `symbol` Type
-`symbol` type is the symbol part in `asset` type. It represents a token and contains precision and name. Precision is a number and should be less than __18__ and symbol name is consisted of UPPERCASE alphabets, with a length less than 7 chars.
+`symbol` type is the symbol part in `asset` type. It represents a token and contains precision and unique id. Precision is a number and should be less than __18__ and symbol id is a unique integer number.
 
-For example, `12.00000 EVT` is a valid `EVT` asset, and it has the precision of 5 and 'EVT' as symbol name. Its symbol expression is `5,EVT`.
+For example, `12.00000 S#1` is a valid `EVT` asset, and it has the precision of 5 and '1' as symbol id. Its symbol expression is `5,S#1`.
 
-Then `7,COIN` represents a asset symbol with precision of 7 and 'COIN' as symbol name.
+Then `7,S#123` represents a asset symbol with precision of 7 and '123' as symbol id.
 
 ### `authorizer_ref` Type
 For the `authorizer_ref`, it's a reference to one authorizer. Current valid authorizer including an account, a group or special `OWNER` group (aka. owners field in one token).
@@ -148,7 +148,10 @@ A type with `?` as suffix means it is an optional type whose value can be undefi
 | `token_name` | `name128` |
 | `account_name` | `name128` |
 | `proposal_name` | `name128` |
+| `fungible_name` | `name128` |
+| `symbol_name` | `name128` |
 | `balance_type` | `asset` |
+| `symbol_id_type` | `uint32` |
 | `group_def` | `group` |
 | `meta_key` | `name128` |
 | `meat_value` | `string` |
@@ -199,6 +202,8 @@ A structure is a complex type consisted of base types or/and typedef types. Belo
 ### `fungible_def` Struct
 ```
 {
+    "name": `fungible_name`,
+    "sym": `symbol_name`,
     "sym": `symbol`,
     "creator": `user_id`,
     "create_time": `time_point_sec`,
@@ -299,6 +304,8 @@ Update one specific group's structure
 Create a new fungible assets definition with a specific total supply(0 means unlimited).
 ```
 {
+    "name": `fungible_name`,
+    "sym_name": `symbol_name`,
     "sym": `symbol`,
     "creator": `user_id`,
     "issue": `permission_def`,
@@ -311,7 +318,7 @@ Create a new fungible assets definition with a specific total supply(0 means unl
 Update one fungible assets definition.
 ```
 {
-    "sym": `symbol`,
+    "sym_id": `symbol_id_type`,
     "issue": `permission_def?`,
     "manage": `permission_def?`
 }
