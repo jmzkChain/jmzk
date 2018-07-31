@@ -41,6 +41,7 @@ private:
 
 private:
     mongocxx::database    db_;
+
     mongocxx::collection  domains_collection_;
     mongocxx::collection  tokens_collection_;
     mongocxx::collection  groups_collection_;
@@ -53,25 +54,26 @@ public:
     static const std::string fungibles_col;
 };
 
-const std::string interpreter_impl::domains_col  = "Domains";
-const std::string interpreter_impl::tokens_col   = "Tokens";
-const std::string interpreter_impl::groups_col   = "Groups";
+const std::string interpreter_impl::domains_col   = "Domains";
+const std::string interpreter_impl::tokens_col    = "Tokens";
+const std::string interpreter_impl::groups_col    = "Groups";
 const std::string interpreter_impl::fungibles_col = "Fungibles";
 
 void
 interpreter_impl::initialize_db(const mongocxx::database& db)
 {
     db_ = db;
+
     domains_collection_   = db_[domains_col];
     tokens_collection_    = db_[tokens_col];
     groups_collection_    = db_[groups_col];
     fungibles_collection_ = db_[fungibles_col];
 }
 
-#define CASE_N_CALL(name)                        \
-    case N(name): {                              \
-        process_##name(act.data_as<name>()); \
-        break;                                   \
+#define CASE_N_CALL(name)                           \
+    case N(name): {                                 \
+        process_##name(act.data_as<const name&>()); \
+        break;                                      \
     }
 
 void
@@ -105,22 +107,6 @@ get_default_find_options() {
 
     std::call_once(flag, [&] {
         project << "_id" << 1;
-        opts.projection(project.view());
-    });
-
-    return opts;
-}
-
-const auto&
-get_fungible_find_options() {
-    using bsoncxx::builder::stream::document;
-
-    static mongocxx::options::find opts;
-    static std::once_flag flag;
-    static document project;
-
-    std::call_once(flag, [&] {
-        project << "_id" << 1 << "current_supply" << 1;
         opts.projection(project.view());
     });
 
@@ -164,13 +150,13 @@ find_group(mongocxx::collection& groups, const std::string& name) {
 }
 
 auto
-find_fungible(mongocxx::collection& fungibles, const std::string& sym) {
+find_fungible(mongocxx::collection& fungibles, const symbol_id_type sym_id) {
     using bsoncxx::builder::stream::document;
     document find{};
-    find << "sym" << sym;
-    auto fungible = fungibles.find_one(find.view(), get_fungible_find_options());
+    find << "sym_id" << (int64_t)sym_id;
+    auto fungible = fungibles.find_one(find.view(), get_default_find_options());
     if(!fungible) {
-        FC_THROW("Unable to find fungible assets ${sym}", ("sym", sym));
+        FC_THROW("Unable to find fungible assets ${id}", ("id", sym_id));
     }
     return *fungible;
 }
@@ -375,6 +361,7 @@ interpreter_impl::process_updategroup(const updategroup& ug) {
 
 void
 interpreter_impl::process_newfungible(const newfungible& nf) {
+    using namespace evt::chain;
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
     using bsoncxx::builder::basic::kvp;
@@ -390,7 +377,10 @@ interpreter_impl::process_newfungible(const newfungible& nf) {
     fc::to_variant(nf.manage, manage);
 
     doc.append(kvp("_id", oid),
+               kvp("name", (std::string)nf.name),
+               kvp("sym_name", (std::string)nf.sym_name),
                kvp("sym", (std::string)nf.sym),
+               kvp("sym_id", (int64_t)nf.sym.id()),
                kvp("creator", (std::string)nf.creator),
                kvp("issue", bsoncxx::from_json(fc::json::to_string(issue))),
                kvp("manage", bsoncxx::from_json(fc::json::to_string(manage))),
@@ -416,8 +406,8 @@ interpreter_impl::process_updfungible(const updfungible& uf) {
     auto now  = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
 
-    auto sym = (std::string)uf.sym;
-    auto f   = find_fungible(fungibles_collection_, sym);
+    auto id = uf.sym_id;
+    auto f  = find_fungible(fungibles_collection_, id);
 
     document update{};
     update << "$set" << open_document;
@@ -436,7 +426,7 @@ interpreter_impl::process_updfungible(const updfungible& uf) {
            << close_document;
 
     if(!fungibles_collection_.update_one(document{} << "_id" << f.view()["_id"].get_oid() << finalize, update.view())) {
-        elog("Failed to update fungible assets ${sym}", ("sym", sym));
+        elog("Failed to update fungible assets ${id}", ("id", id));
     }
 }
 
