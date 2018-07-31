@@ -40,6 +40,8 @@ initialize_evt_org(token_database& token_db, const genesis_state& genesis) {
     // Add reserved EVT fungible tokens
     if(!token_db.exists_fungible(evt_sym())) {
         auto evt = fungible_def();
+        evt.name = "EVT";
+        evt.sym_name = "EVT";
         evt.sym = evt_sym();
         evt.creator = genesis.initial_key;
         evt.create_time = genesis.initial_timestamp;
@@ -71,6 +73,8 @@ initialize_evt_org(token_database& token_db, const genesis_state& genesis) {
     // Add reserved Pined EVT fungible tokens
     if(!token_db.exists_fungible(pevt_sym())) {
         auto pevt = fungible_def();
+        pevt.name = "Pinned.EVT";
+        pevt.sym_name = "PEVT";
         pevt.sym = pevt_sym();
         pevt.creator = genesis.initial_key;
         pevt.create_time = genesis.initial_timestamp;
@@ -87,7 +91,6 @@ initialize_evt_org(token_database& token_db, const genesis_state& genesis) {
         pevt.manage = manage;
 
         pevt.total_supply = asset(0, pevt.sym);
-
         token_db.add_fungible(pevt);
 
         // HACK: Use special address to store current largest symbol id

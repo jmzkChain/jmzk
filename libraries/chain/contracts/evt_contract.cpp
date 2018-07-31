@@ -102,8 +102,7 @@ auto make_permission_checker = [](const auto& tokendb) {
 
 inline void
 check_name_reserved(const name128& name) {
-    const uint128_t reserved_flag = ((uint128_t)0x3f << 2);
-    EVT_ASSERT(!name.empty() && (name.value & reserved_flag), name_reserved_exception, "Name starting with '.' is reserved for system usages.");
+    EVT_ASSERT(!name.empty() && !name.reserved(), name_reserved_exception, "Name starting with '.' is reserved for system usages.");
 }
 
 } // namespace __internal
