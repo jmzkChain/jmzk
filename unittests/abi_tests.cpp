@@ -730,7 +730,7 @@ TEST_CASE("newfungible_test", "[abis]") {
           }
         ]
       },
-      "total_supply":"12.00000 EVT"
+      "total_supply":"12.00000 S#0"
     }
     )=====";
 
@@ -756,8 +756,8 @@ TEST_CASE("newfungible_test", "[abis]") {
     CHECK(1 == newfg.manage.authorizers[0].weight);
 
     CHECK(1200000 == newfg.total_supply.amount());
-    CHECK("5,EVT" == newfg.total_supply.sym().to_string());
-    CHECK("12.00000 EVT" == newfg.total_supply.to_string());
+    CHECK("5,S#0" == newfg.total_supply.sym().to_string());
+    CHECK("12.00000 S#0" == newfg.total_supply.to_string());
 
     auto var2 = verify_byte_round_trip_conversion(abis, "newfungible", var);
 
@@ -782,8 +782,8 @@ TEST_CASE("newfungible_test", "[abis]") {
     CHECK(1 == newfg2.manage.authorizers[0].weight);
 
     CHECK(1200000 == newfg2.total_supply.amount());
-    CHECK("5,EVT" == newfg2.total_supply.sym().to_string());
-    CHECK("12.00000 EVT" == newfg2.total_supply.to_string());
+    CHECK("5,S#0" == newfg2.total_supply.sym().to_string());
+    CHECK("12.00000 S#0" == newfg2.total_supply.to_string());
 
     verify_type_round_trip_conversion<newfungible>(abis, "newfungible", var);
 }
@@ -840,7 +840,7 @@ TEST_CASE("issuefungible_test", "[abis]") {
     const char* test_data = R"=====(
     {
       "address": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
-      "number" : "12.00000 EVT",
+      "number" : "12.00000 S#1",
       "memo": "memo"
     }
     )=====";
@@ -852,8 +852,8 @@ TEST_CASE("issuefungible_test", "[abis]") {
     CHECK("memo" == issfg.memo);
 
     CHECK(1200000 == issfg.number.amount());
-    CHECK("5,EVT" == issfg.number.sym().to_string());
-    CHECK("12.00000 EVT" == issfg.number.to_string());
+    CHECK("5,S#1" == issfg.number.sym().to_string());
+    CHECK("12.00000 S#1" == issfg.number.to_string());
 
     auto var2 = verify_byte_round_trip_conversion(abis, "issuefungible", var);
 
@@ -863,8 +863,8 @@ TEST_CASE("issuefungible_test", "[abis]") {
     CHECK("memo" == issfg2.memo);
 
     CHECK(1200000 == issfg2.number.amount());
-    CHECK("5,EVT" == issfg2.number.sym().to_string());
-    CHECK("12.00000 EVT" == issfg2.number.to_string());
+    CHECK("5,S#1" == issfg2.number.sym().to_string());
+    CHECK("12.00000 S#1" == issfg2.number.to_string());
 
     verify_type_round_trip_conversion<issuefungible>(abis, "issuefungible", var);
 }
@@ -876,7 +876,7 @@ TEST_CASE("transferft_test", "[abis]") {
     {
       "from": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
       "to": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
-      "number" : "12.00000 EVT",
+      "number" : "12.00000 S#1",
       "memo": "memo"
     }
     )=====";
@@ -889,8 +889,8 @@ TEST_CASE("transferft_test", "[abis]") {
     CHECK("memo" == trft.memo);
 
     CHECK(1200000 == trft.number.amount());
-    CHECK("5,EVT" == trft.number.sym().to_string());
-    CHECK("12.00000 EVT" == trft.number.to_string());
+    CHECK("5,S#1" == trft.number.sym().to_string());
+    CHECK("12.00000 S#1" == trft.number.to_string());
 
     auto var2 = verify_byte_round_trip_conversion(abis, "transferft", var);
 
@@ -901,8 +901,8 @@ TEST_CASE("transferft_test", "[abis]") {
     CHECK("memo" == trft2.memo);
 
     CHECK(1200000 == trft2.number.amount());
-    CHECK("5,EVT" == trft2.number.sym().to_string());
-    CHECK("12.00000 EVT" == trft2.number.to_string());
+    CHECK("5,S#1" == trft2.number.sym().to_string());
+    CHECK("12.00000 S#1" == trft2.number.to_string());
 
     verify_type_round_trip_conversion<transferft>(abis, "transferft", var);
 }
@@ -1051,7 +1051,7 @@ TEST_CASE("evt2pevt_test", "[abis]") {
     {
         "from": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
         "to": "EVT548LviBDF6EcknKnKUMeaPUrZN2uhfCB1XrwHsURZngakYq9Vx",
-        "number": "5.00000 EVT",
+        "number": "5.00000 S#1",
         "memo": "memo"
     }
     )=======";
@@ -1061,7 +1061,7 @@ TEST_CASE("evt2pevt_test", "[abis]") {
 
     CHECK("EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3" == (std::string)e2p.from);
     CHECK("EVT548LviBDF6EcknKnKUMeaPUrZN2uhfCB1XrwHsURZngakYq9Vx" == (std::string)e2p.to);
-    CHECK((std::string)e2p.number.to_string() == "5.00000 EVT");
+    CHECK((std::string)e2p.number.to_string() == "5.00000 S#1");
 
     verify_byte_round_trip_conversion(abis, "evt2pevt", var);
     verify_type_round_trip_conversion<evt2pevt>(abis, "evt2pevt", var);
@@ -1121,9 +1121,9 @@ TEST_CASE("everipay_abi_test", "[abis]") {
     auto        abis      = get_evt_abi();
     const char* test_data = R"=======(
     {
-        "link": "0Q:MMV*39PPS6SQNF74OVVJVIA/W2H:6I4QR6M$-W4HN8VQ421WX_Q/VQG2BWLMWKV73$953S5HR677KCP3G7MYWZMPWYZSN48KW1-2A9PDX1B-RD470*4D1RR*5M*L6HH7/05KW:T51Y*C46D01B",
+        "link": "0UKDRJZA4Z9IR9TK4Q7BJP0SV-/$$XDADD03/37BOI3FPJ9C3_QUQ4A1GS9VJX-3MIKFBYFYHLZODIRRUAFEGFS6+*ZKN40BOMIY6/2CJGC04:VZFB8H3FZ91/TW*-8M02/GKDLUFE80HC8*LI",
         "payee": "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC",
-        "number": "5.00000 EVT"
+        "number": "5.00000 S#1"
     }
     )=======";
 
@@ -1133,39 +1133,39 @@ TEST_CASE("everipay_abi_test", "[abis]") {
     auto& link = ep.link;
 
     CHECK(link.get_header() == 5);
-    CHECK(*link.get_segment(evt_link::timestamp).intv == 1532582224);
+    CHECK(*link.get_segment(evt_link::timestamp).intv == 1532962996);
     CHECK(link.get_segment(evt_link::symbol_id).strv.valid() == false);
-    CHECK(*link.get_segment(evt_link::symbol_id).intv == 123456);
-    CHECK(*link.get_segment(evt_link::max_pay).intv == 100000);
+    CHECK(*link.get_segment(evt_link::symbol_id).intv == 4);
+    CHECK(*link.get_segment(evt_link::max_pay).intv == 354);
 
     auto uid = std::string();
-    uid.push_back(5);
-    uid.push_back(219);
-    uid.push_back(61);
-    uid.push_back(10);
-    uid.push_back(255);
-    uid.push_back(105);
-    uid.push_back(229);
-    uid.push_back(118);
-    uid.push_back(60);
-    uid.push_back(141);
+    uid.push_back(64);
+    uid.push_back(88);
+    uid.push_back(198);
     uid.push_back(100);
-    uid.push_back(188);
-    uid.push_back(190);
-    uid.push_back(201);
-    uid.push_back(30);
-    uid.push_back(85);
+    uid.push_back(114);
+    uid.push_back(181);
+    uid.push_back(167);
+    uid.push_back(198);
+    uid.push_back(1);
+    uid.push_back(40);
+    uid.push_back(34);
+    uid.push_back(167);
+    uid.push_back(221);
+    uid.push_back(101);
+    uid.push_back(118);
+    uid.push_back(103);
 
     CHECK(link.get_segment(evt_link::link_id).strv == uid);
 
     auto& sigs = link.get_signatures();
     CHECK(sigs.size() == 1);
 
-    CHECK(sigs.find(signature_type(std::string("SIG_K1_KmMRWXDnuPJxgvrDMdZdmYApj5QbnAaj3HqiVLkLgwYfwLBcjHuWVZ3gjiLB9DmahxcXs57eazN5Snk7rBtYMk1S9cv6Js"))) != sigs.end());
+    CHECK(sigs.find(signature_type(std::string("SIG_K1_Kca6pUDVW8DguKqZ6K12gT7LwHq11qN2QLHijg86irSKhNoNEmjtRR9Afm31mcws3sqbUh6Cf1xpt4aAwMTQHiL1jzHW6y"))) != sigs.end());
 
     auto pkeys = link.restore_keys();
     CHECK(pkeys.size() == 1);
 
     INFO(*pkeys.cbegin());
-    CHECK(pkeys.find(public_key_type(std::string("EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"))) != pkeys.end());
+    CHECK(pkeys.find(public_key_type(std::string("EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"))) != pkeys.end());
 }
