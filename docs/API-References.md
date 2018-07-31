@@ -512,13 +512,15 @@ This API is used to get specific fungible.
 Request:
 ```
 {
-    "name": "EVT"
+    "id": "1"
 }
 ```
 Response:
 ```
 {
-  "sym": "5,EVT",
+  "name": "EVT",
+  "sym_name": "EVT",
+  "sym": "5,S#1",
   "creator": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
   "create_time": "2018-06-28T05:31:09",
   "issue": {
@@ -539,8 +541,8 @@ Response:
       }
     ]
   },
-  "total_supply": "100000.00000 EVT",
-  "current_supply": "0.00000 EVT",
+  "total_supply": "100000.00000 S#1",
+  "current_supply": "0.00000 S#1",
   "metas": [],
   "address": "EVT000000GAei9YYTQuZsNdcK5bPQNAK4ADtgzT8x52hz4b4FnYRQ"
 }
@@ -558,7 +560,7 @@ Request:
 Response:
 ```
 [
-  "2.00000 EVT", "1.00000 PEVT"
+  "2.00000 S#1", "1.00000 S#2"
 ]
 ```
 
@@ -568,12 +570,12 @@ Request:
 ```
 {
     "address": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
-    "sym": "5,EVT"
+    "sym": "5,S#1"
 }
 ```
 Response:
 ```
-"2.00000 EVT"
+"2.00000 S#1"
 ```
 
 ## POST /v1/evt/get_suspend
