@@ -138,11 +138,11 @@ transaction_context::check_paid() const {
     }  // switch
     
     asset evt, pevt;
-    tokendb.read_asset_no_throw(payer, evt_sym(), pevt);
+    tokendb.read_asset_no_throw(payer, pevt_sym(), pevt);
     if(pevt.amount() > charge) {
         return;
     }
-    tokendb.read_asset_no_throw(payer, pevt_sym(), evt);
+    tokendb.read_asset_no_throw(payer, evt_sym(), evt);
     if(pevt.amount() + evt.amount() >= charge) {
         return;
     }
