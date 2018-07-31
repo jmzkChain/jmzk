@@ -111,6 +111,7 @@ using account_name    = name128;
 using group_name      = name128;
 using proposal_name   = name128;
 using fungible_name   = name128;
+using symbol_name     = name128;
 using user_id         = public_key_type;
 
 /**
@@ -147,6 +148,7 @@ using share_type          = int64_t;
 using int128_t            = __int128_t;
 using uint128_t           = __uint128_t;
 using link_id_type        = uint128_t;
+using symbol_id_type      = uint32_t;
 using bytes               = vector<char>;
 
 /**

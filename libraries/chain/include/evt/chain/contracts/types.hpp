@@ -31,6 +31,8 @@ using token_name      = evt::chain::token_name;
 using permission_name = evt::chain::permission_name;
 using account_name    = evt::chain::account_name;
 using fungible_name   = evt::chain::fungible_name;
+using symbol_name     = evt::chain::symbol_name;
+using symbol_id_type  = evt::chain::symbol_id_type;
 using user_id         = evt::chain::public_key_type;
 using user_list       = std::vector<user_id>;
 using group_name      = evt::chain::group_name;
@@ -93,7 +95,10 @@ struct domain_def {
 struct fungible_def {
     fungible_def() = default;
 
+    fungible_name  name;
+    symbol_name    sym_name;
     symbol         sym;
+    
     user_id        creator;
     time_point_sec create_time;
 
@@ -179,7 +184,8 @@ struct updatedomain {
 };
 
 struct newfungible {
-    symbol        sym;
+    fungible_name name;
+    symbol_name   sym_name;
     user_id       creator;
 
     permission_def issue;
@@ -191,7 +197,7 @@ struct newfungible {
 };
 
 struct updfungible {
-    symbol sym;
+    symbol_id_type sym_id;
 
     fc::optional<permission_def> issue;
     fc::optional<permission_def> manage;
@@ -289,7 +295,7 @@ FC_REFLECT(evt::chain::contracts::key_weight, (key)(weight));
 FC_REFLECT(evt::chain::contracts::authorizer_weight, (ref)(weight));
 FC_REFLECT(evt::chain::contracts::permission_def, (name)(threshold)(authorizers));
 FC_REFLECT(evt::chain::contracts::domain_def, (name)(creator)(create_time)(issue)(transfer)(manage)(metas));
-FC_REFLECT(evt::chain::contracts::fungible_def, (sym)(creator)(create_time)(issue)(manage)(total_supply)(metas));
+FC_REFLECT(evt::chain::contracts::fungible_def, (name)(sym_name)(sym)(creator)(create_time)(issue)(manage)(total_supply)(metas));
 FC_REFLECT_ENUM(evt::chain::contracts::suspend_status, (proposed)(executed)(failed)(cancelled));
 FC_REFLECT(evt::chain::contracts::suspend_def, (name)(proposer)(status)(trx)(signed_keys));
 
@@ -300,8 +306,8 @@ FC_REFLECT(evt::chain::contracts::destroytoken, (domain)(name));
 FC_REFLECT(evt::chain::contracts::newgroup, (name)(group));
 FC_REFLECT(evt::chain::contracts::updategroup, (name)(group));
 FC_REFLECT(evt::chain::contracts::updatedomain, (name)(issue)(transfer)(manage));
-FC_REFLECT(evt::chain::contracts::newfungible, (sym)(creator)(issue)(manage)(total_supply));
-FC_REFLECT(evt::chain::contracts::updfungible, (sym)(issue)(manage));
+FC_REFLECT(evt::chain::contracts::newfungible, (name)(sym_name)(creator)(issue)(manage)(total_supply));
+FC_REFLECT(evt::chain::contracts::updfungible, (sym_id)(issue)(manage));
 FC_REFLECT(evt::chain::contracts::issuefungible, (address)(number)(memo));
 FC_REFLECT(evt::chain::contracts::transferft, (from)(to)(number)(memo));
 FC_REFLECT(evt::chain::contracts::evt2pevt, (from)(to)(number)(memo));

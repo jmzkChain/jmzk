@@ -208,51 +208,117 @@ TEST_CASE("test_name128", "[types]") {
         CHECK(memcmp((char*)&raw[0], (char*)&raw2[0], raw.size()) == 0);
     };
 
-    auto n1 = name128(N128());
-    CHECK((std::string)n1 == "");
-    auto r1 = get_raw(n1);
-    CHECK(r1.size() == 1);
-    CHECK_RAW(r1, n1);
+    auto CHECK_N128 = [&](const auto& str, auto size) {
+        auto n = name128(str);
+        CHECK((std::string)n == str);
+        auto r = get_raw(n);
+        CHECK(r.size() == (size_t)size);
+        CHECK_RAW(r, n);
+    };
 
-    auto n2 = name128(N128(123));
-    CHECK((std::string)n2 == "123");
-    auto r2 = get_raw(n2);
-    CHECK(r2.size() == 4);
-    CHECK_RAW(r2, n2);
+    CHECK_N128("", 4);
+    CHECK_N128("123", 4);
+    CHECK_N128("12345", 4);
+    CHECK_N128("123456", 8);
+    CHECK_N128("1234567890", 8);
+    CHECK_N128("1234567890A", 12);
+    CHECK_N128("1234567890ABCDE", 12);
+    CHECK_N128("1234567890ABCDEF", 16);
+    CHECK_N128("1234567890ABCDEFGHIJK", 16);
 
-    auto n3 = name128(N128(1234));
-    CHECK((std::string)n3 == "1234");
-    auto r3 = get_raw(n3);
-    CHECK(r3.size() == 4);
-    CHECK_RAW(r3, n3);
+    auto n1 = name128(N128(12345.67890));
+    CHECK((std::string)n1 == "12345.67890");
 
-    auto n4 = name128(N128(12345));
-    CHECK((std::string)n4 == "12345");
-    auto r4 = get_raw(n4);
-    CHECK(r4.size() == 4);
-    CHECK_RAW(r4, n4);
+    auto n2 = name128(N128(12345...));
+    CHECK((std::string)n2 == "12345");
 
-    auto n5 = name128(N128(1234567890));
-    CHECK((std::string)n5 == "1234567890");
-    auto r5 = get_raw(n5);
-    CHECK(r5.size() == 8);
-    CHECK_RAW(r5, n5);
+    auto n3 = name128(N128(.12345));
+    CHECK((std::string)n3 == ".12345");
 
-    auto n6 = name128(N128(1234567890a));
-    CHECK((std::string)n6 == "1234567890a");
-    auto r6 = get_raw(n6);
-    CHECK(r6.size() == 16);
-    CHECK_RAW(r6, n6);
+    auto n4 = name128(N128(ABCDEFGZZ));
+    CHECK((std::string)n4 == "ABCDEFGZZ");
+}
 
-    auto n7 = name128(N128(12345.67890));
-    CHECK((std::string)n7 == "12345.67890");
+TEST_CASE("test_symbol", "[types]") {
+    auto s = symbol(3, 123);
+    CHECK((std::string)s == "3,S#123");
+    CHECK(s.to_string() == "3,S#123");
 
-    auto n8 = name128(N128(12345...));
-    CHECK((std::string)n8 == "12345");
+    auto s2 = symbol::from_string("3,S#123");
+    CHECK(s == s2);
 
-    auto n9 = name128(N128(.12345));
-    CHECK((std::string)n9 == ".12345");
+    CHECK_THROWS_AS(symbol::from_string("21,S#123"), symbol_type_exception);
+    CHECK_THROWS_AS(symbol::from_string("21"), symbol_type_exception);
+    CHECK_THROWS_AS(symbol::from_string("3"), symbol_type_exception);
+    CHECK_THROWS_AS(symbol::from_string("3,S#abc"), symbol_type_exception);
+    CHECK_THROWS_AS(symbol::from_string("a,S#2"), symbol_type_exception);
+    CHECK_THROWS_AS(symbol::from_string("3,S2"), symbol_type_exception);
+    CHECK_THROWS_AS(symbol::from_string("3,#2"), symbol_type_exception);
+    CHECK_THROWS_AS(symbol::from_string("3,2"), symbol_type_exception);
 
-    auto n10 = name128(N128(ABCDEFGZZ));
-    CHECK((std::string)n10 == "ABCDEFGZZ");
+    CHECK(evt_sym() == symbol(5, 1));
+    CHECK(pevt_sym() == symbol(5, 2));
+}
+
+TEST_CASE("test_asset", "[types]") {
+    auto CHECK_ASSET = [&](auto amount, auto sym, auto str) {
+        auto a = asset(amount, sym);
+        CHECK((std::string)a == str);
+        CHECK(a.to_string() == str);
+
+        auto a2 = asset::from_string(str);
+        INFO(a.sym() << " " << a.amount());
+        INFO(a2.sym() << " " << a2.amount());
+        CHECK(a == a2);
+    };
+
+    auto CHECK_PARSE = [&](auto str, auto amount, auto precision, auto id) {
+        auto a = asset::from_string(str);
+        CHECK(a.precision() == precision);
+        CHECK(a.amount() == amount);
+        CHECK(a.symbol_id() == (symbol_id_type)id);
+    };
+
+    auto sym = symbol(5, 1);
+    CHECK_ASSET(0, sym, "0.00000 S#1");
+    CHECK_ASSET(1, sym, "0.00001 S#1");
+    CHECK_ASSET(10, sym, "0.00010 S#1");
+    CHECK_ASSET(100, sym, "0.00100 S#1");
+    CHECK_ASSET(1000, sym, "0.01000 S#1");
+    CHECK_ASSET(10000, sym, "0.10000 S#1");
+    CHECK_ASSET(100000, sym, "1.00000 S#1");
+    CHECK_ASSET(1000000, sym, "10.00000 S#1");
+
+    CHECK_ASSET(-1, sym, "-0.00001 S#1");
+    CHECK_ASSET(-10, sym, "-0.00010 S#1");
+    CHECK_ASSET(-100, sym, "-0.00100 S#1");
+    CHECK_ASSET(-1000, sym, "-0.01000 S#1");
+    CHECK_ASSET(-10000, sym, "-0.10000 S#1");
+    CHECK_ASSET(-100000, sym, "-1.00000 S#1");
+    CHECK_ASSET(-1000000, sym, "-10.00000 S#1");
+
+    CHECK_ASSET(100, symbol(0,1), "100 S#1");
+    CHECK_ASSET(0, symbol(0,1), "0 S#1");
+
+    CHECK_PARSE("0.001 S#123", 1, 3, 123);
+    CHECK_PARSE("0.0010 S#123", 10, 4, 123);
+    CHECK_PARSE("0.199 S#123", 199, 3, 123);
+    CHECK_PARSE("0.1990 S#123", 1990, 4, 123);
+    CHECK_PARSE("1.0120 S#123", 10120, 4, 123);
+    CHECK_PARSE("1003.0120 S#123", 10030120, 4, 123);
+    CHECK_PARSE("1003 S#123", 1003, 0, 123);
+    CHECK_PARSE("0 S#123", 0, 0, 123);
+
+    CHECK_PARSE("-0.001 S#123", -1, 3, 123);
+    CHECK_PARSE("-0.0010 S#123", -10, 4, 123);
+    CHECK_PARSE("-0.199 S#123", -199, 3, 123);
+    CHECK_PARSE("-0.1990 S#123", -1990, 4, 123);
+    CHECK_PARSE("-1.0120 S#123", -10120, 4, 123);
+    CHECK_PARSE("-1003.0120 S#123", -10030120, 4, 123);
+    CHECK_PARSE("-1003 S#123", -1003, 0, 123);
+
+    CHECK_THROWS_AS(asset::from_string("0.1S#1"), asset_type_exception);
+    CHECK_THROWS_AS(asset::from_string("0.1 S#a"), asset_type_exception);
+    CHECK_THROWS_AS(asset::from_string("0.1 S1"), asset_type_exception);
+    CHECK_THROWS_AS(asset::from_string("0.100a S#1"), asset_type_exception);
 }
