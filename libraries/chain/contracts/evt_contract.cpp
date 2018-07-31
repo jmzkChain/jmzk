@@ -345,14 +345,17 @@ EVT_ACTION_IMPL(newfungible) {
 
     auto nfact = context.act.data_as<newfungible>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.fungible), N128(.create)), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), (name128)std::to_string(nfact.sym.id())), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(!nfact.name.empty(), fungible_name_exception, "Fungible name cannot be empty");
-        EVT_ASSERT(!nfact.sym_name.empty(), fungible_symbol_exception, "Fungible symbol cannot be empty");
-        EVT_ASSERT(nfact.total_supply.symbol_id() == 0, fungible_symbol_exception, "Symbol id of supply should 0.");
+        EVT_ASSERT(!nfact.sym_name.empty(), fungible_symbol_exception, "Fungible symbol name cannot be empty");
+        EVT_ASSERT(nfact.sym.id() > 0, fungible_symbol_exception, "Fungible symbol id should be larger than zero");
+        EVT_ASSERT(nfact.total_supply.sym() == nfact.sym, fungible_symbol_exception, "Symbols in `total_supply` and `sym` are not match.");
         EVT_ASSERT(nfact.total_supply.amount() > 0, fungible_supply_exception, "Supply cannot be zero");
         EVT_ASSERT(nfact.total_supply.amount() <= ASSET_MAX_SHARE_SUPPLY, fungible_supply_exception, "Supply exceeds the maximum allowed.");
 
         auto& tokendb = context.token_db;
+
+        EVT_ASSERT(!tokendb.exists_fungible(nfact.sym), fungible_exists_exception, "Fungible with symbol id: ${s} is already existed", ("s",nfact.sym.id()));
 
         EVT_ASSERT(nfact.issue.name == "issue", permission_type_exception, "Name ${name} does not match with the name of issue permission.", ("name",nfact.issue.name));
         EVT_ASSERT(nfact.issue.threshold > 0 && validate(nfact.issue), permission_type_exception, "Issue permission is not valid, which may be caused by invalid threshold, duplicated keys.");
@@ -368,28 +371,17 @@ EVT_ACTION_IMPL(newfungible) {
 
         fungible.name           = nfact.name;
         fungible.sym_name       = nfact.sym_name;
+        fungible.sym            = nfact.sym;
         fungible.creator        = nfact.creator;
         fungible.create_time    = context.control.head_block_time();
         fungible.issue          = std::move(nfact.issue);
         fungible.manage         = std::move(nfact.manage);
-
-        // HACK: Use special address to store current largest symbol id
-        auto sym_id_addr  = address(N(fungible), name128(), 0);
-        auto sym_id_asset = asset();
-        tokendb.read_asset(sym_id_addr, symbol(), sym_id_asset);
-
-        auto sym_id = sym_id_asset.amount() + 1;
-        fungible.sym          = symbol(nfact.total_supply.precision(), sym_id);
-        fungible.total_supply = asset(nfact.total_supply.amount(), fungible.sym);
+        fungible.total_supply   = nfact.total_supply;
 
         tokendb.add_fungible(fungible);
 
         auto addr = get_fungible_address(fungible.sym);
         tokendb.update_asset(addr, fungible.total_supply);
-
-        // HACK: Update max symbol id
-        sym_id_asset += asset(1, sym_id_asset.sym());
-        tokendb.update_asset(sym_id_addr, sym_id_asset);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }

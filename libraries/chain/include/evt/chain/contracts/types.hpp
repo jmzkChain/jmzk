@@ -186,6 +186,7 @@ struct updatedomain {
 struct newfungible {
     fungible_name name;
     symbol_name   sym_name;
+    symbol        sym;
     user_id       creator;
 
     permission_def issue;
@@ -306,7 +307,7 @@ FC_REFLECT(evt::chain::contracts::destroytoken, (domain)(name));
 FC_REFLECT(evt::chain::contracts::newgroup, (name)(group));
 FC_REFLECT(evt::chain::contracts::updategroup, (name)(group));
 FC_REFLECT(evt::chain::contracts::updatedomain, (name)(issue)(transfer)(manage));
-FC_REFLECT(evt::chain::contracts::newfungible, (name)(sym_name)(creator)(issue)(manage)(total_supply));
+FC_REFLECT(evt::chain::contracts::newfungible, (name)(sym_name)(sym)(creator)(issue)(manage)(total_supply));
 FC_REFLECT(evt::chain::contracts::updfungible, (sym_id)(issue)(manage));
 FC_REFLECT(evt::chain::contracts::issuefungible, (address)(number)(memo));
 FC_REFLECT(evt::chain::contracts::transferft, (from)(to)(number)(memo));
