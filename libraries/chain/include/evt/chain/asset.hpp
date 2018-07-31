@@ -35,7 +35,12 @@ public:
     bool valid() const { return precision() <= max_precision; }
 
 public:
+    static symbol from_string(const string& from);
     string to_string() const;
+
+    explicit operator string() const {
+        return to_string();
+    }
 
 public:
     friend inline bool
@@ -56,6 +61,11 @@ private:
 
 private:
     friend struct fc::reflector<symbol>;
+
+    void
+    reflector_verify() const {
+        EVT_ASSERT(valid(), symbol_type_exception, "invalid symbol");
+    }
 };
 
 static constexpr symbol
@@ -181,6 +191,16 @@ private:
 }}  // namespace evt::chain
 
 namespace fc {
+
+inline void
+to_variant(const evt::chain::symbol& var, fc::variant& vo) {
+    vo = var.to_string();
+}
+
+inline void
+from_variant(const fc::variant& var, evt::chain::symbol& vo) {
+    vo = evt::chain::symbol::from_string(var.get_string());
+}
 
 inline void
 to_variant(const evt::chain::asset& var, fc::variant& vo) {
