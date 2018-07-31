@@ -731,6 +731,9 @@ mongo_db_plugin_impl::start() {
         tokendb.read_fungible(evt_sym(), evt);
         tokendb.read_fungible(pevt_sym(), pevt);
 
+        auto g = group();
+        tokendb.read_group(N128(.everiToken), g);
+
         auto get_nfact = [](auto& f) {
             auto nf = newfungible();
 
@@ -746,16 +749,23 @@ mongo_db_plugin_impl::start() {
             return nfact;
         };
 
+        auto ng  = newgroup();
+        ng.name  = N128(.everiToken);
+        ng.group = std::move(g);
+
         // HACK: construct one trx trace here to add EVT and PEVT fungibles to mongodb
         auto trx_trace  = transaction_trace();
         auto act_trace1 = action_trace();
         auto act_trace2 = action_trace();
+        auto act_trace3 = action_trace();
 
         act_trace1.act = get_nfact(evt);
         act_trace2.act = get_nfact(pevt);
+        act_trace3.act = action(N128(.group), N128(.everiToken), ng);
 
         trx_trace.action_traces.emplace_back(act_trace1);
         trx_trace.action_traces.emplace_back(act_trace2);
+        trx_trace.action_traces.emplace_back(act_trace3);
 
         interpreter.process_trx(trx_trace);
     }

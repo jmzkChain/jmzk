@@ -205,6 +205,7 @@ evt_contract_abi() {
         "newfungible", "", {
             {"name", "fungible_name"},
             {"sym_name", "symbol_name"},
+            {"sym", "symbol"},
             {"creator", "user_id"},
             {"issue", "permission_def"},
             {"manage", "permission_def"},
