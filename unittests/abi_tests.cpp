@@ -711,6 +711,7 @@ TEST_CASE("newfungible_test", "[abis]") {
     {
       "name": "EVT",
       "sym_name": "EVT",
+      "sym": "5,S#1"
       "creator": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
       "issue" : {
         "name" : "issue",
