@@ -30,7 +30,7 @@
 #include <bsoncxx/json.hpp>
 
 #include <mongocxx/client.hpp>
-#include <mongocxx/instance.hpp>
+#include <mongocxx/database.hpp>
 
 namespace fc {
 class variant;
@@ -50,8 +50,7 @@ private:
 
 public:
     mongo_db_plugin_impl()
-        : mongo_inst{}
-        , mongo_conn{}
+        : mongo_conn{}
     { }
 
     ~mongo_db_plugin_impl();
@@ -80,7 +79,7 @@ public:
     bool configured{false};
     bool wipe_database_on_startup{false};
 
-    mongocxx::instance mongo_inst;
+    mongocxx::uri      mongo_uri;
     mongocxx::client   mongo_conn;
     mongocxx::database mongo_db;
 
@@ -782,9 +781,9 @@ mongo_db_plugin::mongo_db_plugin()
 mongo_db_plugin::~mongo_db_plugin() {
 }
 
-const mongocxx::database&
-mongo_db_plugin::db() const {
-    return my_->mongo_db;
+const mongocxx::uri&
+mongo_db_plugin::uri() const {
+    return my_->mongo_uri;
 }
 
 void
@@ -824,7 +823,8 @@ mongo_db_plugin::plugin_initialize(const variables_map& options) {
             dbname = "EVT";
         }
 
-        my_->mongo_conn = mongocxx::client{uri};
+        my_->mongo_uri  = std::move(uri);
+        my_->mongo_conn = mongocxx::client{my_->mongo_uri};
         my_->mongo_db   = my_->mongo_conn[dbname];
 
         my_->evt_abi  = evt_contract_abi();
