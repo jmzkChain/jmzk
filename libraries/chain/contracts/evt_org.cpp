@@ -61,7 +61,7 @@ initialize_evt_org(token_database& token_db, const genesis_state& genesis) {
         evt.total_supply = asset(100'000'000'000'000L, evt.sym);
         token_db.add_fungible(evt);
 
-        auto addr = address(N(fungible), N128(EVT), 0);
+        auto addr = address(N(fungible), (name128)std::to_string(evt_sym().id()), 0);
         token_db.update_asset(addr, evt.total_supply);
     }
 
