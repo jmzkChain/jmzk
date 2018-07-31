@@ -384,7 +384,7 @@ Response
 ```
 > 12345 represents for '0.12345' EVT(PEVT).
 
-## POST /v1/evt/get_trx_id_for_link_id
+## POST /v1/chain/get_trx_id_for_link_id
 Used to fetch transaction id for one EVT-Link id. Only sucessful executing everiPay actions can be queried by this API.
 
 Request:
