@@ -377,7 +377,7 @@ void
 base_tester::add_money(const address& addr, const asset& number) {
     auto& tokendb = control->token_db();
     auto as = asset();
-    tokendb.read_asset_no_throw(addr, number.get_symbol(), as);
+    tokendb.read_asset_no_throw(addr, number.sym(), as);
     as += number;
     tokendb.update_asset(addr, as);
 }

@@ -15,6 +15,7 @@
 #include <evt/chain/plugin_interface.hpp>
 #include <evt/chain/transaction.hpp>
 #include <evt/chain/types.hpp>
+#include <evt/chain/token_database.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
@@ -29,7 +30,7 @@
 #include <bsoncxx/json.hpp>
 
 #include <mongocxx/client.hpp>
-#include <mongocxx/instance.hpp>
+#include <mongocxx/database.hpp>
 
 namespace fc {
 class variant;
@@ -49,8 +50,7 @@ private:
 
 public:
     mongo_db_plugin_impl()
-        : mongo_inst{}
-        , mongo_conn{}
+        : mongo_conn{}
     { }
 
     ~mongo_db_plugin_impl();
@@ -69,6 +69,7 @@ public:
     void _process_transaction(const transaction_trace&);
 
     void init();
+    void start();
     void wipe_database();
 
 public:
@@ -78,7 +79,7 @@ public:
     bool configured{false};
     bool wipe_database_on_startup{false};
 
-    mongocxx::instance mongo_inst;
+    mongocxx::uri      mongo_uri;
     mongocxx::client   mongo_conn;
     mongocxx::database mongo_db;
 
@@ -93,7 +94,6 @@ public:
     boost::condition_variable condition;
     boost::thread             consume_thread;
     boost::atomic<bool>       done{false};
-    boost::atomic<bool>       startup{true};
 
     channels::accepted_block::channel_type::handle      accepted_block_subscription;
     channels::irreversible_block::channel_type::handle  irreversible_block_subscription;
@@ -151,16 +151,10 @@ mongo_db_plugin_impl::applied_block(const block_state_ptr& bsp) {
 void
 mongo_db_plugin_impl::applied_transaction(const transaction_trace_ptr& ttp) {
     try {
-        if(startup) {
-            // on startup we don't want to queue, instead push back on caller
-            process_transaction(*ttp);
-        }
-        else {
-            boost::mutex::scoped_lock lock(mtx);
-            transaction_trace_queue.emplace_back(ttp);
-            lock.unlock();
-            condition.notify_one();
-        }
+        boost::mutex::scoped_lock lock(mtx);
+        transaction_trace_queue.emplace_back(ttp);
+        lock.unlock();
+        condition.notify_one();
     }
     catch(fc::exception& e) {
         elog("FC Exception while applied_transaction ${e}", ("e", e.to_string()));
@@ -670,11 +664,24 @@ mongo_db_plugin_impl::wipe_database() {
 
 void
 mongo_db_plugin_impl::init() {
+    // connect callbacks to channel
+    accepted_block_subscription = app().get_channel<channels::accepted_block>().subscribe(
+        boost::bind(&mongo_db_plugin_impl::applied_block, this, _1));
+    irreversible_block_subscription = app().get_channel<channels::irreversible_block>().subscribe(
+        boost::bind(&mongo_db_plugin_impl::applied_irreversible_block, this, _1));
+    applied_transaction_subscription = app().get_channel<channels::applied_transaction>().subscribe(
+        boost::bind(&mongo_db_plugin_impl::applied_transaction, this, _1));
+}
+
+void
+mongo_db_plugin_impl::start() {
     using namespace bsoncxx::types;
 
     auto blocks = mongo_db[blocks_col];  // Blocks
     bsoncxx::builder::stream::document doc{};
-    if(blocks.count(doc.view()) == 0) {
+
+    auto need_init = blocks.count(doc.view()) == 0;
+    if(need_init) {
         // Blocks indexes
         blocks.create_index(bsoncxx::from_json(R"xxx({ "block_num" : 1 })xxx"));
         blocks.create_index(bsoncxx::from_json(R"xxx({ "block_id" : 1 })xxx"));
@@ -706,19 +713,61 @@ mongo_db_plugin_impl::init() {
 
         // Fungibles indexes
         auto fungibles = mongo_db[fungibles_col];
-        fungibles.create_index(bsoncxx::from_json(R"xxx({ "sym" : 1 })xxx"));
+        fungibles.create_index(bsoncxx::from_json(R"xxx({ "sym_id" : 1 })xxx"));
     }
 
     // initilize evt interpreter
     interpreter.initialize_db(mongo_db);
 
-    // connect callbacks to channel
-    accepted_block_subscription = app().get_channel<channels::accepted_block>().subscribe(
-        boost::bind(&mongo_db_plugin_impl::applied_block, this, _1));
-    irreversible_block_subscription = app().get_channel<channels::irreversible_block>().subscribe(
-        boost::bind(&mongo_db_plugin_impl::applied_irreversible_block, this, _1));
-    applied_transaction_subscription = app().get_channel<channels::applied_transaction>().subscribe(
-        boost::bind(&mongo_db_plugin_impl::applied_transaction, this, _1));
+    if(need_init) {
+        // HACK: Add EVT and PEVT manually
+        auto& chain = app().get_plugin<chain_plugin>();
+        auto& tokendb = chain.chain().token_db();
+
+        auto evt  = fungible_def();
+        auto pevt = fungible_def();
+
+        tokendb.read_fungible(evt_sym(), evt);
+        tokendb.read_fungible(pevt_sym(), pevt);
+
+        auto g = group();
+        tokendb.read_group(N128(.everiToken), g);
+
+        auto get_nfact = [](auto& f) {
+            auto nf = newfungible();
+
+            nf.name         = f.name;
+            nf.sym_name     = f.sym_name;
+            nf.sym          = f.sym;
+            nf.creator      = f.creator;
+            nf.issue        = std::move(f.issue);
+            nf.manage       = std::move(f.manage);
+            nf.total_supply = f.total_supply;
+
+            auto nfact = action(N128(.fungible), (name128)std::to_string(nf.sym.id()), nf);
+            return nfact;
+        };
+
+        auto ng  = newgroup();
+        ng.name  = N128(.everiToken);
+        ng.group = std::move(g);
+
+        // HACK: construct one trx trace here to add EVT and PEVT fungibles to mongodb
+        auto trx_trace  = transaction_trace();
+        auto act_trace1 = action_trace();
+        auto act_trace2 = action_trace();
+        auto act_trace3 = action_trace();
+
+        act_trace1.act = get_nfact(evt);
+        act_trace2.act = get_nfact(pevt);
+        act_trace3.act = action(N128(.group), N128(.everiToken), ng);
+
+        trx_trace.action_traces.emplace_back(act_trace1);
+        trx_trace.action_traces.emplace_back(act_trace2);
+        trx_trace.action_traces.emplace_back(act_trace3);
+
+        interpreter.process_trx(trx_trace);
+    }
 }
 
 ////////////
@@ -732,9 +781,9 @@ mongo_db_plugin::mongo_db_plugin()
 mongo_db_plugin::~mongo_db_plugin() {
 }
 
-const mongocxx::database&
-mongo_db_plugin::db() const {
-    return my_->mongo_db;
+const mongocxx::uri&
+mongo_db_plugin::uri() const {
+    return my_->mongo_uri;
 }
 
 void
@@ -761,7 +810,7 @@ mongo_db_plugin::plugin_initialize(const variables_map& options) {
             my_->wipe_database_on_startup = true;
         }
         if(options.count("mongodb-queue-size")) {
-            auto size      = options.at("mongodb-queue-size").as<uint>();
+            auto size       = options.at("mongodb-queue-size").as<uint>();
             my_->queue_size = size;
         }
 
@@ -770,10 +819,12 @@ mongo_db_plugin::plugin_initialize(const variables_map& options) {
         
         auto uri    = mongocxx::uri{uri_str};
         auto dbname = uri.database();
-        if(dbname.empty())
+        if(dbname.empty()) {
             dbname = "EVT";
+        }
 
-        my_->mongo_conn = mongocxx::client{uri};
+        my_->mongo_uri  = std::move(uri);
+        my_->mongo_conn = mongocxx::client{my_->mongo_uri};
         my_->mongo_db   = my_->mongo_conn[dbname];
 
         my_->evt_abi  = evt_contract_abi();
@@ -794,11 +845,9 @@ void
 mongo_db_plugin::plugin_startup() {
     if(my_->configured) {
         ilog("starting db plugin");
-
+        my_->start();
         my_->consume_thread = boost::thread([this] { my_->consume_queues(); });
-
         // chain_controller is created and has resynced or replayed if needed
-        my_->startup = false;
     }
 }
 

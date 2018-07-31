@@ -137,9 +137,9 @@ struct act_charge<issuefungible> : public base_act_charge {
     static uint32_t
     extra_factor(const action& act) {
         auto& ifact = act.data_as<const issuefungible&>();
-        auto sym = ifact.number.get_symbol();
+        auto sym = ifact.number.sym();
         // set charge to zero when issuing EVT
-        if(sym == symbol(SY(5,EVT))) {
+        if(sym == evt_sym()) {
             return 0;
         }
         return 1;

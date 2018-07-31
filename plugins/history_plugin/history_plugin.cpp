@@ -43,10 +43,19 @@ public:
     const string fungibles_col     = "Fungibles";
 
 public:
-    history_plugin_impl(const mongocxx::database& db, const controller& chain)
-        : db_(db)
-        , chain_(chain)
-        , evt_abi_(contracts::evt_contract_abi()) {}
+    history_plugin_impl()
+        : chain_(app().get_plugin<chain_plugin>().chain())
+        , evt_abi_(contracts::evt_contract_abi()) {
+        auto& uri = app().get_plugin<mongo_db_plugin>().uri();
+        
+        client_ = mongocxx::client(uri);
+        if(uri.database().empty()) {
+            db_ = client_["EVT"];
+        }
+        else {
+            db_ = client_[uri.database()];
+        }
+    }
 
 public:
     variant get_tokens_by_public_keys(const vector<public_key_type>& pkeys);
@@ -68,7 +77,9 @@ private:
     variant transaction_to_variant(const packed_transaction& ptrx);
 
 public:
-    const mongocxx::database& db_;
+    mongocxx::client   client_;
+    mongocxx::database db_;
+    
     const controller& chain_;
     const abi_serializer evt_abi_;
 };
@@ -325,10 +336,7 @@ history_plugin::plugin_initialize(const variables_map& options) {
 
 void
 history_plugin::plugin_startup() {
-    this->my_.reset(new history_plugin_impl(
-        app().get_plugin<mongo_db_plugin>().db(),
-        app().get_plugin<chain_plugin>().chain()
-        ));
+    this->my_.reset(new history_plugin_impl());
 }
 
 void

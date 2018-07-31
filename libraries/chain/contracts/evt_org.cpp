@@ -38,9 +38,11 @@ initialize_evt_org(token_database& token_db, const genesis_state& genesis) {
     }
 
     // Add reserved EVT fungible tokens
-    if(!token_db.exists_fungible("EVT")) {
+    if(!token_db.exists_fungible(evt_sym())) {
         auto evt = fungible_def();
-        evt.sym = symbol(SY(5,EVT));
+        evt.name = "EVT";
+        evt.sym_name = "EVT";
+        evt.sym = evt_sym();
         evt.creator = genesis.initial_key;
         evt.create_time = genesis.initial_timestamp;
 
@@ -59,14 +61,16 @@ initialize_evt_org(token_database& token_db, const genesis_state& genesis) {
         evt.total_supply = asset(100'000'000'000'000L, evt.sym);
         token_db.add_fungible(evt);
 
-        auto addr = address(N(fungible), N128(EVT), 0);
+        auto addr = address(N(fungible), (name128)std::to_string(evt_sym().id()), 0);
         token_db.update_asset(addr, evt.total_supply);
     }
 
     // Add reserved Pined EVT fungible tokens
-    if(!token_db.exists_fungible("PEVT")) {
+    if(!token_db.exists_fungible(pevt_sym())) {
         auto pevt = fungible_def();
-        pevt.sym = symbol(SY(5,PEVT));
+        pevt.name = "Pinned.EVT";
+        pevt.sym_name = "PEVT";
+        pevt.sym = pevt_sym();
         pevt.creator = genesis.initial_key;
         pevt.create_time = genesis.initial_timestamp;
 
@@ -82,7 +86,6 @@ initialize_evt_org(token_database& token_db, const genesis_state& genesis) {
         pevt.manage = manage;
 
         pevt.total_supply = asset(0, pevt.sym);
-
         token_db.add_fungible(pevt);
     }
 }

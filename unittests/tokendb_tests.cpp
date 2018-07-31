@@ -580,49 +580,50 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_updategroup_test", "[tokendb]") {
 TEST_CASE_METHOD(tokendb_test, "tokendb_fungible_test", "[tokendb]") {
     auto tmp_fungible = fungible_def();
 
-    CHECK(!tokendb.exists_fungible("EVT"));
-    CHECK(!tokendb.exists_fungible(symbol(SY(5, EVT))));
-    CHECK_THROWS_AS(tokendb.read_fungible("EVT", tmp_fungible), tokendb_fungible_not_found);
-    CHECK_THROWS_AS(tokendb.read_fungible(symbol(SY(5, EVT)), tmp_fungible), tokendb_fungible_not_found);
+    CHECK(!tokendb.exists_fungible(EVT_SYM_ID));
+    CHECK(!tokendb.exists_fungible(symbol(5, EVT_SYM_ID)));
+    CHECK_THROWS_AS(tokendb.read_fungible(EVT_SYM_ID, tmp_fungible), tokendb_fungible_not_found);
+    CHECK_THROWS_AS(tokendb.read_fungible(symbol(5, EVT_SYM_ID), tmp_fungible), tokendb_fungible_not_found);
 
     auto evt_fungible = fungible_def();
-    evt_fungible.sym  = symbol(SY(5, EVT));
+    evt_fungible.sym  = symbol(5, EVT_SYM_ID);
     auto r            = tokendb.add_fungible(evt_fungible);
     CHECK(r == 0);
 
-    CHECK(tokendb.exists_fungible("EVT"));
-    CHECK(tokendb.exists_fungible(symbol(SY(5, EVT))));
-    CHECK(tokendb.exists_fungible(symbol(SY(4, EVT))));
+    CHECK(tokendb.exists_fungible(EVT_SYM_ID));
+    CHECK(tokendb.exists_fungible(symbol(5, EVT_SYM_ID)));
+    CHECK(tokendb.exists_fungible(symbol(4, EVT_SYM_ID)));
 
-    CHECK_NOTHROW(tokendb.read_fungible("EVT", tmp_fungible));
-    CHECK(tmp_fungible.sym == symbol(SY(5, EVT)));
-    CHECK_NOTHROW(tokendb.read_fungible(symbol(SY(5, EVT)), tmp_fungible));
-    CHECK(tmp_fungible.sym == symbol(SY(5, EVT)));
+    CHECK_NOTHROW(tokendb.read_fungible(EVT_SYM_ID, tmp_fungible));
+    CHECK(tmp_fungible.sym == symbol(5, EVT_SYM_ID));
+    CHECK_NOTHROW(tokendb.read_fungible(symbol(5, EVT_SYM_ID), tmp_fungible));
+    CHECK(tmp_fungible.sym == symbol(5, EVT_SYM_ID));
 
     auto tmp_asset = asset();
     auto address1  = public_key_type(std::string("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"));
     CHECK(!tokendb.exists_any_asset(address1));
-    CHECK(!tokendb.exists_asset(address1, symbol(SY(5, EVT))));
-    CHECK_THROWS_AS(tokendb.read_asset(address1, symbol(SY(5, EVT)), tmp_asset), tokendb_asset_not_found);
-    CHECK_NOTHROW(tokendb.read_asset_no_throw(address1, symbol(SY(5, EVT)), tmp_asset));
-    CHECK(tmp_asset == asset(0, symbol(SY(5, EVT))));
+    CHECK(!tokendb.exists_asset(address1, symbol(5, EVT_SYM_ID)));
+    CHECK_THROWS_AS(tokendb.read_asset(address1, symbol(5, EVT_SYM_ID), tmp_asset), tokendb_asset_not_found);
+    CHECK_NOTHROW(tokendb.read_asset_no_throw(address1, symbol(5, EVT_SYM_ID), tmp_asset));
+    CHECK(tmp_asset == asset(0, symbol(5, EVT_SYM_ID)));
 
+    int ETH = 666;
     auto s = 0;
     tokendb.read_all_assets(address1, [&](const auto&) { s++; return true; });
     CHECK(s == 0);
 
-    auto r1 = tokendb.update_asset(address1, asset(2000, symbol(SY(5, EVT))));
-    auto r2 = tokendb.update_asset(address1, asset(1000, symbol(SY(8, ETH))));
+    auto r1 = tokendb.update_asset(address1, asset(2000, symbol(5, EVT_SYM_ID)));
+    auto r2 = tokendb.update_asset(address1, asset(1000, symbol(8, ETH)));
 
     CHECK(r1 == 0);
     CHECK(r2 == 0);
 
     CHECK(tokendb.exists_any_asset(address1));
-    CHECK(tokendb.exists_asset(address1, symbol(SY(5, EVT))));
-    CHECK(tokendb.exists_asset(address1, symbol(SY(8, ETH))));
-    CHECK(!tokendb.exists_asset(address1, symbol(SY(4, EVT))));
-    CHECK_NOTHROW(tokendb.read_asset(address1, symbol(SY(5, EVT)), tmp_asset));
-    CHECK(tmp_asset == asset(2000, symbol(SY(5, EVT))));
+    CHECK(tokendb.exists_asset(address1, symbol(5, EVT_SYM_ID)));
+    CHECK(tokendb.exists_asset(address1, symbol(8, ETH)));
+    CHECK(!tokendb.exists_asset(address1, symbol(4, EVT_SYM_ID)));
+    CHECK_NOTHROW(tokendb.read_asset(address1, symbol(5, EVT_SYM_ID), tmp_asset));
+    CHECK(tmp_asset == asset(2000, symbol(5, EVT_SYM_ID)));
 
     auto s2 = 0;
     tokendb.read_all_assets(address1, [&](const auto& s) { INFO((std::string)s); s2++; return true; });
@@ -632,18 +633,18 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_fungible_test", "[tokendb]") {
     tokendb.read_all_assets(address2, [&](const auto&) { s++; return true; });
     CHECK(s == 0);
 
-    r1 = tokendb.update_asset(address2, asset(2000, symbol(SY(5, EVT))));
-    r2 = tokendb.update_asset(address2, asset(1000, symbol(SY(8, ETH))));
+    r1 = tokendb.update_asset(address2, asset(2000, symbol(5, EVT_SYM_ID)));
+    r2 = tokendb.update_asset(address2, asset(1000, symbol(8, ETH)));
 
     CHECK(r1 == 0);
     CHECK(r2 == 0);
 
     CHECK(tokendb.exists_any_asset(address2));
-    CHECK(tokendb.exists_asset(address2, symbol(SY(5, EVT))));
-    CHECK(tokendb.exists_asset(address2, symbol(SY(8, ETH))));
-    CHECK(!tokendb.exists_asset(address2, symbol(SY(4, EVT))));
-    CHECK_NOTHROW(tokendb.read_asset(address2, symbol(SY(5, EVT)), tmp_asset));
-    CHECK(tmp_asset == asset(2000, symbol(SY(5, EVT))));
+    CHECK(tokendb.exists_asset(address2, symbol(5, EVT_SYM_ID)));
+    CHECK(tokendb.exists_asset(address2, symbol(8, ETH)));
+    CHECK(!tokendb.exists_asset(address2, symbol(4, EVT_SYM_ID)));
+    CHECK_NOTHROW(tokendb.read_asset(address2, symbol(5, EVT_SYM_ID), tmp_asset));
+    CHECK(tmp_asset == asset(2000, symbol(5, EVT_SYM_ID)));
 
     s2 = 0;
     tokendb.read_all_assets(address2, [&](const auto& s) { INFO((std::string)s); s2++; return true; });
@@ -728,18 +729,18 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_checkpoint_test", "[tokendb]") {
     REQUIRE(pop_re == 0);
 
     tokendb.add_savepoint(get_time());
-    auto pevt    = symbol(SY(5, PEVT));
+    auto pevt    = symbol(5, PEVT_SYM_ID);
     auto address = public_key_type((std::string) "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV");
-    CHECK(!tokendb.exists_fungible("PEVT"));
+    CHECK(!tokendb.exists_fungible(PEVT_SYM_ID));
     CHECK(!tokendb.exists_any_asset(address));
     CHECK(!tokendb.exists_asset(address, pevt));
 
     fungible_def fungible;
-    fungible.sym = symbol(SY(5, EVT));
+    fungible.sym = symbol(5, EVT_SYM_ID);
     tokendb.add_fungible(fungible);
     tokendb.update_asset(address, asset(1000, pevt));
 
-    CHECK(tokendb.exists_fungible("EVT"));
+    CHECK(tokendb.exists_fungible(EVT_SYM_ID));
     CHECK(tokendb.exists_asset(address, pevt));
 
     tokendb.add_savepoint(get_time());
@@ -752,7 +753,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_checkpoint_test", "[tokendb]") {
 
     auto r = tokendb.rollback_to_latest_savepoint();
     CHECK(r == 0);
-    CHECK(!tokendb.exists_fungible("PEVT"));
+    CHECK(!tokendb.exists_fungible(PEVT_SYM_ID));
     CHECK(!tokendb.exists_any_asset(address));
     CHECK(!tokendb.exists_asset(address, pevt));
 
@@ -942,19 +943,21 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_persist_savepoints_4", "[tokendb]") {
     int pop_re = tokendb.pop_savepoints(get_time());
     REQUIRE(pop_re == 0);
 
+    int PPEVT = 777;
+
     tokendb.add_savepoint(get_time());
-    auto pevt    = symbol(SY(5, PPEVT));
+    auto pevt    = symbol(5, PPEVT);
     auto address = public_key_type((std::string) "EVT5tRjHNDPMxQfmejsGzNyQHRBiLAYEU7YZLfyHjvygnmmAUfYpX");
-    CHECK(!tokendb.exists_fungible("PPEVT"));
+    CHECK(!tokendb.exists_fungible(PPEVT));
     CHECK(!tokendb.exists_any_asset(address));
     CHECK(!tokendb.exists_asset(address, pevt));
 
     fungible_def fungible;
-    fungible.sym = symbol(SY(5, EVT));
+    fungible.sym = symbol(5, EVT_SYM_ID);
     tokendb.add_fungible(fungible);
     tokendb.update_asset(address, asset(1000, pevt));
 
-    CHECK(tokendb.exists_fungible("EVT"));
+    CHECK(tokendb.exists_fungible(EVT_SYM_ID));
     CHECK(tokendb.exists_asset(address, pevt));
 
     tokendb.add_savepoint(get_time());
@@ -962,8 +965,10 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_persist_savepoints_4", "[tokendb]") {
 }
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_persist_savepoints_5", "[tokendb]") {
+    int PPEVT = 777;
+    
     tokendb.rollback_to_latest_savepoint();
-    auto pevt    = symbol(SY(5, PPEVT));
+    auto pevt    = symbol(5, PPEVT);
     auto address = public_key_type((std::string) "EVT5tRjHNDPMxQfmejsGzNyQHRBiLAYEU7YZLfyHjvygnmmAUfYpX");
     auto a       = asset();
     tokendb.read_asset(address, pevt, a);
@@ -971,7 +976,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_persist_savepoints_5", "[tokendb]") {
 
     auto r = tokendb.rollback_to_latest_savepoint();
     CHECK(r == 0);
-    CHECK(!tokendb.exists_fungible("PPEVT"));
+    CHECK(!tokendb.exists_fungible(PPEVT));
     CHECK(!tokendb.exists_any_asset(address));
     CHECK(!tokendb.exists_asset(address, pevt));
 

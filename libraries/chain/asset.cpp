@@ -8,31 +8,53 @@
 
 namespace evt { namespace chain {
 
-uint8_t
-asset::decimals() const {
-    return sym.decimals();
+symbol
+symbol::from_string(const string& from) {
+    try {
+        auto s = fc::trim(from);
+
+        // Find comma in order to split precision and symbol id
+        auto c = s.find(',');
+        EVT_ASSERT(c != string::npos, symbol_type_exception, "Symbol's precision and id should be separated with comma");
+        FC_ASSERT(s.substr(c + 1, 2) == "S#");
+
+        auto p  = std::stoul(s.substr(0, c));
+        auto id = std::stoul(s.substr(c + 3));
+
+        return symbol(p, id);
+    }
+    EVT_CAPTURE_AND_RETHROW(symbol_type_exception, (from));
 }
 
 string
-asset::symbol_name() const {
-    return sym.name();
-}
-
-int64_t
-asset::precision() const {
-    return sym.precision();
+symbol::to_string() const {
+    auto str = fc::to_string(precision());
+    str.append(",S#");
+    str.append(fc::to_string(id()));
+    return str;
 }
 
 string
 asset::to_string() const {
-    auto sign = amount < 0 ? "-" : "";
-    int64_t abs_amount = std::abs(amount);
-    auto result = fc::to_string(static_cast<int64_t>(abs_amount) / precision());
-    if(decimals()) {
-        auto fract = static_cast<int64_t>(abs_amount) % precision();
-        result += "." + fc::to_string(precision() + fract).erase(0,1);
+    auto sign = amount_ < 0 ? "-" : "";
+    auto abs_amount = std::abs(amount_);
+
+    auto str = fc::to_string(abs_amount);
+    
+    if(precision() >= str.size()) {
+        auto zeros = precision() - str.size();
+        str.insert(0, "0.");
+        str.insert(2, zeros, '0');
     }
-    return sign + result + " " + symbol_name();
+    else if(precision() > 0) {
+        str.insert(str.size() - precision(), 1, '.');
+    }
+
+    str.insert(0, sign);
+
+    str.append(" S#");
+    str.append(fc::to_string(sym_.id()));
+    return str;
 }
 
 asset
@@ -44,7 +66,9 @@ asset::from_string(const string& from) {
         auto space_pos = s.find(' ');
         EVT_ASSERT((space_pos != string::npos), asset_type_exception,
                    "Asset's amount and symbol should be separated with space");
-        auto symbol_str = fc::trim(s.substr(space_pos + 1));
+        FC_ASSERT(s.substr(space_pos + 1, 2) == "S#");
+
+        auto symbol_str = s.substr(space_pos + 3);
         auto amount_str = s.substr(0, space_pos);
 
         // Ensure that if decimal point is used (.), decimal fraction is specified
@@ -55,36 +79,23 @@ asset::from_string(const string& from) {
         }
 
         // Parse symbol
-        string precision_digit_str;
-        if(dot_pos != string::npos) {
-            precision_digit_str = evt::chain::to_string(amount_str.size() - dot_pos - 1);
-        }
-        else {
-            precision_digit_str = "0";
-        }
+        auto precision = 0u;
+        auto sym_id    = fc::to_uint64(symbol_str);
 
-        string symbol_part = precision_digit_str + ',' + symbol_str;
-        symbol sym         = symbol::from_string(symbol_part);
+        if(dot_pos != string::npos) {
+            precision = amount_str.size() - dot_pos - 1;
+        }
 
         // Parse amount
-        safe<int64_t> int_part, fract_part;
+        auto amount = safe<int64_t>();
         if(dot_pos != string::npos) {
-            int_part   = fc::to_int64(amount_str.substr(0, dot_pos));
-            fract_part = fc::to_int64(amount_str.substr(dot_pos + 1));
-            if(amount_str[0] == '-')
-                fract_part *= -1;
+            amount_str.erase(dot_pos, 1);
         }
-        else {
-            int_part = fc::to_int64(amount_str);
-        }
+        amount = fc::to_int64(amount_str);
 
-        safe<int64_t> amount = int_part;
-        amount *= safe<int64_t>(sym.precision());
-        amount += fract_part;
-
-        return asset(amount.value, sym);
+        return asset(amount.value, symbol(precision, sym_id));
     }
-    FC_CAPTURE_LOG_AND_RETHROW((from))
+    EVT_CAPTURE_AND_RETHROW(asset_type_exception, (from));
 }
 
 }}  // namespace evt::chain

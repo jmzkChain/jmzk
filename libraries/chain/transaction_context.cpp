@@ -138,12 +138,12 @@ transaction_context::check_paid() const {
     }  // switch
     
     asset evt, pevt;
-    tokendb.read_asset_no_throw(payer, symbol(SY(5,PEVT)), pevt);
-    if(pevt.get_amount() > charge) {
+    tokendb.read_asset_no_throw(payer, pevt_sym(), pevt);
+    if(pevt.amount() > charge) {
         return;
     }
-    tokendb.read_asset_no_throw(payer, symbol(SY(5,EVT)), evt);
-    if(pevt.get_amount() + evt.get_amount() >= charge) {
+    tokendb.read_asset_no_throw(payer, evt_sym(), evt);
+    if(pevt.amount() + evt.amount() >= charge) {
         return;
     }
     EVT_THROW(charge_exceeded_exception, "There are only ${e} and ${p} left, but charge is ${c}", ("e",evt)("p",pevt)("c",charge));
