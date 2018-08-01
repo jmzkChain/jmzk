@@ -23,8 +23,7 @@ extern std::string evt_unittests_dir;
 
 class tokendb_test {
 public:
-    tokendb_test()
-        : ti(0) {
+    tokendb_test() {
         tokendb.initialize(evt_unittests_dir + "/tokendb_tests");
     }
     ~tokendb_test() {}
@@ -37,8 +36,10 @@ protected:
 
 protected:
     token_database tokendb;
-    int            ti;
+    static int     ti;
 };
+
+int tokendb_test::ti = 0;
 
 domain_def
 add_domain_data() {
@@ -799,6 +800,9 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_checkpoint_test", "[tokendb]") {
     CHECK(tokendb.get_savepoints_size() == 2);
 
     CHECK_NOTHROW(tokendb.pop_savepoints(0));
+
+    tokendb.pop_savepoints(get_time() + 100);
+    CHECK(tokendb.get_savepoints_size() == 0);
 }
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_addsuspend_test", "[tokendb]") {
@@ -940,8 +944,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_persist_savepoints_3", "[tokendb]") {
 }
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_persist_savepoints_4", "[tokendb]") {
-    int pop_re = tokendb.pop_savepoints(get_time());
-    REQUIRE(pop_re == 0);
+    tokendb.pop_savepoints(get_time() + 1);
 
     int PPEVT = 777;
 

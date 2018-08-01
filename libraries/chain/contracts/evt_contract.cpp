@@ -6,8 +6,10 @@
 
 #include <algorithm>
 #include <string>
+
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/ripemd160.hpp>
+
 #include <evt/chain/apply_context.hpp>
 #include <evt/chain/token_database.hpp>
 #include <evt/chain/transaction_context.hpp>

@@ -444,7 +444,7 @@ producer_plugin::set_program_options(
             "   <public-key>    \tis a string form of a vaild EVT public key\n\n"
             "   <provider-spec> \tis a string in the form <provider-type>:<data>\n\n"
             "   <provider-type> \tis KEY, or EVTWD\n\n"
-            "   KEY:<data>      \tis a string form of a valid EOSIO private key which maps to the provided public key\n\n"
+            "   KEY:<data>      \tis a string form of a valid EVT private key which maps to the provided public key\n\n"
             "   EVTWD:<data>    \tis the URL where evtwd is available and the approptiate wallet(s) are unlocked")
          ("evtwd-provider-timeout", boost::program_options::value<int32_t>()->default_value(5), "Limits the maximum time (in milliseconds) that is allowd for sending blocks to a evtwd provider for signing")
          ;

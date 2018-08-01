@@ -635,7 +635,7 @@ struct controller_impl {
                     if(receipt.type == transaction_receipt::input) {
                         auto& pt = receipt.trx;
                         auto mtrx = std::make_shared<transaction_metadata>(pt);
-                        trace = push_transaction( mtrx, fc::time_point::maximum(), false);
+                        trace = push_transaction(mtrx, fc::time_point::maximum(), false);
                     }
                     else if(receipt.type == transaction_receipt::suspend) {
                         // suspend transaction is executed in its parent transaction

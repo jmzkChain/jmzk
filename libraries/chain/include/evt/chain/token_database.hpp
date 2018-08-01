@@ -14,6 +14,18 @@ namespace rocksdb {
 class DB;
 }  // namespace rocksdb
 
+// Use only lower 48-bit address for some pointers.
+/*
+    This optimization uses the fact that current X86-64 architecture only implement lower 48-bit virtual address.
+    The higher 16-bit can be used for storing other data.
+*/
+#if defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || defined(__x86_64) || defined(_M_X64) || defined(_M_AMD64)
+#define SETPOINTER(type, p, x) (p = reinterpret_cast<type *>((reinterpret_cast<uintptr_t>(p) & static_cast<uintptr_t>(0xFFFF000000000000UL)) | reinterpret_cast<uintptr_t>(reinterpret_cast<const void*>(x))))
+#define GETPOINTER(type, p) (reinterpret_cast<type *>(reinterpret_cast<uintptr_t>(p) & static_cast<uintptr_t>(0x0000FFFFFFFFFFFFUL)))
+#else
+#error EVT can only be compiled in X86-64 architecture
+#endif
+
 namespace evt { namespace chain {
 
 using namespace evt::chain::contracts;
@@ -21,26 +33,67 @@ using read_fungible_func = std::function<bool(const asset&)>;
 
 class token_database : boost::noncopyable {
 public:
-    struct dbaction {
-        int32_t type;
-        void*   data;
-    };
-    
-    struct savepoint {
-        int64_t               seq;
-        const void*           rb_snapshot;
-        std::vector<dbaction> actions;
+    struct flag {
+    public:
+        flag(uint16_t type) : type(type) {}
+
+    public:
+        char     payload[6];
+        uint16_t type;
     };
 
-    struct psp_action {
+    // realtime action
+    // stored in memory
+    struct rt_action {
+    public:
+        rt_action(uint16_t type, void* data)
+            : f(type) {
+            SETPOINTER(void, this->data, data);
+        }
+
+        union {
+            flag  f;
+            void* data;
+        };
+    };
+
+    struct rt_group {
+        const void*            rb_snapshot;
+        std::vector<rt_action> actions;
+    };
+
+    // persistent action
+    // stored in disk
+    struct pd_action {
         int         op;
         std::string key;
         std::string value;
     };
 
-    struct psp_savepoint {
-        int64_t                 seq;
-        std::vector<psp_action> actions;
+    struct pd_group {
+        int64_t                seq; // used for persistent
+        std::vector<pd_action> actions;
+    };
+
+    struct sp_node {
+    public:
+        sp_node(uint16_t type) : f(type), prev(nullptr) {}
+
+    public:
+        union {
+            flag  f;
+            void* group;
+        };
+        sp_node* prev;
+    };
+
+    struct savepoint {
+    public:
+        savepoint(int64_t seq) : seq(seq) {}
+
+    public:
+        int64_t  seq;
+        sp_node* node;
     };
 
 public:
@@ -68,7 +121,7 @@ public:
 
     public:
         void accept() { _accept = 1; }
-        void squash() { _accept = 1; _token_db.pop_back_savepoint(); }
+        void squash() { _accept = 1; _token_db.squash(); }
         void undo()   { _accept = 1; _token_db.rollback_to_latest_savepoint(); }
 
         int seq() const { return _seq; }
@@ -86,8 +139,7 @@ public:
         , write_opts_()
         , tokens_handle_(nullptr)
         , assets_handle_(nullptr)
-        , savepoints_()
-        , persistent_savepoints_() {}
+        , savepoints_() {}
     token_database(const fc::path& dbpath);
     ~token_database();
 
@@ -135,6 +187,7 @@ public:
     int rollback_to_latest_savepoint();
     int pop_savepoints(int64_t until);
     int pop_back_savepoint();
+    int squash();
 
     session new_savepoint_session(int64_t seq);
     session new_savepoint_session();
@@ -142,8 +195,8 @@ public:
     size_t get_savepoints_size() const { return savepoints_.size(); }
 
 private:
-    int rollback_latest_savepoint();
-    int rollback_latest_persistent_savepoint();
+    int rollback_rt_group(rt_group*);
+    int rollback_pd_group(pd_group*);
 
 private:
     int should_record() { return !savepoints_.empty(); }
@@ -165,7 +218,6 @@ private:
     rocksdb::ColumnFamilyHandle* assets_handle_;  
 
     std::deque<savepoint>        savepoints_;
-    std::deque<psp_savepoint>    persistent_savepoints_;
 };
 
 }}  // namespace evt::chain

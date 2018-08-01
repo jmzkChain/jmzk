@@ -150,7 +150,12 @@ read_value(const V& value) {
     return v;
 }
 
-enum dbaction_type {
+enum action_type {
+    kRT = 0,
+    kPD = 1
+};
+
+enum rt_action_type {
     kNone = 0,
 
     kNewDomain = 1,
@@ -169,6 +174,12 @@ enum dbaction_type {
     kUpdateFungible = 10,
 
     kUpdateAsset = 11
+};
+
+enum pd_action_type {
+    kRevert = 0,
+    kRemove,
+    kRemoveOrRevert
 };
 
 struct sp_domain {
@@ -701,10 +712,15 @@ token_database::update_fungible(const fungible_def& fungible) {
 
 int
 token_database::record(int type, void* data) {
+    using namespace __internal;
+
     if(!should_record()) {
         return 0;
     }
-    savepoints_.back().actions.emplace_back(dbaction{.type = type, .data = data});
+    auto& back = savepoints_.back();
+    FC_ASSERT(back.node->f.type == kRT);
+
+    GETPOINTER(rt_group, back.node->group)->actions.emplace_back(rt_action(type, data));
     return 0;
 }
 
@@ -720,15 +736,15 @@ token_database::new_savepoint_session() {
     if(!savepoints_.empty()) {
         seq = savepoints_.back().seq + 1;
     }
-    else if(!persistent_savepoints_.empty()) {
-        seq = persistent_savepoints_.back().seq + 1;
-    }
+
     add_savepoint(seq);
     return session(*this, seq);
 }
 
 int
 token_database::add_savepoint(int64_t seq) {
+    using namespace __internal;
+
     if(!savepoints_.empty()) {
         auto& b = savepoints_.back();
         if(b.seq >= seq) {
@@ -736,32 +752,58 @@ token_database::add_savepoint(int64_t seq) {
                       ("prev", b.seq)("curr", seq));
         }
     }
-    savepoints_.emplace_back(savepoint{.seq = seq, .rb_snapshot = (const void*)db_->GetSnapshot(), .actions = {}});
+
+    savepoints_.emplace_back(savepoint(seq));
+
+    auto& back = savepoints_.back();
+    back.node  = new sp_node(kRT); 
+
+    auto rt = new rt_group { .rb_snapshot = (const void*)db_->GetSnapshot(), .actions = {} };
+    SETPOINTER(void, back.node->group, rt);
+
     return 0;
 }
 
 int
-token_database::free_savepoint(savepoint& cp) {
-    for(auto& act : cp.actions) {
-        free(act.data);
+token_database::free_savepoint(savepoint& sp) {
+    using namespace __internal;
+
+    auto n = sp.node;
+    while(n) {
+        switch(n->f.type) {
+        case kRT: {
+            auto rt = GETPOINTER(rt_group, n->group);
+            for(auto& act : rt->actions) {
+                free(GETPOINTER(void, act.data));
+            }
+            db_->ReleaseSnapshot((const rocksdb::Snapshot*)rt->rb_snapshot);
+            delete rt;
+            break;
+        }
+        case kPD: {
+            auto pd = GETPOINTER(pd_group, n->group);
+            delete pd;
+            break;
+        }
+        default: {
+            FC_ASSERT(false);
+        }
+        }  // switch
+
+        auto t = n;
+        n = n->prev;
+
+        delete t;
     }
-    db_->ReleaseSnapshot((const rocksdb::Snapshot*)cp.rb_snapshot);
     return 0;
 }
 
 int
 token_database::pop_savepoints(int64_t until) {
-    if(!persistent_savepoints_.empty()) {
-        while(!persistent_savepoints_.empty() && persistent_savepoints_.front().seq < until) {
-            persistent_savepoints_.pop_front();
-        }
-    }
-    if(!savepoints_.empty()) {
-        while(!savepoints_.empty() && savepoints_.front().seq < until) {
-            auto it = std::move(savepoints_.front());
-            savepoints_.pop_front();
-            free_savepoint(it);
-        }
+    while(!savepoints_.empty() && savepoints_.front().seq < until) {
+        auto it = std::move(savepoints_.front());
+        savepoints_.pop_front();
+        free_savepoint(it);
     }
     return 0;
 }
@@ -774,55 +816,76 @@ token_database::pop_back_savepoint() {
         free_savepoint(it);
         return 0;
     }
-    if(!persistent_savepoints_.empty()) {
-        persistent_savepoints_.pop_back();
-        return 0;
-    }
     EVT_THROW(tokendb_no_savepoint, "There's no savepoints anymore");
+}
+
+int
+token_database::squash() {
+    //       sp1 (lhs)     sp2 (rhs)
+    //       |             |
+    // n3 <- n4      n5 <- n6
+    // 
+    // squash sp2 into sp1
+    //
+    //                   sp1
+    //                   |
+    // n3 <- n4 <- n5 <- n6
+
+
+    FC_ASSERT(savepoints_.size() >= 2);
+    
+    auto n = savepoints_.back().node;
+    
+    // find head node of rhs savepoint
+    auto h = n;
+    while(h->prev) {
+        h = h->prev;
+    }
+
+    savepoints_.pop_back();
+    auto& back = savepoints_.back();
+
+    h->prev   = back.node;
+    back.node = n;
+
+    return 0;
 }
 
 namespace __internal {
 
-enum KeyOp : int {
-    kRevert = 0,
-    kRemove,
-    kRemoveOrRevert
-};
-
 db_key
-get_sp_keyop(const token_database::dbaction& it, int& op) {
+get_sp_keyop(const token_database::rt_action& it, int& op) {
     // for the db action type, New-Ops are odd and Update-Ops are even
     // for Update-Ops return kRevert(0) and returns kRemove(1) for New-Ops
-    op = it.type % 2;
+    op = it.f.type % 2;
 
-    switch(it.type) {
+    switch(it.f.type) {
     case kNewDomain:
     case kUpdateDomain: {
-        auto act = (sp_domain*)it.data;
+        auto act = GETPOINTER(sp_domain, it.data);
         return get_domain_key(act->name);
     }
     case kNewGroup:
     case kUpdateGroup: {
-        auto act = (sp_group*)it.data;
+        auto act = GETPOINTER(sp_group, it.data);
         return get_group_key(act->name);
     }
     case kNewSuspend:
     case kUpdateSuspend: {
-        auto act = (sp_suspend*)it.data;
+        auto act = GETPOINTER(sp_suspend, it.data);
         return get_suspend_key(act->name);
     }
     case kNewFungible:
     case kUpdateFungible: {
-        auto act = (sp_fungible*)it.data;
+        auto act = GETPOINTER(sp_fungible, it.data);
         return get_fungible_key(act->sym_id);
     }
     case kUpdateToken: {
-        auto act = (sp_token*)it.data;
+        auto act = GETPOINTER(sp_token, it.data);
         return get_token_key(act->domain, act->name);
     }
     default: {
-        EVT_THROW(tokendb_db_action_exception, "Unexpected action type: ${type}", ("type", it.type));
-        break;
+        FC_ASSERT(false);
     }
     }  // switch
 }
@@ -830,30 +893,30 @@ get_sp_keyop(const token_database::dbaction& it, int& op) {
 }  // namespace __internal
 
 int
-token_database::rollback_latest_savepoint() {
+token_database::rollback_rt_group(rt_group* rt) {
     using namespace __internal;
 
-    auto& cp = savepoints_.back();
-    if(cp.actions.size() > 0) {
+    if(rt->actions.size() > 0) {
         auto snapshot_read_opts_     = read_opts_;
-        snapshot_read_opts_.snapshot = (const rocksdb::Snapshot*)cp.rb_snapshot;
-        rocksdb::WriteBatch batch;
-
-        for(auto it = --cp.actions.end(); it >= cp.actions.begin(); it--) {
-            if(it->type == kIssueToken) {
+        snapshot_read_opts_.snapshot = (const rocksdb::Snapshot*)rt->rb_snapshot;
+        
+        auto batch = rocksdb::WriteBatch();
+        for(auto it = --rt->actions.end(); it >= rt->actions.begin(); it--) {
+            auto data = GETPOINTER(void, it->data);
+            if(it->f.type == kIssueToken) {
                 // special process issue token action, cuz it's multiple keys
-                auto act = (sp_issuetoken*)it->data;
+                auto act = (sp_issuetoken*)data;
                 for(size_t i = 0; i < act->size; i++) {
                     auto key = get_token_key(act->domain, act->names[i]);
                     batch.Delete(key.as_slice());
                 }
 
-                free(it->data);
+                free(data);
                 continue;
             }
-            else if(it->type == kUpdateAsset) {
+            else if(it->f.type == kUpdateAsset) {
                 // special process update asset action, cuz it's asset key and need to check existed
-                auto act = (sp_asset*)it->data;
+                auto act = (sp_asset*)data;
                 auto key = rocksdb::Slice(act->key, sizeof(act->key));
 
                 auto old_value = std::string();
@@ -869,7 +932,7 @@ token_database::rollback_latest_savepoint() {
                 }
                 batch.Put(assets_handle_, key, old_value);
 
-                free(it->data);
+                free(data);
                 continue;
             }
 
@@ -890,9 +953,12 @@ token_database::rollback_latest_savepoint() {
                 batch.Delete(key.as_slice());
                 break;
             }
+            default: {
+                FC_ASSERT(false);
+            }
             }  // switch
 
-            free(it->data);
+            free(data);
         }  // for
 
         auto sync_write_opts = write_opts_;
@@ -900,19 +966,17 @@ token_database::rollback_latest_savepoint() {
         db_->Write(sync_write_opts, &batch);
     }  // if
 
-    db_->ReleaseSnapshot((const rocksdb::Snapshot*)cp.rb_snapshot);
-    savepoints_.pop_back();
+    db_->ReleaseSnapshot((const rocksdb::Snapshot*)rt->rb_snapshot);
     return 0;
 }
 
 int
-token_database::rollback_latest_persistent_savepoint() {
+token_database::rollback_pd_group(pd_group* pd) {
     using namespace __internal;
-    auto& psp = persistent_savepoints_.back();
-    if(psp.actions.size() > 0) {
+    if(pd->actions.size() > 0) {
         rocksdb::WriteBatch batch;
 
-        for(auto it = --psp.actions.end(); it >= psp.actions.begin(); it--) {
+        for(auto it = --pd->actions.end(); it >= pd->actions.begin(); it--) {
             switch(it->op) {
             case kRevert: {
                 FC_ASSERT(!it->value.empty());
@@ -934,6 +998,9 @@ token_database::rollback_latest_persistent_savepoint() {
                 }
                 break;
             }
+            default: {
+                FC_ASSERT(false);
+            }
             }  // switch
         }
 
@@ -942,24 +1009,50 @@ token_database::rollback_latest_persistent_savepoint() {
         db_->Write(sync_write_opts, &batch);
     }
 
-    persistent_savepoints_.pop_back();
     return 0;
 }
 
 int
 token_database::rollback_to_latest_savepoint() {
-    if(!savepoints_.empty()) {
-        return rollback_latest_savepoint();
+    using namespace __internal;
+    EVT_ASSERT(!savepoints_.empty(), tokendb_no_savepoint, "There's no savepoints anymore");
+
+    auto& back = savepoints_.back();
+
+    auto n = back.node;
+    while(n) {
+        switch(back.node->f.type) {
+        case kRT: {
+            auto rt = GETPOINTER(rt_group, back.node->group);
+            rollback_rt_group(rt);
+            delete rt;
+
+            break;
+        }
+        case kPD: {
+            auto pd = GETPOINTER(pd_group, back.node->group);
+            rollback_pd_group(pd);
+            delete pd;
+
+            break;
+        }
+        default: {
+            FC_ASSERT(false);
+        }
+        }  // switch
+
+        auto t = n;
+        n = n->prev;
+        delete t;
     }
-    if(!persistent_savepoints_.empty()) {
-        return rollback_latest_persistent_savepoint();
-    }
-    EVT_THROW(tokendb_no_savepoint, "There's no savepoints anymore");
+
+    savepoints_.pop_back();
+    return 0;
 }
 
 namespace __internal {
 
-struct psp_header {
+struct pd_header {
     int dirty_flag;
 };
 
@@ -977,85 +1070,118 @@ token_database::persist_savepoints() {
     fs.exceptions(std::fstream::failbit | std::fstream::badbit);
     fs.open(filename.to_native_ansi_path(), (std::ios::out | std::ios::binary));
 
-    auto h = psp_header {
+    auto h = pd_header {
         .dirty_flag = 1
     };
     // set dirty first
     fc::raw::pack(fs, h);
 
-    // write savepoints, save old psps first
-    auto psps = std::deque<psp_savepoint>(std::move(persistent_savepoints_));
+    auto pds = std::vector<pd_group>();
 
     for(auto& sp : savepoints_) {
-        auto psp = psp_savepoint();
-        psp.seq  = sp.seq;
+        auto pd = pd_group();
+        pd.seq  = sp.seq;
 
-        auto snapshot_read_opts_     = read_opts_;
-        snapshot_read_opts_.snapshot = (const rocksdb::Snapshot*)sp.rb_snapshot;
+        auto acts = std::deque<pd_action>();
+        auto n    = sp.node;
 
-        for(auto& act : sp.actions) {
-            if(act.type == kIssueToken) {
-                // special process issue token action, cuz it's multiple keys
-                auto itact = (sp_issuetoken*)act.data;
-                for(size_t i = 0; i < itact->size; i++) {
-                    auto key    = get_token_key(itact->domain, itact->names[i]);
-                    auto pspact = psp_action();
-                    pspact.op   = kRemove;
-                    pspact.key  = key.as_slice().ToString();
+        while(n) {
+            switch(n->f.type) {
+            case kPD: {
+                auto pd = GETPOINTER(pd_group, n->group);
+                acts.insert(acts.cbegin(), pd->actions.cbegin(), pd->actions.cend());
+                delete pd;
 
-                    psp.actions.emplace_back(pspact);
-                }
-
-                free(act.data);
-                continue;
-            }
-            else if(act.type == kUpdateAsset) {
-                // special process update asset action, cuz it's asset key and need to check existed
-                auto uaact  = (sp_asset*)act.data;
-                auto key    = rocksdb::Slice(uaact->key, sizeof(uaact->key));
-                auto pspact = psp_action();
-                pspact.op   = kRemoveOrRevert;
-                pspact.key  = key.ToString();
-                auto status = db_->Get(snapshot_read_opts_, assets_handle_, key, &pspact.value);
-                // key may not existed in latest snapshot
-                if(!status.ok() && status.code() != rocksdb::Status::kNotFound) {
-                    FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
-                }
-                psp.actions.emplace_back(pspact);
-
-                free(act.data);
-                continue;
-            }
-
-            auto pspact = psp_action();
-            int  op     = 0;
-            auto key    = get_sp_keyop(act, op);
-
-            pspact.op  = op;
-            pspact.key = key.as_slice().ToString();
-
-            switch(op) {
-            case kRevert: {
-                auto status = db_->Get(snapshot_read_opts_, key.as_slice(), &pspact.value);
-                if(!status.ok()) {
-                    FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
-                }
                 break;
             }
-            case kRemove: {
-                // no need to read value
+            case kRT: {
+                auto rt     = GETPOINTER(rt_group, n->group);
+                auto rtacts = std::vector<pd_action>();
+
+                auto snapshot_read_opts_     = read_opts_;
+                snapshot_read_opts_.snapshot = (const rocksdb::Snapshot*)rt->rb_snapshot;
+
+                for(auto& act : rt->actions) {
+                    auto data = GETPOINTER(void, act.data);
+                    if(act.f.type == kIssueToken) {
+                        // special process issue token action, cuz it's multiple keys
+                        auto itact = (sp_issuetoken*)data;
+                        for(size_t i = 0; i < itact->size; i++) {
+                            auto key   = get_token_key(itact->domain, itact->names[i]);
+                            auto pdact = pd_action();
+                            pdact.op   = kRemove;
+                            pdact.key  = key.as_slice().ToString();
+
+                            rtacts.emplace_back(pdact);
+                        }
+
+                        free(data);
+                        continue;
+                    }
+                    else if(act.f.type == kUpdateAsset) {
+                        // special process update asset action, cuz it's asset key and need to check existed
+                        auto uaact  = (sp_asset*)data;
+                        auto key    = rocksdb::Slice(uaact->key, sizeof(uaact->key));
+                        auto pdact  = pd_action();
+                        pdact.op    = kRemoveOrRevert;
+                        pdact.key   = key.ToString();
+                        auto status = db_->Get(snapshot_read_opts_, assets_handle_, key, &pdact.value);
+                        // key may not existed in latest snapshot
+                        if(!status.ok() && status.code() != rocksdb::Status::kNotFound) {
+                            FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+                        }
+                        rtacts.emplace_back(pdact);
+
+                        free(data);
+                        continue;
+                    }
+
+                    auto pdact = pd_action();
+                    int  op    = 0;
+                    auto key   = get_sp_keyop(act, op);
+
+                    pdact.op  = op;
+                    pdact.key = key.as_slice().ToString();
+
+                    switch(op) {
+                    case kRevert: {
+                        auto status = db_->Get(snapshot_read_opts_, key.as_slice(), &pdact.value);
+                        if(!status.ok()) {
+                            FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+                        }
+                        break;
+                    }
+                    case kRemove: {
+                        // no need to read value
+                        break;
+                    }
+                    }  // switch
+                    
+                    rtacts.emplace_back(pdact);
+                    free(data);
+                }
+
+                db_->ReleaseSnapshot((const rocksdb::Snapshot*)rt->rb_snapshot);
+                acts.insert(acts.cbegin(), rtacts.cbegin(), rtacts.cend());
+                delete rt;
+
                 break;
+            }
+            default: {
+                FC_ASSERT(false);
             }
             }  // switch
-            
-            psp.actions.emplace_back(pspact);
-            free(act.data);
-        }
 
-        db_->ReleaseSnapshot((const rocksdb::Snapshot*)sp.rb_snapshot);
-        psps.emplace_back(std::move(psp));
+            auto t = n;
+            n = n->prev;
+            delete t;
+
+            pd.actions.insert(pd.actions.begin(), acts.cbegin(), acts.cend());
+            pds.emplace_back(std::move(pd));
+        }  // for
+
     }
-    fc::raw::pack(fs, psps);
+    fc::raw::pack(fs, pds);
     fs.seekp(0);
 
     h.dirty_flag = 0;
@@ -1081,14 +1207,22 @@ token_database::load_savepoints() {
     fs.exceptions(std::fstream::failbit | std::fstream::badbit);
     fs.open(filename.to_native_ansi_path(), (std::ios::in | std::ios::binary));
 
-    auto h = psp_header();
+    auto h = pd_header();
     fc::raw::unpack(fs, h);
     EVT_ASSERT(h.dirty_flag == 0, tokendb_dirty_flag_exception, "checkpoints log file dirty flag set");
 
-    auto psps = std::deque<psp_savepoint>();
-    fc::raw::unpack(fs, psps);
+    auto pds = std::vector<pd_group>();
+    fc::raw::unpack(fs, pds);
 
-    persistent_savepoints_ = std::move(psps);
+    for(auto& pd : pds) {
+        savepoints_.emplace_back(savepoint(pd.seq));
+
+        auto& back = savepoints_.back();
+        back.node  = new sp_node(kPD); 
+
+        auto ppd = new pd_group(pd);
+        SETPOINTER(void, back.node->group, ppd);
+    }
     fs.close();
 
     return 0;
@@ -1096,6 +1230,6 @@ token_database::load_savepoints() {
 
 }}  // namespace evt::chain
 
-FC_REFLECT(evt::chain::__internal::psp_header, (dirty_flag));
-FC_REFLECT(evt::chain::token_database::psp_action, (op)(key)(value));
-FC_REFLECT(evt::chain::token_database::psp_savepoint, (seq)(actions));
+FC_REFLECT(evt::chain::__internal::pd_header, (dirty_flag));
+FC_REFLECT(evt::chain::token_database::pd_action, (op)(key)(value));
+FC_REFLECT(evt::chain::token_database::pd_group, (seq)(actions));

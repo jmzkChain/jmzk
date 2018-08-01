@@ -197,7 +197,7 @@ endif()
 
 if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug" OR ENABLE_BREAKPAD_SUPPORT)
     message(STATUS "Build EVT with symbols")
-    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g" )
+    set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0" )
 endif()
 
 include_directories(libraries/rocksdb/include)
