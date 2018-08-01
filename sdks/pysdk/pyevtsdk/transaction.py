@@ -12,7 +12,7 @@ class Transaction:
         self.block_id = None
 
         self.expiration = (datetime.datetime.utcnow(
-        ) + datetime.timedelta(hours=1)).strftime('%Y-%m-%dT%H:%M:%S')
+        ) + datetime.timedelta(seconds=1800)).strftime('%Y-%m-%dT%H:%M:%S')
         self.actions = []
         self.transaction_extensions = []
 
@@ -77,17 +77,19 @@ class Transaction:
 
 
 class TrxGenerator:
-    def __init__(self, url):
+    def __init__(self, url, payer):
         evtapi = api.Api(url)
         info = json.loads(evtapi.get_info())
         chain_id_str = info['chain_id']
         block_id_str = info['head_block_id']
         self.chain_id = abi.ChainId.from_string(chain_id_str)
         self.block_id = abi.BlockId.from_string(block_id_str)
+        self.payer = payer
 
     def new_trx(self):
         trx = Transaction()
         trx.set_header(chain_id=self.chain_id, block_id=self.block_id)
+        trx.set_payer(self.payer)
         return trx
 
 
