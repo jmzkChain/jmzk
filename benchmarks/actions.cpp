@@ -56,11 +56,11 @@ get_nonce_sym(const char* prefix) {
     static auto dre = std::default_random_engine(std::chrono::system_clock::now().time_since_epoch().count());
 
     auto n    = std::string(prefix);
-    auto dist = std::uniform_int_distribution<int>(0, 25);
+    auto dist = std::uniform_int_distribution<int>(0, 9);
 
-    n.reserve(n.size() + 7);
-    for(int i = 0; i < 7; i++) {
-        n.push_back('A' + dist(dre));
+    n.reserve(n.size() + 10);
+    for(int i = 0; i < 10; i++) {
+        n.push_back('0' + dist(dre));
     }
 
     return n;
@@ -177,7 +177,9 @@ const char* ngjson = R"=====(
 
 const char* nfjson = R"=====(
 {
-  "sym": "5,EVT",
+  "name": "EVT",
+  "sym_name": "EVT",
+  "sym": "5,S#3",
   "creator": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
   "issue" : {
     "name" : "issue",
@@ -197,7 +199,7 @@ const char* nfjson = R"=====(
       }
     ]
   },
-  "total_supply":"12.00000 EVT"
+  "total_supply":"12.00000 S#3"
 }
 )=====";
 
@@ -485,13 +487,14 @@ BM_Action_newfungible(benchmark::State& state) {
     auto nf     = var.as<newfungible>();
     nf.creator  = evt::testing::tester::get_public_key("evt");
     auto auths  = std::vector<account_name>{N128(evt)};
-
     for(auto _ : state) {
         state.PauseTiming();
 
-        nf.sym          = symbol::from_string(string("5,") + get_nonce_sym(""));
-        nf.total_supply = asset::from_string(string("100.00000 ") + nf.sym.name());
-        auto nfact      = action(N128(.fungible), nf.sym.name(), nf);
+        nf.name         = get_nonce_sym("");
+        nf.sym_name     = get_nonce_sym("");
+        nf.sym          = symbol::from_string(string("5,S#") + get_nonce_sym(""));
+        nf.total_supply = asset::from_string(string("100.00000 S#") + std::to_string(nf.sym.id()));
+        auto nfact      = action(N128(.fungible), (name128)std::to_string(nf.sym.id()), nf);
         auto trx_meta   = get_trx_meta(*tester->control, nfact, auths);
         auto trx_ctx    = get_trx_ctx(*tester->control, trx_meta);
 
@@ -512,26 +515,27 @@ BM_Action_updfungible(benchmark::State& state) {
     auto var        = fc::json::from_string(nfjson);
     auto nf         = var.as<newfungible>();
     nf.creator      = evt::testing::tester::get_public_key("evt");
-    nf.sym          = symbol::from_string(string("5,") + get_nonce_sym(""));
-    nf.total_supply = asset::from_string(string("100.00000 ") + nf.sym.name());
-    auto nfact      = action(N128(.fungible), nf.sym.name(), nf);
+    nf.name         = get_nonce_sym("");
+    nf.sym_name     = get_nonce_sym("");
+    nf.sym          = symbol::from_string(string("5,S#") + get_nonce_sym(""));
+    nf.total_supply = asset::from_string(string("100.00000 S#") + std::to_string(nf.sym.id()));
+    auto nfact      = action(N128(.fungible), (name128)std::to_string(nf.sym.id()), nf);
     auto auths      = std::vector<account_name>{N128(evt)};
-
     tester->push_action(std::move(nfact), auths, address());
 
     auto uf   = updfungible();
-    uf.sym    = nf.sym;
+    uf.sym_id = nf.sym.id();
     uf.issue  = nf.issue;
     uf.manage = nf.manage;
     for(auto _ : state) {
         state.PauseTiming();
-        nf.sym          = symbol::from_string(string("5,") + get_nonce_sym(""));
-        nf.total_supply = asset::from_string(string("100.00000 ") + nf.sym.name());
-        auto nfact      = action(N128(.fungible), nf.sym.name(), nf);
+        nf.sym          = symbol::from_string(string("5,S#") + get_nonce_sym(""));
+        nf.total_supply = asset::from_string(string("100.00000 S#") + std::to_string(nf.sym.id()));
+        auto nfact      = action(N128(.fungible), (name128)std::to_string(nf.sym.id()), nf);
         tester->push_action(std::move(nfact), auths, address());
 
-        uf.sym        = nf.sym;
-        auto ufact    = action(N128(.fungible), uf.sym.name(), uf);
+        uf.sym_id     = nf.sym.id();
+        auto ufact    = action(N128(.fungible), (name128)std::to_string(uf.sym_id), uf);
         auto trx_meta = get_trx_meta(*tester->control, ufact, auths);
         auto trx_ctx  = get_trx_ctx(*tester->control, trx_meta);
 
@@ -552,22 +556,24 @@ BM_Action_issuefungible(benchmark::State& state) {
     auto var        = fc::json::from_string(nfjson);
     auto nf         = var.as<newfungible>();
     nf.creator      = evt::testing::tester::get_public_key("evt");
-    nf.sym          = symbol::from_string(string("5,") + get_nonce_sym(""));
-    nf.total_supply = asset::from_string(string("100000.00000 ") + nf.sym.name());
-    auto nfact      = action(N128(.fungible), nf.sym.name(), nf);
+    nf.name         = get_nonce_sym("");
+    nf.sym_name     = get_nonce_sym("");
+    nf.sym          = symbol::from_string(string("5,S#") + get_nonce_sym(""));
+    nf.total_supply = asset::from_string(string("100.00000 S#") + std::to_string(nf.sym.id()));
+    auto nfact      = action(N128(.fungible), (name128)std::to_string(nf.sym.id()), nf);
     auto auths      = std::vector<account_name>{N128(evt)};
 
     tester->push_action(std::move(nfact), auths, address());
 
     auto isf   = issuefungible();
-    isf.number = asset::from_string(string("1.00000 ") + nf.sym.name());
+    isf.number = asset::from_string(string("0.00001 S#") + std::to_string(nf.sym.id()));
 
     for(auto _ : state) {
         state.PauseTiming();
 
         isf.address = evt::testing::tester::get_public_key(get_nonce_name(""));
 
-        auto isfact   = action(N128(.fungible), nf.sym.name(), isf);
+        auto isfact   = action(N128(.fungible), (name128)std::to_string(nf.sym.id()), isf);
         auto trx_meta = get_trx_meta(*tester->control, isfact, auths);
         auto trx_ctx  = get_trx_ctx(*tester->control, trx_meta);
 
@@ -589,30 +595,32 @@ BM_Action_transferft(benchmark::State& state) {
     auto nf     = var.as<newfungible>();
     nf.creator  = evt::testing::tester::get_public_key("evt");
     nf.issue.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
-    nf.sym          = symbol::from_string(string("5,") + get_nonce_sym(""));
-    nf.total_supply = asset::from_string(string("100000.00000 ") + nf.sym.name());
-    auto nfact      = action(N128(.fungible), nf.sym.name(), nf);
+    nf.name         = get_nonce_sym("");
+    nf.sym_name     = get_nonce_sym("");
+    nf.sym          = symbol::from_string(string("5,S#") + get_nonce_sym(""));
+    nf.total_supply = asset::from_string(string("100.00000 S#") + std::to_string(nf.sym.id()));
+    auto nfact      = action(N128(.fungible), (name128)std::to_string(nf.sym.id()), nf);
     auto auths      = std::vector<account_name>{N128(evt)};
 
     tester->push_action(std::move(nfact), auths, address());
 
     auto isf    = issuefungible();
-    isf.number  = asset::from_string(string("100000.00000 ") + nf.sym.name());
+    isf.number  = asset::from_string(string("100.00000 S#") + std::to_string(nf.sym.id()));
     isf.address = address(evt::testing::tester::get_public_key("evt"));
-    auto isfact = action(N128(.fungible), nf.sym.name(), isf);
+    auto isfact = action(N128(.fungible), (name128)std::to_string(nf.sym.id()), isf);
 
     tester->push_action(std::move(isfact), auths, address());
 
     auto tf   = transferft();
     tf.from   = evt::testing::tester::get_public_key("evt");
-    tf.number = asset::from_string(string("1.00000 ") + nf.sym.name());
+    tf.number = asset::from_string(string("0.00001 S#") + std::to_string(nf.sym.id()));
 
     for(auto _ : state) {
         state.PauseTiming();
 
         tf.to = evt::testing::tester::get_public_key(get_nonce_name(""));
 
-        auto tfact    = action(N128(.fungible), nf.sym.name(), tf);
+        auto tfact    = action(N128(.fungible), (name128)std::to_string(nf.sym.id()), tf);
         auto trx_meta = get_trx_meta(*tester->control, tfact, auths);
         auto trx_ctx  = get_trx_ctx(*tester->control, trx_meta);
 
@@ -632,18 +640,18 @@ BM_Action_evt2pevt(benchmark::State& state) {
     auto tester = create_tester();
 
     auto auths = std::vector<account_name>{N128(evt)};
-    tester->add_money(address(evt::testing::tester::get_public_key(N(evt))), asset(10000000, symbol(SY(5, EVT))));
+    tester->add_money(address(evt::testing::tester::get_public_key(N(evt))), asset(10000000, evt_sym()));
 
     auto e2p   = evt2pevt();
     e2p.from   = address(evt::testing::tester::get_public_key(N(evt)));
-    e2p.number = asset::from_string(string("0.00001 EVT"));
+    e2p.number = asset::from_string(string("0.00001 S#1"));
 
     for(auto _ : state) {
         state.PauseTiming();
 
         e2p.to = evt::testing::tester::get_public_key(get_nonce_name(""));
 
-        auto e2pact   = action(N128(.fungible), "EVT", e2p);
+        auto e2pact   = action(N128(.fungible), std::to_string(evt_sym().id()), e2p);
         auto trx_meta = get_trx_meta(*tester->control, e2pact, auths);
         auto trx_ctx  = get_trx_ctx(*tester->control, trx_meta);
 
@@ -673,15 +681,15 @@ BM_Action_fungible_addmeta(benchmark::State& state) {
 
     for(auto _ : state) {
         state.PauseTiming();
-        nf.sym          = symbol::from_string(string("5,") + get_nonce_sym(""));
-        nf.total_supply = asset::from_string(string("100000.00000 ") + nf.sym.name());
-        auto nfact      = action(N128(.fungible), nf.sym.name(), nf);
+        nf.sym          = symbol::from_string(string("5,S#") + get_nonce_sym(""));
+        nf.total_supply = asset::from_string(string("100000.00000 S#") + std::to_string(nf.sym.id()));
+        auto nfact      = action(N128(.fungible), (name128)std::to_string(nf.sym.id()), nf);
         tester->push_action(std::move(nfact), auths, address());
 
         am.key   = get_nonce_name("key");
         am.value = get_nonce_sym("value");
 
-        auto amact    = action(N128(.fungible), nf.sym.name(), am);
+        auto amact    = action(N128(.fungible), (name128)std::to_string(nf.sym.id()), am);
         auto trx_meta = get_trx_meta(*tester->control, amact, auths);
         auto trx_ctx  = get_trx_ctx(*tester->control, trx_meta);
 
