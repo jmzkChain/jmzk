@@ -22,6 +22,13 @@ class User:
     def __init__(self):
         self.pub_key, self.priv_key = ecc.generate_new_pair()
 
+    @staticmethod
+    def from_string(pub, priv):
+        user = User()
+        user.pub_key = ecc.PublicKey.from_string(pub)
+        user.priv_key = ecc.PrivateKey.from_string(priv)
+        return user
+
 
 class AuthorizerRef:
     def __init__(self, _type, key):
@@ -61,26 +68,27 @@ class SymbolArgsErrorException(Exception):
 
 
 class Symbol:
-    def __init__(self, name, precision=5):
+    def __init__(self, sym_name, sym_id, precision=5):
         if precision > 17 or precision < 0:
             raise SymbolArgsErrorException
-        if len(name) > 7 or (not name.isupper()):
+        if len(sym_name) > 7 or (not sym_name.isupper()):
             raise SymbolArgsErrorException
-        self.name = name
+        self.name = sym_name
+        self.id = sym_id
         self.precision = precision
 
     def value(self):
-        return '%d,%s' % (self.precision, self.name)
+        return '%d,S#%d' % (self.precision, self.id)
 
 
 def new_asset(symbol):
     def value(num):
-        fmt = '%%.%df %s' % (symbol.precision, symbol.name)
+        fmt = '%%.%df S#%d' % (symbol.precision, symbol.id)
         return fmt % (num)
     return value
 
 
-EvtSymbol = Symbol(name='EVT', precision=5)
+EvtSymbol = Symbol(sym_name='EVT', sym_id=1, precision=5)
 EvtAsset = new_asset(EvtSymbol)
 
 
@@ -200,14 +208,14 @@ class AddMetaAbi(BaseType):
 
 
 class NewFungibleAbi(BaseType):
-    def __init__(self, sym, creator, issue, manage, total_supply):
-        super().__init__(sym=sym, creator=creator, issue=issue.dict(),
-                         manage=manage.dict(), total_supply=total_supply)
+    def __init__(self, name, sym_name, sym, creator, issue, manage, total_supply):
+        super().__init__(name=name, sym_name=sym_name, sym=sym, creator=creator,
+                         issue=issue.dict(), manage=manage.dict(), total_supply=total_supply)
 
 
 class UpdFungibleAbi(BaseType):
-    def __init__(self, sym, issue, manage):
-        super().__init__(sym=sym,
+    def __init__(self, sym_id, issue, manage):
+        super().__init__(sym_id=sym_id,
                          issue=None if issue == None else issue.dict(),
                          manage=None if manage == None else manage.dict())
 
