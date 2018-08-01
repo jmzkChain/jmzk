@@ -52,18 +52,12 @@ create_tester() {
 }
 
 std::string
-get_nonce_sym(const char* prefix) {
+get_nonce_sym() {
     static auto dre = std::default_random_engine(std::chrono::system_clock::now().time_since_epoch().count());
 
-    auto n    = std::string(prefix);
-    auto dist = std::uniform_int_distribution<int>(0, 9);
+    auto dist = std::uniform_int_distribution<uint32_t>(0, std::numeric_limits<uint32_t>::max());
 
-    n.reserve(n.size() + 10);
-    for(int i = 0; i < 10; i++) {
-        n.push_back('0' + dist(dre));
-    }
-
-    return n;
+    return std::to_string(dist(dre));
 }
 
 static name128
@@ -490,9 +484,9 @@ BM_Action_newfungible(benchmark::State& state) {
     for(auto _ : state) {
         state.PauseTiming();
 
-        nf.name         = get_nonce_sym("");
-        nf.sym_name     = get_nonce_sym("");
-        nf.sym          = symbol::from_string(string("5,S#") + get_nonce_sym(""));
+        nf.name         = get_nonce_sym();
+        nf.sym_name     = get_nonce_sym();
+        nf.sym          = symbol::from_string(string("5,S#") + get_nonce_sym());
         nf.total_supply = asset::from_string(string("100.00000 S#") + std::to_string(nf.sym.id()));
         auto nfact      = action(N128(.fungible), (name128)std::to_string(nf.sym.id()), nf);
         auto trx_meta   = get_trx_meta(*tester->control, nfact, auths);
@@ -515,9 +509,9 @@ BM_Action_updfungible(benchmark::State& state) {
     auto var        = fc::json::from_string(nfjson);
     auto nf         = var.as<newfungible>();
     nf.creator      = evt::testing::tester::get_public_key("evt");
-    nf.name         = get_nonce_sym("");
-    nf.sym_name     = get_nonce_sym("");
-    nf.sym          = symbol::from_string(string("5,S#") + get_nonce_sym(""));
+    nf.name         = get_nonce_sym();
+    nf.sym_name     = get_nonce_sym();
+    nf.sym          = symbol::from_string(string("5,S#") + get_nonce_sym());
     nf.total_supply = asset::from_string(string("100.00000 S#") + std::to_string(nf.sym.id()));
     auto nfact      = action(N128(.fungible), (name128)std::to_string(nf.sym.id()), nf);
     auto auths      = std::vector<account_name>{N128(evt)};
@@ -529,7 +523,7 @@ BM_Action_updfungible(benchmark::State& state) {
     uf.manage = nf.manage;
     for(auto _ : state) {
         state.PauseTiming();
-        nf.sym          = symbol::from_string(string("5,S#") + get_nonce_sym(""));
+        nf.sym          = symbol::from_string(string("5,S#") + get_nonce_sym());
         nf.total_supply = asset::from_string(string("100.00000 S#") + std::to_string(nf.sym.id()));
         auto nfact      = action(N128(.fungible), (name128)std::to_string(nf.sym.id()), nf);
         tester->push_action(std::move(nfact), auths, address());
@@ -556,9 +550,9 @@ BM_Action_issuefungible(benchmark::State& state) {
     auto var        = fc::json::from_string(nfjson);
     auto nf         = var.as<newfungible>();
     nf.creator      = evt::testing::tester::get_public_key("evt");
-    nf.name         = get_nonce_sym("");
-    nf.sym_name     = get_nonce_sym("");
-    nf.sym          = symbol::from_string(string("5,S#") + get_nonce_sym(""));
+    nf.name         = get_nonce_sym();
+    nf.sym_name     = get_nonce_sym();
+    nf.sym          = symbol::from_string(string("5,S#") + get_nonce_sym());
     nf.total_supply = asset::from_string(string("100.00000 S#") + std::to_string(nf.sym.id()));
     auto nfact      = action(N128(.fungible), (name128)std::to_string(nf.sym.id()), nf);
     auto auths      = std::vector<account_name>{N128(evt)};
@@ -595,9 +589,9 @@ BM_Action_transferft(benchmark::State& state) {
     auto nf     = var.as<newfungible>();
     nf.creator  = evt::testing::tester::get_public_key("evt");
     nf.issue.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
-    nf.name         = get_nonce_sym("");
-    nf.sym_name     = get_nonce_sym("");
-    nf.sym          = symbol::from_string(string("5,S#") + get_nonce_sym(""));
+    nf.name         = get_nonce_sym();
+    nf.sym_name     = get_nonce_sym();
+    nf.sym          = symbol::from_string(string("5,S#") + get_nonce_sym());
     nf.total_supply = asset::from_string(string("100.00000 S#") + std::to_string(nf.sym.id()));
     auto nfact      = action(N128(.fungible), (name128)std::to_string(nf.sym.id()), nf);
     auto auths      = std::vector<account_name>{N128(evt)};
@@ -681,13 +675,13 @@ BM_Action_fungible_addmeta(benchmark::State& state) {
 
     for(auto _ : state) {
         state.PauseTiming();
-        nf.sym          = symbol::from_string(string("5,S#") + get_nonce_sym(""));
+        nf.sym          = symbol::from_string(string("5,S#") + get_nonce_sym());
         nf.total_supply = asset::from_string(string("100000.00000 S#") + std::to_string(nf.sym.id()));
         auto nfact      = action(N128(.fungible), (name128)std::to_string(nf.sym.id()), nf);
         tester->push_action(std::move(nfact), auths, address());
 
         am.key   = get_nonce_name("key");
-        am.value = get_nonce_sym("value");
+        am.value = get_nonce_sym();
 
         auto amact    = action(N128(.fungible), (name128)std::to_string(nf.sym.id()), am);
         auto trx_meta = get_trx_meta(*tester->control, amact, auths);
@@ -723,7 +717,7 @@ BM_Action_group_addmeta(benchmark::State& state) {
         tester->push_action(std::move(ngact), auths, address());
 
         am.key   = get_nonce_name("key");
-        am.value = get_nonce_sym("value");
+        am.value = get_nonce_sym();
 
         auto amact    = action(N128(.group), ng.name, am);
         auto trx_meta = get_trx_meta(*tester->control, amact, auths);
@@ -760,7 +754,7 @@ BM_Action_domain_addmeta(benchmark::State& state) {
         tester->push_action(std::move(ndact), auths, address());
 
         am.key   = get_nonce_name("key");
-        am.value = get_nonce_sym("value");
+        am.value = get_nonce_sym();
 
         auto amact    = action(name128(nd.name), N128(.meta), am);
         auto trx_meta = get_trx_meta(*tester->control, amact, auths);
@@ -810,7 +804,7 @@ BM_Action_token_addmeta(benchmark::State& state) {
         state.PauseTiming();
 
         am.key   = get_nonce_name("key");
-        am.value = get_nonce_sym("value");
+        am.value = get_nonce_sym();
 
         auto amact    = action(name128(nd.name), it.names[dist(dre)], am);
         auto trx_meta = get_trx_meta(*tester->control, amact, auths);
