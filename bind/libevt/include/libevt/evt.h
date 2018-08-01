@@ -27,6 +27,7 @@ typedef struct {
 #define EVT_INVALID_ADDRESS         -10
 #define EVT_SIZE_NOT_EQUALS         -11
 #define EVT_DATA_NOT_EQUALS         -12
+#define EVT_INVALID_LINK            -13
 
 int evt_free(void*);
 int evt_equals(evt_data_t* rhs, evt_data_t* lhs);

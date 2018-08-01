@@ -4,6 +4,7 @@ from . import abi
 from .abi import *
 from .ecc import *
 from .address import *
+from .evt_link import *
 
 
 class TestPyEVT(unittest.TestCase):
@@ -119,6 +120,20 @@ class TestPyEVT(unittest.TestCase):
         self.assertEqual(key, 'xxxxxxxxxxxxxxxxxxxxx')
         self.assertEqual(nonce, 1234)
         self.assertEqual('generated', generated_addr.get_type())
+
+    def test_evtlink(self):
+        link_str = '03XBY4E/KTS:PNHVA3JP9QG258F08JHYOYR5SLJGN0EA-C3J6S:2G:T1SX7WA14KH9ETLZ97TUX9R9JJA6+06$E/_PYNX-/152P4CTC:WKXLK$/7G-K:89+::2K4C-KZ2**HI-P8CYJ**XGFO1K5:$E*SOY8MFYWMNHP*BHX2U8$$FTFI81YDP1HT'
+        evt_link = EvtLink.parse_from_evtli(link_str)
+        header = evt_link.get_header()
+        timestamp = evt_link.get_segment_int('timestamp')
+        domain = evt_link.get_segment_str('domain')
+        token = evt_link.get_segment_str('token')
+
+        self.assertEqual(header, 3)
+        self.assertEqual(timestamp, 1532465234)
+        self.assertEqual(domain, 'nd1532465232490')
+        self.assertEqual(token, 'tk3064930465.8381')
+
 
 if __name__ == '__main__':
     unittest.main()

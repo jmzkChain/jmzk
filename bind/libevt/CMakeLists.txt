@@ -4,6 +4,7 @@ add_library( libevt SHARED
     evt_ecc.cpp
     evt_abi.cpp
     evt_address.cpp
+    evt_evtlink.cpp
     ${HEADERS} )
 set_target_properties( libevt PROPERTIES OUTPUT_NAME evt )
 
