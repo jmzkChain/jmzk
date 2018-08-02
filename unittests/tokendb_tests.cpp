@@ -853,6 +853,71 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_updatesuspend_test", "[tokendb]") {
     CHECK(".create" == dl_.trx.actions[0].key);
 }
 
+TEST_CASE_METHOD(tokendb_test, "tokendb_squash", "[tokendb]") {
+    CHECK(true);
+
+    tokendb.add_savepoint(get_time());
+
+    domain_def dom = add_domain_data();
+    dom.name       = "domain-s1";
+    tokendb.add_domain(dom);
+    tokendb.add_savepoint(get_time());
+
+    domain_def updom = update_domain_data();
+    updom.name       = dom.name;
+    tokendb.update_domain(updom);
+    tokendb.add_savepoint(get_time());
+
+    issuetoken istk = issue_tokens_data();
+    istk.domain     = dom.name;
+    tokendb.issue_tokens(istk);
+    tokendb.add_savepoint(get_time());
+
+    token_def tk = update_token_data();
+    tk.domain    = dom.name;
+    tokendb.update_token(tk);
+    tokendb.add_savepoint(get_time());
+
+    REQUIRE(tokendb.exists_token(dom.name, "t1"));
+    token_def tk_;
+    tokendb.read_token(dom.name, "t1", tk_);
+    REQUIRE(1 == tk_.metas.size());
+
+    tokendb.add_savepoint(get_time());
+    tokendb.add_savepoint(get_time());
+    tokendb.squash();
+    tokendb.squash();
+    tokendb.rollback_to_latest_savepoint();
+    tokendb.rollback_to_latest_savepoint();
+
+    REQUIRE(1 == tk_.metas.size());
+    REQUIRE(tokendb.exists_token(dom.name, "t1"));
+    REQUIRE(tokendb.exists_domain(dom.name));
+
+    tokendb.squash();
+    tokendb.squash();
+    tokendb.squash();
+    tokendb.squash();
+}
+
+TEST_CASE_METHOD(tokendb_test, "tokendb_squash2", "[tokendb]") {
+    CHECK(true);
+
+    domain_def dom = add_domain_data();
+    dom.name       = "domain-s1";
+
+    REQUIRE(tokendb.exists_token(dom.name, "t1"));
+    token_def tk_;
+    tokendb.read_token(dom.name, "t1", tk_);
+    REQUIRE(1 == tk_.metas.size());
+
+    tokendb.rollback_to_latest_savepoint();
+    tokendb.rollback_to_latest_savepoint();
+
+    REQUIRE(!tokendb.exists_token(dom.name, "t1"));
+    REQUIRE(!tokendb.exists_domain(dom.name));
+}
+
 TEST_CASE_METHOD(tokendb_test, "tokendb_persist_savepoints_1", "[tokendb]") {
     CHECK(true);
 
