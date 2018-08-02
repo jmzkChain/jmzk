@@ -5,6 +5,7 @@
 #pragma once
 #include <evt/chain/chain_config.hpp>
 #include <evt/chain/types.hpp>
+#include <evt/chain/contracts/types.hpp>
 
 #include <fc/crypto/sha256.hpp>
 
@@ -12,6 +13,8 @@
 #include <vector>
 
 namespace evt { namespace chain {
+
+using namespace contracts;
 
 struct genesis_state {
     genesis_state();
@@ -38,6 +41,10 @@ struct genesis_state {
     time_point      initial_timestamp;
     public_key_type initial_key;
 
+    group_def       evt_org;
+    fungible_def    evt;
+    fungible_def    pevt;
+
     /**
     * Get the chain_id corresponding to this genesis state.
     *
@@ -49,4 +56,4 @@ struct genesis_state {
 }}  // namespace evt::chain
 
 FC_REFLECT(evt::chain::genesis_state,
-           (initial_timestamp)(initial_key)(initial_configuration))
+           (initial_timestamp)(initial_key)(evt_org)(evt)(pevt)(initial_configuration))
