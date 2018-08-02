@@ -883,13 +883,16 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_squash", "[tokendb]") {
     tokendb.read_token(dom.name, "t1", tk_);
     REQUIRE(1 == tk_.metas.size());
 
-    tokendb.add_savepoint(get_time());
-    tokendb.add_savepoint(get_time());
-    tokendb.squash();
-    tokendb.squash();
-    tokendb.rollback_to_latest_savepoint();
-    tokendb.rollback_to_latest_savepoint();
+    auto n = tokendb.get_savepoints_size();
 
+    tokendb.add_savepoint(get_time());
+    tokendb.add_savepoint(get_time());
+    tokendb.squash();
+    tokendb.squash();
+
+    CHECK(tokendb.get_savepoints_size() == n);
+
+    tokendb.read_token(dom.name, "t1", tk_);
     REQUIRE(1 == tk_.metas.size());
     REQUIRE(tokendb.exists_token(dom.name, "t1"));
     REQUIRE(tokendb.exists_domain(dom.name));
@@ -898,6 +901,9 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_squash", "[tokendb]") {
     tokendb.squash();
     tokendb.squash();
     tokendb.squash();
+
+    CHECK(tokendb.get_savepoints_size() == 1);
+    CHECK_THROWS_AS(tokendb.squash(), tokendb_squash_exception); // only one savepoint left
 }
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_squash2", "[tokendb]") {
@@ -911,7 +917,6 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_squash2", "[tokendb]") {
     tokendb.read_token(dom.name, "t1", tk_);
     REQUIRE(1 == tk_.metas.size());
 
-    tokendb.rollback_to_latest_savepoint();
     tokendb.rollback_to_latest_savepoint();
 
     REQUIRE(!tokendb.exists_token(dom.name, "t1"));

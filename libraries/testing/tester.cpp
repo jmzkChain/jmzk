@@ -376,10 +376,16 @@ base_tester::push_genesis_block() {
 void
 base_tester::add_money(const address& addr, const asset& number) {
     auto& tokendb = control->token_db();
+
+    auto s = tokendb.new_savepoint_session();
+
     auto as = asset();
     tokendb.read_asset_no_throw(addr, number.sym(), as);
     as += number;
     tokendb.update_asset(addr, as);
+
+    s.accept();
+    tokendb.pop_back_savepoint();
 }
 
 bool
