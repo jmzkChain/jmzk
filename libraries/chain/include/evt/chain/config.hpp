@@ -46,7 +46,8 @@ const static uint32_t fixed_net_overhead_of_packed_trx = 16;
 
 const static uint32_t default_base_network_charge_factor = 1;
 const static uint32_t default_base_storage_charge_factor = 1;
-const static uint32_t default_base_cpu_charge_factor     = 1;
+const static uint32_t default_base_cpu_charge_factor     = 10;
+const static uint32_t default_global_charge_factor       = 10;
 
 /**
  *  The number of sequential blocks produced by a single producer
@@ -65,7 +66,7 @@ static_assert(maximum_tracked_dpos_confirmations >= ((max_producers * 2 / 3) + 1
 
 const static int irreversible_threshold_percent = 70 * percent_1;
 
-const static int evt_link_expired_secs = 10;
+const static int default_evt_link_expired_secs = 15;  // 15s -> total: 30s
 
 }}}  // namespace evt::chain::config
 

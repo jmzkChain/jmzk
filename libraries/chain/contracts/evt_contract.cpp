@@ -13,6 +13,7 @@
 #include <evt/chain/apply_context.hpp>
 #include <evt/chain/token_database.hpp>
 #include <evt/chain/transaction_context.hpp>
+#include <evt/chain/global_property_object.hpp>
 #include <evt/chain/contracts/types.hpp>
 #include <evt/chain/contracts/evt_link.hpp>
 #include <evt/chain/contracts/evt_link_object.hpp>
@@ -864,9 +865,10 @@ EVT_ACTION_IMPL(everipass) {
 
         EVT_ASSERT(context.has_authorized(name128(d), name128(t)), action_authorize_exception, "Authorized information does not match.");
 
-        auto ts    = *link.get_segment(evt_link::timestamp).intv;
-        auto since = std::abs((context.control.head_block_time() - fc::time_point_sec(ts)).to_seconds());
-        if(since > config::evt_link_expired_secs) {
+        auto  ts    = *link.get_segment(evt_link::timestamp).intv;
+        auto  since = std::abs((context.control.head_block_time() - fc::time_point_sec(ts)).to_seconds());
+        auto& conf  = context.control.get_global_properties().configuration;
+        if(since > conf.evt_link_expired_secs) {
             EVT_THROW(evt_link_expiration_exception, "EVT-Link is expired, now: ${n}, timestamp: ${t}", ("n",context.control.head_block_time())("t",fc::time_point_sec(ts)));
         }
 
@@ -916,9 +918,10 @@ EVT_ACTION_IMPL(everipay) {
         auto& lsym_id = *link.get_segment(evt_link::symbol_id).intv;
         EVT_ASSERT(context.has_authorized(N128(.fungible), name128(std::to_string(lsym_id))), action_authorize_exception, "Authorized information does not match.");
 
-        auto ts    = *link.get_segment(evt_link::timestamp).intv;
-        auto since = std::abs((context.control.head_block_time() - fc::time_point_sec(ts)).to_seconds());
-        if(since > config::evt_link_expired_secs) {
+        auto ts     = *link.get_segment(evt_link::timestamp).intv;
+        auto since  = std::abs((context.control.head_block_time() - fc::time_point_sec(ts)).to_seconds());
+        auto& conf  = context.control.get_global_properties().configuration;
+        if(since > conf.evt_link_expired_secs) {
             EVT_THROW(evt_link_expiration_exception, "EVT-Link is expired, now: ${n}, timestamp: ${t}", ("n",context.control.head_block_time())("t",fc::time_point_sec(ts)));
         }
 

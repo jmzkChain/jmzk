@@ -47,7 +47,7 @@ public:
         payer       = address(tester::get_public_key(N(payer)));
         poorer      = address(tester::get_public_key(N(poorer)));
 
-        my_tester->add_money(payer, asset(100000, symbol(5, EVT_SYM_ID)));
+        my_tester->add_money(payer, asset(1'000'000'000'000, symbol(5, EVT_SYM_ID)));
 
         ti = 0;
     }
@@ -209,7 +209,7 @@ TEST_CASE_METHOD(contracts_test, "contract_issuetoken_test", "[contracts]") {
 
     CHECK_THROWS_AS(my_tester->push_action(N(issuetoken), string_to_name128(get_domain_name()), N128(.issue), var.get_object(), key_seeds, address(N(domain), string_to_name128(get_domain_name()), 0)), charge_exceeded_exception);
 
-    my_tester->add_money(address(N(domain), string_to_name128(get_domain_name()), 0), asset(100000, symbol(5, EVT_SYM_ID)));
+    my_tester->add_money(address(N(domain), string_to_name128(get_domain_name()), 0), asset(10'000'000, symbol(5, EVT_SYM_ID)));
     my_tester->push_action(N(issuetoken), string_to_name128(get_domain_name()), N128(.issue), var.get_object(), key_seeds, address(N(domain), string_to_name128(get_domain_name()), 0));
 
     istk.names = {".t1", ".t2", ".t3"};
@@ -351,7 +351,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newgroup_test", "[contracts]") {
     auto& tokendb     = my_tester->control->token_db();
 
     CHECK(!tokendb.exists_group(get_group_name()));
-    my_tester->add_money(group_payer, asset(100000, symbol(5, EVT_SYM_ID)));
+    my_tester->add_money(group_payer, asset(10'000'000, symbol(5, EVT_SYM_ID)));
 
     auto gp = var.as<newgroup>();
 
@@ -500,7 +500,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newfungible_test", "[contracts]") {
 
     auto var            = fc::json::from_string(test_data);
     auto fungible_payer = address(N(domain), ".fungible", 0);
-    my_tester->add_money(fungible_payer, asset(100000, symbol(5, EVT_SYM_ID)));
+    my_tester->add_money(fungible_payer, asset(10'000'000, symbol(5, EVT_SYM_ID)));
     auto& tokendb = my_tester->control->token_db();
 
     CHECK(!tokendb.exists_fungible(3));
@@ -758,7 +758,7 @@ TEST_CASE_METHOD(contracts_test, "contract_group_auth_test", "[contracts]") {
 
 TEST_CASE_METHOD(contracts_test, "contract_addmeta_test", "[contracts]") {
     CHECK(true);
-    my_tester->add_money(payer, asset(100000, symbol(5, EVT_SYM_ID)));
+    my_tester->add_money(payer, asset(10'000'000, symbol(5, EVT_SYM_ID)));
 
     const char* test_data = R"=====(
     {
@@ -772,42 +772,42 @@ TEST_CASE_METHOD(contracts_test, "contract_addmeta_test", "[contracts]") {
     auto admt = var.as<addmeta>();
 
     //meta authorizers test
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds, payer, 50000), unsatisfied_authorization);
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer, 50000), unsatisfied_authorization);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
     // CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer, 50000), unsatisfied_authorization);
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer, 50000), unsatisfied_authorization);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
 
     //meta authorizers test
     admt.creator = tester::get_public_key(N(other));
     to_variant(admt, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), {N(other), N(payer)}, payer, 50000), meta_involve_exception);
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.group), string_to_name128(get_group_name()), var.get_object(), {N(other), N(payer)}, payer, 50000), meta_involve_exception);
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), {N(other), N(payer)}, payer, 50000), meta_involve_exception);
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(t1), var.get_object(), {N(other), N(payer)}, payer, 50000), meta_involve_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), {N(other), N(payer)}, payer, 5'000'000), meta_involve_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.group), string_to_name128(get_group_name()), var.get_object(), {N(other), N(payer)}, payer, 5'000'000), meta_involve_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), {N(other), N(payer)}, payer, 5'000'000), meta_involve_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(t1), var.get_object(), {N(other), N(payer)}, payer, 5'000'000), meta_involve_exception);
 
     admt.creator = key;
     to_variant(admt, var);
 
-    my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds, payer, 50000);
-    my_tester->push_action(N(addmeta), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer, 50000);
-    my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer, 50000);
+    my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds, payer, 5'000'000);
+    my_tester->push_action(N(addmeta), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer, 5'000'000);
+    my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer, 5'000'000);
 
     admt.creator = tester::get_public_key(N(key2));
     to_variant(admt, var);
-    my_tester->push_action(N(addmeta), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), {N(key2), N(payer)}, payer, 50000);
+    my_tester->push_action(N(addmeta), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), {N(key2), N(payer)}, payer, 5'000'000);
 
     //meta_key_exception test
 
     admt.creator = key;
     admt.value   = "value2";
     to_variant(admt, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds, payer, 50000), meta_key_exception);
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer, 50000), meta_key_exception);
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer, 50000), meta_key_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds, payer, 5'000'000), meta_key_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer, 5'000'000), meta_key_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer, 5'000'000), meta_key_exception);
 
     admt.creator = tester::get_public_key(N(key2));
     to_variant(admt, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), {N(key2), N(payer)}, payer, 50000), meta_key_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), {N(key2), N(payer)}, payer, 5'000'000), meta_key_exception);
 
     my_tester->produce_blocks();
 }
@@ -951,7 +951,7 @@ TEST_CASE_METHOD(contracts_test, "contract_successsuspend_test", "[contracts]") 
             "expiration": "2021-07-04T05:14:12",
             "ref_block_num": "3432",
             "ref_block_prefix": "291678901",
-            "max_charge": 10000,
+            "max_charge": 1000000,
             "actions": [
             ],
             "transaction_extensions": []
@@ -1165,11 +1165,11 @@ TEST_CASE_METHOD(contracts_test, "everipass_test", "[contracts]") {
     CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer), evt_link_type_exception);
 
     ep.link.set_header(header);
-    ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts - 15));
+    ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts - 20));
     sign_link(ep.link);
     CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer), evt_link_expiration_exception);
 
-    ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts + 15));
+    ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts + 20));
     sign_link(ep.link);
     CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer), evt_link_expiration_exception);
 
@@ -1246,11 +1246,11 @@ TEST_CASE_METHOD(contracts_test, "everipay_test", "[contracts]") {
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer), evt_link_type_exception);
 
     ep.link.set_header(evt_link::version1 | evt_link::everiPay);
-    ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts - 15));
+    ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts - 20));
     sign_link(ep.link);
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), (name128)std::to_string(evt_sym().id()), ep), key_seeds, payer), evt_link_expiration_exception);
 
-    ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts + 15));
+    ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts + 20));
     sign_link(ep.link);
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), (name128)std::to_string(evt_sym().id()), ep), key_seeds, payer), evt_link_expiration_exception);
 

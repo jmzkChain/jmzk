@@ -59,7 +59,6 @@ struct controller_impl {
     block_state_ptr         head;
     fork_database           fork_db;
     token_database          token_db;
-    charge_manager          charge;
     controller::config      conf;
     chain_id_type           chain_id;
     bool                    replaying = false;
@@ -82,8 +81,9 @@ struct controller_impl {
             reversible_blocks.remove(*b);
         }
 
-        for(const auto& t : head->trxs)
+        for(const auto& t : head->trxs) {
             unapplied_transactions[t->signed_id] = t;
+        }
         head = prev;
         db.undo();
         token_db.rollback_to_latest_savepoint();
@@ -100,7 +100,6 @@ struct controller_impl {
         , blog(cfg.blocks_dir)
         , fork_db(cfg.state_dir)
         , token_db(cfg.tokendb_dir)
-        , charge(cfg.genesis.initial_configuration)
         , conf(cfg)
         , chain_id(cfg.genesis.compute_chain_id())
         , system_api(contracts::evt_contract_abi()) {
@@ -416,9 +415,9 @@ struct controller_impl {
 
     void
     check_authorization(const flat_set<public_key_type>& signed_keys, const transaction& trx) {
-        const static uint32_t max_authority_depth = conf.genesis.initial_configuration.max_authority_depth;
-        
-        auto checker = authority_checker(signed_keys, token_db, max_authority_depth);
+        auto& conf = db.get<global_property_object>().configuration;
+
+        auto checker = authority_checker(signed_keys, token_db, conf.max_authority_depth);
         for(const auto& act : trx.actions) {
             EVT_ASSERT(checker.satisfied(act), unsatisfied_authorization,
                        "${name} action in domain: ${domain} with key: ${key} authorized failed",
@@ -428,9 +427,9 @@ struct controller_impl {
 
     void
     check_authorization(const flat_set<public_key_type>& signed_keys, const action& act) {
-        const static uint32_t max_authority_depth = conf.genesis.initial_configuration.max_authority_depth;
+        auto& conf = db.get<global_property_object>().configuration;
 
-        auto checker = authority_checker(signed_keys, token_db, max_authority_depth);
+        auto checker = authority_checker(signed_keys, token_db, conf.max_authority_depth);
         EVT_ASSERT(checker.satisfied(act), unsatisfied_authorization,
                    "${name} action in domain: ${domain} with key: ${key} authorized failed",
                    ("domain", act.domain)("key", act.key)("name", act.name));
@@ -897,9 +896,10 @@ controller::token_db() const {
     return my->token_db;
 }
 
-charge_manager&
+charge_manager
 controller::get_charge_manager() const {
-    return my->charge;
+    auto& conf = get_global_properties().configuration;
+    return charge_manager(conf);
 }
 
 void
@@ -1302,7 +1302,8 @@ controller::get_suspend_required_keys(const proposal_name& name, const flat_set<
 uint32_t
 controller::get_charge(const transaction& trx, size_t signautres_num) const {   
     auto packed_trx = packed_transaction(trx);
-    return my->charge.calculate(packed_trx, signautres_num);
+    auto charge     = get_charge_manager();
+    return charge.calculate(packed_trx, signautres_num);
 }
 
 }}  // namespace evt::chain

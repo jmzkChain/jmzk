@@ -27,9 +27,12 @@ struct genesis_state {
         .base_network_charge_factor     = config::default_base_network_charge_factor,
         .base_storage_charge_factor     = config::default_base_storage_charge_factor,
         .base_cpu_charge_factor         = config::default_base_cpu_charge_factor,
+        .global_charge_factor           = config::default_global_charge_factor,
 
         .max_transaction_lifetime       = config::default_max_trx_lifetime,
-        .max_authority_depth            = config::default_max_auth_depth
+        .max_authority_depth            = config::default_max_auth_depth,
+
+        .evt_link_expired_secs          = config::default_evt_link_expired_secs
     };
 
     time_point      initial_timestamp;

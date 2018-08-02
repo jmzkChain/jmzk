@@ -101,7 +101,7 @@ public:
     fork_database& fork_db() const;
     token_database& token_db() const;
 
-    charge_manager& get_charge_manager() const;
+    charge_manager get_charge_manager() const;
 
     const global_property_object&         get_global_properties() const;
     const dynamic_global_property_object& get_dynamic_global_properties() const;
