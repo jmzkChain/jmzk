@@ -7,7 +7,7 @@
 #include <unordered_set>
 #include <fstream>
 
-#include <boost/foreach.hpp>
+#define XXH_INLINE_ALL
 #include <xxhash.h>
 
 #include <rocksdb/db.h>
@@ -828,7 +828,7 @@ token_database::pop_savepoints(int64_t until) {
 int
 token_database::pop_back_savepoint() {
     EVT_ASSERT(!savepoints_.empty(), tokendb_no_savepoint, "There's no savepoints anymore");
-    
+
     auto it = std::move(savepoints_.back());
     savepoints_.pop_back();
     free_savepoint(it);
