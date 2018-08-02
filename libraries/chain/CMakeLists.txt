@@ -56,14 +56,19 @@ add_library( evt_chain_lite SHARED
              ${HEADERS}
              )
 
-target_link_libraries( evt_chain evt_utilities fc chainbase rocksdb )
+target_link_libraries( evt_chain evt_utilities fc chainbase rocksdb xxhash )
 target_include_directories( evt_chain
-                            PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include"
+                            PUBLIC
+                            "${CMAKE_CURRENT_SOURCE_DIR}/include"
+                            "${CMAKE_CURRENT_BINARY_DIR}/include"
                             )
 
 target_link_libraries( evt_chain_lite fc_lite )
 target_include_directories( evt_chain_lite
-                            PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_BINARY_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/../chainbase/include" 
+                            PUBLIC
+                            "${CMAKE_CURRENT_SOURCE_DIR}/include"
+                            "${CMAKE_CURRENT_BINARY_DIR}/include"
+                            "${CMAKE_CURRENT_SOURCE_DIR}/../chainbase/include" 
                             )
 
 set_target_properties( evt_chain PROPERTIES PUBLIC_HEADER "${HEADERS}" )
