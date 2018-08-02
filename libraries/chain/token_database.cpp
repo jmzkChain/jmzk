@@ -2,18 +2,25 @@
  *  @file
  *  @copyright defined in evt/LICENSE.txt
  */
-#include <fstream>
-#include <boost/foreach.hpp>
-#include <evt/chain/exceptions.hpp>
 #include <evt/chain/token_database.hpp>
-#include <fc/filesystem.hpp>
-#include <fc/io/datastream.hpp>
-#include <fc/io/raw.hpp>
+
+#include <unordered_set>
+#include <fstream>
+
+#include <boost/foreach.hpp>
+#include <xxhash.h>
+
 #include <rocksdb/db.h>
 #include <rocksdb/merge_operator.h>
 #include <rocksdb/slice_transform.h>
 #include <rocksdb/table.h>
 #include <rocksdb/sst_file_manager.h>
+
+#include <fc/filesystem.hpp>
+#include <fc/io/datastream.hpp>
+#include <fc/io/raw.hpp>
+
+#include <evt/chain/exceptions.hpp>
 
 namespace evt { namespace chain {
 
@@ -46,6 +53,11 @@ struct db_key : boost::noncopyable {
         return slice;
     }
 
+    std::string
+    as_string() const {
+        return std::string((const char*)this, 16 + 16);
+    }
+
     name128 prefix;
     char    data[16];
 
@@ -62,6 +74,11 @@ struct db_asset_key : boost::noncopyable {
     const rocksdb::Slice&
     as_slice() const {
         return slice;
+    }
+
+    std::string
+    as_string() const {
+        return std::string((const char*)this, sizeof(buf));
     }
 
     char buf[PKEY_SIZE + sizeof(symbol)];
@@ -84,6 +101,15 @@ struct db_asset_prefix_key {
 
     rocksdb::Slice slice;
 };
+
+struct key_hasher {
+    size_t
+    operator()(const std::string& key) const {
+        return XXH64(key.data(), key.size(), 0);
+    }
+};
+
+using key_unordered_set = std::unordered_set<std::string, key_hasher>;
 
 inline db_key
 get_domain_key(const domain_name& name) {
@@ -717,10 +743,10 @@ token_database::record(int type, void* data) {
     if(!should_record()) {
         return 0;
     }
-    auto& back = savepoints_.back();
-    FC_ASSERT(back.node->f.type == kRT);
+    auto n = savepoints_.back().node;
+    FC_ASSERT(n.f.type == kRT);
 
-    GETPOINTER(rt_group, back.node->group)->actions.emplace_back(rt_action(type, data));
+    GETPOINTER(rt_group, n.group)->actions.emplace_back(rt_action(type, data));
     return 0;
 }
 
@@ -753,13 +779,9 @@ token_database::add_savepoint(int64_t seq) {
         }
     }
 
-    savepoints_.emplace_back(savepoint(seq));
-
-    auto& back = savepoints_.back();
-    back.node  = new sp_node(kRT); 
-
-    auto rt = new rt_group { .rb_snapshot = (const void*)db_->GetSnapshot(), .actions = {} };
-    SETPOINTER(void, back.node->group, rt);
+    savepoints_.emplace_back(savepoint(seq, kRT));
+    auto rt = new rt_group { .rb_snapshot = (const void*)db_->GetSnapshot(), .actions = {} }; 
+    SETPOINTER(void, savepoints_.back().node.group, rt);
 
     return 0;
 }
@@ -769,32 +791,27 @@ token_database::free_savepoint(savepoint& sp) {
     using namespace __internal;
 
     auto n = sp.node;
-    while(n) {
-        switch(n->f.type) {
-        case kRT: {
-            auto rt = GETPOINTER(rt_group, n->group);
-            for(auto& act : rt->actions) {
-                free(GETPOINTER(void, act.data));
-            }
-            db_->ReleaseSnapshot((const rocksdb::Snapshot*)rt->rb_snapshot);
-            delete rt;
-            break;
-        }
-        case kPD: {
-            auto pd = GETPOINTER(pd_group, n->group);
-            delete pd;
-            break;
-        }
-        default: {
-            FC_ASSERT(false);
-        }
-        }  // switch
 
-        auto t = n;
-        n = n->prev;
-
-        delete t;
+    switch(n.f.type) {
+    case kRT: {
+        auto rt = GETPOINTER(rt_group, n.group);
+        for(auto& act : rt->actions) {
+            free(GETPOINTER(void, act.data));
+        }
+        db_->ReleaseSnapshot((const rocksdb::Snapshot*)rt->rb_snapshot);
+        delete rt;
+        break;
     }
+    case kPD: {
+        auto pd = GETPOINTER(pd_group, n.group);
+        delete pd;
+        break;
+    }
+    default: {
+        FC_ASSERT(false);
+    }
+    }  // switch
+
     return 0;
 }
 
@@ -810,50 +827,42 @@ token_database::pop_savepoints(int64_t until) {
 
 int
 token_database::pop_back_savepoint() {
-    if(!savepoints_.empty()) {
-        auto it = std::move(savepoints_.back());
-        savepoints_.pop_back();
-        free_savepoint(it);
-        return 0;
-    }
-    EVT_THROW(tokendb_no_savepoint, "There's no savepoints anymore");
+    EVT_ASSERT(!savepoints_.empty(), tokendb_no_savepoint, "There's no savepoints anymore");
+    
+    auto it = std::move(savepoints_.back());
+    savepoints_.pop_back();
+    free_savepoint(it);
+    return 0;
 }
 
 int
 token_database::squash() {
-    //       sp1 (lhs)     sp2 (rhs)
-    //       |             |
-    // n3 <- n4      n5 <- n6
-    // 
-    // squash sp2 into sp1
-    //
-    //                   sp1
-    //                   |
-    // n3 <- n4 <- n5 <- n6
-
-
-    FC_ASSERT(savepoints_.size() >= 2);
+    using namespace __internal;
+    EVT_ASSERT(savepoints_.size() >= 2, tokendb_squash_exception, "Squash needs at least two savepoints.");
     
     auto n = savepoints_.back().node;
-    
-    // find head node of rhs savepoint
-    auto h = n;
-    while(h->prev) {
-        h = h->prev;
-    }
+    EVT_ASSERT(n.f.type == kRT, tokendb_squash_exception, "Squash needs two realtime savepoints.");
 
     savepoints_.pop_back();
-    auto& back = savepoints_.back();
+    auto n2 = savepoints_.back().node;
+    EVT_ASSERT(n2.f.type == kRT, tokendb_squash_exception, "Squash needs two realtime savepoints.");
 
-    h->prev   = back.node;
-    back.node = n;
+    auto rt1 = GETPOINTER(rt_group, n.group);
+    auto rt2 = GETPOINTER(rt_group, n2.group);
+
+    // add all actions from rt1 into end of rt2
+    rt2->actions.insert(rt2->actions.cend(), rt1->actions.cbegin(), rt1->actions.cend());
+
+    // just release rt1's snapshot
+    db_->ReleaseSnapshot((const rocksdb::Snapshot*)rt1->rb_snapshot);
+    delete rt1;
 
     return 0;
 }
 
 namespace __internal {
 
-db_key
+std::string
 get_sp_keyop(const token_database::rt_action& it, int& op) {
     // for the db action type, New-Ops are odd and Update-Ops are even
     // for Update-Ops return kRevert(0) and returns kRemove(1) for New-Ops
@@ -863,26 +872,31 @@ get_sp_keyop(const token_database::rt_action& it, int& op) {
     case kNewDomain:
     case kUpdateDomain: {
         auto act = GETPOINTER(sp_domain, it.data);
-        return get_domain_key(act->name);
+        return get_domain_key(act->name).as_string();
+    }
+    case kUpdateToken: {
+        auto act = GETPOINTER(sp_token, it.data);
+        return get_token_key(act->domain, act->name).as_string();
     }
     case kNewGroup:
     case kUpdateGroup: {
         auto act = GETPOINTER(sp_group, it.data);
-        return get_group_key(act->name);
+        return get_group_key(act->name).as_string();
     }
     case kNewSuspend:
     case kUpdateSuspend: {
         auto act = GETPOINTER(sp_suspend, it.data);
-        return get_suspend_key(act->name);
+        return get_suspend_key(act->name).as_string();
     }
     case kNewFungible:
     case kUpdateFungible: {
         auto act = GETPOINTER(sp_fungible, it.data);
-        return get_fungible_key(act->sym_id);
+        return get_fungible_key(act->sym_id).as_string();
     }
-    case kUpdateToken: {
-        auto act = GETPOINTER(sp_token, it.data);
-        return get_token_key(act->domain, act->name);
+    case kUpdateAsset: {
+        op = kRemoveOrRevert;
+        auto act = GETPOINTER(sp_asset, it.data);
+        return std::string(act->key, sizeof(act->key));
     }
     default: {
         FC_ASSERT(false);
@@ -896,75 +910,102 @@ int
 token_database::rollback_rt_group(rt_group* rt) {
     using namespace __internal;
 
-    if(rt->actions.size() > 0) {
-        auto snapshot_read_opts_     = read_opts_;
-        snapshot_read_opts_.snapshot = (const rocksdb::Snapshot*)rt->rb_snapshot;
-        
-        auto batch = rocksdb::WriteBatch();
-        for(auto it = --rt->actions.end(); it >= rt->actions.begin(); it--) {
-            auto data = GETPOINTER(void, it->data);
-            if(it->f.type == kIssueToken) {
-                // special process issue token action, cuz it's multiple keys
-                auto act = (sp_issuetoken*)data;
-                for(size_t i = 0; i < act->size; i++) {
-                    auto key = get_token_key(act->domain, act->names[i]);
-                    batch.Delete(key.as_slice());
-                }
+    if(rt->actions.empty()) {
+        db_->ReleaseSnapshot((const rocksdb::Snapshot*)rt->rb_snapshot);
+        return 0;
+    }
 
-                free(data);
-                continue;
+    auto snapshot_read_opts_     = read_opts_;
+    snapshot_read_opts_.snapshot = (const rocksdb::Snapshot*)rt->rb_snapshot;
+
+    auto key_set = key_unordered_set();
+    key_set.reserve(rt->actions.size());
+    
+    auto batch = rocksdb::WriteBatch();
+    for(auto it = rt->actions.begin(); it < rt->actions.end(); it++) {
+        auto data = GETPOINTER(void, it->data);
+
+        if(it->f.type == kIssueToken) {
+            // special process issue token action, cuz it's multiple keys
+            auto act = (sp_issuetoken*)data;
+            for(size_t i = 0; i < act->size; i++) {
+                auto  key = get_token_key(act->domain, act->names[i]).as_string();
+                batch.Delete(key);
+
+                // insert key into key set
+                key_set.emplace(std::move(key));
             }
-            else if(it->f.type == kUpdateAsset) {
-                // special process update asset action, cuz it's asset key and need to check existed
-                auto act = (sp_asset*)data;
-                auto key = rocksdb::Slice(act->key, sizeof(act->key));
-
-                auto old_value = std::string();
-                auto status    = db_->Get(snapshot_read_opts_, assets_handle_, key, &old_value);
-
-                // key may not existed in latest snapshot, remove it
-                if(!status.ok()) {
-                    if(status.code() != rocksdb::Status::kNotFound) {
-                        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
-                    }
-                    batch.Delete(assets_handle_, key);
-                    break;
-                }
-                batch.Put(assets_handle_, key, old_value);
-
-                free(data);
-                continue;
-            }
-
-            int  op  = 0;
-            auto key = get_sp_keyop(*it, op);
-
-            switch(op) {
-            case kRevert: {
-                auto old_value = std::string();
-                auto status    = db_->Get(snapshot_read_opts_, key.as_slice(), &old_value);
-                if(!status.ok()) {
-                    FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
-                }
-                batch.Put(key.as_slice(), old_value);
-                break;
-            }
-            case kRemove: {
-                batch.Delete(key.as_slice());
-                break;
-            }
-            default: {
-                FC_ASSERT(false);
-            }
-            }  // switch
 
             free(data);
-        }  // for
+            continue;
+        }
 
-        auto sync_write_opts = write_opts_;
-        sync_write_opts.sync = true;
-        db_->Write(sync_write_opts, &batch);
-    }  // if
+        auto op  = 0;
+        auto key = get_sp_keyop(*it, op);
+
+        switch(op) {
+        case kRevert: {
+            // only update operation need to check if key is already processed
+            if(key_set.find(key) != key_set.cend()) {
+                break;
+            }
+            auto old_value = std::string();
+            auto status    = db_->Get(snapshot_read_opts_, key, &old_value);
+            if(!status.ok()) {
+                FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+            }
+            batch.Put(key, old_value);
+
+            // insert key into key set
+            key_set.emplace(std::move(key));
+            break;
+        }
+        case kRemove: {
+            FC_ASSERT(key_set.find(key) == key_set.cend());
+
+            batch.Delete(key);
+        
+            // insert key into key set
+            key_set.emplace(std::move(key));
+            break;
+        }
+        case kRemoveOrRevert: {
+            FC_ASSERT(it->f.type == kUpdateAsset);  // only updateasset will return kRemoveOrRevert now.
+
+            // only update operation need to check if key is already processed
+            if(key_set.find(key) != key_set.cend()) {
+                break;
+            }
+
+            auto old_value = std::string();
+            auto status    = db_->Get(snapshot_read_opts_, assets_handle_, key, &old_value);
+
+            // key may not existed in latest snapshot, remove it
+            if(!status.ok()) {
+                if(status.code() != rocksdb::Status::kNotFound) {
+                    FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+                }
+                batch.Delete(assets_handle_, key);
+            }
+            else {
+                batch.Put(assets_handle_, key, old_value);
+            }
+
+            // insert key into key set
+            key_set.emplace(std::move(key));
+            break;
+        }
+        default: {
+            FC_ASSERT(false);
+        }
+        }  // switch
+
+        free(data);
+    }  // for
+
+    auto sync_write_opts = write_opts_;
+    sync_write_opts.sync = true;
+    db_->Write(sync_write_opts, &batch);
 
     db_->ReleaseSnapshot((const rocksdb::Snapshot*)rt->rb_snapshot);
     return 0;
@@ -973,41 +1014,63 @@ token_database::rollback_rt_group(rt_group* rt) {
 int
 token_database::rollback_pd_group(pd_group* pd) {
     using namespace __internal;
-    if(pd->actions.size() > 0) {
-        rocksdb::WriteBatch batch;
 
-        for(auto it = --pd->actions.end(); it >= pd->actions.begin(); it--) {
-            switch(it->op) {
-            case kRevert: {
-                FC_ASSERT(!it->value.empty());
-                batch.Put(it->key, it->value);
-                break;
-            }
-            case kRemove: {
-                FC_ASSERT(it->value.empty());
-                batch.Delete(it->key);
-                break;
-            }
-            case kRemoveOrRevert: {
-                // update asset action
-                if(it->value.empty()) {
-                    batch.Delete(assets_handle_, it->key);
-                }
-                else {
-                    batch.Put(assets_handle_, it->key, it->value);
-                }
-                break;
-            }
-            default: {
-                FC_ASSERT(false);
-            }
-            }  // switch
-        }
-
-        auto sync_write_opts = write_opts_;
-        sync_write_opts.sync = true;
-        db_->Write(sync_write_opts, &batch);
+    if(pd->actions.empty()) {
+        return 0;
     }
+
+    auto key_set = key_unordered_set();
+    key_set.reserve(pd->actions.size());
+
+    auto batch = rocksdb::WriteBatch();
+
+    for(auto it = pd->actions.begin(); it < pd->actions.end(); it++) {
+        switch(it->op) {
+        case kRevert: {
+            if(key_set.find(it->key) != key_set.cend()) {
+                break;
+            }
+
+            FC_ASSERT(!it->value.empty());
+            batch.Put(it->key, it->value);
+
+            key_set.emplace(it->key);
+            break;
+        }
+        case kRemove: {
+            FC_ASSERT(key_set.find(it->key) == key_set.cend());
+
+            FC_ASSERT(it->value.empty());
+            batch.Delete(it->key);
+
+            key_set.emplace(it->key);
+            break;
+        }
+        case kRemoveOrRevert: {
+            if(key_set.find(it->key) != key_set.cend()) {
+                break;
+            }
+
+            // update asset action
+            if(it->value.empty()) {
+                batch.Delete(assets_handle_, it->key);
+            }
+            else {
+                batch.Put(assets_handle_, it->key, it->value);
+            }
+
+            key_set.emplace(it->key);
+            break;
+        }
+        default: {
+            FC_ASSERT(false);
+        }
+        }  // switch
+    }
+
+    auto sync_write_opts = write_opts_;
+    sync_write_opts.sync = true;
+    db_->Write(sync_write_opts, &batch);
 
     return 0;
 }
@@ -1017,34 +1080,27 @@ token_database::rollback_to_latest_savepoint() {
     using namespace __internal;
     EVT_ASSERT(!savepoints_.empty(), tokendb_no_savepoint, "There's no savepoints anymore");
 
-    auto& back = savepoints_.back();
+    auto n = savepoints_.back().node;
 
-    auto n = back.node;
-    while(n) {
-        switch(back.node->f.type) {
-        case kRT: {
-            auto rt = GETPOINTER(rt_group, back.node->group);
-            rollback_rt_group(rt);
-            delete rt;
+    switch(n.f.type) {
+    case kRT: {
+        auto rt = GETPOINTER(rt_group, n.group);
+        rollback_rt_group(rt);
+        delete rt;
 
-            break;
-        }
-        case kPD: {
-            auto pd = GETPOINTER(pd_group, back.node->group);
-            rollback_pd_group(pd);
-            delete pd;
-
-            break;
-        }
-        default: {
-            FC_ASSERT(false);
-        }
-        }  // switch
-
-        auto t = n;
-        n = n->prev;
-        delete t;
+        break;
     }
+    case kPD: {
+        auto pd = GETPOINTER(pd_group, n.group);
+        rollback_pd_group(pd);
+        delete pd;
+
+        break;
+    }
+    default: {
+        FC_ASSERT(false);
+    }
+    }  // switch
 
     savepoints_.pop_back();
     return 0;
@@ -1082,105 +1138,108 @@ token_database::persist_savepoints() {
         auto pd = pd_group();
         pd.seq  = sp.seq;
 
-        auto acts = std::deque<pd_action>();
-        auto n    = sp.node;
+        auto n = sp.node;
 
-        while(n) {
-            switch(n->f.type) {
-            case kPD: {
-                auto pd = GETPOINTER(pd_group, n->group);
-                acts.insert(acts.cbegin(), pd->actions.cbegin(), pd->actions.cend());
-                delete pd;
+        switch(n.f.type) {
+        case kPD: {
+            auto pd2 = GETPOINTER(pd_group, n.group);
+            pd.actions.insert(pd.actions.cbegin(), pd2->actions.cbegin(), pd2->actions.cend());
+            
+            delete pd2;
+            break;
+        }
+        case kRT: {
+            auto rt = GETPOINTER(rt_group, n.group);
 
-                break;
-            }
-            case kRT: {
-                auto rt     = GETPOINTER(rt_group, n->group);
-                auto rtacts = std::vector<pd_action>();
+            auto key_set = key_unordered_set();
+            key_set.reserve(rt->actions.size());
 
-                auto snapshot_read_opts_     = read_opts_;
-                snapshot_read_opts_.snapshot = (const rocksdb::Snapshot*)rt->rb_snapshot;
+            auto snapshot_read_opts_     = read_opts_;
+            snapshot_read_opts_.snapshot = (const rocksdb::Snapshot*)rt->rb_snapshot;
 
-                for(auto& act : rt->actions) {
-                    auto data = GETPOINTER(void, act.data);
-                    if(act.f.type == kIssueToken) {
-                        // special process issue token action, cuz it's multiple keys
-                        auto itact = (sp_issuetoken*)data;
-                        for(size_t i = 0; i < itact->size; i++) {
-                            auto key   = get_token_key(itact->domain, itact->names[i]);
-                            auto pdact = pd_action();
-                            pdact.op   = kRemove;
-                            pdact.key  = key.as_slice().ToString();
+            for(auto& act : rt->actions) {
+                auto data = GETPOINTER(void, act.data);
 
-                            rtacts.emplace_back(pdact);
-                        }
+                if(act.f.type == kIssueToken) {
+                    // special process issue token action, cuz it's multiple keys
+                    auto itact = (sp_issuetoken*)data;
+                    for(size_t i = 0; i < itact->size; i++) {
+                        auto key   = get_token_key(itact->domain, itact->names[i]).as_string();
+                        auto pdact = pd_action();
+                        pdact.op   = kRemove;
+                        pdact.key  = key;
 
-                        free(data);
-                        continue;
-                    }
-                    else if(act.f.type == kUpdateAsset) {
-                        // special process update asset action, cuz it's asset key and need to check existed
-                        auto uaact  = (sp_asset*)data;
-                        auto key    = rocksdb::Slice(uaact->key, sizeof(uaact->key));
-                        auto pdact  = pd_action();
-                        pdact.op    = kRemoveOrRevert;
-                        pdact.key   = key.ToString();
-                        auto status = db_->Get(snapshot_read_opts_, assets_handle_, key, &pdact.value);
-                        // key may not existed in latest snapshot
-                        if(!status.ok() && status.code() != rocksdb::Status::kNotFound) {
-                            FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
-                        }
-                        rtacts.emplace_back(pdact);
-
-                        free(data);
-                        continue;
+                        pd.actions.emplace_back(std::move(pdact));
+                        key_set.emplace(std::move(key));
                     }
 
-                    auto pdact = pd_action();
-                    int  op    = 0;
-                    auto key   = get_sp_keyop(act, op);
-
-                    pdact.op  = op;
-                    pdact.key = key.as_slice().ToString();
-
-                    switch(op) {
-                    case kRevert: {
-                        auto status = db_->Get(snapshot_read_opts_, key.as_slice(), &pdact.value);
-                        if(!status.ok()) {
-                            FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
-                        }
-                        break;
-                    }
-                    case kRemove: {
-                        // no need to read value
-                        break;
-                    }
-                    }  // switch
-                    
-                    rtacts.emplace_back(pdact);
                     free(data);
+                    continue;
                 }
 
-                db_->ReleaseSnapshot((const rocksdb::Snapshot*)rt->rb_snapshot);
-                acts.insert(acts.cbegin(), rtacts.cbegin(), rtacts.cend());
-                delete rt;
+                auto pdact = pd_action();
+                int  op    = 0;
+                auto key   = get_sp_keyop(act, op);
 
-                break;
+                pdact.op  = op;
+                pdact.key = key;
+
+                switch(op) {
+                case kRevert: {
+                    if(key_set.find(key) != key_set.cend()) {
+                        break;
+                    }
+
+                    auto status = db_->Get(snapshot_read_opts_, key, &pdact.value);
+                    if(!status.ok()) {
+                        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+                    }
+
+                    key_set.emplace(std::move(key));
+                    break;
+                }
+                case kRemove: {
+                    FC_ASSERT(key_set.find(key) == key_set.cend());
+
+                    // no need to read value
+                    key_set.emplace(std::move(key));
+                    break;
+                }
+                case kRemoveOrRevert: {
+                    FC_ASSERT(act.f.type == kUpdateAsset);
+
+                    if(key_set.find(key) != key_set.cend()) {
+                        break;
+                    }
+
+                    auto status = db_->Get(snapshot_read_opts_, assets_handle_, key, &pdact.value);
+                    // key may not existed in latest snapshot
+                    if(!status.ok() && status.code() != rocksdb::Status::kNotFound) {
+                        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+                    }
+
+                    key_set.emplace(std::move(key));
+                    break;
+                }
+                }  // switch
+                
+                pd.actions.emplace_back(std::move(pdact));
+                free(data);
             }
-            default: {
-                FC_ASSERT(false);
-            }
-            }  // switch
 
-            auto t = n;
-            n = n->prev;
-            delete t;
+            db_->ReleaseSnapshot((const rocksdb::Snapshot*)rt->rb_snapshot);
+            delete rt;
 
-            pd.actions.insert(pd.actions.begin(), acts.cbegin(), acts.cend());
-            pds.emplace_back(std::move(pd));
-        }  // for
+            break;
+        }
+        default: {
+            FC_ASSERT(false);
+        }
+        }  // switch
 
-    }
+        pds.emplace_back(std::move(pd));
+    }  // for
+
     fc::raw::pack(fs, pds);
     fs.seekp(0);
 
@@ -1215,13 +1274,10 @@ token_database::load_savepoints() {
     fc::raw::unpack(fs, pds);
 
     for(auto& pd : pds) {
-        savepoints_.emplace_back(savepoint(pd.seq));
-
-        auto& back = savepoints_.back();
-        back.node  = new sp_node(kPD); 
+        savepoints_.emplace_back(savepoint(pd.seq, kPD));
 
         auto ppd = new pd_group(pd);
-        SETPOINTER(void, back.node->group, ppd);
+        SETPOINTER(void, savepoints_.back().node.group, ppd);
     }
     fs.close();
 

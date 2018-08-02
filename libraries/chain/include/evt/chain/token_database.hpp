@@ -77,23 +77,23 @@ public:
 
     struct sp_node {
     public:
-        sp_node(uint16_t type) : f(type), prev(nullptr) {}
+        sp_node(uint16_t type) : f(type) {}
 
     public:
         union {
             flag  f;
             void* group;
         };
-        sp_node* prev;
     };
 
     struct savepoint {
     public:
-        savepoint(int64_t seq) : seq(seq) {}
+        savepoint(int64_t seq, uint16_t type)
+            : seq(seq), node(type) {}
 
     public:
         int64_t  seq;
-        sp_node* node;
+        sp_node  node;
     };
 
 public:
