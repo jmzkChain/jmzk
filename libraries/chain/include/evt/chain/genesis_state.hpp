@@ -14,7 +14,8 @@
 
 namespace evt { namespace chain {
 
-using namespace contracts;
+using contracts::group_def;
+using contracts::fungible_def;
 
 struct genesis_state {
     genesis_state();

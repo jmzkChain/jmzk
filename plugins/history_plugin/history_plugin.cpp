@@ -208,7 +208,7 @@ history_plugin_impl::get_actions(const domain_name&             domain,
         match << "key" << (string)*key;
     }
     if(!names.empty()) {
-        array ns;
+        auto ns = bsoncxx::builder::stream::array();
         for(auto& name : names) {
             ns << (std::string)name;
         }
@@ -285,8 +285,8 @@ history_plugin_impl::get_transactions(const vector<public_key_type>& pkeys, cons
         t = *take;
     }
 
-    document match{};
-    array    keys{};
+    auto match = document();
+    auto keys  = bsoncxx::builder::stream::array();
 
     for(auto& pkey : pkeys) {
         keys << (string)pkey;
