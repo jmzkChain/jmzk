@@ -4,8 +4,12 @@
  */
 #pragma once
 
+#include <string.h>
 #include <iosfwd>
 #include <string>
+#include <vector>
+#include <fc/reflect/reflect.hpp>
+#include <fc/io/raw.hpp>
 
 namespace evt { namespace chain {
 using std::string;
@@ -192,7 +196,7 @@ struct hash<evt::chain::name128> : private hash<uint128_t> {
     }
 };
 
-};  // namespace std
+}  // namespace std
 
 namespace fc {
 

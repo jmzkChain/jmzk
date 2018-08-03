@@ -122,14 +122,14 @@ public:
 
     asset&
     operator+=(const asset& o) {
-        FC_ASSERT(sym() == o.sym());
+        EVT_ASSERT(sym() == o.sym(), asset_type_exception, "addition between two different asset is not allowed");
         amount_ += o.amount();
         return *this;
     }
 
     asset&
     operator-=(const asset& o) {
-        FC_ASSERT(sym() == o.sym());
+        EVT_ASSERT(sym() == o.sym(), asset_type_exception, "addition between two different asset is not allowed");
         amount_ -= o.amount();
         return *this;
     }
@@ -143,7 +143,7 @@ public:
 
     friend bool
     operator<(const asset& a, const asset& b) {
-        FC_ASSERT(a.sym() == b.sym());
+        EVT_ASSERT(a.sym() == b.sym(), asset_type_exception, "addition between two different asset is not allowed");
         return a.amount() < b.amount();
     }
 
@@ -161,13 +161,13 @@ public:
 
     friend asset
     operator-(const asset& a, const asset& b) {
-        FC_ASSERT(a.sym() == b.sym());
+        EVT_ASSERT(a.sym() == b.sym(), asset_type_exception, "addition between two different asset is not allowed");
         return asset(a.amount() - b.amount(), a.sym());
     }
 
     friend asset
     operator+(const asset& a, const asset& b) {
-        FC_ASSERT(a.sym() == b.sym());
+        EVT_ASSERT(a.sym() == b.sym(), asset_type_exception, "addition between two different asset is not allowed");
         return asset(a.amount() + b.amount(), a.sym());
     }
 

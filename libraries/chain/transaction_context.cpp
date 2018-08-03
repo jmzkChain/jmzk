@@ -26,7 +26,7 @@ transaction_context::transaction_context(controller&           c,
 
 void
 transaction_context::init() {
-    FC_ASSERT(!is_initialized, "cannot initialize twice");
+    EVT_ASSERT(!is_initialized, transaction_exception, "cannot initialize twice");
     EVT_ASSERT(!trx.trx.actions.empty(), tx_no_action, "There's any actions in this transaction");
     
     check_time();    // Fail early if deadline has already been exceeded
@@ -62,7 +62,7 @@ transaction_context::init_for_suspend_trx() {
 
 void
 transaction_context::exec() {
-    FC_ASSERT(is_initialized, "must first initialize");
+    EVT_ASSERT(is_initialized, transaction_exception, "must first initialize");
 
     for(const auto& act : trx.trx.actions) {
         trace->action_traces.emplace_back();
@@ -72,7 +72,7 @@ transaction_context::exec() {
 
 void
 transaction_context::finalize() {
-    FC_ASSERT(is_initialized, "must first initialize");
+    EVT_ASSERT(is_initialized, transaction_exception, "must first initialize");
 
     if(charge) {
         // in charge-free mode, charge always be zero
@@ -86,6 +86,10 @@ transaction_context::finalize() {
 void
 transaction_context::squash() {
     undo_session.squash();
+}
+
+void transaction_context::undo() {
+    undo_session.undo();
 }
 
 void

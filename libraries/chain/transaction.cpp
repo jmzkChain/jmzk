@@ -18,6 +18,7 @@
 
 #include <evt/chain/exceptions.hpp>
 #include <evt/chain/transaction.hpp>
+#include <evt/chain/config.hpp>
 
 namespace evt { namespace chain {
 
@@ -71,7 +72,7 @@ transaction::sig_digest(const chain_id_type& chain_id) const {
 
 flat_set<public_key_type>
 transaction::get_signature_keys(const vector<signature_type>& signatures, const chain_id_type& chain_id,
-                                bool allow_duplicate_keys) const {
+                                bool allow_duplicate_keys, bool use_cache) const {
     try {
         using boost::adaptors::transformed;
 
@@ -84,13 +85,18 @@ transaction::get_signature_keys(const vector<signature_type>& signatures, const 
             recovery_cache_type::index<by_sig>::type::iterator it = recovery_cache.get<by_sig>().find(sig);
 
             public_key_type recov;
-            if(it == recovery_cache.get<by_sig>().end() || it->trx_id != id()) {
-                recov = public_key_type(sig, digest);
-                recovery_cache.emplace_back(
-                    cached_pub_key{id(), recov, sig});  // could fail on dup signatures; not a problem
+            if(use_cache) {
+                if(it == recovery_cache.get<by_sig>().end() || it->trx_id != id()) {
+                    recov = public_key_type(sig, digest);
+                    recovery_cache.emplace_back(
+                        cached_pub_key{id(), recov, sig});  // could fail on dup signatures; not a problem
+                }
+                else {
+                    recov = it->pub_key;
+                }
             }
             else {
-                recov = it->pub_key;
+                recov = public_key_type(sig, digest);
             }
             bool successful_insertion                   = false;
             std::tie(std::ignore, successful_insertion) = recovered_pub_keys.insert(recov);
@@ -100,8 +106,11 @@ transaction::get_signature_keys(const vector<signature_type>& signatures, const 
                        ("key", recov));
         }
 
-        while(recovery_cache.size() > recovery_cache_size)
-            recovery_cache.erase(recovery_cache.begin());
+        if(use_cache) {
+            while(recovery_cache.size() > recovery_cache_size) {
+                recovery_cache.erase(recovery_cache.begin());
+            }
+        }
 
         return recovered_pub_keys;
     }
@@ -120,22 +129,22 @@ signed_transaction::sign(const private_key_type& key, const chain_id_type& chain
 }
 
 flat_set<public_key_type>
-signed_transaction::get_signature_keys(const chain_id_type& chain_id, bool allow_duplicate_keys) const {
-    return transaction::get_signature_keys(signatures, chain_id, allow_duplicate_keys);
+signed_transaction::get_signature_keys(const chain_id_type& chain_id, bool allow_duplicate_keys, bool use_cache) const {
+    return transaction::get_signature_keys(signatures, chain_id, allow_duplicate_keys, use_cache);
 }
 
 uint32_t
 packed_transaction::get_unprunable_size() const {
     uint64_t size = config::fixed_net_overhead_of_packed_trx;
     size += packed_trx.size();
-    FC_ASSERT(size <= std::numeric_limits<uint32_t>::max(), "packed_transaction is too big");
+    EVT_ASSERT(size <= std::numeric_limits<uint32_t>::max(), tx_too_big, "packed_transaction is too big");
     return static_cast<uint32_t>(size);
 }
 
 uint32_t
 packed_transaction::get_prunable_size() const {
     uint64_t size = fc::raw::pack_size(signatures);
-    FC_ASSERT(size <= std::numeric_limits<uint32_t>::max(), "packed_transaction is too big");
+    EVT_ASSERT(size <= std::numeric_limits<uint32_t>::max(), tx_too_big, "packed_transaction is too big");
     return static_cast<uint32_t>(size);
 }
 
@@ -228,7 +237,7 @@ packed_transaction::get_raw_transaction() const {
         case zlib:
             return zlib_decompress(packed_trx);
         default:
-            FC_THROW("Unknown transaction compression algorithm");
+            EVT_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
         }
     }
     FC_CAPTURE_AND_RETHROW((compression)(packed_trx))
@@ -258,7 +267,7 @@ packed_transaction::local_unpack() const {
                 unpacked_trx = zlib_decompress_transaction(packed_trx);
                 break;
             default:
-                FC_THROW("Unknown transaction compression algorithm");
+                EVT_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
             }
         }
         FC_CAPTURE_AND_RETHROW((compression)(packed_trx))
@@ -280,7 +289,7 @@ packed_transaction::get_signed_transaction() const {
         case zlib:
             return signed_transaction(get_transaction(), signatures);
         default:
-            FC_THROW("Unknown transaction compression algorithm");
+            EVT_THROW(unknown_transaction_compression,"Unknown transaction compression algorithm");
         }
     }
     FC_CAPTURE_AND_RETHROW((compression)(packed_trx))
@@ -297,7 +306,7 @@ packed_transaction::set_transaction(const transaction& t, packed_transaction::co
             packed_trx = zlib_compress_transaction(t);
             break;
         default:
-            FC_THROW("Unknown transaction compression algorithm");
+            EVT_THROW(unknown_transaction_compression,"Unknown transaction compression algorithm");
         }
     }
     FC_CAPTURE_AND_RETHROW((_compression)(t))

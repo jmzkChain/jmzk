@@ -4,8 +4,9 @@
  */
 #pragma once
 #include <type_traits>
-#include <evt/chain/types.hpp>
 #include <boost/any.hpp>
+#include <evt/chain/types.hpp>
+#include <evt/chain/exceptions.hpp>
 
 namespace evt { namespace chain {
 
@@ -40,7 +41,7 @@ public:
     data_as() const {
         if(cache_.empty()) {
             using raw_type = std::remove_const_t<std::remove_reference_t<T>>;
-            FC_ASSERT(name == raw_type::get_name());
+            EVT_ASSERT(name == raw_type::get_name(), action_type_exception, "action name is not consistent with action struct");
             cache_ = fc::raw::unpack<raw_type>(data);
         }
         // no need to check name here, `any_cast` will throws exception if types don't match

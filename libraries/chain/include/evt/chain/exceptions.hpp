@@ -4,7 +4,6 @@
  */
 #pragma once
 #include <boost/core/typeinfo.hpp>
-#include <evt/chain/protocol.hpp>
 #include <fc/exception/exception.hpp>
 
 #define EVT_ASSERT(expr, exc_type, FORMAT, ...)            \
@@ -82,31 +81,34 @@
 namespace evt { namespace chain {
 
 FC_DECLARE_EXCEPTION( chain_exception, 3000000, "blockchain exception" );
-FC_DECLARE_DERIVED_EXCEPTION( database_query_exception,          chain_exception, 3010000, "Database query exception" );
+FC_DECLARE_DERIVED_EXCEPTION( database_exception,                chain_exception, 3010000, "Database exception" );
 FC_DECLARE_DERIVED_EXCEPTION( block_validate_exception,          chain_exception, 3020000, "block validation exception" );
 FC_DECLARE_DERIVED_EXCEPTION( transaction_exception,             chain_exception, 3030000, "transaction validation exception" );
 FC_DECLARE_DERIVED_EXCEPTION( action_exception,                  chain_exception, 3040000, "action validation exception" );
+FC_DECLARE_DERIVED_EXCEPTION( producer_exception,                chain_exception, 3050000, "Producer exception" );
+FC_DECLARE_DERIVED_EXCEPTION( block_log_exception,               chain_exception, 3060000, "Block log exception" );
 FC_DECLARE_DERIVED_EXCEPTION( utility_exception,                 chain_exception, 3070000, "utility method exception" );
-FC_DECLARE_DERIVED_EXCEPTION( undo_database_exception,           chain_exception, 3080000, "undo database exception" );
-FC_DECLARE_DERIVED_EXCEPTION( unlinkable_block_exception,        chain_exception, 3090000, "unlinkable block" );
+FC_DECLARE_DERIVED_EXCEPTION( fork_database_exception,           chain_exception, 3080000, "Fork database exception" );
+FC_DECLARE_DERIVED_EXCEPTION( reversible_blocks_exception,       chain_exception, 3090000, "Reversible Blocks exception" );
 FC_DECLARE_DERIVED_EXCEPTION( black_swan_exception,              chain_exception, 3100000, "black swan" );
 FC_DECLARE_DERIVED_EXCEPTION( chain_type_exception,              chain_exception, 3110000, "chain type exception" );
-FC_DECLARE_DERIVED_EXCEPTION( missing_plugin_exception,          chain_exception, 3120000, "missing plugin exception" );
+FC_DECLARE_DERIVED_EXCEPTION( plugin_exception,                  chain_exception, 3120000, "plugin exception" );
 FC_DECLARE_DERIVED_EXCEPTION( wallet_exception,                  chain_exception, 3130000, "wallet exception" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_exception,                 chain_exception, 3140000, "tokendb exception" );
 FC_DECLARE_DERIVED_EXCEPTION( misc_exception,                    chain_exception, 3150000, "Miscellaneous exception");
 FC_DECLARE_DERIVED_EXCEPTION( authorization_exception,           chain_exception, 3160000, "Authorization exception");
+FC_DECLARE_DERIVED_EXCEPTION( controller_emit_signal_exception,  chain_exception, 3170000, "Exceptions that are allowed to bubble out of emit calls in controller" );
+FC_DECLARE_DERIVED_EXCEPTION( http_exception,                    chain_exception, 3180000, "http exception" );
 
-FC_DECLARE_DERIVED_EXCEPTION( permission_query_exception,        database_query_exception, 3010001, "Permission Query Exception" );
-FC_DECLARE_DERIVED_EXCEPTION( account_query_exception,           database_query_exception, 3010002, "Account Query Exception" );
-FC_DECLARE_DERIVED_EXCEPTION( contract_table_query_exception,    database_query_exception, 3010003, "Contract Table Query Exception" );
-FC_DECLARE_DERIVED_EXCEPTION( contract_query_exception,          database_query_exception, 3010004, "Contract Query Exception" );
-
-FC_DECLARE_DERIVED_EXCEPTION( block_tx_output_exception,         block_validate_exception, 3020001, "Transaction outputs in block do not match transaction outputs from applying block." );
-FC_DECLARE_DERIVED_EXCEPTION( block_concurrency_exception,       block_validate_exception, 3020002, "Block does not guarantee concurrent executions without conflicts." );
-FC_DECLARE_DERIVED_EXCEPTION( block_lock_exception,              block_validate_exception, 3020003, "Shard locks in block are incorrect or mal-formed." );
-FC_DECLARE_DERIVED_EXCEPTION( block_resource_exhausted,          block_validate_exception, 3020004, "Block exhausted allowed resources." );
-FC_DECLARE_DERIVED_EXCEPTION( block_too_old_exception,           block_validate_exception, 3020005, "Block is too old to push." );
+FC_DECLARE_DERIVED_EXCEPTION( unlinkable_block_exception,        block_validate_exception, 3020001, "Unlinkable block" );
+FC_DECLARE_DERIVED_EXCEPTION( block_tx_output_exception,         block_validate_exception, 3020002, "Transaction outputs in block do not match transaction outputs from applying block" );
+FC_DECLARE_DERIVED_EXCEPTION( block_concurrency_exception,       block_validate_exception, 3020003, "Block does not guarantee concurrent execution without conflicts" );
+FC_DECLARE_DERIVED_EXCEPTION( block_lock_exception,              block_validate_exception, 3020004, "Shard locks in block are incorrect or mal-formed" );
+FC_DECLARE_DERIVED_EXCEPTION( block_resource_exhausted,          block_validate_exception, 3020005, "Block exhausted allowed resources" );
+FC_DECLARE_DERIVED_EXCEPTION( block_too_old_exception,           block_validate_exception, 3020006, "Block is too old to push" );
+FC_DECLARE_DERIVED_EXCEPTION( block_from_the_future,             block_validate_exception, 3020007, "Block is from the future" );
+FC_DECLARE_DERIVED_EXCEPTION( wrong_signing_key,                 block_validate_exception, 3020008, "Block is not signed with expected key" );
+FC_DECLARE_DERIVED_EXCEPTION( wrong_producer,                    block_validate_exception, 3020009, "Block is not signed by expected producer" );
 
 FC_DECLARE_DERIVED_EXCEPTION( tx_duplicate,                      transaction_exception, 3030001, "duplicate transaction" );
 FC_DECLARE_DERIVED_EXCEPTION( tx_decompression_error,            transaction_exception, 3030002, "Error decompressing transaction" );
@@ -120,6 +122,32 @@ FC_DECLARE_DERIVED_EXCEPTION( deadline_exception,                transaction_exc
 FC_DECLARE_DERIVED_EXCEPTION( max_charge_exceeded_exception,     transaction_exception, 3030010, "exceeded max charge paid");
 FC_DECLARE_DERIVED_EXCEPTION( charge_exceeded_exception,         transaction_exception, 3030011, "exceeded remaining EVT & Pinned EVT tokens" );
 FC_DECLARE_DERIVED_EXCEPTION( payer_exception,                   transaction_exception, 3030012, "Invalid payer" );
+FC_DECLARE_DERIVED_EXCEPTION( too_many_tx_at_once,               transaction_exception, 3040013, "Pushing too many transactions at once" );
+FC_DECLARE_DERIVED_EXCEPTION( tx_too_big,                        transaction_exception, 3040014, "Transaction is too big" );
+FC_DECLARE_DERIVED_EXCEPTION( unknown_transaction_compression,   transaction_exception, 3040015, "Unknown transaction compression" );
+
+FC_DECLARE_DERIVED_EXCEPTION( producer_priv_key_not_found,       producer_exception, 3050001, "Producer private key is not available" );
+FC_DECLARE_DERIVED_EXCEPTION( missing_pending_block_state,       producer_exception, 3050002, "Pending block state is missing" );
+FC_DECLARE_DERIVED_EXCEPTION( producer_double_confirm,           producer_exception, 3050003, "Producer is double confirming known range" );
+FC_DECLARE_DERIVED_EXCEPTION( producer_schedule_exception,       producer_exception, 3050004, "Producer schedule exception" );
+FC_DECLARE_DERIVED_EXCEPTION( producer_not_in_schedule,          producer_exception, 3050006, "The producer is not part of current schedule" );
+   
+FC_DECLARE_DERIVED_EXCEPTION( block_log_unsupported_version,     block_log_exception, 3060001, "unsupported version of block log" );
+FC_DECLARE_DERIVED_EXCEPTION( block_log_append_fail,             block_log_exception, 3060002, "fail to append block to the block log" );
+FC_DECLARE_DERIVED_EXCEPTION( block_log_not_found,               block_log_exception, 3060003, "block log can not be found" );
+FC_DECLARE_DERIVED_EXCEPTION( block_log_backup_dir_exist,        block_log_exception, 3060004, "block log backup dir already exists" );
+
+FC_DECLARE_DERIVED_EXCEPTION( fork_db_block_not_found,           fork_database_exception, 3080001, "Block can not be found" );
+
+FC_DECLARE_DERIVED_EXCEPTION( invalid_reversible_blocks_dir,      reversible_blocks_exception, 3090001, "Invalid reversible blocks directory" );
+FC_DECLARE_DERIVED_EXCEPTION( reversible_blocks_backup_dir_exist, reversible_blocks_exception, 3090002, "Backup directory for reversible blocks already existg" );
+FC_DECLARE_DERIVED_EXCEPTION( gap_in_reversible_blocks_db,        reversible_blocks_exception, 3090003, "Gap in the reversible blocks database" );
+
+FC_DECLARE_DERIVED_EXCEPTION( guard_exception,                    database_exception, 3160101, "Database exception" );
+FC_DECLARE_DERIVED_EXCEPTION( database_guard_exception,           guard_exception,    3160102, "Database usage is at unsafe levels" );
+FC_DECLARE_DERIVED_EXCEPTION( reversible_guard_exception,         guard_exception,    3160103, "Reversible block log usage is at unsafe levels" );
+
+FC_DECLARE_DERIVED_EXCEPTION( checkpoint_exception,               controller_emit_signal_exception, 3170001, "Block does not match checkpoint" );
 
 FC_DECLARE_DERIVED_EXCEPTION( action_authorize_exception,          action_exception, 3040001, "invalid action authorization" );
 FC_DECLARE_DERIVED_EXCEPTION( action_args_exception,               action_exception, 3040002, "Invalid arguments for action" );
@@ -166,8 +194,6 @@ FC_DECLARE_DERIVED_EXCEPTION( evt_link_expiration_exception,       action_except
 FC_DECLARE_DERIVED_EXCEPTION( everipass_exception,                 action_exception, 3040043, "everiPass failed");
 FC_DECLARE_DERIVED_EXCEPTION( everipay_exception,                  action_exception, 3040044, "everiPay failed");
 
-FC_DECLARE_DERIVED_EXCEPTION( pop_empty_chain,                   undo_database_exception, 3070001, "There are no blocks to be popped." );
-
 FC_DECLARE_DERIVED_EXCEPTION( name_type_exception,               chain_type_exception, 3120001, "Invalid name" );
 FC_DECLARE_DERIVED_EXCEPTION( public_key_type_exception,         chain_type_exception, 3120002, "Invalid public key" );
 FC_DECLARE_DERIVED_EXCEPTION( private_key_type_exception,        chain_type_exception, 3120003, "Invalid private key" );
@@ -185,12 +211,22 @@ FC_DECLARE_DERIVED_EXCEPTION( permission_type_exception,         chain_type_exce
 FC_DECLARE_DERIVED_EXCEPTION( group_type_exception,              chain_type_exception, 3120015, "Invalid group" );
 FC_DECLARE_DERIVED_EXCEPTION( authorizer_ref_type_exception,     chain_type_exception, 3120016, "Invalid authorizer ref" );
 FC_DECLARE_DERIVED_EXCEPTION( address_type_exception,            chain_type_exception, 3120017, "Invalid address" );
+FC_DECLARE_DERIVED_EXCEPTION( name128_type_exception,            chain_type_exception, 3120018, "Invalid name128" );
+FC_DECLARE_DERIVED_EXCEPTION( chain_id_type_exception,           chain_type_exception, 3120019, "Invalid chain id" );
 
-FC_DECLARE_DERIVED_EXCEPTION( missing_chain_api_plugin_exception,   missing_plugin_exception, 3130001, "Missing Chain API Plugin" );
-FC_DECLARE_DERIVED_EXCEPTION( missing_wallet_api_plugin_exception,  missing_plugin_exception, 3130002, "Missing Wallet API Plugin" );
-FC_DECLARE_DERIVED_EXCEPTION( missing_net_api_plugin_exception,     missing_plugin_exception, 3130003, "Missing Net API Plugin" );
-FC_DECLARE_DERIVED_EXCEPTION( missing_evt_api_plugin_exception,     missing_plugin_exception, 3130004, "Missing EVT API Plugin" );
-FC_DECLARE_DERIVED_EXCEPTION( missing_history_api_plugin_exception, missing_plugin_exception, 3130005, "Missing History API Plugin" );
+FC_DECLARE_DERIVED_EXCEPTION( missing_chain_api_plugin_exception,   plugin_exception, 3130001, "Missing Chain API Plugin" );
+FC_DECLARE_DERIVED_EXCEPTION( missing_wallet_api_plugin_exception,  plugin_exception, 3130002, "Missing Wallet API Plugin" );
+FC_DECLARE_DERIVED_EXCEPTION( missing_net_api_plugin_exception,     plugin_exception, 3130003, "Missing Net API Plugin" );
+FC_DECLARE_DERIVED_EXCEPTION( missing_evt_api_plugin_exception,     plugin_exception, 3130004, "Missing EVT API Plugin" );
+FC_DECLARE_DERIVED_EXCEPTION( missing_history_api_plugin_exception, plugin_exception, 3130005, "Missing History API Plugin" );
+FC_DECLARE_DERIVED_EXCEPTION( plugin_config_exception,              plugin_exception, 3130006, "Incorrect plugin configuration" );
+
+FC_DECLARE_DERIVED_EXCEPTION( invalid_http_client_root_cert,    http_exception, 3180001, "invalid http client root certificate" );
+FC_DECLARE_DERIVED_EXCEPTION( invalid_http_response,            http_exception, 3180002, "invalid http response" );
+FC_DECLARE_DERIVED_EXCEPTION( resolved_to_multiple_ports,       http_exception, 3180003, "service resolved to multiple ports" );
+FC_DECLARE_DERIVED_EXCEPTION( fail_to_resolve_host,             http_exception, 3180004, "fail to resolve host" );
+FC_DECLARE_DERIVED_EXCEPTION( http_request_fail,                http_exception, 3180005, "http request fail" );
+FC_DECLARE_DERIVED_EXCEPTION( invalid_http_request,             http_exception, 3180006, "invalid http request" );
 
 FC_DECLARE_DERIVED_EXCEPTION( wallet_exist_exception,            wallet_exception, 3140001, "Wallet already exists" );
 FC_DECLARE_DERIVED_EXCEPTION( wallet_nonexistent_exception,      wallet_exception, 3140002, "Nonexistent wallet" );
@@ -223,6 +259,8 @@ FC_DECLARE_DERIVED_EXCEPTION( unknown_block_exception,           misc_exception,
 FC_DECLARE_DERIVED_EXCEPTION( unknown_transaction_exception,     misc_exception, 3100003, "unknown transaction" );
 FC_DECLARE_DERIVED_EXCEPTION( fixed_reversible_db_exception,     misc_exception, 3100004, "Corrupted reversible block database was fixed." );
 FC_DECLARE_DERIVED_EXCEPTION( extract_genesis_state_exception,   misc_exception, 3100005, "extracted genesis state from blocks.log" );
+FC_DECLARE_DERIVED_EXCEPTION( unsupported_feature,               misc_exception, 3100006, "Feature is currently unsupported" );
+FC_DECLARE_DERIVED_EXCEPTION( node_management_success,           misc_exception, 3100007, "Node management operation successfully executed" );
 
 FC_DECLARE_DERIVED_EXCEPTION( tx_duplicate_sig,                 authorization_exception, 3090001, "Duplicate signature is included." );
 FC_DECLARE_DERIVED_EXCEPTION( tx_irrelevant_sig,                authorization_exception, 3090002, "Irrelevant signature is included." );

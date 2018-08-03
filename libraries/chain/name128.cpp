@@ -2,10 +2,9 @@
  *  @file
  *  @copyright defined in evt/LICENSE.txt
  */
+#include <evt/chain/name128.hpp>
 #include <boost/algorithm/string.hpp>
 #include <evt/chain/exceptions.hpp>
-#include <evt/chain/name.hpp>
-#include <fc/exception/exception.hpp>
 #include <fc/variant.hpp>
 
 namespace evt { namespace chain {
@@ -13,10 +12,10 @@ namespace evt { namespace chain {
 void
 name128::set(const char* str) {
     const auto len = strnlen(str, 22);
-    EVT_ASSERT(len <= 21, name_type_exception, "Name128 is longer than 21 characters (${name}) ",
+    EVT_ASSERT(len <= 21, name128_type_exception, "Name128 is longer than 21 characters (${name}) ",
                ("name", string(str)));
     value = string_to_name128(str);
-    EVT_ASSERT(to_string() == string(str), name_type_exception,
+    EVT_ASSERT(to_string() == string(str), name128_type_exception,
                "Name128 not properly normalized (name: ${name}, normalized: ${normalized}) ",
                ("name", string(str))("normalized", to_string()));
 }

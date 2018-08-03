@@ -11,6 +11,7 @@
 #include <fc/string.hpp>
 #include <fc/optional.hpp>
 #include <fc/exception/exception.hpp>
+#include <evt/chain/exceptions.hpp>
 
 namespace evt { namespace chain {
 
@@ -40,7 +41,7 @@ public:
 
     block_timestamp
     next() const {
-        FC_ASSERT(std::numeric_limits<uint32_t>::max() - slot >= 1, "block timestamp overflow");
+        EVT_ASSERT(std::numeric_limits<uint32_t>::max() - slot >= 1, fc::overflow_exception, "block timestamp overflow");
         auto result = block_timestamp(*this);
         result.slot += 1;
         return result;

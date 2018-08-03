@@ -36,7 +36,9 @@ public:
         path     state_dir              = chain::config::default_state_dir_name;
         path     tokendb_dir            = chain::config::default_tokendb_dir_name;
         uint64_t state_size             = chain::config::default_state_size;
+        uint64_t state_guard_size       = chain::config::default_state_guard_size;
         uint64_t reversible_cache_size  = chain::config::default_reversible_cache_size;
+        uint64_t reversible_guard_size  = chain::config::default_reversible_guard_size;
         bool     read_only              = false;
         bool     force_all_checks       = false;
         bool     loadtest_mode          = false;
@@ -113,6 +115,11 @@ public:
     const block_header& head_block_header() const;
     block_state_ptr     head_block_state() const;
 
+    uint32_t      fork_db_head_block_num()const;
+    block_id_type fork_db_head_block_id()const;
+    time_point    fork_db_head_block_time()const;
+    account_name  fork_db_head_block_producer()const;
+
     time_point      pending_block_time() const;
     block_state_ptr pending_block_state() const;
 
@@ -136,8 +143,10 @@ public:
 
     void validate_expiration(const transaction& t) const;
     void validate_tapos(const transaction& t) const;
+    void validate_db_available_size() const;
+    void validate_reversible_available_size() const;
 
-    bool is_known_unexpired_transaction( const transaction_id_type& id) const;
+    bool is_known_unexpired_transaction(const transaction_id_type& id) const;
 
     int64_t set_proposed_producers(vector<producer_key> producers);
 
@@ -148,6 +157,7 @@ public:
 
     chain_id_type get_chain_id() const;
 
+    signal<void(const signed_block_ptr&)>         pre_accepted_block;
     signal<void(const block_state_ptr&)>          accepted_block_header;
     signal<void(const block_state_ptr&)>          accepted_block;
     signal<void(const block_state_ptr&)>          irreversible_block;

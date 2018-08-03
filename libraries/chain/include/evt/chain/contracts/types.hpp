@@ -9,6 +9,7 @@
 #include <evt/chain/chain_config.hpp>
 #include <evt/chain/config.hpp>
 #include <evt/chain/types.hpp>
+#include <evt/chain/transaction.hpp>
 
 #include <evt/chain/contracts/authorizer_ref.hpp>
 #include <evt/chain/contracts/group.hpp>

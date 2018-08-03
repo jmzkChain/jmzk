@@ -25,8 +25,6 @@ public:
         cfg.blocks_dir            = basedir + "blocks";
         cfg.state_dir             = basedir + "state";
         cfg.tokendb_dir           = basedir + "tokendb";
-        cfg.state_size            = 1024 * 1024 * 8;
-        cfg.reversible_cache_size = 1024 * 1024 * 8;
         cfg.contracts_console     = true;
         cfg.charge_free_mode      = false;
         cfg.loadtest_mode         = false;

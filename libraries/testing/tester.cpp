@@ -37,8 +37,6 @@ base_tester::init(bool push_genesis) {
     cfg.blocks_dir            = tempdir.path() / config::default_blocks_dir_name;
     cfg.state_dir             = tempdir.path() / config::default_state_dir_name;
     cfg.tokendb_dir           = tempdir.path() / config::default_tokendb_dir_name;
-    cfg.state_size            = 1024 * 1024 * 8;
-    cfg.reversible_cache_size = 1024 * 1024 * 8;
     cfg.contracts_console     = true;
     cfg.loadtest_mode         = false;
     cfg.charge_free_mode      = false;
