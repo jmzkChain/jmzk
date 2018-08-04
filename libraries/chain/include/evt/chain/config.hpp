@@ -68,7 +68,7 @@ static_assert(maximum_tracked_dpos_confirmations >= ((max_producers * 2 / 3) + 1
 
 const static int irreversible_threshold_percent = 70 * percent_1;
 
-const static int default_evt_link_expired_secs = 15;  // 15s -> total: 30s
+const static int default_evt_link_expired_secs = 20;  // 20s -> total: 40s
 
 }}}  // namespace evt::chain::config
 

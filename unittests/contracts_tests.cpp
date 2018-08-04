@@ -1171,11 +1171,11 @@ TEST_CASE_METHOD(contracts_test, "everipass_test", "[contracts]") {
     CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer), evt_link_type_exception);
 
     ep.link.set_header(header);
-    ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts - 20));
+    ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts - 40));
     sign_link(ep.link);
     CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer), evt_link_expiration_exception);
 
-    ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts + 20));
+    ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts + 40));
     sign_link(ep.link);
     CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer), evt_link_expiration_exception);
 
@@ -1252,11 +1252,11 @@ TEST_CASE_METHOD(contracts_test, "everipay_test", "[contracts]") {
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer), evt_link_type_exception);
 
     ep.link.set_header(evt_link::version1 | evt_link::everiPay);
-    ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts - 20));
+    ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts - 40));
     sign_link(ep.link);
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), (name128)std::to_string(evt_sym().id()), ep), key_seeds, payer), evt_link_expiration_exception);
 
-    ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts + 20));
+    ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts + 40));
     sign_link(ep.link);
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), (name128)std::to_string(evt_sym().id()), ep), key_seeds, payer), evt_link_expiration_exception);
 
