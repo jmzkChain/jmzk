@@ -633,24 +633,26 @@ struct controller_impl {
                 EVT_ASSERT(b->block_extensions.size() == 0, block_validate_exception, "no supported extensions");
                 start_block(b->timestamp, b->confirmed, s);
 
-                transaction_trace_ptr trace;
+                auto num_pending_receipts = pending->_pending_block_state->block->transactions.size();
                 for(const auto& receipt : b->transactions) {
-                    auto num_pending_receipts = pending->_pending_block_state->block->transactions.size();
+                    auto trace = transaction_trace_ptr();
                     if(receipt.type == transaction_receipt::input) {
-                        auto& pt = receipt.trx;
-                        auto mtrx = std::make_shared<transaction_metadata>(pt);
+                        auto& pt    = receipt.trx;
+                        auto  mtrx  = std::make_shared<transaction_metadata>(pt);
+                        
                         trace = push_transaction(mtrx, fc::time_point::maximum(), false);
                     }
                     else if(receipt.type == transaction_receipt::suspend) {
                         // suspend transaction is executed in its parent transaction
                         // so don't execute here
+                        num_pending_receipts++;
                         continue;
                     }
                     else {
                         EVT_ASSERT(false, block_validate_exception, "encountered unexpected receipt type");
                     }
 
-                    bool transaction_failed = trace && trace->except;
+                    auto transaction_failed = trace && trace->except;
                     if(transaction_failed) {
                         edump((*trace));
                         throw *trace->except;
@@ -663,11 +665,13 @@ struct controller_impl {
                                block_validate_exception, "expected receipt was not added",
                                ("block", *b)("expected_receipt", receipt)
                                );
-                    const transaction_receipt_header& r = pending->_pending_block_state->block->transactions.back();
+                    auto& r = pending->_pending_block_state->block->transactions.back();
                     EVT_ASSERT(r == static_cast<const transaction_receipt_header&>(receipt),
                                block_validate_exception, "receipt does not match",
                               ("producer_receipt", receipt)("validator_receipt", pending->_pending_block_state->block->transactions.back())
                               );
+
+                    num_pending_receipts++;
                 }
 
                 finalize_block();
