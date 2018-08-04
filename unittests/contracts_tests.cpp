@@ -1123,6 +1123,14 @@ TEST_CASE_METHOD(contracts_test, "contract_evt2pevt_test", "[contracts]") {
     tokendb.read_asset(key, pevt_sym(), ast);
     CHECK(500000 == ast.amount());
 
+    auto tf = var.as<transferft>();
+    tf.from = key;
+    tf.to   = payer;
+    tf.number = asset(50, symbol(5,2));
+
+    to_variant(tf, var);
+    CHECK_THROWS_AS(my_tester->push_action(N(transferft), N128(.fungible), (name128)std::to_string(pevt_sym().id()), var.get_object(), key_seeds, payer), fungible_symbol_exception);
+
     my_tester->produce_blocks();
 }
 

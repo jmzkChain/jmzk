@@ -463,6 +463,7 @@ EVT_ACTION_IMPL(transferft) {
         EVT_ASSERT(context.has_authorized(N128(.fungible), (name128)std::to_string(sym.id())), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(!tfact.to.is_reserved(), fungible_address_exception, "Cannot transfer fungible tokens to reserved address");
         EVT_ASSERT(tfact.from != tfact.to, fungible_address_exception, "From and to are the same address");
+        EVT_ASSERT(sym != pevt_sym(), fungible_symbol_exception, "Pinned EVT cannot be transfered");
 
         auto& tokendb = context.token_db;
         
