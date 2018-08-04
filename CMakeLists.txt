@@ -10,6 +10,7 @@ option(ENABLE_BENCHMARKS        "Build benchmarks" OFF)
 option(ENABLE_COVERAGE_TESTING  "Build EVT for code coverage analysis" OFF)
 option(ENABLE_TESTING           "Enable testing targets" ON)
 option(ENABLE_COLOR_OUTPUT      "Enable diagnostics color output from compiler" ON)
+option(ENABLE_MAINNET_BUILD     "Build EVT for Mainnet" OFF)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libraries/fc/CMakeModules")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
@@ -47,8 +48,6 @@ endif()
 
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
-set(EVT_EGENESIS_JSON "${CMAKE_CURRENT_SOURCE_DIR}/genesis.json" )
-set(EVT_ROOT_KEY "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV")
 
 #set (USE_PCH 1)
 

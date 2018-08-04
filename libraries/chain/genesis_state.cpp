@@ -14,6 +14,8 @@ using namespace contracts;
 
 group_def
 get_evt_org() {
+
+#ifndef MAINNET_BUILD
     const char* def = R"(
     {
         "name": ".everiToken",
@@ -30,6 +32,24 @@ get_evt_org() {
         }
     }
     )";
+#else
+    const char* def = R"(
+    {
+        "name": ".everiToken",
+        "key": "EVT00000000000000000000000000000000000000000000000000",
+        "root": {
+            "threshold": 19,
+            "nodes": [
+                { "weight": 8, "key": "EVT6ZVMb3e69umQB4DQErvovx4fpy4ri2qMRmWnCjqCHRvzeWBYix" },
+                { "weight": 7, "key": "EVT8C5q7W6tieUb1z5e9NV9ohWorWKfHykZp46nVaqabNm5xPSpVe" },
+                { "weight": 5, "key": "EVT8PwjEmVji6xtNZdv8pNUuQyDavDyDcCQFDTZHDV4G6Vk9SMJUT" },
+                { "weight": 4, "key": "EVT6J3hLMqwVMpeCcQh74LJhVs9f23HHjr4AZBUTd9GtTMc7dgGeP" },
+                { "weight": 4, "key": "EVT8MSR6xwSoeDPAQDNZBTkDPvVjwEbuuiysMxdcMAz354WVaxCQu" }
+            ]
+        }
+    }
+    )";
+#endif
 
     auto var = fc::json::from_string(def);
     return var.as<group_def>();

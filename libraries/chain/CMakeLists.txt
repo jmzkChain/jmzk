@@ -73,6 +73,10 @@ target_include_directories( evt_chain_lite
 
 set_target_properties( evt_chain PROPERTIES PUBLIC_HEADER "${HEADERS}" )
 
+if(ENABLE_MAINNET_BUILD)
+    target_compile_definitions(evt_chain PUBLIC MAINNET_BUILD)
+endif()
+
 install( TARGETS evt_chain
    RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} OPTIONAL
    LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} OPTIONAL
