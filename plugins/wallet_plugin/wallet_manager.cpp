@@ -7,6 +7,7 @@
 #include <evt/chain/exceptions.hpp>
 #include <evt/wallet_plugin/wallet_manager.hpp>
 #include <evt/wallet_plugin/wallet.hpp>
+#include <evt/wallet_plugin/se_wallet.hpp>
 
 namespace evt {
 namespace wallet {
@@ -27,10 +28,22 @@ valid_filename(const string& name) {
     return boost::filesystem::path(name).filename().string() == name;
 }
 
+wallet_manager::wallet_manager() {
+#ifdef __APPLE__
+   try {
+      wallets.emplace("SecureEnclave", std::make_unique<se_wallet>());
+   }
+   catch(fc::exception& ) {}
+#endif
+}
+
 void
 wallet_manager::set_timeout(const std::chrono::seconds& t) {
-    timeout      = t;
-    timeout_time = std::chrono::system_clock::now() + timeout;
+    timeout = t;
+    auto now = std::chrono::system_clock::now();
+    timeout_time = now + timeout;
+    EVT_ASSERT(timeout_time >= now, invalid_lock_timeout_exception, "Overflow on timeout_time, specified ${t}, now ${now}, timeout_time ${timeout_time}",
+        ("t", t.count())("now", now.time_since_epoch().count())("timeout_time", timeout_time.time_since_epoch().count()));
 }
 
 void
@@ -287,6 +300,14 @@ wallet_manager::sign_digest(const chain::digest_type& digest, const public_key_t
     FC_LOG_AND_RETHROW();
 
     EVT_THROW(chain::wallet_missing_pub_key_exception, "Public key not found in unlocked wallets ${k}", ("k", key));
+}
+
+void
+wallet_manager::own_and_use_wallet(const string& name, std::unique_ptr<wallet_api>&& wallet) {
+    if(wallets.find(name) != wallets.end()) {
+        FC_THROW("tried to use wallet name the already existed");
+    }
+    wallets.emplace(name, std::move(wallet));
 }
 
 }}  // namespace evt::wallet

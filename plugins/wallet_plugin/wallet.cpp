@@ -24,11 +24,11 @@
 #include <boost/range/adaptor/map.hpp>
 #include <boost/range/algorithm/copy.hpp>
 
-#ifndef WIN32
 #include <evt/chain/exceptions.hpp>
+
+#ifndef WIN32
 #include <sys/stat.h>
 #include <sys/types.h>
-
 #endif
 
 namespace evt {
@@ -135,7 +135,7 @@ public:
     private_key_type
     get_private_key(const public_key_type& id) const {
         auto has_key = try_get_private_key(id);
-        FC_ASSERT(has_key);
+        EVT_ASSERT(has_key, chain::key_nonexistent_exception, "Key doesn't exist!");
         return *has_key;
     }
 
@@ -153,7 +153,7 @@ public:
             _keys[wif_pub_key] = priv;
             return true;
         }
-        FC_ASSERT(!"Key already in wallet");
+        EVT_THROW(chain::key_exist_exception, "Key already in wallet");
     }
 
     // Removes a key from the wallet
@@ -168,7 +168,7 @@ public:
             _keys.erase(pub);
             return true;
         }
-        FC_ASSERT(!"Key not in wallet");
+        EVT_THROW(chain::key_nonexistent_exception, "Key not in wallet");
     }
 
     string
@@ -180,7 +180,7 @@ public:
         if(key_type == "K1")
             priv_key = fc::crypto::private_key::generate<fc::ecc::private_key_shim>();
         else
-            FC_THROW_EXCEPTION(chain::wallet_exception, "Key type \"${kt}\" not supported by software wallet", ("kt", key_type));
+            EVT_THROW(chain::unsupported_key_type_exception, "Key type \"${kt}\" not supported by software wallet", ("kt", key_type));
 
         import_key((string)priv_key);
         return (string)priv_key.get_public_key();
@@ -229,7 +229,7 @@ public:
             ofstream outfile{wallet_filename};
             if(!outfile) {
                 elog("Unable to open file: ${fn}", ("fn", wallet_filename));
-                FC_THROW("Unable to open file: ${fn}", ("fn", wallet_filename));
+                EVT_THROW(wallet_exception, "Unable to open file: ${fn}", ("fn", wallet_filename));
             }
             outfile.write(data.c_str(), data.length());
             outfile.flush();
@@ -276,7 +276,7 @@ soft_wallet::get_wallet_filename() const {
 
 bool
 soft_wallet::import_key(string wif_key) {
-    FC_ASSERT(!is_locked());
+    EVT_ASSERT(!is_locked(), wallet_locked_exception, "Unable to import key on a locked wallet");
 
     if(my->import_key(wif_key)) {
         save_wallet_file();
@@ -287,7 +287,7 @@ soft_wallet::import_key(string wif_key) {
 
 bool
 soft_wallet::remove_key(string key) {
-    FC_ASSERT(!is_locked());
+    EVT_ASSERT(!is_locked(), wallet_locked_exception, "Unable to import key on a locked wallet");
 
     if(my->remove_key(key)) {
         save_wallet_file();
@@ -298,7 +298,7 @@ soft_wallet::remove_key(string key) {
 
 string
 soft_wallet::create_key(string key_type) {
-    FC_ASSERT(!is_locked());
+    EVT_ASSERT(!is_locked(), wallet_locked_exception, "Unable to import key on a locked wallet");
 
     string ret = my->create_key(key_type);
     save_wallet_file();
@@ -333,7 +333,7 @@ soft_wallet::encrypt_keys() {
 void
 soft_wallet::lock() {
     try {
-        FC_ASSERT(!is_locked());
+        EVT_ASSERT(!is_locked(), wallet_locked_exception, "Unable to lock a locked wallet");
         encrypt_keys();
         for(auto key : my->_keys)
             key.second = private_key_type();
@@ -375,20 +375,20 @@ soft_wallet::check_password(string password) {
 void
 soft_wallet::set_password(string password) {
     if(!is_new())
-        FC_ASSERT(!is_locked(), "The wallet must be unlocked before the password can be set");
+        EVT_ASSERT(!is_locked(), wallet_locked_exception, "The wallet must be unlocked before the password can be set");
     my->_checksum = fc::sha512::hash(password.c_str(), password.size());
     lock();
 }
 
 map<public_key_type, private_key_type>
 soft_wallet::list_keys() {
-    FC_ASSERT(!is_locked());
+    EVT_ASSERT(!is_locked(), wallet_locked_exception, "Unable to list public keys of a locked wallet");
     return my->_keys;
 }
 
 flat_set<public_key_type>
 soft_wallet::list_public_keys() {
-    FC_ASSERT(!is_locked());
+    EVT_ASSERT(!is_locked(), wallet_locked_exception, "Unable to list public keys of a locked wallet");
     flat_set<public_key_type> keys;
     boost::copy(my->_keys | boost::adaptors::map_keys, std::inserter(keys, keys.end()));
     return keys;
@@ -407,7 +407,7 @@ soft_wallet::try_sign_digest(const digest_type digest, const public_key_type pub
 pair<public_key_type, private_key_type>
 soft_wallet::get_private_key_from_password(string account, string role, string password) const {
     auto seed = account + role + password;
-    FC_ASSERT(seed.size());
+    EVT_ASSERT(seed.size(), wallet_exception, "seed should not be empty");
     auto secret = fc::sha256::hash(seed.c_str(), seed.size());
     auto priv   = private_key_type::regenerate<fc::ecc::private_key_shim>(secret);
     return std::make_pair(priv.get_public_key(), priv);

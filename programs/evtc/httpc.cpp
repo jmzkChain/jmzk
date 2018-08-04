@@ -142,12 +142,13 @@ resolve_url(const http_context& context, const parsed_url& url) {
 
     for(const auto& r : result) {
         const auto& addr = r.endpoint().address();
+        if (addr.is_v6()) continue;
         uint16_t    port = r.endpoint().port();
         resolved_addresses.emplace_back(addr.to_string());
         is_loopback = is_loopback && addr.is_loopback();
 
         if(resolved_port) {
-            FC_ASSERT(*resolved_port == port, "Service name \"${port}\" resolved to multiple ports and this is not supported!", ("port", url.port));
+            EVT_ASSERT(*resolved_port == port, chain::resolved_to_multiple_ports, "Service name \"${port}\" resolved to multiple ports and this is not supported!", ("port", url.port));
         }
         else {
             resolved_port = port;
@@ -209,37 +210,44 @@ do_http_call(const connection_param& cp,
     unsigned int status_code;
     std::string  re;
 
-    if(url.scheme == "http") {
-        tcp::socket socket(cp.context->ios);
-        do_connect(socket, url);
-        re = do_txrx(socket, request, status_code);
-    }
-    else {  //https
-        boost::asio::ssl::context ssl_context(boost::asio::ssl::context::sslv23_client);
-#if defined(__APPLE__)
-        //TODO: this is undocumented/not supported; fix with keychain based approach
-        ssl_context.load_verify_file("/private/etc/ssl/cert.pem");
-#elif defined(_WIN32)
-        FC_THROW("HTTPS on Windows not supported");
-#else
-        ssl_context.set_default_verify_paths();
-#endif
-
-        boost::asio::ssl::stream<boost::asio::ip::tcp::socket> socket(cp.context->ios, ssl_context);
-        SSL_set_tlsext_host_name(socket.native_handle(), url.server.c_str());
-        if(cp.verify_cert)
-            socket.set_verify_mode(boost::asio::ssl::verify_peer);
-
-        do_connect(socket.next_layer(), url);
-        socket.handshake(boost::asio::ssl::stream_base::client);
-        re = do_txrx(socket, request, status_code);
-        //try and do a clean shutdown; but swallow if this fails (other side could have already gave TCP the ax)
-        try {
-            socket.shutdown();
+    try {
+        if(url.scheme == "http") {
+            tcp::socket socket(cp.context->ios);
+            do_connect(socket, url);
+            re = do_txrx(socket, request, status_code);
         }
-        catch(...) {
+        else {  //https
+            boost::asio::ssl::context ssl_context(boost::asio::ssl::context::sslv23_client);
+    #if defined(__APPLE__)
+            //TODO: this is undocumented/not supported; fix with keychain based approach
+            ssl_context.load_verify_file("/private/etc/ssl/cert.pem");
+    #elif defined(_WIN32)
+            FC_THROW("HTTPS on Windows not supported");
+    #else
+            ssl_context.set_default_verify_paths();
+    #endif
+
+            boost::asio::ssl::stream<boost::asio::ip::tcp::socket> socket(cp.context->ios, ssl_context);
+            SSL_set_tlsext_host_name(socket.native_handle(), url.server.c_str());
+            if(cp.verify_cert)
+                socket.set_verify_mode(boost::asio::ssl::verify_peer);
+
+            do_connect(socket.next_layer(), url);
+            socket.handshake(boost::asio::ssl::stream_base::client);
+            re = do_txrx(socket, request, status_code);
+            //try and do a clean shutdown; but swallow if this fails (other side could have already gave TCP the ax)
+            try {
+                socket.shutdown();
+            }
+            catch(...) {
+            }
         }
     }
+    catch(chain::invalid_http_request& e) {
+        e.append_log(FC_LOG_MESSAGE(info, "Please verify this url is valid: ${url}", ("url", url.scheme + "://" + url.server + ":" + url.port + url.path)));
+        e.append_log(FC_LOG_MESSAGE(info, "If the condition persists, please contact the RPC server administrator for ${server}!", ("server", url.server)));
+        throw;
+   }
 
     const auto response_result = fc::json::from_string(re);
     if(print_response) {

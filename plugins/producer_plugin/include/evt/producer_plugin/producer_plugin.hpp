@@ -22,8 +22,6 @@ public:
         fc::optional<int32_t> max_irreversible_block_age;
         fc::optional<int32_t> produce_time_offset_us;
         fc::optional<int32_t> last_block_time_offset_us;
-        fc::optional<int32_t> subjective_cpu_leeway_us;
-        fc::optional<double>  incoming_defer_ratio;
     };
 
     producer_plugin();
@@ -54,4 +52,4 @@ private:
 
 }  // namespace evt
 
-FC_REFLECT(evt::producer_plugin::runtime_options, (max_transaction_time)(max_irreversible_block_age)(produce_time_offset_us)(last_block_time_offset_us)(subjective_cpu_leeway_us)(incoming_defer_ratio));
+FC_REFLECT(evt::producer_plugin::runtime_options, (max_transaction_time)(max_irreversible_block_age)(produce_time_offset_us)(last_block_time_offset_us));
