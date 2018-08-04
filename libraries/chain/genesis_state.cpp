@@ -53,7 +53,7 @@ get_evt_sym(const genesis_state& genesis) {
     manage.name = N(manage);
     manage.threshold = 0;
 
-    evt.issue = issue;
+    evt.issue  = issue;
     evt.manage = manage;
 
     evt.total_supply = asset(100'000'000'000'000L, evt.sym);
@@ -78,7 +78,7 @@ get_pevt_sym(const genesis_state& genesis) {
     manage.name = N(manage);
     manage.threshold = 0;
 
-    pevt.issue = issue;
+    pevt.issue  = issue;
     pevt.manage = manage;
 
     pevt.total_supply = asset(0, pevt.sym);
