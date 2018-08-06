@@ -518,6 +518,12 @@ TEST_CASE_METHOD(contracts_test, "contract_newfungible_test", "[contracts]") {
     to_variant(newfg, var);
     my_tester->push_action(N(newfungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, fungible_payer);
 
+    newfg.name          = "lala";
+    newfg.sym_name      = "lala";
+    newfg.total_supply = asset::from_string(string("10.00000 S#3"));
+    to_variant(newfg, var);
+    CHECK_THROWS_AS(my_tester->push_action(N(newfungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, fungible_payer),fungible_exists_exception);
+
     newfg.total_supply = asset::from_string(string("0.00000 S#3"));
     to_variant(newfg, var);
     CHECK_THROWS_AS(my_tester->push_action(N(newfungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, fungible_payer), fungible_supply_exception);
@@ -750,62 +756,6 @@ TEST_CASE_METHOD(contracts_test, "contract_group_auth_test", "[contracts]") {
     to_variant(istk, var);
     std::vector<account_name> seeds3 = {N(key0), N(key1), N(key2), N(key3), N(key4), N(payer)};
     my_tester->push_action(N(issuetoken), string_to_name128(get_domain_name()), N128(.issue), var.get_object(), seeds3, payer);
-
-    my_tester->produce_blocks();
-}
-
-TEST_CASE_METHOD(contracts_test, "contract_addmeta_test", "[contracts]") {
-    CHECK(true);
-    my_tester->add_money(payer, asset(10'000'000, symbol(5, EVT_SYM_ID)));
-
-    const char* test_data = R"=====(
-    {
-      "key": "key",
-      "value": "value",
-      "creator": "[A] EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
-    }
-    )=====";
-
-    auto var  = fc::json::from_string(test_data);
-    auto admt = var.as<addmeta>();
-
-    //meta authorizers test
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
-    // CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer, 50000), unsatisfied_authorization);
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
-
-    //meta authorizers test
-    admt.creator = tester::get_public_key(N(other));
-    to_variant(admt, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), {N(other), N(payer)}, payer, 5'000'000), meta_involve_exception);
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.group), string_to_name128(get_group_name()), var.get_object(), {N(other), N(payer)}, payer, 5'000'000), meta_involve_exception);
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), {N(other), N(payer)}, payer, 5'000'000), meta_involve_exception);
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(t1), var.get_object(), {N(other), N(payer)}, payer, 5'000'000), meta_involve_exception);
-
-    admt.creator = key;
-    to_variant(admt, var);
-
-    my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds, payer, 5'000'000);
-    my_tester->push_action(N(addmeta), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer, 5'000'000);
-    my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer, 5'000'000);
-
-    admt.creator = tester::get_public_key(N(key2));
-    to_variant(admt, var);
-    my_tester->push_action(N(addmeta), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), {N(key2), N(payer)}, payer, 5'000'000);
-
-    //meta_key_exception test
-
-    admt.creator = key;
-    admt.value   = "value2";
-    to_variant(admt, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds, payer, 5'000'000), meta_key_exception);
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer, 5'000'000), meta_key_exception);
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer, 5'000'000), meta_key_exception);
-
-    admt.creator = tester::get_public_key(N(key2));
-    to_variant(admt, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), {N(key2), N(payer)}, payer, 5'000'000), meta_key_exception);
 
     my_tester->produce_blocks();
 }
@@ -1302,4 +1252,167 @@ TEST_CASE_METHOD(contracts_test, "empty_action_test", "[contracts]") {
     my_tester->set_transaction_headers(trx, payer);
 
     CHECK_THROWS_AS(my_tester->push_transaction(trx), tx_no_action);
+}
+
+TEST_CASE_METHOD(contracts_test, "contract_addmeta_test", "[contracts]") {
+    CHECK(true);
+    my_tester->add_money(payer, asset(10'000'000, symbol(5, EVT_SYM_ID)));
+
+    const char* test_data = R"=====(
+    {
+      "key": "key",
+      "value": "value",
+      "creator": "[A] EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+    }
+    )=====";
+
+    auto var  = fc::json::from_string(test_data);
+    auto admt = var.as<addmeta>();
+
+    //meta authorizers test
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
+
+    //meta authorizers test
+    admt.creator = tester::get_public_key(N(other));
+    to_variant(admt, var);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), {N(other), N(payer)}, payer, 5'000'000), meta_involve_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.group), string_to_name128(get_group_name()), var.get_object(), {N(other), N(payer)}, payer, 5'000'000), meta_involve_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), {N(other), N(payer)}, payer, 5'000'000), meta_involve_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(t1), var.get_object(), {N(other), N(payer)}, payer, 5'000'000), meta_involve_exception);
+
+    admt.creator = key;
+    to_variant(admt, var);
+
+    my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds, payer, 5'000'000);
+    my_tester->push_action(N(addmeta), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer, 5'000'000);
+    my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer, 5'000'000);
+    my_tester->push_action(N(addmeta), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer, 5'000'000);
+
+    //meta_key_exception test
+
+    admt.creator = key;
+    admt.value   = "value2";
+    to_variant(admt, var);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds, payer, 5'000'000), meta_key_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer, 5'000'000), meta_key_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer, 5'000'000), meta_key_exception);
+
+    admt.creator = tester::get_public_key(N(key2));
+    to_variant(admt, var);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), {N(key2), N(payer)}, payer, 5'000'000), meta_key_exception);
+
+    std::vector<account_name> seeds = {N(key0), N(key1), N(key2), N(key3), N(key4), N(payer)};
+
+    const char* domain_data = R"=====(
+        {
+          "name" : "gdomain",
+          "creator" : "EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
+          "issue" : {
+            "name" : "issue",
+            "threshold" : 1,
+            "authorizers": [{
+                "ref": "[A] EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
+                "weight": 1
+              }
+            ]
+          },
+          "transfer": {
+            "name": "transfer",
+            "threshold": 1,
+            "authorizers": [{
+                "ref": "[G] .OWNER",
+                "weight": 1
+              }
+            ]
+          },
+          "manage": {
+            "name": "manage",
+            "threshold": 1,
+            "authorizers": [{
+                "ref": "[A] EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
+                "weight": 1
+              }
+            ]
+          }
+        }
+        )=====";
+
+    auto domain_var = fc::json::from_string(domain_data);
+    auto newdom     = domain_var.as<newdomain>();
+
+    newdom.creator = key;
+    newdom.issue.authorizers[0].ref.set_group(get_group_name());
+    newdom.manage.authorizers[0].ref.set_group(get_group_name());
+    to_variant(newdom, domain_var);
+
+    my_tester->push_action(N(newdomain), N128(gdomain), N128(.create), domain_var.get_object(), key_seeds, payer);
+
+    const char* tk_data = R"=====(
+    {
+      "domain": "gdomain",
+        "names": [
+          "t1",
+          "t2",
+          "t3"
+        ],
+        "owner": [
+          "EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2"
+        ]
+    }
+    )=====";
+
+    auto tk_var = fc::json::from_string(tk_data);
+    auto istk   = tk_var.as<issuetoken>();
+
+    my_tester->push_action(N(issuetoken), N128(gdomain), N128(.issue), tk_var.get_object(), seeds, payer);
+
+    const char* fg_data = R"=====(
+    {
+      "name": "GEVT",
+      "sym_name": "GEVT",
+      "sym": "5,S#4",
+      "creator": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+      "issue" : {
+        "name" : "issue",
+        "threshold" : 1,
+        "authorizers": [{
+            "ref": "[A] EVT6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
+            "weight": 1
+          }
+        ]
+      },
+      "manage": {
+        "name": "manage",
+        "threshold": 1,
+        "authorizers": [{
+            "ref": "[A] EVT6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
+            "weight": 1
+          }
+        ]
+      },
+      "total_supply":"100.00000 S#4"
+    }
+    )=====";
+
+    auto fg_var = fc::json::from_string(fg_data);
+    auto newfg  = fg_var.as<newfungible>();
+
+    newfg.creator = key;
+    newfg.issue.authorizers[0].ref.set_account(key);
+    newfg.manage.authorizers[0].ref.set_group(get_group_name());
+    to_variant(newfg, fg_var);
+    my_tester->push_action(N(newfungible), N128(.fungible), (name128)std::to_string(get_sym_id() + 1), fg_var.get_object(), key_seeds, payer);
+
+    admt.creator.set_group(get_group_name());
+    admt.key = "key2";
+    to_variant(admt, var);
+
+    my_tester->push_action(N(addmeta), N128(gdomain), N128(.meta), var.get_object(), seeds, payer, 5'000'000);
+    my_tester->push_action(N(addmeta), N128(.fungible), (name128)std::to_string(get_sym_id() + 1), var.get_object(), seeds, payer, 5'000'000);
+    my_tester->push_action(N(addmeta), N128(gdomain), N128(t1), var.get_object(), seeds, payer, 5'000'000);
+
+    my_tester->produce_blocks();
 }
