@@ -386,6 +386,8 @@ mongo_db_plugin_impl::_process_block(const signed_block& block, write_context& w
                    kvp("action_count", b_int32{(int)trx.actions.size()}),
                    kvp("expiration",
                        b_date{std::chrono::milliseconds{std::chrono::seconds{trx.expiration.sec_since_epoch()}}}),
+                   kvp("max_charge", b_int32{trx.max_charge}),
+                   kvp("payer", (std::string)trx.payer),
                    kvp("pending", b_bool{true}),
                    kvp("created_at", b_date{now}));
 
