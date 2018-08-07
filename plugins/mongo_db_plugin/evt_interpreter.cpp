@@ -12,6 +12,7 @@
 #include <bsoncxx/builder/basic/document.hpp>
 #include <bsoncxx/builder/basic/kvp.hpp>
 #include <bsoncxx/builder/stream/document.hpp>
+#include <bsoncxx/builder/stream/array.hpp>
 #include <bsoncxx/json.hpp>
 
 #include <mongocxx/client.hpp>
@@ -26,70 +27,47 @@ using mongocxx::bulk_write;
 class interpreter_impl {
 public:
     void initialize_db(const mongocxx::database& db);
-    void process_trx(const transaction_trace& trx_trace);
+    void process_trx(const transaction& trx, write_context& write_ctx);
 
 private:
-    void process_newdomain(const newdomain& nd);
-    void process_updatedomain(const updatedomain& ud);
-    void process_issuetoken(const issuetoken& it);
-    void process_transfer(const transfer& tt);
-    void process_newgroup(const newgroup& ng);
-    void process_updategroup(const updategroup& ug);
-    void process_newfungible(const newfungible& nf);
-    void process_updfungible(const updfungible& uf);
-    void process_issuefungible(const issuefungible& ifact);
+    void process_newdomain(const newdomain& nd, write_context& write_ctx);
+    void process_updatedomain(const updatedomain& ud, write_context& write_ctx);
+    void process_issuetoken(const issuetoken& it, write_context& write_ctx);
+    void process_transfer(const transfer& tt, write_context& write_ctx);
+    void process_newgroup(const newgroup& ng, write_context& write_ctx);
+    void process_updategroup(const updategroup& ug, write_context& write_ctx);
+    void process_newfungible(const newfungible& nf, write_context& write_ctx);
+    void process_updfungible(const updfungible& uf, write_context& write_ctx);
+    void process_issuefungible(const issuefungible& ifact, write_context& write_ctx);
 
 private:
-    mongocxx::database    db_;
-
-    mongocxx::collection  domains_collection_;
-    mongocxx::collection  tokens_collection_;
-    mongocxx::collection  groups_collection_;
-    mongocxx::collection  fungibles_collection_;
-
-public:
-    static const std::string domains_col;
-    static const std::string tokens_col;
-    static const std::string groups_col;
-    static const std::string fungibles_col;
+    mongocxx::database db_;
 };
 
-const std::string interpreter_impl::domains_col   = "Domains";
-const std::string interpreter_impl::tokens_col    = "Tokens";
-const std::string interpreter_impl::groups_col    = "Groups";
-const std::string interpreter_impl::fungibles_col = "Fungibles";
-
 void
-interpreter_impl::initialize_db(const mongocxx::database& db)
-{
+interpreter_impl::initialize_db(const mongocxx::database& db) {
     db_ = db;
-
-    domains_collection_   = db_[domains_col];
-    tokens_collection_    = db_[tokens_col];
-    groups_collection_    = db_[groups_col];
-    fungibles_collection_ = db_[fungibles_col];
 }
 
-#define CASE_N_CALL(name)                           \
-    case N(name): {                                 \
-        process_##name(act.data_as<const name&>()); \
-        break;                                      \
+#define CASE_N_CALL(name, write_ctx)                           \
+    case N(name): {                                            \
+        process_##name(act.data_as<const name&>(), write_ctx); \
+        break;                                                 \
     }
 
 void
-interpreter_impl::process_trx(const transaction_trace& trx_trace) {
-    for(auto& act_trace : trx_trace.action_traces) {
-        auto& act = act_trace.act;
+interpreter_impl::process_trx(const transaction& trx, write_context& write_ctx) {
+    for(auto& act : trx.actions) {
         switch((uint64_t)act.name) {
-            CASE_N_CALL(newdomain)
-            CASE_N_CALL(updatedomain)
-            CASE_N_CALL(issuetoken)
-            CASE_N_CALL(transfer)
-            CASE_N_CALL(newgroup)
-            CASE_N_CALL(updategroup)
-            CASE_N_CALL(newfungible)
-            CASE_N_CALL(updfungible)
-            CASE_N_CALL(issuefungible)
+            CASE_N_CALL(newdomain, write_ctx)
+            CASE_N_CALL(updatedomain, write_ctx)
+            CASE_N_CALL(issuetoken, write_ctx)
+            CASE_N_CALL(transfer, write_ctx)
+            CASE_N_CALL(newgroup, write_ctx)
+            CASE_N_CALL(updategroup, write_ctx)
+            CASE_N_CALL(newfungible, write_ctx)
+            CASE_N_CALL(updfungible, write_ctx)
+            CASE_N_CALL(issuefungible, write_ctx)
             default: break;
         }
     }
@@ -97,76 +75,53 @@ interpreter_impl::process_trx(const transaction_trace& trx_trace) {
 
 namespace __internal {
 
-const auto&
-get_default_find_options() {
-    using bsoncxx::builder::stream::document;
+auto
+find_domain(const std::string& name) {
+    using namespace bsoncxx::builder::stream;
 
-    static mongocxx::options::find opts;
-    static std::once_flag flag;
-    static document project;
+    document find{};
+    find << "name" << name << finalize;
 
-    std::call_once(flag, [&] {
-        project << "_id" << 1;
-        opts.projection(project.view());
-    });
-
-    return opts;
+    return find.view();
 }
 
 auto
-find_domain(mongocxx::collection& domains, const std::string& name) {
-    using bsoncxx::builder::stream::document;
+find_token(const std::string& domain, const std::string& name) {
+    using namespace bsoncxx::builder::stream;
+
     document find{};
-    find << "name" << name;
-    auto domain = domains.find_one(find.view(), get_default_find_options());
-    if(!domain) {
-        FC_THROW("Unable to find domain ${name}", ("name", name));
-    }
-    return *domain;
+    find << "token_id" << domain + ":" + name << finalize;
+
+    return find.view();
 }
 
 auto
-find_token(mongocxx::collection& tokens, const std::string& domain, const std::string& name) {
-    using bsoncxx::builder::stream::document;
+find_group(const std::string& name) {
+    using namespace bsoncxx::builder::stream;
+
     document find{};
-    find << "token_id" << domain + "-" + name;
-    auto token = tokens.find_one(find.view(), get_default_find_options());
-    if(!token) {
-        FC_THROW("Unable to find token ${domain}-${name}", ("domain",domain)("name", name));
-    }
-    return *token;
+    find << "name" << name << finalize;
+
+    return find.view();
 }
 
 auto
-find_group(mongocxx::collection& groups, const std::string& name) {
-    using bsoncxx::builder::stream::document;
-    document find{};
-    find << "name" << name;
-    auto group = groups.find_one(find.view(), get_default_find_options());
-    if(!group) {
-        FC_THROW("Unable to find group ${name}", ("name", name));
-    }
-    return *group;
-}
+find_fungible(const symbol_id_type sym_id) {
+    using namespace bsoncxx::builder::stream;
 
-auto
-find_fungible(mongocxx::collection& fungibles, const symbol_id_type sym_id) {
-    using bsoncxx::builder::stream::document;
     document find{};
-    find << "sym_id" << (int64_t)sym_id;
-    auto fungible = fungibles.find_one(find.view(), get_default_find_options());
-    if(!fungible) {
-        FC_THROW("Unable to find fungible assets ${id}", ("id", sym_id));
-    }
-    return *fungible;
+    find << "sym_id" << (int64_t)sym_id << finalize;
+
+    return find.view();
 }
 
 }  // namespace __internal
 
 void
-interpreter_impl::process_newdomain(const newdomain& nd) {
+interpreter_impl::process_newdomain(const newdomain& nd, write_context& write_ctx) {
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
+    using namespace mongocxx::model;
     using bsoncxx::builder::basic::kvp;
 
     auto oid = bsoncxx::oid{};
@@ -188,16 +143,15 @@ interpreter_impl::process_newdomain(const newdomain& nd) {
                kvp("manage", bsoncxx::from_json(fc::json::to_string(manage))));
     doc.append(kvp("created_at", b_date{now}));
 
-    if(!domains_collection_.insert_one(doc.view())) {
-        elog("Failed to insert domain ${name}", ("name", nd.name));
-    }
+    write_ctx.get_domains().append(insert_one(doc.view()));
 }
 
 void
-interpreter_impl::process_updatedomain(const updatedomain& ud) {
+interpreter_impl::process_updatedomain(const updatedomain& ud, write_context& write_ctx) {
     using namespace __internal;
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
+    using namespace mongocxx::model;
     using bsoncxx::builder::basic::kvp;
     using bsoncxx::builder::stream::close_document;
     using bsoncxx::builder::stream::document;
@@ -207,8 +161,6 @@ interpreter_impl::process_updatedomain(const updatedomain& ud) {
     auto name = (std::string)ud.name;
     auto now  = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
-
-    auto d = find_domain(domains_collection_, name);
 
     document update{};
     update << "$set" << open_document;
@@ -231,83 +183,74 @@ interpreter_impl::process_updatedomain(const updatedomain& ud) {
     update << "updated_at" << b_date{now}
            << close_document;
 
-    if(!domains_collection_.update_one(document{} << "_id" << d.view()["_id"].get_oid() << finalize, update.view())) {
-        elog("Failed to update domain ${name}", ("name", ud.name));
-    }
+    write_ctx.get_domains().append(update_one(find_domain((std::string)ud.name), update.view()));
 }
 
 void
-interpreter_impl::process_issuetoken(const issuetoken& it) {
+interpreter_impl::process_issuetoken(const issuetoken& it, write_context& write_ctx) {
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
+    using namespace mongocxx::model;
     using bsoncxx::builder::basic::kvp;
 
     auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
 
-    mongocxx::options::bulk_write bulk_opts;
-    bulk_opts.ordered(false);
-
-    auto bulk = tokens_collection_.create_bulk_write(bulk_opts);
-
     auto d = (std::string)it.domain;
+
+    auto owners = bsoncxx::builder::basic::array();
+    for(const auto& o : it.owner) {
+        owners.append((std::string)o);
+    }
+
     for(auto& n : it.names) {
         auto doc = bsoncxx::builder::basic::document{};
         auto oid = bsoncxx::oid{};
         auto name = (std::string)n;
         doc.append(kvp("_id", oid),
-                   kvp("token_id", d + "-" + name),
+                   kvp("token_id", d + ":" + name),
                    kvp("domain", d),
                    kvp("name", name),
-                   /// TODO: Cache owner list to improve performance
-                   kvp("owner", [&it](bsoncxx::builder::basic::sub_array subarr) {
-                       for(const auto& o : it.owner) {
-                           subarr.append((std::string)o);
-                       }
-                   }));
+                   kvp("owner", owners));
         doc.append(kvp("created_at", b_date{now}));
-        mongocxx::model::insert_one insert_op{doc.view()};
-        bulk.append(insert_op);
-    }
 
-    if(!bulk.execute()) {
-        elog("Bulk insert tokens failed for domain: ${name}", ("name", d));
+        write_ctx.get_tokens().append(insert_one(doc.view()));
     }
 }
 
 void
-interpreter_impl::process_transfer(const transfer& tt) {
+interpreter_impl::process_transfer(const transfer& tt, write_context& write_ctx) {
     using namespace __internal;
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
+    using namespace bsoncxx::builder::stream;
+    using namespace mongocxx::model;
     using bsoncxx::builder::basic::kvp;
-    using bsoncxx::builder::stream::close_document;
-    using bsoncxx::builder::stream::document;
-    using bsoncxx::builder::stream::finalize;
-    using bsoncxx::builder::stream::open_document;
 
     auto now  = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
 
-    auto t = find_token(tokens_collection_, (std::string)tt.domain, (std::string)tt.name);
+    auto update = document();
+    auto owners = bsoncxx::builder::stream::array();
 
-    auto update = bsoncxx::builder::basic::document{};
-    update.append(kvp("owner", [&tt](bsoncxx::builder::basic::sub_array subarr) {
-           for(const auto& o : tt.to) {
-               subarr.append((std::string)o);
-           }
-       }));
-
-    update.append(kvp("updated_at", b_date{now}));
-    if(!tokens_collection_.update_one(document{} << "_id" << t.view()["_id"].get_oid() << finalize, update.view())) {
-        elog("Failed to update token: ${domain}-${name}", ("domain",tt.domain)("name", tt.name));
+    for(const auto& o : tt.to) {
+        owners << (std::string)o;
     }
+
+    update << "$set" << open_document 
+           << "owner" << owners
+           << "updated_at" << b_date{now}
+           << close_document;
+
+    write_ctx.get_tokens().append(
+        update_one(find_token((std::string)tt.domain, (std::string)tt.name), update.view()));
 }
 
 void
-interpreter_impl::process_newgroup(const newgroup& ng) {
+interpreter_impl::process_newgroup(const newgroup& ng, write_context& write_ctx) {
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
+    using namespace mongocxx::model;
     using bsoncxx::builder::basic::kvp;
 
     auto oid = bsoncxx::oid{};
@@ -324,27 +267,21 @@ interpreter_impl::process_newgroup(const newgroup& ng) {
                kvp("def", bsoncxx::from_json(fc::json::to_string(def))));
     doc.append(kvp("created_at", b_date{now}));
 
-    if(!groups_collection_.insert_one(doc.view())) {
-        elog("Failed to insert group ${name}", ("name", ng.name));
-    }
+    write_ctx.get_groups().append(insert_one(doc.view()));
 }
 
 void
-interpreter_impl::process_updategroup(const updategroup& ug) {
+interpreter_impl::process_updategroup(const updategroup& ug, write_context& write_ctx) {
     using namespace __internal;
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
+    using namespace bsoncxx::builder::stream;
+    using namespace mongocxx::model;
     using bsoncxx::builder::basic::kvp;
-    using bsoncxx::builder::stream::close_document;
-    using bsoncxx::builder::stream::document;
-    using bsoncxx::builder::stream::finalize;
-    using bsoncxx::builder::stream::open_document;
 
     auto name = (std::string)ug.name;
     auto now  = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
-
-    auto g = find_group(groups_collection_, name);
 
     document update{};
     update << "$set" << open_document;
@@ -354,16 +291,15 @@ interpreter_impl::process_updategroup(const updategroup& ug) {
     update << "updated_at" << b_date{now}
            << close_document;
 
-    if(!groups_collection_.update_one(document{} << "_id" << g.view()["_id"].get_oid() << finalize, update.view())) {
-        elog("Failed to update group ${name}", ("name", ug.name));
-    }
+    write_ctx.get_groups().append(update_one(find_group(name), update.view()));
 }
 
 void
-interpreter_impl::process_newfungible(const newfungible& nf) {
+interpreter_impl::process_newfungible(const newfungible& nf, write_context& write_ctx) {
     using namespace evt::chain;
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
+    using namespace mongocxx::model;
     using bsoncxx::builder::basic::kvp;
 
     auto oid = bsoncxx::oid{};
@@ -387,16 +323,15 @@ interpreter_impl::process_newfungible(const newfungible& nf) {
                kvp("total_supply", (std::string)nf.total_supply));
     doc.append(kvp("created_at", b_date{now}));
 
-    if(!fungibles_collection_.insert_one(doc.view())) {
-        elog("Failed to insert fungible assets ${sym}", ("sym", nf.sym));
-    }
+    write_ctx.get_fungibles().append(insert_one(doc.view()));
 }
 
 void
-interpreter_impl::process_updfungible(const updfungible& uf) {
+interpreter_impl::process_updfungible(const updfungible& uf, write_context& write_ctx) {
     using namespace __internal;
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
+    using namespace mongocxx::model;
     using bsoncxx::builder::basic::kvp;
     using bsoncxx::builder::stream::close_document;
     using bsoncxx::builder::stream::document;
@@ -407,7 +342,6 @@ interpreter_impl::process_updfungible(const updfungible& uf) {
         std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
 
     auto id = uf.sym_id;
-    auto f  = find_fungible(fungibles_collection_, id);
 
     document update{};
     update << "$set" << open_document;
@@ -425,9 +359,7 @@ interpreter_impl::process_updfungible(const updfungible& uf) {
     update << "updated_at" << b_date{now}
            << close_document;
 
-    if(!fungibles_collection_.update_one(document{} << "_id" << f.view()["_id"].get_oid() << finalize, update.view())) {
-        elog("Failed to update fungible assets ${id}", ("id", id));
-    }
+    write_ctx.get_fungibles().append(update_one(find_fungible(id), update.view()));
 }
 
 namespace __internal {
@@ -441,7 +373,7 @@ get_bson_string_value(const bsoncxx::document::view& view, const std::string& ke
 }  // namespace __internal
 
 void
-interpreter_impl::process_issuefungible(const issuefungible& ifact) {
+interpreter_impl::process_issuefungible(const issuefungible& ifact, write_context& write_ctx) {
     return;
 }
 
@@ -453,8 +385,8 @@ evt_interpreter::initialize_db(const mongocxx::database& db) {
 }
 
 void
-evt_interpreter::process_trx(const transaction_trace& trx_trace) {
-    my_->process_trx(trx_trace);
+evt_interpreter::process_trx(const transaction& trx, write_context& write_ctx) {
+    my_->process_trx(trx, write_ctx);
 }
 
 }  // namespace evt
