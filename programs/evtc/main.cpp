@@ -83,6 +83,7 @@ bool   tx_skip_sign      = false;
 bool   tx_print_json     = false;
 bool   print_request     = false;
 bool   print_response    = false;
+bool   get_charge_only   = false;
 
 string   propname;
 string   proposer;
@@ -226,9 +227,10 @@ add_standard_transaction_options(CLI::App* cmd) {
     cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id, localized("Set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)"));
     cmd->add_option("-p,--payer", payer, localized("Payer address to be billed for this transaction"))->required();
     cmd->add_option("-c,--max-charge", max_charge, localized("Max charge to be payed for this transaction"));
+    cmd->add_flag("-g,--get-charge", get_charge_only, localized("Get charge of one transaction instead pushing"));
 
     auto popt = cmd->add_option("-a,--proposal-name", propname, localized("Push a suspend transaction instead of normal transaction, specify its proposal name"));
-    cmd->add_option("-u,--proposer", proposer, localized("Proposer public key"))->needs(popt);
+    cmd->add_option("-b,--proposer", proposer, localized("Proposer public key"))->needs(popt);
 }
 
 template <typename T>
@@ -391,6 +393,11 @@ push_transaction(signed_transaction& trx, packed_transaction::compression_type c
 
     if(!tx_skip_sign) {
         sign_transaction(trx, info.chain_id);
+    }
+
+    if(get_charge_only) {
+        auto c = call(get_charge, fc::mutable_variant_object("transaction",(transaction)trx)("sigs_num",trx.signatures.size()));
+        return fc::variant(asset(c["charge"].as_int64(), evt_sym()));
     }
 
     if(!tx_dont_broadcast) {

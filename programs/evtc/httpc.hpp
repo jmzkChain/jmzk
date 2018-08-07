@@ -100,6 +100,7 @@ const std::string get_block_func              = chain_func_base + "/get_block";
 const std::string get_block_header_state_func = chain_func_base + "/get_block_header_state";
 const std::string get_required_keys           = chain_func_base + "/get_required_keys";
 const std::string get_suspend_required_keys   = chain_func_base + "/get_suspend_required_keys";
+const std::string get_charge                  = chain_func_base + "/get_charge";
 
 const std::string net_func_base   = "/v1/net";
 const std::string net_connect     = net_func_base + "/connect";
