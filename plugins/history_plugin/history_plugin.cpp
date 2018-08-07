@@ -33,16 +33,6 @@ using bsoncxx::builder::stream::document;
 
 class history_plugin_impl {
 public:
-    const string blocks_col        = "Blocks";
-    const string trans_col         = "Transactions";
-    const string actions_col       = "Actions";
-    const string action_traces_col = "ActionTraces";
-    const string domains_col       = "Domains";
-    const string tokens_col        = "Tokens";
-    const string groups_col        = "Groups";
-    const string fungibles_col     = "Fungibles";
-
-public:
     history_plugin_impl()
         : chain_(app().get_plugin<chain_plugin>().chain())
         , evt_abi_(contracts::evt_contract_abi()) {
@@ -55,6 +45,14 @@ public:
         else {
             db_ = client_[uri.database()];
         }
+
+        blocks_col_    = db_["Blocks"];
+        trxs_col_      = db_["Transactions"];
+        actions_col_   = db_["Actions"];
+        domains_col_   = db_["Domains"];
+        tokens_col_    = db_["Tokens"];
+        groups_col_    = db_["Groups"];
+        fungibles_col_ = db_["Fungibles"];
     }
 
 public:
@@ -82,6 +80,15 @@ public:
     
     const controller& chain_;
     const abi_serializer evt_abi_;
+
+private:
+    mongocxx::collection blocks_col_;
+    mongocxx::collection trxs_col_;
+    mongocxx::collection actions_col_;
+    mongocxx::collection domains_col_;
+    mongocxx::collection tokens_col_;
+    mongocxx::collection groups_col_;
+    mongocxx::collection fungibles_col_;
 };
 
 string
@@ -113,12 +120,11 @@ variant
 history_plugin_impl::get_tokens_by_public_keys(const vector<public_key_type>& pkeys) {
     auto results = fc::mutable_variant_object();
 
-    auto tokens = db_[tokens_col];
     for(auto& pkey : pkeys) {
         using bsoncxx::builder::stream::document;
         document find{};
         find << "owner" << (string)pkey;
-        auto cursor = tokens.find(find.view());
+        auto cursor = tokens_col_.find(find.view());
         try {
             for(auto it = cursor.begin(); it != cursor.end(); it++) {
                 auto domain = get_bson_string_value(it, "domain");
@@ -141,12 +147,11 @@ flat_set<string>
 history_plugin_impl::get_domains_by_public_keys(const vector<public_key_type>& pkeys) {
     flat_set<string> results;
 
-    auto domains = db_[domains_col];
     for(auto& pkey : pkeys) {
         using bsoncxx::builder::stream::document;
         document find{};
         find << "creator" << (string)pkey;
-        auto cursor = domains.find(find.view());
+        auto cursor = domains_col_.find(find.view());
         try {
             for(auto it = cursor.begin(); it != cursor.end(); it++) {
                 auto name = get_bson_string_value(it, "name");
@@ -164,11 +169,10 @@ flat_set<string>
 history_plugin_impl::get_groups_by_public_keys(const vector<public_key_type>& pkeys) {
     flat_set<string> results;
 
-    auto groups = db_[groups_col];
     for(auto& pkey : pkeys) {
         document find{};
         find << "def.key" << (string)pkey;
-        auto cursor = groups.find(find.view());
+        auto cursor = groups_col_.find(find.view());
         try {
             for(auto it = cursor.begin(); it != cursor.end(); it++) {
                 auto name = get_bson_string_value(it, "name");
@@ -221,8 +225,7 @@ history_plugin_impl::get_actions(const domain_name&             domain,
     auto pipeline = mongocxx::pipeline();
     pipeline.match(match.view()).sort(sort.view()).skip(s).limit(t);
 
-    auto actions = db_[actions_col];
-    auto cursor = actions.aggregate(pipeline);
+    auto cursor = actions_col_.aggregate(pipeline);
     try {
         for(auto it = cursor.begin(); it != cursor.end(); it++) {
             auto v = fc::mutable_variant_object();
@@ -247,8 +250,7 @@ history_plugin_impl::get_block_id_by_trx_id(const transaction_id_type& trx_id) {
     document find{};
     find << "trx_id" << (string)trx_id;
 
-    auto trxs = db_[trans_col];
-    auto cursor = trxs.find(find.view());
+    auto cursor = trxs_col_.find(find.view());
     try {
         for(auto it = cursor.begin(); it != cursor.end(); it++) {
             auto bid = get_bson_string_value(it, "block_id");
@@ -302,8 +304,7 @@ history_plugin_impl::get_transactions(const vector<public_key_type>& pkeys, cons
     auto pipeline = mongocxx::pipeline();
     pipeline.match(match.view()).project(project.view()).sort(sort.view()).skip(s).limit(t);
 
-    auto trxs = db_[trans_col];
-    auto cursor = trxs.aggregate(pipeline);
+    auto cursor = trxs_col_.aggregate(pipeline);
 
     auto vars = fc::variants();
     auto tids = vector<transaction_id_type>();
