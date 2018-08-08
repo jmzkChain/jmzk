@@ -80,9 +80,9 @@ find_domain(const std::string& name) {
     using namespace bsoncxx::builder::stream;
 
     document find{};
-    find << "name" << name << finalize;
+    find << "name" << name;
 
-    return find.view();
+    return find;
 }
 
 auto
@@ -90,9 +90,9 @@ find_token(const std::string& domain, const std::string& name) {
     using namespace bsoncxx::builder::stream;
 
     document find{};
-    find << "token_id" << domain + ":" + name << finalize;
+    find << "token_id" << domain + ":" + name;
 
-    return find.view();
+    return find;
 }
 
 auto
@@ -100,9 +100,9 @@ find_group(const std::string& name) {
     using namespace bsoncxx::builder::stream;
 
     document find{};
-    find << "name" << name << finalize;
+    find << "name" << name;
 
-    return find.view();
+    return find;
 }
 
 auto
@@ -110,9 +110,9 @@ find_fungible(const symbol_id_type sym_id) {
     using namespace bsoncxx::builder::stream;
 
     document find{};
-    find << "sym_id" << (int64_t)sym_id << finalize;
+    find << "sym_id" << (int64_t)sym_id;
 
-    return find.view();
+    return find;
 }
 
 }  // namespace __internal
@@ -155,7 +155,6 @@ interpreter_impl::process_updatedomain(const updatedomain& ud, write_context& wr
     using bsoncxx::builder::basic::kvp;
     using bsoncxx::builder::stream::close_document;
     using bsoncxx::builder::stream::document;
-    using bsoncxx::builder::stream::finalize;
     using bsoncxx::builder::stream::open_document;
 
     auto name = (std::string)ud.name;
@@ -183,7 +182,7 @@ interpreter_impl::process_updatedomain(const updatedomain& ud, write_context& wr
     update << "updated_at" << b_date{now}
            << close_document;
 
-    write_ctx.get_domains().append(update_one(find_domain((std::string)ud.name), update.view()));
+    write_ctx.get_domains().append(update_one(find_domain((std::string)ud.name).view(), update.view()));
 }
 
 void
@@ -243,7 +242,7 @@ interpreter_impl::process_transfer(const transfer& tt, write_context& write_ctx)
            << close_document;
 
     write_ctx.get_tokens().append(
-        update_one(find_token((std::string)tt.domain, (std::string)tt.name), update.view()));
+        update_one(find_token((std::string)tt.domain, (std::string)tt.name).view(), update.view()));
 }
 
 void
@@ -291,7 +290,7 @@ interpreter_impl::process_updategroup(const updategroup& ug, write_context& writ
     update << "updated_at" << b_date{now}
            << close_document;
 
-    write_ctx.get_groups().append(update_one(find_group(name), update.view()));
+    write_ctx.get_groups().append(update_one(find_group(name).view(), update.view()));
 }
 
 void
@@ -335,7 +334,6 @@ interpreter_impl::process_updfungible(const updfungible& uf, write_context& writ
     using bsoncxx::builder::basic::kvp;
     using bsoncxx::builder::stream::close_document;
     using bsoncxx::builder::stream::document;
-    using bsoncxx::builder::stream::finalize;
     using bsoncxx::builder::stream::open_document;
 
     auto now  = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -359,7 +357,7 @@ interpreter_impl::process_updfungible(const updfungible& uf, write_context& writ
     update << "updated_at" << b_date{now}
            << close_document;
 
-    write_ctx.get_fungibles().append(update_one(find_fungible(id), update.view()));
+    write_ctx.get_fungibles().append(update_one(find_fungible(id).view(), update.view()));
 }
 
 namespace __internal {
