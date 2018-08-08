@@ -65,6 +65,12 @@ public:
                         const std::vector<action_name> names,
                         const optional<int>            skip,
                         const optional<int>            take);
+
+    variant get_fungible_actions(const symbol_id_type        sym_id,
+                                 const fc::optional<address> addr,
+                                 const optional<int>         skip,
+                                 const optional<int>         take);
+
     variant get_transaction(const transaction_id_type& trx_id);
     variant get_transactions(const vector<public_key_type>& pkeys, const optional<int> skip, const optional<int> take);
 
@@ -245,6 +251,71 @@ history_plugin_impl::get_actions(const domain_name&             domain,
     return variant(std::move(result));
 }
 
+variant
+history_plugin_impl::get_fungible_actions(const symbol_id_type        sym_id,
+                                          const fc::optional<address> addr,
+                                          const optional<int>         skip,
+                                          const optional<int>         take) {
+    using namespace bsoncxx::types;
+    using namespace bsoncxx::builder;
+    using namespace bsoncxx::builder::stream;
+
+    fc::variants result;
+
+    int s = 0, t = 10;
+    if(skip.valid()) {
+        s = *skip;
+    }
+    if(take.valid()) {
+        t = *take;
+    }
+
+    document match{};
+    match << "domain" << ".fungible" << "key" << std::to_string(sym_id);
+
+    auto ns = bsoncxx::builder::stream::array();
+    ns << "issuefungible" << "transferft";
+
+    match << "name" << open_document << "$in" << ns << close_document;
+
+    auto pipeline = mongocxx::pipeline();
+    pipeline.match(match.view());
+
+    auto addr_match = document();
+    if(addr.valid()) {
+        auto saddr = (std::string)(*addr);
+
+        addr_match << "$or" << open_array << open_document << "data.address" << saddr << close_document
+                   << open_document << "data.from" << saddr << close_document
+                   << open_document << "data.to"   << saddr << close_document << close_array;
+        pipeline.match(addr_match.view());
+    }
+
+    auto sort = document();
+    sort << "_id" << -1;
+
+    pipeline.sort(sort.view()).skip(s).limit(t);
+
+    auto cursor = actions_col_.aggregate(pipeline);
+    try {
+        for(auto it = cursor.begin(); it != cursor.end(); it++) {
+            auto v = fc::mutable_variant_object();
+            v["name"] = get_bson_string_value(it, "name");
+            v["domain"] = get_bson_string_value(it, "domain");
+            v["key"] = get_bson_string_value(it, "key");
+            v["trx_id"] = get_bson_string_value(it, "trx_id");
+            v["data"] = fc::json::from_string(bsoncxx::to_json((*it)["data"].get_document().view()));
+            v["created_at"] = get_date_string_value(it, "created_at");
+
+            result.emplace_back(std::move(v));
+        }
+    }
+    catch(mongocxx::query_exception e) {
+        return variant();
+    }
+    return variant(std::move(result));
+}
+
 block_id_type
 history_plugin_impl::get_block_id_by_trx_id(const transaction_id_type& trx_id) {
     document find{};
@@ -370,6 +441,11 @@ read_only::get_groups(const get_params& params) {
 fc::variant
 read_only::get_actions(const get_actions_params& params) {
     return plugin_.my_->get_actions(params.domain, params.key, params.names, params.skip, params.take);
+}
+
+fc::variant
+read_only::get_fungible_actions(const get_fungible_actions_params& params) {
+    return plugin_.my_->get_fungible_actions(params.sym_id, params.addr, params.skip, params.take);
 }
 
 fc::variant
