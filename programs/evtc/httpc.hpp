@@ -130,13 +130,14 @@ const std::string get_fungible_func         = evt_func_base + "/get_fungible";
 const std::string get_fungible_balance_func = evt_func_base + "/get_fungible_balance";
 const std::string get_suspend_func          = evt_func_base + "/get_suspend";
 
-const std::string history_func_base = "/v1/history";
-const std::string get_my_domains    = history_func_base + "/get_domains";
-const std::string get_my_tokens     = history_func_base + "/get_tokens";
-const std::string get_my_groups     = history_func_base + "/get_groups";
-const std::string get_actions       = history_func_base + "/get_actions";
-const std::string get_transaction   = history_func_base + "/get_transaction";
-const std::string get_transactions  = history_func_base + "/get_transactions";
+const std::string history_func_base    = "/v1/history";
+const std::string get_my_domains       = history_func_base + "/get_domains";
+const std::string get_my_tokens        = history_func_base + "/get_tokens";
+const std::string get_my_groups        = history_func_base + "/get_groups";
+const std::string get_actions          = history_func_base + "/get_actions";
+const std::string get_fungible_actions = history_func_base + "/get_fungible_actions";
+const std::string get_transaction      = history_func_base + "/get_transaction";
+const std::string get_transactions     = history_func_base + "/get_transactions";
 
 const string evtwd_stop = "/v1/evtwd/stop";
 
