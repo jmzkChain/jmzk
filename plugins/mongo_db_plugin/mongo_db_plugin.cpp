@@ -635,6 +635,11 @@ mongo_db_plugin::plugin_initialize(const variables_map& options) {
             ilog("Deleted all blocks: wiping mongo database on startup");
             my_->wipe_database_on_startup = true;
         }
+        if(options.at("import-reversible-blocks")) {
+            ilog("Importing reversible blocks: wiping mongo database on startup");
+            my_->wipe_database_on_startup = true;
+        }
+        
         if(options.count("mongodb-queue-size")) {
             auto size       = options.at("mongodb-queue-size").as<uint>();
             my_->queue_size = size;
