@@ -8,7 +8,14 @@
 
 #include <queue>
 #include <tuple>
-#include <mutex>
+
+#if __has_include(<condition>)
+#include <condition>
+using std::condition_variable_any;
+#else
+#include <boost/thread/condition.hpp>
+using boost::condition_variable_any;
+#endif
 
 #include <evt/chain/config.hpp>
 #include <evt/chain/contracts/evt_contract.hpp>
@@ -96,8 +103,8 @@ public:
     std::deque<transaction_trace_ptr> transaction_trace_queue;
 
     spinlock                    lock_;
+    condition_variable_any      cond_;
     std::mutex                  mutex_;
-    std::condition_variable_any cond_;
     std::thread                 consume_thread_;
     std::atomic_bool            done_{false};
 

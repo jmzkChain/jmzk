@@ -5,7 +5,6 @@
 #pragma once
 
 #include <string>
-#include <optional>
 #include <memory>
 #include <bsoncxx/exception/exception.hpp>
 #include <bsoncxx/json.hpp>
@@ -14,6 +13,7 @@
 #include <mongocxx/exception/operation_exception.hpp>
 #include <mongocxx/exception/logic_error.hpp>
 #include <appbase/application.hpp>
+#include <fc/optional.hpp>
 
 namespace evt {
 
@@ -23,7 +23,7 @@ using mongocxx::bulk_write;
 
 #define define_collection(n)                                        \
     collection                n##_collection;                       \
-    std::optional<bulk_write> n##_commits;                          \
+    fc::optional<bulk_write>  n##_commits;                          \
                                                                     \
     auto& get_##n() {                                               \
         if(!(n##_commits)) {                                        \
