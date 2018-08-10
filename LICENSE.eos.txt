@@ -1,3 +1,5 @@
+This contains code that is from EOS.IO, and that code is under the following license:
+
 Copyright (c) 2017, Respective Authors all rights reserved.
 
 After June 1, 2018 this software is available under the following terms:

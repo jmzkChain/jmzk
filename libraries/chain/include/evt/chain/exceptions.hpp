@@ -227,6 +227,8 @@ FC_DECLARE_DERIVED_EXCEPTION( resolved_to_multiple_ports,       http_exception, 
 FC_DECLARE_DERIVED_EXCEPTION( fail_to_resolve_host,             http_exception, 3180004, "fail to resolve host" );
 FC_DECLARE_DERIVED_EXCEPTION( http_request_fail,                http_exception, 3180005, "http request fail" );
 FC_DECLARE_DERIVED_EXCEPTION( invalid_http_request,             http_exception, 3180006, "invalid http request" );
+FC_DECLARE_DERIVED_EXCEPTION( exceed_deferred_request,          http_exception, 3180007, "exceed max http deferred request" );
+FC_DECLARE_DERIVED_EXCEPTION( alloc_deferred_fail,              http_exception, 3180008, "Failed to alloc deferred id" );
 
 FC_DECLARE_DERIVED_EXCEPTION( wallet_exist_exception,            wallet_exception, 3140001, "Wallet already exists" );
 FC_DECLARE_DERIVED_EXCEPTION( wallet_nonexistent_exception,      wallet_exception, 3140002, "Nonexistent wallet" );

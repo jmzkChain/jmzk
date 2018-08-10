@@ -83,6 +83,7 @@ bool   tx_skip_sign      = false;
 bool   tx_print_json     = false;
 bool   print_request     = false;
 bool   print_response    = false;
+bool   get_charge_only   = false;
 
 string   propname;
 string   proposer;
@@ -226,9 +227,10 @@ add_standard_transaction_options(CLI::App* cmd) {
     cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id, localized("Set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)"));
     cmd->add_option("-p,--payer", payer, localized("Payer address to be billed for this transaction"))->required();
     cmd->add_option("-c,--max-charge", max_charge, localized("Max charge to be payed for this transaction"));
+    cmd->add_flag("-g,--get-charge", get_charge_only, localized("Get charge of one transaction instead pushing"));
 
     auto popt = cmd->add_option("-a,--proposal-name", propname, localized("Push a suspend transaction instead of normal transaction, specify its proposal name"));
-    cmd->add_option("-u,--proposer", proposer, localized("Proposer public key"))->needs(popt);
+    cmd->add_option("-b,--proposer", proposer, localized("Proposer public key"))->needs(popt);
 }
 
 template <typename T>
@@ -295,7 +297,7 @@ get_public_key(const std::string& key_or_ref) {
 
     try {
         int i = std::stoi(key_or_ref.substr(1));
-        FC_ASSERT(i < pkeys->size(), "Not valid key reference");
+        FC_ASSERT(i < (int)pkeys->size(), "Not valid key reference");
         return (*pkeys)[i].as<public_key_type>();
     }
     catch(...) {
@@ -322,7 +324,7 @@ get_address(const std::string& addr_or_ref) {
 
     try {
         int i = std::stoi(addr_or_ref.substr(1));
-        FC_ASSERT(i < pkeys->size(), "Not valid key reference");
+        FC_ASSERT(i < (int)pkeys->size(), "Not valid key reference");
         return address((*pkeys)[i].as<public_key_type>());
     }
     catch(...) {
@@ -391,6 +393,11 @@ push_transaction(signed_transaction& trx, packed_transaction::compression_type c
 
     if(!tx_skip_sign) {
         sign_transaction(trx, info.chain_id);
+    }
+
+    if(get_charge_only) {
+        auto c = call(get_charge, fc::mutable_variant_object("transaction",(transaction)trx)("sigs_num",trx.signatures.size()));
+        return fc::variant(asset(c["charge"].as_int64(), evt_sym()));
     }
 
     if(!tx_dont_broadcast) {
@@ -1149,6 +1156,8 @@ struct set_get_my_subcommands {
 struct set_get_history_subcommands {
     string domain;
     string key;
+    string addr;
+    int    sym_id;
 
     std::vector<std::string> names;
 
@@ -1196,8 +1205,30 @@ struct set_get_history_subcommands {
             auto args = mutable_variant_object("id", trx_id);
             print_info(call(get_transaction, args));
         });
-    }
 
+        auto funcmd = hiscmd->add_subcommand("fungible", localized("Retrieve fungible actions history"));
+        funcmd->add_option("sym_id", sym_id, localized("Symbol Id to be retrieved"))->required();
+        funcmd->add_option("address", addr, localized("Address involved in fungible actions"));
+        funcmd->add_option("--skip,-s", skip, localized("How many records should be skipped"));
+        funcmd->add_option("--take,-t", take, localized("How many records should be returned"));
+
+        funcmd->set_callback([this] {
+            auto args = mutable_variant_object();
+            args["sym_id"] = sym_id;
+            if(!addr.empty()) {
+                args["addr"] = addr;
+            }
+
+            if(skip > 0) {
+                args["skip"] = skip;
+            }
+            if(take > 0) {
+                args["take"] = take;
+            }
+
+            print_info(call(get_fungible_actions, args));
+        });
+    }
 };
 
 CLI::callback_t header_opt_callback = [](CLI::results_t res) {

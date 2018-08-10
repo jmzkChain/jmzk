@@ -185,21 +185,23 @@ For the fields of an action, here is a quick reference guide.
 | `updatedomain` | name of domain | `.update` |
 | `newgroup` | `.group` | name of new group |
 | `updategroup` | `.group` | name of updating group |
-| `newfungible` | `.fungible` | name of new fungible assets symbol |
-| `updfungible` | `.fungible` | name of updating fungible assets symbol |
+| `newfungible` | `.fungible` | symbol id of new fungible assets symbol |
+| `updfungible` | `.fungible` | symbol id of updating fungible assets symbol |
 | `issuetoken` | name of domain | `.issue` |
-| `issuefungible` | `.fungible` | name of issuing fungible assets symbol |
+| `issuefungible` | `.fungible` | symbol id of issuing fungible assets symbol |
 | `transfer` | name of domain token belongs to | name of token |
 | `destroytoken` | name of domain token belongs to | name of token |
-| `transferft` | `.fungible` | name of transfering assets symbol |
-| `evt2pevt` | `.fungible` | `EVT` |
-| `addmeta` | `.group`, `.fungible` or token's domain | group name, fungible name or token name |
+| `transferft` | `.fungible` | symbol id of transfering assets symbol |
+| `evt2pevt` | `.fungible` | '1' |
+| `addmeta` | `.group`, `.fungible` or token's domain | group name, symbol id of fungible or token name |
 | `newsuspend` | `.suspend` | proposal name of suspend transaction |
 | `aprvsuspend` | `.suspend` | proposal name of suspend transaction |
 | `cancelsuspend` | `.suspend` | proposal name of suspend transaction |
 | `execsuspend` | `.suspend` | proposal name of suspend transaction |
 | `everipass` | name of domain | name of token |
 | `everipay` | `.fungible` | name of fungible assets symbol |
+
+> For fungible actions, action's key is symbol id which is a number originally. And it need to be conveted into string.
 
 After all that work, you can send transaction definition using this API to the chain, then the chain will response with the digest of the transaction. You can then sign this digest with your private key.
 
@@ -745,6 +747,53 @@ Response:
     }
   }
 ]
+```
+
+## POST /v1/history/get_fungible_actions
+Query fungible actions by address
+> This API is only available when MONGO_DB_SUPPORT is ON.
+> address is optional fields and only for filtering actions. if you don't provide them, API will return all the actions.
+
+Request:
+```
+{
+  "sym_id": 338422621,
+  "address": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+  "skip": 0
+  "take": 10
+}
+
+```
+
+Response:
+```
+[{
+    "name": "transferft",
+    "domain": ".fungible",
+    "key": "338422621",
+    "trx_id": "58034b28635c027f714fb01de202ae0ccefa1a4ba5bcf5f01b04fc53b79e6449",
+    "data": {
+      "from": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+      "to": "EVT6dpW7dAtR7YEAxatwA37sYZBdfQCtPD8Hoa1d7jnVDnCepNcM8",
+      "number": "1.0000000000 S#338422621",
+      "memo": "goodjob"
+    },
+    "created_at": "2018-08-08T08:21:44.001"
+  },
+  {
+    "name": "issuefungible",
+    "domain": ".fungible",
+    "key": "338422621",
+    "trx_id": "b05a0cea2093de4ca6eee0ca46ebfa0196ef6dad90a0bcc61f90b6a12bbbd30b",
+    "data": {
+      "address": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+      "number": "100.0000000000 S#338422621",
+      "memo": "goodluck"
+    },
+    "created_at": "2018-08-08T08:21:44.001"
+  }
+]
+
 ```
 
 ## POST /v1/history/get_transaction

@@ -22,6 +22,7 @@
 
 #include <memory>
 #include <thread>
+#include <type_traits>
 #include <regex>
 
 namespace evt {
@@ -79,19 +80,31 @@ struct asio_with_stub_log : public websocketpp::config::asio {
 
 using websocket_server_type     = websocketpp::server<detail::asio_with_stub_log<websocketpp::transport::asio::basic_socket::endpoint>>;
 using websocket_server_tls_type = websocketpp::server<detail::asio_with_stub_log<websocketpp::transport::asio::tls_socket::endpoint>>;
+using http_connection_ptr_type  = websocketpp::server<detail::asio_with_stub_log<websocketpp::transport::asio::basic_socket::endpoint>>::connection_ptr;
+using https_connection_ptr_type = websocketpp::server<detail::asio_with_stub_log<websocketpp::transport::asio::tls_socket::endpoint>>::connection_ptr;
 using ssl_context_ptr           = websocketpp::lib::shared_ptr<websocketpp::lib::asio::ssl::context>;
 
 static bool verbose_http_errors = false;
 
 class http_plugin_impl {
 public:
-    map<string, url_handler> url_handlers;
-    optional<tcp::endpoint>  listen_endpoint;
-    string                   access_control_allow_origin;
-    string                   access_control_allow_headers;
-    string                   access_control_max_age;
-    bool                     access_control_allow_credentials = false;
-    size_t                   max_body_size;
+    map<string, url_handler>          url_handlers;
+    map<string, url_deferred_handler> url_deferred_handlers;
+    optional<tcp::endpoint>           listen_endpoint;
+    string                            access_control_allow_origin;
+    string                            access_control_allow_headers;
+    string                            access_control_max_age;
+    bool                              access_control_allow_credentials = false;
+    size_t                            max_body_size;
+    size_t                            max_deferred_connection_size;
+
+    vector<http_connection_ptr_type>  http_conns;
+    vector<https_connection_ptr_type> https_conns;
+
+    size_t http_conn_index  = 0;
+    size_t https_conn_index = 0;
+    size_t http_conn_size   = 0;
+    size_t https_conn_size  = 0;
 
     websocket_server_type server;
 
@@ -204,6 +217,42 @@ public:
         }
     }
 
+    template <typename T>
+    deferred_id
+    alloc_deferred_id(typename websocketpp::server<detail::asio_with_stub_log<T>>::connection_ptr con) {
+        if(http_conn_size + https_conn_size >= max_deferred_connection_size) {
+            EVT_THROW(chain::exceed_deferred_request, "Exceed max allowed deferred connections, max: ${m}", ("m",max_deferred_connection_size));
+        }
+
+        if constexpr (std::is_same_v<T, websocketpp::transport::asio::basic_socket::endpoint>) {
+            // http
+            FC_ASSERT(http_conns.size() == max_deferred_connection_size);
+            for(auto i = http_conn_index; i < http_conn_index + max_deferred_connection_size; i++) {
+                auto j = i % max_deferred_connection_size;
+                if(http_conns[j] == nullptr) {
+                    http_conns[j] = con;
+                    http_conn_index = j + 1; // next slot
+                    return j;
+                }
+            }
+
+        }
+        if constexpr (std::is_same_v<T, websocketpp::transport::asio::tls_socket::endpoint>) {
+            // https
+            FC_ASSERT(https_conns.size() == max_deferred_connection_size);
+            for(auto i = https_conn_index; i < https_conn_index + max_deferred_connection_size; i++) {
+                auto j = i % max_deferred_connection_size;
+                if(https_conns[j] == nullptr) {
+                    https_conns[j] = con;
+                    https_conn_index = j + 1; // next slot
+                    return j | (1 << 31);
+                }
+            }
+        }
+        EVT_THROW(chain::alloc_deferred_fail, "Alloc deferred id failed, http index: ${i}, https index: ${j}", ("i",http_conn_index)("j",https_conn_index));
+    }
+
+
     template <class T>
     void
     handle_http_request(typename websocketpp::server<detail::asio_with_stub_log<T>>::connection_ptr con) {
@@ -238,28 +287,85 @@ public:
             }
 
             con->append_header("Content-Type", "application/json");
+
             auto body        = con->get_request_body();
             auto resource    = con->get_uri()->get_resource();
-            auto handler_itr = url_handlers.find(resource);
-            if(handler_itr != url_handlers.end()) {
-                con->defer_http_response();
-                handler_itr->second(resource, body, [con](auto code, auto&& body) {
-                    con->set_body(std::move(body));
-                    con->set_status(websocketpp::http::status_code::value(code));
-                    con->send_http_response();
-                });
+
+            {
+                auto handler_itr = url_handlers.find(resource);
+                if(handler_itr != url_handlers.end()) {
+                    con->defer_http_response();
+                    handler_itr->second(resource, body, [con](auto code, auto&& body) {
+                        con->set_body(std::move(body));
+                        con->set_status(websocketpp::http::status_code::value(code));
+                        con->send_http_response();
+                    });
+
+                    return;
+                }
             }
-            else {
-                wlog("404 - not found: ${ep}", ("ep", resource));
-                error_results results{websocketpp::http::status_code::not_found,
-                                      "Not Found", error_results::error_info(fc::exception(FC_LOG_MESSAGE(error, "Unknown Endpoint")), verbose_http_errors)};
-                con->set_body(fc::json::to_string(results));
-                con->set_status(websocketpp::http::status_code::not_found);
+
+            {
+                auto deferred_handler_it = url_deferred_handlers.find(resource);
+                if(deferred_handler_it != url_deferred_handlers.end()) {
+                    auto id = alloc_deferred_id<T>(con); 
+
+                    con->defer_http_response();
+                    deferred_handler_it->second(resource, body, id);
+
+                    return;
+                }
             }
+
+            wlog("404 - not found: ${ep}", ("ep", resource));
+            error_results results{websocketpp::http::status_code::not_found,
+                                  "Not Found", error_results::error_info(fc::exception(FC_LOG_MESSAGE(error, "Unknown Endpoint")), verbose_http_errors)};
+            con->set_body(fc::json::to_string(results));
+            con->set_status(websocketpp::http::status_code::not_found);
         }
         catch(...) {
             handle_exception<T>(con);
         }
+    }
+
+    void
+    set_deferred_response(deferred_id id, int code, string body) {
+        try {
+            if((id & (1 << 31)) == 0) {
+                // http
+                FC_ASSERT(id < max_deferred_connection_size);
+                auto con = http_conns[id];
+                FC_ASSERT(con != nullptr);
+                http_conns[id] = nullptr;
+
+                try {
+                    con->set_body(std::move(body));
+                    con->set_status(websocketpp::http::status_code::value(code));
+                    con->send_http_response();
+                }
+                catch(...) {
+                    handle_exception<websocketpp::transport::asio::basic_socket::endpoint>(con);
+                }
+            }
+            else {
+                // https
+                auto index = id & (0xFFFFFFFF >> 1);
+                FC_ASSERT(index < max_deferred_connection_size);
+                auto con = https_conns[index];
+                FC_ASSERT(con != nullptr);
+                https_conns[index] = nullptr;
+
+                try {
+                    con->set_body(std::move(body));
+                    con->set_status(websocketpp::http::status_code::value(code));
+                    con->send_http_response();
+                }
+                catch(...) {
+                    handle_exception<websocketpp::transport::asio::tls_socket::endpoint>(con);
+                }
+            }
+        }
+        FC_LOG_AND_DROP((id));
     }
 
     template <class T>
@@ -295,6 +401,7 @@ public:
 
 http_plugin::http_plugin()
     : my(new http_plugin_impl()) {}
+
 http_plugin::~http_plugin() {}
 
 void
@@ -322,6 +429,7 @@ http_plugin::set_program_options(options_description&, options_description& cfg)
                 ilog("configured http with Access-Control-Allow-Credentials: true");
             })->default_value(false), "Specify if Access-Control-Allow-Credentials: true should be returned on each request.")
         ("max-body-size", bpo::value<uint32_t>()->default_value(1024*1024), "The maximum body size in bytes allowed for incoming RPC requests")
+        ("max-deferred-connection-size", bpo::value<uint32_t>()->default_value(1024), "The maximum size allowed for deferred connections")
         ("verbose-http-errors", bpo::bool_switch()->default_value(false), "Append the error log to HTTP responses")
         ("http-validate-host", boost::program_options::value<bool>()->default_value(true), "If set to false, then any incoming \"Host\" header is considered valid")
         ("http-alias", bpo::value<std::vector<string>>()->composing(), "Additionaly acceptable values for the \"Host\" header of incoming HTTP requests, can be specified multiple times.  Includes http/s_server_address by default.")
@@ -390,8 +498,11 @@ http_plugin::plugin_initialize(const variables_map& options) {
             }
         }
 
-        my->max_body_size   = options.at("max-body-size").as<uint32_t>();
-        verbose_http_errors = options.at("verbose-http-errors").as<bool>();
+        my->max_body_size                = options.at("max-body-size").as<uint32_t>();
+        my->max_deferred_connection_size = options.at("max-deferred-connection-size").as<uint32_t>();
+        verbose_http_errors              = options.at("verbose-http-errors").as<bool>();
+
+        FC_ASSERT(my->max_deferred_connection_size < std::numeric_limits<int32_t>::max());
 
         //watch out for the returns above when adding new code here
     }
@@ -402,6 +513,10 @@ void
 http_plugin::plugin_startup() {
     if(my->listen_endpoint) {
         try {
+            my->http_conns.resize(my->max_deferred_connection_size);
+            my->http_conn_index = 0;
+            my->http_conn_size  = 0;
+
             my->create_server_for_endpoint(*my->listen_endpoint, my->server);
 
             ilog("start listening for http requests");
@@ -424,6 +539,10 @@ http_plugin::plugin_startup() {
 
     if(my->https_listen_endpoint) {
         try {
+            my->https_conns.resize(my->max_deferred_connection_size);
+            my->https_conn_index = 0;
+            my->https_conn_size  = 0;
+
             my->create_server_for_endpoint(*my->https_listen_endpoint, my->https_server);
             my->https_server.set_tls_init_handler([this](websocketpp::connection_hdl hdl) -> ssl_context_ptr {
                 return my->on_tls_init(hdl);
@@ -461,6 +580,21 @@ http_plugin::add_handler(const string& url, const url_handler& handler) {
     ilog("add api url: ${c}", ("c", url));
     app().get_io_service().post([=]() {
         my->url_handlers.insert(std::make_pair(url, handler));
+    });
+}
+
+void
+http_plugin::add_deferred_handler(const string& url, const url_deferred_handler& handler) {
+    ilog("add deferred api url: ${c}", ("c", url));
+    app().get_io_service().post([=]() {
+        my->url_deferred_handlers.insert(std::make_pair(url, handler));
+    });
+}
+
+void
+http_plugin::set_deferred_response(deferred_id id, int code, const string& body) {
+    app().get_io_service().post([=]() {
+        my->set_deferred_response(id, code, body);
     });
 }
 

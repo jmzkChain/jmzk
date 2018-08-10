@@ -34,7 +34,7 @@ namespace evt { namespace chain { namespace contracts {
 namespace __internal {
 
 inline bool 
-validate(const permission_def &permission) {
+validate(const permission_def& permission) {
     uint32_t total_weight = 0;
     for(const auto& aw : permission.authorizers) {
         if(aw.weight == 0) {
@@ -603,6 +603,10 @@ auto check_involved_owner = [](const auto& token, const auto& key) {
     return false;
 };
 
+auto check_involved_creator = [](const auto& target, const auto& key) {
+    return target.creator == key;
+};
+
 template<typename T>
 bool
 check_duplicate_meta(const T& v, const meta_key& key) {
@@ -643,7 +647,7 @@ EVT_ACTION_IMPL(addmeta) {
             }
             else {
                 // check involved, only group manager(aka. group key) can add meta
-                EVT_ASSERT(check_involved_group(group, amact.creator.get_account()), meta_involve_exception, "Creator is not involved in group ${name}.", ("name",act.key));
+                EVT_ASSERT(check_involved_group(group, amact.creator.get_account()), meta_involve_exception, "Creator is not involved in group: ${name}.", ("name",act.key));
             }
             group.metas_.emplace_back(meta(amact.key, amact.value, amact.creator));
             tokendb.update_group(group);
@@ -653,9 +657,17 @@ EVT_ACTION_IMPL(addmeta) {
             tokendb.read_fungible((symbol_id_type)std::stoul((std::string)act.key), fungible);
 
             EVT_ASSERT(!check_duplicate_meta(fungible, amact.key), meta_key_exception, "Metadata with key ${key} already exists.", ("key",amact.key));
-            // check involved, only group manager(aka. group key) can add meta
-            EVT_ASSERT(check_involved_fungible(tokendb, fungible, N(manage), amact.creator), meta_involve_exception, "Creator is not involved in group ${name}.", ("name",act.key));
-
+            
+            if(amact.creator.is_account_ref()) {
+                // check involved, only creator or person in `manage` permission can add meta
+                auto involved = check_involved_creator(fungible, amact.creator.get_account())
+                    || check_involved_fungible(tokendb, fungible, N(manage), amact.creator);
+                EVT_ASSERT(involved, meta_involve_exception, "Creator is not involved in fungible: ${name}.", ("name",act.key));
+            }
+            else {
+                // check involved, only group in `manage` permission can add meta
+                EVT_ASSERT(check_involved_fungible(tokendb, fungible, N(manage), amact.creator), meta_involve_exception, "Creator is not involved in fungible: ${name}.", ("name",act.key));
+            }
             fungible.metas.emplace_back(meta(amact.key, amact.value, amact.creator));
             tokendb.update_fungible(fungible);
         }
@@ -665,7 +677,7 @@ EVT_ACTION_IMPL(addmeta) {
 
             EVT_ASSERT(!check_duplicate_meta(domain, amact.key), meta_key_exception, "Metadata with key ${key} already exists.", ("key",amact.key));
             // check involved, only person involved in `manage` permission can add meta
-            EVT_ASSERT(check_involved_domain(tokendb, domain, N(manage), amact.creator), meta_involve_exception, "Creator is not involved in domain ${name}.", ("name",act.key));
+            EVT_ASSERT(check_involved_domain(tokendb, domain, N(manage), amact.creator), meta_involve_exception, "Creator is not involved in domain: ${name}.", ("name",act.key));
 
             domain.metas.emplace_back(meta(amact.key, amact.value, amact.creator));
             tokendb.update_domain(domain);
