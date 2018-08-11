@@ -21,10 +21,10 @@ everiToken currently supports the following operating systems:
 
 ## Resources
 1. [everiToken Website](https://everitoken.io/)
-2. [everiToken Documentation Wiki](https://github.com/everitoken/evt/wiki)
-3. [White Paper](https://everitoken.io/docs/whitepaper.pdf)
-4. [API References](docs/API-References.md)
-5. [ABI References](docs/ABI-References.md)
+2. [Technical Whitepaper](https://everitoken.io/docs/whitepaper.pdf)
+3. [API References](docs/API-References.md)
+4. [ABI References](docs/ABI-References.md)
+5. [Documentation for EvtLink / everiPass / everiPay](docs/EvtLink.md)
 
 ## Getting Started
 Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, domain creation and issue and transfer tokens to the blockchain can be found on the [Wiki](https://github.com/everitoken/evt/wiki) for this GitHub repository.

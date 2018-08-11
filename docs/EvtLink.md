@@ -1,4 +1,15 @@
-# Technical Documentation of EVT-Link / everiPass / everiPay
+# Technical Documentation of EvtLink / everiPass / everiPay
+
+- [Technical Documentation of EvtLink / everiPass / everiPay](#technical-documentation-of-evtlink--everipass--everipay)
+    - [Intro](#intro)
+    - [How to use everiPay / Pass](#how-to-use-everipay--pass)
+    - [Our SDK](#our-sdk)
+    - [Structure of EvtLink](#structure-of-evtlink)
+    - [base42 Encoding](#base42-encoding)
+    - [Segments Stream](#segments-stream)
+    - [base42signaturesList](#base42signatureslist)
+    - [Example](#example)
+    - [On the chain](#on-the-chain)
 
 ## Intro
 
@@ -6,31 +17,27 @@
 
 Here is a example UI of `everiPass`:
 
-![everiPass](pass-qr.png)
+![everiPass](./pass.png)
 
-We call the text which is used to generate the QR Code `EVT-Link`.
+We call the text which is used to generate the QR Code `EvtLink`.
 
-`EVT-Link` is also used to generate payee QR Code.
+`EvtLink` is also used to generate payee QR Code.
 
 ## How to use everiPay / Pass
 
-1. The owner of some token (both NFTs and FTs) use his / her wallet to generate a series of QR codes (each of them represents a `EVT-Link`). 
+1. The owner of some token (both NFTs and FTs) use his / her wallet to generate a series of QR codes (each of them represents a `EvtLink`). 
    - The QR code will keep changing every several seconds. Old codes will expire very soon.
    - The QR code is made up of current time, the name of the token he / she wants to use and owner's signature for the link.
-2. Payee use a everiPass-compatible scanner / a mobile phone or any other kinds of QR code scanner to read the code and get the decoded `EVT-Link` inside it. The link is then included in a transaction and pushed by the machine / phone / scanner.
-3. The BP received the transaction with the `EVT-Link` inside and check the signatures and actions in the link.
+2. Payee use a everiPass-compatible scanner / a mobile phone or any other kinds of QR code scanner to read the code and get the decoded `EvtLink` inside it. The link is then included in a transaction and pushed by the machine / phone / scanner.
+3. The BP received the transaction with the `EvtLink` inside and check the signatures and actions in the link.
 
-## SDKs
+## Our SDK
 
-`evtjs` has full support for `EVT-Link` and `everiPay / everiPass`.
+`evtjs` has full support for `EvtLink` and `everiPay / everiPass`.
 
-## On-Chain
+## Structure of EvtLink
 
-`everipass` and `everipay` actions are used to execute the transaction of `EVT-Link`. A struct named `evt_link` is used to represent `EVT-Link`. For detail information, please refer to the API / ABI documents.
-
-## Structure of EVT-Link
-
-Each `EVT-Link` has the struct as below:
+Each `EvtLink` has the struct as below:
 
 ```xml
 [https://evt.li/]<base42segmentsStream>[_<base42signaturesList>]
@@ -76,11 +83,11 @@ The encoded result is `000AD1KQVMO`. The count of prefixed zero is the same as t
 
 | flag | meaning |
 | ---  | --- |
-|  1   | protocol version 1 (required)
-|  2   | everiPass
-|  4   | everiPay
-|  8   | should destory the NFT after validate the token in everiPass
-| 16   | payee's QR code
+|     1    |   protocol version 1 (required)
+|    2    |   everiPass
+|     4    |   everiPay
+|     8    |   should destory the NFT after validate the token in everiPass
+|      16   |   payee's QR code
 
 Below is the struct of each `segment`:
 
@@ -95,26 +102,26 @@ Different `typeKey` has different `data types` for its `value`.
 
 | from | to (included) | data type |
 | --- | --- | --- |
-| 0   |  20 | 1-byte unsigned integer
-| 21  |  40 | 2-byte unsigned integer (BE)
-| 41  |  90 | 4-byte unsigned integer (BE)
-| 91  | 155 | string
-| 156 | 165 | uuid
-| 166 | 180 | byte string
-| 180 | 255 | remained
+ | 0   | 20 |   1-byte unsigned integer
+ | 21 |40   | 2-byte unsigned integer (BE)
+ | 41 |90  |  4-byte unsigned integer (BE)
+ | 91 |155 |  string
+ | 156|165 |  uuid
+ | 166|180 |  byte string
+ | 180|255    |  remained
 
 
 Here is a brief reference of common used `typeKey` for convenient.
 
 | typeKey | flag | description of value |
 | --- | --- | --- |
-|  `42` | | (uint32) unix timestamp in seconds |
-|  `43` | | (uint32) max allowed amount for everiPay |
-|  `91` | | (string) domain name to be validated in everiPass |
-|  `92` | | (string) token name to be validated in everiPass |
-|  `93` | | (string) symbol name to be paid in everiPay (for example: "5,EVT") |
-|  `94` | | (string) max allowed amount for payment (optionl, string format remained only for amount >= 2 ^ 32) |
-|  `95` | | (string) public key (address) for receiving points or coins |
+| `42` | | (uint32) unix timestamp in seconds |
+| `43` | | (uint32) max allowed amount for everiPay |
+| `91` | | (string) domain name to be validated in everiPass |
+| `92` | | (string) token name to be validated in everiPass |
+| `93` | | (string) symbol name to be paid in everiPay (for example: "5,EVT") |
+| `94` | | (string) max allowed amount for payment (optionl, string format remained only for amount >= 2 ^ 32) |
+| `95` | | (string) public key (address) for receiving points or coins |
 | `156` | | (uuid) link id(128-bit) |
 
 ## base42signaturesList
@@ -136,7 +143,7 @@ For each signature, it has a fixed 65-byte length and a structure as follow:
 
 ## Example
 
-Here is an examples of valid `EVT-Link`:
+Here is an examples of valid `EvtLink`:
 
 ```
 0DFYZXZO9-:Y:JLF*3/4JCPG7V1346OZ:R/G2M93-2L*BBT9S0YQ0+JNRIW95*HF*94J0OVUN$KS01-GZ-N7FWK9_FXXJORONB7B58VU9Z2MZKZ5*:NP3::K7UYKD:Y9I1V508HBQZK2AE*ZS85PJZ2N47/41LQ-MZ/4Q6THOX**YN0VMQ*3/CG9-KX2:E7C-OCM*KJJT:Z7640Q6B*FWIQBYMDPIXB4CM:-8*TW-QNY$$AY5$UA3+N-7L/ZSDCWO1I7M*3Q6*SMAYOWWTF5RJAJ:NG**8U5J6WC2VM5Z:OLZPVJXX*12I*6V9FL1HX095$5:$*C3KGCM3FIS-WWRE14E:7VYNFA-3QCH5ULZJ*CRH91BTXIK-N+J1
@@ -199,3 +206,7 @@ Use `evtjs` we can parse this link and get its structure as below:
 ```
 
 In this example there are 3 signatures in it. We can infer the public keys which are used to sign on the link. It has a `flag` of 11 (1 + 2 + 8) which means `version 1`, `everiPass` and `auto destory`.
+
+## On the chain
+
+everiToken public chain use `everipass` action and `everipay` action to execute the transaction of `evtLink`. it also provides a struct named `evt_link` to represent `EvtLink`. For detail information, please refer to the API / ABI documentation of `everiToken`.
