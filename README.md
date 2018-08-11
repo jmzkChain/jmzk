@@ -1,10 +1,8 @@
-# everiToken
-![Build Status](https://codebuild.us-east-2.amazonaws.com/badges?uuid=eyJlbmNyeXB0ZWREYXRhIjoiTFFYVEF1UDVXaVZrWGNUOVlKSnphcElOMFBzZUFjZ0QwZHpoNCtseVdFdTVoa3hHeWpOQ1ZzWk51bUVHTXlIRjk4Z1d4UFJrUmVyQ2xVaWhHSkxabURJPSIsIml2UGFyYW1ldGVyU3BlYyI6IkFIWFJNOHZsVjZGOThuVzQiLCJtYXRlcmlhbFNldFNlcmlhbCI6MX0%3D&branch=master)
-
 ![everiToken Logo](./docs/logo.png)
 
-World's First Token-customized Public Chain for the Token Economy and for Everyone.
-
+**World's First Token-customized Public Chain for the Token Economy and for Everyone.**
+---
+![Build Status](https://codebuild.us-east-2.amazonaws.com/badges?uuid=eyJlbmNyeXB0ZWREYXRhIjoiTFFYVEF1UDVXaVZrWGNUOVlKSnphcElOMFBzZUFjZ0QwZHpoNCtseVdFdTVoa3hHeWpOQ1ZzWk51bUVHTXlIRjk4Z1d4UFJrUmVyQ2xVaWhHSkxabURJPSIsIml2UGFyYW1ldGVyU3BlYyI6IkFIWFJNOHZsVjZGOThuVzQiLCJtYXRlcmlhbFNldFNlcmlhbCI6MX0%3D&branch=master)
 Welcome to the everiToken source code repository!
 
 everiToken public chain is developed and maintained by everiToken Team. The MainNet of everiToken has launched on 31st July 2018.
