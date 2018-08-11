@@ -18,7 +18,7 @@ These QR Codes is encoded using a text which has a format called `EvtLink`. It i
 
 #### everiPay / everiPass
 
-everiPay/everiPass is a payment born for face-to-face micropayments using everiToken public block chain.
+everiPay/everiPass is a payment method born for face-to-face micropayments using everiToken public block chain.
 
 everiPay/everiPass includes the standard of QR code generation and the definition of communication protocol. Based on everiToken public blockchain with five characteristics: 
 
@@ -30,6 +30,14 @@ everiPay/everiPass includes the standard of QR code generation and the definitio
 - Fast: The everiToken has achieved high TPS, we think that a transaction can be completed within 1 - 3 seconds considering the situation of equipment and network.
 
 Based on the above six characteristics, everiPay/everiPass can provide the most secure, most convenient and enjoyable services in face-to-face payments.
+
+For `everiPay / everiPass`, payee must use a app that supports parsing EvtLink and pushing transactions to `everiToken`. It is easy as we provide easy-to-use APIs and code examples for developers. It is similar to add AliPay / WeChat support for your store, but even much easier.
+
+#### Payee Code
+
+`Payee Code` is a static QR Code containing the address of the token receiver. It's another way to pay tokens based on everiToken. It does not support many features comparing to everiPay, for example, payers must connect to Internet for payment, and payers & payees must input amount of money manually and they won't receive notification when payment is finished automatically.
+
+However, payees don't need to use apps that supports this payment method. In fact, what payees needed to do is just using a wallet on their phone to check if they received the money from the payer. It is suitable for very small stores or persons.
 
 ## How do users use everiPay / everiPass
 
@@ -48,11 +56,25 @@ Almost the same as `everiPay` except for:
 - Normally the scanner is fixedly installed on a gateway or some similar machine.
 - After scanning, no transfer is executed. The chain just check the ownership of the token to make sure he / she has the permission to pass the gateway / door. Destroying the token after scanning automatically is supported and optional.
 
-## Our SDK
+## Technical Details
 
-`evtjs` has full support for `EvtLink` and `everiPay / everiPass`.
+### How does `EvtLink` technically work for `everiPay` / `everiPass`
 
-## Structure of EvtLink
+everiToken public chain use `everipass` action and `everipay` action to execute the transaction of `evtLink`. it also provides a struct named `evt_link` to represent `EvtLink`. For detail information, please refer to the API / ABI documentation of `everiToken`. 
+
+Payers don't need to send transactions directly. After payees receive the link, they sould wrap them in a a action and push them to the chain. 
+
+After payees pushing actions to the chain, the chain nodes will synchronize the result. At the same time, the device of payers should continuously querying transaction id of the EvtLink it created by calling a API called ``
+
+### Developing based on `EvtLink`
+
+`evtjs` has full support for `EvtLink` and `everiPay / everiPass / payee code`. It is recommended to use `evtjs` as the groundwork to build your project.
+
+### Process `EvtLink` manually
+
+We also publish the structure of `EvtLink` so you can process it manually.
+
+#### Structure of EvtLink
 
 Each `EvtLink` has the struct as below:
 
@@ -66,7 +88,7 @@ Each `EvtLink` has the struct as below:
 
 We use `base42` encoding because this encoding of QR Code is very efficient.
 
-## base42 Encoding
+#### base42 Encoding
 
 Base42 is a encoding for binary to string converting. It is similar to `hexadecimal`, but use 42 as its base and use a different alphabet. The chars in the alphabet are matched with the chars in encoding of QR Code's alphanumeric mode so it's efficient. Thereby the size of QR Code could be smaller.
 
@@ -88,7 +110,7 @@ For example, for this byte array:
 
 The encoded result is `000AD1KQVMO`. The count of prefixed zero is the same as the count of prefixed zero in original byte array.
 
-## Segments Stream
+#### Segments Stream
 
 `Segments stream` is a binary structure which has a structure as below:
 
@@ -141,7 +163,7 @@ Here is a brief reference of common used `typeKey` for convenient.
 | `95` | | (string) public key (address) for receiving points or coins |
 | `156` | | (uuid) link id(128-bit) |
 
-## base42signaturesList
+#### base42signaturesList
 
 Signatures is encoded the same way as the segments. If it is a `multisign`, the decoded `base42signaturesList` will put them one by one:
 
@@ -158,7 +180,7 @@ For each signature, it has a fixed 65-byte length and a structure as follow:
 `recoverParam` is `uint8`;
 `r` and `s` has a length of 32-byte.
 
-## Example
+#### Example
 
 Here is an examples of valid `EvtLink`:
 
@@ -223,7 +245,3 @@ Use `evtjs` we can parse this link and get its structure as below:
 ```
 
 In this example there are 3 signatures in it. We can infer the public keys which are used to sign on the link. It has a `flag` of 11 (1 + 2 + 8) which means `version 1`, `everiPass` and `auto destory`.
-
-## On the chain
-
-everiToken public chain use `everipass` action and `everipay` action to execute the transaction of `evtLink`. it also provides a struct named `evt_link` to represent `EvtLink`. For detail information, please refer to the API / ABI documentation of `everiToken`.
