@@ -1,23 +1,12 @@
 # Technical Documentation of EvtLink / everiPass / everiPay
 
-- [Technical Documentation of EvtLink / everiPass / everiPay](#technical-documentation-of-evtlink--everipass--everipay)
-    - [Intro](#intro)
-    - [How to use everiPay / Pass](#how-to-use-everipay--pass)
-    - [Our SDK](#our-sdk)
-    - [Structure of EvtLink](#structure-of-evtlink)
-    - [base42 Encoding](#base42-encoding)
-    - [Segments Stream](#segments-stream)
-    - [base42signaturesList](#base42signatureslist)
-    - [Example](#example)
-    - [On the chain](#on-the-chain)
-
 ## Intro
 
-`everiPass` / `everiPay` is a brand new way to go through a gateway or do payment. People use their wallet to generate a dynamic QR Code as a proof that he/she is the owner of specific token (both NFTs / FTs).
+`everiPass` / `everiPay` is a brand new way to do face-to-face payment or to validate ownership of a token (for example go through a gateway or . People use their wallet to generate a dynamic QR Code as a proof that he/she is the owner of specific token (both NFTs / FTs).
 
 Here is a example UI of `everiPass`:
 
-![everiPass](./pass.png)
+![everiPass](./pass-qr.png)
 
 We call the text which is used to generate the QR Code `EvtLink`.
 
