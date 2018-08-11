@@ -1,24 +1,52 @@
-# Technical Documentation of EvtLink / everiPass / everiPay
+# Documentation of EvtLink / everiPass / everiPay
 
 ## Intro
 
-`everiPass` / `everiPay` is a brand new way to do face-to-face payment or to validate ownership of a token (for example go through a gateway or . People use their wallet to generate a dynamic QR Code as a proof that he/she is the owner of specific token (both NFTs / FTs).
+### What's `EvtLink`, `everiPay` and `everiPass`
+
+`everiPass` / `everiPay` is a brand new way to do face-to-face payment or to validate ownership of a token (for example, to validate the ownership of a ticket when going through a gateway). People use their wallet app (or even a webpage) to generate a dynamic QR Code as a proof that he/she is the owner of specific token (both NFTs / FTs).
 
 Here is a example UI of `everiPass`:
 
 ![everiPass](./pass-qr.png)
 
-We call the text which is used to generate the QR Code `EvtLink`.
+These QR Codes is encoded using a text which has a format called `EvtLink`. It is a compact format to contains all the information needed for transactions in a short text.
 
-`EvtLink` is also used to generate payee QR Code.
+`EvtLink` is also used to generate `payee QR Code`.
 
-## How to use everiPay / Pass
+### Highlights
 
-1. The owner of some token (both NFTs and FTs) use his / her wallet to generate a series of QR codes (each of them represents a `EvtLink`). 
-   - The QR code will keep changing every several seconds. Old codes will expire very soon.
-   - The QR code is made up of current time, the name of the token he / she wants to use and owner's signature for the link.
+#### everiPay / everiPass
+
+everiPay/everiPass is a payment born for face-to-face micropayments using everiToken public block chain.
+
+everiPay/everiPass includes the standard of QR code generation and the definition of communication protocol. Based on everiToken public blockchain with five characteristics: 
+
+- Instant Clearance, A transaction is a settlement.
+- Decentralization: P2P payment, no centralized platform, no one can modify the data on chain, everyone can participate in pricing.
+- Most secure: The data and content in the block chain can not be forged or tampered with, so as to maximize the protection of user's property security.
+- Most Convenient: Even if you can’t connect to the Internet, you can complete the transaction. Payer / Payee doesn't need to input the amount of money manually. Payer and payee will receive notification as soon as the transaction is successful.
+- Compatible: everiPay/everiPass support all Tokens supported by everiToken, not only currency but also tokens and points, even a key to open a door, and you can use it almost everywhere, just with your phone. 
+- Fast: The everiToken has achieved high TPS, we think that a transaction can be completed within 1 - 3 seconds considering the situation of equipment and network.
+
+Based on the above six characteristics, everiPay/everiPass can provide the most secure, most convenient and enjoyable services in face-to-face payments.
+
+## How do users use everiPay / everiPass
+
+### For everiPay
+
+1. The owner of some token (both NFTs and FTs) use his / her wallet app (or even a single webpage) to generate a series of QR codes (each of them represents a `EvtLink`). 
+   - The QR code will keep changing every several seconds. Old codes will expire very soon (currently about 20 seconds).
+   - The QR code is made up of current time, the id of the token he / she wants to use and owner's signature for the link.
 2. Payee use a everiPass-compatible scanner / a mobile phone or any other kinds of QR code scanner to read the code and get the decoded `EvtLink` inside it. The link is then included in a transaction and pushed by the machine / phone / scanner.
-3. The BP received the transaction with the `EvtLink` inside and check the signatures and actions in the link.
+3. The BP received the transaction with the `EvtLink` inside and check the signatures and then execute actions in the link.
+
+### For everiPass
+
+Almost the same as `everiPay` except for:
+
+- Normally the scanner is fixedly installed on a gateway or some similar machine.
+- After scanning, no transfer is executed. The chain just check the ownership of the token to make sure he / she has the permission to pass the gateway / door. Destroying the token after scanning automatically is supported and optional.
 
 ## Our SDK
 
