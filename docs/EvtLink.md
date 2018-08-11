@@ -1,8 +1,28 @@
-# Documentation of EvtLink / everiPass / everiPay
+# Documentation of EvtLink / everiPass / everiPay / Payee Code
+
+- [Documentation of EvtLink / everiPass / everiPay / Payee Code](#documentation-of-evtlink--everipass--everipay--payee-code)
+    - [Intro](#intro)
+        - [What's `EvtLink`, `everiPay`, `everiPass` and `payee Code`](#whats-evtlink-everipay-everipass-and-payee-code)
+        - [Highlights](#highlights)
+            - [everiPay / everiPass](#everipay--everipass)
+            - [Payee QR Code](#payee-qr-code)
+    - [How do users use everiPay / everiPass / payee QR Code](#how-do-users-use-everipay--everipass--payee-qr-code)
+        - [For everiPay](#for-everipay)
+        - [For everiPass](#for-everipass)
+        - [For Payee QR Code](#for-payee-qr-code)
+    - [Technical Details](#technical-details)
+        - [How does `EvtLink` technically work for `everiPay` / `everiPass`](#how-does-evtlink-technically-work-for-everipay--everipass)
+        - [Developing based on `EvtLink`](#developing-based-on-evtlink)
+        - [Process `EvtLink` manually](#process-evtlink-manually)
+            - [Structure of EvtLink](#structure-of-evtlink)
+            - [base42 Encoding](#base42-encoding)
+            - [Segments Stream](#segments-stream)
+            - [base42signaturesList](#base42signatureslist)
+            - [Example](#example)
 
 ## Intro
 
-### What's `EvtLink`, `everiPay` and `everiPass`
+### What's `EvtLink`, `everiPay`, `everiPass` and `payee Code`
 
 `everiPass` / `everiPay` is a brand new way to do face-to-face payment or to validate ownership of a token (for example, to validate the ownership of a ticket when going through a gateway). People use their wallet app (or even a webpage) to generate a dynamic QR Code as a proof that he/she is the owner of specific token (both NFTs / FTs).
 
@@ -12,7 +32,7 @@ Here is a example UI of `everiPass`:
 
 These QR Codes is encoded using a text which has a format called `EvtLink`. It is a compact format to contains all the information needed for transactions in a short text.
 
-`EvtLink` is also used to generate `payee QR Code`.
+`EvtLink` is also used to generate `payee QR Code`. `Payee QR Code` is a static QR Code containing the address of the token receiver. It's another way to pay tokens based on everiToken. For detail, see highlights below.
 
 ### Highlights
 
@@ -28,18 +48,21 @@ everiPay/everiPass includes the standard of QR code generation and the definitio
 - Most Convenient: Even if you can’t connect to the Internet, you can complete the transaction. Payer / Payee doesn't need to input the amount of money manually. Payer and payee will receive notification as soon as the transaction is successful.
 - Compatible: everiPay/everiPass support all Tokens supported by everiToken, not only currency but also tokens and points, even a key to open a door, and you can use it almost everywhere, just with your phone. 
 - Fast: The everiToken has achieved high TPS, we think that a transaction can be completed within 1 - 3 seconds considering the situation of equipment and network.
+- Standardization: Different with technologies from wallet side, `EvtLink` is a cross-wallet cross-chain cross-app standard directly made for the whole ecosystem, you can use any apps to create or parse it.
 
 Based on the above six characteristics, everiPay/everiPass can provide the most secure, most convenient and enjoyable services in face-to-face payments.
 
 For `everiPay / everiPass`, payee must use a app that supports parsing EvtLink and pushing transactions to `everiToken`. It is easy as we provide easy-to-use APIs and code examples for developers. It is similar to add AliPay / WeChat support for your store, but even much easier.
 
-#### Payee Code
+#### Payee QR Code
 
-`Payee Code` is a static QR Code containing the address of the token receiver. It's another way to pay tokens based on everiToken. It does not support many features comparing to everiPay, for example, payers must connect to Internet for payment, and payers & payees must input amount of money manually and they won't receive notification when payment is finished automatically.
+`Payee QR Code` does not support many features comparing to everiPay, for example, payers must connect to Internet for payment, and payers & payees must input amount of money manually and they won't receive notification when payment is finished automatically.
 
 However, payees don't need to use apps that supports this payment method. In fact, what payees needed to do is just using a wallet on their phone to check if they received the money from the payer. It is suitable for very small stores or persons.
 
-## How do users use everiPay / everiPass
+Using `everiPay` instead of `Payee QR Code` is recommended for anyone who is able to.
+
+## How do users use everiPay / everiPass / payee QR Code
 
 ### For everiPay
 
@@ -56,19 +79,33 @@ Almost the same as `everiPay` except for:
 - Normally the scanner is fixedly installed on a gateway or some similar machine.
 - After scanning, no transfer is executed. The chain just check the ownership of the token to make sure he / she has the permission to pass the gateway / door. Destroying the token after scanning automatically is supported and optional.
 
+### For Payee QR Code
+
+1. Payees show `Payee QR Code` to the payer. The code could even be printed on a paper and paste it on the wall as it is static.
+2. The payer then scans the payee QR Code using their wallet app.
+3. The payer inputs the amount to pay and then executes transfer actions on the chain just in normal way.
+4. The payee refreshes his / her wallet and confirms the token is received.
+
+Using `everiPay` instead of `Payee QR Code` is recommended for anyone who is able to.
+
 ## Technical Details
 
 ### How does `EvtLink` technically work for `everiPay` / `everiPass`
 
 everiToken public chain use `everipass` action and `everipay` action to execute the transaction of `evtLink`. it also provides a struct named `evt_link` to represent `EvtLink`. For detail information, please refer to the API / ABI documentation of `everiToken`. 
 
-Payers don't need to send transactions directly. After payees receive the link, they sould wrap them in a a action and push them to the chain. 
+Here is the technically process of payments via `everiPay` / `everiPass`:
 
-After payees pushing actions to the chain, the chain nodes will synchronize the result. At the same time, the device of payers should continuously querying transaction id of the EvtLink it created by calling a API called ``
+1. The payer select a kind of token to use, and the wallet of the payer show a series of dynamic QR Codes consisting of a unique 128-bit `LinkId`, a signature of the payer and the symbol of the token for payment. 
+   > Note that the `LinkId` shouldn't be changed during QR Code changing unless related transaction is executed. Else the risk of duplicate payment can't be ignored. The chain doesn't allow two actions with `EvtLink` with a same `LinkId`.
+2. The wallet of payers should then continuously querying transaction id related with the `LinkId` by calling a API called `get_trx_id_for_link_id` until it returns a valid transacion id. After that the wallet should change the `LinkId` the next time it shows QR Code. And the wallet should show the transaction result by querying this transaction id. Wallets of payers don't need to send transactions directly.
+3. Meanwhile, the payee scans for the QR Code using their phone, scanner or smart gateway. After EvtLink is scanned and parsed, it should be wrapped in a a action and then be pushed to the chain. After that, all the chain nodes will synchronize the result so `get_trx_id_for_link_id` will return the transaction id instead of `404`.
 
 ### Developing based on `EvtLink`
 
 `evtjs` has full support for `EvtLink` and `everiPay / everiPass / payee code`. It is recommended to use `evtjs` as the groundwork to build your project.
+
+`EvtLink` is the class you should use to create or parse `EvtLink`. The function `pushTransaction` of class `APICaller` should be used to push `everiPay` action onto the chain. For detail, please see the [documentation of `evtjs` project](https://github.com/everitoken/evtjs/blob/dev/README.md).
 
 ### Process `EvtLink` manually
 
