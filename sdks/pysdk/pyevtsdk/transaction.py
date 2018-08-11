@@ -56,6 +56,8 @@ class Transaction:
             'payer': self.payer,
             'transaction_extensions': self.transaction_extensions
         }
+        if self.payer == None:
+            del ret['payer']
         return ret
 
     def dumps(self):
