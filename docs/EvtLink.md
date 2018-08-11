@@ -1,5 +1,7 @@
 # Documentation for EvtLink
 
+![](./logo.png)
+
 This documentation describes detail information about `everiPass` / `everiPay` / `Payee QR Code`. Visit our github for latest version: [click here](https://github.com/everitoken/evt/blob/master/docs/EvtLink.md).
 
 ## Contents
@@ -22,6 +24,8 @@ This documentation describes detail information about `everiPass` / `everiPay` /
     - [Segments Stream](#segments-stream)
     - [base42signaturesList](#base42signatureslist)
     - [Example](#example)
+
+
 ## Intro
 
 `everiPass` / `everiPay` is a brand new way to do face-to-face payment or to validate ownership of a token (for example, to validate the ownership of a ticket when going through a gateway). People use their wallet app (or even a webpage) to generate a dynamic QR Code as a proof that he/she is the owner of specific token (both NFTs / FTs).
