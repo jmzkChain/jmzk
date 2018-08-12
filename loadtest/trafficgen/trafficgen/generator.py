@@ -46,7 +46,7 @@ class TrafficGenerator:
         self.rp = None
         self.writer = utils.Writer(output)
 
-        self.trxgen = TrxGenerator(url)
+        self.trxgen = TrxGenerator(url, payer=None)
         self.actgen = ActionGenerator()
 
         self.limits = None
