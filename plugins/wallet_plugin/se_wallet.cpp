@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in eos/LICENSE.txt
+ *  @copyright defined in evt/LICENSE.txt
  */
 #include <evt/wallet_plugin/se_wallet.hpp>
 #include <evt/wallet_plugin/macos_user_auth.h>
@@ -246,7 +246,7 @@ struct se_wallet_impl {
 
         promise<bool> prom;
         future<bool>  fut = prom.get_future();
-        macos_user_auth(auth_callback, &prom, CFSTR("remove a key from your EOSIO wallet"));
+        macos_user_auth(auth_callback, &prom, CFSTR("remove a key from your EVT wallet"));
         if(!fut.get())
             FC_THROW_EXCEPTION(chain::wallet_invalid_password_exception, "Local user authentication failed");
 
@@ -290,7 +290,7 @@ check_signed() {
 
     if(is_valid != errSecSuccess) {
         wlog("Application does not have a valid signature; Secure Enclave support disabled");
-        EOS_THROW(secure_enclave_exception, "");
+        EVT_THROW(secure_enclave_exception, "");
     }
 }
 
@@ -317,7 +317,7 @@ se_wallet::se_wallet()
         }
     }
 
-    EOS_THROW(secure_enclave_exception, "Secure Enclave not supported on this hardware");
+    EVT_THROW(secure_enclave_exception, "Secure Enclave not supported on this hardware");
 }
 
 se_wallet::~se_wallet() {
@@ -334,7 +334,7 @@ se_wallet::is_locked() const {
 }
 void
 se_wallet::lock() {
-    EOS_ASSERT(!is_locked(), wallet_locked_exception, "You can not lock an already locked wallet");
+    EVT_ASSERT(!is_locked(), wallet_locked_exception, "You can not lock an already locked wallet");
     my->locked = true;
 }
 
@@ -342,7 +342,7 @@ void
 se_wallet::unlock(string password) {
     promise<bool> prom;
     future<bool>  fut = prom.get_future();
-    macos_user_auth(detail::auth_callback, &prom, CFSTR("unlock your EOSIO wallet"));
+    macos_user_auth(detail::auth_callback, &prom, CFSTR("unlock your EVT wallet"));
     if(!fut.get())
         FC_THROW_EXCEPTION(chain::wallet_invalid_password_exception, "Local user authentication failed");
     my->locked = false;
@@ -379,7 +379,7 @@ se_wallet::create_key(string key_type) {
 
 bool
 se_wallet::remove_key(string key) {
-    EOS_ASSERT(!is_locked(), wallet_locked_exception, "You can not remove a key from a locked wallet");
+    EVT_ASSERT(!is_locked(), wallet_locked_exception, "You can not remove a key from a locked wallet");
     return my->remove_key(key);
 }
 
