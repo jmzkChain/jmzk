@@ -698,6 +698,21 @@ Response:
 ["testgroup"]
 ```
 
+## POST /v1/history/get_fungibles
+Provide all the public keys its has and this API will response with all the symbol ids of the fungibles that account create.
+> This API is only available when MONGO_DB_SUPPORT is ON.
+
+Request:
+```
+{
+    "keys":["EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"]
+}
+```
+Response:
+```
+[3, 4, 5]
+```
+
 ## POST /v1/history/get_actions
 Query actions by domain, key and action names.
 > This API is only available when MONGO_DB_SUPPORT is ON.

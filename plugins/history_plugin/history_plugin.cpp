@@ -59,6 +59,7 @@ public:
     variant get_tokens_by_public_keys(const vector<public_key_type>& pkeys);
     flat_set<string> get_domains_by_public_keys(const vector<public_key_type>& pkeys);
     flat_set<string> get_groups_by_public_keys(const vector<public_key_type>& pkeys);
+    flat_set<symbol_id_type> get_fungibles_by_public_keys(const vector<public_key_type>& pkeys);
 
     variant get_actions(const domain_name&             domain,
                         const optional<domain_key>&    key,
@@ -183,6 +184,28 @@ history_plugin_impl::get_groups_by_public_keys(const vector<public_key_type>& pk
             for(auto it = cursor.begin(); it != cursor.end(); it++) {
                 auto name = get_bson_string_value(it, "name");
                 results.insert(string(name.data(), name.size()));
+            }
+        }
+        catch(mongocxx::query_exception e) {
+            continue;
+        }
+    }
+    return results;
+}
+
+flat_set<symbol_id_type>
+history_plugin_impl::get_fungibles_by_public_keys(const vector<public_key_type>& pkeys) {
+    flat_set<symbol_id_type> results;
+
+    for(auto& pkey : pkeys) {
+        using bsoncxx::builder::stream::document;
+        document find{};
+        find << "creator" << (string)pkey;
+        auto cursor = fungibles_col_.find(find.view());
+        try {
+            for(auto it = cursor.begin(); it != cursor.end(); it++) {
+                auto id = (*it)["sym_id"].get_int64();
+                results.insert((symbol_id_type)id);
             }
         }
         catch(mongocxx::query_exception e) {
@@ -447,6 +470,16 @@ read_only::get_groups(const get_params& params) {
     auto groups = plugin_.my_->get_groups_by_public_keys(params.keys);
     fc::variant result;
     fc::to_variant(groups, result);
+    return result;
+}
+
+fc::variant
+read_only::get_fungibles(const get_params& params) {
+    EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
+
+    auto fungibles = plugin_.my_->get_fungibles_by_public_keys(params.keys);
+    fc::variant result;
+    fc::to_variant(fungibles, result);
     return result;
 }
 
