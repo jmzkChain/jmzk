@@ -19,6 +19,10 @@
 #include <evt/chain/contracts/evt_link_object.hpp>
 #include <evt/utilities/safemath.hpp>
 
+#if defined(__clang__)
+#pragma GCC diagnostic ignored "-Winstantiation-after-specialization"
+#endif
+
 namespace evt { namespace chain { namespace contracts {
 
 #define EVT_ACTION_IMPL(name)                         \
