@@ -1133,6 +1133,11 @@ struct set_get_my_subcommands {
             get_my_resources(get_my_groups);
         });
 
+        auto myfungible = mycmd->add_subcommand("fungibles", localized("Retrieve my created fungibles"));
+        mygroup->set_callback([] {
+            get_my_resources(get_my_fungibles);
+        });
+
         auto trxscmd = mycmd->add_subcommand("transactions", localized("Retrieve my transactions"));
         trxscmd->add_option("--skip,-s", skip, localized("How many records should be skipped"));
         trxscmd->add_option("--take,-t", take, localized("How many records should be returned"));
