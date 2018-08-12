@@ -220,6 +220,7 @@ FC_DECLARE_DERIVED_EXCEPTION( missing_net_api_plugin_exception,     plugin_excep
 FC_DECLARE_DERIVED_EXCEPTION( missing_evt_api_plugin_exception,     plugin_exception, 3130004, "Missing EVT API Plugin" );
 FC_DECLARE_DERIVED_EXCEPTION( missing_history_api_plugin_exception, plugin_exception, 3130005, "Missing History API Plugin" );
 FC_DECLARE_DERIVED_EXCEPTION( plugin_config_exception,              plugin_exception, 3130006, "Incorrect plugin configuration" );
+FC_DECLARE_DERIVED_EXCEPTION( mongodb_plugin_not_enabled_exception, plugin_exception, 3130007, "Mongodb plugin is not enabled" );
 
 FC_DECLARE_DERIVED_EXCEPTION( invalid_http_client_root_cert,    http_exception, 3180001, "invalid http client root certificate" );
 FC_DECLARE_DERIVED_EXCEPTION( invalid_http_response,            http_exception, 3180002, "invalid http response" );

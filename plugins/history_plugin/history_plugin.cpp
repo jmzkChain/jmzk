@@ -408,7 +408,13 @@ history_plugin::plugin_initialize(const variables_map& options) {
 
 void
 history_plugin::plugin_startup() {
-    this->my_.reset(new history_plugin_impl());
+    if(app().get_plugin<mongo_db_plugin>().enabled()) {
+        my_.reset(new history_plugin_impl());
+    }
+    else {
+        wlog("evt::mongo_db_plugin configured, but no --mongodb-uri specified.");
+        wlog("history_plugin disabled.");
+    }
 }
 
 void
@@ -419,11 +425,15 @@ namespace history_apis {
 
 fc::variant
 read_only::get_tokens(const get_params& params) {
+    EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
+
     return plugin_.my_->get_tokens_by_public_keys(params.keys);
 }
 
 fc::variant
 read_only::get_domains(const get_params& params) {
+    EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
+
     auto domains = plugin_.my_->get_domains_by_public_keys(params.keys);
     fc::variant result;
     fc::to_variant(domains, result);
@@ -432,6 +442,8 @@ read_only::get_domains(const get_params& params) {
 
 fc::variant
 read_only::get_groups(const get_params& params) {
+    EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
+
     auto groups = plugin_.my_->get_groups_by_public_keys(params.keys);
     fc::variant result;
     fc::to_variant(groups, result);
@@ -440,21 +452,29 @@ read_only::get_groups(const get_params& params) {
 
 fc::variant
 read_only::get_actions(const get_actions_params& params) {
+    EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
+
     return plugin_.my_->get_actions(params.domain, params.key, params.names, params.skip, params.take);
 }
 
 fc::variant
 read_only::get_fungible_actions(const get_fungible_actions_params& params) {
+    EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
+
     return plugin_.my_->get_fungible_actions(params.sym_id, params.addr, params.skip, params.take);
 }
 
 fc::variant
 read_only::get_transaction(const get_transaction_params& params) {
+    EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
+
     return plugin_.my_->get_transaction(params.id);
 }
 
 fc::variant
 read_only::get_transactions(const get_transactions_params& params) {
+    EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
+
     return plugin_.my_->get_transactions(params.keys, params.skip, params.take);
 }
 

@@ -465,6 +465,9 @@ mongo_db_plugin_impl::_process_transaction(const transaction_trace& trace, write
 }
 
 mongo_db_plugin_impl::~mongo_db_plugin_impl() {
+    if(!configured) {
+        return;
+    }
     try {
         done_ = true;
         cond_.notify_one();
@@ -617,6 +620,11 @@ mongo_db_plugin::~mongo_db_plugin() {
 const mongocxx::uri&
 mongo_db_plugin::uri() const {
     return my_->mongo_uri;
+}
+
+bool
+mongo_db_plugin::enabled() const {
+    return my_->configured;
 }
 
 void
