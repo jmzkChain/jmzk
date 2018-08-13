@@ -363,7 +363,7 @@ public:
         };
 
         auto id = trx->id();
-        if(fc::time_point(trx->expiration()) < block_time) {
+        if(!chain.loadtest_mode() && fc::time_point(trx->expiration()) < block_time) {
             send_response(std::static_pointer_cast<fc::exception>(std::make_shared<expired_tx_exception>(FC_LOG_MESSAGE(error, "expired transaction ${id}", ("id", id)))));
             return;
         }

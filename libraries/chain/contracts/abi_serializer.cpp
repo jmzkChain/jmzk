@@ -20,7 +20,7 @@ using boost::algorithm::ends_with;
 using std::string;
 
 const size_t abi_serializer::max_recursion_depth;
-fc::microseconds abi_serializer::max_serialization_time = fc::milliseconds(15);  // 15ms
+fc::microseconds abi_serializer::max_serialization_time;
 
 template <typename T>
 inline fc::variant
@@ -52,6 +52,9 @@ pack_unpack() {
 }
 
 abi_serializer::abi_serializer(const abi_def& abi) {
+    if(get_max_serialization_time().count() == 0) {
+        set_max_serialization_time(fc::milliseconds(15)); // 15ms
+    }
     configure_built_in_types();
     set_abi(abi);
 }
