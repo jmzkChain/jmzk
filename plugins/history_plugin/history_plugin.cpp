@@ -297,7 +297,7 @@ history_plugin_impl::get_fungible_actions(const symbol_id_type        sym_id,
     match << "domain" << ".fungible" << "key" << std::to_string(sym_id);
 
     auto ns = bsoncxx::builder::stream::array();
-    ns << "issuefungible" << "transferft";
+    ns << "issuefungible" << "transferft" << "everipay";
 
     match << "name" << open_document << "$in" << ns << close_document;
 
