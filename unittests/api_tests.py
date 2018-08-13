@@ -1,12 +1,15 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
 
+import os
 import datetime
 import json
 import random
 import string
 import sys
 import time
+import subprocess
+
 from pyevt import abi, ecc, libevt
 from pyevtsdk import action, api, base, transaction, unit_test
 import click
@@ -134,6 +137,7 @@ class Test(unittest.TestCase):
     def test_get_actions(self):
         req = {
             "domain": ".fungible",
+            "key": ".issue",
             "names": [
             "issuetoken"
             ],
@@ -215,6 +219,9 @@ class Test(unittest.TestCase):
 @click.option('--public-key', '-p', type=str, prompt='Public Key')
 @click.option('--private-key', '-k', type=str, prompt='Private Key')
 def main(url, public_key, private_key):
+    p = subprocess.Popen(["/home/laighno/Documents/evt/programs/evtd/evtd", "-e", "--http-validate-host=false", "--charge-free-mode", "--plugin=evt::mongo_db_plugin", "--plugin=evt::history_plugin", "--plugin=evt::history_api_plugin", "--plugin=evt::chain_api_plugin", "--plugin=evt::evt_api_plugin", "--producer-name=evt", "--delete-all-blocks", "-d", "/tmp/evt", "-m", "mongodb://127.0.0.1:27017"], stdout=None, shell=False)
+    time.sleep(3)
+
     global domain_name 
     domain_name = fake_name()
     global token_name
@@ -223,6 +230,7 @@ def main(url, public_key, private_key):
     group_name = fake_name('group')
     global sym_name, sym_id, sym_prec
     sym_name, sym_id, sym_prec = fake_symbol()
+
     global TG
     TG = transaction.TrxGenerator(url=url, payer=public_key)
     global user
@@ -233,11 +241,13 @@ def main(url, public_key, private_key):
     AG = action.ActionGenerator()
 
     pre_action()
-
     suite = unittest.TestLoader().loadTestsFromTestCase(Test)
     runner = unittest.TextTestRunner()
     runner.run(suite)
 
+    p.kill()
+
 
 if __name__ == '__main__':
     main()
+    
