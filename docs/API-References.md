@@ -721,8 +721,8 @@ Query actions by domain, key and action names.
 Request:
 ```
 {
-  "domain": "fungible",
-  "key": "EVT",
+  "domain": ".fungible",
+  "key": "1",
   "names": [
     "newfungible"
   ],
@@ -735,8 +735,8 @@ Response:
 ```
 [{
     "name": "newfungible",
-    "domain": "fungible",
-    "key": "EVT",
+    "domain": ".fungible",
+    "key": "1",
     "trx_id": "f0c789933e2b381e88281e8d8e750b561a4d447725fb0eb621f07f219fe2f738",
     "created_at": "2018-06-28T05:35:12",
     "data": {

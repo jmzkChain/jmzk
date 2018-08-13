@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='pyevtsdk',
-    version='0.2',
+    version='0.3',
     author='everiToken',
     author_email='help@everitoken.io',
     description='Python SDK library for everiToken',

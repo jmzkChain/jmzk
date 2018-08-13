@@ -36,9 +36,8 @@ evt_generate_new_pair(evt_public_key_t** pub_key /* out */, evt_private_key_t** 
         *pub_key  = get_evt_data(pub);
         *priv_key = get_evt_data(pk);
     }
-    catch(...) {
-        return EVT_INTERNAL_ERROR;
-    }
+    CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
+
     return EVT_OK;
 }
 
@@ -58,9 +57,8 @@ evt_get_public_key(evt_private_key_t* priv_key, evt_public_key_t** pub_key /* ou
         auto pub = pk.get_public_key();
         *pub_key = get_evt_data(pub);
     }
-    catch(...) {
-        return EVT_INTERNAL_ERROR;
-    }
+    CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
+
     return EVT_OK;
 }
 
@@ -87,9 +85,8 @@ evt_sign_hash(evt_private_key_t* priv_key, evt_checksum_t* hash, evt_signature_t
         auto sig = pk.sign(h);
         *sign = get_evt_data(sig);
     }
-    catch(...) {
-        return EVT_INTERNAL_ERROR;
-    }
+    CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
+
     return EVT_OK;
 }
 
@@ -116,9 +113,8 @@ evt_recover(evt_signature_t* sign, evt_checksum_t* hash, evt_public_key_t** pub_
         auto pkey = public_key(sig, h);
         *pub_key = get_evt_data(pkey);
     }
-    catch(...) {
-        return EVT_INTERNAL_ERROR;
-    }
+    CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
+
     return EVT_OK;
 }
 
@@ -137,9 +133,8 @@ evt_hash(const char* buf, size_t sz, evt_checksum_t** hash /* out */) {
         auto h = sha256::hash(buf, sz);
         *hash = get_evt_data(h);
     }
-    catch(...) {
-        return EVT_INTERNAL_ERROR;
-    }
+    CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
+
     return EVT_OK;
 }
 
@@ -224,9 +219,8 @@ evt_public_key_from_string(const char* str, evt_public_key_t** pub_key /* out */
         auto data = get_evt_data(pkey);
         *pub_key = data;
     }
-    catch(...) {
-        return EVT_INTERNAL_ERROR;
-    }
+    CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
+
     return EVT_OK;
 }
 
@@ -243,9 +237,8 @@ evt_private_key_from_string(const char* str, evt_private_key_t** priv_key /* out
         auto data = get_evt_data(pkey);
         *priv_key = data;
     }
-    catch(...) {
-        return EVT_INTERNAL_ERROR;
-    }
+    CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
+
     return EVT_OK;
 }
 
@@ -262,9 +255,8 @@ evt_signature_from_string(const char* str, evt_signature_t** sign /* out */) {
         auto data = get_evt_data(sig);
         *sign = data;
     }
-    catch(...) {
-        return EVT_INTERNAL_ERROR;
-    }
+    CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
+
     return EVT_OK;
 }
 
@@ -281,9 +273,8 @@ evt_checksum_from_string(const char* str, evt_checksum_t** hash /* out */) {
         auto data = get_evt_data(h);
         *hash = data;
     }
-    catch(...) {
-        return EVT_INTERNAL_ERROR;
-    }
+    CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
+
     return EVT_OK;
 }
 

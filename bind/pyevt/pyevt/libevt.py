@@ -45,6 +45,7 @@ def init_evt_lib():
             int evt_free(void*);
             int evt_equals(evt_data_t* rhs, evt_data_t* lhs);
             int evt_version();
+            int evt_last_error();
 
 
             typedef evt_data_t evt_bin_t;

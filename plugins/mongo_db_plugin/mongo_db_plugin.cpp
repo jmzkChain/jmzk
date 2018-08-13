@@ -72,12 +72,14 @@ public:
     void applied_irreversible_block(const block_state_ptr&);
     void applied_transaction(const transaction_trace_ptr&);
 
-    void process_block(const signed_block&, write_context& write_ctx);
-    void _process_block(const signed_block&, write_context& write_ctx);
-    void process_irreversible_block(const signed_block&, write_context& write_ctx);
+    void process_block(const signed_block&, std::deque<transaction_trace_ptr>& traces, write_context& write_ctx);
+    void _process_block(const signed_block&, std::deque<transaction_trace_ptr>& traces, write_context& write_ctx);
+    void process_irreversible_block(const signed_block&, std::deque<transaction_trace_ptr>& traces, write_context& write_ctx);
     void _process_irreversible_block(const signed_block&, write_context& write_ctx);
     void process_transaction(const transaction_trace&, write_context& write_ctx);
     void _process_transaction(const transaction_trace&, write_context& write_ctx);
+
+    void add_trx_trace(bsoncxx::builder::basic::document& trx_doc, const chain::transaction& trx, std::deque<transaction_trace_ptr>& traces);
 
     void init();
     void start();
@@ -108,7 +110,7 @@ public:
     std::thread                 consume_thread_;
     std::atomic_bool            done_{false};
 
-    write_context               write_ctx_;
+    write_context write_ctx_;
 
     channels::accepted_block::channel_type::handle      accepted_block_subscription;
     channels::irreversible_block::channel_type::handle  irreversible_block_subscription;
@@ -166,16 +168,16 @@ mongo_db_plugin_impl::consume_queues() {
             }
 
             auto bqueue = std::move(block_state_queue);
-            auto tqueue = std::move(transaction_trace_queue);
+            auto traces = std::move(transaction_trace_queue);
 
             lock_.unlock();
 
             // warn if queue size greater than 75%
-            if(bqueue.size() > (queue_size * 0.75) || tqueue.size() > (queue_size * 0.75)) {
-                wlog("queue size: ${q}", ("q", bqueue.size() + tqueue.size()));
+            if(bqueue.size() > (queue_size * 0.75)) {
+                wlog("queue size: ${q}", ("q", bqueue.size()));
             }
             else if(done_) {
-                ilog("draining queue, size: ${q}", ("q", bqueue.size() + tqueue.size()));
+                ilog("draining queue, size: ${q}", ("q", bqueue.size()));
                 break;
             }
 
@@ -188,19 +190,19 @@ mongo_db_plugin_impl::consume_queues() {
             // process block states
             for(auto& b : bqueue) {
                 if(std::get<IsIrreversible>(b)) {
-                    process_irreversible_block(*(std::get<BlockPtr>(b)->block), write_ctx_);
+                    process_irreversible_block(*(std::get<BlockPtr>(b)->block), traces, write_ctx_);
                 }
                 else {
-                    process_block(*(std::get<BlockPtr>(b)->block), write_ctx_);
+                    process_block(*(std::get<BlockPtr>(b)->block), traces, write_ctx_);
                 }
-            }
-
-            // process transaction traces
-            for(auto& t : tqueue) {
-                process_transaction(*t, write_ctx_);
             }
 
             write_ctx_.execute();
+
+            if(!traces.empty()) {
+                spinlock_guard lock(lock_);
+                transaction_trace_queue.insert(transaction_trace_queue.begin(), traces.begin(), traces.end());
+            }
         }
         ilog("mongo_db_plugin consume thread shutdown gracefully");
     }
@@ -218,17 +220,17 @@ mongo_db_plugin_impl::consume_queues() {
 namespace __internal {
 
 void
-add_data(bsoncxx::builder::basic::document& msg_doc,
-         const chain::action&               msg,
+add_data(bsoncxx::builder::basic::document& act_doc,
+         const chain::action&               act,
          const abi_serializer&              evt_abi) {
     using bsoncxx::builder::basic::kvp;
     try {
         auto& abis = evt_abi;
-        auto v     = abis.binary_to_variant(abis.get_action_type(msg.name), msg.data);
+        auto v     = abis.binary_to_variant(abis.get_action_type(act.name), act.data);
         auto json  = fc::json::to_string(v);
         try {
             const auto& value = bsoncxx::from_json(json);
-            msg_doc.append(kvp("data", value));
+            act_doc.append(kvp("data", value));
             return;
         }
         catch(std::exception& e) {
@@ -237,16 +239,16 @@ add_data(bsoncxx::builder::basic::document& msg_doc,
         }
     }
     catch(fc::exception& e) {
-        elog("Unable to convert action.data to ABI: ${n}, what: ${e}", ("n", msg.name)("e", e.to_string()));
+        elog("Unable to convert action.data to ABI: ${n}, what: ${e}", ("n", act.name)("e", e.to_string()));
     }
     catch(std::exception& e) {
-        elog("Unable to convert action.data to ABI: ${n}, std what: ${e}", ("n", msg.name)("e", e.what()));
+        elog("Unable to convert action.data to ABI: ${n}, std what: ${e}", ("n", act.name)("e", e.what()));
     }
     catch(...) {
-        elog("Unable to convert action.data to ABI: ${n}, unknown exception", ("n", msg.name));
+        elog("Unable to convert action.data to ABI: ${n}, unknown exception", ("n", act.name));
     }
     // if anything went wrong just store raw hex_data
-    msg_doc.append(kvp("hex_data", fc::variant(msg.data).as_string()));
+    act_doc.append(kvp("hex_data", fc::variant(act.data).as_string()));
 }
 
 void
@@ -273,18 +275,14 @@ verify_no_blocks(mongocxx::collection& blocks) {
 }  // namespace __internal
 
 void
-mongo_db_plugin_impl::process_irreversible_block(const signed_block& block, write_context& write_ctx) {
+mongo_db_plugin_impl::process_irreversible_block(const signed_block& block, std::deque<transaction_trace_ptr>& traces, write_context& write_ctx) {
     try {
         if(block.block_num() == 1) {
             // genesis block will not trigger on_block event
             // add it manually
-            _process_block(block, write_ctx); 
+            _process_block(block, traces, write_ctx);
         }
         _process_irreversible_block(block, write_ctx);
-        for(auto& ptrx : block.transactions) {
-            auto trx = ptrx.trx.get_transaction();
-            interpreter.process_trx(trx, write_ctx);
-        }
     }
     catch(fc::exception& e) {
         elog("FC Exception while processing irreversible block ${e}", ("e", e.to_string()));
@@ -298,9 +296,14 @@ mongo_db_plugin_impl::process_irreversible_block(const signed_block& block, writ
 }
 
 void
-mongo_db_plugin_impl::process_block(const signed_block& block, write_context& write_ctx) {
+mongo_db_plugin_impl::process_block(const signed_block& block, std::deque<transaction_trace_ptr>& traces, write_context& write_ctx) {
     try {
-        _process_block(block, write_ctx);
+        _process_block(block, traces, write_ctx);
+
+        for(auto& ptrx : block.transactions) {
+            auto trx = ptrx.trx.get_transaction();
+            interpreter.process_trx(trx, write_ctx);
+        }
     }
     catch(fc::exception& e) {
         elog("FC Exception while processing block ${e}", ("e", e.to_string()));
@@ -319,7 +322,7 @@ mongo_db_plugin_impl::process_transaction(const transaction_trace& trace, write_
 }
 
 void
-mongo_db_plugin_impl::_process_block(const signed_block& block, write_context& write_ctx) {
+mongo_db_plugin_impl::_process_block(const signed_block& block, std::deque<transaction_trace_ptr>& traces, write_context& write_ctx) {
     using namespace evt::__internal;
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
@@ -397,6 +400,7 @@ mongo_db_plugin_impl::_process_block(const signed_block& block, write_context& w
                    kvp("payer", (std::string)trx.payer),
                    kvp("pending", b_bool{true}),
                    kvp("created_at", b_date{now}));
+        add_trx_trace(doc, trx, traces);
 
         if(status == transaction_receipt_header::executed && !trx.actions.empty()) {
             act_num = 0;
@@ -462,6 +466,31 @@ mongo_db_plugin_impl::_process_irreversible_block(const signed_block& block, wri
 void
 mongo_db_plugin_impl::_process_transaction(const transaction_trace& trace, write_context& write_ctx) {
     return;
+}
+
+void
+mongo_db_plugin_impl::add_trx_trace(bsoncxx::builder::basic::document& trx_doc, const chain::transaction& trx, std::deque<transaction_trace_ptr>& traces) {
+    using namespace evt::__internal;
+    using namespace bsoncxx::types;
+    using namespace bsoncxx::builder;
+    using namespace mongocxx::model;
+    using bsoncxx::builder::basic::kvp;
+
+    auto trace_doc = bsoncxx::builder::basic::document{};
+
+    auto it = traces.begin();
+    while(it != traces.end()) {
+        auto trace = *it;
+        traces.pop_front();
+
+        if(trace->id == trx.id()) {
+            trace_doc.append(kvp("elapsed", (int64_t)trace->elapsed.count()),
+                             kvp("charge", (int64_t)trace->charge));
+            trx_doc.append(kvp("trace", trace_doc));
+            return;
+        }
+        it++;
+    }
 }
 
 mongo_db_plugin_impl::~mongo_db_plugin_impl() {
