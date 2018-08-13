@@ -28,9 +28,8 @@ evt_address_from_string(const char* str, evt_address_t** addr /* out */) {
         auto _addr = address(std::string(str));
         *addr = get_evt_data(_addr);
     }
-    catch(...) {
-        return EVT_INTERNAL_ERROR;
-    }
+    CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
+    
     return EVT_OK;
 }
 
@@ -48,9 +47,8 @@ evt_address_to_string(evt_address_t* addr, char** str /* out */) {
         auto out = _addr.to_string();
         *str = strdup(out);
     }
-    catch(...) {
-        return EVT_INTERNAL_ERROR;
-    }
+    CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
+
     return EVT_OK;
 }
 
@@ -67,9 +65,8 @@ evt_address_public_key(evt_public_key_t *pub_key, evt_address_t** addr/* out */)
         auto _addr = address(pkey);
         *addr = get_evt_data(_addr);
     }
-    catch(...) {
-        return EVT_INTERNAL_ERROR;
-    }
+    CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
+
     return EVT_OK;
 }
 
@@ -79,9 +76,8 @@ evt_address_reserved(evt_address_t** addr/* out */) {
         auto _addr = address();
         *addr = get_evt_data(_addr);
     }
-    catch(...) {
-        return EVT_INTERNAL_ERROR;
-    }
+    CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
+
     return EVT_OK;
 }
 
@@ -93,9 +89,8 @@ evt_address_generated(const char* prefix, const char* key, uint32_t nonce, evt_a
         auto _addr = address(_prefix, _key, nonce);
         *addr = get_evt_data(_addr);
     }
-    catch(...) {
-        return EVT_INTERNAL_ERROR;
-    }
+    CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
+
     return EVT_OK;
 }
 
@@ -114,9 +109,8 @@ evt_address_get_public_key(evt_address_t* addr, evt_public_key_t **pub_key/* out
         auto pkey = _addr.get_public_key();
         *pub_key = get_evt_data(pkey);
     }
-    catch(...) {
-        return EVT_INTERNAL_ERROR;
-    }
+    CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
+
     return EVT_OK;
 }
 
@@ -135,9 +129,8 @@ evt_address_get_prefix(evt_address_t* addr, char** str/* out */) {
         auto prefix = _addr.get_prefix();
         *str = strdup(prefix.to_string());
     }
-    catch(...) {
-        return EVT_INTERNAL_ERROR;
-    }
+    CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
+
     return EVT_OK;
 }
 
@@ -156,9 +149,8 @@ evt_address_get_key(evt_address_t* addr, char** str/* out */) {
         auto key = _addr.get_key();
         *str = strdup(key.to_string());
     }
-    catch(...) {
-        return EVT_INTERNAL_ERROR;
-    }
+    CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
+
     return EVT_OK;
 }
 
@@ -177,9 +169,8 @@ evt_address_get_nonce(evt_address_t* addr, uint32_t* nonce/* out */) {
         auto out = _addr.get_nonce();
         *nonce = out;
     }
-    catch(...) {
-        return EVT_INTERNAL_ERROR;
-    }
+    CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
+
     return EVT_OK;
 }
 
@@ -205,9 +196,8 @@ evt_address_get_type(evt_address_t* addr, char** str/* out */) {
             *str = strdup("generated");
         }
     }
-    catch(...) {
-        return EVT_INTERNAL_ERROR;
-    }
+    CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
+
     return EVT_OK;
 }
 

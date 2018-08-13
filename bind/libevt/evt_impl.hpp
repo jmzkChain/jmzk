@@ -10,6 +10,16 @@
 #include <libevt/evt.h>
 #include <fc/io/raw.hpp>
 
+#define CATCH_AND_RETURN(err)         \
+    catch(fc::exception& e) {         \
+        evt_set_last_error(e.code()); \
+        return err;                   \
+    }                                 \
+    catch(...) {                      \
+        evt_set_last_error(-1);       \
+        return err;                   \
+    }
+
 template <typename T>
 evt_data_t*
 get_evt_data(const T& val) {
@@ -32,9 +42,7 @@ extract_data(evt_data_t* data, T& val) {
     try {
         fc::raw::unpack(ds, val);
     }
-    catch(...) {
-        return EVT_INVALID_BINARY;
-    }
+    CATCH_AND_RETURN(EVT_INVALID_BINARY)
 
     return EVT_OK;
 }
