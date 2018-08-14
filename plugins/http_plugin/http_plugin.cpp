@@ -87,7 +87,7 @@ static bool verbose_http_errors = false;
 
 class http_plugin_impl {
 public:
-    http_plugin_impl() : control(app().get_plugin<chain_plugin>().chain()) {}
+    http_plugin_impl() {}
 
 public:
     map<string, url_handler>          url_handlers;
@@ -118,8 +118,7 @@ public:
 
     bool        validate_host;
     set<string> valid_hosts;
-
-    chain::controller& control;
+    bool        loadtest_mode;
 
     bool
     host_port_is_valid(const std::string& header_host_port, const string& endpoint_local_host_port) {
@@ -301,7 +300,7 @@ public:
                     con->defer_http_response();
                     handler_itr->second(resource, body, [this, con](auto code, auto&& body) {
                         con->set_status(websocketpp::http::status_code::value(code));
-                        if(!control.loadtest_mode()) {
+                        if(!loadtest_mode) {
                             con->set_body(std::move(body));
                         }
                         con->send_http_response();
@@ -346,7 +345,7 @@ public:
 
                 try {
                     con->set_status(websocketpp::http::status_code::value(code));
-                    if(!control.loadtest_mode()) {
+                    if(!loadtest_mode) {
                         con->set_body(std::move(body));
                     }
                     con->send_http_response();
@@ -365,7 +364,7 @@ public:
 
                 try {
                     con->set_status(websocketpp::http::status_code::value(code));
-                    if(!control.loadtest_mode()) {
+                    if(!loadtest_mode) {
                         con->set_body(std::move(body));
                     }
                     con->send_http_response();
@@ -514,6 +513,7 @@ http_plugin::plugin_initialize(const variables_map& options) {
 
         my->max_body_size                = options.at("max-body-size").as<uint32_t>();
         my->max_deferred_connection_size = options.at("max-deferred-connection-size").as<uint32_t>();
+        my->loadtest_mode                = app().get_plugin<chain_plugin>().chain().loadtest_mode();
         verbose_http_errors              = options.at("verbose-http-errors").as<bool>();
 
         FC_ASSERT(my->max_deferred_connection_size < std::numeric_limits<int32_t>::max());

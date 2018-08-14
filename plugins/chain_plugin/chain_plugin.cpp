@@ -809,7 +809,7 @@ read_only::get_info(const read_only::get_info_params&) const {
 template <typename Api>
 auto
 make_resolver(const Api* api) {
-    return [api] {
+    return [api]() -> const evt::chain::contracts::abi_serializer& {
         return api->system_api;
     };
 }
