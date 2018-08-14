@@ -179,7 +179,7 @@ public:
     to_variant_with_abi(const T& obj) {
         // TODO: Remove account parameter
         fc::variant pretty_output;
-        abi_serializer::to_variant(obj, pretty_output, [this] { return get_abi_serializer(); });
+        abi_serializer::to_variant(obj, pretty_output, [this]() -> const abi_serializer& { return get_abi_serializer(); });
         return pretty_output;
     }
 
