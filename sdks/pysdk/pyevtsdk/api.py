@@ -16,6 +16,7 @@ class Api:
             'get_tokens': '/v1/history/get_tokens',
             'get_domains': '/v1/history/get_domains',
             'get_groups': '/v1/history/get_groups',
+            'get_fungibles': '/v1/history/get_fungibles',
             'get_actions': '/v1/history/get_actions',
             'get_fungible_actions': '/v1/history/get_fungible_actions',
             'get_transaction': '/v1/history/get_transaction',

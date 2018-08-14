@@ -134,6 +134,15 @@ class Test(unittest.TestCase):
         resp = api.get_groups(json.dumps(req)).text
         self.assertTrue(group_name in resp)
 
+    def test_get_fungibles(self):
+        req = {
+            'keys': [user.pub_key.to_string()]
+        }
+
+        resp = api.get_fungibles(json.dumps(req)).text
+        print(resp)
+        self.assertTrue(str(sym_id) in resp)
+
     def test_get_actions(self):
         req = {
             "domain": ".fungible",
@@ -250,4 +259,3 @@ def main(url, public_key, private_key):
 
 if __name__ == '__main__':
     main()
-    
