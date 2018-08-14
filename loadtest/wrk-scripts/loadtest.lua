@@ -55,42 +55,42 @@ local header = {
 
 setup = function(thread)
     thread:set("id", #threads + 1)
-	thread:set("header", header)
-	table.insert(threads, thread)
+    thread:set("header", header)
+    table.insert(threads, thread)
 end
 
 init = function(args)
-	local regions = { select(2, unpack(args)) }
+    local regions = { select(2, unpack(args)) }
     local folder = args[1]
 
-	trx_num = 0
-	resp = 0
-	file = openregion(string.format("%s/%s_traffic_data.lz4", folder, regions[id]))
-	print(("thread %d region %s"):format(id, regions[id]))
+    trx_num = 0
+    resp = 0
+    file = openregion(string.format("%s/%s_traffic_data.lz4", folder, regions[id]))
+    print(("thread %d region %s"):format(id, regions[id]))
 end
 
 request = function()
-	trx = readtrx(file)
+    trx = readtrx(file)
 
     if trx == nil then
         wrk.thread:stop()
     end
 
-	trx_num = trx_num + 1
-	return wrk.format("POST", "/v1/chain/push_transaction", header, trx)
+    trx_num = trx_num + 1
+    return wrk.format("POST", "/v1/chain/push_transaction", header, trx)
 end
 
 response = function(status, headers, body)
-	resp = resp + 1
+    resp = resp + 1
 end
 
 done = function(summary, latency, requests)
-	for _, thd in ipairs(threads) do
-		local id = thd:get("id")
-		local trx_num = thd:get("trx_num")
-		local resp = thd:get("resp")
-		local msg = "thd %d push %d trxs got %d resps"
-		print(msg:format(id, trx_num, resp))
-	end
+    for _, thd in ipairs(threads) do
+        local id = thd:get("id")
+        local trx_num = thd:get("trx_num")
+        local resp = thd:get("resp")
+        local msg = "thd %d push %d trxs got %d resps"
+        print(msg:format(id, trx_num, resp))
+    end
 end
 
