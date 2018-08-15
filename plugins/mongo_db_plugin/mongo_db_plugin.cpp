@@ -60,7 +60,8 @@ private:
 
 public:
     mongo_db_plugin_impl()
-        : mongo_conn{}
+        : evt_abi(evt_contract_abi())
+        , mongo_conn{}
     { }
 
     ~mongo_db_plugin_impl();
@@ -701,9 +702,7 @@ mongo_db_plugin::plugin_initialize(const variables_map& options) {
         my_->mongo_uri  = std::move(uri);
         my_->mongo_conn = mongocxx::client{my_->mongo_uri};
         my_->mongo_db   = my_->mongo_conn[dbname];
-
-        my_->evt_abi  = evt_contract_abi();
-        my_->chain_id = app().get_plugin<chain_plugin>().chain().get_chain_id();
+        my_->chain_id   = app().get_plugin<chain_plugin>().chain().get_chain_id();
 
         if(my_->wipe_database_on_startup) {
             my_->wipe_database();
