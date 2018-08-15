@@ -4,8 +4,12 @@
  */
 #pragma once
 
+#include <string.h>
 #include <iosfwd>
 #include <string>
+#include <vector>
+#include <fc/reflect/reflect.hpp>
+#include <fc/io/raw.hpp>
 
 namespace evt { namespace chain {
 using std::string;
@@ -32,6 +36,12 @@ public:
     bool
     good() const {
         return !empty();
+    }
+
+    bool
+    reserved() const {
+        constexpr auto flag = ((uint128_t)0x3f << 2);
+        return !(value & flag);
     }
 
     constexpr name128() = default;
@@ -186,7 +196,7 @@ struct hash<evt::chain::name128> : private hash<uint128_t> {
     }
 };
 
-};  // namespace std
+}  // namespace std
 
 namespace fc {
 

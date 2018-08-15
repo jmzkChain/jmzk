@@ -81,6 +81,8 @@ public:
 
     static const uint32_t DEFAULT_BILLED_CPU_TIME_US = 2000;
 
+public:
+    base_tester();
     virtual ~base_tester(){};
 
     void init(bool push_genesis = true);
@@ -110,14 +112,14 @@ public:
                                       const variant_object&            data,
                                       const std::vector<account_name>& auths,
                                       const address&                   payer,
-                                      uint32_t                         max_charge = 100000,
+                                      uint32_t                         max_charge = 1'000'000,
                                       uint32_t                         expiration = DEFAULT_EXPIRATION_DELTA);
 
     action get_action(action_name acttype, const domain_name& domain, const domain_key& key, const variant_object& data) const;
 
     void set_transaction_headers(signed_transaction& trx,
                                  const address&      payer,
-                                 uint32_t            max_charge = 10000,
+                                 uint32_t            max_charge = 1'000'000,
                                  uint32_t            expiration = DEFAULT_EXPIRATION_DELTA) const;
 
     vector<transaction_trace_ptr>
@@ -171,7 +173,7 @@ public:
 
     auto
     get_resolver() {
-        return [this] {
+        return [this]() -> const evt::chain::contracts::abi_serializer& {
             return evt_abi;
         };
     }
@@ -203,6 +205,7 @@ public:
     tester(bool push_genesis) {
         init(push_genesis);
     }
+
     tester() {
         init(true);
     }

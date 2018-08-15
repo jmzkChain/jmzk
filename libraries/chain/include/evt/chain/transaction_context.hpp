@@ -25,6 +25,7 @@ public:
     void exec();
     void finalize();
     void squash();
+    void undo();
 
 private:
     friend struct controller_impl;

@@ -134,13 +134,13 @@ def get_action_from_abi_json(action, abi_json, domain=None, key=None):
     elif action == 'addmeta':
         return AddMetaAction(domain, key, _bin)
     elif action == 'newfungible':
-        return NewFungibleAction(abi_dict['sym'].split(',')[1], _bin)
+        return NewFungibleAction(abi_dict['sym'].split('#')[1], _bin)
     elif action == 'updfungible':
-        return UpdFungibleAction(abi_dict['sym'].split(',')[1], _bin)
+        return UpdFungibleAction(abi_dict['sym_id'], _bin)
     elif action == 'issuefungible':
-        return IssueFungibleAction(abi_dict['number'].split(' ')[1], _bin)
+        return IssueFungibleAction(abi_dict['number'].split('#')[1], _bin)
     elif action == 'transferft':
-        return TransferFtAction(abi_dict['number'].split(' ')[1], _bin)
+        return TransferFtAction(abi_dict['number'].split('#')[1], _bin)
     elif action == 'evt2pevt':
         return EVT2PEVTAction(abi_dict['number'].split(' ')[1], _bin)
     elif action == 'newsuspend':
@@ -204,11 +204,11 @@ class ActionGenerator:
             domain, name, to=[str(each) for each in to], memo=memo)
         return get_action_from_abi_json('transfer', abi_json.dumps())
 
-    def newfungible(self, sym, creator, total_supply, **kwargs):
+    def newfungible(self, name, sym_name, sym, creator, total_supply, **kwargs):
         auth_A = base.AuthorizerWeight(base.AuthorizerRef('A', creator), 1)
         issue = kwargs['issue'] if 'issue' in kwargs else None
         manage = kwargs['manage'] if 'manage' in kwargs else None
-        abi_json = base.NewFungibleAbi(sym=sym.value(),
+        abi_json = base.NewFungibleAbi(name=name, sym_name=sym_name, sym=sym.value(),
                                        creator=str(creator),
                                        issue=issue or base.PermissionDef(
             'issue', 1, [auth_A]),
@@ -217,10 +217,10 @@ class ActionGenerator:
             total_supply=total_supply)
         return get_action_from_abi_json('newfungible', abi_json.dumps())
 
-    def updfungible(self, sym, **kwargs):
+    def updfungible(self, sym_id, **kwargs):
         issue = kwargs['issue'] if 'issue' in kwargs else None
         manage = kwargs['manage'] if 'manage' in kwargs else None
-        abi_json = base.UpdFungibleAbi(sym=sym.value(),
+        abi_json = base.UpdFungibleAbi(sym_id=sym_id,
                                        issue=issue,
                                        manage=manage)
         return get_action_from_abi_json('updfungible', abi_json.dumps())

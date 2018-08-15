@@ -104,7 +104,7 @@ public:
     bool is_amount_within_range() const { return -max_amount <= amount_ && amount_ <= max_amount; }
     bool is_valid() const { return is_amount_within_range() && sym_.valid(); }
 
-    double to_real() const { return static_cast<double>(amount_) / precision(); }
+    double to_real() const { return static_cast<double>(amount_) / std::pow(10, precision()); }
 
     uint32_t symbol_id() const { return sym_.id(); };
     uint8_t  precision() const { return sym_.precision(); };
@@ -122,14 +122,14 @@ public:
 
     asset&
     operator+=(const asset& o) {
-        FC_ASSERT(sym() == o.sym());
+        EVT_ASSERT(sym() == o.sym(), asset_type_exception, "addition between two different asset is not allowed");
         amount_ += o.amount();
         return *this;
     }
 
     asset&
     operator-=(const asset& o) {
-        FC_ASSERT(sym() == o.sym());
+        EVT_ASSERT(sym() == o.sym(), asset_type_exception, "addition between two different asset is not allowed");
         amount_ -= o.amount();
         return *this;
     }
@@ -143,7 +143,7 @@ public:
 
     friend bool
     operator<(const asset& a, const asset& b) {
-        FC_ASSERT(a.sym() == b.sym());
+        EVT_ASSERT(a.sym() == b.sym(), asset_type_exception, "addition between two different asset is not allowed");
         return a.amount() < b.amount();
     }
 
@@ -161,13 +161,13 @@ public:
 
     friend asset
     operator-(const asset& a, const asset& b) {
-        FC_ASSERT(a.sym() == b.sym());
+        EVT_ASSERT(a.sym() == b.sym(), asset_type_exception, "addition between two different asset is not allowed");
         return asset(a.amount() - b.amount(), a.sym());
     }
 
     friend asset
     operator+(const asset& a, const asset& b) {
-        FC_ASSERT(a.sym() == b.sym());
+        EVT_ASSERT(a.sym() == b.sym(), asset_type_exception, "addition between two different asset is not allowed");
         return asset(a.amount() + b.amount(), a.sym());
     }
 

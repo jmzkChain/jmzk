@@ -6,15 +6,22 @@
 
 #include <algorithm>
 #include <string>
+
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/ripemd160.hpp>
+
 #include <evt/chain/apply_context.hpp>
 #include <evt/chain/token_database.hpp>
 #include <evt/chain/transaction_context.hpp>
+#include <evt/chain/global_property_object.hpp>
 #include <evt/chain/contracts/types.hpp>
 #include <evt/chain/contracts/evt_link.hpp>
 #include <evt/chain/contracts/evt_link_object.hpp>
 #include <evt/utilities/safemath.hpp>
+
+#if defined(__clang__)
+#pragma GCC diagnostic ignored "-Winstantiation-after-specialization"
+#endif
 
 namespace evt { namespace chain { namespace contracts {
 
@@ -31,7 +38,7 @@ namespace evt { namespace chain { namespace contracts {
 namespace __internal {
 
 inline bool 
-validate(const permission_def &permission) {
+validate(const permission_def& permission) {
     uint32_t total_weight = 0;
     for(const auto& aw : permission.authorizers) {
         if(aw.weight == 0) {
@@ -102,8 +109,7 @@ auto make_permission_checker = [](const auto& tokendb) {
 
 inline void
 check_name_reserved(const name128& name) {
-    const uint128_t reserved_flag = ((uint128_t)0x3f << 2);
-    EVT_ASSERT(!name.empty() && (name.value & reserved_flag), name_reserved_exception, "Name starting with '.' is reserved for system usages.");
+    EVT_ASSERT(!name.empty() && !name.reserved(), name_reserved_exception, "Name starting with '.' is reserved for system usages.");
 }
 
 } // namespace __internal
@@ -346,14 +352,17 @@ EVT_ACTION_IMPL(newfungible) {
 
     auto nfact = context.act.data_as<newfungible>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.fungible), N128(.create)), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), (name128)std::to_string(nfact.sym.id())), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(!nfact.name.empty(), fungible_name_exception, "Fungible name cannot be empty");
-        EVT_ASSERT(!nfact.sym_name.empty(), fungible_symbol_exception, "Fungible symbol cannot be empty");
-        EVT_ASSERT(nfact.total_supply.symbol_id() == 0, fungible_symbol_exception, "Symbol id of supply should 0.");
+        EVT_ASSERT(!nfact.sym_name.empty(), fungible_symbol_exception, "Fungible symbol name cannot be empty");
+        EVT_ASSERT(nfact.sym.id() > 0, fungible_symbol_exception, "Fungible symbol id should be larger than zero");
+        EVT_ASSERT(nfact.total_supply.sym() == nfact.sym, fungible_symbol_exception, "Symbols in `total_supply` and `sym` are not match.");
         EVT_ASSERT(nfact.total_supply.amount() > 0, fungible_supply_exception, "Supply cannot be zero");
         EVT_ASSERT(nfact.total_supply.amount() <= ASSET_MAX_SHARE_SUPPLY, fungible_supply_exception, "Supply exceeds the maximum allowed.");
 
         auto& tokendb = context.token_db;
+
+        EVT_ASSERT(!tokendb.exists_fungible(nfact.sym), fungible_exists_exception, "Fungible with symbol id: ${s} is already existed", ("s",nfact.sym.id()));
 
         EVT_ASSERT(nfact.issue.name == "issue", permission_type_exception, "Name ${name} does not match with the name of issue permission.", ("name",nfact.issue.name));
         EVT_ASSERT(nfact.issue.threshold > 0 && validate(nfact.issue), permission_type_exception, "Issue permission is not valid, which may be caused by invalid threshold, duplicated keys.");
@@ -369,28 +378,17 @@ EVT_ACTION_IMPL(newfungible) {
 
         fungible.name           = nfact.name;
         fungible.sym_name       = nfact.sym_name;
+        fungible.sym            = nfact.sym;
         fungible.creator        = nfact.creator;
         fungible.create_time    = context.control.head_block_time();
         fungible.issue          = std::move(nfact.issue);
         fungible.manage         = std::move(nfact.manage);
-
-        // HACK: Use special address to store current largest symbol id
-        auto sym_id_addr  = address(N(fungible), name128(), 0);
-        auto sym_id_asset = asset();
-        tokendb.read_asset(sym_id_addr, symbol(), sym_id_asset);
-
-        auto sym_id = sym_id_asset.amount() + 1;
-        fungible.sym          = symbol(nfact.total_supply.precision(), sym_id);
-        fungible.total_supply = asset(nfact.total_supply.amount(), fungible.sym);
+        fungible.total_supply   = nfact.total_supply;
 
         tokendb.add_fungible(fungible);
 
         auto addr = get_fungible_address(fungible.sym);
         tokendb.update_asset(addr, fungible.total_supply);
-
-        // HACK: Update max symbol id
-        sym_id_asset += asset(1, sym_id_asset.sym());
-        tokendb.update_asset(sym_id_addr, sym_id_asset);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -469,6 +467,7 @@ EVT_ACTION_IMPL(transferft) {
         EVT_ASSERT(context.has_authorized(N128(.fungible), (name128)std::to_string(sym.id())), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(!tfact.to.is_reserved(), fungible_address_exception, "Cannot transfer fungible tokens to reserved address");
         EVT_ASSERT(tfact.from != tfact.to, fungible_address_exception, "From and to are the same address");
+        EVT_ASSERT(sym != pevt_sym(), fungible_symbol_exception, "Pinned EVT cannot be transfered");
 
         auto& tokendb = context.token_db;
         
@@ -608,6 +607,10 @@ auto check_involved_owner = [](const auto& token, const auto& key) {
     return false;
 };
 
+auto check_involved_creator = [](const auto& target, const auto& key) {
+    return target.creator == key;
+};
+
 template<typename T>
 bool
 check_duplicate_meta(const T& v, const meta_key& key) {
@@ -648,19 +651,27 @@ EVT_ACTION_IMPL(addmeta) {
             }
             else {
                 // check involved, only group manager(aka. group key) can add meta
-                EVT_ASSERT(check_involved_group(group, amact.creator.get_account()), meta_involve_exception, "Creator is not involved in group ${name}.", ("name",act.key));
+                EVT_ASSERT(check_involved_group(group, amact.creator.get_account()), meta_involve_exception, "Creator is not involved in group: ${name}.", ("name",act.key));
             }
             group.metas_.emplace_back(meta(amact.key, amact.value, amact.creator));
             tokendb.update_group(group);
         }
         else if(act.domain == N128(.fungible)) {
             fungible_def fungible;
-            tokendb.read_fungible((symbol_id_type)std::stoul((std::string)amact.key), fungible);
+            tokendb.read_fungible((symbol_id_type)std::stoul((std::string)act.key), fungible);
 
             EVT_ASSERT(!check_duplicate_meta(fungible, amact.key), meta_key_exception, "Metadata with key ${key} already exists.", ("key",amact.key));
-            // check involved, only group manager(aka. group key) can add meta
-            EVT_ASSERT(check_involved_fungible(tokendb, fungible, N(manage), amact.creator), meta_involve_exception, "Creator is not involved in group ${name}.", ("name",act.key));
-
+            
+            if(amact.creator.is_account_ref()) {
+                // check involved, only creator or person in `manage` permission can add meta
+                auto involved = check_involved_creator(fungible, amact.creator.get_account())
+                    || check_involved_fungible(tokendb, fungible, N(manage), amact.creator);
+                EVT_ASSERT(involved, meta_involve_exception, "Creator is not involved in fungible: ${name}.", ("name",act.key));
+            }
+            else {
+                // check involved, only group in `manage` permission can add meta
+                EVT_ASSERT(check_involved_fungible(tokendb, fungible, N(manage), amact.creator), meta_involve_exception, "Creator is not involved in fungible: ${name}.", ("name",act.key));
+            }
             fungible.metas.emplace_back(meta(amact.key, amact.value, amact.creator));
             tokendb.update_fungible(fungible);
         }
@@ -670,7 +681,7 @@ EVT_ACTION_IMPL(addmeta) {
 
             EVT_ASSERT(!check_duplicate_meta(domain, amact.key), meta_key_exception, "Metadata with key ${key} already exists.", ("key",amact.key));
             // check involved, only person involved in `manage` permission can add meta
-            EVT_ASSERT(check_involved_domain(tokendb, domain, N(manage), amact.creator), meta_involve_exception, "Creator is not involved in domain ${name}.", ("name",act.key));
+            EVT_ASSERT(check_involved_domain(tokendb, domain, N(manage), amact.creator), meta_involve_exception, "Creator is not involved in domain: ${name}.", ("name",act.key));
 
             domain.metas.emplace_back(meta(amact.key, amact.value, amact.creator));
             tokendb.update_domain(domain);
@@ -871,9 +882,10 @@ EVT_ACTION_IMPL(everipass) {
 
         EVT_ASSERT(context.has_authorized(name128(d), name128(t)), action_authorize_exception, "Authorized information does not match.");
 
-        auto ts    = *link.get_segment(evt_link::timestamp).intv;
-        auto since = std::abs((context.control.head_block_time() - fc::time_point_sec(ts)).to_seconds());
-        if(since > config::evt_link_expired_secs) {
+        auto  ts    = *link.get_segment(evt_link::timestamp).intv;
+        auto  since = std::abs((context.control.head_block_time() - fc::time_point_sec(ts)).to_seconds());
+        auto& conf  = context.control.get_global_properties().configuration;
+        if(since > conf.evt_link_expired_secs) {
             EVT_THROW(evt_link_expiration_exception, "EVT-Link is expired, now: ${n}, timestamp: ${t}", ("n",context.control.head_block_time())("t",fc::time_point_sec(ts)));
         }
 
@@ -923,9 +935,10 @@ EVT_ACTION_IMPL(everipay) {
         auto& lsym_id = *link.get_segment(evt_link::symbol_id).intv;
         EVT_ASSERT(context.has_authorized(N128(.fungible), name128(std::to_string(lsym_id))), action_authorize_exception, "Authorized information does not match.");
 
-        auto ts    = *link.get_segment(evt_link::timestamp).intv;
-        auto since = std::abs((context.control.head_block_time() - fc::time_point_sec(ts)).to_seconds());
-        if(since > config::evt_link_expired_secs) {
+        auto ts     = *link.get_segment(evt_link::timestamp).intv;
+        auto since  = std::abs((context.control.head_block_time() - fc::time_point_sec(ts)).to_seconds());
+        auto& conf  = context.control.get_global_properties().configuration;
+        if(since > conf.evt_link_expired_secs) {
             EVT_THROW(evt_link_expiration_exception, "EVT-Link is expired, now: ${n}, timestamp: ${t}", ("n",context.control.head_block_time())("t",fc::time_point_sec(ts)));
         }
 

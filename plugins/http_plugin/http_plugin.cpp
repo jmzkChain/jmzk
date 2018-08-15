@@ -22,6 +22,7 @@
 
 #include <memory>
 #include <thread>
+#include <type_traits>
 #include <regex>
 
 namespace evt {
@@ -30,8 +31,9 @@ static appbase::abstract_plugin& _http_plugin = app().register_plugin<http_plugi
 
 namespace asio = boost::asio;
 
-using boost::optional;
 using boost::asio::ip::tcp;
+using boost::asio::ip::address_v4;
+using boost::asio::ip::address_v6;
 using std::vector;
 using std::set;
 using std::string;
@@ -77,19 +79,34 @@ struct asio_with_stub_log : public websocketpp::config::asio {
 
 using websocket_server_type     = websocketpp::server<detail::asio_with_stub_log<websocketpp::transport::asio::basic_socket::endpoint>>;
 using websocket_server_tls_type = websocketpp::server<detail::asio_with_stub_log<websocketpp::transport::asio::tls_socket::endpoint>>;
+using http_connection_ptr_type  = websocketpp::server<detail::asio_with_stub_log<websocketpp::transport::asio::basic_socket::endpoint>>::connection_ptr;
+using https_connection_ptr_type = websocketpp::server<detail::asio_with_stub_log<websocketpp::transport::asio::tls_socket::endpoint>>::connection_ptr;
 using ssl_context_ptr           = websocketpp::lib::shared_ptr<websocketpp::lib::asio::ssl::context>;
 
 static bool verbose_http_errors = false;
 
 class http_plugin_impl {
 public:
-    map<string, url_handler> url_handlers;
-    optional<tcp::endpoint>  listen_endpoint;
-    string                   access_control_allow_origin;
-    string                   access_control_allow_headers;
-    string                   access_control_max_age;
-    bool                     access_control_allow_credentials = false;
-    size_t                   max_body_size;
+    http_plugin_impl() {}
+
+public:
+    map<string, url_handler>          url_handlers;
+    map<string, url_deferred_handler> url_deferred_handlers;
+    optional<tcp::endpoint>           listen_endpoint;
+    string                            access_control_allow_origin;
+    string                            access_control_allow_headers;
+    string                            access_control_max_age;
+    bool                              access_control_allow_credentials = false;
+    size_t                            max_body_size;
+    size_t                            max_deferred_connection_size;
+
+    vector<http_connection_ptr_type>  http_conns;
+    vector<https_connection_ptr_type> https_conns;
+
+    size_t http_conn_index  = 0;
+    size_t https_conn_index = 0;
+    size_t http_conn_size   = 0;
+    size_t https_conn_size  = 0;
 
     websocket_server_type server;
 
@@ -99,16 +116,17 @@ public:
 
     websocket_server_tls_type https_server;
 
-    bool                     validate_host;
-    set<string>              valid_hosts;
+    bool        validate_host;
+    set<string> valid_hosts;
+    bool        loadtest_mode;
 
     bool
-    host_port_is_valid(const std::string& host_port) {
-        return !validate_host || valid_hosts.find(host_port) != valid_hosts.end();
+    host_port_is_valid(const std::string& header_host_port, const string& endpoint_local_host_port) {
+        return !validate_host || header_host_port == endpoint_local_host_port || valid_hosts.find(header_host_port) != valid_hosts.end();
     }
 
     bool
-    host_is_valid(const std::string& host, bool secure) {
+    host_is_valid(const std::string& host, const string& endpoint_local_host_port, bool secure) {
         if(!validate_host) {
             return true;
         }
@@ -116,11 +134,11 @@ public:
         // normalise the incoming host so that it always has the explicit port
         static auto has_port_expr = regex("[^:]:[0-9]+$"); /// ends in :<number> without a preceeding colon which implies ipv6
         if(std::regex_search(host, has_port_expr)) {
-            return host_port_is_valid( host );
+            return host_port_is_valid(host, endpoint_local_host_port);
         }
         else {
             // according to RFC 2732 ipv6 addresses should always be enclosed with brackets so we shouldn't need to special case here
-            return host_port_is_valid(host + ":" + std::to_string(secure ? websocketpp::uri_default_secure_port : websocketpp::uri_default_port));
+            return host_port_is_valid(host + ":" + std::to_string(secure ? websocketpp::uri_default_secure_port : websocketpp::uri_default_port), endpoint_local_host_port);
         }
     }
 
@@ -143,15 +161,15 @@ public:
 
             fc::ec_key ecdh = EC_KEY_new_by_curve_name(NID_secp384r1);
             if(!ecdh)
-                FC_THROW("Failed to set NID_secp384r1");
+                EVT_THROW(chain::http_exception, "Failed to set NID_secp384r1");
             if(SSL_CTX_set_tmp_ecdh(ctx->native_handle(), (EC_KEY*)ecdh) != 1)
-                FC_THROW("Failed to set ECDH PFS");
+                EVT_THROW(chain::http_exception, "Failed to set ECDH PFS");
 
             if(SSL_CTX_set_cipher_list(ctx->native_handle(),
                                        "EECDH+ECDSA+AESGCM:EECDH+aRSA+AESGCM:EECDH+ECDSA+SHA384:EECDH+ECDSA+SHA256:AES256:"
                                        "!DHE:!RSA:!AES128:!RC4:!DES:!3DES:!DSS:!SRP:!PSK:!EXP:!MD5:!LOW:!aNULL:!eNULL")
                != 1)
-                FC_THROW("Failed to set HTTPS cipher list");
+                EVT_THROW(chain::http_exception, "Failed to set HTTPS cipher list");
         }
         catch(const fc::exception& e) {
             elog("https server initialization error: ${w}", ("w", e.to_detail_string()));
@@ -202,13 +220,53 @@ public:
         }
     }
 
+    template <typename T>
+    deferred_id
+    alloc_deferred_id(typename websocketpp::server<detail::asio_with_stub_log<T>>::connection_ptr con) {
+        if(http_conn_size + https_conn_size >= max_deferred_connection_size) {
+            EVT_THROW(chain::exceed_deferred_request, "Exceed max allowed deferred connections, max: ${m}", ("m",max_deferred_connection_size));
+        }
+
+        if constexpr (std::is_same_v<T, websocketpp::transport::asio::basic_socket::endpoint>) {
+            // http
+            FC_ASSERT(http_conns.size() == max_deferred_connection_size);
+            for(auto i = http_conn_index; i < http_conn_index + max_deferred_connection_size; i++) {
+                auto j = i % max_deferred_connection_size;
+                if(http_conns[j] == nullptr) {
+                    http_conns[j] = con;
+                    http_conn_index = j + 1; // next slot
+                    return j;
+                }
+            }
+
+        }
+        if constexpr (std::is_same_v<T, websocketpp::transport::asio::tls_socket::endpoint>) {
+            // https
+            FC_ASSERT(https_conns.size() == max_deferred_connection_size);
+            for(auto i = https_conn_index; i < https_conn_index + max_deferred_connection_size; i++) {
+                auto j = i % max_deferred_connection_size;
+                if(https_conns[j] == nullptr) {
+                    https_conns[j] = con;
+                    https_conn_index = j + 1; // next slot
+                    return j | (1 << 31);
+                }
+            }
+        }
+        EVT_THROW(chain::alloc_deferred_fail, "Alloc deferred id failed, http index: ${i}, https index: ${j}", ("i",http_conn_index)("j",https_conn_index));
+    }
+
+
     template <class T>
     void
     handle_http_request(typename websocketpp::server<detail::asio_with_stub_log<T>>::connection_ptr con) {
         try {
+            bool is_secure = con->get_uri()->get_secure();
+            const auto& local_endpoint = con->get_socket().lowest_layer().local_endpoint();
+            auto local_socket_host_port = local_endpoint.address().to_string() + ":" + std::to_string(local_endpoint.port());
+
             auto& req = con->get_request();
             const auto& host_str = req.get_header("Host");
-            if(host_str.empty() || !host_is_valid(host_str, con->get_uri()->get_secure())) {
+            if(host_str.empty() || !host_is_valid(host_str, local_socket_host_port, is_secure)) {
                 con->set_status(websocketpp::http::status_code::bad_request);
                 return;
             }
@@ -232,28 +290,91 @@ public:
             }
 
             con->append_header("Content-Type", "application/json");
-            auto body        = con->get_request_body();
-            auto resource    = con->get_uri()->get_resource();
-            auto handler_itr = url_handlers.find(resource);
-            if(handler_itr != url_handlers.end()) {
-                con->defer_http_response();
-                handler_itr->second(resource, body, [con](auto code, auto&& body) {
-                    con->set_body(std::move(body));
-                    con->set_status(websocketpp::http::status_code::value(code));
-                    con->send_http_response();
-                });
+
+            auto body     = con->get_request_body();
+            auto resource = con->get_uri()->get_resource();
+
+            {
+                auto handler_itr = url_handlers.find(resource);
+                if(handler_itr != url_handlers.end()) {
+                    con->defer_http_response();
+                    handler_itr->second(resource, body, [this, con](auto code, auto&& body) {
+                        con->set_status(websocketpp::http::status_code::value(code));
+                        if(!loadtest_mode) {
+                            con->set_body(std::move(body));
+                        }
+                        con->send_http_response();
+                    });
+
+                    return;
+                }
             }
-            else {
-                wlog("404 - not found: ${ep}", ("ep", resource));
-                error_results results{websocketpp::http::status_code::not_found,
-                                      "Not Found", error_results::error_info(fc::exception(FC_LOG_MESSAGE(error, "Unknown Endpoint")), verbose_http_errors)};
-                con->set_body(fc::json::to_string(results));
-                con->set_status(websocketpp::http::status_code::not_found);
+
+            {
+                auto deferred_handler_it = url_deferred_handlers.find(resource);
+                if(deferred_handler_it != url_deferred_handlers.end()) {
+                    auto id = alloc_deferred_id<T>(con); 
+
+                    con->defer_http_response();
+                    deferred_handler_it->second(resource, body, id);
+
+                    return;
+                }
             }
+
+            wlog("404 - not found: ${ep}", ("ep", resource));
+            error_results results{websocketpp::http::status_code::not_found,
+                                  "Not Found", error_results::error_info(fc::exception(FC_LOG_MESSAGE(error, "Unknown Endpoint")), verbose_http_errors)};
+            con->set_body(fc::json::to_string(results));
+            con->set_status(websocketpp::http::status_code::not_found);
         }
         catch(...) {
             handle_exception<T>(con);
         }
+    }
+
+    void
+    set_deferred_response(deferred_id id, int code, string body) {
+        try {
+            if((id & (1 << 31)) == 0) {
+                // http
+                FC_ASSERT(id < max_deferred_connection_size);
+                auto con = http_conns[id];
+                FC_ASSERT(con != nullptr);
+                http_conns[id] = nullptr;
+
+                try {
+                    con->set_status(websocketpp::http::status_code::value(code));
+                    if(!loadtest_mode) {
+                        con->set_body(std::move(body));
+                    }
+                    con->send_http_response();
+                }
+                catch(...) {
+                    handle_exception<websocketpp::transport::asio::basic_socket::endpoint>(con);
+                }
+            }
+            else {
+                // https
+                auto index = id & (0xFFFFFFFF >> 1);
+                FC_ASSERT(index < max_deferred_connection_size);
+                auto con = https_conns[index];
+                FC_ASSERT(con != nullptr);
+                https_conns[index] = nullptr;
+
+                try {
+                    con->set_status(websocketpp::http::status_code::value(code));
+                    if(!loadtest_mode) {
+                        con->set_body(std::move(body));
+                    }
+                    con->send_http_response();
+                }
+                catch(...) {
+                    handle_exception<websocketpp::transport::asio::tls_socket::endpoint>(con);
+                }
+            }
+        }
+        FC_LOG_AND_DROP((id));
     }
 
     template <class T>
@@ -278,10 +399,18 @@ public:
             elog("error thrown from http io service");
         }
     }
+
+    void
+    add_aliases_for_endpoint(const tcp::endpoint& ep, string host, string port) {
+        auto resolved_port_str = std::to_string(ep.port());
+        valid_hosts.emplace(host + ":" + port);
+        valid_hosts.emplace(host + ":" + resolved_port_str);
+    }
 };
 
 http_plugin::http_plugin()
     : my(new http_plugin_impl()) {}
+
 http_plugin::~http_plugin() {}
 
 void
@@ -309,6 +438,7 @@ http_plugin::set_program_options(options_description&, options_description& cfg)
                 ilog("configured http with Access-Control-Allow-Credentials: true");
             })->default_value(false), "Specify if Access-Control-Allow-Credentials: true should be returned on each request.")
         ("max-body-size", bpo::value<uint32_t>()->default_value(1024*1024), "The maximum body size in bytes allowed for incoming RPC requests")
+        ("max-deferred-connection-size", bpo::value<uint32_t>()->default_value(1024), "The maximum size allowed for deferred connections")
         ("verbose-http-errors", bpo::bool_switch()->default_value(false), "Append the error log to HTTP responses")
         ("http-validate-host", boost::program_options::value<bool>()->default_value(true), "If set to false, then any incoming \"Host\" header is considered valid")
         ("http-alias", bpo::value<std::vector<string>>()->composing(), "Additionaly acceptable values for the \"Host\" header of incoming HTTP requests, can be specified multiple times.  Includes http/s_server_address by default.")
@@ -317,66 +447,90 @@ http_plugin::set_program_options(options_description&, options_description& cfg)
 
 void
 http_plugin::plugin_initialize(const variables_map& options) {
-    my->validate_host = options.at("http-validate-host").as<bool>();
-    if(options.count("http-alias")) {
-        const auto& aliases = options["http-alias"].as<vector<string>>();
-        my->valid_hosts.insert(aliases.begin(), aliases.end());
+    try {
+        my->validate_host = options.at("http-validate-host").as<bool>();
+        if(options.count("http-alias")) {
+            const auto& aliases = options["http-alias"].as<vector<string>>();
+            my->valid_hosts.insert(aliases.begin(), aliases.end());
+        }
+
+        tcp::resolver resolver(app().get_io_service());
+        if(options.count("http-server-address") && options.at("http-server-address").as<string>().length()) {
+            string lipstr = options.at("http-server-address").as<string>();
+            string host   = lipstr.substr(0, lipstr.find(':'));
+            string port   = lipstr.substr(host.size() + 1, lipstr.size());
+            
+            tcp::resolver::query query(tcp::v4(), host.c_str(), port.c_str());
+
+            try {
+                my->listen_endpoint = *resolver.resolve(query);
+                ilog("configured http to listen on ${h}:${p}", ("h", host)("p", port));
+            }
+            catch(const boost::system::system_error& ec) {
+                elog("failed to configure http to listen on ${h}:${p} (${m})",
+                     ("h", host)("p", port)("m", ec.what()));
+            }
+
+            // add in resolved hosts and ports as well
+            if(my->listen_endpoint) {
+                my->add_aliases_for_endpoint(*my->listen_endpoint, host, port);
+            }
+        }
+
+        if(options.count("https-server-address") && options.at("https-server-address").as<string>().length()) {
+            if(!options.count("https-certificate-chain-file") || options.at("https-certificate-chain-file").as<string>().empty()) {
+                elog("https-certificate-chain-file is required for HTTPS");
+                return;
+            }
+            if(!options.count("https-private-key-file") || options.at("https-private-key-file").as<string>().empty()) {
+                elog("https-private-key-file is required for HTTPS");
+                return;
+            }
+
+            string lipstr = options.at("https-server-address").as<string>();
+            string host   = lipstr.substr(0, lipstr.find(':'));
+            string port   = lipstr.substr(host.size() + 1, lipstr.size());
+
+            tcp::resolver::query query(tcp::v4(), host.c_str(), port.c_str());
+
+            try {
+                my->https_listen_endpoint = *resolver.resolve(query);
+                ilog("configured https to listen on ${h}:${p} (TLS configuration will be validated momentarily)",
+                     ("h", host)("p", port));
+                my->https_cert_chain = options.at("https-certificate-chain-file").as<string>();
+                my->https_key        = options.at("https-private-key-file").as<string>();
+            }
+            catch(const boost::system::system_error& ec) {
+                elog("failed to configure https to listen on ${h}:${p} (${m})",
+                     ("h", host)("p", port)("m", ec.what()));
+            }
+
+            // add in resolved hosts and ports as well
+            if(my->https_listen_endpoint) {
+                my->add_aliases_for_endpoint(*my->https_listen_endpoint, host, port);
+            }
+        }
+
+        my->max_body_size                = options.at("max-body-size").as<uint32_t>();
+        my->max_deferred_connection_size = options.at("max-deferred-connection-size").as<uint32_t>();
+        my->loadtest_mode                = app().get_plugin<chain_plugin>().chain().loadtest_mode();
+        verbose_http_errors              = options.at("verbose-http-errors").as<bool>();
+
+        FC_ASSERT(my->max_deferred_connection_size < std::numeric_limits<int32_t>::max());
+
+        //watch out for the returns above when adding new code here
     }
-
-    tcp::resolver resolver(app().get_io_service());
-    if(options.count("http-server-address") && options.at("http-server-address").as<string>().length()) {
-        string               lipstr = options.at("http-server-address").as<string>();
-        string               host   = lipstr.substr(0, lipstr.find(':'));
-        string               port   = lipstr.substr(host.size() + 1, lipstr.size());
-        tcp::resolver::query query(tcp::v4(), host.c_str(), port.c_str());
-        try {
-            my->listen_endpoint = *resolver.resolve(query);
-            ilog("configured http to listen on ${h}:${p}", ("h", host)("p", port));
-        }
-        catch(const boost::system::system_error& ec) {
-            elog("failed to configure http to listen on ${h}:${p} (${m})", ("h", host)("p", port)("m", ec.what()));
-        }
-
-        my->valid_hosts.emplace(lipstr);
-    }
-
-    if(options.count("https-server-address") && options.at("https-server-address").as<string>().length()) {
-        if(!options.count("https-certificate-chain-file") || options.at("https-certificate-chain-file").as<string>().empty()) {
-            elog("https-certificate-chain-file is required for HTTPS");
-            return;
-        }
-        if(!options.count("https-private-key-file") || options.at("https-private-key-file").as<string>().empty()) {
-            elog("https-private-key-file is required for HTTPS");
-            return;
-        }
-
-        string               lipstr = options.at("https-server-address").as<string>();
-        string               host   = lipstr.substr(0, lipstr.find(':'));
-        string               port   = lipstr.substr(host.size() + 1, lipstr.size());
-        tcp::resolver::query query(tcp::v4(), host.c_str(), port.c_str());
-        try {
-            my->https_listen_endpoint = *resolver.resolve(query);
-            ilog("configured https to listen on ${h}:${p} (TLS configuration will be validated momentarily)", ("h", host)("p", port));
-            my->https_cert_chain = options.at("https-certificate-chain-file").as<string>();
-            my->https_key        = options.at("https-private-key-file").as<string>();
-        }
-        catch(const boost::system::system_error& ec) {
-            elog("failed to configure https to listen on ${h}:${p} (${m})", ("h", host)("p", port)("m", ec.what()));
-        }
-
-        my->valid_hosts.emplace(lipstr);
-    }
-
-    my->max_body_size = options.at("max-body-size").as<uint32_t>();
-    verbose_http_errors = options.at("verbose-http-errors").as<bool>();
-
-    //watch out for the returns above when adding new code here
+    FC_LOG_AND_RETHROW()
 }
 
 void
 http_plugin::plugin_startup() {
     if(my->listen_endpoint) {
         try {
+            my->http_conns.resize(my->max_deferred_connection_size);
+            my->http_conn_index = 0;
+            my->http_conn_size  = 0;
+
             my->create_server_for_endpoint(*my->listen_endpoint, my->server);
 
             ilog("start listening for http requests");
@@ -399,6 +553,10 @@ http_plugin::plugin_startup() {
 
     if(my->https_listen_endpoint) {
         try {
+            my->https_conns.resize(my->max_deferred_connection_size);
+            my->https_conn_index = 0;
+            my->https_conn_size  = 0;
+
             my->create_server_for_endpoint(*my->https_listen_endpoint, my->https_server);
             my->https_server.set_tls_init_handler([this](websocketpp::connection_hdl hdl) -> ssl_context_ptr {
                 return my->on_tls_init(hdl);
@@ -436,6 +594,21 @@ http_plugin::add_handler(const string& url, const url_handler& handler) {
     ilog("add api url: ${c}", ("c", url));
     app().get_io_service().post([=]() {
         my->url_handlers.insert(std::make_pair(url, handler));
+    });
+}
+
+void
+http_plugin::add_deferred_handler(const string& url, const url_deferred_handler& handler) {
+    ilog("add deferred api url: ${c}", ("c", url));
+    app().get_io_service().post([=]() {
+        my->url_deferred_handlers.insert(std::make_pair(url, handler));
+    });
+}
+
+void
+http_plugin::set_deferred_response(deferred_id id, int code, const string& body) {
+    app().get_io_service().post([=]() {
+        my->set_deferred_response(id, code, body);
     });
 }
 

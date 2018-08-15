@@ -23,8 +23,7 @@ extern std::string evt_unittests_dir;
 
 class tokendb_test {
 public:
-    tokendb_test()
-        : ti(0) {
+    tokendb_test() {
         tokendb.initialize(evt_unittests_dir + "/tokendb_tests");
     }
     ~tokendb_test() {}
@@ -37,8 +36,10 @@ protected:
 
 protected:
     token_database tokendb;
-    int            ti;
+    static int     ti;
 };
+
+int tokendb_test::ti = 0;
 
 domain_def
 add_domain_data() {
@@ -799,6 +800,9 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_checkpoint_test", "[tokendb]") {
     CHECK(tokendb.get_savepoints_size() == 2);
 
     CHECK_NOTHROW(tokendb.pop_savepoints(0));
+
+    tokendb.pop_savepoints(get_time() + 100);
+    CHECK(tokendb.get_savepoints_size() == 0);
 }
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_addsuspend_test", "[tokendb]") {
@@ -847,6 +851,76 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_updatesuspend_test", "[tokendb]") {
     CHECK("newdomain" == dl_.trx.actions[0].name);
     CHECK("test1530681222" == dl_.trx.actions[0].domain);
     CHECK(".create" == dl_.trx.actions[0].key);
+}
+
+TEST_CASE_METHOD(tokendb_test, "tokendb_squash", "[tokendb]") {
+    CHECK(true);
+
+    tokendb.add_savepoint(get_time());
+
+    domain_def dom = add_domain_data();
+    dom.name       = "domain-s1";
+    tokendb.add_domain(dom);
+    tokendb.add_savepoint(get_time());
+
+    domain_def updom = update_domain_data();
+    updom.name       = dom.name;
+    tokendb.update_domain(updom);
+    tokendb.add_savepoint(get_time());
+
+    issuetoken istk = issue_tokens_data();
+    istk.domain     = dom.name;
+    tokendb.issue_tokens(istk);
+    tokendb.add_savepoint(get_time());
+
+    token_def tk = update_token_data();
+    tk.domain    = dom.name;
+    tokendb.update_token(tk);
+    tokendb.add_savepoint(get_time());
+
+    REQUIRE(tokendb.exists_token(dom.name, "t1"));
+    token_def tk_;
+    tokendb.read_token(dom.name, "t1", tk_);
+    REQUIRE(1 == tk_.metas.size());
+
+    auto n = tokendb.get_savepoints_size();
+
+    tokendb.add_savepoint(get_time());
+    tokendb.add_savepoint(get_time());
+    tokendb.squash();
+    tokendb.squash();
+
+    CHECK(tokendb.get_savepoints_size() == n);
+
+    tokendb.read_token(dom.name, "t1", tk_);
+    REQUIRE(1 == tk_.metas.size());
+    REQUIRE(tokendb.exists_token(dom.name, "t1"));
+    REQUIRE(tokendb.exists_domain(dom.name));
+
+    tokendb.squash();
+    tokendb.squash();
+    tokendb.squash();
+    tokendb.squash();
+
+    CHECK(tokendb.get_savepoints_size() == 1);
+    CHECK_THROWS_AS(tokendb.squash(), tokendb_squash_exception); // only one savepoint left
+}
+
+TEST_CASE_METHOD(tokendb_test, "tokendb_squash2", "[tokendb]") {
+    CHECK(true);
+
+    domain_def dom = add_domain_data();
+    dom.name       = "domain-s1";
+
+    REQUIRE(tokendb.exists_token(dom.name, "t1"));
+    token_def tk_;
+    tokendb.read_token(dom.name, "t1", tk_);
+    REQUIRE(1 == tk_.metas.size());
+
+    tokendb.rollback_to_latest_savepoint();
+
+    REQUIRE(!tokendb.exists_token(dom.name, "t1"));
+    REQUIRE(!tokendb.exists_domain(dom.name));
 }
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_persist_savepoints_1", "[tokendb]") {
@@ -940,8 +1014,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_persist_savepoints_3", "[tokendb]") {
 }
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_persist_savepoints_4", "[tokendb]") {
-    int pop_re = tokendb.pop_savepoints(get_time());
-    REQUIRE(pop_re == 0);
+    tokendb.pop_savepoints(get_time() + 1);
 
     int PPEVT = 777;
 

@@ -83,6 +83,7 @@ bool   tx_skip_sign      = false;
 bool   tx_print_json     = false;
 bool   print_request     = false;
 bool   print_response    = false;
+bool   get_charge_only   = false;
 
 string   propname;
 string   proposer;
@@ -176,7 +177,7 @@ print_result(const fc::variant& result) {
             cerr << status << " transaction: " << transaction_id << std::endl;
             cerr << "total elapsed: " << processed["elapsed"].as_string() << " us" << std::endl;
 
-            cerr << "total charge: " << asset(processed["charge"].as_int64(), symbol(SY(5,EVT))) << std::endl;
+            cerr << "total charge: " << asset(processed["charge"].as_int64(), evt_sym()) << std::endl;
 
             if(status == "failed") {
                 auto soft_except = processed["except"].as<fc::optional<fc::exception>>();
@@ -226,9 +227,10 @@ add_standard_transaction_options(CLI::App* cmd) {
     cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id, localized("Set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)"));
     cmd->add_option("-p,--payer", payer, localized("Payer address to be billed for this transaction"))->required();
     cmd->add_option("-c,--max-charge", max_charge, localized("Max charge to be payed for this transaction"));
+    cmd->add_flag("-g,--get-charge", get_charge_only, localized("Get charge of one transaction instead pushing"));
 
     auto popt = cmd->add_option("-a,--proposal-name", propname, localized("Push a suspend transaction instead of normal transaction, specify its proposal name"));
-    cmd->add_option("-u,--proposer", proposer, localized("Proposer public key"))->needs(popt);
+    cmd->add_option("-b,--proposer", proposer, localized("Proposer public key"))->needs(popt);
 }
 
 template <typename T>
@@ -295,7 +297,7 @@ get_public_key(const std::string& key_or_ref) {
 
     try {
         int i = std::stoi(key_or_ref.substr(1));
-        FC_ASSERT(i < pkeys->size(), "Not valid key reference");
+        FC_ASSERT(i < (int)pkeys->size(), "Not valid key reference");
         return (*pkeys)[i].as<public_key_type>();
     }
     catch(...) {
@@ -322,7 +324,7 @@ get_address(const std::string& addr_or_ref) {
 
     try {
         int i = std::stoi(addr_or_ref.substr(1));
-        FC_ASSERT(i < pkeys->size(), "Not valid key reference");
+        FC_ASSERT(i < (int)pkeys->size(), "Not valid key reference");
         return address((*pkeys)[i].as<public_key_type>());
     }
     catch(...) {
@@ -391,6 +393,11 @@ push_transaction(signed_transaction& trx, packed_transaction::compression_type c
 
     if(!tx_skip_sign) {
         sign_transaction(trx, info.chain_id);
+    }
+
+    if(get_charge_only) {
+        auto c = call(get_charge, fc::mutable_variant_object("transaction",(transaction)trx)("sigs_num",trx.signatures.size()));
+        return fc::variant(asset(c["charge"].as_int64(), evt_sym()));
     }
 
     if(!tx_dont_broadcast) {
@@ -736,6 +743,8 @@ struct set_group_subcommands {
 };
 
 struct set_fungible_subcommands {
+    string fungible_name;
+    string sym_name;
     string sym;
     string creator;
     string issue    = "default";
@@ -745,8 +754,12 @@ struct set_fungible_subcommands {
     string number;
     string memo;
 
+    symbol_id_type sym_id = 0;
+
     set_fungible_subcommands(CLI::App* actionRoot) {
         auto nfcmd = actionRoot->add_subcommand("create", localized("Create new fungible asset"));
+        nfcmd->add_option("fungible-name", fungible_name, localized("The name of fungible asset"))->required();
+        nfcmd->add_option("symbol-name", sym_name, localized("The name of symbol"))->required();
         nfcmd->add_option("symbol", sym, localized("The symbol of the new fungible asset"))->required();
         nfcmd->add_option("creator", creator, localized("The public key of the creator"))->required();
         nfcmd->add_option("total-supply", total_supply, localized("Total supply of this fungible asset, 0 means unlimited"))->required();
@@ -757,15 +770,17 @@ struct set_fungible_subcommands {
 
         nfcmd->set_callback([&] {
             newfungible nf;
+            nf.name         = (name128)fungible_name;
+            nf.sym_name     = (name128)sym_name;
             nf.sym          = symbol::from_string(sym);
             nf.creator      = get_public_key(creator);
             nf.issue        = (issue == "default") ? get_default_permission("issue", nf.creator) : parse_permission(issue);
             nf.manage       = (manage == "default") ? get_default_permission("manage", nf.creator) : parse_permission(manage);
             nf.total_supply = asset::from_string(total_supply);
 
-            EVT_ASSERT(nf.total_supply.get_symbol() == nf.sym, asset_type_exception, "Symbol and asset should be match");
+            EVT_ASSERT(nf.total_supply.sym() == nf.sym, asset_type_exception, "Symbol and asset should be match");
 
-            auto act = create_action(N128(.fungible), (domain_key)nf.sym.name(), nf);
+            auto act = create_action(N128(.fungible), (domain_key)std::to_string(nf.sym.id()), nf);
             send_actions({act});
         });
 
@@ -778,7 +793,7 @@ struct set_fungible_subcommands {
 
         ufcmd->set_callback([&] {
             updfungible uf;
-            uf.sym = symbol::from_string(sym);
+            uf.sym_id = sym_id;
             if(issue != "default") {
                 uf.issue = parse_permission(issue);
             }
@@ -786,7 +801,7 @@ struct set_fungible_subcommands {
                 uf.manage = parse_permission(manage);
             }
 
-            auto act = create_action(N128(.fungible), (domain_key)uf.sym.name(), uf);
+            auto act = create_action(N128(.fungible), (domain_key)std::to_string(uf.sym_id), uf);
             send_actions({act});
         });
 
@@ -803,7 +818,7 @@ struct set_fungible_subcommands {
             ifact.number  = asset::from_string(number);
             ifact.memo    = memo;
 
-            auto act = create_action(N128(.fungible), (domain_key)ifact.number.get_symbol().name(), ifact);
+            auto act = create_action(N128(.fungible), (domain_key)std::to_string(ifact.number.sym().id()), ifact);
             send_actions({act});
         });
 
@@ -831,7 +846,7 @@ struct set_assets_subcommands {
             tf.number = asset::from_string(number);
             tf.memo   = memo;
 
-            auto act = create_action(N128(.fungible), (domain_key)tf.number.get_symbol().name(), tf);
+            auto act = create_action(N128(.fungible), (domain_key)std::to_string(tf.number.sym().id()), tf);
             send_actions({act});
         });
 
@@ -850,9 +865,9 @@ struct set_assets_subcommands {
             ep.number = asset::from_string(number);
             ep.memo   = memo;
 
-            FC_ASSERT(ep.number.get_symbol() == symbol(SY(5,EVT)), "Only EVT can be converted to Pinned EVT");
+            FC_ASSERT(ep.number.sym() == evt_sym(), "Only EVT can be converted to Pinned EVT");
 
-            auto act = create_action(N128(.fungible), (domain_key)ep.number.get_symbol().name(), ep);
+            auto act = create_action(N128(.fungible), (domain_key)std::to_string(ep.number.sym().id()), ep);
             send_actions({act});
         });
 
@@ -915,7 +930,7 @@ struct set_meta_subcommands {
         });
 
         auto fmcmd = actionRoot->add_subcommand("fungible", localized("Add metadata to one fungible asset"));
-        fmcmd->add_option("name", key, localized("Name of fungible asset adding to"))->required();
+        fmcmd->add_option("id", key, localized("Symbol id of fungible asset adding to"))->required();
         addcmds(fmcmd);
         fmcmd->set_callback([this] {
             addmeta am;
@@ -940,7 +955,7 @@ struct set_suspend_subcommands {
             auto varsuspend = call(get_suspend_func, fc::mutable_variant_object("name", (proposal_name)name));
             auto suspend = suspend_def();
             auto evt_abi = abi_serializer(evt_contract_abi());
-            abi_serializer::from_variant(varsuspend, suspend, [&]{ return evt_abi; });
+            abi_serializer::from_variant(varsuspend, suspend, [&]() -> const evt::chain::contracts::abi_serializer& { return evt_abi; });
 
             auto public_keys = call(wallet_url, wallet_public_keys);
             auto get_arg     = fc::mutable_variant_object("name", (proposal_name)name)("available_keys", public_keys);
@@ -1036,20 +1051,15 @@ struct set_get_group_subcommand {
 };
 
 struct set_get_fungible_subcommand {
-    string name;
+    symbol_id_type id;
 
     set_get_fungible_subcommand(CLI::App* actionRoot) {
         auto gfcmd = actionRoot->add_subcommand("fungible", localized("Retrieve a fungible asset information"));
-        gfcmd->add_option("name", name, localized("Symbol or name of fungible asset to be retrieved"))->required();
+        gfcmd->add_option("id", id, localized("Symbol id of fungible asset to be retrieved"))->required();
         
         gfcmd->set_callback([this] {
-            try {
-                auto s = symbol::from_string(name);
-                name = s.name();
-            }
-            catch(...){}
 
-            auto arg = fc::mutable_variant_object("name", name);
+            auto arg = fc::mutable_variant_object("id", id);
             print_info(call(get_fungible_func, arg));
         });
     }
@@ -1123,6 +1133,11 @@ struct set_get_my_subcommands {
             get_my_resources(get_my_groups);
         });
 
+        auto myfungible = mycmd->add_subcommand("fungibles", localized("Retrieve my created fungibles"));
+        mygroup->set_callback([] {
+            get_my_resources(get_my_fungibles);
+        });
+
         auto trxscmd = mycmd->add_subcommand("transactions", localized("Retrieve my transactions"));
         trxscmd->add_option("--skip,-s", skip, localized("How many records should be skipped"));
         trxscmd->add_option("--take,-t", take, localized("How many records should be returned"));
@@ -1146,6 +1161,8 @@ struct set_get_my_subcommands {
 struct set_get_history_subcommands {
     string domain;
     string key;
+    string addr;
+    int    sym_id;
 
     std::vector<std::string> names;
 
@@ -1193,8 +1210,30 @@ struct set_get_history_subcommands {
             auto args = mutable_variant_object("id", trx_id);
             print_info(call(get_transaction, args));
         });
-    }
 
+        auto funcmd = hiscmd->add_subcommand("fungible", localized("Retrieve fungible actions history"));
+        funcmd->add_option("sym_id", sym_id, localized("Symbol Id to be retrieved"))->required();
+        funcmd->add_option("address", addr, localized("Address involved in fungible actions"));
+        funcmd->add_option("--skip,-s", skip, localized("How many records should be skipped"));
+        funcmd->add_option("--take,-t", take, localized("How many records should be returned"));
+
+        funcmd->set_callback([this] {
+            auto args = mutable_variant_object();
+            args["sym_id"] = sym_id;
+            if(!addr.empty()) {
+                args["addr"] = addr;
+            }
+
+            if(skip > 0) {
+                args["skip"] = skip;
+            }
+            if(take > 0) {
+                args["take"] = take;
+            }
+
+            print_info(call(get_fungible_actions, args));
+        });
+    }
 };
 
 CLI::callback_t header_opt_callback = [](CLI::results_t res) {

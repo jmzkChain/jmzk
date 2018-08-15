@@ -34,7 +34,7 @@ verify_byte_round_trip_conversion(const abi_serializer& abis, const type_name& t
     return var2;
 }
 
-auto
+const auto&
 get_evt_abi() {
     static auto abis = abi_serializer(evt_contract_abi());
     return abis;
@@ -126,7 +126,7 @@ TEST_CASE("optional_test", "[abis]") {
 }
 
 TEST_CASE("newdomain_test", "[abis]") {
-    auto abis = get_evt_abi();
+    auto& abis = get_evt_abi();
 
     CHECK(true);
     const char* test_data = R"=====(
@@ -217,7 +217,7 @@ TEST_CASE("newdomain_test", "[abis]") {
 }
 
 TEST_CASE("updatedomain_test", "[abis]") {
-    auto abis = get_evt_abi();
+    auto& abis = get_evt_abi();
 
     CHECK(true);
     const char* test_data = R"=====(
@@ -264,7 +264,7 @@ TEST_CASE("updatedomain_test", "[abis]") {
 }
 
 TEST_CASE("issuetoken_test", "[abis]") {
-    auto abis = get_evt_abi();
+    auto& abis = get_evt_abi();
 
     CHECK(true);
     const char* test_data = R"=====(
@@ -311,7 +311,7 @@ TEST_CASE("issuetoken_test", "[abis]") {
 }
 
 TEST_CASE("transfer_test", "[abis]") {
-    auto abis = get_evt_abi();
+    auto& abis = get_evt_abi();
 
     CHECK(true);
     const char* test_data = R"=====(
@@ -349,7 +349,7 @@ TEST_CASE("transfer_test", "[abis]") {
 }
 
 TEST_CASE("destroytoken_test", "[abis]") {
-    auto abis = get_evt_abi();
+    auto& abis = get_evt_abi();
 
     CHECK(true);
     const char* test_data = R"=====(
@@ -375,7 +375,7 @@ TEST_CASE("destroytoken_test", "[abis]") {
 }
 
 TEST_CASE("newgroup_test", "[abis]") {
-    auto abis = get_evt_abi();
+    auto& abis = get_evt_abi();
 
     CHECK(true);
     const char* test_data = R"=====(
@@ -540,7 +540,7 @@ TEST_CASE("newgroup_test", "[abis]") {
 }
 
 TEST_CASE("updategroup_test", "[abis]") {
-    auto abis = get_evt_abi();
+    auto& abis = get_evt_abi();
 
     CHECK(true);
     const char* test_data = R"=====(
@@ -705,12 +705,13 @@ TEST_CASE("updategroup_test", "[abis]") {
 }
 
 TEST_CASE("newfungible_test", "[abis]") {
-    auto abis = get_evt_abi();
+    auto& abis = get_evt_abi();
 
     const char* test_data = R"=====(
     {
       "name": "EVT",
       "sym_name": "EVT",
+      "sym": "5,S#1"
       "creator": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
       "issue" : {
         "name" : "issue",
@@ -789,7 +790,7 @@ TEST_CASE("newfungible_test", "[abis]") {
 }
 
 TEST_CASE("updfungible_test", "[abis]") {
-    auto abis = get_evt_abi();
+    auto& abis = get_evt_abi();
 
     const char* test_data = R"=====(
     {
@@ -835,7 +836,7 @@ TEST_CASE("updfungible_test", "[abis]") {
 }
 
 TEST_CASE("issuefungible_test", "[abis]") {
-    auto abis = get_evt_abi();
+    auto& abis = get_evt_abi();
 
     const char* test_data = R"=====(
     {
@@ -870,7 +871,7 @@ TEST_CASE("issuefungible_test", "[abis]") {
 }
 
 TEST_CASE("transferft_test", "[abis]") {
-    auto abis = get_evt_abi();
+    auto& abis = get_evt_abi();
 
     const char* test_data = R"=====(
     {
@@ -908,7 +909,7 @@ TEST_CASE("transferft_test", "[abis]") {
 }
 
 TEST_CASE("addmeta_test", "[abis]") {
-    auto abis = get_evt_abi();
+    auto& abis = get_evt_abi();
 
     CHECK(true);
     const char* test_data = R"=====(
@@ -940,7 +941,7 @@ TEST_CASE("addmeta_test", "[abis]") {
 }
 
 TEST_CASE("newsuspend_test", "[abis]") {
-    auto abis = get_evt_abi();
+    auto& abis = get_evt_abi();
     CHECK(true);
     const char* test_data = R"=======(
     {
@@ -983,7 +984,7 @@ TEST_CASE("newsuspend_test", "[abis]") {
 }
 
 TEST_CASE("cancelsuspend_test", "[abis]") {
-    auto abis = get_evt_abi();
+    auto& abis = get_evt_abi();
     CHECK(true);
     const char* test_data = R"=======(
     {
@@ -1001,7 +1002,7 @@ TEST_CASE("cancelsuspend_test", "[abis]") {
 }
 
 TEST_CASE("aprvsuspend_test", "[abis]") {
-    auto abis = get_evt_abi();
+    auto& abis = get_evt_abi();
     CHECK(true);
     const char* test_data = R"=======(
     {
@@ -1024,7 +1025,7 @@ TEST_CASE("aprvsuspend_test", "[abis]") {
 }
 
 TEST_CASE("execsuspend_test", "[abis]") {
-    auto abis = get_evt_abi();
+    auto& abis = get_evt_abi();
     CHECK(true);
     const char* test_data = R"=======(
     {
@@ -1045,7 +1046,7 @@ TEST_CASE("execsuspend_test", "[abis]") {
 }
 
 TEST_CASE("evt2pevt_test", "[abis]") {
-    auto abis = get_evt_abi();
+    auto& abis = get_evt_abi();
     CHECK(true);
     const char* test_data = R"=======(
     {
@@ -1068,7 +1069,7 @@ TEST_CASE("evt2pevt_test", "[abis]") {
 }
 
 TEST_CASE("everipass_abi_test", "[abis]") {
-    auto        abis      = get_evt_abi();
+    auto&       abis      = get_evt_abi();
     const char* test_data = R"=======(
     {
         "link": "03XBY4E/KTS:PNHVA3JP9QG258F08JHYOYR5SLJGN0EA-C3J6S:2G:T1SX7WA14KH9ETLZ97TUX9R9JJA6+06$E/_PYNX-/152P4CTC:WKXLK$/7G-K:89+::2K4C-KZ2**HI-P8CYJ**XGFO1K5:$E*SOY8MFYWMNHP*BHX2U8$$FTFI81YDP1HT"
@@ -1118,7 +1119,7 @@ TEST_CASE("everipass_abi_test", "[abis]") {
 }
 
 TEST_CASE("everipay_abi_test", "[abis]") {
-    auto        abis      = get_evt_abi();
+    auto&       abis      = get_evt_abi();
     const char* test_data = R"=======(
     {
         "link": "0UKDRJZA4Z9IR9TK4Q7BJP0SV-/$$XDADD03/37BOI3FPJ9C3_QUQ4A1GS9VJX-3MIKFBYFYHLZODIRRUAFEGFS6+*ZKN40BOMIY6/2CJGC04:VZFB8H3FZ91/TW*-8M02/GKDLUFE80HC8*LI",

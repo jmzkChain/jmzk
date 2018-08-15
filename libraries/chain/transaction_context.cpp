@@ -26,7 +26,7 @@ transaction_context::transaction_context(controller&           c,
 
 void
 transaction_context::init() {
-    FC_ASSERT(!is_initialized, "cannot initialize twice");
+    EVT_ASSERT(!is_initialized, transaction_exception, "cannot initialize twice");
     EVT_ASSERT(!trx.trx.actions.empty(), tx_no_action, "There's any actions in this transaction");
     
     check_time();    // Fail early if deadline has already been exceeded
@@ -62,7 +62,7 @@ transaction_context::init_for_suspend_trx() {
 
 void
 transaction_context::exec() {
-    FC_ASSERT(is_initialized, "must first initialize");
+    EVT_ASSERT(is_initialized, transaction_exception, "must first initialize");
 
     for(const auto& act : trx.trx.actions) {
         trace->action_traces.emplace_back();
@@ -72,7 +72,7 @@ transaction_context::exec() {
 
 void
 transaction_context::finalize() {
-    FC_ASSERT(is_initialized, "must first initialize");
+    EVT_ASSERT(is_initialized, transaction_exception, "must first initialize");
 
     if(charge) {
         // in charge-free mode, charge always be zero
@@ -88,6 +88,10 @@ transaction_context::squash() {
     undo_session.squash();
 }
 
+void transaction_context::undo() {
+    undo_session.undo();
+}
+
 void
 transaction_context::check_time() const {
     auto now = fc::time_point::now();
@@ -98,7 +102,7 @@ transaction_context::check_time() const {
 
 void
 transaction_context::check_charge() {
-    auto& cm = control.get_charge_manager();
+    auto cm = control.get_charge_manager();
     charge = cm.calculate(trx.packed_trx);
     if(charge > trx.trx.max_charge) {
         EVT_THROW(max_charge_exceeded_exception, "max charge exceeded, expected: ${ex}, max provided: ${mp}",
@@ -138,11 +142,11 @@ transaction_context::check_paid() const {
     }  // switch
     
     asset evt, pevt;
-    tokendb.read_asset_no_throw(payer, evt_sym(), pevt);
+    tokendb.read_asset_no_throw(payer, pevt_sym(), pevt);
     if(pevt.amount() > charge) {
         return;
     }
-    tokendb.read_asset_no_throw(payer, pevt_sym(), evt);
+    tokendb.read_asset_no_throw(payer, evt_sym(), evt);
     if(pevt.amount() + evt.amount() >= charge) {
         return;
     }

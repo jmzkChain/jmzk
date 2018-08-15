@@ -82,10 +82,15 @@ logging_conf_loop() {
 void
 initialize_logging() {
     auto config_path = app().get_logging_conf();
-    if(fc::exists(config_path))
+    if(fc::exists(config_path)) {
         fc::configure_logging(config_path);  // intentionally allowing exceptions to escape
-    for(auto iter : fc::get_appender_map())
+    }
+    else {
+        fprintf(stderr, "Logging config file is not avaiable: %s\n", config_path.c_str());
+    }
+    for(auto iter : fc::get_appender_map()) {
         iter.second->initialize(app().get_io_service());
+    }
 
     logging_conf_loop();
 }

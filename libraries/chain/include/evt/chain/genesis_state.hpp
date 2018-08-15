@@ -5,6 +5,7 @@
 #pragma once
 #include <evt/chain/chain_config.hpp>
 #include <evt/chain/types.hpp>
+#include <evt/chain/contracts/types.hpp>
 
 #include <fc/crypto/sha256.hpp>
 
@@ -12,6 +13,9 @@
 #include <vector>
 
 namespace evt { namespace chain {
+
+using contracts::group_def;
+using contracts::fungible_def;
 
 struct genesis_state {
     genesis_state();
@@ -27,13 +31,20 @@ struct genesis_state {
         .base_network_charge_factor     = config::default_base_network_charge_factor,
         .base_storage_charge_factor     = config::default_base_storage_charge_factor,
         .base_cpu_charge_factor         = config::default_base_cpu_charge_factor,
+        .global_charge_factor           = config::default_global_charge_factor,
 
         .max_transaction_lifetime       = config::default_max_trx_lifetime,
-        .max_authority_depth            = config::default_max_auth_depth
+        .max_authority_depth            = config::default_max_auth_depth,
+
+        .evt_link_expired_secs          = config::default_evt_link_expired_secs
     };
 
     time_point      initial_timestamp;
     public_key_type initial_key;
+
+    group_def       evt_org;
+    fungible_def    evt;
+    fungible_def    pevt;
 
     /**
     * Get the chain_id corresponding to this genesis state.
@@ -46,4 +57,4 @@ struct genesis_state {
 }}  // namespace evt::chain
 
 FC_REFLECT(evt::chain::genesis_state,
-           (initial_timestamp)(initial_key)(initial_configuration))
+           (initial_timestamp)(initial_key)(evt_org)(evt)(pevt)(initial_configuration))

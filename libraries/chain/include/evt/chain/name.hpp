@@ -3,9 +3,12 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #pragma once
-#include <fc/reflect/reflect.hpp>
+
+#include <string.h>
 #include <iosfwd>
 #include <string>
+#include <vector>
+#include <fc/reflect/reflect.hpp>
 
 namespace evt { namespace chain {
 using std::string;

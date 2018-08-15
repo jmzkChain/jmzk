@@ -38,4 +38,16 @@ evt_version() {
     return ver.get_version();
 }
 
+thread_local int last_error_code = 0;
+
+int
+evt_set_last_error(int code) {
+    last_error_code = code;
+}
+
+int
+evt_last_error() {
+    return last_error_code;
+}
+
 }  // extern "C"

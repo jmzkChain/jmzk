@@ -13,10 +13,12 @@ class Api:
             'get_group': '/v1/evt/get_group',
             'get_token': '/v1/evt/get_token',
             'get_fungible': '/v1/evt/get_fungible',
-            'get_tokens': '/v1/history/get_my_tokens',
+            'get_tokens': '/v1/history/get_tokens',
             'get_domains': '/v1/history/get_domains',
             'get_groups': '/v1/history/get_groups',
+            'get_fungibles': '/v1/history/get_fungibles',
             'get_actions': '/v1/history/get_actions',
+            'get_fungible_actions': '/v1/history/get_fungible_actions',
             'get_transaction': '/v1/history/get_transaction',
             'get_transactions': '/v1/history/get_transactions'
         }

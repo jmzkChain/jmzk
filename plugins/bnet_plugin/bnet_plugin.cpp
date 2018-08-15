@@ -253,13 +253,9 @@ public:
                                              ordered_non_unique<tag<by_expired>, member<transaction_status, time_point, &transaction_status::expired>>>>
         transaction_status_index;
 
-    auto
-    get_status(block_id_type id) {
-        return _block_status.find(id);
-    }
-
     block_status_index       _block_status;
     transaction_status_index _transaction_status;
+    const uint32_t           _max_block_status_range = 2048; // limit tracked block_status known_by_peer
 
     public_key_type _local_peer_id;
     uint32_t        _local_lib = 0;
@@ -529,26 +525,21 @@ public:
     on_accepted_block_header(const block_state_ptr& s) {
         verify_strand_in_this_thread(_strand, __func__, __LINE__);
         // ilog( "accepted block header ${n}", ("n",s->block_num) );
+        const auto& id = s->id;
+
         if(fc::time_point::now() - s->block->timestamp < fc::seconds(6)) {
             //   ilog( "queue notice to peer that we have this block so hopefully they don't send it to us" );
-            auto itr = _block_status.find(s->id);
+            auto itr = _block_status.find(id);
             if(!_remote_request_irreversible_only && (itr == _block_status.end() || !itr->received_from_peer)) {
-                _block_header_notices.insert(s->id);
+                _block_header_notices.insert(id);
+            }
+            if(itr == _block_status.end()) {
+                _block_status.insert(block_status(id, false, false));
             }
         }
-    }
 
-    void
-    on_accepted_block(const block_state_ptr& s) {
-        verify_strand_in_this_thread(_strand, __func__, __LINE__);
         //idump((_block_status.size())(_transaction_status.size()));
-        auto id = s->id;
         //ilog( "accepted block ${n}", ("n",s->block_num) );
-
-        auto itr = _block_status.find(id);
-        if(itr == _block_status.end()) {
-            itr = _block_status.insert(block_status(id, false, false)).first;
-        }
 
         _local_head_block_id  = id;
         _local_head_block_num = block_header::num_from_id(id);
@@ -565,8 +556,8 @@ public:
             */
         for(const auto& receipt : s->block->transactions) {
             // TODO: Need to clarify delay transaction? 
-            auto id  = receipt.trx.id();
-            auto itr = _transaction_status.find(id);
+            const auto tid = receipt.trx.id();
+            auto itr = _transaction_status.find(tid);
             if(itr != _transaction_status.end()) {
                 _transaction_status.erase(itr);
             }
@@ -582,7 +573,7 @@ public:
         _app_ios.post([self = shared_from_this(), callback] {
             auto& control  = app().get_plugin<chain_plugin>().chain();
             auto  lib      = control.last_irreversible_block_num();
-            auto  head     = control.head_block_id();
+            auto  head     = control.fork_db_head_block_id();
             auto  head_num = block_header::num_from_id(head);
 
             std::vector<block_id_type> ids;
@@ -670,17 +661,26 @@ public:
     }
 
     void
-    mark_block_known_by_peer(block_id_type id) {
+    mark_block_status( const block_id_type& id, bool known_by_peer, bool recv_from_peer ) {
         auto itr = _block_status.find(id);
         if(itr == _block_status.end()) {
-            _block_status.insert(block_status(id, true, false));
+            // optimization to avoid sending blocks to nodes that already know about them
+            // to avoid unbounded memory growth limit number tracked
+            const auto min_block_num = std::min( _local_lib, _last_sent_block_num );
+            const auto max_block_num = min_block_num + _max_block_status_range;
+            const auto block_num = block_header::num_from_id( id );
+            if(block_num > min_block_num && block_num < max_block_num && _block_status.size() < _max_block_status_range) {
+                _block_status.insert(block_status(id, known_by_peer, recv_from_peer));
+            }
         }
         else {
             _block_status.modify(itr, [&](auto& item) {
-                item.known_by_peer = true;
+                item.known_by_peer = known_by_peer;
+                if(recv_from_peer) item.received_from_peer = true;
             });
         }
     }
+
     void
     mark_block_recv_from_peer(block_id_type id) {
         auto itr = _block_status.find(id);
@@ -860,7 +860,7 @@ public:
             return;
         }
 
-        mark_block_known_by_peer(next_id);
+        mark_block_status(next_id, true, false);
 
         _last_sent_block_id  = next_id;
         _last_sent_block_num = nextblock->block_num();
@@ -1018,7 +1018,7 @@ public:
         peer_ilog(this, "received block_notice");
         for(const auto& id : notice.block_ids) {
             status("received notice " + std::to_string(block_header::num_from_id(id)));
-            mark_block_known_by_peer(id);
+            mark_block_status(id, true, false);
         }
     }
 
@@ -1061,12 +1061,12 @@ public:
         peer_ilog(this, "received signed_block_ptr");
         if(!b) {
             peer_elog(this, "bad signed_block_ptr : null pointer");
-            FC_THROW("bad block");
+            EVT_THROW(block_validate_exception, "bad block");
         }
         status("received block " + std::to_string(b->block_num()));
         //ilog( "recv block ${n}", ("n", b->block_num()) );
         auto id = b->id();
-        mark_block_recv_from_peer(id);
+        mark_block_status(id, true, true);
 
         app().get_channel<incoming::channels::block>().publish(b);
 
@@ -1109,7 +1109,7 @@ public:
         peer_ilog(this, "received packed_transaction_ptr");
         if(!p) {
             peer_elog(this, "bad packed_transaction_ptr : null pointer");
-            FC_THROW("bad transaction");
+            EVT_THROW(transaction_exception, "bad transaction");
         }
 
         auto id = p->id();
@@ -1203,7 +1203,7 @@ public:
 
     void
     run() {
-        FC_ASSERT(_acceptor.is_open(), "unable top open listen socket");
+        EVT_ASSERT(_acceptor.is_open(), plugin_exception, "unable top open listen socket");
         do_accept();
     }
 
@@ -1291,19 +1291,6 @@ public:
     void
     on_irreversible_block(block_state_ptr s) {
         for_each_session([s](auto ses) { ses->on_new_lib(s); });
-    }
-
-    /**
-          * Notify all active connections of the new accepted block so
-          * they can relay it. This method also pre-packages the block
-          * as a packed bnet_message so the connections can simply relay
-          * it on.
-          */
-    void
-    on_accepted_block(block_state_ptr s) {
-        _ioc->post([s, this] {  /// post this to the thread pool because packing can be intensive
-            for_each_session([s](auto ses) { ses->on_accepted_block(s); });
-        });
     }
 
     void
@@ -1421,32 +1408,35 @@ void
 bnet_plugin::plugin_initialize(const variables_map& options) {
     ilog("Initialize bnet plugin");
 
-    peer_log_format = options.at("bnet-peer-log-format").as<string>();
+    try {
+        peer_log_format = options.at("bnet-peer-log-format").as<string>();
 
-    if(options.count("bnet-endpoint")) {
-        auto ip_port = options.at("bnet-endpoint").as<string>();
+        if(options.count("bnet-endpoint")) {
+            auto ip_port = options.at("bnet-endpoint").as<string>();
 
-        //auto host = boost::asio::ip::host_name(ip_port);
-        auto port                  = ip_port.substr(ip_port.find(':') + 1, ip_port.size());
-        auto host                  = ip_port.substr(0, ip_port.find(':'));
-        my->_bnet_endpoint_address = host;
-        my->_bnet_endpoint_port    = std::stoi(port);
-        idump((ip_port)(host)(port)(my->_follow_irreversible));
-    }
+            //auto host = boost::asio::ip::host_name(ip_port);
+            auto port                  = ip_port.substr(ip_port.find(':') + 1, ip_port.size());
+            auto host                  = ip_port.substr(0, ip_port.find(':'));
+            my->_bnet_endpoint_address = host;
+            my->_bnet_endpoint_port    = std::stoi(port);
+            idump((ip_port)(host)(port)(my->_follow_irreversible));
+        }
 
-    if(options.count( "bnet-follow-irreversible")) {
-        my->_follow_irreversible = options.at("bnet-follow-irreversible").as<bool>();
-    }
+        if(options.count( "bnet-follow-irreversible")) {
+            my->_follow_irreversible = options.at("bnet-follow-irreversible").as<bool>();
+        }
 
-    if(options.count("bnet-connect")) {
-        my->_connect_to_peers = options.at("bnet-connect").as<vector<string>>();
+        if(options.count("bnet-connect")) {
+            my->_connect_to_peers = options.at("bnet-connect").as<vector<string>>();
+        }
+        if(options.count("bnet-threads")) {
+            my->_num_threads = options.at("bnet-threads").as<uint32_t>();
+            if(my->_num_threads > 8)
+                my->_num_threads = 8;
+        }
+        my->_request_trx = !options.at("bnet-no-trx").as<bool>();
     }
-    if(options.count("bnet-threads")) {
-        my->_num_threads = options.at("bnet-threads").as<uint32_t>();
-        if(my->_num_threads > 8)
-            my->_num_threads = 8;
-    }
-    my->_request_trx = !options.at("bnet-no-trx").as<bool>();
+    FC_LOG_AND_RETHROW();
 }
 
 void
@@ -1463,10 +1453,6 @@ bnet_plugin::plugin_startup() {
 
     my->_on_irb_handle = app().get_channel<channels::irreversible_block>().subscribe([this](block_state_ptr s) {
         my->on_irreversible_block(s);
-    });
-
-    my->_on_accepted_block_handle = app().get_channel<channels::accepted_block>().subscribe([this](block_state_ptr s) {
-        my->on_accepted_block(s);
     });
 
     my->_on_accepted_block_header_handle = app().get_channel<channels::accepted_block_header>().subscribe([this](block_state_ptr s) {
@@ -1516,7 +1502,7 @@ bnet_plugin::plugin_shutdown() {
     /// shut down all threads and close all connections
 
     my->for_each_session([](auto ses){
-        ses->do_goodbye( "shutting down" );
+        ses->do_goodbye("shutting down");
     });
 
     my->_listener.reset();
@@ -1529,7 +1515,7 @@ bnet_plugin::plugin_shutdown() {
     wlog("done joining threads");
 
     my->for_each_session([](auto ses){
-        FC_ASSERT(false, "session ${ses} still active", ("ses", ses->_session_num));
+        EVT_ASSERT(false, plugin_exception, "session ${ses} still active", ("ses", ses->_session_num));
     });
 
     // lifetime of _ioc is guarded by shared_ptr of bnet_plugin_impl
@@ -1608,7 +1594,7 @@ session::on(const hello& hi, fc::datastream<const char*>& ds) {
             if( wich < ex.count()) { //know extension
                 fc::datastream<const char*> dsx( ex_start, size ); //unpack needs to read static_variant _tag again
                 fc::raw::unpack( dsx, ex );
-                if (ex.which() == hello_extension::tag<hello_extension_irreversible_only>::value) {
+                if(ex.which() == hello_extension::tag<hello_extension_irreversible_only>::value) {
                     _remote_request_irreversible_only = true;
                 }
             }
@@ -1627,7 +1613,7 @@ session::on(const hello& hi, fc::datastream<const char*>& ds) {
     _remote_lib            = hi.last_irr_block_num;
 
     for(const auto& id : hi.pending_block_ids) {
-        mark_block_known_by_peer( id );
+        mark_block_status(id, true, false);
     }
 
     check_for_redundant_connection();

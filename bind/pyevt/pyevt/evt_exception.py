@@ -1,3 +1,5 @@
+from . import libevt
+
 class EVTErrCode:
     EVT_OK = 0
     EVT_INTERNAL_ERROR = -1
@@ -12,8 +14,20 @@ class EVTErrCode:
     EVT_INVALID_ADDRESS = -10
     EVT_SIZE_NOT_EQUALS = -11
     EVT_DATA_NOT_EQUALS = -12
+    EVT_INVALID_LINK = -13
     EVT_NOT_INIT = -15
 
+
+class EVTException(Exception):
+    def __init__(self, err):
+        if err == 'EVT_INTERNAL_ERROR':
+            evt = libevt.check_lib_init()
+            code = evt.evt_last_error()
+
+            errmsg = "{}: {}".format(err, code)
+            super().__init__(self, errmsg)
+        else:
+            super().__init__(self, err)
 
 class EVTInternalErrorException(Exception):
     def __init__(self):
@@ -87,6 +101,12 @@ class EVTDataNotEqualsException(Exception):
         super().__init__(self, err)
 
 
+class EVTInvalidLinkException(Exception):
+    def __init__(self):
+        err = 'EVT_INVALID_LINK'
+        super().__init__(self, err)
+
+
 class EVTNotInitException(Exception):
     def __init__(self):
         err = 'EVT_NOT_INIT'
@@ -104,6 +124,7 @@ ex_map = {
     EVTErrCode.EVT_INVALID_BINARY: EVTInvalidBinaryException,
     EVTErrCode.EVT_INVALID_JSON: EVTInvalidJsonException,
     EVTErrCode.EVT_INVALID_ADDRESS: EVTInvalidAddressException,
+    EVTErrCode.EVT_INVALID_LINK: EVTInvalidLinkException,
     EVTErrCode.EVT_SIZE_NOT_EQUALS: EVTSizeNotEqualsException,
     EVTErrCode.EVT_DATA_NOT_EQUALS: EVTDataNotEqualsException,
     EVTErrCode.EVT_NOT_INIT: EVTNotInitException

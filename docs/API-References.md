@@ -1,4 +1,6 @@
 # EVT API References
+![everiToken Logo](./logo.png)
+
 ## GET /v1/chain/get_info
 Before interacting with everiToken, you need to get some chain information first. Call this API to get `chain_id`, `evt_abi_version` and many other properties of current chain state.
 
@@ -185,21 +187,23 @@ For the fields of an action, here is a quick reference guide.
 | `updatedomain` | name of domain | `.update` |
 | `newgroup` | `.group` | name of new group |
 | `updategroup` | `.group` | name of updating group |
-| `newfungible` | `.fungible` | name of new fungible assets symbol |
-| `updfungible` | `.fungible` | name of updating fungible assets symbol |
+| `newfungible` | `.fungible` | symbol id of new fungible assets symbol |
+| `updfungible` | `.fungible` | symbol id of updating fungible assets symbol |
 | `issuetoken` | name of domain | `.issue` |
-| `issuefungible` | `.fungible` | name of issuing fungible assets symbol |
+| `issuefungible` | `.fungible` | symbol id of issuing fungible assets symbol |
 | `transfer` | name of domain token belongs to | name of token |
 | `destroytoken` | name of domain token belongs to | name of token |
-| `transferft` | `.fungible` | name of transfering assets symbol |
-| `evt2pevt` | `.fungible` | `EVT` |
-| `addmeta` | `.group`, `.fungible` or token's domain | group name, fungible name or token name |
+| `transferft` | `.fungible` | symbol id of transfering assets symbol |
+| `evt2pevt` | `.fungible` | '1' |
+| `addmeta` | `.group`, `.fungible` or token's domain | group name, symbol id of fungible or token name |
 | `newsuspend` | `.suspend` | proposal name of suspend transaction |
 | `aprvsuspend` | `.suspend` | proposal name of suspend transaction |
 | `cancelsuspend` | `.suspend` | proposal name of suspend transaction |
 | `execsuspend` | `.suspend` | proposal name of suspend transaction |
 | `everipass` | name of domain | name of token |
 | `everipay` | `.fungible` | name of fungible assets symbol |
+
+> For fungible actions, action's key is symbol id which is a number originally. And it need to be conveted into string.
 
 After all that work, you can send transaction definition using this API to the chain, then the chain will response with the digest of the transaction. You can then sign this digest with your private key.
 
@@ -512,13 +516,15 @@ This API is used to get specific fungible.
 Request:
 ```
 {
-    "name": "EVT"
+    "id": "1"
 }
 ```
 Response:
 ```
 {
-  "sym": "5,EVT",
+  "name": "EVT",
+  "sym_name": "EVT",
+  "sym": "5,S#1",
   "creator": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
   "create_time": "2018-06-28T05:31:09",
   "issue": {
@@ -539,8 +545,8 @@ Response:
       }
     ]
   },
-  "total_supply": "100000.00000 EVT",
-  "current_supply": "0.00000 EVT",
+  "total_supply": "100000.00000 S#1",
+  "current_supply": "0.00000 S#1",
   "metas": [],
   "address": "EVT000000GAei9YYTQuZsNdcK5bPQNAK4ADtgzT8x52hz4b4FnYRQ"
 }
@@ -558,7 +564,7 @@ Request:
 Response:
 ```
 [
-  "2.00000 EVT", "1.00000 PEVT"
+  "2.00000 S#1", "1.00000 S#2"
 ]
 ```
 
@@ -568,12 +574,12 @@ Request:
 ```
 {
     "address": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
-    "sym": "5,EVT"
+    "sym": "5,S#1"
 }
 ```
 Response:
 ```
-"2.00000 EVT"
+"2.00000 S#1"
 ```
 
 ## POST /v1/evt/get_suspend
@@ -692,6 +698,21 @@ Response:
 ["testgroup"]
 ```
 
+## POST /v1/history/get_fungibles
+Provide all the public keys its has and this API will response with all the symbol ids of the fungibles that account create.
+> This API is only available when MONGO_DB_SUPPORT is ON.
+
+Request:
+```
+{
+    "keys":["EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"]
+}
+```
+Response:
+```
+[3, 4, 5]
+```
+
 ## POST /v1/history/get_actions
 Query actions by domain, key and action names.
 > This API is only available when MONGO_DB_SUPPORT is ON.
@@ -700,8 +721,8 @@ Query actions by domain, key and action names.
 Request:
 ```
 {
-  "domain": "fungible",
-  "key": "EVT",
+  "domain": ".fungible",
+  "key": "1",
   "names": [
     "newfungible"
   ],
@@ -714,8 +735,8 @@ Response:
 ```
 [{
     "name": "newfungible",
-    "domain": "fungible",
-    "key": "EVT",
+    "domain": ".fungible",
+    "key": "1",
     "trx_id": "f0c789933e2b381e88281e8d8e750b561a4d447725fb0eb621f07f219fe2f738",
     "created_at": "2018-06-28T05:35:12",
     "data": {
@@ -743,6 +764,53 @@ Response:
     }
   }
 ]
+```
+
+## POST /v1/history/get_fungible_actions
+Query fungible actions by address
+> This API is only available when MONGO_DB_SUPPORT is ON.
+> address is optional fields and only for filtering actions. if you don't provide them, API will return all the actions.
+
+Request:
+```
+{
+  "sym_id": 338422621,
+  "address": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+  "skip": 0
+  "take": 10
+}
+
+```
+
+Response:
+```
+[{
+    "name": "transferft",
+    "domain": ".fungible",
+    "key": "338422621",
+    "trx_id": "58034b28635c027f714fb01de202ae0ccefa1a4ba5bcf5f01b04fc53b79e6449",
+    "data": {
+      "from": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+      "to": "EVT6dpW7dAtR7YEAxatwA37sYZBdfQCtPD8Hoa1d7jnVDnCepNcM8",
+      "number": "1.0000000000 S#338422621",
+      "memo": "goodjob"
+    },
+    "created_at": "2018-08-08T08:21:44.001"
+  },
+  {
+    "name": "issuefungible",
+    "domain": ".fungible",
+    "key": "338422621",
+    "trx_id": "b05a0cea2093de4ca6eee0ca46ebfa0196ef6dad90a0bcc61f90b6a12bbbd30b",
+    "data": {
+      "address": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+      "number": "100.0000000000 S#338422621",
+      "memo": "goodluck"
+    },
+    "created_at": "2018-08-08T08:21:44.001"
+  }
+]
+
 ```
 
 ## POST /v1/history/get_transaction

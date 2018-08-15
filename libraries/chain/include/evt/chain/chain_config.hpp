@@ -24,9 +24,12 @@ struct chain_config {
     uint32_t base_network_charge_factor;
     uint32_t base_storage_charge_factor;
     uint32_t base_cpu_charge_factor;
+    uint32_t global_charge_factor;
 
     uint32_t max_transaction_lifetime;         ///< the maximum number of seconds that an input transaction's expiration can be ahead of the time of the block in which it is first included
     uint16_t max_authority_depth;              ///< recursion depth limit for checking if an authority is satisfied
+
+    uint32_t evt_link_expired_secs;
 
     void validate() const;
 
@@ -41,13 +44,17 @@ struct chain_config {
                    << "Base Network Charge Factor: " << c.base_network_charge_factor << ", "
                    << "Base Storage Charge Factor: " << c.base_storage_charge_factor << ", "
                    << "Base CPU Charge Factor: " << c.base_cpu_charge_factor << ", "
+                   << "Global Charge Factor: " << c.global_charge_factor << ", "
 
                    << "Max Transaction Lifetime: " << c.max_transaction_lifetime << ", "
-                   << "Max Authority Depth: " << c.max_authority_depth << "\n";
+                   << "Max Authority Depth: " << c.max_authority_depth << ", "
+
+                   << "EVT-Link expried secs: " << c.evt_link_expired_secs << "\n";
     }
 };
 
 bool operator==(const chain_config& a, const chain_config& b);
+
 inline bool
 operator!=(const chain_config& a, const chain_config& b) {
     return !(a == b);
@@ -58,6 +65,6 @@ operator!=(const chain_config& a, const chain_config& b) {
 FC_REFLECT(evt::chain::chain_config,
           (max_block_net_usage)(target_block_net_usage_pct)
           (max_transaction_net_usage)(base_per_transaction_net_usage)
-          (base_network_charge_factor)(base_storage_charge_factor)(base_cpu_charge_factor)
-          (max_transaction_lifetime)(max_authority_depth)
-          )
+          (base_network_charge_factor)(base_storage_charge_factor)(base_cpu_charge_factor)(global_charge_factor)
+          (max_transaction_lifetime)(max_authority_depth)(evt_link_expired_secs)
+          );

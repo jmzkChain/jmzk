@@ -1,4 +1,5 @@
 add_subdirectory( fc )
+add_subdirectory( xxhash )
 add_subdirectory( chainbase EXCLUDE_FROM_ALL )
 add_subdirectory( utilities )
 add_subdirectory( appbase EXCLUDE_FROM_ALL )

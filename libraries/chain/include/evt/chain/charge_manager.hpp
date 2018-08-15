@@ -31,7 +31,7 @@ struct base_act_charge {
 
     static uint32_t
     extra_factor(const action& act) {
-        return 1;
+        return 10;
     }
 };
 
@@ -94,8 +94,10 @@ public:
         auto        pts = ts / trx.actions.size();
         for(auto& act : trx.actions) {
             auto as = types_invoker<act_charge_result, get_act_charge>::invoke(act.name, act, config_);
-            s += (std::get<0>(as) + pts) * std::get<1>(as);
+            s += (std::get<0>(as) + pts) * std::get<1>(as);  // std::get<1>(as): extra factor per action
         }
+
+        s *= config_.global_charge_factor;
         return s;
     }
 
@@ -128,7 +130,7 @@ struct act_charge<addmeta> : public base_act_charge {
 
     static uint32_t
     extra_factor(const action& act) {
-        return 1;
+        return 10;
     }
 };
 

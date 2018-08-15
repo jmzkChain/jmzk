@@ -59,7 +59,6 @@ struct controller_impl {
     block_state_ptr         head;
     fork_database           fork_db;
     token_database          token_db;
-    charge_manager          charge;
     controller::config      conf;
     chain_id_type           chain_id;
     bool                    replaying = false;
@@ -76,14 +75,15 @@ struct controller_impl {
     void
     pop_block() {
         auto prev = fork_db.get_block(head->header.previous);
-        FC_ASSERT(prev, "attempt to pop beyond last irreversible block");
+        EVT_ASSERT(prev, block_validate_exception, "attempt to pop beyond last irreversible block");
 
         if(const auto* b = reversible_blocks.find<reversible_block_object,by_num>(head->block_num)) {
             reversible_blocks.remove(*b);
         }
 
-        for(const auto& t : head->trxs)
+        for(const auto& t : head->trxs) {
             unapplied_transactions[t->signed_id] = t;
+        }
         head = prev;
         db.undo();
         token_db.rollback_to_latest_savepoint();
@@ -100,7 +100,6 @@ struct controller_impl {
         , blog(cfg.blocks_dir)
         , fork_db(cfg.state_dir)
         , token_db(cfg.tokendb_dir)
-        , charge(cfg.genesis.initial_configuration)
         , conf(cfg)
         , chain_id(cfg.genesis.compute_chain_id())
         , system_api(contracts::evt_contract_abi()) {
@@ -126,14 +125,18 @@ struct controller_impl {
             s(std::forward<Arg>(a));
         }
         catch(boost::interprocess::bad_alloc& e) {
-            wlog( "bad alloc" );
+            wlog("bad alloc");
+            throw e;
+        }
+        catch(controller_emit_signal_exception& e) {
+            wlog("${details}", ("details", e.to_detail_string()));
             throw e;
         }
         catch(fc::exception& e) {
-            wlog( "${details}", ("details", e.to_detail_string()) );
+            wlog("${details}", ("details", e.to_detail_string()));
         }
         catch(...) {
-            wlog( "signal handler threw exception" );
+            wlog("signal handler threw exception");
         }
     }
 
@@ -143,10 +146,9 @@ struct controller_impl {
             blog.read_head();
 
         const auto& log_head = blog.head();
-        FC_ASSERT(log_head);
+        EVT_ASSERT(log_head, block_log_exception, "block log head can not be found");
         auto lh_block_num = log_head->block_num();
 
-        emit(self.irreversible_block, s);
         db.commit(s->block_num);
         token_db.pop_savepoints(s->block_num);
 
@@ -154,8 +156,8 @@ struct controller_impl {
             return;
         }
 
-        FC_ASSERT(s->block_num - 1 == lh_block_num, "unlinkable block", ("s->block_num",s->block_num)("lh_block_num", lh_block_num));
-        FC_ASSERT(s->block->previous == log_head->id(), "irreversible doesn't link to block log head");
+        EVT_ASSERT(s->block_num - 1 == lh_block_num, unlinkable_block_exception, "unlinkable block", ("s->block_num",s->block_num)("lh_block_num", lh_block_num));
+        EVT_ASSERT(s->block->previous == log_head->id(), unlinkable_block_exception, "irreversible doesn't link to block log head");
         blog.append(s->block);
 
         const auto& ubi = reversible_blocks.get_index<reversible_block_index,by_num>();
@@ -164,6 +166,8 @@ struct controller_impl {
             reversible_blocks.remove( *objitr );
             objitr = ubi.begin();
         }
+
+        emit(self.irreversible_block, s);
     }
 
     void
@@ -199,7 +203,7 @@ struct controller_impl {
                 std::cerr<< "\n";
                 ilog("${n} reversible blocks replayed", ("n",rev));
                 auto end = fc::time_point::now();
-                ilog("replayed ${n} blocks in seconds, ${mspb} ms/block",
+                ilog("replayed ${n} blocks in ${duration} seconds, ${mspb} ms/block",
                     ("n", head->block_num)("duration", (end-start).count()/1000000)
                     ("mspb", ((end-start).count()/1000.0)/head->block_num));
                 std::cerr<< "\n";
@@ -213,18 +217,18 @@ struct controller_impl {
         const auto& ubi = reversible_blocks.get_index<reversible_block_index,by_num>();
         auto objitr = ubi.rbegin();
         if(objitr != ubi.rend()) {
-            FC_ASSERT(objitr->blocknum == head->block_num,
+            EVT_ASSERT(objitr->blocknum == head->block_num, fork_database_exception,
                 "reversible block database is inconsistent with fork database, replay blockchain",
                 ("head",head->block_num)("unconfimed", objitr->blocknum));
         }
         else {
             auto end = blog.read_head();
-            FC_ASSERT(end && end->block_num() == head->block_num,
+            EVT_ASSERT(end && end->block_num() == head->block_num, fork_database_exception,
                 "fork database exists but reversible block database does not, replay blockchain",
                 ("blog_head",end->block_num())("head",head->block_num));
         }
 
-        FC_ASSERT(db.revision() >= head->block_num, "fork database is inconsistent with shared memory",
+        EVT_ASSERT(db.revision() >= head->block_num, fork_database_exception, "fork database is inconsistent with shared memory",
             ("db",db.revision())("head",head->block_num));
 
         if(db.revision() > head->block_num) {
@@ -239,7 +243,6 @@ struct controller_impl {
 
     ~controller_impl() {
         pending.reset();
-        fork_db.close();
 
         db.flush();
         reversible_blocks.flush();
@@ -285,8 +288,9 @@ struct controller_impl {
     void
     initialize_database() {
         // Initialize block summary index
-        for(int i = 0; i < 0x10000; i++)
+        for(int i = 0; i < 0x10000; i++) {
             db.create<block_summary_object>([&](block_summary_object&) {});
+        }
 
         const auto& tapos_block_summary = db.get<block_summary_object>(1);
         db.modify(tapos_block_summary, [&](auto& bs) {
@@ -353,7 +357,7 @@ struct controller_impl {
                 auto new_bsp = fork_db.add(pending->_pending_block_state);
                 emit(self.accepted_block_header, pending->_pending_block_state);
                 head = fork_db.head();
-                FC_ASSERT(new_bsp == head, "committed block did not become the new head in fork database");
+                EVT_ASSERT(new_bsp == head, fork_database_exception, "committed block did not become the new head in fork database");
             }
 
             if(!replaying) {
@@ -416,9 +420,9 @@ struct controller_impl {
 
     void
     check_authorization(const flat_set<public_key_type>& signed_keys, const transaction& trx) {
-        const static uint32_t max_authority_depth = conf.genesis.initial_configuration.max_authority_depth;
-        
-        auto checker = authority_checker(signed_keys, token_db, max_authority_depth);
+        auto& conf = db.get<global_property_object>().configuration;
+
+        auto checker = authority_checker(signed_keys, token_db, conf.max_authority_depth);
         for(const auto& act : trx.actions) {
             EVT_ASSERT(checker.satisfied(act), unsatisfied_authorization,
                        "${name} action in domain: ${domain} with key: ${key} authorized failed",
@@ -428,9 +432,9 @@ struct controller_impl {
 
     void
     check_authorization(const flat_set<public_key_type>& signed_keys, const action& act) {
-        const static uint32_t max_authority_depth = conf.genesis.initial_configuration.max_authority_depth;
+        auto& conf = db.get<global_property_object>().configuration;
 
-        auto checker = authority_checker(signed_keys, token_db, max_authority_depth);
+        auto checker = authority_checker(signed_keys, token_db, conf.max_authority_depth);
         EVT_ASSERT(checker.satisfied(act), unsatisfied_authorization,
                    "${name} action in domain: ${domain} with key: ${key} authorized failed",
                    ("domain", act.domain)("key", act.key)("name", act.name));
@@ -500,7 +504,7 @@ struct controller_impl {
     push_transaction(const transaction_metadata_ptr& trx,
                      fc::time_point                  deadline,
                      bool                            implicit) {
-        FC_ASSERT(deadline != fc::time_point(), "deadline cannot be uninitialized");
+        EVT_ASSERT(deadline != fc::time_point(), transaction_exception, "deadline cannot be uninitialized");
 
         transaction_trace_ptr trace;
         try {
@@ -547,8 +551,8 @@ struct controller_impl {
 
                 emit(self.applied_transaction, trace);
 
-                trx_context.squash();
                 restore.cancel();
+                trx_context.squash();
 
                 if(!implicit) {
                     unapplied_transactions.erase(trx->signed_id);
@@ -570,9 +574,9 @@ struct controller_impl {
 
     void
     start_block(block_timestamp_type when, uint16_t confirm_block_count, controller::block_status s) {
-        FC_ASSERT(!pending);
+        EVT_ASSERT(!pending, block_validate_exception, "pending block is not available");
 
-        FC_ASSERT(db.revision() == head->block_num, "",
+        EVT_ASSERT(db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
                   ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num));
 
         auto guard_pending = fc::make_scoped_exit([this]() {
@@ -615,9 +619,9 @@ struct controller_impl {
     }  // start_block
 
     void
-    sign_block(const std::function<signature_type(const digest_type&)>& signer_callback, bool trust) {
+    sign_block(const std::function<signature_type(const digest_type&)>& signer_callback) {
         auto p = pending->_pending_block_state;
-        p->sign(signer_callback, false);
+        p->sign(signer_callback);
 
         static_cast<signed_block_header&>(*p->block) = p->header;
     }  /// sign_block
@@ -626,27 +630,29 @@ struct controller_impl {
     apply_block(const signed_block_ptr& b, controller::block_status s) {
         try {
             try {
-                FC_ASSERT(b->block_extensions.size() == 0, "no supported extensions");
+                EVT_ASSERT(b->block_extensions.size() == 0, block_validate_exception, "no supported extensions");
                 start_block(b->timestamp, b->confirmed, s);
 
-                transaction_trace_ptr trace;
+                auto num_pending_receipts = pending->_pending_block_state->block->transactions.size();
                 for(const auto& receipt : b->transactions) {
-                    auto num_pending_receipts = pending->_pending_block_state->block->transactions.size();
+                    auto trace = transaction_trace_ptr();
                     if(receipt.type == transaction_receipt::input) {
-                        auto& pt = receipt.trx;
-                        auto mtrx = std::make_shared<transaction_metadata>(pt);
-                        trace = push_transaction( mtrx, fc::time_point::maximum(), false);
+                        auto& pt    = receipt.trx;
+                        auto  mtrx  = std::make_shared<transaction_metadata>(pt);
+                        
+                        trace = push_transaction(mtrx, fc::time_point::maximum(), false);
                     }
                     else if(receipt.type == transaction_receipt::suspend) {
                         // suspend transaction is executed in its parent transaction
                         // so don't execute here
+                        num_pending_receipts++;
                         continue;
                     }
                     else {
                         EVT_ASSERT(false, block_validate_exception, "encountered unexpected receipt type");
                     }
 
-                    bool transaction_failed = trace && trace->except;
+                    auto transaction_failed = trace && trace->except;
                     if(transaction_failed) {
                         edump((*trace));
                         throw *trace->except;
@@ -659,19 +665,31 @@ struct controller_impl {
                                block_validate_exception, "expected receipt was not added",
                                ("block", *b)("expected_receipt", receipt)
                                );
-                    const transaction_receipt_header& r = pending->_pending_block_state->block->transactions.back();
+                    auto& r = pending->_pending_block_state->block->transactions.back();
                     EVT_ASSERT(r == static_cast<const transaction_receipt_header&>(receipt),
                                block_validate_exception, "receipt does not match",
                               ("producer_receipt", receipt)("validator_receipt", pending->_pending_block_state->block->transactions.back())
                               );
+
+                    num_pending_receipts++;
                 }
 
                 finalize_block();
-                sign_block([&](const auto&) { return b->producer_signature; }, false); // trust
 
-                // this is implied by the signature passing
-                //FC_ASSERT( b->id() == pending->_pending_block_state->block->id(),
-                //           "applying block didn't produce expected block id" );
+                // this implicitly asserts that all header fields (less the signature) are identical
+                EVT_ASSERT(b->id() == pending->_pending_block_state->header.id(),
+                       block_validate_exception, "Block ID does not match",
+                       ("producer_block_id",b->id())("validator_block_id",pending->_pending_block_state->header.id()));
+
+                // We need to fill out the pending block state's block because that gets serialized in the reversible block log
+                // in the future we can optimize this by serializing the original and not the copy
+
+                // we can always trust this signature because,
+                //   - prior to apply_block, we call fork_db.add which does a signature check IFF the block is untrusted
+                //   - OTHERWISE the block is trusted and therefore we trust that the signature is valid
+                // Also, as ::sign_block does not lazily calculate the digest of the block, we can just short-circuit to save cycles
+                pending->_pending_block_state->header.producer_signature = b->producer_signature;
+                static_cast<signed_block_header&>(*pending->_pending_block_state->block) =  pending->_pending_block_state->header;
 
                 commit_block(false);
                 return;
@@ -688,13 +706,19 @@ struct controller_impl {
     void
     push_block(const signed_block_ptr& b, controller::block_status s) {
         //  idump((fc::json::to_pretty_string(*b)));
-        FC_ASSERT(!pending, "it is not valid to push a block when there is a pending block");
+        EVT_ASSERT(!pending, block_validate_exception, "it is not valid to push a block when there is a pending block");
         try {
-            FC_ASSERT(b);
-            FC_ASSERT(s != controller::block_status::incomplete, "invalid block status for a completed block");
+            EVT_ASSERT(b, block_validate_exception, "trying to push empty block");
+            EVT_ASSERT(s != controller::block_status::incomplete, block_validate_exception, "invalid block status for a completed block");
+            emit(self.pre_accepted_block, b);
+
             bool trust = !conf.force_all_checks && (s == controller::block_status::irreversible || s == controller::block_status::validated);
             auto new_header_state = fork_db.add(b, trust);
             emit(self.accepted_block_header, new_header_state);
+            // on replay irreversible is not emitted by fork database, so emit it explicitly here
+            if(s == controller::block_status::irreversible) {
+                emit(self.irreversible_block, new_header_state);
+            }
             maybe_switch_forks(s);
         }
         FC_LOG_AND_RETHROW()
@@ -702,7 +726,7 @@ struct controller_impl {
 
     void
     push_confirmation(const header_confirmation& c) {
-        FC_ASSERT(!pending, "it is not valid to push a confirmation when there is a pending block");
+        EVT_ASSERT(!pending, block_validate_exception, "it is not valid to push a confirmation when there is a pending block");
         fork_db.add(c);
         emit(self.accepted_confirmation, c);
         maybe_switch_forks();
@@ -733,7 +757,7 @@ struct controller_impl {
                 fork_db.mark_in_current_chain(*itr, false);
                 pop_block();
             }
-            FC_ASSERT(self.head_block_id() == branches.second.back()->header.previous,
+            EVT_ASSERT(self.head_block_id() == branches.second.back()->header.previous, fork_database_exception,
                       "loss of sync between fork_db and chainbase during fork switch");  // _should_ never fail
 
             for(auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr) {
@@ -761,7 +785,7 @@ struct controller_impl {
                         fork_db.mark_in_current_chain(*itr, false);
                         pop_block();
                     }
-                    FC_ASSERT(self.head_block_id() == branches.second.back()->header.previous,
+                    EVT_ASSERT(self.head_block_id() == branches.second.back()->header.previous, fork_database_exception,
                               "loss of sync between fork_db and chainbase during fork switch reversal");  // _should_ never fail
 
                     // re-apply good blocks
@@ -780,8 +804,9 @@ struct controller_impl {
     void
     abort_block() {
         if(pending) {
-            for(const auto& t : pending->_pending_block_state->trxs)
+            for(const auto& t : pending->_pending_block_state->trxs) {
                 unapplied_transactions[t->signed_id] = t;
+            }
             pending.reset();
         }
     }
@@ -814,7 +839,7 @@ struct controller_impl {
 
     void
     finalize_block() {
-        FC_ASSERT(pending, "it is not valid to finalize when there is no pending block");
+        EVT_ASSERT(pending, block_validate_exception, "it is not valid to finalize when there is no pending block");
         try {
             /*
       ilog( "finalize block ${n} (${id}) at ${t} by ${p} (${signing_key}); schedule_version: ${v} lib: ${lib} #dtrxs: ${ndtrxs} ${np}",
@@ -868,6 +893,10 @@ controller::controller(const controller::config& cfg)
 
 controller::~controller() {
     my->abort_block();
+    //close fork_db here, because it can generate "irreversible" signal to this controller,
+    //in case if read-mode == IRREVERSIBLE, we will apply latest irreversible block
+    //for that we need 'my' to be valid pointer pointing to valid controller_impl.
+    my->fork_db.close();
 }
 
 void
@@ -897,28 +926,33 @@ controller::token_db() const {
     return my->token_db;
 }
 
-charge_manager&
+charge_manager
 controller::get_charge_manager() const {
-    return my->charge;
+    auto& conf = get_global_properties().configuration;
+    return charge_manager(conf);
 }
 
 void
 controller::start_block(block_timestamp_type when, uint16_t confirm_block_count) {
+    validate_db_available_size();
     my->start_block(when, confirm_block_count, block_status::incomplete);
 }
 
 void
 controller::finalize_block() {
+    validate_db_available_size();
     my->finalize_block();
 }
 
 void
 controller::sign_block(const std::function<signature_type(const digest_type&)>& signer_callback) {
-    my->sign_block(signer_callback, false /* don't trust */);
+    my->sign_block(signer_callback);
 }
 
 void
 controller::commit_block() {
+    validate_db_available_size();
+    validate_reversible_available_size();
     my->commit_block(true);
 }
 
@@ -929,21 +963,26 @@ controller::abort_block() {
 
 void
 controller::push_block(const signed_block_ptr& b, block_status s) {
+    validate_db_available_size();
+    validate_reversible_available_size();
     my->push_block(b, s);
 }
 
 void
 controller::push_confirmation(const header_confirmation& c) {
+    validate_db_available_size();
     my->push_confirmation(c);
 }
 
 transaction_trace_ptr
 controller::push_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline) {
+    validate_db_available_size();
     return my->push_transaction(trx, deadline, false);
 }
 
 transaction_trace_ptr
 controller::push_suspend_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline) {
+    validate_db_available_size();
     return my->push_suspend_transaction(trx, deadline);
 }
 
@@ -987,6 +1026,26 @@ controller::head_block_state() const {
     return my->head;
 }
 
+uint32_t
+controller::fork_db_head_block_num() const {
+   return my->fork_db.head()->block_num;
+}
+
+block_id_type
+controller::fork_db_head_block_id() const {
+   return my->fork_db.head()->id;
+}
+
+time_point
+controller::fork_db_head_block_time() const {
+   return my->fork_db.head()->header.timestamp;
+}
+
+account_name
+controller::fork_db_head_block_producer() const {
+   return my->fork_db.head()->header.producer;
+}
+
 block_state_ptr
 controller::pending_block_state() const {
     if(my->pending)
@@ -995,7 +1054,7 @@ controller::pending_block_state() const {
 }
 time_point
 controller::pending_block_time() const {
-    FC_ASSERT(my->pending, "no pending block");
+    EVT_ASSERT(my->pending, block_validate_exception, "no pending block");
     return my->pending->_pending_block_state->header.timestamp;
 }
 
@@ -1051,12 +1110,14 @@ controller::fetch_block_by_number(uint32_t block_num) const {
     FC_CAPTURE_AND_RETHROW((block_num))
 }
 
-block_state_ptr controller::fetch_block_state_by_id(block_id_type id) const {
+block_state_ptr
+controller::fetch_block_state_by_id(block_id_type id) const {
     auto state = my->fork_db.get_block(id);
     return state;
 }
 
-block_state_ptr controller::fetch_block_state_by_number(uint32_t block_num) const { 
+block_state_ptr
+controller::fetch_block_state_by_number(uint32_t block_num) const { 
     try {
         auto blk_state = my->fork_db.get_block_in_current_chain_by_num( block_num );
         return blk_state;
@@ -1252,6 +1313,20 @@ controller::validate_tapos(const transaction& trx) const {
     FC_CAPTURE_AND_RETHROW()
 }
 
+void
+controller::validate_db_available_size() const {
+   const auto free = db().get_segment_manager()->get_free_memory();
+   const auto guard = my->conf.state_guard_size;
+   EVT_ASSERT(free >= guard, database_guard_exception, "database free: ${f}, guard size: ${g}", ("f", free)("g",guard));
+}
+
+void
+controller::validate_reversible_available_size() const {
+   const auto free = my->reversible_blocks.get_segment_manager()->get_free_memory();
+   const auto guard = my->conf.reversible_guard_size;
+   EVT_ASSERT(free >= guard, reversible_guard_exception, "reversible free: ${f}, guard size: ${g}", ("f", free)("g",guard));
+}
+
 bool
 controller::is_known_unexpired_transaction(const transaction_id_type& id) const {
     return db().find<transaction_object, by_trx_id>(id);
@@ -1302,7 +1377,8 @@ controller::get_suspend_required_keys(const proposal_name& name, const flat_set<
 uint32_t
 controller::get_charge(const transaction& trx, size_t signautres_num) const {   
     auto packed_trx = packed_transaction(trx);
-    return my->charge.calculate(packed_trx, signautres_num);
+    auto charge     = get_charge_manager();
+    return charge.calculate(packed_trx, signautres_num);
 }
 
 }}  // namespace evt::chain

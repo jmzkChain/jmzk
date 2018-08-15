@@ -17,10 +17,12 @@ const static auto default_blocks_dir_name       = "blocks";
 const static auto reversible_blocks_dir_name    = "reversible";
 const static auto default_tokendb_dir_name      = "tokendb";
 const static auto default_reversible_cache_size = 340*1024*1024ll;/// 1MB * 340 blocks based on 21 producer BFT delay
+const static auto default_reversible_guard_size = 2*1024*1024ll;/// 1MB * 2 blocks based on 21 producer BFT delay
 
 const static auto default_state_dir_name        = "state";
 const static auto forkdb_filename               = "forkdb.dat";
 const static auto default_state_size            = 1*1024*1024*1024ll;
+const static auto default_state_guard_size      = 128*1024*1024ll;
 
 const static uint128_t system_account_name = N128(evt);
 
@@ -46,7 +48,8 @@ const static uint32_t fixed_net_overhead_of_packed_trx = 16;
 
 const static uint32_t default_base_network_charge_factor = 1;
 const static uint32_t default_base_storage_charge_factor = 1;
-const static uint32_t default_base_cpu_charge_factor     = 1;
+const static uint32_t default_base_cpu_charge_factor     = 10;
+const static uint32_t default_global_charge_factor       = 10;
 
 /**
  *  The number of sequential blocks produced by a single producer
@@ -65,7 +68,7 @@ static_assert(maximum_tracked_dpos_confirmations >= ((max_producers * 2 / 3) + 1
 
 const static int irreversible_threshold_percent = 70 * percent_1;
 
-const static int evt_link_expired_secs = 10;
+const static int default_evt_link_expired_secs = 20;  // 20s -> total: 40s
 
 }}}  // namespace evt::chain::config
 

@@ -3,12 +3,13 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #pragma once
+#include <boost/noncopyable.hpp>
+#include <fc/variant_object.hpp>
+
 #include <evt/chain/contracts/types.hpp>
 #include <evt/chain/contracts/abi_types.hpp>
 #include <evt/chain/exceptions.hpp>
 #include <evt/chain/trace.hpp>
-
-#include <fc/variant_object.hpp>
 
 namespace evt { namespace chain { namespace contracts {
 
@@ -27,7 +28,7 @@ struct abi_to_variant;
  *  Describes the binary representation message and table contents so that it can
  *  be converted to and from JSON.
  */
-struct abi_serializer {
+struct abi_serializer : boost::noncopyable {
 private:
     static constexpr size_t max_recursion_depth = 32; // arbitrary depth to prevent infinite recursion
     static fc::microseconds max_serialization_time;
