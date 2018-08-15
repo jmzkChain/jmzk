@@ -50,6 +50,12 @@ class TransferAction(Action):
     def __init__(self, domain, key, data):
         super().__init__('transfer', domain, key, data)
 
+class DestroyTokenAcion(Action):
+    # domain: name of domain token belongs to
+    # key: name of token
+    def __init__(self, domain, key, data):
+        super().__init__('destroytoken', domain, key, data)
+
 
 class AddMetaAction(Action):
     # domain: domain, group of name of domain
@@ -131,6 +137,8 @@ def get_action_from_abi_json(action, abi_json, domain=None, key=None):
         return IssueTokenAction(abi_dict['domain'], _bin)
     elif action == 'transfer':
         return TransferAction(abi_dict['domain'], abi_dict['name'], _bin)
+    elif action == 'destroytoken':
+        return DestroyTokenAcion(abi_dict['domain'], abi_dict['name'], _bin)
     elif action == 'addmeta':
         return AddMetaAction(domain, key, _bin)
     elif action == 'newfungible':
@@ -203,6 +211,11 @@ class ActionGenerator:
         abi_json = base.TransferAbi(
             domain, name, to=[str(each) for each in to], memo=memo)
         return get_action_from_abi_json('transfer', abi_json.dumps())
+
+    def destroytoken(self, domain, name):
+        abi_json = base.DestroyTokenAbi(
+            domain, name)
+        return get_action_from_abi_json('destroytoken', abi_json.dumps())
 
     def newfungible(self, name, sym_name, sym, creator, total_supply, **kwargs):
         auth_A = base.AuthorizerWeight(base.AuthorizerRef('A', creator), 1)
