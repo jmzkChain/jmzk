@@ -113,7 +113,7 @@ history_plugin_impl::get_date_string_value(const mongocxx::cursor::iterator& it,
 
 fc::variant
 history_plugin_impl::transaction_to_variant(const packed_transaction& ptrx) {
-    auto resolver = [this] {
+    auto resolver = [this]() -> const evt::chain::contracts::abi_serializer& {
         return evt_abi_;
     };
 

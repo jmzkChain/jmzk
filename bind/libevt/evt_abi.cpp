@@ -148,7 +148,7 @@ evt_trx_json_to_digest(void* evt_abi, const char* json,  evt_chain_id_t* chain_i
     auto trx = transaction();
     try {
         auto var = fc::json::from_string(json);
-        abi.from_variant(var, trx, [&abi](){ return abi; });
+        abi.from_variant(var, trx, [&abi]() -> const abi_serializer& { return abi; });
         auto d = trx.sig_digest(chain_id_type(idhash));
         auto data = get_evt_data(d);
         *digest = data;

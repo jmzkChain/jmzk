@@ -955,7 +955,7 @@ struct set_suspend_subcommands {
             auto varsuspend = call(get_suspend_func, fc::mutable_variant_object("name", (proposal_name)name));
             auto suspend = suspend_def();
             auto evt_abi = abi_serializer(evt_contract_abi());
-            abi_serializer::from_variant(varsuspend, suspend, [&]{ return evt_abi; });
+            abi_serializer::from_variant(varsuspend, suspend, [&]() -> const evt::chain::contracts::abi_serializer& { return evt_abi; });
 
             auto public_keys = call(wallet_url, wallet_public_keys);
             auto get_arg     = fc::mutable_variant_object("name", (proposal_name)name)("available_keys", public_keys);
