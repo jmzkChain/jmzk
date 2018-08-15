@@ -225,10 +225,11 @@ class Test(unittest.TestCase):
 
 @click.command()
 @click.option('--url', '-u', default='http://127.0.0.1:8888')
+@click.option('--evtd-path', '-m', default='/home/laighno/Documents/evt/programs/evtd/evtd')
 @click.option('--public-key', '-p', type=str, prompt='Public Key')
 @click.option('--private-key', '-k', type=str, prompt='Private Key')
-def main(url, public_key, private_key):
-    p = subprocess.Popen(["/home/laighno/Documents/evt/programs/evtd/evtd", "-e", "--http-validate-host=false", "--charge-free-mode", "--plugin=evt::mongo_db_plugin", "--plugin=evt::history_plugin", "--plugin=evt::history_api_plugin", "--plugin=evt::chain_api_plugin", "--plugin=evt::evt_api_plugin", "--producer-name=evt", "--delete-all-blocks", "-d", "/tmp/evt", "-m", "mongodb://127.0.0.1:27017"], stdout=None, shell=False)
+def main(url, evtd_path, public_key, private_key):
+    p = subprocess.Popen([evtd_path, "-e", "--http-validate-host=false", "--charge-free-mode", "--plugin=evt::mongo_db_plugin", "--plugin=evt::history_plugin", "--plugin=evt::history_api_plugin", "--plugin=evt::chain_api_plugin", "--plugin=evt::evt_api_plugin", "--producer-name=evt", "--delete-all-blocks", "-d", "/tmp/evt", "-m", 'mongodb://127.0.0.1:27017'], stdout=None, shell=False)
     time.sleep(3)
 
     global domain_name 
