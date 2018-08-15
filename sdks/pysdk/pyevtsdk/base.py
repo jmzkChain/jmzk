@@ -189,6 +189,11 @@ class TransferAbi(BaseType):
                          to=to,
                          memo=memo)
 
+class DestroyTokenAbi(BaseType):
+    def __init__(self, domain, name):
+        super().__init__(domain=domain,
+                         name=name)
+
 
 class NewGroupAbi(BaseType):
     def __init__(self, name, group):

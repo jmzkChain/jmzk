@@ -80,7 +80,9 @@ def pre_action():
         'newdomain', name=domain_name, creator=user.pub_key)
 
     issuetoken = AG.new_action('issuetoken', domain=domain_name, names=[
-                               token_name], owner=[base.Address().set_public_key(user.pub_key)])
+                               token1_name, token2_name], owner=[base.Address().set_public_key(user.pub_key)])
+
+    destroytoken = AG.new_action('destroytoken', domain=domain_name, name=token2_name)
 
     group_json = json.loads(group_json_raw)
     group_json['name'] = group_name
@@ -105,6 +107,11 @@ def pre_action():
     trx.add_action(issuetoken)
     trx.add_sign(user.priv_key)
     api.push_transaction(trx.dumps())
+
+    trx = TG.new_trx()
+    trx.add_action(destroytoken)
+    trx.add_sign(user.priv_key)
+    api.push_transaction(trx.dumps())
     time.sleep(2)
 
 class Test(unittest.TestCase):
@@ -124,7 +131,8 @@ class Test(unittest.TestCase):
             'keys': [user.pub_key.to_string()]
         }
         resp = api.get_tokens(json.dumps(req)).text
-        self.assertTrue(token_name in resp)
+        self.assertTrue(token1_name in resp)
+        self.assertFalse(token2_name in resp)
 
     def test_get_groups(self):
         req = {
@@ -140,7 +148,6 @@ class Test(unittest.TestCase):
         }
 
         resp = api.get_fungibles(json.dumps(req)).text
-        print(resp)
         self.assertTrue(str(sym_id) in resp)
 
     def test_get_actions(self):
@@ -156,7 +163,8 @@ class Test(unittest.TestCase):
         req["domain"] = domain_name
 
         resp = api.get_actions(json.dumps(req)).text
-        self.assertTrue(token_name in resp)
+        self.assertTrue(token1_name in resp)
+
 
     def test_get_fungible_actions(self):
         symbol = base.Symbol(
@@ -218,7 +226,7 @@ class Test(unittest.TestCase):
         
         resp = api.get_transactions(json.dumps(req)).text
         self.assertTrue(domain_name in resp)
-        self.assertTrue(token_name in resp)
+        self.assertTrue(token1_name in resp)
         self.assertTrue(group_name in resp)
         self.assertTrue(str(sym_id) in resp)
         
@@ -234,8 +242,9 @@ def main(url, evtd_path, public_key, private_key):
 
     global domain_name 
     domain_name = fake_name()
-    global token_name
-    token_name = fake_name('token')
+    global token1_name, token2_name
+    token1_name = fake_name('token')
+    token2_name = fake_name('token')
     global group_name
     group_name = fake_name('group')
     global sym_name, sym_id, sym_prec
