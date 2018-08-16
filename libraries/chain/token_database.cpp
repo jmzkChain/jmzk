@@ -141,6 +141,11 @@ get_fungible_key(const symbol_id_type& sym_id) {
     return db_key(N128(.fungible), (uint128_t)sym_id);
 }
 
+inline db_key
+get_prodvote_key(const conf_key& key) {
+    return db_key(N128(.prodvote), key);
+}
+
 inline db_asset_key
 get_asset_key(const address& addr, const asset& asset) {
     return db_asset_key(addr, asset.sym());
@@ -520,6 +525,20 @@ token_database::exists_asset(const address& addr, const symbol symbol) const {
 
     return existed;
 }
+
+// int
+// update_prodvote(const conf_key& key, const public_key_type& pkey, int64_t value) {
+//     using namespace __internal;
+//     auto key = get_prodvote_key(key);
+
+//     auto value  = std::string();
+//     auto status = db_->Get(read_opts_, key.as_slice(), &value);
+//     if(!status.ok()) {
+//         if(status != rocksdb::Status::kNotFound) {
+//             FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+//         }
+//     }
+// }
 
 int
 token_database::read_domain(const domain_name& name, domain_def& domain) const {
