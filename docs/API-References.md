@@ -775,7 +775,7 @@ Request:
 ```
 {
   "sym_id": 338422621,
-  "address": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+  "addr": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
   "skip": 0
   "take": 10
 }
