@@ -202,10 +202,12 @@ Here is a brief reference of common used `typeKey` for convenient.
 | `42` | | (uint32) unix timestamp in seconds |
 | `43` | | (uint32) max allowed amount for everiPay |
 | `44` | | (uint32) symbol id to be paid in everiPay (for example: "1" for EVT) |
+| `45` | | (uint32) symbol id to be received in PayeeCode (for example: "1" for EVT) |
 | `91` | | (string) domain name to be validated in everiPass |
 | `92` | | (string) token name to be validated in everiPass |
 | `94` | | (string) max allowed amount for payment (optionl, string format remained only for amount >= 2 ^ 32) |
 | `95` | | (string) public key (address) for receiving points or coins |
+| `96` | | (string) count to receive in PayeeCode, should use decimal with proper precision |
 | `156` | | (uuid) link id(128-bit) |
 
 ### base42signaturesList
