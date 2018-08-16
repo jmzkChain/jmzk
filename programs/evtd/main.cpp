@@ -123,6 +123,7 @@ enum return_codes {
 int
 main(int argc, char** argv) {
     try {
+        app().init();
         app().set_version(evt::evtd::config::version);
 
         auto root = fc::app_path();

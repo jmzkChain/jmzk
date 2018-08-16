@@ -458,10 +458,7 @@ new_chain_banner(const evt::chain::controller& db) {
     return;
 }
 
-producer_plugin::producer_plugin()
-    : my(new producer_plugin_impl(app().get_io_service())) {
-    my->_self = this;
-}
+producer_plugin::producer_plugin() {}
 
 producer_plugin::~producer_plugin() {}
 
@@ -561,6 +558,9 @@ make_keosd_signature_provider(const std::shared_ptr<producer_plugin_impl>& impl,
 
 void
 producer_plugin::plugin_initialize(const boost::program_options::variables_map& options) {
+    my = std::make_shared<producer_plugin_impl>(app().get_io_service());
+    my->_self = this;
+
     try {
         my->_options = &options;
         LOAD_VALUE_SET(options, "producer-name", my->_producers, types::account_name)

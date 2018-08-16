@@ -109,9 +109,7 @@ public:
     fc::optional<scoped_connection> accepted_confirmation_connection;
 };
 
-chain_plugin::chain_plugin()
-    : my(new chain_plugin_impl()) {
-}
+chain_plugin::chain_plugin() {}
 
 chain_plugin::~chain_plugin() {}
 
@@ -172,6 +170,8 @@ calculate_genesis_timestamp(string tstr) {
 void
 chain_plugin::plugin_initialize(const variables_map& options) {
     ilog("initializing chain plugin");
+
+    my = std::make_unique<chain_plugin_impl>();
 
     try {
         genesis_state gs;  // Check if EVT_ROOT_KEY is bad
