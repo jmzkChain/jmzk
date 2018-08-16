@@ -832,7 +832,8 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_addsuspend_test", "[tokendb]") {
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_updatesuspend_test", "[tokendb]") {
     CHECK(true);
-
+    tokendb.add_savepoint(get_time());
+    tokendb.rollback_to_latest_savepoint();
     auto dl = update_suspend_data();
 
     auto re = tokendb.update_suspend(dl);
@@ -851,6 +852,56 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_updatesuspend_test", "[tokendb]") {
     CHECK("newdomain" == dl_.trx.actions[0].name);
     CHECK("test1530681222" == dl_.trx.actions[0].domain);
     CHECK(".create" == dl_.trx.actions[0].key);
+}
+
+TEST_CASE_METHOD(tokendb_test, "tokendb_updateprodvote_test", "[tokendb]") {
+    CHECK(true);
+
+    tokendb.add_savepoint(get_time());
+    
+    conf_key        key = "voter";
+    public_key_type pkey1((std::string) "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3");
+    public_key_type pkey2((std::string) "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX");
+
+    std::map<public_key_type, int> vote_sum;
+    tokendb.read_prodvotes_no_throw(key, [&](const public_key_type& pkey, int votes) { vote_sum[pkey] += votes; return true; });
+    CHECK(vote_sum[pkey1] == 0);
+    CHECK(vote_sum[pkey2] == 0);
+    vote_sum.clear();
+
+    auto re = tokendb.update_prodvote(key, pkey1, 1);
+    REQUIRE(re == 0);
+
+    tokendb.read_prodvotes_no_throw(key, [&](const public_key_type& pkey, int votes) { vote_sum[pkey] += votes; return true; });
+    CHECK(vote_sum[pkey1] == 1);
+    CHECK(vote_sum[pkey2] == 0);
+    vote_sum.clear();
+
+    tokendb.rollback_to_latest_savepoint();
+
+    tokendb.add_savepoint(get_time());
+
+    re = tokendb.update_prodvote(key, pkey2, 2);
+    REQUIRE(re == 0);
+
+    tokendb.read_prodvotes_no_throw(key, [&](const public_key_type& pkey, int votes) { vote_sum[pkey] += votes; return true; });
+    CHECK(vote_sum[pkey1] == 0);
+    CHECK(vote_sum[pkey2] == 2);
+    vote_sum.clear();
+}
+
+TEST_CASE_METHOD(tokendb_test, "tokendb_prodvote_presist_test", "[tokendb]") {
+    tokendb.rollback_to_latest_savepoint();
+
+    conf_key        key = "voter";
+    public_key_type pkey1((std::string) "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3");
+    public_key_type pkey2((std::string) "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX");
+    std::map<public_key_type, int> vote_sum;
+
+    tokendb.read_prodvotes_no_throw(key, [&](const public_key_type& pkey, int votes) { vote_sum[pkey] += votes; return true; });
+    CHECK(vote_sum[pkey1] == 0);
+    CHECK(vote_sum[pkey2] == 0);
+    vote_sum.clear();
 }
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_squash", "[tokendb]") {
