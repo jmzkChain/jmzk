@@ -358,7 +358,6 @@ EVT_ACTION_IMPL(newfungible) {
         EVT_ASSERT(nfact.sym.id() > 0, fungible_symbol_exception, "Fungible symbol id should be larger than zero");
         EVT_ASSERT(nfact.total_supply.sym() == nfact.sym, fungible_symbol_exception, "Symbols in `total_supply` and `sym` are not match.");
         EVT_ASSERT(nfact.total_supply.amount() > 0, fungible_supply_exception, "Supply cannot be zero");
-        EVT_ASSERT(nfact.total_supply.amount() <= ASSET_MAX_SHARE_SUPPLY, fungible_supply_exception, "Supply exceeds the maximum allowed.");
 
         auto& tokendb = context.token_db;
 
