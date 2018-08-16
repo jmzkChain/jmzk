@@ -179,7 +179,7 @@ public:
     int read_asset_no_throw(const address& addr, const symbol, asset&) const;
     int read_all_assets(const address& addr, const read_fungible_func&) const;
 
-    int read_prodvotes(const conf_key& key, const read_prodvote_func&) const;
+    int read_prodvotes_no_throw(const conf_key& key, const read_prodvote_func&) const;
 
     int update_domain(const domain_def&);
     int update_group(const group_def&);
