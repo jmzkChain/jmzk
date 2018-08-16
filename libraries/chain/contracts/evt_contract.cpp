@@ -992,4 +992,8 @@ EVT_ACTION_IMPL(everipay) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
+EVT_ACTION_IMPL(prodvote) {
+
+}
+
 }}} // namespace evt::chain::contracts

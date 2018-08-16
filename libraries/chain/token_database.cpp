@@ -16,6 +16,8 @@
 #include <rocksdb/table.h>
 #include <rocksdb/sst_file_manager.h>
 
+#include <boost/container/flat_map.hpp>
+
 #include <fc/filesystem.hpp>
 #include <fc/io/datastream.hpp>
 #include <fc/io/raw.hpp>
@@ -141,6 +143,11 @@ get_fungible_key(const symbol_id_type& sym_id) {
     return db_key(N128(.fungible), (uint128_t)sym_id);
 }
 
+inline db_key
+get_prodvote_key(const conf_key& key) {
+    return db_key(N128(.prodvote), key);
+}
+
 inline db_asset_key
 get_asset_key(const address& addr, const asset& asset) {
     return db_asset_key(addr, asset.sym());
@@ -199,7 +206,9 @@ enum rt_action_type {
     kNewFungible = 9,
     kUpdateFungible = 10,
 
-    kUpdateAsset = 11
+    kUpdateAsset = 11,
+
+    kUpdateProdVote = 13
 };
 
 enum pd_action_type {
@@ -237,6 +246,10 @@ struct sp_issuetoken {
     domain_name domain;
     size_t      size;
     token_name  names[0];
+};
+
+struct sp_prodvote {
+    conf_key key;
 };
 
 }  // namespace __internal
@@ -522,6 +535,39 @@ token_database::exists_asset(const address& addr, const symbol symbol) const {
 }
 
 int
+token_database::update_prodvote(const conf_key& key, const public_key_type& pkey, int64_t value) {
+    using namespace __internal;
+    using boost::container::flat_map;
+
+    auto dbkey  = get_prodvote_key(key);
+    auto v      = std::string();
+    auto map    = flat_map<public_key_type, int64_t>();
+    auto status = db_->Get(read_opts_, dbkey.as_slice(), &v);
+    if(!status.ok()) {
+        if(status.code() != rocksdb::Status::kNotFound) {
+            FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+        }
+        map.emplace(pkey, value);
+    }
+    else {
+        map = read_value<decltype(map)>(v);
+        map.emplace(pkey, value);
+    }
+    v = get_value(map);
+    
+    status = db_->Put(write_opts_, dbkey.as_slice(), v);
+    if(!status.ok()) {
+        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+    }
+    if(should_record()) {
+        auto act  = (sp_prodvote*)malloc(sizeof(sp_prodvote));
+        act->key = key;
+        record(kUpdateProdVote, act);
+    }
+    return 0;
+}
+
+int
 token_database::read_domain(const domain_name& name, domain_def& domain) const {
     using namespace __internal;
     auto value  = std::string();
@@ -647,6 +693,28 @@ token_database::read_all_assets(const address& addr, const read_fungible_func& f
         it->Next();
     }
     delete it;
+    return 0;
+}
+
+int
+token_database::read_prodvotes_no_throw(const conf_key& key, const read_prodvote_func& func) const {
+    using namespace __internal;
+    using boost::container::flat_map;
+
+    auto value  = std::string();
+    auto dbkey  = get_prodvote_key(key);
+    auto status = db_->Get(read_opts_, dbkey.as_slice(), &value);
+    if(!status.ok() && status.code() != rocksdb::Status::kNotFound) {
+        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+    }
+    if(value.empty()) {
+        return 0;
+    }
+
+    auto map = read_value<flat_map<public_key_type, int64_t>>(value);
+    for(auto& it : map) {
+        func(it.first, it.second);
+    }
     return 0;
 }
 
@@ -897,6 +965,11 @@ get_sp_keyop(const token_database::rt_action& it, int& op) {
         op = kRemoveOrRevert;
         auto act = GETPOINTER(sp_asset, it.data);
         return std::string(act->key, sizeof(act->key));
+    }
+    case kUpdateProdVote: {
+        op = kRemoveOrRevert;
+        auto act = GETPOINTER(sp_prodvote, it.data);
+        return get_prodvote_key(act->key).as_string();
     }
     default: {
         FC_ASSERT(false);
