@@ -1188,6 +1188,6 @@ TEST_CASE("prodvote_abi_test", "[abis]") {
     CHECK(pv.key == (std::string)"key");
     CHECK(pv.value == 12345);
 
-    // verify_byte_round_trip_conversion(abis, "prodvote", var);
-    // verify_type_round_trip_conversion<prodvote>(abis, "prodvote", var);
+    verify_byte_round_trip_conversion(abis, "prodvote", var);
+    verify_type_round_trip_conversion<prodvote>(abis, "prodvote", var);
 }

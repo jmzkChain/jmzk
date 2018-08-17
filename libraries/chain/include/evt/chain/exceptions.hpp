@@ -194,6 +194,9 @@ FC_DECLARE_DERIVED_EXCEPTION( evt_link_expiration_exception,       action_except
 FC_DECLARE_DERIVED_EXCEPTION( evt_link_existed_exception,          action_exception, 3040043, "EVT-Link is not existed.");
 FC_DECLARE_DERIVED_EXCEPTION( everipass_exception,                 action_exception, 3040044, "everiPass failed.");
 FC_DECLARE_DERIVED_EXCEPTION( everipay_exception,                  action_exception, 3040045, "everiPay failed.");
+FC_DECLARE_DERIVED_EXCEPTION( prodvote_key_exception,              action_exception, 3040046, "Unknown prodvote conf key.");
+FC_DECLARE_DERIVED_EXCEPTION( prodvote_value_exception,            action_exception, 3040047, "Invalid prodvote conf value.");
+FC_DECLARE_DERIVED_EXCEPTION( prodvote_producer_exception,         action_exception, 3040048, "Invalid producer.");
 
 FC_DECLARE_DERIVED_EXCEPTION( name_type_exception,               chain_type_exception, 3120001, "Invalid name" );
 FC_DECLARE_DERIVED_EXCEPTION( public_key_type_exception,         chain_type_exception, 3120002, "Invalid public key" );

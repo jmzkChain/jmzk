@@ -1206,6 +1206,14 @@ controller::set_proposed_producers(vector<producer_key> producers) {
     return version;
 }
 
+void
+controller::set_chain_config(const chain_config& config) {
+    const auto& gpo = get_global_properties();
+    my->db.modify(gpo, [&](auto& gp) {
+        gp.configuration = config;
+    });
+}
+
 const producer_schedule_type&
 controller::active_producers() const {
     if(!(my->pending))
