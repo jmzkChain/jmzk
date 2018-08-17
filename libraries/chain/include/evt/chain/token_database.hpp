@@ -66,7 +66,8 @@ public:
     // persistent action
     // stored in disk
     struct pd_action {
-        int         op;
+        uint16_t    op;
+        uint16_t    type;
         std::string key;
         std::string value;
     };

@@ -98,6 +98,7 @@ public:
         }
 
         s *= config_.global_charge_factor;
+        s /= 1000;
         return s;
     }
 
