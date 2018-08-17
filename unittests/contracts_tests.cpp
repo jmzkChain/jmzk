@@ -37,6 +37,7 @@ public:
         my_tester->block_signing_private_keys.insert(std::make_pair(cfg.genesis.initial_key, privkey));
 
         key_seeds.push_back(N(key));
+        key_seeds.push_back("evt");
         key_seeds.push_back(N(payer));
         key_seeds.push_back(N(poorer));
 
@@ -1413,6 +1414,51 @@ TEST_CASE_METHOD(contracts_test, "contract_addmeta_test", "[contracts]") {
     my_tester->push_action(N(addmeta), N128(gdomain), N128(.meta), var.get_object(), seeds, payer, 5'000'000);
     my_tester->push_action(N(addmeta), N128(.fungible), (name128)std::to_string(get_sym_id() + 1), var.get_object(), seeds, payer, 5'000'000);
     my_tester->push_action(N(addmeta), N128(gdomain), N128(t1), var.get_object(), seeds, payer, 5'000'000);
+
+    my_tester->produce_blocks();
+}
+
+TEST_CASE_METHOD(contracts_test, "contract_prodvote_test", "[contracts]") {
+    CHECK(true);
+    const char* test_data = R"=======(
+    {
+        "producer": "evt",
+        "key": "key",
+        "value": 123456789
+    }
+    )=======";
+
+    auto var    = fc::json::from_string(test_data);
+    auto pv   = var.as<prodvote>();
+    auto& tokendb = my_tester->control->token_db();
+
+    std::map<public_key_type, int> vote_sum;
+    tokendb.read_prodvotes_no_throw(pv.key, [&](const public_key_type& pkey, int votes) { vote_sum[pkey] += votes; return true; });
+    CHECK(vote_sum[tester::get_public_key(pv.producer)] == 0);
+
+    pv.key = N128(network-charge-factor);
+    to_variant(pv, var);
+
+    CHECK_THROWS_AS(my_tester->push_action(N(prodvote), N128(.prodvote), N128(network-charge-factor), var.get_object(), {N(payer)}, payer), unsatisfied_authorization);
+
+    pv.value = 1'000'000;
+    to_variant(pv, var);
+    CHECK_THROWS_AS(my_tester->push_action(N(prodvote), N128(.prodvote), N128(network-charge-factor), var.get_object(), key_seeds, payer), prodvote_value_exception);
+
+    pv.value = 0;
+    to_variant(pv, var);
+    CHECK_THROWS_AS(my_tester->push_action(N(prodvote), N128(.prodvote), N128(network-charge-factor), var.get_object(), key_seeds, payer), prodvote_value_exception);
+
+    pv.value = 1;
+    to_variant(pv, var);
+    my_tester->push_action(N(prodvote), N128(.prodvote), N128(network-charge-factor), var.get_object(), key_seeds, payer);
+
+    tokendb.read_prodvotes_no_throw(pv.key, [&](const public_key_type& pkey, int votes) { vote_sum[pkey] += votes; return true; });
+    CHECK(vote_sum[tester::get_public_key(pv.producer)] == 1);
+
+    pv.key = N128(network-fuck-factor);
+    to_variant(pv, var);
+    CHECK_THROWS_AS(my_tester->push_action(N(prodvote), N128(.prodvote), N128(network-fuck-factor), var.get_object(), key_seeds, payer), prodvote_key_exception);
 
     my_tester->produce_blocks();
 }
