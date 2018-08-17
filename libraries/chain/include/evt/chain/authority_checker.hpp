@@ -5,11 +5,13 @@
 #pragma once
 #include <functional>
 
+#include <evt/chain/controller.hpp>
 #include <evt/chain/config.hpp>
 #include <evt/chain/contracts/types.hpp>
 #include <evt/chain/contracts/types_invoker.hpp>
 #include <evt/chain/token_database.hpp>
 #include <evt/chain/types.hpp>
+#include <evt/chain/producer_schedule.hpp>
 #include <evt/utilities/parallel_markers.hpp>
 
 #include <fc/scoped_exit.hpp>
@@ -38,6 +40,7 @@ struct check_authority {};
 */
 class authority_checker {
 private:
+    const controller&                control_;
     const flat_set<public_key_type>& signing_keys_;
     const token_database&            token_db_;
     const uint32_t                   max_recursion_depth_;
@@ -86,8 +89,9 @@ public:
     template<typename> friend struct __internal::check_authority;
 
 public:
-    authority_checker(const flat_set<public_key_type>& signing_keys, const token_database& token_db, uint32_t max_recursion_depth)
-        : signing_keys_(signing_keys)
+    authority_checker(const controller& control, const flat_set<public_key_type>& signing_keys, const token_database& token_db, uint32_t max_recursion_depth)
+        : control_(control)
+        , signing_keys_(signing_keys)
         , token_db_(token_db)
         , max_recursion_depth_(max_recursion_depth)
         , used_keys_(signing_keys.size(), false) {}
@@ -140,6 +144,18 @@ private:
         token_db_.read_suspend(proposal, suspend);
         cb(suspend);
     }
+
+    void
+    get_producer_key(const account_name& producer_name, std::function<void(const public_key_type&)>&& cb) {
+        auto& sche = control_.active_producers();
+        for(auto& p : sche.producers) {
+            if(p.producer_name == producer_name) {
+                cb(p.block_signing_key);
+                return;
+            }
+        }
+        return;
+    } 
 
 private:
     bool
@@ -538,6 +554,26 @@ struct check_authority<everipay> {
     invoke(const action&, authority_checker*) {
         // check authority when apply
         return true;
+    }
+};
+
+template<>
+struct check_authority<prodvote> {
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        try {
+            auto& pv = act.data_as<const prodvote&>();
+
+            bool result = false;
+            checker->get_producer_key(pv.producer, [&](auto& key) {
+                auto vistor = authority_checker::weight_tally_visitor(checker);
+                if(vistor(key, 1) == 1) {
+                    result = true;
+                }
+            });
+            return result;
+        }
+        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `prodvote` type.");
     }
 };
 
