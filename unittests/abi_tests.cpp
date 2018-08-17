@@ -1170,3 +1170,24 @@ TEST_CASE("everipay_abi_test", "[abis]") {
     INFO(*pkeys.cbegin());
     CHECK(pkeys.find(public_key_type(std::string("EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"))) != pkeys.end());
 }
+
+TEST_CASE("prodvote_abi_test", "[abis]") {
+    auto&       abis      = get_evt_abi();
+    const char* test_data = R"=======(
+    {
+        "producer": "producer",
+        "key": "key",
+        "value": 12345
+    }
+    )=======";
+
+    auto var = fc::json::from_string(test_data);
+    auto pv  = var.as<prodvote>();
+
+    CHECK(pv.producer == (std::string)"producer");
+    CHECK(pv.key == (std::string)"key");
+    CHECK(pv.value == 12345);
+
+    // verify_byte_round_trip_conversion(abis, "prodvote", var);
+    // verify_type_round_trip_conversion<prodvote>(abis, "prodvote", var);
+}
