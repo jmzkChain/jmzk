@@ -42,6 +42,7 @@ using group_def       = group;
 using balance_type    = evt::chain::asset;
 using address_type    = evt::chain::address;
 using address_list    = std::vector<address_type>;
+using conf_key        = evt::chain::conf_key;
 
 struct token_def {
     token_def() = default;
@@ -290,6 +291,14 @@ struct everipay {
     EVT_ACTION(everipay);
 };
 
+struct prodvote {
+    account_name producer;
+    conf_key     key;
+    int64_t      value;
+
+    EVT_ACTION(prodvote);
+};
+
 }}}  // namespace evt::chain::contracts
 
 FC_REFLECT(evt::chain::contracts::token_def, (domain)(name)(owner)(metas));
@@ -321,3 +330,4 @@ FC_REFLECT(evt::chain::contracts::execsuspend, (name)(executor));
 FC_REFLECT(evt::chain::contracts::paycharge, (payer)(charge));
 FC_REFLECT(evt::chain::contracts::everipass, (link));
 FC_REFLECT(evt::chain::contracts::everipay, (link)(payee)(number));
+FC_REFLECT(evt::chain::contracts::prodvote, (producer)(key)(value));

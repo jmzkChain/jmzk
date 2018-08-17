@@ -186,13 +186,17 @@ FC_DECLARE_DERIVED_EXCEPTION( suspend_invalid_action_exception,    action_except
 FC_DECLARE_DERIVED_EXCEPTION( name_reserved_exception,             action_exception, 3040035, "Name is reserved." );
 FC_DECLARE_DERIVED_EXCEPTION( evt_link_exception,                  action_exception, 3040036, "EVT-Link is not valid." );
 FC_DECLARE_DERIVED_EXCEPTION( evt_link_no_key_exception,           action_exception, 3040037, "Specific segment key is not in this evt-link." );
-FC_DECLARE_DERIVED_EXCEPTION( evt_link_version_exception,          action_exception, 3040038, "EVT-Link version is not valid");
-FC_DECLARE_DERIVED_EXCEPTION( evt_link_id_exception,               action_exception, 3040039, "EVT-Link id is not valid");
-FC_DECLARE_DERIVED_EXCEPTION( evt_link_dupe_exception,             action_exception, 3040040, "Duplicate EVT-Link");
-FC_DECLARE_DERIVED_EXCEPTION( evt_link_type_exception,             action_exception, 3040041, "Invalid EVT-Link type");
-FC_DECLARE_DERIVED_EXCEPTION( evt_link_expiration_exception,       action_exception, 3040042, "EVT-Link is expired");
-FC_DECLARE_DERIVED_EXCEPTION( everipass_exception,                 action_exception, 3040043, "everiPass failed");
-FC_DECLARE_DERIVED_EXCEPTION( everipay_exception,                  action_exception, 3040044, "everiPay failed");
+FC_DECLARE_DERIVED_EXCEPTION( evt_link_version_exception,          action_exception, 3040038, "EVT-Link version is not valid.");
+FC_DECLARE_DERIVED_EXCEPTION( evt_link_id_exception,               action_exception, 3040039, "EVT-Link id is not valid.");
+FC_DECLARE_DERIVED_EXCEPTION( evt_link_dupe_exception,             action_exception, 3040040, "Duplicate EVT-Link.");
+FC_DECLARE_DERIVED_EXCEPTION( evt_link_type_exception,             action_exception, 3040041, "Invalid EVT-Link type.");
+FC_DECLARE_DERIVED_EXCEPTION( evt_link_expiration_exception,       action_exception, 3040042, "EVT-Link is expired.");
+FC_DECLARE_DERIVED_EXCEPTION( evt_link_existed_exception,          action_exception, 3040043, "EVT-Link is not existed.");
+FC_DECLARE_DERIVED_EXCEPTION( everipass_exception,                 action_exception, 3040044, "everiPass failed.");
+FC_DECLARE_DERIVED_EXCEPTION( everipay_exception,                  action_exception, 3040045, "everiPay failed.");
+FC_DECLARE_DERIVED_EXCEPTION( prodvote_key_exception,              action_exception, 3040046, "Unknown prodvote conf key.");
+FC_DECLARE_DERIVED_EXCEPTION( prodvote_value_exception,            action_exception, 3040047, "Invalid prodvote conf value.");
+FC_DECLARE_DERIVED_EXCEPTION( prodvote_producer_exception,         action_exception, 3040048, "Invalid producer.");
 
 FC_DECLARE_DERIVED_EXCEPTION( name_type_exception,               chain_type_exception, 3120001, "Invalid name" );
 FC_DECLARE_DERIVED_EXCEPTION( public_key_type_exception,         chain_type_exception, 3120002, "Invalid public key" );
@@ -262,6 +266,7 @@ FC_DECLARE_DERIVED_EXCEPTION( tokendb_seq_not_valid,             tokendb_excepti
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_db_action_exception,       tokendb_exception, 3150016, "Unknown db action type." );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_dirty_flag_exception,      tokendb_exception, 3150017, "Checkspoints log file is in dirty." );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_squash_exception,          tokendb_exception, 3150018, "Cannot perform squash operation now" );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_prodvote_not_found,        tokendb_exception, 3150019, "Not found specific producer vote" );
 
 FC_DECLARE_DERIVED_EXCEPTION( unknown_block_exception,           misc_exception, 3100002, "unknown block" );
 FC_DECLARE_DERIVED_EXCEPTION( unknown_transaction_exception,     misc_exception, 3100003, "unknown transaction" );

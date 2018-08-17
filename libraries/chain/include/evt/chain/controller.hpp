@@ -149,6 +149,7 @@ public:
     bool is_known_unexpired_transaction(const transaction_id_type& id) const;
 
     int64_t set_proposed_producers(vector<producer_key> producers);
+    void    set_chain_config(const chain_config&);
 
     bool skip_auth_check() const;
     bool loadtest_mode() const;
@@ -177,7 +178,6 @@ public:
     template <typename T>
     fc::variant
     to_variant_with_abi(const T& obj) {
-        // TODO: Remove account parameter
         fc::variant pretty_output;
         abi_serializer::to_variant(obj, pretty_output, [this]() -> const abi_serializer& { return get_abi_serializer(); });
         return pretty_output;

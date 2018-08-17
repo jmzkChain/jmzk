@@ -358,7 +358,6 @@ EVT_ACTION_IMPL(newfungible) {
         EVT_ASSERT(nfact.sym.id() > 0, fungible_symbol_exception, "Fungible symbol id should be larger than zero");
         EVT_ASSERT(nfact.total_supply.sym() == nfact.sym, fungible_symbol_exception, "Symbols in `total_supply` and `sym` are not match.");
         EVT_ASSERT(nfact.total_supply.amount() > 0, fungible_supply_exception, "Supply cannot be zero");
-        EVT_ASSERT(nfact.total_supply.amount() <= ASSET_MAX_SHARE_SUPPLY, fungible_supply_exception, "Supply exceeds the maximum allowed.");
 
         auto& tokendb = context.token_db;
 
@@ -988,6 +987,96 @@ EVT_ACTION_IMPL(everipay) {
 
         tokendb.update_asset(epact.payee, tacc);
         tokendb.update_asset(payer, facc);
+    }
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+}
+
+EVT_ACTION_IMPL(prodvote) {
+    auto pvact = context.act.data_as<const prodvote&>();
+    try {
+        EVT_ASSERT(context.has_authorized(N128(.prodvote), pvact.key), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(pvact.value > 0 && pvact.value < 1'000'000, prodvote_value_exception, "Invalid prodvote value: ${v}", ("v",pvact.value));
+
+        auto  conf    = context.control.get_global_properties().configuration;
+        auto& sche    = context.control.active_producers();
+        auto& tokendb = context.token_db;
+
+        std::function<void(int64_t)> set_func;
+        switch(pvact.key.value) {
+        case N128(network-charge-factor): {
+            set_func = [&](int64_t v) {
+                conf.base_network_charge_factor = v;
+            };
+            break;
+        }
+        case N128(storage-charge-factor): {
+            set_func = [&](int64_t v) {
+                conf.base_storage_charge_factor = v;
+            };
+            break;
+        }
+        case N128(cpu-charge-factor): {
+            set_func = [&](int64_t v) {
+                conf.base_cpu_charge_factor = v;
+            };
+            break;
+        }
+        case N128(global-charge-factor): {
+            set_func = [&](int64_t v) {
+                conf.global_charge_factor = v;
+            };
+            break;
+        }
+        default: {
+            EVT_THROW(prodvote_key_exception, "Configuration key: ${k} is not valid", ("k",pvact.key));
+        }
+        } // switch
+
+        auto pkey = sche.get_producer_key(pvact.producer);
+        EVT_ASSERT(pkey.valid(), prodvote_producer_exception, "${p} is not a valid producer", ("p",pvact.producer));
+
+        tokendb.update_prodvote(pvact.key, *pkey, pvact.value);
+
+        auto is_prod = [&](auto& pk) {
+            for(auto& p : sche.producers) {
+                if(p.block_signing_key == pk) {
+                    return true;
+                }
+            }
+            return false;
+        };
+
+        auto values = std::vector<int64_t>();
+        tokendb.read_prodvotes_no_throw(pvact.key, [&](const auto& pk, auto v) {
+            if(is_prod(pk)) {
+                values.emplace_back(v);
+            }
+            return true;
+        });
+
+        if(values.size() >= ::ceil(2.0 * sche.producers.size() / 3.0)) {
+            int64_t nv = 0;
+
+            // find median
+            if(values.size() % 2 == 0) {
+                auto it1 = values.begin() + values.size() / 2 - 1;
+                auto it2 = values.begin() + values.size() / 2;
+
+                std::nth_element(values.begin(), it1 , values.end());
+                std::nth_element(values.begin(), it2 , values.end());
+
+                nv = ::floor((*it1 + *it2) / 2);
+            }
+            else {
+                auto it = values.begin() + values.size() / 2;
+                std::nth_element(values.begin(), it , values.end());
+
+                nv = *it;
+            }
+
+            set_func(nv);
+            context.control.set_chain_config(conf);
+        }
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }

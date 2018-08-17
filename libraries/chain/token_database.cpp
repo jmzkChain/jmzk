@@ -16,6 +16,8 @@
 #include <rocksdb/table.h>
 #include <rocksdb/sst_file_manager.h>
 
+#include <boost/container/flat_map.hpp>
+
 #include <fc/filesystem.hpp>
 #include <fc/io/datastream.hpp>
 #include <fc/io/raw.hpp>
@@ -141,6 +143,11 @@ get_fungible_key(const symbol_id_type& sym_id) {
     return db_key(N128(.fungible), (uint128_t)sym_id);
 }
 
+inline db_key
+get_prodvote_key(const conf_key& key) {
+    return db_key(N128(.prodvote), key);
+}
+
 inline db_asset_key
 get_asset_key(const address& addr, const asset& asset) {
     return db_asset_key(addr, asset.sym());
@@ -199,7 +206,9 @@ enum rt_action_type {
     kNewFungible = 9,
     kUpdateFungible = 10,
 
-    kUpdateAsset = 11
+    kUpdateAsset = 11,
+
+    kUpdateProdVote = 13
 };
 
 enum pd_action_type {
@@ -237,6 +246,10 @@ struct sp_issuetoken {
     domain_name domain;
     size_t      size;
     token_name  names[0];
+};
+
+struct sp_prodvote {
+    conf_key key;
 };
 
 }  // namespace __internal
@@ -522,6 +535,39 @@ token_database::exists_asset(const address& addr, const symbol symbol) const {
 }
 
 int
+token_database::update_prodvote(const conf_key& key, const public_key_type& pkey, int64_t value) {
+    using namespace __internal;
+    using boost::container::flat_map;
+
+    auto dbkey  = get_prodvote_key(key);
+    auto v      = std::string();
+    auto map    = flat_map<public_key_type, int64_t>();
+    auto status = db_->Get(read_opts_, dbkey.as_slice(), &v);
+    if(!status.ok()) {
+        if(status.code() != rocksdb::Status::kNotFound) {
+            FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+        }
+        map.emplace(pkey, value);
+    }
+    else {
+        map = read_value<decltype(map)>(v);
+        map.emplace(pkey, value);
+    }
+    v = get_value(map);
+    
+    status = db_->Put(write_opts_, dbkey.as_slice(), v);
+    if(!status.ok()) {
+        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+    }
+    if(should_record()) {
+        auto act  = (sp_prodvote*)malloc(sizeof(sp_prodvote));
+        act->key = key;
+        record(kUpdateProdVote, act);
+    }
+    return 0;
+}
+
+int
 token_database::read_domain(const domain_name& name, domain_def& domain) const {
     using namespace __internal;
     auto value  = std::string();
@@ -647,6 +693,30 @@ token_database::read_all_assets(const address& addr, const read_fungible_func& f
         it->Next();
     }
     delete it;
+    return 0;
+}
+
+int
+token_database::read_prodvotes_no_throw(const conf_key& key, const read_prodvote_func& func) const {
+    using namespace __internal;
+    using boost::container::flat_map;
+
+    auto value  = std::string();
+    auto dbkey  = get_prodvote_key(key);
+    auto status = db_->Get(read_opts_, dbkey.as_slice(), &value);
+    if(!status.ok() && status.code() != rocksdb::Status::kNotFound) {
+        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+    }
+    if(value.empty()) {
+        return 0;
+    }
+
+    auto map = read_value<flat_map<public_key_type, int64_t>>(value);
+    for(auto& it : map) {
+        if(!func(it.first, it.second)) {
+            break;
+        }
+    }
     return 0;
 }
 
@@ -898,6 +968,11 @@ get_sp_keyop(const token_database::rt_action& it, int& op) {
         auto act = GETPOINTER(sp_asset, it.data);
         return std::string(act->key, sizeof(act->key));
     }
+    case kUpdateProdVote: {
+        op = kRemoveOrRevert;
+        auto act = GETPOINTER(sp_prodvote, it.data);
+        return get_prodvote_key(act->key).as_string();
+    }
     default: {
         FC_ASSERT(false);
     }
@@ -970,25 +1045,39 @@ token_database::rollback_rt_group(rt_group* rt) {
             break;
         }
         case kRemoveOrRevert: {
-            FC_ASSERT(it->f.type == kUpdateAsset);  // only updateasset will return kRemoveOrRevert now.
-
             // only update operation need to check if key is already processed
             if(key_set.find(key) != key_set.cend()) {
                 break;
             }
 
             auto old_value = std::string();
-            auto status    = db_->Get(snapshot_read_opts_, assets_handle_, key, &old_value);
+            if(it->f.type == kUpdateAsset) {
+                auto status = db_->Get(snapshot_read_opts_, assets_handle_, key, &old_value);
 
-            // key may not existed in latest snapshot, remove it
-            if(!status.ok()) {
-                if(status.code() != rocksdb::Status::kNotFound) {
-                    FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+                // key may not existed in latest snapshot, remove it
+                if(!status.ok()) {
+                    if(status.code() != rocksdb::Status::kNotFound) {
+                        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+                    }
+                    batch.Delete(assets_handle_, key);
                 }
-                batch.Delete(assets_handle_, key);
+                else {
+                    batch.Put(assets_handle_, key, old_value);
+                }
             }
             else {
-                batch.Put(assets_handle_, key, old_value);
+                auto status = db_->Get(snapshot_read_opts_, key, &old_value);
+
+                // key may not existed in latest snapshot, remove it
+                if(!status.ok()) {
+                    if(status.code() != rocksdb::Status::kNotFound) {
+                        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+                    }
+                    batch.Delete(key);
+                }
+                else {
+                    batch.Put(key, old_value);
+                }
             }
 
             // insert key into key set
@@ -1051,12 +1140,22 @@ token_database::rollback_pd_group(pd_group* pd) {
                 break;
             }
 
-            // update asset action
-            if(it->value.empty()) {
-                batch.Delete(assets_handle_, it->key);
+            if(it->type == kUpdateAsset) {
+                // update asset action
+                if(it->value.empty()) {
+                    batch.Delete(assets_handle_, it->key);
+                }
+                else {
+                    batch.Put(assets_handle_, it->key, it->value);
+                }
             }
             else {
-                batch.Put(assets_handle_, it->key, it->value);
+                if(it->value.empty()) {
+                    batch.Delete(it->key);
+                }
+                else {
+                    batch.Put(it->key, it->value);
+                }
             }
 
             key_set.emplace(it->key);
@@ -1167,6 +1266,7 @@ token_database::persist_savepoints() {
                         auto key   = get_token_key(itact->domain, itact->names[i]).as_string();
                         auto pdact = pd_action();
                         pdact.op   = kRemove;
+                        pdact.type = act.f.type;
                         pdact.key  = key;
 
                         pd.actions.emplace_back(std::move(pdact));
@@ -1181,8 +1281,9 @@ token_database::persist_savepoints() {
                 int  op    = 0;
                 auto key   = get_sp_keyop(act, op);
 
-                pdact.op  = op;
-                pdact.key = key;
+                pdact.op   = op;
+                pdact.type = act.f.type;
+                pdact.key  = key;
 
                 switch(op) {
                 case kRevert: {
@@ -1206,13 +1307,18 @@ token_database::persist_savepoints() {
                     break;
                 }
                 case kRemoveOrRevert: {
-                    FC_ASSERT(act.f.type == kUpdateAsset);
-
                     if(key_set.find(key) != key_set.cend()) {
                         break;
                     }
 
-                    auto status = db_->Get(snapshot_read_opts_, assets_handle_, key, &pdact.value);
+                    rocksdb::Status status;
+                    if(act.f.type == kUpdateAsset) {
+                        status = db_->Get(snapshot_read_opts_, assets_handle_, key, &pdact.value);
+                    }
+                    else {
+                        status = db_->Get(snapshot_read_opts_, key, &pdact.value);
+                    }
+                    
                     // key may not existed in latest snapshot
                     if(!status.ok() && status.code() != rocksdb::Status::kNotFound) {
                         FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
@@ -1287,5 +1393,5 @@ token_database::load_savepoints() {
 }}  // namespace evt::chain
 
 FC_REFLECT(evt::chain::__internal::pd_header, (dirty_flag));
-FC_REFLECT(evt::chain::token_database::pd_action, (op)(key)(value));
+FC_REFLECT(evt::chain::token_database::pd_action, (op)(type)(key)(value));
 FC_REFLECT(evt::chain::token_database::pd_group, (seq)(actions));

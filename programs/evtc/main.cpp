@@ -887,6 +887,7 @@ struct set_meta_subcommands {
             subcmd->add_option("meta-key", metakey, localized("Key of the metadata"))->required();
             subcmd->add_option("meta-value", metavalue, localized("Value of the metadata"))->required();
             subcmd->add_option("creator", creator, localized("Public key of the metadata creator"))->required();
+            add_standard_transaction_options(subcmd);
         };
 
         auto dmcmd = actionRoot->add_subcommand("domain", localized("Add metadata to one domain"));
@@ -998,7 +999,31 @@ struct set_suspend_subcommands {
             send_actions({act});
         });
     }
+};
 
+struct set_producer_subcommands {
+    string  producer;
+    string  confkey;
+    int64_t confvalue;
+
+    set_producer_subcommands(CLI::App* actionRoot) {
+        auto pvcmd = actionRoot->add_subcommand("prodvote", localized("Producer votes for chain configuration"));
+        pvcmd->add_option("name", producer, localized("Name of producer"))->required();
+        pvcmd->add_option("key", confkey, localized("Key of config value to vote"))->required();
+        pvcmd->add_option("value", confvalue, localized("Config value"))->required();
+
+        add_standard_transaction_options(pvcmd);
+
+        pvcmd->set_callback([this] {
+            auto pvact = prodvote();
+            pvact.producer = (account_name)producer;
+            pvact.key      = (conf_key)confkey;
+            pvact.value    = confvalue;
+
+            auto act = create_action(N128(.prodvote), (domain_key)pvact.key, pvact);
+            send_actions({act});
+        });
+    }
 };
 
 struct set_get_domain_subcommand {
@@ -1395,6 +1420,12 @@ main(int argc, char** argv) {
     suspend->require_subcommand();
 
     auto set_suspend = set_suspend_subcommands(suspend);
+
+    // producer
+    auto producer = app.add_subcommand("producer", localized("Votes for producers"));
+    producer->require_subcommand();
+
+    auto set_producer = set_producer_subcommands(producer);
 
     // Wallet subcommand
     auto wallet = app.add_subcommand("wallet", localized("Interact with local wallet"));
