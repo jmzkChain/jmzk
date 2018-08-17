@@ -853,6 +853,19 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_updatesuspend_test", "[tokendb]") {
     CHECK(".create" == dl_.trx.actions[0].key);
 }
 
+TEST_CASE_METHOD(tokendb_test, "tokendb_updateprodvote_test", "[tokendb]") {
+    CHECK(true);
+
+    conf_key key = "voter";
+    public_key_type pkey((std::string)"EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3");
+    auto re = tokendb.update_prodvote(key, pkey, 1);
+    REQUIRE(re == 0);
+
+    auto s = 0;
+    tokendb.read_prodvotes_no_throw(key, [&](const public_key_type&, int) { s++; return true; });
+    CHECK(s==1);
+}   
+
 TEST_CASE_METHOD(tokendb_test, "tokendb_squash", "[tokendb]") {
     CHECK(true);
 
