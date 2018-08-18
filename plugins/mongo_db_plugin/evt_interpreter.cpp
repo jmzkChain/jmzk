@@ -41,6 +41,7 @@ private:
     void process_updfungible(const updfungible& uf, write_context& write_ctx);
     void process_issuefungible(const issuefungible& ifact, write_context& write_ctx);
     void process_destroytoken(const destroytoken& dt, write_context& write_ctx);
+    void process_everipass(const everipass& ep, write_context& write_ctx);
 
 private:
     mongocxx::database db_;
@@ -387,6 +388,21 @@ interpreter_impl::process_updfungible(const updfungible& uf, write_context& writ
            << close_document;
 
     write_ctx.get_fungibles().append(update_one(find_fungible(id).view(), update.view()));
+}
+
+void interpreter_impl::process_everipass(const everipass& ep, write_context& write_ctx){
+    auto link = ep.link;
+    auto  flags = link.get_header();
+    auto& d = *link.get_segment(evt_link::domain).strv;
+    auto& t = *link.get_segment(evt_link::token).strv;
+
+    if(flags & evt_link::destroy) {
+        auto dt   = destroytoken();
+        dt.domain = d;
+        dt.name   = t;
+
+        process_destroytoken(dt, write_ctx);
+    }
 }
 
 namespace __internal {
