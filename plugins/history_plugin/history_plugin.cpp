@@ -308,9 +308,13 @@ history_plugin_impl::get_fungible_actions(const symbol_id_type        sym_id,
     if(addr.valid()) {
         auto saddr = (std::string)(*addr);
 
-        addr_match << "$or" << open_array << open_document << "data.address" << saddr << close_document
-                   << open_document << "data.from" << saddr << close_document
-                   << open_document << "data.to"   << saddr << close_document << close_array;
+        addr_match << "$or" << open_array
+                   << open_document << "data.address"   << saddr << close_document  // issue
+                   << open_document << "data.from"      << saddr << close_document  // transfer
+                   << open_document << "data.to"        << saddr << close_document  // transfer
+                   << open_document << "data.payee"     << saddr << close_document  // everiPay
+                   << open_document << "data.link.keys" << saddr << close_document  // everiPay
+                   << close_array;
         pipeline.match(addr_match.view());
     }
 
