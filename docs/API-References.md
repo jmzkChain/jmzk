@@ -1,6 +1,7 @@
-# EVT API References
 ![everiToken Logo](./logo.png)
 
+# EVT API References
+---
 ## GET /v1/chain/get_info
 Before interacting with everiToken, you need to get some chain information first. Call this API to get `chain_id`, `evt_abi_version` and many other properties of current chain state.
 

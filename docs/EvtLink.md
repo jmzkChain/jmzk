@@ -1,7 +1,7 @@
-# Documentation for EvtLink
-
 ![everiToken Logo](./logo.png)
 
+# Documentation for EvtLink
+---
 This documentation describes detail information about `everiPass` / `everiPay` / `Payee QR Code`. Visit our github for latest version: [click here](https://github.com/everitoken/evt/blob/master/docs/EvtLink.md).
 
 ## Contents
