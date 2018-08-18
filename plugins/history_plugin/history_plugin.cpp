@@ -297,7 +297,7 @@ history_plugin_impl::get_fungible_actions(const symbol_id_type        sym_id,
     match << "domain" << ".fungible" << "key" << std::to_string(sym_id);
 
     auto ns = bsoncxx::builder::stream::array();
-    ns << "issuefungible" << "transferft" << "everipay";
+    ns << "issuefungible" << "transferft" << "everipay" << "paycharge";
 
     match << "name" << open_document << "$in" << ns << close_document;
 
@@ -314,6 +314,7 @@ history_plugin_impl::get_fungible_actions(const symbol_id_type        sym_id,
                    << open_document << "data.to"        << saddr << close_document  // transfer
                    << open_document << "data.payee"     << saddr << close_document  // everiPay
                    << open_document << "data.link.keys" << saddr << close_document  // everiPay
+                   << open_document << "data.payer"     << saddr << close_document  // paycharge
                    << close_array;
         pipeline.match(addr_match.view());
     }
