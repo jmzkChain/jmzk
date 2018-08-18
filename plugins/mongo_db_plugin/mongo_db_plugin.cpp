@@ -6,6 +6,7 @@
 #include <evt/mongo_db_plugin/evt_interpreter.hpp>
 #include <evt/mongo_db_plugin/write_context.hpp>
 
+#include <functional>
 #include <queue>
 #include <tuple>
 
@@ -80,7 +81,10 @@ public:
     void process_transaction(const transaction_trace&, write_context& write_ctx);
     void _process_transaction(const transaction_trace&, write_context& write_ctx);
 
-    void add_trx_trace(bsoncxx::builder::basic::document& trx_doc, const chain::transaction& trx, std::deque<transaction_trace_ptr>& traces);
+    void add_trx_trace(bsoncxx::builder::basic::document& trx_doc,
+                       const chain::transaction& trx,
+                       std::deque<transaction_trace_ptr>& traces,
+                       std::function<void(action&)>&& on_paycharge_act);
 
     void init();
     void start();
@@ -401,8 +405,7 @@ mongo_db_plugin_impl::_process_block(const signed_block& block, std::deque<trans
                    kvp("payer", (std::string)trx.payer),
                    kvp("pending", b_bool{true}),
                    kvp("created_at", b_date{now}));
-        add_trx_trace(doc, trx, traces);
-
+        // add all input actions in this trx
         if(status == transaction_receipt_header::executed && !trx.actions.empty()) {
             act_num = 0;
             for(const auto& act : trx.actions) {
@@ -410,6 +413,11 @@ mongo_db_plugin_impl::_process_block(const signed_block& block, std::deque<trans
                 act_num++;
             }
         }
+        // add trace(elapsed and charge) and paycharge action
+        add_trx_trace(doc, trx, traces, [&](auto& act) {
+            process_action(trans_id_str, act);
+        });
+
         return doc;
     };
 
@@ -470,7 +478,10 @@ mongo_db_plugin_impl::_process_transaction(const transaction_trace& trace, write
 }
 
 void
-mongo_db_plugin_impl::add_trx_trace(bsoncxx::builder::basic::document& trx_doc, const chain::transaction& trx, std::deque<transaction_trace_ptr>& traces) {
+mongo_db_plugin_impl::add_trx_trace(bsoncxx::builder::basic::document& trx_doc,
+                                    const chain::transaction&          trx,
+                                    std::deque<transaction_trace_ptr>& traces,
+                                    std::function<void(action&)>&&     on_paycharge_act) {
     using namespace evt::__internal;
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
@@ -488,6 +499,12 @@ mongo_db_plugin_impl::add_trx_trace(bsoncxx::builder::basic::document& trx_doc, 
             trace_doc.append(kvp("elapsed", (int64_t)trace->elapsed.count()),
                              kvp("charge", (int64_t)trace->charge));
             trx_doc.append(kvp("trace", trace_doc));
+            // because paycharage action is alwasys the latest action
+            // only check latest
+            auto& act = trace->action_traces.back().act;
+            if(act.name == N(paycharge)) {
+                on_paycharge_act(act);
+            }
             return;
         }
         it++;

@@ -167,7 +167,7 @@ transaction_context::finalize_pay() {
     
     switch(pcact.payer.type()) {
     case address::public_key_t: {
-        act.key = N128(.public-key);
+        act.key = N128(.publickey);
         break;
     }
     case address::generated_t: {

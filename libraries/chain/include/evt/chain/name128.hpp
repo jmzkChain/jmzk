@@ -147,7 +147,8 @@ string_to_name128(const char* str) {
     if(str == nullptr) {
         return uint128_t(0);
     }
-    auto len = strlen(str);
+
+    auto len = __builtin_strlen(str);
     if(len == 0) {
         return uint128_t(0);
     }
