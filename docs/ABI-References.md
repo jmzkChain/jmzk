@@ -31,7 +31,7 @@ Before describing the ABI for each action, it is necessary to introduce some Bas
 | `authorizer_ref` | Reference to a authorizer | Valid authorizer including an account, a group or special `OWNER` group |
 | `group` | Authorize group tree | See `group` type section below |
 | `address` | Address type | See `address` type section below |
-| `evt_link` | EVT-Link type | Refer to this [document](EVT-Link.md) for more detail |
+| `evt_link` | EVT-Link type | Refer to this [document](EvtLink.md) for more detail |
 * __#1__: `EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX`
 * __#2__: `SIG_K1_JzrdhWW46N5nFUZzTUmhg2sK4nKNGktPz2UdRz9bSAP5pY4nhicKWCuo6Uc6U7KBBwD8VfjsSxzHWT87R41xMaubnzMq8w`
 

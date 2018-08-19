@@ -118,7 +118,7 @@ public:
 
     bool        validate_host;
     set<string> valid_hosts;
-    bool        loadtest_mode;
+    bool        http_no_response;
 
     bool
     host_port_is_valid(const std::string& header_host_port, const string& endpoint_local_host_port) {
@@ -300,7 +300,7 @@ public:
                     con->defer_http_response();
                     handler_itr->second(resource, body, [this, con](auto code, auto&& body) {
                         con->set_status(websocketpp::http::status_code::value(code));
-                        if(!loadtest_mode) {
+                        if(!http_no_response) {
                             con->set_body(std::move(body));
                         }
                         con->send_http_response();
@@ -345,7 +345,7 @@ public:
 
                 try {
                     con->set_status(websocketpp::http::status_code::value(code));
-                    if(!loadtest_mode) {
+                    if(!http_no_response) {
                         con->set_body(std::move(body));
                     }
                     con->send_http_response();
@@ -364,7 +364,7 @@ public:
 
                 try {
                     con->set_status(websocketpp::http::status_code::value(code));
-                    if(!loadtest_mode) {
+                    if(!http_no_response) {
                         con->set_body(std::move(body));
                     }
                     con->send_http_response();
@@ -442,6 +442,7 @@ http_plugin::set_program_options(options_description&, options_description& cfg)
         ("verbose-http-errors", bpo::bool_switch()->default_value(false), "Append the error log to HTTP responses")
         ("http-validate-host", boost::program_options::value<bool>()->default_value(true), "If set to false, then any incoming \"Host\" header is considered valid")
         ("http-alias", bpo::value<std::vector<string>>()->composing(), "Additionaly acceptable values for the \"Host\" header of incoming HTTP requests, can be specified multiple times.  Includes http/s_server_address by default.")
+        ("http-no-response", bpo::bool_switch()->default_value(false), "special for load-testing, response all the requests with empty body")
         ;
 }
 
@@ -513,7 +514,7 @@ http_plugin::plugin_initialize(const variables_map& options) {
 
         my->max_body_size                = options.at("max-body-size").as<uint32_t>();
         my->max_deferred_connection_size = options.at("max-deferred-connection-size").as<uint32_t>();
-        my->loadtest_mode                = app().get_plugin<chain_plugin>().chain().loadtest_mode();
+        my->http_no_response             = options.at("http-no-response").as<bool>();
         verbose_http_errors              = options.at("verbose-http-errors").as<bool>();
 
         FC_ASSERT(my->max_deferred_connection_size < std::numeric_limits<int32_t>::max());
