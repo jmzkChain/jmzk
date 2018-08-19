@@ -104,11 +104,11 @@ public:
 
 #ifdef MAINNET_BUILD
         if(control_.head_block_num() >= 2750000) {
-            s /= 1000‘000;
+            s /= 1000'000;
         }
 #else
         if(control_.head_block_num() >= 100) {
-            s /= 1000’000;
+            s /= 1000'000;
         }
 #endif
         return s;
