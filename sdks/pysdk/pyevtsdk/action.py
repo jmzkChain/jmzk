@@ -1,7 +1,7 @@
 import json
 
 import pyevt
-from pyevt import abi, ecc, libevt
+from pyevt import abi, ecc, libevt, evt_link
 
 from . import base
 
@@ -110,6 +110,14 @@ class ExecSuspendAction(Action):
     def __init__(self, key, data):
         super().__init__('execsuspend', '.suspend', key, data)
 
+class EveripassAction(Action):
+    def __init__(self, domain, key, data):
+        super().__init__('everipass', domain, key, data)
+
+class EveripayAction(Action):
+    def __init__(self, domain, key, data):
+        super().__init__('everipay', domain, key, data)
+
 
 class ActionTypeErrorException(Exception):
     def __init__(self):
@@ -159,6 +167,10 @@ def get_action_from_abi_json(action, abi_json, domain=None, key=None):
         return CancelSuspendAction(abi_dict['name'], _bin)
     elif action == 'execsuspend':
         return ExecSuspendAction(abi_dict['name'], _bin)
+    elif action == 'everipass':
+        return EveripassAction(domain, key, _bin)
+    elif action == 'everipay':
+        return EveripayAction(domain, key, _bin)
     else:
         raise ActionTypeErrorException
 
@@ -272,6 +284,16 @@ class ActionGenerator:
     def execsuspend(self, name, executor):
         abi_json = base.ExecSuspendAbi(name, str(executor))
         return get_action_from_abi_json('execsuspend', abi_json.dumps())
+
+    def everipass(self, link):
+        everipass = evt_link.EvtLink.parse_from_evtli(link)
+        abi_json = base.EveripassAbi(link)
+        return get_action_from_abi_json('everipass', abi_json.dumps(), everipass.get_segment_str('domain'), everipass.get_segment_str('token'))
+
+    def everipay(self, payee, number, link):
+        everipay = evt_link.EvtLink.parse_from_evtli(link)
+        abi_json = base.EveripayAbi(str(payee), number, link)
+        return get_action_from_abi_json('everipay', abi_json.dumps(), '.fungible', str(everipay.get_segment_int('symbol')))
 
     def new_action(self, action, **args):
         func = getattr(self, action)

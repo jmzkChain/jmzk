@@ -10,7 +10,7 @@ import sys
 import time
 import subprocess
 
-from pyevt import abi, ecc, libevt
+from pyevt import abi, ecc, libevt, evt_link
 from pyevtsdk import action, api, base, transaction, unit_test
 import click
 import unittest
@@ -80,9 +80,11 @@ def pre_action():
         'newdomain', name=domain_name, creator=user.pub_key)
 
     issuetoken = AG.new_action('issuetoken', domain=domain_name, names=[
-                               token1_name, token2_name], owner=[base.Address().set_public_key(user.pub_key)])
+                               token1_name, token2_name , token3_name], owner=[base.Address().set_public_key(user.pub_key)])
 
     destroytoken = AG.new_action('destroytoken', domain=domain_name, name=token2_name)
+
+    everipass = AG.new_action('everipass', link="03BM-C9GPC20AD59PS-QEZ3IB5STZBWV_QPRWTYXAWMFT0T-EK-LZ-/NVQ5P5JIJ-GICQO/UZDIN:A4X5Y$94R5E$A69:L1AOLC++C6H5S/RL5W0H*Z$793LLN-+RPYPW")
 
     group_json = json.loads(group_json_raw)
     group_json['name'] = group_name
@@ -94,7 +96,12 @@ def pre_action():
             sym_name=sym_name, sym_id=sym_id, precision=sym_prec)
     asset = base.new_asset(symbol)
     newfungible = AG.new_action(
-        'newfungible', name=sym_name, sym_name=sym_name, sym=symbol, creator=user.pub_key, total_supply=asset(100000))
+        'newfungible', name=sym_name, sym_name=sym_name, sym=symbol, creator=user.pub_key, total_supply=asset(10000000))
+
+    issuefungible = AG.new_action(
+        'issuefungible', address=base.Address().set_public_key(user.pub_key), number=asset(100), memo='goodluck')
+  
+    everipay = AG.new_action('everipay', payee=pub2, number=asset(1), link="0UKDS6VQI03ASWOR7OJE*L8JA*HRW2KWW*B0WMI7S*L+GT/88_P$TWOT6DIKXA18YEZ*1UT2*$B72L9Q/403JMEN286YUN-:ZKGS4P+$KNXY-FZ0*1S5OGJ9WML1J*0KSB98GE:9-EX9C*4DTR")
 
     trx = TG.new_trx()
     trx.add_action(newdomain)
@@ -105,11 +112,14 @@ def pre_action():
 
     trx = TG.new_trx()
     trx.add_action(issuetoken)
+    trx.add_action(issuefungible)
     trx.add_sign(user.priv_key)
     api.push_transaction(trx.dumps())
 
     trx = TG.new_trx()
     trx.add_action(destroytoken)
+    trx.add_action(everipass)
+    trx.add_action(everipay)
     trx.add_sign(user.priv_key)
     api.push_transaction(trx.dumps())
     time.sleep(2)
@@ -133,6 +143,7 @@ class Test(unittest.TestCase):
         resp = api.get_tokens(json.dumps(req)).text
         self.assertTrue(token1_name in resp)
         self.assertFalse(token2_name in resp)
+        self.assertFalse(token3_name in resp)
 
     def test_get_groups(self):
         req = {
@@ -150,6 +161,23 @@ class Test(unittest.TestCase):
         resp = api.get_fungibles(json.dumps(req)).text
         self.assertTrue(str(sym_id) in resp)
 
+    def test_get_assets(self):
+        req = {
+             'address': user.pub_key.to_string()
+         }
+ 
+        resp = api.get_assets(json.dumps(req)).text
+        self.assertTrue(str(sym_id) in resp)
+        self.assertTrue("99" in resp)
+
+        req = {
+             'address': pub2.to_string()
+         }
+ 
+        resp = api.get_assets(json.dumps(req)).text
+        self.assertTrue(str(sym_id) in resp)
+        self.assertTrue("1" in resp)
+
     def test_get_actions(self):
         req = {
             "domain": ".fungible",
@@ -165,20 +193,22 @@ class Test(unittest.TestCase):
         resp = api.get_actions(json.dumps(req)).text
         self.assertTrue(token1_name in resp)
 
+        req = {
+            "domain": ".fungible",
+            "key": 3,
+            "names": [
+            "everipay"
+            ],
+            "skip": 0,
+            "take": 10
+        }
+        req["key"] = sym_id
+
+        resp = api.get_actions(json.dumps(req)).text
+        self.assertTrue("everipay" in resp)
+
 
     def test_get_fungible_actions(self):
-        symbol = base.Symbol(
-            sym_name=sym_name, sym_id=sym_id, precision=sym_prec)
-        asset = base.new_asset(symbol)
-        pub2, priv2 = ecc.generate_new_pair()
-        issuefungible = AG.new_action(
-            'issuefungible', address=base.Address().set_public_key(pub2), number=asset(100), memo='goodluck')
-        trx = TG.new_trx()
-        trx.add_action(issuefungible)
-        trx.add_sign(user.priv_key)
-        api.push_transaction(trx.dumps())
-        time.sleep(0.5)
-
         req = {
              "sym_id": 338422621,
              "address": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
@@ -237,18 +267,23 @@ class Test(unittest.TestCase):
 @click.option('--public-key', '-p', type=str, prompt='Public Key')
 @click.option('--private-key', '-k', type=str, prompt='Private Key')
 def main(url, evtd_path, public_key, private_key):
-    p = subprocess.Popen(["nohup", evtd_path, "-e", "--http-validate-host=false", "--charge-free-mode", "--plugin=evt::mongo_db_plugin", "--plugin=evt::history_plugin", "--plugin=evt::history_api_plugin", "--plugin=evt::chain_api_plugin", "--plugin=evt::evt_api_plugin", "--producer-name=evt", "--delete-all-blocks", "-d", "/tmp/evt", "-m", 'mongodb://127.0.0.1:27017','&'], stdout=None, shell=False)
+    p = subprocess.Popen(["nohup", evtd_path, "-e", "--http-validate-host=false", "--charge-free-mode", "--loadtest-mode", "--plugin=evt::mongo_db_plugin", "--plugin=evt::history_plugin", "--plugin=evt::history_api_plugin", "--plugin=evt::chain_api_plugin", "--plugin=evt::evt_api_plugin", "--producer-name=evt", "--delete-all-blocks", "-d", "/tmp/evt", "-m", 'mongodb://127.0.0.1:27017','&'], stdout=None, shell=False)
     time.sleep(3)
 
     global domain_name 
-    domain_name = fake_name()
-    global token1_name, token2_name
+    domain_name = "cookie"
+    global token1_name, token2_name, token3_name
     token1_name = fake_name('token')
     token2_name = fake_name('token')
+    token3_name = "tpass"
     global group_name
     group_name = fake_name('group')
     global sym_name, sym_id, sym_prec
     sym_name, sym_id, sym_prec = fake_symbol()
+    sym_id = 3
+    sym_prec = 5
+    global pub2, priv2
+    pub2, priv2 = ecc.generate_new_pair()
 
     global TG
     TG = transaction.TrxGenerator(url=url, payer=public_key)
