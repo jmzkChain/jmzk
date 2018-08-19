@@ -928,8 +928,7 @@ controller::token_db() const {
 
 charge_manager
 controller::get_charge_manager() const {
-    auto& conf = get_global_properties().configuration;
-    return charge_manager(conf);
+    return charge_manager(*this);
 }
 
 void
