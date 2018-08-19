@@ -820,8 +820,9 @@ struct controller_impl {
     set_action_merkle() {
         vector<digest_type> action_digests;
         action_digests.reserve(pending->_actions.size());
-        for(const auto& a : pending->_actions)
+        for(const auto& a : pending->_actions) {
             action_digests.emplace_back(a.digest());
+        }
 
         pending->_pending_block_state->header.action_mroot = merkle(move(action_digests));
     }
@@ -831,8 +832,9 @@ struct controller_impl {
         vector<digest_type> trx_digests;
         const auto&         trxs = pending->_pending_block_state->block->transactions;
         trx_digests.reserve(trxs.size());
-        for(const auto& a : trxs)
-            trx_digests.emplace_back(a.digest());
+        for(const auto& trx : trxs) {
+            trx_digests.emplace_back(trx.digest());
+        }
 
         pending->_pending_block_state->header.transaction_mroot = merkle(move(trx_digests));
     }
