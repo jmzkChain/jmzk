@@ -27,6 +27,8 @@ filter_fields(const fc::variant_object& filter, const fc::variant_object& value)
     return res;
 }
 
+base_tester::base_tester() : evt_abi(evt_contract_abi()) {}
+
 bool
 base_tester::is_same_chain(base_tester& other) {
     return control->head_block_id() == other.control->head_block_id();
@@ -43,17 +45,17 @@ base_tester::init(bool push_genesis) {
 
     cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
     cfg.genesis.initial_key       = get_public_key(config::system_account_name, "active");
-    evt_abi = abi_serializer(evt_contract_abi());
+
     open();
 
-    if(push_genesis)
+    if(push_genesis) {
         push_genesis_block();
+    }
 }
 
 void
 base_tester::init(controller::config config) {
     cfg = config;
-    evt_abi = abi_serializer(evt_contract_abi());
     open();
 }
 

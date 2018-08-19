@@ -422,7 +422,7 @@ struct controller_impl {
     check_authorization(const flat_set<public_key_type>& signed_keys, const transaction& trx) {
         auto& conf = db.get<global_property_object>().configuration;
 
-        auto checker = authority_checker(signed_keys, token_db, conf.max_authority_depth);
+        auto checker = authority_checker(self, signed_keys, token_db, conf.max_authority_depth);
         for(const auto& act : trx.actions) {
             EVT_ASSERT(checker.satisfied(act), unsatisfied_authorization,
                        "${name} action in domain: ${domain} with key: ${key} authorized failed",
@@ -434,7 +434,7 @@ struct controller_impl {
     check_authorization(const flat_set<public_key_type>& signed_keys, const action& act) {
         auto& conf = db.get<global_property_object>().configuration;
 
-        auto checker = authority_checker(signed_keys, token_db, conf.max_authority_depth);
+        auto checker = authority_checker(self, signed_keys, token_db, conf.max_authority_depth);
         EVT_ASSERT(checker.satisfied(act), unsatisfied_authorization,
                    "${name} action in domain: ${domain} with key: ${key} authorized failed",
                    ("domain", act.domain)("key", act.key)("name", act.name));
@@ -820,8 +820,9 @@ struct controller_impl {
     set_action_merkle() {
         vector<digest_type> action_digests;
         action_digests.reserve(pending->_actions.size());
-        for(const auto& a : pending->_actions)
+        for(const auto& a : pending->_actions) {
             action_digests.emplace_back(a.digest());
+        }
 
         pending->_pending_block_state->header.action_mroot = merkle(move(action_digests));
     }
@@ -831,8 +832,9 @@ struct controller_impl {
         vector<digest_type> trx_digests;
         const auto&         trxs = pending->_pending_block_state->block->transactions;
         trx_digests.reserve(trxs.size());
-        for(const auto& a : trxs)
-            trx_digests.emplace_back(a.digest());
+        for(const auto& trx : trxs) {
+            trx_digests.emplace_back(trx.digest());
+        }
 
         pending->_pending_block_state->header.transaction_mroot = merkle(move(trx_digests));
     }
@@ -928,8 +930,7 @@ controller::token_db() const {
 
 charge_manager
 controller::get_charge_manager() const {
-    auto& conf = get_global_properties().configuration;
-    return charge_manager(conf);
+    return charge_manager(*this);
 }
 
 void
@@ -1150,7 +1151,7 @@ controller::get_trx_id_for_link_id(const link_id_type& link_id) const {
         if(const auto* l = my->db.find<evt_link_object, by_link_id>(link_id)) {
             return l->trx_id;
         }
-        EVT_THROW(evt_link_exception, "EVT-Link is not existed");
+        EVT_THROW(evt_link_existed_exception, "EVT-Link is not existed");
     }
     FC_CAPTURE_AND_RETHROW((link_id))
 }
@@ -1204,6 +1205,14 @@ controller::set_proposed_producers(vector<producer_key> producers) {
         gp.proposed_schedule           = std::move(sch);
     });
     return version;
+}
+
+void
+controller::set_chain_config(const chain_config& config) {
+    const auto& gpo = get_global_properties();
+    my->db.modify(gpo, [&](auto& gp) {
+        gp.configuration = config;
+    });
 }
 
 const producer_schedule_type&
@@ -1335,7 +1344,7 @@ controller::is_known_unexpired_transaction(const transaction_id_type& id) const 
 flat_set<public_key_type>
 controller::get_required_keys(const transaction& trx, const flat_set<public_key_type>& candidate_keys) const {
     const static uint32_t max_authority_depth = my->conf.genesis.initial_configuration.max_authority_depth;
-    auto checker = authority_checker(candidate_keys, my->token_db, max_authority_depth);
+    auto checker = authority_checker(*this, candidate_keys, my->token_db, max_authority_depth);
 
     for(const auto& act : trx.actions) {
         EVT_ASSERT(checker.satisfied(act), unsatisfied_authorization,
@@ -1353,7 +1362,7 @@ controller::get_required_keys(const transaction& trx, const flat_set<public_key_
 flat_set<public_key_type>
 controller::get_suspend_required_keys(const transaction& trx, const flat_set<public_key_type>& candidate_keys) const {
     const static uint32_t max_authority_depth = my->conf.genesis.initial_configuration.max_authority_depth;
-    auto checker = authority_checker(candidate_keys, my->token_db, max_authority_depth);
+    auto checker = authority_checker(*this, candidate_keys, my->token_db, max_authority_depth);
 
     for(const auto& act : trx.actions) {
         checker.satisfied(act);

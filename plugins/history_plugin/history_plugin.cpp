@@ -59,6 +59,7 @@ public:
     variant get_tokens_by_public_keys(const vector<public_key_type>& pkeys);
     flat_set<string> get_domains_by_public_keys(const vector<public_key_type>& pkeys);
     flat_set<string> get_groups_by_public_keys(const vector<public_key_type>& pkeys);
+    flat_set<symbol_id_type> get_fungibles_by_public_keys(const vector<public_key_type>& pkeys);
 
     variant get_actions(const domain_name&             domain,
                         const optional<domain_key>&    key,
@@ -112,7 +113,7 @@ history_plugin_impl::get_date_string_value(const mongocxx::cursor::iterator& it,
 
 fc::variant
 history_plugin_impl::transaction_to_variant(const packed_transaction& ptrx) {
-    auto resolver = [this] {
+    auto resolver = [this]() -> const evt::chain::contracts::abi_serializer& {
         return evt_abi_;
     };
 
@@ -183,6 +184,28 @@ history_plugin_impl::get_groups_by_public_keys(const vector<public_key_type>& pk
             for(auto it = cursor.begin(); it != cursor.end(); it++) {
                 auto name = get_bson_string_value(it, "name");
                 results.insert(string(name.data(), name.size()));
+            }
+        }
+        catch(mongocxx::query_exception e) {
+            continue;
+        }
+    }
+    return results;
+}
+
+flat_set<symbol_id_type>
+history_plugin_impl::get_fungibles_by_public_keys(const vector<public_key_type>& pkeys) {
+    flat_set<symbol_id_type> results;
+
+    for(auto& pkey : pkeys) {
+        using bsoncxx::builder::stream::document;
+        document find{};
+        find << "creator" << (string)pkey;
+        auto cursor = fungibles_col_.find(find.view());
+        try {
+            for(auto it = cursor.begin(); it != cursor.end(); it++) {
+                auto id = (*it)["sym_id"].get_int64();
+                results.insert((symbol_id_type)id);
             }
         }
         catch(mongocxx::query_exception e) {
@@ -274,7 +297,7 @@ history_plugin_impl::get_fungible_actions(const symbol_id_type        sym_id,
     match << "domain" << ".fungible" << "key" << std::to_string(sym_id);
 
     auto ns = bsoncxx::builder::stream::array();
-    ns << "issuefungible" << "transferft";
+    ns << "issuefungible" << "transferft" << "everipay" << "paycharge";
 
     match << "name" << open_document << "$in" << ns << close_document;
 
@@ -285,9 +308,14 @@ history_plugin_impl::get_fungible_actions(const symbol_id_type        sym_id,
     if(addr.valid()) {
         auto saddr = (std::string)(*addr);
 
-        addr_match << "$or" << open_array << open_document << "data.address" << saddr << close_document
-                   << open_document << "data.from" << saddr << close_document
-                   << open_document << "data.to"   << saddr << close_document << close_array;
+        addr_match << "$or" << open_array
+                   << open_document << "data.address"   << saddr << close_document  // issue
+                   << open_document << "data.from"      << saddr << close_document  // transfer
+                   << open_document << "data.to"        << saddr << close_document  // transfer
+                   << open_document << "data.payee"     << saddr << close_document  // everiPay
+                   << open_document << "data.link.keys" << saddr << close_document  // everiPay
+                   << open_document << "data.payer"     << saddr << close_document  // paycharge
+                   << close_array;
         pipeline.match(addr_match.view());
     }
 
@@ -408,7 +436,13 @@ history_plugin::plugin_initialize(const variables_map& options) {
 
 void
 history_plugin::plugin_startup() {
-    this->my_.reset(new history_plugin_impl());
+    if(app().get_plugin<mongo_db_plugin>().enabled()) {
+        my_.reset(new history_plugin_impl());
+    }
+    else {
+        wlog("evt::mongo_db_plugin configured, but no --mongodb-uri specified.");
+        wlog("history_plugin disabled.");
+    }
 }
 
 void
@@ -419,11 +453,15 @@ namespace history_apis {
 
 fc::variant
 read_only::get_tokens(const get_params& params) {
+    EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
+
     return plugin_.my_->get_tokens_by_public_keys(params.keys);
 }
 
 fc::variant
 read_only::get_domains(const get_params& params) {
+    EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
+
     auto domains = plugin_.my_->get_domains_by_public_keys(params.keys);
     fc::variant result;
     fc::to_variant(domains, result);
@@ -432,6 +470,8 @@ read_only::get_domains(const get_params& params) {
 
 fc::variant
 read_only::get_groups(const get_params& params) {
+    EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
+
     auto groups = plugin_.my_->get_groups_by_public_keys(params.keys);
     fc::variant result;
     fc::to_variant(groups, result);
@@ -439,22 +479,40 @@ read_only::get_groups(const get_params& params) {
 }
 
 fc::variant
+read_only::get_fungibles(const get_params& params) {
+    EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
+
+    auto fungibles = plugin_.my_->get_fungibles_by_public_keys(params.keys);
+    fc::variant result;
+    fc::to_variant(fungibles, result);
+    return result;
+}
+
+fc::variant
 read_only::get_actions(const get_actions_params& params) {
+    EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
+
     return plugin_.my_->get_actions(params.domain, params.key, params.names, params.skip, params.take);
 }
 
 fc::variant
 read_only::get_fungible_actions(const get_fungible_actions_params& params) {
+    EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
+
     return plugin_.my_->get_fungible_actions(params.sym_id, params.addr, params.skip, params.take);
 }
 
 fc::variant
 read_only::get_transaction(const get_transaction_params& params) {
+    EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
+
     return plugin_.my_->get_transaction(params.id);
 }
 
 fc::variant
 read_only::get_transactions(const get_transactions_params& params) {
+    EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
+
     return plugin_.my_->get_transactions(params.keys, params.skip, params.take);
 }
 

@@ -143,7 +143,7 @@ read_only::get_suspend(const get_suspend_params& params) {
     variant     var;
     suspend_def suspend;
     db.read_suspend(params.name, suspend);
-    abi_serializer::to_variant(suspend, var, [this]{ return evt_abi_; });
+    abi_serializer::to_variant(suspend, var, [this]() -> const evt::chain::contracts::abi_serializer& { return evt_abi_; });
     return var;
 }
 

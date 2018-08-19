@@ -9,6 +9,8 @@
 #include <evt/chain/action.hpp>
 #include <evt/chain/config.hpp>
 #include <evt/chain/chain_config.hpp>
+#include <evt/chain/controller.hpp>
+#include <evt/chain/global_property_object.hpp>
 #include <evt/chain/contracts/types.hpp>
 #include <evt/chain/contracts/types_invoker.hpp>
 
@@ -58,8 +60,9 @@ struct get_act_charge {
 
 class charge_manager {
 public:
-    charge_manager(const chain_config& config)
-        : config_(config) {}
+    charge_manager(const controller& control)
+        : control_(control)
+        , config_(control.get_global_properties().configuration) {}
 
 private:
     uint32_t
@@ -98,10 +101,21 @@ public:
         }
 
         s *= config_.global_charge_factor;
+
+#ifdef MAINNET_BUILD
+        if(control_.head_block_num() >= 2750000) {
+            s /= 1000;
+        }
+#else
+        if(control_.head_block_num() >= 100) {
+            s /= 1000;
+        }
+#endif
         return s;
     }
 
 private:
+    const controller&   control_;
     const chain_config& config_;
 };
 

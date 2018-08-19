@@ -36,10 +36,12 @@ public:
     using get_tokens_params = get_params;
     using get_domains_params = get_params;
     using get_groups_params = get_params;
+    using get_fungibles_params = get_params;
 
     fc::variant get_tokens(const get_params& params);
     fc::variant get_domains(const get_params& params);
     fc::variant get_groups(const get_params& params);
+    fc::variant get_fungibles(const get_params& params);
 
     struct get_actions_params {
         std::string               domain;

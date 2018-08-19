@@ -160,14 +160,14 @@ transaction_context::finalize_pay() {
     pcact.payer  = trx.trx.payer;
     pcact.charge = charge;
 
-    auto act = action();
-    act.name = paycharge::get_name();
-    act.data = fc::raw::pack(pcact);
+    auto act   = action();
+    act.name   = paycharge::get_name();
+    act.data   = fc::raw::pack(pcact);
     act.domain = N128(.charge);
     
     switch(pcact.payer.type()) {
     case address::public_key_t: {
-        act.key = N128(.public-key);
+        act.key = N128(.publickey);
         break;
     }
     case address::generated_t: {

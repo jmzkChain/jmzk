@@ -4,6 +4,7 @@
  */
 #include <evt/mongo_db_plugin/evt_interpreter.hpp>
 #include <evt/chain/contracts/types.hpp>
+#include <evt/chain/address.hpp>
 
 #include <mutex>
 
@@ -39,6 +40,8 @@ private:
     void process_newfungible(const newfungible& nf, write_context& write_ctx);
     void process_updfungible(const updfungible& uf, write_context& write_ctx);
     void process_issuefungible(const issuefungible& ifact, write_context& write_ctx);
+    void process_destroytoken(const destroytoken& dt, write_context& write_ctx);
+    void process_everipass(const everipass& ep, write_context& write_ctx);
 
 private:
     mongocxx::database db_;
@@ -63,6 +66,7 @@ interpreter_impl::process_trx(const transaction& trx, write_context& write_ctx) 
             CASE_N_CALL(updatedomain, write_ctx)
             CASE_N_CALL(issuetoken, write_ctx)
             CASE_N_CALL(transfer, write_ctx)
+            CASE_N_CALL(destroytoken, write_ctx)
             CASE_N_CALL(newgroup, write_ctx)
             CASE_N_CALL(updategroup, write_ctx)
             CASE_N_CALL(newfungible, write_ctx)
@@ -246,6 +250,32 @@ interpreter_impl::process_transfer(const transfer& tt, write_context& write_ctx)
 }
 
 void
+interpreter_impl::process_destroytoken(const destroytoken& dt, write_context& write_ctx) {
+    using namespace __internal;
+    using namespace bsoncxx::types;
+    using namespace bsoncxx::builder;
+    using namespace bsoncxx::builder::stream;
+    using namespace mongocxx::model;
+    using bsoncxx::builder::basic::kvp;
+
+    auto now  = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
+
+    auto update = document();
+    auto owners = bsoncxx::builder::stream::array();
+
+    owners << evt::chain::address().to_string();
+
+    update << "$set" << open_document 
+           << "owner" << owners
+           << "updated_at" << b_date{now}
+           << close_document;
+
+    write_ctx.get_tokens().append(
+        update_one(find_token((std::string)dt.domain, (std::string)dt.name).view(), update.view()));
+}
+
+void
 interpreter_impl::process_newgroup(const newgroup& ng, write_context& write_ctx) {
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
@@ -358,6 +388,21 @@ interpreter_impl::process_updfungible(const updfungible& uf, write_context& writ
            << close_document;
 
     write_ctx.get_fungibles().append(update_one(find_fungible(id).view(), update.view()));
+}
+
+void interpreter_impl::process_everipass(const everipass& ep, write_context& write_ctx){
+    auto link = ep.link;
+    auto  flags = link.get_header();
+    auto& d = *link.get_segment(evt_link::domain).strv;
+    auto& t = *link.get_segment(evt_link::token).strv;
+
+    if(flags & evt_link::destroy) {
+        auto dt   = destroytoken();
+        dt.domain = d;
+        dt.name   = t;
+
+        process_destroytoken(dt, write_ctx);
+    }
 }
 
 namespace __internal {

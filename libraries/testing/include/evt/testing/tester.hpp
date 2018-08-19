@@ -81,6 +81,8 @@ public:
 
     static const uint32_t DEFAULT_BILLED_CPU_TIME_US = 2000;
 
+public:
+    base_tester();
     virtual ~base_tester(){};
 
     void init(bool push_genesis = true);
@@ -171,7 +173,7 @@ public:
 
     auto
     get_resolver() {
-        return [this] {
+        return [this]() -> const evt::chain::contracts::abi_serializer& {
             return evt_abi;
         };
     }
@@ -203,6 +205,7 @@ public:
     tester(bool push_genesis) {
         init(push_genesis);
     }
+
     tester() {
         init(true);
     }
