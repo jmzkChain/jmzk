@@ -72,6 +72,7 @@ interpreter_impl::process_trx(const transaction& trx, write_context& write_ctx) 
             CASE_N_CALL(newfungible, write_ctx)
             CASE_N_CALL(updfungible, write_ctx)
             CASE_N_CALL(issuefungible, write_ctx)
+            CASE_N_CALL(everipass, write_ctx)
             default: break;
         }
     }
