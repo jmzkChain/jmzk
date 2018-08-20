@@ -32,9 +32,10 @@ everiToken currently supports the following operating systems:
 6. MacOS Darwin 10.12 and higher (MacOS 10.13.x recommended)
 
 ## 3rd-Party Projects by everiToken community
-1. [MyEVT Wallet](http://myevt.io)
 
-> Note: These projects are driven and maintained by the community. We only provide the link to them for convinience.
+**Note: These projects are driven and maintained by the community. We only provide the link to them for convinience.**
+
+1. [MyEVT Wallet](http://myevt.io)
 
 ## Getting Started
 Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, domain creation and issue and transfer tokens to the blockchain can be found on the [Wiki](https://github.com/everitoken/evt/wiki) for this GitHub repository.
