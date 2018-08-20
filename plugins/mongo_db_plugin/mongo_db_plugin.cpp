@@ -19,12 +19,13 @@ using boost::condition_variable_any;
 #endif
 
 #include <evt/chain/config.hpp>
-#include <evt/chain/contracts/evt_contract.hpp>
+#include <evt/chain/genesis_state.hpp>
 #include <evt/chain/exceptions.hpp>
 #include <evt/chain/plugin_interface.hpp>
 #include <evt/chain/transaction.hpp>
 #include <evt/chain/types.hpp>
 #include <evt/chain/token_database.hpp>
+#include <evt/chain/contracts/evt_contract.hpp>
 
 #include <evt/utilities/spinlock.hpp>
 
@@ -87,7 +88,6 @@ public:
                        std::function<void(action&)>&& on_paycharge_act);
 
     void init();
-    void start();
     void wipe_database();
 
 public:
@@ -117,9 +117,9 @@ public:
 
     write_context write_ctx_;
 
-    channels::accepted_block::channel_type::handle      accepted_block_subscription;
-    channels::irreversible_block::channel_type::handle  irreversible_block_subscription;
-    channels::applied_transaction::channel_type::handle applied_transaction_subscription;
+    fc::optional<boost::signals2::scoped_connection> accepted_block_connection;
+    fc::optional<boost::signals2::scoped_connection> irreversible_block_connection;
+    fc::optional<boost::signals2::scoped_connection> applied_transaction_connection;
 
 public:
     const std::string blocks_col        = "Blocks";
@@ -175,7 +175,7 @@ mongo_db_plugin_impl::consume_queues() {
     try {
         while(true) {
             lock_.lock();
-            while(block_state_queue.empty() && transaction_trace_queue.empty() && !done_) {
+            while(block_state_queue.empty() && !done_) {
                 cond_.wait(lock_);
             }
 
@@ -195,9 +195,6 @@ mongo_db_plugin_impl::consume_queues() {
 
             const int BlockPtr       = 0;
             const int IsIrreversible = 1;
-
-            auto bulk_opts = mongocxx::options::bulk_write();
-            bulk_opts.ordered(false);
 
             // process block states
             for(auto& b : bqueue) {
@@ -556,17 +553,6 @@ mongo_db_plugin_impl::wipe_database() {
 
 void
 mongo_db_plugin_impl::init() {
-    // connect callbacks to channel
-    accepted_block_subscription = app().get_channel<channels::accepted_block>().subscribe(
-        boost::bind(&mongo_db_plugin_impl::applied_block, this, _1));
-    irreversible_block_subscription = app().get_channel<channels::irreversible_block>().subscribe(
-        boost::bind(&mongo_db_plugin_impl::applied_irreversible_block, this, _1));
-    applied_transaction_subscription = app().get_channel<channels::applied_transaction>().subscribe(
-        boost::bind(&mongo_db_plugin_impl::applied_transaction, this, _1));
-}
-
-void
-mongo_db_plugin_impl::start() {
     using namespace bsoncxx::types;
 
     auto blocks = mongo_db[blocks_col];  // Blocks
@@ -616,19 +602,24 @@ mongo_db_plugin_impl::start() {
     // initilize evt interpreter
     interpreter.initialize_db(mongo_db);
 
+    auto& chain_plug = app().get_plugin<chain_plugin>();
+    auto& chain      = chain_plug.chain();
+
+    accepted_block_connection.emplace(chain.accepted_block.connect([&](const chain::block_state_ptr& bs) {
+        applied_block(bs);
+    }));
+
+    irreversible_block_connection.emplace(chain.irreversible_block.connect([&](const chain::block_state_ptr& bs) {
+        applied_irreversible_block(bs);
+    }));
+
+    applied_transaction_connection.emplace(chain.applied_transaction.connect([&](const chain::transaction_trace_ptr& t) {
+        applied_transaction(t);
+    }));
+
     if(need_init) {
         // HACK: Add EVT and PEVT manually
-        auto& chain = app().get_plugin<chain_plugin>();
-        auto& tokendb = chain.chain().token_db();
-
-        auto evt  = fungible_def();
-        auto pevt = fungible_def();
-
-        tokendb.read_fungible(evt_sym(), evt);
-        tokendb.read_fungible(pevt_sym(), pevt);
-
-        auto g = group();
-        tokendb.read_group(N128(.everiToken), g);
+        auto gs = chain::genesis_state();
 
         auto get_nfact = [](auto& f) {
             auto nf = newfungible();
@@ -647,12 +638,12 @@ mongo_db_plugin_impl::start() {
 
         auto ng  = newgroup();
         ng.name  = N128(.everiToken);
-        ng.group = std::move(g);
+        ng.group = gs.evt_org;
 
         // HACK: construct one trx trace here to add EVT and PEVT fungibles to mongodb
         auto trx  = transaction();
-        trx.actions.emplace_back(get_nfact(evt));
-        trx.actions.emplace_back(get_nfact(pevt));
+        trx.actions.emplace_back(get_nfact(gs.evt));
+        trx.actions.emplace_back(get_nfact(gs.pevt));
         trx.actions.emplace_back(action(N128(.group), N128(.everiToken), ng));
 
         interpreter.process_trx(trx, write_ctx_);
@@ -731,7 +722,10 @@ mongo_db_plugin::plugin_initialize(const variables_map& options) {
         if(my_->wipe_database_on_startup) {
             my_->wipe_database();
         }
+
         my_->init();
+
+        my_->consume_thread_ = std::thread([this] { my_->consume_queues(); });
     }
     else {
         wlog("evt::mongo_db_plugin configured, but no --mongodb-uri specified.");
@@ -740,17 +734,13 @@ mongo_db_plugin::plugin_initialize(const variables_map& options) {
 }
 
 void
-mongo_db_plugin::plugin_startup() {
-    if(my_->configured) {
-        ilog("starting db plugin");
-        my_->start();
-        my_->consume_thread_ = std::thread([this] { my_->consume_queues(); });
-        // chain_controller is created and has resynced or replayed if needed
-    }
-}
+mongo_db_plugin::plugin_startup() {}
 
 void
 mongo_db_plugin::plugin_shutdown() {
+    my_->accepted_block_connection.reset();
+    my_->irreversible_block_connection.reset();
+    my_->applied_transaction_connection.reset();
     my_.reset();
 }
 

@@ -6,6 +6,7 @@
 
 #include <string>
 #include <memory>
+#include <boost/scope_exit.hpp>
 #include <bsoncxx/exception/exception.hpp>
 #include <bsoncxx/json.hpp>
 #include <mongocxx/database.hpp>
@@ -34,13 +35,15 @@ using mongocxx::bulk_write;
 
 #define commit_collection(n)            \
     if(n##_commits) {                   \
+        BOOST_SCOPE_EXIT_ALL(&) {       \
+            n##_commits.reset();        \
+        };                              \
         try {                           \
             n##_commits->execute();     \
         }                               \
         catch(...) {                    \
             handle_mongo_exception(#n); \
         }                               \
-        n##_commits.reset();            \
     }
 
 class write_context {
