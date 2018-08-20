@@ -293,7 +293,7 @@ class ActionGenerator:
     def everipay(self, payee, number, link):
         everipay = evt_link.EvtLink.parse_from_evtli(link)
         abi_json = base.EveripayAbi(str(payee), number, link)
-        return get_action_from_abi_json('everipay', abi_json.dumps(), '.fungible', str(everipay.get_segment_int('symbol')))
+        return get_action_from_abi_json('everipay', abi_json.dumps(), '.fungible', str(everipay.get_segment_int('symbol_id')))
 
     def new_action(self, action, **args):
         func = getattr(self, action)
