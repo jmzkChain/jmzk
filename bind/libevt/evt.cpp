@@ -43,6 +43,7 @@ thread_local int last_error_code = 0;
 int
 evt_set_last_error(int code) {
     last_error_code = code;
+    return code;
 }
 
 int

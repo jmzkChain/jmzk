@@ -141,16 +141,16 @@ class Test(unittest.TestCase):
             'keys': [user.pub_key.to_string()]
         }
         resp = api.get_domains(json.dumps(req)).text
-        self.assertTrue(domain_name in resp)
+        self.assertTrue(domain_name in resp, msg=resp)
 
     def test_get_tokens(self):
         req = {
             'keys': [user.pub_key.to_string()]
         }
         resp = api.get_tokens(json.dumps(req)).text
-        self.assertTrue(token1_name in resp)
-        self.assertFalse(token2_name in resp)
-        self.assertFalse(token3_name in resp)
+        self.assertTrue(token1_name in resp, msg=resp)
+        self.assertFalse(token2_name in resp, msg=resp)
+        self.assertFalse(token3_name in resp, msg=resp)
 
     def test_get_groups(self):
         req = {
@@ -158,7 +158,7 @@ class Test(unittest.TestCase):
         }
 
         resp = api.get_groups(json.dumps(req)).text
-        self.assertTrue(group_name in resp)
+        self.assertTrue(group_name in resp, msg=resp)
 
     def test_get_fungibles(self):
         req = {
@@ -166,7 +166,7 @@ class Test(unittest.TestCase):
         }
 
         resp = api.get_fungibles(json.dumps(req)).text
-        self.assertTrue(str(sym_id) in resp)
+        self.assertTrue(str(sym_id) in resp, msg=resp)
 
     def test_get_assets(self):
         req = {
@@ -174,16 +174,16 @@ class Test(unittest.TestCase):
         }
 
         resp = api.get_assets(json.dumps(req)).text
-        self.assertTrue(str(sym_id) in resp)
-        self.assertTrue('99' in resp)
+        self.assertTrue(str(sym_id) in resp, msg=resp)
+        self.assertTrue('99' in resp, msg=resp)
 
         req = {
             'address': pub2.to_string()
         }
 
         resp = api.get_assets(json.dumps(req)).text
-        self.assertTrue(str(sym_id) in resp)
-        self.assertTrue('1' in resp)
+        self.assertTrue(str(sym_id) in resp, msg=resp)
+        self.assertTrue('1' in resp, msg=resp)
 
     def test_get_actions(self):
         req = {
@@ -198,7 +198,7 @@ class Test(unittest.TestCase):
         req['domain'] = domain_name
 
         resp = api.get_actions(json.dumps(req)).text
-        self.assertTrue(token1_name in resp)
+        self.assertTrue(token1_name in resp, msg=resp)
 
         req = {
             'domain': '.fungible',
@@ -212,7 +212,7 @@ class Test(unittest.TestCase):
         req['key'] = sym_id
 
         resp = api.get_actions(json.dumps(req)).text
-        self.assertTrue('everipay' in resp)
+        self.assertTrue('everipay' in resp, msg=resp)
 
     def test_get_fungible_actions(self):
         req = {
@@ -224,8 +224,8 @@ class Test(unittest.TestCase):
         req['sym_id'] = sym_id
 
         resp = api.get_fungible_actions(json.dumps(req)).text
-        self.assertTrue('issuefungible' in resp)
-        self.assertTrue(str(sym_id) in resp)
+        self.assertTrue('issuefungible' in resp, msg=resp)
+        self.assertTrue(str(sym_id) in resp, msg=resp)
 
     def test_get_transaction(self):
         name = fake_name()
@@ -245,8 +245,8 @@ class Test(unittest.TestCase):
         req['id'] = res_dict['transaction_id']
 
         resp = api.get_transaction(json.dumps(req)).text
-        self.assertTrue('newdomain' in resp)
-        self.assertTrue(name in resp)
+        self.assertTrue('newdomain' in resp, msg=resp)
+        self.assertTrue(name in resp, msg=resp)
 
     def test_get_transactions(self):
         req = {
@@ -261,10 +261,10 @@ class Test(unittest.TestCase):
         req['keys'] = [user.pub_key.to_string()]
 
         resp = api.get_transactions(json.dumps(req)).text
-        self.assertTrue(domain_name in resp)
-        self.assertTrue(token1_name in resp)
-        self.assertTrue(group_name in resp)
-        self.assertTrue(str(sym_id) in resp)
+        self.assertTrue(domain_name in resp, msg=resp)
+        self.assertTrue(token1_name in resp, msg=resp)
+        self.assertTrue(group_name in resp, msg=resp)
+        self.assertTrue(str(sym_id) in resp, msg=resp)
 
 
 @click.command()
