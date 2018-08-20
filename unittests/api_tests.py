@@ -276,7 +276,7 @@ def main(url, evtd_path, public_key, private_key):
     p = subprocess.Popen([evtd_path, '-e', '--http-validate-host=false', '--charge-free-mode', '--loadtest-mode', '--plugin=evt::mongo_db_plugin',
                           '--plugin=evt::history_plugin', '--plugin=evt::history_api_plugin', '--plugin=evt::chain_api_plugin', '--plugin=evt::evt_api_plugin',
                           '--producer-name=evt', '--delete-all-blocks', '-d', '/tmp/evt', '-m', 'mongodb://127.0.0.1:27017'],
-                          stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=False)
+                          stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=None, shell=False)
     # wait for evtd to initialize
     time.sleep(3)
 
