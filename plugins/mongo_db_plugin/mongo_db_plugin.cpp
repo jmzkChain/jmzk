@@ -131,34 +131,41 @@ public:
     const std::string fungibles_col     = "Fungibles";
 };
 
+
+
+template <typename Q, typename V>
+inline void
+queue(Q& queue, V&& v, spinlock& lock, condition_variable_any& cv, size_t queue_size) {
+    lock.lock();
+
+    auto sleep_time = 0ul;
+    while(queue.size() > queue_size) {
+        lock.unlock();
+        cv.notify_one();
+
+        sleep_time += 100;
+        std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time));
+
+        lock.lock();
+    }
+    queue.emplace_back(std::forward<V>(v));
+    lock.unlock();
+    cv.notify_one();
+}
+
 void
 mongo_db_plugin_impl::applied_irreversible_block(const block_state_ptr& bsp) {
-    {
-        spinlock_guard lock(lock_);
-        block_state_queue.push_back(std::make_tuple(bsp, true));
-    }
-
-    cond_.notify_one();
+    queue(block_state_queue, std::make_tuple(bsp, true), lock_, cond_, queue_size);
 }
 
 void
 mongo_db_plugin_impl::applied_block(const block_state_ptr& bsp) {
-    {
-        spinlock_guard lock(lock_);
-        block_state_queue.emplace_back(std::make_tuple(bsp, false));
-    }
-
-    cond_.notify_one();
+    queue(block_state_queue, std::make_tuple(bsp, false), lock_, cond_, queue_size);
 }
 
 void
 mongo_db_plugin_impl::applied_transaction(const transaction_trace_ptr& ttp) {
-    {
-        spinlock_guard lock(lock_);
-        transaction_trace_queue.emplace_back(ttp);
-    }
-
-    cond_.notify_one();
+    queue(transaction_trace_queue, ttp, lock_, cond_, queue_size);
 }
 
 void
@@ -677,7 +684,7 @@ mongo_db_plugin::enabled() const {
 void
 mongo_db_plugin::set_program_options(options_description& cli, options_description& cfg) {
     cfg.add_options()
-        ("mongodb-queue-size,q", bpo::value<uint>()->default_value(256), "The queue size between evtd and MongoDB plugin thread.")
+        ("mongodb-queue-size,q", bpo::value<uint>()->default_value(5120), "The queue size between evtd and MongoDB plugin thread.")
         ("mongodb-uri,m", bpo::value<std::string>(), "MongoDB URI connection string, see: https://docs.mongodb.com/master/reference/connection-string/."
                                                      " If not specified then plugin is disabled. Default database 'EVT' is used if not specified in URI.")
         ;
