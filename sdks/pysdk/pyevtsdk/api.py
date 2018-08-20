@@ -13,6 +13,7 @@ class Api:
             'get_group': '/v1/evt/get_group',
             'get_token': '/v1/evt/get_token',
             'get_fungible': '/v1/evt/get_fungible',
+            'get_assets': '/v1/evt/get_fungible_balance',
             'get_tokens': '/v1/history/get_tokens',
             'get_domains': '/v1/history/get_domains',
             'get_groups': '/v1/history/get_groups',

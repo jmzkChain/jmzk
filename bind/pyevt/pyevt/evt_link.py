@@ -8,7 +8,7 @@ class SegmentType(Enum):
     max_pay = 43
     domain = 91
     token = 92
-    symbol = 93
+    symbol = 44
     max_pay_str = 94
     address = 95
     link_id = 156
