@@ -29,6 +29,13 @@ namespace fc { namespace crypto {
          explicit signature(ecc::signature_shim&&);
          explicit operator string() const;
 
+      public:
+         template<typename V>
+         void
+         view(const V& vistor) const {
+            _storage.visit(vistor);
+         }
+
       private:
          storage_type _storage;
 
