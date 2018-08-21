@@ -137,7 +137,7 @@ evt_link_plugin_impl::_applied_block(const chain::block_state_ptr& bs) {
             if(it != link_ids_.end()) {
                 lock_.unlock();
 
-                auto vo      = fc::mutable_variant_object();
+                auto vo         = fc::mutable_variant_object();
                 vo["block_num"] = bs->block_num;
                 vo["trx_id"]    = trx->id;
 
@@ -164,7 +164,7 @@ evt_link_plugin_impl::get_trx_id_for_link_id(const link_id_type& link_id, deferr
             return;
         }
 
-        auto vo = fc::mutable_variant_object();
+        auto vo         = fc::mutable_variant_object();
         vo["block_num"] = obj.block_num;
         vo["trx_id"]    = obj.trx_id;
 
