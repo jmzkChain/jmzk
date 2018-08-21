@@ -29,6 +29,9 @@ using contracts::abi_serializer;
 class dynamic_global_property_object;
 class global_property_object;
 
+namespace contracts { class evt_link_object; }
+using contracts::evt_link_object;
+
 class controller {
 public:
     struct config {
@@ -136,8 +139,9 @@ public:
     block_state_ptr fetch_block_state_by_number(uint32_t block_num) const;
     block_state_ptr fetch_block_state_by_id(block_id_type id) const;
 
-    block_id_type get_block_id_for_num(uint32_t block_num) const;
-    transaction_id_type get_trx_id_for_link_id(const link_id_type&) const;
+    block_id_type   get_block_id_for_num(uint32_t block_num) const;
+
+    const evt_link_object& get_link_obj_for_link_id(const link_id_type&) const;
 
     bool is_producing_block() const;
 

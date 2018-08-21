@@ -10,6 +10,7 @@ add_subdirectory(wallet_plugin)
 add_subdirectory(wallet_api_plugin)
 add_subdirectory(evt_plugin)
 add_subdirectory(evt_api_plugin)
+add_subdirectory(evt_link_plugin)
 add_subdirectory(bnet_plugin)
 
 if(ENABLE_MONGODB_SUPPORT)

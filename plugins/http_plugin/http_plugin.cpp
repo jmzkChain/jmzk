@@ -238,7 +238,6 @@ public:
                     return j;
                 }
             }
-
         }
         if constexpr (std::is_same_v<T, websocketpp::transport::asio::tls_socket::endpoint>) {
             // https

@@ -801,7 +801,7 @@ EVT_ACTION_IMPL(execsuspend) {
 
         EVT_ASSERT(suspend.signed_keys.find(esact.executor) != suspend.signed_keys.end(), suspend_executor_exception, "Executor hasn't sign his key on this suspend transaction");
 
-        auto now = context.control.head_block_time();
+        auto now = context.control.pending_block_time();
         EVT_ASSERT(suspend.status == suspend_status::proposed, suspend_status_exception, "Suspend transaction is not in 'proposed' status.");
         EVT_ASSERT(suspend.trx.expiration > now, suspend_expired_tx_exception, "Suspend transaction is expired at ${expir}, now is ${now}", ("expir",suspend.trx.expiration)("now",now));
 
@@ -884,10 +884,10 @@ EVT_ACTION_IMPL(everipass) {
 
         if(!context.control.loadtest_mode()) {
             auto  ts    = *link.get_segment(evt_link::timestamp).intv;
-            auto  since = std::abs((context.control.head_block_time() - fc::time_point_sec(ts)).to_seconds());
+            auto  since = std::abs((context.control.pending_block_time() - fc::time_point_sec(ts)).to_seconds());
             auto& conf  = context.control.get_global_properties().configuration;
             if(since > conf.evt_link_expired_secs) {
-                EVT_THROW(evt_link_expiration_exception, "EVT-Link is expired, now: ${n}, timestamp: ${t}", ("n",context.control.head_block_time())("t",fc::time_point_sec(ts)));
+                EVT_THROW(evt_link_expiration_exception, "EVT-Link is expired, now: ${n}, timestamp: ${t}", ("n",context.control.pending_block_time())("t",fc::time_point_sec(ts)));
             }
         }
 
@@ -939,10 +939,10 @@ EVT_ACTION_IMPL(everipay) {
 
         if(!context.control.loadtest_mode()) {
             auto ts     = *link.get_segment(evt_link::timestamp).intv;
-            auto since  = std::abs((context.control.head_block_time() - fc::time_point_sec(ts)).to_seconds());
+            auto since  = std::abs((context.control.pending_block_time() - fc::time_point_sec(ts)).to_seconds());
             auto& conf  = context.control.get_global_properties().configuration;
             if(since > conf.evt_link_expired_secs) {
-                EVT_THROW(evt_link_expiration_exception, "EVT-Link is expired, now: ${n}, timestamp: ${t}", ("n",context.control.head_block_time())("t",fc::time_point_sec(ts)));
+                EVT_THROW(evt_link_expiration_exception, "EVT-Link is expired, now: ${n}, timestamp: ${t}", ("n",context.control.pending_block_time())("t",fc::time_point_sec(ts)));
             }
         }
 
@@ -951,8 +951,9 @@ EVT_ACTION_IMPL(everipay) {
 
         try {
             db.create<evt_link_object>([&](evt_link_object& li) {
-                li.link_id = *(link_id_type*)(link_id_str.data());
-                li.trx_id  = context.trx_context.trx.id;
+                li.link_id   = *(link_id_type*)(link_id_str.data());
+                li.block_num = context.control.pending_block_state()->block->block_num();
+                li.trx_id    = context.trx_context.trx.id;
             });
         }
         catch(const boost::interprocess::bad_alloc&) {
