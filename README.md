@@ -31,9 +31,9 @@ everiToken currently supports the following operating systems:
 5. Ubuntu 16.04 and higher (Ubuntu 18.04 recommended)
 6. MacOS Darwin 10.12 and higher (MacOS 10.13.x recommended)
 
-## 3rd-Party Projects by everiToken community
+## 3rd-Party Projects by everiToken Community
 
-**Note: These projects are driven and maintained by the community. We only provide the link to them for convinience.**
+**Note: Projects below are driven and maintained by the community, links are provided here only for convinience.**
 
 1. [MyEVT Wallet](http://myevt.io)
 
