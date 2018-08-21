@@ -50,6 +50,7 @@ public:
 
 public:
     static evt_link parse_from_evtli(const std::string& str);
+    std::string to_string() const;
 
 public:
     uint16_t get_header() const { return header_; }

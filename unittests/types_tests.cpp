@@ -98,6 +98,9 @@ TEST_CASE("test_link_1", "[types]") {
     CHECK(pkeys.size() == 1);
 
     CHECK(pkeys.find(public_key_type(std::string("EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"))) != pkeys.end());
+
+    auto str2 = link.to_string();
+    CHECK(str == str2);
 }
 
 TEST_CASE("test_link_2", "[types]") {
