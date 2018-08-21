@@ -28,7 +28,7 @@ public:
     void plugin_shutdown();
 
 private:
-    unique_ptr<class evt_link_plugin_impl> my;
+    unique_ptr<class evt_link_plugin_impl> my_;
 };
 
 }  // namespace evt
