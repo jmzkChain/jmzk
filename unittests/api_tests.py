@@ -270,8 +270,8 @@ class Test(unittest.TestCase):
 @click.command()
 @click.option('--url', '-u', default='http://127.0.0.1:8888')
 @click.option('--evtd-path', '-m', default='/home/laighno/Documents/evt/programs/evtd/evtd')
-@click.option('--public-key', '-p', type=str, prompt='Public Key')
-@click.option('--private-key', '-k', type=str, prompt='Private Key')
+@click.option('--public-key', '-p', type=str, default='EVT8CAme1QR2664bLQsVfrERBkXL3xEKsALMSfogGavaXFkaVVqR1')
+@click.option('--private-key', '-k', type=str, default='5JFZQ7bRRuBJyh42uV5ELwswr2Bt3rfwmyEsyXAoUue18NUreAF')
 def main(url, evtd_path, public_key, private_key):
     p = subprocess.Popen([evtd_path, '-e', '--http-validate-host=false', '--charge-free-mode', '--loadtest-mode', '--plugin=evt::mongo_db_plugin',
                           '--plugin=evt::history_plugin', '--plugin=evt::history_api_plugin', '--plugin=evt::chain_api_plugin', '--plugin=evt::evt_api_plugin',
