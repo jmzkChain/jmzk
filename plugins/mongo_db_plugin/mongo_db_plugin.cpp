@@ -111,7 +111,6 @@ public:
 
     spinlock                    lock_;
     condition_variable_any      cond_;
-    std::mutex                  mutex_;
     std::thread                 consume_thread_;
     std::atomic_bool            done_{false};
 

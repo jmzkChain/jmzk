@@ -10,6 +10,8 @@ import subprocess
 import sys
 import time
 import unittest
+from concurrent.futures import ThreadPoolExecutor
+from io import StringIO
 
 import click
 from pyevt import abi, ecc, evt_link, libevt
@@ -107,8 +109,7 @@ def pre_action():
         'issuefungible', address=base.Address().set_public_key(user.pub_key), number=asset(100), memo='goodluck')
 
     everipay = AG.new_action('everipay', payee=pub2, number=asset(
-        1), link='0UKDS6VQI03ASWOR7OJE*L8JA*HRW2KWW*B0WMI7S*L+GT/88_P$TWOT6DIKXA18YEZ*1UT2*$B72L9Q/403JMEN286YUN-:ZKGS4P+$KNXY-FZ0*1S5OGJ9WML1J*0KSB98GE:9-EX9C*4DTR')
-
+        1), link='0UKDS95I5ACY-A88L*AVAIX*504XXDR:9SIFVAQL/9WB7D1:8_P-JBZQWAYW5UQE9VG2ZGCNUF*+G4K9TEK642H4PY9VX0UG8LZ2TE5$3FS6TAAUEIC8KEENE:2V6NOET:QGE7M913KXAXQ69Y')
     trx = TG.new_trx()
     trx.add_action(newdomain)
     trx.add_sign(user.priv_key)
@@ -135,6 +136,61 @@ class Test(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         libevt.init_lib()
+
+    def _test_evt_link_response(self, resp):
+        j = json.loads(resp)
+        self.assertTrue('trx_id' in j, msg=j)
+        self.assertTrue('block_num' in j, msg=j)
+
+        req = {
+            'block_num': j['block_num'],
+            'id': j['trx_id']
+        }
+        resp2 = api.get_transaction(json.dumps(req))
+        self.assertEqual(resp2.status_code, 200, msg=resp2.content)
+
+    def test_evt_link_for_trx_id(self):
+        symbol = base.Symbol(
+            sym_name=sym_name, sym_id=sym_id, precision=sym_prec)
+        asset = base.new_asset(symbol)
+        everipay = AG.new_action('everipay', payee=pub2, number=asset(
+            1), link='0UKDS6VQI03ASWOR7OJE*L8JA*HRW2KWW*B0WMI7S*L+GT/88_P$TWOT6DIKXA18YEZ*1UT2*$B72L9Q/403JMEN286YUN-:ZKGS4P+$KNXY-FZ0*1S5OGJ9WML1J*0KSB98GE:9-EX9C*4DTR')  # ddc101c51318d51733d682e80b8ea2bc
+        trx = TG.new_trx()
+        trx.add_action(everipay)
+        trx.add_sign(user.priv_key)
+        api.push_transaction(trx.dumps())
+
+        req = {
+            'link_id': 'ddc101c51318d51733d682e80b8ea2bc'
+        }
+        resp = api.get_trx_id_for_link_id(json.dumps(req)).text
+        self._test_evt_link_response(resp)
+
+    def test_evt_link_for_trx_id2(self):
+        symbol = base.Symbol(
+            sym_name=sym_name, sym_id=sym_id, precision=sym_prec)
+        asset = base.new_asset(symbol)
+        everipay = AG.new_action('everipay', payee=pub2, number=asset(
+            1), link='0UKDS95HCP3V$A70QLRX*KA3CHE35FR1B$C9SK01E0UR+YEIN_P-IQDCZXBBY+C274WIJKZP-FW1HRLI+1319VOEYL/0O30GWKCZ*ZFQG9BG9P-5OZYW1-R:+M2$7C0HDJQ/5OBKN96K8-QD30')  # d1680fea21a3c3d8ef555afd8fd8c903
+        trx = TG.new_trx()
+        trx.add_action(everipay)
+        trx.add_sign(user.priv_key)
+
+        req = {
+            'link_id': 'd1680fea21a3c3d8ef555afd8fd8c903'
+        }
+
+        def get_response(req):
+            return api.get_trx_id_for_link_id(json.dumps(req)).text
+
+        executor = ThreadPoolExecutor(max_workers=2)
+        f = executor.submit(get_response, req)
+
+        time.sleep(1)
+        api.push_transaction(trx.dumps())
+
+        resp = f.result()
+        self._test_evt_link_response(resp)
 
     def test_get_domains(self):
         req = {
@@ -175,7 +231,7 @@ class Test(unittest.TestCase):
 
         resp = api.get_assets(json.dumps(req)).text
         self.assertTrue(str(sym_id) in resp, msg=resp)
-        self.assertTrue('99' in resp, msg=resp)
+        self.assertTrue('97' in resp, msg=resp)
 
         req = {
             'address': pub2.to_string()
@@ -183,7 +239,7 @@ class Test(unittest.TestCase):
 
         resp = api.get_assets(json.dumps(req)).text
         self.assertTrue(str(sym_id) in resp, msg=resp)
-        self.assertTrue('1' in resp, msg=resp)
+        self.assertTrue('3' in resp, msg=resp)
 
     def test_get_actions(self):
         req = {
@@ -227,7 +283,7 @@ class Test(unittest.TestCase):
         self.assertTrue('issuefungible' in resp, msg=resp)
         self.assertTrue(str(sym_id) in resp, msg=resp)
 
-    def test_get_transaction(self):
+    def test_get_history_transaction(self):
         name = fake_name()
         newdomain = AG.new_action('newdomain', name=name, creator=user.pub_key)
 
@@ -244,11 +300,11 @@ class Test(unittest.TestCase):
         }
         req['id'] = res_dict['transaction_id']
 
-        resp = api.get_transaction(json.dumps(req)).text
+        resp = api.get_history_transaction(json.dumps(req)).text
         self.assertTrue('newdomain' in resp, msg=resp)
         self.assertTrue(name in resp, msg=resp)
 
-    def test_get_transactions(self):
+    def test_get_history_transactions(self):
         req = {
             'keys': [
                 'EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK',
@@ -260,7 +316,7 @@ class Test(unittest.TestCase):
         }
         req['keys'] = [user.pub_key.to_string()]
 
-        resp = api.get_transactions(json.dumps(req)).text
+        resp = api.get_history_transactions(json.dumps(req)).text
         self.assertTrue(domain_name in resp, msg=resp)
         self.assertTrue(token1_name in resp, msg=resp)
         self.assertTrue(group_name in resp, msg=resp)
@@ -273,10 +329,13 @@ class Test(unittest.TestCase):
 @click.option('--public-key', '-p', type=str, default='EVT8CAme1QR2664bLQsVfrERBkXL3xEKsALMSfogGavaXFkaVVqR1')
 @click.option('--private-key', '-k', type=str, default='5JFZQ7bRRuBJyh42uV5ELwswr2Bt3rfwmyEsyXAoUue18NUreAF')
 def main(url, evtd_path, public_key, private_key):
+    global evtdout
+    evtdout = open('/tmp/evt_api_tests_evtd.log', 'w')
+
     p = subprocess.Popen([evtd_path, '-e', '--http-validate-host=false', '--charge-free-mode', '--loadtest-mode', '--plugin=evt::mongo_db_plugin',
                           '--plugin=evt::history_plugin', '--plugin=evt::history_api_plugin', '--plugin=evt::chain_api_plugin', '--plugin=evt::evt_api_plugin',
-                          '--producer-name=evt', '--delete-all-blocks', '-d', '/tmp/evt', '-m', 'mongodb://127.0.0.1:27017'],
-                          stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=None, shell=False)
+                          '--plugin=evt::evt_link_plugin', '--producer-name=evt', '--delete-all-blocks', '-d', '/tmp/evt', '-m', 'mongodb://127.0.0.1:27017'],
+                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=evtdout, shell=False)
     # wait for evtd to initialize
     time.sleep(3)
 
@@ -314,9 +373,10 @@ def main(url, evtd_path, public_key, private_key):
         pre_action()
         suite = unittest.TestLoader().loadTestsFromTestCase(Test)
         runner = unittest.TextTestRunner()
-        runner.run(suite)
+        result = runner.run(suite)
     finally:
         p.kill()
+        evtdout.close()
 
 
 if __name__ == '__main__':
