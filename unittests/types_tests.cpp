@@ -62,6 +62,9 @@ TEST_CASE("test_link_1", "[types]") {
                "4KH9ETLZ97TUX9R9JJA6+06$E/_PYNX-/152P4CTC:WKXLK$/7G-K:89+::2K4"
                "C-KZ2**HI-P8CYJ**XGFO1K5:$E*SOY8MFYWMNHP*BHX2U8$$FTFI81YDP1HT";
     auto link = evt_link::parse_from_evtli(str);
+    auto str2 = link.to_string();
+    
+    CHECK(str == str2);
 
     CHECK(link.get_header() == 3);
     CHECK(*link.get_segment(evt_link::timestamp).intv == 1532465234);
@@ -98,9 +101,6 @@ TEST_CASE("test_link_1", "[types]") {
     CHECK(pkeys.size() == 1);
 
     CHECK(pkeys.find(public_key_type(std::string("EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"))) != pkeys.end());
-
-    auto str2 = link.to_string();
-    CHECK(str == str2);
 }
 
 TEST_CASE("test_link_2", "[types]") {

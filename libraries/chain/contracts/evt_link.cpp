@@ -274,6 +274,7 @@ encode(const bytes& b, size_t sz, std::string& str) {
         num /= 42;
     }
     str.push_back(*(ALPHABETS + (int)num));
+    std::reverse(str.begin() + i, str.end());
 }
 
 }  // namespace __internal
@@ -304,7 +305,9 @@ evt_link::to_string() const {
         ds.seekp(0);
         write_signatures_bytes(*this, ds);
 
-        encode<bigint_sigs>(temp, ds.tellp(), str);
+        auto str2 = string();
+        encode<bigint_sigs>(temp, ds.tellp(), str2);
+        str.append(str2);
     }
 
     return str;
