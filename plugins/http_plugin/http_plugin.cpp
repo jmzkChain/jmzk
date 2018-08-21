@@ -31,7 +31,6 @@ static appbase::abstract_plugin& _http_plugin = app().register_plugin<http_plugi
 
 namespace asio = boost::asio;
 
-using boost::optional;
 using boost::asio::ip::tcp;
 using boost::asio::ip::address_v4;
 using boost::asio::ip::address_v6;
@@ -88,6 +87,9 @@ static bool verbose_http_errors = false;
 
 class http_plugin_impl {
 public:
+    http_plugin_impl() {}
+
+public:
     map<string, url_handler>          url_handlers;
     map<string, url_deferred_handler> url_deferred_handlers;
     optional<tcp::endpoint>           listen_endpoint;
@@ -114,8 +116,9 @@ public:
 
     websocket_server_tls_type https_server;
 
-    bool                     validate_host;
-    set<string>              valid_hosts;
+    bool        validate_host;
+    set<string> valid_hosts;
+    bool        http_no_response;
 
     bool
     host_port_is_valid(const std::string& header_host_port, const string& endpoint_local_host_port) {
@@ -288,16 +291,18 @@ public:
 
             con->append_header("Content-Type", "application/json");
 
-            auto body        = con->get_request_body();
-            auto resource    = con->get_uri()->get_resource();
+            auto body     = con->get_request_body();
+            auto resource = con->get_uri()->get_resource();
 
             {
                 auto handler_itr = url_handlers.find(resource);
                 if(handler_itr != url_handlers.end()) {
                     con->defer_http_response();
-                    handler_itr->second(resource, body, [con](auto code, auto&& body) {
-                        con->set_body(std::move(body));
+                    handler_itr->second(resource, body, [this, con](auto code, auto&& body) {
                         con->set_status(websocketpp::http::status_code::value(code));
+                        if(!http_no_response) {
+                            con->set_body(std::move(body));
+                        }
                         con->send_http_response();
                     });
 
@@ -339,8 +344,10 @@ public:
                 http_conns[id] = nullptr;
 
                 try {
-                    con->set_body(std::move(body));
                     con->set_status(websocketpp::http::status_code::value(code));
+                    if(!http_no_response) {
+                        con->set_body(std::move(body));
+                    }
                     con->send_http_response();
                 }
                 catch(...) {
@@ -356,8 +363,10 @@ public:
                 https_conns[index] = nullptr;
 
                 try {
-                    con->set_body(std::move(body));
                     con->set_status(websocketpp::http::status_code::value(code));
+                    if(!http_no_response) {
+                        con->set_body(std::move(body));
+                    }
                     con->send_http_response();
                 }
                 catch(...) {
@@ -433,6 +442,7 @@ http_plugin::set_program_options(options_description&, options_description& cfg)
         ("verbose-http-errors", bpo::bool_switch()->default_value(false), "Append the error log to HTTP responses")
         ("http-validate-host", boost::program_options::value<bool>()->default_value(true), "If set to false, then any incoming \"Host\" header is considered valid")
         ("http-alias", bpo::value<std::vector<string>>()->composing(), "Additionaly acceptable values for the \"Host\" header of incoming HTTP requests, can be specified multiple times.  Includes http/s_server_address by default.")
+        ("http-no-response", bpo::bool_switch()->default_value(false), "special for load-testing, response all the requests with empty body")
         ;
 }
 
@@ -447,10 +457,12 @@ http_plugin::plugin_initialize(const variables_map& options) {
 
         tcp::resolver resolver(app().get_io_service());
         if(options.count("http-server-address") && options.at("http-server-address").as<string>().length()) {
-            string               lipstr = options.at("http-server-address").as<string>();
-            string               host   = lipstr.substr(0, lipstr.find(':'));
-            string               port   = lipstr.substr(host.size() + 1, lipstr.size());
+            string lipstr = options.at("http-server-address").as<string>();
+            string host   = lipstr.substr(0, lipstr.find(':'));
+            string port   = lipstr.substr(host.size() + 1, lipstr.size());
+            
             tcp::resolver::query query(tcp::v4(), host.c_str(), port.c_str());
+
             try {
                 my->listen_endpoint = *resolver.resolve(query);
                 ilog("configured http to listen on ${h}:${p}", ("h", host)("p", port));
@@ -476,10 +488,12 @@ http_plugin::plugin_initialize(const variables_map& options) {
                 return;
             }
 
-            string               lipstr = options.at("https-server-address").as<string>();
-            string               host   = lipstr.substr(0, lipstr.find(':'));
-            string               port   = lipstr.substr(host.size() + 1, lipstr.size());
+            string lipstr = options.at("https-server-address").as<string>();
+            string host   = lipstr.substr(0, lipstr.find(':'));
+            string port   = lipstr.substr(host.size() + 1, lipstr.size());
+
             tcp::resolver::query query(tcp::v4(), host.c_str(), port.c_str());
+
             try {
                 my->https_listen_endpoint = *resolver.resolve(query);
                 ilog("configured https to listen on ${h}:${p} (TLS configuration will be validated momentarily)",
@@ -500,6 +514,7 @@ http_plugin::plugin_initialize(const variables_map& options) {
 
         my->max_body_size                = options.at("max-body-size").as<uint32_t>();
         my->max_deferred_connection_size = options.at("max-deferred-connection-size").as<uint32_t>();
+        my->http_no_response             = options.at("http-no-response").as<bool>();
         verbose_http_errors              = options.at("verbose-http-errors").as<bool>();
 
         FC_ASSERT(my->max_deferred_connection_size < std::numeric_limits<int32_t>::max());

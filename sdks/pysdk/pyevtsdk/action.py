@@ -1,7 +1,7 @@
 import json
 
 import pyevt
-from pyevt import abi, ecc, libevt
+from pyevt import abi, ecc, libevt, evt_link
 
 from . import base
 
@@ -49,6 +49,12 @@ class TransferAction(Action):
     # key: name of token
     def __init__(self, domain, key, data):
         super().__init__('transfer', domain, key, data)
+
+class DestroyTokenAcion(Action):
+    # domain: name of domain token belongs to
+    # key: name of token
+    def __init__(self, domain, key, data):
+        super().__init__('destroytoken', domain, key, data)
 
 
 class AddMetaAction(Action):
@@ -104,6 +110,14 @@ class ExecSuspendAction(Action):
     def __init__(self, key, data):
         super().__init__('execsuspend', '.suspend', key, data)
 
+class EveripassAction(Action):
+    def __init__(self, domain, key, data):
+        super().__init__('everipass', domain, key, data)
+
+class EveripayAction(Action):
+    def __init__(self, domain, key, data):
+        super().__init__('everipay', domain, key, data)
+
 
 class ActionTypeErrorException(Exception):
     def __init__(self):
@@ -131,6 +145,8 @@ def get_action_from_abi_json(action, abi_json, domain=None, key=None):
         return IssueTokenAction(abi_dict['domain'], _bin)
     elif action == 'transfer':
         return TransferAction(abi_dict['domain'], abi_dict['name'], _bin)
+    elif action == 'destroytoken':
+        return DestroyTokenAcion(abi_dict['domain'], abi_dict['name'], _bin)
     elif action == 'addmeta':
         return AddMetaAction(domain, key, _bin)
     elif action == 'newfungible':
@@ -151,6 +167,10 @@ def get_action_from_abi_json(action, abi_json, domain=None, key=None):
         return CancelSuspendAction(abi_dict['name'], _bin)
     elif action == 'execsuspend':
         return ExecSuspendAction(abi_dict['name'], _bin)
+    elif action == 'everipass':
+        return EveripassAction(domain, key, _bin)
+    elif action == 'everipay':
+        return EveripayAction(domain, key, _bin)
     else:
         raise ActionTypeErrorException
 
@@ -203,6 +223,11 @@ class ActionGenerator:
         abi_json = base.TransferAbi(
             domain, name, to=[str(each) for each in to], memo=memo)
         return get_action_from_abi_json('transfer', abi_json.dumps())
+
+    def destroytoken(self, domain, name):
+        abi_json = base.DestroyTokenAbi(
+            domain, name)
+        return get_action_from_abi_json('destroytoken', abi_json.dumps())
 
     def newfungible(self, name, sym_name, sym, creator, total_supply, **kwargs):
         auth_A = base.AuthorizerWeight(base.AuthorizerRef('A', creator), 1)
@@ -259,6 +284,16 @@ class ActionGenerator:
     def execsuspend(self, name, executor):
         abi_json = base.ExecSuspendAbi(name, str(executor))
         return get_action_from_abi_json('execsuspend', abi_json.dumps())
+
+    def everipass(self, link):
+        everipass = evt_link.EvtLink.parse_from_evtli(link)
+        abi_json = base.EveripassAbi(link)
+        return get_action_from_abi_json('everipass', abi_json.dumps(), everipass.get_segment_str('domain'), everipass.get_segment_str('token'))
+
+    def everipay(self, payee, number, link):
+        everipay = evt_link.EvtLink.parse_from_evtli(link)
+        abi_json = base.EveripayAbi(str(payee), number, link)
+        return get_action_from_abi_json('everipay', abi_json.dumps(), '.fungible', str(everipay.get_segment_int('symbol_id')))
 
     def new_action(self, action, **args):
         func = getattr(self, action)

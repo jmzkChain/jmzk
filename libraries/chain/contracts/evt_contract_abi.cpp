@@ -11,7 +11,7 @@ namespace evt { namespace chain { namespace contracts {
 
 static auto evt_abi_version       = 3;
 static auto evt_abi_minor_version = 1;
-static auto evt_abi_patch_version = 0;
+static auto evt_abi_patch_version = 1;
 
 version
 evt_contract_abi_version() {
@@ -46,6 +46,7 @@ evt_contract_abi() {
     evt_abi.types.push_back( type_def{"meta_value","string"} );
     evt_abi.types.push_back( type_def{"meta_list","meta[]"} );
     evt_abi.types.push_back( type_def{"suspend_status","uint8"} );
+    evt_abi.types.push_back( type_def{"conf_key","name128"} );
 
     evt_abi.actions.push_back( action_def{name("newdomain"), "newdomain"} );
     evt_abi.actions.push_back( action_def{name("issuetoken"), "issuetoken"} );
@@ -67,6 +68,7 @@ evt_contract_abi() {
     evt_abi.actions.push_back( action_def{name("paycharge"), "paycharge"} );
     evt_abi.actions.push_back( action_def{name("everipass"), "everipass"} );
     evt_abi.actions.push_back( action_def{name("everipay"), "everipay"} );
+    evt_abi.actions.push_back( action_def{name("prodvote"), "prodvote"} );
 
     // structures def
     evt_abi.structs.emplace_back( struct_def {
@@ -301,6 +303,14 @@ evt_contract_abi() {
            {"link", "evt_link"},
            {"payee", "address"},
            {"number", "asset"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "prodvote", "", {
+           {"producer", "account_name"},
+           {"key", "conf_key"},
+           {"value", "int64"}
         }
     });
 

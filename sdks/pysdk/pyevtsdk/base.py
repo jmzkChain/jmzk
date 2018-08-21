@@ -189,6 +189,11 @@ class TransferAbi(BaseType):
                          to=to,
                          memo=memo)
 
+class DestroyTokenAbi(BaseType):
+    def __init__(self, domain, name):
+        super().__init__(domain=domain,
+                         name=name)
+
 
 class NewGroupAbi(BaseType):
     def __init__(self, name, group):
@@ -255,3 +260,11 @@ class CancelSuspendAbi(BaseType):
 class ExecSuspendAbi(BaseType):
     def __init__(self, name, executor):
         super().__init__(name=name, executor=executor)
+
+class EveripassAbi(BaseType):
+    def __init__(self, link):
+        super().__init__(link=link)
+
+class EveripayAbi(BaseType):
+    def __init__(self,payee, number, link):
+        super().__init__(payee=payee, number=number, link=link)

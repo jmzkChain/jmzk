@@ -31,6 +31,7 @@ public:
 
 public:
     const mongocxx::uri& uri() const;
+    bool  enabled() const;
 
 private:
     std::unique_ptr<class mongo_db_plugin_impl> my_;

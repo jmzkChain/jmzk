@@ -52,7 +52,9 @@ pack_unpack() {
 }
 
 abi_serializer::abi_serializer(const abi_def& abi) {
-    set_max_serialization_time(fc::milliseconds(15)); // 15ms
+    if(get_max_serialization_time().count() == 0) {
+        set_max_serialization_time(fc::milliseconds(15)); // 15ms
+    }
     configure_built_in_types();
     set_abi(abi);
 }

@@ -11,7 +11,7 @@
 namespace fc {
   class microseconds {
     public:
-        explicit microseconds( int64_t c = 0) :_count(c){}
+        explicit constexpr microseconds( int64_t c = 0) :_count(c){}
         static microseconds maximum() { return microseconds(0x7fffffffffffffffll); }
         friend microseconds operator + (const  microseconds& l, const microseconds& r ) { return microseconds(l._count+r._count); }
         friend microseconds operator - (const  microseconds& l, const microseconds& r ) { return microseconds(l._count-r._count); }
@@ -31,11 +31,11 @@ namespace fc {
         friend class time_point;
         int64_t      _count;
   };
-  inline microseconds seconds( int64_t s ) { return microseconds( s * 1000000 ); }
-  inline microseconds milliseconds( int64_t s ) { return microseconds( s * 1000 ); }
-  inline microseconds minutes(int64_t m) { return seconds(60*m); }
-  inline microseconds hours(int64_t h) { return minutes(60*h); }
-  inline microseconds days(int64_t d) { return hours(24*d); }
+  inline microseconds constexpr seconds( int64_t s ) { return microseconds( s * 1000000 ); }
+  inline microseconds constexpr milliseconds( int64_t s ) { return microseconds( s * 1000 ); }
+  inline microseconds constexpr minutes(int64_t m) { return seconds(60*m); }
+  inline microseconds constexpr hours(int64_t h) { return minutes(60*h); }
+  inline microseconds constexpr days(int64_t d) { return hours(24*d); }
 
   class variant;
   void to_variant( const fc::microseconds&,  fc::variant&  );

@@ -887,6 +887,7 @@ struct set_meta_subcommands {
             subcmd->add_option("meta-key", metakey, localized("Key of the metadata"))->required();
             subcmd->add_option("meta-value", metavalue, localized("Value of the metadata"))->required();
             subcmd->add_option("creator", creator, localized("Public key of the metadata creator"))->required();
+            add_standard_transaction_options(subcmd);
         };
 
         auto dmcmd = actionRoot->add_subcommand("domain", localized("Add metadata to one domain"));
@@ -955,7 +956,7 @@ struct set_suspend_subcommands {
             auto varsuspend = call(get_suspend_func, fc::mutable_variant_object("name", (proposal_name)name));
             auto suspend = suspend_def();
             auto evt_abi = abi_serializer(evt_contract_abi());
-            abi_serializer::from_variant(varsuspend, suspend, [&]{ return evt_abi; });
+            abi_serializer::from_variant(varsuspend, suspend, [&]() -> const evt::chain::contracts::abi_serializer& { return evt_abi; });
 
             auto public_keys = call(wallet_url, wallet_public_keys);
             auto get_arg     = fc::mutable_variant_object("name", (proposal_name)name)("available_keys", public_keys);
@@ -998,7 +999,31 @@ struct set_suspend_subcommands {
             send_actions({act});
         });
     }
+};
 
+struct set_producer_subcommands {
+    string  producer;
+    string  confkey;
+    int64_t confvalue;
+
+    set_producer_subcommands(CLI::App* actionRoot) {
+        auto pvcmd = actionRoot->add_subcommand("prodvote", localized("Producer votes for chain configuration"));
+        pvcmd->add_option("name", producer, localized("Name of producer"))->required();
+        pvcmd->add_option("key", confkey, localized("Key of config value to vote"))->required();
+        pvcmd->add_option("value", confvalue, localized("Config value"))->required();
+
+        add_standard_transaction_options(pvcmd);
+
+        pvcmd->set_callback([this] {
+            auto pvact = prodvote();
+            pvact.producer = (account_name)producer;
+            pvact.key      = (conf_key)confkey;
+            pvact.value    = confvalue;
+
+            auto act = create_action(N128(.prodvote), (domain_key)pvact.key, pvact);
+            send_actions({act});
+        });
+    }
 };
 
 struct set_get_domain_subcommand {
@@ -1131,6 +1156,11 @@ struct set_get_my_subcommands {
         auto mygroup = mycmd->add_subcommand("groups", localized("Retrieve my created groups"));
         mygroup->set_callback([] {
             get_my_resources(get_my_groups);
+        });
+
+        auto myfungible = mycmd->add_subcommand("fungibles", localized("Retrieve my created fungibles"));
+        mygroup->set_callback([] {
+            get_my_resources(get_my_fungibles);
         });
 
         auto trxscmd = mycmd->add_subcommand("transactions", localized("Retrieve my transactions"));
@@ -1390,6 +1420,12 @@ main(int argc, char** argv) {
     suspend->require_subcommand();
 
     auto set_suspend = set_suspend_subcommands(suspend);
+
+    // producer
+    auto producer = app.add_subcommand("producer", localized("Votes for producers"));
+    producer->require_subcommand();
+
+    auto set_producer = set_producer_subcommands(producer);
 
     // Wallet subcommand
     auto wallet = app.add_subcommand("wallet", localized("Interact with local wallet"));

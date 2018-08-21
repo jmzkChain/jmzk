@@ -9,6 +9,7 @@
 #include <fc/io/raw.hpp>
 
 namespace evt { namespace chain {
+
 digest_type
 block_header::digest() const {
     return digest_type::hash(*this);

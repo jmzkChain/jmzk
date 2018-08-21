@@ -23,9 +23,8 @@ evt_link_parse_from_evtli(const char* str, evt_link_t** link/* out */) {
         auto _link = evt_link::parse_from_evtli(std::string(str));
         *link = get_evt_data(_link);
     }
-    catch(...) {
-        return EVT_INTERNAL_ERROR;
-    }
+    CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
+
     return EVT_OK;
 }
 
@@ -43,9 +42,8 @@ evt_link_get_header(evt_link_t* link, uint16_t* header/* out */) {
         auto _header = _link.get_header();
         *header = _header;
     }
-    catch(...) {
-        return EVT_INTERNAL_ERROR;
-    }
+    CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
+
     return EVT_OK;
 }
 
@@ -63,9 +61,8 @@ evt_link_set_header(evt_link_t** link/* in&out */, uint16_t header) {
         _link.set_header(header);
         *link = get_evt_data(_link);
     }
-    catch(...) {
-        return EVT_INTERNAL_ERROR;
-    }
+    CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
+
     return EVT_OK;
 }
 
@@ -88,9 +85,8 @@ evt_link_get_segment(evt_link_t* link, uint8_t key, uint32_t* intv /* out */, ch
             *strv = strdup(*_segment.strv);
         }
     }
-    catch(...) {
-        return EVT_INTERNAL_ERROR;
-    }
+    CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
+
     return EVT_OK;
 }
 

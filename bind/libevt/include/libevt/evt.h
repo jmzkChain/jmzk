@@ -32,6 +32,8 @@ typedef struct {
 int evt_free(void*);
 int evt_equals(evt_data_t* rhs, evt_data_t* lhs);
 int evt_version();
+int evt_set_last_error(int code);
+int evt_last_error();
 
 #ifdef __cplusplus
 } // extern "C"

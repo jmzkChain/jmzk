@@ -19,6 +19,10 @@
 #include <evt/chain/contracts/evt_link_object.hpp>
 #include <evt/utilities/safemath.hpp>
 
+#if defined(__clang__)
+#pragma GCC diagnostic ignored "-Winstantiation-after-specialization"
+#endif
+
 namespace evt { namespace chain { namespace contracts {
 
 #define EVT_ACTION_IMPL(name)                         \
@@ -878,11 +882,13 @@ EVT_ACTION_IMPL(everipass) {
 
         EVT_ASSERT(context.has_authorized(name128(d), name128(t)), action_authorize_exception, "Authorized information does not match.");
 
-        auto  ts    = *link.get_segment(evt_link::timestamp).intv;
-        auto  since = std::abs((context.control.head_block_time() - fc::time_point_sec(ts)).to_seconds());
-        auto& conf  = context.control.get_global_properties().configuration;
-        if(since > conf.evt_link_expired_secs) {
-            EVT_THROW(evt_link_expiration_exception, "EVT-Link is expired, now: ${n}, timestamp: ${t}", ("n",context.control.head_block_time())("t",fc::time_point_sec(ts)));
+        if(!context.control.loadtest_mode()) {
+            auto  ts    = *link.get_segment(evt_link::timestamp).intv;
+            auto  since = std::abs((context.control.head_block_time() - fc::time_point_sec(ts)).to_seconds());
+            auto& conf  = context.control.get_global_properties().configuration;
+            if(since > conf.evt_link_expired_secs) {
+                EVT_THROW(evt_link_expiration_exception, "EVT-Link is expired, now: ${n}, timestamp: ${t}", ("n",context.control.head_block_time())("t",fc::time_point_sec(ts)));
+            }
         }
 
         auto keys = link.restore_keys();
@@ -931,11 +937,13 @@ EVT_ACTION_IMPL(everipay) {
         auto& lsym_id = *link.get_segment(evt_link::symbol_id).intv;
         EVT_ASSERT(context.has_authorized(N128(.fungible), name128(std::to_string(lsym_id))), action_authorize_exception, "Authorized information does not match.");
 
-        auto ts     = *link.get_segment(evt_link::timestamp).intv;
-        auto since  = std::abs((context.control.head_block_time() - fc::time_point_sec(ts)).to_seconds());
-        auto& conf  = context.control.get_global_properties().configuration;
-        if(since > conf.evt_link_expired_secs) {
-            EVT_THROW(evt_link_expiration_exception, "EVT-Link is expired, now: ${n}, timestamp: ${t}", ("n",context.control.head_block_time())("t",fc::time_point_sec(ts)));
+        if(!context.control.loadtest_mode()) {
+            auto ts     = *link.get_segment(evt_link::timestamp).intv;
+            auto since  = std::abs((context.control.head_block_time() - fc::time_point_sec(ts)).to_seconds());
+            auto& conf  = context.control.get_global_properties().configuration;
+            if(since > conf.evt_link_expired_secs) {
+                EVT_THROW(evt_link_expiration_exception, "EVT-Link is expired, now: ${n}, timestamp: ${t}", ("n",context.control.head_block_time())("t",fc::time_point_sec(ts)));
+            }
         }
 
         auto& link_id_str = *link.get_segment(evt_link::link_id).strv;
@@ -984,6 +992,96 @@ EVT_ACTION_IMPL(everipay) {
 
         tokendb.update_asset(epact.payee, tacc);
         tokendb.update_asset(payer, facc);
+    }
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+}
+
+EVT_ACTION_IMPL(prodvote) {
+    auto pvact = context.act.data_as<const prodvote&>();
+    try {
+        EVT_ASSERT(context.has_authorized(N128(.prodvote), pvact.key), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(pvact.value > 0 && pvact.value < 1'000'000, prodvote_value_exception, "Invalid prodvote value: ${v}", ("v",pvact.value));
+
+        auto  conf    = context.control.get_global_properties().configuration;
+        auto& sche    = context.control.active_producers();
+        auto& tokendb = context.token_db;
+
+        std::function<void(int64_t)> set_func;
+        switch(pvact.key.value) {
+        case N128(network-charge-factor): {
+            set_func = [&](int64_t v) {
+                conf.base_network_charge_factor = v;
+            };
+            break;
+        }
+        case N128(storage-charge-factor): {
+            set_func = [&](int64_t v) {
+                conf.base_storage_charge_factor = v;
+            };
+            break;
+        }
+        case N128(cpu-charge-factor): {
+            set_func = [&](int64_t v) {
+                conf.base_cpu_charge_factor = v;
+            };
+            break;
+        }
+        case N128(global-charge-factor): {
+            set_func = [&](int64_t v) {
+                conf.global_charge_factor = v;
+            };
+            break;
+        }
+        default: {
+            EVT_THROW(prodvote_key_exception, "Configuration key: ${k} is not valid", ("k",pvact.key));
+        }
+        } // switch
+
+        auto pkey = sche.get_producer_key(pvact.producer);
+        EVT_ASSERT(pkey.valid(), prodvote_producer_exception, "${p} is not a valid producer", ("p",pvact.producer));
+
+        tokendb.update_prodvote(pvact.key, *pkey, pvact.value);
+
+        auto is_prod = [&](auto& pk) {
+            for(auto& p : sche.producers) {
+                if(p.block_signing_key == pk) {
+                    return true;
+                }
+            }
+            return false;
+        };
+
+        auto values = std::vector<int64_t>();
+        tokendb.read_prodvotes_no_throw(pvact.key, [&](const auto& pk, auto v) {
+            if(is_prod(pk)) {
+                values.emplace_back(v);
+            }
+            return true;
+        });
+
+        if(values.size() >= ::ceil(2.0 * sche.producers.size() / 3.0)) {
+            int64_t nv = 0;
+
+            // find median
+            if(values.size() % 2 == 0) {
+                auto it1 = values.begin() + values.size() / 2 - 1;
+                auto it2 = values.begin() + values.size() / 2;
+
+                std::nth_element(values.begin(), it1 , values.end());
+                std::nth_element(values.begin(), it2 , values.end());
+
+                nv = ::floor((*it1 + *it2) / 2);
+            }
+            else {
+                auto it = values.begin() + values.size() / 2;
+                std::nth_element(values.begin(), it , values.end());
+
+                nv = *it;
+            }
+
+            set_func(nv);
+            context.control.set_chain_config(conf);
+        }
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }

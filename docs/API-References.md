@@ -1,6 +1,6 @@
-# EVT API References
 ![everiToken Logo](./logo.png)
 
+# EVT API References
 ## GET /v1/chain/get_info
 Before interacting with everiToken, you need to get some chain information first. Call this API to get `chain_id`, `evt_abi_version` and many other properties of current chain state.
 
@@ -698,6 +698,21 @@ Response:
 ["testgroup"]
 ```
 
+## POST /v1/history/get_fungibles
+Provide all the public keys its has and this API will response with all the symbol ids of the fungibles that account create.
+> This API is only available when MONGO_DB_SUPPORT is ON.
+
+Request:
+```
+{
+    "keys":["EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"]
+}
+```
+Response:
+```
+[3, 4, 5]
+```
+
 ## POST /v1/history/get_actions
 Query actions by domain, key and action names.
 > This API is only available when MONGO_DB_SUPPORT is ON.
@@ -706,8 +721,8 @@ Query actions by domain, key and action names.
 Request:
 ```
 {
-  "domain": "fungible",
-  "key": "EVT",
+  "domain": ".fungible",
+  "key": "1",
   "names": [
     "newfungible"
   ],
@@ -720,8 +735,8 @@ Response:
 ```
 [{
     "name": "newfungible",
-    "domain": "fungible",
-    "key": "EVT",
+    "domain": ".fungible",
+    "key": "1",
     "trx_id": "f0c789933e2b381e88281e8d8e750b561a4d447725fb0eb621f07f219fe2f738",
     "created_at": "2018-06-28T05:35:12",
     "data": {
@@ -760,7 +775,7 @@ Request:
 ```
 {
   "sym_id": 338422621,
-  "address": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+  "addr": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
   "skip": 0
   "take": 10
 }

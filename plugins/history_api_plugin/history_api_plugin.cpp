@@ -56,6 +56,7 @@ history_api_plugin::plugin_startup() {
     app().get_plugin<http_plugin>().add_api({HISTORY_RO_CALL(get_tokens, 200),
                                              HISTORY_RO_CALL(get_domains, 200),
                                              HISTORY_RO_CALL(get_groups, 200),
+                                             HISTORY_RO_CALL(get_fungibles, 200),
                                              HISTORY_RO_CALL(get_actions, 200),
                                              HISTORY_RO_CALL(get_fungible_actions, 200),
                                              HISTORY_RO_CALL(get_transaction, 200),
