@@ -875,13 +875,17 @@ read_only::get_head_block_header_state(const get_head_block_header_state_params&
 }
 
 fc::variant
-read_only::get_trx_id_for_link_id(const get_trx_id_for_link_id_params& params) const {
-    if(params.link_id.size() != sizeof(link_id_type)) {
-        EVT_THROW(evt_link_id_exception, "EVT-Link id is not in proper length");
+read_only::get_transaction(const get_transaction_params& params) {
+    auto block = db.fetch_block_by_number(params.block_num);
+    for(auto& tx : block->transactions) {
+        if(tx.trx.id() == params.id) {
+            auto var = fc::variant();
+            abi_serializer::to_variant(tx.trx, var, make_resolver(this));
+
+            return var;
+        }
     }
-    auto vo      = fc::mutable_variant_object();
-    vo["trx_id"] = db.get_trx_id_for_link_id(*(link_id_type*)(&params.link_id[0]));
-    return vo;
+    FC_THROW_EXCEPTION(unknown_transaction_exception, "Cannot find transaction");
 }
 
 void
