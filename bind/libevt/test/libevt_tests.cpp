@@ -19,7 +19,7 @@ dump_mem(evt_data_t* data) {
 }
 
 BOOST_AUTO_TEST_CASE( evtlink ) {
-    LinkPtr linkp = nullptr;
+    void* linkp = nullptr;
     evt_link_new(&linkp);
     BOOST_TEST_REQUIRE(linkp != nullptr);
     
