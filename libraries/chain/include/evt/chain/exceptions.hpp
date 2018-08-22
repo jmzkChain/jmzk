@@ -130,7 +130,7 @@ FC_DECLARE_DERIVED_EXCEPTION( producer_priv_key_not_found,       producer_except
 FC_DECLARE_DERIVED_EXCEPTION( missing_pending_block_state,       producer_exception, 3050002, "Pending block state is missing" );
 FC_DECLARE_DERIVED_EXCEPTION( producer_double_confirm,           producer_exception, 3050003, "Producer is double confirming known range" );
 FC_DECLARE_DERIVED_EXCEPTION( producer_schedule_exception,       producer_exception, 3050004, "Producer schedule exception" );
-FC_DECLARE_DERIVED_EXCEPTION( producer_not_in_schedule,          producer_exception, 3050006, "The producer is not part of current schedule" );
+FC_DECLARE_DERIVED_EXCEPTION( producer_not_in_schedule,          producer_exception, 3050005, "The producer is not part of current schedule" );
    
 FC_DECLARE_DERIVED_EXCEPTION( block_log_unsupported_version,     block_log_exception, 3060001, "unsupported version of block log" );
 FC_DECLARE_DERIVED_EXCEPTION( block_log_append_fail,             block_log_exception, 3060002, "fail to append block to the block log" );
@@ -275,8 +275,8 @@ FC_DECLARE_DERIVED_EXCEPTION( extract_genesis_state_exception,   misc_exception,
 FC_DECLARE_DERIVED_EXCEPTION( unsupported_feature,               misc_exception, 3100006, "Feature is currently unsupported" );
 FC_DECLARE_DERIVED_EXCEPTION( node_management_success,           misc_exception, 3100007, "Node management operation successfully executed" );
 
-FC_DECLARE_DERIVED_EXCEPTION( tx_duplicate_sig,                 authorization_exception, 3090001, "Duplicate signature is included." );
-FC_DECLARE_DERIVED_EXCEPTION( tx_irrelevant_sig,                authorization_exception, 3090002, "Irrelevant signature is included." );
-FC_DECLARE_DERIVED_EXCEPTION( unsatisfied_authorization,        authorization_exception, 3090003, "Provided keys do not satisfy declared authorizations." );
+FC_DECLARE_DERIVED_EXCEPTION( tx_duplicate_sig,                 authorization_exception, 3160001, "Duplicate signature is included." );
+FC_DECLARE_DERIVED_EXCEPTION( tx_irrelevant_sig,                authorization_exception, 3160002, "Irrelevant signature is included." );
+FC_DECLARE_DERIVED_EXCEPTION( unsatisfied_authorization,        authorization_exception, 3160003, "Provided keys do not satisfy declared authorizations." );
 
 }} // evt::chain
