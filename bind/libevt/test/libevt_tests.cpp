@@ -20,7 +20,7 @@ dump_mem(evt_data_t* data) {
 
 BOOST_AUTO_TEST_CASE( evtlink ) {
     void* linkp = nullptr;
-    evt_link_new(&linkp);
+    linkp = evt_link_new();
     BOOST_TEST_REQUIRE(linkp != nullptr);
     
     auto r1 = evt_link_parse_from_evtli("03XBY4E/KTS:PNHVA3JP9QG258F08JHYOYR5SLJGN0EA-C3J6S:2G:T1SX7WA14KH9ETLZ97TUX9R9JJA6+06$E/_PYNX-/152P4CTC:WKXLK$/7G-K:89+::2K4C-KZ2**HI-P8CYJ**XGFO1K5:$E*SOY8MFYWMNHP*BHX2U8$$FTFI81YDP1HT",
@@ -65,9 +65,7 @@ BOOST_AUTO_TEST_CASE( evtlink ) {
     evt_link_get_signatures(linkp, &signs, &len);
     BOOST_TEST_REQUIRE(len == 2);
 
-
-    evt_link_free(&linkp);
-    BOOST_TEST_REQUIRE(linkp == nullptr);
+    evt_link_free(linkp);
 }
 
 BOOST_AUTO_TEST_CASE( evtaddress ) {

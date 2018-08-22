@@ -16,20 +16,15 @@ using fc::crypto::private_key;
 
 extern "C" {
 
-int
-evt_link_new(void** linkp) {
-    try {
-        *linkp = new evt_link();
-    }
-    CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
-    return EVT_OK;
+void*
+evt_link_new() {
+    auto linkp = new evt_link();
+    return (void*)linkp;
 }
 
-int
-evt_link_free(void** linkp) {
-    delete (LinkPtr)(*linkp);
-    *linkp = nullptr;
-    return EVT_OK;
+void
+evt_link_free(void* linkp) {
+    delete (LinkPtr)(linkp);
 }
 
 int

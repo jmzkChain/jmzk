@@ -98,9 +98,17 @@ def init_evt_lib():
             int evt_address_get_nonce(evt_address_t* addr, uint32_t* nonce/* out */);
             int evt_address_get_type(evt_address_t* addr, char** str/* out */);
 
-            int evt_link_parse_from_evtli(const char* str, evt_link_t** link/* out */);
-            int evt_link_get_header(evt_link_t* link, uint16_t* header/* out */);
-            int evt_link_get_segment(evt_link_t* link, uint8_t key, uint32_t* intv, char** strv);
+            void* evt_link_new();
+            void evt_link_free(void*);
+            int evt_link_tostring(void*, char**);
+            int evt_link_parse_from_evtli(const char*, void*);
+            int evt_link_get_header(void*, uint16_t*);
+            int evt_link_set_header(void*, uint16_t);
+            int evt_link_get_segment(void*, uint8_t, uint32_t*, char**);
+            int evt_link_add_segment_int(void*, uint8_t, uint32_t);
+            int evt_link_add_segment_str(void*, uint8_t, const char*);
+            int evt_link_get_signatures(void*, evt_signature_t***, uint32_t*);
+            int evt_link_sign(void*, evt_private_key_t*);
             """)
 
     if "LIBEVT_PATH" in os.environ:

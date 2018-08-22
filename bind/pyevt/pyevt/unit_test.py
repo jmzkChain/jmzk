@@ -128,12 +128,24 @@ class TestPyEVT(unittest.TestCase):
         timestamp = evt_link.get_segment_int('timestamp')
         domain = evt_link.get_segment_str('domain')
         token = evt_link.get_segment_str('token')
-
+    
+        signs = evt_link.get_signatures()
+        
         self.assertEqual(header, 3)
         self.assertEqual(timestamp, 1532465234)
         self.assertEqual(domain, 'nd1532465232490')
         self.assertEqual(token, 'tk3064930465.8381')
-
+        
+        pub_key, priv_key = generate_new_pair()
+        evt_link_1 = EvtLink()
+        evt_link_1.set_header(3)
+        evt_link_1.add_segment_int('timestamp', 1532465234)
+        evt_link_1.add_segment_str('domain', 'nd1532465232490')
+        evt_link_1.add_segment_str('token', 'tk3064930465.8381')
+        evt_link_1.sign(priv_key)
+        
+        self.assertEqual(evt_link_1.get_segment_int('timestamp'), 1532465234)
+        self.assertEqual(evt_link.get_segment_str('domain'), 'nd1532465232490')
 
 if __name__ == '__main__':
     unittest.main()

@@ -16,8 +16,8 @@ typedef evt_link* LinkPtr;
 typedef evt_data_t evt_signature_t;
 typedef evt_data_t evt_private_key_t;
 
-int evt_link_new(void**);
-int evt_link_free(void**);
+void* evt_link_new();
+void evt_link_free(void*);
 int evt_link_tostring(void*, char**);
 int evt_link_parse_from_evtli(const char*, void*);
 int evt_link_get_header(void*, uint16_t*);
