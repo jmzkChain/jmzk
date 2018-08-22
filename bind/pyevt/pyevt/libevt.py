@@ -111,8 +111,9 @@ def init_evt_lib():
             int evt_link_sign(void*, evt_private_key_t*);
             """)
 
-    if "LIBEVT_PATH" in os.environ:
-        LibEVT.lib = LibEVT.ffi.dlopen(os.environ["LIBEVT_PATH"] + '/libevt.so')
+    if 'LIBEVT_PATH' in os.environ:
+        LibEVT.lib = LibEVT.ffi.dlopen(
+            os.environ['LIBEVT_PATH'] + '/libevt.so')
     else:
         LibEVT.lib = LibEVT.ffi.dlopen('libevt.so')
 
@@ -120,5 +121,5 @@ def init_evt_lib():
 
 
 def init_lib():
-    LibEVT.ffi.init_once(init_evt_lib, "init_evt")
+    LibEVT.ffi.init_once(init_evt_lib, 'init_evt')
     return LibEVT.lib.evt_version()

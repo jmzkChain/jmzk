@@ -1,7 +1,8 @@
-from . import evt_exception, libevt
-from .evt_data import EvtData
-from .ecc import Signature
 from enum import Enum
+
+from . import evt_exception, libevt
+from .ecc import Signature
+from .evt_data import EvtData
 
 
 class SegmentType(Enum):
@@ -56,25 +57,35 @@ class EvtLink():
     def get_segment_str(self, type_str):
         intv_c = self.evt.ffi.new('uint32_t*')
         strv_c = self.evt.ffi.new('char**')
-        ret = self.evt.lib.evt_link_get_segment(self.linkp, SegmentType[type_str].value, intv_c, strv_c)
+        ret = self.evt.lib.evt_link_get_segment(
+            self.linkp, SegmentType[type_str].value, intv_c, strv_c)
         evt_exception.evt_exception_raiser(ret)
-        strv = self.evt.ffi.string(strv_c[0]).decode('utf-8')
+        if type_str == 'link_id':
+            strv = self.evt.ffi.buffer(strv_c[0], 16)[:]
+        else:
+            strv = self.evt.ffi.string(strv_c[0]).decode('utf-8')
         return strv
 
     def get_segment_int(self, type_str):
         intv_c = self.evt.ffi.new('uint32_t*')
         strv_c = self.evt.ffi.new('char**')
-        ret = self.evt.lib.evt_link_get_segment(self.linkp, SegmentType[type_str].value, intv_c, strv_c)
+        ret = self.evt.lib.evt_link_get_segment(
+            self.linkp, SegmentType[type_str].value, intv_c, strv_c)
         evt_exception.evt_exception_raiser(ret)
         return int(intv_c[0])
 
     def add_segment_str(self, type_str, strv):
-        strv_c = bytes(strv, encoding='utf-8')
-        ret = self.evt.lib.evt_link_add_segment_str(self.linkp, SegmentType[type_str].value, strv_c)
+        if type_str == 'link_id':
+            strv_c = strv
+        else:
+            strv_c = bytes(strv, encoding='utf-8')
+        ret = self.evt.lib.evt_link_add_segment_str(
+            self.linkp, SegmentType[type_str].value, strv_c)
         evt_exception.evt_exception_raiser(ret)
-    
+
     def add_segment_int(self, type_str, intv):
-        ret = self.evt.lib.evt_link_add_segment_int(self.linkp, SegmentType[type_str].value, intv)
+        ret = self.evt.lib.evt_link_add_segment_int(
+            self.linkp, SegmentType[type_str].value, intv)
         evt_exception.evt_exception_raiser(ret)
 
     def get_signatures(self):
@@ -88,3 +99,51 @@ class EvtLink():
     def sign(self, priv_key):
         ret = self.evt.lib.evt_link_sign(self.linkp, priv_key.data)
         evt_exception.evt_exception_raiser(ret)
+
+    def set_timestamp(self, timestamp):
+        self.add_segment_int('timestamp', timestamp)
+
+    def set_max_pay(self, max_pay):
+        self.add_segment_int('max_pay', max_pay)
+
+    def set_symbol_id(self, symbol_id):
+        self.add_segment_int('symbol_id', symbol_id)
+
+    def set_domain(self, domain):
+        self.add_segment_str('domain', domain)
+
+    def set_token(self, token):
+        self.add_segment_str('token', token)
+
+    def set_max_pay_str(self, max_pay_str):
+        self.add_segment_str('max_pay_str', max_pay_str)
+
+    def set_address(self, address):
+        self.add_segment_str('address', address)
+
+    def get_timestamp(self):
+        return self.get_segment_int('timestamp')
+
+    def get_max_pay(self):
+        return self.get_segment_int('max_pay')
+
+    def get_symbol_id(self):
+        return self.get_segment_int('symbol_id')
+
+    def get_domain(self):
+        return self.get_segment_str('domain')
+
+    def get_token(self):
+        return self.get_segment_str('token')
+
+    def get_max_pay_str(self):
+        return self.get_segment_str('max_pay_str')
+
+    def get_address(self):
+        return self.get_segment_str('address')
+
+    def set_link_id(self, link_id):
+        self.add_segment_str('link_id', link_id)
+
+    def get_link_id(self):
+        return self.get_segment_str('link_id')
