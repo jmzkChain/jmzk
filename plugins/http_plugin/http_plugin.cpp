@@ -5,6 +5,7 @@
 #include <evt/http_plugin/http_plugin.hpp>
 #include <evt/chain/exceptions.hpp>
 
+#include <fc/optional.hpp>
 #include <fc/crypto/openssl.hpp>
 #include <fc/io/json.hpp>
 #include <fc/log/logger_config.hpp>
@@ -38,6 +39,7 @@ using std::vector;
 using std::set;
 using std::string;
 using std::regex;
+using fc::optional;
 using websocketpp::connection_hdl;
 
 namespace detail {
@@ -315,6 +317,9 @@ public:
                     auto id = alloc_deferred_id<T>(con); 
 
                     con->defer_http_response();
+                    con->set_close_handler([&](auto c) {
+                        visit_connection(id, [](auto&) { return false; });
+                    });
                     deferred_handler_it->second(resource, body, id);
 
                     return;
@@ -332,16 +337,36 @@ public:
         }
     }
 
+    template<typename FUNC>
+    void
+    visit_connection(deferred_id id, FUNC&& vistor) {
+        if((id & (1 << 31)) == 0) {
+            // http
+            FC_ASSERT(id < max_deferred_connection_size);
+            auto con = http_conns[id];
+            FC_ASSERT(con != nullptr);
+
+            if(!vistor(con)) {
+                http_conns[id] = nullptr;
+            }
+        }
+        else {
+            // https
+            auto index = id & (0xFFFFFFFF >> 1);
+            FC_ASSERT(index < max_deferred_connection_size);
+            auto con = https_conns[index];
+            FC_ASSERT(con != nullptr);
+
+            if(!vistor(con)) {
+                https_conns[id] = nullptr;
+            }
+        }
+    }
+
     void
     set_deferred_response(deferred_id id, int code, string body) {
         try {
-            if((id & (1 << 31)) == 0) {
-                // http
-                FC_ASSERT(id < max_deferred_connection_size);
-                auto con = http_conns[id];
-                FC_ASSERT(con != nullptr);
-                http_conns[id] = nullptr;
-
+            visit_connection(id, [&](auto& con) {
                 try {
                     con->set_status(websocketpp::http::status_code::value(code));
                     if(!http_no_response) {
@@ -350,28 +375,10 @@ public:
                     con->send_http_response();
                 }
                 catch(...) {
-                    handle_exception<websocketpp::transport::asio::basic_socket::endpoint>(con);
+                    handle_exception<typename std::decay_t<decltype(*con)>::config_type::transport_type::socket_type>(con);
                 }
-            }
-            else {
-                // https
-                auto index = id & (0xFFFFFFFF >> 1);
-                FC_ASSERT(index < max_deferred_connection_size);
-                auto con = https_conns[index];
-                FC_ASSERT(con != nullptr);
-                https_conns[index] = nullptr;
-
-                try {
-                    con->set_status(websocketpp::http::status_code::value(code));
-                    if(!http_no_response) {
-                        con->set_body(std::move(body));
-                    }
-                    con->send_http_response();
-                }
-                catch(...) {
-                    handle_exception<websocketpp::transport::asio::tls_socket::endpoint>(con);
-                }
-            }
+                return false;  // return false to indicate release connection
+            });
         }
         FC_LOG_AND_DROP((id));
     }

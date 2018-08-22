@@ -237,6 +237,8 @@ class connection
  , public config::connection_base
 {
 public:
+    /// Type of config type
+    typedef config config_type;
     /// Type of this connection
     typedef connection<config> type;
     /// Type of a shared pointer to this connection
