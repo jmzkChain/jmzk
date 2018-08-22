@@ -5,6 +5,14 @@
 #include <evt/evt_link_plugin/evt_link_plugin.hpp>
 
 #include <deque>
+#if __has_include(<condition>)
+#include <condition>
+using std::condition_variable_any;
+#else
+#include <boost/thread/condition.hpp>
+using boost::condition_variable_any;
+#endif
+
 #include <fc/io/json.hpp>
 #include <fc/container/flat_fwd.hpp>
 
@@ -29,7 +37,6 @@ using evt::chain::contracts::evt_link;
 using evt::chain::contracts::everipay;
 using evt::utilities::spinlock;
 using evt::utilities::spinlock_guard;
-using std::condition_variable_any;
 
 class evt_link_plugin_impl {
 public:
