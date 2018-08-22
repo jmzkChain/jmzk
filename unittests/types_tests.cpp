@@ -109,6 +109,9 @@ TEST_CASE("test_link_2", "[types]") {
                "+CGUBIMTB261AT$6:*I+UKBHSQP3D84/JEZDG7BEJ5OUD$ZINCC24";
 
     auto link = evt_link::parse_from_evtli(str);
+    auto str2 = link.to_string(1);
+    
+    CHECK(str == str2);
 
     CHECK(link.get_header() == 11);
     CHECK(*link.get_segment(evt_link::timestamp).intv == 1532465608);
@@ -155,6 +158,9 @@ TEST_CASE("test_link_3", "[types]") {
                "Y6$3M9-RP-6/YPM7:3P";
 
     auto link = evt_link::parse_from_evtli(str);
+    auto str2 = link.to_string();
+    
+    // CHECK(str == str2); because evtjs generated link doesn't guarantee the order of signatures
 
     CHECK(link.get_header() == 11);
     CHECK(*link.get_segment(evt_link::timestamp).intv == 1532468461);

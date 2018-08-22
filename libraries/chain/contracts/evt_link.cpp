@@ -26,7 +26,9 @@ namespace evt { namespace chain { namespace contracts {
 
 namespace __internal {
 
-const char* ALPHABETS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ$+-/:*";
+const char* ALPHABETS  = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ$+-/:*";
+const int   MAX_BYTES  = 240;  // 195 / ((42 ^ 2) / 2048)
+const char* URI_SCHEMA = "https://evt.li/";
 
 template<typename T>
 bytes
@@ -42,6 +44,7 @@ decode(const std::string& nums, int pos, int end) {
     }
 
     auto b = bytes();
+    b.reserve(MAX_BYTES);
     for(auto i = 0; i < (pz - pos); i++) {
         b.emplace_back(0);
     }
@@ -143,9 +146,8 @@ evt_link::parse_from_evtli(const std::string& str) {
     EVT_ASSERT(str.size() > 20, evt_link_exception, "Link is too short");
 
     size_t start = 0;
-    const char* uri_schema = "https://evt.li/";
-    if(memcmp(str.data(), uri_schema, strlen(uri_schema)) == 0) {
-        start = strlen(uri_schema);
+    if(memcmp(str.data(), URI_SCHEMA, strlen(URI_SCHEMA)) == 0) {
+        start = strlen(URI_SCHEMA);
     }
 
     auto d = str.find_first_of('_', start);
@@ -255,8 +257,8 @@ write_signatures_bytes(const evt_link& link, Stream& stream) {
 template<typename Num>
 void
 encode(const bytes& b, size_t sz, std::string& str) {
-    auto i = 0;
-    for(i = 0; i < sz; i++) {
+    auto i = 0u;
+    for(i = 0u; i < sz; i++) {
         if(b[i] == 0) {
             str.push_back('0');
         }
@@ -289,15 +291,21 @@ evt_link::digest() const {
 }
 
 std::string
-evt_link::to_string() const {
+evt_link::to_string(int prefix) const {
     using namespace __internal;
 
-    auto temp = bytes(1024 * 1024);
+    auto temp = bytes(MAX_BYTES);
     auto ds   = fc::datastream<char*>(temp.data(), temp.size());
     auto str  = string();
 
+    if(prefix) {
+        str.append(URI_SCHEMA);
+    }
+
+    auto str1 = string();
     write_segments_bytes(*this, ds);
-    encode<bigint_segs>(temp, ds.tellp(), str);
+    encode<bigint_segs>(temp, ds.tellp(), str1);
+    str.append(str1);
 
     if(!signatures_.empty()) {
         str.push_back('_');
