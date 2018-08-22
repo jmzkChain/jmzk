@@ -16,24 +16,24 @@ using fc::crypto::private_key;
 
 extern "C" {
 
-void*
+evt_link_t
 evt_link_new() {
     auto linkp = new evt_link();
-    return (void*)linkp;
+    return (evt_link_t)linkp;
 }
 
 void
-evt_link_free(void* linkp) {
-    delete (LinkPtr)(linkp);
+evt_link_free(evt_link_t linkp) {
+    delete (evt_link*)(linkp);
 }
 
 int
-evt_link_tostring(void* linkp, char** str) {
+evt_link_tostring(evt_link_t linkp, char** str) {
     if (linkp == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
     try {
-        auto _str = ((LinkPtr)(linkp))->to_string();
+        auto _str = ((evt_link*)(linkp))->to_string();
         *str = strdup(_str);
     }
     CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
@@ -41,104 +41,112 @@ evt_link_tostring(void* linkp, char** str) {
 }
 
 int
-evt_link_parse_from_evtli(const char* str, void* linkp) {
+evt_link_parse_from_evtli(const char* str, evt_link_t linkp) {
     if (str == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
     try {
-        *((LinkPtr)(linkp)) = evt_link::parse_from_evtli(std::string(str));
+        *((evt_link*)(linkp)) = evt_link::parse_from_evtli(std::string(str));
     }
     CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
     return EVT_OK;
 }
 
 int
-evt_link_get_header(void* linkp, uint16_t* header/* out */) {
+evt_link_get_header(evt_link_t linkp, uint16_t* header/* out */) {
     if (linkp == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
     try {
-        *header = ((LinkPtr)(linkp))->get_header();
+        *header = ((evt_link*)(linkp))->get_header();
     }
     CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
     return EVT_OK;
 }
 
 int
-evt_link_set_header(void* linkp, uint16_t header) {
+evt_link_set_header(evt_link_t linkp, uint16_t header) {
     if (linkp == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
     try {
-        ((LinkPtr)(linkp))->set_header(header);
+        ((evt_link*)(linkp))->set_header(header);
     }
     CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
     return EVT_OK;
 }
 
 int
-evt_link_get_segment(void* linkp, uint8_t key, uint32_t* intv, char** strv) {
+evt_link_get_segment_int(evt_link_t linkp, uint8_t key, uint32_t* intv) {
     if (linkp == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
     try {
-        auto _segment = ((LinkPtr)(linkp))->get_segment(key);
-        if (_segment.intv.valid()) {
-            *intv = *_segment.intv;
-        }
-        else {
-            *strv = strdup(*_segment.strv);
-        }
+        auto _segment = ((evt_link*)(linkp))->get_segment(key);
+        *intv = *_segment.intv;
     }
     CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
     return EVT_OK;
 }
 
 int
-evt_link_add_segment_int(void* linkp, uint8_t key, uint32_t intv) {
+evt_link_get_segment_str(evt_link_t linkp, uint8_t key, char** strv) {
+    if (linkp == nullptr) {
+        return EVT_INVALID_ARGUMENT;
+    }
+    try {
+        auto _segment = ((evt_link*)(linkp))->get_segment(key);
+        *strv = strdup(*_segment.strv);
+    }
+    CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
+    return EVT_OK;
+}
+
+int
+evt_link_add_segment_int(evt_link_t linkp, uint8_t key, uint32_t intv) {
     if (linkp == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
     try {
         auto _segment = evt_link::segment(key, intv);
-        ((LinkPtr)(linkp))->add_segment(_segment);
+        ((evt_link*)(linkp))->add_segment(_segment);
     }
     CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
     return EVT_OK;
 }
 
 int
-evt_link_add_segment_str(void* linkp, uint8_t key, const char* strv) {
+evt_link_add_segment_str(evt_link_t linkp, uint8_t key, const char* strv) {
     if (linkp == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
     try {
         auto _segment = evt_link::segment(key, std::string(strv));
-        ((LinkPtr)(linkp))->add_segment(_segment);
+        ((evt_link*)(linkp))->add_segment(_segment);
     }
     CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
     return EVT_OK;
 }
 
 int
-evt_link_clear_signatures(void* linkp) {
+evt_link_clear_signatures(evt_link_t linkp) {
     if (linkp == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
     try {
-        ((LinkPtr)(linkp))->clear_signatures();
+        ((evt_link*)(linkp))->clear_signatures();
     }
     CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
     return EVT_OK;
 }
 
 int
-evt_link_get_signatures(void* linkp, evt_signature_t*** signs, uint32_t* len) {
+evt_link_get_signatures(evt_link_t linkp, evt_signature_t*** signs, uint32_t* len) {
     if (linkp == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
     try {
-        auto _signs = ((LinkPtr)(linkp))->get_signatures();
+        auto _signs = ((evt_link*)(linkp))->get_signatures();
         int size = _signs.size();
         *signs = new evt_signature_t*[size];
         int i = 0;
@@ -152,7 +160,7 @@ evt_link_get_signatures(void* linkp, evt_signature_t*** signs, uint32_t* len) {
 }
 
 int
-evt_link_sign(void* linkp, evt_private_key_t* priv_key) {
+evt_link_sign(evt_link_t linkp, evt_private_key_t* priv_key) {
     if (linkp == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
@@ -161,7 +169,7 @@ evt_link_sign(void* linkp, evt_private_key_t* priv_key) {
         return EVT_INVALID_PRIVATE_KEY;
     }
     try {
-        ((LinkPtr)(linkp))->sign(pk);
+        ((evt_link*)(linkp))->sign(pk);
     }
     CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
     return EVT_OK;

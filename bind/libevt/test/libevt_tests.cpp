@@ -35,11 +35,11 @@ BOOST_AUTO_TEST_CASE( evtlink ) {
 
     uint32_t intv;
     char* strv;
-    auto r3 = evt_link_get_segment(linkp, 42, &intv, &strv);
+    auto r3 = evt_link_get_segment_int(linkp, 42, &intv);
     BOOST_TEST_REQUIRE(r3 == EVT_OK);
     BOOST_TEST_REQUIRE(intv == 1532465234);
 
-    auto r4 = evt_link_get_segment(linkp, 91, &intv, &strv);
+    auto r4 = evt_link_get_segment_str(linkp, 91, &strv);
     BOOST_TEST_REQUIRE(r4 == EVT_OK);
     BOOST_TEST_REQUIRE(strv == "nd1532465232490");
     
