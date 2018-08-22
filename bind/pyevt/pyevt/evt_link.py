@@ -57,8 +57,8 @@ class EvtLink():
     def get_segment_str(self, type_str):
         intv_c = self.evt.ffi.new('uint32_t*')
         strv_c = self.evt.ffi.new('char**')
-        ret = self.evt.lib.evt_link_get_segment(
-            self.linkp, SegmentType[type_str].value, intv_c, strv_c)
+        ret = self.evt.lib.evt_link_get_segment_str(
+            self.linkp, SegmentType[type_str].value, strv_c)
         evt_exception.evt_exception_raiser(ret)
         if type_str == 'link_id':
             strv = self.evt.ffi.buffer(strv_c[0], 16)[:]
@@ -69,8 +69,8 @@ class EvtLink():
     def get_segment_int(self, type_str):
         intv_c = self.evt.ffi.new('uint32_t*')
         strv_c = self.evt.ffi.new('char**')
-        ret = self.evt.lib.evt_link_get_segment(
-            self.linkp, SegmentType[type_str].value, intv_c, strv_c)
+        ret = self.evt.lib.evt_link_get_segment_int(
+            self.linkp, SegmentType[type_str].value, intv_c)
         evt_exception.evt_exception_raiser(ret)
         return int(intv_c[0])
 
