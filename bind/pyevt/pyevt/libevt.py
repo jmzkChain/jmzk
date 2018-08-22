@@ -56,7 +56,7 @@ def init_evt_lib():
             typedef evt_data_t evt_signature_t;
             typedef evt_data_t evt_checksum_t;
             typedef evt_data_t evt_address_t;
-            typedef evt_data_t evt_link_t;
+            typedef void* evt_link_t;
 
 
             void* evt_abi();
@@ -98,13 +98,23 @@ def init_evt_lib():
             int evt_address_get_nonce(evt_address_t* addr, uint32_t* nonce/* out */);
             int evt_address_get_type(evt_address_t* addr, char** str/* out */);
 
-            int evt_link_parse_from_evtli(const char* str, evt_link_t** link/* out */);
-            int evt_link_get_header(evt_link_t* link, uint16_t* header/* out */);
-            int evt_link_get_segment(evt_link_t* link, uint8_t key, uint32_t* intv, char** strv);
+            evt_link_t evt_link_new();
+            void evt_link_free(evt_link_t);
+            int evt_link_tostring(evt_link_t, char**);
+            int evt_link_parse_from_evtli(const char*, evt_link_t);
+            int evt_link_get_header(evt_link_t, uint16_t*);
+            int evt_link_set_header(evt_link_t, uint16_t);
+            int evt_link_get_segment_int(evt_link_t, uint8_t, uint32_t*);
+            int evt_link_get_segment_str(evt_link_t, uint8_t, char**);
+            int evt_link_add_segment_int(evt_link_t, uint8_t, uint32_t);
+            int evt_link_add_segment_str(evt_link_t, uint8_t, const char*);
+            int evt_link_get_signatures(evt_link_t, evt_signature_t***, uint32_t*);
+            int evt_link_sign(evt_link_t, evt_private_key_t*);
             """)
 
-    if "LIBEVT_PATH" in os.environ:
-        LibEVT.lib = LibEVT.ffi.dlopen(os.environ["LIBEVT_PATH"] + '/libevt.so')
+    if 'LIBEVT_PATH' in os.environ:
+        LibEVT.lib = LibEVT.ffi.dlopen(
+            os.environ['LIBEVT_PATH'] + '/libevt.so')
     else:
         LibEVT.lib = LibEVT.ffi.dlopen('libevt.so')
 
@@ -112,5 +122,5 @@ def init_evt_lib():
 
 
 def init_lib():
-    LibEVT.ffi.init_once(init_evt_lib, "init_evt")
+    LibEVT.ffi.init_once(init_evt_lib, 'init_evt')
     return LibEVT.lib.evt_version()
