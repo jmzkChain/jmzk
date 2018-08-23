@@ -158,7 +158,7 @@ def get_action_from_abi_json(action, abi_json, domain=None, key=None):
     elif action == 'transferft':
         return TransferFtAction(abi_dict['number'].split('#')[1], _bin)
     elif action == 'evt2pevt':
-        return EVT2PEVTAction(abi_dict['number'].split(' ')[1], _bin)
+        return EVT2PEVTAction(abi_dict['number'].split('#')[1], _bin)
     elif action == 'newsuspend':
         return NewSuspendAction(abi_dict['name'], _bin)
     elif action == 'aprvsuspend':

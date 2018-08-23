@@ -105,11 +105,20 @@ def pre_action():
     newfungible = AG.new_action(
         'newfungible', name=sym_name, sym_name=sym_name, sym=symbol, creator=user.pub_key, total_supply=asset(10000000))
 
-    issuefungible = AG.new_action(
+    issuefungible1 = AG.new_action(
         'issuefungible', address=base.Address().set_public_key(user.pub_key), number=asset(100), memo='goodluck')
+
+    asset_evt = base.new_asset(base.Symbol(
+        sym_name=sym_name, sym_id=1, precision=5))
+    issuefungible2 = AG.new_action(
+        'issuefungible', address=base.Address().set_public_key(user.pub_key), number=asset_evt(100), memo='goodluck')
+
+    e2p = AG.new_action(
+         'evt2pevt', _from=base.Address().set_public_key(user.pub_key), to=base.Address().set_public_key(user.pub_key), number=asset_evt(100), memo='goodluck')
 
     everipay = AG.new_action('everipay', payee=pub2, number=asset(
         1), link='0UKDS95I5ACY-A88L*AVAIX*504XXDR:9SIFVAQL/9WB7D1:8_P-JBZQWAYW5UQE9VG2ZGCNUF*+G4K9TEK642H4PY9VX0UG8LZ2TE5$3FS6TAAUEIC8KEENE:2V6NOET:QGE7M913KXAXQ69Y')
+    
     trx = TG.new_trx()
     trx.add_action(newdomain)
     trx.add_sign(user.priv_key)
@@ -119,7 +128,17 @@ def pre_action():
 
     trx = TG.new_trx()
     trx.add_action(issuetoken)
-    trx.add_action(issuefungible)
+    trx.add_action(issuefungible1)
+    trx.add_sign(user.priv_key)
+    api.push_transaction(trx.dumps())
+
+    trx = TG.new_trx()
+    trx.add_action(issuefungible2)
+    trx.add_sign(priv_evt)
+    api.push_transaction(trx.dumps())
+
+    trx = TG.new_trx()
+    trx.add_action(e2p)
     trx.add_sign(user.priv_key)
     api.push_transaction(trx.dumps())
 
@@ -231,7 +250,9 @@ class Test(unittest.TestCase):
 
         resp = api.get_assets(json.dumps(req)).text
         self.assertTrue(str(sym_id) in resp, msg=resp)
+        self.assertTrue(str(2) in resp, msg=resp)
         self.assertTrue('97' in resp, msg=resp)
+        self.assertTrue('100' in resp, msg=resp)
 
         req = {
             'address': pub2.to_string()
@@ -282,6 +303,10 @@ class Test(unittest.TestCase):
         resp = api.get_fungible_actions(json.dumps(req)).text
         self.assertTrue('issuefungible' in resp, msg=resp)
         self.assertTrue(str(sym_id) in resp, msg=resp)
+
+        req['sym_id'] = 1
+        resp = api.get_fungible_actions(json.dumps(req)).text
+        self.assertTrue('evt2pevt' in resp, msg=resp)
 
     def test_get_history_transaction(self):
         name = fake_name()
@@ -358,6 +383,10 @@ def main(url, evtd_path, public_key, private_key):
 
         global pub2, priv2
         pub2, priv2 = ecc.generate_new_pair()
+
+        global evt_pub, priv_evt
+        evt_pub = ecc.PublicKey.from_string('EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV')
+        priv_evt = ecc.PrivateKey.from_string('5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3')
 
         global TG
         TG = transaction.TrxGenerator(url=url, payer=public_key)
