@@ -16,19 +16,19 @@ using fc::crypto::private_key;
 
 extern "C" {
 
-evt_link_t
+evt_link_t*
 evt_link_new() {
     auto linkp = new evt_link();
-    return (evt_link_t)linkp;
+    return (evt_link_t*)linkp;
 }
 
 void
-evt_link_free(evt_link_t linkp) {
+evt_link_free(evt_link_t* linkp) {
     delete (evt_link*)(linkp);
 }
 
 int
-evt_link_tostring(evt_link_t linkp, char** str) {
+evt_link_tostring(evt_link_t* linkp, char** str) {
     if (linkp == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
@@ -41,7 +41,7 @@ evt_link_tostring(evt_link_t linkp, char** str) {
 }
 
 int
-evt_link_parse_from_evtli(const char* str, evt_link_t linkp) {
+evt_link_parse_from_evtli(const char* str, evt_link_t* linkp) {
     if (str == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
@@ -53,7 +53,7 @@ evt_link_parse_from_evtli(const char* str, evt_link_t linkp) {
 }
 
 int
-evt_link_get_header(evt_link_t linkp, uint16_t* header/* out */) {
+evt_link_get_header(evt_link_t* linkp, uint16_t* header/* out */) {
     if (linkp == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
@@ -65,7 +65,7 @@ evt_link_get_header(evt_link_t linkp, uint16_t* header/* out */) {
 }
 
 int
-evt_link_set_header(evt_link_t linkp, uint16_t header) {
+evt_link_set_header(evt_link_t* linkp, uint16_t header) {
     if (linkp == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
@@ -77,7 +77,7 @@ evt_link_set_header(evt_link_t linkp, uint16_t header) {
 }
 
 int
-evt_link_get_segment_int(evt_link_t linkp, uint8_t key, uint32_t* intv) {
+evt_link_get_segment_int(evt_link_t* linkp, uint8_t key, uint32_t* intv) {
     if (linkp == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
@@ -90,7 +90,7 @@ evt_link_get_segment_int(evt_link_t linkp, uint8_t key, uint32_t* intv) {
 }
 
 int
-evt_link_get_segment_str(evt_link_t linkp, uint8_t key, char** strv) {
+evt_link_get_segment_str(evt_link_t* linkp, uint8_t key, char** strv) {
     if (linkp == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
@@ -103,7 +103,7 @@ evt_link_get_segment_str(evt_link_t linkp, uint8_t key, char** strv) {
 }
 
 int
-evt_link_add_segment_int(evt_link_t linkp, uint8_t key, uint32_t intv) {
+evt_link_add_segment_int(evt_link_t* linkp, uint8_t key, uint32_t intv) {
     if (linkp == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
@@ -116,7 +116,7 @@ evt_link_add_segment_int(evt_link_t linkp, uint8_t key, uint32_t intv) {
 }
 
 int
-evt_link_add_segment_str(evt_link_t linkp, uint8_t key, const char* strv) {
+evt_link_add_segment_str(evt_link_t* linkp, uint8_t key, const char* strv) {
     if (linkp == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
@@ -129,7 +129,7 @@ evt_link_add_segment_str(evt_link_t linkp, uint8_t key, const char* strv) {
 }
 
 int
-evt_link_clear_signatures(evt_link_t linkp) {
+evt_link_clear_signatures(evt_link_t* linkp) {
     if (linkp == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
@@ -141,26 +141,29 @@ evt_link_clear_signatures(evt_link_t linkp) {
 }
 
 int
-evt_link_get_signatures(evt_link_t linkp, evt_signature_t*** signs, uint32_t* len) {
+evt_link_get_signatures(evt_link_t* linkp, evt_signature_t*** signs, uint32_t* len) {
     if (linkp == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
     try {
         auto _signs = ((evt_link*)(linkp))->get_signatures();
-        int size = _signs.size();
-        *signs = new evt_signature_t*[size];
+        auto size   = _signs.size();
+        auto psigns = (evt_signature_t**)malloc(sizeof(evt_signature_t*) * size);
+
         int i = 0;
         for(auto it = _signs.begin(); it != _signs.end(); it++, i++) {
-            *(signs[i]) = get_evt_data(*it);
+            psigns[i] = get_evt_data(*it);
         }
-        *len = size;
+        
+        *signs = psigns;
+        *len   = size;
     }
     CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
     return EVT_OK;
 }
 
 int
-evt_link_sign(evt_link_t linkp, evt_private_key_t* priv_key) {
+evt_link_sign(evt_link_t* linkp, evt_private_key_t* priv_key) {
     if (linkp == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
