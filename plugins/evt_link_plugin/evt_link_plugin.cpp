@@ -5,6 +5,7 @@
 #include <evt/evt_link_plugin/evt_link_plugin.hpp>
 
 #include <deque>
+#include <tuple>
 #if __has_include(<condition>)
 #include <condition>
 using std::condition_variable_any;
@@ -37,8 +38,13 @@ using evt::chain::contracts::evt_link;
 using evt::chain::contracts::everipay;
 using evt::utilities::spinlock;
 using evt::utilities::spinlock_guard;
+using boost::asio::deadline_timer;
 
-class evt_link_plugin_impl {
+class evt_link_plugin_impl : public std::enable_shared_from_this<evt_link_plugin_impl> {
+public:
+    using deferred_pair = std::pair<deferred_id, deadline_timer>;
+    enum { kDeferredId, kTimer };
+
 public:
     evt_link_plugin_impl(controller& db)
         : db_(db) {}
@@ -46,15 +52,15 @@ public:
 
 public:
     void init();
+    void get_trx_id_for_link_id(const link_id_type& link_id, deferred_id id);
+    void add_and_schedule(const link_id_type& link_id, deferred_id id);
 
 private:
     void consume_queues();
     void applied_block(const chain::block_state_ptr& bs);
     void _applied_block(const chain::block_state_ptr& bs);
 
-    void get_trx_id_for_link_id(const link_id_type& link_id, deferred_id id);
-
-private:
+public:
     controller& db_;
 
     spinlock               lock_;
@@ -62,14 +68,12 @@ private:
     std::thread            consume_thread_;
     std::atomic_bool       done_{false};
     std::atomic_bool       init_{false};
+    uint32_t               timeout_;
 
-    std::deque<block_state_ptr>             blocks_;
-    fc::flat_map<link_id_type, deferred_id> link_ids_;
+    std::deque<block_state_ptr>               blocks_;
+    fc::flat_map<link_id_type, deferred_pair> link_ids_;
 
     fc::optional<boost::signals2::scoped_connection> accepted_block_connection_;
-
-private:
-    friend class evt_link_plugin;
 };
 
 void
@@ -148,15 +152,67 @@ evt_link_plugin_impl::_applied_block(const chain::block_state_ptr& bs) {
                 vo["block_num"] = bs->block_num;
                 vo["trx_id"]    = trx->id;
 
-                app().get_plugin<http_plugin>().set_deferred_response(it->second, 200, fc::json::to_string(vo));
+                auto json = fc::json::to_string(vo);
+                auto wptr = std::weak_ptr<evt_link_plugin_impl>(shared_from_this());
+                app().get_io_service().post([wptr, json, link_id_str] {
+                    auto self = wptr.lock();
+                    if(self) {
+                        self->lock_.lock();
+                        auto it = self->link_ids_.find(*(link_id_type*)(link_id_str.data()));
+                        if(it != self->link_ids_.end()) {
+                            self->lock_.unlock();
 
-                spinlock_guard l(lock_);
-                link_ids_.erase(it);
-                return;
+                            auto& pair = it->second;
+                            std::get<kTimer>(pair).cancel();
+                            app().get_plugin<http_plugin>().set_deferred_response(std::get<kDeferredId>(pair), 200, json);
+
+                            spinlock_guard l(self->lock_);
+                            self->link_ids_.erase(it);
+                            return;
+                        }
+                        else {
+                            self->lock_.unlock();
+                        }
+                    }
+                });
             }
-            lock_.unlock();
+            else {
+                lock_.unlock();
+            }
         }
     }
+}
+
+void
+evt_link_plugin_impl::add_and_schedule(const link_id_type& link_id, deferred_id id) {
+    auto it = link_ids_.emplace(link_id, std::make_pair(id, deadline_timer(app().get_io_service())));
+    if(!it.second) {
+        EVT_THROW(chain::evt_link_already_watched_exception, "EVT-Link: ${link} is already watched", ("link",link_id));
+    }
+
+    auto& timer = std::get<kTimer>(it.first->second);
+    timer.expires_from_now(boost::posix_time::milliseconds(timeout_));
+    
+    auto wptr = std::weak_ptr<evt_link_plugin_impl>(shared_from_this());
+    timer.async_wait([wptr, link_id](auto& ec) {
+        auto self = wptr.lock();
+        if(self && ec != boost::asio::error::operation_aborted) {
+            auto it = self->link_ids_.find(link_id);
+            if(it != self->link_ids_.end()) {
+                wlog("Cannot find context for id: ${id}", ("id",link_id));
+                return;
+            }
+
+            try {
+                EVT_THROW(chain::exceed_evt_link_watch_time_exception, "Exceed EVT-Link watch time: ${time} ms", ("time",self->timeout_));
+            }
+            catch(...) {
+                http_plugin::handle_exception("evt_link", "get_trx_id_for_link_id", "", [&](auto code, auto body) {
+                    app().get_plugin<http_plugin>().set_deferred_response(std::get<kDeferredId>(it->second), code, std::move(body));
+                });
+            }
+        }
+    });
 }
 
 void
@@ -167,7 +223,7 @@ evt_link_plugin_impl::get_trx_id_for_link_id(const link_id_type& link_id, deferr
         if(obj.block_num > db_.fork_db_head_block_num()) {
             // block not finalize yet
             spinlock_guard l(lock_);
-            link_ids_.emplace(link_id, id);
+            add_and_schedule(link_id, id);
             return;
         }
 
@@ -180,7 +236,7 @@ evt_link_plugin_impl::get_trx_id_for_link_id(const link_id_type& link_id, deferr
     catch(const chain::evt_link_existed_exception&) {
         // cannot find now, put into map
         spinlock_guard l(lock_);
-        link_ids_.emplace(link_id, id);
+        add_and_schedule(link_id, id);
     }
 }
 
@@ -214,11 +270,16 @@ evt_link_plugin::evt_link_plugin() {}
 evt_link_plugin::~evt_link_plugin() {}
 
 void
-evt_link_plugin::set_program_options(options_description&, options_description&) {}
+evt_link_plugin::set_program_options(options_description&, options_description& cfg) {
+    cfg.add_options()
+        ("evt-link-timeout", bpo::value<uint32_t>()->default_value(5000), "Max time waitting for the deferred request.")
+    ;
+}
 
 void
-evt_link_plugin::plugin_initialize(const variables_map&) {
+evt_link_plugin::plugin_initialize(const variables_map& options) {
     my_.reset(new evt_link_plugin_impl(app().get_plugin<chain_plugin>().chain()));
+    my_->timeout_ = options.at("evt-link-timeout").as<uint32_t>();
     my_->init();
 }
 

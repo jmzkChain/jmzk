@@ -99,6 +99,7 @@ FC_DECLARE_DERIVED_EXCEPTION( misc_exception,                    chain_exception
 FC_DECLARE_DERIVED_EXCEPTION( authorization_exception,           chain_exception, 3160000, "Authorization exception");
 FC_DECLARE_DERIVED_EXCEPTION( controller_emit_signal_exception,  chain_exception, 3170000, "Exceptions that are allowed to bubble out of emit calls in controller" );
 FC_DECLARE_DERIVED_EXCEPTION( http_exception,                    chain_exception, 3180000, "http exception" );
+FC_DECLARE_DERIVED_EXCEPTION( evt_link_plugin_exception,         chain_exception, 3190000, "evt-link plugin exception" );
 
 FC_DECLARE_DERIVED_EXCEPTION( unlinkable_block_exception,        block_validate_exception, 3020001, "Unlinkable block" );
 FC_DECLARE_DERIVED_EXCEPTION( block_tx_output_exception,         block_validate_exception, 3020002, "Transaction outputs in block do not match transaction outputs from applying block" );
@@ -278,5 +279,9 @@ FC_DECLARE_DERIVED_EXCEPTION( node_management_success,           misc_exception,
 FC_DECLARE_DERIVED_EXCEPTION( tx_duplicate_sig,                 authorization_exception, 3160001, "Duplicate signature is included." );
 FC_DECLARE_DERIVED_EXCEPTION( tx_irrelevant_sig,                authorization_exception, 3160002, "Irrelevant signature is included." );
 FC_DECLARE_DERIVED_EXCEPTION( unsatisfied_authorization,        authorization_exception, 3160003, "Provided keys do not satisfy declared authorizations." );
+
+FC_DECLARE_DERIVED_EXCEPTION( evt_link_not_existed_now_excetpion,   evt_link_plugin_exception, 3190001, "EVT-Link is not existed currently" );
+FC_DECLARE_DERIVED_EXCEPTION( evt_link_already_watched_exception,   evt_link_plugin_exception, 3190002, "EVT-Link is already watched" );
+FC_DECLARE_DERIVED_EXCEPTION( exceed_evt_link_watch_time_exception, evt_link_plugin_exception, 3190003, "Exceed EVT-Link watch time" );
 
 }} // evt::chain
