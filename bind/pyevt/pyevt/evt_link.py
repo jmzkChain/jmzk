@@ -34,6 +34,9 @@ class EvtLink():
         strv_c = self.evt.ffi.new('char**')
         ret = self.evt.lib.evt_link_tostring(self.linkp, strv_c)
         evt_exception.evt_exception_raiser(ret)
+        strv = self.evt.ffi.string(strv_c[0]).decode('utf-8')
+        ret = self.evt.lib.evt_free(strv_c[0])
+        evt_exception.evt_exception_raiser(ret)
         return self.evt.ffi.string(strv_c[0]).decode('utf-8')
 
     @staticmethod
@@ -55,7 +58,6 @@ class EvtLink():
         evt_exception.evt_exception_raiser(ret)
 
     def get_segment_str(self, type_str):
-        intv_c = self.evt.ffi.new('uint32_t*')
         strv_c = self.evt.ffi.new('char**')
         ret = self.evt.lib.evt_link_get_segment_str(
             self.linkp, SegmentType[type_str].value, strv_c)
@@ -64,11 +66,12 @@ class EvtLink():
             strv = self.evt.ffi.buffer(strv_c[0], 16)[:]
         else:
             strv = self.evt.ffi.string(strv_c[0]).decode('utf-8')
+        ret = self.evt.lib.evt_free(strv_c[0])
+        evt_exception.evt_exception_raiser(ret)
         return strv
 
     def get_segment_int(self, type_str):
         intv_c = self.evt.ffi.new('uint32_t*')
-        strv_c = self.evt.ffi.new('char**')
         ret = self.evt.lib.evt_link_get_segment_int(
             self.linkp, SegmentType[type_str].value, intv_c)
         evt_exception.evt_exception_raiser(ret)
@@ -94,6 +97,8 @@ class EvtLink():
         ret = self.evt.lib.evt_link_get_signatures(self.linkp, signs_c, len_c)
         evt_exception.evt_exception_raiser(ret)
         l = [Signature(signs_c[0][i]) for i in range(int(len_c[0]))]
+        ret = self.evt.lib.evt_free(signs_c[0])
+        evt_exception.evt_exception_raiser(ret)
         return l
 
     def sign(self, priv_key):
