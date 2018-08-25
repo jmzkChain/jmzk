@@ -1,3 +1,4 @@
+import random
 from enum import Enum
 
 from . import evt_exception, libevt
@@ -149,6 +150,10 @@ class EvtLink():
 
     def set_link_id(self, link_id):
         self.add_segment_str('link_id', link_id)
+
+    def set_link_id_rand(self):
+        l = [random.randint(0, 255) for _ in range(16)]
+        self.set_link_id(bytes(l))
 
     def get_link_id(self):
         return self.get_segment_str('link_id')

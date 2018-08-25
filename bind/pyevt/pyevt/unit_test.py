@@ -158,6 +158,12 @@ class TestPyEVT(unittest.TestCase):
         self.assertEqual(link_id[1], 90)
         self.assertEqual(link_id[15], 185)
 
+        evt_link.set_link_id(bytes(
+            [139-1, 90, 90, 91, 249, 106, 190, 191, 63, 143, 113, 132, 245, 34, 161, 185]))
+        self.assertEqual(evt_link.get_link_id()[0], 138)
+
+        evt_link.set_link_id_rand()
+
 
 if __name__ == '__main__':
     unittest.main()
