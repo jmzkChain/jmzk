@@ -57,11 +57,11 @@ private:
 private:
     controller& db_;
 
-    spinlock                    lock_;
-    condition_variable_any      cond_;
-    std::thread                 consume_thread_;
-    std::atomic_bool            done_{false};
-    std::atomic_bool            init_{false};
+    spinlock               lock_;
+    condition_variable_any cond_;
+    std::thread            consume_thread_;
+    std::atomic_bool       done_{false};
+    std::atomic_bool       init_{false};
 
     std::deque<block_state_ptr>             blocks_;
     fc::flat_map<link_id_type, deferred_id> link_ids_;

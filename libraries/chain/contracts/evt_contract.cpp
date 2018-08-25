@@ -965,10 +965,10 @@ EVT_ACTION_IMPL(everipay) {
 
         auto keys = link.restore_keys();
         EVT_ASSERT(keys.size() == 1, evt_link_id_exception, "There're more than one signature on everiPay link, which is invalid");
-
         
         auto sym = epact.number.sym();
         EVT_ASSERT(lsym_id == sym.id(), everipay_exception, "Symbol ids don't match, provided: ${p}, expected: ${e}", ("p",lsym_id)("e",sym.id()));
+        EVT_ASSERT(lsym_id != PEVT_SYM_ID, everipay_exception, "Pinned EVT cannot be used to be paid.");
 
         auto max_pay = uint32_t(0);
         if(link.has_segment(evt_link::max_pay)) {
