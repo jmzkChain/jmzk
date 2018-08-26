@@ -11,7 +11,6 @@
 
 namespace evt {
 using evt::chain::controller;
-using std::unique_ptr;
 using namespace appbase;
 
 class evt_link_plugin : public plugin<evt_link_plugin> {
@@ -28,7 +27,7 @@ public:
     void plugin_shutdown();
 
 private:
-    unique_ptr<class evt_link_plugin_impl> my_;
+    std::shared_ptr<class evt_link_plugin_impl> my_;
 };
 
 }  // namespace evt

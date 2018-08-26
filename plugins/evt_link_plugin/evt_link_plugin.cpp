@@ -43,7 +43,7 @@ using boost::asio::deadline_timer;
 class evt_link_plugin_impl : public std::enable_shared_from_this<evt_link_plugin_impl> {
 public:
     using deferred_pair = std::pair<deferred_id, deadline_timer>;
-    enum { kDeferredId, kTimer };
+    enum { kDeferredId = 0, kTimer };
 
 public:
     evt_link_plugin_impl(controller& db)
@@ -197,18 +197,24 @@ evt_link_plugin_impl::add_and_schedule(const link_id_type& link_id, deferred_id 
     timer.async_wait([wptr, link_id](auto& ec) {
         auto self = wptr.lock();
         if(self && ec != boost::asio::error::operation_aborted) {
+            self->lock_.lock();
             auto it = self->link_ids_.find(link_id);
-            if(it != self->link_ids_.end()) {
+            if(it == self->link_ids_.end()) {
+                self->lock_.unlock();
                 wlog("Cannot find context for id: ${id}", ("id",link_id));
                 return;
             }
+            
+            auto id = std::get<kDeferredId>(it->second);
+            self->link_ids_.erase(it);
+            self->lock_.unlock();
 
             try {
                 EVT_THROW(chain::exceed_evt_link_watch_time_exception, "Exceed EVT-Link watch time: ${time} ms", ("time",self->timeout_));
             }
             catch(...) {
-                http_plugin::handle_exception("evt_link", "get_trx_id_for_link_id", "", [&](auto code, auto body) {
-                    app().get_plugin<http_plugin>().set_deferred_response(std::get<kDeferredId>(it->second), code, std::move(body));
+                http_plugin::handle_exception("evt_link", "get_trx_id_for_link_id", "", [id](auto code, auto body) {
+                    app().get_plugin<http_plugin>().set_deferred_response(id, code, std::move(body));
                 });
             }
         }
@@ -278,7 +284,7 @@ evt_link_plugin::set_program_options(options_description&, options_description& 
 
 void
 evt_link_plugin::plugin_initialize(const variables_map& options) {
-    my_.reset(new evt_link_plugin_impl(app().get_plugin<chain_plugin>().chain()));
+    my_ = std::make_shared<evt_link_plugin_impl>(app().get_plugin<chain_plugin>().chain());
     my_->timeout_ = options.at("evt-link-timeout").as<uint32_t>();
     my_->init();
 }
