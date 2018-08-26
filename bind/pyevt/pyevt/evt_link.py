@@ -38,7 +38,7 @@ class EvtLink():
         strv = self.evt.ffi.string(strv_c[0]).decode('utf-8')
         ret = self.evt.lib.evt_free(strv_c[0])
         evt_exception.evt_exception_raiser(ret)
-        return self.evt.ffi.string(strv_c[0]).decode('utf-8')
+        return strv
 
     @staticmethod
     def parse_from_evtli(link_str):
