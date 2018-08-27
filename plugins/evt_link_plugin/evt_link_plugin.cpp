@@ -316,6 +316,9 @@ evt_link_plugin::plugin_startup() {
 }
 
 void
-evt_link_plugin::plugin_shutdown() {}
+evt_link_plugin::plugin_shutdown() {
+    my_->accepted_block_connection_.reset();
+    my_.reset();
+}
 
 }  // namespace evt
