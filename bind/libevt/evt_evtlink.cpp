@@ -83,7 +83,12 @@ evt_link_get_segment_int(evt_link_t* linkp, uint8_t key, uint32_t* intv) {
     }
     try {
         auto _segment = ((evt_link*)(linkp))->get_segment(key);
-        *intv = *_segment.intv;
+        if(_segment.intv) {
+            *intv = *_segment.intv;
+        }
+        else {
+            return EVT_INVALID_ARGUMENT;
+        }
     }
     CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
     return EVT_OK;
@@ -96,7 +101,12 @@ evt_link_get_segment_str(evt_link_t* linkp, uint8_t key, char** strv) {
     }
     try {
         auto _segment = ((evt_link*)(linkp))->get_segment(key);
-        *strv = strdup(*_segment.strv);
+        if(_segment.strv) {
+            *strv = strdup(*_segment.strv);
+        }
+        else {
+            return EVT_INVALID_ARGUMENT;
+        }
     }
     CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
     return EVT_OK;
