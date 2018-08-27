@@ -9,6 +9,7 @@
 #include <functional>
 #include <queue>
 #include <tuple>
+#include <thread>
 
 #if __has_include(<condition>)
 #include <condition>

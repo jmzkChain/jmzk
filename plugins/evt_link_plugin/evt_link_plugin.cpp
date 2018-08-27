@@ -6,6 +6,8 @@
 
 #include <deque>
 #include <tuple>
+#include <chrono>
+#include <thread>
 #if __has_include(<condition>)
 #include <condition>
 using std::condition_variable_any;
@@ -13,6 +15,8 @@ using std::condition_variable_any;
 #include <boost/thread/condition.hpp>
 using boost::condition_variable_any;
 #endif
+
+#include <boost/asio.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/container/flat_fwd.hpp>
@@ -38,11 +42,11 @@ using evt::chain::contracts::evt_link;
 using evt::chain::contracts::everipay;
 using evt::utilities::spinlock;
 using evt::utilities::spinlock_guard;
-using boost::asio::deadline_timer;
+using boost::asio::steady_timer;
 
 class evt_link_plugin_impl : public std::enable_shared_from_this<evt_link_plugin_impl> {
 public:
-    using deferred_pair = std::pair<deferred_id, deadline_timer>;
+    using deferred_pair = std::pair<deferred_id, steady_timer>;
     enum { kDeferredId = 0, kTimer };
 
 public:
@@ -154,7 +158,7 @@ evt_link_plugin_impl::_applied_block(const chain::block_state_ptr& bs) {
 
                 auto json = fc::json::to_string(vo);
                 auto wptr = std::weak_ptr<evt_link_plugin_impl>(shared_from_this());
-                app().get_io_service().post([wptr, json, link_id_str] {
+                boost::asio::post(app().get_io_service(), [wptr, json, link_id_str] {
                     auto self = wptr.lock();
                     if(self) {
                         self->lock_.lock();
@@ -163,7 +167,6 @@ evt_link_plugin_impl::_applied_block(const chain::block_state_ptr& bs) {
                             self->lock_.unlock();
 
                             auto& pair = it->second;
-                            std::get<kTimer>(pair).cancel();
                             app().get_plugin<http_plugin>().set_deferred_response(std::get<kDeferredId>(pair), 200, json);
 
                             spinlock_guard l(self->lock_);
@@ -185,13 +188,17 @@ evt_link_plugin_impl::_applied_block(const chain::block_state_ptr& bs) {
 
 void
 evt_link_plugin_impl::add_and_schedule(const link_id_type& link_id, deferred_id id) {
-    auto it = link_ids_.emplace(link_id, std::make_pair(id, deadline_timer(app().get_io_service())));
+    lock_.lock();
+    auto it = link_ids_.emplace(link_id, std::make_pair(id, steady_timer(app().get_io_service())));
+    wlog("added: ${i}", ("i",id));
+    lock_.unlock();
+
     if(!it.second) {
         EVT_THROW(chain::evt_link_already_watched_exception, "EVT-Link: ${link} is already watched", ("link",link_id));
     }
 
     auto& timer = std::get<kTimer>(it.first->second);
-    timer.expires_from_now(boost::posix_time::milliseconds(timeout_));
+    timer.expires_from_now(std::chrono::milliseconds(timeout_));
     
     auto wptr = std::weak_ptr<evt_link_plugin_impl>(shared_from_this());
     timer.async_wait([wptr, link_id](auto& ec) {
@@ -228,7 +235,6 @@ evt_link_plugin_impl::get_trx_id_for_link_id(const link_id_type& link_id, deferr
         auto& obj = db_.get_link_obj_for_link_id(link_id);
         if(obj.block_num > db_.fork_db_head_block_num()) {
             // block not finalize yet
-            spinlock_guard l(lock_);
             add_and_schedule(link_id, id);
             return;
         }
@@ -241,7 +247,6 @@ evt_link_plugin_impl::get_trx_id_for_link_id(const link_id_type& link_id, deferr
     }
     catch(const chain::evt_link_existed_exception&) {
         // cannot find now, put into map
-        spinlock_guard l(lock_);
         add_and_schedule(link_id, id);
     }
 }

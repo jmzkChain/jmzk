@@ -14,6 +14,7 @@
 #include <fc/log/appender.hpp>
 #include <fc/log/logger_config.hpp>
 
+#include <boost/asio/signal_set.hpp>
 #include <boost/dll/runtime_symbol_info.hpp>
 #include <boost/exception/diagnostic_information.hpp>
 

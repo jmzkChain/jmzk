@@ -444,7 +444,7 @@ http_plugin::set_program_options(options_description&, options_description& cfg)
                 ilog("configured http with Access-Control-Allow-Credentials: true");
             })->default_value(false), "Specify if Access-Control-Allow-Credentials: true should be returned on each request.")
         ("max-body-size", bpo::value<uint32_t>()->default_value(1024*1024), "The maximum body size in bytes allowed for incoming RPC requests")
-        ("max-deferred-connection-size", bpo::value<uint32_t>()->default_value(1024), "The maximum size allowed for deferred connections")
+        ("max-deferred-connection-size", bpo::value<uint32_t>()->default_value(8), "The maximum size allowed for deferred connections")
         ("verbose-http-errors", bpo::bool_switch()->default_value(false), "Append the error log to HTTP responses")
         ("http-validate-host", boost::program_options::value<bool>()->default_value(true), "If set to false, then any incoming \"Host\" header is considered valid")
         ("http-alias", bpo::value<std::vector<string>>()->composing(), "Additionaly acceptable values for the \"Host\" header of incoming HTTP requests, can be specified multiple times.  Includes http/s_server_address by default.")
@@ -599,7 +599,7 @@ http_plugin::plugin_shutdown() {
 void
 http_plugin::add_handler(const string& url, const url_handler& handler) {
     ilog("add api url: ${c}", ("c", url));
-    app().get_io_service().post([=]() {
+    boost::asio::post(app().get_io_service(), [=]() {
         my->url_handlers.insert(std::make_pair(url, handler));
     });
 }
@@ -607,14 +607,14 @@ http_plugin::add_handler(const string& url, const url_handler& handler) {
 void
 http_plugin::add_deferred_handler(const string& url, const url_deferred_handler& handler) {
     ilog("add deferred api url: ${c}", ("c", url));
-    app().get_io_service().post([=]() {
+    boost::asio::post(app().get_io_service(), [=]() {
         my->url_deferred_handlers.insert(std::make_pair(url, handler));
     });
 }
 
 void
 http_plugin::set_deferred_response(deferred_id id, int code, const string& body) {
-    app().get_io_service().post([=]() {
+    boost::asio::post(app().get_io_service(), [=]() {
         my->set_deferred_response(id, code, body);
     });
 }
