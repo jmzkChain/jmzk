@@ -12,6 +12,7 @@ import time
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from io import StringIO
+import grequests
 
 import click
 from pyevt import abi, ecc, evt_link, libevt
@@ -90,8 +91,15 @@ def pre_action():
     destroytoken = AG.new_action(
         'destroytoken', domain=domain_name, name=token2_name)
 
+    pass_link = evt_link.EvtLink()
+    pass_link.set_header(1+2+8)
+    pass_link.set_domain(domain_name)
+    pass_link.set_token(token3_name)
+    pass_link.set_timestamp(int(time.time()))
+    pass_link.sign(user.priv_key)
+
     everipass = AG.new_action(
-        'everipass', link='03BM-C9GPC20AD59PS-QEZ3IB5STZBWV_QPRWTYXAWMFT0T-EK-LZ-/NVQ5P5JIJ-GICQO/UZDIN:A4X5Y$94R5E$A69:L1AOLC++C6H5S/RL5W0H*Z$793LLN-+RPYPW')
+        'everipass', link=pass_link.to_string())
 
     group_json = json.loads(group_json_raw)
     group_json['name'] = group_name
@@ -116,8 +124,38 @@ def pre_action():
     e2p = AG.new_action(
          'evt2pevt', _from=base.Address().set_public_key(user.pub_key), to=base.Address().set_public_key(user.pub_key), number=asset_evt(100), memo='goodluck')
 
+    pay_link = evt_link.EvtLink()
+    # pay_link = evt_link.EvtLink.parse_from_evtli('0UKDS95I5ACY-A88L*AVAIX*504XXDR:9SIFVAQL/9WB7D1:8_P-JBZQWAYW5UQE9VG2ZGCNUF*+G4K9TEK642H4PY9VX0UG8LZ2TE5$3FS6TAAUEIC8KEENE:2V6NOET:QGE7M913KXAXQ69Y')
+    pay_link.set_max_pay(999999999)
+    pay_link.set_header(1+4)
+    pay_link.set_symbol_id(sym_id)
+    # pay_link.set_address(user.pub_key.to_string())
+    # print(type(pay_link.get_link_id()), pay_link.get_link_id())
+    # pay_link.set_link_id(pay_link.get_link_id())
+    # pay_link.set_link_id_rand()
+    # pay_link.set_link_id(bytes([
+    #       139,
+    #       90,
+    #       90,
+    #       91,
+    #       249,
+    #       106,
+    #       190,
+    #       191,
+    #       63,
+    #       143,
+    #       113,
+    #       132,
+    #       245,
+    #       34,
+    #       161,
+    #       185
+    #     ]))
+    pay_link.set_link_id_rand()
+    pay_link.sign(user.priv_key)
+
     everipay = AG.new_action('everipay', payee=pub2, number=asset(
-        1), link='0UKDS95I5ACY-A88L*AVAIX*504XXDR:9SIFVAQL/9WB7D1:8_P-JBZQWAYW5UQE9VG2ZGCNUF*+G4K9TEK642H4PY9VX0UG8LZ2TE5$3FS6TAAUEIC8KEENE:2V6NOET:QGE7M913KXAXQ69Y')
+        1), link=pay_link.to_string())
     
     trx = TG.new_trx()
     trx.add_action(newdomain)
@@ -172,8 +210,17 @@ class Test(unittest.TestCase):
         symbol = base.Symbol(
             sym_name=sym_name, sym_id=sym_id, precision=sym_prec)
         asset = base.new_asset(symbol)
+
+        pay_link = evt_link.EvtLink()
+        pay_link.set_max_pay(999999999)
+        pay_link.set_header(1+4)
+        pay_link.set_symbol_id(sym_id)
+        pay_link.set_link_id_rand()
+        print(pay_link.get_link_id().hex())
+        pay_link.sign(user.priv_key)
+
         everipay = AG.new_action('everipay', payee=pub2, number=asset(
-            1), link='0UKDS6VQI03ASWOR7OJE*L8JA*HRW2KWW*B0WMI7S*L+GT/88_P$TWOT6DIKXA18YEZ*1UT2*$B72L9Q/403JMEN286YUN-:ZKGS4P+$KNXY-FZ0*1S5OGJ9WML1J*0KSB98GE:9-EX9C*4DTR')  # ddc101c51318d51733d682e80b8ea2bc
+            1), link=pay_link.to_string()) 
         trx = TG.new_trx()
         trx.add_action(everipay)
         trx.add_sign(user.priv_key)
@@ -182,6 +229,7 @@ class Test(unittest.TestCase):
         req = {
             'link_id': 'ddc101c51318d51733d682e80b8ea2bc'
         }
+        req['link_id'] = pay_link.get_link_id().hex()
         resp = api.get_trx_id_for_link_id(json.dumps(req)).text
         self._test_evt_link_response(resp)
 
@@ -189,8 +237,17 @@ class Test(unittest.TestCase):
         symbol = base.Symbol(
             sym_name=sym_name, sym_id=sym_id, precision=sym_prec)
         asset = base.new_asset(symbol)
+
+        pay_link = evt_link.EvtLink()
+        pay_link.set_max_pay(999999999)
+        pay_link.set_header(1+4)
+        pay_link.set_symbol_id(sym_id)
+        pay_link.set_link_id_rand()
+        print(pay_link.get_link_id().hex())
+        pay_link.sign(user.priv_key)
+
         everipay = AG.new_action('everipay', payee=pub2, number=asset(
-            1), link='0UKDS95HCP3V$A70QLRX*KA3CHE35FR1B$C9SK01E0UR+YEIN_P-IQDCZXBBY+C274WIJKZP-FW1HRLI+1319VOEYL/0O30GWKCZ*ZFQG9BG9P-5OZYW1-R:+M2$7C0HDJQ/5OBKN96K8-QD30')  # d1680fea21a3c3d8ef555afd8fd8c903
+            1), link=pay_link.to_string()) 
         trx = TG.new_trx()
         trx.add_action(everipay)
         trx.add_sign(user.priv_key)
@@ -198,7 +255,7 @@ class Test(unittest.TestCase):
         req = {
             'link_id': 'd1680fea21a3c3d8ef555afd8fd8c903'
         }
-
+        req['link_id'] = pay_link.get_link_id().hex()
         def get_response(req):
             return api.get_trx_id_for_link_id(json.dumps(req)).text
 
@@ -211,7 +268,109 @@ class Test(unittest.TestCase):
         resp = f.result()
         self._test_evt_link_response(resp)
 
+    def test_evt_link_for_trx_id3(self):
+        symbol = base.Symbol(
+            sym_name=sym_name, sym_id=sym_id, precision=sym_prec)
+        asset = base.new_asset(symbol)
+        pay_link = evt_link.EvtLink()
+        pay_link.set_max_pay(999999999)
+        pay_link.set_header(1+4)
+        pay_link.set_symbol_id(sym_id)
+        pay_link.set_link_id_rand()
+        print(pay_link.get_link_id().hex())
+        pay_link.sign(user.priv_key)
+
+        everipay = AG.new_action('everipay', payee=pub2, number=asset(
+            1), link=pay_link.to_string()) 
+        trx = TG.new_trx()
+        trx.add_action(everipay)
+        trx.add_sign(user.priv_key)
+        # api.push_transaction(trx.dumps())
+
+        req = {
+            'link_id': 'd1680fea21a3c3d8ef555afd8fd8c903'
+        }
+
+        url = 'http://127.0.0.1:8888/v1/evt_link/get_trx_id_for_link_id'
+        
+        def  res_handler(resp, *args, **kwargs):
+          self.assertEqual(resp.status_code, 500, msg=resp.content)
+          
+
+        def exception_handler(request, exception):
+          self.assertTrue('Too many open files' in str(exception), msg=exception)
+
+        tasks = []
+        for i in range(1500):
+          pay_link.set_link_id_rand()
+          req['link_id'] = pay_link.get_link_id().hex()
+          tasks.append(grequests.post(url, data=json.dumps(req),callback=res_handler))
+
+        res = grequests.map(tasks,exception_handler=exception_handler)
+
+    def test_evt_link_for_trx_id4(self):
+        symbol = base.Symbol(
+            sym_name=sym_name, sym_id=sym_id, precision=sym_prec)
+        asset = base.new_asset(symbol)
+        pay_link = evt_link.EvtLink()
+        pay_link.set_max_pay(999999999)
+        pay_link.set_header(1+4)
+        pay_link.set_symbol_id(sym_id)
+        pay_link.set_link_id_rand()
+        print(pay_link.get_link_id().hex())
+        pay_link.sign(user.priv_key)
+
+        everipay = AG.new_action('everipay', payee=pub2, number=asset(
+            1), link=pay_link.to_string()) 
+        trx = TG.new_trx()
+        trx.add_action(everipay)
+        trx.add_sign(user.priv_key)
+        # api.push_transaction(trx.dumps())
+
+        req = {
+            'link_id': 'd1680fea21a3c3d8ef555afd8fd8c903'
+        }
+
+        url = 'http://127.0.0.1:8888/v1/evt_link/get_trx_id_for_link_id'
+        
+        global remain
+        remain = 1000
+        def  res_handler(resp, *args, **kwargs):
+          # print(resp.text)
+          self.assertEqual(resp.status_code, 500, msg=resp.content)
+          global remain
+          if(remain > 0):
+            print(remain)
+            remain -= 1
+            pay_link.set_link_id_rand()
+            req['link_id'] = pay_link.get_link_id().hex()
+            tasks = []
+            tasks.append(grequests.post(url, data=json.dumps(req),callback=res_handler))
+            res = grequests.map(tasks,exception_handler=exception_handler)
+
+        def exception_handler(request, exception):
+          # print(exception)
+          self.assertTrue('Too many open files' in str(exception), msg=exception)
+          global remain
+          if(remain > 0):
+            print(remain)
+            remain -= 1
+            pay_link.set_link_id_rand()
+            req['link_id'] = pay_link.get_link_id().hex()
+            tasks = []
+            tasks.append(grequests.post(url, data=json.dumps(req),callback=res_handler))
+            res = grequests.map(tasks,exception_handler=exception_handler)
+
+        tasks = []
+        for i in range(900):
+          pay_link.set_link_id_rand()
+          req['link_id'] = pay_link.get_link_id().hex()
+          tasks.append(grequests.post(url, data=json.dumps(req),callback=res_handler))
+
+        res = grequests.map(tasks,exception_handler=exception_handler)
+
     def test_get_domains(self):
+        print('domain')
         req = {
             'keys': [user.pub_key.to_string()]
         }

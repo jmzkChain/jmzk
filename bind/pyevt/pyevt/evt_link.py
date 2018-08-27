@@ -38,7 +38,7 @@ class EvtLink():
         strv = self.evt.ffi.string(strv_c[0]).decode('utf-8')
         ret = self.evt.lib.evt_free(strv_c[0])
         evt_exception.evt_exception_raiser(ret)
-        return self.evt.ffi.string(strv_c[0]).decode('utf-8')
+        return strv
 
     @staticmethod
     def parse_from_evtli(link_str):
@@ -152,7 +152,7 @@ class EvtLink():
         self.add_segment_str('link_id', link_id)
 
     def set_link_id_rand(self):
-        l = [random.randint(0, 255) for _ in range(16)]
+        l = [random.randint(1, 255) for _ in range(16)]
         self.set_link_id(bytes(l))
 
     def get_link_id(self):
