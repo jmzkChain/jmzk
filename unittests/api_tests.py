@@ -295,7 +295,7 @@ class Test(unittest.TestCase):
           req['link_id'] = pay_link.get_link_id().hex()
           tasks.append(grequests.post(url, data=json.dumps(req)))
 
-        for resp in grequests.imap(tasks):
+        for resp in grequests.imap(tasks, size = 2000):
             self.assertEqual(resp.status_code, 500, msg=resp.content)
 
 
