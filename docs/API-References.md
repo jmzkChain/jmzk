@@ -697,7 +697,10 @@ Request:
 ```
 Response:
 ```
-["cookie-t1", "cookie-t2", "cookie-t3"]
+{
+    "cookie": [ "t1", "t2", "t3" ],
+    "cookie2": [ "z1", "z2" ]
+}
 ```
 
 ## POST /v1/history/get_domains
