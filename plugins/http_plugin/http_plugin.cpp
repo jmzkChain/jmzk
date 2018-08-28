@@ -63,6 +63,8 @@ struct asio_with_stub_log : public websocketpp::config::asio {
 
     typedef base::rng_type rng_type;
 
+    static bool const enable_multithreading = false;
+
     struct transport_config : public base::transport_config {
         typedef type::concurrency_type concurrency_type;
         typedef type::alog_type        alog_type;
@@ -70,6 +72,8 @@ struct asio_with_stub_log : public websocketpp::config::asio {
         typedef type::request_type     request_type;
         typedef type::response_type    response_type;
         typedef T                      socket_type;
+
+        static bool const enable_multithreading = false;
     };
 
     typedef websocketpp::transport::asio::endpoint<transport_config>
@@ -358,7 +362,7 @@ public:
             FC_ASSERT(con != nullptr);
 
             if(!vistor(con)) {
-                https_conns[id] = nullptr;
+                https_conns[index] = nullptr;
             }
         }
     }
