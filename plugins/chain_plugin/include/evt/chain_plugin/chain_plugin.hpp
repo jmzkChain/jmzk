@@ -151,6 +151,11 @@ public:
         chain::transaction_id_type id;
     };
     fc::variant get_transaction(const get_transaction_params& params);
+
+    struct get_trx_id_for_link_id_params {
+        bytes link_id;
+    };
+    fc::variant get_trx_id_for_link_id(const get_trx_id_for_link_id_params& params) const;
 };
 
 class read_write {
@@ -239,6 +244,7 @@ FC_REFLECT(evt::chain_apis::read_only::get_info_results,
 FC_REFLECT(evt::chain_apis::read_only::get_block_params, (block_num_or_id));
 FC_REFLECT(evt::chain_apis::read_only::get_block_header_state_params, (block_num_or_id));
 FC_REFLECT(evt::chain_apis::read_only::get_transaction_params, (block_num)(id));
+FC_REFLECT(evt::chain_apis::read_only::get_trx_id_for_link_id_params, (link_id));
 FC_REFLECT(evt::chain_apis::read_only::producer_info, (producer_name));
 FC_REFLECT(evt::chain_apis::read_only::abi_json_to_bin_params, (action)(args));
 FC_REFLECT(evt::chain_apis::read_only::abi_json_to_bin_result, (binargs));

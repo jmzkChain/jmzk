@@ -11,6 +11,8 @@
 #include <evt/chain/types.hpp>
 #include <evt/chain/genesis_state.hpp>
 #include <evt/chain/contracts/evt_contract.hpp>
+#include <evt/chain/contracts/evt_link.hpp>
+#include <evt/chain/contracts/evt_link_object.hpp>
 
 #include <evt/utilities/key_conversion.hpp>
 
@@ -886,6 +888,20 @@ read_only::get_transaction(const get_transaction_params& params) {
         }
     }
     FC_THROW_EXCEPTION(unknown_transaction_exception, "Cannot find transaction");
+}
+
+fc::variant
+read_only::get_trx_id_for_link_id(const get_trx_id_for_link_id_params& params) const {
+    if(params.link_id.size() != sizeof(link_id_type)) {
+        EVT_THROW(evt_link_id_exception, "EVT-Link id is not in proper length");
+    }
+
+    auto& obj       = db.get_link_obj_for_link_id(*(link_id_type*)(&params.link_id[0]));
+    auto  vo        = fc::mutable_variant_object();
+    vo["block_num"] = obj.block_num;
+    vo["trx_id"]    = obj.trx_id;
+
+    return vo;
 }
 
 void
