@@ -418,7 +418,7 @@ Response:
 }
 ```
 
-## POST /v1/chain/evt_link/
+## POST /v1/evt_link/get_trx_id_for_link_id
 Used to fetch transaction id and block num by one EVT-Link id. Difference between this API with `/v1/chain/get_trx_id_for_link_id` is that this API will not response directly, but instead it will block until excepted everiPay is executed successfully or reach max waiting time.
 > Only sucessful executing everiPay actions can be queried by this API.
 
