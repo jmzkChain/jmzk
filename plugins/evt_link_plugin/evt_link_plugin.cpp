@@ -34,7 +34,6 @@ namespace evt {
 
 static appbase::abstract_plugin& _evt_link_plugin = app().register_plugin<evt_link_plugin>();
 
-using namespace evt;
 using evt::chain::bytes;
 using evt::chain::link_id_type;
 using evt::chain::block_state_ptr;
@@ -42,11 +41,13 @@ using evt::chain::contracts::evt_link;
 using evt::chain::contracts::everipay;
 using evt::utilities::spinlock;
 using evt::utilities::spinlock_guard;
+
 using boost::asio::steady_timer;
+using steady_timer_ptr = std::shared_ptr<steady_timer>;
 
 class evt_link_plugin_impl : public std::enable_shared_from_this<evt_link_plugin_impl> {
 public:
-    using deferred_pair = std::pair<deferred_id, steady_timer>;
+    using deferred_pair = std::pair<deferred_id, steady_timer_ptr>;
     enum { kDeferredId = 0, kTimer };
 
 public:
@@ -189,19 +190,18 @@ evt_link_plugin_impl::_applied_block(const chain::block_state_ptr& bs) {
 void
 evt_link_plugin_impl::add_and_schedule(const link_id_type& link_id, deferred_id id) {
     lock_.lock();
-    auto it = link_ids_.emplace(link_id, std::make_pair(id, steady_timer(app().get_io_service())));
-    wlog("added: ${i}", ("i",id));
+    auto it = link_ids_.emplace(link_id, std::make_pair(id, std::make_shared<steady_timer>(app().get_io_service())));
     lock_.unlock();
 
     if(!it.second) {
         EVT_THROW(chain::evt_link_already_watched_exception, "EVT-Link: ${link} is already watched", ("link",link_id));
     }
 
-    auto& timer = std::get<kTimer>(it.first->second);
-    timer.expires_from_now(std::chrono::milliseconds(timeout_));
+    auto timer = std::get<kTimer>(it.first->second);
+    timer->expires_from_now(std::chrono::milliseconds(timeout_));
     
     auto wptr = std::weak_ptr<evt_link_plugin_impl>(shared_from_this());
-    timer.async_wait([wptr, link_id](auto& ec) {
+    timer->async_wait([wptr, link_id](auto& ec) {
         auto self = wptr.lock();
         if(self && ec != boost::asio::error::operation_aborted) {
             self->lock_.lock();
