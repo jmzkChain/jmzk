@@ -388,8 +388,20 @@ Response
 ```
 > 12345 represents for '0.12345' EVT(PEVT).
 
+## POST /v1/chain/get_transaction
+Used to fetch transaction by block num and transaction id
+
+Request:
+```
+{
+    "block_num": 12345,
+    "id": "9f2ea4b512f49d2f3ff2be24e9cc4296ee0749b33bb9b1c06ae45a664bb00397"
+}
+```
+
 ## POST /v1/chain/get_trx_id_for_link_id
-Used to fetch transaction id for one EVT-Link id. Only sucessful executing everiPay actions can be queried by this API.
+Used to fetch transaction id and block num by one EVT-Link id.
+> Only sucessful executing everiPay actions can be queried by this API.
 
 Request:
 ```
@@ -401,7 +413,27 @@ Request:
 Response:
 ```
 {
-    "trx_id": "9f2ea4b512f49d2f3ff2be24e9cc4296ee0749b33bb9b1c06ae45a664bb00397"
+    "trx_id": "9f2ea4b512f49d2f3ff2be24e9cc4296ee0749b33bb9b1c06ae45a664bb00397",
+    "block_num": 12345
+}
+```
+
+## POST /v1/chain/evt_link/
+Used to fetch transaction id and block num by one EVT-Link id. Difference between this API with `/v1/chain/get_trx_id_for_link_id` is that this API will not response directly, but instead it will block until excepted everiPay is executed successfully or reach max waiting time.
+> Only sucessful executing everiPay actions can be queried by this API.
+
+Request:
+```
+{
+    "link_id": "16951b9b653947955faa6c3cb3e506b6"
+}
+```
+
+Response:
+```
+{
+    "trx_id": "9f2ea4b512f49d2f3ff2be24e9cc4296ee0749b33bb9b1c06ae45a664bb00397",
+    "block_num": 12345
 }
 ```
 
@@ -552,7 +584,7 @@ Response:
 }
 ```
 
-## POST /v1/evt/get_assets
+## POST /v1/evt/get_fungible_balance
 This API is used to get assets for an address
 
 Request:
@@ -568,13 +600,13 @@ Response:
 ]
 ```
 
-You can also only query assets for specific symbol
+You can also only query assets for specific symbol id
 
 Request:
 ```
 {
     "address": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
-    "sym": "5,S#1"
+    "sym_id": 1
 }
 ```
 Response:
