@@ -18,7 +18,6 @@ import click
 from pyevt import abi, ecc, evt_link, libevt
 from pyevtsdk import action, api, base, transaction, unit_test
 
-
 def fake_name(prefix='test'):
     return prefix + ''.join(random.choice(string.hexdigits) for _ in range(8)) + str(int(datetime.datetime.now().timestamp()))[:-5]
 
@@ -216,7 +215,6 @@ class Test(unittest.TestCase):
         pay_link.set_header(1+4)
         pay_link.set_symbol_id(sym_id)
         pay_link.set_link_id_rand()
-        print(pay_link.get_link_id().hex())
         pay_link.sign(user.priv_key)
 
         everipay = AG.new_action('everipay', payee=pub2, number=asset(
@@ -243,7 +241,6 @@ class Test(unittest.TestCase):
         pay_link.set_header(1+4)
         pay_link.set_symbol_id(sym_id)
         pay_link.set_link_id_rand()
-        print(pay_link.get_link_id().hex())
         pay_link.sign(user.priv_key)
 
         everipay = AG.new_action('everipay', payee=pub2, number=asset(
@@ -277,7 +274,6 @@ class Test(unittest.TestCase):
         pay_link.set_header(1+4)
         pay_link.set_symbol_id(sym_id)
         pay_link.set_link_id_rand()
-        print(pay_link.get_link_id().hex())
         pay_link.sign(user.priv_key)
 
         everipay = AG.new_action('everipay', payee=pub2, number=asset(
@@ -293,20 +289,15 @@ class Test(unittest.TestCase):
 
         url = 'http://127.0.0.1:8888/v1/evt_link/get_trx_id_for_link_id'
         
-        def  res_handler(resp, *args, **kwargs):
-          self.assertEqual(resp.status_code, 500, msg=resp.content)
-          
-
-        def exception_handler(request, exception):
-          self.assertTrue('Too many open files' in str(exception), msg=exception)
-
         tasks = []
         for i in range(1500):
           pay_link.set_link_id_rand()
           req['link_id'] = pay_link.get_link_id().hex()
-          tasks.append(grequests.post(url, data=json.dumps(req),callback=res_handler))
+          tasks.append(grequests.post(url, data=json.dumps(req)))
 
-        res = grequests.map(tasks,exception_handler=exception_handler)
+        for resp in grequests.imap(tasks):
+            self.assertEqual(resp.status_code, 500, msg=resp.content)
+
 
     def test_evt_link_for_trx_id4(self):
         symbol = base.Symbol(
@@ -317,7 +308,6 @@ class Test(unittest.TestCase):
         pay_link.set_header(1+4)
         pay_link.set_symbol_id(sym_id)
         pay_link.set_link_id_rand()
-        print(pay_link.get_link_id().hex())
         pay_link.sign(user.priv_key)
 
         everipay = AG.new_action('everipay', payee=pub2, number=asset(
@@ -333,41 +323,19 @@ class Test(unittest.TestCase):
 
         url = 'http://127.0.0.1:8888/v1/evt_link/get_trx_id_for_link_id'
         
-        global remain
-        remain = 1000
-        def  res_handler(resp, *args, **kwargs):
-          # print(resp.text)
-          self.assertEqual(resp.status_code, 500, msg=resp.content)
-          global remain
-          if(remain > 0):
-            print(remain)
-            remain -= 1
-            pay_link.set_link_id_rand()
-            req['link_id'] = pay_link.get_link_id().hex()
-            tasks = []
-            tasks.append(grequests.post(url, data=json.dumps(req),callback=res_handler))
-            res = grequests.map(tasks,exception_handler=exception_handler)
-
-        def exception_handler(request, exception):
-          # print(exception)
-          self.assertTrue('Too many open files' in str(exception), msg=exception)
-          global remain
-          if(remain > 0):
-            print(remain)
-            remain -= 1
-            pay_link.set_link_id_rand()
-            req['link_id'] = pay_link.get_link_id().hex()
-            tasks = []
-            tasks.append(grequests.post(url, data=json.dumps(req),callback=res_handler))
-            res = grequests.map(tasks,exception_handler=exception_handler)
 
         tasks = []
-        for i in range(900):
+        for i in range(10240):
           pay_link.set_link_id_rand()
           req['link_id'] = pay_link.get_link_id().hex()
-          tasks.append(grequests.post(url, data=json.dumps(req),callback=res_handler))
+          tasks.append(grequests.post(url, data=json.dumps(req)))
 
-        res = grequests.map(tasks,exception_handler=exception_handler)
+        i = 0
+        for resp in grequests.imap(tasks, size=900):
+            self.assertEqual(resp.status_code, 500, msg=resp.content)
+            i += 1
+            if i % 100 == 0:
+                print('Received {} responses'.format(i))
 
     def test_get_domains(self):
         print('domain')
@@ -509,19 +477,23 @@ class Test(unittest.TestCase):
 
 @click.command()
 @click.option('--url', '-u', default='http://127.0.0.1:8888')
+@click.option('--start-evtd', '-s', default=True)
 @click.option('--evtd-path', '-m', default='/home/laighno/Documents/evt/programs/evtd/evtd')
 @click.option('--public-key', '-p', type=str, default='EVT8CAme1QR2664bLQsVfrERBkXL3xEKsALMSfogGavaXFkaVVqR1')
 @click.option('--private-key', '-k', type=str, default='5JFZQ7bRRuBJyh42uV5ELwswr2Bt3rfwmyEsyXAoUue18NUreAF')
-def main(url, evtd_path, public_key, private_key):
+def main(url, start_evtd, evtd_path, public_key, private_key):
     global evtdout
-    evtdout = open('/tmp/evt_api_tests_evtd.log', 'w')
+    evtdout = None
 
-    p = subprocess.Popen([evtd_path, '-e', '--http-validate-host=false', '--charge-free-mode', '--loadtest-mode', '--plugin=evt::mongo_db_plugin',
-                          '--plugin=evt::history_plugin', '--plugin=evt::history_api_plugin', '--plugin=evt::chain_api_plugin', '--plugin=evt::evt_api_plugin',
-                          '--plugin=evt::evt_link_plugin', '--producer-name=evt', '--delete-all-blocks', '-d', '/tmp/evt', '-m', 'mongodb://127.0.0.1:27017'],
-                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=evtdout, shell=False)
-    # wait for evtd to initialize
-    time.sleep(3)
+    if start_evtd == True:
+        evtdout = open('/tmp/evt_api_tests_evtd.log', 'w')
+
+        p = subprocess.Popen([evtd_path, '-e', '--http-validate-host=false', '--charge-free-mode', '--loadtest-mode', '--plugin=evt::mongo_db_plugin',
+                              '--plugin=evt::history_plugin', '--plugin=evt::history_api_plugin', '--plugin=evt::chain_api_plugin', '--plugin=evt::evt_api_plugin',
+                              '--plugin=evt::evt_link_plugin', '--producer-name=evt', '--delete-all-blocks', '-d', '/tmp/evt', '-m', 'mongodb://127.0.0.1:27017'],
+                             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=evtdout, shell=False)
+        # wait for evtd to initialize
+        time.sleep(3)
 
     try:
         global domain_name
@@ -564,7 +536,8 @@ def main(url, evtd_path, public_key, private_key):
         result = runner.run(suite)
     finally:
         p.kill()
-        evtdout.close()
+        if evtdout is not None:
+            evtdout.close()
 
 
 if __name__ == '__main__':
