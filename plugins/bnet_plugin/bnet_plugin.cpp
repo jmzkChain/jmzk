@@ -53,6 +53,7 @@
 
 #include <fc/io/json.hpp>
 
+#include <boost/asio.hpp>
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/ip/host_name.hpp>
 #include <boost/asio/ip/tcp.hpp>

@@ -25,6 +25,7 @@
 #include <fc/network/message_buffer.hpp>
 #include <fc/reflect/variant.hpp>
 
+#include <boost/asio.hpp>
 #include <boost/asio/ip/host_name.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/steady_timer.hpp>

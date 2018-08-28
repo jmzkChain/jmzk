@@ -2,6 +2,7 @@
  *  @file
  *  @copyright defined in evt/LICENSE.txt
  */
+#include <csignal>
 #include <appbase/application.hpp>
 
 #include <evt/http_plugin/http_plugin.hpp>
