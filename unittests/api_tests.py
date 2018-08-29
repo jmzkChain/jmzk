@@ -12,11 +12,12 @@ import time
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from io import StringIO
-import grequests
 
 import click
+import grequests
 from pyevt import abi, ecc, evt_link, libevt
 from pyevtsdk import action, api, base, transaction, unit_test
+
 
 def fake_name(prefix='test'):
     return prefix + ''.join(random.choice(string.hexdigits) for _ in range(8)) + str(int(datetime.datetime.now().timestamp()))[:-5]
@@ -91,7 +92,8 @@ def pre_action():
         'destroytoken', domain=domain_name, name=token2_name)
 
     pass_link = evt_link.EvtLink()
-    pass_link.set_header(evt_link.HeaderType['version1'].value+evt_link.HeaderType['everiPass'].value+evt_link.HeaderType['destroy'].value)
+    pass_link.set_header(evt_link.HeaderType.version1 |
+                         evt_link.HeaderType.everiPass | evt_link.HeaderType.destroy)
     pass_link.set_domain(domain_name)
     pass_link.set_token(token3_name)
     pass_link.set_timestamp(int(time.time()))
@@ -121,18 +123,19 @@ def pre_action():
         'issuefungible', address=base.Address().set_public_key(user.pub_key), number=asset_evt(100), memo='goodluck')
 
     e2p = AG.new_action(
-         'evt2pevt', _from=base.Address().set_public_key(user.pub_key), to=base.Address().set_public_key(user.pub_key), number=asset_evt(100), memo='goodluck')
+        'evt2pevt', _from=base.Address().set_public_key(user.pub_key), to=base.Address().set_public_key(user.pub_key), number=asset_evt(100), memo='goodluck')
 
     pay_link = evt_link.EvtLink()
     pay_link.set_max_pay(999999999)
-    pay_link.set_header(evt_link.HeaderType['version1'].value+evt_link.HeaderType['everiPay'].value)
+    pay_link.set_header(evt_link.HeaderType.version1 |
+                        evt_link.HeaderType.everiPay)
     pay_link.set_symbol_id(sym_id)
     pay_link.set_link_id_rand()
     pay_link.sign(user.priv_key)
 
     everipay = AG.new_action('everipay', payee=pub2, number=asset(
         1), link=pay_link.to_string())
-    
+
     trx = TG.new_trx()
     trx.add_action(newdomain)
     trx.add_sign(user.priv_key)
@@ -189,13 +192,14 @@ class Test(unittest.TestCase):
 
         pay_link = evt_link.EvtLink()
         pay_link.set_max_pay(999999999)
-        pay_link.set_header(evt_link.HeaderType['version1'].value+evt_link.HeaderType['everiPay'].value)
+        pay_link.set_header(evt_link.HeaderType.version1 |
+                            evt_link.HeaderType.everiPay)
         pay_link.set_symbol_id(sym_id)
         pay_link.set_link_id_rand()
         pay_link.sign(user.priv_key)
 
         everipay = AG.new_action('everipay', payee=pub2, number=asset(
-            1), link=pay_link.to_string()) 
+            1), link=pay_link.to_string())
         trx = TG.new_trx()
         trx.add_action(everipay)
         trx.add_sign(user.priv_key)
@@ -215,13 +219,14 @@ class Test(unittest.TestCase):
 
         pay_link = evt_link.EvtLink()
         pay_link.set_max_pay(999999999)
-        pay_link.set_header(evt_link.HeaderType['version1'].value+evt_link.HeaderType['everiPay'].value)
+        pay_link.set_header(
+            evt_link.HeaderType['version1'].value+evt_link.HeaderType['everiPay'].value)
         pay_link.set_symbol_id(sym_id)
         pay_link.set_link_id_rand()
         pay_link.sign(user.priv_key)
 
         everipay = AG.new_action('everipay', payee=pub2, number=asset(
-            1), link=pay_link.to_string()) 
+            1), link=pay_link.to_string())
         trx = TG.new_trx()
         trx.add_action(everipay)
         trx.add_sign(user.priv_key)
@@ -230,6 +235,7 @@ class Test(unittest.TestCase):
             'link_id': 'd1680fea21a3c3d8ef555afd8fd8c903'
         }
         req['link_id'] = pay_link.get_link_id().hex()
+
         def get_response(req):
             return api.get_trx_id_for_link_id(json.dumps(req)).text
 
@@ -248,7 +254,8 @@ class Test(unittest.TestCase):
         asset = base.new_asset(symbol)
         pay_link = evt_link.EvtLink()
         pay_link.set_max_pay(999999999)
-        pay_link.set_header(evt_link.HeaderType['version1'].value+evt_link.HeaderType['everiPay'].value)
+        pay_link.set_header(evt_link.HeaderType.version1 |
+                            evt_link.HeaderType.everiPay)
         pay_link.set_symbol_id(sym_id)
         pay_link.set_link_id_rand()
         pay_link.sign(user.priv_key)
@@ -258,16 +265,15 @@ class Test(unittest.TestCase):
         }
 
         url = 'http://127.0.0.1:8888/v1/evt_link/get_trx_id_for_link_id'
-        
+
         tasks = []
         for i in range(1500):
-          pay_link.set_link_id_rand()
-          req['link_id'] = pay_link.get_link_id().hex()
-          tasks.append(grequests.post(url, data=json.dumps(req)))
+            pay_link.set_link_id_rand()
+            req['link_id'] = pay_link.get_link_id().hex()
+            tasks.append(grequests.post(url, data=json.dumps(req)))
 
-        for resp in grequests.imap(tasks, size = 2000):
+        for resp in grequests.imap(tasks, size=2000):
             self.assertEqual(resp.status_code, 500, msg=resp.content)
-
 
     def test_evt_link_for_trx_id4(self):
         symbol = base.Symbol(
@@ -275,7 +281,8 @@ class Test(unittest.TestCase):
         asset = base.new_asset(symbol)
         pay_link = evt_link.EvtLink()
         pay_link.set_max_pay(999999999)
-        pay_link.set_header(evt_link.HeaderType['version1'].value+evt_link.HeaderType['everiPay'].value)
+        pay_link.set_header(evt_link.HeaderType.version1 |
+                            evt_link.HeaderType.everiPay)
         pay_link.set_symbol_id(sym_id)
         pay_link.set_link_id_rand()
         pay_link.sign(user.priv_key)
@@ -285,13 +292,12 @@ class Test(unittest.TestCase):
         }
 
         url = 'http://127.0.0.1:8888/v1/evt_link/get_trx_id_for_link_id'
-        
 
         tasks = []
         for i in range(10240):
-          pay_link.set_link_id_rand()
-          req['link_id'] = pay_link.get_link_id().hex()
-          tasks.append(grequests.post(url, data=json.dumps(req)))
+            pay_link.set_link_id_rand()
+            req['link_id'] = pay_link.get_link_id().hex()
+            tasks.append(grequests.post(url, data=json.dumps(req)))
 
         i = 0
         for resp in grequests.imap(tasks, size=900):
@@ -478,8 +484,10 @@ def main(url, start_evtd, evtd_path, public_key, private_key):
         pub2, priv2 = ecc.generate_new_pair()
 
         global evt_pub, priv_evt
-        evt_pub = ecc.PublicKey.from_string('EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV')
-        priv_evt = ecc.PrivateKey.from_string('5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3')
+        evt_pub = ecc.PublicKey.from_string(
+            'EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV')
+        priv_evt = ecc.PrivateKey.from_string(
+            '5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3')
 
         global TG
         TG = transaction.TrxGenerator(url=url, payer=public_key)
