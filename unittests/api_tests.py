@@ -91,7 +91,7 @@ def pre_action():
         'destroytoken', domain=domain_name, name=token2_name)
 
     pass_link = evt_link.EvtLink()
-    pass_link.set_header(1+2+8)
+    pass_link.set_header(evt_link.HeaderType['version1'].value+evt_link.HeaderType['everiPass'].value+evt_link.HeaderType['destroy'].value)
     pass_link.set_domain(domain_name)
     pass_link.set_token(token3_name)
     pass_link.set_timestamp(int(time.time()))
@@ -124,32 +124,9 @@ def pre_action():
          'evt2pevt', _from=base.Address().set_public_key(user.pub_key), to=base.Address().set_public_key(user.pub_key), number=asset_evt(100), memo='goodluck')
 
     pay_link = evt_link.EvtLink()
-    # pay_link = evt_link.EvtLink.parse_from_evtli('0UKDS95I5ACY-A88L*AVAIX*504XXDR:9SIFVAQL/9WB7D1:8_P-JBZQWAYW5UQE9VG2ZGCNUF*+G4K9TEK642H4PY9VX0UG8LZ2TE5$3FS6TAAUEIC8KEENE:2V6NOET:QGE7M913KXAXQ69Y')
     pay_link.set_max_pay(999999999)
-    pay_link.set_header(1+4)
+    pay_link.set_header(evt_link.HeaderType['version1'].value+evt_link.HeaderType['everiPay'].value)
     pay_link.set_symbol_id(sym_id)
-    # pay_link.set_address(user.pub_key.to_string())
-    # print(type(pay_link.get_link_id()), pay_link.get_link_id())
-    # pay_link.set_link_id(pay_link.get_link_id())
-    # pay_link.set_link_id_rand()
-    # pay_link.set_link_id(bytes([
-    #       139,
-    #       90,
-    #       90,
-    #       91,
-    #       249,
-    #       106,
-    #       190,
-    #       191,
-    #       63,
-    #       143,
-    #       113,
-    #       132,
-    #       245,
-    #       34,
-    #       161,
-    #       185
-    #     ]))
     pay_link.set_link_id_rand()
     pay_link.sign(user.priv_key)
 
@@ -212,7 +189,7 @@ class Test(unittest.TestCase):
 
         pay_link = evt_link.EvtLink()
         pay_link.set_max_pay(999999999)
-        pay_link.set_header(1+4)
+        pay_link.set_header(evt_link.HeaderType['version1'].value+evt_link.HeaderType['everiPay'].value)
         pay_link.set_symbol_id(sym_id)
         pay_link.set_link_id_rand()
         pay_link.sign(user.priv_key)
@@ -238,7 +215,7 @@ class Test(unittest.TestCase):
 
         pay_link = evt_link.EvtLink()
         pay_link.set_max_pay(999999999)
-        pay_link.set_header(1+4)
+        pay_link.set_header(evt_link.HeaderType['version1'].value+evt_link.HeaderType['everiPay'].value)
         pay_link.set_symbol_id(sym_id)
         pay_link.set_link_id_rand()
         pay_link.sign(user.priv_key)
@@ -271,17 +248,10 @@ class Test(unittest.TestCase):
         asset = base.new_asset(symbol)
         pay_link = evt_link.EvtLink()
         pay_link.set_max_pay(999999999)
-        pay_link.set_header(1+4)
+        pay_link.set_header(evt_link.HeaderType['version1'].value+evt_link.HeaderType['everiPay'].value)
         pay_link.set_symbol_id(sym_id)
         pay_link.set_link_id_rand()
         pay_link.sign(user.priv_key)
-
-        everipay = AG.new_action('everipay', payee=pub2, number=asset(
-            1), link=pay_link.to_string()) 
-        trx = TG.new_trx()
-        trx.add_action(everipay)
-        trx.add_sign(user.priv_key)
-        # api.push_transaction(trx.dumps())
 
         req = {
             'link_id': 'd1680fea21a3c3d8ef555afd8fd8c903'
@@ -305,17 +275,10 @@ class Test(unittest.TestCase):
         asset = base.new_asset(symbol)
         pay_link = evt_link.EvtLink()
         pay_link.set_max_pay(999999999)
-        pay_link.set_header(1+4)
+        pay_link.set_header(evt_link.HeaderType['version1'].value+evt_link.HeaderType['everiPay'].value)
         pay_link.set_symbol_id(sym_id)
         pay_link.set_link_id_rand()
         pay_link.sign(user.priv_key)
-
-        everipay = AG.new_action('everipay', payee=pub2, number=asset(
-            1), link=pay_link.to_string()) 
-        trx = TG.new_trx()
-        trx.add_action(everipay)
-        trx.add_sign(user.priv_key)
-        # api.push_transaction(trx.dumps())
 
         req = {
             'link_id': 'd1680fea21a3c3d8ef555afd8fd8c903'
@@ -338,7 +301,6 @@ class Test(unittest.TestCase):
                 print('Received {} responses'.format(i))
 
     def test_get_domains(self):
-        print('domain')
         req = {
             'keys': [user.pub_key.to_string()]
         }

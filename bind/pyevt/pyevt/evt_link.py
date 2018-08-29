@@ -5,6 +5,12 @@ from . import evt_exception, libevt
 from .ecc import Signature
 from .evt_data import EvtData
 
+class HeaderType(Enum):
+    version1  = 1
+    everiPass = 2
+    everiPay  = 4
+    destroy   = 8
+        
 
 class SegmentType(Enum):
     timestamp = 42
