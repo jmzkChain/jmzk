@@ -7,6 +7,7 @@
 #include <deque>
 #include <tuple>
 #include <chrono>
+#include <unordered_map>
 #include <thread>
 #if __has_include(<condition>)
 #include <condition>
@@ -19,7 +20,6 @@ using boost::condition_variable_any;
 #include <boost/asio.hpp>
 
 #include <fc/io/json.hpp>
-#include <fc/container/flat_fwd.hpp>
 
 #include <evt/chain_plugin/chain_plugin.hpp>
 #include <evt/chain/plugin_interface.hpp>
@@ -75,8 +75,8 @@ public:
     std::atomic_bool       init_{false};
     uint32_t               timeout_;
 
-    std::deque<block_state_ptr>               blocks_;
-    fc::flat_map<link_id_type, deferred_pair> link_ids_;
+    std::deque<block_state_ptr>                     blocks_;
+    std::unordered_map<link_id_type, deferred_pair> link_ids_;
 
     fc::optional<boost::signals2::scoped_connection> accepted_block_connection_;
 };
