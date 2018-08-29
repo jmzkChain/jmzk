@@ -421,6 +421,10 @@ Response:
 ## POST /v1/evt_link/get_trx_id_for_link_id
 Used to fetch transaction id and block num by one EVT-Link id. Difference between this API with `/v1/chain/get_trx_id_for_link_id` is that this API will not response directly, but instead it will block until excepted everiPay is executed successfully or reach max waiting time.
 > Only sucessful executing everiPay actions can be queried by this API.
+> There may be encountered some exceptions when call this API:
+> (3180007) exceed_deferred_request: EVT has a limit for the max number of deferred connections meanwhile. If encounters this error, client needs to wait for a while and try again.
+> (3190002) evt_link_already_watched_exception: This error indicates that you may already be waitting for the response of the same EVT-Link and shouldn't ask for it unitl previous one is responsed.
+> (3190003) exceed_evt_link_watch_time_exception: If waitting for response is timeout(default is 5 seconds), this exception is raised. Client needs to decide wheather to start a new request again.
 
 Request:
 ```
