@@ -92,8 +92,8 @@ def pre_action():
         'destroytoken', domain=domain_name, name=token2_name)
 
     pass_link = evt_link.EvtLink()
-    pass_link.set_header(evt_link.HeaderType.version1 |
-                         evt_link.HeaderType.everiPass | evt_link.HeaderType.destroy)
+    pass_link.set_header(evt_link.HeaderType.version1.value |
+                         evt_link.HeaderType.everiPass.value | evt_link.HeaderType.destroy.value)
     pass_link.set_domain(domain_name)
     pass_link.set_token(token3_name)
     pass_link.set_timestamp(int(time.time()))
@@ -127,8 +127,8 @@ def pre_action():
 
     pay_link = evt_link.EvtLink()
     pay_link.set_max_pay(999999999)
-    pay_link.set_header(evt_link.HeaderType.version1 |
-                        evt_link.HeaderType.everiPay)
+    pay_link.set_header(evt_link.HeaderType.version1.value |
+                        evt_link.HeaderType.everiPay.value)
     pay_link.set_symbol_id(sym_id)
     pay_link.set_link_id_rand()
     pay_link.sign(user.priv_key)
@@ -192,8 +192,8 @@ class Test(unittest.TestCase):
 
         pay_link = evt_link.EvtLink()
         pay_link.set_max_pay(999999999)
-        pay_link.set_header(evt_link.HeaderType.version1 |
-                            evt_link.HeaderType.everiPay)
+        pay_link.set_header(evt_link.HeaderType.version1.value |
+                            evt_link.HeaderType.everiPay.value)
         pay_link.set_symbol_id(sym_id)
         pay_link.set_link_id_rand()
         pay_link.sign(user.priv_key)
@@ -219,8 +219,8 @@ class Test(unittest.TestCase):
 
         pay_link = evt_link.EvtLink()
         pay_link.set_max_pay(999999999)
-        pay_link.set_header(
-            evt_link.HeaderType['version1'].value+evt_link.HeaderType['everiPay'].value)
+        pay_link.set_header(evt_link.HeaderType.version1.value |
+                            evt_link.HeaderType.everiPay.value)
         pay_link.set_symbol_id(sym_id)
         pay_link.set_link_id_rand()
         pay_link.sign(user.priv_key)
@@ -254,8 +254,8 @@ class Test(unittest.TestCase):
         asset = base.new_asset(symbol)
         pay_link = evt_link.EvtLink()
         pay_link.set_max_pay(999999999)
-        pay_link.set_header(evt_link.HeaderType.version1 |
-                            evt_link.HeaderType.everiPay)
+        pay_link.set_header(evt_link.HeaderType.version1.value |
+                            evt_link.HeaderType.everiPay.value)
         pay_link.set_symbol_id(sym_id)
         pay_link.set_link_id_rand()
         pay_link.sign(user.priv_key)
@@ -281,8 +281,8 @@ class Test(unittest.TestCase):
         asset = base.new_asset(symbol)
         pay_link = evt_link.EvtLink()
         pay_link.set_max_pay(999999999)
-        pay_link.set_header(evt_link.HeaderType.version1 |
-                            evt_link.HeaderType.everiPay)
+        pay_link.set_header(evt_link.HeaderType.version1.value |
+                            evt_link.HeaderType.everiPay.value)
         pay_link.set_symbol_id(sym_id)
         pay_link.set_link_id_rand()
         pay_link.sign(user.priv_key)
@@ -317,6 +317,8 @@ class Test(unittest.TestCase):
         req = {
             'keys': [user.pub_key.to_string()]
         }
+        req['domain'] = domain_name
+        req['name'] = token1_name
         resp = api.get_tokens(json.dumps(req)).text
         self.assertTrue(token1_name in resp, msg=resp)
         self.assertFalse(token2_name in resp, msg=resp)
