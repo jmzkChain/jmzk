@@ -1159,7 +1159,7 @@ struct set_get_my_subcommands {
         });
 
         auto myfungible = mycmd->add_subcommand("fungibles", localized("Retrieve my created fungibles"));
-        mygroup->set_callback([] {
+        myfungible->set_callback([] {
             get_my_resources(get_my_fungibles);
         });
 
