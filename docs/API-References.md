@@ -707,6 +707,37 @@ Response:
 }
 ```
 
+It can be aslo queried with the filter of domain name or token name
+
+Request:
+```
+{
+    "keys":["EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"],
+    "domain": "cookie"
+}
+```
+Response:
+```
+{
+    "cookie": [ "t1", "t2", "t3" ]
+}
+```
+
+Request:
+```
+{
+    "keys":["EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"],
+    "domain": "cookie",
+    "name": "t1"
+}
+```
+Response:
+```
+{
+    "cookie": [ "t1" ]
+}
+```
+
 ## POST /v1/history/get_domains
 Provide all the public keys its has and this API will response with all the domains that account issue.
 > This API is only available when MONGO_DB_SUPPORT is ON.
