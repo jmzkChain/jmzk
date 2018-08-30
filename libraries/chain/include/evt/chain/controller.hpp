@@ -32,6 +32,11 @@ class global_property_object;
 namespace contracts { class evt_link_object; }
 using contracts::evt_link_object;
 
+enum class validation_mode {
+    FULL,
+    LIGHT
+};
+
 class controller {
 public:
     struct config {
@@ -44,9 +49,12 @@ public:
         uint64_t reversible_guard_size  = chain::config::default_reversible_guard_size;
         bool     read_only              = false;
         bool     force_all_checks       = false;
+        bool     disable_replay_opts    = false;
         bool     loadtest_mode          = false;
         bool     charge_free_mode       = false;
         bool     contracts_console      = false;
+
+        validation_mode block_validation_mode = validation_mode::FULL;
 
         genesis_state genesis;
     };
@@ -155,12 +163,18 @@ public:
     int64_t set_proposed_producers(vector<producer_key> producers);
     void    set_chain_config(const chain_config&);
 
+    bool light_validation_allowed(bool replay_opts_disabled_by_policy) const;
     bool skip_auth_check() const;
+    bool skip_db_sessions() const;
+    bool skip_db_sessions(block_status bs) const;
+    bool skip_trx_checks() const;
     bool loadtest_mode() const;
     bool charge_free_mode() const;
     bool contracts_console() const;
 
     chain_id_type get_chain_id() const;
+
+    validation_mode get_validation_mode()const;
 
     signal<void(const signed_block_ptr&)>         pre_accepted_block;
     signal<void(const block_state_ptr&)>          accepted_block_header;
@@ -194,4 +208,4 @@ private:
 }}  // namespace evt::chain
 
 FC_REFLECT(evt::chain::controller::config,
-           (blocks_dir)(state_dir)(tokendb_dir)(state_size)(reversible_cache_size)(read_only)(force_all_checks)(loadtest_mode)(charge_free_mode)(contracts_console)(genesis))
+           (blocks_dir)(state_dir)(tokendb_dir)(state_size)(reversible_cache_size)(read_only)(force_all_checks)(disable_replay_opts)(loadtest_mode)(charge_free_mode)(contracts_console)(genesis))

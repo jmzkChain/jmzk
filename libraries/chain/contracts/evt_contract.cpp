@@ -966,7 +966,7 @@ EVT_ACTION_IMPL(everipay) {
             throw;
         }
         catch(...) {
-            EVT_ASSERT(false, evt_link_dupe_exception, "Duplicate EVT-Link ${id}", ("id", fc::to_hex(link_id_str.data(), link_id_str.size())));
+            EVT_THROW(evt_link_dupe_exception, "Duplicate EVT-Link ${id}", ("id", fc::to_hex(link_id_str.data(), link_id_str.size())));
         }
 
         auto keys = link.restore_keys();

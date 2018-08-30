@@ -19,7 +19,7 @@ public:
                         fc::time_point         start = fc::time_point::now());
 
     void init_for_implicit_trx();
-    void init_for_input_trx(uint32_t num_signatures);
+    void init_for_input_trx(uint32_t num_signatures, bool skip_recording);
     void init_for_suspend_trx();
 
     void exec();
@@ -42,7 +42,10 @@ private:
 
 public:
     controller&             control;
-    token_database::session undo_session;
+    
+    optional<chainbase::database::session> undo_session;
+    optional<token_database::session>      undo_token_session;
+
     transaction_metadata&   trx;
     transaction_trace_ptr   trace;
     fc::time_point          start;

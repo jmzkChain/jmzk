@@ -15,10 +15,16 @@ transaction_context::transaction_context(controller&           c,
                                          transaction_metadata& t,
                                          fc::time_point        s)
     : control(c)
-    , undo_session(c.token_db().new_savepoint_session())
+    , undo_session()
+    , undo_token_session()
     , trx(t)
     , trace(std::make_shared<transaction_trace>())
     , start(s) {
+
+    if(!c.skip_db_sessions()) {
+        undo_session       = c.db().start_undo_session(true);
+        undo_token_session = c.token_db().new_savepoint_session();
+    }
     trace->id = trx.id;
     executed.reserve(trx.total_actions());
     FC_ASSERT(trx.trx.transaction_extensions.size() == 0, "we don't support any extensions yet");
@@ -43,15 +49,17 @@ transaction_context::init_for_implicit_trx() {
 }
 
 void
-transaction_context::init_for_input_trx(uint32_t num_signatures) {
+transaction_context::init_for_input_trx(uint32_t num_signatures, bool skip_recording) {
     auto& t  = trx.trx;
     is_input = true;
-    if(!control.loadtest_mode()) {
+    if(!control.loadtest_mode() || !control.skip_trx_checks()) {
         control.validate_expiration(t);
         control.validate_tapos(t);
     }
     init();
-    record_transaction(trx.id, t.expiration);  /// checks for dupes
+    if(!skip_recording) {
+        record_transaction(trx.id, t.expiration);  /// checks for dupes
+    }
 }
 
 void
@@ -85,11 +93,21 @@ transaction_context::finalize() {
 
 void
 transaction_context::squash() {
-    undo_session.squash();
+    if(undo_session) {
+        undo_session->squash();
+    }
+    if(undo_token_session) {
+        undo_token_session->squash();
+    }
 }
 
 void transaction_context::undo() {
-    undo_session.undo();
+    if(undo_session) {
+        undo_session->undo();
+    }
+    if(undo_token_session) {
+        undo_token_session->undo();
+    }
 }
 
 void

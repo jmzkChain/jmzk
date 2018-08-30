@@ -21,8 +21,9 @@ public:
     packed_transaction                                       packed_trx;
     optional<pair<chain_id_type, flat_set<public_key_type>>> signing_keys;
     bool                                                     accepted = false;
+    bool                                                     implicit = false;
 
-    transaction_metadata(const signed_transaction& t, packed_transaction::compression_type c = packed_transaction::none)
+    explicit transaction_metadata(const signed_transaction& t, packed_transaction::compression_type c = packed_transaction::none)
         : trx(t)
         , packed_trx(t, c) {
         id = trx.id();
@@ -30,7 +31,7 @@ public:
         signed_id = digest_type::hash(packed_trx);
     }
 
-    transaction_metadata(const packed_transaction& ptrx)
+    explicit transaction_metadata(const packed_transaction& ptrx)
         : trx(ptrx.get_signed_transaction())
         , packed_trx(ptrx) {
         id = trx.id();
