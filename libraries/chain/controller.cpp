@@ -658,9 +658,6 @@ struct controller_impl {
     start_block(block_timestamp_type when, uint16_t confirm_block_count, controller::block_status s) {
         EVT_ASSERT(!pending, block_validate_exception, "pending block already exists");
 
-        EVT_ASSERT(db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
-                  ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num));
-
         auto guard_pending = fc::make_scoped_exit([this]() {
             pending.reset();
         });

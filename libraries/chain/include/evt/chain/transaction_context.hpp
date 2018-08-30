@@ -41,14 +41,14 @@ private:
     void finalize_pay();
 
 public:
-    controller&             control;
+    controller& control;
     
     optional<chainbase::database::session> undo_session;
     optional<token_database::session>      undo_token_session;
 
-    transaction_metadata&   trx;
-    transaction_trace_ptr   trace;
-    fc::time_point          start;
+    transaction_metadata& trx;
+    transaction_trace_ptr trace;
+    fc::time_point        start;
 
     vector<action_receipt> executed;
 
