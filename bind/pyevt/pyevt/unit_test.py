@@ -2,8 +2,8 @@ import unittest
 
 from . import abi
 from .abi import *
-from .ecc import *
 from .address import *
+from .ecc import *
 from .evt_link import *
 
 
@@ -12,7 +12,7 @@ class TestPyEVT(unittest.TestCase):
     def setUpClass(cls):
         ver = libevt.init_lib()
         assert ver == abi.version()
-        print("EVT Api Version:", ver)
+        print('EVT Api Version:', ver)
 
     def test_evtecc(self):
         pub_key, priv_key = generate_new_pair()
@@ -95,7 +95,8 @@ class TestPyEVT(unittest.TestCase):
 
         block_id = BlockId.from_string(
             '000000cabd11d7f8163d5586a4bb4ef6bb8d0581f03db67a04c285bbcb83f921')
-        self.assertEqual('000000cabd11d7f8163d5586a4bb4ef6bb8d0581f03db67a04c285bbcb83f921', block_id.to_hex_string())
+        self.assertEqual(
+            '000000cabd11d7f8163d5586a4bb4ef6bb8d0581f03db67a04c285bbcb83f921', block_id.to_hex_string())
 
         block_num = block_id.ref_block_num()
         self.assertTrue(block_num == 202)
@@ -104,15 +105,19 @@ class TestPyEVT(unittest.TestCase):
 
     def test_evtaddress(self):
         reserved_addr = Address.reserved()
-        self.assertEqual('EVT00000000000000000000000000000000000000000000000000', reserved_addr.to_string())
+        self.assertEqual(
+            'EVT00000000000000000000000000000000000000000000000000', reserved_addr.to_string())
         self.assertEqual('reserved', reserved_addr.get_type())
 
-        pub_key = PublicKey.from_string('EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3')
+        pub_key = PublicKey.from_string(
+            'EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3')
         public_key_addr = Address.public_key(pub_key)
-        self.assertEqual('EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3', public_key_addr.to_string())
+        self.assertEqual(
+            'EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3', public_key_addr.to_string())
         self.assertEqual('public_key', public_key_addr.get_type())
 
-        generated_addr = Address.generated('xxxxxxxxxxxx', 'xxxxxxxxxxxxxxxxxxxxx', 1234)
+        generated_addr = Address.generated(
+            'xxxxxxxxxxxx', 'xxxxxxxxxxxxxxxxxxxxx', 1234)
         prefix = generated_addr.get_prefix()
         key = generated_addr.get_key()
         nonce = generated_addr.get_nonce()
@@ -129,10 +134,35 @@ class TestPyEVT(unittest.TestCase):
         domain = evt_link.get_segment_str('domain')
         token = evt_link.get_segment_str('token')
 
+        signs = evt_link.get_signatures()
+
         self.assertEqual(header, 3)
         self.assertEqual(timestamp, 1532465234)
         self.assertEqual(domain, 'nd1532465232490')
         self.assertEqual(token, 'tk3064930465.8381')
+
+        pub_key, priv_key = generate_new_pair()
+        evt_link_1 = EvtLink()
+        evt_link_1.set_header(3)
+        evt_link_1.add_segment_int('timestamp', 1532465234)
+        evt_link_1.add_segment_str('domain', 'nd1532465232490')
+        evt_link_1.add_segment_str('token', 'tk3064930465.8381')
+        evt_link_1.sign(priv_key)
+
+        self.assertEqual(evt_link_1.get_segment_int('timestamp'), 1532465234)
+        self.assertEqual(evt_link.get_segment_str('domain'), 'nd1532465232490')
+
+        evt_link = EvtLink.parse_from_evtli('0DFYZXZO9-:Y:JLF*3/4JCPG7V1346OZ:R/G2M93-2L*BBT9S0YQ0+JNRIW95*HF*94J0OVUN$KS01-GZ-N7FWK9_FXXJORONB7B58VU9Z2MZKZ5*:NP3::K7UYKD:Y9I1V508HBQZK2AE*ZS85PJZ2N47/41LQ-MZ/4Q6THOX**YN0VMQ*3/CG9-KX2:E7C-OCM*KJJT:Z7640Q6B*FWIQBYMDPIXB4CM:-8*TW-QNY$$AY5$UA3+N-7L/ZSDCWO1I7M*3Q6*SMAYOWWTF5RJAJ:NG**8U5J6WC2VM5Z:OLZPVJXX*12I*6V9FL1HX095$5:$*C3KGCM3FIS-WWRE14E:7VYNFA-3QCH5ULZJ*CRH91BTXIK-N+J1')
+        link_id = evt_link.get_link_id()
+        self.assertEqual(link_id[0], 139)
+        self.assertEqual(link_id[1], 90)
+        self.assertEqual(link_id[15], 185)
+
+        evt_link.set_link_id(bytes(
+            [139-1, 90, 90, 91, 249, 106, 190, 191, 63, 143, 113, 132, 245, 34, 161, 185]))
+        self.assertEqual(evt_link.get_link_id()[0], 138)
+
+        evt_link.set_link_id_rand()
 
 
 if __name__ == '__main__':

@@ -5,6 +5,7 @@
 #include <evt/http_plugin/http_plugin.hpp>
 #include <evt/chain/exceptions.hpp>
 
+#include <fc/optional.hpp>
 #include <fc/crypto/openssl.hpp>
 #include <fc/io/json.hpp>
 #include <fc/log/logger_config.hpp>
@@ -38,6 +39,7 @@ using std::vector;
 using std::set;
 using std::string;
 using std::regex;
+using fc::optional;
 using websocketpp::connection_hdl;
 
 namespace detail {
@@ -61,6 +63,8 @@ struct asio_with_stub_log : public websocketpp::config::asio {
 
     typedef base::rng_type rng_type;
 
+    static bool const enable_multithreading = false;
+
     struct transport_config : public base::transport_config {
         typedef type::concurrency_type concurrency_type;
         typedef type::alog_type        alog_type;
@@ -68,6 +72,8 @@ struct asio_with_stub_log : public websocketpp::config::asio {
         typedef type::request_type     request_type;
         typedef type::response_type    response_type;
         typedef T                      socket_type;
+
+        static bool const enable_multithreading = false;
     };
 
     typedef websocketpp::transport::asio::endpoint<transport_config>
@@ -238,7 +244,6 @@ public:
                     return j;
                 }
             }
-
         }
         if constexpr (std::is_same_v<T, websocketpp::transport::asio::tls_socket::endpoint>) {
             // https
@@ -316,13 +321,16 @@ public:
                     auto id = alloc_deferred_id<T>(con); 
 
                     con->defer_http_response();
+                    con->set_close_handler([&](auto c) {
+                        visit_connection(id, [](auto&) { return false; });
+                    });
                     deferred_handler_it->second(resource, body, id);
 
                     return;
                 }
             }
 
-            wlog("404 - not found: ${ep}", ("ep", resource));
+            dlog("404 - not found: ${ep}", ("ep", resource));
             error_results results{websocketpp::http::status_code::not_found,
                                   "Not Found", error_results::error_info(fc::exception(FC_LOG_MESSAGE(error, "Unknown Endpoint")), verbose_http_errors)};
             con->set_body(fc::json::to_string(results));
@@ -333,16 +341,36 @@ public:
         }
     }
 
+    template<typename FUNC>
+    void
+    visit_connection(deferred_id id, FUNC&& vistor) {
+        if((id & (1 << 31)) == 0) {
+            // http
+            FC_ASSERT(id < max_deferred_connection_size);
+            auto con = http_conns[id];
+            FC_ASSERT(con != nullptr);
+
+            if(!vistor(con)) {
+                http_conns[id] = nullptr;
+            }
+        }
+        else {
+            // https
+            auto index = id & (0xFFFFFFFF >> 1);
+            FC_ASSERT(index < max_deferred_connection_size);
+            auto con = https_conns[index];
+            FC_ASSERT(con != nullptr);
+
+            if(!vistor(con)) {
+                https_conns[index] = nullptr;
+            }
+        }
+    }
+
     void
     set_deferred_response(deferred_id id, int code, string body) {
         try {
-            if((id & (1 << 31)) == 0) {
-                // http
-                FC_ASSERT(id < max_deferred_connection_size);
-                auto con = http_conns[id];
-                FC_ASSERT(con != nullptr);
-                http_conns[id] = nullptr;
-
+            visit_connection(id, [&](auto& con) {
                 try {
                     con->set_status(websocketpp::http::status_code::value(code));
                     if(!http_no_response) {
@@ -351,28 +379,10 @@ public:
                     con->send_http_response();
                 }
                 catch(...) {
-                    handle_exception<websocketpp::transport::asio::basic_socket::endpoint>(con);
+                    handle_exception<typename std::decay_t<decltype(*con)>::config_type::transport_type::socket_type>(con);
                 }
-            }
-            else {
-                // https
-                auto index = id & (0xFFFFFFFF >> 1);
-                FC_ASSERT(index < max_deferred_connection_size);
-                auto con = https_conns[index];
-                FC_ASSERT(con != nullptr);
-                https_conns[index] = nullptr;
-
-                try {
-                    con->set_status(websocketpp::http::status_code::value(code));
-                    if(!http_no_response) {
-                        con->set_body(std::move(body));
-                    }
-                    con->send_http_response();
-                }
-                catch(...) {
-                    handle_exception<websocketpp::transport::asio::tls_socket::endpoint>(con);
-                }
-            }
+                return false;  // return false to indicate release connection
+            });
         }
         FC_LOG_AND_DROP((id));
     }
@@ -438,7 +448,7 @@ http_plugin::set_program_options(options_description&, options_description& cfg)
                 ilog("configured http with Access-Control-Allow-Credentials: true");
             })->default_value(false), "Specify if Access-Control-Allow-Credentials: true should be returned on each request.")
         ("max-body-size", bpo::value<uint32_t>()->default_value(1024*1024), "The maximum body size in bytes allowed for incoming RPC requests")
-        ("max-deferred-connection-size", bpo::value<uint32_t>()->default_value(1024), "The maximum size allowed for deferred connections")
+        ("max-deferred-connection-size", bpo::value<uint32_t>()->default_value(8), "The maximum size allowed for deferred connections")
         ("verbose-http-errors", bpo::bool_switch()->default_value(false), "Append the error log to HTTP responses")
         ("http-validate-host", boost::program_options::value<bool>()->default_value(true), "If set to false, then any incoming \"Host\" header is considered valid")
         ("http-alias", bpo::value<std::vector<string>>()->composing(), "Additionaly acceptable values for the \"Host\" header of incoming HTTP requests, can be specified multiple times.  Includes http/s_server_address by default.")
@@ -593,7 +603,7 @@ http_plugin::plugin_shutdown() {
 void
 http_plugin::add_handler(const string& url, const url_handler& handler) {
     ilog("add api url: ${c}", ("c", url));
-    app().get_io_service().post([=]() {
+    boost::asio::post(app().get_io_service(), [=]() {
         my->url_handlers.insert(std::make_pair(url, handler));
     });
 }
@@ -601,14 +611,14 @@ http_plugin::add_handler(const string& url, const url_handler& handler) {
 void
 http_plugin::add_deferred_handler(const string& url, const url_deferred_handler& handler) {
     ilog("add deferred api url: ${c}", ("c", url));
-    app().get_io_service().post([=]() {
+    boost::asio::post(app().get_io_service(), [=]() {
         my->url_deferred_handlers.insert(std::make_pair(url, handler));
     });
 }
 
 void
 http_plugin::set_deferred_response(deferred_id id, int code, const string& body) {
-    app().get_io_service().post([=]() {
+    boost::asio::post(app().get_io_service(), [=]() {
         my->set_deferred_response(id, code, body);
     });
 }
@@ -627,13 +637,9 @@ http_plugin::handle_exception(const char* api_name, const char* call_name, const
             error_results results{409, "Conflict", error_results::error_info(e, verbose_http_errors)};
             cb(409, fc::json::to_string(results));
         }
-        catch(chain::transaction_exception& e) {
-            error_results results{400, "Bad Request", error_results::error_info(e, verbose_http_errors)};
-            cb(400, fc::json::to_string(results));
-        }
         catch(fc::eof_exception& e) {
-            error_results results{400, "Bad Request", error_results::error_info(e, verbose_http_errors)};
-            cb(400, fc::json::to_string(results));
+            error_results results{422, "Unprocessable Entity", error_results::error_info(e, verbose_http_errors)};
+            cb(422, fc::json::to_string(results));
             elog("Unable to parse arguments to ${api}.${call}", ("api", api_name)("call", call_name));
             dlog("Bad arguments: ${args}", ("args", body));
         }

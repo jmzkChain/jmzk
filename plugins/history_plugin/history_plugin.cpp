@@ -1,5 +1,7 @@
 #include <evt/history_plugin/history_plugin.hpp>
 
+#include <mutex>
+
 #include <bsoncxx/builder/basic/document.hpp>
 #include <bsoncxx/builder/basic/kvp.hpp>
 #include <bsoncxx/builder/stream/document.hpp>
@@ -30,6 +32,9 @@ using fc::flat_set;
 using fc::variant;
 using fc::optional;
 using bsoncxx::builder::stream::document;
+using bsoncxx::builder::stream::open_document;
+using bsoncxx::builder::stream::close_document;
+using bsoncxx::builder::stream::array;
 
 class history_plugin_impl {
 public:
@@ -56,7 +61,7 @@ public:
     }
 
 public:
-    variant get_tokens_by_public_keys(const vector<public_key_type>& pkeys);
+    variant get_tokens_by_public_keys(const vector<public_key_type>& pkeys, const optional<domain_name>& domain, const optional<token_name>& name);
     flat_set<string> get_domains_by_public_keys(const vector<public_key_type>& pkeys);
     flat_set<string> get_groups_by_public_keys(const vector<public_key_type>& pkeys);
     flat_set<symbol_id_type> get_fungibles_by_public_keys(const vector<public_key_type>& pkeys);
@@ -124,29 +129,38 @@ history_plugin_impl::transaction_to_variant(const packed_transaction& ptrx) {
 
 
 variant
-history_plugin_impl::get_tokens_by_public_keys(const vector<public_key_type>& pkeys) {
+history_plugin_impl::get_tokens_by_public_keys(const vector<public_key_type>& pkeys, const optional<domain_name>& domain, const optional<token_name>& name) {
     auto results = fc::mutable_variant_object();
 
+    auto keys = array();
     for(auto& pkey : pkeys) {
-        using bsoncxx::builder::stream::document;
-        document find{};
-        find << "owner" << (string)pkey;
-        auto cursor = tokens_col_.find(find.view());
-        try {
-            for(auto it = cursor.begin(); it != cursor.end(); it++) {
-                auto domain = get_bson_string_value(it, "domain");
-                auto name = get_bson_string_value(it, "name");
+        keys << (string)pkey;
+    }
 
-                if(results.find(domain) == results.end()) {
-                    results.set(domain, fc::variants());
-                }
-                results[domain].get_array().emplace_back(std::move(name));
+    auto find = document();
+    find << "owner" << open_document << "$in" << keys << close_document;
+
+    if(domain.valid()) {
+        find << "domain" << (string)*domain;
+    }
+    if(name.valid()) {
+        find << "name" << (string)*name;
+    }
+
+    auto cursor = tokens_col_.find(find.view());
+    try {
+        for(auto it = cursor.begin(); it != cursor.end(); it++) {
+            auto domain = get_bson_string_value(it, "domain");
+            auto name   = get_bson_string_value(it, "name");
+
+            if(results.find(domain) == results.end()) {
+                results.set(domain, fc::variants());
             }
-        }
-        catch(mongocxx::query_exception e) {
-            continue;
+            results[domain].get_array().emplace_back(std::move(name));
         }
     }
+    catch(mongocxx::query_exception e) {}
+
     return results;
 }
 
@@ -154,21 +168,23 @@ flat_set<string>
 history_plugin_impl::get_domains_by_public_keys(const vector<public_key_type>& pkeys) {
     flat_set<string> results;
 
+    auto keys = array();
     for(auto& pkey : pkeys) {
-        using bsoncxx::builder::stream::document;
-        document find{};
-        find << "creator" << (string)pkey;
-        auto cursor = domains_col_.find(find.view());
-        try {
-            for(auto it = cursor.begin(); it != cursor.end(); it++) {
-                auto name = get_bson_string_value(it, "name");
-                results.insert(string(name.data(), name.size()));
-            }
-        }
-        catch(mongocxx::query_exception e) {
-            continue;
+        keys << (string)pkey;
+    }
+
+    auto find = document();
+    find << "creator" << open_document << "$in" << keys << close_document;
+
+    auto cursor = domains_col_.find(find.view());
+    try {
+        for(auto it = cursor.begin(); it != cursor.end(); it++) {
+            auto name = get_bson_string_value(it, "name");
+            results.insert(string(name.data(), name.size()));
         }
     }
+    catch(mongocxx::query_exception e) {}
+
     return results;
 }
 
@@ -176,20 +192,23 @@ flat_set<string>
 history_plugin_impl::get_groups_by_public_keys(const vector<public_key_type>& pkeys) {
     flat_set<string> results;
 
+    auto keys = array();
     for(auto& pkey : pkeys) {
-        document find{};
-        find << "def.key" << (string)pkey;
-        auto cursor = groups_col_.find(find.view());
-        try {
-            for(auto it = cursor.begin(); it != cursor.end(); it++) {
-                auto name = get_bson_string_value(it, "name");
-                results.insert(string(name.data(), name.size()));
-            }
-        }
-        catch(mongocxx::query_exception e) {
-            continue;
+        keys << (string)pkey;
+    }
+
+    auto find = document();
+    find << "def.key" << open_document << "$in" << keys << close_document;
+
+    auto cursor = groups_col_.find(find.view());
+    try {
+        for(auto it = cursor.begin(); it != cursor.end(); it++) {
+            auto name = get_bson_string_value(it, "name");
+            results.insert(string(name.data(), name.size()));
         }
     }
+    catch(mongocxx::query_exception e) {}
+
     return results;
 }
 
@@ -197,21 +216,23 @@ flat_set<symbol_id_type>
 history_plugin_impl::get_fungibles_by_public_keys(const vector<public_key_type>& pkeys) {
     flat_set<symbol_id_type> results;
 
+    auto keys = array();
     for(auto& pkey : pkeys) {
-        using bsoncxx::builder::stream::document;
-        document find{};
-        find << "creator" << (string)pkey;
-        auto cursor = fungibles_col_.find(find.view());
-        try {
-            for(auto it = cursor.begin(); it != cursor.end(); it++) {
-                auto id = (*it)["sym_id"].get_int64();
-                results.insert((symbol_id_type)id);
-            }
-        }
-        catch(mongocxx::query_exception e) {
-            continue;
+        keys << (string)pkey;
+    }
+
+    auto find = document();
+    find << "creator" << open_document << "$in" << keys << close_document;
+
+    auto cursor = fungibles_col_.find(find.view());
+    try {
+        for(auto it = cursor.begin(); it != cursor.end(); it++) {
+            auto id = (*it)["sym_id"].get_int64();
+            results.insert((symbol_id_type)id);
         }
     }
+    catch(mongocxx::query_exception e) {}
+
     return results;
 }
 
@@ -296,8 +317,12 @@ history_plugin_impl::get_fungible_actions(const symbol_id_type        sym_id,
     document match{};
     match << "domain" << ".fungible" << "key" << std::to_string(sym_id);
 
-    auto ns = bsoncxx::builder::stream::array();
-    ns << "issuefungible" << "transferft" << "everipay" << "paycharge";
+    static std::once_flag                  flag;
+    static bsoncxx::builder::stream::array ns;
+
+    std::call_once(flag, [] {
+        ns << "issuefungible" << "transferft" << "evt2pevt" << "everipay" << "paycharge";
+    });
 
     match << "name" << open_document << "$in" << ns << close_document;
 
@@ -310,8 +335,8 @@ history_plugin_impl::get_fungible_actions(const symbol_id_type        sym_id,
 
         addr_match << "$or" << open_array
                    << open_document << "data.address"   << saddr << close_document  // issue
-                   << open_document << "data.from"      << saddr << close_document  // transfer
-                   << open_document << "data.to"        << saddr << close_document  // transfer
+                   << open_document << "data.from"      << saddr << close_document  // transfer & evt2pevt
+                   << open_document << "data.to"        << saddr << close_document  // transfer & evt2pevt
                    << open_document << "data.payee"     << saddr << close_document  // everiPay
                    << open_document << "data.link.keys" << saddr << close_document  // everiPay
                    << open_document << "data.payer"     << saddr << close_document  // paycharge
@@ -452,10 +477,10 @@ history_plugin::plugin_shutdown() {
 namespace history_apis {
 
 fc::variant
-read_only::get_tokens(const get_params& params) {
+read_only::get_tokens(const get_tokens_params& params) {
     EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
 
-    return plugin_.my_->get_tokens_by_public_keys(params.keys);
+    return plugin_.my_->get_tokens_by_public_keys(params.keys, params.domain, params.name);
 }
 
 fc::variant

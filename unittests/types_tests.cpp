@@ -62,6 +62,9 @@ TEST_CASE("test_link_1", "[types]") {
                "4KH9ETLZ97TUX9R9JJA6+06$E/_PYNX-/152P4CTC:WKXLK$/7G-K:89+::2K4"
                "C-KZ2**HI-P8CYJ**XGFO1K5:$E*SOY8MFYWMNHP*BHX2U8$$FTFI81YDP1HT";
     auto link = evt_link::parse_from_evtli(str);
+    auto str2 = link.to_string();
+    
+    CHECK(str == str2);
 
     CHECK(link.get_header() == 3);
     CHECK(*link.get_segment(evt_link::timestamp).intv == 1532465234);
@@ -106,6 +109,9 @@ TEST_CASE("test_link_2", "[types]") {
                "+CGUBIMTB261AT$6:*I+UKBHSQP3D84/JEZDG7BEJ5OUD$ZINCC24";
 
     auto link = evt_link::parse_from_evtli(str);
+    auto str2 = link.to_string(1);
+    
+    CHECK(str == str2);
 
     CHECK(link.get_header() == 11);
     CHECK(*link.get_segment(evt_link::timestamp).intv == 1532465608);
@@ -152,6 +158,9 @@ TEST_CASE("test_link_3", "[types]") {
                "Y6$3M9-RP-6/YPM7:3P";
 
     auto link = evt_link::parse_from_evtli(str);
+    auto str2 = link.to_string();
+    
+    // CHECK(str == str2); because evtjs generated link doesn't guarantee the order of signatures
 
     CHECK(link.get_header() == 11);
     CHECK(*link.get_segment(evt_link::timestamp).intv == 1532468461);
@@ -222,6 +231,7 @@ TEST_CASE("test_name128", "[types]") {
     CHECK_N128("123456", 8);
     CHECK_N128("1234567890", 8);
     CHECK_N128("1234567890A", 12);
+    CHECK_N128("11111111111", 12);
     CHECK_N128("1234567890ABCDE", 12);
     CHECK_N128("1234567890ABCDEF", 16);
     CHECK_N128("1234567890ABCDEFGHIJK", 16);

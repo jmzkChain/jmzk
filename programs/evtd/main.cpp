@@ -14,6 +14,7 @@
 #include <fc/log/appender.hpp>
 #include <fc/log/logger_config.hpp>
 
+#include <boost/asio/signal_set.hpp>
 #include <boost/dll/runtime_symbol_info.hpp>
 #include <boost/exception/diagnostic_information.hpp>
 
@@ -143,7 +144,7 @@ main(int argc, char** argv) {
         google_breakpad::ExceptionHandler eh(descriptor, NULL, dump_callback, NULL, true, -1);
 #endif
 
-        ilog("evtd version ${ver}", ("ver", evt::utilities::common::itoh(static_cast<uint32_t>(app().version()))));
+        ilog("evtd version ${ver}", ("ver", app().version_string()));
         ilog("evt root is ${root}", ("root", root.string()));
         app().startup();
         app().exec();

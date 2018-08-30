@@ -388,8 +388,20 @@ Response
 ```
 > 12345 represents for '0.12345' EVT(PEVT).
 
+## POST /v1/chain/get_transaction
+Used to fetch transaction by block num and transaction id
+
+Request:
+```
+{
+    "block_num": 12345,
+    "id": "9f2ea4b512f49d2f3ff2be24e9cc4296ee0749b33bb9b1c06ae45a664bb00397"
+}
+```
+
 ## POST /v1/chain/get_trx_id_for_link_id
-Used to fetch transaction id for one EVT-Link id. Only sucessful executing everiPay actions can be queried by this API.
+Used to fetch transaction id and block num by one EVT-Link id.
+> Only sucessful executing everiPay actions can be queried by this API.
 
 Request:
 ```
@@ -401,7 +413,31 @@ Request:
 Response:
 ```
 {
-    "trx_id": "9f2ea4b512f49d2f3ff2be24e9cc4296ee0749b33bb9b1c06ae45a664bb00397"
+    "trx_id": "9f2ea4b512f49d2f3ff2be24e9cc4296ee0749b33bb9b1c06ae45a664bb00397",
+    "block_num": 12345
+}
+```
+
+## POST /v1/evt_link/get_trx_id_for_link_id
+Used to fetch transaction id and block num by one EVT-Link id. Difference between this API with `/v1/chain/get_trx_id_for_link_id` is that this API will not response directly, but instead it will block until excepted everiPay is executed successfully or reach max waiting time.
+> Only sucessful executing everiPay actions can be queried by this API.
+> There may be encountered some exceptions when call this API:
+> (3180007) exceed_deferred_request: EVT has a limit for the max number of deferred connections meanwhile. If encounters this error, client needs to wait for a while and try again.
+> (3190002) evt_link_already_watched_exception: This error indicates that you may already be waitting for the response of the same EVT-Link and shouldn't ask for it unitl previous one is responsed.
+> (3190003) exceed_evt_link_watch_time_exception: If waitting for response is timeout(default is 5 seconds), this exception is raised. Client needs to decide wheather to start a new request again.
+
+Request:
+```
+{
+    "link_id": "16951b9b653947955faa6c3cb3e506b6"
+}
+```
+
+Response:
+```
+{
+    "trx_id": "9f2ea4b512f49d2f3ff2be24e9cc4296ee0749b33bb9b1c06ae45a664bb00397",
+    "block_num": 12345
 }
 ```
 
@@ -552,7 +588,7 @@ Response:
 }
 ```
 
-## POST /v1/evt/get_assets
+## POST /v1/evt/get_fungible_balance
 This API is used to get assets for an address
 
 Request:
@@ -568,13 +604,13 @@ Response:
 ]
 ```
 
-You can also only query assets for specific symbol
+You can also only query assets for specific symbol id
 
 Request:
 ```
 {
     "address": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
-    "sym": "5,S#1"
+    "sym_id": 1
 }
 ```
 Response:
@@ -665,7 +701,41 @@ Request:
 ```
 Response:
 ```
-["cookie-t1", "cookie-t2", "cookie-t3"]
+{
+    "cookie": [ "t1", "t2", "t3" ],
+    "cookie2": [ "z1", "z2" ]
+}
+```
+
+It can be aslo queried with the filter of domain name or token name
+
+Request:
+```
+{
+    "keys":["EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"],
+    "domain": "cookie"
+}
+```
+Response:
+```
+{
+    "cookie": [ "t1", "t2", "t3" ]
+}
+```
+
+Request:
+```
+{
+    "keys":["EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"],
+    "domain": "cookie",
+    "name": "t1"
+}
+```
+Response:
+```
+{
+    "cookie": [ "t1" ]
+}
 ```
 
 ## POST /v1/history/get_domains

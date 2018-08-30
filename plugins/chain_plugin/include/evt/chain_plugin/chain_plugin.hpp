@@ -146,6 +146,12 @@ public:
     using get_head_block_header_state_params = empty;
     fc::variant get_head_block_header_state(const get_head_block_header_state_params& params) const;
 
+    struct get_transaction_params {
+        uint32_t                   block_num;
+        chain::transaction_id_type id;
+    };
+    fc::variant get_transaction(const get_transaction_params& params);
+
     struct get_trx_id_for_link_id_params {
         bytes link_id;
     };
@@ -237,6 +243,7 @@ FC_REFLECT(evt::chain_apis::read_only::get_info_results,
           (head_block_id)(head_block_time)(head_block_producer)(recent_slots)(participation_rate));
 FC_REFLECT(evt::chain_apis::read_only::get_block_params, (block_num_or_id));
 FC_REFLECT(evt::chain_apis::read_only::get_block_header_state_params, (block_num_or_id));
+FC_REFLECT(evt::chain_apis::read_only::get_transaction_params, (block_num)(id));
 FC_REFLECT(evt::chain_apis::read_only::get_trx_id_for_link_id_params, (link_id));
 FC_REFLECT(evt::chain_apis::read_only::producer_info, (producer_name));
 FC_REFLECT(evt::chain_apis::read_only::abi_json_to_bin_params, (action)(args));

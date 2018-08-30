@@ -4,7 +4,7 @@
 # Go into cmd loop: sudo ./evtc.sh
 # Run single cmd:  sudo ./evtc.sh <evtc paramers>
 
-PREFIX="docker-compose exec evtwd evtc"
+PREFIX="evtc"
 if [ -z $1 ] ; then
   while :
   do

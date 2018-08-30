@@ -53,6 +53,7 @@
 
 #include <fc/io/json.hpp>
 
+#include <boost/asio.hpp>
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/ip/host_name.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -538,8 +539,15 @@ public:
             }
         }
 
+    }
+
+    void
+    on_accepted_block(const block_state_ptr& s) {
+        verify_strand_in_this_thread(_strand, __func__, __LINE__);
         //idump((_block_status.size())(_transaction_status.size()));
         //ilog( "accepted block ${n}", ("n",s->block_num) );
+
+        const auto& id = s->id;
 
         _local_head_block_id  = id;
         _local_head_block_num = block_header::num_from_id(id);
@@ -556,7 +564,7 @@ public:
             */
         for(const auto& receipt : s->block->transactions) {
             // TODO: Need to clarify delay transaction? 
-            const auto tid = receipt.trx.id();
+            const auto& tid = receipt.trx.get_uncached_id();
             auto itr = _transaction_status.find(tid);
             if(itr != _transaction_status.end()) {
                 _transaction_status.erase(itr);
@@ -1077,7 +1085,7 @@ public:
     mark_block_transactions_known_by_peer(const signed_block_ptr& b) {
         for(const auto& receipt : b->transactions) {
             // TODO: Need to clarify delay transaction? 
-            auto id = receipt.trx.id();
+            const auto& id = receipt.trx.get_uncached_id();
             mark_transaction_known_by_peer(id);
         }
     }
@@ -1112,10 +1120,12 @@ public:
             EVT_THROW(transaction_exception, "bad transaction");
         }
 
-        auto id = p->id();
         // ilog( "recv trx ${n}", ("n", id) );
         if(p->expiration() < fc::time_point::now())
             return;
+
+        // get id via get_uncached_id() as packed_transaction.id() mutates internal transaction state
+        const auto& id = p->get_uncached_id();
 
         if(mark_transaction_known_by_peer(id))
             return;
@@ -1279,8 +1289,7 @@ public:
 
     void
     on_accepted_transaction(transaction_metadata_ptr trx) {
-        if(trx->trx.signatures.size() == 0)
-            return;
+        if(trx->implicit) return;
         for_each_session([trx](auto ses) { ses->on_accepted_transaction(trx); });
     }
 
@@ -1291,6 +1300,19 @@ public:
     void
     on_irreversible_block(block_state_ptr s) {
         for_each_session([s](auto ses) { ses->on_new_lib(s); });
+    }
+
+    /**
+    * Notify all active connections of the new accepted block so
+    * they can relay it. This method also pre-packages the block
+    * as a packed bnet_message so the connections can simply relay
+    * it on.
+    */
+    void
+    on_accepted_block( block_state_ptr s ) {
+        _ioc->post([s,this] { /// post this to the thread pool because packing can be intensive
+            for_each_session([s](auto ses){ ses->on_accepted_block(s); });
+        });
     }
 
     void
@@ -1453,6 +1475,10 @@ bnet_plugin::plugin_startup() {
 
     my->_on_irb_handle = app().get_channel<channels::irreversible_block>().subscribe([this](block_state_ptr s) {
         my->on_irreversible_block(s);
+    });
+
+    my->_on_accepted_block_handle = app().get_channel<channels::accepted_block>().subscribe([this](block_state_ptr s) {
+        my->on_accepted_block(s);
     });
 
     my->_on_accepted_block_header_handle = app().get_channel<channels::accepted_block_header>().subscribe([this](block_state_ptr s) {

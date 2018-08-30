@@ -19,26 +19,53 @@ dump_mem(evt_data_t* data) {
 }
 
 BOOST_AUTO_TEST_CASE( evtlink ) {
-    evt_link_t* link = nullptr;
+    void* linkp = nullptr;
+    linkp = evt_link_new();
+    BOOST_TEST_REQUIRE(linkp != nullptr);
+    
     auto r1 = evt_link_parse_from_evtli("03XBY4E/KTS:PNHVA3JP9QG258F08JHYOYR5SLJGN0EA-C3J6S:2G:T1SX7WA14KH9ETLZ97TUX9R9JJA6+06$E/_PYNX-/152P4CTC:WKXLK$/7G-K:89+::2K4C-KZ2**HI-P8CYJ**XGFO1K5:$E*SOY8MFYWMNHP*BHX2U8$$FTFI81YDP1HT",
-        &link);
+        linkp);
     BOOST_TEST_REQUIRE(r1 == EVT_OK);
-    BOOST_TEST_REQUIRE(link != nullptr);
-
+    BOOST_TEST_REQUIRE(linkp != nullptr);
+    
     uint16_t header;
-    auto r2 = evt_link_get_header(link, &header);
+    auto r2 = evt_link_get_header(linkp, &header);
     BOOST_TEST_REQUIRE(r2 == EVT_OK);
     BOOST_TEST_REQUIRE(header == 3);
 
     uint32_t intv;
     char* strv;
-    auto r3 = evt_link_get_segment(link, 42, &intv, &strv);
+    auto r3 = evt_link_get_segment_int(linkp, 42, &intv);
     BOOST_TEST_REQUIRE(r3 == EVT_OK);
     BOOST_TEST_REQUIRE(intv == 1532465234);
 
-    auto r4 = evt_link_get_segment(link, 91, &intv, &strv);
+    auto r4 = evt_link_get_segment_str(linkp, 91, &strv);
     BOOST_TEST_REQUIRE(r4 == EVT_OK);
     BOOST_TEST_REQUIRE(strv == "nd1532465232490");
+    
+    auto r5 = evt_link_tostring(linkp, &strv);
+    BOOST_TEST_REQUIRE(r5 == EVT_OK);
+    BOOST_TEST_REQUIRE(strv == "03XBY4E/KTS:PNHVA3JP9QG258F08JHYOYR5SLJGN0EA-C3J6S:2G:T1SX7WA14KH9ETLZ97TUX9R9JJA6+06$E/_PYNX-/152P4CTC:WKXLK$/7G-K:89+::2K4C-KZ2**HI-P8CYJ**XGFO1K5:$E*SOY8MFYWMNHP*BHX2U8$$FTFI81YDP1HT");
+
+    uint32_t len = 0;
+    evt_signature_t** signs = nullptr;
+    auto r6 = evt_link_get_signatures(linkp, &signs, &len);
+    BOOST_TEST_REQUIRE(r6 == EVT_OK);
+    BOOST_TEST_REQUIRE(signs != nullptr);
+    BOOST_TEST_REQUIRE(len == 1);
+    char* sign_str;
+    evt_signature_string(signs[0], &sign_str);
+    BOOST_TEST_REQUIRE(sign_str == "SIG_K1_JyyaM7x9a4AjaD8yaG6iczgHskUFPvkWEk7X5DPkdZfRGBxYTbpLJ1y7gvmeL4vMqrMmw6QwtErfKUds5L7sxwU2nR7mvu");
+
+    evt_public_key_t*  pubkey = nullptr;
+    evt_private_key_t* privkey = nullptr;
+    evt_generate_new_pair(&pubkey, &privkey);
+    auto r7 = evt_link_sign(linkp, privkey);
+    BOOST_TEST_REQUIRE(r7 == EVT_OK);
+    evt_link_get_signatures(linkp, &signs, &len);
+    BOOST_TEST_REQUIRE(len == 2);
+
+    evt_link_free(linkp);
 }
 
 BOOST_AUTO_TEST_CASE( evtaddress ) {

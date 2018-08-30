@@ -62,8 +62,8 @@ public:
     fc::variant get_fungible(const get_fungible_params& params);
 
     struct get_fungible_balance_params {
-        address_type         address;
-        fc::optional<symbol> sym;
+        address_type                 address;
+        fc::optional<symbol_id_type> sym_id;
     };
     fc::variant get_fungible_balance(const get_fungible_balance_params& params);
 
@@ -114,5 +114,5 @@ FC_REFLECT(evt::evt_apis::read_only::get_domain_params, (name));
 FC_REFLECT(evt::evt_apis::read_only::get_group_params, (name));
 FC_REFLECT(evt::evt_apis::read_only::get_token_params, (domain)(name));
 FC_REFLECT(evt::evt_apis::read_only::get_fungible_params, (id));
-FC_REFLECT(evt::evt_apis::read_only::get_fungible_balance_params, (address)(sym));
+FC_REFLECT(evt::evt_apis::read_only::get_fungible_balance_params, (address)(sym_id));
 FC_REFLECT(evt::evt_apis::read_only::get_suspend_params, (name));

@@ -142,6 +142,8 @@ EVT_ACTION_IMPL(newdomain) {
         domain_def domain;
         domain.name        = ndact.name;
         domain.creator     = ndact.creator;
+        // NOTICE: we should use pending_block_time() below
+        // but for historical mistakes, we use head_block_time()
         domain.create_time = context.control.head_block_time();
         domain.issue       = std::move(ndact.issue);
         domain.transfer    = std::move(ndact.transfer);
@@ -380,6 +382,8 @@ EVT_ACTION_IMPL(newfungible) {
         fungible.sym_name       = nfact.sym_name;
         fungible.sym            = nfact.sym;
         fungible.creator        = nfact.creator;
+        // NOTICE: we should use pending_block_time() below
+        // but for historical mistakes, we use head_block_time()
         fungible.create_time    = context.control.head_block_time();
         fungible.issue          = std::move(nfact.issue);
         fungible.manage         = std::move(nfact.manage);
@@ -801,7 +805,7 @@ EVT_ACTION_IMPL(execsuspend) {
 
         EVT_ASSERT(suspend.signed_keys.find(esact.executor) != suspend.signed_keys.end(), suspend_executor_exception, "Executor hasn't sign his key on this suspend transaction");
 
-        auto now = context.control.head_block_time();
+        auto now = context.control.pending_block_time();
         EVT_ASSERT(suspend.status == suspend_status::proposed, suspend_status_exception, "Suspend transaction is not in 'proposed' status.");
         EVT_ASSERT(suspend.trx.expiration > now, suspend_expired_tx_exception, "Suspend transaction is expired at ${expir}, now is ${now}", ("expir",suspend.trx.expiration)("now",now));
 
@@ -834,11 +838,9 @@ EVT_ACTION_IMPL(paycharge) {
     try {
         auto& tokendb = context.token_db;
 
-        uint64_t paid = 0;
-
         asset evt, pevt;
         tokendb.read_asset_no_throw(pcact.payer, pevt_sym(), pevt);
-        paid = std::min(pcact.charge, (uint32_t)pevt.amount());
+        auto paid = std::min(pcact.charge, (uint32_t)pevt.amount());
         if(paid > 0) {
             pevt -= asset(paid, pevt_sym());
             tokendb.update_asset(pcact.payer, pevt);
@@ -854,10 +856,14 @@ EVT_ACTION_IMPL(paycharge) {
             tokendb.update_asset(pcact.payer, evt);
         }
 
-        asset evt_asset;
-        auto addr = get_fungible_address(evt_sym());
-        tokendb.read_asset(addr, evt_sym(), evt_asset);
-        evt_asset += asset(paid, evt_sym());
+        auto  pbs  = context.control.pending_block_state();
+        auto& prod = pbs->get_scheduled_producer(pbs->header.timestamp).block_signing_key;
+
+        asset prodasset;
+        tokendb.read_asset_no_throw(prod, evt_sym(), prodasset);
+        // give charge to producer
+        prodasset += asset(pcact.charge, evt_sym());
+        tokendb.update_asset(prod, prodasset);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -884,10 +890,10 @@ EVT_ACTION_IMPL(everipass) {
 
         if(!context.control.loadtest_mode()) {
             auto  ts    = *link.get_segment(evt_link::timestamp).intv;
-            auto  since = std::abs((context.control.head_block_time() - fc::time_point_sec(ts)).to_seconds());
+            auto  since = std::abs((context.control.pending_block_time() - fc::time_point_sec(ts)).to_seconds());
             auto& conf  = context.control.get_global_properties().configuration;
             if(since > conf.evt_link_expired_secs) {
-                EVT_THROW(evt_link_expiration_exception, "EVT-Link is expired, now: ${n}, timestamp: ${t}", ("n",context.control.head_block_time())("t",fc::time_point_sec(ts)));
+                EVT_THROW(evt_link_expiration_exception, "EVT-Link is expired, now: ${n}, timestamp: ${t}", ("n",context.control.pending_block_time())("t",fc::time_point_sec(ts)));
             }
         }
 
@@ -939,10 +945,10 @@ EVT_ACTION_IMPL(everipay) {
 
         if(!context.control.loadtest_mode()) {
             auto ts     = *link.get_segment(evt_link::timestamp).intv;
-            auto since  = std::abs((context.control.head_block_time() - fc::time_point_sec(ts)).to_seconds());
+            auto since  = std::abs((context.control.pending_block_time() - fc::time_point_sec(ts)).to_seconds());
             auto& conf  = context.control.get_global_properties().configuration;
             if(since > conf.evt_link_expired_secs) {
-                EVT_THROW(evt_link_expiration_exception, "EVT-Link is expired, now: ${n}, timestamp: ${t}", ("n",context.control.head_block_time())("t",fc::time_point_sec(ts)));
+                EVT_THROW(evt_link_expiration_exception, "EVT-Link is expired, now: ${n}, timestamp: ${t}", ("n",context.control.pending_block_time())("t",fc::time_point_sec(ts)));
             }
         }
 
@@ -951,23 +957,24 @@ EVT_ACTION_IMPL(everipay) {
 
         try {
             db.create<evt_link_object>([&](evt_link_object& li) {
-                li.link_id = *(link_id_type*)(link_id_str.data());
-                li.trx_id  = context.trx_context.trx.id;
+                li.link_id   = *(link_id_type*)(link_id_str.data());
+                li.block_num = context.control.pending_block_state()->block->block_num();
+                li.trx_id    = context.trx_context.trx.id;
             });
         }
         catch(const boost::interprocess::bad_alloc&) {
             throw;
         }
         catch(...) {
-            EVT_ASSERT(false, evt_link_dupe_exception, "Duplicate EVT-Link ${id}", ("id", fc::to_hex(link_id_str.data(), link_id_str.size())));
+            EVT_THROW(evt_link_dupe_exception, "Duplicate EVT-Link ${id}", ("id", fc::to_hex(link_id_str.data(), link_id_str.size())));
         }
 
         auto keys = link.restore_keys();
         EVT_ASSERT(keys.size() == 1, evt_link_id_exception, "There're more than one signature on everiPay link, which is invalid");
-
         
         auto sym = epact.number.sym();
         EVT_ASSERT(lsym_id == sym.id(), everipay_exception, "Symbol ids don't match, provided: ${p}, expected: ${e}", ("p",lsym_id)("e",sym.id()));
+        EVT_ASSERT(lsym_id != PEVT_SYM_ID, everipay_exception, "Pinned EVT cannot be used to be paid.");
 
         auto max_pay = uint32_t(0);
         if(link.has_segment(evt_link::max_pay)) {

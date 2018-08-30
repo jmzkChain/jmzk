@@ -26,16 +26,85 @@
 
 namespace evt { namespace chain {
 
-struct pending_state {
-    pending_state(database::session&& s, token_database::session&& ts)
-        : _db_session(move(s))
-        , _token_db_session(move(ts)) {}
-    pending_state(pending_state&& ps)
-        : _db_session(move(ps._db_session))
-        , _token_db_session(move(ps._token_db_session)) {}
+class maybe_session {
+public:
+    maybe_session() = default;
 
-    database::session       _db_session;
-    token_database::session _token_db_session;
+    maybe_session(maybe_session&& other)
+        : _session(move(other._session))
+        , _token_session(move(other._token_session)) {}
+
+    explicit maybe_session(database& db, token_database& token_db) {
+        _session = db.start_undo_session(true);
+        _token_session = token_db.new_savepoint_session(db.revision());
+    }
+
+    maybe_session(const maybe_session&) = delete;
+
+    void
+    squash() {
+        if(_session) {
+            _session->squash();
+        }
+        if(_token_session) {
+            _token_session->squash();
+        }
+    }
+
+    void
+    undo() {
+        if(_session) {
+            _session->undo();
+        }
+        if(_token_session) {
+            _token_session->undo();
+        }
+    }
+
+    void
+    push() {
+        if(_session) {
+            _session->push();
+        }
+        if(_token_session) {
+            _token_session->accept();
+        }
+    }
+
+    maybe_session&
+    operator =(maybe_session&& mv) {
+        if(mv._session) {
+            _session = move(*mv._session);
+            mv._session.reset();
+        }
+        else {
+            _session.reset();
+        }
+
+        if(mv._token_session) {
+            _token_session = move(*mv._token_session);
+            mv._token_session.reset();
+        }
+        else {
+            _token_session.reset();
+        }
+
+        return *this;
+    };
+
+private:
+    optional<database::session>       _session;
+    optional<token_database::session> _token_session;
+};
+
+struct pending_state {
+    pending_state(maybe_session&& s)
+        : _db_session(move(s)) {}
+
+    pending_state(pending_state&& ps)
+        : _db_session(move(ps._db_session)) {}
+
+    maybe_session   _db_session;
 
     block_state_ptr _pending_block_state;
 
@@ -46,24 +115,24 @@ struct pending_state {
     void
     push() {
         _db_session.push();
-        _token_db_session.accept();
     }
 };
 
 struct controller_impl {
-    controller&             self;
-    chainbase::database     db;
-    chainbase::database     reversible_blocks; ///< a special database to persist blocks that have successfully been applied but are still reversible
-    block_log               blog;
-    optional<pending_state> pending;
-    block_state_ptr         head;
-    fork_database           fork_db;
-    token_database          token_db;
-    controller::config      conf;
-    chain_id_type           chain_id;
-    bool                    replaying = false;
-    bool                    in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
-    abi_serializer          system_api;
+    controller&              self;
+    chainbase::database      db;
+    chainbase::database      reversible_blocks; ///< a special database to persist blocks that have successfully been applied but are still reversible
+    block_log                blog;
+    optional<pending_state>  pending;
+    block_state_ptr          head;
+    fork_database            fork_db;
+    token_database           token_db;
+    controller::config       conf;
+    chain_id_type            chain_id;
+    bool                     replaying = false;
+    optional<fc::time_point> replay_head_time;
+    bool                     in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
+    abi_serializer           system_api;
 
     /**
     *  Transactions that were undone by pop_block or abort_block, transactions
@@ -183,7 +252,9 @@ struct controller_impl {
             initialize_token_db();
             auto end = blog.read_head();
             if(end && end->block_num() > 1) {
+                auto end_time = end->timestamp.to_time_point();
                 replaying = true;
+                replay_head_time = end_time;
                 ilog( "existing block log, attempting to replay ${n} blocks", ("n",end->block_num()) );
 
                 auto start = fc::time_point::now();
@@ -193,6 +264,12 @@ struct controller_impl {
                         std::cerr << std::setw(10) << next->block_num() << " of " << end->block_num() <<"\r";
                     }
                 }
+                std::cerr<< "\n";
+                ilog("${n} blocks replayed", ("n", head->block_num));
+
+                // the irreverible log is played without undo sessions enabled, so we need to sync the
+                // revision ordinal to the appropriate expected value here.
+                db.set_revision(head->block_num);
 
                 int rev = 0;
                 while(auto obj = reversible_blocks.find<reversible_block_object,by_num>(head->block_num+1)) {
@@ -200,21 +277,20 @@ struct controller_impl {
                     self.push_block(obj->get_block(), controller::block_status::validated);
                 }
 
-                std::cerr<< "\n";
                 ilog("${n} reversible blocks replayed", ("n",rev));
                 auto end = fc::time_point::now();
                 ilog("replayed ${n} blocks in ${duration} seconds, ${mspb} ms/block",
                     ("n", head->block_num)("duration", (end-start).count()/1000000)
                     ("mspb", ((end-start).count()/1000.0)/head->block_num));
-                std::cerr<< "\n";
                 replaying = false;
+                replay_head_time.reset();
             }
             else if(!end) {
                 blog.reset_to_genesis(conf.genesis, head->block);
             }
         }
 
-        const auto& ubi = reversible_blocks.get_index<reversible_block_index,by_num>();
+        const auto& ubi = reversible_blocks.get_index<reversible_block_index, by_num>();
         auto objitr = ubi.rbegin();
         if(objitr != ubi.rend()) {
             EVT_ASSERT(objitr->blocknum == head->block_num, fork_database_exception,
@@ -265,7 +341,7 @@ struct controller_impl {
     void
     initialize_fork_db() {
         wlog(" Initializing new blockchain with genesis state");
-        producer_schedule_type initial_schedule{0, {{N128(evt), conf.genesis.initial_key}}};
+        producer_schedule_type initial_schedule{0, {{config::system_account_name, conf.genesis.initial_key}}};
 
         block_header_state genheader;
         genheader.active_schedule       = initial_schedule;
@@ -443,7 +519,7 @@ struct controller_impl {
     transaction_trace_ptr
     push_suspend_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline) {
         try {
-            auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks,this] {
+            auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks, this] {
                 in_trx_requiring_checks = old_value;
             });
             in_trx_requiring_checks = true;
@@ -465,6 +541,7 @@ struct controller_impl {
 
                 fc::move_append(pending->_actions, move(trx_context.executed));
 
+                emit(self.accepted_transaction, trx);
                 emit(self.applied_transaction, trace);
 
                 trx_context.squash();
@@ -476,7 +553,7 @@ struct controller_impl {
                 trace->except_ptr = std::current_exception();
                 trace->elapsed    = fc::time_point::now() - trx_context.start;
             }
-            trx_context.undo_session.undo();
+            trx_context.undo();
 
             trace->elapsed = fc::time_point::now() - trx_context.start;
 
@@ -490,6 +567,7 @@ struct controller_impl {
                                               transaction_receipt::hard_fail,
                                               transaction_receipt::suspend);
             }
+            emit(self.accepted_transaction, trx);
             emit(self.applied_transaction, trace);
             return trace;
         }
@@ -502,8 +580,7 @@ struct controller_impl {
     */
     transaction_trace_ptr
     push_transaction(const transaction_metadata_ptr& trx,
-                     fc::time_point                  deadline,
-                     bool                            implicit) {
+                     fc::time_point                  deadline) {
         EVT_ASSERT(deadline != fc::time_point(), transaction_exception, "deadline cannot be uninitialized");
 
         transaction_trace_ptr trace;
@@ -511,15 +588,17 @@ struct controller_impl {
             transaction_context trx_context(self, *trx);
             trx_context.deadline = deadline;
             trace                = trx_context.trace;
+
             try {
-                if(implicit) {
+                if(trx->implicit) {
                     trx_context.init_for_implicit_trx();
                 }
                 else {
-                    trx_context.init_for_input_trx(trx->trx.signatures.size());
+                    bool skip_recording = replay_head_time && (time_point(trx->trx.expiration) <= *replay_head_time);
+                    trx_context.init_for_input_trx(trx->trx.signatures.size(), skip_recording);
                 }
 
-                if(!self.skip_auth_check() && !implicit) {
+                if(!self.skip_auth_check() && !trx->implicit) {
                     const auto& keys = trx->recover_keys(chain_id);
                     check_authorization(keys, trx->trx);
                 }
@@ -529,7 +608,7 @@ struct controller_impl {
 
                 auto restore = make_block_restore_point();
 
-                if(!implicit) {
+                if(!trx->implicit) {
                     trace->receipt = push_receipt(trx->packed_trx,
                                                   transaction_receipt::executed,
                                                   transaction_receipt::input);
@@ -545,8 +624,8 @@ struct controller_impl {
 
                 // call the accept signal but only once for this transaction
                 if(!trx->accepted) {
-                    emit(self.accepted_transaction, trx);
                     trx->accepted = true;
+                    emit(self.accepted_transaction, trx);
                 }
 
                 emit(self.applied_transaction, trace);
@@ -554,7 +633,7 @@ struct controller_impl {
                 restore.cancel();
                 trx_context.squash();
 
-                if(!implicit) {
+                if(!trx->implicit) {
                     unapplied_transactions.erase(trx->signed_id);
                 }
                 return trace;
@@ -567,6 +646,9 @@ struct controller_impl {
                 unapplied_transactions.erase(trx->signed_id);
             }
 
+            emit(self.accepted_transaction, trx);
+            emit(self.applied_transaction, trace);
+
             return trace;
         }
         FC_CAPTURE_AND_RETHROW((trace))
@@ -574,19 +656,23 @@ struct controller_impl {
 
     void
     start_block(block_timestamp_type when, uint16_t confirm_block_count, controller::block_status s) {
-        EVT_ASSERT(!pending, block_validate_exception, "pending block is not available");
-
-        EVT_ASSERT(db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
-                  ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num));
+        EVT_ASSERT(!pending, block_validate_exception, "pending block already exists");
 
         auto guard_pending = fc::make_scoped_exit([this]() {
             pending.reset();
         });
 
-        pending = pending_state(db.start_undo_session(true), token_db.new_savepoint_session(db.revision()));
+        if(!self.skip_db_sessions(s)) {
+            EVT_ASSERT(db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
+                ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
 
-        pending->_block_status = s;
+            pending.emplace(maybe_session(db, token_db));
+        }
+        else {
+            pending.emplace(maybe_session());
+        }
 
+        pending->_block_status                          = s;
         pending->_pending_block_state                   = std::make_shared<block_state>(*head, when);  // promotes pending schedule (if any) to active
         pending->_pending_block_state->in_current_chain = true;
 
@@ -640,7 +726,7 @@ struct controller_impl {
                         auto& pt    = receipt.trx;
                         auto  mtrx  = std::make_shared<transaction_metadata>(pt);
                         
-                        trace = push_transaction(mtrx, fc::time_point::maximum(), false);
+                        trace = push_transaction(mtrx, fc::time_point::maximum());
                     }
                     else if(receipt.type == transaction_receipt::suspend) {
                         // suspend transaction is executed in its parent transaction
@@ -649,7 +735,7 @@ struct controller_impl {
                         continue;
                     }
                     else {
-                        EVT_ASSERT(false, block_validate_exception, "encountered unexpected receipt type");
+                        EVT_THROW(block_validate_exception, "encountered unexpected receipt type");
                     }
 
                     auto transaction_failed = trace && trace->except;
@@ -978,7 +1064,8 @@ controller::push_confirmation(const header_confirmation& c) {
 transaction_trace_ptr
 controller::push_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline) {
     validate_db_available_size();
-    return my->push_transaction(trx, deadline, false);
+    EVT_ASSERT(trx && !trx->implicit, transaction_type_exception, "Implicit transaction not allowed");
+    return my->push_transaction(trx, deadline);
 }
 
 transaction_trace_ptr
@@ -1145,11 +1232,11 @@ controller::get_block_id_for_num(uint32_t block_num) const {
     FC_CAPTURE_AND_RETHROW((block_num))
 }
 
-transaction_id_type
-controller::get_trx_id_for_link_id(const link_id_type& link_id) const {
+const evt_link_object&
+controller::get_link_obj_for_link_id(const link_id_type& link_id) const {
     try {
         if(const auto* l = my->db.find<evt_link_object, by_link_id>(link_id)) {
-            return l->trx_id;
+            return *l;
         }
         EVT_THROW(evt_link_existed_exception, "EVT-Link is not existed");
     }
@@ -1239,8 +1326,48 @@ controller::proposed_producers() const {
 }
 
 bool
+controller::light_validation_allowed(bool replay_opts_disabled_by_policy) const {
+    if(!my->pending || my->in_trx_requiring_checks) {
+        return false;
+    }
+
+    auto pb_status = my->pending->_block_status;
+
+    // in a pending irreversible or previously validated block and we have forcing all checks
+    bool consider_skipping_on_replay = (pb_status == block_status::irreversible || pb_status == block_status::validated) && !replay_opts_disabled_by_policy;
+
+    // OR in a signed block and in light validation mode
+    bool consider_skipping_on_validate = (pb_status == block_status::complete && my->conf.block_validation_mode == validation_mode::LIGHT);
+
+    return consider_skipping_on_replay || consider_skipping_on_validate;
+}
+
+bool
 controller::skip_auth_check() const {
-    return my->replaying && !my->conf.force_all_checks && !my->in_trx_requiring_checks;
+    return light_validation_allowed(my->conf.force_all_checks);
+}
+
+bool
+controller::skip_db_sessions(block_status bs) const {
+    bool consider_skipping = bs == block_status::irreversible;
+    return consider_skipping
+           && !my->conf.disable_replay_opts
+           && !my->in_trx_requiring_checks;
+}
+
+bool
+controller::skip_db_sessions() const {
+    if(my->pending) {
+        return skip_db_sessions(my->pending->_block_status);
+    }
+    else {
+        return false;
+    }
+}
+
+bool
+controller::skip_trx_checks() const {
+    return light_validation_allowed(my->conf.disable_replay_opts);
 }
 
 bool
@@ -1256,6 +1383,11 @@ controller::charge_free_mode() const {
 bool
 controller::contracts_console() const {
     return my->conf.contracts_console;
+}
+
+validation_mode
+controller::get_validation_mode()const {
+    return my->conf.block_validation_mode;
 }
 
 chain_id_type

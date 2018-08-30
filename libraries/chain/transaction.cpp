@@ -255,6 +255,12 @@ packed_transaction::id() const {
     return get_transaction().id();
 }
 
+transaction_id_type
+packed_transaction::get_uncached_id() const {
+    const auto raw = get_raw_transaction();
+    return fc::raw::unpack<transaction>(raw).id();
+}
+
 void
 packed_transaction::local_unpack() const {
     if(!unpacked_trx) {

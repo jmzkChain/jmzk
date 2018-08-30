@@ -118,10 +118,13 @@ fc::variant
 read_only::get_fungible_balance(const get_fungible_balance_params& params) {
     const auto& db = db_.token_db();
 
-    if(params.sym.valid()) {
+    if(params.sym_id.valid()) {
+        fungible_def fungible;
+        db.read_fungible(*params.sym_id, fungible);
+
         variant var;
         asset   as;
-        db.read_asset(params.address, *params.sym, as);
+        db.read_asset(params.address, fungible.sym, as);
         fc::to_variant(as, var);
         return var;
     }

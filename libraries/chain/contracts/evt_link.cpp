@@ -26,7 +26,9 @@ namespace evt { namespace chain { namespace contracts {
 
 namespace __internal {
 
-const char* ALPHABETS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ$+-/:*";
+const char* ALPHABETS  = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ$+-/:*";
+const int   MAX_BYTES  = 240;  // 195 / ((42 ^ 2) / 2048)
+const char* URI_SCHEMA = "https://evt.li/";
 
 template<typename T>
 bytes
@@ -42,6 +44,7 @@ decode(const std::string& nums, int pos, int end) {
     }
 
     auto b = bytes();
+    b.reserve(MAX_BYTES);
     for(auto i = 0; i < (pz - pos); i++) {
         b.emplace_back(0);
     }
@@ -143,9 +146,8 @@ evt_link::parse_from_evtli(const std::string& str) {
     EVT_ASSERT(str.size() > 20, evt_link_exception, "Link is too short");
 
     size_t start = 0;
-    const char* uri_schema = "https://evt.li/";
-    if(memcmp(str.data(), uri_schema, strlen(uri_schema)) == 0) {
-        start = strlen(uri_schema);
+    if(memcmp(str.data(), URI_SCHEMA, strlen(URI_SCHEMA)) == 0) {
+        start = strlen(URI_SCHEMA);
     }
 
     auto d = str.find_first_of('_', start);
@@ -163,8 +165,8 @@ evt_link::parse_from_evtli(const std::string& str) {
 
     auto link = evt_link();
 
-    link.segments_       = parse_segments(bsegs, link.header_);
-    link.signatures_     = parse_signatures(bsigs);
+    link.segments_   = parse_segments(bsegs, link.header_);
+    link.signatures_ = parse_signatures(bsigs);
 
     return link;
 }
@@ -182,48 +184,141 @@ evt_link::has_segment(uint8_t key) const {
     return segments_.find(key) != segments_.end();
 }
 
-fc::sha256
-evt_link::digest() const {
-    auto enc = fc::sha256::encoder();
+namespace __internal {
 
-    auto h = boost::endian::native_to_big(header_);
+template<typename Stream>
+void
+write_segments_bytes(const evt_link& link, Stream& stream) {
+    auto h = boost::endian::native_to_big(link.get_header());
     static_assert(sizeof(h) == 2);  // uint16_t
-    enc.write((char*)&h, sizeof(h));
+    stream.write((char*)&h, sizeof(h));
 
-    for(auto& seg_ : segments_) {
+    for(auto& seg_ : link.get_segments()) {
         auto  key = seg_.first;
         auto& seg = seg_.second;
 
         static_assert(sizeof(key) == 1);  // uint8_t
-        enc.write((char*)&key, sizeof(key));
+        stream.write((char*)&key, sizeof(key));
         if(key <= 20) {
             auto v = *seg.intv;
-            enc.write((char*)&v, 1);
+            stream.write((char*)&v, 1);
         }
         else if(key <= 40) {
             auto v = boost::endian::native_to_big((uint16_t)*seg.intv);
-            enc.write((char*)&v, 2);
+            stream.write((char*)&v, 2);
         }
         else if(key <= 90) {
             auto v = boost::endian::native_to_big((uint32_t)*seg.intv);
-            enc.write((char*)&v, 4);
+            stream.write((char*)&v, 4);
         }
         else if(key <= 180) {
             if(key > 155 && key <= 165) {
                 FC_ASSERT(seg.strv->size() == 16);
-                enc.write((char*)seg.strv->data(), 16);
+                stream.write((char*)seg.strv->data(), 16);
             }
             else {
                 auto s = seg.strv->size();
                 FC_ASSERT(s < 255); // 1 byte length
 
-                enc.write((char*)&s, 1);
-                enc.write(seg.strv->data(), s);
+                stream.write((char*)&s, 1);
+                stream.write(seg.strv->data(), s);
             }
         }
     }
+}
 
+template<typename Stream>
+struct stream_visitor : public fc::visitor<void> {
+public:
+    stream_visitor(Stream& stream) : stream_(stream) {}
+
+public:
+    template<typename Sig>
+    void
+    operator()(const Sig& sig) const {
+        static_assert(sizeof(sig._data.data) == 65, "sig size is expected to be 65");
+        stream_.write((char*)sig._data.data, 65);
+    }
+
+private:
+    Stream& stream_;
+
+};
+
+template<typename Stream>
+void
+write_signatures_bytes(const evt_link& link, Stream& stream) {
+    auto visitor = stream_visitor<Stream>(stream);
+    for(auto& sig : link.get_signatures()) {
+        sig.view(visitor);
+    }
+}
+
+template<typename Num>
+void
+encode(const bytes& b, size_t sz, std::string& str) {
+    auto i = 0u;
+    for(i = 0u; i < sz; i++) {
+        if(b[i] == 0) {
+            str.push_back('0');
+        }
+        else {
+            break;
+        }
+    }
+
+    auto num = Num{0};
+    boost::multiprecision::import_bits(num, b.begin() + i, b.begin() + sz, 8);
+
+    while(num >= 42) {
+        auto r = num % 42;
+        str.push_back(*(ALPHABETS + (int)r));
+        num /= 42;
+    }
+    str.push_back(*(ALPHABETS + (int)num));
+    std::reverse(str.begin() + i, str.end());
+}
+
+}  // namespace __internal
+
+fc::sha256
+evt_link::digest() const {
+    using namespace __internal;
+
+    auto enc = fc::sha256::encoder();
+    write_segments_bytes(*this, enc);
     return enc.result();
+}
+
+std::string
+evt_link::to_string(int prefix) const {
+    using namespace __internal;
+
+    auto temp = bytes(MAX_BYTES);
+    auto ds   = fc::datastream<char*>(temp.data(), temp.size());
+    auto str  = string();
+
+    if(prefix) {
+        str.append(URI_SCHEMA);
+    }
+
+    auto str1 = string();
+    write_segments_bytes(*this, ds);
+    encode<bigint_segs>(temp, ds.tellp(), str1);
+    str.append(str1);
+
+    if(!signatures_.empty()) {
+        str.push_back('_');
+
+        ds.seekp(0);
+        write_signatures_bytes(*this, ds);
+
+        auto str2 = string();
+        encode<bigint_sigs>(temp, ds.tellp(), str2);
+        str.append(str2);
+    }
+
+    return str;
 }
 
 fc::flat_set<public_key_type>

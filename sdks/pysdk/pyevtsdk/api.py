@@ -13,14 +13,17 @@ class Api:
             'get_group': '/v1/evt/get_group',
             'get_token': '/v1/evt/get_token',
             'get_fungible': '/v1/evt/get_fungible',
+            'get_assets': '/v1/evt/get_fungible_balance',
             'get_tokens': '/v1/history/get_tokens',
             'get_domains': '/v1/history/get_domains',
             'get_groups': '/v1/history/get_groups',
             'get_fungibles': '/v1/history/get_fungibles',
             'get_actions': '/v1/history/get_actions',
             'get_fungible_actions': '/v1/history/get_fungible_actions',
-            'get_transaction': '/v1/history/get_transaction',
-            'get_transactions': '/v1/history/get_transactions'
+            'get_transaction': '/v1/chain/get_transaction',
+            'get_history_transaction': '/v1/history/get_transaction',
+            'get_history_transactions': '/v1/history/get_transactions',
+            'get_trx_id_for_link_id': '/v1/evt_link/get_trx_id_for_link_id'
         }
 
     def __getattr__(self, api_name):

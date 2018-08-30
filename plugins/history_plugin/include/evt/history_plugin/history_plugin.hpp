@@ -19,6 +19,8 @@ namespace evt {
 class history_plugin;
 using evt::chain::public_key_type;
 using evt::chain::action_name;
+using evt::chain::domain_name;
+using evt::chain::token_name;
 using evt::chain::symbol_id_type;
 using evt::chain::address;
 
@@ -30,15 +32,20 @@ public:
         : plugin_(plugin) {}
 
 public:
+    struct get_tokens_params {
+        std::vector<public_key_type> keys;
+        fc::optional<domain_name>    domain;
+        fc::optional<token_name>     name;
+    };
+    fc::variant get_tokens(const get_tokens_params& params);
+
     struct get_params {
         std::vector<public_key_type> keys;
     };
-    using get_tokens_params = get_params;
     using get_domains_params = get_params;
     using get_groups_params = get_params;
     using get_fungibles_params = get_params;
 
-    fc::variant get_tokens(const get_params& params);
     fc::variant get_domains(const get_params& params);
     fc::variant get_groups(const get_params& params);
     fc::variant get_fungibles(const get_params& params);
@@ -103,6 +110,7 @@ private:
 }  // namespace evt
 
 FC_REFLECT(evt::history_apis::read_only::get_params, (keys));
+FC_REFLECT(evt::history_apis::read_only::get_tokens_params, (keys)(domain)(name));
 FC_REFLECT(evt::history_apis::read_only::get_actions_params, (domain)(key)(names)(skip)(take));
 FC_REFLECT(evt::history_apis::read_only::get_fungible_actions_params, (sym_id)(addr)(skip)(take));
 FC_REFLECT(evt::history_apis::read_only::get_transaction_params, (id));
