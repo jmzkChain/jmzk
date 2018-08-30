@@ -44,7 +44,7 @@ struct block_header_state {
     }
 
     uint32_t calc_dpos_last_irreversible() const;
-    bool is_active_producer(account_name n) const;
+    bool is_active_producer(const account_name& n) const;
 
     /*
     block_timestamp_type get_slot_time( uint32_t slot_num )const;
@@ -53,7 +53,7 @@ struct block_header_state {
     uint32_t             producer_participation_rate()const;
     */
 
-    producer_key get_scheduled_producer(block_timestamp_type t) const;
+    const producer_key& get_scheduled_producer(block_timestamp_type t) const;
 
     const block_id_type&
     prev() const {

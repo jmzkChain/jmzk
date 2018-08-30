@@ -17,8 +17,10 @@ using std::condition_variable_any;
 using boost::condition_variable_any;
 #endif
 
-#include <boost/asio.hpp>
+#define XXH_INLINE_ALL
+#include <xxhash.h>
 
+#include <boost/asio.hpp>
 #include <fc/io/json.hpp>
 
 #include <evt/chain_plugin/chain_plugin.hpp>
@@ -44,6 +46,13 @@ using evt::utilities::spinlock_guard;
 
 using boost::asio::steady_timer;
 using steady_timer_ptr = std::shared_ptr<steady_timer>;
+
+struct evt_link_id_hasher {
+    size_t
+    operator()(const link_id_type& id) const {
+        return XXH64(&id, sizeof(id), 0);
+    }
+};
 
 class evt_link_plugin_impl : public std::enable_shared_from_this<evt_link_plugin_impl> {
 public:
@@ -75,8 +84,8 @@ public:
     std::atomic_bool       init_{false};
     uint32_t               timeout_;
 
-    std::deque<block_state_ptr>                     blocks_;
-    std::unordered_map<link_id_type, deferred_pair> link_ids_;
+    std::deque<block_state_ptr> blocks_;
+    std::unordered_map<link_id_type, deferred_pair, evt_link_id_hasher> link_ids_;
 
     fc::optional<boost::signals2::scoped_connection> accepted_block_connection_;
 };

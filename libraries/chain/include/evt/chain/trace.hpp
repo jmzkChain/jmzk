@@ -39,14 +39,7 @@ struct transaction_trace {
     std::exception_ptr          except_ptr;
 };
 
-struct block_trace {
-    fc::microseconds              elapsed;
-    vector<transaction_trace_ptr> trx_traces;
-};
-using block_trace_ptr = std::shared_ptr<block_trace>;
-
 }}  // namespace evt::chain
 
-FC_REFLECT(evt::chain::action_trace, (receipt)(act)(elapsed)(console)(trx_id))
-FC_REFLECT(evt::chain::transaction_trace, (id)(receipt)(elapsed)(is_suspend)(action_traces)(charge)(except))
-FC_REFLECT(evt::chain::block_trace, (elapsed)(trx_traces))
+FC_REFLECT(evt::chain::action_trace, (receipt)(act)(elapsed)(console)(trx_id));
+FC_REFLECT(evt::chain::transaction_trace, (id)(receipt)(elapsed)(is_suspend)(action_traces)(charge)(except));

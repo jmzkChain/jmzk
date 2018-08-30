@@ -120,7 +120,8 @@ struct packed_transaction {
 
     time_point_sec      expiration() const;
     transaction_id_type id() const;
-    bytes               get_raw_transaction() const;
+    transaction_id_type get_uncached_id() const; // thread safe
+    bytes               get_raw_transaction() const; // thread safe
     transaction         get_transaction() const;
     signed_transaction  get_signed_transaction() const;
     void                set_transaction(const transaction& t, compression_type _compression = none);

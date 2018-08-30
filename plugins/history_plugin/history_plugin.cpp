@@ -1,5 +1,7 @@
 #include <evt/history_plugin/history_plugin.hpp>
 
+#include <mutex>
+
 #include <bsoncxx/builder/basic/document.hpp>
 #include <bsoncxx/builder/basic/kvp.hpp>
 #include <bsoncxx/builder/stream/document.hpp>
@@ -315,8 +317,12 @@ history_plugin_impl::get_fungible_actions(const symbol_id_type        sym_id,
     document match{};
     match << "domain" << ".fungible" << "key" << std::to_string(sym_id);
 
-    auto ns = bsoncxx::builder::stream::array();
-    ns << "issuefungible" << "transferft" << "evt2pevt" << "everipay" << "paycharge";
+    static std::once_flag                  flag;
+    static bsoncxx::builder::stream::array ns;
+
+    std::call_once(flag, [] {
+        ns << "issuefungible" << "transferft" << "evt2pevt" << "everipay" << "paycharge";
+    });
 
     match << "name" << open_document << "$in" << ns << close_document;
 

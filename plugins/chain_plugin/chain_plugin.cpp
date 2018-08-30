@@ -24,6 +24,47 @@
 
 namespace evt {
 
+namespace chain {
+
+std::ostream&
+operator<<(std::ostream& osm, evt::chain::validation_mode m) {
+    if(m == evt::chain::validation_mode::FULL) {
+        osm << "full";
+    }
+    else if(m == evt::chain::validation_mode::LIGHT) {
+        osm << "light";
+    }
+
+    return osm;
+}
+
+void
+validate(boost::any&                     v,
+         const std::vector<std::string>& values,
+         evt::chain::validation_mode* /* target_type */,
+         int) {
+    using namespace boost::program_options;
+
+    // Make sure no previous assignment to 'v' was made.
+    validators::check_first_occurrence(v);
+
+    // Extract the first string from 'values'. If there is more than
+    // one string, it's an error, and exception will be thrown.
+    std::string const& s = validators::get_single_string(values);
+
+    if(s == "full") {
+        v = boost::any(evt::chain::validation_mode::FULL);
+    }
+    else if(s == "light") {
+        v = boost::any(evt::chain::validation_mode::LIGHT);
+    }
+    else {
+        throw validation_error(validation_error::invalid_option_value);
+    }
+}
+
+}  // namespace chain
+
 using namespace evt;
 using namespace evt::chain;
 using namespace evt::chain::config;
@@ -127,6 +168,10 @@ chain_plugin::set_program_options(options_description& cli, options_description&
         ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_cache_size / (1024 * 1024)), "Maximum size (in MiB) of the reversible blocks database")
         ("reversible-blocks-db-guard-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_guard_size / (1024 * 1024)), "Safely shut down node when free space remaining in the reverseible blocks database drops below this size (in MiB).")
         ("contracts-console", bpo::bool_switch()->default_value(false), "print contract's output to console")
+        ("validation-mode", boost::program_options::value<evt::chain::validation_mode>()->default_value(evt::chain::validation_mode::FULL),
+            "Chain validation mode (\"full\" or \"light\").\n"
+            "In \"full\" mode all incoming blocks will be fully validated.\n"
+            "In \"light\" mode all incoming blocks headers will be fully validated; transactions in those validated blocks will be trusted \n")
         ;
 
     cli.add_options()
@@ -136,6 +181,7 @@ chain_plugin::set_program_options(options_description& cli, options_description&
         ("extract-genesis-json", bpo::value<bfs::path>(), "extract genesis_state from blocks.log as JSON, write into specified file, and exit")
         ("fix-reversible-blocks", bpo::bool_switch()->default_value(false), "recovers reversible block database if that database is in a bad state")
         ("force-all-checks", bpo::bool_switch()->default_value(false), "do not skip any checks that can be skipped while replaying irreversible blocks")
+        ("disable-replay-opts", bpo::bool_switch()->default_value(false), "disable optimizations that specifically target replay")
         ("loadtest-mode", bpo::bool_switch()->default_value(false), "special for load-testing, skip expiration and reference block checks")
         ("charge-free-mode", bpo::bool_switch()->default_value(false), "do not charge any fees for transactions")
         ("replay-blockchain", bpo::bool_switch()->default_value(false), "clear chain state database and token database and replay all blocks")
@@ -237,10 +283,11 @@ chain_plugin::plugin_initialize(const variables_map& options) {
     if(options.count("reversible-blocks-db-guard-size-mb"))
         my->chain_config->reversible_guard_size = options.at("reversible-blocks-db-guard-size-mb").as<uint64_t>() * 1024 * 1024;
 
-    my->chain_config->force_all_checks  = options.at("force-all-checks").as<bool>();
-    my->chain_config->loadtest_mode     = options.at("loadtest-mode").as<bool>();
-    my->chain_config->charge_free_mode  = options.at("charge-free-mode").as<bool>();
-    my->chain_config->contracts_console = options.at("contracts-console").as<bool>();
+    my->chain_config->force_all_checks    = options.at("force-all-checks").as<bool>();
+    my->chain_config->disable_replay_opts = options.at("disable-replay-opts").as<bool>();
+    my->chain_config->loadtest_mode       = options.at("loadtest-mode").as<bool>();
+    my->chain_config->charge_free_mode    = options.at("charge-free-mode").as<bool>();
+    my->chain_config->contracts_console   = options.at("contracts-console").as<bool>();
 
     if(options.count("extract-genesis-json") || options.at("print-genesis-json").as<bool>()) {
         genesis_state gs;
@@ -399,6 +446,10 @@ chain_plugin::plugin_initialize(const variables_map& options) {
     }
     else {
         wlog("Starting up fresh blockchain with default genesis state.");
+    }
+
+    if(options.count("validation-mode")) {
+        my->chain_config->block_validation_mode = options.at("validation-mode").as<validation_mode>();
     }
 
     my->chain.emplace(*my->chain_config);

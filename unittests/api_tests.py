@@ -319,6 +319,8 @@ class Test(unittest.TestCase):
         req = {
             'keys': [user.pub_key.to_string()]
         }
+        req['domain'] = domain_name
+        req['name'] = token1_name
         resp = api.get_tokens(json.dumps(req)).text
         self.assertTrue(token1_name in resp, msg=resp)
         self.assertFalse(token2_name in resp, msg=resp)
