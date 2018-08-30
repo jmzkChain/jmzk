@@ -154,11 +154,10 @@ evt_link_plugin_impl::_applied_block(const chain::block_state_ptr& bs) {
                 continue;
             }
 
-            auto& epact       = act.data_as<const everipay&>();
-            auto& link_id_str = *epact.link.get_segment(evt_link::link_id).strv;
+            auto& epact = act.data_as<const everipay&>();
 
             lock_.lock();
-            auto it = link_ids_.find(*(link_id_type*)(link_id_str.data()));
+            auto it = link_ids_.find(epact.link.get_link_id());
             if(it != link_ids_.end()) {
                 lock_.unlock();
 
