@@ -26,7 +26,7 @@ transaction_context::transaction_context(controller&           c,
         undo_token_session = c.token_db().new_savepoint_session();
     }
     trace->id = trx.id;
-    executed.reserve(trx.total_actions());
+    executed.reserve(trx.total_actions() + 1); // one for paycharge action
     FC_ASSERT(trx.trx.transaction_extensions.size() == 0, "we don't support any extensions yet");
 }
 
@@ -38,7 +38,7 @@ transaction_context::init() {
     check_time();    // Fail early if deadline has already been exceeded
     if(!control.charge_free_mode()) {
         check_charge();  // Fail early if max charge has already been exceeded
-        check_paid();    // Fail early if theren't no remainning avaiable EVT & Pinned EVT tokens
+        check_paid();    // Fail early if there's no remaining available EVT & Pinned EVT tokens
     }
     is_initialized = true;
 }
