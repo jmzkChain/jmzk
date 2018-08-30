@@ -55,7 +55,7 @@ block_header_state::generate_next(block_timestamp_type when) const {
     result.header.previous         = id;
     result.header.schedule_version = active_schedule.version;
 
-    auto prokey              = get_scheduled_producer(when);
+    auto& prokey             = get_scheduled_producer(when);
     result.block_signing_key = prokey.block_signing_key;
     result.header.producer   = prokey.producer_name;
 
