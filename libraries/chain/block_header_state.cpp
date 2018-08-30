@@ -9,11 +9,11 @@
 namespace evt { namespace chain {
 
 bool
-block_header_state::is_active_producer(account_name n) const {
+block_header_state::is_active_producer(const account_name& n) const {
     return producer_to_last_produced.find(n) != producer_to_last_produced.end();
 }
 
-producer_key
+const producer_key&
 block_header_state::get_scheduled_producer(block_timestamp_type t) const {
     auto index = t.slot % (active_schedule.producers.size() * config::producer_repetitions);
     index /= config::producer_repetitions;

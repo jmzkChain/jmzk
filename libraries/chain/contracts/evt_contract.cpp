@@ -142,6 +142,8 @@ EVT_ACTION_IMPL(newdomain) {
         domain_def domain;
         domain.name        = ndact.name;
         domain.creator     = ndact.creator;
+        // NOTICE: we should use pending_block_time() below
+        // but for historical mistakes, we use head_block_time()
         domain.create_time = context.control.head_block_time();
         domain.issue       = std::move(ndact.issue);
         domain.transfer    = std::move(ndact.transfer);
@@ -380,6 +382,8 @@ EVT_ACTION_IMPL(newfungible) {
         fungible.sym_name       = nfact.sym_name;
         fungible.sym            = nfact.sym;
         fungible.creator        = nfact.creator;
+        // NOTICE: we should use pending_block_time() below
+        // but for historical mistakes, we use head_block_time()
         fungible.create_time    = context.control.head_block_time();
         fungible.issue          = std::move(nfact.issue);
         fungible.manage         = std::move(nfact.manage);
@@ -834,11 +838,9 @@ EVT_ACTION_IMPL(paycharge) {
     try {
         auto& tokendb = context.token_db;
 
-        uint64_t paid = 0;
-
         asset evt, pevt;
         tokendb.read_asset_no_throw(pcact.payer, pevt_sym(), pevt);
-        paid = std::min(pcact.charge, (uint32_t)pevt.amount());
+        auto paid = std::min(pcact.charge, (uint32_t)pevt.amount());
         if(paid > 0) {
             pevt -= asset(paid, pevt_sym());
             tokendb.update_asset(pcact.payer, pevt);
@@ -854,10 +856,14 @@ EVT_ACTION_IMPL(paycharge) {
             tokendb.update_asset(pcact.payer, evt);
         }
 
-        asset evt_asset;
-        auto addr = get_fungible_address(evt_sym());
-        tokendb.read_asset(addr, evt_sym(), evt_asset);
-        evt_asset += asset(paid, evt_sym());
+        auto  pbs  = context.control.pending_block_state();
+        auto& prod = pbs->get_scheduled_producer(pbs->header.timestamp).block_signing_key;
+
+        asset prodasset;
+        tokendb.read_asset_no_throw(prod, evt_sym(), prodasset);
+        // give charge to producer
+        prodasset += asset(pcact.charge, evt_sym());
+        tokendb.update_asset(prod, prodasset);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
