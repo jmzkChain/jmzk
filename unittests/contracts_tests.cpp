@@ -1020,12 +1020,14 @@ TEST_CASE_METHOD(contracts_test, "contract_charge_test", "[contracts]") {
     }
     )=====";
 
+    my_tester->produce_blocks();
+
     auto var   = fc::json::from_string(test_data);
     auto issfg = var.as<issuefungible>();
 
     auto& tokendb = my_tester->control->token_db();
-    auto  hbs  = my_tester->control->head_block_state();
-    auto& prod = hbs->get_scheduled_producer(hbs->header.timestamp).block_signing_key;
+    auto  pbs  = my_tester->control->pending_block_state();
+    auto& prod = pbs->get_scheduled_producer(pbs->header.timestamp).block_signing_key;
 
     asset prodasset_before;
     asset prodasset_after;

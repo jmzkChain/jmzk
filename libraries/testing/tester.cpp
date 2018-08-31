@@ -228,8 +228,9 @@ transaction_trace_ptr
 base_tester::push_transaction(signed_transaction& trx,
                               fc::time_point      deadline) {
     try {
-        if(!control->pending_block_state())
+        if(!control->pending_block_state()) {
             _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
+        }
         auto c = packed_transaction::none;
 
         if(fc::raw::pack_size(trx) > 1000) {
