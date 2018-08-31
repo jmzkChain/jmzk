@@ -35,7 +35,7 @@ transaction_context::init() {
     EVT_ASSERT(!is_initialized, transaction_exception, "cannot initialize twice");
     EVT_ASSERT(!trx.trx.actions.empty(), tx_no_action, "There's any actions in this transaction");
     
-    check_time();    // Fail early if deadline has already been exceeded
+    check_time();  // not used now
     if(!control.charge_free_mode()) {
         check_charge();  // Fail early if max charge has already been exceeded
         check_paid();    // Fail early if there's no remaining available EVT & Pinned EVT tokens
@@ -111,12 +111,7 @@ void transaction_context::undo() {
 }
 
 void
-transaction_context::check_time() const {
-    auto now = fc::time_point::now();
-    if(BOOST_UNLIKELY(now > deadline)) {
-        EVT_THROW(deadline_exception, "deadline exceeded", ("now", now)("deadline", deadline)("start", start));
-    }
-}
+transaction_context::check_time() const {}
 
 void
 transaction_context::check_charge() {

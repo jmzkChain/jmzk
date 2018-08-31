@@ -642,9 +642,7 @@ struct controller_impl {
                 trace->except     = e;
                 trace->except_ptr = std::current_exception();
             }
-            if(!failure_is_subjective(*trace->except)) {
-                unapplied_transactions.erase(trx->signed_id);
-            }
+            unapplied_transactions.erase(trx->signed_id);
 
             emit(self.accepted_transaction, trx);
             emit(self.applied_transaction, trace);
