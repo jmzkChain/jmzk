@@ -314,6 +314,8 @@ class Test(unittest.TestCase):
         self.assertTrue(domain_name in resp, msg=resp)
 
     def test_get_tokens(self):
+
+
         req = {
             'keys': [user.pub_key.to_string()]
         }
@@ -323,6 +325,14 @@ class Test(unittest.TestCase):
         self.assertTrue(token1_name in resp, msg=resp)
         self.assertFalse(token2_name in resp, msg=resp)
         self.assertFalse(token3_name in resp, msg=resp)
+
+        req['domain'] = domain_name
+        resp = api.get_tokens(json.dumps(req)).text
+        self.assertTrue(token1_name in resp, msg=resp)
+
+        req['name'] = token1_name
+        resp = api.get_tokens(json.dumps(req)).text
+        self.assertTrue(token1_name in resp, msg=resp)
 
     def test_get_groups(self):
         req = {
@@ -429,9 +439,7 @@ class Test(unittest.TestCase):
     def test_get_history_transactions(self):
         req = {
             'keys': [
-                'EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK',
-                'EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV',
-                'EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX'
+                'EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK'
             ],
             'skip': 0,
             'take': 10
