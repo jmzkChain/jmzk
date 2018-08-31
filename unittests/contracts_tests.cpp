@@ -1022,6 +1022,14 @@ TEST_CASE_METHOD(contracts_test, "contract_charge_test", "[contracts]") {
     auto var   = fc::json::from_string(test_data);
     auto issfg = var.as<issuefungible>();
 
+    auto& tokendb = my_tester->control->token_db();
+    auto  hbs  = my_tester->control->head_block_state();
+    auto& prod = hbs->get_scheduled_producer(hbs->header.timestamp).block_signing_key;
+
+    asset prodasset_before;
+    asset prodasset_after;
+    tokendb.read_asset_no_throw(prod, evt_sym(), prodasset_before);
+
     issfg.number  = asset::from_string(string("5.00000 S#") + std::to_string(get_sym_id()));
     issfg.address = key;
     to_variant(issfg, var);
@@ -1036,9 +1044,13 @@ TEST_CASE_METHOD(contracts_test, "contract_charge_test", "[contracts]") {
 
     CHECK_THROWS_AS(my_tester->push_action(N(issuefungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, address(N(domain), "domain", 0)), payer_exception);
 
-    my_tester->push_action(N(issuefungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer);
+    auto trace = my_tester->push_action(N(issuefungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer);
 
     my_tester->produce_blocks();
+
+    tokendb.read_asset_no_throw(prod, evt_sym(), prodasset_after);
+
+    CHECK(trace->charge == prodasset_after.amount() - prodasset_before.amount());
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_evt2pevt_test", "[contracts]") {
