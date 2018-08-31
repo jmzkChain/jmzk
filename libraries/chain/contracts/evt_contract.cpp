@@ -956,70 +956,48 @@ EVT_ACTION_IMPL(everipay) {
 
         auto& link_id = link.get_link_id();
 
-        const evt_link_object* li = nullptr;
-        if((li = db.find<evt_link_object, by_link_id>(link_id))) {
-            if(li->err_code == 0) {
-                // this link is executed successful, cannot be duplicate
-                EVT_THROW(evt_link_dupe_exception, "Duplicate EVT-Link ${id}", ("id", fc::to_hex((char*)&link_id, sizeof(link_id))));
-            }
+        if(const auto* l = db.find<evt_link_object, by_link_id>(link_id)) {
+            // this link is executed successful, cannot be duplicate
+            EVT_THROW(evt_link_dupe_exception, "Duplicate EVT-Link ${id}", ("id", fc::to_hex((char*)&link_id, sizeof(link_id))));
         }
         else {
-            li = &db.create<evt_link_object>([&](evt_link_object& li) {
+            db.create<evt_link_object>([&](evt_link_object& li) {
                 li.block_num = context.control.pending_block_state()->block->block_num();
-                li.err_code  = 0;
                 li.link_id   = link_id;
                 li.trx_id    = context.trx_context.trx.id;
             });
         }
 
-        try {
-            auto keys = link.restore_keys();
-            EVT_ASSERT(keys.size() == 1, everipay_exception, "There're more than one signature on everiPay link, which is invalid");
-            
-            auto sym = epact.number.sym();
-            EVT_ASSERT(lsym_id == sym.id(), everipay_exception, "Symbol ids don't match, provided: ${p}, expected: ${e}", ("p",lsym_id)("e",sym.id()));
-            EVT_ASSERT(lsym_id != PEVT_SYM_ID, everipay_exception, "Pinned EVT cannot be used to be paid.");
+        auto keys = link.restore_keys();
+        EVT_ASSERT(keys.size() == 1, everipay_exception, "There're more than one signature on everiPay link, which is invalid");
+        
+        auto sym = epact.number.sym();
+        EVT_ASSERT(lsym_id == sym.id(), everipay_exception, "Symbol ids don't match, provided: ${p}, expected: ${e}", ("p",lsym_id)("e",sym.id()));
+        EVT_ASSERT(lsym_id != PEVT_SYM_ID, everipay_exception, "Pinned EVT cannot be used to be paid.");
 
-            auto max_pay = uint32_t(0);
-            if(link.has_segment(evt_link::max_pay)) {
-                max_pay = *link.get_segment(evt_link::max_pay).intv;
-            }
-            else {
-                max_pay = std::stoul(*link.get_segment(evt_link::max_pay_str).strv);
-            }
-            EVT_ASSERT(epact.number.amount() <= max_pay, everipay_exception, "Exceed max pay number: ${m}, expected: ${e}", ("m",max_pay)("e",epact.number.amount()));
-
-            auto payer = address(*keys.begin());
-            EVT_ASSERT(payer != epact.payee, everipay_exception, "Payer and payee shouldn't be the same one");
-
-            auto facc = asset(0, sym);
-            auto tacc = asset(0, sym);
-            tokendb.read_asset(payer, sym, facc);
-            tokendb.read_asset_no_throw(epact.payee, sym, tacc);
-
-            EVT_ASSERT(facc >= epact.number, everipay_exception, "Payer does not have enough balance left.");
-
-            transfer_fungible(facc, tacc, epact.number.amount());
-
-            tokendb.update_asset(epact.payee, tacc);
-            tokendb.update_asset(payer, facc);
+        auto max_pay = uint32_t(0);
+        if(link.has_segment(evt_link::max_pay)) {
+            max_pay = *link.get_segment(evt_link::max_pay).intv;
         }
-        catch(const everipay_exception& e) {
-            db.modify(*li, [&](auto& l) {
-                l.block_num = 0;
-                l.err_code  = e.code();
-                l.trx_id    = context.trx_context.trx.id;
-            });
-            throw;
+        else {
+            max_pay = std::stoul(*link.get_segment(evt_link::max_pay_str).strv);
         }
+        EVT_ASSERT(epact.number.amount() <= max_pay, everipay_exception, "Exceed max pay number: ${m}, expected: ${e}", ("m",max_pay)("e",epact.number.amount()));
 
-        if(li->err_code > 0) {
-            db.modify(*li, [&](auto& l) {
-                l.block_num = context.control.pending_block_state()->block->block_num();
-                l.err_code  = 0;
-                l.trx_id    = context.trx_context.trx.id;
-            });
-        }
+        auto payer = address(*keys.begin());
+        EVT_ASSERT(payer != epact.payee, everipay_exception, "Payer and payee shouldn't be the same one");
+
+        auto facc = asset(0, sym);
+        auto tacc = asset(0, sym);
+        tokendb.read_asset(payer, sym, facc);
+        tokendb.read_asset_no_throw(epact.payee, sym, tacc);
+
+        EVT_ASSERT(facc >= epact.number, everipay_exception, "Payer does not have enough balance left.");
+
+        transfer_fungible(facc, tacc, epact.number.amount());
+
+        tokendb.update_asset(epact.payee, tacc);
+        tokendb.update_asset(payer, facc);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }

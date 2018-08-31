@@ -1262,23 +1262,6 @@ TEST_CASE_METHOD(contracts_test, "everipay_test", "[contracts]") {
     ep.link.add_segment(evt_link::segment(evt_link::link_id, "JKHBJKBJKGJHGJKE"));
     sign_link(ep.link);
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer), everipay_exception);
-
-    CHECK_NOTHROW(my_tester->control->get_link_obj_for_link_id(ep.link.get_link_id()));
-    auto& li = my_tester->control->get_link_obj_for_link_id(ep.link.get_link_id());
-    CHECK(li.err_code > 0);
-
-    ep.link.add_segment(evt_link::segment(evt_link::max_pay_str, "500000"));
-    ep.number = asset::from_string(string("0.50000 S#1"));
-    ep.payee  = poorer;
-    sign_link(ep.link);
-    CHECK_NOTHROW(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer));
-
-    auto& li2 = my_tester->control->get_link_obj_for_link_id(ep.link.get_link_id());
-    CHECK(li2.err_code == 0);
-
-    ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts + 2));
-    sign_link(ep.link);
-    CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer), evt_link_dupe_exception);
 }
 
 TEST_CASE_METHOD(contracts_test, "empty_action_test", "[contracts]") {

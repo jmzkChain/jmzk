@@ -91,11 +91,9 @@ public:
     uint32_t               timeout_;
 
     std::deque<block_state_ptr>       blocks_;
-    std::deque<transaction_trace_ptr> traces_;
     std::unordered_map<link_id_type, deferred_pair, evt_link_id_hasher> link_ids_;
 
     fc::optional<boost::signals2::scoped_connection> accepted_block_connection_;
-    fc::optional<boost::signals2::scoped_connection> applied_transaction_connection;
 };
 
 void
@@ -103,16 +101,15 @@ evt_link_plugin_impl::consume_queues() {
     try {
         while(true) {
             lock_.lock();
-            while(blocks_.empty() && traces_.empty() && !done_) {
+            while(blocks_.empty() && !done_) {
                 cond_.wait(lock_);
             }
 
             auto blocks = std::move(blocks_);
-            auto traces = std::move(traces_);
             lock_.unlock();
 
             if(done_) {
-                ilog("draining queue, size: ${q}", ("q", blocks.size() + traces_.size()));
+                ilog("draining queue, size: ${q}", ("q", blocks.size()));
                 break;
             }
 
@@ -122,14 +119,6 @@ evt_link_plugin_impl::consume_queues() {
                 it++;
 
                 blocks.pop_front();
-            }
-
-            auto it2 = traces.begin();
-            while(it2 != traces.end()) {
-                _applied_transaction(*it2);
-                it2++;
-
-                traces.pop_front();
             }
         }
         ilog("evt_link_plugin consume thread shutdown gracefully");
@@ -178,50 +167,6 @@ evt_link_plugin_impl::_applied_block(const block_state_ptr& bs) {
                 vo["block_num"] = bs->block_num;
                 vo["trx_id"]    = trx->id;
                 vo["err_code"]  = 0;
-
-                return fc::json::to_string(vo);
-            });
-        }
-    }
-}
-
-void
-evt_link_plugin_impl::applied_transaction(const transaction_trace_ptr& t) {
-    if(!init_) {
-        {
-            spinlock_guard l(lock_);
-            traces_.emplace_back(t);
-        }
-        cond_.notify_one();
-    }
-}
-
-void
-evt_link_plugin_impl::_applied_transaction(const transaction_trace_ptr& t) {
-    if(!t->except) {
-        // no need to process here if there's no exception
-        return;
-    }
-
-    lock_.lock();
-    if(link_ids_.empty()) {
-        lock_.unlock();
-        return;
-    }
-    lock_.unlock();
-
-    for(auto& act : t->action_traces) {
-        if(act.act.name != N(everipay)) {
-            continue;
-        }
-        if(typeid(*t->except) == typeid(chain::everipay_exception)) {
-            auto& epact = act.act.data_as<const everipay&>();
-            
-            response(epact.link.get_link_id(), [&] {
-                auto vo         = fc::mutable_variant_object();
-                vo["block_num"] = 0;
-                vo["trx_id"]    = t->id;
-                vo["err_code"]  = t->except->code();
 
                 return fc::json::to_string(vo);
             });
@@ -320,7 +265,6 @@ evt_link_plugin_impl::get_trx_id_for_link_id(const link_id_type& link_id, deferr
         auto vo         = fc::mutable_variant_object();
         vo["block_num"] = obj.block_num;
         vo["trx_id"]    = obj.trx_id;
-        vo["err_code"]  = obj.err_code;
 
         app().get_plugin<http_plugin>().set_deferred_response(id, 200, fc::json::to_string(vo));
     }
@@ -340,10 +284,6 @@ evt_link_plugin_impl::init() {
     accepted_block_connection_.emplace(chain.accepted_block.connect([&](const chain::block_state_ptr& bs) {
         applied_block(bs);
     }));
-
-    applied_transaction_connection.emplace(chain.applied_transaction.connect([&](const chain::transaction_trace_ptr& t) {
-        applied_transaction(t);
-    }));    
 
     consume_thread_ = std::thread([this] { consume_queues(); });
 }
@@ -406,7 +346,6 @@ evt_link_plugin::plugin_startup() {
 void
 evt_link_plugin::plugin_shutdown() {
     my_->accepted_block_connection_.reset();
-    my_->applied_transaction_connection.reset();
     my_.reset();
 }
 

@@ -205,17 +205,6 @@ transaction_context::dispatch_action(action_trace& trace, const action& act) {
     try {
         apply.exec();
     }
-    catch(const everipay_exception&) {
-        // specieal handling everiPay action
-        // when catchs everipay_exception
-        // don't revert chainbase
-        // because we need to record the failed everipay action
-        trace = move(apply.trace);
-        if(undo_session) {
-            undo_session->squash();
-        }
-        throw;
-    }
     catch(...) {
         trace = move(apply.trace);
         throw;
