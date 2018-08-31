@@ -19,8 +19,8 @@ class evt_link_object : public chainbase::object<evt_link_object_type, evt_link_
     OBJECT_CTOR(evt_link_object)
 
     id_type             id;
-    link_id_type        link_id;
     uint32_t            block_num;
+    link_id_type        link_id;
     transaction_id_type trx_id;
 };
 

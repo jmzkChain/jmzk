@@ -1,6 +1,7 @@
 #include <catch/catch.hpp>
 
 #include <evt/chain/token_database.hpp>
+#include <evt/chain/contracts/evt_link_object.hpp>
 #include <evt/testing/tester.hpp>
 
 using namespace evt;
@@ -1019,8 +1020,18 @@ TEST_CASE_METHOD(contracts_test, "contract_charge_test", "[contracts]") {
     }
     )=====";
 
+    my_tester->produce_blocks();
+
     auto var   = fc::json::from_string(test_data);
     auto issfg = var.as<issuefungible>();
+
+    auto& tokendb = my_tester->control->token_db();
+    auto  pbs  = my_tester->control->pending_block_state();
+    auto& prod = pbs->get_scheduled_producer(pbs->header.timestamp).block_signing_key;
+
+    asset prodasset_before;
+    asset prodasset_after;
+    tokendb.read_asset_no_throw(prod, evt_sym(), prodasset_before);
 
     issfg.number  = asset::from_string(string("5.00000 S#") + std::to_string(get_sym_id()));
     issfg.address = key;
@@ -1036,9 +1047,13 @@ TEST_CASE_METHOD(contracts_test, "contract_charge_test", "[contracts]") {
 
     CHECK_THROWS_AS(my_tester->push_action(N(issuefungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, address(N(domain), "domain", 0)), payer_exception);
 
-    my_tester->push_action(N(issuefungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer);
+    auto trace = my_tester->push_action(N(issuefungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer);
 
     my_tester->produce_blocks();
+
+    tokendb.read_asset_no_throw(prod, evt_sym(), prodasset_after);
+
+    CHECK(trace->charge == prodasset_after.amount() - prodasset_before.amount());
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_evt2pevt_test", "[contracts]") {
@@ -1210,6 +1225,8 @@ TEST_CASE_METHOD(contracts_test, "everipay_test", "[contracts]") {
     ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts + 40));
     sign_link(ep.link);
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), (name128)std::to_string(evt_sym().id()), ep), key_seeds, payer), evt_link_expiration_exception);
+
+    CHECK_THROWS_AS(my_tester->control->get_link_obj_for_link_id(ep.link.get_link_id()), evt_link_existed_exception);
 
     ep.link.add_segment(evt_link::segment(evt_link::link_id, "JKHBJKBJKGJHGJAA"));
     ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts + 5));

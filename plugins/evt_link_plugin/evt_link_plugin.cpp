@@ -39,6 +39,7 @@ static appbase::abstract_plugin& _evt_link_plugin = app().register_plugin<evt_li
 using evt::chain::bytes;
 using evt::chain::link_id_type;
 using evt::chain::block_state_ptr;
+using evt::chain::transaction_trace_ptr;
 using evt::chain::contracts::evt_link;
 using evt::chain::contracts::everipay;
 using evt::utilities::spinlock;
@@ -71,8 +72,13 @@ public:
 
 private:
     void consume_queues();
-    void applied_block(const chain::block_state_ptr& bs);
-    void _applied_block(const chain::block_state_ptr& bs);
+    void applied_block(const block_state_ptr& bs);
+    void _applied_block(const block_state_ptr& bs);
+    void applied_transaction(const transaction_trace_ptr&);
+    void _applied_transaction(const transaction_trace_ptr&);
+
+    template<typename T>
+    void response(const link_id_type& link_id, T&& response_fun);
 
 public:
     controller& db_;
@@ -84,7 +90,7 @@ public:
     std::atomic_bool       init_{false};
     uint32_t               timeout_;
 
-    std::deque<block_state_ptr> blocks_;
+    std::deque<block_state_ptr>       blocks_;
     std::unordered_map<link_id_type, deferred_pair, evt_link_id_hasher> link_ids_;
 
     fc::optional<boost::signals2::scoped_connection> accepted_block_connection_;
@@ -129,7 +135,7 @@ evt_link_plugin_impl::consume_queues() {
 }
 
 void
-evt_link_plugin_impl::applied_block(const chain::block_state_ptr& bs) {
+evt_link_plugin_impl::applied_block(const block_state_ptr& bs) {
     if(!init_) {
         {
             spinlock_guard l(lock_);
@@ -140,7 +146,7 @@ evt_link_plugin_impl::applied_block(const chain::block_state_ptr& bs) {
 }
 
 void
-evt_link_plugin_impl::_applied_block(const chain::block_state_ptr& bs) {
+evt_link_plugin_impl::_applied_block(const block_state_ptr& bs) {
     lock_.lock();
     if(link_ids_.empty()) {
         lock_.unlock();
@@ -154,45 +160,53 @@ evt_link_plugin_impl::_applied_block(const chain::block_state_ptr& bs) {
                 continue;
             }
 
-            auto& epact       = act.data_as<const everipay&>();
-            auto& link_id_str = *epact.link.get_segment(evt_link::link_id).strv;
+            auto& epact = act.data_as<const everipay&>();
 
-            lock_.lock();
-            auto it = link_ids_.find(*(link_id_type*)(link_id_str.data()));
-            if(it != link_ids_.end()) {
-                lock_.unlock();
-
+            response(epact.link.get_link_id(), [&] {
                 auto vo         = fc::mutable_variant_object();
                 vo["block_num"] = bs->block_num;
                 vo["trx_id"]    = trx->id;
+                vo["err_code"]  = 0;
 
-                auto json = fc::json::to_string(vo);
-                auto wptr = std::weak_ptr<evt_link_plugin_impl>(shared_from_this());
-                boost::asio::post(app().get_io_service(), [wptr, json, link_id_str] {
-                    auto self = wptr.lock();
-                    if(self) {
-                        self->lock_.lock();
-                        auto it = self->link_ids_.find(*(link_id_type*)(link_id_str.data()));
-                        if(it != self->link_ids_.end()) {
-                            self->lock_.unlock();
-
-                            auto& pair = it->second;
-                            app().get_plugin<http_plugin>().set_deferred_response(std::get<kDeferredId>(pair), 200, json);
-
-                            spinlock_guard l(self->lock_);
-                            self->link_ids_.erase(it);
-                            return;
-                        }
-                        else {
-                            self->lock_.unlock();
-                        }
-                    }
-                });
-            }
-            else {
-                lock_.unlock();
-            }
+                return fc::json::to_string(vo);
+            });
         }
+    }
+}
+
+template<typename T>
+void
+evt_link_plugin_impl::response(const link_id_type& link_id, T&& response_fun) {
+    lock_.lock();
+    auto it = link_ids_.find(link_id);
+    if(it != link_ids_.end()) {
+        lock_.unlock();
+
+        auto json = response_fun();
+        auto wptr = std::weak_ptr<evt_link_plugin_impl>(shared_from_this());
+        boost::asio::post(app().get_io_service(), [wptr, json, link_id] {
+            auto self = wptr.lock();
+            if(self) {
+                self->lock_.lock();
+                auto it = self->link_ids_.find(link_id);
+                if(it != self->link_ids_.end()) {
+                    self->lock_.unlock();
+
+                    auto& pair = it->second;
+                    app().get_plugin<http_plugin>().set_deferred_response(std::get<kDeferredId>(pair), 200, json);
+
+                    spinlock_guard l(self->lock_);
+                    self->link_ids_.erase(it);
+                    return;
+                }
+                else {
+                    self->lock_.unlock();
+                }
+            }
+        });
+    }
+    else {
+        lock_.unlock();
     }
 }
 

@@ -58,6 +58,8 @@ public:
     const segment& get_segment(uint8_t key) const;
     bool has_segment(uint8_t key) const;
 
+    const link_id_type& get_link_id() const;
+
     const fc::flat_map<uint8_t, segment>& get_segments() const { return segments_; }
     const fc::flat_set<signature_type>& get_signatures() const {return signatures_; }
 

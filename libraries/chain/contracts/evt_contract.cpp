@@ -730,6 +730,8 @@ EVT_ACTION_IMPL(newsuspend) {
         check_name_reserved(nsact.name);
         for(auto& act : nsact.trx.actions) {
             EVT_ASSERT(act.domain != N128(suspend), suspend_invalid_action_exception, "Actions in 'suspend' domain are not allowd deferred-signning");
+            EVT_ASSERT(act.name != N(everipay), suspend_invalid_action_exception, "everiPay action is not allowd deferred-signning");
+            EVT_ASSERT(act.name != N(everipass), suspend_invalid_action_exception, "everiPass action is not allowd deferred-signning");
         }
 
         auto& tokendb = context.token_db;
@@ -944,33 +946,30 @@ EVT_ACTION_IMPL(everipay) {
         EVT_ASSERT(context.has_authorized(N128(.fungible), name128(std::to_string(lsym_id))), action_authorize_exception, "Authorized information does not match.");
 
         if(!context.control.loadtest_mode()) {
-            auto ts     = *link.get_segment(evt_link::timestamp).intv;
-            auto since  = std::abs((context.control.pending_block_time() - fc::time_point_sec(ts)).to_seconds());
+            auto  ts    = *link.get_segment(evt_link::timestamp).intv;
+            auto  since = std::abs((context.control.pending_block_time() - fc::time_point_sec(ts)).to_seconds());
             auto& conf  = context.control.get_global_properties().configuration;
             if(since > conf.evt_link_expired_secs) {
                 EVT_THROW(evt_link_expiration_exception, "EVT-Link is expired, now: ${n}, timestamp: ${t}", ("n",context.control.pending_block_time())("t",fc::time_point_sec(ts)));
             }
         }
 
-        auto& link_id_str = *link.get_segment(evt_link::link_id).strv;
-        EVT_ASSERT(link_id_str.size() == sizeof(link_id_type), evt_link_id_exception, "EVT-Link id is not in proper length, provided: ${p}, expected: ${e}", ("p",link_id_str.size())("e",sizeof(link_id_type)));
+        auto& link_id = link.get_link_id();
 
-        try {
+        if(const auto* l = db.find<evt_link_object, by_link_id>(link_id)) {
+            // this link is executed successful, cannot be duplicate
+            EVT_THROW(evt_link_dupe_exception, "Duplicate EVT-Link ${id}", ("id", fc::to_hex((char*)&link_id, sizeof(link_id))));
+        }
+        else {
             db.create<evt_link_object>([&](evt_link_object& li) {
-                li.link_id   = *(link_id_type*)(link_id_str.data());
                 li.block_num = context.control.pending_block_state()->block->block_num();
+                li.link_id   = link_id;
                 li.trx_id    = context.trx_context.trx.id;
             });
         }
-        catch(const boost::interprocess::bad_alloc&) {
-            throw;
-        }
-        catch(...) {
-            EVT_THROW(evt_link_dupe_exception, "Duplicate EVT-Link ${id}", ("id", fc::to_hex(link_id_str.data(), link_id_str.size())));
-        }
 
         auto keys = link.restore_keys();
-        EVT_ASSERT(keys.size() == 1, evt_link_id_exception, "There're more than one signature on everiPay link, which is invalid");
+        EVT_ASSERT(keys.size() == 1, everipay_exception, "There're more than one signature on everiPay link, which is invalid");
         
         auto sym = epact.number.sym();
         EVT_ASSERT(lsym_id == sym.id(), everipay_exception, "Symbol ids don't match, provided: ${p}, expected: ${e}", ("p",lsym_id)("e",sym.id()));

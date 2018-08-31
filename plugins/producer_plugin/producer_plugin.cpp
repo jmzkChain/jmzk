@@ -541,7 +541,7 @@ make_key_signature_provider(const private_key_type& key) {
 }
 
 static producer_plugin_impl::signature_provider_type
-make_keosd_signature_provider(const std::shared_ptr<producer_plugin_impl>& impl, const string& url_str, const public_key_type pubkey) {
+make_evtwd_signature_provider(const std::shared_ptr<producer_plugin_impl>& impl, const string& url_str, const public_key_type pubkey) {
     auto evtwd_url = fc::url(url_str);
     std::weak_ptr<producer_plugin_impl> weak_impl = impl;
 
@@ -603,7 +603,7 @@ producer_plugin::plugin_initialize(const boost::program_options::variables_map& 
                         my->_signature_providers[pubkey] = make_key_signature_provider(private_key_type(spec_data));
                     }
                     else if(spec_type_str == "EVTWD") {
-                        my->_signature_providers[pubkey] = make_keosd_signature_provider(my, spec_data, pubkey);
+                        my->_signature_providers[pubkey] = make_evtwd_signature_provider(my, spec_data, pubkey);
                     }
                 }
                 catch(...) {
