@@ -20,6 +20,7 @@ class evt_link_object : public chainbase::object<evt_link_object_type, evt_link_
 
     id_type             id;
     uint32_t            block_num;
+    uint32_t            err_code;
     link_id_type        link_id;
     transaction_id_type trx_id;
 };

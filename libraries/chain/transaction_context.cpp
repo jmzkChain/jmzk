@@ -35,7 +35,7 @@ transaction_context::init() {
     EVT_ASSERT(!is_initialized, transaction_exception, "cannot initialize twice");
     EVT_ASSERT(!trx.trx.actions.empty(), tx_no_action, "There's any actions in this transaction");
     
-    check_time();  // not used now
+    check_time();    // Fail early if deadline has already been exceeded
     if(!control.charge_free_mode()) {
         check_charge();  // Fail early if max charge has already been exceeded
         check_paid();    // Fail early if there's no remaining available EVT & Pinned EVT tokens
@@ -111,7 +111,12 @@ void transaction_context::undo() {
 }
 
 void
-transaction_context::check_time() const {}
+transaction_context::check_time() const {
+    auto now = fc::time_point::now();
+    if(BOOST_UNLIKELY(now > deadline)) {
+        EVT_THROW(deadline_exception, "deadline exceeded", ("now", now)("deadline", deadline)("start", start));
+    }
+}
 
 void
 transaction_context::check_charge() {
@@ -199,6 +204,17 @@ transaction_context::dispatch_action(action_trace& trace, const action& act) {
 
     try {
         apply.exec();
+    }
+    catch(const everipay_exception&) {
+        // specieal handling everiPay action
+        // when catchs everipay_exception
+        // don't revert chainbase
+        // because we need to record the failed everipay action
+        trace = move(apply.trace);
+        if(undo_session) {
+            undo_session->squash();
+        }
+        throw;
     }
     catch(...) {
         trace = move(apply.trace);
