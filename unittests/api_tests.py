@@ -463,6 +463,7 @@ def main(url, start_evtd, evtd_path, public_key, private_key):
     global evtdout
     evtdout = None
 
+    p = None
     if start_evtd == True:
         evtdout = open('/tmp/evt_api_tests_evtd.log', 'w')
 
@@ -515,7 +516,9 @@ def main(url, start_evtd, evtd_path, public_key, private_key):
         runner = unittest.TextTestRunner()
         result = runner.run(suite)
     finally:
-        p.kill()
+        if p is not None:
+            p.kill()
+
         if evtdout is not None:
             evtdout.close()
 

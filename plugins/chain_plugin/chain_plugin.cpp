@@ -951,6 +951,7 @@ read_only::get_trx_id_for_link_id(const get_trx_id_for_link_id_params& params) c
     auto  vo        = fc::mutable_variant_object();
     vo["block_num"] = obj.block_num;
     vo["trx_id"]    = obj.trx_id;
+    vo["err_code"]  = obj.err_code;
 
     return vo;
 }

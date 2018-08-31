@@ -39,6 +39,7 @@ static appbase::abstract_plugin& _evt_link_plugin = app().register_plugin<evt_li
 using evt::chain::bytes;
 using evt::chain::link_id_type;
 using evt::chain::block_state_ptr;
+using evt::chain::transaction_trace_ptr;
 using evt::chain::contracts::evt_link;
 using evt::chain::contracts::everipay;
 using evt::utilities::spinlock;
@@ -71,8 +72,13 @@ public:
 
 private:
     void consume_queues();
-    void applied_block(const chain::block_state_ptr& bs);
-    void _applied_block(const chain::block_state_ptr& bs);
+    void applied_block(const block_state_ptr& bs);
+    void _applied_block(const block_state_ptr& bs);
+    void applied_transaction(const transaction_trace_ptr&);
+    void _applied_transaction(const transaction_trace_ptr&);
+
+    template<typename T>
+    void response(const link_id_type& link_id, T&& response_fun);
 
 public:
     controller& db_;
@@ -84,10 +90,12 @@ public:
     std::atomic_bool       init_{false};
     uint32_t               timeout_;
 
-    std::deque<block_state_ptr> blocks_;
+    std::deque<block_state_ptr>       blocks_;
+    std::deque<transaction_trace_ptr> traces_;
     std::unordered_map<link_id_type, deferred_pair, evt_link_id_hasher> link_ids_;
 
     fc::optional<boost::signals2::scoped_connection> accepted_block_connection_;
+    fc::optional<boost::signals2::scoped_connection> applied_transaction_connection;
 };
 
 void
@@ -95,15 +103,16 @@ evt_link_plugin_impl::consume_queues() {
     try {
         while(true) {
             lock_.lock();
-            while(blocks_.empty() && !done_) {
+            while(blocks_.empty() && traces_.empty() && !done_) {
                 cond_.wait(lock_);
             }
 
             auto blocks = std::move(blocks_);
+            auto traces = std::move(traces_);
             lock_.unlock();
 
             if(done_) {
-                ilog("draining queue, size: ${q}", ("q", blocks.size()));
+                ilog("draining queue, size: ${q}", ("q", blocks.size() + traces_.size()));
                 break;
             }
 
@@ -113,6 +122,14 @@ evt_link_plugin_impl::consume_queues() {
                 it++;
 
                 blocks.pop_front();
+            }
+
+            auto it2 = traces.begin();
+            while(it2 != traces.end()) {
+                _applied_transaction(*it2);
+                it2++;
+
+                traces.pop_front();
             }
         }
         ilog("evt_link_plugin consume thread shutdown gracefully");
@@ -129,7 +146,7 @@ evt_link_plugin_impl::consume_queues() {
 }
 
 void
-evt_link_plugin_impl::applied_block(const chain::block_state_ptr& bs) {
+evt_link_plugin_impl::applied_block(const block_state_ptr& bs) {
     if(!init_) {
         {
             spinlock_guard l(lock_);
@@ -140,7 +157,7 @@ evt_link_plugin_impl::applied_block(const chain::block_state_ptr& bs) {
 }
 
 void
-evt_link_plugin_impl::_applied_block(const chain::block_state_ptr& bs) {
+evt_link_plugin_impl::_applied_block(const block_state_ptr& bs) {
     lock_.lock();
     if(link_ids_.empty()) {
         lock_.unlock();
@@ -156,42 +173,95 @@ evt_link_plugin_impl::_applied_block(const chain::block_state_ptr& bs) {
 
             auto& epact = act.data_as<const everipay&>();
 
-            lock_.lock();
-            auto it = link_ids_.find(epact.link.get_link_id());
-            if(it != link_ids_.end()) {
-                lock_.unlock();
-
+            response(epact.link.get_link_id(), [&] {
                 auto vo         = fc::mutable_variant_object();
                 vo["block_num"] = bs->block_num;
                 vo["trx_id"]    = trx->id;
+                vo["err_code"]  = 0;
 
-                auto json = fc::json::to_string(vo);
-                auto wptr = std::weak_ptr<evt_link_plugin_impl>(shared_from_this());
-                boost::asio::post(app().get_io_service(), [wptr, json, link_id_str] {
-                    auto self = wptr.lock();
-                    if(self) {
-                        self->lock_.lock();
-                        auto it = self->link_ids_.find(*(link_id_type*)(link_id_str.data()));
-                        if(it != self->link_ids_.end()) {
-                            self->lock_.unlock();
-
-                            auto& pair = it->second;
-                            app().get_plugin<http_plugin>().set_deferred_response(std::get<kDeferredId>(pair), 200, json);
-
-                            spinlock_guard l(self->lock_);
-                            self->link_ids_.erase(it);
-                            return;
-                        }
-                        else {
-                            self->lock_.unlock();
-                        }
-                    }
-                });
-            }
-            else {
-                lock_.unlock();
-            }
+                return fc::json::to_string(vo);
+            });
         }
+    }
+}
+
+void
+evt_link_plugin_impl::applied_transaction(const transaction_trace_ptr& t) {
+    if(!init_) {
+        {
+            spinlock_guard l(lock_);
+            traces_.emplace_back(t);
+        }
+        cond_.notify_one();
+    }
+}
+
+void
+evt_link_plugin_impl::_applied_transaction(const transaction_trace_ptr& t) {
+    if(!t->except) {
+        // no need to process here if there's no exception
+        return;
+    }
+
+    lock_.lock();
+    if(link_ids_.empty()) {
+        lock_.unlock();
+        return;
+    }
+    lock_.unlock();
+
+    for(auto& act : t->action_traces) {
+        if(act.act.name != N(everipay)) {
+            continue;
+        }
+        if(typeid(*t->except) == typeid(chain::everipay_exception)) {
+            auto& epact = act.act.data_as<const everipay&>();
+            
+            response(epact.link.get_link_id(), [&] {
+                auto vo         = fc::mutable_variant_object();
+                vo["block_num"] = 0;
+                vo["trx_id"]    = t->id;
+                vo["err_code"]  = t->except->code();
+
+                return fc::json::to_string(vo);
+            });
+        }
+    }
+}
+
+template<typename T>
+void
+evt_link_plugin_impl::response(const link_id_type& link_id, T&& response_fun) {
+    lock_.lock();
+    auto it = link_ids_.find(link_id);
+    if(it != link_ids_.end()) {
+        lock_.unlock();
+
+        auto json = response_fun();
+        auto wptr = std::weak_ptr<evt_link_plugin_impl>(shared_from_this());
+        boost::asio::post(app().get_io_service(), [wptr, json, link_id] {
+            auto self = wptr.lock();
+            if(self) {
+                self->lock_.lock();
+                auto it = self->link_ids_.find(link_id);
+                if(it != self->link_ids_.end()) {
+                    self->lock_.unlock();
+
+                    auto& pair = it->second;
+                    app().get_plugin<http_plugin>().set_deferred_response(std::get<kDeferredId>(pair), 200, json);
+
+                    spinlock_guard l(self->lock_);
+                    self->link_ids_.erase(it);
+                    return;
+                }
+                else {
+                    self->lock_.unlock();
+                }
+            }
+        });
+    }
+    else {
+        lock_.unlock();
     }
 }
 
@@ -250,6 +320,7 @@ evt_link_plugin_impl::get_trx_id_for_link_id(const link_id_type& link_id, deferr
         auto vo         = fc::mutable_variant_object();
         vo["block_num"] = obj.block_num;
         vo["trx_id"]    = obj.trx_id;
+        vo["err_code"]  = obj.err_code;
 
         app().get_plugin<http_plugin>().set_deferred_response(id, 200, fc::json::to_string(vo));
     }
@@ -269,6 +340,10 @@ evt_link_plugin_impl::init() {
     accepted_block_connection_.emplace(chain.accepted_block.connect([&](const chain::block_state_ptr& bs) {
         applied_block(bs);
     }));
+
+    applied_transaction_connection.emplace(chain.applied_transaction.connect([&](const chain::transaction_trace_ptr& t) {
+        applied_transaction(t);
+    }));    
 
     consume_thread_ = std::thread([this] { consume_queues(); });
 }
@@ -331,6 +406,7 @@ evt_link_plugin::plugin_startup() {
 void
 evt_link_plugin::plugin_shutdown() {
     my_->accepted_block_connection_.reset();
+    my_->applied_transaction_connection.reset();
     my_.reset();
 }
 

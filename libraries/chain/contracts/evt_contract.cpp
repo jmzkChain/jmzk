@@ -1006,14 +1006,18 @@ EVT_ACTION_IMPL(everipay) {
         }
         catch(const everipay_exception& e) {
             db.modify(*li, [&](auto& l) {
-                l.err_code = e.code();
+                l.block_num = 0;
+                l.err_code  = e.code();
+                l.trx_id    = context.trx_context.trx.id;
             });
             throw;
         }
 
         if(li->err_code > 0) {
             db.modify(*li, [&](auto& l) {
-                l.err_code = 0;
+                l.block_num = context.control.pending_block_state()->block->block_num();
+                l.err_code  = 0;
+                l.trx_id    = context.trx_context.trx.id;
             });
         }
     }
