@@ -6,8 +6,8 @@
 #include <stack>
 #include <vector>
 #include <tuple>
-#include <boost/any.hpp>
 #include <fc/io/json.hpp>
+#include <fc/static_variant.hpp>
 #include <rapidjson/document.h>
 #include <rapidjson/reader.h>
 #include <rapidjson/istreamwrapper.h>
@@ -74,7 +74,7 @@ public:
 
     bool
     StartObject() {
-        obj_levels_.emplace(std::make_tuple(kObject, mutable_variant_object()));
+        obj_levels_.emplace(mutable_variant_object());
         if(obj_levels_.size() > max_depth_) {
             FC_THROW_EXCEPTION(parse_error_exception, "Exceed max depth limit");
         }
@@ -94,11 +94,10 @@ public:
             return false;
         }
         auto& l = obj_levels_.top();
-        if(std::get<0>(l) != kObject) {
+        if(l.which() != kObject) {
             return false;
         }
-        auto  v   = std::move(std::get<1>(l));
-        auto& obj = boost::any_cast<mutable_variant_object&>(v);
+        auto obj = std::move(l.get<mutable_variant_object>());
 
         obj_levels_.pop();
         if(obj_levels_.empty()) {
@@ -111,7 +110,7 @@ public:
 
     bool
     StartArray() {
-        obj_levels_.push(std::make_tuple(kArray, variants()));
+        obj_levels_.push(variants());
         if(obj_levels_.size() > max_depth_) {
             FC_THROW_EXCEPTION(parse_error_exception, "Exceed max depth limit");
         }
@@ -124,11 +123,10 @@ public:
             return false;
         }
         auto& l = obj_levels_.top();
-        if(std::get<0>(l) != kArray) {
+        if(l.which() != kArray) {
             return false;
         }
-        auto v    = std::move(std::get<1>(l));
-        auto& arr = boost::any_cast<variants&>(v);
+        auto arr = std::move(l.get<variants>());
 
         obj_levels_.pop();
         if(obj_levels_.empty()) {
@@ -148,9 +146,9 @@ private:
         }
         auto& l = obj_levels_.top();
 
-        switch(std::get<0>(l)) {
+        switch(l.which()) {
         case kObject: {
-            auto& obj = boost::any_cast<mutable_variant_object&>(std::get<1>(l));
+            auto& obj = l.get<mutable_variant_object>();
             FC_ASSERT(!key_levels_.empty());
             auto& key = key_levels_.top();
             obj(std::move(key), std::move(v));
@@ -158,7 +156,7 @@ private:
             break;
         }
         case kArray: {
-            auto& arr = boost::any_cast<variants&>(std::get<1>(l));
+            auto& arr = l.get<variants>();
             arr.push_back(variant(std::move(v)));
             break;
         }
@@ -181,7 +179,7 @@ private:
         kObject,
         kArray
     };
-    using obj_level = std::tuple<int, boost::any>;
+    using obj_level = static_variant<mutable_variant_object, variants>;
 
     template<typename T>
     using stack = std::stack<T, std::vector<T>>;
