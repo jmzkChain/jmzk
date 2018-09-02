@@ -87,7 +87,7 @@ domain_def
 update_domain_data() {
     const char* test_data = R"=====(
     {
-     "name" : "domain",
+      "name" : "domain",
       "issue" : {
         "name" : "issue",
         "threshold" : 1,
@@ -114,7 +114,7 @@ update_domain_data() {
             "weight": 1
           }
         ]
-      }
+      },
       "metas":[{
       	"key": "key",
       	"value": "value",
@@ -156,7 +156,7 @@ update_token_data() {
         "name": "t1",
         "owner": [
           "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK"
-        ]
+        ],
         "metas":[{
       	"key": "key",
       	"value": "value",
@@ -282,7 +282,7 @@ add_suspend_data() {
                     }
                 ],
                 "transaction_extensions": []
-            }
+            },
             "signed_keys": [],
             "signatures": []
         }
@@ -313,7 +313,7 @@ update_suspend_data() {
                     }
                 ],
                 "transaction_extensions": []
-            }
+            },
             "signed_keys": [],
             "signatures": []
         }

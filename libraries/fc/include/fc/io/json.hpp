@@ -35,12 +35,12 @@ namespace fc
          static ostream& to_stream( ostream& out, const variants& v, output_formatting format = stringify_large_ints_and_doubles );
          static ostream& to_stream( ostream& out, const variant_object& v, output_formatting format = stringify_large_ints_and_doubles );
 
-         static variant  from_string( const string& utf8_str, parse_type ptype = legacy_parser, uint32_t max_depth = DEFAULT_MAX_RECURSION_DEPTH );
-         static variants variants_from_string( const string& utf8_str, parse_type ptype = legacy_parser, uint32_t max_depth = DEFAULT_MAX_RECURSION_DEPTH );
+         static variant  from_string( const string& utf8_str, parse_type ptype = rapidjson_parser, uint32_t max_depth = DEFAULT_MAX_RECURSION_DEPTH );
+         static variants variants_from_string( const string& utf8_str, parse_type ptype = rapidjson_parser, uint32_t max_depth = DEFAULT_MAX_RECURSION_DEPTH );
          static string   to_string( const variant& v, output_formatting format = stringify_large_ints_and_doubles );
          static string   to_pretty_string( const variant& v, output_formatting format = stringify_large_ints_and_doubles );
 
-         static bool     is_valid( const std::string& json_str, parse_type ptype = legacy_parser, uint32_t max_depth = DEFAULT_MAX_RECURSION_DEPTH );
+         static bool     is_valid( const std::string& json_str, parse_type ptype = rapidjson_parser, uint32_t max_depth = DEFAULT_MAX_RECURSION_DEPTH );
 
          template<typename T>
          static void     save_to_file( const T& v, const fc::path& fi, bool pretty = true, output_formatting format = stringify_large_ints_and_doubles )
@@ -49,10 +49,10 @@ namespace fc
          }
 
          static void     save_to_file( const variant& v, const fc::path& fi, bool pretty = true, output_formatting format = stringify_large_ints_and_doubles );
-         static variant  from_file( const fc::path& p, parse_type ptype = legacy_parser, uint32_t max_depth = DEFAULT_MAX_RECURSION_DEPTH );
+         static variant  from_file( const fc::path& p, parse_type ptype = rapidjson_parser, uint32_t max_depth = DEFAULT_MAX_RECURSION_DEPTH );
 
          template<typename T>
-         static T from_file( const fc::path& p, parse_type ptype = legacy_parser, uint32_t max_depth = DEFAULT_MAX_RECURSION_DEPTH )
+         static T from_file( const fc::path& p, parse_type ptype = rapidjson_parser, uint32_t max_depth = DEFAULT_MAX_RECURSION_DEPTH )
          {
             return json::from_file(p, ptype, max_depth).as<T>();
          }

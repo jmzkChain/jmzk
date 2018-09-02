@@ -729,9 +729,9 @@ TEST_CASE_METHOD(contracts_test, "contract_group_auth_test", "[contracts]") {
     CHECK(true);
     const char* test_data = R"=====(
     {
-      "domain": "domain",
+        "domain": "domain",
         "names": [
-          "authorizers1",
+          "authorizers1"
         ],
         "owner": [
           "EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2"

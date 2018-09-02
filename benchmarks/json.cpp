@@ -92,7 +92,7 @@ BM_Json_Deserialzie_FC(benchmark::State& state) {
     fc::variant v;
 
     for(auto _ : state) {
-        v = fc::json::from_string(strjson);
+        v = fc::json::from_string(strjson, fc::json::legacy_parser);
         (void)v;
     }
 }
