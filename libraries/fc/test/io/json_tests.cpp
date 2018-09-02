@@ -95,3 +95,12 @@ BOOST_AUTO_TEST_CASE( deseriazlie ) {
     v2 = fc::json::from_string(json, fc::json::rapidjson_parser);
     check_variants_equal(v1, v2);
 }
+
+BOOST_AUTO_TEST_CASE( deseriazliestr ) {
+    auto json = R"("hello")";
+
+    fc::variant v1, v2;
+    v1 = fc::json::from_string(json);
+    v2 = fc::json::from_string(json, fc::json::rapidjson_parser);
+    check_variants_equal(v1, v2);
+}

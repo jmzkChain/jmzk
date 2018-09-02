@@ -455,8 +455,14 @@ namespace fc
               return json_relaxed::variant_from_stream<std::stringstream, true>( in, max_depth );
           case relaxed_parser:
               return json_relaxed::variant_from_stream<std::stringstream, false>( in, max_depth );
-          case rapidjson_parser:
+          case rapidjson_parser: {
+              auto c = in.peek();
+              if(c == '"') {
+                  in.seekg(0);
+                  return variant_from_stream<std::stringstream, legacy_parser>( in, max_depth );
+              }
               return rapidjson::variant_from_stream<std::stringstream, false>( in, max_depth );
+          }
           default:
               FC_ASSERT( false, "Unknown JSON parser type {ptype}", ("ptype", ptype) );
       }
