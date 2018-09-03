@@ -10,7 +10,10 @@
 #include <fc/static_variant.hpp>
 #include <rapidjson/document.h>
 #include <rapidjson/reader.h>
+#include <rapidjson/writer.h>
+#include <rapidjson/prettywriter.h>
 #include <rapidjson/istreamwrapper.h>
+#include <rapidjson/ostreamwrapper.h>
 #include <rapidjson/error/en.h>
 
 using namespace rapidjson;
@@ -18,7 +21,15 @@ using namespace rapidjson;
 namespace fc { namespace rapidjson {
 
 template<typename T, bool strict>
-variant variant_from_stream( T& in, uint32_t max_depth );
+variant variant_from_stream(T& in, uint32_t max_depth);
+
+template<typename T>
+void to_stream(T& out, const variant& v);
+
+template<typename T>
+void to_stream_pretty(T& out, const variant& v);
+
+namespace __internal {
 
 class VariantHandler : public BaseReaderHandler<UTF8<>, VariantHandler> {
 public:
@@ -190,9 +201,13 @@ private:
     uint32_t           max_depth_;
 };
 
+}  // namespace __internal
+
 template<typename T, bool strict>
 variant
 variant_from_stream(T& in, uint32_t max_depth) {
+    using namespace __internal;
+
     variant var;
 
     Reader reader;
@@ -206,6 +221,94 @@ variant_from_stream(T& in, uint32_t max_depth) {
     }
 
     return var;
+}
+
+namespace __internal {
+
+template<typename W>
+void
+serialize(W& writer, const variant& v) {
+    switch(v.get_type()) {
+    case variant::null_type: {
+        writer.Null();
+        break;
+    }
+    case variant::int64_type: {
+        writer.Int64(v.as_int64());
+        break;
+    }
+    case variant::uint64_type: {
+        writer.Uint64(v.as_uint64());
+        break;
+    }
+    case variant::double_type: {
+        writer.Double(v.as_double());
+        break;
+    }
+    case variant::bool_type: {
+        writer.Bool(v.as_bool());
+        break;
+    }
+    case variant::string_type: {
+        auto& str = v.get_string();
+        writer.String(str.c_str(), str.size());
+        break;
+    }
+    case variant::blob_type: {
+        auto& blob = v.get_blob();
+        writer.String(&blob.data[0], blob.data.size());
+        break;
+    }
+    case variant::array_type: {
+        auto& arr = v.get_array();
+
+        writer.StartArray();
+        for(auto& a : arr) {
+            serialize(writer, a);
+        }
+        writer.EndArray();
+        break;
+    }
+    case variant::object_type: {
+        auto& obj = v.get_object();
+
+        writer.StartObject();
+        for(auto& it : obj) {
+            auto& key = it.key();
+            writer.Key(key.c_str(), key.size());
+            serialize(writer, it.value());
+        }
+        writer.EndObject();
+        break;
+    }
+    default: {
+        FC_THROW_EXCEPTION(fc::invalid_arg_exception, "Unsupported variant type: " + std::to_string(v.get_type()));
+    }
+    }  // switch
+}
+
+}  // namespace __internal
+
+template<typename T>
+void
+to_stream(T& out, const variant& v) {
+    using namespace __internal;
+
+    BasicOStreamWrapper<T> ss(out);
+
+    Writer<BasicOStreamWrapper<T>> writer(ss);
+    serialize(writer, v);
+}
+
+template<typename T>
+void
+to_stream_pretty(T& out, const variant& v) {
+    using namespace __internal;
+
+    BasicOStreamWrapper<T> ss(out);
+
+    PrettyWriter<BasicOStreamWrapper<T>> writer(ss);
+    serialize(writer, v);
 }
 
 }}  // namespace fc::rapidjson

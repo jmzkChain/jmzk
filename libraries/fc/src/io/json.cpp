@@ -770,7 +770,18 @@ namespace fc
 
    std::string json::to_pretty_string( const variant& v, output_formatting format )
    {
-      return pretty_print(to_string(v, format), 2);
+      switch(format) {
+      case stringify_large_ints_and_doubles:
+      case legacy_generator: {
+         return pretty_print(to_string(v, format), 2);
+      }
+      case rapidjson_generator: {
+         std::stringstream ss;
+         rapidjson::to_stream_pretty(ss, v);
+         return ss.str();
+      }
+      }  // switch
+      return std::string();
    }
 
    void json::save_to_file( const variant& v, const fc::path& fi, bool pretty, output_formatting format )
@@ -830,17 +841,50 @@ namespace fc
 
    std::ostream& json::to_stream( std::ostream& out, const variant& v, output_formatting format )
    {
-      fc::to_stream( out, v, format );
+      switch(format) {
+      case stringify_large_ints_and_doubles:
+      case legacy_generator: {
+          fc::to_stream( out, v, format );
+          break;
+      }
+      case rapidjson_generator: {
+          rapidjson::to_stream(out, v);
+          break;
+      }
+      }  // switch
+      
       return out;
    }
    std::ostream& json::to_stream( std::ostream& out, const variants& v, output_formatting format )
    {
-      fc::to_stream( out, v, format );
+      switch(format) {
+      case stringify_large_ints_and_doubles:
+      case legacy_generator: {
+          fc::to_stream( out, v, format );
+          break;
+      }
+      case rapidjson_generator: {
+          rapidjson::to_stream(out, v);
+          break;
+      }
+      }  // switch
+      
       return out;
    }
    std::ostream& json::to_stream( std::ostream& out, const variant_object& v, output_formatting format )
    {
-      fc::to_stream( out, v, format );
+      switch(format) {
+      case stringify_large_ints_and_doubles:
+      case legacy_generator: {
+          fc::to_stream( out, v, format );
+          break;
+      }
+      case rapidjson_generator: {
+          rapidjson::to_stream(out, v);
+          break;
+      }
+      }  // switch
+      
       return out;
    }
 

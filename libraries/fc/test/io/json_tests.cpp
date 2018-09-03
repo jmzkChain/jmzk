@@ -58,7 +58,7 @@ check_variants_equal(const fc::variant& v1, const fc::variant& v2) {
     } // switch
 }
 
-BOOST_AUTO_TEST_CASE( deseriazlie ) {
+const char* sample_json() {
     auto json = R"(
     {
         "name": "test",
@@ -89,9 +89,14 @@ BOOST_AUTO_TEST_CASE( deseriazlie ) {
         }
     }
     )";
+    return json;
+}
+
+BOOST_AUTO_TEST_CASE( deseriazlie ) {
+    auto json = sample_json();
 
     fc::variant v1, v2;
-    v1 = fc::json::from_string(json);
+    v1 = fc::json::from_string(json, fc::json::legacy_parser);
     v2 = fc::json::from_string(json, fc::json::rapidjson_parser);
     check_variants_equal(v1, v2);
 }
@@ -100,7 +105,20 @@ BOOST_AUTO_TEST_CASE( deseriazliestr ) {
     auto json = R"("hello")";
 
     fc::variant v1, v2;
-    v1 = fc::json::from_string(json);
+    v1 = fc::json::from_string(json, fc::json::legacy_parser);
     v2 = fc::json::from_string(json, fc::json::rapidjson_parser);
+    check_variants_equal(v1, v2);
+}
+
+BOOST_AUTO_TEST_CASE( serialize ) {
+    auto json = sample_json();
+    auto v    = fc::json::from_string(json);
+
+    auto j1 = fc::json::to_string(v, fc::json::stringify_large_ints_and_doubles);
+    auto j2 = fc::json::to_string(v, fc::json::rapidjson_generator);
+
+    auto v1 = fc::json::from_string(j1);
+    auto v2 = fc::json::from_string(j2);
+
     check_variants_equal(v1, v2);
 }
