@@ -1088,22 +1088,22 @@ TEST_CASE("everipass_abi_test", "[abis]") {
     CHECK(*link.get_segment(evt_link::token).strv == "tk3064930465.8381");
 
     auto uid = std::string();
-    uid.push_back(249);
-    uid.push_back(136);
-    uid.push_back(100);
-    uid.push_back(134);
-    uid.push_back(20);
-    uid.push_back(86);
-    uid.push_back(38);
-    uid.push_back(125);
-    uid.push_back(124);
-    uid.push_back(173);
-    uid.push_back(243);
-    uid.push_back(124);
-    uid.push_back(140);
-    uid.push_back(182);
-    uid.push_back(117);
-    uid.push_back(147);
+    uid.push_back((char)249);
+    uid.push_back((char)136);
+    uid.push_back((char)100);
+    uid.push_back((char)134);
+    uid.push_back((char)20);
+    uid.push_back((char)86);
+    uid.push_back((char)38);
+    uid.push_back((char)125);
+    uid.push_back((char)124);
+    uid.push_back((char)173);
+    uid.push_back((char)243);
+    uid.push_back((char)124);
+    uid.push_back((char)140);
+    uid.push_back((char)182);
+    uid.push_back((char)117);
+    uid.push_back((char)147);
 
     CHECK(link.get_segment(evt_link::link_id).strv == uid);
 
@@ -1140,22 +1140,22 @@ TEST_CASE("everipay_abi_test", "[abis]") {
     CHECK(*link.get_segment(evt_link::max_pay).intv == 354);
 
     auto uid = std::string();
-    uid.push_back(64);
-    uid.push_back(88);
-    uid.push_back(198);
-    uid.push_back(100);
-    uid.push_back(114);
-    uid.push_back(181);
-    uid.push_back(167);
-    uid.push_back(198);
-    uid.push_back(1);
-    uid.push_back(40);
-    uid.push_back(34);
-    uid.push_back(167);
-    uid.push_back(221);
-    uid.push_back(101);
-    uid.push_back(118);
-    uid.push_back(103);
+    uid.push_back((char)64);
+    uid.push_back((char)88);
+    uid.push_back((char)198);
+    uid.push_back((char)100);
+    uid.push_back((char)114);
+    uid.push_back((char)181);
+    uid.push_back((char)167);
+    uid.push_back((char)198);
+    uid.push_back((char)1);
+    uid.push_back((char)40);
+    uid.push_back((char)34);
+    uid.push_back((char)167);
+    uid.push_back((char)221);
+    uid.push_back((char)101);
+    uid.push_back((char)118);
+    uid.push_back((char)103);
 
     CHECK(link.get_segment(evt_link::link_id).strv == uid);
 
