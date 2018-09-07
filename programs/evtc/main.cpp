@@ -899,7 +899,7 @@ struct set_meta_subcommands {
             am.value = metavalue;
             am.creator = get_public_key(creator);
 
-            auto act = create_action((domain_name)key, N128(.meta), am);
+            auto act = create_action((domain_name)domain, N128(.meta), am);
             send_actions({act});
         });
 
