@@ -951,6 +951,8 @@ struct set_suspend_subcommands {
 
     set_suspend_subcommands(CLI::App* actionRoot) {
         auto adcmd = actionRoot->add_subcommand("approve", localized("Approve specific suspend transaction"));
+        add_standard_transaction_options(adcmd);
+
         adcmd->add_option("name", name, localized("Proposal name of specific suspend transaction"))->required();
         adcmd->set_callback([this] {
             auto varsuspend = call(get_suspend_func, fc::mutable_variant_object("name", (proposal_name)name));
@@ -978,6 +980,8 @@ struct set_suspend_subcommands {
         });
 
         auto cdcmd = actionRoot->add_subcommand("cancel", localized("Cancel specific suspend transaction"));
+        add_standard_transaction_options(cdcmd);
+
         cdcmd->add_option("name", name, localized("Proposal name of specific suspend transaction"))->required();
         cdcmd->set_callback([this] {
             auto cdact = cancelsuspend();
@@ -988,6 +992,8 @@ struct set_suspend_subcommands {
         });
 
         auto edcmd = actionRoot->add_subcommand("execute", localized("Execute specific suspend transaction"));
+        add_standard_transaction_options(edcmd);
+        
         edcmd->add_option("name", name, localized("Proposal name of specific suspend transaction"))->required();
         edcmd->add_option("executor", executor, localized("Public key of executor for this suspend transaction"))->required();
         edcmd->set_callback([this] {
