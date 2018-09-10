@@ -727,6 +727,11 @@ EVT_ACTION_IMPL(newsuspend) {
     try {
         EVT_ASSERT(context.has_authorized(N128(.suspend), nsact.name), action_authorize_exception, "Authorized information does not match.");
 
+        auto now = context.control.pending_block_time();
+        EVT_ASSERT(nsact.trx.expiration > now, suspend_expired_tx_exception, "Expiration of suspend transaction is ahead of now, expired is ${expir}, now is ${now}", ("expir",nsact.trx.expiration)("now",now));
+
+        context.control.validate_tapos(nsact.trx);
+
         check_name_reserved(nsact.name);
         for(auto& act : nsact.trx.actions) {
             EVT_ASSERT(act.domain != N128(suspend), suspend_invalid_action_exception, "Actions in 'suspend' domain are not allowd deferred-signning");
