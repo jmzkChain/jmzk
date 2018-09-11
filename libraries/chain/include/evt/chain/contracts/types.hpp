@@ -43,6 +43,7 @@ using balance_type    = evt::chain::asset;
 using address_type    = evt::chain::address;
 using address_list    = std::vector<address_type>;
 using conf_key        = evt::chain::conf_key;
+using lock_name       = evt::chain::lock_name;
 
 struct token_def {
     token_def() = default;
@@ -299,6 +300,31 @@ struct prodvote {
     EVT_ACTION(prodvote);
 };
 
+enum asset_type {
+    token = 0, fungible = 1
+};
+
+struct lockasset_def {
+    fc::enum_type<uint8_t, asset_type> type;
+    fc::optional<domain_name>          domain;  // for NFTs
+    fc::optional<token_name>           names;   // for NFTs
+    fc::optional<asset>                amount;  // for FTs
+};
+
+struct newlock {
+    lock_name                  name;
+    time_point_sec             unlock_time;
+    std::vector<lockasset_def> assets;
+    
+    std::vector<public_key_type> cond_keys;
+    std::vector<address>         succeed;
+    std::vector<address>         failed;
+
+    user_id proposer;
+
+    EVT_ACTION(newlock);
+};
+
 }}}  // namespace evt::chain::contracts
 
 FC_REFLECT(evt::chain::contracts::token_def, (domain)(name)(owner)(metas));
@@ -309,6 +335,8 @@ FC_REFLECT(evt::chain::contracts::domain_def, (name)(creator)(create_time)(issue
 FC_REFLECT(evt::chain::contracts::fungible_def, (name)(sym_name)(sym)(creator)(create_time)(issue)(manage)(total_supply)(metas));
 FC_REFLECT_ENUM(evt::chain::contracts::suspend_status, (proposed)(executed)(failed)(cancelled));
 FC_REFLECT(evt::chain::contracts::suspend_def, (name)(proposer)(status)(trx)(signed_keys));
+FC_REFLECT_ENUM(evt::chain::contracts::asset_type, (token)(fungible));
+FC_REFLECT(evt::chain::contracts::lockasset_def, (type)(domain)(names)(amount));
 
 FC_REFLECT(evt::chain::contracts::newdomain, (name)(creator)(issue)(transfer)(manage));
 FC_REFLECT(evt::chain::contracts::issuetoken, (domain)(names)(owner));
@@ -331,3 +359,4 @@ FC_REFLECT(evt::chain::contracts::paycharge, (payer)(charge));
 FC_REFLECT(evt::chain::contracts::everipass, (link));
 FC_REFLECT(evt::chain::contracts::everipay, (link)(payee)(number));
 FC_REFLECT(evt::chain::contracts::prodvote, (producer)(key)(value));
+FC_REFLECT(evt::chain::contracts::newlock, (name)(unlock_time)(assets)(cond_keys)(succeed)(failed));

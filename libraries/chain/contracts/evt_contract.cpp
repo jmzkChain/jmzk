@@ -1097,4 +1097,16 @@ EVT_ACTION_IMPL(prodvote) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
+EVT_ACTION_IMPL(newlock) {
+    auto nlact = context.act.data_as<newlock>();
+    try {
+        EVT_ASSERT(context.has_authorized(N128(.lock), nlact.name), action_authorize_exception, "Authorized information does not match.");
+
+        auto now = context.control.pending_block_time();
+        EVT_ASSERT(nlact.unlock_time > now, lock_unlock_time_exception, "Unlock time is ahead of now, unlock time is ${u}, now is ${n}", ("u",nlact.unlock_time)("n",now));
+
+    }
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+}
+
 }}} // namespace evt::chain::contracts
