@@ -275,6 +275,7 @@ FC_DECLARE_DERIVED_EXCEPTION( tokendb_db_action_exception,       tokendb_excepti
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_dirty_flag_exception,      tokendb_exception, 3150017, "Checkspoints log file is in dirty." );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_squash_exception,          tokendb_exception, 3150018, "Cannot perform squash operation now" );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_prodvote_not_found,        tokendb_exception, 3150019, "Not found specific producer vote" );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_lock_not_found,            tokendb_exception, 3150020, "Not found specific lock proposal" );
 
 FC_DECLARE_DERIVED_EXCEPTION( unknown_block_exception,           misc_exception, 3100002, "unknown block" );
 FC_DECLARE_DERIVED_EXCEPTION( unknown_transaction_exception,     misc_exception, 3100003, "unknown transaction" );

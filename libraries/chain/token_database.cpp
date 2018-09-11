@@ -134,6 +134,11 @@ get_suspend_key(const proposal_name& suspend) {
 }
 
 inline db_key
+get_lock_key(const proposal_name& lock) {
+    return db_key(N128(.lock), lock);
+}
+
+inline db_key
 get_fungible_key(const symbol sym) {
     return db_key(N128(.fungible), (uint128_t)sym.id());
 }
@@ -206,9 +211,12 @@ enum rt_action_type {
     kNewFungible = 9,
     kUpdateFungible = 10,
 
-    kUpdateAsset = 11,
+    kNewLock = 11,
+    kUpdateLock = 12,
 
-    kUpdateProdVote = 13
+    kUpdateAsset = 21,
+
+    kUpdateProdVote = 23
 };
 
 enum pd_action_type {
@@ -233,6 +241,8 @@ struct sp_token {
 struct sp_suspend {
     proposal_name name;
 };
+
+using sp_lock = sp_suspend;
 
 struct sp_fungible {
     symbol_id_type sym_id;
@@ -457,6 +467,32 @@ token_database::exists_suspend(const proposal_name& name) const {
 }
 
 int
+token_database::add_lock(const lock_def& lock) {
+    using namespace __internal;
+    auto key    = get_lock_key(lock.name);
+    auto value  = get_value(lock);
+    auto status = db_->Put(write_opts_, key.as_slice(), value);
+    if(!status.ok()) {
+        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+    }
+    if(should_record()) {
+        auto act  = (sp_lock*)malloc(sizeof(sp_lock));
+        act->name = lock.name;
+        record(kNewLock, act);
+    }
+    return 0;
+}
+
+int
+token_database::exists_lock(const proposal_name& name) const {
+    using namespace __internal;
+    auto key    = get_lock_key(name);
+    auto value  = std::string();
+    auto status = db_->Get(read_opts_, key.as_slice(), &value);
+    return status.ok();
+}
+
+int
 token_database::add_fungible(const fungible_def& fungible) {
     using namespace __internal;
     auto key    = get_fungible_key(fungible.sym);
@@ -616,6 +652,19 @@ token_database::read_suspend(const proposal_name& name, suspend_def& suspend) co
         EVT_THROW(tokendb_suspend_not_found, "Cannot find suspend: ${name}", ("name",name));
     }
     suspend = read_value<suspend_def>(value);
+    return 0;
+}
+
+int
+token_database::read_lock(const proposal_name& name, lock_def& lock) const {
+    using namespace __internal;
+    auto value  = std::string();
+    auto key    = get_lock_key(name);
+    auto status = db_->Get(read_opts_, key.as_slice(), &value);
+    if(!status.ok()) {
+        EVT_THROW(tokendb_lock_not_found, "Cannot find lock proposal: ${name}", ("name",name));
+    }
+    lock = read_value<lock_def>(value);
     return 0;
 }
 
@@ -790,6 +839,23 @@ token_database::update_suspend(const suspend_def& suspend) {
 }
 
 int
+token_database::update_lock(const lock_def& lock) {
+    using namespace __internal;
+    auto key    = get_lock_key(lock.name);
+    auto value  = get_value(lock);
+    auto status = db_->Put(write_opts_, key.as_slice(), value);
+    if(!status.ok()) {
+        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+    }
+    if(should_record()) {
+        auto act  = (sp_lock*)malloc(sizeof(sp_lock));
+        act->name = lock.name;
+        record(kUpdateLock, act);
+    }
+    return 0;
+}
+
+int
 token_database::update_fungible(const fungible_def& fungible) {
     using namespace __internal;
     auto key    = get_fungible_key(fungible.sym);
@@ -957,6 +1023,11 @@ get_sp_keyop(const token_database::rt_action& it, int& op) {
     case kUpdateSuspend: {
         auto act = GETPOINTER(sp_suspend, it.data);
         return get_suspend_key(act->name).as_string();
+    }
+    case kNewLock:
+    case kUpdateLock: {
+        auto act = GETPOINTER(sp_lock, it.data);
+        return get_lock_key(act->name).as_string();
     }
     case kNewFungible:
     case kUpdateFungible: {

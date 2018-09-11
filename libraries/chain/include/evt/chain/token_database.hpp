@@ -160,6 +160,8 @@ public:
     int add_fungible(const fungible_def&);
     int exists_fungible(const symbol) const;
     int exists_fungible(const symbol_id_type) const;
+    int exists_lock(const proposal_name&) const;
+    int add_lock(const lock_def&);
 
     int update_asset(const address& addr, const asset&);
     int exists_any_asset(const address& addr) const;
@@ -171,6 +173,7 @@ public:
     int read_token(const domain_name&, const token_name&, token_def&) const;
     int read_group(const group_name&, group_def&) const;
     int read_suspend(const proposal_name&, suspend_def&) const;
+    int read_lock(const proposal_name&, lock_def&) const;
 
     int read_fungible(const symbol, fungible_def&) const;
     int read_fungible(const symbol_id_type, fungible_def&) const;
@@ -187,6 +190,7 @@ public:
     int update_token(const token_def&);
     int update_suspend(const suspend_def&);
     int update_fungible(const fungible_def&);
+    int update_lock(const lock_def&);
 
 public:
     int add_savepoint(int64_t seq);

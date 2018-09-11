@@ -43,7 +43,6 @@ using balance_type    = evt::chain::asset;
 using address_type    = evt::chain::address;
 using address_list    = std::vector<address_type>;
 using conf_key        = evt::chain::conf_key;
-using lock_name       = evt::chain::lock_name;
 
 struct token_def {
     token_def() = default;
@@ -144,7 +143,7 @@ struct lockasset_def {
 };
 
 struct lock_def {
-    lock_name                           name;
+    proposal_name                       name;
     user_id                             proposer;
     fc::enum_type<uint8_t, lock_status> status;
 
@@ -333,8 +332,8 @@ struct prodvote {
 };
 
 struct newlock {
-    lock_name name;
-    user_id   proposer;
+    proposal_name name;
+    user_id       proposer;
 
     time_point_sec             unlock_time;
     time_point_sec             deadline;

@@ -1105,6 +1105,8 @@ EVT_ACTION_IMPL(newlock) {
     try {
         EVT_ASSERT(context.has_authorized(N128(.lock), nlact.name), action_authorize_exception, "Authorized information does not match.");
 
+        auto& tokendb = context.control.token_db();
+
         auto now = context.control.pending_block_time();
         EVT_ASSERT(nlact.unlock_time > now, lock_unlock_time_exception, "Unlock time is ahead of now, unlock time is ${u}, now is ${n}", ("u",nlact.unlock_time)("n",now));
         EVT_ASSERT(nlact.deadline > now && nlact.deadline > nlact.unlock_time, lock_unlock_time_exception,
@@ -1156,8 +1158,6 @@ EVT_ACTION_IMPL(newlock) {
 
         // transfer assets to lock address
         auto  laddr   = address(N(lock), N128(nlact.name), 0);
-        auto& tokendb = context.control.token_db();
-
         for(auto& la : nlact.assets) {
             if(la.type == asset_type::token) {
                 for(auto& tn : *la.names) {
