@@ -18,9 +18,7 @@ If your need is to develop applications based on everiToken, `JavaScript SDK` is
 ## Resources
 1. [everiToken Website](https://everitoken.io/)
 2. [Technical Whitepaper](https://everitoken.io/docs/whitepaper.pdf)
-3. [API References](docs/API-References.md)
-4. [ABI References](docs/ABI-References.md)
-5. [Documentation for EvtLink / everiPass / everiPay](docs/EvtLink.md)
+3. [Developer Portal](https://everitoken.io/developers)
 
 ## Supported Operating Systems
 everiToken currently supports the following operating systems:  
@@ -38,6 +36,6 @@ everiToken currently supports the following operating systems:
 1. [MyEVT Wallet](http://myevt.io)
 
 ## Getting Started
-Instructions detailing the process of getting the software, building it, running a simple test network that produces blocks, domain creation and issue and transfer tokens to the blockchain can be found on the [Wiki](https://github.com/everitoken/evt/wiki) for this GitHub repository.
+Please refer to [Developer Portal](https://everitoken.io/developers).
 
 everiToken built on earlier work on EOSIO (https://github.com/EOSIO/eos) by Block.one. Thanks!
