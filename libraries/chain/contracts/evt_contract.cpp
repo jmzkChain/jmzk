@@ -819,7 +819,8 @@ EVT_ACTION_IMPL(execsuspend) {
         // instead of add signatures to transaction, check authorization and payer here
         context.control.check_authorization(suspend.signed_keys, suspend.trx);
         if(suspend.trx.payer.type() == address::public_key_t) {
-            EVT_ASSERT(suspend.signed_keys.find(suspend.trx.payer.get_public_key()) != suspend.signed_keys.end(), payer_exception, "Payer ${pay} needs to sign this suspend transaction", ("pay",suspend.trx.payer));
+            EVT_ASSERT(suspend.signed_keys.find(suspend.trx.payer.get_public_key()) != suspend.signed_keys.end(), payer_exception,
+                "Payer ${pay} needs to sign this suspend transaction", ("pay",suspend.trx.payer));
         }
 
         auto strx = signed_transaction(suspend.trx, {});
@@ -1098,12 +1099,87 @@ EVT_ACTION_IMPL(prodvote) {
 }
 
 EVT_ACTION_IMPL(newlock) {
+    using namespace __internal;
+
     auto nlact = context.act.data_as<newlock>();
     try {
         EVT_ASSERT(context.has_authorized(N128(.lock), nlact.name), action_authorize_exception, "Authorized information does not match.");
 
         auto now = context.control.pending_block_time();
         EVT_ASSERT(nlact.unlock_time > now, lock_unlock_time_exception, "Unlock time is ahead of now, unlock time is ${u}, now is ${n}", ("u",nlact.unlock_time)("n",now));
+        EVT_ASSERT(nlact.deadline > now && nlact.deadline > nlact.unlock_time, lock_unlock_time_exception,
+            "Unlock time is ahead of now or unlock time, unlock time is ${u}, now is ${n}", ("u",nlact.unlock_time)("n",now));
+
+        EVT_ASSERT(nlact.cond_keys.size() > 0, lock_cond_keys_exception, "Conditional keys for lock should not be empty");
+        EVT_ASSERT(nlact.assets.size() > 0, lock_assets_exception, "Assets for lock should not be empty");
+
+        auto has_fungible = false;
+        auto keys         = context.trx_context.trx.recover_keys(context.control.get_chain_id());
+        for(auto& la : nlact.assets) {
+            if(la.type == asset_type::token) {
+                EVT_ASSERT(la.domain.valid(), lock_assets_exception, "NFT assets should provide domain name");
+                EVT_ASSERT(la.names.valid(), lock_assets_exception, "NFT assets should provide token names");
+
+                auto tt   = transfer();
+                tt.domain = *la.domain;
+                for(auto& tn : *la.names) {
+                    tt.name = tn;
+
+                    auto ttact = action(tt.domain, tt.name, tt);
+                    context.control.check_authorization(keys, ttact);
+                }
+            }
+            else if(la.type == asset_type::fungible) {
+                EVT_ASSERT(la.from.valid(), lock_assets_exception, "FT assets should provide from address");
+                EVT_ASSERT(la.amount.valid(), lock_assets_exception, "FT assets should provide amount");
+                EVT_ASSERT(la.amount->sym().id() != PEVT_SYM_ID, everipay_exception, "Pinned EVT cannot be used to be locked.");
+                has_fungible = true;
+
+                auto tf   = transferft();
+                tf.from   = *la.from;
+                tf.number = *la.amount;
+
+                auto tfact = action(N128(.fungible), name128(std::to_string(la.amount->sym().id())), tf);
+                context.control.check_authorization(keys, tfact);
+            }
+        }
+
+        if(has_fungible) {
+            // because fungible assets cannot be transfer to multiple addresses.
+            EVT_ASSERT(nlact.succeed.size() == 1, lock_address_exception, "Size of address for succeed situation should be only one when there's fungible assets needs to lock");
+            EVT_ASSERT(nlact.failed.size() == 1, lock_address_exception, "Size of address for failed situation should be only one when there's fungible assets needs to lock");
+        }
+        else {
+            EVT_ASSERT(nlact.succeed.size() > 0, lock_address_exception, "Size of address for succeed situation should not be empty");
+            EVT_ASSERT(nlact.failed.size() > 0, lock_address_exception, "Size of address for failed situation should not be empty");
+        }
+
+        // transfer assets to lock address
+        auto  laddr   = address(N(lock), N128(nlact.name), 0);
+        auto& tokendb = context.control.token_db();
+
+        for(auto& la : nlact.assets) {
+            if(la.type == asset_type::token) {
+                for(auto& tn : *la.names) {
+                    token_def token;
+                    tokendb.read_token(*la.domain, tn, token);
+                    token.owner = { laddr };
+
+                    tokendb.update_token(token);
+                }
+            }
+            else if(la.type == asset_type::fungible) {
+                asset fass, tass;
+                tokendb.read_asset(*la.from, la.amount->sym(), fass);
+                tokendb.read_asset_no_throw(laddr, la.amount->sym(), tass);
+                
+                EVT_ASSERT(fass >= *la.amount, lock_assets_exception, "From address donn't have enough balance left.");
+                transfer_fungible(fass, tass, la.amount->amount());
+
+                tokendb.update_asset(*la.from, fass);
+                tokendb.update_asset(laddr, tass);
+            }
+        }
 
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
