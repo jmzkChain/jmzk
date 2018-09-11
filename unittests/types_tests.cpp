@@ -73,22 +73,22 @@ TEST_CASE("test_link_1", "[types]") {
     CHECK(*link.get_segment(evt_link::token).strv == "tk3064930465.8381");
 
     auto uid = std::string();
-    uid.push_back(249);
-    uid.push_back(136);
-    uid.push_back(100);
-    uid.push_back(134);
-    uid.push_back(20);
-    uid.push_back(86);
-    uid.push_back(38);
-    uid.push_back(125);
-    uid.push_back(124);
-    uid.push_back(173);
-    uid.push_back(243);
-    uid.push_back(124);
-    uid.push_back(140);
-    uid.push_back(182);
-    uid.push_back(117);
-    uid.push_back(147);
+    uid.push_back((char)249);
+    uid.push_back((char)136);
+    uid.push_back((char)100);
+    uid.push_back((char)134);
+    uid.push_back((char)20);
+    uid.push_back((char)86);
+    uid.push_back((char)38);
+    uid.push_back((char)125);
+    uid.push_back((char)124);
+    uid.push_back((char)173);
+    uid.push_back((char)243);
+    uid.push_back((char)124);
+    uid.push_back((char)140);
+    uid.push_back((char)182);
+    uid.push_back((char)117);
+    uid.push_back((char)147);
 
     CHECK(link.get_segment(evt_link::link_id).strv == uid);
 
@@ -120,22 +120,22 @@ TEST_CASE("test_link_2", "[types]") {
     CHECK(*link.get_segment(evt_link::token).strv == "testtoken");
 
     auto uid = std::string();
-    uid.push_back(102);
-    uid.push_back(24);
-    uid.push_back(21);
-    uid.push_back(81);
-    uid.push_back(221);
-    uid.push_back(147);
-    uid.push_back(189);
-    uid.push_back(88);
-    uid.push_back(93);
-    uid.push_back(215);
-    uid.push_back(204);
-    uid.push_back(121);
-    uid.push_back(77);
-    uid.push_back(131);
-    uid.push_back(249);
-    uid.push_back(168);
+    uid.push_back((char)102);
+    uid.push_back((char)24);
+    uid.push_back((char)21);
+    uid.push_back((char)81);
+    uid.push_back((char)221);
+    uid.push_back((char)147);
+    uid.push_back((char)189);
+    uid.push_back((char)88);
+    uid.push_back((char)93);
+    uid.push_back((char)215);
+    uid.push_back((char)204);
+    uid.push_back((char)121);
+    uid.push_back((char)77);
+    uid.push_back((char)131);
+    uid.push_back((char)249);
+    uid.push_back((char)168);
 
     CHECK(link.get_segment(evt_link::link_id).strv == uid);
 
@@ -169,22 +169,22 @@ TEST_CASE("test_link_3", "[types]") {
     CHECK(*link.get_segment(evt_link::token).strv == "testtoken");
 
     auto uid = std::string();
-    uid.push_back(249);
-    uid.push_back(31);
-    uid.push_back(135);
-    uid.push_back(246);
-    uid.push_back(101);
-    uid.push_back(32);
-    uid.push_back(91);
-    uid.push_back(177);
-    uid.push_back(24);
-    uid.push_back(132);
-    uid.push_back(216);
-    uid.push_back(242);
-    uid.push_back(244);
-    uid.push_back(141);
-    uid.push_back(118);
-    uid.push_back(82);
+    uid.push_back((char)249);
+    uid.push_back((char)31);
+    uid.push_back((char)135);
+    uid.push_back((char)246);
+    uid.push_back((char)101);
+    uid.push_back((char)32);
+    uid.push_back((char)91);
+    uid.push_back((char)177);
+    uid.push_back((char)24);
+    uid.push_back((char)132);
+    uid.push_back((char)216);
+    uid.push_back((char)242);
+    uid.push_back((char)244);
+    uid.push_back((char)141);
+    uid.push_back((char)118);
+    uid.push_back((char)82);
 
     CHECK(link.get_segment(evt_link::link_id).strv == uid);
 

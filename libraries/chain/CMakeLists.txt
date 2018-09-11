@@ -73,7 +73,7 @@ target_include_directories( evt_chain_lite
 
 set_target_properties( evt_chain PROPERTIES PUBLIC_HEADER "${HEADERS}" )
 
-find_package(TBB REQUIRED)
+find_package(TBB)
 
 if(ENABLE_MAINNET_BUILD)
     target_compile_definitions(evt_chain PUBLIC MAINNET_BUILD)

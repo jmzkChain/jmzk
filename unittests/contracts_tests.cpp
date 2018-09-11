@@ -828,7 +828,10 @@ TEST_CASE_METHOD(contracts_test, "contract_failsuspend_test", "[contracts]") {
 
     ndact.proposer = key;
     to_variant(ndact, var);
+    CHECK_THROWS_AS(my_tester->push_action(N(newsuspend), N128(.suspend), string_to_name128(get_suspend_name()), var.get_object(), key_seeds, payer), invalid_ref_block_exception);
 
+    ndact.trx.set_reference_block(my_tester->control->head_block_id());
+    to_variant(ndact, var);
     my_tester->push_action(N(newsuspend), N128(.suspend), string_to_name128(get_suspend_name()), var.get_object(), key_seeds, payer);
 
     const char* execute_test_data = R"=======(
@@ -952,6 +955,8 @@ TEST_CASE_METHOD(contracts_test, "contract_successsuspend_test", "[contracts]") 
     auto newdom        = newdomain_var.as<newdomain>();
     newdom.creator     = tester::get_public_key(N(suspend_key));
     to_variant(newdom, newdomain_var);
+
+    ndact.trx.set_reference_block(my_tester->control->fork_db_head_block_id());
     ndact.trx.actions.push_back(my_tester->get_action(N(newdomain), N128(domain), N128(.create), newdomain_var.get_object()));
 
     to_variant(ndact, var);
