@@ -36,6 +36,6 @@ everiToken currently supports the following operating systems:
 1. [MyEVT Wallet](http://myevt.io)
 
 ## Getting Started
-Please refer to [Developer Portal](https://everitoken.io/developers).
+Please refer to [Developer Portal](https://www.everitoken.io/developers).
 
 everiToken built on earlier work on EOSIO (https://github.com/EOSIO/eos) by Block.one. Thanks!
