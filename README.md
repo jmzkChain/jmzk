@@ -16,7 +16,7 @@ If your need is to develop applications based on everiToken, `JavaScript SDK` is
 * [JaveScript SDK](https://github.com/everitoken/evtjs)
 
 ## Resources
-1. [everiToken Website](https://everitoken.io/)
+1. [everiToken Website](https://www.everitoken.io/)
 2. [Technical Whitepaper](https://everitoken.io/docs/whitepaper.pdf)
 3. [Developer Portal](https://everitoken.io/developers)
 
