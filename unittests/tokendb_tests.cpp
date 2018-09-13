@@ -583,8 +583,8 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_fungible_test", "[tokendb]") {
 
     CHECK(!tokendb.exists_fungible(EVT_SYM_ID));
     CHECK(!tokendb.exists_fungible(symbol(5, EVT_SYM_ID)));
-    CHECK_THROWS_AS(tokendb.read_fungible(EVT_SYM_ID, tmp_fungible), tokendb_fungible_not_found);
-    CHECK_THROWS_AS(tokendb.read_fungible(symbol(5, EVT_SYM_ID), tmp_fungible), tokendb_fungible_not_found);
+    CHECK_THROWS_AS(tokendb.read_fungible(EVT_SYM_ID, tmp_fungible), tokendb_key_not_found);
+    CHECK_THROWS_AS(tokendb.read_fungible(symbol(5, EVT_SYM_ID), tmp_fungible), tokendb_key_not_found);
 
     auto evt_fungible = fungible_def();
     evt_fungible.sym  = symbol(5, EVT_SYM_ID);
@@ -604,7 +604,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_fungible_test", "[tokendb]") {
     auto address1  = public_key_type(std::string("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"));
     CHECK(!tokendb.exists_any_asset(address1));
     CHECK(!tokendb.exists_asset(address1, symbol(5, EVT_SYM_ID)));
-    CHECK_THROWS_AS(tokendb.read_asset(address1, symbol(5, EVT_SYM_ID), tmp_asset), tokendb_asset_not_found);
+    CHECK_THROWS_AS(tokendb.read_asset(address1, symbol(5, EVT_SYM_ID), tmp_asset), tokendb_key_not_found);
     CHECK_NOTHROW(tokendb.read_asset_no_throw(address1, symbol(5, EVT_SYM_ID), tmp_asset));
     CHECK(tmp_asset == asset(0, symbol(5, EVT_SYM_ID)));
 
@@ -806,7 +806,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_checkpoint_test", "[tokendb]") {
 }
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_addsuspend_test", "[tokendb]") {
-    CHECK(true);
+    CHECK(tokendb.get_savepoints_size() == 0);
 
     auto dl = add_suspend_data();
     CHECK(!tokendb.exists_suspend(dl.name));
@@ -818,7 +818,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_addsuspend_test", "[tokendb]") {
     suspend_def dl_;
     tokendb.read_suspend(dl.name, dl_);
 
-    CHECK(proposed == dl_.status);
+    CHECK(suspend_status::proposed == dl_.status);
     CHECK(dl.name == dl_.name);
     CHECK("EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3" == (std::string)dl_.proposer);
     CHECK("2018-07-04T05:14:12" == dl_.trx.expiration.to_iso_string());
@@ -842,7 +842,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_updatesuspend_test", "[tokendb]") {
     suspend_def dl_;
     tokendb.read_suspend(dl.name, dl_);
 
-    CHECK(executed == dl_.status);
+    CHECK(suspend_status::executed == dl_.status);
     CHECK(dl.name == dl_.name);
     CHECK("EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3" == (std::string)dl_.proposer);
     CHECK("2018-07-04T05:14:12" == dl_.trx.expiration.to_iso_string());

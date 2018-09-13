@@ -4,6 +4,7 @@
 */
 #pragma once
 #include <deque>
+#include <memory>
 #include <boost/noncopyable.hpp>
 #include <evt/chain/asset.hpp>
 #include <evt/chain/contracts/types.hpp>
@@ -36,19 +37,20 @@ class token_database : boost::noncopyable {
 public:
     struct flag {
     public:
-        flag(uint16_t type) : type(type) {}
+        flag(uint8_t type, uint8_t op) : type(type), op(op) {}
 
     public:
         char     payload[6];
-        uint16_t type;
+        uint8_t  type;
+        uint8_t  op;
     };
 
     // realtime action
     // stored in memory
     struct rt_action {
     public:
-        rt_action(uint16_t type, void* data)
-            : f(type) {
+        rt_action(uint8_t type, uint8_t op, void* data)
+            : f(type, op) {
             SETPOINTER(void, this->data, data);
         }
 
@@ -79,7 +81,7 @@ public:
 
     struct sp_node {
     public:
-        sp_node(uint16_t type) : f(type) {}
+        sp_node(uint8_t type) : f(type, 0) {}
 
     public:
         union {
@@ -90,7 +92,7 @@ public:
 
     struct savepoint {
     public:
-        savepoint(int64_t seq, uint16_t type)
+        savepoint(int64_t seq, uint8_t type)
             : seq(seq), node(type) {}
 
     public:
@@ -135,13 +137,7 @@ public:
     };
 
 public:
-    token_database()
-        : db_(nullptr)
-        , read_opts_()
-        , write_opts_()
-        , tokens_handle_(nullptr)
-        , assets_handle_(nullptr)
-        , savepoints_() {}
+    token_database();
     token_database(const fc::path& dbpath);
     ~token_database();
 
@@ -210,7 +206,7 @@ private:
 
 private:
     int should_record() { return !savepoints_.empty(); }
-    int record(int type, void* data);
+    int record(uint8_t type, uint8_t op, void* data);
     int free_savepoint(savepoint&);
 
 private:
@@ -218,16 +214,21 @@ private:
     int load_savepoints();
 
 private:
-    std::string                  db_path_;
+    std::string db_path_;
 
-    rocksdb::DB*                 db_;
-    rocksdb::ReadOptions         read_opts_;
-    rocksdb::WriteOptions        write_opts_;
+    rocksdb::DB*          db_;
+    rocksdb::ReadOptions  read_opts_;
+    rocksdb::WriteOptions write_opts_;
 
     rocksdb::ColumnFamilyHandle* tokens_handle_;
     rocksdb::ColumnFamilyHandle* assets_handle_;  
 
-    std::deque<savepoint>        savepoints_;
+    std::deque<savepoint> savepoints_;
+
+    std::unique_ptr<class token_database_impl> my_;
+
+private:
+    friend class token_database_impl;
 };
 
 }}  // namespace evt::chain
