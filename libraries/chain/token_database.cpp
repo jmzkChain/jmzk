@@ -114,7 +114,18 @@ struct key_hasher {
 
 using key_unordered_set = std::unordered_set<std::string, key_hasher>;
 
-enum DataTypes {
+enum act_type {
+    kRT = 0,
+    kPD
+};
+
+enum act_op {
+    kNew = 0,
+    kUpdate,
+    kNewOrUpdate
+};
+
+enum act_data_type {
     kDomain = 0,
     kToken,
     kGroup,
@@ -132,13 +143,13 @@ template<uint128_t i>
 constexpr uint128<i> uint128_c{};
 
 auto act_data_map = hana::make_map(
-        hana::make_pair(hana::int_c<kDomain>, hana::make_tuple(uint128_c<N128(.domain)>, hana::type_c<domain_def>)),
-        hana::make_pair(hana::int_c<kGroup>, hana::make_tuple(uint128_c<N128(.group)>, hana::type_c<group_def>)),
-        hana::make_pair(hana::int_c<kSuspend>, hana::make_tuple(uint128_c<N128(.suspend)>, hana::type_c<suspend_def>)),
-        hana::make_pair(hana::int_c<kLock>, hana::make_tuple(uint128_c<N128(.lock)>, hana::type_c<lock_def>)),
-        hana::make_pair(hana::int_c<kFungible>, hana::make_tuple(uint128_c<N128(.fungible)>, hana::type_c<fungible_def>)),
-        hana::make_pair(hana::int_c<kProdVote>, hana::make_tuple(uint128_c<N128(.prodvote)>, hana::type_c<prodvote>))
-    );
+    hana::make_pair(hana::int_c<kDomain>, hana::make_tuple(uint128_c<N128(.domain)>, hana::type_c<domain_def>)),
+    hana::make_pair(hana::int_c<kGroup>, hana::make_tuple(uint128_c<N128(.group)>, hana::type_c<group_def>)),
+    hana::make_pair(hana::int_c<kSuspend>, hana::make_tuple(uint128_c<N128(.suspend)>, hana::type_c<suspend_def>)),
+    hana::make_pair(hana::int_c<kLock>, hana::make_tuple(uint128_c<N128(.lock)>, hana::type_c<lock_def>)),
+    hana::make_pair(hana::int_c<kFungible>, hana::make_tuple(uint128_c<N128(.fungible)>, hana::type_c<fungible_def>)),
+    hana::make_pair(hana::int_c<kProdVote>, hana::make_tuple(uint128_c<N128(.prodvote)>, hana::type_c<prodvote>))
+);
 
 inline db_key
 get_db_key(const name128& prefix, const name128& n) {
@@ -188,17 +199,6 @@ read_value(const V& value) {
     
     return v;
 }
-
-enum act_type {
-    kRT = 0,
-    kPD
-};
-
-enum act_op {
-    kNew = 0,
-    kUpdate,
-    kNewOrUpdate
-};
 
 struct rt_data_key {
     name128 key;
