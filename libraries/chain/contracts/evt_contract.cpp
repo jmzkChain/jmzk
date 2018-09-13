@@ -1106,6 +1106,7 @@ EVT_ACTION_IMPL(newlock) {
         EVT_ASSERT(context.has_authorized(N128(.lock), nlact.name), action_authorize_exception, "Authorized information does not match.");
 
         auto& tokendb = context.control.token_db();
+        EVT_ASSERT(!tokendb.exists_lock(nlact.name), lock_existes_exception, "Lock assets with same name: ${n} is already existed", ("n",nlact.name));
 
         auto now = context.control.pending_block_time();
         EVT_ASSERT(nlact.unlock_time > now, lock_unlock_time_exception, "Unlock time is ahead of now, unlock time is ${u}, now is ${n}", ("u",nlact.unlock_time)("n",now));
@@ -1157,7 +1158,7 @@ EVT_ACTION_IMPL(newlock) {
         }
 
         // transfer assets to lock address
-        auto  laddr   = address(N(lock), N128(nlact.name), 0);
+        auto laddr = address(N(lock), N128(nlact.name), 0);
         for(auto& la : nlact.assets) {
             if(la.type == asset_type::token) {
                 for(auto& tn : *la.names) {
@@ -1181,6 +1182,18 @@ EVT_ACTION_IMPL(newlock) {
             }
         }
 
+        auto lock        = lock_def();
+        lock.name        = nlact.name;
+        lock.proposer    = nlact.proposer;
+        lock.status      = lock_status::proposed;
+        lock.unlock_time = nlact.unlock_time;
+        lock.deadline    = nlact.deadline;
+        lock.assets      = std::move(nlact.assets);
+        lock.cond_keys   = std::move(nlact.cond_keys);
+        lock.succeed     = std::move(nlact.succeed);
+        lock.failed      = std::move(nlact.failed);
+
+        tokendb.add_lock(lock);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }

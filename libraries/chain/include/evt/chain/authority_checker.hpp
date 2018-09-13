@@ -578,6 +578,22 @@ struct check_authority<prodvote> {
 };
 
 template<>
+struct check_authority<newlock> {
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        try {
+            auto& ns    = act.data_as<const newlock&>();
+            auto vistor = authority_checker::weight_tally_visitor(checker);
+            if(vistor(ns.proposer, 1) == 1) {
+                return true;
+            }
+        }
+        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `newlock` type.");
+        return false;
+    }
+};
+
+template<>
 struct check_authority<paycharge> {
     static bool
     invoke(const action&, authority_checker*) {
