@@ -1039,17 +1039,24 @@ parse_lockasset(const string& str) {
     auto la = lockasset_def();
     if(strs[0].substr(0, 1) == "@") {
         // FT Tokens
-        la.type   = asset_type::fungible;
-        la.from   = get_address(strs[0]);
-        la.amount = asset::from_string(strs[1]);
+        la.type = asset_type::fungible;
+
+        auto fungible   = lockft_def();
+        fungible.from   = get_address(strs[0]);
+        fungible.amount = asset::from_string(strs[1]);
+
+        la.fungible = fungible;
     }
     else {
-        la.type   = asset_type::token;
-        la.domain = (name128)strs[0];
-        la.names  = vector<name128>();
+        la.type = asset_type::tokens;
+
+        auto tokens   = locknft_def();
+        tokens.domain = (name128)strs[0];
         for(auto i = 1u; i < strs.size() - 1; i++) {
-            la.names->emplace_back(name128(strs[i]));
+            tokens.names.emplace_back(name128(strs[i]));
         }
+
+        la.tokens = tokens;
     }
     return la;
 }

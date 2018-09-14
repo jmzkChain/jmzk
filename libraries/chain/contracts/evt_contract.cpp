@@ -1119,13 +1119,13 @@ EVT_ACTION_IMPL(newlock) {
         auto has_fungible = false;
         auto keys         = context.trx_context.trx.recover_keys(context.control.get_chain_id());
         for(auto& la : nlact.assets) {
-            if(la.type == asset_type::token) {
-                EVT_ASSERT(la.domain.valid(), lock_assets_exception, "NFT assets should provide domain name");
-                EVT_ASSERT(la.names.valid(), lock_assets_exception, "NFT assets should provide token names");
+            if(la.type == asset_type::tokens) {
+                EVT_ASSERT(la.tokens.valid(), lock_assets_exception, "NFT assets should be provided.");
+                auto& tokens = *la.tokens;
 
                 auto tt   = transfer();
-                tt.domain = *la.domain;
-                for(auto& tn : *la.names) {
+                tt.domain = tokens.domain;
+                for(auto& tn : tokens.names) {
                     tt.name = tn;
 
                     auto ttact = action(tt.domain, tt.name, tt);
@@ -1133,16 +1133,17 @@ EVT_ACTION_IMPL(newlock) {
                 }
             }
             else if(la.type == asset_type::fungible) {
-                EVT_ASSERT(la.from.valid(), lock_assets_exception, "FT assets should provide from address");
-                EVT_ASSERT(la.amount.valid(), lock_assets_exception, "FT assets should provide amount");
-                EVT_ASSERT(la.amount->sym().id() != PEVT_SYM_ID, everipay_exception, "Pinned EVT cannot be used to be locked.");
+                EVT_ASSERT(la.fungible.valid(), lock_assets_exception, "FT assets should be provided.");
+                auto& fungible = *la.fungible;
+
+                EVT_ASSERT(fungible.amount.sym().id() != PEVT_SYM_ID, everipay_exception, "Pinned EVT cannot be used to be locked.");
                 has_fungible = true;
 
                 auto tf   = transferft();
-                tf.from   = *la.from;
-                tf.number = *la.amount;
+                tf.from   = fungible.from;
+                tf.number = fungible.amount;
 
-                auto tfact = action(N128(.fungible), name128(std::to_string(la.amount->sym().id())), tf);
+                auto tfact = action(N128(.fungible), name128(std::to_string(fungible.amount.sym().id())), tf);
                 context.control.check_authorization(keys, tfact);
             }
         }
@@ -1160,24 +1161,27 @@ EVT_ACTION_IMPL(newlock) {
         // transfer assets to lock address
         auto laddr = address(N(lock), N128(nlact.name), 0);
         for(auto& la : nlact.assets) {
-            if(la.type == asset_type::token) {
-                for(auto& tn : *la.names) {
+            if(la.type == asset_type::tokens) {
+                auto& tokens = *la.tokens;
+                for(auto& tn : tokens.names) {
                     token_def token;
-                    tokendb.read_token(*la.domain, tn, token);
+                    tokendb.read_token(tokens.domain, tn, token);
                     token.owner = { laddr };
 
                     tokendb.update_token(token);
                 }
             }
             else if(la.type == asset_type::fungible) {
-                asset fass, tass;
-                tokendb.read_asset(*la.from, la.amount->sym(), fass);
-                tokendb.read_asset_no_throw(laddr, la.amount->sym(), tass);
-                
-                EVT_ASSERT(fass >= *la.amount, lock_assets_exception, "From address donn't have enough balance left.");
-                transfer_fungible(fass, tass, la.amount->amount());
+                auto& fungible = *la.fungible;
 
-                tokendb.update_asset(*la.from, fass);
+                asset fass, tass;
+                tokendb.read_asset(fungible.from, fungible.amount.sym(), fass);
+                tokendb.read_asset_no_throw(laddr, fungible.amount.sym(), tass);
+                
+                EVT_ASSERT(fass >= fungible.amount, lock_assets_exception, "From address donn't have enough balance left.");
+                transfer_fungible(fass, tass, fungible.amount.amount());
+
+                tokendb.update_asset(fungible.from, fass);
                 tokendb.update_asset(laddr, tass);
             }
         }

@@ -46,6 +46,8 @@ evt_contract_abi() {
     evt_abi.types.push_back( type_def{"meta_value","string"} );
     evt_abi.types.push_back( type_def{"meta_list","meta[]"} );
     evt_abi.types.push_back( type_def{"suspend_status","uint8"} );
+    evt_abi.types.push_back( type_def{"asset_type","uint8"} );
+    evt_abi.types.push_back( type_def{"lock_status","uint8"} );
     evt_abi.types.push_back( type_def{"conf_key","name128"} );
 
     evt_abi.actions.push_back( action_def{name("newdomain"), "newdomain"} );
@@ -142,6 +144,43 @@ evt_contract_abi() {
             {"trx", "transaction"},
             {"signed_keys","public_key[]"},
             {"signatures","signature[]"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "locknft_def", "", {
+            {"domain", "domain_name"},
+            {"names", "token_name[]"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "lockft_def", "", {
+            {"from", "address"},
+            {"amount", "asset"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "lockasset_def", "", {
+            {"type", "asset_type"},
+            {"tokens", "locknft_def?"},
+            {"fungible", "lockft_def?"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "lock_def", "", {
+            {"name", "proposal_name"},
+            {"proposer", "user_id"},
+            {"status", "suspend_status"},
+            {"unlock_time", "time_point_sec"},
+            {"deadline","time_point_sec"},
+            {"assets","lockasset_def[]"},
+            {"cond_keys", "public_key[]"},
+            {"succeed", "address[]"},
+            {"failed", "address[]"},
+            {"signed_keys", "public_key[]"}
         }
     });
 
