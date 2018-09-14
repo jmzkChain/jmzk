@@ -894,47 +894,43 @@ token_database::squash() {
 namespace __internal {
 
 std::string
-get_sp_keyop(const token_database::rt_action& it, int& op) {
-    // for the db action type, New-Ops are odd and Update-Ops are even
-    // for Update-Ops return kRevert(0) and returns kRemove(1) for New-Ops
-    op = it.f.op;
-
-    switch(it.f.type) {
+get_sp_key(const token_database::rt_action& act) {
+    switch(act.f.type) {
     case kDomain: {
-        auto act = GETPOINTER(rt_data_key, it.data);
-        return get_db_key<kDomain>(act->key).as_string();
+        auto data = GETPOINTER(rt_data_key, act.data);
+        return get_db_key<kDomain>(data->key).as_string();
     }
     case kToken: {
-        FC_ASSERT(op != kNew);
-        auto act = GETPOINTER(rt_data_key2, it.data);
-        return get_db_key(act->key1, act->key2).as_string();
+        FC_ASSERT(act.f.op != kNew);
+        auto data = GETPOINTER(rt_data_key2, act.data);
+        return get_db_key(data->key1, data->key2).as_string();
     }
     case kGroup: {
-        auto act = GETPOINTER(rt_data_key, it.data);
-        return get_db_key<kGroup>(act->key).as_string();
+        auto data = GETPOINTER(rt_data_key, act.data);
+        return get_db_key<kGroup>(data->key).as_string();
     }
     case kSuspend: {
-        auto act = GETPOINTER(rt_data_key, it.data);
-        return get_db_key<kSuspend>(act->key).as_string();
+        auto data = GETPOINTER(rt_data_key, act.data);
+        return get_db_key<kSuspend>(data->key).as_string();
     }
     case kLock: {
-        auto act = GETPOINTER(rt_data_key, it.data);
-        return get_db_key<kLock>(act->key).as_string();
+        auto data = GETPOINTER(rt_data_key, act.data);
+        return get_db_key<kLock>(data->key).as_string();
     }
     case kFungible: {
-        auto act = GETPOINTER(rt_data_key, it.data);
-        return get_db_key<kFungible>(act->key).as_string();
+        auto data = GETPOINTER(rt_data_key, act.data);
+        return get_db_key<kFungible>(data->key).as_string();
     }
     case kProdVote: {
-        auto act = GETPOINTER(rt_data_key, it.data);
-        return get_db_key<kProdVote>(act->key).as_string();
+        auto data = GETPOINTER(rt_data_key, act.data);
+        return get_db_key<kProdVote>(data->key).as_string();
     }
     case kAsset: {
-        auto act = GETPOINTER(rt_data_asset, it.data);
-        return std::string(act->key, sizeof(act->key));
+        auto data = GETPOINTER(rt_data_asset, act.data);
+        return std::string(data->key, sizeof(data->key));
     }
     default: {
-        FC_ASSERT(false);
+        EVT_THROW(fc::unrecoverable_exception, "Not excepted action type: ${t}", ("t",act.f.type));
     }
     }  // switch
 }
@@ -976,8 +972,8 @@ token_database::rollback_rt_group(rt_group* rt) {
             continue;
         }
 
-        auto op  = 0;
-        auto key = get_sp_keyop(*it, op);
+        auto op  = it->f.op;
+        auto key = get_sp_key(*it);
 
         switch(op) {
         case kNew: {
@@ -1240,8 +1236,8 @@ token_database::persist_savepoints() {
                 }
 
                 auto pdact = pd_action();
-                int  op    = 0;
-                auto key   = get_sp_keyop(act, op);
+                auto op    = act.f.op;
+                auto key   = get_sp_key(act);
 
                 pdact.op   = op;
                 pdact.type = act.f.type;
