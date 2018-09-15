@@ -1052,7 +1052,7 @@ parse_lockasset(const string& str) {
 
         auto tokens   = locknft_def();
         tokens.domain = (name128)strs[0];
-        for(auto i = 1u; i < strs.size() - 1; i++) {
+        for(auto i = 1u; i < strs.size(); i++) {
             tokens.names.emplace_back(name128(strs[i]));
         }
 

@@ -1121,6 +1121,7 @@ EVT_ACTION_IMPL(newlock) {
         for(auto& la : nlact.assets) {
             if(la.type == asset_type::tokens) {
                 EVT_ASSERT(la.tokens.valid(), lock_assets_exception, "NFT assets should be provided.");
+                EVT_ASSERT(la.tokens->names.size() > 0, lock_assets_exception, "NFT assets should be provided.");
                 auto& tokens = *la.tokens;
 
                 auto tt   = transfer();
