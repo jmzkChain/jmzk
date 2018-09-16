@@ -1237,6 +1237,20 @@ struct set_get_suspend_subcommand {
     }
 };
 
+struct set_get_lock_subcommand {
+    string name;
+
+    set_get_lock_subcommand(CLI::App* actionRoot) {
+        auto gdcmd = actionRoot->add_subcommand("lock", localized("Retrieve a lock assets proposal"));
+        gdcmd->add_option("name", name, localized("Name of lock assets proposal to be retrieved"))->required();
+
+        gdcmd->set_callback([this] {
+            auto arg = fc::mutable_variant_object("name", name);
+            print_info(call(get_lock_func, arg));
+        });
+    }
+};
+
 void
 get_my_resources(const std::string& url) {
     auto info = get_info();
@@ -1458,6 +1472,7 @@ main(int argc, char** argv) {
     set_get_my_subcommands      get_my(get);
     set_get_history_subcommands get_history(get); 
     set_get_suspend_subcommand  get_suspend(get);
+    set_get_lock_subcommand     get_lock(get);
 
     // Net subcommand
     string new_host;
