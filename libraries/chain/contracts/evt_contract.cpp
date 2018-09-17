@@ -1098,6 +1098,15 @@ EVT_ACTION_IMPL(prodvote) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 
+EVT_ACTION_IMPL(updsched) {
+    auto usact = context.act.data_as<updsched>();
+    try {
+        EVT_ASSERT(context.has_authorized(N128(.prodsched), N128(.update)), action_authorize_exception, "Authorized information does not match.");
+        context.control.set_proposed_producers(std::move(usact.producers));
+    }
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+}
+
 EVT_ACTION_IMPL(newlock) {
     using namespace __internal;
 

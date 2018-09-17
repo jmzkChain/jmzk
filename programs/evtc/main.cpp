@@ -1162,7 +1162,7 @@ struct set_producer_subcommands {
                 usact.producers.emplace_back(parse_prodkey(prodkey));
             }
 
-            auto act = create_action(N128(.prodsched), N128(.upd), usact);
+            auto act = create_action(N128(.prodsched), N128(.update), usact);
             send_actions({act});
         });
     }
