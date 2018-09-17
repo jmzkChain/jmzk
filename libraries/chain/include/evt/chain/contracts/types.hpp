@@ -10,6 +10,7 @@
 #include <evt/chain/config.hpp>
 #include <evt/chain/types.hpp>
 #include <evt/chain/transaction.hpp>
+#include <evt/chain/producer_schedule.hpp>
 
 #include <evt/chain/contracts/authorizer_ref.hpp>
 #include <evt/chain/contracts/group.hpp>
@@ -112,7 +113,7 @@ struct fungible_def {
     meta_list metas;
 };
 
-enum suspend_status {
+enum class suspend_status {
     proposed = 0, executed, failed, cancelled
 };
 
@@ -124,6 +125,46 @@ struct suspend_def {
     fc::enum_type<uint8_t, suspend_status> status;
     transaction                            trx;
     flat_set<public_key_type>              signed_keys;
+};
+
+enum class asset_type {
+    tokens = 0, fungible = 1
+};
+
+enum class lock_status {
+    proposed = 0, succeed, failed
+};
+
+struct locknft_def {
+    domain_name             domain;
+    std::vector<token_name> names;
+};
+
+struct lockft_def {
+    address from;
+    asset   amount;
+};
+
+struct lockasset_def {
+    fc::enum_type<uint8_t, asset_type> type;
+    fc::optional<locknft_def>          tokens;
+    fc::optional<lockft_def>           fungible;
+};
+
+struct lock_def {
+    proposal_name                       name;
+    user_id                             proposer;
+    fc::enum_type<uint8_t, lock_status> status;
+
+    time_point_sec             unlock_time;
+    time_point_sec             deadline;
+    std::vector<lockasset_def> assets;
+    
+    std::vector<public_key_type> cond_keys;
+    std::vector<address>         succeed;
+    std::vector<address>         failed;
+
+    flat_set<public_key_type> signed_keys;
 };
 
 struct newdomain {
@@ -299,6 +340,27 @@ struct prodvote {
     EVT_ACTION(prodvote);
 };
 
+struct updsched {
+    vector<producer_key> producers;
+
+    EVT_ACTION(updsched);
+};
+
+struct newlock {
+    proposal_name name;
+    user_id       proposer;
+
+    time_point_sec             unlock_time;
+    time_point_sec             deadline;
+    std::vector<lockasset_def> assets;
+    
+    std::vector<public_key_type> cond_keys;
+    std::vector<address>         succeed;
+    std::vector<address>         failed;
+
+    EVT_ACTION(newlock);
+};
+
 }}}  // namespace evt::chain::contracts
 
 FC_REFLECT(evt::chain::contracts::token_def, (domain)(name)(owner)(metas));
@@ -309,6 +371,12 @@ FC_REFLECT(evt::chain::contracts::domain_def, (name)(creator)(create_time)(issue
 FC_REFLECT(evt::chain::contracts::fungible_def, (name)(sym_name)(sym)(creator)(create_time)(issue)(manage)(total_supply)(metas));
 FC_REFLECT_ENUM(evt::chain::contracts::suspend_status, (proposed)(executed)(failed)(cancelled));
 FC_REFLECT(evt::chain::contracts::suspend_def, (name)(proposer)(status)(trx)(signed_keys));
+FC_REFLECT_ENUM(evt::chain::contracts::asset_type, (tokens)(fungible));
+FC_REFLECT_ENUM(evt::chain::contracts::lock_status, (proposed)(succeed)(failed));
+FC_REFLECT(evt::chain::contracts::locknft_def, (domain)(names));
+FC_REFLECT(evt::chain::contracts::lockft_def, (from)(amount));
+FC_REFLECT(evt::chain::contracts::lockasset_def, (type)(tokens)(fungible));
+FC_REFLECT(evt::chain::contracts::lock_def, (name)(proposer)(status)(unlock_time)(deadline)(assets)(cond_keys)(succeed)(failed)(signed_keys));
 
 FC_REFLECT(evt::chain::contracts::newdomain, (name)(creator)(issue)(transfer)(manage));
 FC_REFLECT(evt::chain::contracts::issuetoken, (domain)(names)(owner));
@@ -331,3 +399,6 @@ FC_REFLECT(evt::chain::contracts::paycharge, (payer)(charge));
 FC_REFLECT(evt::chain::contracts::everipass, (link));
 FC_REFLECT(evt::chain::contracts::everipay, (link)(payee)(number));
 FC_REFLECT(evt::chain::contracts::prodvote, (producer)(key)(value));
+FC_REFLECT(evt::chain::contracts::updsched, (producers));
+FC_REFLECT(evt::chain::contracts::newlock, (name)(proposer)(unlock_time)(deadline)(assets)(cond_keys)(succeed)(failed));
+

@@ -1386,8 +1386,13 @@ controller::contracts_console() const {
 }
 
 validation_mode
-controller::get_validation_mode()const {
+controller::get_validation_mode() const {
     return my->conf.block_validation_mode;
+}
+
+const genesis_state&
+controller::get_genesis_state() const {
+    return my->conf.genesis;
 }
 
 chain_id_type

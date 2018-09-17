@@ -150,6 +150,16 @@ read_only::get_suspend(const get_suspend_params& params) {
     return var;
 }
 
+fc::variant
+read_only::get_lock(const get_lock_params& params) {
+    const auto& db = db_.token_db();
+    variant  var;
+    lock_def lock;
+    db.read_lock(params.name, lock);
+    fc::to_variant(lock, var);
+    return var;
+}
+
 }  // namespace evt_apis
 
 }  // namespace evt

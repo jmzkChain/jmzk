@@ -129,6 +129,7 @@ const std::string get_group_func            = evt_func_base + "/get_group";
 const std::string get_fungible_func         = evt_func_base + "/get_fungible";
 const std::string get_fungible_balance_func = evt_func_base + "/get_fungible_balance";
 const std::string get_suspend_func          = evt_func_base + "/get_suspend";
+const std::string get_lock_func             = evt_func_base + "/get_lock";
 
 const std::string history_func_base    = "/v1/history";
 const std::string get_my_domains       = history_func_base + "/get_domains";

@@ -1170,7 +1170,7 @@ TEST_CASE_METHOD(contracts_test, "everipass_test", "[contracts]") {
 
     ep.link.add_segment(evt_link::segment(evt_link::token, "t4"));
     sign_link(ep.link);
-    CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t4), ep), key_seeds, payer), tokendb_token_not_found);
+    CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t4), ep), key_seeds, payer), tokendb_key_not_found);
 
     header |= evt_link::destroy;
     ep.link.set_header(header);

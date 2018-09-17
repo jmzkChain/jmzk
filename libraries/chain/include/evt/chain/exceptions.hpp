@@ -198,6 +198,12 @@ FC_DECLARE_DERIVED_EXCEPTION( everipay_exception,                  action_except
 FC_DECLARE_DERIVED_EXCEPTION( prodvote_key_exception,              action_exception, 3040046, "Unknown prodvote conf key.");
 FC_DECLARE_DERIVED_EXCEPTION( prodvote_value_exception,            action_exception, 3040047, "Invalid prodvote conf value.");
 FC_DECLARE_DERIVED_EXCEPTION( prodvote_producer_exception,         action_exception, 3040048, "Invalid producer.");
+FC_DECLARE_DERIVED_EXCEPTION( lock_existes_exception,              action_exception, 3040049, "Lock assets proposal already exists." );
+FC_DECLARE_DERIVED_EXCEPTION( lock_unlock_time_exception,          action_exception, 3040050, "Invalid unlock time.");
+FC_DECLARE_DERIVED_EXCEPTION( lock_deadline_exception,             action_exception, 3040051, "Invalid deadline.");
+FC_DECLARE_DERIVED_EXCEPTION( lock_assets_exception,               action_exception, 3040052, "Invalid lock assets.");
+FC_DECLARE_DERIVED_EXCEPTION( lock_address_exception,              action_exception, 3040053, "Invalid lock address.");
+FC_DECLARE_DERIVED_EXCEPTION( lock_cond_keys_exception,            action_exception, 3040054, "Invalid lock conditional keys.");
 
 FC_DECLARE_DERIVED_EXCEPTION( name_type_exception,               chain_type_exception, 3120001, "Invalid name" );
 FC_DECLARE_DERIVED_EXCEPTION( public_key_type_exception,         chain_type_exception, 3120002, "Invalid public key" );
@@ -250,25 +256,14 @@ FC_DECLARE_DERIVED_EXCEPTION( unsupported_key_type_exception,    wallet_exceptio
 FC_DECLARE_DERIVED_EXCEPTION( invalid_lock_timeout_exception,    wallet_exception, 3140011, "Wallet lock timeout is invalid" );
 FC_DECLARE_DERIVED_EXCEPTION( secure_enclave_exception,          wallet_exception, 3140012, "Secure Enclave Exception" );
 
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_domain_existed,            tokendb_exception, 3150001, "Domain already exists" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_group_existed,             tokendb_exception, 3150002, "Permission Group already exists" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_token_existed,             tokendb_exception, 3150003, "Token already exists" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_account_existed,           tokendb_exception, 3150004, "Account already exists" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_suspend_existed,           tokendb_exception, 3150005, "Delay already exists" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_domain_not_found,          tokendb_exception, 3150006, "Not found specific domain" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_group_not_found,           tokendb_exception, 3150007, "Not found specific group" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_token_not_found,           tokendb_exception, 3150008, "Not found specific token" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_suspend_not_found,         tokendb_exception, 3150009, "Not found specific suspend" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_fungible_not_found,        tokendb_exception, 3150010, "Not found specific fungible" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_address_not_found,         tokendb_exception, 3150011, "Not found specific address" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_asset_not_found,           tokendb_exception, 3150012, "Not found specific asset in address" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_rocksdb_exception,         tokendb_exception, 3150013, "Rocksdb internal error occurred." );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_no_savepoint,              tokendb_exception, 3150014, "No savepoints anymore" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_seq_not_valid,             tokendb_exception, 3150015, "Seq for checkpoint is not valid." );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_db_action_exception,       tokendb_exception, 3150016, "Unknown db action type." );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_dirty_flag_exception,      tokendb_exception, 3150017, "Checkspoints log file is in dirty." );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_squash_exception,          tokendb_exception, 3150018, "Cannot perform squash operation now" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_prodvote_not_found,        tokendb_exception, 3150019, "Not found specific producer vote" );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_key_already_existed,       tokendb_exception, 3150001, "Key is already existed." );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_key_not_found,             tokendb_exception, 3150002, "Not found specific key." );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_rocksdb_exception,         tokendb_exception, 3150003, "Rocksdb internal error occurred." );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_no_savepoint,              tokendb_exception, 3150004, "No savepoints anymore" );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_seq_not_valid,             tokendb_exception, 3150005, "Seq for checkpoint is not valid." );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_db_action_exception,       tokendb_exception, 3150006, "Unknown db action type." );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_dirty_flag_exception,      tokendb_exception, 3150007, "Checkspoints log file is in dirty." );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_squash_exception,          tokendb_exception, 3150008, "Cannot perform squash operation now" );
 
 FC_DECLARE_DERIVED_EXCEPTION( unknown_block_exception,           misc_exception, 3100002, "unknown block" );
 FC_DECLARE_DERIVED_EXCEPTION( unknown_transaction_exception,     misc_exception, 3100003, "unknown transaction" );

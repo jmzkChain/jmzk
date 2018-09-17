@@ -1007,10 +1007,131 @@ struct set_suspend_subcommands {
     }
 };
 
+fc::time_point
+parse_time_str(const string& str) {
+    auto t = std::stoul(str.substr(0, str.size() - 1));
+    auto s = str.substr(str.size() - 1);
+
+    auto now = fc::time_point::now();
+    if(s == "s") {
+        return now + fc::seconds(t);
+    }
+    else if(s == "m") {
+        return now + fc::minutes(t);
+    }
+    else if(s == "h") {
+        return now + fc::hours(t);
+    }
+    else if(s == "d") {
+        return now + fc::days(t);
+    }
+    else {
+        FC_ASSERT(false, "Not support time: ${t}", ("t",str));
+    }
+}
+
+lockasset_def
+parse_lockasset(const string& str) {
+    vector<string> strs;
+    boost::split(strs, str, boost::is_any_of(":"));
+    FC_ASSERT(strs.size() >= 2);
+
+    auto la = lockasset_def();
+    if(strs[0].substr(0, 1) == "@") {
+        // FT Tokens
+        la.type = asset_type::fungible;
+
+        auto fungible   = lockft_def();
+        fungible.from   = get_address(strs[0]);
+        fungible.amount = asset::from_string(strs[1]);
+
+        la.fungible = fungible;
+    }
+    else {
+        la.type = asset_type::tokens;
+
+        auto tokens   = locknft_def();
+        tokens.domain = (name128)strs[0];
+        for(auto i = 1u; i < strs.size(); i++) {
+            tokens.names.emplace_back(name128(strs[i]));
+        }
+
+        la.tokens = tokens;
+    }
+    return la;
+}
+
+struct set_lock_subcommands {
+    string         name;
+    string         time;
+    string         deadline;
+    string         proposer;
+    vector<string> assets;
+
+    vector<string> conds;
+    vector<string> succeed;
+    vector<string> failed;
+
+    set_lock_subcommands(CLI::App* actionRoot) {
+        auto lacmd = actionRoot->add_subcommand("assets", localized("Lock assets for further operations"));
+        lacmd->add_option("name", name, localized("Name of lock proposal"))->required();
+        lacmd->add_option("time", time, localized("Unlock time since from now"))->required();
+        lacmd->add_option("deadline", deadline, localized("Deadline time since from now"))->required();
+        lacmd->add_option("proposer", proposer, localized("Proposer of lock proposal"))->required();
+        lacmd->add_option("assets", assets, localized("Assets to be locked"))->required();
+
+        lacmd->add_option("--cond", conds, localized("Condtional keys"))->required();
+        lacmd->add_option("--succeed", succeed, localized("Keys to receive the assets when succeed"))->required();
+        lacmd->add_option("--failed", failed, localized("Keys to receive the assets when timeout"))->required();
+
+        add_standard_transaction_options(lacmd);
+
+        lacmd->set_callback([this] {
+            auto nl = newlock();
+
+            nl.name        = (name128)name;
+            nl.proposer    = get_public_key(proposer);
+            nl.unlock_time = parse_time_str(time);
+            nl.deadline    = parse_time_str(deadline);
+
+            for(auto& ass : assets) {
+                nl.assets.emplace_back(parse_lockasset(ass));
+            }
+            for(auto& pkey : conds) {
+                nl.cond_keys.emplace_back(get_public_key(pkey));
+            }
+            for(auto& addr : succeed) {
+                nl.succeed.emplace_back(get_address(addr));
+            }
+            for(auto& addr : failed) {
+                nl.failed.emplace_back(get_address(addr));
+            }
+
+            auto act = create_action(N128(.lock), (domain_key)nl.name, nl);
+            send_actions({act});
+        });
+    }
+};
+
+producer_key
+parse_prodkey(const string& str) {
+    vector<string> strs;
+    boost::split(strs, str, boost::is_any_of(":"));
+    FC_ASSERT(strs.size() == 2);
+
+    auto prodkey = producer_key();
+    prodkey.producer_name = name128(strs[0]);
+    prodkey.block_signing_key = get_public_key(strs[1]);
+
+    return prodkey;
+}
+
 struct set_producer_subcommands {
     string  producer;
     string  confkey;
     int64_t confvalue;
+
+    vector<string> prodkeys;
 
     set_producer_subcommands(CLI::App* actionRoot) {
         auto pvcmd = actionRoot->add_subcommand("prodvote", localized("Producer votes for chain configuration"));
@@ -1027,6 +1148,21 @@ struct set_producer_subcommands {
             pvact.value    = confvalue;
 
             auto act = create_action(N128(.prodvote), (domain_key)pvact.key, pvact);
+            send_actions({act});
+        });
+
+        auto uscmd = actionRoot->add_subcommand("updsched", localized("Update producer scheduler"));
+        uscmd->add_option("prodkeys", prodkeys, localized("Producer name and keys"))->required();
+
+        add_standard_transaction_options(uscmd);
+
+        uscmd->set_callback([this] {
+            auto usact = updsched();
+            for(auto& prodkey : prodkeys) {
+                usact.producers.emplace_back(parse_prodkey(prodkey));
+            }
+
+            auto act = create_action(N128(.prodsched), N128(.upd), usact);
             send_actions({act});
         });
     }
@@ -1127,6 +1263,20 @@ struct set_get_suspend_subcommand {
         gdcmd->set_callback([this] {
             auto arg = fc::mutable_variant_object("name", name);
             print_info(call(get_suspend_func, arg));
+        });
+    }
+};
+
+struct set_get_lock_subcommand {
+    string name;
+
+    set_get_lock_subcommand(CLI::App* actionRoot) {
+        auto gdcmd = actionRoot->add_subcommand("lock", localized("Retrieve a lock assets proposal"));
+        gdcmd->add_option("name", name, localized("Name of lock assets proposal to be retrieved"))->required();
+
+        gdcmd->set_callback([this] {
+            auto arg = fc::mutable_variant_object("name", name);
+            print_info(call(get_lock_func, arg));
         });
     }
 };
@@ -1352,6 +1502,7 @@ main(int argc, char** argv) {
     set_get_my_subcommands      get_my(get);
     set_get_history_subcommands get_history(get); 
     set_get_suspend_subcommand  get_suspend(get);
+    set_get_lock_subcommand     get_lock(get);
 
     // Net subcommand
     string new_host;
@@ -1426,6 +1577,12 @@ main(int argc, char** argv) {
     suspend->require_subcommand();
 
     auto set_suspend = set_suspend_subcommands(suspend);
+
+    // lock
+    auto lock = app.add_subcommand("lock", localized("Lock assets to perform further operations"));
+    lock->require_subcommand();
+
+    auto set_lock = set_lock_subcommands(lock);
 
     // producer
     auto producer = app.add_subcommand("producer", localized("Votes for producers"));

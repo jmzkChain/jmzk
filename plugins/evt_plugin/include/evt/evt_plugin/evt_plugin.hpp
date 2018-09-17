@@ -72,6 +72,9 @@ public:
     };
     fc::variant get_suspend(const get_suspend_params& params);
 
+    using get_lock_params = get_suspend_params;
+    fc::variant get_lock(const get_lock_params& params);
+
 private:
     const controller&     db_;
     const abi_serializer& evt_abi_;
