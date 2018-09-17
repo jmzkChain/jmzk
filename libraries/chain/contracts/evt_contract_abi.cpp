@@ -71,6 +71,7 @@ evt_contract_abi() {
     evt_abi.actions.push_back( action_def{name("everipass"), "everipass"} );
     evt_abi.actions.push_back( action_def{name("everipay"), "everipay"} );
     evt_abi.actions.push_back( action_def{name("prodvote"), "prodvote"} );
+    evt_abi.actions.push_back( action_def{name("updsched"), "updsched"} );
     evt_abi.actions.push_back( action_def{name("newlock"), "newlock"} );
 
     // structures def
@@ -351,6 +352,19 @@ evt_contract_abi() {
            {"producer", "account_name"},
            {"key", "conf_key"},
            {"value", "int64"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "producer_key", "", {
+           {"producer_name", "account_name"},
+           {"block_signing_key", "public_key"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "updsched", "", {
+           {"producers", "producer_key[]"}
         }
     });
 

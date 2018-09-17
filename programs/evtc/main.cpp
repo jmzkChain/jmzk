@@ -1113,10 +1113,25 @@ struct set_lock_subcommands {
     }
 };
 
+producer_key
+parse_prodkey(const string& str) {
+    vector<string> strs;
+    boost::split(strs, str, boost::is_any_of(":"));
+    FC_ASSERT(strs.size() == 2);
+
+    auto prodkey = producer_key();
+    prodkey.producer_name = name128(strs[0]);
+    prodkey.block_signing_key = get_public_key(strs[1]);
+
+    return prodkey;
+}
+
 struct set_producer_subcommands {
     string  producer;
     string  confkey;
     int64_t confvalue;
+
+    vector<string> prodkeys;
 
     set_producer_subcommands(CLI::App* actionRoot) {
         auto pvcmd = actionRoot->add_subcommand("prodvote", localized("Producer votes for chain configuration"));
@@ -1133,6 +1148,21 @@ struct set_producer_subcommands {
             pvact.value    = confvalue;
 
             auto act = create_action(N128(.prodvote), (domain_key)pvact.key, pvact);
+            send_actions({act});
+        });
+
+        auto uscmd = actionRoot->add_subcommand("updsched", localized("Update producer scheduler"));
+        uscmd->add_option("prodkeys", prodkeys, localized("Producer name and keys"))->required();
+
+        add_standard_transaction_options(uscmd);
+
+        uscmd->set_callback([this] {
+            auto usact = updsched();
+            for(auto& prodkey : prodkeys) {
+                usact.producers.emplace_back(parse_prodkey(prodkey));
+            }
+
+            auto act = create_action(N128(.prodsched), N128(.upd), usact);
             send_actions({act});
         });
     }

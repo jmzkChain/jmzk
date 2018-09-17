@@ -185,6 +185,17 @@ private:
     }
 
     bool
+    satisfied_group(const group_name& name) {
+        bool result = false;
+        get_group(name, [&](const auto& group) {
+            if(satisfied_node(group, group.root(), 0)) {
+                result = true;
+            }
+        });
+        return result;
+    }
+
+    bool
     satisfied_permission(const permission_def& permission, const action& action) {
         uint32_t total_weight = 0;
         for(const auto& aw : permission.authorizers) {
@@ -214,11 +225,7 @@ private:
             }
             case authorizer_ref::group_t: {
                 auto& name = ref.get_group();
-                get_group(name, [&](const auto& group) {
-                    if(satisfied_node(group, group.root(), 0)) {
-                        ref_result = true;
-                    }
-                });
+                ref_result = satisfied_group(name);
                 break;
             }
             }  // switch
@@ -283,6 +290,11 @@ public:
     unused_keys() const {
         auto range = utilities::filter_data_by_marker(signing_keys_, used_keys_, false);
         return range;
+    }
+
+    const controller&
+    get_control() const {
+        return control_;
     }
 };  /// authority_checker
 
@@ -574,6 +586,14 @@ struct check_authority<prodvote> {
             return result;
         }
         EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `prodvote` type.");
+    }
+};
+
+template<>
+struct check_authority<updsched> {
+    static bool
+    invoke(const action&, authority_checker* checker) {
+        return checker->satisfied_group(checker->get_control().get_genesis_state().evt_org.name());
     }
 };
 

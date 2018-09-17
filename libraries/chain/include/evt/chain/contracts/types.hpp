@@ -10,6 +10,7 @@
 #include <evt/chain/config.hpp>
 #include <evt/chain/types.hpp>
 #include <evt/chain/transaction.hpp>
+#include <evt/chain/producer_schedule.hpp>
 
 #include <evt/chain/contracts/authorizer_ref.hpp>
 #include <evt/chain/contracts/group.hpp>
@@ -339,6 +340,12 @@ struct prodvote {
     EVT_ACTION(prodvote);
 };
 
+struct updsched {
+    vector<producer_key> producers;
+
+    EVT_ACTION(updsched);
+};
+
 struct newlock {
     proposal_name name;
     user_id       proposer;
@@ -392,5 +399,6 @@ FC_REFLECT(evt::chain::contracts::paycharge, (payer)(charge));
 FC_REFLECT(evt::chain::contracts::everipass, (link));
 FC_REFLECT(evt::chain::contracts::everipay, (link)(payee)(number));
 FC_REFLECT(evt::chain::contracts::prodvote, (producer)(key)(value));
+FC_REFLECT(evt::chain::contracts::updsched, (producers));
 FC_REFLECT(evt::chain::contracts::newlock, (name)(proposer)(unlock_time)(deadline)(assets)(cond_keys)(succeed)(failed));
 

@@ -174,7 +174,9 @@ public:
 
     chain_id_type get_chain_id() const;
 
-    validation_mode get_validation_mode()const;
+    validation_mode get_validation_mode() const;
+
+    const genesis_state& get_genesis_state() const;
 
     signal<void(const signed_block_ptr&)>         pre_accepted_block;
     signal<void(const block_state_ptr&)>          accepted_block_header;
