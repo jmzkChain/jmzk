@@ -1118,7 +1118,7 @@ struct set_lock_subcommands {
         alcmd->add_option("name", name, localized("Name of lock proposal"))->required();
         alcmd->add_option("approver", approver, localized("Public key of approver"))->required();
 
-        add_standard_transaction_options(lacmd);
+        add_standard_transaction_options(alcmd);
 
         alcmd->set_callback([this] {
             auto al = aprvlock();

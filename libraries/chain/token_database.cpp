@@ -321,7 +321,7 @@ public:
         auto status = self_.db_->Get(self_.read_opts_, dbkey.as_slice(), &value);
         if(!status.ok()) {
             EVT_THROW(tokendb_key_not_found, "Cannot find key: ${k} with prefix: ${p}",
-                ("k",key)("t",name128(hana::at(hana::at_key(act_data_map, hana::int_c<DT>), hana::int_c<0>))));
+                ("k",key)("p",name128(hana::at(hana::at_key(act_data_map, hana::int_c<DT>), hana::int_c<0>))));
         }
         out = read_value<T>(value);
         return 0;
@@ -591,7 +591,11 @@ token_database::update_prodvote(const conf_key& key, const public_key_type& pkey
     }
     else {
         map = read_value<decltype(map)>(v);
-        map.emplace(pkey, value);
+        auto it = map.emplace(pkey, value);
+        if(it.second == false) {
+            // existed
+            it.first->second = value;
+        }
     }
     v = get_value(map);
     

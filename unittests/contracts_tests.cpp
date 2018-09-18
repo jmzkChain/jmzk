@@ -1,6 +1,7 @@
 #include <catch/catch.hpp>
 
 #include <evt/chain/token_database.hpp>
+#include <evt/chain/global_property_object.hpp>
 #include <evt/chain/contracts/evt_link_object.hpp>
 #include <evt/testing/tester.hpp>
 
@@ -1477,6 +1478,27 @@ TEST_CASE_METHOD(contracts_test, "contract_prodvote_test", "[contracts]") {
 
     tokendb.read_prodvotes_no_throw(pv.key, [&](const public_key_type& pkey, int votes) { vote_sum[pkey] += votes; return true; });
     CHECK(vote_sum[tester::get_public_key(pv.producer)] == 1);
+    CHECK(my_tester->control->get_global_properties().configuration.base_network_charge_factor == 1);
+
+    pv.value = 10;
+    to_variant(pv, var);
+    my_tester->push_action(N(prodvote), N128(.prodvote), N128(network-charge-factor), var.get_object(), key_seeds, payer);
+    CHECK(my_tester->control->get_global_properties().configuration.base_network_charge_factor == 10);
+
+    pv.key = N128(storage-charge-factor);
+    to_variant(pv, var);
+    my_tester->push_action(N(prodvote), N128(.prodvote), N128(storage-charge-factor), var.get_object(), key_seeds, payer);
+    CHECK(my_tester->control->get_global_properties().configuration.base_storage_charge_factor == 10);
+
+    pv.key = N128(cpu-charge-factor);
+    to_variant(pv, var);
+    my_tester->push_action(N(prodvote), N128(.prodvote), N128(cpu-charge-factor), var.get_object(), key_seeds, payer);
+    CHECK(my_tester->control->get_global_properties().configuration.base_cpu_charge_factor == 10);
+
+    pv.key = N128(global-charge-factor);
+    to_variant(pv, var);
+    my_tester->push_action(N(prodvote), N128(.prodvote), N128(global-charge-factor), var.get_object(), key_seeds, payer);
+    CHECK(my_tester->control->get_global_properties().configuration.global_charge_factor == 10);
 
     pv.key = N128(network-fuck-factor);
     to_variant(pv, var);
