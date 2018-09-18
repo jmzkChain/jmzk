@@ -26,7 +26,7 @@ RUN git clone --depth 1 git://github.com/cryptonomex/secp256k1-zkp \
     && make -j$(nproc) install \
     && cd .. && rm -rf secp256k1-zkp
 
-RUN git clone --depth 1 -b r1.12 git://github.com/mongodb/mongo-c-driver \
+RUN git clone --depth 1 -b r1.13 git://github.com/mongodb/mongo-c-driver \
     && cd mongo-c-driver \
     && cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=Release -DENABLE_SSL=OPENSSL -DENABLE_STATIC=OFF -DENABLE_BSON=ON -DENABLE_TESTS=OFF \
     && cmake --build build --target install \
