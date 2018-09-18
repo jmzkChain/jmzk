@@ -614,6 +614,38 @@ struct check_authority<newlock> {
 };
 
 template<>
+struct check_authority<aprvlock> {
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        try {
+            auto& al    = act.data_as<const aprvlock&>();
+            auto vistor = authority_checker::weight_tally_visitor(checker);
+            if(vistor(al.approver, 1) == 1) {
+                return true;
+            }
+        }
+        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `aprvlock` type.");
+        return false;
+    }
+};
+
+template<>
+struct check_authority<tryunlock> {
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        try {
+            auto& tl    = act.data_as<const tryunlock&>();
+            auto vistor = authority_checker::weight_tally_visitor(checker);
+            if(vistor(tl.executor, 1) == 1) {
+                return true;
+            }
+        }
+        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `tryunlock` type.");
+        return false;
+    }
+};
+
+template<>
 struct check_authority<paycharge> {
     static bool
     invoke(const action&, authority_checker*) {

@@ -199,11 +199,14 @@ FC_DECLARE_DERIVED_EXCEPTION( prodvote_key_exception,              action_except
 FC_DECLARE_DERIVED_EXCEPTION( prodvote_value_exception,            action_exception, 3040047, "Invalid prodvote conf value.");
 FC_DECLARE_DERIVED_EXCEPTION( prodvote_producer_exception,         action_exception, 3040048, "Invalid producer.");
 FC_DECLARE_DERIVED_EXCEPTION( lock_existes_exception,              action_exception, 3040049, "Lock assets proposal already exists." );
-FC_DECLARE_DERIVED_EXCEPTION( lock_unlock_time_exception,          action_exception, 3040050, "Invalid unlock time.");
-FC_DECLARE_DERIVED_EXCEPTION( lock_deadline_exception,             action_exception, 3040051, "Invalid deadline.");
-FC_DECLARE_DERIVED_EXCEPTION( lock_assets_exception,               action_exception, 3040052, "Invalid lock assets.");
-FC_DECLARE_DERIVED_EXCEPTION( lock_address_exception,              action_exception, 3040053, "Invalid lock address.");
-FC_DECLARE_DERIVED_EXCEPTION( lock_cond_keys_exception,            action_exception, 3040054, "Invalid lock conditional keys.");
+FC_DECLARE_DERIVED_EXCEPTION( lock_unlock_time_exception,          action_exception, 3040050, "Invalid unlock time." );
+FC_DECLARE_DERIVED_EXCEPTION( lock_deadline_exception,             action_exception, 3040051, "Invalid deadline." );
+FC_DECLARE_DERIVED_EXCEPTION( lock_assets_exception,               action_exception, 3040052, "Invalid lock assets." );
+FC_DECLARE_DERIVED_EXCEPTION( lock_address_exception,              action_exception, 3040053, "Invalid lock address." );
+FC_DECLARE_DERIVED_EXCEPTION( lock_cond_keys_exception,            action_exception, 3040054, "Invalid lock conditional keys." );
+FC_DECLARE_DERIVED_EXCEPTION( lock_expired_exception,              action_exception, 3040055, "Lock assets proposal is expired." );
+FC_DECLARE_DERIVED_EXCEPTION( lock_aprv_key_exception,             action_exception, 3040056, "Approver is not valid." );
+FC_DECLARE_DERIVED_EXCEPTION( lock_duplicate_key_exception,        action_exception, 3040057, "Some keys are already signed this lock assets proposal." );
 
 FC_DECLARE_DERIVED_EXCEPTION( name_type_exception,               chain_type_exception, 3120001, "Invalid name" );
 FC_DECLARE_DERIVED_EXCEPTION( public_key_type_exception,         chain_type_exception, 3120002, "Invalid public key" );

@@ -1118,9 +1118,9 @@ EVT_ACTION_IMPL(newlock) {
         EVT_ASSERT(!tokendb.exists_lock(nlact.name), lock_existes_exception, "Lock assets with same name: ${n} is already existed", ("n",nlact.name));
 
         auto now = context.control.pending_block_time();
-        EVT_ASSERT(nlact.unlock_time > now, lock_unlock_time_exception, "Unlock time is ahead of now, unlock time is ${u}, now is ${n}", ("u",nlact.unlock_time)("n",now));
+        EVT_ASSERT(nlact.unlock_time > now, lock_unlock_time_exception, "Now is ahead of unlock time, unlock time is ${u}, now is ${n}", ("u",nlact.unlock_time)("n",now));
         EVT_ASSERT(nlact.deadline > now && nlact.deadline > nlact.unlock_time, lock_unlock_time_exception,
-            "Unlock time is ahead of now or unlock time, unlock time is ${u}, now is ${n}", ("u",nlact.unlock_time)("n",now));
+            "Now is ahead of unlock time or deadline, unlock time is ${u}, now is ${n}", ("u",nlact.unlock_time)("n",now));
 
         EVT_ASSERT(nlact.cond_keys.size() > 0, lock_cond_keys_exception, "Conditional keys for lock should not be empty");
         EVT_ASSERT(nlact.assets.size() > 0, lock_assets_exception, "Assets for lock should not be empty");
@@ -1146,7 +1146,7 @@ EVT_ACTION_IMPL(newlock) {
                 EVT_ASSERT(la.fungible.valid(), lock_assets_exception, "FT assets should be provided.");
                 auto& fungible = *la.fungible;
 
-                EVT_ASSERT(fungible.amount.sym().id() != PEVT_SYM_ID, everipay_exception, "Pinned EVT cannot be used to be locked.");
+                EVT_ASSERT(fungible.amount.sym().id() != PEVT_SYM_ID, lock_assets_exception, "Pinned EVT cannot be used to be locked.");
                 has_fungible = true;
 
                 auto tf   = transferft();
@@ -1208,6 +1208,30 @@ EVT_ACTION_IMPL(newlock) {
         lock.failed      = std::move(nlact.failed);
 
         tokendb.add_lock(lock);
+    }
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+}
+
+EVT_ACTION_IMPL(aprvlock) {
+    using namespace __internal;
+
+    auto alact = context.act.data_as<const aprvlock&>();
+    try {
+        EVT_ASSERT(context.has_authorized(N128(.lock), alact.name), action_authorize_exception, "Authorized information does not match.");
+
+        auto& tokendb = context.control.token_db();
+
+        lock_def lock;
+        tokendb.read_lock(alact.name, lock);
+
+        auto now = context.control.pending_block_time();
+        EVT_ASSERT(lock.unlock_time > now, lock_expired_exception, "Now is ahead of unlock time, cannot approve anymore, unlock time is ${u}, now is ${n}", ("u",lock.unlock_time)("n",now));
+
+        EVT_ASSERT(std::find(lock.cond_keys.cbegin(), lock.cond_keys.cend(), alact.approver) != lock.cond_keys.cend(), lock_aprv_key_exception, "Approver is not valid");
+        EVT_ASSERT(lock.signed_keys.find(alact.approver) == lock.signed_keys.cend(), lock_duplicate_key_exception, "Approver is already signed this lock assets proposal");
+
+        lock.signed_keys.emplace(alact.approver);
+        tokendb.update_lock(lock);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }

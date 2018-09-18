@@ -361,6 +361,20 @@ struct newlock {
     EVT_ACTION(newlock);
 };
 
+struct aprvlock {
+    proposal_name name;
+    user_id       approver;
+
+    EVT_ACTION(aprvlock);
+};
+
+struct tryunlock {
+    proposal_name name;
+    user_id       executor;
+
+    EVT_ACTION(tryunlock);
+};
+
 }}}  // namespace evt::chain::contracts
 
 FC_REFLECT(evt::chain::contracts::token_def, (domain)(name)(owner)(metas));
@@ -401,4 +415,5 @@ FC_REFLECT(evt::chain::contracts::everipay, (link)(payee)(number));
 FC_REFLECT(evt::chain::contracts::prodvote, (producer)(key)(value));
 FC_REFLECT(evt::chain::contracts::updsched, (producers));
 FC_REFLECT(evt::chain::contracts::newlock, (name)(proposer)(unlock_time)(deadline)(assets)(cond_keys)(succeed)(failed));
-
+FC_REFLECT(evt::chain::contracts::aprvlock, (name)(approver));
+FC_REFLECT(evt::chain::contracts::tryunlock, (name)(executor));

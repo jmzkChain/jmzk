@@ -1072,6 +1072,9 @@ struct set_lock_subcommands {
     vector<string> succeed;
     vector<string> failed;
 
+    string approver;
+    string executor;
+
     set_lock_subcommands(CLI::App* actionRoot) {
         auto lacmd = actionRoot->add_subcommand("assets", localized("Lock assets for further operations"));
         lacmd->add_option("name", name, localized("Name of lock proposal"))->required();
@@ -1108,6 +1111,22 @@ struct set_lock_subcommands {
             }
 
             auto act = create_action(N128(.lock), (domain_key)nl.name, nl);
+            send_actions({act});
+        });
+
+        auto alcmd = actionRoot->add_subcommand("approve", localized("Approve one lock assets proposal"));
+        alcmd->add_option("name", name, localized("Name of lock proposal"))->required();
+        alcmd->add_option("approver", approver, localized("Public key of approver"))->required();
+
+        add_standard_transaction_options(lacmd);
+
+        alcmd->set_callback([this] {
+            auto al = aprvlock();
+
+            al.name     = (name128)name;
+            al.approver = get_public_key(approver);
+
+            auto act = create_action(N128(.lock), (domain_key)al.name, al);
             send_actions({act});
         });
     }
