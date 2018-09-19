@@ -73,6 +73,8 @@ evt_contract_abi() {
     evt_abi.actions.push_back( action_def{name("prodvote"), "prodvote"} );
     evt_abi.actions.push_back( action_def{name("updsched"), "updsched"} );
     evt_abi.actions.push_back( action_def{name("newlock"), "newlock"} );
+    evt_abi.actions.push_back( action_def{name("aprvlock"), "aprvlock"} );
+    evt_abi.actions.push_back( action_def{name("tryunlock"), "tryunlock"} );
 
     // structures def
     evt_abi.structs.emplace_back( struct_def {
@@ -378,6 +380,20 @@ evt_contract_abi() {
             {"cond_keys", "public_key[]"},
             {"succeed", "address[]"},
             {"failed", "address[]"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "aprvlock", "", {
+            {"name", "proposal_name"},
+            {"approver", "user_id"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "tryunlock", "", {
+           {"name", "proposal_name"},
+           {"executor", "user_id"}
         }
     });
 
