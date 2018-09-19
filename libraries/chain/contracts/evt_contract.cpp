@@ -1265,10 +1265,12 @@ EVT_ACTION_IMPL(tryunlock) {
 
         std::vector<address>* pkeys = nullptr;
         if(lock.cond_keys.size() == lock.signed_keys.size()) {
-            pkeys = &lock.succeed;
+            pkeys       = &lock.succeed;
+            lock.status = lock_status::succeed;
         }
         else {
-            pkeys = &lock.failed;
+            pkeys       = &lock.failed;
+            lock.status = lock_status::failed;
         }
 
         auto laddr = address(N(lock), N128(nlact.name), 0);
@@ -1300,6 +1302,8 @@ EVT_ACTION_IMPL(tryunlock) {
                 tokendb.update_asset(toaddr, tass);
             }
         }
+
+        tokendb.update_lock(lock);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
