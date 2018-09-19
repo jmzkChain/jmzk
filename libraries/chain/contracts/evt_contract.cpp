@@ -195,6 +195,14 @@ check_token_destroy(const token_def& token) {
     return token.owner[0].is_reserved();
 }
 
+bool
+check_token_locked(const token_def& token) {
+    if(token.owner.size() != 1) {
+        return false;
+    }
+    auto& addr = token.owner[0];
+    return addr.is_generated() && addr.get_prefix() == N(lock);
+}
 }  // namespace __internal
 
 EVT_ACTION_IMPL(transfer) {
@@ -217,7 +225,8 @@ EVT_ACTION_IMPL(transfer) {
         token_def token;
         tokendb.read_token(ttact.domain, ttact.name, token);
 
-        EVT_ASSERT(!check_token_destroy(token), token_destoryed_exception, "Token is already destroyed.");
+        EVT_ASSERT(!check_token_destroy(token), token_destoryed_exception, "Destroyed token cannot be transfered.");
+        EVT_ASSERT(!check_token_locked(token), token_locked_exception, "Locked token cannot be transfered.");
 
         token.owner = std::move(ttact.to);
         tokendb.update_token(token);
@@ -238,6 +247,7 @@ EVT_ACTION_IMPL(destroytoken) {
         tokendb.read_token(dtact.domain, dtact.name, token);
 
         EVT_ASSERT(!check_token_destroy(token), token_destoryed_exception, "Token is already destroyed.");
+        EVT_ASSERT(!check_token_locked(token), token_locked_exception, "Locked token cannot be destroyed.");
 
         token.owner = address_list{ address() };
         tokendb.update_token(token);
@@ -694,7 +704,8 @@ EVT_ACTION_IMPL(addmeta) {
             token_def token;
             tokendb.read_token(act.domain, act.key, token);
 
-            EVT_ASSERT(!check_token_destroy(token), token_destoryed_exception, "Token is already destroyed.");
+            EVT_ASSERT(!check_token_destroy(token), token_destoryed_exception, "Metadata cannot be added on destroyed token.");
+            EVT_ASSERT(!check_token_locked(token), token_locked_exception, "Metadata cannot be added on locked token.");
             EVT_ASSERT(!check_duplicate_meta(token, amact.key), meta_key_exception, "Metadata with key ${key} already exists.", ("key",amact.key));
 
             domain_def domain;
@@ -910,7 +921,8 @@ EVT_ACTION_IMPL(everipass) {
         token_def token;
         tokendb.read_token(d, t, token);
 
-        EVT_ASSERT(!check_token_destroy(token), token_destoryed_exception, "Token is already destroyed.");
+        EVT_ASSERT(!check_token_destroy(token), token_destoryed_exception, "Destroyed token cannot be destroyed during everiPass.");
+        EVT_ASSERT(!check_token_locked(token), token_locked_exception, "Locked token cannot be destroyed during everiPass.");
 
         if(flags & evt_link::destroy) {
             auto dt   = destroytoken();
@@ -1232,6 +1244,62 @@ EVT_ACTION_IMPL(aprvlock) {
 
         lock.signed_keys.emplace(alact.approver);
         tokendb.update_lock(lock);
+    }
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+}
+
+EVT_ACTION_IMPL(tryunlock) {
+    using namespace __internal;
+
+    auto tuact = context.act.data_as<const tryunlock&>();
+    try {
+        EVT_ASSERT(context.has_authorized(N128(.lock), tuact.name), action_authorize_exception, "Authorized information does not match.");
+
+        auto& tokendb = context.control.token_db();
+
+        lock_def lock;
+        tokendb.read_lock(tuact.name, lock);
+
+        auto now = context.control.pending_block_time();
+        EVT_ASSERT(lock.unlock_time < now, lock_not_reach_unlock_time, "Not reach unlock time, cannot unlock, unlock time is ${u}, now is ${n}", ("u",lock.unlock_time)("n",now));
+
+        std::vector<address>* pkeys = nullptr;
+        if(lock.cond_keys.size() == lock.signed_keys.size()) {
+            pkeys = &lock.succeed;
+        }
+        else {
+            pkeys = &lock.failed;
+        }
+
+        auto laddr = address(N(lock), N128(nlact.name), 0);
+        for(auto& la : lock.assets) {
+            if(la.type == asset_type::tokens) {
+                auto& tokens = *la.tokens;
+
+                token_def token;
+                for(auto& tn : tokens.names) {
+                    tokendb.read_token(tokens.domain, tn, token);
+                    token.owner = *pkeys;
+                    tokendb.update_token(token);
+                }
+            }
+            else {
+                FC_ASSERT(pkeys->size() == 1);
+
+                auto& fungible = *la.fungible;
+                auto& toaddr   = (*pkeys)[0];
+
+                asset fass, tass;
+                tokendb.read_asset(laddr, fungible.amount.sym(), fass);
+                tokendb.read_asset_no_throw(toaddr, fungible.amount.sym(), tass);
+                
+                EVT_ASSERT(fass >= fungible.amount, lock_assets_exception, "From address donn't have enough balance left.");
+                transfer_fungible(fass, tass, fungible.amount.amount());
+
+                tokendb.update_asset(laddr, fass);
+                tokendb.update_asset(toaddr, tass);
+            }
+        }
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }

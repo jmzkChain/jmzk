@@ -53,6 +53,7 @@ invoke(name n, Args&&... args) {
     case_act(updsched)
     case_act(newlock)
     case_act(aprvlock)
+    case_act(tryunlock)
     default: {
         EVT_THROW(action_type_exception, "Unknown action name: ${name}", ("name",n));
     }
