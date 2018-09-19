@@ -1261,7 +1261,7 @@ EVT_ACTION_IMPL(tryunlock) {
         tokendb.read_lock(tuact.name, lock);
 
         auto now = context.control.pending_block_time();
-        EVT_ASSERT(lock.unlock_time < now, lock_not_reach_unlock_time, "Not reach unlock time, cannot unlock, unlock time is ${u}, now is ${n}", ("u",lock.unlock_time)("n",now));
+        EVT_ASSERT(now > lock.unlock_time, lock_not_reach_unlock_time, "Not reach unlock time, cannot unlock, unlock time is ${u}, now is ${n}", ("u",lock.unlock_time)("n",now));
 
         std::vector<address>* pkeys = nullptr;
         if(lock.cond_keys.size() == lock.signed_keys.size()) {
@@ -1269,6 +1269,7 @@ EVT_ACTION_IMPL(tryunlock) {
             lock.status = lock_status::succeed;
         }
         else {
+            EVT_ASSERT(now > lock.deadline, lock_not_reach_deadline, "Not reach deadline and conditions are not satisfied, proposal is still avaiable.");
             pkeys       = &lock.failed;
             lock.status = lock_status::failed;
         }

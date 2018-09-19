@@ -208,7 +208,8 @@ FC_DECLARE_DERIVED_EXCEPTION( lock_expired_exception,              action_except
 FC_DECLARE_DERIVED_EXCEPTION( lock_aprv_key_exception,             action_exception, 3040056, "Approver is not valid." );
 FC_DECLARE_DERIVED_EXCEPTION( lock_duplicate_key_exception,        action_exception, 3040057, "Some keys are already signed this lock assets proposal." );
 FC_DECLARE_DERIVED_EXCEPTION( lock_not_reach_unlock_time,          action_exception, 3040058, "Unlock time is not reach." );
-FC_DECLARE_DERIVED_EXCEPTION( token_locked_exception,              action_exception, 3040059, "Locked token cannot be transfered." );
+FC_DECLARE_DERIVED_EXCEPTION( lock_not_reach_deadline,             action_exception, 3040059, "Deadline is not reach." );
+FC_DECLARE_DERIVED_EXCEPTION( token_locked_exception,              action_exception, 3040060, "Locked token cannot be transfered." );
 
 FC_DECLARE_DERIVED_EXCEPTION( name_type_exception,               chain_type_exception, 3120001, "Invalid name" );
 FC_DECLARE_DERIVED_EXCEPTION( public_key_type_exception,         chain_type_exception, 3120002, "Invalid public key" );
