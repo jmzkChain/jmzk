@@ -361,13 +361,13 @@ chain_plugin::plugin_initialize(const variables_map& options) {
         if(options.at("truncate-at-block").as<uint32_t>() > 0)
             wlog("The --truncate-at-block option does not make sense when deleting all blocks.");
         clear_directory_contents(my->chain_config->state_dir);
-        clear_directory_contents(my->tokendb_dir);
+        fc::remove_all(my->tokendb_dir);
         fc::remove_all(my->blocks_dir);
     }
     else if(options.at("hard-replay-blockchain").as<bool>()) {
         ilog("Hard replay requested: deleting state database");
         clear_directory_contents(my->chain_config->state_dir);
-        clear_directory_contents(my->chain_config->tokendb_dir);
+        fc::remove_all(my->chain_config->tokendb_dir);
         auto backup_dir = block_log::repair_log(my->blocks_dir, options.at("truncate-at-block").as<uint32_t>());
         if(fc::exists(backup_dir / config::reversible_blocks_dir_name) || options.at("fix-reversible-blocks").as<bool>()) {
             // Do not try to recover reversible blocks if the directory does not exist, unless the option was explicitly provided.
@@ -390,7 +390,7 @@ chain_plugin::plugin_initialize(const variables_map& options) {
         if(options.at("truncate-at-block").as<uint32_t>() > 0)
             wlog("The --truncate-at-block option does not work for a regular replay of the blockchain.");
         clear_directory_contents(my->chain_config->state_dir);
-        clear_directory_contents(my->chain_config->tokendb_dir);
+        fc::remove_all(my->chain_config->tokendb_dir);
         if(options.at("fix-reversible-blocks").as<bool>()) {
             if(!recover_reversible_blocks(my->chain_config->blocks_dir / config::reversible_blocks_dir_name,
                                           my->chain_config->reversible_cache_size)) {
