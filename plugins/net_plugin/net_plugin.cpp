@@ -1404,19 +1404,17 @@ sync_manager::request_next_chunk(connection_ptr conn) {
             }
 
             //scan the list of peers looking for another able to provide sync blocks.
-            while(cptr != cend) {
+            auto cstart_it = cptr;
+            do {
                 //select the first one which is current and break out.
                 if((*cptr)->current()) {
                     source = *cptr;
                     break;
                 }
-                else {
-                    // advance the iterator in a round robin fashion.
-                    if(++cptr == my_impl->connections.end()) {
-                        cptr = my_impl->connections.begin();
-                    }
+                if(++cptr == my_impl->connections.end()) {
+                    cptr = my_impl->connections.begin();
                 }
-            }
+            } while(cptr != cstart_it);
             // no need to check the result, either source advanced or the whole list was checked and the old source is reused.
         }
     }
