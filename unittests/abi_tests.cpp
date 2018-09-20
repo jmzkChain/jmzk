@@ -1191,3 +1191,119 @@ TEST_CASE("prodvote_abi_test", "[abis]") {
     verify_byte_round_trip_conversion(abis, "prodvote", var);
     verify_type_round_trip_conversion<prodvote>(abis, "prodvote", var);
 }
+
+TEST_CASE("updsched_abi_test", "[abis]") {
+    auto&       abis      = get_evt_abi();
+    const char* test_data = R"=======(
+    {
+        "producers": [{
+            "producer_name": "producer",
+            "block_signing_key": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
+        }]
+    }
+    )=======";
+
+    auto var = fc::json::from_string(test_data);
+    auto us  = var.as<updsched>();
+
+    CHECK(us.producers[0].producer_name == "producer");
+    CHECK((std::string)us.producers[0].block_signing_key == "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF");
+
+    verify_byte_round_trip_conversion(abis, "updsched", var);
+    verify_type_round_trip_conversion<updsched>(abis, "updsched", var);
+}
+
+TEST_CASE("newlock_abi_test", "[abis]") {
+    auto&       abis      = get_evt_abi();
+    const char* test_data = R"=======(
+    {
+        "name": "lock",
+        "proposer": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+        "unlock_time": "2018-06-09T09:06:27",
+        "deadline": "2018-07-09T09:06:27",
+        "assets": [{
+            "type": "tokens",
+            "tokens": {
+                "domain": "cookie",
+                "names": [
+                    "t1",
+                    "t2",
+                    "t3"
+                ]
+            }
+        }],
+        "cond_keys": [
+            "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+            "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
+        ],
+        "succeed": [
+            "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
+        ],
+        "failed": [
+            "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
+        ]
+    }
+    )=======";
+
+    auto var = fc::json::from_string(test_data);
+    auto nl  = var.as<newlock>();
+
+    CHECK(nl.name == "lock");
+    CHECK((std::string)nl.proposer == "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF");
+    CHECK("2018-06-09T09:06:27" == nl.unlock_time.to_iso_string());
+    CHECK("2018-07-09T09:06:27" == nl.deadline.to_iso_string());
+    CHECK(nl.assets[0].type == asset_type::tokens);
+    CHECK(nl.assets[0].tokens->domain == "cookie");
+    CHECK(nl.assets[0].tokens->names.size() == 3);
+    CHECK(nl.assets[0].tokens->names[0] == "t1");
+    CHECK(nl.assets[0].tokens->names[1] == "t2");
+    CHECK(nl.assets[0].tokens->names[2] == "t3");
+    CHECK(nl.cond_keys.size() == 2);
+    CHECK((std::string)nl.cond_keys[0] == "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF");
+    CHECK((std::string)nl.cond_keys[1] == "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC");
+    CHECK(nl.succeed.size() == 1);
+    CHECK(nl.failed.size() == 1);
+    CHECK((std::string)nl.succeed[0] == "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC");
+    CHECK((std::string)nl.failed[0] == "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF");
+
+    verify_byte_round_trip_conversion(abis, "newlock", var);
+    verify_type_round_trip_conversion<newlock>(abis, "newlock", var);
+}
+
+TEST_CASE("aprvlock_abi_test", "[abis]") {
+    auto&       abis      = get_evt_abi();
+    const char* test_data = R"=======(
+    {
+        "name": "lock",
+        "approver": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
+    }
+    )=======";
+
+    auto var = fc::json::from_string(test_data);
+    auto al  = var.as<aprvlock>();
+
+    CHECK(al.name == "lock");
+    CHECK((std::string)al.approver == "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF");
+
+    verify_byte_round_trip_conversion(abis, "aprvlock", var);
+    verify_type_round_trip_conversion<aprvlock>(abis, "aprvlock", var);
+}
+
+TEST_CASE("tryunlock_abi_test", "[abis]") {
+    auto&       abis      = get_evt_abi();
+    const char* test_data = R"=======(
+    {
+        "name": "lock",
+        "executor": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
+    }
+    )=======";
+
+    auto var = fc::json::from_string(test_data);
+    auto ul  = var.as<tryunlock>();
+
+    CHECK(ul.name == "lock");
+    CHECK((std::string)ul.executor == "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF");
+
+    verify_byte_round_trip_conversion(abis, "tryunlock", var);
+    verify_type_round_trip_conversion<tryunlock>(abis, "tryunlock", var);
+}
