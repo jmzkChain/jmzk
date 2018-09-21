@@ -1526,7 +1526,14 @@ TEST_CASE_METHOD(contracts_test, "contract_updsched_test", "[contracts]") {
     us.producers[0].block_signing_key = tester::get_public_key("evt");
     to_variant(us, var);
 
-    // my_tester->push_action(N(updsched), N128(.prodsched), N128(.update), var.get_object(), key_seeds, payer);
+    signed_transaction trx;
+    trx.actions.emplace_back(my_tester->get_action(N(updsched), N128(.prodsched), N128(.update),  var.get_object()));
+    my_tester->set_transaction_headers(trx, payer, 1'000'000, base_tester::DEFAULT_EXPIRATION_DELTA);
+    for(const auto& auth : key_seeds) {
+        trx.sign(my_tester->get_private_key(auth), my_tester->control->get_chain_id());
+    }
+    trx.sign(fc::crypto::private_key(std::string("5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3")), my_tester->control->get_chain_id());
+    my_tester->push_transaction(trx);
 
     my_tester->produce_blocks();
 }
@@ -1544,8 +1551,6 @@ TEST_CASE_METHOD(contracts_test, "contract_newlock_test", "[contracts]") {
             "tokens": {
                 "domain": "cookie",
                 "names": [
-                    "t1",
-                    "t2",
                     "t3"
                 ]
             }
@@ -1566,6 +1571,12 @@ TEST_CASE_METHOD(contracts_test, "contract_newlock_test", "[contracts]") {
     auto  var     = fc::json::from_string(test_data);
     auto  nl      = var.as<newlock>();
     auto& tokendb = my_tester->control->token_db();
+    CHECK(!tokendb.exists_lock(nl.name));
+
+    nl.assets[0].tokens->domain = get_domain_name();
+    to_variant(nl, var);
+
+    CHECK_THROWS_AS(my_tester->push_action(N(newlock), N128(.lock), N128(lock), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
 
     nl.proposer  = tester::get_public_key(N(key));
     nl.cond_keys = {tester::get_public_key(N(key))};
@@ -1573,6 +1584,64 @@ TEST_CASE_METHOD(contracts_test, "contract_newlock_test", "[contracts]") {
 
     my_tester->push_action(N(newlock), N128(.lock), N128(lock), var.get_object(), key_seeds, payer, 5'000'000);
 
+    CHECK(tokendb.exists_lock(nl.name));
+
+    lock_def lock_;
+    tokendb.read_lock(nl.name, lock_);
+    CHECK(lock_.status == lock_status::proposed);
+
     my_tester->produce_blocks();
 }
 
+TEST_CASE_METHOD(contracts_test, "contract_aprvlock_test", "[contracts]") {
+    CHECK(true);
+    const char* test_data = R"=======(
+    {
+        "name": "lock",
+        "approver": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
+    }
+    )=======";
+
+    auto  var     = fc::json::from_string(test_data);
+    auto  al      = var.as<aprvlock>();
+    auto& tokendb = my_tester->control->token_db();
+
+    lock_def lock_;
+    tokendb.read_lock(al.name, lock_);
+    CHECK(lock_.signed_keys.size() == 0);
+
+    CHECK_THROWS_AS(my_tester->push_action(N(aprvlock), N128(.lock), N128(lock), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
+
+    al.approver = {tester::get_public_key(N(key))};
+    to_variant(al, var);
+    
+    my_tester->push_action(N(aprvlock), N128(.lock), N128(lock), var.get_object(), key_seeds, payer, 5'000'000);
+
+    tokendb.read_lock(al.name, lock_);
+    CHECK(lock_.signed_keys.size() == 1);
+
+    my_tester->produce_blocks();
+}
+
+TEST_CASE_METHOD(contracts_test, "contract_tryunlock_test", "[contracts]") {
+    CHECK(true);
+    const char* test_data = R"=======(
+    {
+        "name": "lock",
+        "executor": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
+    }
+    )=======";
+
+    auto  var     = fc::json::from_string(test_data);
+    auto  al      = var.as<tryunlock>();
+    auto& tokendb = my_tester->control->token_db();
+
+    CHECK_THROWS_AS(my_tester->push_action(N(tryunlock), N128(.lock), N128(lock), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
+
+    al.executor = {tester::get_public_key(N(key))};
+    to_variant(al, var);
+    
+    CHECK_THROWS_AS(my_tester->push_action(N(tryunlock), N128(.lock), N128(lock), var.get_object(), key_seeds, payer, 5'000'000),lock_not_reach_unlock_time);
+
+    my_tester->produce_blocks();
+}
