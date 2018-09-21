@@ -40,6 +40,7 @@ public:
 
         key_seeds.push_back(N(key));
         key_seeds.push_back("evt");
+        key_seeds.push_back("evt2");
         key_seeds.push_back(N(payer));
         key_seeds.push_back(N(poorer));
 
@@ -1506,3 +1507,72 @@ TEST_CASE_METHOD(contracts_test, "contract_prodvote_test", "[contracts]") {
 
     my_tester->produce_blocks();
 }
+
+TEST_CASE_METHOD(contracts_test, "contract_updsched_test", "[contracts]") {
+    CHECK(true);
+    const char* test_data = R"=======(
+    {
+        "producers": [{
+            "producer_name": "producer",
+            "block_signing_key": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
+        }]
+    }
+    )=======";
+
+    auto var    = fc::json::from_string(test_data);
+    auto us   = var.as<updsched>();
+    auto& tokendb = my_tester->control->token_db();
+
+    us.producers[0].block_signing_key = tester::get_public_key("evt");
+    to_variant(us, var);
+
+    // my_tester->push_action(N(updsched), N128(.prodsched), N128(.update), var.get_object(), key_seeds, payer);
+
+    my_tester->produce_blocks();
+}
+
+TEST_CASE_METHOD(contracts_test, "contract_newlock_test", "[contracts]") {
+    CHECK(true);
+    const char* test_data = R"=======(
+    {
+        "name": "lock",
+        "proposer": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+        "unlock_time": "2020-06-09T09:06:27",
+        "deadline": "2020-07-09T09:06:27",
+        "assets": [{
+            "type": "tokens",
+            "tokens": {
+                "domain": "cookie",
+                "names": [
+                    "t1",
+                    "t2",
+                    "t3"
+                ]
+            }
+        }],
+        "cond_keys": [
+            "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+            "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
+        ],
+        "succeed": [
+            "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
+        ],
+        "failed": [
+            "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
+        ]
+    }
+    )=======";
+
+    auto  var     = fc::json::from_string(test_data);
+    auto  nl      = var.as<newlock>();
+    auto& tokendb = my_tester->control->token_db();
+
+    nl.proposer  = tester::get_public_key(N(key));
+    nl.cond_keys = {tester::get_public_key(N(key))};
+    to_variant(nl, var);
+
+    my_tester->push_action(N(newlock), N128(.lock), N128(lock), var.get_object(), key_seeds, payer, 5'000'000);
+
+    my_tester->produce_blocks();
+}
+
