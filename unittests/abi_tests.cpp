@@ -1268,6 +1268,16 @@ TEST_CASE("newlock_abi_test", "[abis]") {
 
     verify_byte_round_trip_conversion(abis, "newlock", var);
     verify_type_round_trip_conversion<newlock>(abis, "newlock", var);
+
+    auto act = action();
+    act.name = "newlock";
+    act.data = abis.variant_to_binary("newlock", var);
+
+    auto var2 = abis.binary_to_variant("newlock", act.data);
+    CHECK(var2["cond_keys"].size() > 0);
+
+    auto nl2 = fc::raw::unpack<newlock>(act.data);
+    CHECK(nl2.cond_keys.size() > 0);
 }
 
 TEST_CASE("aprvlock_abi_test", "[abis]") {

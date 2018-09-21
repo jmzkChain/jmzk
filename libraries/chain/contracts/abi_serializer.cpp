@@ -101,7 +101,7 @@ abi_serializer::configure_built_in_types() {
     built_in_types.emplace("producer_schedule", pack_unpack<producer_schedule_type>());
     built_in_types.emplace("extensions", pack_unpack<extensions_type>());
     built_in_types.emplace("evt_link", pack_unpack<evt_link>());
-    built_in_types.emplace("asset_type", pack_unpack<asset_type>());
+    built_in_types.emplace("asset_type", pack_unpack<fc::enum_type<uint8_t, asset_type>>());
 }
 
 void
