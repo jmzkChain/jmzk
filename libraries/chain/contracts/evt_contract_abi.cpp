@@ -46,7 +46,6 @@ evt_contract_abi() {
     evt_abi.types.push_back( type_def{"meta_value","string"} );
     evt_abi.types.push_back( type_def{"meta_list","meta[]"} );
     evt_abi.types.push_back( type_def{"suspend_status","uint8"} );
-    evt_abi.types.push_back( type_def{"asset_type","uint8"} );
     evt_abi.types.push_back( type_def{"lock_status","uint8"} );
     evt_abi.types.push_back( type_def{"conf_key","name128"} );
 

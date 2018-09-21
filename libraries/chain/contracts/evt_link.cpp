@@ -35,6 +35,7 @@ bytes
 decode(const std::string& nums, int pos, int end) {
     auto num = T{0};
     auto pz  = (int)nums.find_first_not_of('0', pos);
+    EVT_ASSERT(pz != string::npos, evt_link_exception, "Invalid EVT-Link");
 
     for(auto i = pz; i < end; i++) {
         auto c = strchr(ALPHABETS, nums[i]);

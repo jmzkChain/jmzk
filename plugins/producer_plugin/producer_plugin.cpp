@@ -931,7 +931,7 @@ producer_plugin_impl::start_block(bool &last_block) {
     const auto& pbs = chain.pending_block_state();
     if(pbs) {
         if(_pending_block_mode == pending_block_mode::producing && pbs->block_signing_key != scheduled_producer.block_signing_key) {
-            elog("Block Signing Key is not expected value, reverting to speculative mode! [expected: \"${expected}\", actual: \"${actual\"", 
+            elog("Block Signing Key is not expected value, reverting to speculative mode! [expected: \"${expected}\", actual: \"${actual}\"", 
                 ("expected", scheduled_producer.block_signing_key)("actual", pbs->block_signing_key));
             _pending_block_mode = pending_block_mode::speculating;
         }

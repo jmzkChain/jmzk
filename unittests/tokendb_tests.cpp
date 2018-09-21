@@ -324,6 +324,88 @@ update_suspend_data() {
     return dl;
 }
 
+lock_def 
+add_lock_data() {
+    const char* test_data = R"=======(
+        {
+            "name": "testsuspend",
+            "proposer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
+            "status": "proposed",
+            "unlock_time": "2018-07-04T05:14:12",
+            "deadline": "2018-09-04T05:14:12",
+            "assets": [{
+                "type": "tokens",
+                "tokens": {
+                    "domain": "cookie",
+                    "names": [
+                        "t1",
+                        "t2",
+                        "t3"
+                    ]
+                }
+            }],
+            "cond_keys": [
+                "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+                "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
+            ],
+            "succeed": [
+                "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
+            ],
+            "failed": [
+                "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
+            ],
+            "signed_keys": [
+            ]
+        }
+        )=======";
+
+    auto        var = fc::json::from_string(test_data);
+    lock_def al  = var.as<lock_def>();
+    return al;
+}
+
+lock_def 
+update_lock_data() {
+    const char* test_data = R"=======(
+        {
+            "name": "testsuspend",
+            "proposer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
+            "status": "succeed",
+            "unlock_time": "2018-07-04T05:14:12",
+            "deadline": "2018-09-04T05:14:12",
+            "assets": [{
+                "type": "tokens",
+                "tokens": {
+                    "domain": "cookie",
+                    "names": [
+                        "t1",
+                        "t2",
+                        "t3"
+                    ]
+                }
+            }],
+            "cond_keys": [
+                "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+                "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
+            ],
+            "succeed": [
+                "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
+            ],
+            "failed": [
+                "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
+            ],
+            "signed_keys": [
+                "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+                "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
+            ]
+        }
+        )=======";
+
+    auto        var = fc::json::from_string(test_data);
+    lock_def ul  = var.as<lock_def>();
+    return ul;
+}
+
 TEST_CASE_METHOD(tokendb_test, "tokendb_adddomain_test", "[tokendb]") {
     CHECK(true);
 
@@ -903,6 +985,68 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_prodvote_presist_test", "[tokendb]") {
     CHECK(vote_sum[pkey2] == 0);
     vote_sum.clear();
 }
+
+TEST_CASE_METHOD(tokendb_test, "tokendb_add_lock_test", "[tokendb]") {
+    CHECK(tokendb.get_savepoints_size() == 0);
+    tokendb.add_savepoint(get_time());
+
+    auto al = add_lock_data();
+    CHECK(!tokendb.exists_lock(al.name));
+
+    auto re = tokendb.add_lock(al);
+    REQUIRE(re == 0);
+    CHECK(tokendb.exists_lock(al.name));
+
+    lock_def al_;
+    tokendb.read_lock(al.name, al_);
+
+    CHECK(al.status == al_.status);
+    CHECK(al.name == al_.name);
+    CHECK((std::string)al.proposer == (std::string)al_.proposer);
+}
+
+TEST_CASE_METHOD(tokendb_test, "tokendb_update_lock_test", "[tokendb]") {
+    CHECK(tokendb.get_savepoints_size() == 1);
+    tokendb.add_savepoint(get_time());
+
+    auto ul = update_lock_data();
+
+    auto re = tokendb.update_lock(ul);
+    REQUIRE(re == 0);
+
+    lock_def ul_;
+    tokendb.read_lock(ul.name, ul_);
+
+    CHECK(ul.status == ul_.status);
+    CHECK(ul.name == ul_.name);
+    CHECK((std::string)ul.proposer == (std::string)ul_.proposer);
+}
+
+TEST_CASE_METHOD(tokendb_test, "tokendb_lock_presist_test", "[tokendb]") {
+    CHECK(tokendb.get_savepoints_size() == 2);
+
+    auto ul = update_lock_data();
+    auto al = add_lock_data();
+
+    CHECK(tokendb.exists_lock(al.name));
+    lock_def lock_;
+    tokendb.read_lock(ul.name, lock_);
+
+    CHECK(lock_.status == ul.status);
+
+    tokendb.rollback_to_latest_savepoint();
+
+    CHECK(tokendb.exists_lock(al.name));
+    tokendb.read_lock(ul.name, lock_);
+    CHECK(lock_.status == al.status);
+
+    tokendb.rollback_to_latest_savepoint();
+
+    CHECK(!tokendb.exists_lock(al.name));
+
+    CHECK(tokendb.get_savepoints_size() == 0);
+}
+
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_squash", "[tokendb]") {
     CHECK(true);
