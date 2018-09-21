@@ -44,8 +44,10 @@ transaction_context::init(uint64_t initial_net_usage) {
 
     auto& config = control.get_global_properties().configuration;
     net_limit    = config.max_transaction_net_usage;
-    net_usage    = initial_net_usage;
-    check_net_usage();
+
+    if(initial_net_usage > 0) {
+        add_net_usage(initial_net_usage);  // Fail early if current net usage is already greater than the calculated limit
+    }
 
     is_initialized = true;
 }

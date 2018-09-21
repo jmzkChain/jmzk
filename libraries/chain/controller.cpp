@@ -538,6 +538,7 @@ struct controller_impl {
                                               transaction_receipt::executed,
                                               transaction_receipt::suspend);
 
+                pending->_pending_block_state->trxs.emplace_back(trx);
                 fc::move_append(pending->_actions, move(trx_context.executed));
 
                 emit(self.accepted_transaction, trx);

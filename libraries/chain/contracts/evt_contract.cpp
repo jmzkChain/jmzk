@@ -786,6 +786,7 @@ EVT_ACTION_IMPL(aprvsuspend) {
         }
 
         suspend.signed_keys.merge(signed_keys);
+        suspend.signatures.insert(suspend.signatures.cend(), aeact.signatures.cbegin(), aeact.signatures.cend());
         
         tokendb.update_suspend(suspend);
     }
@@ -834,8 +835,12 @@ EVT_ACTION_IMPL(execsuspend) {
                 "Payer ${pay} needs to sign this suspend transaction", ("pay",suspend.trx.payer));
         }
 
-        auto strx = signed_transaction(suspend.trx, {});
-        auto mtrx = std::make_shared<transaction_metadata>(strx);
+        auto  strx = signed_transaction(suspend.trx, std::move(suspend.signatures));
+        auto  mtrx = std::make_shared<transaction_metadata>(strx);
+        auto& ptrx = mtrx->packed_trx;
+
+        context.trx_context.add_net_usage(ptrx.get_unprunable_size() + ptrx.get_prunable_size());
+
         auto trace = context.control.push_suspend_transaction(mtrx, fc::time_point::maximum());
         bool transaction_failed = trace && trace->except;
         if(transaction_failed) {
