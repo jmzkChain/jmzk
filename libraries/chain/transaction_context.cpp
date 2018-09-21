@@ -19,7 +19,8 @@ transaction_context::transaction_context(controller&           c,
     , undo_token_session()
     , trx(t)
     , trace(std::make_shared<transaction_trace>())
-    , start(s) {
+    , start(s)
+    , net_usage(trace->net_usage) {
 
     if(!c.skip_db_sessions()) {
         undo_session       = c.db().start_undo_session(true);
@@ -31,7 +32,7 @@ transaction_context::transaction_context(controller&           c,
 }
 
 void
-transaction_context::init() {
+transaction_context::init(uint64_t initial_net_usage) {
     EVT_ASSERT(!is_initialized, transaction_exception, "cannot initialize twice");
     EVT_ASSERT(!trx.trx.actions.empty(), tx_no_action, "There's any actions in this transaction");
     
@@ -40,23 +41,32 @@ transaction_context::init() {
         check_charge();  // Fail early if max charge has already been exceeded
         check_paid();    // Fail early if there's no remaining available EVT & Pinned EVT tokens
     }
+
+    auto& config = control.get_global_properties().configuration;
+    net_limit    = config.max_transaction_net_usage;
+    net_usage    = initial_net_usage;
+    check_net_usage();
+
     is_initialized = true;
 }
 
 void
 transaction_context::init_for_implicit_trx() {
-    init();
+    init(0);
 }
 
 void
-transaction_context::init_for_input_trx(uint32_t num_signatures, bool skip_recording) {
+transaction_context::init_for_input_trx(bool skip_recording) {
     auto& t  = trx.trx;
     is_input = true;
     if(!control.loadtest_mode() || !control.skip_trx_checks()) {
         control.validate_expiration(t);
         control.validate_tapos(t);
     }
-    init();
+
+    auto& ptrx = trx.packed_trx;
+    init(ptrx.get_unprunable_size() + ptrx.get_prunable_size());
+
     if(!skip_recording) {
         record_transaction(trx.id, t.expiration);  /// checks for dupes
     }
@@ -65,7 +75,7 @@ transaction_context::init_for_input_trx(uint32_t num_signatures, bool skip_recor
 void
 transaction_context::init_for_suspend_trx() {
     trace->is_suspend = true;
-    init();
+    init(0);
 }
 
 void
@@ -196,6 +206,14 @@ transaction_context::finalize_pay() {
 
     trace->action_traces.emplace_back();
     dispatch_action(trace->action_traces.back(), act);
+}
+
+void
+transaction_context::check_net_usage() const {
+    if(!control.skip_trx_checks()) {
+        EVT_ASSERT(net_usage < net_limit, tx_net_usage_exceeded, "transaction net usage is too high: ${net_usage} > ${net_limit}", 
+            ("net_usage", net_usage)("net_limit", net_limit));
+    }
 }
 
 void

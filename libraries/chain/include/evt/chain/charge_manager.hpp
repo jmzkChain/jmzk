@@ -66,7 +66,7 @@ public:
 
 private:
     uint32_t
-    network(const packed_transaction& ptrx, size_t sig_num) {
+    network(const packed_transaction& ptrx, size_t sig_num) const {
         uint32_t s = 0;
 
         s += ptrx.packed_trx.size();
@@ -77,13 +77,13 @@ private:
     }
 
     uint32_t
-    cpu(const packed_transaction&, size_t sig_num) {
+    cpu(const packed_transaction&, size_t sig_num) const {
         return sig_num * 60;
     }
 
 public:
     uint32_t
-    calculate(const packed_transaction& ptrx, size_t sig_num = 0) {
+    calculate(const packed_transaction& ptrx, size_t sig_num = 0) const {
         using namespace __internal;
         EVT_ASSERT(!ptrx.get_transaction().actions.empty(), tx_no_action, "There's not any actions in this transaction");
 

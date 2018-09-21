@@ -11,7 +11,7 @@ namespace evt { namespace chain {
 
 class transaction_context {
 private:
-    void init();
+    void init(uint64_t initial_net_usage);
 
 public:
     transaction_context(controller&            c,
@@ -19,13 +19,15 @@ public:
                         fc::time_point         start = fc::time_point::now());
 
     void init_for_implicit_trx();
-    void init_for_input_trx(uint32_t num_signatures, bool skip_recording);
+    void init_for_input_trx(bool skip_recording);
     void init_for_suspend_trx();
 
     void exec();
     void finalize();
     void squash();
     void undo();
+
+    inline void add_net_usage( uint64_t u ) { net_usage += u; check_net_usage(); }
 
 private:
     friend struct controller_impl;
@@ -37,6 +39,7 @@ private:
     void check_time() const;
     void check_charge();
     void check_paid() const;
+    void check_net_usage() const;
 
     void finalize_pay();
 
@@ -52,8 +55,10 @@ public:
 
     vector<action_receipt> executed;
 
-    bool     is_input = false;
-    uint32_t charge   = 0;
+    bool      is_input  = false;
+    uint32_t  charge    = 0;
+    uint64_t  net_limit = 0;
+    uint64_t& net_usage;  // reference to trace->net_usage
 
     fc::time_point deadline = fc::time_point::maximum();
 

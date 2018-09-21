@@ -602,9 +602,9 @@ struct check_authority<newlock> {
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& ns    = act.data_as<const newlock&>();
-            auto vistor = authority_checker::weight_tally_visitor(checker);
-            if(vistor(ns.proposer, 1) == 1) {
+            auto& nl     = act.data_as<const newlock&>();
+            auto  vistor = authority_checker::weight_tally_visitor(checker);
+            if(vistor(nl.proposer, 1) == 1) {
                 return true;
             }
         }
@@ -618,8 +618,8 @@ struct check_authority<aprvlock> {
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& al    = act.data_as<const aprvlock&>();
-            auto vistor = authority_checker::weight_tally_visitor(checker);
+            auto& al     = act.data_as<const aprvlock&>();
+            auto  vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(al.approver, 1) == 1) {
                 return true;
             }
@@ -634,8 +634,8 @@ struct check_authority<tryunlock> {
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& tl    = act.data_as<const tryunlock&>();
-            auto vistor = authority_checker::weight_tally_visitor(checker);
+            auto& tl     = act.data_as<const tryunlock&>();
+            auto  vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(tl.executor, 1) == 1) {
                 return true;
             }

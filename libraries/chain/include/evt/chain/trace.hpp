@@ -34,6 +34,7 @@ struct transaction_trace {
     vector<action_trace>                     action_traces;  ///< disposable
 
     uint32_t charge;
+    uint64_t net_usage;
 
     fc::optional<fc::exception> except;
     std::exception_ptr          except_ptr;
@@ -42,4 +43,4 @@ struct transaction_trace {
 }}  // namespace evt::chain
 
 FC_REFLECT(evt::chain::action_trace, (receipt)(act)(elapsed)(console)(trx_id));
-FC_REFLECT(evt::chain::transaction_trace, (id)(receipt)(elapsed)(is_suspend)(action_traces)(charge)(except));
+FC_REFLECT(evt::chain::transaction_trace, (id)(receipt)(elapsed)(is_suspend)(action_traces)(charge)(net_usage)(except));

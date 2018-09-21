@@ -594,7 +594,7 @@ struct controller_impl {
                 }
                 else {
                     bool skip_recording = replay_head_time && (time_point(trx->trx.expiration) <= *replay_head_time);
-                    trx_context.init_for_input_trx(trx->trx.signatures.size(), skip_recording);
+                    trx_context.init_for_input_trx(skip_recording);
                 }
 
                 if(!self.skip_auth_check() && !trx->implicit) {
