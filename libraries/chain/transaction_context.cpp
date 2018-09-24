@@ -28,7 +28,12 @@ transaction_context::transaction_context(controller&           c,
     }
     trace->id = trx.id;
     executed.reserve(trx.total_actions() + 1); // one for paycharge action
-    FC_ASSERT(trx.trx.transaction_extensions.size() == 0, "we don't support any extensions yet");
+
+    if(!trx.trx.transaction_extensions.empty()) {
+        for(auto& ext : trx.trx.transaction_extensions) {
+            FC_ASSERT(std::get<0>(ext) <= (uint)transaction_ext::max_value, "we don't support this extensions yet");            
+        }
+    }
 }
 
 void

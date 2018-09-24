@@ -836,6 +836,9 @@ EVT_ACTION_IMPL(execsuspend) {
         }
 
         auto strx = signed_transaction(suspend.trx, {});
+        auto name = (std::string)esact.name;
+        strx.transaction_extensions.emplace_back(std::make_pair((uint16_t)transaction_ext::suspend_name, vector<char>(name.cbegin(), name.cend())));
+
         auto mtrx = std::make_shared<transaction_metadata>(strx);
 
         auto trace = context.control.push_suspend_transaction(mtrx, fc::time_point::maximum());
