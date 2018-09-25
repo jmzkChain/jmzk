@@ -42,6 +42,7 @@ private:
     void process_issuefungible(const issuefungible& ifact, write_context& write_ctx);
     void process_destroytoken(const destroytoken& dt, write_context& write_ctx);
     void process_everipass(const everipass& ep, write_context& write_ctx);
+    void process_addmeta(const chain::action& act, write_context& write_ct);
 
 private:
     mongocxx::database db_;
@@ -73,6 +74,11 @@ interpreter_impl::process_trx(const transaction& trx, write_context& write_ctx) 
             CASE_N_CALL(updfungible, write_ctx)
             CASE_N_CALL(issuefungible, write_ctx)
             CASE_N_CALL(everipass, write_ctx)
+
+            case N(addmeta): {
+                process_addmeta(act, write_ctx);
+                break;
+            }
             default: break;
         }
     }
@@ -391,11 +397,12 @@ interpreter_impl::process_updfungible(const updfungible& uf, write_context& writ
     write_ctx.get_fungibles().append(update_one(find_fungible(id).view(), update.view()));
 }
 
-void interpreter_impl::process_everipass(const everipass& ep, write_context& write_ctx){
-    auto link = ep.link;
+void
+interpreter_impl::process_everipass(const everipass& ep, write_context& write_ctx){
+    auto  link  = ep.link;
     auto  flags = link.get_header();
-    auto& d = *link.get_segment(evt_link::domain).strv;
-    auto& t = *link.get_segment(evt_link::token).strv;
+    auto& d     = *link.get_segment(evt_link::domain).strv;
+    auto& t     = *link.get_segment(evt_link::token).strv;
 
     if(flags & evt_link::destroy) {
         auto dt   = destroytoken();
@@ -403,6 +410,41 @@ void interpreter_impl::process_everipass(const everipass& ep, write_context& wri
         dt.name   = t;
 
         process_destroytoken(dt, write_ctx);
+    }
+}
+
+void
+interpreter_impl::process_addmeta(const chain::action& act, write_context& write_ctx) {
+    using namespace __internal;
+    using namespace bsoncxx::types;
+    using namespace bsoncxx::builder;
+    using namespace mongocxx::model;
+    using bsoncxx::builder::stream::close_document;
+    using bsoncxx::builder::stream::document;
+    using bsoncxx::builder::stream::open_document;
+
+    auto am = act.data_as<const addmeta&>();
+
+    document meta{};
+    meta << (std::string)am.key << am.value;
+
+    document update{};
+    update << "$set" << open_document;
+    update << "metas" << meta;
+    update << close_document;
+
+    if(act.domain == N128(.group)) {
+        write_ctx.get_groups().append(update_one(find_group((std::string)act.key).view(), update.view()));
+    }
+    else if(act.domain == N128(.fungible)) {
+        auto id = (uint64_t)std::stoull((std::string)act.key);
+        write_ctx.get_fungibles().append(update_one(find_fungible(id).view(), update.view()));
+    }
+    else if(act.key == N128(.meta)) {
+        write_ctx.get_domains().append(update_one(find_domain((std::string)act.domain).view(), update.view()));
+    }
+    else {
+        write_ctx.get_tokens().append(update_one(find_token((std::string)act.domain, (std::string)act.key).view(), update.view()));
     }
 }
 
