@@ -1560,7 +1560,6 @@ TEST_CASE_METHOD(contracts_test, "contract_newlock_test", "[contracts]") {
             "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
         ],
         "succeed": [
-            "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
         ],
         "failed": [
             "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
@@ -1580,6 +1579,11 @@ TEST_CASE_METHOD(contracts_test, "contract_newlock_test", "[contracts]") {
 
     nl.proposer  = tester::get_public_key(N(key));
     nl.cond_keys = {tester::get_public_key(N(key))};
+    to_variant(nl, var);
+
+    CHECK_THROWS_AS(my_tester->push_action(N(newlock), N128(.lock), N128(lock), var.get_object(), key_seeds, payer, 5'000'000),lock_address_exception);
+
+    nl.succeed = {public_key_type(std::string("EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"))};
     to_variant(nl, var);
 
     my_tester->push_action(N(newlock), N128(.lock), N128(lock), var.get_object(), key_seeds, payer, 5'000'000);
@@ -1612,6 +1616,10 @@ TEST_CASE_METHOD(contracts_test, "contract_aprvlock_test", "[contracts]") {
 
     CHECK_THROWS_AS(my_tester->push_action(N(aprvlock), N128(.lock), N128(lock), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
 
+    al.approver = {tester::get_public_key(N(payer))};
+    to_variant(al, var);
+    CHECK_THROWS_AS(my_tester->push_action(N(aprvlock), N128(.lock), N128(lock), var.get_object(), key_seeds, payer, 5'000'000), lock_aprv_key_exception);
+
     al.approver = {tester::get_public_key(N(key))};
     to_variant(al, var);
     
@@ -1642,6 +1650,10 @@ TEST_CASE_METHOD(contracts_test, "contract_tryunlock_test", "[contracts]") {
     to_variant(al, var);
     
     CHECK_THROWS_AS(my_tester->push_action(N(tryunlock), N128(.lock), N128(lock), var.get_object(), key_seeds, payer, 5'000'000),lock_not_reach_unlock_time);
+
+    my_tester->produce_block(fc::milliseconds(500000000000));
+    
+    my_tester->push_action(N(tryunlock), N128(.lock), N128(lock), var.get_object(), key_seeds, payer, 5'000'000);
 
     my_tester->produce_blocks();
 }
