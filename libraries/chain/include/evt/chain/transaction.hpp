@@ -46,6 +46,11 @@ struct transaction_header {
     void validate() const;
 };
 
+enum class transaction_ext : uint16_t {
+    suspend_name = 0,
+    max_value = 0
+};
+
 /**
  *  A transaction consits of a set of messages which must all be applied or
  *  all are rejected. These messages have access to data within the given
@@ -137,8 +142,9 @@ uint128_t transaction_id_to_sender_id(const transaction_id_type& tid);
 
 }}  // namespace evt::chain
 
-FC_REFLECT(evt::chain::transaction_header, (expiration)(ref_block_num)(ref_block_prefix)(max_charge))
-FC_REFLECT_DERIVED(evt::chain::transaction, (evt::chain::transaction_header), (actions)(payer)(transaction_extensions))
-FC_REFLECT_DERIVED(evt::chain::signed_transaction, (evt::chain::transaction), (signatures))
-FC_REFLECT_ENUM(evt::chain::packed_transaction::compression_type, (none)(zlib))
-FC_REFLECT(evt::chain::packed_transaction, (signatures)(compression)(packed_trx))
+FC_REFLECT(evt::chain::transaction_header, (expiration)(ref_block_num)(ref_block_prefix)(max_charge));
+FC_REFLECT_ENUM(evt::chain::transaction_ext, (suspend_name));
+FC_REFLECT_DERIVED(evt::chain::transaction, (evt::chain::transaction_header), (actions)(payer)(transaction_extensions));
+FC_REFLECT_DERIVED(evt::chain::signed_transaction, (evt::chain::transaction), (signatures));
+FC_REFLECT_ENUM(evt::chain::packed_transaction::compression_type, (none)(zlib));
+FC_REFLECT(evt::chain::packed_transaction, (signatures)(compression)(packed_trx));

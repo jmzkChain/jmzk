@@ -125,6 +125,7 @@ struct suspend_def {
     fc::enum_type<uint8_t, suspend_status> status;
     transaction                            trx;
     flat_set<public_key_type>              signed_keys;
+    vector<signature_type>                 signatures;
 };
 
 enum class asset_type {
@@ -384,7 +385,7 @@ FC_REFLECT(evt::chain::contracts::permission_def, (name)(threshold)(authorizers)
 FC_REFLECT(evt::chain::contracts::domain_def, (name)(creator)(create_time)(issue)(transfer)(manage)(metas));
 FC_REFLECT(evt::chain::contracts::fungible_def, (name)(sym_name)(sym)(creator)(create_time)(issue)(manage)(total_supply)(metas));
 FC_REFLECT_ENUM(evt::chain::contracts::suspend_status, (proposed)(executed)(failed)(cancelled));
-FC_REFLECT(evt::chain::contracts::suspend_def, (name)(proposer)(status)(trx)(signed_keys));
+FC_REFLECT(evt::chain::contracts::suspend_def, (name)(proposer)(status)(trx)(signed_keys)(signatures));
 FC_REFLECT_ENUM(evt::chain::contracts::asset_type, (tokens)(fungible));
 FC_REFLECT_ENUM(evt::chain::contracts::lock_status, (proposed)(succeed)(failed));
 FC_REFLECT(evt::chain::contracts::locknft_def, (domain)(names));

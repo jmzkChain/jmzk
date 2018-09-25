@@ -207,21 +207,42 @@ print_result(const fc::variant& result) {
     FC_CAPTURE_AND_RETHROW((result))
 }
 
+fc::microseconds
+parse_time_span_str(const string& str) {
+    auto t = std::stoul(str.substr(0, str.size() - 1));
+    auto s = str.substr(str.size() - 1);
+
+    if(s == "s") {
+        return fc::seconds(t);
+    }
+    else if(s == "m") {
+        return fc::minutes(t);
+    }
+    else if(s == "h") {
+        return fc::hours(t);
+    }
+    else if(s == "d") {
+        return fc::days(t);
+    }
+    else {
+        FC_ASSERT(false, "Not support time: ${t}", ("t",str));
+    }
+}
+
 evt::client::http::http_context context;
 
 void
 add_standard_transaction_options(CLI::App* cmd) {
     CLI::callback_t parse_expiration = [](CLI::results_t res) -> bool {
-        double value_s;
-        if(res.size() == 0 || !CLI::detail::lexical_cast(res[0], value_s)) {
+        if(res.size() == 0) {
             return false;
         }
 
-        tx_expiration = fc::seconds(static_cast<uint64_t>(value_s));
+        tx_expiration = parse_time_span_str(res[0]);
         return true;
     };
 
-    cmd->add_option("-x,--expiration", parse_expiration, localized("Set the time in seconds before a transaction expires, defaults to 30s"));
+    cmd->add_option("-x,--expiration", parse_expiration, localized("Set the time string('1s','2m','3h','4d') before a transaction expires, defaults to 30s"));
     cmd->add_flag("-s,--skip-sign", tx_skip_sign, localized("Specify if unlocked wallet keys should be used to sign transaction"));
     cmd->add_flag("-d,--dont-broadcast", tx_dont_broadcast, localized("Don't broadcast transaction to the network (just print to stdout)"));
     cmd->add_option("-r,--ref-block", tx_ref_block_num_or_id, localized("Set the reference block num or block id used for TAPOS (Transaction as Proof-of-Stake)"));
@@ -1007,29 +1028,6 @@ struct set_suspend_subcommands {
     }
 };
 
-fc::time_point
-parse_time_str(const string& str) {
-    auto t = std::stoul(str.substr(0, str.size() - 1));
-    auto s = str.substr(str.size() - 1);
-
-    auto now = fc::time_point::now();
-    if(s == "s") {
-        return now + fc::seconds(t);
-    }
-    else if(s == "m") {
-        return now + fc::minutes(t);
-    }
-    else if(s == "h") {
-        return now + fc::hours(t);
-    }
-    else if(s == "d") {
-        return now + fc::days(t);
-    }
-    else {
-        FC_ASSERT(false, "Not support time: ${t}", ("t",str));
-    }
-}
-
 lockasset_def
 parse_lockasset(const string& str) {
     vector<string> strs;
@@ -1059,6 +1057,12 @@ parse_lockasset(const string& str) {
         la.tokens = tokens;
     }
     return la;
+}
+
+fc::time_point
+parse_time_point_str(const std::string& str) {
+    auto now = fc::time_point::now();
+    return now + parse_time_span_str(str);
 }
 
 struct set_lock_subcommands {
@@ -1094,8 +1098,8 @@ struct set_lock_subcommands {
 
             nl.name        = (name128)name;
             nl.proposer    = get_public_key(proposer);
-            nl.unlock_time = parse_time_str(time);
-            nl.deadline    = parse_time_str(deadline);
+            nl.unlock_time = parse_time_point_str(time);
+            nl.deadline    = parse_time_point_str(deadline);
 
             for(auto& ass : assets) {
                 nl.assets.emplace_back(parse_lockasset(ass));

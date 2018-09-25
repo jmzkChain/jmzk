@@ -88,6 +88,8 @@ public:
                        std::deque<transaction_trace_ptr>& traces,
                        std::function<void(action&)>&& on_paycharge_act);
 
+    void add_trx_ext(bsoncxx::builder::basic::document& trx_doc, const chain::transaction& trx);
+
     void init();
     void wipe_database();
 
@@ -417,6 +419,11 @@ mongo_db_plugin_impl::_process_block(const signed_block& block, std::deque<trans
                 act_num++;
             }
         }
+
+        if(!trx.transaction_extensions.empty()) {
+            add_trx_ext(doc, trx);
+        }
+
         // add trace(elapsed and charge) and paycharge action
         add_trx_trace(doc, trx, traces, [&](auto& act) {
             process_action(trans_id_str, act);
@@ -513,6 +520,27 @@ mongo_db_plugin_impl::add_trx_trace(bsoncxx::builder::basic::document& trx_doc,
         }
         it++;
     }
+}
+
+void
+mongo_db_plugin_impl::add_trx_ext(bsoncxx::builder::basic::document& trx_doc, const chain::transaction& trx) {
+    using namespace evt::__internal;
+    using namespace bsoncxx::types;
+    using namespace bsoncxx::builder;
+    using namespace mongocxx::model;
+    using bsoncxx::builder::basic::kvp;
+
+    auto ext_doc = bsoncxx::builder::basic::document{};
+
+    for(auto& ext : trx.transaction_extensions) {
+        if(std::get<0>(ext) == (uint16_t)chain::transaction_ext::suspend_name) {
+            auto& v    = std::get<1>(ext);
+            auto  name = string(v.cbegin(), v.cend());
+
+            ext_doc.append(kvp("suspend_name", name));
+        }
+    }
+    trx_doc.append(kvp("exts", ext_doc));
 }
 
 mongo_db_plugin_impl::~mongo_db_plugin_impl() {

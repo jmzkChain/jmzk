@@ -1641,19 +1641,28 @@ TEST_CASE_METHOD(contracts_test, "contract_tryunlock_test", "[contracts]") {
     )=======";
 
     auto  var     = fc::json::from_string(test_data);
-    auto  al      = var.as<tryunlock>();
+    auto  tul      = var.as<tryunlock>();
     auto& tokendb = my_tester->control->token_db();
 
     CHECK_THROWS_AS(my_tester->push_action(N(tryunlock), N128(.lock), N128(lock), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
 
-    al.executor = {tester::get_public_key(N(key))};
-    to_variant(al, var);
+    tul.executor = {tester::get_public_key(N(key))};
+    to_variant(tul, var);
     
     CHECK_THROWS_AS(my_tester->push_action(N(tryunlock), N128(.lock), N128(lock), var.get_object(), key_seeds, payer, 5'000'000),lock_not_reach_unlock_time);
 
     my_tester->produce_block(fc::milliseconds(500000000000));
     
     my_tester->push_action(N(tryunlock), N128(.lock), N128(lock), var.get_object(), key_seeds, payer, 5'000'000);
+
+    lock_def lock_;
+    tokendb.read_lock(tul.name, lock_);
+    CHECK(lock_.status == lock_status::succeed);
+
+    token_def tk;
+    tokendb.read_token(get_domain_name(), "t3", tk);
+    CHECK(tk.owner.size() == 1);
+    CHECK(tk.owner[0] == public_key_type(std::string("EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC")));
 
     my_tester->produce_blocks();
 }

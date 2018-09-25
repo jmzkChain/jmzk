@@ -28,7 +28,12 @@ transaction_context::transaction_context(controller&           c,
     }
     trace->id = trx.id;
     executed.reserve(trx.total_actions() + 1); // one for paycharge action
-    FC_ASSERT(trx.trx.transaction_extensions.size() == 0, "we don't support any extensions yet");
+
+    if(!trx.trx.transaction_extensions.empty()) {
+        for(auto& ext : trx.trx.transaction_extensions) {
+            FC_ASSERT(std::get<0>(ext) <= (uint)transaction_ext::max_value, "we don't support this extensions yet");            
+        }
+    }
 }
 
 void
@@ -44,8 +49,10 @@ transaction_context::init(uint64_t initial_net_usage) {
 
     auto& config = control.get_global_properties().configuration;
     net_limit    = config.max_transaction_net_usage;
-    net_usage    = initial_net_usage;
-    check_net_usage();
+
+    if(initial_net_usage > 0) {
+        add_net_usage(initial_net_usage);  // Fail early if current net usage is already greater than the calculated limit
+    }
 
     is_initialized = true;
 }
