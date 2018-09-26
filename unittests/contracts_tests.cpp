@@ -1538,11 +1538,11 @@ TEST_CASE_METHOD(contracts_test, "contract_updsched_test", "[contracts]") {
     my_tester->produce_blocks();
 }
 
-TEST_CASE_METHOD(contracts_test, "contract_newlock_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "contract_newnftlock_test", "[contracts]") {
     CHECK(true);
     const char* test_data = R"=======(
     {
-        "name": "lock",
+        "name": "nftlock",
         "proposer": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
         "unlock_time": "2020-06-09T09:06:27",
         "deadline": "2020-07-09T09:06:27",
@@ -1560,7 +1560,6 @@ TEST_CASE_METHOD(contracts_test, "contract_newlock_test", "[contracts]") {
             "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
         ],
         "succeed": [
-            "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
         ],
         "failed": [
             "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
@@ -1576,19 +1575,91 @@ TEST_CASE_METHOD(contracts_test, "contract_newlock_test", "[contracts]") {
     nl.assets[0].tokens->domain = get_domain_name();
     to_variant(nl, var);
 
-    CHECK_THROWS_AS(my_tester->push_action(N(newlock), N128(.lock), N128(lock), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
+    CHECK_THROWS_AS(my_tester->push_action(N(newlock), N128(.lock), N128(nftlock), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
 
     nl.proposer  = tester::get_public_key(N(key));
     nl.cond_keys = {tester::get_public_key(N(key))};
     to_variant(nl, var);
 
-    my_tester->push_action(N(newlock), N128(.lock), N128(lock), var.get_object(), key_seeds, payer, 5'000'000);
+    CHECK_THROWS_AS(my_tester->push_action(N(newlock), N128(.lock), N128(nftlock), var.get_object(), key_seeds, payer, 5'000'000),lock_address_exception);
+
+    nl.succeed = {public_key_type(std::string("EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"))};
+    to_variant(nl, var);
+
+    my_tester->push_action(N(newlock), N128(.lock), N128(nftlock), var.get_object(), key_seeds, payer, 5'000'000);
 
     CHECK(tokendb.exists_lock(nl.name));
 
     lock_def lock_;
     tokendb.read_lock(nl.name, lock_);
     CHECK(lock_.status == lock_status::proposed);
+
+    token_def tk;
+    tokendb.read_token(get_domain_name(), "t3", tk);
+    CHECK(tk.owner.size() == 1);
+    CHECK(tk.owner[0] == address(N(lock), N128(nlact.name), 0));
+
+    my_tester->produce_blocks();
+}
+
+TEST_CASE_METHOD(contracts_test, "contract_newftlock_test", "[contracts]") {
+    CHECK(true);
+    const char* test_data = R"=======(
+    {
+        "name": "ftlock",
+        "proposer": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+        "unlock_time": "2020-06-09T09:06:27",
+        "deadline": "2020-07-09T09:06:27",
+        "assets": [{
+            "type": "fungible",
+            "fungible": {
+                "from": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+                "amount": "5.00000 S#2"
+            }
+        }],
+        "cond_keys": [
+            "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+            "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
+        ],
+        "succeed": [
+        ],
+        "failed": [
+            "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
+        ]
+    }
+    )=======";
+
+    auto  var     = fc::json::from_string(test_data);
+    auto  nl      = var.as<newlock>();
+    auto& tokendb = my_tester->control->token_db();
+    CHECK(!tokendb.exists_lock(nl.name));
+
+    nl.proposer  = tester::get_public_key(N(key));
+    nl.cond_keys = {tester::get_public_key(N(key))};
+    to_variant(nl, var);
+
+    CHECK_THROWS_AS(my_tester->push_action(N(newlock), N128(.lock), N128(ftlock), var.get_object(), key_seeds, payer, 5'000'000), lock_assets_exception);
+
+    nl.assets[0].fungible->amount = asset::from_string(string("5.00000 S#") + std::to_string(get_sym_id()));
+    nl.assets[0].fungible->from = tester::get_public_key(N(key));
+    to_variant(nl, var);
+
+    CHECK_THROWS_AS(my_tester->push_action(N(newlock), N128(.lock), N128(ftlock), var.get_object(), key_seeds, payer, 5'000'000), lock_address_exception);
+
+    nl.succeed = {public_key_type(std::string("EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"))};
+    to_variant(nl, var);
+
+    my_tester->push_action(N(newlock), N128(.lock), N128(ftlock), var.get_object(), key_seeds, payer, 5'000'000);
+
+    CHECK(tokendb.exists_lock(nl.name));
+
+    lock_def lock_;
+    tokendb.read_lock(nl.name, lock_);
+    CHECK(lock_.status == lock_status::proposed);
+
+    asset ast;
+    tokendb.read_asset(address(N(lock), N128(nlact.name), 0), nl.assets[0].fungible->amount.sym(), ast);
+    CHECK(ast.amount() == 500000);
 
     my_tester->produce_blocks();
 }
@@ -1597,7 +1668,7 @@ TEST_CASE_METHOD(contracts_test, "contract_aprvlock_test", "[contracts]") {
     CHECK(true);
     const char* test_data = R"=======(
     {
-        "name": "lock",
+        "name": "nftlock",
         "approver": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
     }
     )=======";
@@ -1610,12 +1681,20 @@ TEST_CASE_METHOD(contracts_test, "contract_aprvlock_test", "[contracts]") {
     tokendb.read_lock(al.name, lock_);
     CHECK(lock_.signed_keys.size() == 0);
 
-    CHECK_THROWS_AS(my_tester->push_action(N(aprvlock), N128(.lock), N128(lock), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
+    CHECK_THROWS_AS(my_tester->push_action(N(aprvlock), N128(.lock), N128(nftlock), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
+
+    al.approver = {tester::get_public_key(N(payer))};
+    to_variant(al, var);
+    CHECK_THROWS_AS(my_tester->push_action(N(aprvlock), N128(.lock), N128(nftlock), var.get_object(), key_seeds, payer, 5'000'000), lock_aprv_key_exception);
 
     al.approver = {tester::get_public_key(N(key))};
     to_variant(al, var);
     
-    my_tester->push_action(N(aprvlock), N128(.lock), N128(lock), var.get_object(), key_seeds, payer, 5'000'000);
+    my_tester->push_action(N(aprvlock), N128(.lock), N128(nftlock), var.get_object(), key_seeds, payer, 5'000'000);
+
+    al.name = "ftlock";
+    to_variant(al, var);
+    my_tester->push_action(N(aprvlock), N128(.lock), N128(ftlock), var.get_object(), key_seeds, payer, 5'000'000);
 
     tokendb.read_lock(al.name, lock_);
     CHECK(lock_.signed_keys.size() == 1);
@@ -1627,21 +1706,42 @@ TEST_CASE_METHOD(contracts_test, "contract_tryunlock_test", "[contracts]") {
     CHECK(true);
     const char* test_data = R"=======(
     {
-        "name": "lock",
+        "name": "nftlock",
         "executor": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
     }
     )=======";
 
     auto  var     = fc::json::from_string(test_data);
-    auto  al      = var.as<tryunlock>();
+    auto  tul      = var.as<tryunlock>();
     auto& tokendb = my_tester->control->token_db();
 
-    CHECK_THROWS_AS(my_tester->push_action(N(tryunlock), N128(.lock), N128(lock), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
+    CHECK_THROWS_AS(my_tester->push_action(N(tryunlock), N128(.lock), N128(nftlock), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
 
-    al.executor = {tester::get_public_key(N(key))};
-    to_variant(al, var);
+    tul.executor = {tester::get_public_key(N(key))};
+    to_variant(tul, var);
     
-    CHECK_THROWS_AS(my_tester->push_action(N(tryunlock), N128(.lock), N128(lock), var.get_object(), key_seeds, payer, 5'000'000),lock_not_reach_unlock_time);
+    CHECK_THROWS_AS(my_tester->push_action(N(tryunlock), N128(.lock), N128(nftlock), var.get_object(), key_seeds, payer, 5'000'000),lock_not_reach_unlock_time);
+
+    my_tester->produce_block(fc::milliseconds(500000000000));
+    
+    my_tester->push_action(N(tryunlock), N128(.lock), N128(nftlock), var.get_object(), key_seeds, payer, 5'000'000);
+
+    lock_def lock_;
+    tokendb.read_lock(tul.name, lock_);
+    CHECK(lock_.status == lock_status::succeed);
+
+    token_def tk;
+    tokendb.read_token(get_domain_name(), "t3", tk);
+    CHECK(tk.owner.size() == 1);
+    CHECK(tk.owner[0] == public_key_type(std::string("EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC")));
+
+    tul.name = "ftlock";
+    to_variant(tul, var);
+    my_tester->push_action(N(tryunlock), N128(.lock), N128(ftlock), var.get_object(), key_seeds, payer, 5'000'000);
+
+    asset ast;
+    tokendb.read_asset(address(public_key_type(std::string("EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"))), symbol(5, get_sym_id()), ast);
+    CHECK(ast.amount() == 500000);
 
     my_tester->produce_blocks();
 }
