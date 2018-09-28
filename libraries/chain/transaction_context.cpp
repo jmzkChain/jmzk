@@ -31,7 +31,7 @@ transaction_context::transaction_context(controller&           c,
 
     if(!trx.trx.transaction_extensions.empty()) {
         for(auto& ext : trx.trx.transaction_extensions) {
-            FC_ASSERT(std::get<0>(ext) <= (uint)transaction_ext::max_value, "we don't support this extensions yet");            
+            FC_ASSERT(std::get<0>(ext) <= (uint16_t)transaction_ext::max_value, "we don't support this extensions yet");            
         }
     }
 }
