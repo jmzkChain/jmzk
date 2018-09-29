@@ -1,6 +1,5 @@
 #pragma once
 #include <fc/variant.hpp>
-#include <fc/shared_ptr.hpp>
 #include <fc/unique_ptr.hpp>
 
 namespace fc
