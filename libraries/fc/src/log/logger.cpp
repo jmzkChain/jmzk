@@ -51,8 +51,8 @@ namespace fc {
        fc_swap(my,l.my);
        return *this;
     }
-    bool operator==( const logger& l, std::nullptr_t ) { return l.my == nullptr; }
-    bool operator!=( const logger& l, std::nullptr_t ) { return l.my != nullptr; }
+    bool operator==( const logger& l, std::nullptr_t ) { return !l.my; }
+    bool operator!=( const logger& l, std::nullptr_t ) { return l.my;  }
 
     bool logger::is_enabled( log_level e )const {
        return e >= my->_level;
@@ -91,10 +91,13 @@ namespace fc {
     log_level logger::get_log_level()const { return my->_level; }
     logger& logger::set_log_level(log_level ll) { my->_level = ll; return *this; }
 
-    void logger::add_appender( const std::shared_ptr<appender>& a )
+    void logger::add_appender( const fc::shared_ptr<appender>& a )
     { my->_appenders.push_back(a); }
 
-    std::vector<std::shared_ptr<appender> > logger::get_appenders()const
+//    void logger::remove_appender( const fc::shared_ptr<appender>& a )
+ //   { my->_appenders.erase(a); }
+
+    std::vector<fc::shared_ptr<appender> > logger::get_appenders()const
     {
         return my->_appenders;
     }

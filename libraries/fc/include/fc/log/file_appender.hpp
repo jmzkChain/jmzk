@@ -25,7 +25,7 @@ class file_appender : public appender {
 
       private:
          class impl;
-         std::shared_ptr<impl> my;
+         fc::shared_ptr<impl> my;
    };
 } // namespace fc
 

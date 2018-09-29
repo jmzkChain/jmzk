@@ -4,7 +4,6 @@
  */
 #include <fc/network/udp_socket.hpp>
 #include <fc/network/ip.hpp>
-#include <fc/retainable.hpp>
 
 
 namespace fc
