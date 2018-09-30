@@ -110,7 +110,6 @@ public:
     bfs::path                         blocks_dir;
     bfs::path                         tokendb_dir;
     bool                              readonly = false;
-    uint64_t                          shared_memory_size;
     flat_map<uint32_t, block_id_type> loaded_checkpoints;
 
     fc::optional<fork_database>      fork_db;
@@ -119,8 +118,6 @@ public:
     fc::optional<controller>         chain;
     fc::optional<chain_id_type>      chain_id;
     abi_serializer                   system_api;
-    int32_t                          max_reversible_block_time_ms;
-    int32_t                          max_pending_transaction_time_ms;
 
     // retained references to channels for easy publication
     channels::pre_accepted_block::channel_type&    pre_accepted_block_channel;

@@ -89,7 +89,7 @@ wallet_manager::create(const std::string& name) {
     wallet->save_wallet_file();
 
     // If we have name in our map then remove it since we want the emplace below to replace.
-    // This can happen if the wallet file is removed while eos-walletd is running.
+    // This can happen if the wallet file is removed while evtd is running.
     auto it = wallets.find(name);
     if(it != wallets.end()) {
         wallets.erase(it);
@@ -114,7 +114,7 @@ wallet_manager::open(const std::string& name) {
     }
 
     // If we have name in our map then remove it since we want the emplace below to replace.
-    // This can happen if the wallet file is added while eos-walletd is running.
+    // This can happen if the wallet file is added while evtd is running.
     auto it = wallets.find(name);
     if(it != wallets.end()) {
         wallets.erase(it);
@@ -319,7 +319,7 @@ wallet_manager::own_and_use_wallet(const string& name, std::unique_ptr<wallet_ap
 
 void
 wallet_manager::initialize_lock() {
-    //This is technically somewhat racy in here -- if multiple keosd are in this function at once.
+    //This is technically somewhat racy in here -- if multiple evtd are in this function at once.
     //I've considered that an acceptable tradeoff to maintain cross-platform boost constructs here
     lock_path = dir / "wallet.lock";
     {
