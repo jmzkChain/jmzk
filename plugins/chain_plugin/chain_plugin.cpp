@@ -950,6 +950,8 @@ read_only::get_head_block_header_state(const get_head_block_header_state_params&
 fc::variant
 read_only::get_transaction(const get_transaction_params& params) {
     auto block = db.fetch_block_by_number(params.block_num);
+    EVT_ASSERT(block, unknown_block_exception, "Could not find head block");
+
     for(auto& tx : block->transactions) {
         if(tx.trx.id() == params.id) {
             auto var = fc::variant();
