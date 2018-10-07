@@ -152,6 +152,17 @@ struct lockasset_def {
     fc::optional<lockft_def>           fungible;
 };
 
+enum class lock_type {
+    cond_keys = 0
+};
+
+struct lock_condkeys {
+    uint16_t                     threshold;
+    std::vector<public_key_type> cond_keys;
+};
+
+using lock_cond_t = static_variant<lock_condkeys>;
+
 struct lock_def {
     proposal_name                       name;
     user_id                             proposer;
@@ -161,9 +172,9 @@ struct lock_def {
     time_point_sec             deadline;
     std::vector<lockasset_def> assets;
     
-    std::vector<public_key_type> cond_keys;
-    std::vector<address>         succeed;
-    std::vector<address>         failed;
+    lock_cond_t          condition;
+    std::vector<address> succeed;
+    std::vector<address> failed;
 
     flat_set<public_key_type> signed_keys;
 };
@@ -391,7 +402,8 @@ FC_REFLECT_ENUM(evt::chain::contracts::lock_status, (proposed)(succeed)(failed))
 FC_REFLECT(evt::chain::contracts::locknft_def, (domain)(names));
 FC_REFLECT(evt::chain::contracts::lockft_def, (from)(amount));
 FC_REFLECT(evt::chain::contracts::lockasset_def, (type)(tokens)(fungible));
-FC_REFLECT(evt::chain::contracts::lock_def, (name)(proposer)(status)(unlock_time)(deadline)(assets)(cond_keys)(succeed)(failed)(signed_keys));
+FC_REFLECT(evt::chain::contracts::lock_condkeys, (threshold)(cond_keys));
+FC_REFLECT(evt::chain::contracts::lock_def, (name)(proposer)(status)(unlock_time)(deadline)(assets)(condition)(succeed)(failed)(signed_keys));
 
 FC_REFLECT(evt::chain::contracts::newdomain, (name)(creator)(issue)(transfer)(manage));
 FC_REFLECT(evt::chain::contracts::issuetoken, (domain)(names)(owner));
