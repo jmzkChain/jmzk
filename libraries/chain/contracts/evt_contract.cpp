@@ -1139,7 +1139,12 @@ EVT_ACTION_IMPL(newlock) {
         EVT_ASSERT(nlact.deadline > now && nlact.deadline > nlact.unlock_time, lock_unlock_time_exception,
             "Now is ahead of unlock time or deadline, unlock time is ${u}, now is ${n}", ("u",nlact.unlock_time)("n",now));
 
-        EVT_ASSERT(nlact.cond_keys.size() > 0, lock_cond_keys_exception, "Conditional keys for lock should not be empty");
+        switch(nlact.condition.type) {
+        case lock_type::cond_keys: {
+            EVT_ASSERT(nlact.condition.cond_keys.valid() && nlact.condition.cond_keys.size() > 0, lock_cond_keys_exception, "Conditional keys for lock should not be empty");
+        }    
+        }  // switch
+        
         EVT_ASSERT(nlact.assets.size() > 0, lock_assets_exception, "Assets for lock should not be empty");
 
         auto has_fungible = false;
@@ -1220,7 +1225,7 @@ EVT_ACTION_IMPL(newlock) {
         lock.unlock_time = nlact.unlock_time;
         lock.deadline    = nlact.deadline;
         lock.assets      = std::move(nlact.assets);
-        lock.cond_keys   = std::move(nlact.cond_keys);
+        lock.condition   = std::move(nlact.condition);
         lock.succeed     = std::move(nlact.succeed);
         lock.failed      = std::move(nlact.failed);
 

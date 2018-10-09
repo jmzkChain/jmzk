@@ -168,6 +168,60 @@ struct lock_def {
     flat_set<public_key_type> signed_keys;
 };
 
+enum class asset_type {
+    tokens = 0, fungible = 1
+};
+
+enum class lock_status {
+    proposed = 0, succeed, failed
+};
+
+struct locknft_def {
+    domain_name             domain;
+    std::vector<token_name> names;
+};
+
+struct lockft_def {
+    address from;
+    asset   amount;
+};
+
+struct lockasset_def {
+    fc::enum_type<uint8_t, asset_type> type;
+    fc::optional<locknft_def>          tokens;
+    fc::optional<lockft_def>           fungible;
+};
+
+enum class lock_type {
+    cond_keys = 0
+};
+
+struct lock_condkeys {
+    uint16_t                     threshold;
+    std::vector<public_key_type> cond_keys;
+};
+
+struct lock_condition {
+    fc::enum_type<uint8_t, lock_type> type;
+    fc::optional<lock_condkeys>       cond_keys;
+};
+
+struct lock_def {
+    proposal_name                       name;
+    user_id                             proposer;
+    fc::enum_type<uint8_t, lock_status> status;
+
+    time_point_sec             unlock_time;
+    time_point_sec             deadline;
+    std::vector<lockasset_def> assets;
+    
+    lock_condition       condition;
+    std::vector<address> succeed;
+    std::vector<address> failed;
+
+    flat_set<public_key_type> signed_keys;
+};
+
 struct newdomain {
     domain_name name;
     user_id     creator;
@@ -355,9 +409,9 @@ struct newlock {
     time_point_sec             deadline;
     std::vector<lockasset_def> assets;
     
-    std::vector<public_key_type> cond_keys;
-    std::vector<address>         succeed;
-    std::vector<address>         failed;
+    lock_condition       condition;
+    std::vector<address> succeed;
+    std::vector<address> failed;
 
     EVT_ACTION(newlock);
 };
@@ -391,6 +445,8 @@ FC_REFLECT_ENUM(evt::chain::contracts::lock_status, (proposed)(succeed)(failed))
 FC_REFLECT(evt::chain::contracts::locknft_def, (domain)(names));
 FC_REFLECT(evt::chain::contracts::lockft_def, (from)(amount));
 FC_REFLECT(evt::chain::contracts::lockasset_def, (type)(tokens)(fungible));
+FC_REFLECT_ENUM(evt::chain::contracts::lock_type, (cond_keys));
+FC_REFLECT(evt::chain::contracts::lock_condkeys, (threshold)(cond_keys));
 FC_REFLECT(evt::chain::contracts::lock_def, (name)(proposer)(status)(unlock_time)(deadline)(assets)(cond_keys)(succeed)(failed)(signed_keys));
 
 FC_REFLECT(evt::chain::contracts::newdomain, (name)(creator)(issue)(transfer)(manage));
