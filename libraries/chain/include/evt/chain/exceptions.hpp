@@ -206,7 +206,7 @@ FC_DECLARE_DERIVED_EXCEPTION( lock_assets_exception,               action_except
 FC_DECLARE_DERIVED_EXCEPTION( lock_address_exception,              action_exception, 3040053, "Invalid lock address." );
 FC_DECLARE_DERIVED_EXCEPTION( lock_condition_exception,            action_exception, 3040054, "Invalid lock condition." );
 FC_DECLARE_DERIVED_EXCEPTION( lock_expired_exception,              action_exception, 3040055, "Lock assets proposal is expired." );
-FC_DECLARE_DERIVED_EXCEPTION( lock_aprv_key_exception,             action_exception, 3040056, "Approver is not valid." );
+FC_DECLARE_DERIVED_EXCEPTION( lock_aprv_data_exception,            action_exception, 3040056, "Approve data is not valid." );
 FC_DECLARE_DERIVED_EXCEPTION( lock_duplicate_key_exception,        action_exception, 3040057, "Some keys are already signed this lock assets proposal." );
 FC_DECLARE_DERIVED_EXCEPTION( lock_not_reach_unlock_time,          action_exception, 3040058, "Unlock time is not reach." );
 FC_DECLARE_DERIVED_EXCEPTION( lock_not_reach_deadline,             action_exception, 3040059, "Deadline is not reach." );
@@ -231,7 +231,6 @@ FC_DECLARE_DERIVED_EXCEPTION( authorizer_ref_type_exception,     chain_type_exce
 FC_DECLARE_DERIVED_EXCEPTION( address_type_exception,            chain_type_exception, 3120017, "Invalid address" );
 FC_DECLARE_DERIVED_EXCEPTION( name128_type_exception,            chain_type_exception, 3120018, "Invalid name128" );
 FC_DECLARE_DERIVED_EXCEPTION( chain_id_type_exception,           chain_type_exception, 3120019, "Invalid chain id" );
-FC_DECLARE_DERIVED_EXCEPTION( variant_type_exception,            chain_type_exception, 3120020, "Invalid variant type" );
 
 FC_DECLARE_DERIVED_EXCEPTION( missing_chain_api_plugin_exception,   plugin_exception, 3130001, "Missing Chain API Plugin" );
 FC_DECLARE_DERIVED_EXCEPTION( missing_wallet_api_plugin_exception,  plugin_exception, 3130002, "Missing Wallet API Plugin" );

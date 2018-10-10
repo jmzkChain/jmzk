@@ -1139,9 +1139,10 @@ EVT_ACTION_IMPL(newlock) {
         EVT_ASSERT(nlact.deadline > now && nlact.deadline > nlact.unlock_time, lock_unlock_time_exception,
             "Now is ahead of unlock time or deadline, unlock time is ${u}, now is ${n}", ("u",nlact.unlock_time)("n",now));
 
-        switch(nlact.condition.type) {
+        switch(nlact.condition.type()) {
         case lock_type::cond_keys: {
-            EVT_ASSERT(nlact.condition.cond_keys.valid() && nlact.condition.cond_keys.size() > 0, lock_cond_keys_exception, "Conditional keys for lock should not be empty");
+            auto& lck = nlact.condition.get<lock_condkeys>();
+            EVT_ASSERT(lck.threshold > 0 && lck.cond_keys.size() >= lck.threshold, lock_condition_exception, "Conditional keys for lock should not be empty or threshold should not be zero");
         }    
         }  // switch
         
@@ -1150,10 +1151,10 @@ EVT_ACTION_IMPL(newlock) {
         auto has_fungible = false;
         auto keys         = context.trx_context.trx.recover_keys(context.control.get_chain_id());
         for(auto& la : nlact.assets) {
-            if(la.type == asset_type::tokens) {
-                EVT_ASSERT(la.tokens.valid(), lock_assets_exception, "NFT assets should be provided.");
-                EVT_ASSERT(la.tokens->names.size() > 0, lock_assets_exception, "NFT assets should be provided.");
-                auto& tokens = *la.tokens;
+            switch(la.type()) {
+            case asset_type::tokens: {
+                auto& tokens = la.get<locknft_def>();
+                EVT_ASSERT(tokens.names.size() > 0, lock_assets_exception, "NFT assets should be provided.");
 
                 auto tt   = transfer();
                 tt.domain = tokens.domain;
@@ -1163,10 +1164,10 @@ EVT_ACTION_IMPL(newlock) {
                     auto ttact = action(tt.domain, tt.name, tt);
                     context.control.check_authorization(keys, ttact);
                 }
+                break;
             }
-            else if(la.type == asset_type::fungible) {
-                EVT_ASSERT(la.fungible.valid(), lock_assets_exception, "FT assets should be provided.");
-                auto& fungible = *la.fungible;
+            case asset_type::fungible: {
+                auto& fungible = la.get<lockft_def>();
 
                 EVT_ASSERT(fungible.amount.sym().id() != PEVT_SYM_ID, lock_assets_exception, "Pinned EVT cannot be used to be locked.");
                 has_fungible = true;
@@ -1177,7 +1178,9 @@ EVT_ACTION_IMPL(newlock) {
 
                 auto tfact = action(N128(.fungible), name128(std::to_string(fungible.amount.sym().id())), tf);
                 context.control.check_authorization(keys, tfact);
+                break;
             }
+            }  // switch
         }
 
         if(has_fungible) {
@@ -1193,8 +1196,10 @@ EVT_ACTION_IMPL(newlock) {
         // transfer assets to lock address
         auto laddr = address(N(lock), N128(nlact.name), 0);
         for(auto& la : nlact.assets) {
-            if(la.type == asset_type::tokens) {
-                auto& tokens = *la.tokens;
+            switch(la.type()) {
+            case asset_type::tokens: {
+                auto& tokens = la.get<locknft_def>();
+
                 for(auto& tn : tokens.names) {
                     token_def token;
                     tokendb.read_token(tokens.domain, tn, token);
@@ -1202,9 +1207,10 @@ EVT_ACTION_IMPL(newlock) {
 
                     tokendb.update_token(token);
                 }
+                break;
             }
-            else if(la.type == asset_type::fungible) {
-                auto& fungible = *la.fungible;
+            case asset_type::fungible: {
+                auto& fungible = la.get<lockft_def>();
 
                 asset fass, tass;
                 tokendb.read_asset(fungible.from, fungible.amount.sym(), fass);
@@ -1215,7 +1221,9 @@ EVT_ACTION_IMPL(newlock) {
 
                 tokendb.update_asset(fungible.from, fass);
                 tokendb.update_asset(laddr, tass);
+                break;
             }
+            }  // switch
         }
 
         auto lock        = lock_def();
@@ -1249,8 +1257,15 @@ EVT_ACTION_IMPL(aprvlock) {
         auto now = context.control.pending_block_time();
         EVT_ASSERT(lock.unlock_time > now, lock_expired_exception, "Now is ahead of unlock time, cannot approve anymore, unlock time is ${u}, now is ${n}", ("u",lock.unlock_time)("n",now));
 
-        EVT_ASSERT(std::find(lock.cond_keys.cbegin(), lock.cond_keys.cend(), alact.approver) != lock.cond_keys.cend(), lock_aprv_key_exception, "Approver is not valid");
-        EVT_ASSERT(lock.signed_keys.find(alact.approver) == lock.signed_keys.cend(), lock_duplicate_key_exception, "Approver is already signed this lock assets proposal");
+        switch(lock.condition.type()) {
+        case lock_type::cond_keys: {
+            EVT_ASSERT(alact.data.type() == lock_aprv_type::cond_key, lock_aprv_data_exception, "Type of approve data is not conditional key");
+            auto& lck = lock.condition.get<lock_condkeys>();
+
+            EVT_ASSERT(std::find(lck.cond_keys.cbegin(), lck.cond_keys.cend(), alact.approver) != lck.cond_keys.cend(), lock_aprv_data_exception, "Approver is not valid");
+            EVT_ASSERT(lock.signed_keys.find(alact.approver) == lock.signed_keys.cend(), lock_duplicate_key_exception, "Approver is already signed this lock assets proposal");
+        }
+        }  // switch
 
         lock.signed_keys.emplace(alact.approver);
         tokendb.update_lock(lock);
@@ -1274,11 +1289,19 @@ EVT_ACTION_IMPL(tryunlock) {
         EVT_ASSERT(lock.unlock_time < now, lock_not_reach_unlock_time, "Not reach unlock time, cannot unlock, unlock time is ${u}, now is ${n}", ("u",lock.unlock_time)("n",now));
 
         std::vector<address>* pkeys = nullptr;
-        if(lock.cond_keys.size() == lock.signed_keys.size()) {
-            pkeys       = &lock.succeed;
-            lock.status = lock_status::succeed;
+        switch(lock.condition.type()) {
+        case lock_type::cond_keys: {
+            auto& lck = lock.condition.get<lock_condkeys>();
+            if(lock.signed_keys.size() >= lck.threshold) {
+                pkeys       = &lock.succeed;
+                lock.status = lock_status::succeed;
+            }
+            break;
         }
-        else {
+        }  // switch
+
+        if(pkeys == nullptr) {
+            // not succeed
             EVT_ASSERT(lock.deadline < now, lock_not_reach_deadline, "Not reach deadline and conditions are not satisfied, proposal is still avaiable.");
             pkeys       = &lock.failed;
             lock.status = lock_status::failed;
@@ -1286,8 +1309,9 @@ EVT_ACTION_IMPL(tryunlock) {
 
         auto laddr = address(N(lock), N128(nlact.name), 0);
         for(auto& la : lock.assets) {
-            if(la.type == asset_type::tokens) {
-                auto& tokens = *la.tokens;
+            switch(la.type()) {
+            case asset_type::tokens: {
+                auto& tokens = la.get<locknft_def>();
 
                 token_def token;
                 for(auto& tn : tokens.names) {
@@ -1295,11 +1319,12 @@ EVT_ACTION_IMPL(tryunlock) {
                     token.owner = *pkeys;
                     tokendb.update_token(token);
                 }
+                break;
             }
-            else {
+            case asset_type::fungible: {
                 FC_ASSERT(pkeys->size() == 1);
 
-                auto& fungible = *la.fungible;
+                auto& fungible = la.get<lockft_def>();
                 auto& toaddr   = (*pkeys)[0];
 
                 asset fass, tass;
@@ -1312,6 +1337,7 @@ EVT_ACTION_IMPL(tryunlock) {
                 tokendb.update_asset(laddr, fass);
                 tokendb.update_asset(toaddr, tass);
             }
+            }  // switch
         }
 
         tokendb.update_lock(lock);
