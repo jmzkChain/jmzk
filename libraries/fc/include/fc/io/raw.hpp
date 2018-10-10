@@ -1,17 +1,4 @@
 #pragma once
-#include <fc/io/raw_variant.hpp>
-#include <fc/reflect/reflect.hpp>
-#include <fc/io/datastream.hpp>
-#include <fc/io/varint.hpp>
-#include <fc/optional.hpp>
-#include <fc/fwd.hpp>
-#include <fc/smart_ref_fwd.hpp>
-#include <fc/array.hpp>
-#include <fc/time.hpp>
-#include <fc/filesystem.hpp>
-#include <fc/exception/exception.hpp>
-#include <fc/safe.hpp>
-#include <fc/io/raw_fwd.hpp>
 #include <map>
 #include <deque>
 #include <tuple>
@@ -20,7 +7,22 @@
 #include <boost/interprocess/containers/string.hpp>
 #include <boost/interprocess/allocators/allocator.hpp>
 #include <boost/interprocess/managed_mapped_file.hpp>
+
+#include <fc/io/raw_fwd.hpp>
+#include <fc/io/raw_variant.hpp>
+#include <fc/io/datastream.hpp>
+#include <fc/io/varint.hpp>
+#include <fc/optional.hpp>
+#include <fc/variant_wrapper.hpp>
+#include <fc/fwd.hpp>
+#include <fc/smart_ref_fwd.hpp>
+#include <fc/array.hpp>
+#include <fc/time.hpp>
+#include <fc/filesystem.hpp>
+#include <fc/safe.hpp>
 #include <fc/crypto/hex.hpp>
+#include <fc/reflect/reflect.hpp>
+#include <fc/exception/exception.hpp>
 
 namespace fc {
     namespace raw {
@@ -508,6 +510,7 @@ namespace fc {
        fc::raw::pack( s, value.first );
        fc::raw::pack( s, value.second );
     }
+
     template<typename Stream, typename K, typename V>
     inline void unpack( Stream& s, std::pair<K,V>& value )
     {
@@ -515,22 +518,37 @@ namespace fc {
        fc::raw::unpack( s, value.second );
     }
 
+    namespace detail {
+
     template<typename Stream, int N = 0, typename... Types>
     inline void pack( Stream& s, const std::tuple<Types...>& value ) {
         fc::raw::pack( s, std::get<N>(value) );
         if constexpr (N + 1 < std::tuple_size<std::remove_reference_t<decltype(value)>>::value) {
-           fc::raw::pack<Stream, N + 1, Types...>( s, value );
+           pack<Stream, N + 1, Types...>( s, value );
         }
     }
 
 
     template<typename Stream, int N = 0, typename... Types>
-    inline void unpack( Stream& s, std::tuple<Types...>& value )
-    {
+    inline void unpack( Stream& s, std::tuple<Types...>& value ) {
        fc::raw::unpack( s, std::get<N>(value) );
        if constexpr (N + 1 < std::tuple_size<std::remove_reference_t<decltype(value)>>::value) {
-          fc::raw::unpack<Stream, N + 1, Types...>( s, value );
+          unpack<Stream, N + 1, Types...>( s, value );
        }
+    }
+
+    }  // namesapce detail
+
+    template<typename Stream, typename... Types>
+    inline void pack( Stream& s, const std::tuple<Types...>& value ) {
+        detail::pack<Stream, 0, Types...>(s, value);
+    }
+
+
+    template<typename Stream, typename... Types>
+    inline void unpack( Stream& s, std::tuple<Types...>& value )
+    {
+        detail::unpack<Stream, 0, Types...>(s, value);
     }
 
    template<typename Stream, typename K, typename V>
@@ -776,7 +794,8 @@ namespace fc {
        sv.visit( pack_static_variant<Stream>(s) );
     }
 
-    template<typename Stream, typename... T> void unpack( Stream& s, static_variant<T...>& sv )
+    template<typename Stream, typename... T>
+    void unpack( Stream& s, static_variant<T...>& sv )
     {
        unsigned_int w;
        fc::raw::unpack( s, w );
@@ -784,7 +803,15 @@ namespace fc {
        sv.visit( unpack_static_variant<Stream>(s) );
     }
 
+    template<typename Stream, typename ENUM, typename... ARGS>
+    void pack(Stream& s, const variant_wrapper<ENUM, ARGS...>& vw) {
+       fc::raw::pack(s, vw.value_);
+    }
 
+    template<typename Stream, typename ENUM, typename... ARGS>
+    void unpack(Stream& s, variant_wrapper<ENUM, ARGS...>& vw) {
+       fc::raw::unpack(s, vw.value_);
+    }
 
     template<typename Stream, typename T> void pack( Stream& s, const boost::multiprecision::number<T>& n ) {
       static_assert( sizeof( n ) == (std::numeric_limits<boost::multiprecision::number<T>>::digits+1)/8, "unexpected padding" );

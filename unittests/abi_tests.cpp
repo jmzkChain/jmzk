@@ -1223,7 +1223,7 @@ TEST_CASE("newlock_abi_test", "[abis]") {
         "deadline": "2018-07-09T09:06:27",
         "assets": [{
             "type": "tokens",
-            "tokens": {
+            "data": {
                 "domain": "cookie",
                 "names": [
                     "t1",
@@ -1232,10 +1232,16 @@ TEST_CASE("newlock_abi_test", "[abis]") {
                 ]
             }
         }],
-        "cond_keys": [
-            "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
-            "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
-        ],
+        "condition": {
+            "type": "cond_keys",
+            "data": {
+                "threshold": 2,
+                "cond_keys": [
+                    "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+                    "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
+                ]
+            }
+        },
         "succeed": [
             "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
         ],

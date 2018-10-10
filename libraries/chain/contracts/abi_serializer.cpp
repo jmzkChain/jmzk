@@ -101,8 +101,10 @@ abi_serializer::configure_built_in_types() {
     built_in_types.emplace("producer_schedule", pack_unpack<producer_schedule_type>());
     built_in_types.emplace("extensions", pack_unpack<extensions_type>());
     built_in_types.emplace("evt_link", pack_unpack<evt_link>());
-    built_in_types.emplace("asset_type", pack_unpack<fc::enum_type<uint8_t, asset_type>>());
-    built_in_types.emplace("lock_type", pack_unpack<fc::enum_type<uint8_t, lock_type>>());
+    built_in_types.emplace("lock_status", pack_unpack<fc::enum_type<uint8_t, lock_status>>());
+    built_in_types.emplace("lock_asset", pack_unpack<lock_asset>());
+    built_in_types.emplace("lock_condition", pack_unpack<lock_condition>());
+    built_in_types.emplace("lock_aprvdata", pack_unpack<lock_aprvdata>());
 }
 
 void
