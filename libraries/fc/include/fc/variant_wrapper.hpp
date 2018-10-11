@@ -22,6 +22,11 @@ public:
         static_assert((size_t)ENUM::max_value + 1 == sizeof...(ARGS));  // type index starts with 0
     }
 
+    template<typename T>
+    variant_wrapper(T&& v) {
+        value_ = std::forward<T>(v);
+    }
+
 public:
     template<typename X>
     X&
