@@ -1028,33 +1028,29 @@ struct set_suspend_subcommands {
     }
 };
 
-lockasset_def
+lock_asset
 parse_lockasset(const string& str) {
     vector<string> strs;
     boost::split(strs, str, boost::is_any_of(":"));
     FC_ASSERT(strs.size() >= 2);
 
-    auto la = lockasset_def();
+    auto la = lock_asset();
     if(strs[0].substr(0, 1) == "@") {
         // FT Tokens
-        la.type = asset_type::fungible;
-
         auto fungible   = lockft_def();
         fungible.from   = get_address(strs[0]);
         fungible.amount = asset::from_string(strs[1]);
 
-        la.fungible = fungible;
+        la = fungible;
     }
     else {
-        la.type = asset_type::tokens;
-
         auto tokens   = locknft_def();
         tokens.domain = (name128)strs[0];
         for(auto i = 1u; i < strs.size(); i++) {
             tokens.names.emplace_back(name128(strs[i]));
         }
 
-        la.tokens = tokens;
+        la = tokens;
     }
     return la;
 }
@@ -1073,6 +1069,7 @@ struct set_lock_subcommands {
     vector<string> assets;
 
     vector<string> conds;
+    int            cond_threshold = 0;
     vector<string> succeed;
     vector<string> failed;
 
@@ -1088,6 +1085,7 @@ struct set_lock_subcommands {
         lacmd->add_option("assets", assets, localized("Assets to be locked"))->required();
 
         lacmd->add_option("--cond", conds, localized("Condtional keys"))->required();
+        lacmd->add_option("--cond-threshold", cond_threshold, localized("Condtional threshold"));
         lacmd->add_option("--succeed", succeed, localized("Keys to receive the assets when succeed"))->required();
         lacmd->add_option("--failed", failed, localized("Keys to receive the assets when timeout"))->required();
 
@@ -1104,9 +1102,15 @@ struct set_lock_subcommands {
             for(auto& ass : assets) {
                 nl.assets.emplace_back(parse_lockasset(ass));
             }
+
+            auto condkeys = lock_condkeys();
             for(auto& pkey : conds) {
-                nl.cond_keys.emplace_back(get_public_key(pkey));
+                condkeys.cond_keys.emplace_back(get_public_key(pkey));
             }
+            condkeys.threshold = cond_threshold;
+
+            nl.condition = condkeys;
+
             for(auto& addr : succeed) {
                 nl.succeed.emplace_back(get_address(addr));
             }
@@ -1129,6 +1133,7 @@ struct set_lock_subcommands {
 
             al.name     = (name128)name;
             al.approver = get_public_key(approver);
+            al.data     = evt::chain::void_t();
 
             auto act = create_action(N128(.lock), (domain_key)al.name, al);
             send_actions({act});

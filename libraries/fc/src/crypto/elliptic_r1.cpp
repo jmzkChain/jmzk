@@ -17,6 +17,7 @@ namespace fc { namespace crypto { namespace r1 {
           :_key(nullptr)
           {
           static int init = init_openssl();
+          (void)init;
           }
 
           ~public_key_impl()
@@ -39,6 +40,7 @@ namespace fc { namespace crypto { namespace r1 {
           :_key(nullptr)
           {
           static int init = init_openssl();
+          (void)init;
           }
           ~private_key_impl()
           {

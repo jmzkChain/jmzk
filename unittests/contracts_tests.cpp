@@ -1548,17 +1548,23 @@ TEST_CASE_METHOD(contracts_test, "contract_newnftlock_test", "[contracts]") {
         "deadline": "2020-07-09T09:06:27",
         "assets": [{
             "type": "tokens",
-            "tokens": {
+            "data": {
                 "domain": "cookie",
                 "names": [
                     "t3"
                 ]
             }
         }],
-        "cond_keys": [
-            "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
-            "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
-        ],
+        "condition": {
+            "type": "cond_keys",
+            "data": {
+                "threshold": 1,
+                "cond_keys": [
+                    "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+                    "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
+                ]
+            }
+        },
         "succeed": [
         ],
         "failed": [
@@ -1576,13 +1582,14 @@ TEST_CASE_METHOD(contracts_test, "contract_newnftlock_test", "[contracts]") {
     nl.unlock_time = now + fc::days(10);
     nl.deadline    = now + fc::days(20);
 
-    nl.assets[0].tokens->domain = get_domain_name();
+    CHECK(nl.assets[0].type() == asset_type::tokens);
+    nl.assets[0].get<locknft_def>().domain = get_domain_name();
     to_variant(nl, var);
 
     CHECK_THROWS_AS(my_tester->push_action(N(newlock), N128(.lock), N128(nftlock), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
 
-    nl.proposer  = tester::get_public_key(N(key));
-    nl.cond_keys = {tester::get_public_key(N(key))};
+    nl.proposer = tester::get_public_key(N(key));
+    nl.condition.get<lock_condkeys>().cond_keys = {tester::get_public_key(N(key))};
     to_variant(nl, var);
 
     CHECK_THROWS_AS(my_tester->push_action(N(newlock), N128(.lock), N128(nftlock), var.get_object(), key_seeds, payer, 5'000'000), lock_address_exception);
@@ -1616,15 +1623,21 @@ TEST_CASE_METHOD(contracts_test, "contract_newftlock_test", "[contracts]") {
         "deadline": "2020-07-09T09:06:27",
         "assets": [{
             "type": "fungible",
-            "fungible": {
+            "data": {
                 "from": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
                 "amount": "5.00000 S#2"
             }
         }],
-        "cond_keys": [
-            "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
-            "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
-        ],
+        "condition": {
+            "type": "cond_keys",
+            "data": {
+                "threshold": 1,
+                "cond_keys": [
+                    "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+                    "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
+                ]
+            }
+        },
         "succeed": [
         ],
         "failed": [
@@ -1642,14 +1655,15 @@ TEST_CASE_METHOD(contracts_test, "contract_newftlock_test", "[contracts]") {
     nl.unlock_time = now + fc::days(10);
     nl.deadline    = now + fc::days(20);
 
-    nl.proposer  = tester::get_public_key(N(key));
-    nl.cond_keys = {tester::get_public_key(N(key))};
+    nl.proposer = tester::get_public_key(N(key));
+    nl.condition.get<lock_condkeys>().cond_keys = {tester::get_public_key(N(key))};
     to_variant(nl, var);
 
     CHECK_THROWS_AS(my_tester->push_action(N(newlock), N128(.lock), N128(ftlock), var.get_object(), key_seeds, payer, 5'000'000), lock_assets_exception);
 
-    nl.assets[0].fungible->amount = asset::from_string(string("5.00000 S#") + std::to_string(get_sym_id()));
-    nl.assets[0].fungible->from = tester::get_public_key(N(key));
+    auto& ft = nl.assets[0].get<lockft_def>();
+    ft.amount = asset::from_string(string("5.00000 S#") + std::to_string(get_sym_id()));
+    ft.from   = tester::get_public_key(N(key));
     to_variant(nl, var);
 
     CHECK_THROWS_AS(my_tester->push_action(N(newlock), N128(.lock), N128(ftlock), var.get_object(), key_seeds, payer, 5'000'000), lock_address_exception);
@@ -1671,7 +1685,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newftlock_test", "[contracts]") {
     CHECK(lock_.status == lock_status::proposed);
 
     asset ast;
-    tokendb.read_asset(address(N(lock), N128(nlact.name), 0), nl.assets[0].fungible->amount.sym(), ast);
+    tokendb.read_asset(address(N(lock), N128(nlact.name), 0), nl.assets[0].get<lockft_def>().amount.sym(), ast);
     CHECK(ast.amount() == 500000);
 
     my_tester->produce_blocks();
@@ -1682,7 +1696,10 @@ TEST_CASE_METHOD(contracts_test, "contract_aprvlock_test", "[contracts]") {
     const char* test_data = R"=======(
     {
         "name": "nftlock",
-        "approver": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
+        "approver": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+        "data": {
+            "type": "cond_key"
+        }
     }
     )=======";
 
@@ -1698,7 +1715,7 @@ TEST_CASE_METHOD(contracts_test, "contract_aprvlock_test", "[contracts]") {
 
     al.approver = {tester::get_public_key(N(payer))};
     to_variant(al, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(aprvlock), N128(.lock), N128(nftlock), var.get_object(), key_seeds, payer, 5'000'000), lock_aprv_key_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(aprvlock), N128(.lock), N128(nftlock), var.get_object(), key_seeds, payer, 5'000'000), lock_aprv_data_exception);
 
     al.approver = {tester::get_public_key(N(key))};
     to_variant(al, var);
