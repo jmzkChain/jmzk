@@ -22,7 +22,7 @@ public:
         static_assert((size_t)ENUM::max_value + 1 == sizeof...(ARGS));  // type index starts with 0
     }
 
-    template<typename T>
+    template<typename T, typename = typename std::enable_if<!std::is_same_v<variant_wrapper, std::decay_t<T>>>::type>
     variant_wrapper(T&& v) {
         value_ = std::forward<T>(v);
     }
