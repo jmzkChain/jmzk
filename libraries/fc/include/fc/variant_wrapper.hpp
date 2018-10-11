@@ -73,16 +73,18 @@ void
 from_variant(const variant& var, variant_wrapper<ENUM, ARGS...>& vo) {
     using namespace boost;
 
-    auto type  = var["type"].as_int64(); 
+    auto type = (int)var["type"].as<ENUM>();
     FC_ASSERT(type <= (int)ENUM::max_value, "Type index is not valid");
 
     auto range = hana::range_c<int, 0, (int)ENUM::max_value + 1>;
     hana::for_each(range, [&](auto i) {
         if(type == i()) {
             using obj_t = typename decltype(vo.value_)::template type_at<i>;
-            obj_t obj;
-            fc::from_variant(var["data"], obj);
-
+            auto  obj   = obj_t{};
+            auto& vobj  = var.get_object();
+            if(vobj.find("data") != vobj.end()) {
+                fc::from_variant(var["data"], obj);
+            }
             vo.value_ = obj;
         }
     });

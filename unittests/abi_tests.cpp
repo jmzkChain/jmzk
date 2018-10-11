@@ -1286,7 +1286,7 @@ TEST_CASE("newlock_abi_test", "[abis]") {
     act.data = abis.variant_to_binary("newlock", var);
 
     auto var2 = abis.binary_to_variant("newlock", act.data);
-    CHECK(var2["cond_keys"].size() > 0);
+    CHECK(var2["condition"]["data"]["cond_keys"].size() > 0);
 
     auto nl2 = fc::raw::unpack<newlock>(act.data);
     CHECK(nl2.condition.type() == lock_type::cond_keys);
@@ -1298,7 +1298,11 @@ TEST_CASE("aprvlock_abi_test", "[abis]") {
     const char* test_data = R"=======(
     {
         "name": "lock",
-        "approver": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
+        "approver": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+        "data": {
+            "type": "cond_key",
+            "data": {}
+        }
     }
     )=======";
 

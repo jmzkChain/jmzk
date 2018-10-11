@@ -409,6 +409,7 @@ FC_REFLECT(evt::chain::contracts::lockft_def, (from)(amount));
 FC_REFLECT_ENUM(evt::chain::contracts::lock_type, (cond_keys));
 FC_REFLECT(evt::chain::contracts::lock_condkeys, (threshold)(cond_keys));
 FC_REFLECT(evt::chain::contracts::lock_def, (name)(proposer)(status)(unlock_time)(deadline)(assets)(condition)(succeed)(failed)(signed_keys));
+FC_REFLECT_ENUM(evt::chain::contracts::lock_aprv_type, (cond_key));
 
 FC_REFLECT(evt::chain::contracts::newdomain, (name)(creator)(issue)(transfer)(manage));
 FC_REFLECT(evt::chain::contracts::issuetoken, (domain)(names)(owner));
