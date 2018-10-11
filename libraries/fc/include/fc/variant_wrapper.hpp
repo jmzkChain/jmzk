@@ -10,6 +10,7 @@
 #include <fc/static_variant.hpp>
 #include <fc/variant.hpp>
 #include <fc/reflect/reflect.hpp>
+#include <fc/reflect/variant.hpp>
 #include <fc/exception/exception.hpp>
 
 namespace fc {
@@ -49,13 +50,22 @@ to_variant(const variant_wrapper<ENUM, ARGS...>& vo, variant& var) {
     using namespace boost;
 
     FC_ASSERT((int)vo.type() <= (int)ENUM::max_value, "Type index is not valid");
-    var["type"] = (int)vo.type();
+    auto mo = mutable_variant_object();
+    mo["type"] = (int)vo.type();
 
-    auto mo = fc::mutable_variant_object();
-    vo.value_.visit([&](auto& obj) {
-        fc::to_variant(obj, mo);
+    auto range = hana::range_c<int, 0, (int)ENUM::max_value + 1>;
+    hana::for_each(range, [&](auto i) {
+        if((int)vo.type() == i()) {
+            using obj_t = typename decltype(vo.value_)::template type_at<i>;
+            auto& obj   = vo.value_.template get<obj_t>();
+            auto  dmo   = fc::variant();
+
+            fc::to_variant(obj, dmo);
+            mo["data"] = dmo;
+        }
     });
-    var["data"] = mo;
+
+    var = std::move(mo);
 }
 
 template<typename ENUM, typename... ARGS>

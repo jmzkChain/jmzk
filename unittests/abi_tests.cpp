@@ -1258,15 +1258,21 @@ TEST_CASE("newlock_abi_test", "[abis]") {
     CHECK((std::string)nl.proposer == "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF");
     CHECK("2018-06-09T09:06:27" == nl.unlock_time.to_iso_string());
     CHECK("2018-07-09T09:06:27" == nl.deadline.to_iso_string());
-    CHECK(nl.assets[0].type == asset_type::tokens);
-    CHECK(nl.assets[0].tokens->domain == "cookie");
-    CHECK(nl.assets[0].tokens->names.size() == 3);
-    CHECK(nl.assets[0].tokens->names[0] == "t1");
-    CHECK(nl.assets[0].tokens->names[1] == "t2");
-    CHECK(nl.assets[0].tokens->names[2] == "t3");
-    CHECK(nl.cond_keys.size() == 2);
-    CHECK((std::string)nl.cond_keys[0] == "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF");
-    CHECK((std::string)nl.cond_keys[1] == "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC");
+    CHECK(nl.assets[0].type() == asset_type::tokens);
+
+    auto& nft = nl.assets[0].get<locknft_def>();
+    CHECK(nft.domain == "cookie");
+    CHECK(nft.names.size() == 3);
+    CHECK(nft.names[0] == "t1");
+    CHECK(nft.names[1] == "t2");
+    CHECK(nft.names[2] == "t3");
+
+    CHECK(nl.condition.type() == lock_type::cond_keys);
+    auto& lck = nl.condition.get<lock_condkeys>();
+    CHECK(lck.cond_keys.size() == 2);
+    CHECK((std::string)lck.cond_keys[0] == "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF");
+    CHECK((std::string)lck.cond_keys[1] == "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC");
+    
     CHECK(nl.succeed.size() == 1);
     CHECK(nl.failed.size() == 1);
     CHECK((std::string)nl.succeed[0] == "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC");
@@ -1283,7 +1289,8 @@ TEST_CASE("newlock_abi_test", "[abis]") {
     CHECK(var2["cond_keys"].size() > 0);
 
     auto nl2 = fc::raw::unpack<newlock>(act.data);
-    CHECK(nl2.cond_keys.size() > 0);
+    CHECK(nl2.condition.type() == lock_type::cond_keys);
+    CHECK(nl2.condition.get<lock_condkeys>().cond_keys.size() > 0);
 }
 
 TEST_CASE("aprvlock_abi_test", "[abis]") {
