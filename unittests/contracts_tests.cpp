@@ -1631,7 +1631,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newftlock_test", "[contracts]") {
         "condition": {
             "type": "cond_keys",
             "data": {
-                "threshold": 1,
+                "threshold": 3,
                 "cond_keys": [
                     "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
                     "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
@@ -1657,6 +1657,12 @@ TEST_CASE_METHOD(contracts_test, "contract_newftlock_test", "[contracts]") {
 
     nl.proposer = tester::get_public_key(N(key));
     nl.condition.get<lock_condkeys>().cond_keys = {tester::get_public_key(N(key))};
+    to_variant(nl, var);
+
+    CHECK_THROWS_AS(my_tester->push_action(N(newlock), N128(.lock), N128(ftlock), var.get_object(), key_seeds, payer, 5'000'000), lock_condition_exception);
+
+    auto& cond = nl.condition.get<lock_condkeys>();
+    cond.threshold = 1;
     to_variant(nl, var);
 
     CHECK_THROWS_AS(my_tester->push_action(N(newlock), N128(.lock), N128(ftlock), var.get_object(), key_seeds, payer, 5'000'000), lock_assets_exception);

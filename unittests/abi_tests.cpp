@@ -1269,6 +1269,7 @@ TEST_CASE("newlock_abi_test", "[abis]") {
 
     CHECK(nl.condition.type() == lock_type::cond_keys);
     auto& lck = nl.condition.get<lock_condkeys>();
+    CHECK(lck.threshold == 2);
     CHECK(lck.cond_keys.size() == 2);
     CHECK((std::string)lck.cond_keys[0] == "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF");
     CHECK((std::string)lck.cond_keys[1] == "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC");
@@ -1311,6 +1312,7 @@ TEST_CASE("aprvlock_abi_test", "[abis]") {
 
     CHECK(al.name == "lock");
     CHECK((std::string)al.approver == "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF");
+    CHECK(al.data.type() == lock_aprv_type::cond_key);
 
     verify_byte_round_trip_conversion(abis, "aprvlock", var);
     verify_type_round_trip_conversion<aprvlock>(abis, "aprvlock", var);
