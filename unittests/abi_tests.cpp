@@ -1250,7 +1250,6 @@ TEST_CASE("newlock_abi_test", "[abis]") {
         ]
     }
     )=======";
-
     auto var = fc::json::from_string(test_data);
     auto nl  = var.as<newlock>();
 
@@ -1292,6 +1291,84 @@ TEST_CASE("newlock_abi_test", "[abis]") {
     auto nl2 = fc::raw::unpack<newlock>(act.data);
     CHECK(nl2.condition.type() == lock_type::cond_keys);
     CHECK(nl2.condition.get<lock_condkeys>().cond_keys.size() > 0);
+
+    const char* test_data2 = R"=======(
+    {
+        "name": "lock",
+        "proposer": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+        "unlock_time": "2018-06-09T09:06:27",
+        "deadline": "2018-07-09T09:06:27",
+        "assets": [{
+            
+            "data": {
+                "domain": "cookie",
+                "names": [
+                    "t1",
+                    "t2",
+                    "t3"
+                ]
+            }
+        }],
+        "condition": {
+            "type": "cond_keys",
+            "data": {
+                "threshold": 2,
+                "cond_keys": [
+                    "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+                    "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
+                ]
+            }
+        },
+        "succeed": [
+            "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
+        ],
+        "failed": [
+            "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
+        ]
+    }
+    )=======";
+
+    var = fc::json::from_string(test_data2);
+    CHECK_THROWS_AS(var.as<newlock>(), key_not_found_exception);
+
+    const char* test_data3 = R"=======(
+    {
+        "name": "lock",
+        "proposer": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+        "unlock_time": "2018-06-09T09:06:27",
+        "deadline": "2018-07-09T09:06:27",
+        "assets": [{
+            "type": "tokenss",
+            "data": {
+                "domain": "cookie",
+                "names": [
+                    "t1",
+                    "t2",
+                    "t3"
+                ]
+            }
+        }],
+        "condition": {
+            "type": "cond_keys",
+            "data": {
+                "threshold": 2,
+                "cond_keys": [
+                    "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+                    "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
+                ]
+            }
+        },
+        "succeed": [
+            "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
+        ],
+        "failed": [
+            "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
+        ]
+    }
+    )=======";
+
+    var = fc::json::from_string(test_data3);
+    CHECK_THROWS_AS(var.as<newlock>(), bad_cast_exception);
 }
 
 TEST_CASE("aprvlock_abi_test", "[abis]") {
