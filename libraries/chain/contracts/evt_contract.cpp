@@ -474,7 +474,7 @@ EVT_ACTION_IMPL(issuefungible) {
 EVT_ACTION_IMPL(transferft) {
     using namespace __internal;
 
-    auto tfact = context.act.data_as<transferft>();
+    auto tfact = context.act.data_as<const transferft&>();
 
     try {
         auto sym = tfact.number.sym();
@@ -496,6 +496,35 @@ EVT_ACTION_IMPL(transferft) {
 
         tokendb.update_asset(tfact.to, tacc);
         tokendb.update_asset(tfact.from, facc);
+    }
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+}
+
+
+EVT_ACTION_IMPL(recycleft) {
+    using namespace __internal;
+
+    auto rfact = context.act.data_as<const recycleft&>();
+
+    try {
+        auto sym = rfact.number.sym();
+        EVT_ASSERT(context.has_authorized(N128(.fungible), (name128)std::to_string(sym.id())), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(sym != pevt_sym(), fungible_symbol_exception, "Pinned EVT cannot be recycled");
+
+        auto& tokendb = context.token_db;
+
+        auto addr = get_fungible_address(sym);
+        auto facc = asset(0, sym);
+        auto tacc = asset(0, sym);
+        tokendb.read_asset(rfact.address, sym, facc);
+        tokendb.read_asset_no_throw(addr, sym, tacc);
+
+        EVT_ASSERT(facc >= rfact.number, balance_exception, "Address does not have enough balance left.");
+
+        transfer_fungible(facc, tacc, rfact.number.amount());
+
+        tokendb.update_asset(addr, tacc);
+        tokendb.update_asset(rfact.address, facc);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
