@@ -10,7 +10,7 @@
 namespace evt { namespace chain { namespace contracts {
 
 static auto evt_abi_version       = 3;
-static auto evt_abi_minor_version = 2;
+static auto evt_abi_minor_version = 3;
 static auto evt_abi_patch_version = 0;
 
 version
@@ -59,6 +59,7 @@ evt_contract_abi() {
     evt_abi.actions.push_back( action_def{name("updfungible"), "updfungible"} );
     evt_abi.actions.push_back( action_def{name("issuefungible"), "issuefungible"} );
     evt_abi.actions.push_back( action_def{name("transferft"), "transferft"} );
+    evt_abi.actions.push_back( action_def{name("recycleft"), "recycleft"} );
     evt_abi.actions.push_back( action_def{name("evt2pevt"), "evt2pevt"} );
     evt_abi.actions.push_back( action_def{name("addmeta"), "addmeta"} );
     evt_abi.actions.push_back( action_def{name("newsuspend"), "newsuspend"} );
@@ -254,6 +255,14 @@ evt_contract_abi() {
         "transferft", "", {
             {"from", "address"},
             {"to", "address"},
+            {"number", "asset"},
+            {"memo", "string"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "recycleft", "", {
+            {"address", "address"},
             {"number", "asset"},
             {"memo", "string"}
         }

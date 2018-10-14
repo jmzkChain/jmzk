@@ -321,7 +321,7 @@ history_plugin_impl::get_fungible_actions(const symbol_id_type        sym_id,
     static bsoncxx::builder::stream::array ns;
 
     std::call_once(flag, [] {
-        ns << "issuefungible" << "transferft" << "evt2pevt" << "everipay" << "paycharge";
+        ns << "issuefungible" << "transferft" << "recycleft" << "evt2pevt" << "everipay" << "paycharge";
     });
 
     match << "name" << open_document << "$in" << ns << close_document;
@@ -334,7 +334,7 @@ history_plugin_impl::get_fungible_actions(const symbol_id_type        sym_id,
         auto saddr = (std::string)(*addr);
 
         addr_match << "$or" << open_array
-                   << open_document << "data.address"   << saddr << close_document  // issue
+                   << open_document << "data.address"   << saddr << close_document  // issue & recycleft
                    << open_document << "data.from"      << saddr << close_document  // transfer & evt2pevt
                    << open_document << "data.to"        << saddr << close_document  // transfer & evt2pevt
                    << open_document << "data.payee"     << saddr << close_document  // everiPay

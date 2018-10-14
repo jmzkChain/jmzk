@@ -282,6 +282,14 @@ struct transferft {
     EVT_ACTION(transferft);
 };
 
+struct recycleft {
+    address_type address;
+    asset        number;
+    string       memo;
+
+    EVT_ACTION(recycleft);
+};
+
 struct evt2pevt {
     address_type from;
     address_type to;
@@ -422,6 +430,7 @@ FC_REFLECT(evt::chain::contracts::newfungible, (name)(sym_name)(sym)(creator)(is
 FC_REFLECT(evt::chain::contracts::updfungible, (sym_id)(issue)(manage));
 FC_REFLECT(evt::chain::contracts::issuefungible, (address)(number)(memo));
 FC_REFLECT(evt::chain::contracts::transferft, (from)(to)(number)(memo));
+FC_REFLECT(evt::chain::contracts::recycleft, (address)(number)(memo));
 FC_REFLECT(evt::chain::contracts::evt2pevt, (from)(to)(number)(memo));
 FC_REFLECT(evt::chain::contracts::addmeta, (key)(value)(creator));
 FC_REFLECT(evt::chain::contracts::newsuspend, (name)(proposer)(trx));
