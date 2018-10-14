@@ -668,6 +668,35 @@ TEST_CASE_METHOD(contracts_test, "contract_transferft_test", "[contracts]") {
     my_tester->produce_blocks();
 }
 
+TEST_CASE_METHOD(contracts_test, "contract_recycleft_test", "[contracts]") {
+    CHECK(true);
+    const char* test_data = R"=======(
+    {
+        "address": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+        "number": "5.00000 S#1",
+        "memo": "memo"
+    }
+    )=======";
+
+    auto var   = fc::json::from_string(test_data);
+    auto rf    = var.as<recycleft>();
+    rf.number  = asset::from_string(string("1.00000 S#") + std::to_string(get_sym_id()));
+    rf.address = address(tester::get_public_key(N(to)));
+    to_variant(rf, var);
+
+    CHECK_THROWS_AS(my_tester->push_action(N(recycleft), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer), unsatisfied_authorization);
+
+    rf.address = poorer;
+    to_variant(rf, var);
+
+    CHECK_THROWS_AS(my_tester->push_action(N(recycleft), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer), tokendb_key_not_found);
+
+    rf.address = key;
+    to_variant(rf, var);
+
+    my_tester->push_action(N(recycleft), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer);
+}
+
 TEST_CASE_METHOD(contracts_test, "contract_updatedomain_test", "[contracts]") {
     CHECK(true);
     const char* test_data = R"=====(

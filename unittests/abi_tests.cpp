@@ -1413,3 +1413,23 @@ TEST_CASE("tryunlock_abi_test", "[abis]") {
     verify_byte_round_trip_conversion(abis, "tryunlock", var);
     verify_type_round_trip_conversion<tryunlock>(abis, "tryunlock", var);
 }
+
+TEST_CASE("recycleft_abi_test", "[abis]") {
+    auto&       abis      = get_evt_abi();
+    const char* test_data = R"=======(
+    {
+        "address": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+        "number": "5.00000 S#1",
+        "memo": "memo"
+    }
+    )=======";
+
+    auto var = fc::json::from_string(test_data);
+    auto rf  = var.as<recycleft>();
+
+    CHECK(rf.number.to_string() == "5.00000 S#1");
+    CHECK((std::string)rf.address == "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF");
+
+    verify_byte_round_trip_conversion(abis, "recycleft", var);
+    verify_type_round_trip_conversion<recycleft>(abis, "recycleft", var);
+}
