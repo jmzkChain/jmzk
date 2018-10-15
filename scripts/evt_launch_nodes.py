@@ -4,7 +4,21 @@ import time
 
 import click
 import docker
+import json
 
+
+class command():
+  """docstring for command"""
+  def __init__(self, cmd):
+    self.content = cmd
+  
+  def add_option(self, option):
+    self.content += ' '
+    self.content += option
+
+  def get_arguments(self):
+    return self.content
+    
 
 # free the container
 def free_container(name, client):
@@ -30,7 +44,7 @@ def free_the_dir(dir):
         print(name)
         os.removedirs(os.path.join(dir, name))
     if(not os.path.exists(dir)):
-        os.mkdir(dir, 0755)
+        os.mkdir(dir, 0o755)
 
 
 @click.group()
@@ -39,86 +53,50 @@ def run():
 
 
 @click.command()
-@click.option('--enable_mongodb', help='run the mongodb or not', is_flag=True)
-@click.option('--producer_number', help='the number of the producer', type=click.IntRange(1, 1000), default=1)
-@click.option('--nodes_number', help='the number of nodes we run', type=click.IntRange(1, 1000), default=1)
-@click.option('--evtd_port_http', help='the begin port of nodes port,port+1 ....', type=click.IntRange(0, 65535), default=8888)
-@click.option('--evtd_port_p2p', help='the begin port of nodes port,port+1 ....', type=click.IntRange(0, 65535), default=10000)
-@click.option('--mongo_db_port', help='the begin port of mongodb port,port+1 ....', type=click.IntRange(0, 65535), default=27017)
-@click.option('--evtd_dir', help='the data directory of the evtd', type=click.Path('rw'), default='/home/harry/evtd_data')
-@click.option('--mongo_db_dir', help='the data directory of the mongodb', type=click.Path('rw'), default='/home/harry/mongo_db_data')
-@click.option('--use_tmpfs', help='use the tmpfs or not', type=bool, is_flag=True)
-@click.option('--tmpfs_size', help='the memory usage per node', type=click.IntRange(0, 1024*1024), default=1024)
-def create(enable_mongodb, producer_number, nodes_number, evtd_port_http, evtd_port_p2p, mongo_db_port, evtd_dir, mongo_db_dir, use_tmpfs, tmpfs_size):
+@click.option('--config', help='the config of nodes', default = 'launch.config')
+def create(config):
+    f = open('launch.config', 'r')
+    text = f.read()
+    f.close()
+    paras = json.loads(text)
+    producer_number = paras['producer_number']    # the number of the producer
+    nodes_number = paras['nodes_number']          # the number of nodes we run
+    evtd_port_http = paras['evtd_port_http']      # the begin port of nodes port,port+1 ....
+    evtd_port_p2p = paras['evtd_port_p2p']        # the begin port of nodes port,port+1 ....
+    evtd_dir = paras['evtd_dir']                  # the data directory of the evtd
+    use_tmpfs = paras['use_tmpfs']                # use the tmpfs or not
+    tmpfs_size = paras['tmpfs_size']              # the memory usage per node
     client = docker.from_env()
     print('check and free the container before')
     free_container('evtd_', client)
-    free_container('mongodb_', client)
     # network=client.networks.create("evt-net",driver="bridge")
     # begin the nodes one by one
-    if(enable_mongodb):
-        print('begin open the mongodb')
-        for i in range(0, nodes_number):
-            # create files in mongo_db_dir
-            if(not os.path.exists(mongo_db_dir)):
-                os.mkdir(mongo_db_dir, 0755)
-            file = os.path.join(mongo_db_dir, 'dir_'+str(i))
-            if(os.path.exists(file)):
-                print("Warning: the file before didn't freed ")
-            else:
-                os.mkdir(file, 0755)
-
-            print('*****mongodb '+str(i)+'**************')
-            print('name: '+'mongodb_'+str(i))
-            print('nework: '+'evt-net')
-            print('mongodb port: '+str(mongo_db_port+i)+'/tcp:'+str(27017+i))
-            print('mount location: '+file)
-            print('****************************')
-
-            # make the command
-            command = 'mongod --port '+str(mongo_db_port+i)
-
-            # run image mongo in container
-            container = client.containers.run(image='mongo:latest',
-                                              command=command,
-                                              name='mongodb_'+str(i),
-                                              network='evt-net',
-                                              hostname='127.0.0.1',
-                                              ports={
-                                                  str(mongo_db_port+i): 27017+i},
-                                              detach=True,
-                                              volumes={
-                                                  file: {'bind': '/data/dbd', 'mode': 'rw'}}
-                                              )
-        time.sleep(5)
-
     print('begin open the evtd')
     for i in range(0, nodes_number):
 
         # create files in evtd_dir
         if(not os.path.exists(evtd_dir)):
-            os.mkdir(evtd_dir, 0755)
+            os.mkdir(evtd_dir, 0o755)
         file = os.path.join(evtd_dir, 'dir_'+str(i))
         if(os.path.exists(file)):
             print("Warning: the file before didn't freed ")
         else:
-            os.mkdir(file, 0755)
+            os.mkdir(file, 0o755)
 
         # make the command
-        command = 'evtd.sh --delete-all-blocks'
-        if(enable_mongodb):
-            command += ' --plugin=evt::mongo_db_plugin --mongodb-uri=mongodb://' + \
-                'mongodb_'+str(i)+':'+str(27017+i)
+        cmd = command('evtd.sh')
+        cmd.add_option('--delete-all-blocks')
         if(i < producer_number):
-            command += ' --enable-stale-production --producer-name=evt'
+            cmd.add_option('--enable-stale-production')
+            cmd.add_option('--producer-name=evt')
         else:
-            command += ' --producer-name=evt.'+str(i)
-        command += ' --http-server-address=evtd_'+str(i)+':'+str(8888+i)
-        command += ' --p2p-listen-endpoint=evtd_'+str(i)+':'+str(9876+i)
+            cmd.add_option('--producer-name=evt.'+str(i))
+        cmd.add_option('--http-server-address=evtd_'+str(i)+':'+str(8888+i))
+        cmd.add_option('--p2p-listen-endpoint=evtd_'+str(i)+':'+str(9876+i))
         for j in range(0, nodes_number):
             if(i == j):
                 continue
-            command += (' --p2p-peer-address=evtd_'+str(j)+':'+str(9876+j))
+            cmd.add_option(('--p2p-peer-address=evtd_'+str(j)+':'+str(9876+j)))
 
         # run the image evtd in container
         if(not use_tmpfs):
@@ -131,7 +109,7 @@ def create(enable_mongodb, producer_number, nodes_number, evtd_port_http, evtd_p
             print('****************************')
             container = client.containers.run(image='everitoken/evt:latest',
                                               name='evtd_'+str(i),
-                                              command=command,
+                                              command=cmd.get_arguments(),
                                               network='evt-net',
                                               ports={
                                                   str(evtd_port_http+i): 8888+i, str(evtd_port_p2p+i)+'/tcp': 9876+i},
@@ -149,7 +127,7 @@ def create(enable_mongodb, producer_number, nodes_number, evtd_port_http, evtd_p
             print('****************************')
             container = client.containers.run(image='everitoken/evt:latest',
                                               name='evtd_'+str(i),
-                                              command=command,
+                                              command=cmd.get_arguments(),
                                               network='evt-net',
                                               ports={
                                                   str(evtd_port_http+i): 8888+i, str(evtd_port_p2p+i)+'/tcp': 9876+i},
@@ -162,17 +140,18 @@ def create(enable_mongodb, producer_number, nodes_number, evtd_port_http, evtd_p
 
 # format with the click
 @click.command()
-@click.option('--free_dir', help='delete the directory of the mongodb and evtd', is_flag=True)
-@click.option('--evtd_dir', help='the data directory of the evtd', type=click.Path('rw'), default='/home/harry/evtd_data')
-@click.option('--mongo_db_dir', help='the data directory of the mongodb', type=click.Path('rw'), default='/home/harry/mongo_db_data')
-def free(free_dir, evtd_dir, mongo_db_dir):
+@click.option('--config', help='the config of nodes', default = 'launch.config')
+def free(config):
+    f = open('launch.config', 'r')
+    text = f.read()
+    f.close()
+    paras = json.loads(text)
+    free_dir = paras['free_dir'] # delete the directory of the evtd
+    evtd_dir = paras['evtd_dir'] # the data directory of the evtd
     client = docker.from_env()
     print('free the container')
     free_container('evtd_', client)
-    free_container('mongodb_', client)
     if(free_dir):
-        print(mongo_db_dir)
-        free_the_dir(mongo_db_dir)
         print(evtd_dir)
         free_the_dir(evtd_dir)
 
