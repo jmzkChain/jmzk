@@ -1193,6 +1193,30 @@ struct set_producer_subcommands {
             auto act = create_action(N128(.prodsched), N128(.update), usact);
             send_actions({act});
         });
+
+        auto ppcmd = actionRoot->add_subcommand("pause", localized("Pause current producing state"));
+        ppcmd->set_callback([] {
+            const auto& v = call(url, producer_pause);
+            print_info(v);
+        });
+
+        auto rpcmd = actionRoot->add_subcommand("resume", localized("Resume producing"));
+        rpcmd->set_callback([] {
+            const auto& v = call(url, producer_resume);
+            print_info(v);
+        });
+
+        auto isppcmd = actionRoot->add_subcommand("paused", localized("Get current producing state"));
+        isppcmd->set_callback([] {
+            const auto& v = call(url, producer_paused);
+            print_info(v);
+        });
+
+        auto rocmd = actionRoot->add_subcommand("runtime", localized("Get current runtime options"));
+        rocmd->set_callback([] {
+            const auto& v = call(url, producer_runtime_opts);
+            print_info(v);
+        });
     }
 };
 
