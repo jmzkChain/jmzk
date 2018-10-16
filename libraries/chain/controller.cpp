@@ -127,6 +127,7 @@ struct controller_impl {
     token_database           token_db;
     controller::config       conf;
     chain_id_type            chain_id;
+
     bool                     replaying = false;
     optional<fc::time_point> replay_head_time;
     bool                     in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
@@ -162,7 +163,7 @@ struct controller_impl {
         , db(cfg.state_dir,
              cfg.read_only ? database::read_only : database::read_write,
              cfg.state_size)
-        , reversible_blocks(cfg.blocks_dir/config::reversible_blocks_dir_name,
+        , reversible_blocks(cfg.blocks_dir / config::reversible_blocks_dir_name,
              cfg.read_only ? database::read_only : database::read_write,
              cfg.reversible_cache_size)
         , blog(cfg.blocks_dir)
@@ -175,6 +176,16 @@ struct controller_impl {
         fork_db.irreversible.connect([&](auto b) {
             on_irreversible(b);
         });
+    }
+
+    ~controller_impl() {
+        persist_reversible_blocks();
+
+        pending.reset();
+        db.flush();
+        reversible_blocks.flush();
+
+        fc::remove_all(conf.blocks_dir / config::reversible_blocks_dir_name);
     }
 
     /**
@@ -231,7 +242,7 @@ struct controller_impl {
         const auto& ubi = reversible_blocks.get_index<reversible_block_index,by_num>();
         auto objitr = ubi.begin();
         while(objitr != ubi.end() && objitr->blocknum <= s->block_num) {
-            reversible_blocks.remove( *objitr );
+            reversible_blocks.remove(*objitr);
             objitr = ubi.begin();
         }
 
@@ -240,15 +251,17 @@ struct controller_impl {
 
     void
     init() {
+        initialize_reversible_db();
         /**
-      *  The fork database needs an initial block_state to be set before
-      *  it can accept any new blocks. This initial block state can be found
-      *  in the database (whose head block state should be irreversible) or
-      *  it would be the genesis state.
-      */
+          *  The fork database needs an initial block_state to be set before
+          *  it can accept any new blocks. This initial block state can be found
+          *  in the database (whose head block state should be irreversible) or
+          *  it would be the genesis state.
+          */
         if(!head) {
             initialize_fork_db();  // set head to genesis state
             initialize_token_db();
+
             auto end = blog.read_head();
             if(end && end->block_num() > 1) {
                 auto end_time = end->timestamp.to_time_point();
@@ -271,7 +284,7 @@ struct controller_impl {
                 db.set_revision(head->block_num);
 
                 int rev = 0;
-                while(auto obj = reversible_blocks.find<reversible_block_object,by_num>(head->block_num+1)) {
+                while(auto obj = reversible_blocks.find<reversible_block_object,by_num>(head->block_num + 1)) {
                     ++rev;
                     self.push_block(obj->get_block(), controller::block_status::validated);
                 }
@@ -316,11 +329,74 @@ struct controller_impl {
         }
     }
 
-    ~controller_impl() {
-        pending.reset();
+    void
+    persist_reversible_blocks() {
+        auto filename = conf.blocks_dir / config::reversible_db_persisit_filename;
+        if(fc::exists(filename)) {
+            fc::remove(filename);
+        }
+        auto fs = std::fstream();
+        fs.exceptions(std::fstream::failbit | std::fstream::badbit);
+        fs.open(filename.to_native_ansi_path(), (std::ios::out | std::ios::binary));
 
-        db.flush();
-        reversible_blocks.flush();
+        int32_t dirty = 1;
+        // set dirty first
+        fc::raw::pack(fs, dirty);
+
+        // pack zero size first
+        size_t size = 0u;
+        fc::raw::pack(fs, size);
+
+        const auto& rdb = reversible_blocks.get_index<reversible_block_index, by_num>();
+        for(auto it = rdb.begin(); it != rdb.end(); it++, size++) {
+            auto rb = reversible_block();
+
+            rb.blocknum    = it->blocknum;
+            rb.packedblock = it->packedblock;
+
+            fc::raw::pack(fs, rb);
+        }
+        fs.seekp(0);
+
+        dirty = 0;
+        fc::raw::pack(fs, dirty);
+        fc::raw::pack(fs, size);
+
+        fs.flush();
+        fs.close();
+    }
+
+    void
+    initialize_reversible_db() {
+        auto filename = conf.blocks_dir / config::reversible_db_persisit_filename;
+        if(!fc::exists(filename)) {
+            return;
+        }
+
+        auto fs = std::fstream();
+        fs.exceptions(std::fstream::failbit | std::fstream::badbit);
+        fs.open(filename.to_native_ansi_path(), (std::ios::in | std::ios::binary));
+
+        int32_t dirty = 1;
+        size_t  size  = 0u;
+        fc::raw::unpack(fs, dirty);
+        if(dirty) {
+            throw std::runtime_error("reversible blocks dirty flag set");
+        }
+        fc::raw::unpack(fs, size);
+
+        for(auto i = 0u; i < size; i++) {
+            auto rb = reversible_block();
+            fc::raw::unpack(fs, rb);
+
+            reversible_blocks.create<reversible_block_object>([&](auto& ubo) {
+                ubo.blocknum    = rb.blocknum;
+                ubo.packedblock = rb.packedblock;
+            });
+        }
+        fs.close();
+
+        fc::remove(filename);
     }
 
     void
@@ -354,6 +430,7 @@ struct controller_impl {
         
         head        = std::make_shared<block_state>(genheader);
         head->block = std::make_shared<signed_block>(genheader.header);
+
         fork_db.set(head);
         db.set_revision(head->block_num);
 

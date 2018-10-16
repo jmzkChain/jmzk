@@ -338,7 +338,7 @@ template<>
 struct check_authority<destroytoken> {
     static bool
     invoke(const action& act, authority_checker* checker) {
-        return checker->satisfied_domain_permission(act, N(manage));
+        return checker->satisfied_domain_permission(act, N(transfer));
     }
 };
 
