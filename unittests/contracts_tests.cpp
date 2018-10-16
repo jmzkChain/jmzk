@@ -1211,7 +1211,7 @@ TEST_CASE_METHOD(contracts_test, "everipass_test", "[contracts]") {
 
     ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts - 1));
     sign_link(ep.link);
-    CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer), token_destoryed_exception);
+    CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer), token_destroyed_exception);
 }
 
 TEST_CASE_METHOD(contracts_test, "everipay_test", "[contracts]") {
