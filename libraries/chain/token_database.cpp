@@ -23,6 +23,7 @@
 #include <fc/io/datastream.hpp>
 #include <fc/io/raw.hpp>
 
+#include <evt/chain/config.hpp>
 #include <evt/chain/exceptions.hpp>
 
 namespace evt { namespace chain {
@@ -1178,7 +1179,7 @@ int
 token_database::persist_savepoints() {
     using namespace __internal;
 
-    auto filename = fc::path(db_path_) / "savepoints.log";
+    auto filename = fc::path(db_path_) / config::tokendb_persisit_filename;
     if(fc::exists(filename)) {
         fc::remove(filename);
     }
@@ -1324,7 +1325,7 @@ int
 token_database::load_savepoints() {
     using namespace __internal;
 
-    auto filename = fc::path(db_path_) / "savepoints.log";
+    auto filename = fc::path(db_path_) / config::tokendb_persisit_filename;
     if(!fc::exists(filename)) {
         wlog("No savepoints log in token database");
         return 0;
