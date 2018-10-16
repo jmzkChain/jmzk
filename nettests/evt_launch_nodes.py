@@ -1,24 +1,25 @@
+import json
 import os
 import sys
 import time
 
 import click
 import docker
-import json
 
 
 class command():
-  """docstring for command"""
-  def __init__(self, cmd):
-    self.content = cmd
-  
-  def add_option(self, option):
-    self.content += ' '
-    self.content += option
+    """docstring for command."""
 
-  def get_arguments(self):
-    return self.content
-    
+    def __init__(self, cmd):
+        self.content = cmd
+
+    def add_option(self, option):
+        self.content += ' '
+        self.content += option
+
+    def get_arguments(self):
+        return self.content
+
 
 # free the container
 def free_container(name, client):
@@ -29,7 +30,7 @@ def free_container(name, client):
             container = client.containers.get(name+str(i))
             container.stop()
             container.remove()
-            print('free '+name+str(i)+' succeed')
+            print('free {}{} succeed'.format(name, i))
         except docker.errors.NotFound:
             if(i >= 10):
                 break
@@ -39,7 +40,7 @@ def free_container(name, client):
 
 def free_the_dir(dir):
     list = os.listdir(dir)
-    print('remove the files in '+dir)
+    print('remove the files in {}'.format(dir))
     for name in list:
         print(name)
         os.removedirs(os.path.join(dir, name))
@@ -53,7 +54,7 @@ def run():
 
 
 @click.command()
-@click.option('--config', help='the config of nodes', default = 'launch.config')
+@click.option('--config', help='the config of nodes', default='launch.config')
 def create(config):
     f = open('launch.config', 'r')
     text = f.read()
@@ -70,6 +71,7 @@ def create(config):
     print('check and free the container before')
     free_container('evtd_', client)
     # network=client.networks.create("evt-net",driver="bridge")
+
     # begin the nodes one by one
     print('begin open the evtd')
     for i in range(0, nodes_number):
@@ -91,6 +93,7 @@ def create(config):
             cmd.add_option('--producer-name=evt')
         else:
             cmd.add_option('--producer-name=evt.'+str(i))
+
         cmd.add_option('--http-server-address=evtd_'+str(i)+':'+str(8888+i))
         cmd.add_option('--p2p-listen-endpoint=evtd_'+str(i)+':'+str(9876+i))
         for j in range(0, nodes_number):
@@ -100,12 +103,12 @@ def create(config):
 
         # run the image evtd in container
         if(not use_tmpfs):
-            print('********evtd '+str(i)+'**************')
-            print('name: '+'evtd_'+str(i))
-            print('nework: '+'evt-net')
-            print('http port: '+str(evtd_port_http+i)+'/tcp:'+str(8888+i))
-            print('p2p port: '+str(evtd_port_p2p+i)+'/tcp:'+str(9876+i))
-            print('mount location: '+file)
+            print('********evtd {} **************'.format(i))
+            print('name: evtd_{}'.format(i))
+            print('nework: evt-net')
+            print('http port: {} /tcp: {}'.format(evtd_port_http+i, 8888+i))
+            print('p2p port: {} /tcp: {}'.format(evtd_port_p2p+i, 9876+i))
+            print('mount location: {}'.format(file))
             print('****************************')
             container = client.containers.run(image='everitoken/evt:latest',
                                               name='evtd_'+str(i),
@@ -118,12 +121,12 @@ def create(config):
                                                   file: {'bind': '/opt/evtd/data', 'mode': 'rw'}}
                                               )
         else:
-            print('********evtd '+str(i)+'**************')
-            print('name: '+'evtd_'+str(i))
-            print('nework: '+'evt-net')
-            print('http port: '+str(evtd_port_http+i)+'/tcp:'+str(8888+i))
-            print('p2p port: '+str(evtd_port_p2p+i)+'/tcp:'+str(9876+i))
-            print('tmpfs use size: '+str(tmpfs_size)+'M')
+            print('********evtd {} **************'.format(i))
+            print('name: evtd_{}'.format(i))
+            print('nework: evt-net')
+            print('http port: {} /tcp: {}'.format(evtd_port_http+i, 8888+i))
+            print('p2p port: {} /tcp: {}'.format(evtd_port_p2p+i, 9876+i))
+            print('tmpfs use size: {} M'.format(tmpfs_size))
             print('****************************')
             container = client.containers.run(image='everitoken/evt:latest',
                                               name='evtd_'+str(i),
@@ -140,14 +143,14 @@ def create(config):
 
 # format with the click
 @click.command()
-@click.option('--config', help='the config of nodes', default = 'launch.config')
+@click.option('--config', help='the config of nodes', default='launch.config')
 def free(config):
     f = open('launch.config', 'r')
     text = f.read()
     f.close()
     paras = json.loads(text)
-    free_dir = paras['free_dir'] # delete the directory of the evtd
-    evtd_dir = paras['evtd_dir'] # the data directory of the evtd
+    free_dir = paras['free_dir']  # delete the directory of the evtd
+    evtd_dir = paras['evtd_dir']  # the data directory of the evtd
     client = docker.from_env()
     print('free the container')
     free_container('evtd_', client)
