@@ -11,9 +11,11 @@
 #include <chrono>
 
 namespace evt { namespace detail {
+
 struct producer_api_plugin_response {
     std::string result;
 };
+
 }}  // namespace evt::detail
 
 FC_REFLECT(evt::detail::producer_api_plugin_response, (result));
@@ -57,7 +59,7 @@ using namespace evt;
 #define INVOKE_V_R_R(api_handle, call_name, in_param0, in_param1)             \
     const auto& vs = fc::json::json::from_string(body).as<fc::variants>();    \
     api_handle.call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>()); \
-    evt::detail::producer_api_plugin_response result{"ok"};
+    evt::detail::producer_api_plugin_response<std::string> result{"ok"};
 
 #define INVOKE_V_V(api_handle, call_name) \
     api_handle.call_name();               \

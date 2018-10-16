@@ -141,6 +141,13 @@ const std::string get_fungible_actions = history_func_base + "/get_fungible_acti
 const std::string get_transaction      = history_func_base + "/get_transaction";
 const std::string get_transactions     = history_func_base + "/get_transactions";
 
+const std::string producer_func_base    = "/v1/producer";
+const std::string producer_pause        = producer_func_base + "/pause";
+const std::string producer_resume       = producer_func_base + "/resume";
+const std::string producer_paused       = producer_func_base + "/paused";
+const std::string producer_runtime_opts = producer_func_base + "/get_runtime_options";
+
+
 const string evtwd_stop = "/v1/evtwd/stop";
 
 FC_DECLARE_EXCEPTION(connection_exception, 1100000, "Connection Exception");

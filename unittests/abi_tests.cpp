@@ -1299,7 +1299,6 @@ TEST_CASE("newlock_abi_test", "[abis]") {
         "unlock_time": "2018-06-09T09:06:27",
         "deadline": "2018-07-09T09:06:27",
         "assets": [{
-            
             "data": {
                 "domain": "cookie",
                 "names": [
