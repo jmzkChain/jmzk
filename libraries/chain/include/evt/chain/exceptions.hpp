@@ -174,7 +174,7 @@ FC_DECLARE_DERIVED_EXCEPTION( fungible_symbol_exception,           action_except
 FC_DECLARE_DERIVED_EXCEPTION( fungible_supply_exception,           action_exception, 3040021, "Invalid fungible supply" );
 FC_DECLARE_DERIVED_EXCEPTION( fungible_address_exception,          action_exception, 3040022, "Invalid address" );
 FC_DECLARE_DERIVED_EXCEPTION( token_owner_exception,               action_exception, 3040023, "Token owner cannot be empty." );
-FC_DECLARE_DERIVED_EXCEPTION( token_destoryed_exception,           action_exception, 3040024, "Token is destroyed." );
+FC_DECLARE_DERIVED_EXCEPTION( token_destroyed_exception,           action_exception, 3040024, "Token is destroyed." );
 FC_DECLARE_DERIVED_EXCEPTION( math_overflow_exception,             action_exception, 3040025, "Operations resulted in overflow." );
 FC_DECLARE_DERIVED_EXCEPTION( balance_exception,                   action_exception, 3040026, "Not enough balance left." );
 FC_DECLARE_DERIVED_EXCEPTION( meta_involve_exception,              action_exception, 3040027, "Creator is not involved." );
@@ -211,6 +211,7 @@ FC_DECLARE_DERIVED_EXCEPTION( lock_duplicate_key_exception,        action_except
 FC_DECLARE_DERIVED_EXCEPTION( lock_not_reach_unlock_time,          action_exception, 3040058, "Unlock time is not reach." );
 FC_DECLARE_DERIVED_EXCEPTION( lock_not_reach_deadline,             action_exception, 3040059, "Deadline is not reach." );
 FC_DECLARE_DERIVED_EXCEPTION( token_locked_exception,              action_exception, 3040060, "Locked token cannot be transfered." );
+FC_DECLARE_DERIVED_EXCEPTION( token_cannot_destroy_exception,      action_exception, 3040061, "Token in this domain cannot be destroyed." );
 
 FC_DECLARE_DERIVED_EXCEPTION( name_type_exception,               chain_type_exception, 3120001, "Invalid name" );
 FC_DECLARE_DERIVED_EXCEPTION( public_key_type_exception,         chain_type_exception, 3120002, "Invalid public key" );

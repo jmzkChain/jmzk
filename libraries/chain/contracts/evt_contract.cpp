@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <string>
 
+#include <boost/hana.hpp>
+
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/ripemd160.hpp>
 
@@ -24,6 +26,8 @@
 #endif
 
 namespace evt { namespace chain { namespace contracts {
+
+namespace hana = boost::hana;
 
 #define EVT_ACTION_IMPL(name)                         \
     template<>                                        \
@@ -111,6 +115,34 @@ inline void
 check_name_reserved(const name128& name) {
     EVT_ASSERT(!name.empty() && !name.reserved(), name_reserved_exception, "Name starting with '.' is reserved for system usages.");
 }
+
+enum class reserved_meta_key {
+    disable_destroy = 0
+};
+
+template<uint128_t i>
+using uint128 = hana::integral_constant<uint128_t, i>;
+
+template<uint128_t i>
+constexpr uint128<i> uint128_c{};
+
+auto domain_metas = hana::make_map(
+    hana::make_pair(hana::int_c<(int)reserved_meta_key::disable_destroy>, hana::make_tuple(uint128_c<N128(.disable-destroy)>, hana::type_c<bool>))
+);
+
+template<int KeyType>
+constexpr auto get_metakey(auto& metas) {
+    return hana::at(hana::at_key(metas, hana::int_c<KeyType>), hana::int_c<0>);
+};
+
+auto get_metavalue = [](const auto& obj, auto k) {
+    for(const auto& p : obj.metas) {
+        if(p.key.value == k) {
+            return fc::optional<std::string>{ p.value };
+        }
+    }
+    return fc::optional<std::string>();
+};
 
 } // namespace __internal
 
@@ -203,6 +235,7 @@ check_token_locked(const token_def& token) {
     auto& addr = token.owner[0];
     return addr.is_generated() && addr.get_prefix() == N(lock);
 }
+
 }  // namespace __internal
 
 EVT_ACTION_IMPL(transfer) {
@@ -225,7 +258,7 @@ EVT_ACTION_IMPL(transfer) {
         token_def token;
         tokendb.read_token(ttact.domain, ttact.name, token);
 
-        EVT_ASSERT(!check_token_destroy(token), token_destoryed_exception, "Destroyed token cannot be transfered.");
+        EVT_ASSERT(!check_token_destroy(token), token_destroyed_exception, "Destroyed token cannot be transfered.");
         EVT_ASSERT(!check_token_locked(token), token_locked_exception, "Locked token cannot be transfered.");
 
         token.owner = std::move(ttact.to);
@@ -243,10 +276,18 @@ EVT_ACTION_IMPL(destroytoken) {
 
         auto& tokendb = context.token_db;
 
+        domain_def domain;
+        tokendb.read_domain(dtact.domain, domain);
+
+        auto dd = get_metavalue(domain, get_metakey<(int)reserved_meta_key::disable_destroy>(domain_metas));
+        if(dd.valid() && *dd == "true") {
+            EVT_THROW(token_cannot_destroy_exception, "Token in this domain: ${d} cannot be destroyed", ("d",dtact.domain));
+        }
+
         token_def token;
         tokendb.read_token(dtact.domain, dtact.name, token);
 
-        EVT_ASSERT(!check_token_destroy(token), token_destoryed_exception, "Token is already destroyed.");
+        EVT_ASSERT(!check_token_destroy(token), token_destroyed_exception, "Token is already destroyed.");
         EVT_ASSERT(!check_token_locked(token), token_locked_exception, "Locked token cannot be destroyed.");
 
         token.owner = address_list{ address() };
@@ -672,19 +713,25 @@ check_duplicate_meta<group_def>(const group_def& v, const meta_key& key) {
     return false;  
 }
 
+void
+check_meta_key_reserved(const auto& key) {
+    EVT_ASSERT(!key.reserved(), meta_key_exception, "Meta-key is reserved and cannot be used");
+}
+
 }  // namespace __internal
 
 EVT_ACTION_IMPL(addmeta) {
     using namespace __internal;
+    using namespace hana;
 
     const auto& act   = context.act;
     auto        amact = context.act.data_as<addmeta>();
     try {
         auto& tokendb = context.token_db;
 
-        check_name_reserved(amact.key);
+        if(act.domain == N128(.group)) {  // group
+            check_meta_key_reserved(amact.key);
 
-        if(act.domain == N128(.group)) {
             group_def group;
             tokendb.read_group(act.key, group);
 
@@ -699,7 +746,9 @@ EVT_ACTION_IMPL(addmeta) {
             group.metas_.emplace_back(meta(amact.key, amact.value, amact.creator));
             tokendb.update_group(group);
         }
-        else if(act.domain == N128(.fungible)) {
+        else if(act.domain == N128(.fungible)) {  // fungible
+            check_meta_key_reserved(amact.key);
+
             fungible_def fungible;
             tokendb.read_fungible((symbol_id_type)std::stoul((std::string)act.key), fungible);
 
@@ -718,7 +767,22 @@ EVT_ACTION_IMPL(addmeta) {
             fungible.metas.emplace_back(meta(amact.key, amact.value, amact.creator));
             tokendb.update_fungible(fungible);
         }
-        else if(act.key == N128(.meta)) {
+        else if(act.key == N128(.meta)) {  // domain
+            if(amact.key.reserved()) {
+                bool pass = false;
+                hana::for_each(hana::values(domain_metas), [&](const auto& m) {
+                    if(amact.key.value == hana::at(m, int_c<0>)) {
+                        if(hana::at(m, int_c<1>) == hana::type_c<bool>) {
+                            if(amact.value == "true" || amact.value == "false") {
+                                pass = true;
+                            }
+                        }
+                    }
+                });
+
+                EVT_ASSERT(pass, meta_key_exception, "Meta-key is reserved and cannot be used");
+            }
+
             domain_def domain;
             tokendb.read_domain(act.domain, domain);
 
@@ -729,11 +793,13 @@ EVT_ACTION_IMPL(addmeta) {
             domain.metas.emplace_back(meta(amact.key, amact.value, amact.creator));
             tokendb.update_domain(domain);
         }
-        else {
+        else {  // token
+            check_meta_key_reserved(amact.key);
+
             token_def token;
             tokendb.read_token(act.domain, act.key, token);
 
-            EVT_ASSERT(!check_token_destroy(token), token_destoryed_exception, "Metadata cannot be added on destroyed token.");
+            EVT_ASSERT(!check_token_destroy(token), token_destroyed_exception, "Metadata cannot be added on destroyed token.");
             EVT_ASSERT(!check_token_locked(token), token_locked_exception, "Metadata cannot be added on locked token.");
             EVT_ASSERT(!check_duplicate_meta(token, amact.key), meta_key_exception, "Metadata with key ${key} already exists.", ("key",amact.key));
 
@@ -955,7 +1021,7 @@ EVT_ACTION_IMPL(everipass) {
         token_def token;
         tokendb.read_token(d, t, token);
 
-        EVT_ASSERT(!check_token_destroy(token), token_destoryed_exception, "Destroyed token cannot be destroyed during everiPass.");
+        EVT_ASSERT(!check_token_destroy(token), token_destroyed_exception, "Destroyed token cannot be destroyed during everiPass.");
         EVT_ASSERT(!check_token_locked(token), token_locked_exception, "Locked token cannot be destroyed during everiPass.");
 
         if(flags & evt_link::destroy) {
