@@ -390,8 +390,8 @@ struct controller_impl {
             fc::raw::unpack(fs, rb);
 
             reversible_blocks.create<reversible_block_object>([&](auto& ubo) {
-                ubo.blocknum    = rb.blocknum;
-                ubo.packedblock = rb.packedblock;
+                ubo.blocknum = rb.blocknum;
+                ubo.packedblock.assign(rb.packedblock.data(), rb.packedblock.size());
             });
         }
         fs.close();
