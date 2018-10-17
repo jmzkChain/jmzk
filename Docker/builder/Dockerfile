@@ -9,8 +9,8 @@ RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y sudo wget curl net-tools ccache ninja-build ca-certificates unzip gnupg git build-essential libtool autoconf automake m4 openssl libssl1.1 libssl-dev libgmp-dev zlib1g-dev
 
 RUN wget --no-check-certificate https://cmake.org/files/v3.12/cmake-3.12.3-Linux-x86_64.sh \
-    && bash cmake-3.12.0-Linux-x86_64.sh --prefix=/usr/local --exclude-subdir --skip-license \
-    && rm cmake-3.12.0-Linux-x86_64.sh
+    && bash cmake-3.12.3-Linux-x86_64.sh --prefix=/usr/local --exclude-subdir --skip-license \
+    && rm cmake-3.12.3-Linux-x86_64.sh
 
 RUN wget https://dl.bintray.com/boostorg/release/1.68.0/source/boost_1_68_0.tar.bz2 -O - | tar -xj \
     && cd boost_1_68_0 \
