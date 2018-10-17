@@ -775,6 +775,9 @@ EVT_ACTION_IMPL(addmeta) {
                             if(amact.value == "true" || amact.value == "false") {
                                 pass = true;
                             }
+                            else {
+                                EVT_THROW(meta_value_exception, "Meta-Value is not valid for `bool` type");
+                            }
                         }
                     }
                 });

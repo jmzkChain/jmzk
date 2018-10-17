@@ -212,6 +212,7 @@ FC_DECLARE_DERIVED_EXCEPTION( lock_not_reach_unlock_time,          action_except
 FC_DECLARE_DERIVED_EXCEPTION( lock_not_reach_deadline,             action_exception, 3040059, "Deadline is not reach." );
 FC_DECLARE_DERIVED_EXCEPTION( token_locked_exception,              action_exception, 3040060, "Locked token cannot be transfered." );
 FC_DECLARE_DERIVED_EXCEPTION( token_cannot_destroy_exception,      action_exception, 3040061, "Token in this domain cannot be destroyed." );
+FC_DECLARE_DERIVED_EXCEPTION( meta_value_exception,                action_exception, 3040062, "Invalid meta value" );
 
 FC_DECLARE_DERIVED_EXCEPTION( name_type_exception,               chain_type_exception, 3120001, "Invalid name" );
 FC_DECLARE_DERIVED_EXCEPTION( public_key_type_exception,         chain_type_exception, 3120002, "Invalid public key" );
