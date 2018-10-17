@@ -188,7 +188,8 @@ TEST_CASE_METHOD(contracts_test, "contract_issuetoken_test", "[contracts]") {
         "names": [
           "t1",
           "t2",
-          "t3"
+          "t3",
+          "t4"
         ],
         "owner": [
           "EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2"
@@ -302,6 +303,52 @@ TEST_CASE_METHOD(contracts_test, "contract_destroytoken_test", "[contracts]") {
     tokendb.read_token(get_domain_name(), "t2", tk);
     CHECK(address() == tk.owner[0]);
 
+    my_tester->produce_blocks();
+}
+
+TEST_CASE_METHOD(contracts_test, "contract_destroytoken_auth_test", "[contracts]") {
+    CHECK(true);
+    const char* meta_data = R"=====(
+    {
+      "key": ".disable-destroy",
+      "value": "value",
+      "creator": "[A] EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+    }
+    )=====";
+
+    auto var  = fc::json::from_string(meta_data);
+    auto admt = var.as<addmeta>();
+
+    admt.creator = key;
+    to_variant(admt, var);
+
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds, payer, 5'000'000), meta_key_exception);
+
+    admt.value = (bool)(get_time() % 2)?"true":"false";
+    to_variant(admt, var);
+    my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds, payer, 5'000'000);
+
+    const char* test_data = R"=====(
+    {
+      "domain": "cookie",
+      "name": "t4"
+    }
+    )=====";
+
+    var           = fc::json::from_string(test_data);
+    auto  destk   = var.as<destroytoken>();
+    auto& tokendb = my_tester->control->token_db();
+
+    destk.domain = get_domain_name();
+    to_variant(destk, var);
+
+    if(admt.value == "true") {
+        //token_cannot_destroy_exception test
+        CHECK_THROWS_AS(my_tester->push_action(N(destroytoken), string_to_name128(get_domain_name()), N128(t4), var.get_object(), key_seeds, payer), token_cannot_destroy_exception);
+    }
+    else {
+        CHECK_NOTHROW(my_tester->push_action(N(destroytoken), string_to_name128(get_domain_name()), N128(t4), var.get_object(), key_seeds, payer));
+    }
     my_tester->produce_blocks();
 }
 
@@ -1199,9 +1246,9 @@ TEST_CASE_METHOD(contracts_test, "everipass_test", "[contracts]") {
     sign_link(ep.link);
     CHECK_NOTHROW(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer));
 
-    ep.link.add_segment(evt_link::segment(evt_link::token, "t4"));
+    ep.link.add_segment(evt_link::segment(evt_link::token, "t5"));
     sign_link(ep.link);
-    CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t4), ep), key_seeds, payer), tokendb_key_not_found);
+    CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t5), ep), key_seeds, payer), tokendb_key_not_found);
 
     header |= evt_link::destroy;
     ep.link.set_header(header);
