@@ -322,25 +322,32 @@ TEST_CASE_METHOD(contracts_test, "contract_destroytoken_auth_test", "[contracts]
     am.value   = "invalid-value";
     am.creator = key; 
 
+    // meta key is not valid
     CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(.meta), am), key_seeds, payer, 5'000'000), meta_key_exception);
 
     am.key = N128(.disable-destroy);
+    // `.distable-destroy` meta key cannot be added to token
     CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t3), am), key_seeds, payer, 5'000'000), meta_key_exception);
+    // value for `.distable-destroy` is not valid, only 'true' or 'false' is valid
     CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(.meta), am), key_seeds, payer, 5'000'000), meta_value_exception);
 
     am.value = "false";
+    // add `.distable-destroy` with 'false' to domain-0
     my_tester->push_action(action(get_domain_name(), N128(.meta), am), key_seeds, payer, 5'000'000);
 
     am.value = "true";
+    // add `.distable-destroy` with 'true' to domain-1
     my_tester->push_action(action(get_domain_name(1), N128(.meta), am), key_seeds, payer, 5'000'000);
 
     auto dt   = destroytoken();
     dt.domain = get_domain_name();
     dt.name   = N128(t4);
 
+    // value of `.distable-destroy` is 'false', can destroy
     CHECK_NOTHROW(my_tester->push_action(action(dt.domain, dt.name, dt), key_seeds, payer));
 
     dt.domain = get_domain_name(1);
+    // value of `.distable-destroy` is 'true', cannot destroy
     CHECK_THROWS_AS(my_tester->push_action(action(dt.domain, dt.name, dt), key_seeds, payer), token_cannot_destroy_exception);
 
     my_tester->produce_blocks();
