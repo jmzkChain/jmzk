@@ -21,9 +21,9 @@ public:
     trafficgen_plugin(trafficgen_plugin&&)      = delete;
     trafficgen_plugin& operator=(const trafficgen_plugin&) = delete;
     trafficgen_plugin& operator=(trafficgen_plugin&&) = delete;
-    virtual ~trafficgen_plugin() override             = default;
+    virtual ~trafficgen_plugin() = default;
 
-    virtual void set_program_options(options_description& cli, options_description& cfg);
+    virtual void set_program_options(options_description& cli, options_description& cfg) override;
 
     void plugin_initialize(const variables_map& vm);
     void plugin_startup();
