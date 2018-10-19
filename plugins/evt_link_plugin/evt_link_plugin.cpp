@@ -90,7 +90,7 @@ public:
     std::atomic_bool       init_{false};
     uint32_t               timeout_;
 
-    std::deque<block_state_ptr>       blocks_;
+    std::deque<block_state_ptr>                                         blocks_;
     std::unordered_map<link_id_type, deferred_pair, evt_link_id_hasher> link_ids_;
 
     fc::optional<boost::signals2::scoped_connection> accepted_block_connection_;
