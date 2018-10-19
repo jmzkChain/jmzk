@@ -195,6 +195,8 @@ public:
     int pop_back_savepoint();
     int squash();
 
+    int64_t latest_savepoint_seq() const;
+
     session new_savepoint_session(int64_t seq);
     session new_savepoint_session();
 

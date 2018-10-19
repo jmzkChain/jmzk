@@ -179,13 +179,9 @@ struct controller_impl {
     }
 
     ~controller_impl() {
-        persist_reversible_blocks();
-
         pending.reset();
         db.flush();
         reversible_blocks.flush();
-
-        fc::remove_all(conf.blocks_dir / config::reversible_blocks_dir_name);
     }
 
     /**
@@ -251,7 +247,6 @@ struct controller_impl {
 
     void
     init() {
-        initialize_reversible_db();
         /**
           *  The fork database needs an initial block_state to be set before
           *  it can accept any new blocks. This initial block state can be found
@@ -323,80 +318,16 @@ struct controller_impl {
             wlog("warning: database revision (${db}) is greater than head block number (${head}), "
                "attempting to undo pending changes",
                ("db",db.revision())("head",head->block_num));
+
+            EVT_ASSERT(token_db.get_savepoints_size() > 0, tokendb_exception, "token database is inconsistent with fork database: don't have any savepoints to pop");
+            EVT_ASSERT(token_db.latest_savepoint_seq() == db.revision(), tokendb_exception, "token database(${seq}) is inconsistent with fork database(${db})",
+                ("seq",token_db.latest_savepoint_seq())("db",db.revision()));
+
+            while(db.revision() > head->block_num) {
+                db.undo();
+                token_db.rollback_to_latest_savepoint();
+            }
         }
-        while(db.revision() > head->block_num) {
-            db.undo();
-        }
-    }
-
-    void
-    persist_reversible_blocks() {
-        auto filename = conf.blocks_dir / config::reversible_db_persisit_filename;
-        if(fc::exists(filename)) {
-            fc::remove(filename);
-        }
-        auto fs = std::fstream();
-        fs.exceptions(std::fstream::failbit | std::fstream::badbit);
-        fs.open(filename.to_native_ansi_path(), (std::ios::out | std::ios::binary));
-
-        int32_t dirty = 1;
-        // set dirty first
-        fc::raw::pack(fs, dirty);
-
-        // pack zero size first
-        size_t size = 0u;
-        fc::raw::pack(fs, size);
-
-        const auto& rdb = reversible_blocks.get_index<reversible_block_index, by_num>();
-        for(auto it = rdb.begin(); it != rdb.end(); it++, size++) {
-            auto rb = reversible_block();
-
-            rb.blocknum    = it->blocknum;
-            rb.packedblock = it->packedblock;
-
-            fc::raw::pack(fs, rb);
-        }
-        fs.seekp(0);
-
-        dirty = 0;
-        fc::raw::pack(fs, dirty);
-        fc::raw::pack(fs, size);
-
-        fs.flush();
-        fs.close();
-    }
-
-    void
-    initialize_reversible_db() {
-        auto filename = conf.blocks_dir / config::reversible_db_persisit_filename;
-        if(!fc::exists(filename)) {
-            return;
-        }
-
-        auto fs = std::fstream();
-        fs.exceptions(std::fstream::failbit | std::fstream::badbit);
-        fs.open(filename.to_native_ansi_path(), (std::ios::in | std::ios::binary));
-
-        int32_t dirty = 1;
-        size_t  size  = 0u;
-        fc::raw::unpack(fs, dirty);
-        if(dirty) {
-            throw std::runtime_error("reversible blocks dirty flag set");
-        }
-        fc::raw::unpack(fs, size);
-
-        for(auto i = 0u; i < size; i++) {
-            auto rb = reversible_block();
-            fc::raw::unpack(fs, rb);
-
-            reversible_blocks.create<reversible_block_object>([&](auto& ubo) {
-                ubo.blocknum = rb.blocknum;
-                ubo.packedblock.assign(rb.packedblock.data(), rb.packedblock.size());
-            });
-        }
-        fs.close();
-
-        fc::remove(filename);
     }
 
     void
