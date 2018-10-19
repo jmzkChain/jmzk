@@ -5,6 +5,7 @@
 #include <evt/trafficgen_plugin/trafficgen_plugin.hpp>
 
 #include <signal.h>
+#include <boost/asio/post.hpp>
 
 #include <evt/chain/exceptions.hpp>
 #include <evt/chain/transaction.hpp>
@@ -38,14 +39,13 @@ public:
 
 private:
     void applied_block(const block_state_ptr& bs);
-    void push_once(const block_id_type& id);
+    void push_once(int index);
 
 public:
     controller& db_;
 
     uint32_t start_num_  = 0;
     size_t   total_num_  = 0;
-    size_t   total_sent_ = 0;
 
     address          from_addr_;
     private_key_type from_priv_;
@@ -106,26 +106,21 @@ void
 trafficgen_plugin_impl::applied_block(const block_state_ptr& bs) {
     if(bs->block_num == start_num_) {
         pre_generate(bs->id);
-        FC_ASSERT(db_.pending_block_state());
-        push_once(bs->id);
+
+        const auto& exec = app().get_io_service().get_executor();
+        for(auto i = 0u; i < total_num_; i++) {
+            boost::asio::post(exec, std::bind(&trafficgen_plugin_impl::push_once, this, (int)i));
+        }
     }
 }
 
 void
-trafficgen_plugin_impl::push_once(const block_id_type& id) {
-    FC_ASSERT(packed_trxs_[total_sent_], "Not initialized packed trx yet!");
+trafficgen_plugin_impl::push_once(int index) {
     try {
-        auto ptrx = packed_trxs_[total_sent_];
-        app().get_method<chain::plugin_interface::incoming::methods::transaction_async>()(ptrx, true, [this, id](const auto& result) -> void {
+        auto ptrx = packed_trxs_[index];
+        app().get_method<chain::plugin_interface::incoming::methods::transaction_async>()(ptrx, true, [index](const auto& result) -> void {
             if(result.template contains<fc::exception_ptr>()) {
-                wlog("Push failed at index: ${i}, e: ${e}", ("i",total_sent_)("e",*result.template get<fc::exception_ptr>()));
-            }
-            else {
-                if(++total_sent_ == total_num_) {
-                    ilog("Send finished");
-                    return;
-                }
-                push_once(id);
+                wlog("Push failed at index: ${i}, e: ${e}", ("i",index)("e",*result.template get<fc::exception_ptr>()));
             }
         });
     }
@@ -136,7 +131,7 @@ trafficgen_plugin_impl::push_once(const block_id_type& id) {
         raise(SIGUSR1);
     }
     catch(...) {
-        wlog("Push failed at index: ${i}", ("i",total_sent_));
+        wlog("Push failed at index: ${i}", ("i",index));
     }
 }
 
