@@ -12,6 +12,7 @@ add_subdirectory(evt_plugin)
 add_subdirectory(evt_api_plugin)
 add_subdirectory(evt_link_plugin)
 add_subdirectory(bnet_plugin)
+add_subdirectory(trafficgen_plugin)
 
 if(ENABLE_MONGODB_SUPPORT)
     add_subdirectory(mongo_db_plugin)

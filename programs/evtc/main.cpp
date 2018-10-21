@@ -1180,7 +1180,7 @@ struct set_producer_subcommands {
         });
 
         auto uscmd = actionRoot->add_subcommand("updsched", localized("Update producer scheduler"));
-        uscmd->add_option("prodkeys", prodkeys, localized("Producer name and keys"))->required();
+        uscmd->add_option("prodkeys", prodkeys, localized("Producer name and keys: ${name}:${key}"))->required();
 
         add_standard_transaction_options(uscmd);
 

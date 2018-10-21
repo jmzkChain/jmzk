@@ -91,17 +91,20 @@ def create(config):
         cmd.add_option('--delete-all-blocks')
         if(i < producer_number):
             cmd.add_option('--enable-stale-production')
-            cmd.add_option('--producer-name=evt.{}'.format(i))
+            cmd.add_option('--producer-name=evt')
             libevt.init_lib()
             pub_key, priv_key = ecc.generate_new_pair()
             cmd.add_option('--private-key={}'.format(priv_key.to_string()))
+            # cmd.add_option('--private-key=5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3')
 
         cmd.add_option('--http-server-address=evtd_{}:{}'.format(i, 8888+i))
         cmd.add_option('--p2p-listen-endpoint=evtd_{}:{}'.format(i, 9876+i))
+        # cmd.add_option(('--p2p-peer-address=evtd_{}:{}'.format((i+1)%nodes_number, 9876+(i+1)%nodes_number)))
         for j in range(0, nodes_number):
             if(i == j):
                 continue
             cmd.add_option(('--p2p-peer-address=evtd_{}:{}'.format(j, 9876+j)))
+        #     break 
 
         # run the image evtd in container
         if(not use_tmpfs):

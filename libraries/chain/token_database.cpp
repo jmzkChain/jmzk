@@ -896,6 +896,12 @@ token_database::squash() {
     return 0;
 }
 
+int64_t
+token_database::latest_savepoint_seq() const {
+    EVT_ASSERT(!savepoints_.empty(), tokendb_no_savepoint, "There's no savepoints anymore");
+    return savepoints_.back().seq;
+}
+
 namespace __internal {
 
 std::string

@@ -131,7 +131,7 @@ auto domain_metas = hana::make_map(
 );
 
 template<int KeyType>
-constexpr auto get_metakey(auto& metas) {
+constexpr auto get_metakey = [](auto& metas) {
     return hana::at(hana::at_key(metas, hana::int_c<KeyType>), hana::int_c<0>);
 };
 
@@ -713,10 +713,9 @@ check_duplicate_meta<group_def>(const group_def& v, const meta_key& key) {
     return false;  
 }
 
-void
-check_meta_key_reserved(const auto& key) {
+auto check_meta_key_reserved = [](const auto& key) {
     EVT_ASSERT(!key.reserved(), meta_key_exception, "Meta-key is reserved and cannot be used");
-}
+};
 
 }  // namespace __internal
 
@@ -775,6 +774,9 @@ EVT_ACTION_IMPL(addmeta) {
                         if(hana::at(m, int_c<1>) == hana::type_c<bool>) {
                             if(amact.value == "true" || amact.value == "false") {
                                 pass = true;
+                            }
+                            else {
+                                EVT_THROW(meta_value_exception, "Meta-Value is not valid for `bool` type");
                             }
                         }
                     }

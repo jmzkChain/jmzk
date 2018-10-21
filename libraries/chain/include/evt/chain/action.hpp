@@ -19,7 +19,7 @@ public:
 
     action() {}
 
-    template <typename T>
+    template<typename T>
     action(const domain_name& domain, const domain_key& key, const T& value)
         : domain(domain)
         , key(key) {
@@ -33,6 +33,13 @@ public:
         , domain(domain)
         , key(key)
         , data(data) {}
+
+    template<typename T>
+    void
+    set_data(const T& value) {
+        data   = fc::raw::pack(value);
+        cache_ = value;
+    }
 
     // if T is a reference, will return the reference to the internal cache value
     // Otherwise if T is a value type, will return new copy. 
