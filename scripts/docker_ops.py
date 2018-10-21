@@ -216,8 +216,8 @@ def export(ctx, file):
     folder = "/opt/evt/data/reversible"
 
     try:
-        commands = ['mkdir -p {}'.format(folder), 'evtd.sh --export-reversible-blocks={0}/{1}'.format(folder, file)]
-        output = client.containers.run(image, commands, auto_remove=True,
+        command = '/bin/bash -c \'mkdir -p {0} && /opt/evt/bin/evtd.sh --export-reversible-blocks={0}/{1}\''.format(folder, file)
+        output = client.containers.run(image, command, auto_remove=True,
                                    volumes={volume_name: {'bind': '/opt/evt/data', 'mode': 'rw'}})
 
         click.echo(output)
