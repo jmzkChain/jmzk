@@ -372,21 +372,27 @@ def create(ctx, net, http_port, p2p_port, host, mongodb_name, mongodb_port, mong
         try:
             container = client.containers.get(mongodb_name)
             if container.status != 'running':
-                click.echo('{} container is not running, please run it first'.format(green(mongodb_name)))
+                click.echo('{} container is not running, please run it first'.format(
+                    green(mongodb_name)))
                 return
         except docker.errors.NotFound:
-            click.echo('{} container is not existed, please create mongo container first'.format(green(mongodb_name)))
+            click.echo('{} container is not existed, please create mongo container first'.format(
+                green(mongodb_name)))
             return
 
-        click.echo('{}, {}, {} are enabled'.format(green('mongo_db_plugin'), green('history_plugin'), green('history_api_plugin')))
+        click.echo('{}, {}, {} are enabled'.format(green('mongo_db_plugin'), green(
+            'history_plugin'), green('history_api_plugin')))
         entry += ' --plugin=evt::mongo_db_plugin --plugin=evt::history_plugin --plugin=evt::history_api_plugin'
-        entry += ' --mongodb-uri=mongodb://{}:{}/{}'.format(mongodb_name, mongodb_port, mongodb_db)
+        entry += ' --mongodb-uri=mongodb://{}:{}/{}'.format(
+            mongodb_name, mongodb_port, mongodb_db)
     if arguments is not None and len(arguments) > 0:
         entry += ' ' + ' '.join(arguments)
 
     client.containers.create(image, None, name=name, detach=True, network=net,
-                             ports={'8888/tcp': (host, http_port), '7888/tcp': (host, p2p_port)},
-                             volumes={volume_name: {'bind': '/opt/evt/data', 'mode': 'rw'}},
+                             ports={
+                                 '8888/tcp': (host, http_port), '7888/tcp': (host, p2p_port)},
+                             volumes={volume_name: {
+                                 'bind': '/opt/evt/data', 'mode': 'rw'}},
                              entrypoint=entry
                              )
     click.echo('evtd: {} container is created'.format(green(name)))
