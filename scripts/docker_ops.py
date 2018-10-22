@@ -323,9 +323,11 @@ def clear(ctx, all):
 @click.option('--http-port', '-p', default=8888, help='Expose port for rpc request')
 @click.option('--p2p-port', default=7888, help='Expose port for p2p network')
 @click.option('--host', '-h', default='127.0.0.1', help='Host address for evtd')
-@click.option('--mongo-uri', '-m', default=None, help='Mongo URI for mongodb, if filled, mongo and history plugins will be enabled')
+@click.option('--mongodb-name', '-m', default='mongo', help='Container name or host address of mongodb')
+@click.option('--mongodb-port', default=27017, help='Port of mongodb')
+@click.option('--mongodb-db', default=None, help='Name of database in mongodb, if set, mongo and history plugins will be enabled')
 @click.pass_context
-def create(ctx, net, http_port, p2p_port, host, mongo_uri, type, arguments):
+def create(ctx, net, http_port, p2p_port, host, mongodb_name, mongodb_port, mongodb_db, type, arguments):
     name = ctx.obj['name']
     volume_name = '{}-data-volume'.format(name)
 
@@ -366,8 +368,19 @@ def create(ctx, net, http_port, p2p_port, host, mongo_uri, type, arguments):
         return
 
     entry = 'evtd.sh --http-server-address=0.0.0.0:8888 --p2p-listen-endpoint=0.0.0.0:7888'
-    if mongo_uri is not None:
-        entry += ' --plugin=evt::mongo_db_plugin --plugin=evt::history_plugin --plugin=evt::history_api_plugin --mongo-uri={}'.format(mongo_uri)
+    if mongodb_db is not None:
+        try:
+            container = client.containers.get(mongodb_name)
+            if container.status != 'running':
+                click.echo('{} container is not running, please run it first'.format(green(mongodb_name)))
+                return
+        except docker.errors.NotFound:
+            click.echo('{} container is not existed, please create mongo container first'.format(green(mongodb_name)))
+            return
+
+        click.echo('{}, {}, {} are enabled'.format(green('mongo_db_plugin'), green('history_plugin'), green('history_api_plugin')))
+        entry += ' --plugin=evt::mongo_db_plugin --plugin=evt::history_plugin --plugin=evt::history_api_plugin'
+        entry += ' --mongodb-uri=mongodb://{}:{}/{}'.format(mongodb_name, mongodb_port, mongodb_db)
     if arguments is not None and len(arguments) > 0:
         entry += ' ' + ' '.join(arguments)
 
