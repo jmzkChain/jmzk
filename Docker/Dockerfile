@@ -2,6 +2,8 @@ FROM everitoken/builder:latest as builder
 ARG branch=master
 ARG rootkey
 ARG bjobs=$(nproc)
+ARG awskey
+ARG awssecret
 
 RUN git clone -b $branch https://github.com/everitoken/evt.git --recursive \
     && cd evt && echo "$branch:$(git rev-parse HEAD)" > /etc/evt-version \
@@ -13,20 +15,22 @@ RUN ninja -C /tmp/build -j $bjobs evtd evtwd evtc && ninja -C /tmp/build install
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive && apt-get install -y python3 python3-click
 
 RUN mkdir /tmp/build/symbols
+
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
+
 RUN python3 /evt/scripts/symbolstore.py -s /tmp/build/symbols /tmp/build/bin/evtd
 RUN python3 /evt/scripts/symbolstore.py -s /tmp/build/symbols /tmp/build/bin/evtc
 RUN python3 /evt/scripts/symbolstore.py -s /tmp/build/symbols /tmp/build/bin/evtwd
+
+RUN python3 /evt/scripts/symbolupload.py -f /tmp/build/symbols -k $awskey -s $awssecret -r evt
 
 FROM ubuntu:18.04
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive && apt-get install -y openssl libssl1.1 && rm -rf /var/lib/apt/lists/*
 
-# COPY --from=builder /usr/local/bin/minidump_stackwalk /usr/local/bin/
 COPY --from=builder /usr/local/lib/* /usr/local/lib/
 COPY --from=builder /tmp/build/bin /opt/evt/bin
-# COPY --from=builder /tmp/build/symbols /opt/evt/symbols
 COPY --from=builder /etc/evt-version /etc
 
 COPY config.ini /
