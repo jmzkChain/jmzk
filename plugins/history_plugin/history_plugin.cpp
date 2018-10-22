@@ -84,6 +84,7 @@ private:
     block_id_type get_block_id_by_trx_id(const transaction_id_type& trx_id);
     string get_bson_string_value(const mongocxx::cursor::iterator& it, const std::string& key);
     string get_date_string_value(const mongocxx::cursor::iterator& it, const std::string& key);
+    int get_int_value(const mongocxx::cursor::iterator& it, const std::string& key);
     variant transaction_to_variant(const packed_transaction& ptrx);
 
 public:
@@ -114,6 +115,12 @@ history_plugin_impl::get_date_string_value(const mongocxx::cursor::iterator& it,
     auto date = (*it)[key].get_date();
     auto tp = fc::time_point(fc::milliseconds(date.to_int64()));
     return (std::string)tp;
+}
+
+int
+history_plugin_impl::get_int_value(const mongocxx::cursor::iterator& it, const std::string& key) {
+    auto v = (*it)[key].get_int32();
+    return v;
 }
 
 fc::variant
@@ -283,6 +290,7 @@ history_plugin_impl::get_actions(const domain_name&             domain,
             v["domain"] = get_bson_string_value(it, "domain");
             v["key"] = get_bson_string_value(it, "key");
             v["trx_id"] = get_bson_string_value(it, "trx_id");
+            v["block_num"] = get_int_value(it, "block_num");
             v["data"] = fc::json::from_string(bsoncxx::to_json((*it)["data"].get_document().view()));
             v["created_at"] = get_date_string_value(it, "created_at");
 
@@ -357,6 +365,7 @@ history_plugin_impl::get_fungible_actions(const symbol_id_type        sym_id,
             v["domain"] = get_bson_string_value(it, "domain");
             v["key"] = get_bson_string_value(it, "key");
             v["trx_id"] = get_bson_string_value(it, "trx_id");
+            v["block_num"] = get_int_value(it, "block_num");
             v["data"] = fc::json::from_string(bsoncxx::to_json((*it)["data"].get_document().view()));
             v["created_at"] = get_date_string_value(it, "created_at");
 
@@ -391,7 +400,9 @@ history_plugin_impl::get_transaction(const transaction_id_type& trx_id) {
     auto block = chain_.fetch_block_by_id(block_id);
     for(auto& tx : block->transactions) {
         if(tx.trx.id() == trx_id) {
-            return transaction_to_variant(tx.trx);
+            auto mv = fc::mutable_variant_object(transaction_to_variant(tx.trx));
+            mv["block_num"] = block->block_num();
+            return mv;
         }
     }
     FC_THROW_EXCEPTION(unknown_transaction_exception, "Cannot find transaction");
