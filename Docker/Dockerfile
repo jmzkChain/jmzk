@@ -23,7 +23,7 @@ RUN python3 /evt/scripts/symbolstore.py -s /tmp/build/symbols /tmp/build/bin/evt
 RUN python3 /evt/scripts/symbolstore.py -s /tmp/build/symbols /tmp/build/bin/evtc
 RUN python3 /evt/scripts/symbolstore.py -s /tmp/build/symbols /tmp/build/bin/evtwd
 
-RUN python3 /evt/scripts/symbolupload.py -f /tmp/build/symbols -k $awskey -s $awssecret -r evt
+RUN python3 /evt/scripts/symbolupload.py -f /tmp/build/symbols -k $awskey -s $awssecret -r evt -b evt-symbols
 
 FROM ubuntu:18.04
 
