@@ -16,7 +16,7 @@ phases:
   build:
     commands:
       - echo Start building latest evt...
-      - cd Docker && docker build -t everitoken/evt:latest --build-arg bjobs=$BUILD_JOBS --build-arg awskey=$AWS_KEY --build-arg awssecret=$AWS_SECRET . 
+      - cd Docker && docker build -t everitoken/evt:latest --build-arg bjobs=$BUILD_JOBS --build-arg awskey="$AWS_KEY" --build-arg awssecret="$AWS_SECRET" .
   post_build:
     commands:
       - echo Publish to Docker Hub...
