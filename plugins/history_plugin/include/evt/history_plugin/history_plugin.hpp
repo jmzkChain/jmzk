@@ -26,6 +26,10 @@ using evt::chain::address;
 
 namespace history_apis {
 
+enum class direction : uint8_t {
+    asc = 0, desc
+};
+
 class read_only {
 public:
     read_only(const history_plugin& plugin)
@@ -51,19 +55,21 @@ public:
     fc::variant get_fungibles(const get_params& params);
 
     struct get_actions_params {
-        std::string               domain;
-        fc::optional<std::string> key;
-        std::vector<action_name>  names;
-        fc::optional<int>         skip;
-        fc::optional<int>         take;
+        std::string                                     domain;
+        fc::optional<std::string>                       key;
+        std::vector<action_name>                        names;
+        fc::optional<fc::enum_type<uint8_t, direction>> dire;
+        fc::optional<int>                               skip;
+        fc::optional<int>                               take;
     };
     fc::variant get_actions(const get_actions_params& params);
 
     struct get_fungible_actions_params {
-        symbol_id_type        sym_id;
-        fc::optional<address> addr;
-        fc::optional<int>     skip;
-        fc::optional<int>     take; 
+        symbol_id_type                                  sym_id;
+        fc::optional<fc::enum_type<uint8_t, direction>> dire;
+        fc::optional<address>                           addr;
+        fc::optional<int>                               skip;
+        fc::optional<int>                               take; 
     };
     fc::variant get_fungible_actions(const get_fungible_actions_params& params);
 
@@ -73,9 +79,10 @@ public:
     fc::variant get_transaction(const get_transaction_params& params);
 
     struct get_transactions_params {
-        std::vector<public_key_type> keys;
-        fc::optional<int>            skip;
-        fc::optional<int>            take;        
+        std::vector<public_key_type>                    keys;
+        fc::optional<fc::enum_type<uint8_t, direction>> dire;
+        fc::optional<int>                               skip;
+        fc::optional<int>                               take;
     };
     fc::variant get_transactions(const get_transactions_params& params);
 
@@ -109,9 +116,10 @@ private:
 
 }  // namespace evt
 
+FC_REFLECT_ENUM(evt::history_apis::direction, (asc)(desc));
 FC_REFLECT(evt::history_apis::read_only::get_params, (keys));
 FC_REFLECT(evt::history_apis::read_only::get_tokens_params, (keys)(domain)(name));
-FC_REFLECT(evt::history_apis::read_only::get_actions_params, (domain)(key)(names)(skip)(take));
-FC_REFLECT(evt::history_apis::read_only::get_fungible_actions_params, (sym_id)(addr)(skip)(take));
+FC_REFLECT(evt::history_apis::read_only::get_actions_params, (domain)(key)(dire)(names)(skip)(take));
+FC_REFLECT(evt::history_apis::read_only::get_fungible_actions_params, (sym_id)(dire)(addr)(skip)(take));
 FC_REFLECT(evt::history_apis::read_only::get_transaction_params, (id));
-FC_REFLECT(evt::history_apis::read_only::get_transactions_params, (keys)(skip)(take));
+FC_REFLECT(evt::history_apis::read_only::get_transactions_params, (keys)(dire)(skip)(take));
