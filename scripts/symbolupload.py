@@ -24,7 +24,7 @@ def get_files(folder):
 @click.option('--aws-key', '-k', required=True)
 @click.option('--aws-secret', '-s', required=True)
 def upload(folder, bucket, ref, aws_key, aws_secret):
-    session = boto3.Session(aws_access_key_id=aws_key, aws_secret_access_key=aws_secret, aws_session_token='evt')
+    session = boto3.Session(aws_access_key_id=aws_key, aws_secret_access_key=aws_secret)
     s3 = session.resource('s3')
 
     files = []
