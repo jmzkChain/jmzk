@@ -12,7 +12,10 @@ RUN git clone -b $branch https://github.com/everitoken/evt.git --recursive \
        -DENABLE_BREAKPAD_SUPPORT=ON -DENABLE_MAINNET_BUILD=ON -DEVT_ROOT_KEY=$rootkey
 RUN ninja -C /tmp/build -j $bjobs evtd evtwd evtc && ninja -C /tmp/build install
 
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive && apt-get install -y python3 python3-click python3-boto3
+RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
+    && echo 'APT::Install-Suggests 0;' >> /etc/apt/apt.conf.d/01norecommends \
+    && apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y python3 python3-click python3-boto3
 
 RUN mkdir /tmp/build/symbols
 
