@@ -16,8 +16,9 @@ typedef __uint128_t uint128_t;
 const static auto default_blocks_dir_name       = "blocks";
 const static auto reversible_blocks_dir_name    = "reversible";
 const static auto default_tokendb_dir_name      = "tokendb";
-const static auto default_reversible_cache_size = 340*1024*1024ll;/// 1MB * 340 blocks based on 21 producer BFT delay
-const static auto default_reversible_guard_size = 2*1024*1024ll;/// 1MB * 2 blocks based on 21 producer BFT delay
+const static auto default_reversible_cache_size = 340*1024*1024ll;  /// 1MB * 340 blocks based on 21 producer BFT delay
+const static auto default_reversible_guard_size = 2*1024*1024ll;    /// 1MB * 2 blocks based on 21 producer BFT delay
+const static auto tokendb_persisit_filename     = "savepoints.log";
 
 const static auto default_state_dir_name        = "state";
 const static auto forkdb_filename               = "forkdb.dat";
@@ -37,7 +38,7 @@ const static int percent_1   = 100;
 const static uint32_t default_max_block_net_usage                 = 1024 * 1024;     /// at 500ms blocks and 200byte trx, this enables ~10,000 TPS burst
 const static uint32_t default_target_block_net_usage_pct          = 10 * percent_1;  /// we target 1000 TPS
 const static uint32_t default_max_transaction_net_usage           = default_max_block_net_usage / 2;
-const static uint32_t default_base_per_transaction_net_usage      = 12;   // 12 bytes (11 bytes for worst case of transaction_receipt_header + 1 byte for static_variant tag)
+const static uint32_t default_base_per_transaction_net_usage      = 12;  // 12 bytes (11 bytes for worst case of transaction_receipt_header + 1 byte for static_variant tag)
 const static uint32_t transaction_id_net_usage                    = 32;  // 32 bytes for the size of a transaction id
 
 const static uint32_t default_max_trx_lifetime               = 60*60; // 1 hour

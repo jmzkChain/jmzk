@@ -32,9 +32,9 @@ const char* URI_SCHEMA = "https://evt.li/";
 
 template<typename T>
 bytes
-decode(const std::string& nums, int pos, int end) {
+decode(const std::string& nums, uint pos, uint end) {
     auto num = T{0};
-    auto pz  = (int)nums.find_first_not_of('0', pos);
+    auto pz  = nums.find_first_not_of('0', pos);
     EVT_ASSERT(pz != string::npos, evt_link_exception, "Invalid EVT-Link");
 
     for(auto i = pz; i < end; i++) {
@@ -46,7 +46,7 @@ decode(const std::string& nums, int pos, int end) {
 
     auto b = bytes();
     b.reserve(MAX_BYTES);
-    for(auto i = 0; i < (pz - pos); i++) {
+    for(auto i = 0u; i < (pz - pos); i++) {
         b.emplace_back(0);
     }
     boost::multiprecision::export_bits(num, std::back_inserter(b), 8);

@@ -4,6 +4,8 @@
  */
 #pragma once
 
+#include <fc/variant_wrapper.hpp>
+
 #include <evt/chain/address.hpp>
 #include <evt/chain/asset.hpp>
 #include <evt/chain/chain_config.hpp>
@@ -129,7 +131,7 @@ struct suspend_def {
 };
 
 enum class asset_type {
-    tokens = 0, fungible = 1
+    tokens = 0, fungible = 1, max_value = 1
 };
 
 enum class lock_status {
@@ -146,27 +148,40 @@ struct lockft_def {
     asset   amount;
 };
 
-struct lockasset_def {
-    fc::enum_type<uint8_t, asset_type> type;
-    fc::optional<locknft_def>          tokens;
-    fc::optional<lockft_def>           fungible;
+using lock_asset = fc::variant_wrapper<asset_type, locknft_def, lockft_def>;
+
+enum class lock_type {
+    cond_keys = 0, max_value = 0
 };
+
+struct lock_condkeys {
+    uint16_t                     threshold;
+    std::vector<public_key_type> cond_keys;
+};
+
+using lock_condition = fc::variant_wrapper<lock_type, lock_condkeys>;
 
 struct lock_def {
     proposal_name                       name;
     user_id                             proposer;
     fc::enum_type<uint8_t, lock_status> status;
 
-    time_point_sec             unlock_time;
-    time_point_sec             deadline;
-    std::vector<lockasset_def> assets;
+    time_point_sec          unlock_time;
+    time_point_sec          deadline;
+    std::vector<lock_asset> assets;
     
-    std::vector<public_key_type> cond_keys;
-    std::vector<address>         succeed;
-    std::vector<address>         failed;
+    lock_condition       condition;
+    std::vector<address> succeed;
+    std::vector<address> failed;
 
     flat_set<public_key_type> signed_keys;
 };
+
+enum class lock_aprv_type {
+    cond_key = 0, max_value = 0
+};
+
+using lock_aprvdata = fc::variant_wrapper<lock_aprv_type, void_t>;
 
 struct newdomain {
     domain_name name;
@@ -267,6 +282,14 @@ struct transferft {
     EVT_ACTION(transferft);
 };
 
+struct recycleft {
+    address_type address;
+    asset        number;
+    string       memo;
+
+    EVT_ACTION(recycleft);
+};
+
 struct evt2pevt {
     address_type from;
     address_type to;
@@ -351,13 +374,13 @@ struct newlock {
     proposal_name name;
     user_id       proposer;
 
-    time_point_sec             unlock_time;
-    time_point_sec             deadline;
-    std::vector<lockasset_def> assets;
+    time_point_sec          unlock_time;
+    time_point_sec          deadline;
+    std::vector<lock_asset> assets;
     
-    std::vector<public_key_type> cond_keys;
-    std::vector<address>         succeed;
-    std::vector<address>         failed;
+    lock_condition       condition;
+    std::vector<address> succeed;
+    std::vector<address> failed;
 
     EVT_ACTION(newlock);
 };
@@ -365,6 +388,7 @@ struct newlock {
 struct aprvlock {
     proposal_name name;
     user_id       approver;
+    lock_aprvdata data;
 
     EVT_ACTION(aprvlock);
 };
@@ -390,8 +414,10 @@ FC_REFLECT_ENUM(evt::chain::contracts::asset_type, (tokens)(fungible));
 FC_REFLECT_ENUM(evt::chain::contracts::lock_status, (proposed)(succeed)(failed));
 FC_REFLECT(evt::chain::contracts::locknft_def, (domain)(names));
 FC_REFLECT(evt::chain::contracts::lockft_def, (from)(amount));
-FC_REFLECT(evt::chain::contracts::lockasset_def, (type)(tokens)(fungible));
-FC_REFLECT(evt::chain::contracts::lock_def, (name)(proposer)(status)(unlock_time)(deadline)(assets)(cond_keys)(succeed)(failed)(signed_keys));
+FC_REFLECT_ENUM(evt::chain::contracts::lock_type, (cond_keys));
+FC_REFLECT(evt::chain::contracts::lock_condkeys, (threshold)(cond_keys));
+FC_REFLECT(evt::chain::contracts::lock_def, (name)(proposer)(status)(unlock_time)(deadline)(assets)(condition)(succeed)(failed)(signed_keys));
+FC_REFLECT_ENUM(evt::chain::contracts::lock_aprv_type, (cond_key));
 
 FC_REFLECT(evt::chain::contracts::newdomain, (name)(creator)(issue)(transfer)(manage));
 FC_REFLECT(evt::chain::contracts::issuetoken, (domain)(names)(owner));
@@ -404,6 +430,7 @@ FC_REFLECT(evt::chain::contracts::newfungible, (name)(sym_name)(sym)(creator)(is
 FC_REFLECT(evt::chain::contracts::updfungible, (sym_id)(issue)(manage));
 FC_REFLECT(evt::chain::contracts::issuefungible, (address)(number)(memo));
 FC_REFLECT(evt::chain::contracts::transferft, (from)(to)(number)(memo));
+FC_REFLECT(evt::chain::contracts::recycleft, (address)(number)(memo));
 FC_REFLECT(evt::chain::contracts::evt2pevt, (from)(to)(number)(memo));
 FC_REFLECT(evt::chain::contracts::addmeta, (key)(value)(creator));
 FC_REFLECT(evt::chain::contracts::newsuspend, (name)(proposer)(trx));
@@ -415,6 +442,6 @@ FC_REFLECT(evt::chain::contracts::everipass, (link));
 FC_REFLECT(evt::chain::contracts::everipay, (link)(payee)(number));
 FC_REFLECT(evt::chain::contracts::prodvote, (producer)(key)(value));
 FC_REFLECT(evt::chain::contracts::updsched, (producers));
-FC_REFLECT(evt::chain::contracts::newlock, (name)(proposer)(unlock_time)(deadline)(assets)(cond_keys)(succeed)(failed));
-FC_REFLECT(evt::chain::contracts::aprvlock, (name)(approver));
+FC_REFLECT(evt::chain::contracts::newlock, (name)(proposer)(unlock_time)(deadline)(assets)(condition)(succeed)(failed));
+FC_REFLECT(evt::chain::contracts::aprvlock, (name)(approver)(data));
 FC_REFLECT(evt::chain::contracts::tryunlock, (name)(executor));

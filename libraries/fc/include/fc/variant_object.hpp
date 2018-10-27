@@ -194,7 +194,7 @@ namespace fc
       ///@}
 
 
-      template<typename T, class = typename std::enable_if<!std::is_same_v<mutable_variant_object, std::remove_reference_t<T>>>::type>
+      template<typename T, typename = typename std::enable_if<!std::is_same_v<mutable_variant_object, std::decay_t<T>>>::type>
       explicit mutable_variant_object( T&& v )
       :_key_value( new std::vector<entry>() )
       {

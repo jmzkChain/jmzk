@@ -276,6 +276,9 @@ do_http_call(const connection_param& cp,
         else if(url.path.compare(0, history_func_base.size(), history_func_base) == 0) {
             throw chain::missing_history_api_plugin_exception(FC_LOG_MESSAGE(error, "History API plugin is not enabled"));
         }
+        else if(url.path.compare(0, producer_func_base.size(), producer_func_base) == 0) {
+            throw chain::missing_producer_api_plugin_exception(FC_LOG_MESSAGE(error, "Producer API plugin is not enabled"));
+        }
     }
     else {
         auto&& error_info = response_result.as<evt::error_results>().error;

@@ -40,6 +40,12 @@ using reversible_block_index = chainbase::shared_multi_index_container<
         ordered_unique<tag<by_id>, member<reversible_block_object, reversible_block_object::id_type, &reversible_block_object::id>>,
         ordered_unique<tag<by_num>, member<reversible_block_object, uint32_t, &reversible_block_object::blocknum>>>>;
 
+struct reversible_block {
+    uint32_t blocknum = 0;
+    string   packedblock;
+};
+
 }}  // namespace evt::chain
 
-CHAINBASE_SET_INDEX_TYPE(evt::chain::reversible_block_object, evt::chain::reversible_block_index)
+CHAINBASE_SET_INDEX_TYPE(evt::chain::reversible_block_object, evt::chain::reversible_block_index);
+FC_REFLECT(evt::chain::reversible_block, (blocknum)(packedblock));

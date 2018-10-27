@@ -127,6 +127,7 @@ struct controller_impl {
     token_database           token_db;
     controller::config       conf;
     chain_id_type            chain_id;
+
     bool                     replaying = false;
     optional<fc::time_point> replay_head_time;
     bool                     in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
@@ -162,7 +163,7 @@ struct controller_impl {
         , db(cfg.state_dir,
              cfg.read_only ? database::read_only : database::read_write,
              cfg.state_size)
-        , reversible_blocks(cfg.blocks_dir/config::reversible_blocks_dir_name,
+        , reversible_blocks(cfg.blocks_dir / config::reversible_blocks_dir_name,
              cfg.read_only ? database::read_only : database::read_write,
              cfg.reversible_cache_size)
         , blog(cfg.blocks_dir)
@@ -175,6 +176,12 @@ struct controller_impl {
         fork_db.irreversible.connect([&](auto b) {
             on_irreversible(b);
         });
+    }
+
+    ~controller_impl() {
+        pending.reset();
+        db.flush();
+        reversible_blocks.flush();
     }
 
     /**
@@ -231,7 +238,7 @@ struct controller_impl {
         const auto& ubi = reversible_blocks.get_index<reversible_block_index,by_num>();
         auto objitr = ubi.begin();
         while(objitr != ubi.end() && objitr->blocknum <= s->block_num) {
-            reversible_blocks.remove( *objitr );
+            reversible_blocks.remove(*objitr);
             objitr = ubi.begin();
         }
 
@@ -241,14 +248,15 @@ struct controller_impl {
     void
     init() {
         /**
-      *  The fork database needs an initial block_state to be set before
-      *  it can accept any new blocks. This initial block state can be found
-      *  in the database (whose head block state should be irreversible) or
-      *  it would be the genesis state.
-      */
+          *  The fork database needs an initial block_state to be set before
+          *  it can accept any new blocks. This initial block state can be found
+          *  in the database (whose head block state should be irreversible) or
+          *  it would be the genesis state.
+          */
         if(!head) {
             initialize_fork_db();  // set head to genesis state
             initialize_token_db();
+
             auto end = blog.read_head();
             if(end && end->block_num() > 1) {
                 auto end_time = end->timestamp.to_time_point();
@@ -271,7 +279,7 @@ struct controller_impl {
                 db.set_revision(head->block_num);
 
                 int rev = 0;
-                while(auto obj = reversible_blocks.find<reversible_block_object,by_num>(head->block_num+1)) {
+                while(auto obj = reversible_blocks.find<reversible_block_object,by_num>(head->block_num + 1)) {
                     ++rev;
                     self.push_block(obj->get_block(), controller::block_status::validated);
                 }
@@ -310,17 +318,16 @@ struct controller_impl {
             wlog("warning: database revision (${db}) is greater than head block number (${head}), "
                "attempting to undo pending changes",
                ("db",db.revision())("head",head->block_num));
-        }
-        while(db.revision() > head->block_num) {
-            db.undo();
-        }
-    }
 
-    ~controller_impl() {
-        pending.reset();
+            EVT_ASSERT(token_db.get_savepoints_size() > 0, tokendb_exception, "token database is inconsistent with fork database: don't have any savepoints to pop");
+            EVT_ASSERT(token_db.latest_savepoint_seq() == db.revision(), tokendb_exception, "token database(${seq}) is inconsistent with fork database(${db})",
+                ("seq",token_db.latest_savepoint_seq())("db",db.revision()));
 
-        db.flush();
-        reversible_blocks.flush();
+            while(db.revision() > head->block_num) {
+                db.undo();
+                token_db.rollback_to_latest_savepoint();
+            }
+        }
     }
 
     void
@@ -354,6 +361,7 @@ struct controller_impl {
         
         head        = std::make_shared<block_state>(genheader);
         head->block = std::make_shared<signed_block>(genheader.header);
+
         fork_db.set(head);
         db.set_revision(head->block_num);
 

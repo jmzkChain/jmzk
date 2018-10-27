@@ -59,10 +59,13 @@ public:
     }
 
 protected:
-    const char*
-    get_domain_name() {
-        static std::string domain_name = "domain" + boost::lexical_cast<std::string>(time(0));
-        return domain_name.c_str();
+    std::string
+    get_domain_name(int seq = 0) {
+        static auto base_time = time(0);
+
+        auto name = std::string("domain");
+        name.append(std::to_string(base_time + seq));
+        return name;
     }
 
     const char*
@@ -153,16 +156,16 @@ TEST_CASE_METHOD(contracts_test, "contract_newdomain_test", "[contracts]") {
     CHECK(!tokendb.exists_domain(get_domain_name()));
 
     //newdomain authorization test
-    CHECK_THROWS_AS(my_tester->push_action(N(newdomain), string_to_name128(get_domain_name()), N128(.create), var.get_object(), key_seeds, payer), unsatisfied_authorization);
+    CHECK_THROWS_AS(my_tester->push_action(N(newdomain), name128(get_domain_name()), N128(.create), var.get_object(), key_seeds, payer), unsatisfied_authorization);
 
     newdom.creator = key;
     to_variant(newdom, var);
     //action_authorize_exception test
-    CHECK_THROWS_AS(my_tester->push_action(N(newdomain), string_to_name128(get_domain_name()), N128(.create), var.get_object(), key_seeds, payer), action_authorize_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(newdomain), name128(get_domain_name()), N128(.create), var.get_object(), key_seeds, payer), action_authorize_exception);
 
     newdom.name = ".domains";
     to_variant(newdom, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(newdomain), string_to_name128(".domains"), N128(.create), var.get_object(), key_seeds, payer), name_reserved_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(newdomain), name128(".domains"), N128(.create), var.get_object(), key_seeds, payer), name_reserved_exception);
 
     newdom.name = get_domain_name();
     newdom.issue.authorizers[0].ref.set_account(key);
@@ -170,12 +173,15 @@ TEST_CASE_METHOD(contracts_test, "contract_newdomain_test", "[contracts]") {
 
     to_variant(newdom, var);
 
-    my_tester->push_action(N(newdomain), string_to_name128(get_domain_name()), N128(.create), var.get_object(), key_seeds, payer);
+    my_tester->push_action(N(newdomain), name128(get_domain_name()), N128(.create), var.get_object(), key_seeds, payer);
 
     //domain_exists_exception test
-    CHECK_THROWS_AS(my_tester->push_action(N(newdomain), string_to_name128(get_domain_name()), N128(.create), var.get_object(), key_seeds, payer), tx_duplicate);
+    CHECK_THROWS_AS(my_tester->push_action(N(newdomain), name128(get_domain_name()), N128(.create), var.get_object(), key_seeds, payer), tx_duplicate);
 
     CHECK(tokendb.exists_domain(get_domain_name()));
+
+    newdom.name = get_domain_name(1);
+    my_tester->push_action(action(newdom.name, N128(.create), newdom), key_seeds, payer);
 
     my_tester->produce_blocks();
 }
@@ -188,7 +194,8 @@ TEST_CASE_METHOD(contracts_test, "contract_issuetoken_test", "[contracts]") {
         "names": [
           "t1",
           "t2",
-          "t3"
+          "t3",
+          "t4"
         ],
         "owner": [
           "EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2"
@@ -203,20 +210,24 @@ TEST_CASE_METHOD(contracts_test, "contract_issuetoken_test", "[contracts]") {
     CHECK(!tokendb.exists_token(get_domain_name(), "t1"));
 
     //action_authorize_exception test
-    CHECK_THROWS_AS(my_tester->push_action(N(issuetoken), string_to_name128(get_domain_name()), N128(.issue), var.get_object(), key_seeds, payer), action_authorize_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(issuetoken), name128(get_domain_name()), N128(.issue), var.get_object(), key_seeds, payer), action_authorize_exception);
 
     istk.domain   = get_domain_name();
     istk.owner[0] = key;
     to_variant(istk, var);
 
-    CHECK_THROWS_AS(my_tester->push_action(N(issuetoken), string_to_name128(get_domain_name()), N128(.issue), var.get_object(), key_seeds, address(N(domain), string_to_name128(get_domain_name()), 0)), charge_exceeded_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(issuetoken), name128(get_domain_name()), N128(.issue), var.get_object(), key_seeds, address(N(domain), name128(get_domain_name()), 0)), charge_exceeded_exception);
 
-    my_tester->add_money(address(N(domain), string_to_name128(get_domain_name()), 0), asset(10'000'000, symbol(5, EVT_SYM_ID)));
-    my_tester->push_action(N(issuetoken), string_to_name128(get_domain_name()), N128(.issue), var.get_object(), key_seeds, address(N(domain), string_to_name128(get_domain_name()), 0));
+    my_tester->add_money(address(N(domain), name128(get_domain_name()), 0), asset(10'000'000, symbol(5, EVT_SYM_ID)));
+    my_tester->push_action(N(issuetoken), name128(get_domain_name()), N128(.issue), var.get_object(), key_seeds, address(N(domain), name128(get_domain_name()), 0));
 
-    istk.names = {".t1", ".t2", ".t3"};
+    istk.domain = get_domain_name(1);
+    my_tester->push_action(action(get_domain_name(1), N128(.issue), istk), key_seeds, payer);
+
+    istk.domain = get_domain_name();
+    istk.names  = {".t1", ".t2", ".t3"};
     to_variant(istk, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(issuetoken), string_to_name128(get_domain_name()), N128(.issue), var.get_object(), key_seeds, payer), name_reserved_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(issuetoken), name128(get_domain_name()), N128(.issue), var.get_object(), key_seeds, payer), name_reserved_exception);
 
     //issue token authorization test
     istk.names = {"r1", "r2", "r3"};
@@ -224,7 +235,7 @@ TEST_CASE_METHOD(contracts_test, "contract_issuetoken_test", "[contracts]") {
     std::vector<account_name> v2;
     v2.push_back(N(other));
     v2.push_back(N(payer));
-    CHECK_THROWS_AS(my_tester->push_action(N(issuetoken), string_to_name128(get_domain_name()), N128(.issue), var.get_object(), v2, payer), unsatisfied_authorization);
+    CHECK_THROWS_AS(my_tester->push_action(N(issuetoken), name128(get_domain_name()), N128(.issue), var.get_object(), v2, payer), unsatisfied_authorization);
 
     CHECK(tokendb.exists_token(get_domain_name(), "t1"));
 
@@ -253,19 +264,19 @@ TEST_CASE_METHOD(contracts_test, "contract_transfer_test", "[contracts]") {
     auto trf = var.as<transfer>();
 
     //action_authorize_exception test
-    CHECK_THROWS_AS(my_tester->push_action(N(transfer), string_to_name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer), action_authorize_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(transfer), name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer), action_authorize_exception);
 
     trf.domain = get_domain_name();
     to_variant(trf, var);
 
-    my_tester->push_action(N(transfer), string_to_name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer);
+    my_tester->push_action(N(transfer), name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer);
 
     tokendb.read_token(get_domain_name(), "t1", tk);
     CHECK(2 == tk.owner.size());
 
     trf.to[1] = key;
     to_variant(trf, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(transfer), string_to_name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer), unsatisfied_authorization);
+    CHECK_THROWS_AS(my_tester->push_action(N(transfer), name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer), unsatisfied_authorization);
 
     my_tester->produce_blocks();
 }
@@ -286,21 +297,58 @@ TEST_CASE_METHOD(contracts_test, "contract_destroytoken_test", "[contracts]") {
     CHECK(tokendb.exists_token(get_domain_name(), "t2"));
 
     //action_authorize_exception test
-    CHECK_THROWS_AS(my_tester->push_action(N(destroytoken), string_to_name128(get_domain_name()), N128(t2), var.get_object(), key_seeds, payer), action_authorize_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(destroytoken), name128(get_domain_name()), N128(t2), var.get_object(), key_seeds, payer), action_authorize_exception);
 
     destk.domain = get_domain_name();
     to_variant(destk, var);
 
-    my_tester->push_action(N(destroytoken), string_to_name128(get_domain_name()), N128(t2), var.get_object(), key_seeds, payer);
+    my_tester->push_action(N(destroytoken), name128(get_domain_name()), N128(t2), var.get_object(), key_seeds, payer);
 
     //destroy token authorization test
     destk.name = "q2";
     to_variant(destk, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(destroytoken), string_to_name128(get_domain_name()), N128(t2), var.get_object(), key_seeds, payer), unsatisfied_authorization);
+    CHECK_THROWS_AS(my_tester->push_action(N(destroytoken), name128(get_domain_name()), N128(t2), var.get_object(), key_seeds, payer), unsatisfied_authorization);
 
     token_def tk;
     tokendb.read_token(get_domain_name(), "t2", tk);
     CHECK(address() == tk.owner[0]);
+
+    my_tester->produce_blocks();
+}
+
+TEST_CASE_METHOD(contracts_test, "contract_destroytoken_auth_test", "[contracts]") {
+    auto am    = addmeta();
+    am.key     = N128(.invalid-key);
+    am.value   = "invalid-value";
+    am.creator = key; 
+
+    // meta key is not valid
+    CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(.meta), am), key_seeds, payer, 5'000'000), meta_key_exception);
+
+    am.key = N128(.disable-destroy);
+    // `.distable-destroy` meta key cannot be added to token
+    CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t3), am), key_seeds, payer, 5'000'000), meta_key_exception);
+    // value for `.distable-destroy` is not valid, only 'true' or 'false' is valid
+    CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(.meta), am), key_seeds, payer, 5'000'000), meta_value_exception);
+
+    am.value = "false";
+    // add `.distable-destroy` with 'false' to domain-0
+    my_tester->push_action(action(get_domain_name(), N128(.meta), am), key_seeds, payer, 5'000'000);
+
+    am.value = "true";
+    // add `.distable-destroy` with 'true' to domain-1
+    my_tester->push_action(action(get_domain_name(1), N128(.meta), am), key_seeds, payer, 5'000'000);
+
+    auto dt   = destroytoken();
+    dt.domain = get_domain_name();
+    dt.name   = N128(t4);
+
+    // value of `.distable-destroy` is 'false', can destroy
+    CHECK_NOTHROW(my_tester->push_action(action(dt.domain, dt.name, dt), key_seeds, payer));
+
+    dt.domain = get_domain_name(1);
+    // value of `.distable-destroy` is 'true', cannot destroy
+    CHECK_THROWS_AS(my_tester->push_action(action(dt.domain, dt.name, dt), key_seeds, payer), token_cannot_destroy_exception);
 
     my_tester->produce_blocks();
 }
@@ -358,34 +406,34 @@ TEST_CASE_METHOD(contracts_test, "contract_newgroup_test", "[contracts]") {
     auto gp = var.as<newgroup>();
 
     //new group authorization test
-    CHECK_THROWS_AS(my_tester->push_action(N(newgroup), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, group_payer), unsatisfied_authorization);
+    CHECK_THROWS_AS(my_tester->push_action(N(newgroup), N128(.group), name128(get_group_name()), var.get_object(), key_seeds, group_payer), unsatisfied_authorization);
 
     gp.group.key_ = key;
     to_variant(gp, var);
 
     //action_authorize_exception test
-    CHECK_THROWS_AS(my_tester->push_action(N(newgroup), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, group_payer), action_authorize_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(newgroup), N128(.group), name128(get_group_name()), var.get_object(), key_seeds, group_payer), action_authorize_exception);
 
     gp.name = "xxx";
     to_variant(gp, var);
 
     //name match test
-    CHECK_THROWS_AS(my_tester->push_action(N(newgroup), N128(.group), string_to_name128("xxx"), var.get_object(), key_seeds, group_payer), group_name_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(newgroup), N128(.group), name128("xxx"), var.get_object(), key_seeds, group_payer), group_name_exception);
 
     gp.name        = get_group_name();
     gp.group.name_ = "sdf";
     to_variant(gp, var);
 
-    CHECK_THROWS_AS(my_tester->push_action(N(newgroup), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, group_payer), group_name_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(newgroup), N128(.group), name128(get_group_name()), var.get_object(), key_seeds, group_payer), group_name_exception);
 
     gp.group.name_ = get_group_name();
     to_variant(gp, var);
-    my_tester->push_action(N(newgroup), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, group_payer);
+    my_tester->push_action(N(newgroup), N128(.group), name128(get_group_name()), var.get_object(), key_seeds, group_payer);
 
     gp.name        = ".gp";
     gp.group.name_ = ".gp";
     to_variant(gp, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(newgroup), N128(.group), string_to_name128(".gp"), var.get_object(), key_seeds, group_payer), name_reserved_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(newgroup), N128(.group), name128(".gp"), var.get_object(), key_seeds, group_payer), name_reserved_exception);
 
     CHECK(tokendb.exists_group(get_group_name()));
 
@@ -450,19 +498,19 @@ TEST_CASE_METHOD(contracts_test, "contract_updategroup_test", "[contracts]") {
     to_variant(upgrp, var);
 
 
-    CHECK_THROWS_AS(my_tester->push_action(N(updategroup), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer), action_authorize_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(updategroup), N128(.group), name128(get_group_name()), var.get_object(), key_seeds, payer), action_authorize_exception);
 
     //updategroup group authorization test
     upgrp.name        = get_group_name();
     upgrp.group.name_ = get_group_name();
     to_variant(upgrp, var);
-    // CHECK_THROWS_AS(my_tester->push_action(N(updategroup), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer),unsatisfied_authorization);
+    // CHECK_THROWS_AS(my_tester->push_action(N(updategroup), N128(.group), name128(get_group_name()), var.get_object(), key_seeds, payer),unsatisfied_authorization);
 
     upgrp.name        = get_group_name();
     upgrp.group.name_ = get_group_name();
     upgrp.group.key_  = key;
     to_variant(upgrp, var);
-    my_tester->push_action(N(updategroup), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer);
+    my_tester->push_action(N(updategroup), N128(.group), name128(get_group_name()), var.get_object(), key_seeds, payer);
 
     tokendb.read_group(get_group_name(), gp);
     CHECK(5 == gp.root().threshold);
@@ -668,6 +716,35 @@ TEST_CASE_METHOD(contracts_test, "contract_transferft_test", "[contracts]") {
     my_tester->produce_blocks();
 }
 
+TEST_CASE_METHOD(contracts_test, "contract_recycleft_test", "[contracts]") {
+    CHECK(true);
+    const char* test_data = R"=======(
+    {
+        "address": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+        "number": "5.00000 S#1",
+        "memo": "memo"
+    }
+    )=======";
+
+    auto var   = fc::json::from_string(test_data);
+    auto rf    = var.as<recycleft>();
+    rf.number  = asset::from_string(string("1.00000 S#") + std::to_string(get_sym_id()));
+    rf.address = address(tester::get_public_key(N(to)));
+    to_variant(rf, var);
+
+    CHECK_THROWS_AS(my_tester->push_action(N(recycleft), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer), unsatisfied_authorization);
+
+    rf.address = poorer;
+    to_variant(rf, var);
+
+    CHECK_THROWS_AS(my_tester->push_action(N(recycleft), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer), tokendb_key_not_found);
+
+    rf.address = key;
+    to_variant(rf, var);
+
+    my_tester->push_action(N(recycleft), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer);
+}
+
 TEST_CASE_METHOD(contracts_test, "contract_updatedomain_test", "[contracts]") {
     CHECK(true);
     const char* test_data = R"=====(
@@ -712,14 +789,14 @@ TEST_CASE_METHOD(contracts_test, "contract_updatedomain_test", "[contracts]") {
     CHECK(1 == dom.issue.authorizers[0].weight);
 
     //action_authorize_exception test
-    CHECK_THROWS_AS(my_tester->push_action(N(updatedomain), string_to_name128(get_domain_name()), N128(.update), var.get_object(), key_seeds, payer), action_authorize_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(updatedomain), name128(get_domain_name()), N128(.update), var.get_object(), key_seeds, payer), action_authorize_exception);
 
     updom.name = get_domain_name();
     updom.issue->authorizers[0].ref.set_group(get_group_name());
     updom.manage->authorizers[0].ref.set_account(key);
     to_variant(updom, var);
 
-    my_tester->push_action(N(updatedomain), string_to_name128(get_domain_name()), N128(.update), var.get_object(), key_seeds, payer);
+    my_tester->push_action(N(updatedomain), name128(get_domain_name()), N128(.update), var.get_object(), key_seeds, payer);
 
     tokendb.read_domain(get_domain_name(), dom);
     CHECK(2 == dom.issue.authorizers[0].weight);
@@ -749,17 +826,17 @@ TEST_CASE_METHOD(contracts_test, "contract_group_auth_test", "[contracts]") {
     to_variant(istk, var);
 
     std::vector<account_name> seeds1 = {N(key0), N(key1), N(key2), N(key3), N(payer)};
-    CHECK_THROWS_AS(my_tester->push_action(N(issuetoken), string_to_name128(get_domain_name()), N128(.issue), var.get_object(), seeds1, payer), unsatisfied_authorization);
+    CHECK_THROWS_AS(my_tester->push_action(N(issuetoken), name128(get_domain_name()), N128(.issue), var.get_object(), seeds1, payer), unsatisfied_authorization);
 
     istk.names[0] = "authorizers2";
     to_variant(istk, var);
     std::vector<account_name> seeds2 = {N(key1), N(key2), N(key3), N(key4), N(payer)};
-    CHECK_THROWS_AS(my_tester->push_action(N(issuetoken), string_to_name128(get_domain_name()), N128(.issue), var.get_object(), seeds2, payer), unsatisfied_authorization);
+    CHECK_THROWS_AS(my_tester->push_action(N(issuetoken), name128(get_domain_name()), N128(.issue), var.get_object(), seeds2, payer), unsatisfied_authorization);
 
     istk.names[0] = "authorizers3";
     to_variant(istk, var);
     std::vector<account_name> seeds3 = {N(key0), N(key1), N(key2), N(key3), N(key4), N(payer)};
-    my_tester->push_action(N(issuetoken), string_to_name128(get_domain_name()), N128(.issue), var.get_object(), seeds3, payer);
+    my_tester->push_action(N(issuetoken), name128(get_domain_name()), N128(.issue), var.get_object(), seeds3, payer);
 
     my_tester->produce_blocks();
 }
@@ -826,15 +903,15 @@ TEST_CASE_METHOD(contracts_test, "contract_failsuspend_test", "[contracts]") {
     ndact.trx.actions.push_back(my_tester->get_action(N(newdomain), N128(domain), N128(.create), newdomain_var.get_object()));
 
     to_variant(ndact, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(newsuspend), N128(.suspend), string_to_name128(get_suspend_name()), var.get_object(), key_seeds, payer), unsatisfied_authorization);
+    CHECK_THROWS_AS(my_tester->push_action(N(newsuspend), N128(.suspend), name128(get_suspend_name()), var.get_object(), key_seeds, payer), unsatisfied_authorization);
 
     ndact.proposer = key;
     to_variant(ndact, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(newsuspend), N128(.suspend), string_to_name128(get_suspend_name()), var.get_object(), key_seeds, payer), invalid_ref_block_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(newsuspend), N128(.suspend), name128(get_suspend_name()), var.get_object(), key_seeds, payer), invalid_ref_block_exception);
 
     ndact.trx.set_reference_block(my_tester->control->head_block_id());
     to_variant(ndact, var);
-    my_tester->push_action(N(newsuspend), N128(.suspend), string_to_name128(get_suspend_name()), var.get_object(), key_seeds, payer);
+    my_tester->push_action(N(newsuspend), N128(.suspend), name128(get_suspend_name()), var.get_object(), key_seeds, payer);
 
     const char* execute_test_data = R"=======(
     {
@@ -850,7 +927,7 @@ TEST_CASE_METHOD(contracts_test, "contract_failsuspend_test", "[contracts]") {
     to_variant(edact, execute_tvar);
 
     //suspend_executor_exception
-    CHECK_THROWS_AS(my_tester->push_action(N(execsuspend), N128(.suspend), string_to_name128(get_suspend_name()), execute_tvar.get_object(), {N(key), N(payer)}, payer), suspend_executor_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(execsuspend), N128(.suspend), name128(get_suspend_name()), execute_tvar.get_object(), {N(key), N(payer)}, payer), suspend_executor_exception);
 
     auto&       tokendb = my_tester->control->token_db();
     suspend_def suspend;
@@ -873,7 +950,7 @@ TEST_CASE_METHOD(contracts_test, "contract_failsuspend_test", "[contracts]") {
     adact.signatures = {sig, sig2};
     to_variant(adact, approve_var);
 
-    CHECK_THROWS_AS(my_tester->push_action(N(aprvsuspend), N128(.suspend), string_to_name128(get_suspend_name()), approve_var.get_object(), key_seeds, payer), suspend_not_required_keys_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(aprvsuspend), N128(.suspend), name128(get_suspend_name()), approve_var.get_object(), key_seeds, payer), suspend_not_required_keys_exception);
 
     tokendb.read_suspend(edact.name, suspend);
     CHECK(suspend.status == suspend_status::proposed);
@@ -888,7 +965,7 @@ TEST_CASE_METHOD(contracts_test, "contract_failsuspend_test", "[contracts]") {
     cdact.name                   = get_suspend_name();
     to_variant(cdact, cancel_var);
 
-    my_tester->push_action(N(cancelsuspend), N128(.suspend), string_to_name128(get_suspend_name()), cancel_var.get_object(), key_seeds, payer);
+    my_tester->push_action(N(cancelsuspend), N128(.suspend), name128(get_suspend_name()), cancel_var.get_object(), key_seeds, payer);
 
     tokendb.read_suspend(edact.name, suspend);
     CHECK(suspend.status == suspend_status::cancelled);
@@ -1170,9 +1247,9 @@ TEST_CASE_METHOD(contracts_test, "everipass_test", "[contracts]") {
     sign_link(ep.link);
     CHECK_NOTHROW(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer));
 
-    ep.link.add_segment(evt_link::segment(evt_link::token, "t4"));
+    ep.link.add_segment(evt_link::segment(evt_link::token, "t5"));
     sign_link(ep.link);
-    CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t4), ep), key_seeds, payer), tokendb_key_not_found);
+    CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t5), ep), key_seeds, payer), tokendb_key_not_found);
 
     header |= evt_link::destroy;
     ep.link.set_header(header);
@@ -1182,7 +1259,7 @@ TEST_CASE_METHOD(contracts_test, "everipass_test", "[contracts]") {
 
     ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts - 1));
     sign_link(ep.link);
-    CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer), token_destoryed_exception);
+    CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer), token_destroyed_exception);
 }
 
 TEST_CASE_METHOD(contracts_test, "everipay_test", "[contracts]") {
@@ -1295,25 +1372,25 @@ TEST_CASE_METHOD(contracts_test, "contract_addmeta_test", "[contracts]") {
     auto admt = var.as<addmeta>();
 
     //meta authorizers test
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.group), name128(get_group_name()), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
     CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
 
     //meta authorizers test
     admt.creator = tester::get_public_key(N(other));
     to_variant(admt, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), {N(other), N(payer)}, payer, 5'000'000), meta_involve_exception);
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.group), string_to_name128(get_group_name()), var.get_object(), {N(other), N(payer)}, payer, 5'000'000), meta_involve_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), name128(get_domain_name()), N128(.meta), var.get_object(), {N(other), N(payer)}, payer, 5'000'000), meta_involve_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.group), name128(get_group_name()), var.get_object(), {N(other), N(payer)}, payer, 5'000'000), meta_involve_exception);
     CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), {N(other), N(payer)}, payer, 5'000'000), meta_involve_exception);
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(t1), var.get_object(), {N(other), N(payer)}, payer, 5'000'000), meta_involve_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), name128(get_domain_name()), N128(t1), var.get_object(), {N(other), N(payer)}, payer, 5'000'000), meta_involve_exception);
 
     admt.creator = key;
     to_variant(admt, var);
 
-    my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds, payer, 5'000'000);
-    my_tester->push_action(N(addmeta), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer, 5'000'000);
-    my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer, 5'000'000);
+    my_tester->push_action(N(addmeta), name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds, payer, 5'000'000);
+    my_tester->push_action(N(addmeta), N128(.group), name128(get_group_name()), var.get_object(), key_seeds, payer, 5'000'000);
+    my_tester->push_action(N(addmeta), name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer, 5'000'000);
     my_tester->push_action(N(addmeta), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer, 5'000'000);
 
     //meta_key_exception test
@@ -1321,9 +1398,9 @@ TEST_CASE_METHOD(contracts_test, "contract_addmeta_test", "[contracts]") {
     admt.creator = key;
     admt.value   = "value2";
     to_variant(admt, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds, payer, 5'000'000), meta_key_exception);
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.group), string_to_name128(get_group_name()), var.get_object(), key_seeds, payer, 5'000'000), meta_key_exception);
-    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), string_to_name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer, 5'000'000), meta_key_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), name128(get_domain_name()), N128(.meta), var.get_object(), key_seeds, payer, 5'000'000), meta_key_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.group), name128(get_group_name()), var.get_object(), key_seeds, payer, 5'000'000), meta_key_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(addmeta), name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer, 5'000'000), meta_key_exception);
 
     admt.creator = tester::get_public_key(N(key2));
     to_variant(admt, var);
@@ -1548,17 +1625,23 @@ TEST_CASE_METHOD(contracts_test, "contract_newnftlock_test", "[contracts]") {
         "deadline": "2020-07-09T09:06:27",
         "assets": [{
             "type": "tokens",
-            "tokens": {
+            "data": {
                 "domain": "cookie",
                 "names": [
                     "t3"
                 ]
             }
         }],
-        "cond_keys": [
-            "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
-            "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
-        ],
+        "condition": {
+            "type": "cond_keys",
+            "data": {
+                "threshold": 1,
+                "cond_keys": [
+                    "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+                    "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
+                ]
+            }
+        },
         "succeed": [
         ],
         "failed": [
@@ -1576,13 +1659,14 @@ TEST_CASE_METHOD(contracts_test, "contract_newnftlock_test", "[contracts]") {
     nl.unlock_time = now + fc::days(10);
     nl.deadline    = now + fc::days(20);
 
-    nl.assets[0].tokens->domain = get_domain_name();
+    CHECK(nl.assets[0].type() == asset_type::tokens);
+    nl.assets[0].get<locknft_def>().domain = get_domain_name();
     to_variant(nl, var);
 
     CHECK_THROWS_AS(my_tester->push_action(N(newlock), N128(.lock), N128(nftlock), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
 
-    nl.proposer  = tester::get_public_key(N(key));
-    nl.cond_keys = {tester::get_public_key(N(key))};
+    nl.proposer = tester::get_public_key(N(key));
+    nl.condition.get<lock_condkeys>().cond_keys = {tester::get_public_key(N(key))};
     to_variant(nl, var);
 
     CHECK_THROWS_AS(my_tester->push_action(N(newlock), N128(.lock), N128(nftlock), var.get_object(), key_seeds, payer, 5'000'000), lock_address_exception);
@@ -1616,15 +1700,21 @@ TEST_CASE_METHOD(contracts_test, "contract_newftlock_test", "[contracts]") {
         "deadline": "2020-07-09T09:06:27",
         "assets": [{
             "type": "fungible",
-            "fungible": {
+            "data": {
                 "from": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
                 "amount": "5.00000 S#2"
             }
         }],
-        "cond_keys": [
-            "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
-            "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
-        ],
+        "condition": {
+            "type": "cond_keys",
+            "data": {
+                "threshold": 3,
+                "cond_keys": [
+                    "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+                    "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
+                ]
+            }
+        },
         "succeed": [
         ],
         "failed": [
@@ -1642,14 +1732,21 @@ TEST_CASE_METHOD(contracts_test, "contract_newftlock_test", "[contracts]") {
     nl.unlock_time = now + fc::days(10);
     nl.deadline    = now + fc::days(20);
 
-    nl.proposer  = tester::get_public_key(N(key));
-    nl.cond_keys = {tester::get_public_key(N(key))};
+    nl.proposer = tester::get_public_key(N(key));
+    nl.condition.get<lock_condkeys>().cond_keys = {tester::get_public_key(N(key))};
+    to_variant(nl, var);
+
+    CHECK_THROWS_AS(my_tester->push_action(N(newlock), N128(.lock), N128(ftlock), var.get_object(), key_seeds, payer, 5'000'000), lock_condition_exception);
+
+    auto& cond = nl.condition.get<lock_condkeys>();
+    cond.threshold = 1;
     to_variant(nl, var);
 
     CHECK_THROWS_AS(my_tester->push_action(N(newlock), N128(.lock), N128(ftlock), var.get_object(), key_seeds, payer, 5'000'000), lock_assets_exception);
 
-    nl.assets[0].fungible->amount = asset::from_string(string("5.00000 S#") + std::to_string(get_sym_id()));
-    nl.assets[0].fungible->from = tester::get_public_key(N(key));
+    auto& ft = nl.assets[0].get<lockft_def>();
+    ft.amount = asset::from_string(string("5.00000 S#") + std::to_string(get_sym_id()));
+    ft.from   = tester::get_public_key(N(key));
     to_variant(nl, var);
 
     CHECK_THROWS_AS(my_tester->push_action(N(newlock), N128(.lock), N128(ftlock), var.get_object(), key_seeds, payer, 5'000'000), lock_address_exception);
@@ -1671,7 +1768,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newftlock_test", "[contracts]") {
     CHECK(lock_.status == lock_status::proposed);
 
     asset ast;
-    tokendb.read_asset(address(N(lock), N128(nlact.name), 0), nl.assets[0].fungible->amount.sym(), ast);
+    tokendb.read_asset(address(N(lock), N128(nlact.name), 0), nl.assets[0].get<lockft_def>().amount.sym(), ast);
     CHECK(ast.amount() == 500000);
 
     my_tester->produce_blocks();
@@ -1682,7 +1779,10 @@ TEST_CASE_METHOD(contracts_test, "contract_aprvlock_test", "[contracts]") {
     const char* test_data = R"=======(
     {
         "name": "nftlock",
-        "approver": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
+        "approver": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+        "data": {
+            "type": "cond_key"
+        }
     }
     )=======";
 
@@ -1698,7 +1798,7 @@ TEST_CASE_METHOD(contracts_test, "contract_aprvlock_test", "[contracts]") {
 
     al.approver = {tester::get_public_key(N(payer))};
     to_variant(al, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(aprvlock), N128(.lock), N128(nftlock), var.get_object(), key_seeds, payer, 5'000'000), lock_aprv_key_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(aprvlock), N128(.lock), N128(nftlock), var.get_object(), key_seeds, payer, 5'000'000), lock_aprv_data_exception);
 
     al.approver = {tester::get_public_key(N(key))};
     to_variant(al, var);

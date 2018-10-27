@@ -21,6 +21,7 @@ namespace fc {
    class variant_object;
    class path;
    template<typename... Types> class static_variant;
+   template<typename ENUM, typename... ARGS> struct variant_wrapper;
 
    template<typename IntType, typename EnumType> class enum_type;
    namespace ip { class endpoint; }
@@ -50,6 +51,9 @@ namespace fc {
     template<typename Stream, typename... T> void pack( Stream& s, const static_variant<T...>& sv );
     template<typename Stream, typename... T> void unpack( Stream& s, static_variant<T...>& sv );
 
+    template<typename Stream, typename ENUM, typename... ARGS> void pack( Stream& s, const variant_wrapper<ENUM, ARGS...>& vw );
+    template<typename Stream, typename ENUM, typename... ARGS> void unpack( Stream& s, variant_wrapper<ENUM, ARGS...>& vw );
+
     template<typename Stream, typename T> inline void pack( Stream& s, const flat_set<T>& value );
     template<typename Stream, typename T> inline void unpack( Stream& s, flat_set<T>& value );
 
@@ -67,6 +71,9 @@ namespace fc {
 
     template<typename Stream, typename K, typename V> inline void pack( Stream& s, const std::pair<K,V>& value );
     template<typename Stream, typename K, typename V> inline void unpack( Stream& s, std::pair<K,V>& value );
+
+    template<typename Stream, typename... Types> inline void pack( Stream& s, const std::tuple<Types...>& value );
+    template<typename Stream, typename... Types> inline void unpack( Stream& s, std::tuple<Types...>& value );
 
     template<typename Stream> inline void pack( Stream& s, const variant_object& v );
     template<typename Stream> inline void unpack( Stream& s, variant_object& v );

@@ -83,5 +83,5 @@ void from_variant(const fc::variant& v, evt::chain::contracts::group& group);
 
 }  // namespace fc
 
-FC_REFLECT(evt::chain::contracts::group::node, (weight)(threshold)(index)(size))
-FC_REFLECT(evt::chain::contracts::group, (name_)(key_)(nodes_)(keys_)(metas_))
+FC_REFLECT(evt::chain::contracts::group::node, (weight)(threshold)(index)(size));
+FC_REFLECT(evt::chain::contracts::group, (name_)(key_)(nodes_)(keys_)(metas_));

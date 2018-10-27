@@ -251,11 +251,11 @@ base_tester::push_transaction(signed_transaction& trx,
 }
 
 transaction_trace_ptr
-base_tester::push_action(action&& act, std::vector<account_name>& auths, const address& payer) {
+base_tester::push_action(action&& act, std::vector<account_name>& auths, const address& payer, uint32_t max_charge) {
     try {
         signed_transaction trx;
         trx.actions.emplace_back(std::move(act));
-        set_transaction_headers(trx, payer);
+        set_transaction_headers(trx, payer, max_charge);
         if(!auths.empty()) {
             for(auto& au : auths) {
                 trx.sign(get_private_key(au), control->get_chain_id());
@@ -263,7 +263,7 @@ base_tester::push_action(action&& act, std::vector<account_name>& auths, const a
         }
         return push_transaction(trx);
     }
-    FC_CAPTURE_AND_RETHROW((act)(auths)(payer))
+    FC_CAPTURE_AND_RETHROW((act)(auths)(payer)(max_charge))
 }
 
 transaction_trace_ptr

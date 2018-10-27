@@ -174,7 +174,7 @@ FC_DECLARE_DERIVED_EXCEPTION( fungible_symbol_exception,           action_except
 FC_DECLARE_DERIVED_EXCEPTION( fungible_supply_exception,           action_exception, 3040021, "Invalid fungible supply" );
 FC_DECLARE_DERIVED_EXCEPTION( fungible_address_exception,          action_exception, 3040022, "Invalid address" );
 FC_DECLARE_DERIVED_EXCEPTION( token_owner_exception,               action_exception, 3040023, "Token owner cannot be empty." );
-FC_DECLARE_DERIVED_EXCEPTION( token_destoryed_exception,           action_exception, 3040024, "Token is destroyed." );
+FC_DECLARE_DERIVED_EXCEPTION( token_destroyed_exception,           action_exception, 3040024, "Token is destroyed." );
 FC_DECLARE_DERIVED_EXCEPTION( math_overflow_exception,             action_exception, 3040025, "Operations resulted in overflow." );
 FC_DECLARE_DERIVED_EXCEPTION( balance_exception,                   action_exception, 3040026, "Not enough balance left." );
 FC_DECLARE_DERIVED_EXCEPTION( meta_involve_exception,              action_exception, 3040027, "Creator is not involved." );
@@ -204,13 +204,15 @@ FC_DECLARE_DERIVED_EXCEPTION( lock_unlock_time_exception,          action_except
 FC_DECLARE_DERIVED_EXCEPTION( lock_deadline_exception,             action_exception, 3040051, "Invalid deadline." );
 FC_DECLARE_DERIVED_EXCEPTION( lock_assets_exception,               action_exception, 3040052, "Invalid lock assets." );
 FC_DECLARE_DERIVED_EXCEPTION( lock_address_exception,              action_exception, 3040053, "Invalid lock address." );
-FC_DECLARE_DERIVED_EXCEPTION( lock_cond_keys_exception,            action_exception, 3040054, "Invalid lock conditional keys." );
+FC_DECLARE_DERIVED_EXCEPTION( lock_condition_exception,            action_exception, 3040054, "Invalid lock condition." );
 FC_DECLARE_DERIVED_EXCEPTION( lock_expired_exception,              action_exception, 3040055, "Lock assets proposal is expired." );
-FC_DECLARE_DERIVED_EXCEPTION( lock_aprv_key_exception,             action_exception, 3040056, "Approver is not valid." );
+FC_DECLARE_DERIVED_EXCEPTION( lock_aprv_data_exception,            action_exception, 3040056, "Approve data is not valid." );
 FC_DECLARE_DERIVED_EXCEPTION( lock_duplicate_key_exception,        action_exception, 3040057, "Some keys are already signed this lock assets proposal." );
 FC_DECLARE_DERIVED_EXCEPTION( lock_not_reach_unlock_time,          action_exception, 3040058, "Unlock time is not reach." );
 FC_DECLARE_DERIVED_EXCEPTION( lock_not_reach_deadline,             action_exception, 3040059, "Deadline is not reach." );
 FC_DECLARE_DERIVED_EXCEPTION( token_locked_exception,              action_exception, 3040060, "Locked token cannot be transfered." );
+FC_DECLARE_DERIVED_EXCEPTION( token_cannot_destroy_exception,      action_exception, 3040061, "Token in this domain cannot be destroyed." );
+FC_DECLARE_DERIVED_EXCEPTION( meta_value_exception,                action_exception, 3040062, "Invalid meta value" );
 
 FC_DECLARE_DERIVED_EXCEPTION( name_type_exception,               chain_type_exception, 3120001, "Invalid name" );
 FC_DECLARE_DERIVED_EXCEPTION( public_key_type_exception,         chain_type_exception, 3120002, "Invalid public key" );
@@ -232,14 +234,15 @@ FC_DECLARE_DERIVED_EXCEPTION( address_type_exception,            chain_type_exce
 FC_DECLARE_DERIVED_EXCEPTION( name128_type_exception,            chain_type_exception, 3120018, "Invalid name128" );
 FC_DECLARE_DERIVED_EXCEPTION( chain_id_type_exception,           chain_type_exception, 3120019, "Invalid chain id" );
 
-FC_DECLARE_DERIVED_EXCEPTION( missing_chain_api_plugin_exception,   plugin_exception, 3130001, "Missing Chain API Plugin" );
-FC_DECLARE_DERIVED_EXCEPTION( missing_wallet_api_plugin_exception,  plugin_exception, 3130002, "Missing Wallet API Plugin" );
-FC_DECLARE_DERIVED_EXCEPTION( missing_net_api_plugin_exception,     plugin_exception, 3130003, "Missing Net API Plugin" );
-FC_DECLARE_DERIVED_EXCEPTION( missing_evt_api_plugin_exception,     plugin_exception, 3130004, "Missing EVT API Plugin" );
-FC_DECLARE_DERIVED_EXCEPTION( missing_history_api_plugin_exception, plugin_exception, 3130005, "Missing History API Plugin" );
-FC_DECLARE_DERIVED_EXCEPTION( plugin_config_exception,              plugin_exception, 3130006, "Incorrect plugin configuration" );
-FC_DECLARE_DERIVED_EXCEPTION( mongodb_plugin_not_enabled_exception, plugin_exception, 3130007, "Mongodb plugin is not enabled" );
-FC_DECLARE_DERIVED_EXCEPTION( missing_chain_plugin_exception,       plugin_exception, 3130008, "Missing Chain Plugin" );
+FC_DECLARE_DERIVED_EXCEPTION( missing_chain_api_plugin_exception,    plugin_exception, 3130001, "Missing Chain API Plugin" );
+FC_DECLARE_DERIVED_EXCEPTION( missing_wallet_api_plugin_exception,   plugin_exception, 3130002, "Missing Wallet API Plugin" );
+FC_DECLARE_DERIVED_EXCEPTION( missing_net_api_plugin_exception,      plugin_exception, 3130003, "Missing Net API Plugin" );
+FC_DECLARE_DERIVED_EXCEPTION( missing_evt_api_plugin_exception,      plugin_exception, 3130004, "Missing EVT API Plugin" );
+FC_DECLARE_DERIVED_EXCEPTION( missing_history_api_plugin_exception,  plugin_exception, 3130005, "Missing History API Plugin" );
+FC_DECLARE_DERIVED_EXCEPTION( plugin_config_exception,               plugin_exception, 3130006, "Incorrect plugin configuration" );
+FC_DECLARE_DERIVED_EXCEPTION( mongodb_plugin_not_enabled_exception,  plugin_exception, 3130007, "Mongodb plugin is not enabled" );
+FC_DECLARE_DERIVED_EXCEPTION( missing_chain_plugin_exception,        plugin_exception, 3130008, "Missing Chain Plugin" );
+FC_DECLARE_DERIVED_EXCEPTION( missing_producer_api_plugin_exception, plugin_exception, 3130009, "Missing Producer API Plugin" );
 
 FC_DECLARE_DERIVED_EXCEPTION( invalid_http_client_root_cert,    http_exception, 3180001, "invalid http client root certificate" );
 FC_DECLARE_DERIVED_EXCEPTION( invalid_http_response,            http_exception, 3180002, "invalid http response" );

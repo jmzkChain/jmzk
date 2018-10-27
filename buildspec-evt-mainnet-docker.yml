@@ -5,6 +5,8 @@ env:
     LOGIN_USERID: "docker-userid"
     LOGIN_PASSWORD: "docker-password"
     BUILD_JOBS: "docker-build-jobs"
+    AWS_KEY: "symbols-aws-key"
+    AWS_SECRET: "symbols-aws-secret"
 
 phases:
   pre_build:
@@ -14,7 +16,7 @@ phases:
   build:
     commands:
       - echo Start building latest evt-mainnet...
-      - cd Docker/mainnet && docker build . -t everitoken/evt-mainnet:latest --build-arg bjobs=$BUILD_JOBS
+      - cd Docker/mainnet && docker build -t everitoken/evt-mainnet:latest --build-arg bjobs=$BUILD_JOBS --build-arg awskey="$AWS_KEY" --build-arg awssecret="$AWS_SECRET" .
   post_build:
     commands:
       - echo Publish to Docker Hub...

@@ -383,6 +383,7 @@ mongo_db_plugin_impl::_process_block(const signed_block& block, std::deque<trans
         doc.append(kvp("_id", b_oid{msg_oid}),
                    kvp("trx_id", trans_id_str),
                    kvp("seq_num", b_int32{act_num}),
+                   kvp("block_num", b_int32{block_num}),
                    kvp("name", msg.name.to_string()),
                    kvp("domain", msg.domain.to_string()),
                    kvp("key", msg.key.to_string()),

@@ -146,6 +146,7 @@ main(int argc, char** argv) {
 
         ilog("evtd version ${ver}", ("ver", app().version_string()));
         ilog("evt root is ${root}", ("root", root.string()));
+
         app().startup();
         app().exec();
     }

@@ -442,6 +442,22 @@ struct check_authority<transferft> {
 };
 
 template<>
+struct check_authority<recycleft> {
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        try {
+            auto& rf    = act.data_as<const recycleft&>();
+            auto vistor = authority_checker::weight_tally_visitor(checker);
+            if(vistor(rf.address, 1) == 1) {
+                return true;
+            }
+        }
+        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transation data is not valid, data cannot cast to `recycleft` type");
+        return false;
+    }
+};
+
+template<>
 struct check_authority<evt2pevt> {
     static bool
     invoke(const action& act, authority_checker* checker) {

@@ -10,7 +10,7 @@
 namespace evt { namespace chain { namespace contracts {
 
 static auto evt_abi_version       = 3;
-static auto evt_abi_minor_version = 2;
+static auto evt_abi_minor_version = 3;
 static auto evt_abi_patch_version = 0;
 
 version
@@ -46,7 +46,6 @@ evt_contract_abi() {
     evt_abi.types.push_back( type_def{"meta_value","string"} );
     evt_abi.types.push_back( type_def{"meta_list","meta[]"} );
     evt_abi.types.push_back( type_def{"suspend_status","uint8"} );
-    evt_abi.types.push_back( type_def{"lock_status","uint8"} );
     evt_abi.types.push_back( type_def{"conf_key","name128"} );
 
     evt_abi.actions.push_back( action_def{name("newdomain"), "newdomain"} );
@@ -60,6 +59,7 @@ evt_contract_abi() {
     evt_abi.actions.push_back( action_def{name("updfungible"), "updfungible"} );
     evt_abi.actions.push_back( action_def{name("issuefungible"), "issuefungible"} );
     evt_abi.actions.push_back( action_def{name("transferft"), "transferft"} );
+    evt_abi.actions.push_back( action_def{name("recycleft"), "recycleft"} );
     evt_abi.actions.push_back( action_def{name("evt2pevt"), "evt2pevt"} );
     evt_abi.actions.push_back( action_def{name("addmeta"), "addmeta"} );
     evt_abi.actions.push_back( action_def{name("newsuspend"), "newsuspend"} );
@@ -151,36 +151,14 @@ evt_contract_abi() {
     });
 
     evt_abi.structs.emplace_back( struct_def {
-        "locknft_def", "", {
-            {"domain", "domain_name"},
-            {"names", "token_name[]"}
-        }
-    });
-
-    evt_abi.structs.emplace_back( struct_def {
-        "lockft_def", "", {
-            {"from", "address"},
-            {"amount", "asset"}
-        }
-    });
-
-    evt_abi.structs.emplace_back( struct_def {
-        "lockasset_def", "", {
-            {"type", "asset_type"},
-            {"tokens", "locknft_def?"},
-            {"fungible", "lockft_def?"}
-        }
-    });
-
-    evt_abi.structs.emplace_back( struct_def {
         "lock_def", "", {
             {"name", "proposal_name"},
             {"proposer", "user_id"},
             {"status", "suspend_status"},
             {"unlock_time", "time_point_sec"},
             {"deadline","time_point_sec"},
-            {"assets","lockasset_def[]"},
-            {"cond_keys", "public_key[]"},
+            {"assets","lock_asset[]"},
+            {"condition", "lock_condition"},
             {"succeed", "address[]"},
             {"failed", "address[]"},
             {"signed_keys", "public_key[]"}
@@ -283,6 +261,14 @@ evt_contract_abi() {
     });
 
     evt_abi.structs.emplace_back( struct_def {
+        "recycleft", "", {
+            {"address", "address"},
+            {"number", "asset"},
+            {"memo", "string"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
         "evt2pevt", "", {
             {"from", "address"},
             {"to", "address"},
@@ -375,8 +361,8 @@ evt_contract_abi() {
             {"proposer", "user_id"},
             {"unlock_time", "time_point_sec"},
             {"deadline","time_point_sec"},
-            {"assets","lockasset_def[]"},
-            {"cond_keys", "public_key[]"},
+            {"assets","lock_asset[]"},
+            {"condition", "lock_condition"},
             {"succeed", "address[]"},
             {"failed", "address[]"}
         }
@@ -385,7 +371,8 @@ evt_contract_abi() {
     evt_abi.structs.emplace_back( struct_def {
         "aprvlock", "", {
             {"name", "proposal_name"},
-            {"approver", "user_id"}
+            {"approver", "user_id"},
+            {"data", "lock_aprvdata"}
         }
     });
 

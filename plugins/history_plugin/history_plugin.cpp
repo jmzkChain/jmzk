@@ -35,6 +35,7 @@ using bsoncxx::builder::stream::document;
 using bsoncxx::builder::stream::open_document;
 using bsoncxx::builder::stream::close_document;
 using bsoncxx::builder::stream::array;
+using history_apis::direction;
 
 class history_plugin_impl {
 public:
@@ -61,7 +62,9 @@ public:
     }
 
 public:
-    variant get_tokens_by_public_keys(const vector<public_key_type>& pkeys, const optional<domain_name>& domain, const optional<token_name>& name);
+    variant get_tokens_by_public_keys(const vector<public_key_type>& pkeys,
+                                      const optional<domain_name>&   domain,
+                                      const optional<token_name>&    name);
     flat_set<string> get_domains_by_public_keys(const vector<public_key_type>& pkeys);
     flat_set<string> get_groups_by_public_keys(const vector<public_key_type>& pkeys);
     flat_set<symbol_id_type> get_fungibles_by_public_keys(const vector<public_key_type>& pkeys);
@@ -69,21 +72,27 @@ public:
     variant get_actions(const domain_name&             domain,
                         const optional<domain_key>&    key,
                         const std::vector<action_name> names,
+                        const direction                dire, 
                         const optional<int>            skip,
                         const optional<int>            take);
 
     variant get_fungible_actions(const symbol_id_type        sym_id,
                                  const fc::optional<address> addr,
+                                 const direction             dire, 
                                  const optional<int>         skip,
                                  const optional<int>         take);
 
-    variant get_transaction(const transaction_id_type& trx_id);
-    variant get_transactions(const vector<public_key_type>& pkeys, const optional<int> skip, const optional<int> take);
+    variant get_transaction(const transaction_id_type&      trx_id);
+    variant get_transactions(const vector<public_key_type>& pkeys,
+                             const direction                dire,
+                             const optional<int>            skip,
+                             const optional<int>            take);
 
 private:
     block_id_type get_block_id_by_trx_id(const transaction_id_type& trx_id);
     string get_bson_string_value(const mongocxx::cursor::iterator& it, const std::string& key);
     string get_date_string_value(const mongocxx::cursor::iterator& it, const std::string& key);
+    int get_int_value(const mongocxx::cursor::iterator& it, const std::string& key);
     variant transaction_to_variant(const packed_transaction& ptrx);
 
 public:
@@ -116,6 +125,12 @@ history_plugin_impl::get_date_string_value(const mongocxx::cursor::iterator& it,
     return (std::string)tp;
 }
 
+int
+history_plugin_impl::get_int_value(const mongocxx::cursor::iterator& it, const std::string& key) {
+    auto v = (*it)[key].get_int32();
+    return v;
+}
+
 fc::variant
 history_plugin_impl::transaction_to_variant(const packed_transaction& ptrx) {
     auto resolver = [this]() -> const evt::chain::contracts::abi_serializer& {
@@ -129,7 +144,9 @@ history_plugin_impl::transaction_to_variant(const packed_transaction& ptrx) {
 
 
 variant
-history_plugin_impl::get_tokens_by_public_keys(const vector<public_key_type>& pkeys, const optional<domain_name>& domain, const optional<token_name>& name) {
+history_plugin_impl::get_tokens_by_public_keys(const vector<public_key_type>& pkeys,
+                                               const optional<domain_name>&   domain,
+                                               const optional<token_name>&    name) {
     auto results = fc::mutable_variant_object();
 
     auto keys = array();
@@ -240,6 +257,7 @@ variant
 history_plugin_impl::get_actions(const domain_name&             domain,
                                  const optional<domain_key>&    key,
                                  const std::vector<action_name> names,
+                                 const direction                dire,
                                  const optional<int>            skip,
                                  const optional<int>            take) {
     using namespace bsoncxx::types;
@@ -270,7 +288,12 @@ history_plugin_impl::get_actions(const domain_name&             domain,
     }
 
     document sort{};
-    sort << "_id" << -1;
+    if(dire == direction::desc) {
+        sort << "_id" << -1;
+    }
+    else {
+        sort << "_id" << 1;
+    }
 
     auto pipeline = mongocxx::pipeline();
     pipeline.match(match.view()).sort(sort.view()).skip(s).limit(t);
@@ -283,6 +306,7 @@ history_plugin_impl::get_actions(const domain_name&             domain,
             v["domain"] = get_bson_string_value(it, "domain");
             v["key"] = get_bson_string_value(it, "key");
             v["trx_id"] = get_bson_string_value(it, "trx_id");
+            v["block_num"] = get_int_value(it, "block_num");
             v["data"] = fc::json::from_string(bsoncxx::to_json((*it)["data"].get_document().view()));
             v["created_at"] = get_date_string_value(it, "created_at");
 
@@ -298,6 +322,7 @@ history_plugin_impl::get_actions(const domain_name&             domain,
 variant
 history_plugin_impl::get_fungible_actions(const symbol_id_type        sym_id,
                                           const fc::optional<address> addr,
+                                          const direction             dire,
                                           const optional<int>         skip,
                                           const optional<int>         take) {
     using namespace bsoncxx::types;
@@ -321,7 +346,7 @@ history_plugin_impl::get_fungible_actions(const symbol_id_type        sym_id,
     static bsoncxx::builder::stream::array ns;
 
     std::call_once(flag, [] {
-        ns << "issuefungible" << "transferft" << "evt2pevt" << "everipay" << "paycharge";
+        ns << "issuefungible" << "transferft" << "recycleft" << "evt2pevt" << "everipay" << "paycharge";
     });
 
     match << "name" << open_document << "$in" << ns << close_document;
@@ -334,7 +359,7 @@ history_plugin_impl::get_fungible_actions(const symbol_id_type        sym_id,
         auto saddr = (std::string)(*addr);
 
         addr_match << "$or" << open_array
-                   << open_document << "data.address"   << saddr << close_document  // issue
+                   << open_document << "data.address"   << saddr << close_document  // issue & recycleft
                    << open_document << "data.from"      << saddr << close_document  // transfer & evt2pevt
                    << open_document << "data.to"        << saddr << close_document  // transfer & evt2pevt
                    << open_document << "data.payee"     << saddr << close_document  // everiPay
@@ -345,7 +370,12 @@ history_plugin_impl::get_fungible_actions(const symbol_id_type        sym_id,
     }
 
     auto sort = document();
-    sort << "_id" << -1;
+    if(dire == direction::desc) {
+        sort << "_id" << -1;
+    }
+    else {
+        sort << "_id" << 1;
+    }
 
     pipeline.sort(sort.view()).skip(s).limit(t);
 
@@ -357,6 +387,7 @@ history_plugin_impl::get_fungible_actions(const symbol_id_type        sym_id,
             v["domain"] = get_bson_string_value(it, "domain");
             v["key"] = get_bson_string_value(it, "key");
             v["trx_id"] = get_bson_string_value(it, "trx_id");
+            v["block_num"] = get_int_value(it, "block_num");
             v["data"] = fc::json::from_string(bsoncxx::to_json((*it)["data"].get_document().view()));
             v["created_at"] = get_date_string_value(it, "created_at");
 
@@ -391,14 +422,19 @@ history_plugin_impl::get_transaction(const transaction_id_type& trx_id) {
     auto block = chain_.fetch_block_by_id(block_id);
     for(auto& tx : block->transactions) {
         if(tx.trx.id() == trx_id) {
-            return transaction_to_variant(tx.trx);
+            auto mv = fc::mutable_variant_object(transaction_to_variant(tx.trx));
+            mv["block_num"] = block->block_num();
+            return mv;
         }
     }
     FC_THROW_EXCEPTION(unknown_transaction_exception, "Cannot find transaction");
 }
 
 variant
-history_plugin_impl::get_transactions(const vector<public_key_type>& pkeys, const optional<int> skip, const optional<int> take) {
+history_plugin_impl::get_transactions(const vector<public_key_type>& pkeys,
+                                      const direction                dire,
+                                      const optional<int>            skip,
+                                      const optional<int>            take) {
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
     using namespace bsoncxx::builder::stream;
@@ -420,7 +456,12 @@ history_plugin_impl::get_transactions(const vector<public_key_type>& pkeys, cons
     match << "keys" << open_document << "$in" << keys << close_document;
 
     document sort{};
-    sort << "_id" << -1;
+    if(dire == direction::desc) {
+        sort << "_id" << -1;
+    }
+    else {
+        sort << "_id" << 1;
+    }
 
     document project{};
     project << "trx_id" << 1;
@@ -517,14 +558,16 @@ fc::variant
 read_only::get_actions(const get_actions_params& params) {
     EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
 
-    return plugin_.my_->get_actions(params.domain, params.key, params.names, params.skip, params.take);
+    auto dire = (params.dire.valid() && *params.dire == direction::desc) ? direction::desc : direction::asc;
+    return plugin_.my_->get_actions(params.domain, params.key, params.names, dire, params.skip, params.take);
 }
 
 fc::variant
 read_only::get_fungible_actions(const get_fungible_actions_params& params) {
     EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
 
-    return plugin_.my_->get_fungible_actions(params.sym_id, params.addr, params.skip, params.take);
+    auto dire = (params.dire.valid() && *params.dire == direction::desc) ? direction::desc : direction::asc;
+    return plugin_.my_->get_fungible_actions(params.sym_id, params.addr, dire, params.skip, params.take);
 }
 
 fc::variant
@@ -538,7 +581,8 @@ fc::variant
 read_only::get_transactions(const get_transactions_params& params) {
     EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
 
-    return plugin_.my_->get_transactions(params.keys, params.skip, params.take);
+    auto dire = (params.dire.valid() && *params.dire == direction::desc) ? direction::desc : direction::asc;
+    return plugin_.my_->get_transactions(params.keys, dire, params.skip, params.take);
 }
 
 }  // namespace history_apis
