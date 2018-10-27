@@ -188,6 +188,21 @@ def evtd(ctx, name):
     ctx.obj['name'] = name
 
 
+@evtd.command()
+@click.pass_context
+def init(ctx):
+    name = ctx.obj['name']
+
+    volume_name = '{}-data-volume'.format(name)
+    try:
+        client.volumes.get(volume_name)
+        click.echo('evtd: {} volume is already existed, no need to create one'.
+                   format(green(volume_name)))
+    except docker.errors.NotFound:
+        client.volumes.create(volume_name)
+        click.echo('evtd: {} volume is created'.format(green(volume_name)))
+
+
 @evtd.command('export', help='Export reversible blocks to one backup file')
 @click.option('--file', '-f', default='rev-{}.logs'.format(datetime.now().strftime('%Y-%m-%d')), help='Backup file name of reversible blocks')
 @click.pass_context
@@ -342,11 +357,11 @@ def create(ctx, net, http_port, p2p_port, host, mongodb_name, mongodb_port, mong
         client.volumes.get(volume_name)
     except docker.errors.ImageNotFound:
         click.echo(
-            'Mongo: Some necessary elements are not found, please run `mongo init` first')
+            'Mongo: Some necessary elements are not found, please run `evtd init` first')
         return
     except docker.errors.NotFound:
         click.echo(
-            'Mongo: Some necessary elements are not found, please run `mongo init` first')
+            'Mongo: Some necessary elements are not found, please run `evtd init` first')
         return
 
     create = False
