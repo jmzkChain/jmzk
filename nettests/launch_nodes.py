@@ -5,6 +5,7 @@ import time
 
 import click
 import docker
+from pyevt import ecc, libevt
 
 
 class command():
@@ -79,7 +80,7 @@ def create(config):
         # create files in evtd_dir
         if(not os.path.exists(evtd_dir)):
             os.mkdir(evtd_dir, 0o755)
-        file = os.path.join(evtd_dir, 'dir_'+str(i))
+        file = os.path.join(evtd_dir, 'dir_{}'.format(i))
         if(os.path.exists(file)):
             print("Warning: the file before didn't freed ")
         else:
@@ -91,15 +92,19 @@ def create(config):
         if(i < producer_number):
             cmd.add_option('--enable-stale-production')
             cmd.add_option('--producer-name=evt')
-        else:
-            cmd.add_option('--producer-name=evt.'+str(i))
+            libevt.init_lib()
+            pub_key, priv_key = ecc.generate_new_pair()
+            cmd.add_option('--private-key={}'.format(priv_key.to_string()))
+            # cmd.add_option('--private-key=5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3')
 
-        cmd.add_option('--http-server-address=evtd_'+str(i)+':'+str(8888+i))
-        cmd.add_option('--p2p-listen-endpoint=evtd_'+str(i)+':'+str(9876+i))
+        cmd.add_option('--http-server-address=evtd_{}:{}'.format(i, 8888+i))
+        cmd.add_option('--p2p-listen-endpoint=evtd_{}:{}'.format(i, 9876+i))
+        # cmd.add_option(('--p2p-peer-address=evtd_{}:{}'.format((i+1)%nodes_number, 9876+(i+1)%nodes_number)))
         for j in range(0, nodes_number):
             if(i == j):
                 continue
-            cmd.add_option(('--p2p-peer-address=evtd_'+str(j)+':'+str(9876+j)))
+            cmd.add_option(('--p2p-peer-address=evtd_{}:{}'.format(j, 9876+j)))
+        #     break 
 
         # run the image evtd in container
         if(not use_tmpfs):
@@ -111,11 +116,11 @@ def create(config):
             print('mount location: {}'.format(file))
             print('****************************')
             container = client.containers.run(image='everitoken/evt:latest',
-                                              name='evtd_'+str(i),
+                                              name='evtd_{}'.format(i),
                                               command=cmd.get_arguments(),
                                               network='evt-net',
                                               ports={
-                                                  str(evtd_port_http+i): 8888+i, str(evtd_port_p2p+i)+'/tcp': 9876+i},
+                                                  '{}'.format(evtd_port_http+i): 8888+i, '{}/tcp'.format(evtd_port_p2p+i): 9876+i},
                                               detach=True,
                                               volumes={
                                                   file: {'bind': '/opt/evtd/data', 'mode': 'rw'}}
@@ -129,11 +134,11 @@ def create(config):
             print('tmpfs use size: {} M'.format(tmpfs_size))
             print('****************************')
             container = client.containers.run(image='everitoken/evt:latest',
-                                              name='evtd_'+str(i),
+                                              name='evtd_{}'.format(i),
                                               command=cmd.get_arguments(),
                                               network='evt-net',
                                               ports={
-                                                  str(evtd_port_http+i): 8888+i, str(evtd_port_p2p+i)+'/tcp': 9876+i},
+                                                  '{}'.format(evtd_port_http+i): 8888+i, '{}/tcp'.format(evtd_port_p2p+i): 9876+i},
                                               detach=True,
                                               tmpfs={
                                                   '/opt/evtd/data': 'size='+str(tmpfs_size)+'M'}
