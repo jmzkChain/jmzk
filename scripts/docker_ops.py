@@ -432,6 +432,11 @@ def detail(ctx):
 
     ports = []
     for p in ct['Ports']:
+        if p['PrivatePort'] == 8888:
+            p['Type'] += '(http)'
+        if p['PrivatePort'] == 7888:
+            p['Type'] += '(p2p)'
+
         ports.append('{}:{}->{}/{}'.format(p['IP'], p['PublicPort'], p['PrivatePort'], p['Type']))
 
     click.echo('      id: {}'.format(green(ct['Id'])))
