@@ -429,9 +429,18 @@ def detail(ctx):
         click.echo('evtd: {} container is not found'.format(green(name)))
         return
 
-    pprint.pprint(containers[0], indent=2)
-    click.echo('\n')
-    click.echo('command: {}'.format(green(containers[0]['Command'])))
+    ct = containers[0]
+
+    click.echo('      id: {}'.format(green(ct['Id'])))
+    click.echo('   image: {}'.format(green(ct['Image'])))
+    click.echo('image-id: {}'.format(green(ct['ImageID'])))
+    click.echo(' command: {}'.format(green(ct['Command'])))
+    click.echo(' network: {}'.format(green(list(ct['NetworkSettings']['Networks'].keys())[0])))
+
+    ports = []
+    for p in ct['Ports']:
+        ports.append('{}:{}->{}/{}'.format(p['IP'], p['PublicPort'], p['PrivatePort'], p['Type']))
+    click.echo('  ports: {}'.format(green(', '.join(ports))))
 
 
 @evtd.command()
