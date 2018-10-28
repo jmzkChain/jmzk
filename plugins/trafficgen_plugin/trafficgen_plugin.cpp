@@ -95,6 +95,7 @@ trafficgen_plugin_impl::pre_generate(const block_id_type& id) {
         trx.actions.emplace_back(ttact);
         trx.expiration = now + fc::minutes(10);
         trx.payer = from_addr_;
+        trx.max_charge = 10000;
         trx.sign(from_priv_, db_.get_chain_id());
 
         packed_trxs_.emplace_back(std::make_shared<packed_transaction>(trx));

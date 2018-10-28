@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import pprint
 from datetime import datetime
 
 import click
@@ -431,16 +430,37 @@ def detail(ctx):
 
     ct = containers[0]
 
+    ports = []
+    for p in ct['Ports']:
+        ports.append('{}:{}->{}/{}'.format(p['IP'], p['PublicPort'], p['PrivatePort'], p['Type']))
+
     click.echo('      id: {}'.format(green(ct['Id'])))
     click.echo('   image: {}'.format(green(ct['Image'])))
     click.echo('image-id: {}'.format(green(ct['ImageID'])))
     click.echo(' command: {}'.format(green(ct['Command'])))
     click.echo(' network: {}'.format(green(list(ct['NetworkSettings']['Networks'].keys())[0])))
+    click.echo('   ports: {}'.format(green(', '.join(ports))))
+    click.echo('  status: {}'.format(green(ct['Status'])))
 
-    ports = []
-    for p in ct['Ports']:
-        ports.append('{}:{}->{}/{}'.format(p['IP'], p['PublicPort'], p['PrivatePort'], p['Type']))
-    click.echo('  ports: {}'.format(green(', '.join(ports))))
+
+@evtd.command()
+@click.option('--tail', '-t', default=100, help='Output specified number of lines at the end of logs')
+@click.option('--stream/--no-stream', '-s', default=False, help='Stream the output')
+@click.pass_context
+def logs(ctx, tail, stream):
+    name = ctx.obj['name']
+
+    try:
+        container = client.containers.get(name)
+        s = container.logs(stdout=True, tail=tail, stream=stream)
+        if stream:
+            for line in s:
+                click.echo(line, nl=False)
+        else:
+            click.echo(s.decode('utf-8'))
+    except docker.errors.NotFound:
+        click.echo(
+            'evtd: {} container is not existed, please start first'.format(green(name)))
 
 
 @evtd.command()
