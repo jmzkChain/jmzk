@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import pprint
 from datetime import datetime
 
 import click
@@ -441,6 +440,32 @@ def detail(ctx):
     click.echo(' command: {}'.format(green(ct['Command'])))
     click.echo(' network: {}'.format(green(list(ct['NetworkSettings']['Networks'].keys())[0])))
     click.echo('   ports: {}'.format(green(', '.join(ports))))
+    click.echo('  status: {}'.format(green(ct['Status'])))
+
+
+@evtd.command()
+@click.option('--tail', '-t', default=100, help='Output specified number of lines at the end of logs')
+@click.option('--stream/--no-stream', '-s', default=False, help='Stream the output')
+@click.pass_context
+def logs(ctx, tail, stream):
+    name = ctx.obj['name']
+
+    try:
+        container = client.containers.get(name)
+        if container.status != 'running':
+            click.echo(
+                'evtd: {} container is already stopped'.format(green(name)))
+            return
+
+        s = container.logs(stdout=True, tail=tail, stream=stream)
+        if stream:
+            for line in s:
+                click.echo(line, nl=False)
+        else:
+            click.echo(s.decode('utf-8'))
+    except docker.errors.NotFound:
+        click.echo(
+            'evtd: {} container is not existed, please start first'.format(green(name)))
 
 
 @evtd.command()
