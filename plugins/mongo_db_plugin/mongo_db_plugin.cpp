@@ -137,11 +137,12 @@ public:
 
 template <typename Q, typename V>
 inline void
-queue(Q& queue, V&& v, spinlock& lock, condition_variable_any& cv, size_t queue_size) {
+queueb(Q& bqueue, V&& v, spinlock& lock, condition_variable_any& cv, size_t queue_size) {
     lock.lock();
 
     auto sleep_time = 0ul;
-    while(queue.size() > queue_size) {
+
+    while(bqueue.size() > queue_size) {
         lock.unlock();
         cv.notify_one();
 
@@ -150,24 +151,33 @@ queue(Q& queue, V&& v, spinlock& lock, condition_variable_any& cv, size_t queue_
 
         lock.lock();
     }
-    queue.emplace_back(std::forward<V>(v));
+    bqueue.emplace_back(std::forward<V>(v));
+    lock.unlock();
+    cv.notify_one();
+}
+
+template <typename Q, typename V>
+inline void
+queuet(Q& tqueue, V&& v, spinlock& lock, condition_variable_any& cv) {
+    lock.lock();
+    tqueue.emplace_back(std::forward<V>(v));
     lock.unlock();
     cv.notify_one();
 }
 
 void
 mongo_db_plugin_impl::applied_irreversible_block(const block_state_ptr& bsp) {
-    queue(block_state_queue, std::make_tuple(bsp, true), lock_, cond_, queue_size);
+    queueb(block_state_queue, std::make_tuple(bsp, true), lock_, cond_, queue_size);
 }
 
 void
 mongo_db_plugin_impl::applied_block(const block_state_ptr& bsp) {
-    queue(block_state_queue, std::make_tuple(bsp, false), lock_, cond_, queue_size);
+    queueb(block_state_queue, std::make_tuple(bsp, false), lock_, cond_, queue_size);
 }
 
 void
 mongo_db_plugin_impl::applied_transaction(const transaction_trace_ptr& ttp) {
-    queue(transaction_trace_queue, ttp, lock_, cond_, queue_size);
+    queuet(transaction_trace_queue, ttp, lock_, cond_);
 }
 
 void
@@ -199,16 +209,28 @@ mongo_db_plugin_impl::consume_queues() {
             }
 
             // process block states
-            for(auto& b : bqueue) {
+            while(true) {
+                if(bqueue.empty()) {
+                    break;
+                }
+
+                auto& b = bqueue.front();
                 if(std::get<IsIrreversible>(b)) {
                     process_irreversible_block(*(std::get<BlockPtr>(b)->block), traces, write_ctx_);
                 }
                 else {
                     process_block(*(std::get<BlockPtr>(b)->block), traces, write_ctx_);
                 }
-            }
 
-            write_ctx_.execute();
+                if(write_ctx_.total() >= queue_size * 2) {
+                    write_ctx_.execute();
+                }
+
+                bqueue.pop_front();
+            }
+            if(write_ctx_.total() > 0) {
+                write_ctx_.execute();
+            }
 
             if(!traces.empty()) {
                 spinlock_guard lock(lock_);
@@ -511,6 +533,9 @@ mongo_db_plugin_impl::add_trx_trace(bsoncxx::builder::basic::document& trx_doc,
             trace_doc.append(kvp("elapsed", (int64_t)trace->elapsed.count()),
                              kvp("charge", (int64_t)trace->charge));
             trx_doc.append(kvp("trace", trace_doc));
+            if(trace->action_traces.empty()) {
+                return;
+            }
             // because paycharage action is alwasys the latest action
             // only check latest
             auto& act = trace->action_traces.back().act;

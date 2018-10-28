@@ -30,6 +30,7 @@ using mongocxx::bulk_write;
         if(!(n##_commits)) {                                        \
             n##_commits = n##_collection.create_bulk_write(opts_);  \
         }                                                           \
+        total_++;                                                   \
         return *n##_commits;                                        \
     }
 
@@ -71,6 +72,13 @@ public:
         commit_collection(tokens);
         commit_collection(groups);
         commit_collection(fungibles);
+
+        total_ = 0;
+    }
+
+    size_t
+    total() const {
+        return total_;
     }
 
 private:
@@ -128,6 +136,7 @@ private:
 
 private:
     mongocxx::options::bulk_write opts_;
+    size_t                        total_;
 };
 
 }  // namespace evt

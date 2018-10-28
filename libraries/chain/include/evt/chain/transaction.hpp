@@ -66,7 +66,7 @@ struct transaction : public transaction_header {
     flat_set<public_key_type> get_signature_keys(const vector<signature_type>& signatures,
                                                  const chain_id_type&          chain_id,
                                                  bool                          allow_duplicate_keys = false,
-                                                 bool                          use_cache = true) const;
+                                                 bool                          use_cache = false) const;
 
     uint32_t
     total_actions() const {
@@ -89,7 +89,7 @@ struct signed_transaction : public transaction {
     signature_type            sign(const private_key_type& key, const chain_id_type& chain_id) const;
     flat_set<public_key_type> get_signature_keys(const chain_id_type& chain_id,
                                                  bool                 allow_duplicate_keys = false,
-                                                 bool                 use_cache = true) const;
+                                                 bool                 use_cache = false) const;
 };
 
 struct packed_transaction {
