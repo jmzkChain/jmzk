@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import pprint
 from datetime import datetime
 
 import click
@@ -335,8 +336,8 @@ def clear(ctx, all):
 @click.argument('arguments', nargs=-1)
 @click.option('--type', '-t', default='testnet', type=click.Choice(['testnet', 'mainnet']), help='Type of the image')
 @click.option('--net', '-n', default='evt-net', help='Name of the network for the environment')
-@click.option('--http-port', '-p', default=8888, help='Expose port for rpc request')
-@click.option('--p2p-port', default=7888, help='Expose port for p2p network')
+@click.option('--http-port', '-p', default=8888, help='Expose port for rpc request, set 0 for not expose')
+@click.option('--p2p-port', default=7888, help='Expose port for p2p network, set 0 for not expose')
 @click.option('--host', '-h', default='127.0.0.1', help='Host address for evtd')
 @click.option('--mongodb-name', '-m', default='mongo', help='Container name or host address of mongodb')
 @click.option('--mongodb-port', default=27017, help='Port of mongodb')
@@ -403,14 +404,43 @@ def create(ctx, net, http_port, p2p_port, host, mongodb_name, mongodb_port, mong
     if arguments is not None and len(arguments) > 0:
         entry += ' ' + ' '.join(arguments)
 
+    ports = {}
+    if http_port != 0:
+        ports['8888/tcp'] = (host, http_port)
+    if p2p_port != 0:
+        ports['7888/tcp'] = (host, p2p_port)
     client.containers.create(image, None, name=name, detach=True, network=net,
-                             ports={
-                                 '8888/tcp': (host, http_port), '7888/tcp': (host, p2p_port)},
+                             ports=ports,
                              volumes={volume_name: {
                                  'bind': '/opt/evt/data', 'mode': 'rw'}},
                              entrypoint=entry
                              )
     click.echo('evtd: {} container is created'.format(green(name)))
+
+
+@evtd.command()
+@click.pass_context
+def detail(ctx):
+    name = ctx.obj['name']
+
+    client = docker.APIClient()
+    containers = client.containers(all=True, filters={'name': name})
+    if len(containers) == 0:
+        click.echo('evtd: {} container is not found'.format(green(name)))
+        return
+
+    ct = containers[0]
+
+    click.echo('      id: {}'.format(green(ct['Id'])))
+    click.echo('   image: {}'.format(green(ct['Image'])))
+    click.echo('image-id: {}'.format(green(ct['ImageID'])))
+    click.echo(' command: {}'.format(green(ct['Command'])))
+    click.echo(' network: {}'.format(green(list(ct['NetworkSettings']['Networks'].keys())[0])))
+
+    ports = []
+    for p in ct['Ports']:
+        ports.append('{}:{}->{}/{}'.format(p['IP'], p['PublicPort'], p['PrivatePort'], p['Type']))
+    click.echo('  ports: {}'.format(green(', '.join(ports))))
 
 
 @evtd.command()
