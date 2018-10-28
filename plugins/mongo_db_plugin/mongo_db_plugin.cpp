@@ -186,17 +186,17 @@ mongo_db_plugin_impl::consume_queues() {
 
             lock_.unlock();
 
+            const int BlockPtr       = 0;
+            const int IsIrreversible = 1;
+
             // warn if queue size greater than 75%
             if(bqueue.size() > (queue_size * 0.75)) {
-                wlog("queue size: ${q}", ("q", bqueue.size()));
+                wlog("queue size: ${q}, head block num: ${b}", ("q", bqueue.size())("b",std::get<BlockPtr>(bqueue.front())->block_num));
             }
             else if(done_) {
                 ilog("draining queue, size: ${q}", ("q", bqueue.size()));
                 break;
             }
-
-            const int BlockPtr       = 0;
-            const int IsIrreversible = 1;
 
             // process block states
             for(auto& b : bqueue) {
