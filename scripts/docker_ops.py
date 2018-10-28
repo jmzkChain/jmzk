@@ -452,11 +452,6 @@ def logs(ctx, tail, stream):
 
     try:
         container = client.containers.get(name)
-        if container.status != 'running':
-            click.echo(
-                'evtd: {} container is already stopped'.format(green(name)))
-            return
-
         s = container.logs(stdout=True, tail=tail, stream=stream)
         if stream:
             for line in s:
