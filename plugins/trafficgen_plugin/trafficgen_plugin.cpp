@@ -46,6 +46,7 @@ public:
 
     uint32_t start_num_  = 0;
     size_t   total_num_  = 0;
+    bool     pushed_     = false;
 
     address          from_addr_;
     private_key_type from_priv_;
@@ -104,12 +105,19 @@ trafficgen_plugin_impl::pre_generate(const block_id_type& id) {
 
 void
 trafficgen_plugin_impl::applied_block(const block_state_ptr& bs) {
-    if(bs->block_num == start_num_) {
-        pre_generate(bs->id);
-
-        const auto& exec = app().get_io_service().get_executor();
-        for(auto i = 0u; i < total_num_; i++) {
-            boost::asio::post(exec, std::bind(&trafficgen_plugin_impl::push_once, this, (int)i));
+    if(bs->block_num >= start_num_) {
+        if(packed_trxs_.empty()) {
+            pre_generate(bs->id);
+        }
+        else {
+            auto now = fc::time_point::now();
+            if(!pushed_ && std::abs((db_.head_block_time() - now).to_seconds()) < 1) {
+                const auto& exec = app().get_io_service().get_executor();
+                for(auto i = 0u; i < total_num_; i++) {
+                    boost::asio::post(exec, std::bind(&trafficgen_plugin_impl::push_once, this, (int)i));
+                }
+                pushed_ = true;
+            }
         }
     }
 }

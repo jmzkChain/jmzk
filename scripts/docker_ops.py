@@ -430,6 +430,8 @@ def detail(ctx):
         return
 
     pprint.pprint(containers[0], indent=2)
+    click.echo('\n')
+    click.echo('command: {}'.format(green(containers[0]['Command'])))
 
 
 @evtd.command()
