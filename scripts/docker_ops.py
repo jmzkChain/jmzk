@@ -431,16 +431,16 @@ def detail(ctx):
 
     ct = containers[0]
 
+    ports = []
+    for p in ct['Ports']:
+        ports.append('{}:{}->{}/{}'.format(p['IP'], p['PublicPort'], p['PrivatePort'], p['Type']))
+
     click.echo('      id: {}'.format(green(ct['Id'])))
     click.echo('   image: {}'.format(green(ct['Image'])))
     click.echo('image-id: {}'.format(green(ct['ImageID'])))
     click.echo(' command: {}'.format(green(ct['Command'])))
     click.echo(' network: {}'.format(green(list(ct['NetworkSettings']['Networks'].keys())[0])))
-
-    ports = []
-    for p in ct['Ports']:
-        ports.append('{}:{}->{}/{}'.format(p['IP'], p['PublicPort'], p['PrivatePort'], p['Type']))
-    click.echo('  ports: {}'.format(green(', '.join(ports))))
+    click.echo('   ports: {}'.format(green(', '.join(ports))))
 
 
 @evtd.command()
