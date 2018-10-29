@@ -124,7 +124,7 @@ read_only::get_fungible_balance(const get_fungible_balance_params& params) {
 
         variant var;
         asset   as;
-        db.read_asset(params.address, fungible.sym, as);
+        db.read_asset_no_throw(params.address, fungible.sym, as);
         fc::to_variant(as, var);
         return var;
     }
