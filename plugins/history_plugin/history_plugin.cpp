@@ -301,14 +301,18 @@ history_plugin_impl::get_actions(const domain_name&             domain,
     auto cursor = actions_col_.aggregate(pipeline);
     try {
         for(auto it = cursor.begin(); it != cursor.end(); it++) {
+            auto block_num = get_int_value(it, "block_num");
+            auto block     = chain_.fetch_block_by_number(block_num);
+
             auto v = fc::mutable_variant_object();
             v["name"] = get_bson_string_value(it, "name");
             v["domain"] = get_bson_string_value(it, "domain");
             v["key"] = get_bson_string_value(it, "key");
             v["trx_id"] = get_bson_string_value(it, "trx_id");
-            v["block_num"] = get_int_value(it, "block_num");
+            v["block_num"] = block_num;
             v["data"] = fc::json::from_string(bsoncxx::to_json((*it)["data"].get_document().view()));
-            v["created_at"] = get_date_string_value(it, "created_at");
+            v["created_at"] = block->timestamp;
+            v["timestamp"] = block->timestamp;
 
             result.emplace_back(std::move(v));
         }
@@ -382,15 +386,18 @@ history_plugin_impl::get_fungible_actions(const symbol_id_type        sym_id,
     auto cursor = actions_col_.aggregate(pipeline);
     try {
         for(auto it = cursor.begin(); it != cursor.end(); it++) {
+            auto block_num = get_int_value(it, "block_num");
+            auto block     = chain_.fetch_block_by_number(block_num);
+
             auto v = fc::mutable_variant_object();
             v["name"] = get_bson_string_value(it, "name");
             v["domain"] = get_bson_string_value(it, "domain");
             v["key"] = get_bson_string_value(it, "key");
             v["trx_id"] = get_bson_string_value(it, "trx_id");
-            v["block_num"] = get_int_value(it, "block_num");
+            v["block_num"] = block_num;
             v["data"] = fc::json::from_string(bsoncxx::to_json((*it)["data"].get_document().view()));
-            v["timestamp"] = get_date_string_value(it, "timestamp");
-            v["created_at"] = get_date_string_value(it, "created_at");
+            v["created_at"] = block->timestamp;
+            v["timestamp"] = block->timestamp;
 
             result.emplace_back(std::move(v));
         }
