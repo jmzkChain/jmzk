@@ -90,8 +90,8 @@ public:
     std::atomic_bool       init_{false};
     uint32_t               timeout_;
 
-    std::deque<block_state_ptr>                                         blocks_;
-    std::unordered_map<link_id_type, deferred_pair, evt_link_id_hasher> link_ids_;
+    std::deque<block_state_ptr>                                              blocks_;
+    std::unordered_multimap<link_id_type, deferred_pair, evt_link_id_hasher> link_ids_;
 
     fc::optional<boost::signals2::scoped_connection> accepted_block_connection_;
 };
@@ -178,8 +178,8 @@ template<typename T>
 void
 evt_link_plugin_impl::response(const link_id_type& link_id, T&& response_fun) {
     lock_.lock();
-    auto it = link_ids_.find(link_id);
-    if(it != link_ids_.end()) {
+    auto sz = link_ids_.count(link_id);
+    if(sz > 0) {
         lock_.unlock();
 
         auto json = response_fun();
@@ -188,15 +188,16 @@ evt_link_plugin_impl::response(const link_id_type& link_id, T&& response_fun) {
             auto self = wptr.lock();
             if(self) {
                 self->lock_.lock();
-                auto it = self->link_ids_.find(link_id);
-                if(it != self->link_ids_.end()) {
+                auto pair = self->link_ids_.equal_range(link_id);
+                if(pair.first != self->link_ids_.end()) {
                     self->lock_.unlock();
 
-                    auto& pair = it->second;
-                    app().get_plugin<http_plugin>().set_deferred_response(std::get<kDeferredId>(pair), 200, json);
+                    std::for_each(pair.first, pair.second, [&](auto& it) {
+                        app().get_plugin<http_plugin>().set_deferred_response(std::get<kDeferredId>(it.second), 200, json);
+                    });
 
                     spinlock_guard l(self->lock_);
-                    self->link_ids_.erase(it);
+                    self->link_ids_.erase(link_id);
                     return;
                 }
                 else {
@@ -216,11 +217,7 @@ evt_link_plugin_impl::add_and_schedule(const link_id_type& link_id, deferred_id 
     auto it = link_ids_.emplace(link_id, std::make_pair(id, std::make_shared<steady_timer>(app().get_io_service())));
     lock_.unlock();
 
-    if(!it.second) {
-        EVT_THROW(chain::evt_link_already_watched_exception, "EVT-Link: ${link} is already watched", ("link",link_id));
-    }
-
-    auto timer = std::get<kTimer>(it.first->second);
+    auto timer = std::get<kTimer>(it->second);
     timer->expires_from_now(std::chrono::milliseconds(timeout_));
     
     auto wptr = std::weak_ptr<evt_link_plugin_impl>(shared_from_this());
@@ -228,23 +225,29 @@ evt_link_plugin_impl::add_and_schedule(const link_id_type& link_id, deferred_id 
         auto self = wptr.lock();
         if(self && ec != boost::asio::error::operation_aborted) {
             self->lock_.lock();
-            auto it = self->link_ids_.find(link_id);
-            if(it == self->link_ids_.end()) {
+            auto pair = self->link_ids_.equal_range(link_id);
+            if(pair.first == self->link_ids_.end()) {
                 self->lock_.unlock();
                 wlog("Cannot find context for id: ${id}", ("id",link_id));
                 return;
             }
             
-            auto id = std::get<kDeferredId>(it->second);
-            self->link_ids_.erase(it);
+            auto ids = std::vector<deferred_id>();
+            std::for_each(pair.first, pair.second, [&ids](auto& it) {
+                ids.emplace_back(std::get<kDeferredId>(it.second));
+            });
+
+            self->link_ids_.erase(link_id);
             self->lock_.unlock();
 
             try {
                 EVT_THROW(chain::exceed_evt_link_watch_time_exception, "Exceed EVT-Link watch time: ${time} ms", ("time",self->timeout_));
             }
             catch(...) {
-                http_plugin::handle_exception("evt_link", "get_trx_id_for_link_id", "", [id](auto code, auto body) {
-                    app().get_plugin<http_plugin>().set_deferred_response(id, code, std::move(body));
+                http_plugin::handle_exception("evt_link", "get_trx_id_for_link_id", "", [&ids](auto code, auto body) {
+                    for(auto id : ids) {
+                        app().get_plugin<http_plugin>().set_deferred_response(id, code, body);
+                    }
                 });
             }
         }
