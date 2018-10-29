@@ -10,10 +10,6 @@
 #include <boost/iostreams/device/back_inserter.hpp>
 #include <boost/iostreams/filter/zlib.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
-#include <boost/multi_index/hashed_index.hpp>
-#include <boost/multi_index/member.hpp>
-#include <boost/multi_index/sequenced_index.hpp>
-#include <boost/multi_index_container.hpp>
 #include <boost/range/adaptor/transformed.hpp>
 
 #include <evt/chain/exceptions.hpp>
@@ -21,24 +17,6 @@
 #include <evt/chain/config.hpp>
 
 namespace evt { namespace chain {
-
-using namespace boost::multi_index;
-
-struct cached_pub_key {
-    transaction_id_type trx_id;
-    public_key_type     pub_key;
-    signature_type      sig;
-    cached_pub_key(const cached_pub_key&) = delete;
-    cached_pub_key()                      = delete;
-    cached_pub_key& operator=(const cached_pub_key&) = delete;
-    cached_pub_key(cached_pub_key&&)                 = default;
-};
-struct by_sig {};
-
-typedef multi_index_container<
-    cached_pub_key,
-    indexed_by<sequenced<>, hashed_unique<tag<by_sig>, member<cached_pub_key, signature_type, &cached_pub_key::sig>>>>
-    recovery_cache_type;
 
 void
 transaction_header::set_reference_block(const block_id_type& reference_block) {
@@ -72,44 +50,24 @@ transaction::sig_digest(const chain_id_type& chain_id) const {
 
 flat_set<public_key_type>
 transaction::get_signature_keys(const vector<signature_type>& signatures, const chain_id_type& chain_id,
-                                bool allow_duplicate_keys, bool use_cache) const {
+                                bool allow_duplicate_keys) const {
     try {
         using boost::adaptors::transformed;
 
-        constexpr size_t           recovery_cache_size = 1000;
-        static recovery_cache_type recovery_cache;
-        const digest_type          digest = sig_digest(chain_id);
+        constexpr size_t  recovery_cache_size = 1000;
+        const digest_type digest = sig_digest(chain_id);
 
         flat_set<public_key_type> recovered_pub_keys;
         for(const signature_type& sig : signatures) {
-            recovery_cache_type::index<by_sig>::type::iterator it = recovery_cache.get<by_sig>().find(sig);
-
             public_key_type recov;
-            if(use_cache) {
-                if(it == recovery_cache.get<by_sig>().end() || it->trx_id != id()) {
-                    recov = public_key_type(sig, digest);
-                    recovery_cache.emplace_back(
-                        cached_pub_key{id(), recov, sig});  // could fail on dup signatures; not a problem
-                }
-                else {
-                    recov = it->pub_key;
-                }
-            }
-            else {
-                recov = public_key_type(sig, digest);
-            }
+            recov = public_key_type(sig, digest);
+
             bool successful_insertion                   = false;
             std::tie(std::ignore, successful_insertion) = recovered_pub_keys.insert(recov);
             EVT_ASSERT(allow_duplicate_keys || successful_insertion, tx_duplicate_sig,
                        "transaction includes more than one signature signed using the same key associated with public "
                        "key: ${key}",
                        ("key", recov));
-        }
-
-        if(use_cache) {
-            while(recovery_cache.size() > recovery_cache_size) {
-                recovery_cache.erase(recovery_cache.begin());
-            }
         }
 
         return recovered_pub_keys;
@@ -129,8 +87,8 @@ signed_transaction::sign(const private_key_type& key, const chain_id_type& chain
 }
 
 flat_set<public_key_type>
-signed_transaction::get_signature_keys(const chain_id_type& chain_id, bool allow_duplicate_keys, bool use_cache) const {
-    return transaction::get_signature_keys(signatures, chain_id, allow_duplicate_keys, use_cache);
+signed_transaction::get_signature_keys(const chain_id_type& chain_id, bool allow_duplicate_keys) const {
+    return transaction::get_signature_keys(signatures, chain_id, allow_duplicate_keys);
 }
 
 uint32_t
