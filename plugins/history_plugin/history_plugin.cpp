@@ -566,7 +566,7 @@ fc::variant
 read_only::get_actions(const get_actions_params& params) {
     EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
 
-    auto dire = (params.dire.valid() && *params.dire == direction::desc) ? direction::desc : direction::asc;
+    auto dire = (params.dire.valid() && *params.dire == direction::asc) ? direction::asc : direction::desc;
     return plugin_.my_->get_actions(params.domain, params.key, params.names, dire, params.skip, params.take);
 }
 
@@ -574,7 +574,7 @@ fc::variant
 read_only::get_fungible_actions(const get_fungible_actions_params& params) {
     EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
 
-    auto dire = (params.dire.valid() && *params.dire == direction::desc) ? direction::desc : direction::asc;
+    auto dire = (params.dire.valid() && *params.dire == direction::asc) ? direction::asc : direction::desc;
     return plugin_.my_->get_fungible_actions(params.sym_id, params.addr, dire, params.skip, params.take);
 }
 
@@ -589,7 +589,7 @@ fc::variant
 read_only::get_transactions(const get_transactions_params& params) {
     EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
 
-    auto dire = (params.dire.valid() && *params.dire == direction::desc) ? direction::desc : direction::asc;
+    auto dire = (params.dire.valid() && *params.dire == direction::asc) ? direction::asc : direction::desc;
     return plugin_.my_->get_transactions(params.keys, dire, params.skip, params.take);
 }
 
