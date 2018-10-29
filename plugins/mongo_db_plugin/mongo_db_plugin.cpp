@@ -384,11 +384,12 @@ mongo_db_plugin_impl::_process_block(const signed_block& block, std::deque<trans
     auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::microseconds{fc::time_point::now().time_since_epoch().count()});
 
+    auto ts = std::chrono::milliseconds{std::chrono::seconds{block.timestamp.operator fc::time_point().sec_since_epoch()}};
+
     block_doc.append(kvp("block_num", b_int32{block_num}),
                      kvp("block_id", block_id_str),
                      kvp("prev_block_id", prev_block_id_str),
-                     kvp("timestamp", b_date{std::chrono::milliseconds{
-                                          std::chrono::seconds{block.timestamp.operator fc::time_point().sec_since_epoch()}}}),
+                     kvp("timestamp", b_date{ts}),
                      kvp("trx_merkle_root", block.transaction_mroot.str()),
                      kvp("trx_count", b_int32{(int)block.transactions.size()}),
                      kvp("producer", block.producer.to_string()),
@@ -427,6 +428,7 @@ mongo_db_plugin_impl::_process_block(const signed_block& block, std::deque<trans
                    kvp("seq_num", b_int32{trx_num}),
                    kvp("block_id", block_id_str),
                    kvp("block_num", b_int32{block_num}),
+                   kvp("timestamp", b_date{ts}),
                    kvp("action_count", b_int32{(int)trx.actions.size()}),
                    kvp("expiration",
                        b_date{std::chrono::milliseconds{std::chrono::seconds{trx.expiration.sec_since_epoch()}}}),

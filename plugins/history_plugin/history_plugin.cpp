@@ -389,6 +389,7 @@ history_plugin_impl::get_fungible_actions(const symbol_id_type        sym_id,
             v["trx_id"] = get_bson_string_value(it, "trx_id");
             v["block_num"] = get_int_value(it, "block_num");
             v["data"] = fc::json::from_string(bsoncxx::to_json((*it)["data"].get_document().view()));
+            v["timestamp"] = get_date_string_value(it, "timestamp");
             v["created_at"] = get_date_string_value(it, "created_at");
 
             result.emplace_back(std::move(v));
