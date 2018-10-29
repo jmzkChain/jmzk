@@ -423,7 +423,7 @@ def detail(ctx):
     name = ctx.obj['name']
 
     client = docker.APIClient()
-    containers = client.containers(all=True, filters={'name': name})
+    containers = [c for c in client.containers(all=True, filters={'name': name}) if c['Names'][0] == '/' + name]
     if len(containers) == 0:
         click.echo('evtd: {} container is not found'.format(green(name)))
         return
