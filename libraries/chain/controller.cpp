@@ -1268,7 +1268,7 @@ controller::get_block_num_for_trx_id(const transaction_id_type& trx_id) const {
     if(const auto* t = my->db.find<transaction_object, by_trx_id>(trx_id)) {
         return t->block_num;
     }
-    EVT_THROW(transaction_not_found, "Transaction: ${t} is not existed", ("t",trx_id));
+    EVT_THROW(unknown_transaction_exception, "Transaction: ${t} is not existed", ("t",trx_id));
 }
 
 void

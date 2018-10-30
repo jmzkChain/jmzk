@@ -967,7 +967,7 @@ read_only::get_transaction(const get_transaction_params& params) {
             return var;
         }
     }
-    FC_THROW_EXCEPTION(unknown_transaction_exception, "Cannot find transaction");
+    EVT_THROW(unknown_transaction_exception, "Cannot find transaction");
 }
 
 fc::variant
