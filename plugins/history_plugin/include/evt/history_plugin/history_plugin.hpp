@@ -27,7 +27,7 @@ using evt::chain::address;
 namespace history_apis {
 
 enum class direction : uint8_t {
-    asc = 0, desc
+    desc = 0, asc
 };
 
 class read_only {

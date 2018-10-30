@@ -208,8 +208,9 @@ class Test(unittest.TestCase):
             'link_id': 'ddc101c51318d51733d682e80b8ea2bc'
         }
         req['link_id'] = pay_link.get_link_id().hex()
-        resp = api.get_trx_id_for_link_id(json.dumps(req)).text
-        self._test_evt_link_response(resp)
+        for i in range(1000):
+            resp = api.get_trx_id_for_link_id(json.dumps(req)).text
+            self._test_evt_link_response(resp)
 
     def test_evt_link_for_trx_id2(self):
         symbol = base.Symbol(
