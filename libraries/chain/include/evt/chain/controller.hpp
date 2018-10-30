@@ -155,6 +155,8 @@ public:
 
     const evt_link_object& get_link_obj_for_link_id(const link_id_type&) const;
 
+    uint32_t get_block_num_for_trx_id(const transaction_id_type& trx_id) const;
+
     bool is_producing_block() const;
 
     void validate_expiration(const transaction& t) const;

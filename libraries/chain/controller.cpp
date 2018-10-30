@@ -1257,13 +1257,18 @@ controller::get_block_id_for_num(uint32_t block_num) const {
 
 const evt_link_object&
 controller::get_link_obj_for_link_id(const link_id_type& link_id) const {
-    try {
-        if(const auto* l = my->db.find<evt_link_object, by_link_id>(link_id)) {
-            return *l;
-        }
-        EVT_THROW(evt_link_existed_exception, "EVT-Link is not existed");
+    if(const auto* l = my->db.find<evt_link_object, by_link_id>(link_id)) {
+        return *l;
     }
-    FC_CAPTURE_AND_RETHROW((link_id))
+    EVT_THROW(evt_link_existed_exception, "EVT-Link: ${l} is not existed", ("l",link_id));
+}
+
+uint32_t
+controller::get_block_num_for_trx_id(const transaction_id_type& trx_id) const {
+    if(const auto* t = my->db.find<transaction_object, by_trx_id>(trx_id)) {
+        return t->block_num;
+    }
+    EVT_THROW(transaction_not_found, "Transaction: ${t} is not existed", ("t",trx_id));
 }
 
 void

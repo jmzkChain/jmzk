@@ -127,6 +127,7 @@ FC_DECLARE_DERIVED_EXCEPTION( payer_exception,                   transaction_exc
 FC_DECLARE_DERIVED_EXCEPTION( too_many_tx_at_once,               transaction_exception, 3040013, "Pushing too many transactions at once" );
 FC_DECLARE_DERIVED_EXCEPTION( tx_too_big,                        transaction_exception, 3040014, "Transaction is too big" );
 FC_DECLARE_DERIVED_EXCEPTION( unknown_transaction_compression,   transaction_exception, 3040015, "Unknown transaction compression" );
+FC_DECLARE_DERIVED_EXCEPTION( transaction_not_found,             transaction_exception, 3040016, "Transaction cannot be found" );
 
 FC_DECLARE_DERIVED_EXCEPTION( producer_priv_key_not_found,       producer_exception, 3050001, "Producer private key is not available" );
 FC_DECLARE_DERIVED_EXCEPTION( missing_pending_block_state,       producer_exception, 3050002, "Pending block state is missing" );

@@ -949,7 +949,14 @@ read_only::get_head_block_header_state(const get_head_block_header_state_params&
 
 fc::variant
 read_only::get_transaction(const get_transaction_params& params) {
-    auto block = db.fetch_block_by_number(params.block_num);
+    auto block_num = 0;
+    if(!params.block_num.valid()) {
+        block_num = db.get_block_num_for_trx_id(params.id);
+    }
+    else {
+        block_num = *params.block_num;
+    }
+    auto block = db.fetch_block_by_number(block_num);
     EVT_ASSERT(block, unknown_block_exception, "Could not find head block");
 
     for(auto& tx : block->transactions) {
