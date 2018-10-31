@@ -18,6 +18,57 @@ def cli():
     pass
 
 
+@cli.command()
+@click.argument('name')
+def start(name):
+    try:
+        container = client.containers.get(name)
+        if container.status == 'running':
+            click.echo(
+                '{} container is already running and cannot start'.format(green(name)))
+            return
+
+        container.start()
+        click.echo('{} container is started'.format(green(name)))
+    except docker.errors.NotFound:
+        click.echo('{} container is not existed'.format(green(name)))
+
+
+@cli.command()
+@click.argument('name')
+def stop(name):
+    try:
+        container = client.containers.get(name)
+        if container.status != 'running':
+            click.echo(
+                '{} container is already stopped'.format(green(name)))
+            return
+
+        container.stop()
+        click.echo('{} container is stopped'.format(green(name)))
+    except docker.errors.NotFound:
+        click.echo(
+            '{} container is not existed, please start first'.format(green(name)))
+
+
+@cli.command()
+@click.argument('name')
+@click.option('--tail', '-t', default=100, help='Output specified number of lines at the end of logs')
+@click.option('--stream/--no-stream', '-s', default=False, help='Stream the output')
+def logs(name, tail, stream):
+    try:
+        container = client.containers.get(name)
+        s = container.logs(stdout=True, tail=tail, stream=stream)
+        if stream:
+            for line in s:
+                click.echo(line, nl=False)
+        else:
+            click.echo(s.decode('utf-8'))
+    except docker.errors.NotFound:
+        click.echo(
+            '{} container is not existed, please start first'.format(green(name)))
+
+
 @cli.group('network')
 @click.option('--name', '-n', default='evt-net', help='Name of the network for the environment')
 @click.pass_context
@@ -159,6 +210,26 @@ def clear(ctx, all):
         click.echo('Mongo: {} volume is removed'.format(green(volume_name)))
     except docker.errors.NotFound:
         click.echo('Mongo: {} volume is not existed'.format(green(volume_name)))
+
+
+@mongo.command('start')
+@click.pass_context
+def startmongo(ctx):
+    ctx.invoke(start, name=ctx.obj['name'])
+
+
+@mongo.command('stop')
+@click.pass_context
+def stopmongo(ctx):
+    ctx.invoke(stop, name=ctx.obj['name'])
+
+
+@mongo.command('logs')
+@click.option('--tail', '-t', default=100, help='Output specified number of lines at the end of logs')
+@click.option('--stream/--no-stream', '-s', default=False, help='Stream the output')
+@click.pass_context
+def mongologs(ctx, tail, stream):
+    ctx.forward(logs, name=ctx.obj['name'])
 
 
 @cli.group()
@@ -336,7 +407,7 @@ def create(ctx, net, http_port, p2p_port, host, mongodb_name, mongodb_port, mong
             create = True
         else:
             click.echo(
-                'evtd: {} container is already existed and running, cannot restart, run `mongo stop` first'.format(green(name)))
+                'evtd: {} container is already existed and running, cannot restart, run `evtd stop` first'.format(green(name)))
             return
     except docker.errors.NotFound:
         create = True
@@ -353,7 +424,7 @@ def create(ctx, net, http_port, p2p_port, host, mongodb_name, mongodb_port, mong
                     green(mongodb_name)))
                 return
         except docker.errors.NotFound:
-            click.echo('{} container is not existed, please create mongo container first'.format(
+            click.echo('{} container is not existed, please run `mongo create` first'.format(
                 green(mongodb_name)))
             return
 
@@ -377,6 +448,26 @@ def create(ctx, net, http_port, p2p_port, host, mongodb_name, mongodb_port, mong
                              entrypoint=entry
                              )
     click.echo('evtd: {} container is created'.format(green(name)))
+
+
+@evtd.command('start')
+@click.pass_context
+def startevtd(ctx):
+    ctx.invoke(start, name=ctx.obj['name'])
+
+
+@evtd.command('stop')
+@click.pass_context
+def stopevtd(ctx):
+    ctx.invoke(stop, name=ctx.obj['name'])
+
+
+@evtd.command('logs')
+@click.option('--tail', '-t', default=100, help='Output specified number of lines at the end of logs')
+@click.option('--stream/--no-stream', '-s', default=False, help='Stream the output')
+@click.pass_context
+def evtdlogs(ctx, tail, stream):
+    ctx.forward(logs, name=ctx.obj['name'])
 
 
 @cli.group()
@@ -434,7 +525,7 @@ def create(ctx, net, port, host):
             create = True
         else:
             click.echo(
-                'evtwd: {} container is already existed and running, cannot restart, run `mongo stop` first'.format(green(name)))
+                'evtwd: {} container is already existed and running, cannot restart, run `evtwd stop` first'.format(green(name)))
             return
     except docker.errors.NotFound:
         create = True
@@ -483,6 +574,26 @@ def clear(ctx, all):
         click.echo('evtwd: {} volume is removed'.format(green(volume_name)))
     except docker.errors.NotFound:
         click.echo('evtwd: {} volume is not existed'.format(green(volume_name)))
+
+
+@evtwd.command('start')
+@click.pass_context
+def startevtwd(ctx):
+    ctx.invoke(start, name=ctx.obj['name'])
+
+
+@evtwd.command('stop')
+@click.pass_context
+def stopevtwd(ctx):
+    ctx.invoke(stop, name=ctx.obj['name'])
+
+
+@evtwd.command('logs')
+@click.option('--tail', '-t', default=100, help='Output specified number of lines at the end of logs')
+@click.option('--stream/--no-stream', '-s', default=False, help='Stream the output')
+@click.pass_context
+def evtwdlogs(ctx, tail, stream):
+    ctx.forward(logs, name=ctx.obj['name'])
 
 
 @cli.command(context_settings=dict(
@@ -540,57 +651,6 @@ def detail(name):
         green(list(ct['NetworkSettings']['Networks'].keys())[0])))
     click.echo('   ports: {}'.format(green(', '.join(ports))))
     click.echo('  status: {}'.format(green(ct['Status'])))
-
-
-@cli.command()
-@click.argument('name')
-@click.option('--tail', '-t', default=100, help='Output specified number of lines at the end of logs')
-@click.option('--stream/--no-stream', '-s', default=False, help='Stream the output')
-def logs(name, tail, stream):
-    try:
-        container = client.containers.get(name)
-        s = container.logs(stdout=True, tail=tail, stream=stream)
-        if stream:
-            for line in s:
-                click.echo(line, nl=False)
-        else:
-            click.echo(s.decode('utf-8'))
-    except docker.errors.NotFound:
-        click.echo(
-            '{} container is not existed, please start first'.format(green(name)))
-
-
-@cli.command()
-@click.argument('name')
-def start(name):
-    try:
-        container = client.containers.get(name)
-        if container.status == 'running':
-            click.echo(
-                '{} container is already running, cannot restart'.format(green(name)))
-            return
-
-        container.start()
-        click.echo('{} container is started'.format(green(name)))
-    except docker.errors.NotFound:
-        click.echo('{} container is not existed'.format(green(name)))
-
-
-@cli.command()
-@click.argument('name')
-def stop(name):
-    try:
-        container = client.containers.get(name)
-        if container.status != 'running':
-            click.echo(
-                '{} container is already stopped'.format(green(name)))
-            return
-
-        container.stop()
-        click.echo('{} container is stopped'.format(green(name)))
-    except docker.errors.NotFound:
-        click.echo(
-            '{} container is not existed, please start first'.format(green(name)))
 
 
 if __name__ == '__main__':
