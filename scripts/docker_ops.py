@@ -88,7 +88,7 @@ def init(ctx):
 @click.option('--port', '-p', default=27017, help='Expose port for mongodb')
 @click.option('--host', '-h', default='127.0.0.1', help='Host address for mongodb')
 @click.pass_context
-def start(ctx, net, port, host):
+def create(ctx, net, port, host):
     name = ctx.obj['name']
     volume_name = '{}-data-volume'.format(name)
 
@@ -123,31 +123,12 @@ def start(ctx, net, port, host):
     if not create:
         return
 
-    client.containers.run('mongo:latest', None, name=name, detach=True, network=net,
-                          ports={'27017/tcp': (host, port)},
-                          volumes={volume_name: {
-                              'bind': '/data/db', 'mode': 'rw'}},
-                          )
-    click.echo('Mongo: {} container is started'.format(green(name)))
-
-
-@mongo.command()
-@click.pass_context
-def stop(ctx):
-    name = ctx.obj['name']
-
-    try:
-        container = client.containers.get(name)
-        if container.status != 'running':
-            click.echo(
-                'Mongo: {} container is already stopped'.format(green(name)))
-            return
-
-        container.stop()
-        click.echo('Mongo: {} container is stopped'.format(green(name)))
-    except docker.errors.NotFound:
-        click.echo(
-            'Mongo: {} container is not existed, please start first'.format(green(name)))
+    client.containers.create('mongo:latest', None, name=name, detach=True, network=net,
+                             ports={'27017/tcp': (host, port)},
+                             volumes={volume_name: {
+                                 'bind': '/data/db', 'mode': 'rw'}},
+                             )
+    click.echo('Mongo: {} container is created'.format(green(name)))
 
 
 @mongo.command()
@@ -283,25 +264,6 @@ def importrb(ctx, file):
 
 
 @evtd.command()
-@click.pass_context
-def stop(ctx):
-    name = ctx.obj['name']
-
-    try:
-        container = client.containers.get(name)
-        if container.status != 'running':
-            click.echo(
-                'evtd: {} container is already stopped'.format(green(name)))
-            return
-
-        container.stop()
-        click.echo('evtd: {} container is stopped'.format(green(name)))
-    except docker.errors.NotFound:
-        click.echo(
-            'evtd: {} container is not existed, please start first'.format(green(name)))
-
-
-@evtd.command()
 @click.option('--all', '-a', default=False, help='Clear both container and volume, otherwise only clear container')
 @click.pass_context
 def clear(ctx, all):
@@ -417,15 +379,148 @@ def create(ctx, net, http_port, p2p_port, host, mongodb_name, mongodb_port, mong
     click.echo('evtd: {} container is created'.format(green(name)))
 
 
-@evtd.command()
+@cli.group()
+@click.option('--name', '-n', default='evtwd', help='Name of the container running evtwd')
 @click.pass_context
-def detail(ctx):
+def evtwd(ctx, name):
+    ctx.ensure_object(dict)
+    ctx.obj['name'] = name
+
+
+@evtwd.command()
+@click.pass_context
+def init(ctx):
     name = ctx.obj['name']
 
+    volume_name = '{}-data-volume'.format(name)
+    try:
+        client.volumes.get(volume_name)
+        click.echo('evtwd: {} volume is already existed, no need to create one'.
+                   format(green(volume_name)))
+    except docker.errors.NotFound:
+        client.volumes.create(volume_name)
+        click.echo('evtwd: {} volume is created'.format(green(volume_name)))
+
+
+@evtwd.command()
+@click.option('--net', '-n', default='evt-net', help='Name of the network for the environment')
+@click.option('--port', '-p', default=0, help='Expose port for evtwd, leave zero for not exposed')
+@click.option('--host', '-h', default='127.0.0.1', help='Host address for evtwd')
+@click.pass_context
+def create(ctx, net, port, host):
+    name = ctx.obj['name']
+    volume_name = '{}-data-volume'.format(name)
+
+    try:
+        client.images.get('everitoken/evt:latest')
+        client.networks.get(net)
+        client.volumes.get(volume_name)
+    except docker.errors.ImageNotFound:
+        click.echo(
+            'evtwd: Some necessary elements are not found, please run `evtwd init` first')
+        return
+    except docker.errors.NotFound:
+        click.echo(
+            'evtwd: Some necessary elements are not found, please run `evtwd init` first')
+        return
+
+    create = False
+    try:
+        container = client.containers.get(name)
+        if container.status != 'running':
+            click.echo(
+                'evtwd: {} container is existed but not running, try to remove old container and start a new one'.format(green(name)))
+            container.remove()
+            create = True
+        else:
+            click.echo(
+                'evtwd: {} container is already existed and running, cannot restart, run `mongo stop` first'.format(green(name)))
+            return
+    except docker.errors.NotFound:
+        create = True
+
+    if not create:
+        return
+
+    ports = {}
+    if port != 0:
+        ports['9999/tcp'] = (host, port)
+    entry = '/opt/evt/bin/evtwd --http-server-address=0.0.0.0:9999'
+    client.containers.create('everitoken/evt:latest', None, name=name, detach=True, network=net,
+                             ports=ports,
+                             volumes={volume_name: {
+                                 'bind': '/opt/evt/data', 'mode': 'rw'}},
+                             entrypoint=entry
+                             )
+    click.echo('evtwd: {} container is created'.format(green(name)))
+
+
+@evtwd.command()
+@click.option('--all/--no-all', '-a', default=False, help='Clear both container and volume, otherwise only clear container')
+@click.pass_context
+def clear(ctx, all):
+    name = ctx.obj['name']
+    volume_name = '{}-data-volume'.format(name)
+
+    try:
+        container = client.containers.get(name)
+        if container.status == 'running':
+            click.echo(
+                'evtwd: {} container is still running, cannot clean'.format(green(name)))
+            return
+
+        container.remove()
+        click.echo('evtwd: {} container is removed'.format(green(name)))
+    except docker.errors.NotFound:
+        click.echo('evtwd: {} container is not existed'.format(green(name)))
+
+    if not all:
+        return
+
+    try:
+        volume = client.volumes.get(volume_name)
+        volume.remove(force=True)
+        click.echo('evtwd: {} volume is removed'.format(green(volume_name)))
+    except docker.errors.NotFound:
+        click.echo('evtwd: {} volume is not existed'.format(green(volume_name)))
+
+
+@cli.command(context_settings=dict(
+    ignore_unknown_options=True,
+    help_option_names=[]
+))
+@click.argument('commands', nargs=-1, type=click.UNPROCESSED)
+@click.option('--net', '-n', default='evt-net', help='Name of the network for the environment')
+@click.option('--evtwd', '-w', default='evtwd', help='Name of evtwd container')
+def evtc(commands, net, evtwd):
+    try:
+        client.images.get('everitoken/evt:latest')
+        client.networks.get(net)
+        client.containers.get(evtwd)
+    except docker.errors.ImageNotFound:
+        click.echo(
+            'evtc: Some necessary elements are not found, please run `evtwd init` first')
+        return
+    except docker.errors.NotFound:
+        click.echo(
+            'evtwd: Some necessary elements are not found, please run `evtwd init` first')
+        return
+
+    entry = '/opt/evt/bin/evtc'
+    stream = client.containers.run('everitoken/evt:latest', commands,
+                                   auto_remove=True, stream=True, network=net, entrypoint=entry)
+    for line in stream:
+        click.echo(line.decode('utf-8'), nl=False)
+
+
+@cli.command()
+@click.argument('name')
+def detail(name):
     client = docker.APIClient()
-    containers = [c for c in client.containers(all=True, filters={'name': name}) if c['Names'][0] == '/' + name]
+    containers = [c for c in client.containers(
+        all=True, filters={'name': name}) if c['Names'][0] == '/' + name]
     if len(containers) == 0:
-        click.echo('evtd: {} container is not found'.format(green(name)))
+        click.echo('{} container is not found'.format(green(name)))
         return
 
     ct = containers[0]
@@ -437,24 +532,24 @@ def detail(ctx):
         if p['PrivatePort'] == 7888:
             p['Type'] += '(p2p)'
 
-        ports.append('{}:{}->{}/{}'.format(p['IP'], p['PublicPort'], p['PrivatePort'], p['Type']))
+        ports.append(
+            '{}:{}->{}/{}'.format(p['IP'], p['PublicPort'], p['PrivatePort'], p['Type']))
 
     click.echo('      id: {}'.format(green(ct['Id'])))
     click.echo('   image: {}'.format(green(ct['Image'])))
     click.echo('image-id: {}'.format(green(ct['ImageID'])))
     click.echo(' command: {}'.format(green(ct['Command'])))
-    click.echo(' network: {}'.format(green(list(ct['NetworkSettings']['Networks'].keys())[0])))
+    click.echo(' network: {}'.format(
+        green(list(ct['NetworkSettings']['Networks'].keys())[0])))
     click.echo('   ports: {}'.format(green(', '.join(ports))))
     click.echo('  status: {}'.format(green(ct['Status'])))
 
 
-@evtd.command()
+@cli.command()
+@click.argument('name')
 @click.option('--tail', '-t', default=100, help='Output specified number of lines at the end of logs')
 @click.option('--stream/--no-stream', '-s', default=False, help='Stream the output')
-@click.pass_context
-def logs(ctx, tail, stream):
-    name = ctx.obj['name']
-
+def logs(name, tail, stream):
     try:
         container = client.containers.get(name)
         s = container.logs(stdout=True, tail=tail, stream=stream)
@@ -465,25 +560,40 @@ def logs(ctx, tail, stream):
             click.echo(s.decode('utf-8'))
     except docker.errors.NotFound:
         click.echo(
-            'evtd: {} container is not existed, please start first'.format(green(name)))
+            '{} container is not existed, please start first'.format(green(name)))
 
 
-@evtd.command()
-@click.pass_context
-def start(ctx):
-    name = ctx.obj['name']
-
+@cli.command()
+@click.argument('name')
+def start(name):
     try:
         container = client.containers.get(name)
         if container.status == 'running':
             click.echo(
-                'evtd: {} container is already running, cannot restart'.format(green(name)))
+                '{} container is already running, cannot restart'.format(green(name)))
             return
 
         container.start()
-        click.echo('evtd: {} container is started'.format(green(name)))
+        click.echo('{} container is started'.format(green(name)))
     except docker.errors.NotFound:
-        click.echo('evtd: {} container is not existed'.format(green(name)))
+        click.echo('{} container is not existed'.format(green(name)))
+
+
+@cli.command()
+@click.argument('name')
+def stop(name):
+    try:
+        container = client.containers.get(name)
+        if container.status != 'running':
+            click.echo(
+                '{} container is already stopped'.format(green(name)))
+            return
+
+        container.stop()
+        click.echo('{} container is stopped'.format(green(name)))
+    except docker.errors.NotFound:
+        click.echo(
+            '{} container is not existed, please start first'.format(green(name)))
 
 
 if __name__ == '__main__':
