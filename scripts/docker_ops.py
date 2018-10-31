@@ -490,13 +490,10 @@ def clear(ctx, all):
     help_option_names=[]
 ))
 @click.argument('commands', nargs=-1, type=click.UNPROCESSED)
-@click.option('--net', '-n', default='evt-net', help='Name of the network for the environment')
 @click.option('--evtwd', '-w', default='evtwd', help='Name of evtwd container')
-def evtc(commands, net, evtwd):
+def evtc(commands, evtwd):
     try:
-        client.images.get('everitoken/evt:latest')
-        client.networks.get(net)
-        client.containers.get(evtwd)
+        container = client.containers.get(evtwd)
     except docker.errors.ImageNotFound:
         click.echo(
             'evtc: Some necessary elements are not found, please run `evtwd init` first')
@@ -506,10 +503,10 @@ def evtc(commands, net, evtwd):
             'evtwd: Some necessary elements are not found, please run `evtwd init` first')
         return
 
-    entry = '/opt/evt/bin/evtc'
-    stream = client.containers.run('everitoken/evt:latest', commands,
-                                   auto_remove=True, stream=True, network=net, entrypoint=entry)
-    for line in stream:
+    entry = '/opt/evt/bin/evtc {}'.format(' '.join(commands))
+    code, result = container.exec_run(entry, stream=True)
+
+    for line in result:
         click.echo(line.decode('utf-8'), nl=False)
 
 
