@@ -152,7 +152,7 @@ FC_DECLARE_DERIVED_EXCEPTION( unknown_suspend_exception,           suspend_excep
 FC_DECLARE_DERIVED_EXCEPTION( suspend_duplicate_exception,         suspend_exception, 3250002, "Suspend transaction already exists." );
 FC_DECLARE_DERIVED_EXCEPTION( suspend_status_exception,            suspend_exception, 3250003, "Suspend transaction is not in proper status." );
 FC_DECLARE_DERIVED_EXCEPTION( suspend_proposer_key_exception,      suspend_exception, 3250004, "Proposer needs to sign his key." );
-FC_DECLARE_DERIVED_EXCEPTION( suspend_duplicate_key_exception,     suspend_exception, 3250005, "Some keys are already signed this suspend transaction." );
+FC_DECLARE_DERIVED_EXCEPTION( suspend_duplicate_key_exception,     suspend_exception, 3250005, "Same keys are already signed this suspend transaction." );
 FC_DECLARE_DERIVED_EXCEPTION( suspend_expired_tx_exception,        suspend_exception, 3250006, "Suspend transaction is expired." );
 FC_DECLARE_DERIVED_EXCEPTION( suspend_not_required_keys_exception, suspend_exception, 3250007, "Provided keys are not required." );
 FC_DECLARE_DERIVED_EXCEPTION( suspend_executor_exception,          suspend_exception, 3250008, "Invalid executor." );
