@@ -175,7 +175,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newdomain_test", "[contracts]") {
 
     my_tester->push_action(N(newdomain), name128(get_domain_name()), N128(.create), var.get_object(), key_seeds, payer);
 
-    //domain_exists_exception test
+    //domain_duplicate_exception test
     CHECK_THROWS_AS(my_tester->push_action(N(newdomain), name128(get_domain_name()), N128(.create), var.get_object(), key_seeds, payer), tx_duplicate);
 
     CHECK(tokendb.exists_domain(get_domain_name()));
@@ -574,7 +574,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newfungible_test", "[contracts]") {
     newfg.sym_name      = "lala";
     newfg.total_supply = asset::from_string(string("10.00000 S#3"));
     to_variant(newfg, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(newfungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, fungible_payer),fungible_exists_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(newfungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, fungible_payer),fungible_duplicate_exception);
 
     newfg.total_supply = asset::from_string(string("0.00000 S#3"));
     to_variant(newfg, var);
@@ -737,7 +737,7 @@ TEST_CASE_METHOD(contracts_test, "contract_recycleft_test", "[contracts]") {
     rf.address = poorer;
     to_variant(rf, var);
 
-    CHECK_THROWS_AS(my_tester->push_action(N(recycleft), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer), tokendb_key_not_found);
+    CHECK_THROWS_AS(my_tester->push_action(N(recycleft), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer), balance_exception);
 
     rf.address = key;
     to_variant(rf, var);
@@ -1249,7 +1249,7 @@ TEST_CASE_METHOD(contracts_test, "everipass_test", "[contracts]") {
 
     ep.link.add_segment(evt_link::segment(evt_link::token, "t5"));
     sign_link(ep.link);
-    CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t5), ep), key_seeds, payer), tokendb_key_not_found);
+    CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t5), ep), key_seeds, payer), unknown_token_exception);
 
     header |= evt_link::destroy;
     ep.link.set_header(header);

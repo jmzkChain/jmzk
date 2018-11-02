@@ -99,7 +99,7 @@ auto make_permission_checker = [](const auto& tokendb) {
             case authorizer_ref::group_t: {
                 auto& name = ref.get_group();
                 auto dbexisted = tokendb.exists_group(name);
-                EVT_ASSERT(dbexisted, group_not_existed_exception, "Group ${name} does not exist.", ("name", name));
+                EVT_ASSERT(dbexisted, unknown_group_exception, "Group ${name} does not exist.", ("name", name));
                 break;
             }
             default: {
@@ -156,7 +156,7 @@ EVT_ACTION_IMPL(newdomain) {
         check_name_reserved(ndact.name);
 
         auto& tokendb = context.token_db;
-        EVT_ASSERT(!tokendb.exists_domain(ndact.name), domain_exists_exception, "Domain ${name} already exists.", ("name",ndact.name));
+        EVT_ASSERT(!tokendb.exists_domain(ndact.name), domain_duplicate_exception, "Domain ${name} already exists.", ("name",ndact.name));
 
         EVT_ASSERT(ndact.issue.name == "issue", permission_type_exception, "Name ${name} does not match with the name of issue permission.", ("name",ndact.issue.name));
         EVT_ASSERT(ndact.issue.threshold > 0 && validate(ndact.issue), permission_type_exception, "Issue permission is not valid, which may be caused by invalid threshold, duplicated keys.");
@@ -202,11 +202,11 @@ EVT_ACTION_IMPL(issuetoken) {
         }
 
         auto& tokendb = context.token_db;
-        EVT_ASSERT(tokendb.exists_domain(itact.domain), domain_not_existed_exception, "Domain ${name} does not exist.", ("name", itact.domain));
+        EVT_ASSERT(tokendb.exists_domain(itact.domain), unknown_domain_exception, "Domain ${name} does not exist.", ("name", itact.domain));
 
         auto check_name = [&](const auto& name) {
             check_name_reserved(name);
-            EVT_ASSERT(!tokendb.exists_token(itact.domain, name), token_exists_exception, "Token ${domain}-${name} already exists.", ("domain",itact.domain)("name",name));
+            EVT_ASSERT(!tokendb.exists_token(itact.domain, name), token_duplicate_exception, "Token ${domain}-${name} already exists.", ("domain",itact.domain)("name",name));
         };
         for(auto& n : itact.names) {
             check_name(n);
@@ -308,7 +308,7 @@ EVT_ACTION_IMPL(newgroup) {
         check_name_reserved(ngact.name);
         
         auto& tokendb = context.token_db;
-        EVT_ASSERT(!tokendb.exists_group(ngact.name), group_exists_exception, "Group ${name} already exists.", ("name",ngact.name));
+        EVT_ASSERT(!tokendb.exists_group(ngact.name), group_duplicate_exception, "Group ${name} already exists.", ("name",ngact.name));
         EVT_ASSERT(validate(ngact.group), group_type_exception, "Input group is not valid.");
 
         tokendb.add_group(std::move(ngact.group));
@@ -415,7 +415,7 @@ EVT_ACTION_IMPL(newfungible) {
 
         auto& tokendb = context.token_db;
 
-        EVT_ASSERT(!tokendb.exists_fungible(nfact.sym), fungible_exists_exception, "Fungible with symbol id: ${s} is already existed", ("s",nfact.sym.id()));
+        EVT_ASSERT(!tokendb.exists_fungible(nfact.sym), fungible_duplicate_exception, "Fungible with symbol id: ${s} is already existed", ("s",nfact.sym.id()));
 
         EVT_ASSERT(nfact.issue.name == "issue", permission_type_exception, "Name ${name} does not match with the name of issue permission.", ("name",nfact.issue.name));
         EVT_ASSERT(nfact.issue.threshold > 0 && validate(nfact.issue), permission_type_exception, "Issue permission is not valid, which may be caused by invalid threshold, duplicated keys.");
@@ -493,7 +493,7 @@ EVT_ACTION_IMPL(issuefungible) {
         EVT_ASSERT(!ifact.address.is_reserved(), fungible_address_exception, "Cannot issue fungible tokens to reserved address");
 
         auto& tokendb = context.token_db;
-        EVT_ASSERT(tokendb.exists_fungible(sym), fungible_exists_exception, "{sym} fungible tokens doesn't exist", ("sym",sym));
+        EVT_ASSERT(tokendb.exists_fungible(sym), fungible_duplicate_exception, "{sym} fungible tokens doesn't exist", ("sym",sym));
 
         auto addr = get_fungible_address(sym);
         EVT_ASSERT(addr != ifact.address, fungible_address_exception, "From and to are the same address");
@@ -848,7 +848,7 @@ EVT_ACTION_IMPL(newsuspend) {
         }
 
         auto& tokendb = context.token_db;
-        EVT_ASSERT(!tokendb.exists_suspend(nsact.name), suspend_exists_exception, "Suspend ${name} already exists.", ("name",nsact.name));
+        EVT_ASSERT(!tokendb.exists_suspend(nsact.name), suspend_duplicate_exception, "Suspend ${name} already exists.", ("name",nsact.name));
 
         suspend_def suspend;
         suspend.name     = nsact.name;
@@ -1229,7 +1229,7 @@ EVT_ACTION_IMPL(newlock) {
         EVT_ASSERT(context.has_authorized(N128(.lock), nlact.name), action_authorize_exception, "Authorized information does not match.");
 
         auto& tokendb = context.control.token_db();
-        EVT_ASSERT(!tokendb.exists_lock(nlact.name), lock_existes_exception, "Lock assets with same name: ${n} is already existed", ("n",nlact.name));
+        EVT_ASSERT(!tokendb.exists_lock(nlact.name), lock_duplicate_exception, "Lock assets with same name: ${n} is already existed", ("n",nlact.name));
 
         auto now = context.control.pending_block_time();
         EVT_ASSERT(nlact.unlock_time > now, lock_unlock_time_exception, "Now is ahead of unlock time, unlock time is ${u}, now is ${n}", ("u",nlact.unlock_time)("n",now));

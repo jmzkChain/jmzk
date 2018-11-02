@@ -23,6 +23,7 @@ class transaction_object : public chainbase::object<transaction_object_type, tra
     id_type             id;
     time_point_sec      expiration;
     transaction_id_type trx_id;
+    uint32_t            block_num;
 };
 
 struct by_expiration;

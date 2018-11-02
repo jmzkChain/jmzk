@@ -208,8 +208,9 @@ class Test(unittest.TestCase):
             'link_id': 'ddc101c51318d51733d682e80b8ea2bc'
         }
         req['link_id'] = pay_link.get_link_id().hex()
-        resp = api.get_trx_id_for_link_id(json.dumps(req)).text
-        self._test_evt_link_response(resp)
+        for i in range(1000):
+            resp = api.get_trx_id_for_link_id(json.dumps(req)).text
+            self._test_evt_link_response(resp)
 
     def test_evt_link_for_trx_id2(self):
         symbol = base.Symbol(
@@ -375,6 +376,7 @@ class Test(unittest.TestCase):
             'names': [
                 'issuetoken'
             ],
+            'dire': 'asc',
             'skip': 0,
             'take': 10
         }
@@ -382,6 +384,8 @@ class Test(unittest.TestCase):
 
         resp = api.get_actions(json.dumps(req)).text
         self.assertTrue(token1_name in resp, msg=resp)
+        self.assertTrue('block_num' in resp, msg=resp)
+        self.assertTrue('timestamp' in resp, msg=resp)
 
         req = {
             'domain': '.fungible',
@@ -389,6 +393,7 @@ class Test(unittest.TestCase):
             'names': [
                 'everipay'
             ],
+            'dire': 'asc',
             'skip': 0,
             'take': 10
         }
@@ -396,6 +401,8 @@ class Test(unittest.TestCase):
 
         resp = api.get_actions(json.dumps(req)).text
         self.assertTrue('everipay' in resp, msg=resp)
+        self.assertTrue('block_num' in resp, msg=resp)
+        self.assertTrue('timestamp' in resp, msg=resp)
 
     def test_get_fungible_actions(self):
         req = {
@@ -409,10 +416,14 @@ class Test(unittest.TestCase):
         resp = api.get_fungible_actions(json.dumps(req)).text
         self.assertTrue('issuefungible' in resp, msg=resp)
         self.assertTrue(str(sym_id) in resp, msg=resp)
+        self.assertTrue('block_num' in resp, msg=resp)
+        self.assertTrue('timestamp' in resp, msg=resp)
 
         req['sym_id'] = 1
         resp = api.get_fungible_actions(json.dumps(req)).text
         self.assertTrue('evt2pevt' in resp, msg=resp)
+        self.assertTrue('block_num' in resp, msg=resp)
+        self.assertTrue('timestamp' in resp, msg=resp)
 
     def test_get_history_transaction(self):
         name = fake_name()
