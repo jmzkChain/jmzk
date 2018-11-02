@@ -615,7 +615,12 @@ token_database::update_prodvote(const conf_key& key, const public_key_type& pkey
 int
 token_database::read_domain(const domain_name& name, domain_def& domain) const {
     using namespace __internal;
-    return my_->read_impl<kDomain>(name, domain);
+    try {
+        return my_->read_impl<kDomain>(name, domain);
+    }
+    catch(const tokendb_key_not_found&) {
+        EVT_THROW(unknown_domain_exception, "Unknown domain: ${n}", ("n",name));
+    }
 }
 
 int
@@ -625,40 +630,65 @@ token_database::read_token(const domain_name& domain, const token_name& name, to
     auto key    = get_db_key(domain, name);
     auto status = db_->Get(read_opts_, key.as_slice(), &value);
     if(!status.ok()) {
-        EVT_THROW(tokendb_key_not_found, "Cannot find key: ${name} with prefix: ${domain}", ("domain",domain)("name",name));
+        EVT_THROW(unknown_token_exception, "Unknown token: ${name} in ${domain}", ("domain",domain)("name",name));
     }
     token = read_value<token_def>(value);
     return 0;
 }
 
 int
-token_database::read_group(const group_name& id, group_def& group) const {
+token_database::read_group(const group_name& name, group_def& group) const {
     using namespace __internal;
-    return my_->read_impl<kGroup>(id, group);
+    try {
+        return my_->read_impl<kGroup>(name, group);
+    }
+    catch(const tokendb_key_not_found&) {
+        EVT_THROW(unknown_group_exception, "Unknown group: ${n}", ("n",name));
+    }
 }
 
 int
 token_database::read_suspend(const proposal_name& name, suspend_def& suspend) const {
     using namespace __internal;
-    return my_->read_impl<kSuspend>(name, suspend);
+    try {
+        return my_->read_impl<kSuspend>(name, suspend);
+    }
+    catch(const tokendb_key_not_found&) {
+        EVT_THROW(unknown_suspend_exception, "Unknown suspend proposal: ${n}", ("n",name));
+    }
 }
 
 int
 token_database::read_lock(const proposal_name& name, lock_def& lock) const {
     using namespace __internal;
-    return my_->read_impl<kLock>(name, lock);
+    try {
+        return my_->read_impl<kLock>(name, lock);
+    }
+    catch(const tokendb_key_not_found&) {
+        EVT_THROW(unknown_lock_exception, "Unknown lock assets proposal: ${n}", ("n",name));
+    }
 }
 
 int
 token_database::read_fungible(const symbol sym, fungible_def& fungible) const {
     using namespace __internal;
-    return my_->read_impl<kFungible>((uint128_t)sym.id(), fungible);
+    try {
+        return my_->read_impl<kFungible>((uint128_t)sym.id(), fungible);
+    }
+    catch(const tokendb_key_not_found&) {
+        EVT_THROW(unknown_fungible_exception, "Unknown fungible symbol id: ${id}", ("id",sym.id()));
+    }
 }
 
 int
 token_database::read_fungible(const symbol_id_type sym_id, fungible_def& fungible) const {
     using namespace __internal;
-    return my_->read_impl<kFungible>((uint128_t)sym_id, fungible);
+    try {
+        return my_->read_impl<kFungible>((uint128_t)sym_id, fungible);
+    }
+    catch(const tokendb_key_not_found&) {
+        EVT_THROW(unknown_fungible_exception, "Unknown fungible symbol id: ${id}", ("id",sym_id));
+    }
 }
 
 int
@@ -670,7 +700,7 @@ token_database::read_asset(const address& addr, const symbol symbol, asset& v) c
 
     if(!it->Valid() || it->key().compare(key.as_slice()) != 0) {
         delete it;
-        EVT_THROW(tokendb_key_not_found, "Cannot find fungible: ${sym} in address: {addr}", ("sym",symbol)("addr",addr));
+        EVT_THROW(balance_exception, "Cannot find any fungible(S#${id}) balance in address: {addr}", ("id",symbol.id())("addr",addr));
     }
     v = read_value<asset>(it->value());
     delete it;
