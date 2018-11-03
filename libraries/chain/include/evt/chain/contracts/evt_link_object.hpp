@@ -22,7 +22,7 @@ class evt_link_object : public chainbase::object<evt_link_object_type, evt_link_
     uint32_t            block_num;
     link_id_type        link_id;
     transaction_id_type trx_id;
-};
+};  // size: 64
 
 struct by_link_id;
 struct by_link_trx_id;
