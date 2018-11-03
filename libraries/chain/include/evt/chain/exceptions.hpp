@@ -207,8 +207,6 @@ FC_DECLARE_DERIVED_EXCEPTION( block_log_append_fail,         block_log_exception
 FC_DECLARE_DERIVED_EXCEPTION( block_log_not_found,           block_log_exception, 3060003, "block log can not be found" );
 FC_DECLARE_DERIVED_EXCEPTION( block_log_backup_dir_exist,    block_log_exception, 3060004, "block log backup dir already exists" );
 
-FC_DECLARE_DERIVED_EXCEPTION( utility_exception, chain_exception, 3070000, "utility method exception" );
-
 FC_DECLARE_DERIVED_EXCEPTION( fork_database_exception, chain_exception,         3080000, "Fork database exception" );
 FC_DECLARE_DERIVED_EXCEPTION( fork_db_block_not_found, fork_database_exception, 3080001, "Block can not be found" );
 
@@ -238,7 +236,6 @@ FC_DECLARE_DERIVED_EXCEPTION( authority_type_exception,          chain_type_exce
 FC_DECLARE_DERIVED_EXCEPTION( action_type_exception,             chain_type_exception, 3120005, "Invalid action" );
 FC_DECLARE_DERIVED_EXCEPTION( transaction_type_exception,        chain_type_exception, 3120006, "Invalid transaction" );
 FC_DECLARE_DERIVED_EXCEPTION( abi_type_exception,                chain_type_exception, 3120007, "Invalid ABI" );
-FC_DECLARE_DERIVED_EXCEPTION( abi_not_found_exception,           chain_type_exception, 3120008, "No ABI found" );
 FC_DECLARE_DERIVED_EXCEPTION( block_id_type_exception,           chain_type_exception, 3120009, "Invalid block ID" );
 FC_DECLARE_DERIVED_EXCEPTION( transaction_id_type_exception,     chain_type_exception, 3120010, "Invalid transaction ID" );
 FC_DECLARE_DERIVED_EXCEPTION( packed_transaction_type_exception, chain_type_exception, 3120011, "Invalid packed transaction" );
@@ -311,5 +308,23 @@ FC_DECLARE_DERIVED_EXCEPTION( exceed_evt_link_watch_time_exception, evt_link_plu
 FC_DECLARE_DERIVED_EXCEPTION( resource_exhausted_exception, chain_exception, 3200000, "Resource exhausted exception" );
 FC_DECLARE_DERIVED_EXCEPTION( tx_net_usage_exceeded,        resource_exhausted_exception, 3200001, "Transaction exceeded the current network usage limit imposed on the transaction" );
 FC_DECLARE_DERIVED_EXCEPTION( block_net_usage_exceeded,     resource_exhausted_exception, 3200002, "Transaction network usage is too much for the remaining allowable usage of the current block" );
+
+FC_DECLARE_DERIVED_EXCEPTION( abi_exception,                        chain_exception, 3015000, "ABI exception" );
+FC_DECLARE_DERIVED_EXCEPTION( abi_not_found_exception,              abi_exception,   3015001, "No ABI found" );
+FC_DECLARE_DERIVED_EXCEPTION( invalid_ricardian_clause_exception,   abi_exception,   3015002, "Invalid Ricardian Clause" );
+FC_DECLARE_DERIVED_EXCEPTION( invalid_ricardian_action_exception,   abi_exception,   3015003, "Invalid Ricardian Action" );
+FC_DECLARE_DERIVED_EXCEPTION( invalid_type_inside_abi,              abi_exception,   3015004, "The type defined in the ABI is invalid" ); // Not to be confused with abi_type_exception
+FC_DECLARE_DERIVED_EXCEPTION( duplicate_abi_type_def_exception,     abi_exception,   3015005, "Duplicate type definition in the ABI" );
+FC_DECLARE_DERIVED_EXCEPTION( duplicate_abi_struct_def_exception,   abi_exception,   3015006, "Duplicate struct definition in the ABI" );
+FC_DECLARE_DERIVED_EXCEPTION( duplicate_abi_action_def_exception,   abi_exception,   3015007, "Duplicate action definition in the ABI" );
+FC_DECLARE_DERIVED_EXCEPTION( duplicate_abi_table_def_exception,    abi_exception,   3015008, "Duplicate table definition in the ABI" );
+FC_DECLARE_DERIVED_EXCEPTION( duplicate_abi_err_msg_def_exception,  abi_exception,   3015009, "Duplicate error message definition in the ABI" );
+FC_DECLARE_DERIVED_EXCEPTION( abi_serialization_deadline_exception, abi_exception,   3015010, "ABI serialization time has exceeded the deadline" );
+FC_DECLARE_DERIVED_EXCEPTION( abi_recursion_depth_exception,        abi_exception,   3015011, "ABI recursive definition has exceeded the max recursion depth" );
+FC_DECLARE_DERIVED_EXCEPTION( abi_circular_def_exception,           abi_exception,   3015012, "Circular definition is detected in the ABI" );
+FC_DECLARE_DERIVED_EXCEPTION( unpack_exception,                     abi_exception,   3015013, "Unpack data exception" );
+FC_DECLARE_DERIVED_EXCEPTION( pack_exception,                       abi_exception,   3015014, "Pack data exception" );
+FC_DECLARE_DERIVED_EXCEPTION( duplicate_abi_variant_def_exception,  abi_exception,   3015015, "Duplicate variant definition in the ABI" );
+FC_DECLARE_DERIVED_EXCEPTION( unsupported_abi_version_exception,    abi_exception,   3015016, "ABI has an unsupported version" );
 
 }} // evt::chain

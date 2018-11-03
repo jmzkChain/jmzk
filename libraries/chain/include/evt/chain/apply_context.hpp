@@ -4,10 +4,10 @@
  */
 #pragma once
 #include <algorithm>
-#include <boost/noncopyable.hpp>
-#include <evt/chain/controller.hpp>
-#include <fc/utility.hpp>
 #include <sstream>
+#include <boost/noncopyable.hpp>
+#include <fc/utility.hpp>
+#include <evt/chain/controller.hpp>
 
 namespace chainbase {
 class database;

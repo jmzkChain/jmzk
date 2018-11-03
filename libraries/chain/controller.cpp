@@ -21,6 +21,7 @@
 #include <fc/io/json.hpp>
 #include <fc/scoped_exit.hpp>
 
+#include <evt/chain/contracts/abi_serializer.hpp>
 #include <evt/chain/contracts/evt_contract.hpp>
 #include <evt/chain/contracts/evt_org.hpp>
 
@@ -171,7 +172,7 @@ struct controller_impl {
         , token_db(cfg.tokendb_dir)
         , conf(cfg)
         , chain_id(cfg.genesis.compute_chain_id())
-        , system_api(contracts::evt_contract_abi()) {
+        , system_api(contracts::evt_contract_abi(), cfg.max_serialization_time) {
 
         fork_db.irreversible.connect([&](auto b) {
             on_irreversible(b);

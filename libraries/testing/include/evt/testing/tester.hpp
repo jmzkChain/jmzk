@@ -171,13 +171,6 @@ public:
     static action_result
     error(const string& msg) { return msg; }
 
-    auto
-    get_resolver() {
-        return [this]() -> const evt::chain::contracts::abi_serializer& {
-            return evt_abi;
-        };
-    }
-
     void sync_with(base_tester& other);
 
 protected:
@@ -197,7 +190,6 @@ protected:
     controller::config                            cfg;
     map<transaction_id_type, transaction_receipt> chain_transactions;
     map<account_name, block_id_type>              last_produced_block;
-    abi_serializer                                evt_abi;
 };
 
 class tester : public base_tester {

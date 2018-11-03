@@ -95,8 +95,7 @@ using fc::json;
 class chain_plugin_impl {
 public:
     chain_plugin_impl()
-        : system_api(chain::contracts::evt_contract_abi())
-        , pre_accepted_block_channel(app().get_channel<channels::pre_accepted_block>())
+        : pre_accepted_block_channel(app().get_channel<channels::pre_accepted_block>())
         , accepted_block_header_channel(app().get_channel<channels::accepted_block_header>())
         , accepted_block_channel(app().get_channel<channels::accepted_block>())
         , irreversible_block_channel(app().get_channel<channels::irreversible_block>())
@@ -117,7 +116,6 @@ public:
     fc::optional<controller::config> chain_config;
     fc::optional<controller>         chain;
     fc::optional<chain_id_type>      chain_id;
-    abi_serializer                   system_api;
 
     // retained references to channels for easy publication
     channels::pre_accepted_block::channel_type&    pre_accepted_block_channel;
@@ -159,7 +157,7 @@ chain_plugin::set_program_options(options_description& cli, options_description&
         ("blocks-dir", bpo::value<bfs::path>()->default_value("blocks"), "the location of the blocks directory (absolute path or relative to application data dir)")
         ("tokendb-dir", bpo::value<bfs::path>()->default_value("tokendb"), "the location of the token database directory (absolute path or relative to application data dir)")
         ("checkpoint", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
-        ("abi-serializer-max-time-ms", bpo::value<uint32_t>(), "Override default maximum ABI serialization time allowed in ms")
+        ("abi-serializer-max-time-ms", bpo::value<uint32_t>()->default_value(config::default_abi_serializer_max_time_ms), "Override default maximum ABI serialization time allowed in ms")
         ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024 * 1024)), "Maximum size (in MiB) of the chain state database")
         ("chain-state-db-guard-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_guard_size / (1024 * 1024)), "Safely shut down node when free space remaining in the chain state database drops below this size (in MiB).")
         ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_cache_size / (1024 * 1024)), "Maximum size (in MiB) of the reversible blocks database")
@@ -283,7 +281,7 @@ chain_plugin::plugin_initialize(const variables_map& options) {
     }
 
     if(options.count("abi-serializer-max-time-ms")) {
-        abi_serializer::set_max_serialization_time(fc::microseconds(options.at("abi-serializer-max-time-ms").as<uint32_t>() * 1000));
+        my->chain_config->max_serialization_time = fc::milliseconds(options.at("abi-serializer-max-time-ms").as<uint32_t>());
     }
 
     my->chain_config->blocks_dir  = my->blocks_dir;
@@ -577,12 +575,12 @@ chain_plugin::plugin_shutdown() {
 
 chain_apis::read_only
 chain_plugin::get_read_only_api() const {
-    return chain_apis::read_only(chain(), my->system_api);
+    return chain_apis::read_only(chain());
 }
 
 chain_apis::read_write
 chain_plugin::get_read_write_api() {
-    return chain_apis::read_write(chain(), my->system_api);
+    return chain_apis::read_write(chain());
 }
 
 void
@@ -600,6 +598,7 @@ chain_plugin::block_is_on_preferred_chain(const block_id_type& block_id) {
     auto b = chain().fetch_block_by_number(block_header::num_from_id(block_id));
     return b && b->id() == block_id;
 }
+
 bool
 chain_plugin::recover_reversible_blocks(const fc::path& db_dir, uint32_t cache_size,
                                         optional<fc::path> new_db_dir, uint32_t truncate_at_block) {
@@ -823,6 +822,7 @@ controller&
 chain_plugin::chain() {
     return *my->chain;
 }
+
 const controller&
 chain_plugin::chain() const {
     return *my->chain;
@@ -879,14 +879,6 @@ read_only::get_info(const read_only::get_info_params&) const {
         db.fork_db_head_block_producer()};
 }
 
-template <typename Api>
-auto
-make_resolver(const Api* api) {
-    return [api]() -> const evt::chain::contracts::abi_serializer& {
-        return api->system_api;
-    };
-}
-
 fc::variant
 read_only::get_block(const read_only::get_block_params& params) const {
     signed_block_ptr block;
@@ -902,7 +894,7 @@ read_only::get_block(const read_only::get_block_params& params) const {
     EVT_ASSERT(block, unknown_block_exception, "Could not find block: ${block}", ("block", params.block_num_or_id));
 
     fc::variant pretty_output;
-    abi_serializer::to_variant(*block, pretty_output, make_resolver(this));
+    db.get_abi_serializer().to_variant(*block, pretty_output);
 
     uint32_t ref_block_prefix = block->id()._hash[1];
 
@@ -962,7 +954,7 @@ read_only::get_transaction(const get_transaction_params& params) {
     for(auto& tx : block->transactions) {
         if(tx.trx.id() == params.id) {
             auto var = fc::variant();
-            abi_serializer::to_variant(tx.trx, var, make_resolver(this));
+            db.get_abi_serializer().to_variant(tx.trx, var);
 
             return var;
         }
@@ -1003,9 +995,8 @@ void
 read_write::push_transaction(const read_write::push_transaction_params& params, next_function<read_write::push_transaction_results> next) {
     try {
         auto pretty_input = std::make_shared<packed_transaction>();
-        auto resolver     = make_resolver(this);
         try {
-            abi_serializer::from_variant(params, *pretty_input, resolver);
+            db.get_abi_serializer().from_variant(params, *pretty_input);
         }
         EVT_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
@@ -1018,7 +1009,7 @@ read_write::push_transaction(const read_write::push_transaction_params& params, 
 
                 try {
                     fc::variant pretty_output;
-                    pretty_output = db.to_variant_with_abi(*trx_trace_ptr);
+                    db.get_abi_serializer().to_variant(*trx_trace_ptr, pretty_output);
 
                     chain::transaction_id_type id = trx_trace_ptr->id;
                     next(read_write::push_transaction_results{id, pretty_output});
@@ -1074,35 +1065,37 @@ read_write::push_transactions(const read_write::push_transactions_params& params
 }
 
 static variant
-action_abi_to_variant(const abi_serializer& api, contracts::type_name action_type) {
+action_abi_to_variant(const abi_serializer& abi, contracts::type_name action_type) {
     variant v;
-    if(api.is_struct(action_type)) {
-        to_variant(api.get_struct(action_type), v);
+    if(abi.is_struct(action_type)) {
+        to_variant(abi.get_struct(action_type), v);
     }
     return v;
 };
 
 read_only::abi_json_to_bin_result
 read_only::abi_json_to_bin(const read_only::abi_json_to_bin_params& params) const try {
-    auto  result      = abi_json_to_bin_result();
-    auto& api         = system_api;
-    auto  action_type = api.get_action_type(params.action);
+    auto& abi = db.get_abi_serializer();
+
+    auto result      = abi_json_to_bin_result();
+    auto action_type = abi.get_action_type(params.action);
     EVT_ASSERT(!action_type.empty(), action_exception, "Unknown action ${action}", ("action", params.action));
     try {
-        result.binargs = api.variant_to_binary(action_type, params.args);
+        result.binargs = abi.variant_to_binary(action_type, params.args);
     }
     EVT_RETHROW_EXCEPTIONS(chain::action_args_exception,
                            "'${args}' is invalid args for action '${action}'. expected '${proto}'",
-                           ("args", params.args)("action", params.action)("proto", action_abi_to_variant(api, action_type)))
+                           ("args", params.args)("action", params.action)("proto", action_abi_to_variant(abi, action_type)))
     return result;
 }
 FC_CAPTURE_AND_RETHROW((params.action)(params.args))
 
 read_only::abi_bin_to_json_result
 read_only::abi_bin_to_json(const read_only::abi_bin_to_json_params& params) const {
-    auto  result = abi_bin_to_json_result();
-    auto& api    = system_api;
-    result.args  = api.binary_to_variant(api.get_action_type(params.action), params.binargs);
+    auto& abi = db.get_abi_serializer();
+
+    auto result = abi_bin_to_json_result();
+    result.args = abi.binary_to_variant(abi.get_action_type(params.action), params.binargs);
     return result;
 }
 
@@ -1110,10 +1103,9 @@ read_only::trx_json_to_digest_result
 read_only::trx_json_to_digest(const trx_json_to_digest_params& params) const {
     auto result = trx_json_to_digest_result();
     try {
-        auto trx      = std::make_shared<transaction>();
-        auto resolver = make_resolver(this);
+        auto trx = std::make_shared<transaction>();
         try {
-            abi_serializer::from_variant(params, *trx, resolver);
+            db.get_abi_serializer().from_variant(params, *trx);
         }
         EVT_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid transaction")
         result.digest = trx->sig_digest(db.get_chain_id());
@@ -1132,10 +1124,9 @@ read_only::trx_json_to_digest(const trx_json_to_digest_params& params) const {
 
 read_only::get_required_keys_result
 read_only::get_required_keys(const get_required_keys_params& params) const {
-    auto trx      = transaction();
-    auto resolver = make_resolver(this);
+    auto trx = transaction();
     try {
-        abi_serializer::from_variant(params.transaction, trx, resolver);
+        db.get_abi_serializer().from_variant(params.transaction, trx);
     }
     EVT_RETHROW_EXCEPTIONS(chain::transaction_type_exception, "Invalid transaction");
 
@@ -1147,18 +1138,16 @@ read_only::get_required_keys(const get_required_keys_params& params) const {
 
 read_only::get_suspend_required_keys_result
 read_only::get_suspend_required_keys(const get_suspend_required_keys_params& params) const {
-    auto                             required_keys_set = db.get_suspend_required_keys(params.name, params.available_keys);
-    get_suspend_required_keys_result result;
-    result.required_keys = std::move(required_keys_set);
+    auto result          = get_suspend_required_keys_result();
+    result.required_keys = db.get_suspend_required_keys(params.name, params.available_keys);
     return result;
 }
 
 read_only::get_charge_result
 read_only::get_charge(const get_charge_params& params) const {
-    auto trx      = transaction();
-    auto resolver = make_resolver(this);
+    auto trx = transaction();
     try {
-        abi_serializer::from_variant(params.transaction, trx, resolver);
+        db.get_abi_serializer().from_variant(params.transaction, trx);
     }
     EVT_RETHROW_EXCEPTIONS(chain::transaction_type_exception, "Invalid transaction");
 

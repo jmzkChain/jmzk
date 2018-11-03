@@ -41,7 +41,7 @@ class history_plugin_impl {
 public:
     history_plugin_impl()
         : chain_(app().get_plugin<chain_plugin>().chain())
-        , evt_abi_(contracts::evt_contract_abi()) {
+        , abi_(chain_.get_abi_serializer()) {
         auto& uri = app().get_plugin<mongo_db_plugin>().uri();
         
         client_ = mongocxx::client(uri);
@@ -99,8 +99,8 @@ public:
     mongocxx::client   client_;
     mongocxx::database db_;
     
-    const controller& chain_;
-    const abi_serializer evt_abi_;
+    const controller&     chain_;
+    const abi_serializer& abi_;
 
 private:
     mongocxx::collection blocks_col_;
@@ -133,12 +133,8 @@ history_plugin_impl::get_int_value(const mongocxx::cursor::iterator& it, const s
 
 fc::variant
 history_plugin_impl::transaction_to_variant(const packed_transaction& ptrx) {
-    auto resolver = [this]() -> const evt::chain::contracts::abi_serializer& {
-        return evt_abi_;
-    };
-
     fc::variant pretty_output;
-    abi_serializer::to_variant(ptrx, pretty_output, resolver);
+    abi_.to_variant(ptrx, pretty_output);
     return pretty_output;
 }
 

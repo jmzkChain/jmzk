@@ -8,7 +8,6 @@
 #include <evt/chain/block_state.hpp>
 #include <evt/chain/trace.hpp>
 #include <evt/chain/genesis_state.hpp>
-#include <evt/chain/contracts/abi_serializer.hpp>
 
 namespace chainbase {
 class database;
@@ -24,12 +23,15 @@ class charge_manager;
 struct controller_impl;
 using boost::signals2::signal;
 using chainbase::database;
-using contracts::abi_serializer;
 
 class dynamic_global_property_object;
 class global_property_object;
 
-namespace contracts { class evt_link_object; }
+namespace contracts {
+struct abi_serializer;
+class evt_link_object;
+}
+
 using contracts::evt_link_object;
 
 enum class validation_mode {
@@ -53,6 +55,8 @@ public:
         bool     loadtest_mode          = false;
         bool     charge_free_mode       = false;
         bool     contracts_console      = false;
+
+        fc::microseconds max_serialization_time = fc::milliseconds(chain::config::default_abi_serializer_max_time_ms);
 
         validation_mode block_validation_mode = validation_mode::FULL;
 
@@ -199,15 +203,7 @@ public:
 
     uint32_t get_charge(const transaction& trx, size_t signautres_num) const;
 
-    const abi_serializer& get_abi_serializer() const;
-
-    template <typename T>
-    fc::variant
-    to_variant_with_abi(const T& obj) {
-        fc::variant pretty_output;
-        abi_serializer::to_variant(obj, pretty_output, [this]() -> const abi_serializer& { return get_abi_serializer(); });
-        return pretty_output;
-    }
+    const contracts::abi_serializer& get_abi_serializer() const;
 
 private:
     std::unique_ptr<controller_impl> my;

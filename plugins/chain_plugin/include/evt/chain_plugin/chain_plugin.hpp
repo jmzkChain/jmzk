@@ -45,13 +45,11 @@ struct resolver_factory;
 
 class read_only {
 public:
-    const controller&     db;
-    const abi_serializer& system_api;
+    const controller& db;
 
 public:
-    read_only(const controller& db, const abi_serializer& system_api)
-        : db(db)
-        , system_api(system_api) {}
+    read_only(const controller& db)
+        : db(db) {}
 
     using get_info_params = empty;
 
@@ -160,13 +158,11 @@ public:
 
 class read_write {
 public:
-    controller&           db;
-    const abi_serializer& system_api;
+    controller& db;
 
 public:
-    read_write(controller& db, const abi_serializer& system_api)
-        : db(db)
-        , system_api(system_api) {}
+    read_write(controller& db)
+        : db(db) {}
 
     using push_block_params  = chain::signed_block;
     using push_block_results = empty;
