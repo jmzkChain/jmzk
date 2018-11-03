@@ -1,5 +1,9 @@
-import click
+#!/usr/bin/env python3
+
+import json
 import re
+
+import click
 
 
 @click.command()
@@ -12,13 +16,17 @@ def gen(input, output):
         for line in reader:
             if not line.startswith('FC_DECLARE_DERIVED_EXCEPTION'):
                 continue
-            result = re.match(r'FC_DECLARE_DERIVED_EXCEPTION\(\s+(\w+),\s+(\w+),\s+(\d+),\s+\"([\w .-]+)\"\s?\)', line)
+            result = re.match(
+                r'FC_DECLARE_DERIVED_EXCEPTION\(\s+(\w+),\s+(\w+),\s+(\d+),\s+\"(.+)\"\s?\)', line)
             if result:
-                exs.append((result.group(1), result.group(2), result.group(3), result.group(4)))
+                exs.append({
+                    'name': result.group(1),
+                    'code': result.group(3),
+                    'en': result.group(4)
+                })
 
     with open(output, 'w') as writer:
-        for ex in exs:
-            writer.write('{},{},"{}"\n'.format(ex[0], ex[2], ex[3]))
+        writer.write(json.dumps(exs, ensure_ascii=False, indent=2))
 
 
 if __name__ == '__main__':
