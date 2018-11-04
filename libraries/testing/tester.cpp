@@ -46,7 +46,7 @@ base_tester::init(bool push_genesis) {
     cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
     cfg.genesis.initial_key       = get_public_key(config::system_account_name, "active");
 
-    open();
+    open(nullptr);
 
     if(push_genesis) {
         push_genesis_block();
@@ -54,9 +54,9 @@ base_tester::init(bool push_genesis) {
 }
 
 void
-base_tester::init(controller::config config) {
+base_tester::init(controller::config config, const snapshot_reader_ptr& snapshot) {
     cfg = config;
-    open();
+    open(snapshot);
 }
 
 void
@@ -66,9 +66,10 @@ base_tester::close() {
 }
 
 void
-base_tester::open() {
+base_tester::open(const snapshot_reader_ptr& snapshot) {
     control.reset(new controller(cfg));
-    control->startup();
+    control->add_indices();
+    control->startup(snapshot);
     chain_transactions.clear();
     control->accepted_block.connect([this](const block_state_ptr& block_state) {
         FC_ASSERT(block_state->block);

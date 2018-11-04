@@ -86,10 +86,10 @@ public:
     virtual ~base_tester(){};
 
     void init(bool push_genesis = true);
-    void init(controller::config config);
+    void init(controller::config config, const snapshot_reader_ptr& snapshot = nullptr);
 
     void close();
-    void open();
+    void open(const snapshot_reader_ptr& snapshot);
     bool is_same_chain(base_tester& other);
 
     virtual signed_block_ptr produce_block(fc::microseconds skip_time = fc::milliseconds(config::block_interval_ms), uint32_t skip_flag = 0 /*skip_missed_block_penalty*/)       = 0;
@@ -173,6 +173,11 @@ public:
 
     void sync_with(base_tester& other);
 
+    const controller::config&
+    get_config() const {
+        return cfg;
+    }
+
 protected:
     signed_block_ptr _produce_block(fc::microseconds skip_time, bool skip_pending_trxs = false, uint32_t skip_flag = 0);
     void             _start_block(fc::time_point block_time);
@@ -247,6 +252,7 @@ public:
         vcfg.genesis.initial_key       = get_public_key(config::system_account_name, "active");
 
         validating_node = std::make_unique<controller>(vcfg);
+        validating_node->add_indices();
         validating_node->startup();
 
         init(true);
@@ -262,6 +268,7 @@ public:
         vcfg.state_dir  = vcfg.state_dir.parent_path() / std::string("v_").append(vcfg.state_dir.filename().generic_string());
 
         validating_node = std::make_unique<controller>(vcfg);
+        validating_node->add_indices();
         validating_node->startup();
 
         init(config);
@@ -297,6 +304,7 @@ public:
 
         validating_node.reset();
         validating_node = std::make_unique<controller>(vcfg);
+        validating_node->add_indices();
         validating_node->startup();
 
         return ok;
