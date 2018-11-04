@@ -520,7 +520,7 @@ struct abi_from_variant {
                 if(!type.empty()) {
                     variant_to_binary_context _ctx(ctx, type);
                     _ctx.short_path  = true;  // Just to be safe while avoiding the complexity of threading an override boolean all over the place
-                    act.data         = std::move(self._variant_to_binary(type, data, _ctx));
+                    act.data         = self._variant_to_binary(type, data, _ctx);
                     valid_empty_data = act.data.empty();
                 }
             }
