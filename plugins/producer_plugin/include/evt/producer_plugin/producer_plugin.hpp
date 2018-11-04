@@ -24,6 +24,16 @@ public:
         fc::optional<int32_t> last_block_time_offset_us;
     };
 
+    struct integrity_hash_information {
+        chain::block_id_type head_block_id;
+        chain::digest_type   integrity_hash;
+    };
+
+    struct snapshot_information {
+        chain::block_id_type head_block_id;
+        std::string          snapshot_name;
+    };
+
     producer_plugin();
     virtual ~producer_plugin();
 
@@ -44,6 +54,9 @@ public:
     void update_runtime_options(const runtime_options& options);
     runtime_options get_runtime_options() const;
 
+    integrity_hash_information get_integrity_hash() const;
+    snapshot_information create_snapshot() const;
+
     signal<void(const chain::producer_confirmation&)> confirmed_block;
 
 private:
@@ -53,3 +66,5 @@ private:
 }  // namespace evt
 
 FC_REFLECT(evt::producer_plugin::runtime_options, (max_transaction_time)(max_irreversible_block_age)(produce_time_offset_us)(last_block_time_offset_us));
+FC_REFLECT(evt::producer_plugin::integrity_hash_information, (head_block_id)(integrity_hash));
+FC_REFLECT(evt::producer_plugin::snapshot_information, (head_block_id)(snapshot_name));
