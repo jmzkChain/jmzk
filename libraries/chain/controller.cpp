@@ -242,7 +242,7 @@ struct controller_impl {
         bool        append_to_blog = false;
         if(!log_head) {
             if(s->block) {
-                EVT_ASSERT(s->block_num == blog.first_block_num(), block_log_exception, "block log has no blocks and is appending the wrong first block.  Expected ${expecgted}, but received: ${actual}",
+                EVT_ASSERT(s->block_num == blog.first_block_num(), block_log_exception, "block log has no blocks and is appending the wrong first block.  Expected ${expected}, but received: ${actual}",
                            ("expected", blog.first_block_num())("actual", s->block_num));
                 append_to_blog = true;
             }
@@ -399,7 +399,10 @@ struct controller_impl {
             token_db.rollback_to_latest_savepoint();
         }
 
-        ilog("database initialized with hash: ${hash}", ("hash", calculate_integrity_hash()));
+        if(snapshot) {
+            const auto hash = calculate_integrity_hash();
+            ilog("database initialized with hash: ${hash}", ("hash", hash));
+        }
     }
 
     void
