@@ -978,8 +978,9 @@ struct set_suspend_subcommands {
         adcmd->set_callback([this] {
             auto varsuspend = call(get_suspend_func, fc::mutable_variant_object("name", (proposal_name)name));
             auto suspend = suspend_def();
-            auto evt_abi = abi_serializer(evt_contract_abi());
-            abi_serializer::from_variant(varsuspend, suspend, [&]() -> const evt::chain::contracts::abi_serializer& { return evt_abi; });
+
+            auto abi = abi_serializer(evt_contract_abi(), fc::hours(1));
+            abi.from_variant(varsuspend, suspend);
 
             auto public_keys = call(wallet_url, wallet_public_keys);
             auto get_arg     = fc::mutable_variant_object("name", (proposal_name)name)("available_keys", public_keys);
@@ -1491,8 +1492,6 @@ main(int argc, char** argv) {
     bindtextdomain(locale_domain, locale_path);
     textdomain(locale_domain);
     context = evt::client::http::create_http_context();
-
-    abi_serializer::set_max_serialization_time(fc::hours(1)); // No risk to client side serialization taking a long time
 
     CLI::App app{"Command Line Interface to everiToken Client"};
     app.require_subcommand();
