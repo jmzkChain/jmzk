@@ -37,4 +37,5 @@ typedef chainbase::generic_index<evt_link_multi_index> evt_link_index;
 
 }}}  // namespace evt::chain::contracts
 
-CHAINBASE_SET_INDEX_TYPE(evt::chain::contracts::evt_link_object, evt::chain::contracts::evt_link_multi_index)
+CHAINBASE_SET_INDEX_TYPE(evt::chain::contracts::evt_link_object, evt::chain::contracts::evt_link_multi_index);
+FC_REFLECT(evt::chain::evt_link_object, (block_num)(link_id)(trx_id));

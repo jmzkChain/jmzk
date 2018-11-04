@@ -34,6 +34,5 @@ using block_summary_multi_index = chainbase::shared_multi_index_container<
 
 }}  // namespace evt::chain
 
-CHAINBASE_SET_INDEX_TYPE(evt::chain::block_summary_object, evt::chain::block_summary_multi_index)
-
-FC_REFLECT(evt::chain::block_summary_object, (block_id))
+CHAINBASE_SET_INDEX_TYPE(evt::chain::block_summary_object, evt::chain::block_summary_multi_index);
+FC_REFLECT(evt::chain::block_summary_object, (block_id));

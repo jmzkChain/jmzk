@@ -15,7 +15,6 @@ add_library( evt_chain
              block_header_state.cpp
              block_state.cpp
              block_log.cpp
-
              chain_config.cpp
              chain_id_type.cpp
              genesis_state.cpp
@@ -23,6 +22,7 @@ add_library( evt_chain
              
              fork_database.cpp
              token_database.cpp
+             snapshot.cpp
 
              apply_context.cpp
              controller.cpp
