@@ -13,7 +13,7 @@ namespace fc { namespace crypto {
    };
 
    static signature::storage_type parse_base58(const std::string& base58str)
-   {
+   { try {
       constexpr auto prefix = config::signature_base_prefix;
 
       const auto pivot = base58str.find('_');
@@ -25,7 +25,7 @@ namespace fc { namespace crypto {
       auto data_str = base58str.substr(pivot + 1);
       FC_ASSERT(!data_str.empty(), "Signature has no data: ${str}", ("str", base58str));
       return base58_str_parser<signature::storage_type, config::signature_prefix>::apply(data_str);
-   }
+   } FC_RETHROW_EXCEPTIONS( warn, "error parsing signature", ("str", base58str ) ) }
 
    signature::signature(const std::string& base58str)
       :_storage(parse_base58(base58str))

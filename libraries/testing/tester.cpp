@@ -27,7 +27,7 @@ filter_fields(const fc::variant_object& filter, const fc::variant_object& value)
     return res;
 }
 
-base_tester::base_tester() : evt_abi(evt_contract_abi()) {}
+base_tester::base_tester() {}
 
 bool
 base_tester::is_same_chain(base_tester& other) {
@@ -46,7 +46,7 @@ base_tester::init(bool push_genesis) {
     cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
     cfg.genesis.initial_key       = get_public_key(config::system_account_name, "active");
 
-    open();
+    open(nullptr);
 
     if(push_genesis) {
         push_genesis_block();
@@ -54,9 +54,9 @@ base_tester::init(bool push_genesis) {
 }
 
 void
-base_tester::init(controller::config config) {
+base_tester::init(controller::config config, const snapshot_reader_ptr& snapshot) {
     cfg = config;
-    open();
+    open(snapshot);
 }
 
 void
@@ -66,9 +66,10 @@ base_tester::close() {
 }
 
 void
-base_tester::open() {
+base_tester::open(const snapshot_reader_ptr& snapshot) {
     control.reset(new controller(cfg));
-    control->startup();
+    control->add_indices();
+    control->startup(snapshot);
     chain_transactions.clear();
     control->accepted_block.connect([this](const block_state_ptr& block_state) {
         FC_ASSERT(block_state->block);
@@ -292,14 +293,16 @@ base_tester::push_action(const action_name&               acttype,
 action
 base_tester::get_action(action_name acttype, const domain_name& domain, const domain_key& key, const variant_object& data) const {
     try {
-        auto action_type_name = evt_abi.get_action_type(acttype);
-        FC_ASSERT(!action_type_name.empty(), "unknown action type ${a}", ("a", acttype));
+        auto& abi  = control->get_abi_serializer();
+        auto  type = abi.get_action_type(acttype);
+        FC_ASSERT(!type.empty(), "unknown action type ${a}", ("a", acttype));
 
         action act;
         act.name   = acttype;
         act.domain = domain;
         act.key    = key;
-        act.data   = evt_abi.variant_to_binary(action_type_name, data);
+        act.data   = abi.variant_to_binary(type, data);
+        
         return act;
     }
     FC_CAPTURE_AND_RETHROW()

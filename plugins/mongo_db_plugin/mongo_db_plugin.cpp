@@ -32,6 +32,7 @@ using boost::condition_variable_any;
 
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
+#include <fc/time.hpp>
 
 #include <bsoncxx/builder/basic/document.hpp>
 #include <bsoncxx/builder/basic/kvp.hpp>
@@ -63,7 +64,7 @@ private:
 
 public:
     mongo_db_plugin_impl()
-        : evt_abi(evt_contract_abi())
+        : evt_abi(evt_contract_abi(), fc::hours(1))
         , mongo_conn{}
     { }
 

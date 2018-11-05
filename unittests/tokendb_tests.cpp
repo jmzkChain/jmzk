@@ -665,8 +665,8 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_fungible_test", "[tokendb]") {
 
     CHECK(!tokendb.exists_fungible(EVT_SYM_ID));
     CHECK(!tokendb.exists_fungible(symbol(5, EVT_SYM_ID)));
-    CHECK_THROWS_AS(tokendb.read_fungible(EVT_SYM_ID, tmp_fungible), tokendb_key_not_found);
-    CHECK_THROWS_AS(tokendb.read_fungible(symbol(5, EVT_SYM_ID), tmp_fungible), tokendb_key_not_found);
+    CHECK_THROWS_AS(tokendb.read_fungible(EVT_SYM_ID, tmp_fungible), unknown_fungible_exception);
+    CHECK_THROWS_AS(tokendb.read_fungible(symbol(5, EVT_SYM_ID), tmp_fungible), unknown_fungible_exception);
 
     auto evt_fungible = fungible_def();
     evt_fungible.sym  = symbol(5, EVT_SYM_ID);
@@ -686,7 +686,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_fungible_test", "[tokendb]") {
     auto address1  = public_key_type(std::string("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"));
     CHECK(!tokendb.exists_any_asset(address1));
     CHECK(!tokendb.exists_asset(address1, symbol(5, EVT_SYM_ID)));
-    CHECK_THROWS_AS(tokendb.read_asset(address1, symbol(5, EVT_SYM_ID), tmp_asset), tokendb_key_not_found);
+    CHECK_THROWS_AS(tokendb.read_asset(address1, symbol(5, EVT_SYM_ID), tmp_asset), balance_exception);
     CHECK_NOTHROW(tokendb.read_asset_no_throw(address1, symbol(5, EVT_SYM_ID), tmp_asset));
     CHECK(tmp_asset == asset(0, symbol(5, EVT_SYM_ID)));
 

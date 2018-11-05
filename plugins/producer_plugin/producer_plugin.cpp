@@ -3,18 +3,12 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #include <evt/producer_plugin/producer_plugin.hpp>
-#include <evt/chain/global_property_object.hpp>
-#include <evt/chain/plugin_interface.hpp>
-#include <evt/chain/transaction_object.hpp>
 
-#include <fc/io/json.hpp>
-#include <fc/scoped_exit.hpp>
-#include <fc/smart_ref_impl.hpp>
+#include <algorithm>
+#include <iostream>
 
 #include <boost/asio.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
-
-#include <algorithm>
 #include <boost/function_output_iterator.hpp>
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/member.hpp>
@@ -22,7 +16,15 @@
 #include <boost/multi_index_container.hpp>
 #include <boost/range/adaptor/map.hpp>
 #include <boost/signals2/connection.hpp>
-#include <iostream>
+
+#include <fc/io/json.hpp>
+#include <fc/scoped_exit.hpp>
+#include <fc/smart_ref_impl.hpp>
+
+#include <evt/chain/global_property_object.hpp>
+#include <evt/chain/plugin_interface.hpp>
+#include <evt/chain/transaction_object.hpp>
+#include <evt/chain/snapshot.hpp>
 
 namespace bmi = boost::multi_index;
 using bmi::hashed_unique;
@@ -46,6 +48,9 @@ extern std::unordered_map<std::string, logger>& get_logger_map();
 
 const fc::string logger_name("producer_plugin");
 fc::logger       _log;
+
+const fc::string trx_trace_logger_name("transaction_tracing");
+fc::logger       _trx_trace_log;
 
 namespace evt {
 
@@ -162,6 +167,9 @@ public:
        * cancelled but wasn't able to be.
        */
     uint32_t _timer_corelation_id = 0;
+
+    // path to write the snapshots to
+    bfs::path _snapshots_dir;
 
     void
     on_block(const block_state_ptr& bsp) {
@@ -309,7 +317,7 @@ public:
             return;
         }
         catch(boost::interprocess::bad_alloc&) {
-            raise(SIGUSR1);
+            chain_plugin::handle_db_exhaustion();
             return;
         }
         catch(fc::unrecoverable_exception&) {
@@ -350,20 +358,36 @@ public:
             return;
         }
 
-        auto block_time = chain.pending_block_state()->header.timestamp.to_time_point();
+        auto block_time = chain.pending_block_state() -> header.timestamp.to_time_point();
 
-        auto send_response = [this, &trx, &next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& response) {
+        auto send_response = [this, &trx, &chain, &next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& response) {
             next(response);
             if(response.contains<fc::exception_ptr>()) {
                 _transaction_ack_channel.publish(std::pair<fc::exception_ptr, packed_transaction_ptr>(response.get<fc::exception_ptr>(), trx));
+                if(_pending_block_mode == pending_block_mode::producing) {
+                    fc_dlog(_trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is REJECTING tx: ${txid} : ${why} ",
+                            ("block_num", chain.head_block_num() + 1)("prod", chain.pending_block_state()->header.producer)("txid", trx->id())("why", response.get<fc::exception_ptr>()->what()));
+                }
+                else {
+                    fc_dlog(_trx_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why} ",
+                            ("txid", trx->id())("why", response.get<fc::exception_ptr>()->what()));
+                }
             }
             else {
                 _transaction_ack_channel.publish(std::pair<fc::exception_ptr, packed_transaction_ptr>(nullptr, trx));
+                if(_pending_block_mode == pending_block_mode::producing) {
+                    fc_dlog(_trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is ACCEPTING tx: ${txid}",
+                            ("block_num", chain.head_block_num() + 1)("prod", chain.pending_block_state()->header.producer)("txid", trx->id()));
+                }
+                else {
+                    fc_dlog(_trx_trace_log, "[TRX_TRACE] Speculative execution is ACCEPTING tx: ${txid}",
+                            ("txid", trx->id()));
+                }
             }
         };
 
-        auto id = trx->id();
-        if(!chain.loadtest_mode() && fc::time_point(trx->expiration()) < block_time) {
+        auto id = trx -> id();
+        if(fc::time_point(trx->expiration()) < block_time) {
             send_response(std::static_pointer_cast<fc::exception>(std::make_shared<expired_tx_exception>(FC_LOG_MESSAGE(error, "expired transaction ${id}", ("id", id)))));
             return;
         }
@@ -385,6 +409,14 @@ public:
             if(trace->except) {
                 if(failure_is_subjective(*trace->except, deadline_is_subjective)) {
                     _pending_incoming_transactions.emplace_back(trx, persist_until_expired, next);
+                    if(_pending_block_mode == pending_block_mode::producing) {
+                        fc_dlog(_trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} COULD NOT FIT, tx: ${txid} RETRYING ",
+                                ("block_num", chain.head_block_num() + 1)("prod", chain.pending_block_state()->header.producer)("txid", trx->id()));
+                    }
+                    else {
+                        fc_dlog(_trx_trace_log, "[TRX_TRACE] Speculative execution COULD NOT FIT tx: ${txid} RETRYING",
+                                ("txid", trx->id()));
+                    }
                 }
                 else {
                     auto e_ptr = trace->except->dynamic_copy_exception();
@@ -404,10 +436,7 @@ public:
             app().get_plugin<chain_plugin>().handle_guard_exception(e);
         }
         catch(boost::interprocess::bad_alloc&) {
-            raise(SIGUSR1);
-        }
-        catch(fc::unrecoverable_exception&) {
-            raise(SIGUSR1);
+            chain_plugin::handle_db_exhaustion();
         }
         CATCH_AND_CALL(send_response);
     }
@@ -479,11 +508,16 @@ producer_plugin::set_program_options(
             [this](bool e) { my->_production_enabled = e; }), "Enable block production, even if the chain is stale.")
         ("pause-on-startup,x", boost::program_options::bool_switch()->notifier(
             [this](bool p) { my->_pause_production = p; }), "Start this node in a state where production is paused")
-        ("max-transaction-time", bpo::value<int32_t>()->default_value(30), "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute before being considered invalid")
-        ("max-irreversible-block-age", bpo::value<int32_t>()->default_value(-1), "Limits the maximum age (in seconds) of the DPOS Irreversible Block for a chain this node will produce blocks on (use negative value to indicate unlimited)")
-        ("producer-name,p", boost::program_options::value<vector<string>>()->composing()->multitoken(), "ID of producer controlled by this node (e.g. inita; may specify multiple times)")
-        ("private-key", boost::program_options::value<vector<string>>()->composing()->multitoken(), "(DEPRECATED - Use signature-provider instead) Tuple of [public key, WIF private key] (may specify multiple times)")
-        ("signature-provider", boost::program_options::value<vector<string>>()->composing()->multitoken()->default_value({std::string(default_priv_key.get_public_key()) + "=KEY:" + std::string(default_priv_key)}, std::string(default_priv_key.get_public_key()) + "=KEY:" + std::string(default_priv_key)),
+        ("max-transaction-time", bpo::value<int32_t>()->default_value(30),
+            "Limits the maximum time (in milliseconds) that is allowed a pushed transaction's code to execute before being considered invalid")
+        ("max-irreversible-block-age", bpo::value<int32_t>()->default_value(-1),
+            "Limits the maximum age (in seconds) of the DPOS Irreversible Block for a chain this node will produce blocks on (use negative value to indicate unlimited)")
+        ("producer-name,p", boost::program_options::value<vector<string>>()->composing()->multitoken(),
+            "ID of producer controlled by this node (e.g. inita; may specify multiple times)")
+        ("private-key", boost::program_options::value<vector<string>>()->composing()->multitoken(),
+            "(DEPRECATED - Use signature-provider instead) Tuple of [public key, WIF private key] (may specify multiple times)")
+        ("signature-provider", boost::program_options::value<vector<string>>()->composing()->multitoken()->default_value(
+            {std::string(default_priv_key.get_public_key()) + "=KEY:" + std::string(default_priv_key)}, std::string(default_priv_key.get_public_key()) + "=KEY:" + std::string(default_priv_key)),
             "Key=Value pairs in the form <public-key>=<provider-spec>\n"
             "Where:\n"
             "   <public-key>    \tis a string form of a vaild EVT public key\n\n"
@@ -493,9 +527,11 @@ producer_plugin::set_program_options(
             "   EVTWD:<data>    \tis the URL where evtwd is available and the approptiate wallet(s) are unlocked")
          ("evtwd-provider-timeout", boost::program_options::value<int32_t>()->default_value(5), "Limits the maximum time (in milliseconds) that is allowd for sending blocks to a evtwd provider for signing")
          ("produce-time-offset-us", boost::program_options::value<int32_t>()->default_value(0),
-            "offset of non last block producing time in micro second. Negative number results in blocks to go out sooner, and positive number results in blocks to go out later")
+            "offset of non last block producing time in microseconds. Negative number results in blocks to go out sooner, and positive number results in blocks to go out later")
          ("last-block-time-offset-us", boost::program_options::value<int32_t>()->default_value(0),
-            "offset of last block producing time in micro second. Negative number results in blocks to go out sooner, and positive number results in blocks to go out later")
+            "offset of last block producing time in microseconds. Negative number results in blocks to go out sooner, and positive number results in blocks to go out later")
+         ("snapshots-dir", bpo::value<bfs::path>()->default_value("snapshots"),
+            "the location of the snapshots directory (absolute path or relative to application data dir)")
          ;
     config_file_options.add(producer_options); 
 }
@@ -622,6 +658,22 @@ producer_plugin::plugin_initialize(const boost::program_options::variables_map& 
 
         my->_max_irreversible_block_age_us = fc::seconds(options.at("max-irreversible-block-age").as<int32_t>());
 
+        if(options.count("snapshots-dir")) {
+            auto sd = options.at("snapshots-dir").as<bfs::path>();
+            if(sd.is_relative()) {
+                my->_snapshots_dir = app().data_dir() / sd;
+                if(!fc::exists(my->_snapshots_dir)) {
+                    fc::create_directories(my->_snapshots_dir);
+                }
+            }
+            else {
+                my->_snapshots_dir = sd;
+            }
+
+            EVT_ASSERT(fc::is_directory(my->_snapshots_dir), snapshot_directory_not_found_exception,
+                       "No such directory '${dir}'", ("dir", my->_snapshots_dir.generic_string()));
+        }
+
         my->_incoming_block_subscription = app().get_channel<incoming::channels::block>().subscribe([this](const signed_block_ptr& block) {
             try {
                 my->on_incoming_block(block);
@@ -656,8 +708,11 @@ producer_plugin::plugin_startup() {
 
         chain::controller& chain = app().get_plugin<chain_plugin>().chain();
 
+        EVT_ASSERT(my->_producers.empty() || chain.get_read_mode() == chain::db_read_mode::SPECULATIVE, plugin_config_exception,
+            "node cannot have any producer-name configured because block production is impossible when read_mode is not \"speculative\"");
+
         EVT_ASSERT(my->_producers.empty() || chain.get_validation_mode() == chain::validation_mode::FULL, plugin_config_exception,
-            "node cannot have any producer-name configured because block production is not safe when validation_mode is not \"full\"" );
+            "node cannot have any producer-name configured because block production is not safe when validation_mode is not \"full\"");
 
         my->_accepted_block_connection.emplace(chain.accepted_block.connect([this](const auto& bsp) { my->on_block(bsp); }));
         my->_irreversible_block_connection.emplace(chain.irreversible_block.connect([this](const auto& bsp) { my->on_irreversible_block(bsp->block); }));
@@ -763,6 +818,57 @@ producer_plugin::get_runtime_options() const {
     };
 }
 
+producer_plugin::integrity_hash_information
+producer_plugin::get_integrity_hash() const {
+    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+
+    auto reschedule = fc::make_scoped_exit([this]() {
+        my->schedule_production_loop();
+    });
+
+    if(chain.pending_block_state()) {
+        // abort the pending block
+        chain.abort_block();
+    }
+    else {
+        reschedule.cancel();
+    }
+
+    return {chain.head_block_id(), chain.calculate_integrity_hash()};
+}
+
+producer_plugin::snapshot_information
+producer_plugin::create_snapshot() const {
+    chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+
+    auto reschedule = fc::make_scoped_exit([this]() {
+        my->schedule_production_loop();
+    });
+
+    if(chain.pending_block_state()) {
+        // abort the pending block
+        chain.abort_block();
+    }
+    else {
+        reschedule.cancel();
+    }
+
+    auto        head_id       = chain.head_block_id();
+    std::string snapshot_path = (my->_snapshots_dir / fc::format_string("snapshot-${id}.bin", fc::mutable_variant_object()("id", head_id))).generic_string();
+
+    EVT_ASSERT(!fc::is_regular_file(snapshot_path), snapshot_exists_exception,
+               "snapshot named ${name} already exists", ("name", snapshot_path));
+
+    auto snap_out = std::ofstream(snapshot_path, (std::ios::out | std::ios::binary));
+    auto writer   = std::make_shared<ostream_snapshot_writer>(snap_out);
+    chain.write_snapshot(writer);
+    writer->finalize();
+    snap_out.flush();
+    snap_out.close();
+
+    return {head_id, snapshot_path};
+}
+
 optional<fc::time_point>
 producer_plugin_impl::calculate_next_block_time(const account_name& producer_name, const block_timestamp_type& current_block_time) const {
     chain::controller& chain           = app().get_plugin<chain_plugin>().chain();
@@ -848,6 +954,10 @@ enum class tx_category {
 producer_plugin_impl::start_block_result
 producer_plugin_impl::start_block(bool &last_block) {
     chain::controller& chain = app().get_plugin<chain_plugin>().chain();
+
+    if(chain.get_read_mode() == chain::db_read_mode::READ_ONLY) {
+        return start_block_result::waiting;
+    }
 
     const auto& hbs = chain.head_block_state();
 
@@ -947,6 +1057,16 @@ producer_plugin_impl::start_block(bool &last_block) {
             int orig_count             = _persistent_transactions.size();
 
             while(!persisted_by_expiry.empty() && persisted_by_expiry.begin()->expiry <= pbs->header.timestamp.to_time_point()) {
+                auto const& txid = persisted_by_expiry.begin()->trx_id;
+                if(_pending_block_mode == pending_block_mode::producing) {
+                    fc_dlog(_trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is EXPIRING PERSISTED tx: ${txid}",
+                            ("block_num", chain.head_block_num() + 1)("prod", chain.pending_block_state()->header.producer)("txid", txid));
+                }
+                else {
+                    fc_dlog(_trx_trace_log, "[TRX_TRACE] Speculative execution is EXPIRING PERSISTED tx: ${txid}",
+                            ("txid", txid));
+                }
+
                 persisted_by_expiry.erase(persisted_by_expiry.begin());
                 num_expired_persistent++;
             }
@@ -986,6 +1106,10 @@ producer_plugin_impl::start_block(bool &last_block) {
                     for(auto& trx : unapplied_trxs) {
                         auto category = calculate_transaction_category(trx);
                         if(category == tx_category::EXPIRED || (category == tx_category::UNEXPIRED_UNPERSISTED && _producers.empty())) {
+                            if(!_producers.empty()) {
+                                fc_dlog(_trx_trace_log, "[TRX_TRACE] Node with producers configured is dropping an EXPIRED transaction that was PREVIOUSLY ACCEPTED : ${txid}",
+                                       ("txid", trx->id));
+                            }
                             chain.drop_unapplied_transaction(trx);
                         }
                         else if(category == tx_category::PERSISTED || (category == tx_category::UNEXPIRED_UNPERSISTED && _pending_block_mode == pending_block_mode::producing)) {
@@ -1086,7 +1210,7 @@ producer_plugin_impl::start_block(bool &last_block) {
             }
         }
         catch(boost::interprocess::bad_alloc&) {
-            raise(SIGUSR1);
+            chain_plugin::handle_db_exhaustion();
             return start_block_result::failed;
         }
         catch(fc::unrecoverable_exception&) {
@@ -1215,14 +1339,17 @@ producer_plugin_impl::maybe_produce_block() {
     });
 
     try {
-        produce_block();
-        return true;
+        try {
+            produce_block();
+            return true;
+        }
+        catch(const guard_exception& e) {
+            app().get_plugin<chain_plugin>().handle_guard_exception(e);
+            return false;
+        }
+        FC_LOG_AND_DROP();
     }
-    catch(const guard_exception& e) {
-        app().get_plugin<chain_plugin>().handle_guard_exception(e);
-        return false;
-    }
-    catch(boost::interprocess::bad_alloc&) {
+    catch (boost::interprocess::bad_alloc&) {
         raise(SIGUSR1);
         return false;
     }
@@ -1230,7 +1357,6 @@ producer_plugin_impl::maybe_produce_block() {
         raise(SIGUSR1);
         return false;
     }
-    FC_LOG_AND_DROP();
 
     fc_dlog(_log, "Aborting block due to produce_block error");
     chain::controller& chain = app().get_plugin<chain_plugin>().chain();

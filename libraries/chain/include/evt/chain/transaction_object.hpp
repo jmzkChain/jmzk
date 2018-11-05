@@ -23,6 +23,7 @@ class transaction_object : public chainbase::object<transaction_object_type, tra
     id_type             id;
     time_point_sec      expiration;
     transaction_id_type trx_id;
+    uint32_t            block_num;
 };
 
 struct by_expiration;
@@ -41,4 +42,5 @@ typedef chainbase::generic_index<transaction_multi_index> transaction_index;
 
 }}  // namespace evt::chain
 
-CHAINBASE_SET_INDEX_TYPE(evt::chain::transaction_object, evt::chain::transaction_multi_index)
+CHAINBASE_SET_INDEX_TYPE(evt::chain::transaction_object, evt::chain::transaction_multi_index);
+FC_REFLECT(evt::chain::transaction_object, (expiration)(trx_id)(block_num));

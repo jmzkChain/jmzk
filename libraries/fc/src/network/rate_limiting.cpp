@@ -11,7 +11,7 @@
 #include <fc/exception/exception.hpp>
 #include <fc/thread/thread.hpp>
 
-namespace fc 
+namespace fc
 {
 
   namespace detail
@@ -44,6 +44,9 @@ namespace fc
       const char*                   raw_buffer;
       std::shared_ptr<const char>   shared_buffer;
 
+      // QUESTION: Why would this version of the constructor ever be called if it will abort the program if built as DEBUG?
+      //           Commenting out for now since this file is not even included in the fc library build.
+      /*
       rate_limited_tcp_write_operation(boost::asio::ip::tcp::socket& socket,
                                        const char* buffer,
                                        size_t length,
@@ -55,6 +58,7 @@ namespace fc
       {
         assert(false);
       }
+      */
       rate_limited_tcp_write_operation(boost::asio::ip::tcp::socket& socket,
                                        const std::shared_ptr<const char>& buffer,
                                        size_t length,
@@ -73,8 +77,8 @@ namespace fc
                                  completion_promise);
         else
           asio::async_write_some(socket,
-                                 shared_buffer, permitted_length, offset, 
-                                 completion_promise);          
+                                 shared_buffer, permitted_length, offset,
+                                 completion_promise);
       }
     };
 
@@ -88,7 +92,7 @@ namespace fc
       rate_limited_tcp_read_operation(boost::asio::ip::tcp::socket& socket,
                                       char* buffer,
                                       size_t length,
-                                      size_t offset, 
+                                      size_t offset,
                                       promise<size_t>::ptr completion_promise) :
         rate_limited_operation(length, offset, std::move(completion_promise)),
         socket(socket),
@@ -114,7 +118,7 @@ namespace fc
           asio::async_read_some(socket,
                                 shared_buffer, permitted_length, offset,
                                 completion_promise);
-          
+
       }
     };
 
@@ -122,12 +126,12 @@ namespace fc
     {
       // less than operator designed to bring the shortest operations to the end
       bool operator()(const rate_limited_operation* lhs, const rate_limited_operation* rhs)
-      { 
-        return lhs->length > rhs->length; 
+      {
+        return lhs->length > rhs->length;
       }
     };
 
-    class average_rate_meter 
+    class average_rate_meter
     {
     private:
       mutable double         _average_rate;
@@ -308,9 +312,9 @@ namespace fc
       }
       else
         bytes_read = asio::read_some(socket, buffer, length, offset);
-      
+
       _actual_download_rate.update(bytes_read);
-      
+
       return bytes_read;
     }
 
@@ -354,9 +358,9 @@ namespace fc
       }
       else
         bytes_written = asio::write_some(socket, buffer, length, offset);
-      
+
       _actual_upload_rate.update(bytes_written);
-      
+
       return bytes_written;
     }
 
@@ -402,7 +406,7 @@ namespace fc
         _new_write_operation_available_promise.reset();
       }
     }
-    void rate_limiting_group_impl::process_pending_operations(time_point& last_iteration_start_time, 
+    void rate_limiting_group_impl::process_pending_operations(time_point& last_iteration_start_time,
                                                               uint32_t& limit_bytes_per_second,
                                                               rate_limited_operation_list& operations_in_progress,
                                                               rate_limited_operation_list& operations_for_next_iteration,
@@ -424,7 +428,7 @@ namespace fc
           time_since_last_iteration = seconds(1);
         else if (time_since_last_iteration < microseconds(0))
           time_since_last_iteration = microseconds(0);
- 
+
         tokens += (uint32_t)((limit_bytes_per_second * time_since_last_iteration.count()) / 1000000);
         tokens += unused_tokens;
         unused_tokens = 0;
@@ -470,7 +474,7 @@ namespace fc
         // we shouldn't end up here often.  If the rate is unlimited, we should just execute
         // the operation immediately without being queued up.  This should only be hit if
         // we change from a limited rate to unlimited
-        for (auto iter = operations_in_progress.begin(); 
+        for (auto iter = operations_in_progress.begin();
              iter != operations_in_progress.end();)
         {
           rate_limited_operation* operation_to_perform = *iter;
@@ -540,4 +544,4 @@ namespace fc
   }
 
 
-} // namespace fc 
+} // namespace fc

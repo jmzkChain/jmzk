@@ -11,7 +11,9 @@ namespace fc {
 
     sha224::sha224() { memset( _hash, 0, sizeof(_hash) ); }
     sha224::sha224( const string& hex_str ) {
-      fc::from_hex( hex_str, (char*)_hash, sizeof(_hash) );  
+      auto bytes_written = fc::from_hex( hex_str, (char*)_hash, sizeof(_hash) );
+      if( bytes_written < sizeof(_hash) )
+         memset( (char*)_hash + bytes_written, 0, (sizeof(_hash) - bytes_written) );
     }
 
     string sha224::str()const {
@@ -41,7 +43,7 @@ namespace fc {
     }
 
     void sha224::encoder::write( const char* d, uint32_t dlen ) {
-      SHA224_Update( &my->ctx, d, dlen); 
+      SHA224_Update( &my->ctx, d, dlen);
     }
     sha224 sha224::encoder::result() {
       sha224 h;
@@ -49,7 +51,7 @@ namespace fc {
       return h;
     }
     void sha224::encoder::reset() {
-      SHA224_Init( &my->ctx);  
+      SHA224_Init( &my->ctx);
     }
 
     sha224 operator << ( const sha224& h1, uint32_t i ) {
@@ -78,7 +80,7 @@ namespace fc {
     bool operator == ( const sha224& h1, const sha224& h2 ) {
       return memcmp( h1._hash, h2._hash, sizeof(sha224) ) == 0;
     }
-  
+
   void to_variant( const sha224& bi, variant& v )
   {
      v = std::vector<char>( (const char*)&bi, ((const char*)&bi) + sizeof(bi) );

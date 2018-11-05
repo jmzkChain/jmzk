@@ -9,20 +9,42 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl/error.hpp>
 #include <boost/asio/ssl/stream.hpp>
+#include <boost/asio/local/stream_protocol.hpp>
+#include <boost/asio/ssl/rfc2818_verification.hpp>
+#include <boost/filesystem.hpp>
 
 using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 namespace http = boost::beast::http;    // from <boost/beast/http.hpp>
 namespace ssl = boost::asio::ssl;       // from <boost/asio/ssl.hpp>
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+namespace local = boost::asio::local;
+#endif
 
 namespace fc {
+
+/**
+ * mapping of protocols to their standard ports
+ */
+static const std::map<string,uint16_t> default_proto_ports = {
+   {"http", 80},
+   {"https", 443}
+};
 
 class http_client_impl {
 public:
    using host_key = std::tuple<std::string, std::string, uint16_t>;
    using raw_socket_ptr = std::unique_ptr<tcp::socket>;
    using ssl_socket_ptr = std::unique_ptr<ssl::stream<tcp::socket>>;
-   using connection = static_variant<raw_socket_ptr, ssl_socket_ptr>;
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+   using unix_socket_ptr = std::unique_ptr<local::stream_protocol::socket>;
+#endif
+   using connection = static_variant<raw_socket_ptr, ssl_socket_ptr
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+                                     , unix_socket_ptr
+#endif
+                                    >;
    using connection_map = std::map<host_key, connection>;
+   using unix_url_split_map = std::map<string, fc::url>;
    using error_code = boost::system::error_code;
    using deadline_type = boost::posix_time::ptime;
 
@@ -145,6 +167,23 @@ public:
       return std::make_tuple(dest.proto(), *dest.host(), port);
    }
 
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+   connection_map::iterator create_unix_connection( const url& dest, const deadline_type& deadline) {
+      auto key = url_to_host_key(dest);
+      auto socket = std::make_unique<local::stream_protocol::socket>(_ioc);
+
+      error_code ec;
+      socket->connect(local::stream_protocol::endpoint(*dest.host()), ec);
+      FC_ASSERT(!ec, "Failed to connect: ${message}", ("message",ec.message()));
+
+      auto res = _connections.emplace(std::piecewise_construct,
+                                      std::forward_as_tuple(key),
+                                      std::forward_as_tuple(std::move(socket)));
+
+      return res.first;
+   }
+#endif
+
    connection_map::iterator create_raw_connection( const url& dest, const deadline_type& deadline ) {
       auto key = url_to_host_key(dest);
       auto socket = std::make_unique<tcp::socket>(_ioc);
@@ -170,6 +209,8 @@ public:
          FC_THROW("Unable to set SNI Host Name: ${msg}", ("msg", ec.message()));
       }
 
+      ssl_socket->set_verify_callback(boost::asio::ssl::rfc2818_verification(*dest.host()));
+
       error_code ec = sync_connect_with_timeout(ssl_socket->next_layer(), *dest.host(), dest.port() ? std::to_string(*dest.port()) : "443", deadline);
       if (!ec) {
          ec = sync_do_with_deadline(ssl_socket->next_layer(), deadline, [&ssl_socket](optional<error_code>& final_ec) {
@@ -192,6 +233,10 @@ public:
          return create_raw_connection(dest, deadline);
       } else if (dest.proto() == "https") {
          return create_ssl_connection(dest, deadline);
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+      } else if (dest.proto() == "unix") {
+         return create_unix_connection(dest, deadline);
+#endif
       } else {
          FC_THROW("Unknown protocol ${proto}", ("proto", dest.proto()));
       }
@@ -205,6 +250,12 @@ public:
       bool operator() ( const ssl_socket_ptr& ptr ) const {
          return !ptr->lowest_layer().is_open();
       }
+
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+      bool operator() ( const unix_socket_ptr& ptr) const {
+         return !ptr->is_open();
+      }
+#endif
    };
 
    bool check_closed( const connection_map::iterator& conn_itr ) {
@@ -272,8 +323,17 @@ public:
          path = path + "?" + *dest.query();
       }
 
+      string host_str = *dest.host();
+      if (dest.port()) {
+         auto port = *dest.port();
+         auto proto_iter = default_proto_ports.find(dest.proto());
+         if (proto_iter != default_proto_ports.end() && proto_iter->second != port) {
+            host_str = host_str + ":" + std::to_string(port);
+         }
+      }
+
       http::request<http::string_body> req{http::verb::post, path, 11};
-      req.set(http::field::host, *dest.host());
+      req.set(http::field::host, host_str);
       req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
       req.set(http::field::content_type, "application/json");
       req.keep_alive(true);
@@ -333,10 +393,47 @@ public:
       return result;
    }
 
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+   /*
+      Unix URLs work a little special here. They'll originally be in the format of
+      unix:///home/username/eosio-wallet/keosd.sock/v1/wallet/sign_digest
+      for example. When the fc::url is given to http_client in post_sync(), this will
+      have proto=unix and host=/home/username/eosio-wallet/keosd.sock/v1/wallet/sign_digest
+
+      At this point we still don't know what part of the above string is the unix socket path
+      and which part is the path to access on the server. This function discovers that
+      host=/home/username/eosio-wallet/keosd.sock and path=/v1/wallet/sign_digest
+      and creates another fc::url that will be used downstream of the http_client::post_sync()
+      call.
+   */
+   const fc::url& get_unix_url(const std::string& full_url) {
+      unix_url_split_map::const_iterator found = _unix_url_paths.find(full_url);
+      if(found != _unix_url_paths.end())
+         return found->second;
+
+      boost::filesystem::path socket_file(full_url);
+      if(socket_file.is_relative())
+         FC_THROW_EXCEPTION( parse_error_exception, "socket url cannot be relative (${url})", ("url", socket_file.string()));
+      if(socket_file.empty())
+         FC_THROW_EXCEPTION( parse_error_exception, "missing socket url");
+      boost::filesystem::path url_path;
+      do {
+         if(boost::filesystem::status(socket_file).type() == boost::filesystem::socket_file)
+            break;
+         url_path = socket_file.filename() / url_path;
+         socket_file = socket_file.remove_filename();
+      } while(!socket_file.empty());
+      if(socket_file.empty())
+         FC_THROW_EXCEPTION( parse_error_exception, "couldn't discover socket path");
+      url_path = "/" / url_path;
+      return _unix_url_paths.emplace(full_url, fc::url("unix", socket_file.string(), ostring(), ostring(), url_path.string(), ostring(), ovariant_object(), fc::optional<uint16_t>())).first->second;
+   }
+#endif
 
    boost::asio::io_context  _ioc;
    ssl::context             _sslc;
    connection_map           _connections;
+   unix_url_split_map       _unix_url_paths;
 };
 
 
@@ -347,7 +444,12 @@ http_client::http_client()
 }
 
 variant http_client::post_sync(const url& dest, const variant& payload, const fc::time_point& deadline) {
-   return _my->post_sync(dest, payload, deadline);
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+   if(dest.proto() == "unix")
+      return _my->post_sync(_my->get_unix_url(*dest.host()), payload, deadline);
+   else
+#endif
+      return _my->post_sync(dest, payload, deadline);
 }
 
 void http_client::add_cert(const std::string& cert_pem_string) {

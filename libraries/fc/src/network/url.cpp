@@ -131,14 +131,19 @@ namespace fc
     u.my = get_null_url();
   }
 
-  url::url( const mutable_url& mu )
-  :my( std::make_shared<detail::url_impl>(*mu.my) )
-  {
-
-  }
-  url::url( mutable_url&& mu )
-  :my( fc::move( mu.my ) )
-  { }
+  url::url( const string& proto, const ostring& host, const ostring& user, const ostring& pass,
+            const opath& path, const ostring& query, const ovariant_object& args, const fc::optional<uint16_t>& port)
+     :my( std::make_shared<detail::url_impl>() )
+   {
+      my->_proto = proto;
+      my->_host = host;
+      my->_user = user;
+      my->_pass = pass;
+      my->_path = path;
+      my->_query = query;
+      my->_args = args;
+      my->_port = port;
+   }
 
   url::~url(){}
 
@@ -155,16 +160,6 @@ namespace fc
         my = fc::move(u.my);
         u.my= get_null_url();
      }
-     return *this;
-  }
-  url& url::operator=(const mutable_url& u )
-  {
-     my = std::make_shared<detail::url_impl>(*u.my);
-     return *this;
-  }
-  url& url::operator=(mutable_url&& u )
-  {
-     my = fc::move(u.my);
      return *this;
   }
 

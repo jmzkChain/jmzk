@@ -227,15 +227,7 @@ void
 transaction_context::dispatch_action(action_trace& trace, const action& act) {
     apply_context apply(control, *this, act);
 
-    try {
-        apply.exec();
-    }
-    catch(...) {
-        trace = move(apply.trace);
-        throw;
-    }
-
-    trace = move(apply.trace);
+    apply.exec(trace);
 }
 
 void
@@ -244,6 +236,7 @@ transaction_context::record_transaction(const transaction_id_type& id, fc::time_
         control.db().create<transaction_object>([&](transaction_object& transaction) {
             transaction.trx_id     = id;
             transaction.expiration = expire;
+            transaction.block_num  = control.pending_block_state()->block_num;
         });
     }
     catch(const boost::interprocess::bad_alloc&) {

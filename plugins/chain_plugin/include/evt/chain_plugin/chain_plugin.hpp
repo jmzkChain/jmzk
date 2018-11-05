@@ -45,14 +45,16 @@ struct resolver_factory;
 
 class read_only {
 public:
-    const controller&     db;
-    const abi_serializer& system_api;
+    const controller& db;
+    bool  shorten_abi_errors = true;
 
 public:
-    read_only(const controller& db, const abi_serializer& system_api)
-        : db(db)
-        , system_api(system_api) {}
+    read_only(const controller& db)
+        : db(db) {}
 
+    void set_shorten_abi_errors(bool f) { shorten_abi_errors = f; }
+
+public:
     using get_info_params = empty;
 
     struct get_info_results {
@@ -147,7 +149,7 @@ public:
     fc::variant get_head_block_header_state(const get_head_block_header_state_params& params) const;
 
     struct get_transaction_params {
-        uint32_t                   block_num;
+        fc::optional<uint32_t>     block_num;
         chain::transaction_id_type id;
     };
     fc::variant get_transaction(const get_transaction_params& params);
@@ -160,13 +162,11 @@ public:
 
 class read_write {
 public:
-    controller&           db;
-    const abi_serializer& system_api;
+    controller& db;
 
 public:
-    read_write(controller& db, const abi_serializer& system_api)
-        : db(db)
-        , system_api(system_api) {}
+    read_write(controller& db)
+        : db(db) {}
 
     using push_block_params  = chain::signed_block;
     using push_block_results = empty;
@@ -216,10 +216,7 @@ public:
     // return true if --skip-transaction-signatures passed to evtd
     bool is_skipping_transaction_signatures() const;
 
-    // Only call this in plugin_initialize() to modify controller constructor configuration
-    controller::config& chain_config();
-
-    // Only call this after plugin_startup()!
+    // Only call this after plugin_initialize()!
     controller& chain();
 
     // Only call this after plugin_startup()!
@@ -228,6 +225,8 @@ public:
     chain::chain_id_type get_chain_id() const;
 
     void handle_guard_exception(const chain::guard_exception& e) const;
+
+    static void handle_db_exhaustion();
 
 private:
     void log_guard_exception(const chain::guard_exception& e) const;

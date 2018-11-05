@@ -151,6 +151,11 @@ namespace fc
    template<typename T>
    void from_variant( const variant& var,  std::set<T>& vo );
 
+   template<typename T, std::size_t S>
+   void to_variant( const std::array<T,S>& var,  variant& vo );
+   template<typename T, std::size_t S>
+   void from_variant( const variant& var,  std::array<T,S>& vo );
+
    void to_variant( const time_point& var,  variant& vo );
    void from_variant( const variant& var,  time_point& vo );
 
@@ -533,6 +538,24 @@ namespace fc
        v = std::move(vars);
    }
 
+   /** @ingroup Serializable */
+   template<typename T, std::size_t S>
+   void from_variant( const variant& var, std::array<T,S>& tmp )
+   {
+      const variants& vars = var.get_array();
+      for( std::size_t i = 0; i < S; ++i )
+         tmp[i] = vars.at(i).as<T>();
+   }
+
+   /** @ingroup Serializable */
+   template<typename T, std::size_t S>
+   void to_variant( const std::array<T,S>& t, variant& v )
+   {
+      std::vector<variant> vars(S);
+      for( std::size_t i = 0; i < S; ++i )
+         vars[i] = variant(t[i]);
+      v = std::move(vars);
+   }
 
    /** @ingroup Serializable */
    template<typename A, typename B>
@@ -628,7 +651,7 @@ namespace fc
          c.insert( item.as<T>() );
    }
    template<typename T> void to_variant( const boost::multiprecision::number<T>& n, variant& v ) {
-      v = std::string(n);
+      v = n.str();
    }
    template<typename T> void from_variant( const variant& v, boost::multiprecision::number<T>& n ) {
       n = boost::multiprecision::number<T>(v.get_string());

@@ -20,6 +20,7 @@ struct producer_key {
     operator==(const producer_key& lhs, const producer_key& rhs) {
         return tie(lhs.producer_name, lhs.block_signing_key) == tie(rhs.producer_name, rhs.block_signing_key);
     }
+    
     friend bool
     operator!=(const producer_key& lhs, const producer_key& rhs) {
         return tie(lhs.producer_name, lhs.block_signing_key) != tie(rhs.producer_name, rhs.block_signing_key);
@@ -94,5 +95,6 @@ operator!=(const producer_schedule_type& a, const producer_schedule_type& b) {
 
 }}  // namespace evt::chain
 
-FC_REFLECT(evt::chain::producer_key, (producer_name)(block_signing_key))
-FC_REFLECT(evt::chain::producer_schedule_type, (version)(producers))
+FC_REFLECT(evt::chain::producer_key, (producer_name)(block_signing_key));
+FC_REFLECT(evt::chain::producer_schedule_type, (version)(producers));
+FC_REFLECT(evt::chain::shared_producer_schedule_type, (version)(producers));

@@ -4,10 +4,10 @@
  */
 #pragma once
 #include <algorithm>
-#include <boost/noncopyable.hpp>
-#include <evt/chain/controller.hpp>
-#include <fc/utility.hpp>
 #include <sstream>
+#include <boost/noncopyable.hpp>
+#include <fc/utility.hpp>
+#include <evt/chain/controller.hpp>
 
 namespace chainbase {
 class database;
@@ -15,6 +15,7 @@ class database;
 
 namespace evt { namespace chain {
 
+struct action_trace;
 class transaction_context;
 
 class apply_context : boost::noncopyable {
@@ -29,12 +30,15 @@ public:
     }
 
 public:
-    void         exec();
-    action_trace exec_one();
+    void exec(action_trace& trace);
+    void exec_one(action_trace& trace);
 
 public:
     uint64_t next_global_sequence();
-    bool     has_authorized(const domain_name& domain, const domain_key& key) const;
+
+    bool has_authorized(const domain_name& domain, const domain_key& key) const;
+    
+    void finalize_trace( action_trace& trace, const fc::time_point& start );
 
 public:
     void reset_console();
@@ -72,8 +76,7 @@ public:
     chainbase::database& db;
     token_database&      token_db;
     transaction_context& trx_context;
-    const action&        act;  ///< message being applied
-    action_trace         trace;
+    const action&        act;
 
 private:
     std::ostringstream _pending_console_output;

@@ -97,6 +97,8 @@ public:
     bool is_on_loopback() const;
     bool is_secure() const;
 
+    bool verbose_errors() const;
+
 private:
     std::unique_ptr<class http_plugin_impl> my;
 };
