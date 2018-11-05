@@ -2,29 +2,30 @@
 #include <fc/crypto/base64.hpp>
 #include <fc/variant.hpp>
 #include <fc/reflect/reflect.hpp>
+#include <fc/exception/exception.hpp>
 
 namespace fc {
 
   /**
-   *  Provides a fixed size array that is easier for templates to specialize 
-   *  against or overload than T[N].  
+   *  Provides a fixed size array that is easier for templates to specialize
+   *  against or overload than T[N].
    */
   template<typename T, size_t N>
   class array {
     public:
     /**
      *  Checked indexing (when in debug build) that also simplifies dereferencing
-     *  when you have an array<T,N>*.    
+     *  when you have an array<T,N>*.
      */
     ///@{
-    T&       at( size_t pos )      { assert( pos < N); return data[pos]; }
-    const T& at( size_t pos )const { assert( pos < N); return data[pos]; }
+    T&       at( size_t pos )      { FC_ASSERT( pos < N, "array out-of-bounds" ); return data[pos]; }
+    const T& at( size_t pos )const { FC_ASSERT( pos < N, "array out-of-bounds" ); return data[pos]; }
     ///@}
 
-    T&       operator[]( size_t pos )      { assert( pos < N); return data[pos]; }
-    const T& operator[]( size_t pos )const { assert( pos < N); return data[pos]; }
+    T&       operator[]( size_t pos )      { FC_ASSERT( pos < N, "array out-of-bounds" ); return data[pos]; }
+    const T& operator[]( size_t pos )const { FC_ASSERT( pos < N, "array out-of-bounds" ); return data[pos]; }
 
-    
+
     const T*     begin()const  {  return &data[0]; }
     const T*     end()const    {  return &data[N]; }
 
@@ -32,7 +33,7 @@ namespace fc {
     T*           end()         {  return &data[N]; }
 
     size_t       size()const { return N; }
-    
+
     T data[N];
   };
 
@@ -45,19 +46,19 @@ namespace fc {
     array(){ memset( data, 0, sizeof(data) ); }
     /**
      *  Checked indexing (when in debug build) that also simplifies dereferencing
-     *  when you have an array<T,N>*.    
+     *  when you have an array<T,N>*.
      */
     ///@{
-    T&       at( size_t pos )      { assert( pos < N); return data[pos]; }
-    const T& at( size_t pos )const { assert( pos < N); return data[pos]; }
+    T&       at( size_t pos )      { FC_ASSERT( pos < N, "array out-of-bounds" ); return data[pos]; }
+    const T& at( size_t pos )const { FC_ASSERT( pos < N, "array out-of-bounds" ); return data[pos]; }
     ///@}
-    
+
     T*           begin()       {  return &data[0]; }
     const T*     begin()const  {  return &data[0]; }
     const T*     end()const    {  return &data[N]; }
 
     size_t       size()const { return N; }
-    
+
     T data[N];
   };
 
@@ -70,19 +71,19 @@ namespace fc {
     array(){ memset( data, 0, sizeof(data) ); }
     /**
      *  Checked indexing (when in debug build) that also simplifies dereferencing
-     *  when you have an array<T,N>*.    
+     *  when you have an array<T,N>*.
      */
     ///@{
-    T&       at( size_t pos )      { assert( pos < N); return data[pos]; }
-    const T& at( size_t pos )const { assert( pos < N); return data[pos]; }
+    T&       at( size_t pos )      { FC_ASSERT( pos < N, "array out-of-bounds" ); return data[pos]; }
+    const T& at( size_t pos )const { FC_ASSERT( pos < N, "array out-of-bounds" ); return data[pos]; }
     ///@}
-    
+
     T*           begin()       {  return &data[0]; }
     const T*     begin()const  {  return &data[0]; }
     const T*     end()const    {  return &data[N]; }
 
     size_t       size()const { return N; }
-    
+
     T data[N];
   };
 
@@ -119,14 +120,14 @@ namespace fc {
   }
 
 
-  template<typename T,size_t N> struct get_typename< fc::array<T,N> >  
-  { 
-     static const char* name()  
-     { 
+  template<typename T,size_t N> struct get_typename< fc::array<T,N> >
+  {
+     static const char* name()
+     {
         static std::string _name = std::string("fc::array<")+std::string(fc::get_typename<T>::name())+","+ fc::to_string(N) + ">";
         return _name.c_str();
-     } 
-  }; 
+     }
+  };
 }
 
 #include <unordered_map>
@@ -142,4 +143,3 @@ namespace std
        }
     };
 }
-

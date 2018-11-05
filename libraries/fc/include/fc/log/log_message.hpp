@@ -40,6 +40,7 @@ namespace fc
          log_level( values v = off ):value(v){}
          explicit log_level( int v ):value( static_cast<values>(v)){}
          operator int()const { return value; }
+         string to_string()const;
          values value;
    };
 

@@ -6,12 +6,14 @@
 #include <fc/crypto/sha512.hpp>
 #include <fc/variant.hpp>
 #include "_digest_common.hpp"
-  
+
 namespace fc {
 
     sha512::sha512() { memset( _hash, 0, sizeof(_hash) ); }
     sha512::sha512( const string& hex_str ) {
-      fc::from_hex( hex_str, (char*)_hash, sizeof(_hash) );  
+      auto bytes_written = fc::from_hex( hex_str, (char*)_hash, sizeof(_hash) );
+      if( bytes_written < sizeof(_hash) )
+         memset( (char*)_hash + bytes_written, 0, (sizeof(_hash) - bytes_written) );
     }
 
     string sha512::str()const {
@@ -41,7 +43,7 @@ namespace fc {
     }
 
     void sha512::encoder::write( const char* d, uint32_t dlen ) {
-      SHA512_Update( &my->ctx, d, dlen); 
+      SHA512_Update( &my->ctx, d, dlen);
     }
     sha512 sha512::encoder::result() {
       sha512 h;
@@ -49,7 +51,7 @@ namespace fc {
       return h;
     }
     void sha512::encoder::reset() {
-      SHA512_Init( &my->ctx);  
+      SHA512_Init( &my->ctx);
     }
 
     sha512 operator << ( const sha512& h1, uint32_t i ) {
@@ -84,7 +86,7 @@ namespace fc {
     bool operator == ( const sha512& h1, const sha512& h2 ) {
       return memcmp( h1._hash, h2._hash, sizeof(h1._hash) ) == 0;
     }
-  
+
   void to_variant( const sha512& bi, variant& v )
   {
      v = std::vector<char>( (const char*)&bi, ((const char*)&bi) + sizeof(bi) );

@@ -1,6 +1,5 @@
 #include <fc/variant_object.hpp>
 #include <fc/exception/exception.hpp>
-#include <assert.h>
 
 
 namespace fc
@@ -14,7 +13,7 @@ namespace fc
    variant_object::entry::entry( const entry& e ) : _key(e._key),_value(e._value) {}
    variant_object::entry& variant_object::entry::operator=( const variant_object::entry& e )
    {
-      if( this != &e ) 
+      if( this != &e )
       {
          _key = e._key;
          _value = e._value;
@@ -27,7 +26,7 @@ namespace fc
       fc_swap( _value, e._value );
       return *this;
    }
-   
+
    const string&        variant_object::entry::key()const
    {
       return _key;
@@ -52,7 +51,7 @@ namespace fc
 
    variant_object::iterator variant_object::begin() const
    {
-      assert( _key_value != nullptr );
+      FC_ASSERT( _key_value != nullptr );
       return _key_value->begin();
    }
 
@@ -95,7 +94,7 @@ namespace fc
       return _key_value->size();
    }
 
-   variant_object::variant_object() 
+   variant_object::variant_object()
       :_key_value(std::make_shared<std::vector<entry>>() )
    {
    }
@@ -110,14 +109,14 @@ namespace fc
    variant_object::variant_object( const variant_object& obj )
    :_key_value( obj._key_value )
    {
-      assert( _key_value != nullptr );
+      FC_ASSERT( _key_value != nullptr );
    }
 
    variant_object::variant_object( variant_object&& obj)
    : _key_value( fc::move(obj._key_value) )
    {
       obj._key_value = std::make_shared<std::vector<entry>>();
-      assert( _key_value != nullptr );
+      FC_ASSERT( _key_value != nullptr );
    }
 
    variant_object::variant_object( const mutable_variant_object& obj )
@@ -128,7 +127,7 @@ namespace fc
    variant_object::variant_object( mutable_variant_object&& obj )
    : _key_value(fc::move(obj._key_value))
    {
-      assert( _key_value != nullptr );
+      FC_ASSERT( _key_value != nullptr );
    }
 
    variant_object& variant_object::operator=( variant_object&& obj )
@@ -136,7 +135,7 @@ namespace fc
       if (this != &obj)
       {
          fc_swap(_key_value, obj._key_value );
-         assert( _key_value != nullptr );
+         FC_ASSERT( _key_value != nullptr );
       }
       return *this;
    }
@@ -182,7 +181,7 @@ namespace fc
       return _key_value->begin();
    }
 
-   mutable_variant_object::iterator mutable_variant_object::end() 
+   mutable_variant_object::iterator mutable_variant_object::end()
    {
       return _key_value->end();
    }
@@ -260,7 +259,7 @@ namespace fc
       return _key_value->size();
    }
 
-   mutable_variant_object::mutable_variant_object() 
+   mutable_variant_object::mutable_variant_object()
       :_key_value(new std::vector<entry>)
    {
    }
@@ -343,7 +342,7 @@ namespace fc
    }
 
    /** Appends \a key and \a var without checking for duplicates, designed to
-    *  simplify construction of dictionaries using (key,val)(key2,val2) syntax 
+    *  simplify construction of dictionaries using (key,val)(key2,val2) syntax
     */
    mutable_variant_object& mutable_variant_object::operator()( string key, variant var )
    {
