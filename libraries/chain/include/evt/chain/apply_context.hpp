@@ -15,7 +15,7 @@ class database;
 
 namespace evt { namespace chain {
 
-class action_trace;
+struct action_trace;
 class transaction_context;
 
 class apply_context : boost::noncopyable {
