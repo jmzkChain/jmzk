@@ -37,8 +37,6 @@ determine_home_directory() {
 int
 main(int argc, char** argv) {
     try {
-        app().init();
-        
         bfs::path home = determine_home_directory();
         app().set_default_data_dir(home / "evt-wallet");
         app().set_default_config_dir(home / "evt-wallet");

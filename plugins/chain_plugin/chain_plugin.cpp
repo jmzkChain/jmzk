@@ -1272,5 +1272,23 @@ read_only::get_charge(const get_charge_params& params) const {
     return result;
 }
 
+fc::variant
+read_only::get_transaction_ids_for_block(const get_transaction_ids_for_block_params& params) const {
+    signed_block_ptr block;
+    try {
+        block = db.fetch_block_by_id(params.block_id);
+    }
+    EVT_RETHROW_EXCEPTIONS(chain::block_id_type_exception, "Invalid block ID: ${id}", ("id", params.block_id))
+
+    EVT_ASSERT(block, unknown_block_exception, "Could not find block: ${block}", ("id", params.block_id));
+
+    auto arr = fc::variants();
+    for(auto& trx : block->transactions) {
+        arr.emplace_back(trx.trx.id());
+    }
+
+    return arr;
+}
+
 }  // namespace chain_apis
 }  // namespace evt

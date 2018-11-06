@@ -24,11 +24,12 @@ namespace evt {
 using namespace appbase;
 using std::unique_ptr;
 
-using fc::optional;
 using boost::container::flat_set;
+using fc::optional;
 
 using chain::account_name;
 using chain::bytes;
+using chain::block_id_type;
 using chain::controller;
 using chain::digest_type;
 using chain::name;
@@ -158,6 +159,11 @@ public:
         bytes link_id;
     };
     fc::variant get_trx_id_for_link_id(const get_trx_id_for_link_id_params& params) const;
+
+    struct get_transaction_ids_for_block_params {
+        block_id_type block_id;
+    };
+    fc::variant get_transaction_ids_for_block(const get_transaction_ids_for_block_params& params) const;
 };
 
 class read_write {
@@ -256,4 +262,5 @@ FC_REFLECT(evt::chain_apis::read_only::get_suspend_required_keys_params, (name)(
 FC_REFLECT(evt::chain_apis::read_only::get_suspend_required_keys_result, (required_keys));
 FC_REFLECT(evt::chain_apis::read_only::get_charge_params, (transaction)(sigs_num));
 FC_REFLECT(evt::chain_apis::read_only::get_charge_result, (charge));
+FC_REFLECT(evt::chain_apis::read_only::get_transaction_ids_for_block_params, (block_id));
 FC_REFLECT(evt::chain_apis::read_write::push_transaction_results, (transaction_id)(processed));
