@@ -5,7 +5,7 @@ import time
 
 import click
 import docker
-from pyevt import ecc, libevt
+# from pyevt import ecc, libevt
 
 
 class command():
@@ -37,8 +37,6 @@ def free_container(name, client):
                 break
 
 # free the dir
-
-
 def free_the_dir(dir):
     list = os.listdir(dir)
     print('remove the files in {}'.format(dir))
@@ -89,13 +87,28 @@ def create(config):
         # make the command
         cmd = command('evtd.sh')
         cmd.add_option('--delete-all-blocks')
+        cmd.add_option('--http-validate-host=false')
+        cmd.add_option('--charge-free-mode')
+        cmd.add_option('--plugin=evt::mongo_db_plugin')
+        cmd.add_option('--plugin=evt::history_plugin')
+        cmd.add_option('--plugin=evt::history_api_plugin')
+        cmd.add_option('--plugin=evt::evt_link_plugin')
+        cmd.add_option('--plugin=evt::chain_api_plugin')
+        cmd.add_option('--plugin=evt::evt_api_plugin')
+        cmd.add_option('--mongodb-uri=mongodb://mongo:27017/EVT{}'.format(i))
+
         if(i < producer_number):
             cmd.add_option('--enable-stale-production')
-            cmd.add_option('--producer-name=evt')
-            libevt.init_lib()
-            pub_key, priv_key = ecc.generate_new_pair()
-            cmd.add_option('--private-key={}'.format(priv_key.to_string()))
-            # cmd.add_option('--private-key=5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3')
+            if (i == 0):
+                cmd.add_option('--producer-name=evt')
+            else:
+                cmd.add_option('--producer-name=evt{}'.format(i))
+            # libevt.init_lib()
+            # pub_key, priv_key = ecc.generate_new_pair()
+            # cmd.add_option('--signature-provider={}=KEY:{}'.format(pub_key.to_string(), priv_key.to_string()))
+            # print(pub_key)
+            # print(priv_key)
+            cmd.add_option('--signature-provider=EVT7vuvMYQwm6WYLoopw6DqhBumM4hC7RA5ufK8WSqU7VQyfmoLwA=KEY:5KZ2HeogGk12U2WwU7djVrfcSami4BRtMyNYA7frfcAnhyAGzKM')
 
         cmd.add_option('--http-server-address=evtd_{}:{}'.format(i, 8888+i))
         cmd.add_option('--p2p-listen-endpoint=evtd_{}:{}'.format(i, 9876+i))
@@ -144,7 +157,9 @@ def create(config):
                                                   '/opt/evtd/data': 'size='+str(tmpfs_size)+'M'}
                                               #
                                               )
-
+    cmd = command('/opt/evt/bin/evtc -u http://evtd_0:8888 --wallet-url http://127.0.0.1:9999 producer updsched evt:EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV --payer EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV')
+    req = container.exec_run(cmd.get_arguments())
+    print(req)
 
 # format with the click
 @click.command()
