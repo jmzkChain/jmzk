@@ -22,6 +22,7 @@ add_library( evt_chain
              
              fork_database.cpp
              token_database.cpp
+             token_database_snapshot.cpp
              snapshot.cpp
 
              apply_context.cpp

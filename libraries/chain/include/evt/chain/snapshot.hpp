@@ -124,6 +124,44 @@ snapshot_row_writer<T>
 make_row_writer(const T& data) {
     return snapshot_row_writer<T>(data);
 }
+
+struct snapshot_row_raw_writer : abstract_snapshot_row_writer {
+    explicit snapshot_row_raw_writer(const std::string& name, const char* data, size_t sz)
+        : name_(name), data_(data), sz_(sz) {}
+
+    template <typename DataStream>
+    void
+    write_stream(DataStream& out) const {
+        out.write(data_, sz_);
+    }
+
+    void
+    write(ostream_wrapper& out) const override {
+        write_stream(out);
+    }
+
+    void
+    write(fc::sha256::encoder& out) const override {
+        write_stream(out);
+    }
+
+    fc::variant
+    to_variant() const override {
+        auto var = variant();
+        var = std::string(data_, sz_);
+        return var;
+    }
+
+    std::string
+    row_type_name() const override {
+        return name_;
+    }
+
+    std::string name_;
+    const char* data_;
+    size_t      sz_;
+};
+
 }  // namespace detail
 
 class snapshot_writer {
@@ -134,6 +172,11 @@ public:
         void
         add_row(const T& row, const chainbase::database& db) {
             _writer.write_row(detail::make_row_writer(detail::snapshot_row_traits<T>::to_snapshot_row(row, db)));
+        }
+
+        void
+        add_row(const std::string& name, const char* data, size_t sz) {
+            _writer.write_row(detail::snapshot_row_raw_writer(name, data, sz));
         }
 
     private:

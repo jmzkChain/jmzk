@@ -1,9 +1,18 @@
 #include <evt/chain/snapshot.hpp>
 #include <evt/chain/token_database.hpp>
 #include <rocksdb/env.h>
-#include <rocksdb/utilities/backupable_db.h>
 
 namespace evt { namespace chain {
+
+using rocksdb::EnvOptions;
+using rocksdb::Directory;
+using rocksdb::FileLock;
+using rocksdb::Status;
+using rocksdb::SequentialFile;
+using rocksdb::RandomAccessFile;
+using rocksdb::WritableFile;
+
+class token_database;
 
 class snapshot_env : public rocksdb::EnvWrapper {
 public:
@@ -68,7 +77,7 @@ public:
     // Store in *result the names of the children of the specified directory.
     // The names are relative to "dir".
     // Original contents of *results are dropped.
-    Status GetChildren(const std::string& dir, std::vector<std::string>* result) override5;
+    Status GetChildren(const std::string& dir, std::vector<std::string>* result) override;
 
     // Delete the named file.
     Status DeleteFile(const std::string& fname) override;
@@ -115,6 +124,17 @@ public:
     // REQUIRES: lock was returned by a successful LockFile() call
     // REQUIRES: lock has not already been unlocked.
     Status UnlockFile(FileLock* lock) override;
+};
+
+class token_database_snapshot {
+public:
+    token_database_snapshot(token_database& db) : db_(db) {}
+
+public:
+    void add_to_snapshot(const snapshot_writer_ptr& snapshot);
+
+private:
+    token_database& db_;
 };
 
 }}  // namespace evt::chain

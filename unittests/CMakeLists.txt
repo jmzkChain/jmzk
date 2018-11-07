@@ -4,6 +4,7 @@ add_executable(evt_unittests
     contracts_tests.cpp
     tokendb_tests.cpp
     types_tests.cpp
+    snapshot_tests.cpp
     )
 
 target_link_libraries(evt_unittests
