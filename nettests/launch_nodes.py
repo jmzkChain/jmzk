@@ -5,7 +5,8 @@ import time
 
 import click
 import docker
-# from pyevt import ecc, libevt
+from pyevt import ecc, libevt
+from pyevtsdk import action, api, base, transaction
 
 
 class command():
@@ -31,17 +32,24 @@ def free_container(name, client):
             container = client.containers.get(name+str(i))
             container.stop()
             container.remove()
-            print('free {}{} succeed'.format(name, i))
+            click.echo('free {}{} succeed'.format(name, i))
         except docker.errors.NotFound:
             if(i >= 10):
                 break
 
+    try:
+        container = client.containers.get('mongo')
+        container.stop()
+        container.remove()
+    except docker.errors.NotFound:
+        print('123')
+
 # free the dir
 def free_the_dir(dir):
     list = os.listdir(dir)
-    print('remove the files in {}'.format(dir))
+    click.echo('remove the files in {}'.format(dir))
     for name in list:
-        print(name)
+        click.echo(name)
         os.removedirs(os.path.join(dir, name))
     if(not os.path.exists(dir)):
         os.mkdir(dir, 0o755)
@@ -50,7 +58,6 @@ def free_the_dir(dir):
 @click.group()
 def run():
     pass
-
 
 @click.command()
 @click.option('--config', help='the config of nodes', default='launch.config')
@@ -67,12 +74,24 @@ def create(config):
     use_tmpfs = paras['use_tmpfs']                # use the tmpfs or not
     tmpfs_size = paras['tmpfs_size']              # the memory usage per node
     client = docker.from_env()
-    print('check and free the container before')
+    click.echo('check and free the container before')
     free_container('evtd_', client)
-    # network=client.networks.create("evt-net",driver="bridge")
+
+    try:
+        net = client.networks.get("evt-net")
+    except docker.errors.NotFound:
+        network=client.networks.create("evt-net",driver="bridge")
+
+    container = client.containers.run(image='mongo:latest',
+                                              name='mongo',
+                                              network='evt-net',
+                                              detach=True,
+                                              volumes={
+                                                  'mongo': {'bind': '/opt/evtd/data', 'mode': 'rw'}}
+                                              )
 
     # begin the nodes one by one
-    print('begin open the evtd')
+    click.echo('begin open the evtd')
     for i in range(0, nodes_number):
 
         # create files in evtd_dir
@@ -80,7 +99,7 @@ def create(config):
             os.mkdir(evtd_dir, 0o755)
         file = os.path.join(evtd_dir, 'dir_{}'.format(i))
         if(os.path.exists(file)):
-            print("Warning: the file before didn't freed ")
+            click.echo("Warning: the file before didn't freed ")
         else:
             os.mkdir(file, 0o755)
 
@@ -103,31 +122,24 @@ def create(config):
                 cmd.add_option('--producer-name=evt')
             else:
                 cmd.add_option('--producer-name=evt{}'.format(i))
-            # libevt.init_lib()
-            # pub_key, priv_key = ecc.generate_new_pair()
-            # cmd.add_option('--signature-provider={}=KEY:{}'.format(pub_key.to_string(), priv_key.to_string()))
-            # print(pub_key)
-            # print(priv_key)
             cmd.add_option('--signature-provider=EVT7vuvMYQwm6WYLoopw6DqhBumM4hC7RA5ufK8WSqU7VQyfmoLwA=KEY:5KZ2HeogGk12U2WwU7djVrfcSami4BRtMyNYA7frfcAnhyAGzKM')
 
         cmd.add_option('--http-server-address=evtd_{}:{}'.format(i, 8888+i))
         cmd.add_option('--p2p-listen-endpoint=evtd_{}:{}'.format(i, 9876+i))
-        # cmd.add_option(('--p2p-peer-address=evtd_{}:{}'.format((i+1)%nodes_number, 9876+(i+1)%nodes_number)))
         for j in range(0, nodes_number):
             if(i == j):
                 continue
             cmd.add_option(('--p2p-peer-address=evtd_{}:{}'.format(j, 9876+j)))
-        #     break 
 
         # run the image evtd in container
         if(not use_tmpfs):
-            print('********evtd {} **************'.format(i))
-            print('name: evtd_{}'.format(i))
-            print('nework: evt-net')
-            print('http port: {} /tcp: {}'.format(evtd_port_http+i, 8888+i))
-            print('p2p port: {} /tcp: {}'.format(evtd_port_p2p+i, 9876+i))
-            print('mount location: {}'.format(file))
-            print('****************************')
+            click.echo('********evtd {} **************'.format(i))
+            click.echo('name: evtd_{}'.format(i))
+            click.echo('nework: evt-net')
+            click.echo('http port: {} /tcp: {}'.format(evtd_port_http+i, 8888+i))
+            click.echo('p2p port: {} /tcp: {}'.format(evtd_port_p2p+i, 9876+i))
+            click.echo('mount location: {}'.format(file))
+            click.echo('****************************')
             container = client.containers.run(image='everitoken/evt:latest',
                                               name='evtd_{}'.format(i),
                                               command=cmd.get_arguments(),
@@ -139,13 +151,13 @@ def create(config):
                                                   file: {'bind': '/opt/evtd/data', 'mode': 'rw'}}
                                               )
         else:
-            print('********evtd {} **************'.format(i))
-            print('name: evtd_{}'.format(i))
-            print('nework: evt-net')
-            print('http port: {} /tcp: {}'.format(evtd_port_http+i, 8888+i))
-            print('p2p port: {} /tcp: {}'.format(evtd_port_p2p+i, 9876+i))
-            print('tmpfs use size: {} M'.format(tmpfs_size))
-            print('****************************')
+            click.echo('********evtd {} **************'.format(i))
+            click.echo('name: evtd_{}'.format(i))
+            click.echo('nework: evt-net')
+            click.echo('http port: {} /tcp: {}'.format(evtd_port_http+i, 8888+i))
+            click.echo('p2p port: {} /tcp: {}'.format(evtd_port_p2p+i, 9876+i))
+            click.echo('tmpfs use size: {} M'.format(tmpfs_size))
+            click.echo('****************************')
             container = client.containers.run(image='everitoken/evt:latest',
                                               name='evtd_{}'.format(i),
                                               command=cmd.get_arguments(),
@@ -157,9 +169,46 @@ def create(config):
                                                   '/opt/evtd/data': 'size='+str(tmpfs_size)+'M'}
                                               #
                                               )
-    cmd = command('/opt/evt/bin/evtc -u http://evtd_0:8888 --wallet-url http://127.0.0.1:9999 producer updsched evt:EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV --payer EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV')
-    req = container.exec_run(cmd.get_arguments())
-    print(req)
+    # update producers
+    producers_json_raw = '''
+    {
+        "producers": [{
+            "producer_name": "evt",
+            "block_signing_key": "EVT7vuvMYQwm6WYLoopw6DqhBumM4hC7RA5ufK8WSqU7VQyfmoLwA"
+        },{
+           "producer_name": "evt1",
+            "block_signing_key": "EVT7vuvMYQwm6WYLoopw6DqhBumM4hC7RA5ufK8WSqU7VQyfmoLwA"
+        },{
+           "producer_name": "evt2",
+            "block_signing_key": "EVT7vuvMYQwm6WYLoopw6DqhBumM4hC7RA5ufK8WSqU7VQyfmoLwA"
+        },{
+           "producer_name": "evt3",
+            "block_signing_key": "EVT7vuvMYQwm6WYLoopw6DqhBumM4hC7RA5ufK8WSqU7VQyfmoLwA"
+        },{
+           "producer_name": "evt4",
+            "block_signing_key": "EVT7vuvMYQwm6WYLoopw6DqhBumM4hC7RA5ufK8WSqU7VQyfmoLwA"
+        }]
+    }
+    '''
+    url = 'http://127.0.0.1:8888'
+    priv_evt = ecc.PrivateKey.from_string(
+            '5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3')
+    pub_evt = ecc.PublicKey.from_string(
+            'EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV')
+
+    TG = transaction.TrxGenerator(url=url, payer=pub_evt.to_string())
+    Api = api.Api(url)
+    AG = action.ActionGenerator()
+
+    producers_json = json.loads(producers_json_raw)
+    updsched = AG.new_action_from_json('updsched', json.dumps(producers_json))
+    newdomain = AG.new_action(
+        'newdomain', name='dsafsd', creator=pub_evt)
+
+    trx = TG.new_trx()
+    trx.add_action(updsched)
+    trx.add_sign(priv_evt)
+    Api.push_transaction(trx.dumps())
 
 # format with the click
 @click.command()
@@ -172,10 +221,10 @@ def free(config):
     free_dir = paras['free_dir']  # delete the directory of the evtd
     evtd_dir = paras['evtd_dir']  # the data directory of the evtd
     client = docker.from_env()
-    print('free the container')
+    click.echo('free the container')
     free_container('evtd_', client)
     if(free_dir):
-        print(evtd_dir)
+        click.echo(evtd_dir)
         free_the_dir(evtd_dir)
 
 
