@@ -118,6 +118,10 @@ class EveripayAction(Action):
     def __init__(self, domain, key, data):
         super().__init__('everipay', domain, key, data)
 
+class UpdateProducerAction(Action):
+    def __init__(self, data):
+        super().__init__('updsched', '.prodsched', '.update', data)
+
 
 class ActionTypeErrorException(Exception):
     def __init__(self):
@@ -171,6 +175,8 @@ def get_action_from_abi_json(action, abi_json, domain=None, key=None):
         return EveripassAction(domain, key, _bin)
     elif action == 'everipay':
         return EveripayAction(domain, key, _bin)
+    elif action == 'updsched':
+        return UpdateProducerAction(_bin)
     else:
         raise ActionTypeErrorException
 
@@ -294,6 +300,10 @@ class ActionGenerator:
         everipay = evt_link.EvtLink.parse_from_evtli(link)
         abi_json = base.EveripayAbi(str(payee), number, link)
         return get_action_from_abi_json('everipay', abi_json.dumps(), '.fungible', str(everipay.get_segment_int('symbol_id')))
+
+    def updsched(self, producers):
+        abi_json = base.UpdateProducerAction(producers)
+        return get_action_from_abi_json('updsched', abi_json.dumps())
 
     def new_action(self, action, **args):
         func = getattr(self, action)
