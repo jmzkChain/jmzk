@@ -16,7 +16,7 @@ typedef evt_data_t evt_chain_id_t;
 typedef evt_data_t evt_block_id_t;
 
 void* evt_abi();
-void evt_free_abi(void* abi);
+void  evt_free_abi(void* abi);
 
 int evt_abi_json_to_bin(void* evt_abi, const char* action, const char* json, evt_bin_t** bin /* out */);
 int evt_abi_bin_to_json(void* evt_abi, const char* action, evt_bin_t* bin, char** json /* out */);
