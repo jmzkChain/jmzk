@@ -126,8 +126,8 @@ make_row_writer(const T& data) {
 }
 
 struct snapshot_row_raw_writer : abstract_snapshot_row_writer {
-    explicit snapshot_row_raw_writer(const std::string& name, const char* data, size_t sz)
-        : name_(name), data_(data), sz_(sz) {}
+    explicit snapshot_row_raw_writer(const char* data, size_t sz)
+        : data_(data), sz_(sz) {}
 
     template <typename DataStream>
     void
@@ -154,10 +154,9 @@ struct snapshot_row_raw_writer : abstract_snapshot_row_writer {
 
     std::string
     row_type_name() const override {
-        return name_;
+        return "raw";
     }
 
-    std::string name_;
     const char* data_;
     size_t      sz_;
 };
@@ -176,7 +175,7 @@ public:
 
         void
         add_row(const std::string& name, const char* data, size_t sz) {
-            _writer.write_row(detail::snapshot_row_raw_writer(name, data, sz));
+            _writer.write_row(detail::snapshot_row_raw_writer(data, sz));
         }
 
     private:
@@ -277,6 +276,33 @@ struct snapshot_row_reader : abstract_snapshot_row_reader {
     T& data;
 };
 
+struct snapshot_row_raw_reader : abstract_snapshot_row_reader {
+    snapshot_row_raw_reader(std::string& out, size_t sz)
+        : out_(out), sz_(sz) {}
+
+    void
+    provide(std::istream& in) const override {
+        out_.resize(sz_);
+        in.read((char*)out_.data(), sz_);
+    }
+
+    void
+    provide(const fc::variant& var) const override {
+        auto s = var.as_string();
+        FC_ASSERT(s.size() == sz_);
+
+        out_.assign(s.c_str());
+    }
+
+    std::string
+    row_type_name() const override {
+        return "raw";
+    }
+
+    std::string& out_;
+    size_t       sz_;
+};
+
 template <typename T>
 snapshot_row_reader<T>
 make_row_reader(T& data) {
@@ -312,6 +338,12 @@ public:
             return result;
         }
 
+        auto
+        read_row(std::string& out, size_t sz) {
+            auto reader = detail::snapshot_row_raw_reader(out, sz);
+            return _reader.read_row(reader);
+        }
+
         bool
         empty() {
             return _reader.empty();
@@ -325,6 +357,7 @@ public:
         snapshot_reader& _reader;
     };
 
+public:
     template <typename F>
     void
     read_section(const std::string& section_name, F f) {
@@ -347,15 +380,17 @@ public:
     }
 
     virtual void validate() const = 0;
+    virtual bool has_section(const std::string& section_name) = 0;
+    virtual std::vector<std::string> get_section_names(const std::string& prefix) const = 0;
 
     virtual ~snapshot_reader(){};
 
 protected:
-    virtual bool has_section(const std::string& section_name)               = 0;
     virtual void set_section(const std::string& section_name)               = 0;
     virtual bool read_row(detail::abstract_snapshot_row_reader& row_reader) = 0;
     virtual bool empty()                                                    = 0;
     virtual void clear_section()                                            = 0;
+    virtual void build_section_indexes()                                    = 0;
 };
 
 using snapshot_reader_ptr = std::shared_ptr<snapshot_reader>;
@@ -376,10 +411,17 @@ private:
 };
 
 class variant_snapshot_reader : public snapshot_reader {
+private:
+    struct section_index {
+        std::string               name;
+        const fc::variant_object& ptr;
+    };
+
 public:
     explicit variant_snapshot_reader(const fc::variant& snapshot);
 
     void validate() const override;
+    std::vector<std::string> get_section_names(const std::string& prefix) const override;
     bool has_section(const string& section_name) override;
     void set_section(const string& section_name) override;
     bool read_row(detail::abstract_snapshot_row_reader& row_reader) override;
@@ -387,9 +429,13 @@ public:
     void clear_section() override;
 
 private:
-    const fc::variant&        snapshot;
-    const fc::variant_object* cur_section;
-    uint64_t                  cur_row;
+    void build_section_indexes() override;
+
+private:
+    const fc::variant&         snapshot;
+    const fc::variant_object*  cur_section;
+    uint64_t                   cur_row;
+    std::vector<section_index> section_indexes;
 };
 
 class ostream_snapshot_writer : public snapshot_writer {
@@ -412,9 +458,17 @@ private:
 
 class istream_snapshot_reader : public snapshot_reader {
 public:
+    struct section_index {
+        std::string name;
+        size_t      pos;
+        size_t      row_count;
+    };
+
+public:
     explicit istream_snapshot_reader(std::istream& snapshot);
 
     void validate() const override;
+    std::vector<std::string> get_section_names(const std::string& prefix) const override;
     bool has_section(const string& section_name) override;
     void set_section(const string& section_name) override;
     bool read_row(detail::abstract_snapshot_row_reader& row_reader) override;
@@ -422,12 +476,14 @@ public:
     void clear_section() override;
 
 private:
+    void build_section_indexes() override;
     bool validate_section() const;
 
-    std::istream&  snapshot;
-    std::streampos header_pos;
-    uint64_t       num_rows;
-    uint64_t       cur_row;
+    std::istream&              snapshot;
+    std::streampos             header_pos;
+    uint64_t                   num_rows;
+    uint64_t                   cur_row;
+    std::vector<section_index> section_indexes;
 };
 
 class integrity_hash_snapshot_writer : public snapshot_writer {

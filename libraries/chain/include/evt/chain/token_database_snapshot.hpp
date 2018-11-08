@@ -16,7 +16,7 @@ class token_database;
 
 class snapshot_env : public rocksdb::EnvWrapper {
 public:
-    snapshot_env();
+    snapshot_env(snapshot_writer_ptr writer, snapshot_reader_ptr reader);
 
 public:
     // Create a brand new sequentially-readable file with the specified name.
@@ -124,6 +124,13 @@ public:
     // REQUIRES: lock was returned by a successful LockFile() call
     // REQUIRES: lock has not already been unlocked.
     Status UnlockFile(FileLock* lock) override;
+
+private:
+    snapshot_writer_ptr writer_;
+    snapshot_reader_ptr reader_;
+
+    std::vector<std::string> created_folders_;
+    std::vector<std::string> created_files_;
 };
 
 class token_database_snapshot {
