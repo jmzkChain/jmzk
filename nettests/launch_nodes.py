@@ -42,7 +42,9 @@ def free_container(name, client):
         container.stop()
         container.remove()
     except docker.errors.NotFound:
-        print('123')
+        pass
+        
+    client.volumes.prune()
 
 # free the dir
 def free_the_dir(dir):
@@ -202,8 +204,6 @@ def create(config):
 
     producers_json = json.loads(producers_json_raw)
     updsched = AG.new_action_from_json('updsched', json.dumps(producers_json))
-    newdomain = AG.new_action(
-        'newdomain', name='dsafsd', creator=pub_evt)
 
     trx = TG.new_trx()
     trx.add_action(updsched)
