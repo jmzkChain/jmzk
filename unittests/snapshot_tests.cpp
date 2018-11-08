@@ -11,7 +11,9 @@ using namespace chain;
 
 extern std::string evt_unittests_dir;
 
-TEST_CASE("tokendb", "[snapshot]") {
+string tokendb_ss;
+
+TEST_CASE("tokendb_save", "[snapshot]") {
     auto db = token_database();
     db.initialize(evt_unittests_dir + "/snapshot_tests");
 
@@ -29,8 +31,20 @@ TEST_CASE("tokendb", "[snapshot]") {
     db.issue_tokens(it);
 
     auto ss = std::stringstream();
-    auto snapshot = std::make_shared<ostream_snapshot_writer>(ss);
+    auto writer = std::make_shared<ostream_snapshot_writer>(ss);
 
-    auto tds = token_database_snapshot(db);
-    tds.add_to_snapshot(snapshot);
+    auto tds = token_database_snapshot();
+    tds.add_to_snapshot(writer, db);
+
+    tokendb_ss = ss.str();
+}
+
+TEST_CASE("tokendb_load", "[snapshot]") {
+    printf("load\n");
+
+    auto ss = std::stringstream(tokendb_ss);
+    auto reader = std::make_shared<istream_snapshot_reader>(ss);
+
+    auto tds = token_database_snapshot();
+    tds.read_from_snapshot(reader, evt_unittests_dir + "/snapshot_tests");
 }

@@ -282,6 +282,7 @@ struct snapshot_row_raw_reader : abstract_snapshot_row_reader {
 
     void
     provide(std::istream& in) const override {
+        FC_ASSERT(!in.eof());
         out_.resize(sz_);
         in.read((char*)out_.data(), sz_);
     }

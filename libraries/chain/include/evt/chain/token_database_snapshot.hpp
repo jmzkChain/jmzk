@@ -135,13 +135,11 @@ private:
 
 class token_database_snapshot {
 public:
-    token_database_snapshot(token_database& db) : db_(db) {}
+    token_database_snapshot() {}
 
 public:
-    void add_to_snapshot(const snapshot_writer_ptr& snapshot);
-
-private:
-    token_database& db_;
+    void add_to_snapshot(snapshot_writer_ptr snapshot, token_database& db);
+    void read_from_snapshot(snapshot_reader_ptr snapshot, const std::string db_folder);
 };
 
 }}  // namespace evt::chain

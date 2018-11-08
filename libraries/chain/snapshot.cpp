@@ -170,7 +170,7 @@ ostream_snapshot_writer::write_start_section(const std::string& section_name) {
 
     // write the section name (null terminated)
     snapshot.write(section_name.data(), section_name.size());
-    snapshot.put(0);
+    snapshot.put('\0');
 }
 
 void
@@ -340,6 +340,9 @@ istream_snapshot_reader::build_section_indexes() {
         if(section_size == std::numeric_limits<uint64_t>::max()) {
             break;
         }
+        if(snapshot.eof()) {
+            break;
+        }
 
         next_section_pos = snapshot.tellg() + std::streamoff(section_size);
 
@@ -348,7 +351,8 @@ istream_snapshot_reader::build_section_indexes() {
 
         auto name = std::string();
         char c;
-        while((c = snapshot.get()) != 0) {
+        while((c = snapshot.get()) != '\0') {
+            EVT_ASSERT(c != std::char_traits<char>::eof(), snapshot_validation_exception, "Not valid section name");
             name.push_back(c);
         }
 

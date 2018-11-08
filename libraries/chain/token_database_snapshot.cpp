@@ -39,7 +39,7 @@ public:
         if(pos_ >= buf_.size()) {
             return Status::IOError();
         }
-        auto r = (n > (buf_.size() - pos_)) ? n : (buf_.size() - pos_);
+        auto r = (n < (buf_.size() - pos_)) ? n : (buf_.size() - pos_);
         *result = rocksdb::Slice(buf_.data() + pos_, r);
         pos_ += r;
 
@@ -51,7 +51,7 @@ public:
         if(offset >= buf_.size()) {
             return Status::IOError();
         }
-        auto r = (n > (buf_.size() - offset)) ? n : (buf_.size() - offset);
+        auto r = (n < (buf_.size() - offset)) ? n : (buf_.size() - offset);
         *result = rocksdb::Slice(buf_.data() + offset, r);
 
         return Status::OK();
@@ -341,7 +341,10 @@ snapshot_env::GetChildren(const std::string& dir, std::vector<std::string>* resu
             return Status::OK();
         }
         else {
-            *result = reader_->get_section_names(dir);
+            auto names = reader_->get_section_names(dir);
+            for(auto& name : names) {
+                result->emplace_back(name.substr(dir.size() + 1));
+            }
             return Status::OK();
         }
     }
@@ -350,7 +353,7 @@ snapshot_env::GetChildren(const std::string& dir, std::vector<std::string>* resu
 
 Status
 snapshot_env::DeleteFile(const std::string& fname) {
-    printf("DeleteFile\n");
+    printf("DeleteFile %s\n", fname.c_str());
     if(boost::starts_with(fname, kBackupPath)) {
         // delete is not supported in snapshot
         return Status::OK();
@@ -457,16 +460,32 @@ snapshot_env::UnlockFile(FileLock* lock) {
 }
 
 void
-token_database_snapshot::add_to_snapshot(const snapshot_writer_ptr& snapshot) {
+token_database_snapshot::add_to_snapshot(snapshot_writer_ptr writer, token_database& db) {
     using namespace rocksdb;
 
-    auto env = snapshot_env(snapshot, nullptr);
+    auto env = snapshot_env(writer, nullptr);
 
     BackupEngine* backup_engine;
-    auto          s = BackupEngine::Open(Env::Default(), BackupableDBOptions(kBackupPath, &env), &backup_engine);
+    
+    auto s = BackupEngine::Open(Env::Default(), BackupableDBOptions(kBackupPath, &env), &backup_engine);
     assert(s.ok());
 
-    s = backup_engine->CreateNewBackup(db_.db_);
+    s = backup_engine->CreateNewBackup(db.db_);
+    assert(s.ok());
+}
+
+void
+token_database_snapshot::read_from_snapshot(snapshot_reader_ptr reader, const std::string db_folder) {
+    using namespace rocksdb;
+
+    auto env = snapshot_env(nullptr, reader);
+
+    BackupEngineReadOnly* backup_engine;
+    
+    auto s = BackupEngineReadOnly::Open(Env::Default(), BackupableDBOptions(kBackupPath, &env), &backup_engine);
+    assert(s.ok());
+
+    s = backup_engine->RestoreDBFromBackup(1, db_folder, kBackupPath);
     assert(s.ok());
 }
 
