@@ -285,6 +285,7 @@ struct snapshot_row_raw_reader : abstract_snapshot_row_reader {
         FC_ASSERT(!in.eof());
         out_.resize(sz_);
         in.read((char*)out_.data(), sz_);
+        FC_ASSERT(in.gcount() == std::streamsize(sz_));
     }
 
     void

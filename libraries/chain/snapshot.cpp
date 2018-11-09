@@ -295,7 +295,7 @@ void
 istream_snapshot_reader::set_section(const string& section_name) {
     for(auto& si : section_indexes) {
         if(si.name == section_name) {
-            snapshot.seekg(si.pos);
+            snapshot.seekg(si.pos); 
             cur_row  = 0;
             num_rows = si.row_count;
 
@@ -341,6 +341,8 @@ istream_snapshot_reader::build_section_indexes() {
             break;
         }
         if(snapshot.eof()) {
+            snapshot.clear();
+            snapshot.seekg(0);
             break;
         }
 

@@ -37,7 +37,8 @@ public:
     Status
     Read(size_t n, rocksdb::Slice* result, char* scratch) override {
         if(pos_ >= buf_.size()) {
-            return Status::IOError();
+            *result = rocksdb::Slice(nullptr, 0);
+            return Status::OK();
         }
         auto r = (n < (buf_.size() - pos_)) ? n : (buf_.size() - pos_);
         *result = rocksdb::Slice(buf_.data() + pos_, r);
@@ -49,7 +50,8 @@ public:
     Status
     Read(uint64_t offset, size_t n, rocksdb::Slice* result, char* scratch) const override {
         if(offset >= buf_.size()) {
-            return Status::IOError();
+            *result = rocksdb::Slice(nullptr, 0);
+            return Status::OK();
         }
         auto r = (n < (buf_.size() - offset)) ? n : (buf_.size() - offset);
         *result = rocksdb::Slice(buf_.data() + offset, r);
@@ -97,19 +99,13 @@ public:
         auto tmp  = std::string();
         auto sz   = size_t();
 
-        if(!reader.read_row(tmp, sizeof(type))) {
-            return false;
-        }
+        reader.read_row(tmp, sizeof(type));
         type = *(int*)tmp.data();
 
-        if(!reader.read_row(tmp, sizeof(sz))) {
-            return false;
-        }
+        reader.read_row(tmp, sizeof(sz));
         sz = *(size_t*)tmp.data();
 
-        if(!reader.read_row(tmp, sz)) {
-            return false;
-        }
+        reader.read_row(tmp, sz);
         data = std::move(tmp);
         return true;
     }
@@ -411,7 +407,7 @@ snapshot_env::GetFileModificationTime(const std::string& fname,
                                       uint64_t*          file_mtime) {
     printf("GetFileModificationTime\n");
     if(boost::starts_with(fname, kBackupPath)) {
-        // delete is not supported in snapshot
+        // GetFileModificationTime is not supported in snapshot
         return Status::NotSupported();
     }
     return EnvWrapper::GetFileSize(fname, file_mtime);
@@ -427,13 +423,13 @@ snapshot_env::RenameFile(const std::string& src, const std::string& target) {
         FC_ASSERT(boost::starts_with(target, kBackupPath));
 
         // only write to snapshot when close
-        writer_->write_section(target, [&target](auto& rw) {
-            size_t sz   = target.size();
+        writer_->write_section(target, [&src](auto& rw) {
+            size_t sz   = src.size();
             int    type = kLink;
 
             rw.add_row("type", (char*)&type,  sizeof(type));
             rw.add_row("size", (char*)&sz,    sizeof(sz));
-            rw.add_row("raw",  target.data(), sz);
+            rw.add_row("raw",  src.data(), sz);
         });
         created_files_.emplace_back(target);
         return Status::OK();

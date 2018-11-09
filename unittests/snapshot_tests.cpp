@@ -1,6 +1,7 @@
 #include <sstream>
 
 #include <catch/catch.hpp>
+#include <fc/filesystem.hpp>
 
 #include <evt/chain/token_database.hpp>
 #include <evt/chain/token_database_snapshot.hpp>
@@ -13,7 +14,7 @@ extern std::string evt_unittests_dir;
 
 string tokendb_ss;
 
-TEST_CASE("tokendb_save", "[snapshot]") {
+TEST_CASE("tokendb_setup", "[snapshot]") {
     auto db = token_database();
     db.initialize(evt_unittests_dir + "/snapshot_tests");
 
@@ -30,6 +31,14 @@ TEST_CASE("tokendb_save", "[snapshot]") {
     }
     db.issue_tokens(it);
 
+}
+
+TEST_CASE("tokendb_save", "[snapshot]") {
+    auto db = token_database();
+    db.initialize(evt_unittests_dir + "/snapshot_tests");
+
+    REQUIRE(db.exists_domain("test-domain"));
+
     auto ss = std::stringstream();
     auto writer = std::make_shared<ostream_snapshot_writer>(ss);
 
@@ -40,11 +49,20 @@ TEST_CASE("tokendb_save", "[snapshot]") {
 }
 
 TEST_CASE("tokendb_load", "[snapshot]") {
-    printf("load\n");
-
     auto ss = std::stringstream(tokendb_ss);
     auto reader = std::make_shared<istream_snapshot_reader>(ss);
 
+    auto db_folder = evt_unittests_dir + "/snapshot_tests";
+    fc::remove_all(db_folder);
+
     auto tds = token_database_snapshot();
-    tds.read_from_snapshot(reader, evt_unittests_dir + "/snapshot_tests");
+    tds.read_from_snapshot(reader, db_folder);
+
+    auto db = token_database();
+    db.initialize(db_folder);
+
+    CHECK(db.exists_domain("test-domain"));
+    for(int i = 0; i < 10000; i++) {
+        // CHECK(db.exists_token("test-domain", std::to_string(i)));
+    }
 }
