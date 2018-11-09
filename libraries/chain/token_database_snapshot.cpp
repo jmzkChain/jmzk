@@ -339,7 +339,9 @@ snapshot_env::GetChildren(const std::string& dir, std::vector<std::string>* resu
         else {
             auto names = reader_->get_section_names(dir);
             for(auto& name : names) {
-                result->emplace_back(name.substr(dir.size() + 1));
+                if(!boost::ends_with(name, ".tmp")) {
+                    result->emplace_back(name.substr(dir.size() + 1));
+                }
             }
             return Status::OK();
         }
