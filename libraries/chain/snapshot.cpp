@@ -110,6 +110,11 @@ variant_snapshot_reader::set_section(const string& section_name) {
     EVT_THROW(snapshot_exception, "Variant snapshot has no section named ${n}", ("n", section_name));
 }
 
+size_t
+variant_snapshot_reader::get_section_size(const string& section_name) {
+    EVT_THROW(snapshot_exception, "Variant snapshot doesn't support this feature");
+}
+
 bool
 variant_snapshot_reader::read_row(detail::abstract_snapshot_row_reader& row_reader) {
     const auto& rows = (*cur_section)["rows"].get_array();
@@ -306,6 +311,17 @@ istream_snapshot_reader::set_section(const string& section_name) {
     EVT_THROW(snapshot_exception, "Binary snapshot has no section named ${n}", ("n", section_name));
 }
 
+size_t
+istream_snapshot_reader::get_section_size(const string& section_name) {
+    for(auto& si : section_indexes) {
+        if(si.name == section_name) {
+            return si.size;
+        }
+    }
+
+    EVT_THROW(snapshot_exception, "Binary snapshot has no section named ${n}", ("n", section_name));
+}
+
 bool
 istream_snapshot_reader::read_row(detail::abstract_snapshot_row_reader& row_reader) {
     row_reader.provide(snapshot);
@@ -361,7 +377,8 @@ istream_snapshot_reader::build_section_indexes() {
         section_indexes.emplace_back(section_index {
             .name      = name,
             .pos       = (size_t)snapshot.tellg(),
-            .row_count = row_count
+            .row_count = row_count,
+            .size      = (size_t)(next_section_pos - snapshot.tellg())
         });
     }
 }

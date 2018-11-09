@@ -4,6 +4,7 @@
 
 namespace evt { namespace chain {
 
+using rocksdb::Env;
 using rocksdb::EnvOptions;
 using rocksdb::Directory;
 using rocksdb::FileLock;
@@ -78,6 +79,19 @@ public:
     // The names are relative to "dir".
     // Original contents of *results are dropped.
     Status GetChildren(const std::string& dir, std::vector<std::string>* result) override;
+
+    // Store in *result the attributes of the children of the specified directory.
+    // In case the implementation lists the directory prior to iterating the files
+    // and files are concurrently deleted, the deleted files will be omitted from
+    // result.
+    // The name attributes are relative to "dir".
+    // Original contents of *results are dropped.
+    // Returns OK if "dir" exists and "*result" contains its children.
+    //         NotFound if "dir" does not exist, the calling process does not have
+    //                  permission to access "dir", or if "dir" is invalid.
+    //         IOError if an IO Error was encountered
+    Status GetChildrenFileAttributes(const std::string&                dir,
+                                     std::vector<Env::FileAttributes>* result) override;
 
     // Delete the named file.
     Status DeleteFile(const std::string& fname) override;

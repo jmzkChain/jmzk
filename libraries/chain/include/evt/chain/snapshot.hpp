@@ -383,6 +383,7 @@ public:
 
     virtual void validate() const = 0;
     virtual bool has_section(const std::string& section_name) = 0;
+    virtual size_t get_section_size(const string& section_name) = 0;
     virtual std::vector<std::string> get_section_names(const std::string& prefix) const = 0;
 
     virtual ~snapshot_reader(){};
@@ -426,6 +427,7 @@ public:
     std::vector<std::string> get_section_names(const std::string& prefix) const override;
     bool has_section(const string& section_name) override;
     void set_section(const string& section_name) override;
+    size_t get_section_size(const string& section_name) override;
     bool read_row(detail::abstract_snapshot_row_reader& row_reader) override;
     bool empty() override;
     void clear_section() override;
@@ -464,6 +466,7 @@ public:
         std::string name;
         size_t      pos;
         size_t      row_count;
+        size_t      size;
     };
 
 public:
@@ -473,6 +476,7 @@ public:
     std::vector<std::string> get_section_names(const std::string& prefix) const override;
     bool has_section(const string& section_name) override;
     void set_section(const string& section_name) override;
+    size_t get_section_size(const string& section_name) override;
     bool read_row(detail::abstract_snapshot_row_reader& row_reader) override;
     bool empty() override;
     void clear_section() override;

@@ -37,7 +37,7 @@ public:
     Status
     Read(size_t n, rocksdb::Slice* result, char* scratch) override {
         if(pos_ >= buf_.size()) {
-            *result = rocksdb::Slice(nullptr, 0);
+            *result = rocksdb::Slice(scratch, 0);
             return Status::OK();
         }
         auto r = (n < (buf_.size() - pos_)) ? n : (buf_.size() - pos_);
@@ -50,7 +50,7 @@ public:
     Status
     Read(uint64_t offset, size_t n, rocksdb::Slice* result, char* scratch) const override {
         if(offset >= buf_.size()) {
-            *result = rocksdb::Slice(nullptr, 0);
+            *result = rocksdb::Slice(scratch, 0);
             return Status::OK();
         }
         auto r = (n < (buf_.size() - offset)) ? n : (buf_.size() - offset);
@@ -350,6 +350,31 @@ snapshot_env::GetChildren(const std::string& dir, std::vector<std::string>* resu
 }
 
 Status
+snapshot_env::GetChildrenFileAttributes(const std::string& dir, std::vector<Env::FileAttributes>* result) {
+    printf("GetChildrenFileAttributes: %s\n", dir.c_str());
+
+    if(boost::starts_with(dir, kBackupPath)) {
+        if(writer_) {
+            return Status::NotSupported();
+        }
+        else {
+            auto names = reader_->get_section_names(dir);
+            for(auto& name : names) {
+                if(!boost::ends_with(name, ".tmp")) {
+                    auto attr = Env::FileAttributes {
+                        .name       = name.substr(dir.size() + 1),
+                        .size_bytes = reader_->get_section_size(name)
+                    };
+                    result->emplace_back(attr);
+                }
+            }
+            return Status::OK();
+        }
+    }
+    return EnvWrapper::GetChildrenFileAttributes(dir, result);
+}
+
+Status
 snapshot_env::DeleteFile(const std::string& fname) {
     printf("DeleteFile %s\n", fname.c_str());
     if(boost::starts_with(fname, kBackupPath)) {
@@ -431,7 +456,7 @@ snapshot_env::RenameFile(const std::string& src, const std::string& target) {
 
             rw.add_row("type", (char*)&type,  sizeof(type));
             rw.add_row("size", (char*)&sz,    sizeof(sz));
-            rw.add_row("raw",  src.data(), sz);
+            rw.add_row("raw",  src.data(),    sz);
         });
         created_files_.emplace_back(target);
         return Status::OK();
