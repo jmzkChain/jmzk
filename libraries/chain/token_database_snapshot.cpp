@@ -1,5 +1,6 @@
 #include <evt/chain/token_database_snapshot.hpp>
 
+#include <mutex>
 #include <vector>
 #include <boost/algorithm/string/predicate.hpp>
 #include <rocksdb/utilities/backupable_db.h>
@@ -119,8 +120,8 @@ private:
 
 class SnapshotWritableFile : public rocksdb::WritableFile {
 public:
-    SnapshotWritableFile(const std::string& name, snapshot_writer_ptr writer)
-        : name_(name), writer_(writer) {}
+    SnapshotWritableFile(const std::string& name, snapshot_writer_ptr writer, std::mutex& mutex)
+        : name_(name), writer_(writer), mutex_(mutex) {}
 
 public:
     Status
@@ -137,6 +138,8 @@ public:
 
     Status
     Close() override {
+        auto l = std::unique_lock<std::mutex>(mutex_);
+
         // only write to snapshot when close
         writer_->write_section(name_, [this](auto& rw) {
             size_t sz   = buf_.size();
@@ -146,7 +149,7 @@ public:
             rw.add_row("size", (char*)&sz, sizeof(sz));
             rw.add_row("raw", buf_.data(), buf_.size());
         });
-        printf("Written %s: %ld\n", name_.c_str(), buf_.size());
+        dlog("Written ${n}: ${sz}", ("name",name_)("sz",buf_.size()));
         return Status::OK();
     }
 
@@ -172,6 +175,7 @@ private:
     const std::string&  name_;
     snapshot_writer_ptr writer_;
     std::vector<char>   buf_;
+    std::mutex&         mutex_;
 };
 
 }  // namespace __internal
@@ -187,7 +191,6 @@ snapshot_env::NewSequentialFile(const std::string&               fname,
                                 const EnvOptions&                options) {
     using namespace __internal;
 
-    printf("NewSequentialFile: %s\n", fname.c_str());
     if(boost::starts_with(fname, kBackupPath)) {
         if(writer_) {
             if(std::find(created_files_.cbegin(), created_files_.cend(), fname) != created_files_.cend()) {
@@ -216,7 +219,6 @@ snapshot_env::NewRandomAccessFile(const std::string&                 fname,
                                   const EnvOptions&                  options) {
     using namespace __internal;
 
-    printf("NewRandomAccessFile: %s\n", fname.c_str());
     if(boost::starts_with(fname, kBackupPath)) {
         if(writer_) {
             if(std::find(created_files_.cbegin(), created_files_.cend(), fname) != created_files_.cend()) {
@@ -244,11 +246,10 @@ snapshot_env::NewWritableFile(const std::string&             fname,
                               std::unique_ptr<WritableFile>* result,
                               const EnvOptions&              options) {
     using namespace __internal;
-    printf("NewWritableFile %s\n", fname.c_str());
 
     if(boost::starts_with(fname, kBackupPath)) {
         FC_ASSERT(writer_);
-        *result = std::make_unique<SnapshotWritableFile>(fname, writer_);
+        *result = std::make_unique<SnapshotWritableFile>(fname, writer_, mutex_);
         created_files_.emplace_back(fname);
         return Status::OK();
     }
@@ -260,7 +261,6 @@ snapshot_env::ReuseWritableFile(const std::string&             fname,
                                 const std::string&             old_fname,
                                 std::unique_ptr<WritableFile>* result,
                                 const EnvOptions&              options) {
-    printf("ReuseWritableFile\n");
     return Status::NotSupported();
 }
 
@@ -269,7 +269,6 @@ snapshot_env::NewDirectory(const std::string&          name,
                            std::unique_ptr<Directory>* result) {
     using namespace __internal;
 
-    printf("NewDirectory %s\n", name.c_str());
     if(boost::starts_with(name, kBackupPath)) {
         if(writer_) {
             if(std::find(created_folders_.cbegin(), created_folders_.cend(), name) != created_folders_.cend()) {
@@ -287,7 +286,6 @@ snapshot_env::NewDirectory(const std::string&          name,
 
 Status
 snapshot_env::FileExists(const std::string& fname) {
-    printf("FileExists %s\n", fname.c_str());
     if(boost::starts_with(fname, kBackupPath)) {
         if(boost::ends_with(fname, "/")) {
             // folder
@@ -326,7 +324,6 @@ snapshot_env::FileExists(const std::string& fname) {
 
 Status
 snapshot_env::GetChildren(const std::string& dir, std::vector<std::string>* result) {
-    printf("GetChildren: %s\n", dir.c_str());
     if(boost::starts_with(dir, kBackupPath)) {
         if(writer_) {
             for(auto& file : created_files_) {
@@ -351,8 +348,6 @@ snapshot_env::GetChildren(const std::string& dir, std::vector<std::string>* resu
 
 Status
 snapshot_env::GetChildrenFileAttributes(const std::string& dir, std::vector<Env::FileAttributes>* result) {
-    printf("GetChildrenFileAttributes: %s\n", dir.c_str());
-
     if(boost::starts_with(dir, kBackupPath)) {
         if(writer_) {
             return Status::NotSupported();
@@ -376,7 +371,6 @@ snapshot_env::GetChildrenFileAttributes(const std::string& dir, std::vector<Env:
 
 Status
 snapshot_env::DeleteFile(const std::string& fname) {
-    printf("DeleteFile %s\n", fname.c_str());
     if(boost::starts_with(fname, kBackupPath)) {
         // delete is not supported in snapshot
         return Status::OK();
@@ -386,7 +380,6 @@ snapshot_env::DeleteFile(const std::string& fname) {
 
 Status
 snapshot_env::CreateDir(const std::string& dirname) {
-    printf("CreateDir %s\n", dirname.c_str());
     if(boost::starts_with(dirname, kBackupPath)) {
         if(std::find(created_folders_.cbegin(), created_folders_.cend(), dirname) == created_folders_.cend()) {
             created_folders_.emplace_back(dirname);
@@ -399,7 +392,6 @@ snapshot_env::CreateDir(const std::string& dirname) {
 
 Status
 snapshot_env::CreateDirIfMissing(const std::string& dirname) {
-    printf("CreateDirIfMissing %s\n", dirname.c_str());
     if(boost::starts_with(dirname, kBackupPath)) {
         if(std::find(created_folders_.cbegin(), created_folders_.cend(), dirname) == created_folders_.cend()) {
             created_folders_.emplace_back(dirname);
@@ -411,7 +403,6 @@ snapshot_env::CreateDirIfMissing(const std::string& dirname) {
 
 Status
 snapshot_env::DeleteDir(const std::string& dirname) {
-    printf("DeleteDir\n");
     if(boost::starts_with(dirname, kBackupPath)) {
         created_folders_.erase(std::remove(created_folders_.begin(), created_folders_.end(), dirname), created_folders_.end());
         return Status::OK();
@@ -421,7 +412,6 @@ snapshot_env::DeleteDir(const std::string& dirname) {
 
 Status
 snapshot_env::GetFileSize(const std::string& fname, uint64_t* file_size) {
-    printf("GetFileSize\n");
     if(boost::starts_with(fname, kBackupPath)) {
         // delete is not supported in snapshot
         return Status::NotSupported();
@@ -432,7 +422,6 @@ snapshot_env::GetFileSize(const std::string& fname, uint64_t* file_size) {
 Status
 snapshot_env::GetFileModificationTime(const std::string& fname,
                                       uint64_t*          file_mtime) {
-    printf("GetFileModificationTime\n");
     if(boost::starts_with(fname, kBackupPath)) {
         // GetFileModificationTime is not supported in snapshot
         return Status::NotSupported();
@@ -443,8 +432,6 @@ snapshot_env::GetFileModificationTime(const std::string& fname,
 Status
 snapshot_env::RenameFile(const std::string& src, const std::string& target) {
     using namespace __internal;
-
-    printf("RenameFile %s -> %s\n", src.c_str(), target.c_str());
 
     if(boost::starts_with(src, kBackupPath)) {
         FC_ASSERT(boost::starts_with(target, kBackupPath));
@@ -466,19 +453,16 @@ snapshot_env::RenameFile(const std::string& src, const std::string& target) {
 
 Status
 snapshot_env::LinkFile(const std::string& src, const std::string& target) {
-    printf("LinkFile\n");
     return Status::NotSupported();
 }
 
 Status
 snapshot_env::LockFile(const std::string& fname, FileLock** lock) {
-    printf("LockFile\n");
     return Status::NotSupported();
 }
 
 Status
 snapshot_env::UnlockFile(FileLock* lock) {
-    printf("UnlockFile\n");
     return Status::NotSupported();
 }
 

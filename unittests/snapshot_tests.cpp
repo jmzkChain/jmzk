@@ -26,7 +26,7 @@ TEST_CASE("tokendb_setup", "[snapshot]") {
     auto it   = issuetoken();
     it.domain = d.name;
     it.owner.emplace_back(address());
-    for(int i = 0; i < 10000; i++) {
+    for(int i = 0; i < 10; i++) {
         it.names.emplace_back(std::to_string(i));
     }
     db.issue_tokens(it);
@@ -42,8 +42,7 @@ TEST_CASE("tokendb_save", "[snapshot]") {
     auto ss = std::stringstream();
     auto writer = std::make_shared<ostream_snapshot_writer>(ss);
 
-    auto tds = token_database_snapshot();
-    tds.add_to_snapshot(writer, db);
+    token_database_snapshot::add_to_snapshot(writer, db);
 
     tokendb_ss = ss.str();
 }
@@ -55,14 +54,13 @@ TEST_CASE("tokendb_load", "[snapshot]") {
     auto db_folder = evt_unittests_dir + "/snapshot_tests";
     fc::remove_all(db_folder);
 
-    auto tds = token_database_snapshot();
-    tds.read_from_snapshot(reader, db_folder);
+    token_database_snapshot::read_from_snapshot(reader, db_folder);
 
     auto db = token_database();
     db.initialize(db_folder);
 
     CHECK(db.exists_domain("test-domain"));
-    for(int i = 0; i < 10000; i++) {
+    for(int i = 0; i < 10; i++) {
         CHECK(db.exists_token("test-domain", std::to_string(i)));
     }
 }

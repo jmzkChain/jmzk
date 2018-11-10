@@ -140,6 +140,8 @@ public:
     Status UnlockFile(FileLock* lock) override;
 
 private:
+    std::mutex mutex_;
+
     snapshot_writer_ptr writer_;
     snapshot_reader_ptr reader_;
 
@@ -152,8 +154,9 @@ public:
     token_database_snapshot() {}
 
 public:
-    void add_to_snapshot(snapshot_writer_ptr snapshot, token_database& db);
-    void read_from_snapshot(snapshot_reader_ptr snapshot, const std::string db_folder);
+    static void add_to_snapshot(snapshot_writer_ptr snapshot, token_database& db);
+    static void read_from_snapshot(snapshot_reader_ptr snapshot, const std::string db_folder);
+
 };
 
 }}  // namespace evt::chain
