@@ -331,7 +331,7 @@ snapshot_env::GetChildren(const std::string& dir, std::vector<std::string>* resu
         if(writer_) {
             for(auto& file : created_files_) {
                 if(boost::starts_with(file, dir)) {
-                    result->emplace_back(file.substr(dir.size() + 1));
+                    result->emplace_back(file.substr(dir.size() + (boost::ends_with(dir, "/") ? 0 : 1)));
                 }
             }
             return Status::OK();
@@ -340,7 +340,7 @@ snapshot_env::GetChildren(const std::string& dir, std::vector<std::string>* resu
             auto names = reader_->get_section_names(dir);
             for(auto& name : names) {
                 if(!boost::ends_with(name, ".tmp")) {
-                    result->emplace_back(name.substr(dir.size() + 1));
+                    result->emplace_back(name.substr(dir.size() + (boost::ends_with(dir, "/") ? 0 : 1)));
                 }
             }
             return Status::OK();
@@ -362,7 +362,7 @@ snapshot_env::GetChildrenFileAttributes(const std::string& dir, std::vector<Env:
             for(auto& name : names) {
                 if(!boost::ends_with(name, ".tmp")) {
                     auto attr = Env::FileAttributes {
-                        .name       = name.substr(dir.size() + 1),
+                        .name       = name.substr(dir.size() + (boost::ends_with(dir, "/") ? 0 : 1)),
                         .size_bytes = reader_->get_section_size(name)
                     };
                     result->emplace_back(attr);
@@ -506,10 +506,10 @@ token_database_snapshot::read_from_snapshot(snapshot_reader_ptr reader, const st
     BackupEngineReadOnly* backup_engine;
     
     auto s = BackupEngineReadOnly::Open(Env::Default(), BackupableDBOptions(kBackupPath, &env), &backup_engine);
-    assert(s.ok());
+    EVT_ASSERT(s.ok(), snapshot_exception, "Cannot open snapshot for token database, reason: ${d}", ("d",s.getState()));
 
-    s = backup_engine->RestoreDBFromBackup(1, db_folder, kBackupPath);
-    assert(s.ok());
+    s = backup_engine->RestoreDBFromLatestBackup(db_folder, kBackupPath);
+    EVT_ASSERT(s.ok(), snapshot_exception, "Restore from snapshot for token database failed, reason: ${d}", ("d",s.getState()));
 }
 
 }}  // namespace evt::chain

@@ -63,6 +63,6 @@ TEST_CASE("tokendb_load", "[snapshot]") {
 
     CHECK(db.exists_domain("test-domain"));
     for(int i = 0; i < 10000; i++) {
-        // CHECK(db.exists_token("test-domain", std::to_string(i)));
+        CHECK(db.exists_token("test-domain", std::to_string(i)));
     }
 }
