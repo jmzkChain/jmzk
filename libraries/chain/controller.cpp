@@ -16,6 +16,7 @@
 #include <evt/chain/chain_snapshot.hpp>
 #include <evt/chain/fork_database.hpp>
 #include <evt/chain/token_database.hpp>
+#include <evt/chain/token_database_snapshot.hpp>
 #include <evt/chain/transaction_context.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
 #include <evt/chain/contracts/evt_contract.hpp>
@@ -336,6 +337,7 @@ struct controller_impl {
 
     void
     init(const snapshot_reader_ptr& snapshot) {
+        token_db.open();
         if(snapshot) {
             EVT_ASSERT(!head, fork_database_exception, "");
             snapshot->validate();
@@ -388,7 +390,7 @@ struct controller_impl {
             wlog("warning: database revision (${db}) is greater than head block number (${head}), "
                  "attempting to undo pending changes",
                  ("db", db.revision())("head", head->block_num));
-            EVT_ASSERT(token_db.get_savepoints_size() > 0, tokendb_exception,
+            EVT_ASSERT(token_db.savepoints_size() > 0, tokendb_exception,
                 "token database is inconsistent with fork database: don't have any savepoints to pop");
             EVT_ASSERT(token_db.latest_savepoint_seq() == db.revision(), tokendb_exception,
                 "token database(${seq}) is inconsistent with fork database(${db})",
@@ -436,7 +438,7 @@ struct controller_impl {
             });
         });
 
-        // TODO: add token database to snapshot
+        token_database_snapshot::add_to_snapshot(snapshot, token_db);
     }
 
     void
@@ -473,7 +475,7 @@ struct controller_impl {
             });
         });
 
-        // TODO: read token database from snapshot
+        token_database_snapshot::read_from_snapshot(snapshot, token_db);
         db.set_revision(head->block_num);
     }
 

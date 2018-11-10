@@ -142,7 +142,8 @@ public:
     ~token_database();
 
 public:
-    int initialize(const fc::path& dbpath);
+    int open();
+    int close();
 
 public:
     int add_domain(const domain_def&);
@@ -200,7 +201,7 @@ public:
     session new_savepoint_session(int64_t seq);
     session new_savepoint_session();
 
-    size_t get_savepoints_size() const { return savepoints_.size(); }
+    size_t savepoints_size() const { return savepoints_.size(); }
 
 private:
     int rollback_rt_group(rt_group*);

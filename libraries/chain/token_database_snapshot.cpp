@@ -18,13 +18,10 @@ enum row_type {
 
 class SnapshotDirectory : public Directory {
 public:
-    SnapshotDirectory(int fd) : fd_(fd) {}
+    SnapshotDirectory() = default;
     ~SnapshotDirectory() {}
 
     Status Fsync() override { return Status::OK(); }
-
-private:
-    int fd_;
 };
 
 
@@ -272,7 +269,7 @@ snapshot_env::NewDirectory(const std::string&          name,
     if(boost::starts_with(name, kBackupPath)) {
         if(writer_) {
             if(std::find(created_folders_.cbegin(), created_folders_.cend(), name) != created_folders_.cend()) {
-                *result = std::make_unique<SnapshotDirectory>(0);
+                *result = std::make_unique<SnapshotDirectory>();
                 return Status::OK();
             }
             else {
@@ -467,7 +464,7 @@ snapshot_env::UnlockFile(FileLock* lock) {
 }
 
 void
-token_database_snapshot::add_to_snapshot(snapshot_writer_ptr writer, token_database& db) {
+token_database_snapshot::add_to_snapshot(snapshot_writer_ptr writer, const token_database& db) {
     using namespace rocksdb;
 
     auto env = snapshot_env(writer, nullptr);
@@ -482,7 +479,7 @@ token_database_snapshot::add_to_snapshot(snapshot_writer_ptr writer, token_datab
 }
 
 void
-token_database_snapshot::read_from_snapshot(snapshot_reader_ptr reader, const std::string db_folder) {
+token_database_snapshot::read_from_snapshot(snapshot_reader_ptr reader, token_database& db) {
     using namespace rocksdb;
 
     auto env = snapshot_env(nullptr, reader);
@@ -492,8 +489,12 @@ token_database_snapshot::read_from_snapshot(snapshot_reader_ptr reader, const st
     auto s = BackupEngineReadOnly::Open(Env::Default(), BackupableDBOptions(kBackupPath, &env), &backup_engine);
     EVT_ASSERT(s.ok(), snapshot_exception, "Cannot open snapshot for token database, reason: ${d}", ("d",s.getState()));
 
-    s = backup_engine->RestoreDBFromLatestBackup(db_folder, kBackupPath);
+    db.close();
+
+    s = backup_engine->RestoreDBFromLatestBackup(db.db_path_, kBackupPath);
     EVT_ASSERT(s.ok(), snapshot_exception, "Restore from snapshot for token database failed, reason: ${d}", ("d",s.getState()));
+
+    db.open();
 }
 
 }}  // namespace evt::chain

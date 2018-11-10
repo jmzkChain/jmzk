@@ -154,8 +154,8 @@ public:
     token_database_snapshot() {}
 
 public:
-    static void add_to_snapshot(snapshot_writer_ptr snapshot, token_database& db);
-    static void read_from_snapshot(snapshot_reader_ptr snapshot, const std::string db_folder);
+    static void add_to_snapshot(snapshot_writer_ptr snapshot, const token_database& db);
+    static void read_from_snapshot(snapshot_reader_ptr snapshot, token_database& db);
 
 };
 

@@ -15,8 +15,8 @@ extern std::string evt_unittests_dir;
 string tokendb_ss;
 
 TEST_CASE("tokendb_setup", "[snapshot]") {
-    auto db = token_database();
-    db.initialize(evt_unittests_dir + "/snapshot_tests");
+    auto db = token_database(evt_unittests_dir + "/snapshot_tests");
+    db.open();
 
     auto d = domain_def();
     d.name = "test-domain";
@@ -34,8 +34,8 @@ TEST_CASE("tokendb_setup", "[snapshot]") {
 }
 
 TEST_CASE("tokendb_save", "[snapshot]") {
-    auto db = token_database();
-    db.initialize(evt_unittests_dir + "/snapshot_tests");
+    auto db = token_database(evt_unittests_dir + "/snapshot_tests");
+    db.open();
 
     REQUIRE(db.exists_domain("test-domain"));
 
@@ -54,10 +54,10 @@ TEST_CASE("tokendb_load", "[snapshot]") {
     auto db_folder = evt_unittests_dir + "/snapshot_tests";
     fc::remove_all(db_folder);
 
-    token_database_snapshot::read_from_snapshot(reader, db_folder);
+    auto db = token_database(db_folder);
+    db.open();
 
-    auto db = token_database();
-    db.initialize(db_folder);
+    token_database_snapshot::read_from_snapshot(reader, db);
 
     CHECK(db.exists_domain("test-domain"));
     for(int i = 0; i < 10; i++) {

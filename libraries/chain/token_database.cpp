@@ -332,7 +332,6 @@ private:
     token_database& self_;
 };
 
-
 token_database::token_database() 
     : db_(nullptr)
     , read_opts_()
@@ -344,34 +343,23 @@ token_database::token_database()
 
 token_database::token_database(const fc::path& dbpath)
     : token_database() {
-    initialize(dbpath);
+    db_path_ = dbpath.to_native_ansi_path();
 }
 
 token_database::~token_database() {
-    persist_savepoints();
-    if(db_ != nullptr) {
-        if(tokens_handle_ != nullptr) {
-            delete tokens_handle_;
-            tokens_handle_ = nullptr;
-        }
-        if(assets_handle_ != nullptr) {
-            delete assets_handle_;
-            assets_handle_ = nullptr;
-        }
-
-        delete db_;
-        db_ = nullptr;
-    }
+    close();
 }
 
 int
-token_database::initialize(const fc::path& dbpath) {
+token_database::open() {
     using namespace rocksdb;
     using namespace __internal;
 
     static std::string AssetsColumnFamilyName = "Assets";
 
-    assert(db_ == nullptr);
+    EVT_ASSERT(!db_path_.empty(), tokendb_exception, "No dbpath set, cannot open");
+    EVT_ASSERT(db_ == nullptr, tokendb_exception, "Token database is already opened");
+
     Options options;
     options.OptimizeUniversalStyleCompaction();
 
@@ -393,7 +381,6 @@ token_database::initialize(const fc::path& dbpath) {
 
     read_opts_.prefix_same_as_start = true;
 
-    db_path_ = dbpath.to_native_ansi_path();
     if(!fc::exists(db_path_)) {
         // create new databse and open
         fc::create_directories(db_path_);
@@ -428,6 +415,26 @@ token_database::initialize(const fc::path& dbpath) {
     assets_handle_ = handles[1];
 
     load_savepoints();
+    return 0;
+}
+
+int
+token_database::close() {
+    if(db_ != nullptr) {
+        persist_savepoints();
+
+        if(tokens_handle_ != nullptr) {
+            delete tokens_handle_;
+            tokens_handle_ = nullptr;
+        }
+        if(assets_handle_ != nullptr) {
+            delete assets_handle_;
+            assets_handle_ = nullptr;
+        }
+
+        delete db_;
+        db_ = nullptr;
+    }
     return 0;
 }
 

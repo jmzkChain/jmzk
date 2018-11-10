@@ -23,8 +23,8 @@ extern std::string evt_unittests_dir;
 
 class tokendb_test {
 public:
-    tokendb_test() {
-        tokendb.initialize(evt_unittests_dir + "/tokendb_tests");
+    tokendb_test() : tokendb(evt_unittests_dir + "/tokendb_tests") {
+        tokendb.open();
     }
     ~tokendb_test() {}
 
@@ -847,7 +847,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_checkpoint_test", "[tokendb]") {
     tokendb.add_savepoint(get_time());
     CHECK_NOTHROW(tokendb.pop_savepoints(time(0) + ti + 1));
 
-    CHECK(tokendb.get_savepoints_size() == 0);
+    CHECK(tokendb.savepoints_size() == 0);
     {
         auto ss1 = tokendb.new_savepoint_session();
         CHECK(ss1.seq() == 1);
@@ -855,7 +855,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_checkpoint_test", "[tokendb]") {
         CHECK(tokendb.exists_any_asset(address));
     }
     CHECK(!tokendb.exists_any_asset(address));
-    CHECK(tokendb.get_savepoints_size() == 0);
+    CHECK(tokendb.savepoints_size() == 0);
 
     tokendb.add_savepoint(get_time());
     tokendb.update_asset(address, asset(2000, pevt));
@@ -869,7 +869,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_checkpoint_test", "[tokendb]") {
 
     tokendb.read_asset(address, pevt, a);
     CHECK(a == asset(4000, pevt));
-    CHECK(tokendb.get_savepoints_size() == 2);
+    CHECK(tokendb.savepoints_size() == 2);
 
     {
         auto ss1 = tokendb.new_savepoint_session();
@@ -879,16 +879,16 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_checkpoint_test", "[tokendb]") {
     }
     tokendb.read_asset(address, pevt, a);
     CHECK(a == asset(6000, pevt));
-    CHECK(tokendb.get_savepoints_size() == 2);
+    CHECK(tokendb.savepoints_size() == 2);
 
     CHECK_NOTHROW(tokendb.pop_savepoints(0));
 
     tokendb.pop_savepoints(get_time() + 100);
-    CHECK(tokendb.get_savepoints_size() == 0);
+    CHECK(tokendb.savepoints_size() == 0);
 }
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_addsuspend_test", "[tokendb]") {
-    CHECK(tokendb.get_savepoints_size() == 0);
+    CHECK(tokendb.savepoints_size() == 0);
 
     auto dl = add_suspend_data();
     CHECK(!tokendb.exists_suspend(dl.name));
@@ -987,7 +987,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_prodvote_presist_test", "[tokendb]") {
 }
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_add_lock_test", "[tokendb]") {
-    CHECK(tokendb.get_savepoints_size() == 0);
+    CHECK(tokendb.savepoints_size() == 0);
     tokendb.add_savepoint(get_time());
 
     auto al = add_lock_data();
@@ -1006,7 +1006,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_add_lock_test", "[tokendb]") {
 }
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_update_lock_test", "[tokendb]") {
-    CHECK(tokendb.get_savepoints_size() == 1);
+    CHECK(tokendb.savepoints_size() == 1);
     tokendb.add_savepoint(get_time());
 
     auto ul = update_lock_data();
@@ -1023,7 +1023,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_update_lock_test", "[tokendb]") {
 }
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_lock_presist_test", "[tokendb]") {
-    CHECK(tokendb.get_savepoints_size() == 2);
+    CHECK(tokendb.savepoints_size() == 2);
 
     auto ul = update_lock_data();
     auto al = add_lock_data();
@@ -1044,7 +1044,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_lock_presist_test", "[tokendb]") {
 
     CHECK(!tokendb.exists_lock(al.name));
 
-    CHECK(tokendb.get_savepoints_size() == 0);
+    CHECK(tokendb.savepoints_size() == 0);
 }
 
 
@@ -1078,14 +1078,14 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_squash", "[tokendb]") {
     tokendb.read_token(dom.name, "t1", tk_);
     REQUIRE(1 == tk_.metas.size());
 
-    auto n = tokendb.get_savepoints_size();
+    auto n = tokendb.savepoints_size();
 
     tokendb.add_savepoint(get_time());
     tokendb.add_savepoint(get_time());
     tokendb.squash();
     tokendb.squash();
 
-    CHECK(tokendb.get_savepoints_size() == n);
+    CHECK(tokendb.savepoints_size() == n);
 
     tokendb.read_token(dom.name, "t1", tk_);
     REQUIRE(1 == tk_.metas.size());
@@ -1097,7 +1097,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_squash", "[tokendb]") {
     tokendb.squash();
     tokendb.squash();
 
-    CHECK(tokendb.get_savepoints_size() == 1);
+    CHECK(tokendb.savepoints_size() == 1);
     CHECK_THROWS_AS(tokendb.squash(), tokendb_squash_exception); // only one savepoint left
 }
 
