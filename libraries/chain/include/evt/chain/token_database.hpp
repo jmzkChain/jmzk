@@ -231,6 +231,7 @@ private:
 
 private:
     friend class token_database_impl;
+    friend class token_database_snapshot;
 };
 
 }}  // namespace evt::chain

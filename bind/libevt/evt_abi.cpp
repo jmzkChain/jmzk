@@ -12,12 +12,12 @@
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
 
+using fc::sha256;
+using evt::chain::bytes;
+using evt::chain::chain_id_type;
+using evt::chain::transaction;
 using evt::chain::contracts::abi_serializer;
 using evt::chain::contracts::abi_def;
-using evt::chain::bytes;
-using evt::chain::transaction;
-using evt::chain::chain_id_type;
-using fc::sha256;
 
 template <> 
 evt_data_t* 
@@ -50,7 +50,7 @@ evt_abi() {
 
 void
 evt_free_abi(void* abi) {
-    delete (abi_def*)abi;
+    delete (abi_serializer*)abi;
 }
 
 int
