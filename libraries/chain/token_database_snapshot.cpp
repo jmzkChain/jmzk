@@ -25,8 +25,8 @@ public:
 };
 
 
-class SnapshotReadableFile : virtual public SequentialFile,
-                             virtual public RandomAccessFile {
+class SnapshotReadableFile : public rocksdb::SequentialFile,
+                             public rocksdb::RandomAccessFile {
 public:
     SnapshotReadableFile(snapshot_reader_ptr reader)
         : reader_(reader) {}
