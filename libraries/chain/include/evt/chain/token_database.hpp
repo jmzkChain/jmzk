@@ -142,8 +142,8 @@ public:
     ~token_database();
 
 public:
-    int open();
-    int close();
+    int open(int load_persistence = true);
+    int close(int persist = true);
 
 public:
     int add_domain(const domain_def&);
@@ -211,10 +211,13 @@ private:
     int should_record() { return !savepoints_.empty(); }
     int record(uint8_t type, uint8_t op, void* data);
     int free_savepoint(savepoint&);
+    int free_all_savepoints();
 
 private:
-    int persist_savepoints();
+    int persist_savepoints() const;
     int load_savepoints();
+    int persist_savepoints(std::ostream&) const;
+    int load_savepoints(std::istream&);
 
 private:
     std::string db_path_;

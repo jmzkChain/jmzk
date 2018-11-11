@@ -1,7 +1,7 @@
 #include <mutex>
+#include <rocksdb/env.h>
 #include <evt/chain/snapshot.hpp>
 #include <evt/chain/token_database.hpp>
-#include <rocksdb/env.h>
 
 namespace evt { namespace chain {
 

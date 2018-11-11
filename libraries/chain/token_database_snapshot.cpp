@@ -3,6 +3,7 @@
 #include <vector>
 #include <boost/algorithm/string/predicate.hpp>
 #include <rocksdb/utilities/backupable_db.h>
+#include <fmt/format.h>
 
 namespace evt { namespace chain {
 
@@ -143,7 +144,7 @@ public:
 
             rw.add_row("type", (char*)&type, sizeof(type));
             rw.add_row("size", (char*)&sz, sizeof(sz));
-            rw.add_row("raw", buf_.data(), buf_.size());
+            rw.add_row("raw",  buf_.data(), buf_.size());
         });
         dlog("Written ${n}: ${sz}", ("name",name_)("sz",buf_.size()));
         return Status::OK();
@@ -465,16 +466,39 @@ snapshot_env::UnlockFile(FileLock* lock) {
 void
 token_database_snapshot::add_to_snapshot(snapshot_writer_ptr writer, const token_database& db) {
     using namespace rocksdb;
+    using namespace __internal;
 
     auto env = snapshot_env(writer, nullptr);
 
     BackupEngine* backup_engine;
     
     auto s = BackupEngine::Open(Env::Default(), BackupableDBOptions(kBackupPath, &env), &backup_engine);
-    assert(s.ok());
+    EVT_ASSERT(s.ok(), snapshot_exception, "Cannot open snapshot for token database, reason: ${d}", ("d",s.getState()));
 
-    s = backup_engine->CreateNewBackup(db.db_);
-    assert(s.ok());
+    s = db.db_->Flush(rocksdb::FlushOptions());
+    EVT_ASSERT(s.ok(), tokendb_exception, "Flush rocksdb failed, reason: ${d}", ("d",s.getState()));
+
+    s = backup_engine->CreateNewBackup(db.db_, true);
+    EVT_ASSERT(s.ok(), snapshot_exception, "Backup to snapshot for token database failed, reason: ${d}", ("d",s.getState()));
+
+    delete backup_engine;
+
+    if(db.savepoints_size() > 0) {
+        auto ss = std::stringstream();
+        ss.exceptions(std::fstream::failbit | std::fstream::badbit);
+
+        db.persist_savepoints(ss);
+
+        auto   buf  = ss.str();
+        size_t sz   = buf.size();
+        int    type = kRaw;
+
+        writer->write_section(config::tokendb_persisit_filename, [&](auto& rw) {
+            rw.add_row("type", (char*)&type, sizeof(type));
+            rw.add_row("size", (char*)&sz, sizeof(sz));
+            rw.add_row("raw",  buf.data(), buf.size());
+        });
+    }
 }
 
 void
@@ -488,12 +512,43 @@ token_database_snapshot::read_from_snapshot(snapshot_reader_ptr reader, token_da
     auto s = BackupEngineReadOnly::Open(Env::Default(), BackupableDBOptions(kBackupPath, &env), &backup_engine);
     EVT_ASSERT(s.ok(), snapshot_exception, "Cannot open snapshot for token database, reason: ${d}", ("d",s.getState()));
 
-    db.close();
+    db.close(false);
+    db.open(false);
+
+    auto a = db.exists_domain("test-domain-2");
+
+    db.close(false);
 
     s = backup_engine->RestoreDBFromLatestBackup(db.db_path_, kBackupPath);
     EVT_ASSERT(s.ok(), snapshot_exception, "Restore from snapshot for token database failed, reason: ${d}", ("d",s.getState()));
 
-    db.open();
+    delete backup_engine;
+
+    if(reader->has_section(config::tokendb_persisit_filename)) {
+        auto data = std::string();
+
+        reader->read_section(config::tokendb_persisit_filename, [&data](auto& rr) {
+            auto tmp = std::string();
+            auto type = int();
+            auto sz = size_t();
+
+            rr.read_row(tmp, sizeof(type));
+            type = *(int*) tmp.data();
+
+            rr.read_row(tmp, sizeof(sz));
+            sz = *(size_t*) tmp.data();
+
+            rr.read_row(tmp, sz);
+            data = std::move(tmp);
+        });
+
+        auto ss = std::stringstream(data);
+        ss.exceptions(std::fstream::failbit | std::fstream::badbit);
+
+        db.load_savepoints(ss);
+    }
+
+    db.open(false);
 }
 
 }}  // namespace evt::chain
