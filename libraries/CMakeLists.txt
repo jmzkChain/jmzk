@@ -21,3 +21,4 @@ endif()
 
 add_subdirectory( chain )
 add_subdirectory( testing)
+add_subdirectory( fmt EXCLUDE_FROM_ALL )
