@@ -9,7 +9,7 @@
 [submodule "libraries/rocksdb"]
 	path = libraries/rocksdb
 	url = https://github.com/facebook/rocksdb.git
-	branch = 5.14.fb
+	branch = 5.15.fb
 [submodule "libraries/safeint"]
 	path = libraries/safeint
 	url = https://github.com/dcleblanc/SafeInt.git
