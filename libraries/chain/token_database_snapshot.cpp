@@ -1,6 +1,5 @@
 #include <evt/chain/token_database_snapshot.hpp>
 
-#include <mutex>
 #include <vector>
 #include <boost/algorithm/string/predicate.hpp>
 #include <rocksdb/utilities/backupable_db.h>

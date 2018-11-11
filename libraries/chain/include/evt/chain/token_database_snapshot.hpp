@@ -1,3 +1,4 @@
+#include <mutex>
 #include <evt/chain/snapshot.hpp>
 #include <evt/chain/token_database.hpp>
 #include <rocksdb/env.h>
