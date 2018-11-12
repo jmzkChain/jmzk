@@ -41,6 +41,7 @@ invoke(name n, Args&&... args) {
     case_act(issuefungible)
     case_act(transferft)
     case_act(recycleft)
+    case_act(destroyft)
     case_act(evt2pevt)
     case_act(addmeta)
     case_act(newsuspend)
