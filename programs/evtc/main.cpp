@@ -1218,6 +1218,18 @@ struct set_producer_subcommands {
             const auto& v = call(url, producer_runtime_opts);
             print_info(v);
         });
+
+        auto cscmd = actionRoot->add_subcommand("snapshot", localized("Create a snapshot till current head block"));
+        cscmd->set_callback([] {
+            const auto& v = call(url, create_snapshot);
+            print_info(v);
+        });
+
+        auto ihcmd = actionRoot->add_subcommand("integrity_hash", localized("Get integrity hash till current head block"));
+        ihcmd->set_callback([] {
+            const auto& v = call(url, get_integrity_hash);
+            print_info(v);
+        });
     }
 };
 

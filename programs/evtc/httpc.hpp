@@ -146,6 +146,8 @@ const std::string producer_pause        = producer_func_base + "/pause";
 const std::string producer_resume       = producer_func_base + "/resume";
 const std::string producer_paused       = producer_func_base + "/paused";
 const std::string producer_runtime_opts = producer_func_base + "/get_runtime_options";
+const std::string create_snapshot       = producer_func_base + "/create_snapshot";
+const std::string get_integrity_hash    = producer_func_base + "/get_integrity_hash";
 
 
 const string evtwd_stop = "/v1/evtwd/stop";
