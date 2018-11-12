@@ -11,8 +11,11 @@ set( WITH_TESTS OFF CACHE BOOL "build RocksDB with Tests" FORCE )
 set( WITH_TOOLS OFF CACHE BOOL "build RocksDB with Tools" FORCE )
 set( PORTABLE ON CACHE BOOL "build a portable RocksDB library" FORCE )
 set( FORCE_SSE42 ON CACHE BOOL "force building RocksDB with SSE4.2" FORCE )
+set( USE_RTTI ON CACHE BOOL "use RTTI in RocksDB" FORCE )
+
 add_subdirectory( rocksdb EXCLUDE_FROM_ALL )
 set_property(TARGET rocksdb PROPERTY CXX_STANDARD 11)
+
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL 8.0 OR CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 8.0)
         set_property(TARGET rocksdb PROPERTY COMPILE_FLAGS "-Wno-class-memaccess")
@@ -21,3 +24,4 @@ endif()
 
 add_subdirectory( chain )
 add_subdirectory( testing)
+add_subdirectory( fmt EXCLUDE_FROM_ALL )

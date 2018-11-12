@@ -142,7 +142,8 @@ public:
     ~token_database();
 
 public:
-    int initialize(const fc::path& dbpath);
+    int open(int load_persistence = true);
+    int close(int persist = true);
 
 public:
     int add_domain(const domain_def&);
@@ -200,7 +201,7 @@ public:
     session new_savepoint_session(int64_t seq);
     session new_savepoint_session();
 
-    size_t get_savepoints_size() const { return savepoints_.size(); }
+    size_t savepoints_size() const { return savepoints_.size(); }
 
 private:
     int rollback_rt_group(rt_group*);
@@ -210,10 +211,13 @@ private:
     int should_record() { return !savepoints_.empty(); }
     int record(uint8_t type, uint8_t op, void* data);
     int free_savepoint(savepoint&);
+    int free_all_savepoints();
 
 private:
-    int persist_savepoints();
+    int persist_savepoints() const;
     int load_savepoints();
+    int persist_savepoints(std::ostream&) const;
+    int load_savepoints(std::istream&);
 
 private:
     std::string db_path_;
@@ -231,6 +235,7 @@ private:
 
 private:
     friend class token_database_impl;
+    friend class token_database_snapshot;
 };
 
 }}  // namespace evt::chain

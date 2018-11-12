@@ -332,7 +332,6 @@ private:
     token_database& self_;
 };
 
-
 token_database::token_database() 
     : db_(nullptr)
     , read_opts_()
@@ -344,34 +343,23 @@ token_database::token_database()
 
 token_database::token_database(const fc::path& dbpath)
     : token_database() {
-    initialize(dbpath);
+    db_path_ = dbpath.to_native_ansi_path();
 }
 
 token_database::~token_database() {
-    persist_savepoints();
-    if(db_ != nullptr) {
-        if(tokens_handle_ != nullptr) {
-            delete tokens_handle_;
-            tokens_handle_ = nullptr;
-        }
-        if(assets_handle_ != nullptr) {
-            delete assets_handle_;
-            assets_handle_ = nullptr;
-        }
-
-        delete db_;
-        db_ = nullptr;
-    }
+    close();
 }
 
 int
-token_database::initialize(const fc::path& dbpath) {
+token_database::open(int load_persistence) {
     using namespace rocksdb;
     using namespace __internal;
 
     static std::string AssetsColumnFamilyName = "Assets";
 
-    assert(db_ == nullptr);
+    EVT_ASSERT(!db_path_.empty(), tokendb_exception, "No dbpath set, cannot open");
+    EVT_ASSERT(db_ == nullptr, tokendb_exception, "Token database is already opened");
+
     Options options;
     options.OptimizeUniversalStyleCompaction();
 
@@ -393,7 +381,6 @@ token_database::initialize(const fc::path& dbpath) {
 
     read_opts_.prefix_same_as_start = true;
 
-    db_path_ = dbpath.to_native_ansi_path();
     if(!fc::exists(db_path_)) {
         // create new databse and open
         fc::create_directories(db_path_);
@@ -408,7 +395,9 @@ token_database::initialize(const fc::path& dbpath) {
             EVT_THROW(tokendb_rocksdb_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
         }
 
-        load_savepoints();
+        if(load_persistence) {
+            load_savepoints();
+        }
         return 0;
     }
 
@@ -427,7 +416,33 @@ token_database::initialize(const fc::path& dbpath) {
     tokens_handle_ = handles[0];
     assets_handle_ = handles[1];
 
-    load_savepoints();
+    if(load_persistence) {
+        load_savepoints();
+    }
+    return 0;
+}
+
+int
+token_database::close(int persist) {
+    if(db_ != nullptr) {
+        if(persist) {
+            persist_savepoints();
+        }
+        if(!savepoints_.empty()) {
+            free_all_savepoints();
+        }
+        if(tokens_handle_ != nullptr) {
+            delete tokens_handle_;
+            tokens_handle_ = nullptr;
+        }
+        if(assets_handle_ != nullptr) {
+            delete assets_handle_;
+            assets_handle_ = nullptr;
+        }
+
+        delete db_;
+        db_ = nullptr;
+    }
     return 0;
 }
 
@@ -882,6 +897,15 @@ token_database::free_savepoint(savepoint& sp) {
 }
 
 int
+token_database::free_all_savepoints() {
+    for(auto& sp : savepoints_) {
+        free_savepoint(sp);
+    }
+    savepoints_.clear();
+    return 0;
+}
+
+int
 token_database::pop_savepoints(int64_t until) {
     while(!savepoints_.empty() && savepoints_.front().seq < until) {
         auto it = std::move(savepoints_.front());
@@ -1212,9 +1236,7 @@ struct pd_header {
 }  // namespace __internal
 
 int
-token_database::persist_savepoints() {
-    using namespace __internal;
-
+token_database::persist_savepoints() const {
     auto filename = fc::path(db_path_) / config::tokendb_persisit_filename;
     if(fc::exists(filename)) {
         fc::remove(filename);
@@ -1223,11 +1245,43 @@ token_database::persist_savepoints() {
     fs.exceptions(std::fstream::failbit | std::fstream::badbit);
     fs.open(filename.to_native_ansi_path(), (std::ios::out | std::ios::binary));
 
+    persist_savepoints(fs);
+
+    fs.flush();
+    fs.close();
+    return 0;
+}
+
+int
+token_database::load_savepoints() {
+    auto filename = fc::path(db_path_) / config::tokendb_persisit_filename;
+    if(!fc::exists(filename)) {
+        wlog("No savepoints log in token database");
+        return 0;
+    }
+
+    auto fs = std::fstream();
+    fs.exceptions(std::fstream::failbit | std::fstream::badbit);
+    fs.open(filename.to_native_ansi_path(), (std::ios::in | std::ios::binary));
+
+    // delete old savepoints if existed (from snapshot)
+    savepoints_.clear();
+
+    load_savepoints(fs);
+
+    fs.close();
+    return 0;
+}
+
+int
+token_database::persist_savepoints(std::ostream& os) const {
+    using namespace __internal;
+
     auto h = pd_header {
         .dirty_flag = 1
     };
     // set dirty first
-    fc::raw::pack(fs, h);
+    fc::raw::pack(os, h);
 
     auto pds = std::vector<pd_group>();
 
@@ -1242,7 +1296,6 @@ token_database::persist_savepoints() {
             auto pd2 = GETPOINTER(pd_group, n.group);
             pd.actions.insert(pd.actions.cbegin(), pd2->actions.cbegin(), pd2->actions.cend());
             
-            delete pd2;
             break;
         }
         case kRT: {
@@ -1272,7 +1325,6 @@ token_database::persist_savepoints() {
                         key_set.emplace(std::move(key));
                     }
 
-                    free(data);
                     continue;
                 }
 
@@ -1329,11 +1381,7 @@ token_database::persist_savepoints() {
                 }  // switch
                 
                 pd.actions.emplace_back(std::move(pdact));
-                free(data);
             }
-
-            db_->ReleaseSnapshot((const rocksdb::Snapshot*)rt->rb_snapshot);
-            delete rt;
 
             break;
         }
@@ -1345,38 +1393,25 @@ token_database::persist_savepoints() {
         pds.emplace_back(std::move(pd));
     }  // for
 
-    fc::raw::pack(fs, pds);
-    fs.seekp(0);
+    fc::raw::pack(os, pds);
+    os.seekp(0);
 
     h.dirty_flag = 0;
-    fc::raw::pack(fs, h);
-
-    fs.flush();
-    fs.close();
+    fc::raw::pack(os, h);
 
     return 0;
 }
 
 int
-token_database::load_savepoints() {
+token_database::load_savepoints(std::istream& is) {
     using namespace __internal;
 
-    auto filename = fc::path(db_path_) / config::tokendb_persisit_filename;
-    if(!fc::exists(filename)) {
-        wlog("No savepoints log in token database");
-        return 0;
-    }
-
-    auto fs = std::fstream();
-    fs.exceptions(std::fstream::failbit | std::fstream::badbit);
-    fs.open(filename.to_native_ansi_path(), (std::ios::in | std::ios::binary));
-
     auto h = pd_header();
-    fc::raw::unpack(fs, h);
+    fc::raw::unpack(is, h);
     EVT_ASSERT(h.dirty_flag == 0, tokendb_dirty_flag_exception, "checkpoints log file dirty flag set");
 
     auto pds = std::vector<pd_group>();
-    fc::raw::unpack(fs, pds);
+    fc::raw::unpack(is, pds);
 
     for(auto& pd : pds) {
         savepoints_.emplace_back(savepoint(pd.seq, kPD));
@@ -1384,7 +1419,6 @@ token_database::load_savepoints() {
         auto ppd = new pd_group(pd);
         SETPOINTER(void, savepoints_.back().node.group, ppd);
     }
-    fs.close();
 
     return 0;
 }

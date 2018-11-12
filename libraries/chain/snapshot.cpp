@@ -1,6 +1,8 @@
 #include <evt/chain/snapshot.hpp>
-#include <evt/chain/exceptions.hpp>
+
+#include <boost/algorithm/string/predicate.hpp>
 #include <fc/scoped_exit.hpp>
+#include <evt/chain/exceptions.hpp>
 
 namespace evt { namespace chain {
 
@@ -33,6 +35,7 @@ variant_snapshot_writer::finalize() {
 variant_snapshot_reader::variant_snapshot_reader(const fc::variant& snapshot)
     : snapshot(snapshot)
     , cur_row(0) {
+    build_section_indexes();
 }
 
 void
@@ -77,29 +80,39 @@ variant_snapshot_reader::validate() const {
     }
 }
 
-bool
-variant_snapshot_reader::has_section(const string& section_name) {
-    const auto& sections = snapshot["sections"].get_array();
-    for(const auto& section : sections) {
-        if(section["name"].as_string() == section_name) {
-            return true;
+std::vector<std::string>
+variant_snapshot_reader::get_section_names(const std::string& prefix) const {
+    auto names = std::vector<std::string>();
+    for(auto& si : section_indexes) {
+        if(boost::starts_with(si.name, prefix)) {
+            names.emplace_back(si.name);
         }
     }
+    return names;
+}
 
-    return false;
+bool
+variant_snapshot_reader::has_section(const string& section_name) {
+    return std::find_if(section_indexes.cbegin(), section_indexes.cend(), [&](auto& si) {
+        return si.name == section_name;
+    }) != section_indexes.cend();
 }
 
 void
 variant_snapshot_reader::set_section(const string& section_name) {
-    const auto& sections = snapshot["sections"].get_array();
-    for(const auto& section : sections) {
-        if(section["name"].as_string() == section_name) {
-            cur_section = &section.get_object();
+    for(auto& si : section_indexes) {
+        if(si.name == section_name) {
+            cur_section = &si.ptr;
             return;
         }
     }
 
     EVT_THROW(snapshot_exception, "Variant snapshot has no section named ${n}", ("n", section_name));
+}
+
+size_t
+variant_snapshot_reader::get_section_size(const string& section_name) {
+    EVT_THROW(snapshot_exception, "Variant snapshot doesn't support this feature");
 }
 
 bool
@@ -119,6 +132,17 @@ void
 variant_snapshot_reader::clear_section() {
     cur_section = nullptr;
     cur_row     = 0;
+}
+
+void
+variant_snapshot_reader::build_section_indexes() {
+    const auto& sections = snapshot["sections"].get_array();
+    for(auto& section : sections) {
+        section_indexes.emplace_back(section_index {
+            .name = section["name"].as_string(),
+            .ptr  = section.get_object()
+        });
+    }
 }
 
 ostream_snapshot_writer::ostream_snapshot_writer(std::ostream& snapshot)
@@ -151,7 +175,7 @@ ostream_snapshot_writer::write_start_section(const std::string& section_name) {
 
     // write the section name (null terminated)
     snapshot.write(section_name.data(), section_name.size());
-    snapshot.put(0);
+    snapshot.put('\0');
 }
 
 void
@@ -200,6 +224,7 @@ istream_snapshot_reader::istream_snapshot_reader(std::istream& snapshot)
     , header_pos(snapshot.tellg())
     , num_rows(0)
     , cur_row(0) {
+    build_section_indexes();
 }
 
 void
@@ -253,83 +278,44 @@ istream_snapshot_reader::validate_section() const {
     return true;
 }
 
-bool
-istream_snapshot_reader::has_section(const string& section_name) {
-    auto restore_pos = fc::make_scoped_exit([this, pos = snapshot.tellg()]() {
-        snapshot.seekg(pos);
-    });
-
-    const std::streamoff header_size = sizeof(ostream_snapshot_writer::magic_number) + sizeof(current_snapshot_version);
-
-    auto next_section_pos = header_pos + header_size;
-
-    while(true) {
-        snapshot.seekg(next_section_pos);
-        uint64_t section_size = 0;
-        snapshot.read((char*)&section_size, sizeof(section_size));
-        if(section_size == std::numeric_limits<uint64_t>::max()) {
-            break;
-        }
-
-        next_section_pos = snapshot.tellg() + std::streamoff(section_size);
-
-        uint64_t ignore = 0;
-        snapshot.read((char*)&ignore, sizeof(ignore));
-
-        bool match = true;
-        for(auto c : section_name) {
-            if(snapshot.get() != c) {
-                match = false;
-                break;
-            }
-        }
-
-        if(match && snapshot.get() == 0) {
-            return true;
+std::vector<std::string>
+istream_snapshot_reader::get_section_names(const std::string& prefix) const {
+    auto names = std::vector<std::string>();
+    for(auto& si : section_indexes) {
+        if(boost::starts_with(si.name, prefix)) {
+            names.emplace_back(si.name);
         }
     }
+    return names;
+}
 
-    return false;
+bool
+istream_snapshot_reader::has_section(const string& section_name) {
+    return std::find_if(section_indexes.cbegin(), section_indexes.cend(), [&](auto& si) {
+        return si.name == section_name;
+    }) != section_indexes.cend();
 }
 
 void
 istream_snapshot_reader::set_section(const string& section_name) {
-    auto restore_pos = fc::make_scoped_exit([this, pos = snapshot.tellg()]() {
-        snapshot.seekg(pos);
-    });
-
-    const std::streamoff header_size = sizeof(ostream_snapshot_writer::magic_number) + sizeof(current_snapshot_version);
-
-    auto next_section_pos = header_pos + header_size;
-
-    while(true) {
-        snapshot.seekg(next_section_pos);
-        uint64_t section_size = 0;
-        snapshot.read((char*)&section_size, sizeof(section_size));
-        if(section_size == std::numeric_limits<uint64_t>::max()) {
-            break;
-        }
-
-        next_section_pos = snapshot.tellg() + std::streamoff(section_size);
-
-        uint64_t row_count = 0;
-        snapshot.read((char*)&row_count, sizeof(row_count));
-
-        bool match = true;
-        for(auto c : section_name) {
-            if(snapshot.get() != c) {
-                match = false;
-                break;
-            }
-        }
-
-        if(match && snapshot.get() == 0) {
+    for(auto& si : section_indexes) {
+        if(si.name == section_name) {
+            snapshot.seekg(si.pos);
             cur_row  = 0;
-            num_rows = row_count;
+            num_rows = si.row_count;
 
-            // leave the stream at the right point
-            restore_pos.cancel();
             return;
+        }
+    }
+
+    EVT_THROW(snapshot_exception, "Binary snapshot has no section named ${n}", ("n", section_name));
+}
+
+size_t
+istream_snapshot_reader::get_section_size(const string& section_name) {
+    for(auto& si : section_indexes) {
+        if(si.name == section_name) {
+            return si.size;
         }
     }
 
@@ -351,6 +337,50 @@ void
 istream_snapshot_reader::clear_section() {
     num_rows = 0;
     cur_row  = 0;
+}
+
+void
+istream_snapshot_reader::build_section_indexes() {
+    auto restore_pos = fc::make_scoped_exit([this, pos = snapshot.tellg()]() {
+        snapshot.seekg(pos);
+    });
+
+    const std::streamoff header_size = sizeof(ostream_snapshot_writer::magic_number) + sizeof(current_snapshot_version);
+
+    auto next_section_pos = header_pos + header_size;
+
+    while(true) {
+        snapshot.seekg(next_section_pos);
+        uint64_t section_size = 0;
+        snapshot.read((char*)&section_size, sizeof(section_size));
+        if(section_size == std::numeric_limits<uint64_t>::max()) {
+            break;
+        }
+        if(snapshot.eof()) {
+            snapshot.clear();
+            snapshot.seekg(0);
+            break;
+        }
+
+        next_section_pos = snapshot.tellg() + std::streamoff(section_size);
+
+        uint64_t row_count = 0;
+        snapshot.read((char*)&row_count, sizeof(row_count));
+
+        auto name = std::string();
+        char c;
+        while((c = snapshot.get()) != '\0') {
+            EVT_ASSERT(c != std::char_traits<char>::eof(), snapshot_validation_exception, "Not valid section name");
+            name.push_back(c);
+        }
+
+        section_indexes.emplace_back(section_index {
+            .name      = name,
+            .pos       = (size_t)snapshot.tellg(),
+            .row_count = row_count,
+            .size      = (size_t)(next_section_pos - snapshot.tellg())
+        });
+    }
 }
 
 integrity_hash_snapshot_writer::integrity_hash_snapshot_writer(fc::sha256::encoder& enc)
