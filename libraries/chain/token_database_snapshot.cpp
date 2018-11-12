@@ -146,7 +146,7 @@ public:
             rw.add_row("size", (char*)&sz, sizeof(sz));
             rw.add_row("raw",  buf_.data(), buf_.size());
         });
-        dlog("Written ${n}: ${sz}", ("name",name_)("sz",buf_.size()));
+        dlog("Written ${n}: ${sz}", ("n",name_)("sz",buf_.size()));
         return Status::OK();
     }
 

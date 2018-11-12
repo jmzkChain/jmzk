@@ -1071,7 +1071,11 @@ read_only::get_transaction(const get_transaction_params& params) {
             auto var = fc::variant();
             db.get_abi_serializer().to_variant(tx.trx, var);
 
-            return var;
+            auto mv = fc::mutable_variant_object(var);
+            mv["block_num"] = block_num;
+            mv["block_id"]  = block->id();
+
+            return mv;
         }
     }
     EVT_THROW(unknown_transaction_exception, "Cannot find transaction");
