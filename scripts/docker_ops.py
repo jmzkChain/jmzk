@@ -69,6 +69,39 @@ def logs(name, tail, stream):
             '{} container is not existed, please start first'.format(green(name)))
 
 
+@cli.command()
+@click.argument('name')
+def detail(name):
+    client = docker.APIClient()
+    containers = [c for c in client.containers(
+        all=True, filters={'name': name}) if c['Names'][0] == '/' + name]
+    if len(containers) == 0:
+        click.echo('{} container is not found'.format(green(name)))
+        return
+
+    ct = containers[0]
+
+    ports = []
+    for p in ct['Ports']:
+        if p['PrivatePort'] == 8888:
+            p['Type'] += '(http)'
+        if p['PrivatePort'] == 7888:
+            p['Type'] += '(p2p)'
+
+        ports.append(
+            '{}:{}->{}/{}'.format(p['IP'], p['PublicPort'], p['PrivatePort'], p['Type']))
+
+    click.echo('      id: {}'.format(green(ct['Id'])))
+    click.echo('   image: {}'.format(green(ct['Image'])))
+    click.echo('image-id: {}'.format(green(ct['ImageID'])))
+    click.echo(' command: {}'.format(green(ct['Command'])))
+    click.echo(' network: {}'.format(
+        green(list(ct['NetworkSettings']['Networks'].keys())[0])))
+    click.echo('   ports: {}'.format(green(', '.join(ports))))
+    click.echo('  status: {}'.format(green(ct['Status'])))
+
+
+
 @cli.group('network')
 @click.option('--name', '-n', default='evt-net', help='Name of the network for the environment')
 @click.pass_context
@@ -230,6 +263,12 @@ def stopmongo(ctx):
 @click.pass_context
 def mongologs(ctx, tail, stream):
     ctx.forward(logs, name=ctx.obj['name'])
+
+
+@mongo.command('detail')
+@click.pass_context
+def detailmongo(ctx):
+    ctx.invoke(detail, name=ctx.obj['name'])
 
 
 @cli.group()
@@ -470,6 +509,12 @@ def evtdlogs(ctx, tail, stream):
     ctx.forward(logs, name=ctx.obj['name'])
 
 
+@evtd.command('detail')
+@click.pass_context
+def detailevtd(ctx):
+    ctx.invoke(detail, name=ctx.obj['name'])
+
+
 @cli.group()
 @click.option('--name', '-n', default='evtwd', help='Name of the container running evtwd')
 @click.pass_context
@@ -596,6 +641,12 @@ def evtwdlogs(ctx, tail, stream):
     ctx.forward(logs, name=ctx.obj['name'])
 
 
+@evtwd.command('detail')
+@click.pass_context
+def detailevtwd(ctx):
+    ctx.invoke(detail, name=ctx.obj['name'])
+
+
 @cli.command(context_settings=dict(
     ignore_unknown_options=True,
     help_option_names=[]
@@ -619,38 +670,6 @@ def evtc(commands, evtwd):
 
     for line in result:
         click.echo(line.decode('utf-8'), nl=False)
-
-
-@cli.command()
-@click.argument('name')
-def detail(name):
-    client = docker.APIClient()
-    containers = [c for c in client.containers(
-        all=True, filters={'name': name}) if c['Names'][0] == '/' + name]
-    if len(containers) == 0:
-        click.echo('{} container is not found'.format(green(name)))
-        return
-
-    ct = containers[0]
-
-    ports = []
-    for p in ct['Ports']:
-        if p['PrivatePort'] == 8888:
-            p['Type'] += '(http)'
-        if p['PrivatePort'] == 7888:
-            p['Type'] += '(p2p)'
-
-        ports.append(
-            '{}:{}->{}/{}'.format(p['IP'], p['PublicPort'], p['PrivatePort'], p['Type']))
-
-    click.echo('      id: {}'.format(green(ct['Id'])))
-    click.echo('   image: {}'.format(green(ct['Image'])))
-    click.echo('image-id: {}'.format(green(ct['ImageID'])))
-    click.echo(' command: {}'.format(green(ct['Command'])))
-    click.echo(' network: {}'.format(
-        green(list(ct['NetworkSettings']['Networks'].keys())[0])))
-    click.echo('   ports: {}'.format(green(', '.join(ports))))
-    click.echo('  status: {}'.format(green(ct['Status'])))
 
 
 if __name__ == '__main__':
