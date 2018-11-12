@@ -43,12 +43,22 @@ namespace fc {
       return fc::time_point_sec( (pt - epoch).total_seconds() );
   } FC_RETHROW_EXCEPTIONS( warn, "unable to convert ISO-formatted string to fc::time_point_sec" ) }
 
-  time_point::operator fc::string()const
-  {
-      const auto ptime = boost::posix_time::from_time_t( time_t( sec_since_epoch() ) );
-      auto msec = (elapsed.count() % 1000000) / 1000 + 1000;
-      return boost::posix_time::to_iso_extended_string( ptime ) + "."+to_string(msec).substr(1);
-  }
+   time_point::operator fc::string()const
+   {
+      auto count = elapsed.count();
+      if (count >= 0) {
+         uint64_t secs = (uint64_t)count / 1000000ULL;
+         uint64_t msec = ((uint64_t)count % 1000000ULL) / 1000ULL;
+         string padded_ms = to_string((uint64_t)(msec + 1000ULL)).substr(1);
+         const auto ptime = boost::posix_time::from_time_t(time_t(secs));
+         return boost::posix_time::to_iso_extended_string(ptime) + "." + padded_ms;
+      } else {
+         // negative time_points serialized as "durations" in the ISO form with boost
+         // this is not very human readable but fits the precedent set by the above
+         auto as_duration = boost::posix_time::microseconds(count);
+         return boost::posix_time::to_iso_string(as_duration);
+      }
+   }
 
   time_point time_point::from_iso_string( const fc::string& s )
   { try {

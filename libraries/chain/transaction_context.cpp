@@ -227,15 +227,7 @@ void
 transaction_context::dispatch_action(action_trace& trace, const action& act) {
     apply_context apply(control, *this, act);
 
-    try {
-        apply.exec();
-    }
-    catch(...) {
-        trace = move(apply.trace);
-        throw;
-    }
-
-    trace = move(apply.trace);
+    apply.exec(trace);
 }
 
 void

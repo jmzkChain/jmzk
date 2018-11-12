@@ -88,21 +88,25 @@ chain_api_plugin::plugin_startup() {
     auto ro_api = app().get_plugin<chain_plugin>().get_read_only_api();
     auto rw_api = app().get_plugin<chain_plugin>().get_read_write_api();
 
-    app().get_plugin<http_plugin>().add_api({CHAIN_RO_CALL(get_info, 200),
-                                             CHAIN_RO_CALL(get_block, 200),
-                                             CHAIN_RO_CALL(get_block_header_state, 200),
-                                             CHAIN_RO_CALL(get_head_block_header_state, 200),
-                                             CHAIN_RO_CALL(get_transaction, 200),
-                                             CHAIN_RO_CALL(get_trx_id_for_link_id, 200),
-                                             CHAIN_RO_CALL(abi_json_to_bin, 200),
-                                             CHAIN_RO_CALL(abi_bin_to_json, 200),
-                                             CHAIN_RO_CALL(trx_json_to_digest, 200),
-                                             CHAIN_RO_CALL(get_required_keys, 200),
-                                             CHAIN_RO_CALL(get_suspend_required_keys, 200),
-                                             CHAIN_RO_CALL(get_charge, 200),
-                                             CHAIN_RW_CALL_ASYNC(push_block, chain_apis::read_write::push_block_results, 202),
-                                             CHAIN_RW_CALL_ASYNC(push_transaction, chain_apis::read_write::push_transaction_results, 202),
-                                             CHAIN_RW_CALL_ASYNC(push_transactions, chain_apis::read_write::push_transactions_results, 202)});
+    auto& _http_plugin = app().get_plugin<http_plugin>();
+    ro_api.set_shorten_abi_errors(!_http_plugin.verbose_errors());
+
+    _http_plugin.add_api({CHAIN_RO_CALL(get_info, 200),
+                          CHAIN_RO_CALL(get_block, 200),
+                          CHAIN_RO_CALL(get_block_header_state, 200),
+                          CHAIN_RO_CALL(get_head_block_header_state, 200),
+                          CHAIN_RO_CALL(get_transaction, 200),
+                          CHAIN_RO_CALL(get_trx_id_for_link_id, 200),
+                          CHAIN_RO_CALL(abi_json_to_bin, 200),
+                          CHAIN_RO_CALL(abi_bin_to_json, 200),
+                          CHAIN_RO_CALL(trx_json_to_digest, 200),
+                          CHAIN_RO_CALL(get_required_keys, 200),
+                          CHAIN_RO_CALL(get_suspend_required_keys, 200),
+                          CHAIN_RO_CALL(get_charge, 200),
+                          CHAIN_RO_CALL(get_transaction_ids_for_block, 200),
+                          CHAIN_RW_CALL_ASYNC(push_block, chain_apis::read_write::push_block_results, 202),
+                          CHAIN_RW_CALL_ASYNC(push_transaction, chain_apis::read_write::push_transaction_results, 202),
+                          CHAIN_RW_CALL_ASYNC(push_transactions, chain_apis::read_write::push_transactions_results, 202)});
 }
 
 void

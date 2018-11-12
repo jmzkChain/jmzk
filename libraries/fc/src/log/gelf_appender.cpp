@@ -18,7 +18,7 @@
 #include <iostream>
 #include <boost/thread/mutex.hpp>
 
-namespace fc 
+namespace fc
 {
   namespace detail
   {
@@ -36,7 +36,7 @@ namespace fc
     udp_socket                                gelf_socket;
     boost::mutex                              gelf_log_mutex;
 
-    impl(const config& c) : 
+    impl(const config& c) :
       cfg(c)
     {
     }
@@ -65,7 +65,7 @@ namespace fc
       }
       if (!my->gelf_endpoint)
       {
-        // couldn't parse as a numeric ip address, try resolving as a DNS name.  
+        // couldn't parse as a numeric ip address, try resolving as a DNS name.
         // This can yield, so don't do it in the catch block above
         string::size_type colon_pos = my->cfg.endpoint.find(':');
         try
@@ -112,12 +112,12 @@ namespace fc
     gelf_message["version"] = "1.1";
     gelf_message["host"] = my->cfg.host;
     gelf_message["short_message"] = format_string(message.get_format(), message.get_data());
-    
+
     const auto time_ns = context.get_timestamp().time_since_epoch().count();
     gelf_message["timestamp"] = time_ns / 1000000.;
     gelf_message["_timestamp_ns"] = time_ns;
 
-    static unsigned long gelf_log_counter;
+    static uint64_t gelf_log_counter;
     gelf_message["_log_id"] = fc::to_string(++gelf_log_counter);
 
     switch (context.get_log_level())
@@ -153,16 +153,16 @@ namespace fc
     string gelf_message_as_string = json::to_string(gelf_message, json::legacy_generator); // GELF 1.1 specifies unstringified numbers
     //unsigned uncompressed_size = gelf_message_as_string.size();
     gelf_message_as_string = zlib_compress(gelf_message_as_string);
-    
+
     // graylog2 expects the zlib header to be 0x78 0x9c
-    // but miniz.c generates 0x78 0x01 (indicating 
+    // but miniz.c generates 0x78 0x01 (indicating
     // low compression instead of default compression)
     // so change that here
-    assert(gelf_message_as_string[0] == (char)0x78);
+    FC_ASSERT(gelf_message_as_string[0] == (char)0x78);
     if (gelf_message_as_string[1] == (char)0x01 ||
         gelf_message_as_string[1] == (char)0xda)
       gelf_message_as_string[1] = (char)0x9c;
-    assert(gelf_message_as_string[1] == (char)0x9c);
+    FC_ASSERT(gelf_message_as_string[1] == (char)0x9c);
 
     std::unique_lock<boost::mutex> lock(my->gelf_log_mutex);
 
@@ -179,16 +179,16 @@ namespace fc
       // no need to split
       std::shared_ptr<char> send_buffer(new char[gelf_message_as_string.size()],
                                         [](char* p){ delete[] p; });
-      memcpy(send_buffer.get(), gelf_message_as_string.c_str(), 
+      memcpy(send_buffer.get(), gelf_message_as_string.c_str(),
              gelf_message_as_string.size());
 
-      my->gelf_socket.send_to(send_buffer, gelf_message_as_string.size(), 
+      my->gelf_socket.send_to(send_buffer, gelf_message_as_string.size(),
                               *my->gelf_endpoint);
     }
     else
     {
       // split the message
-      // we need to generate an 8-byte ID for this message.  
+      // we need to generate an 8-byte ID for this message.
       // city hash should do
       uint64_t message_id = city_hash64(gelf_message_as_string.c_str(), gelf_message_as_string.size());
       const unsigned header_length = 2 /* magic */ + 8 /* msg id */ + 1 /* seq */ + 1 /* count */;
@@ -198,10 +198,10 @@ namespace fc
       unsigned number_of_packets_sent = 0;
       while (bytes_sent < gelf_message_as_string.size())
       {
-        unsigned bytes_to_send = std::min((unsigned)gelf_message_as_string.size() - bytes_sent, 
+        unsigned bytes_to_send = std::min((unsigned)gelf_message_as_string.size() - bytes_sent,
                                           body_length);
-                                               
-        std::shared_ptr<char> send_buffer(new char[max_payload_size], 
+
+        std::shared_ptr<char> send_buffer(new char[max_payload_size],
                                           [](char* p){ delete[] p; });
         char* ptr = send_buffer.get();
         // magic number for chunked message
@@ -214,14 +214,14 @@ namespace fc
 
         *(unsigned char*)(ptr++) = number_of_packets_sent;
         *(unsigned char*)(ptr++) = total_number_of_packets;
-        memcpy(ptr, gelf_message_as_string.c_str() + bytes_sent, 
+        memcpy(ptr, gelf_message_as_string.c_str() + bytes_sent,
                bytes_to_send);
-        my->gelf_socket.send_to(send_buffer, header_length + bytes_to_send, 
+        my->gelf_socket.send_to(send_buffer, header_length + bytes_to_send,
                                 *my->gelf_endpoint);
         ++number_of_packets_sent;
         bytes_sent += bytes_to_send;
       }
-      assert(number_of_packets_sent == total_number_of_packets);
+      FC_ASSERT(number_of_packets_sent == total_number_of_packets);
     }
   }
 } // fc

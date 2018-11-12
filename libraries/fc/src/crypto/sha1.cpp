@@ -7,12 +7,14 @@
 #include <vector>
 #include "_digest_common.hpp"
 
-namespace fc 
+namespace fc
 {
-  
+
 sha1::sha1() { memset( _hash, 0, sizeof(_hash) ); }
 sha1::sha1( const string& hex_str ) {
-  fc::from_hex( hex_str, (char*)_hash, sizeof(_hash) );  
+   auto bytes_written = fc::from_hex( hex_str, (char*)_hash, sizeof(_hash) );
+   if( bytes_written < sizeof(_hash) )
+      memset( (char*)_hash + bytes_written, 0, (sizeof(_hash) - bytes_written) ); 
 }
 
 string sha1::str()const {
@@ -42,7 +44,7 @@ sha1 sha1::hash( const string& s ) {
 }
 
 void sha1::encoder::write( const char* d, uint32_t dlen ) {
-  SHA1_Update( &my->ctx, d, dlen); 
+  SHA1_Update( &my->ctx, d, dlen);
 }
 sha1 sha1::encoder::result() {
   sha1 h;
@@ -50,7 +52,7 @@ sha1 sha1::encoder::result() {
   return h;
 }
 void sha1::encoder::reset() {
-  SHA1_Init( &my->ctx);  
+  SHA1_Init( &my->ctx);
 }
 
 sha1 operator << ( const sha1& h1, uint32_t i ) {
@@ -82,7 +84,7 @@ bool operator != ( const sha1& h1, const sha1& h2 ) {
 bool operator == ( const sha1& h1, const sha1& h2 ) {
   return memcmp( h1._hash, h2._hash, sizeof(h1._hash) ) == 0;
 }
-  
+
   void to_variant( const sha1& bi, variant& v )
   {
      v = std::vector<char>( (const char*)&bi, ((const char*)&bi) + sizeof(bi) );
@@ -97,5 +99,5 @@ bool operator == ( const sha1& h1, const sha1& h2 ) {
     else
         memset( &bi, char(0), sizeof(bi) );
   }
-  
+
 } // fc

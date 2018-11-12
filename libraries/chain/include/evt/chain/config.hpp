@@ -52,6 +52,8 @@ const static uint32_t default_base_storage_charge_factor = 1;
 const static uint32_t default_base_cpu_charge_factor     = 10;
 const static uint32_t default_global_charge_factor       = 10;
 
+const static uint32_t default_abi_serializer_max_time_ms = 15; ///< default deadline for abi serialization methods
+
 /**
  *  The number of sequential blocks produced by a single producer
  */

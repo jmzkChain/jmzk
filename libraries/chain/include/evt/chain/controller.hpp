@@ -6,9 +6,9 @@
 #include <functional>
 #include <boost/signals2/signal.hpp>
 #include <evt/chain/block_state.hpp>
-#include <evt/chain/trace.hpp>
 #include <evt/chain/genesis_state.hpp>
-#include <evt/chain/contracts/abi_serializer.hpp>
+#include <evt/chain/snapshot.hpp>
+#include <evt/chain/trace.hpp>
 
 namespace chainbase {
 class database;
@@ -24,13 +24,23 @@ class charge_manager;
 struct controller_impl;
 using boost::signals2::signal;
 using chainbase::database;
-using contracts::abi_serializer;
 
 class dynamic_global_property_object;
 class global_property_object;
 
-namespace contracts { class evt_link_object; }
+namespace contracts {
+struct abi_serializer;
+class evt_link_object;
+}
+
 using contracts::evt_link_object;
+
+enum class db_read_mode {
+    SPECULATIVE,
+    HEAD,
+    READ_ONLY,
+    IRREVERSIBLE
+};
 
 enum class validation_mode {
     FULL,
@@ -54,6 +64,9 @@ public:
         bool     charge_free_mode       = false;
         bool     contracts_console      = false;
 
+        fc::microseconds max_serialization_time = fc::milliseconds(chain::config::default_abi_serializer_max_time_ms);
+
+        db_read_mode    read_mode             = db_read_mode::SPECULATIVE;
         validation_mode block_validation_mode = validation_mode::FULL;
 
         flat_set<account_name> trusted_producers;
@@ -71,7 +84,8 @@ public:
     controller(const config& cfg);
     ~controller();
 
-    void startup();
+    void add_indices();
+    void startup(const snapshot_reader_ptr& snapshot = nullptr);
 
     /**
           * Starts a new pending block session upon which new transactions can
@@ -151,11 +165,14 @@ public:
     block_state_ptr fetch_block_state_by_number(uint32_t block_num) const;
     block_state_ptr fetch_block_state_by_id(block_id_type id) const;
 
-    block_id_type   get_block_id_for_num(uint32_t block_num) const;
+    block_id_type get_block_id_for_num(uint32_t block_num) const;
 
     const evt_link_object& get_link_obj_for_link_id(const link_id_type&) const;
 
     uint32_t get_block_num_for_trx_id(const transaction_id_type& trx_id) const;
+
+    fc::sha256 calculate_integrity_hash() const;
+    void write_snapshot(const snapshot_writer_ptr& snapshot) const;
 
     bool is_producing_block() const;
 
@@ -180,6 +197,7 @@ public:
 
     chain_id_type get_chain_id() const;
 
+    db_read_mode    get_read_mode() const;
     validation_mode get_validation_mode() const;
 
     const genesis_state& get_genesis_state() const;
@@ -199,15 +217,7 @@ public:
 
     uint32_t get_charge(const transaction& trx, size_t signautres_num) const;
 
-    const abi_serializer& get_abi_serializer() const;
-
-    template <typename T>
-    fc::variant
-    to_variant_with_abi(const T& obj) {
-        fc::variant pretty_output;
-        abi_serializer::to_variant(obj, pretty_output, [this]() -> const abi_serializer& { return get_abi_serializer(); });
-        return pretty_output;
-    }
+    const contracts::abi_serializer& get_abi_serializer() const;
 
 private:
     std::unique_ptr<controller_impl> my;

@@ -20,7 +20,12 @@ struct action_trace {
     fc::microseconds elapsed;
     string           console;
 
-    transaction_id_type trx_id;
+    transaction_id_type  trx_id; ///< the transaction that generated this action
+    uint32_t             block_num = 0;
+    block_timestamp_type block_time;
+
+    fc::optional<block_id_type> producer_block_id;
+    fc::optional<fc::exception> except;
 };
 
 struct transaction_trace;
@@ -42,5 +47,5 @@ struct transaction_trace {
 
 }}  // namespace evt::chain
 
-FC_REFLECT(evt::chain::action_trace, (receipt)(act)(elapsed)(console)(trx_id));
+FC_REFLECT(evt::chain::action_trace, (receipt)(act)(elapsed)(console)(trx_id)(block_num)(block_time)(producer_block_id)(except));
 FC_REFLECT(evt::chain::transaction_trace, (id)(receipt)(elapsed)(is_suspend)(action_traces)(charge)(net_usage)(except));

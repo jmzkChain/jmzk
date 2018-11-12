@@ -23,12 +23,10 @@ using namespace evt::chain;
 class evt_plugin_impl {
 public:
     evt_plugin_impl(controller& db)
-        : db_(db)
-        , evt_abi_(contracts::evt_contract_abi()) {}
+        : db_(db) {}
 
 public:
     controller& db_;
-    contracts::abi_serializer evt_abi_;
 };
 
 evt_plugin::evt_plugin() {}
@@ -53,7 +51,7 @@ evt_plugin::plugin_shutdown() {
 
 evt_apis::read_only
 evt_plugin::get_read_only_api() const {
-    return evt_apis::read_only(my_->db_, my_->evt_abi_);
+    return evt_apis::read_only(my_->db_);
 }
 
 evt_apis::read_write
@@ -147,7 +145,7 @@ read_only::get_suspend(const get_suspend_params& params) {
     variant     var;
     suspend_def suspend;
     db.read_suspend(params.name, suspend);
-    abi_serializer::to_variant(suspend, var, [this]() -> const evt::chain::contracts::abi_serializer& { return evt_abi_; });
+    db_.get_abi_serializer().to_variant(suspend, var);
     return var;
 }
 

@@ -14,7 +14,7 @@ namespace evt { namespace chain {
 
 static inline void
 print_debug(const action_trace& ar) {
-   if (!ar.console.empty()) {
+   if(!ar.console.empty()) {
       auto prefix = fc::format_string(
                                       "\n[${n}, ${d}-${k}]",
                                       fc::mutable_variant_object()
@@ -27,38 +27,59 @@ print_debug(const action_trace& ar) {
    }
 }
 
-action_trace
-apply_context::exec_one() {
+void
+apply_context::exec_one(action_trace& trace) {
     using namespace contracts;
 
     auto start = fc::time_point::now();
-    try {
-        types_invoker<void, apply_action>::invoke(act.name, *this);
-    }
-    FC_CAPTURE_AND_RETHROW((_pending_console_output.str()));
 
     action_receipt r;
     r.act_digest      = digest_type::hash(act);
     r.global_sequence = next_global_sequence();
 
-    auto t    = action_trace(r);
-    t.trx_id  = trx_context.trx.id;
-    t.act     = act;
-    t.console = _pending_console_output.str();
+    trace.trx_id            = trx_context.trx.id;
+    trace.block_num         = control.pending_block_state()->block_num;
+    trace.block_time        = control.pending_block_time();
+    trace.producer_block_id = control.pending_producer_block_id();
+    trace.act               = act;
 
-    trx_context.executed.emplace_back(std::move(r));
-    
-    print_debug(t);
-    reset_console();
+    try {
+        try {
+            types_invoker<void, apply_action>::invoke(act.name, *this);
+        }
+        FC_RETHROW_EXCEPTIONS(warn, "pending console output: ${console}", ("console", _pending_console_output.str()));
+    }
+    catch(fc::exception& e) {
+        trace.receipt = r; // fill with known data
+        trace.except  = e;
+        finalize_trace(trace, start);
+        throw;
+    }
 
-    t.elapsed = fc::time_point::now() - start;
-    return t;
+    trace.receipt = r;
+
+    trx_context.executed.emplace_back(move(r));
+
+    finalize_trace(trace, start);
+
+    if(control.contracts_console()) {
+        print_debug(trace);
+    }
 }
 
 void
-apply_context::exec() {
-    trace = exec_one();
-}  /// exec()
+apply_context::finalize_trace(action_trace& trace, const fc::time_point& start) {
+    trace.console = _pending_console_output.str();
+    reset_console();
+
+    trace.elapsed = fc::time_point::now() - start;
+}
+
+
+void
+apply_context::exec(action_trace& trace) {
+    exec_one(trace);
+}
 
 bool
 apply_context::has_authorized(const domain_name& domain, const domain_key& key) const {

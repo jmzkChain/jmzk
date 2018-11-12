@@ -3,13 +3,24 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #include <evt/chain/controller.hpp>
-#include <evt/chain/transaction_context.hpp>
+
+#include <chainbase/chainbase.hpp>
+
+#include <fc/io/json.hpp>
+#include <fc/scoped_exit.hpp>
+#include <fc/variant_object.hpp>
 
 #include <evt/chain/authority_checker.hpp>
 #include <evt/chain/block_log.hpp>
+#include <evt/chain/charge_manager.hpp>
+#include <evt/chain/chain_snapshot.hpp>
 #include <evt/chain/fork_database.hpp>
 #include <evt/chain/token_database.hpp>
-#include <evt/chain/charge_manager.hpp>
+#include <evt/chain/token_database_snapshot.hpp>
+#include <evt/chain/transaction_context.hpp>
+#include <evt/chain/contracts/abi_serializer.hpp>
+#include <evt/chain/contracts/evt_contract.hpp>
+#include <evt/chain/contracts/evt_org.hpp>
 
 #include <evt/chain/block_summary_object.hpp>
 #include <evt/chain/global_property_object.hpp>
@@ -17,14 +28,15 @@
 #include <evt/chain/reversible_block_object.hpp>
 #include <evt/chain/contracts/evt_link_object.hpp>
 
-#include <chainbase/chainbase.hpp>
-#include <fc/io/json.hpp>
-#include <fc/scoped_exit.hpp>
-
-#include <evt/chain/contracts/evt_contract.hpp>
-#include <evt/chain/contracts/evt_org.hpp>
-
 namespace evt { namespace chain {
+
+using controller_index_set = index_set<
+   global_property_multi_index,
+   dynamic_global_property_multi_index,
+   block_summary_multi_index,
+   transaction_multi_index,
+   evt_link_multi_index
+>;
 
 class maybe_session {
 public:
@@ -130,8 +142,10 @@ struct controller_impl {
 
     bool                     replaying = false;
     optional<fc::time_point> replay_head_time;
+    db_read_mode             read_mode = db_read_mode::SPECULATIVE;
     bool                     in_trx_requiring_checks = false; ///< if true, checks that are normally skipped on replay (e.g. auth checks) cannot be skipped
     bool                     trusted_producer_light_validation = false;
+    uint32_t                 snapshot_head_block = 0;
     abi_serializer           system_api;
 
     /**
@@ -150,8 +164,11 @@ struct controller_impl {
             reversible_blocks.remove(*b);
         }
 
-        for(const auto& t : head->trxs) {
-            unapplied_transactions[t->signed_id] = t;
+        if(read_mode == db_read_mode::SPECULATIVE) {
+            EVT_ASSERT(head->block, block_validate_exception, "attempting to pop a block that was sparsely loaded from a snapshot");
+            for(const auto& t : head->trxs) {
+                unapplied_transactions[t->signed_id] = t;
+            }
         }
         head = prev;
         db.undo();
@@ -171,7 +188,8 @@ struct controller_impl {
         , token_db(cfg.tokendb_dir)
         , conf(cfg)
         , chain_id(cfg.genesis.compute_chain_id())
-        , system_api(contracts::evt_contract_abi()) {
+        , read_mode(cfg.read_mode)
+        , system_api(contracts::evt_contract_abi(), cfg.max_serialization_time) {
 
         fork_db.irreversible.connect([&](auto b) {
             on_irreversible(b);
@@ -217,116 +235,175 @@ struct controller_impl {
 
     void
     on_irreversible(const block_state_ptr& s) {
-        if(!blog.head())
+        if(!blog.head()) {
             blog.read_head();
-
-        const auto& log_head = blog.head();
-        EVT_ASSERT(log_head, block_log_exception, "block log head can not be found");
-        auto lh_block_num = log_head->block_num();
-
-        db.commit(s->block_num);
-        token_db.pop_savepoints(s->block_num);
-
-        if(s->block_num <= lh_block_num) {
-            return;
         }
 
-        EVT_ASSERT(s->block_num - 1 == lh_block_num, unlinkable_block_exception, "unlinkable block", ("s->block_num",s->block_num)("lh_block_num", lh_block_num));
-        EVT_ASSERT(s->block->previous == log_head->id(), unlinkable_block_exception, "irreversible doesn't link to block log head");
-        blog.append(s->block);
+        const auto& log_head       = blog.head();
+        bool        append_to_blog = false;
+        if(!log_head) {
+            if(s->block) {
+                EVT_ASSERT(s->block_num == blog.first_block_num(), block_log_exception, "block log has no blocks and is appending the wrong first block.  Expected ${expected}, but received: ${actual}",
+                           ("expected", blog.first_block_num())("actual", s->block_num));
+                append_to_blog = true;
+            }
+            else {
+                EVT_ASSERT(s->block_num == blog.first_block_num() - 1, block_log_exception, "block log has no blocks and is not properly set up to start after the snapshot");
+            }
+        }
+        else {
+            auto lh_block_num = log_head->block_num();
+            if(s->block_num > lh_block_num) {
+                EVT_ASSERT(s->block_num - 1 == lh_block_num, unlinkable_block_exception, "unlinkable block", ("s->block_num", s->block_num)("lh_block_num", lh_block_num));
+                EVT_ASSERT(s->block->previous == log_head->id(), unlinkable_block_exception, "irreversible doesn't link to block log head");
+                append_to_blog = true;
+            }
+        }
 
-        const auto& ubi = reversible_blocks.get_index<reversible_block_index,by_num>();
-        auto objitr = ubi.begin();
+        db.commit(s->block_num);
+
+        if(append_to_blog) {
+            blog.append(s->block);
+        }
+
+        const auto& ubi    = reversible_blocks.get_index<reversible_block_index, by_num>();
+        auto        objitr = ubi.begin();
         while(objitr != ubi.end() && objitr->blocknum <= s->block_num) {
             reversible_blocks.remove(*objitr);
             objitr = ubi.begin();
         }
 
-        emit(self.irreversible_block, s);
+        // the "head" block when a snapshot is loaded is virtual and has no block data, all of its effects
+        // should already have been loaded from the snapshot so, it cannot be applied
+        if(s->block) {
+            if(read_mode == db_read_mode::IRREVERSIBLE) {
+                // when applying a snapshot, head may not be present
+                // when not applying a snapshot, make sure this is the next block
+                if(!head || s->block_num == head->block_num + 1) {
+                    apply_block(s->block, controller::block_status::complete);
+                    head = s;
+                }
+                else {
+                    // otherwise, assert the one odd case where initializing a chain
+                    // from genesis creates and applies the first block automatically.
+                    // when syncing from another chain, this is pushed in again
+                    EVT_ASSERT(!head || head->block_num == 1, block_validate_exception, "Attempting to re-apply an irreversible block that was not the implied genesis block");
+                }
+
+                fork_db.mark_in_current_chain(head, true);
+                fork_db.set_validity(head, true);
+            }
+            emit(self.irreversible_block, s);
+        }
     }
 
     void
-    init() {
-        /**
-          *  The fork database needs an initial block_state to be set before
-          *  it can accept any new blocks. This initial block state can be found
-          *  in the database (whose head block state should be irreversible) or
-          *  it would be the genesis state.
-          */
-        if(!head) {
+    replay() {
+        auto blog_head      = blog.read_head();
+        auto blog_head_time = blog_head->timestamp.to_time_point();
+        replaying           = true;
+        replay_head_time    = blog_head_time;
+        ilog("existing block log, attempting to replay ${n} blocks", ("n", blog_head->block_num()));
+
+        auto start = fc::time_point::now();
+        while(auto next = blog.read_block_by_num(head->block_num + 1)) {
+            self.push_block(next, controller::block_status::irreversible);
+            if(next->block_num() % 100 == 0) {
+                std::cerr << std::setw(10) << next->block_num() << " of " << blog_head->block_num() << "\r";
+            }
+        }
+        std::cerr << "\n";
+        ilog("${n} blocks replayed", ("n", head->block_num));
+
+        // if the irreverible log is played without undo sessions enabled, we need to sync the
+        // revision ordinal to the appropriate expected value here.
+        if(self.skip_db_sessions(controller::block_status::irreversible))
+            db.set_revision(head->block_num);
+
+        int rev = 0;
+        while(auto obj = reversible_blocks.find<reversible_block_object, by_num>(head->block_num + 1)) {
+            ++rev;
+            self.push_block(obj->get_block(), controller::block_status::validated);
+        }
+
+        ilog("${n} reversible blocks replayed", ("n", rev));
+        auto end = fc::time_point::now();
+        ilog("replayed ${n} blocks in ${duration} seconds, ${mspb} ms/block",
+             ("n", head->block_num)("duration", (end - start).count() / 1000000)("mspb", ((end - start).count() / 1000.0) / head->block_num));
+        replaying = false;
+        replay_head_time.reset();
+    }
+
+
+    void
+    init(const snapshot_reader_ptr& snapshot) {
+        token_db.open();
+        if(snapshot) {
+            EVT_ASSERT(!head, fork_database_exception, "");
+            snapshot->validate();
+
+            read_from_snapshot(snapshot);
+
+            auto end = blog.read_head();
+            if(!end) {
+                blog.reset(conf.genesis, signed_block_ptr(), head->block_num + 1);
+            }
+            else if(end->block_num() > head->block_num) {
+                replay();
+            }
+            else {
+                EVT_ASSERT(end->block_num() == head->block_num, fork_database_exception,
+                           "Block log is provided with snapshot but does not contain the head block from the snapshot");
+            }
+        }
+        else if(!head) {
             initialize_fork_db();  // set head to genesis state
             initialize_token_db();
 
             auto end = blog.read_head();
             if(end && end->block_num() > 1) {
-                auto end_time = end->timestamp.to_time_point();
-                replaying = true;
-                replay_head_time = end_time;
-                ilog( "existing block log, attempting to replay ${n} blocks", ("n",end->block_num()) );
-
-                auto start = fc::time_point::now();
-                while(auto next = blog.read_block_by_num(head->block_num + 1)) {
-                    self.push_block(next, controller::block_status::irreversible);
-                    if(next->block_num() % 100 == 0) {
-                        std::cerr << std::setw(10) << next->block_num() << " of " << end->block_num() <<"\r";
-                    }
-                }
-                std::cerr<< "\n";
-                ilog("${n} blocks replayed", ("n", head->block_num));
-
-                // the irreverible log is played without undo sessions enabled, so we need to sync the
-                // revision ordinal to the appropriate expected value here.
-                db.set_revision(head->block_num);
-
-                int rev = 0;
-                while(auto obj = reversible_blocks.find<reversible_block_object,by_num>(head->block_num + 1)) {
-                    ++rev;
-                    self.push_block(obj->get_block(), controller::block_status::validated);
-                }
-
-                ilog("${n} reversible blocks replayed", ("n",rev));
-                auto end = fc::time_point::now();
-                ilog("replayed ${n} blocks in ${duration} seconds, ${mspb} ms/block",
-                    ("n", head->block_num)("duration", (end-start).count()/1000000)
-                    ("mspb", ((end-start).count()/1000.0)/head->block_num));
-                replaying = false;
-                replay_head_time.reset();
+                replay();
             }
             else if(!end) {
-                blog.reset_to_genesis(conf.genesis, head->block);
+                blog.reset(conf.genesis, head->block);
             }
         }
 
-        const auto& ubi = reversible_blocks.get_index<reversible_block_index, by_num>();
-        auto objitr = ubi.rbegin();
+        const auto& ubi    = reversible_blocks.get_index<reversible_block_index, by_num>();
+        auto        objitr = ubi.rbegin();
         if(objitr != ubi.rend()) {
             EVT_ASSERT(objitr->blocknum == head->block_num, fork_database_exception,
-                "reversible block database is inconsistent with fork database, replay blockchain",
-                ("head",head->block_num)("unconfimed", objitr->blocknum));
+                       "reversible block database is inconsistent with fork database, replay blockchain",
+                       ("head", head->block_num)("unconfimed", objitr->blocknum));
         }
         else {
             auto end = blog.read_head();
-            EVT_ASSERT(end && end->block_num() == head->block_num, fork_database_exception,
-                "fork database exists but reversible block database does not, replay blockchain",
-                ("blog_head",end->block_num())("head",head->block_num));
+            EVT_ASSERT(!end || end->block_num() == head->block_num, fork_database_exception,
+                       "fork database exists but reversible block database does not, replay blockchain",
+                       ("blog_head", end->block_num())("head", head->block_num));
         }
 
         EVT_ASSERT(db.revision() >= head->block_num, fork_database_exception, "fork database is inconsistent with shared memory",
-            ("db",db.revision())("head",head->block_num));
+                   ("db", db.revision())("head", head->block_num));
 
         if(db.revision() > head->block_num) {
             wlog("warning: database revision (${db}) is greater than head block number (${head}), "
-               "attempting to undo pending changes",
-               ("db",db.revision())("head",head->block_num));
-
-            EVT_ASSERT(token_db.get_savepoints_size() > 0, tokendb_exception, "token database is inconsistent with fork database: don't have any savepoints to pop");
-            EVT_ASSERT(token_db.latest_savepoint_seq() == db.revision(), tokendb_exception, "token database(${seq}) is inconsistent with fork database(${db})",
+                 "attempting to undo pending changes",
+                 ("db", db.revision())("head", head->block_num));
+            EVT_ASSERT(token_db.savepoints_size() > 0, tokendb_exception,
+                "token database is inconsistent with fork database: don't have any savepoints to pop");
+            EVT_ASSERT(token_db.latest_savepoint_seq() == db.revision(), tokendb_exception,
+                "token database(${seq}) is inconsistent with fork database(${db})",
                 ("seq",token_db.latest_savepoint_seq())("db",db.revision()));
+        }
+        while(db.revision() > head->block_num) {
+            db.undo();
+            token_db.rollback_to_latest_savepoint();
+        }
 
-            while(db.revision() > head->block_num) {
-                db.undo();
-                token_db.rollback_to_latest_savepoint();
-            }
+        if(snapshot) {
+            const auto hash = calculate_integrity_hash();
+            ilog("database initialized with hash: ${hash}", ("hash", hash));
         }
     }
 
@@ -334,11 +411,82 @@ struct controller_impl {
     add_indices() {
         reversible_blocks.add_index<reversible_block_index>(); 
 
-        db.add_index<global_property_multi_index>();
-        db.add_index<dynamic_global_property_multi_index>();
-        db.add_index<block_summary_multi_index>();
-        db.add_index<transaction_multi_index>();
-        db.add_index<evt_link_multi_index>();
+        controller_index_set::add_indices(db);
+    }
+
+    void
+    add_to_snapshot(const snapshot_writer_ptr& snapshot) const {
+        snapshot->write_section<chain_snapshot_header>([this](auto& section) {
+            section.add_row(chain_snapshot_header(), db);
+        });
+
+        snapshot->write_section<genesis_state>([this](auto& section) {
+            section.add_row(conf.genesis, db);
+        });
+
+        snapshot->write_section<block_state>([this](auto& section) {
+            section.template add_row<block_header_state>(*fork_db.head(), db);
+        });
+
+        controller_index_set::walk_indices([this, &snapshot](auto utils) {
+            using value_t = typename decltype(utils)::index_t::value_type;
+
+            snapshot->write_section<value_t>([this](auto& section) {
+                decltype(utils)::walk(db, [this, &section](const auto& row) {
+                    section.add_row(row, db);
+                });
+            });
+        });
+
+        token_database_snapshot::add_to_snapshot(snapshot, token_db);
+    }
+
+    void
+    read_from_snapshot(const snapshot_reader_ptr& snapshot) {
+        snapshot->read_section<chain_snapshot_header>([this](auto& section) {
+            chain_snapshot_header header;
+            section.read_row(header, db);
+            header.validate();
+        });
+
+        snapshot->read_section<block_state>([this](auto& section) {
+            block_header_state head_header_state;
+            section.read_row(head_header_state, db);
+
+            auto head_state = std::make_shared<block_state>(head_header_state);
+            fork_db.set(head_state);
+            fork_db.set_validity(head_state, true);
+            fork_db.mark_in_current_chain(head_state, true);
+
+            head                = head_state;
+            snapshot_head_block = head->block_num;
+        });
+
+        controller_index_set::walk_indices([this, &snapshot](auto utils) {
+            using value_t = typename decltype(utils)::index_t::value_type;
+
+            snapshot->read_section<value_t>([this](auto& section) {
+                bool more = !section.empty();
+                while(more) {
+                    decltype(utils)::create(db, [this, &section, &more](auto& row) {
+                        more = section.read_row(row, db);
+                    });
+                }
+            });
+        });
+
+        token_database_snapshot::read_from_snapshot(snapshot, token_db);
+        db.set_revision(head->block_num);
+    }
+
+    sha256
+    calculate_integrity_hash() const {
+        sha256::encoder enc;
+        auto            hash_writer = std::make_shared<integrity_hash_snapshot_writer>(enc);
+        add_to_snapshot(hash_writer);
+        hash_writer->finalize();
+
+        return enc.result();
     }
 
     /**
@@ -637,8 +785,14 @@ struct controller_impl {
 
                 emit(self.applied_transaction, trace);
 
-                restore.cancel();
-                trx_context.squash();
+                if(read_mode != db_read_mode::SPECULATIVE && pending->_block_status == controller::block_status::incomplete) {
+                    //this may happen automatically in destructor, but I prefere make it more explicit
+                    trx_context.undo();
+                }
+                else {
+                    restore.cancel();
+                    trx_context.squash();
+                }
 
                 if(!trx->implicit) {
                     unapplied_transactions.erase(trx->signed_id);
@@ -688,27 +842,31 @@ struct controller_impl {
 
         auto was_pending_promoted = pending->_pending_block_state->maybe_promote_pending();
 
-        const auto& gpo = db.get<global_property_object>();
-        if(gpo.proposed_schedule_block_num.valid() &&                                                          // if there is a proposed schedule that was proposed in a block ...
-           (*gpo.proposed_schedule_block_num <= pending->_pending_block_state->dpos_irreversible_blocknum) &&  // ... that has now become irreversible ...
-           pending->_pending_block_state->pending_schedule.producers.size() == 0 &&                            // ... and there is room for a new pending schedule ...
-           !was_pending_promoted                                                                               // ... and not just because it was promoted to active at the start of this block, then:
-        ) {
-            // Promote proposed schedule to pending schedule.
-            if(!replaying) {
-                ilog("promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
-                    ("proposed_num", *gpo.proposed_schedule_block_num)("n", pending->_pending_block_state->block_num)
-                    ("lib", pending->_pending_block_state->dpos_irreversible_blocknum)
-                    ("schedule", static_cast<producer_schedule_type>(gpo.proposed_schedule)));
+        //modify state in speculative block only if we are speculative reads mode (other wise we need clean state for head or irreversible reads)
+        if(read_mode == db_read_mode::SPECULATIVE || pending->_block_status != controller::block_status::incomplete) {
+            const auto& gpo = db.get<global_property_object>();
+            if(gpo.proposed_schedule_block_num.valid() &&                                                          // if there is a proposed schedule that was proposed in a block ...
+               (*gpo.proposed_schedule_block_num <= pending->_pending_block_state->dpos_irreversible_blocknum) &&  // ... that has now become irreversible ...
+               pending->_pending_block_state->pending_schedule.producers.size() == 0 &&                            // ... and there is room for a new pending schedule ...
+               !was_pending_promoted                                                                               // ... and not just because it was promoted to active at the start of this block, then:
+            ) {
+                // Promote proposed schedule to pending schedule.
+                if(!replaying) {
+                    ilog("promoting proposed schedule (set in block ${proposed_num}) to pending; current block: ${n} lib: ${lib} schedule: ${schedule} ",
+                         ("proposed_num", *gpo.proposed_schedule_block_num)
+                         ("n", pending->_pending_block_state->block_num)
+                         ("lib", pending->_pending_block_state->dpos_irreversible_blocknum)
+                         ("schedule", static_cast<producer_schedule_type>(gpo.proposed_schedule)));
+                }
+                pending->_pending_block_state->set_new_producers(gpo.proposed_schedule);
+                db.modify(gpo, [&](auto& gp) {
+                    gp.proposed_schedule_block_num = optional<block_num_type>();
+                    gp.proposed_schedule.clear();
+                });
             }
-            pending->_pending_block_state->set_new_producers(gpo.proposed_schedule);
-            db.modify(gpo, [&](auto& gp) {
-                gp.proposed_schedule_block_num = optional<block_num_type>();
-                gp.proposed_schedule.clear();
-            });
-        }
 
-        clear_expired_input_transactions();
+            clear_expired_input_transactions();
+        }
         guard_pending.cancel();
     }  // start_block
 
@@ -817,7 +975,9 @@ struct controller_impl {
             };
             emit(self.accepted_block_header, new_header_state);
 
-            maybe_switch_forks(s);
+            if(read_mode != db_read_mode::IRREVERSIBLE) {
+                maybe_switch_forks(s);
+            }
 
             // on replay irreversible is not emitted by fork database, so emit it explicitly here
             if(s == controller::block_status::irreversible) {
@@ -832,7 +992,9 @@ struct controller_impl {
         EVT_ASSERT(!pending, block_validate_exception, "it is not valid to push a confirmation when there is a pending block");
         fork_db.add(c);
         emit(self.accepted_confirmation, c);
-        maybe_switch_forks();
+        if(read_mode != db_read_mode::IRREVERSIBLE) {
+            maybe_switch_forks();
+        }
     }
 
     void
@@ -907,8 +1069,10 @@ struct controller_impl {
     void
     abort_block() {
         if(pending) {
-            for(const auto& t : pending->_pending_block_state->trxs) {
-                unapplied_transactions[t->signed_id] = t;
+            if(read_mode == db_read_mode::SPECULATIVE) {
+                for(const auto& t : pending->_pending_block_state->trxs) {
+                    unapplied_transactions[t->signed_id] = t;
+                }
             }
             pending.reset();
         }
@@ -1005,15 +1169,17 @@ controller::~controller() {
 }
 
 void
-controller::startup() {
-    // ilog( "${c}", ("c",fc::json::to_pretty_string(cfg)) );
+controller::add_indices() {
     my->add_indices();
+}
 
+void
+controller::startup(const snapshot_reader_ptr& snapshot) {
     my->head = my->fork_db.head();
     if(!my->head) {
         wlog("No head block in fork db, perhaps we need to replay");
     }
-    my->init();
+    my->init(snapshot);
 }
 
 chainbase::database&
@@ -1081,6 +1247,7 @@ controller::push_confirmation(const header_confirmation& c) {
 transaction_trace_ptr
 controller::push_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline) {
     validate_db_available_size();
+    EVT_ASSERT(get_read_mode() != chain::db_read_mode::READ_ONLY, transaction_type_exception, "push transaction not allowed in read-only mode");
     EVT_ASSERT(trx && !trx->implicit, transaction_type_exception, "Implicit transaction not allowed");
     return my->push_transaction(trx, deadline);
 }
@@ -1171,7 +1338,7 @@ controller::pending_producer_block_id() const {
 
 uint32_t
 controller::last_irreversible_block_num() const {
-    return std::max(my->head->bft_irreversible_blocknum, my->head->dpos_irreversible_blocknum);
+    return std::max(std::max(my->head->bft_irreversible_blocknum, my->head->dpos_irreversible_blocknum), my->snapshot_head_block);
 }
 
 block_id_type
@@ -1198,7 +1365,7 @@ controller::get_global_properties() const {
 signed_block_ptr
 controller::fetch_block_by_id(block_id_type id) const {
     auto state = my->fork_db.get_block(id);
-    if(state) {
+    if(state && state->block) {
         return state->block;
     }
     auto bptr = fetch_block_by_number(block_header::num_from_id(id));
@@ -1212,7 +1379,7 @@ signed_block_ptr
 controller::fetch_block_by_number(uint32_t block_num) const {
     try {
         auto blk_state = my->fork_db.get_block_in_current_chain_by_num(block_num);
-        if(blk_state) {
+        if(blk_state && blk_state->block) {
             return blk_state->block;
         }
 
@@ -1269,6 +1436,20 @@ controller::get_block_num_for_trx_id(const transaction_id_type& trx_id) const {
         return t->block_num;
     }
     EVT_THROW(unknown_transaction_exception, "Transaction: ${t} is not existed", ("t",trx_id));
+}
+
+fc::sha256
+controller::calculate_integrity_hash() const {
+    try {
+        return my->calculate_integrity_hash();
+    }
+    FC_LOG_AND_RETHROW()
+}
+
+void
+controller::write_snapshot(const snapshot_writer_ptr& snapshot) const {
+    EVT_ASSERT(!my->pending, block_validate_exception, "cannot take a consistent snapshot with a pending block");
+    return my->add_to_snapshot(snapshot);
 }
 
 void
@@ -1414,6 +1595,11 @@ controller::contracts_console() const {
     return my->conf.contracts_console;
 }
 
+db_read_mode
+controller::get_read_mode() const {
+   return my->read_mode;
+}
+
 validation_mode
 controller::get_validation_mode() const {
     return my->conf.block_validation_mode;
@@ -1437,9 +1623,14 @@ controller::get_abi_serializer() const {
 vector<transaction_metadata_ptr>
 controller::get_unapplied_transactions() const {
     vector<transaction_metadata_ptr> result;
-    result.reserve(my->unapplied_transactions.size());
-    for(const auto& entry : my->unapplied_transactions) {
-        result.emplace_back(entry.second);
+    if(my->read_mode == db_read_mode::SPECULATIVE) {
+        result.reserve(my->unapplied_transactions.size());
+        for(const auto& entry: my->unapplied_transactions) {
+            result.emplace_back(entry.second);
+        }
+    }
+    else {
+        EVT_ASSERT(my->unapplied_transactions.empty(), transaction_exception, "not empty unapplied_transactions in non-speculative mode"); //should never happen
     }
     return result;
 }

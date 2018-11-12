@@ -22,7 +22,7 @@ class evt_link_object : public chainbase::object<evt_link_object_type, evt_link_
     uint32_t            block_num;
     link_id_type        link_id;
     transaction_id_type trx_id;
-};
+};  // size: 64
 
 struct by_link_id;
 struct by_link_trx_id;
@@ -37,4 +37,5 @@ typedef chainbase::generic_index<evt_link_multi_index> evt_link_index;
 
 }}}  // namespace evt::chain::contracts
 
-CHAINBASE_SET_INDEX_TYPE(evt::chain::contracts::evt_link_object, evt::chain::contracts::evt_link_multi_index)
+CHAINBASE_SET_INDEX_TYPE(evt::chain::contracts::evt_link_object, evt::chain::contracts::evt_link_multi_index);
+FC_REFLECT(evt::chain::evt_link_object, (block_num)(link_id)(trx_id));

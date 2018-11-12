@@ -12,12 +12,12 @@
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
 
+using fc::sha256;
+using evt::chain::bytes;
+using evt::chain::chain_id_type;
+using evt::chain::transaction;
 using evt::chain::contracts::abi_serializer;
 using evt::chain::contracts::abi_def;
-using evt::chain::bytes;
-using evt::chain::transaction;
-using evt::chain::chain_id_type;
-using fc::sha256;
 
 template <> 
 evt_data_t* 
@@ -44,14 +44,13 @@ extern "C" {
 
 void*
 evt_abi() {
-    abi_serializer::set_max_serialization_time(fc::hours(1));
-    auto abi = new abi_def(evt::chain::contracts::evt_contract_abi());
+    auto abi = new abi_serializer(evt::chain::contracts::evt_contract_abi(), fc::hours(1));
     return (void*)abi;
 }
 
 void
 evt_free_abi(void* abi) {
-    delete (abi_def*)abi;
+    delete (abi_serializer*)abi;
 }
 
 int
@@ -68,8 +67,8 @@ evt_abi_json_to_bin(void* evt_abi, const char* action, const char* json, evt_bin
     if(bin == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
-    auto abi = abi_serializer(*(abi_def*)evt_abi);
-    fc::variant var;
+    auto& abi = *(abi_serializer*)evt_abi;
+    auto  var = fc::variant();
     try {
         var = fc::json::from_string(json);
         if(!var.is_object()) {
@@ -78,12 +77,12 @@ evt_abi_json_to_bin(void* evt_abi, const char* action, const char* json, evt_bin
     }
     CATCH_AND_RETURN(EVT_INVALID_JSON)
 
-    auto action_type = abi.get_action_type(action);
-    if(action_type.empty()) {
+    auto type = abi.get_action_type(action);
+    if(type.empty()) {
         return EVT_INVALID_ACTION;
     }
     try {
-        auto b = abi.variant_to_binary(action_type, var);
+        auto b = abi.variant_to_binary(type, var);
         if(b.empty()) {
             return EVT_INVALID_JSON;
         }
@@ -109,9 +108,9 @@ evt_abi_bin_to_json(void* evt_abi, const char* action, evt_bin_t* bin, char** js
     if(json == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
-    auto abi = abi_serializer(*(abi_def*)evt_abi);
-    auto action_type = abi.get_action_type(action);
-    if(action_type.empty()) {
+    auto& abi  = *(abi_serializer*)evt_abi;
+    auto  type = abi.get_action_type(action);
+    if(type.empty()) {
         return EVT_INVALID_ACTION;
     }
     try {
@@ -119,7 +118,7 @@ evt_abi_bin_to_json(void* evt_abi, const char* action, evt_bin_t* bin, char** js
         if(extract_data(bin, b) != EVT_OK) {
             return EVT_INVALID_BINARY;
         }
-        auto var = abi.binary_to_variant(action_type, b);
+        auto var = abi.binary_to_variant(type, b);
         auto str = fc::json::to_string(var);
         *json = strdup(str);
     }
@@ -144,14 +143,14 @@ evt_trx_json_to_digest(void* evt_abi, const char* json,  evt_chain_id_t* chain_i
         return EVT_INVALID_HASH;
     }
 
-    auto abi = abi_serializer(*(abi_def*)evt_abi);
-    auto trx = transaction();
+    auto& abi = *(abi_serializer*)evt_abi;
+    auto  trx = transaction();
     try {
         auto var = fc::json::from_string(json);
-        abi.from_variant(var, trx, [&abi]() -> const abi_serializer& { return abi; });
-        auto d = trx.sig_digest(chain_id_type(idhash));
-        auto data = get_evt_data(d);
-        *digest = data;
+        abi.from_variant(var, trx);
+
+        auto d  = trx.sig_digest(chain_id_type(idhash));
+        *digest = get_evt_data(d);
     }
     CATCH_AND_RETURN(EVT_INTERNAL_ERROR)
 

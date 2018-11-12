@@ -8,9 +8,6 @@
 
 namespace evt { namespace chain {
 
-/// Defined to be largest power of 10 that fits in 53 bits of precision 
-#define ASSET_MAX_SHARE_SUPPLY   int64_t(1'000'000'000'000'000ll)
-
 #define EVT_SYM_ID  1
 #define PEVT_SYM_ID 2
 
@@ -87,7 +84,7 @@ with amount = 10 and symbol(4,"CUR")
 
 */
 struct asset {
-private:
+public:
     static constexpr int64_t max_amount = (1LL << 62) - 1;
 
 public:

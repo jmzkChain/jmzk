@@ -7,6 +7,7 @@
 
 #include <assert.h>
 #include <fc/log/logger.hpp>
+#include <fc/exception/exception.hpp>
 #include <iostream>
 
 namespace fc {
@@ -19,14 +20,14 @@ namespace fc {
    string prune_invalid_utf8( const string& str ) {
       string result;
 
-      auto itr = utf8::find_invalid(str.begin(), str.end()); 
+      auto itr = utf8::find_invalid(str.begin(), str.end());
       if( itr == str.end() ) return str;
 
       result = string( str.begin(), itr );
       while( itr != str.end() ) {
          ++itr;
          auto start = itr;
-         itr = utf8::find_invalid( start, str.end()); 
+         itr = utf8::find_invalid( start, str.end());
          result += string( start, itr );
       }
       return result;
@@ -34,18 +35,16 @@ namespace fc {
 
    void decodeUtf8(const std::string& input, std::wstring* storage)
    {
-     assert(storage != nullptr);
+     FC_ASSERT(storage != nullptr);
 
      utf8::utf8to32(input.begin(), input.end(), std::back_inserter(*storage));
    }
 
    void encodeUtf8(const std::wstring& input, std::string* storage)
    {
-     assert(storage != nullptr);
+     FC_ASSERT(storage != nullptr);
 
      utf8::utf32to8(input.begin(), input.end(), std::back_inserter(*storage));
    }
 
 } ///namespace fc
-
-

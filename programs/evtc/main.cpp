@@ -978,8 +978,9 @@ struct set_suspend_subcommands {
         adcmd->set_callback([this] {
             auto varsuspend = call(get_suspend_func, fc::mutable_variant_object("name", (proposal_name)name));
             auto suspend = suspend_def();
-            auto evt_abi = abi_serializer(evt_contract_abi());
-            abi_serializer::from_variant(varsuspend, suspend, [&]() -> const evt::chain::contracts::abi_serializer& { return evt_abi; });
+
+            auto abi = abi_serializer(evt_contract_abi(), fc::hours(1));
+            abi.from_variant(varsuspend, suspend);
 
             auto public_keys = call(wallet_url, wallet_public_keys);
             auto get_arg     = fc::mutable_variant_object("name", (proposal_name)name)("available_keys", public_keys);
@@ -1215,6 +1216,18 @@ struct set_producer_subcommands {
         auto rocmd = actionRoot->add_subcommand("runtime", localized("Get current runtime options"));
         rocmd->set_callback([] {
             const auto& v = call(url, producer_runtime_opts);
+            print_info(v);
+        });
+
+        auto cscmd = actionRoot->add_subcommand("snapshot", localized("Create a snapshot till current head block"));
+        cscmd->set_callback([] {
+            const auto& v = call(url, create_snapshot);
+            print_info(v);
+        });
+
+        auto ihcmd = actionRoot->add_subcommand("integrity_hash", localized("Get integrity hash till current head block"));
+        ihcmd->set_callback([] {
+            const auto& v = call(url, get_integrity_hash);
             print_info(v);
         });
     }
@@ -1491,8 +1504,6 @@ main(int argc, char** argv) {
     bindtextdomain(locale_domain, locale_path);
     textdomain(locale_domain);
     context = evt::client::http::create_http_context();
-
-    abi_serializer::set_max_serialization_time(fc::hours(1)); // No risk to client side serialization taking a long time
 
     CLI::App app{"Command Line Interface to everiToken Client"};
     app.require_subcommand();

@@ -32,9 +32,8 @@ namespace evt_apis {
 
 class read_only {
 public:
-    read_only(const controller& db, const abi_serializer& evt_abi)
-        : db_(db)
-        , evt_abi_(evt_abi) {}
+    read_only(const controller& db)
+        : db_(db) {}
 
 public:
     struct get_domain_params {
@@ -76,8 +75,7 @@ public:
     fc::variant get_lock(const get_lock_params& params);
 
 private:
-    const controller&     db_;
-    const abi_serializer& evt_abi_;
+    const controller& db_;
 };
 
 class read_write {

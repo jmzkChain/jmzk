@@ -90,6 +90,7 @@ protected:
         }
         return symbol_name.c_str();
     }
+    
     const symbol_id_type
     get_sym_id() {
         auto sym_id = 3;
