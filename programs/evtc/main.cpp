@@ -843,6 +843,37 @@ struct set_fungible_subcommands {
             send_actions({act});
         });
 
+        auto rfcmd = actionRoot->add_subcommand("recycle", localized("Recycle fungible tokens back to issuance address"));
+        rfcmd->add_option("number", number, localized("Number of recycle asset"))->required();
+        rfcmd->add_option("--memo,-m", memo, localized("Memo for this action"));
+
+        add_standard_transaction_options(rfcmd);
+
+        rfcmd->set_callback([this] {
+            recycleft rfact;
+            rfact.address = get_address(address);
+            rfact.number  = asset::from_string(number);
+            rfact.memo    = memo;
+
+            auto act = create_action(N128(.fungible), (domain_key)std::to_string(rfact.number.sym().id()), rfact);
+            send_actions({act});
+        });
+
+        auto dfcmd = actionRoot->add_subcommand("destroy", localized("Destroy fungible tokens to reserved address"));
+        dfcmd->add_option("number", number, localized("Number of destroy asset"))->required();
+        dfcmd->add_option("--memo,-m", memo, localized("Memo for this action"));
+
+        add_standard_transaction_options(rfcmd);
+
+        dfcmd->set_callback([this] {
+            destroyft dfact;
+            dfact.address = get_address(address);
+            dfact.number  = asset::from_string(number);
+            dfact.memo    = memo;
+
+            auto act = create_action(N128(.fungible), (domain_key)std::to_string(dfact.number.sym().id()), dfact);
+            send_actions({act});
+        });
     }
 };
 
