@@ -733,6 +733,8 @@ TEST_CASE_METHOD(contracts_test, "contract_recycleft_test", "[contracts]") {
     rf.address = address(tester::get_public_key(N(to)));
     to_variant(rf, var);
 
+    auto& tokendb = my_tester->control->token_db();
+
     CHECK_THROWS_AS(my_tester->push_action(N(recycleft), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer), unsatisfied_authorization);
 
     rf.address = poorer;
@@ -743,7 +745,63 @@ TEST_CASE_METHOD(contracts_test, "contract_recycleft_test", "[contracts]") {
     rf.address = key;
     to_variant(rf, var);
 
+    address fungible_address = address(N(fungible), (fungible_name)std::to_string(get_sym_id()), 0);
+    asset ast_from_before;
+    asset ast_to_before;
+    tokendb.read_asset(rf.address, symbol(5, get_sym_id()), ast_from_before);
+    tokendb.read_asset_no_throw(fungible_address, symbol(5, get_sym_id()), ast_to_before);
+
     my_tester->push_action(N(recycleft), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer);
+
+    asset ast_from_after;
+    asset ast_to_after;
+    tokendb.read_asset(rf.address, symbol(5, get_sym_id()), ast_from_after);
+    tokendb.read_asset(fungible_address, symbol(5, get_sym_id()), ast_to_after);
+    CHECK(100000 == ast_from_before.amount() - ast_from_after.amount());
+    CHECK(100000 == ast_to_after.amount() - ast_to_before.amount());
+}
+
+TEST_CASE_METHOD(contracts_test, "contract_destroyft_test", "[contracts]") {
+    CHECK(true);
+    const char* test_data = R"=======(
+    {
+        "address": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+        "number": "5.00000 S#1",
+        "memo": "memo"
+    }
+    )=======";
+
+    auto var   = fc::json::from_string(test_data);
+    auto rf    = var.as<destroyft>();
+    rf.number  = asset::from_string(string("1.00000 S#") + std::to_string(get_sym_id()));
+    rf.address = address(tester::get_public_key(N(to)));
+    to_variant(rf, var);
+
+    auto& tokendb = my_tester->control->token_db();
+
+    CHECK_THROWS_AS(my_tester->push_action(N(destroyft), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer), unsatisfied_authorization);
+
+    rf.address = poorer;
+    to_variant(rf, var);
+
+    CHECK_THROWS_AS(my_tester->push_action(N(destroyft), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer), balance_exception);
+
+    rf.address = key;
+    to_variant(rf, var);
+
+    asset ast_from_before;
+    asset ast_to_before;
+    tokendb.read_asset(rf.address, symbol(5, get_sym_id()), ast_from_before);
+    tokendb.read_asset_no_throw(address(), symbol(5, get_sym_id()), ast_to_before);
+
+    my_tester->push_action(N(destroyft), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer);
+
+    asset ast_from_after;
+    asset ast_to_after;
+    tokendb.read_asset(rf.address, symbol(5, get_sym_id()), ast_from_after);
+    tokendb.read_asset(address(), symbol(5, get_sym_id()), ast_to_after);
+    CHECK(100000 == ast_from_before.amount() - ast_from_after.amount());
+    CHECK(100000 == ast_to_after.amount() - ast_to_before.amount());
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_updatedomain_test", "[contracts]") {
