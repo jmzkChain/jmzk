@@ -16,12 +16,12 @@ namespace evt {
 
 using evt::chain::public_key_type;
 
-class postgresql_plugin : public plugin<postgresql_plugin> {
+class postgres_plugin : public plugin<postgres_plugin> {
 public:
     APPBASE_PLUGIN_REQUIRES((chain_plugin))
 
-    postgresql_plugin();
-    virtual ~postgresql_plugin();
+    postgres_plugin();
+    virtual ~postgres_plugin();
 
     virtual void set_program_options(options_description& cli, options_description& cfg) override;
 
@@ -33,7 +33,7 @@ public:
     bool enabled() const;
 
 private:
-    std::unique_ptr<class postgresql_plugin_impl> my_;
+    std::unique_ptr<class postgres_plugin_impl> my_;
 };
 
 }  // namespace evt

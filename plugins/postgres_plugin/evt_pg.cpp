@@ -2,8 +2,8 @@
  *  @file
  *  @copyright defined in evt/LICENSE.txt
  */
+#include <evt/postgres_plugin/evt_pg.hpp>
 
-#include <evt/postgresql_plugin/evt_pg.hpp>
 #include <fmt/format.h>
 #include <libpq-fe.h>
 #include <evt/chain/exceptions.hpp>

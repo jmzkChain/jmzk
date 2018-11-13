@@ -2,12 +2,12 @@
  *  @file
  *  @copyright defined in evt/LICENSE.txt
  */
-#include <evt/postgresql_plugin/postgresql_plugin.hpp>
-#include <evt/postgresql_plugin/evt_interpreter.hpp>
-#include <evt/postgresql_plugin/write_context.hpp>
+#include <evt/postgres_plugin/postgres_plugin.hpp>
+#include <evt/postgres_plugin/evt_interpreter.hpp>
+#include <evt/postgres_plugin/write_context.hpp>
 
 extern "C" {
-#include <evt/postgresql_plugin/evt_db.h>
+#include <evt/postgres_plugin/evt_db.h>
 }
 
 #include <functional>
@@ -50,19 +50,19 @@ using namespace chain::plugin_interface;
 using evt::utilities::spinlock;
 using evt::utilities::spinlock_guard;
 
-static appbase::abstract_plugin& _postgresql_plugin = app().register_plugin<postgresql_plugin>();
+static appbase::abstract_plugin& _postgres_plugin = app().register_plugin<postgres_plugin>();
 
-class postgresql_plugin_impl {
+class postgres_plugin_impl {
 private:
     using inblock_ptr = std::tuple<block_state_ptr, bool>; // true for irreversible block
 
 public:
-    postgresql_plugin_impl()
+    postgres_plugin_impl()
         : evt_abi(evt_contract_abi(), fc::hours(1))
         , db_conn_(nullptr)
     { }
 
-    ~postgresql_plugin_impl();
+    ~postgres_plugin_impl();
 
 public:
     void consume_queues();
@@ -159,22 +159,22 @@ queuet(Q& tqueue, V&& v, spinlock& lock, condition_variable_any& cv) {
 }
 
 void
-postgresql_plugin_impl::applied_irreversible_block(const block_state_ptr& bsp) {
+postgres_plugin_impl::applied_irreversible_block(const block_state_ptr& bsp) {
     queueb(block_state_queue, std::make_tuple(bsp, true), lock_, cond_, queue_size);
 }
 
 void
-postgresql_plugin_impl::applied_block(const block_state_ptr& bsp) {
+postgres_plugin_impl::applied_block(const block_state_ptr& bsp) {
     queueb(block_state_queue, std::make_tuple(bsp, false), lock_, cond_, queue_size);
 }
 
 void
-postgresql_plugin_impl::applied_transaction(const transaction_trace_ptr& ttp) {
+postgres_plugin_impl::applied_transaction(const transaction_trace_ptr& ttp) {
     queuet(transaction_trace_queue, ttp, lock_, cond_);
 }
 
 void
-postgresql_plugin_impl::consume_queues() {
+postgres_plugin_impl::consume_queues() {
     using namespace evt::__internal;
 
     try {
@@ -230,7 +230,7 @@ postgresql_plugin_impl::consume_queues() {
                 transaction_trace_queue.insert(transaction_trace_queue.begin(), traces.begin(), traces.end());
             }
         }
-        ilog("postgresql_plugin consume thread shutdown gracefully");
+        ilog("postgres_plugin consume thread shutdown gracefully");
     }
     catch(fc::exception& e) {
         elog("FC Exception while consuming block ${e}", ("e", e.to_string()));
@@ -301,7 +301,7 @@ verify_no_blocks(mongocxx::collection& blocks) {
 }  // namespace __internal
 
 void
-postgresql_plugin_impl::process_irreversible_block(const signed_block& block, std::deque<transaction_trace_ptr>& traces, write_context& write_ctx) {
+postgres_plugin_impl::process_irreversible_block(const signed_block& block, std::deque<transaction_trace_ptr>& traces, write_context& write_ctx) {
     try {
         if(block.block_num() == 1) {
             // genesis block will not trigger on_block event
@@ -322,7 +322,7 @@ postgresql_plugin_impl::process_irreversible_block(const signed_block& block, st
 }
 
 void
-postgresql_plugin_impl::process_block(const signed_block& block, std::deque<transaction_trace_ptr>& traces, write_context& write_ctx) {
+postgres_plugin_impl::process_block(const signed_block& block, std::deque<transaction_trace_ptr>& traces, write_context& write_ctx) {
     try {
         _process_block(block, traces, write_ctx);
 
@@ -343,12 +343,12 @@ postgresql_plugin_impl::process_block(const signed_block& block, std::deque<tran
 }
 
 void
-postgresql_plugin_impl::process_transaction(const transaction_trace& trace, write_context& write_ctx) {
+postgres_plugin_impl::process_transaction(const transaction_trace& trace, write_context& write_ctx) {
     return;
 }
 
 void
-postgresql_plugin_impl::_process_block(const signed_block& block, std::deque<transaction_trace_ptr>& traces, write_context& write_ctx) {
+postgres_plugin_impl::_process_block(const signed_block& block, std::deque<transaction_trace_ptr>& traces, write_context& write_ctx) {
     using namespace evt::__internal;
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
@@ -479,7 +479,7 @@ postgresql_plugin_impl::_process_block(const signed_block& block, std::deque<tra
 }
 
 void
-postgresql_plugin_impl::_process_irreversible_block(const signed_block& block, write_context& write_ctx) {
+postgres_plugin_impl::_process_irreversible_block(const signed_block& block, write_context& write_ctx) {
     using namespace evt::__internal;
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
@@ -502,12 +502,12 @@ postgresql_plugin_impl::_process_irreversible_block(const signed_block& block, w
 }
 
 void
-postgresql_plugin_impl::_process_transaction(const transaction_trace& trace, write_context& write_ctx) {
+postgres_plugin_impl::_process_transaction(const transaction_trace& trace, write_context& write_ctx) {
     return;
 }
 
 void
-postgresql_plugin_impl::add_trx_trace(bsoncxx::builder::basic::document& trx_doc,
+postgres_plugin_impl::add_trx_trace(bsoncxx::builder::basic::document& trx_doc,
                                     const chain::transaction&          trx,
                                     std::deque<transaction_trace_ptr>& traces,
                                     std::function<void(action&)>&&     on_paycharge_act) {
@@ -544,7 +544,7 @@ postgresql_plugin_impl::add_trx_trace(bsoncxx::builder::basic::document& trx_doc
 }
 
 void
-postgresql_plugin_impl::add_trx_ext(bsoncxx::builder::basic::document& trx_doc, const chain::transaction& trx) {
+postgres_plugin_impl::add_trx_ext(bsoncxx::builder::basic::document& trx_doc, const chain::transaction& trx) {
     using namespace evt::__internal;
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
@@ -564,7 +564,7 @@ postgresql_plugin_impl::add_trx_ext(bsoncxx::builder::basic::document& trx_doc, 
     trx_doc.append(kvp("exts", ext_doc));
 }
 
-postgresql_plugin_impl::~postgresql_plugin_impl() {
+postgres_plugin_impl::~postgres_plugin_impl() {
     if(!configured) {
         return;
     }
@@ -575,12 +575,12 @@ postgresql_plugin_impl::~postgresql_plugin_impl() {
         consume_thread_.join();
     }
     catch(std::exception& e) {
-        elog("Exception on postgresql_plugin shutdown of consume thread: ${e}", ("e", e.what()));
+        elog("Exception on postgres_plugin shutdown of consume thread: ${e}", ("e", e.what()));
     }
 }
 
 void
-postgresql_plugin_impl::wipe_database() {
+postgres_plugin_impl::wipe_database() {
     ilog("mongo db wipe_database");
 
     auto blocks        = mongo_db[blocks_col];
@@ -601,7 +601,7 @@ postgresql_plugin_impl::wipe_database() {
 }
 
 void
-postgresql_plugin_impl::init() {
+postgres_plugin_impl::init() {
     using namespace bsoncxx::types;
 
     auto blocks = mongo_db[blocks_col];  // Blocks
@@ -701,28 +701,28 @@ postgresql_plugin_impl::init() {
 }
 
 ////////////
-// postgresql_plugin
+// postgres_plugin
 ////////////
 
-postgresql_plugin::postgresql_plugin()
-    : my_(new postgresql_plugin_impl) {
+postgres_plugin::postgres_plugin()
+    : my_(new postgres_plugin_impl) {
 }
 
-postgresql_plugin::~postgresql_plugin() {
+postgres_plugin::~postgres_plugin() {
 }
 
 const mongocxx::uri&
-postgresql_plugin::uri() const {
+postgres_plugin::uri() const {
     return my_->mongo_uri;
 }
 
 bool
-postgresql_plugin::enabled() const {
+postgres_plugin::enabled() const {
     return my_->configured;
 }
 
 void
-postgresql_plugin::set_program_options(options_description& cli, options_description& cfg) {
+postgres_plugin::set_program_options(options_description& cli, options_description& cfg) {
     cfg.add_options()
         ("mongodb-queue-size,q", bpo::value<uint>()->default_value(5120), "The queue size between evtd and MongoDB plugin thread.")
         ("mongodb-uri,m", bpo::value<std::string>(), "MongoDB URI connection string, see: https://docs.mongodb.com/master/reference/connection-string/."
@@ -731,9 +731,9 @@ postgresql_plugin::set_program_options(options_description& cli, options_descrip
 }
 
 void
-postgresql_plugin::plugin_initialize(const variables_map& options) {
+postgres_plugin::plugin_initialize(const variables_map& options) {
     if(options.count("mongodb-uri")) {
-        ilog("initializing postgresql_plugin");
+        ilog("initializing postgres_plugin");
         my_->configured = true;
 
         if(options.at("replay-blockchain").as<bool>() || options.at("hard-replay-blockchain").as<bool>()) {
@@ -777,16 +777,16 @@ postgresql_plugin::plugin_initialize(const variables_map& options) {
         my_->consume_thread_ = std::thread([this] { my_->consume_queues(); });
     }
     else {
-        wlog("evt::postgresql_plugin configured, but no --mongodb-uri specified.");
-        wlog("postgresql_plugin disabled.");
+        wlog("evt::postgres_plugin configured, but no --mongodb-uri specified.");
+        wlog("postgres_plugin disabled.");
     }
 }
 
 void
-postgresql_plugin::plugin_startup() {}
+postgres_plugin::plugin_startup() {}
 
 void
-postgresql_plugin::plugin_shutdown() {
+postgres_plugin::plugin_shutdown() {
     my_->accepted_block_connection.reset();
     my_->irreversible_block_connection.reset();
     my_->applied_transaction_connection.reset();
