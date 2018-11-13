@@ -1,0 +1,81 @@
+/**
+ *  @file
+ *  @copyright defined in evt/LICENSE.txt
+ */
+#pragma once
+#include <stddef.h>
+
+#define PG_OK   0
+#define PG_FAIL 1
+
+void* pg_new_conn(const char* name, const char* target, const char* user, const char* pwd);
+
+int pg_close_conn(const char* name);
+int pg_create_db(const char* name);
+int pg_drop_db(const char* name);
+int pg_exists_db(const char* name, int* /* out */);
+int pg_prepare_tables();
+
+EXEC SQL BEGIN DECLARE SECTION;
+
+typedef struct {
+    int a;
+    int b;
+} pg_block_t;
+
+typedef struct {
+    int a;
+    int b;
+} pg_trx_t;
+
+typedef struct {
+    int a;
+    int b;
+} pg_action_t;
+
+typedef struct {
+    int a;
+    int b;
+} pg_domain_t;
+
+typedef struct {
+    int a;
+    int b;
+} pg_token_t;
+
+typedef struct {
+    int a;
+    int b;
+} pg_group_t;
+
+typedef struct {
+    int a;
+    int b;
+} pg_fungible_t;
+
+EXEC SQL END DECLARE SECTION;
+
+int pg_is_table_empty(const char* name, int* /* out */);
+
+int pg_add_block(pg_block_t*);
+int pg_get_block(const char* block_id, pg_block_t** /* out */);
+int pg_get_latest_block_id(char** /* out */);
+int pg_set_block_irreversible(const char* block_id);
+
+int pg_add_trx(pg_trx_t*);
+int pg_get_block(pg_trx_t** /* out */);
+
+int pg_add_action(pg_action_t*);
+int pg_get_action(pg_action_t** /* out */);
+
+int pg_add_domain(pg_domain_t*);
+int pg_get_domain(pg_domain_t** /* out */);
+
+int pg_add_token(pg_token_t*);
+int pg_get_token(pg_token_t** /* out */);
+
+int pg_add_group(pg_group_t*);
+int pg_get_group(pg_group_t** /* out */);
+
+int pg_add_fungible(pg_fungible_t*);
+int pg_get_fungible(pg_fungible_t** /* out */);

@@ -1,0 +1,126 @@
+EXEC SQL INCLUDE <evt/postgresql_plugin/evt_pg.pgh>;
+
+void*
+pg_new_conn(const char* name, const char* target, const char* user, const char* pwd) {
+    EXEC SQL WHENEVER SQLERROR GO TO err;
+
+    EXEC SQL BEGIN DECLARE SECTION;
+    const char* name   = name;
+    const char* target = target;
+    const char* user   = user;
+    const char* pwd    = pwd;
+    EXEC SQL END DECLARE SECTION;
+
+    EXEC SQL CONNECT TO :target AS :name USER :user USING :pwd;
+
+err:
+    return NULL;
+}
+
+int
+pg_close_conn(const char* name) {
+    EXEC SQL WHENEVER SQLERROR GO TO err;
+
+    EXEC SQL BEGIN DECLARE SECTION;
+    const char* name = name;
+    EXEC SQL END DECLARE SECTION;
+
+    EXEC SQL DISCONNECT :name;
+    return PG_OK;
+
+err:
+    return PG_FAIL;
+}
+
+int
+pg_create_db(const char* name) {
+    EXEC SQL WHENEVER SQLERROR GO TO err;
+
+    EXEC SQL BEGIN DECLARE SECTION;
+    const char* name = name;
+    const char* stmt = "CREATE DATABASE ?
+                        WITH
+                        ENCODING = 'UTF8'
+                        LC_COLLATE = 'C'
+                        LC_CTYPE = 'C'
+                        CONNECTION LIMIT = -1;";
+    EXEC SQL END DECLARE SECTION;
+
+    EXEC SQL PREPARE create_db FROM :stmt;
+    EXEC SQL EXECUTE create_db USING :name;
+    EXEC SQL DEALLOCATE PREPARE create_db;
+
+err:
+    return PG_FAIL;
+}
+
+int
+pg_drop_db(const char* name) {
+    EXEC SQL WHENEVER SQLERROR GO TO err;
+
+    EXEC SQL BEGIN DECLARE SECTION;
+    const char* name = name;
+    const char* stmt = "DROP DATABASE ?;";
+    EXEC SQL END DECLARE SECTION;
+
+    EXEC SQL PREPARE drop_db FROM :stmt;
+    EXEC SQL EXECUTE drop_db USING :name;
+    EXEC SQL DEALLOCATE PREPARE drop_db;
+
+err:
+    return PG_FAIL;
+}
+
+int
+pg_exists_db(const char* name, int* r /* out */) {
+    EXEC SQL WHENEVER SQLERROR GO TO err;
+
+    EXEC SQL BEGIN DECLARE SECTION;
+    const char* name = name;
+    const char* stmt = "SELECT EXISTS(
+                            SELECT datname
+                            FROM pg_catalog.pg_database WHERE datname = ?
+                        );";
+    bool        existed;
+    EXEC SQL END DECLARE SECTION;
+
+    EXEC SQL PREPARE exists_db FROM :stmt;
+    EXEC SQL EXECUTE exists_db INTO :existed USING :name;
+    EXEC SQL DEALLOCATE PREPARE exists_db;
+
+    *r = existed;
+
+err:
+    return PG_FAIL;
+}
+
+int
+pg_prepare_tables() {
+    EXEC SQL WHENEVER SQLERROR GO TO err;\
+
+    EXEC SQL CREATE TABLE IF NOT EXISTS public.blocks
+             (
+                 block_id        character(64)            NOT NULL,
+                 block_num       integer                  NOT NULL,
+                 prev_block_id   character(64)            NOT NULL,
+                 "timestamp"     timestamp with time zone NOT NULL,
+                 trx_merkle_root character(64)            NOT NULL,
+                 trx_count       integer                  NOT NULL,
+                 producer        character varying(21)    NOT NULL,
+                 pending         boolean                  NOT NULL,
+                 created_at      timestamp with time zone NOT NULL
+             ) PARTITION BY RANGE (((block_num / 1000000))) 
+             WITH (
+                 OIDS = FALSE
+             )
+             TABLESPACE pg_default;
+ 
+             CREATE INDEX IF NOT EXISTS block_id_index
+                 ON public.blocks USING btree
+                 (block_id)
+                 TABLESPACE pg_default;
+
+err:
+    return PG_FAIL;
+}
+
