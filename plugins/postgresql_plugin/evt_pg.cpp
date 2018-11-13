@@ -5,6 +5,8 @@
 
 #include <evt/postgresql_plugin/evt_pg.hpp>
 #include <fmt/format.h>
+#include <libpq-fe.h>
+#include <evt/chain/exceptions.hpp>
 
 namespace evt {
 
@@ -88,7 +90,9 @@ auto create_actions_table = "CREATE TABLE public.actions                        
 int
 pg::connect(const std::string& conn) {
     conn_ = PQconnectdb(conn.c_str());
-    EVT_ASSERT(PQstatus(conn_) == CONNECTION_OK, postgresql_connection_exception, "Connect failed");
+    EVT_ASSERT(PQstatus(conn_) == CONNECTION_OK, chain::postgresql_connection_exception, "Connect failed");
+
+    return 0;
 }
 
 int
@@ -96,6 +100,8 @@ pg::close() {
     FC_ASSERT(conn_);
     PQfinish(conn_);
     conn_ = nullptr;
+
+    return 0;
 }
 
 int
@@ -109,7 +115,7 @@ pg::create_db(const std::string& db) {
     auto stmt = fmt::format(sql, db);
 
     auto r = PQexec(conn_, stmt.c_str());
-    EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, postgresql_exec_exception, "Create database failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgresql_exec_exception, "Create database failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     PQclear(r);
     return 0;
@@ -121,7 +127,7 @@ pg::drop_db(const std::string& db) {
     auto stmt = fmt::format(sql, db);
 
     auto r = PQexec(conn_, stmt.c_str());
-    EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, postgresql_exec_exception, "Drop database failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgresql_exec_exception, "Drop database failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     PQclear(r);
     return 0;
@@ -136,7 +142,7 @@ pg::exists_db(const std::string& db) {
     auto stmt = fmt::format(sql, db);
 
     auto r = PQexec(conn_, stmt.c_str());
-    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, postgresql_exec_exception, "Check if database existed failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgresql_exec_exception, "Check if database existed failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     auto v = PQgetvalue(r, 0, 0);
     if(strcmp(v, "true") == 0) {
@@ -155,8 +161,8 @@ pg::prepare_tables() {
 
     const char* stmts[] = { create_blocks_table, create_trxs_table, create_actions_table };
     for(auto stmt : stmts) {
-        auto r = PQexec(conn_, stmt.c_str());
-        EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, postgresql_exec_exception, "Create table failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+        auto r = PQexec(conn_, stmt);
+        EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgresql_exec_exception, "Create table failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
         PQclear(r);
     }

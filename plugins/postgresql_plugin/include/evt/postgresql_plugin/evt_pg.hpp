@@ -6,6 +6,8 @@
 #include <string>
 #include <boost/noncopyable.hpp>
 
+struct pg_conn;
+
 namespace evt {
 
 #define PG_OK   0
@@ -47,14 +49,13 @@ struct fungible_t {
 };
 
 class write_context;
-struct PGconn;
 
 class pg : boost::noncopyable {
 public:
     pg() : conn_(nullptr) {}
 
 public:
-    int connect(const std::string& host, const std::string& user, const std::string& pwd);
+    int connect(const std::string& conn);
     int close();
 
 public:
@@ -87,7 +88,7 @@ public:
     int add_fungible(fungible_t&);
 
 private:
-    PGconn* conn_;
+    pg_conn* conn_;
 };
 
 
