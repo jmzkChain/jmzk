@@ -5,50 +5,25 @@
 #pragma once
 #include <string>
 #include <boost/noncopyable.hpp>
+#include <evt/chain/block_state.hpp>
+#include <evt/chain/transaction.hpp>
 
 struct pg_conn;
 
 namespace evt {
+namespace chain { namespace contracts {
+class abi_serializer;
+}}  // namespace chain::contracts
 
-#define PG_OK   0
-#define PG_FAIL 1
+#define PG_OK   1
+#define PG_FAIL 0
 
-struct block_t {
-    int a;
-    int b;
-};
+using block_ptr    = chain::block_state_ptr;
+using trx_recept_t = chain::transaction_receipt;
+using trx_t        = chain::signed_transaction;
+using action_t     = chain::action;
 
-struct trx_t {
-    int a;
-    int b;
-};
-
-struct action_t {
-    int a;
-    int b;
-};
-
-struct domain_t {
-    int a;
-    int b;
-
-};
-struct token_t {
-    int a;
-    int b;
-};
-
-struct group_t {
-    int a;
-    int b;
-};
-
-struct fungible_t {
-    int a;
-    int b;
-};
-
-class write_context;
+class copy_context;
 
 class pg : boost::noncopyable {
 public:
@@ -62,34 +37,39 @@ public:
     int create_db(const std::string& db);
     int drop_db(const std::string& db);
     int exists_db(const std::string& db);
+    int is_table_empty(const std::string& table);
     int prepare_tables();
-    int is_table_empty();
+    int drop_table(const std::string& table);
     int prepare_stmts();
 
 public:
-    write_context& new_write_context();
+    copy_context new_copy_context();
+    void commit_copy_context(copy_context&);
 
 public:
-    int add_block(const block_t&);
-    int get_block(const std::string& block_id, block_t&);
+    static int add_block(copy_context&, const block_ptr);
+    static int add_trx(copy_context&,
+                       const trx_recept_t&,
+                       const trx_t&,
+                       const std::string& block_id,
+                       int block_num,
+                       const std::string& ts,
+                       const chain::chain_id_type& chain_id,
+                       int seq_num,
+                       int elapsed,
+                       int charge);
+
+    static int add_action(copy_context&, const action_t&, const std::string& block_id, int block_num, const std::string& trx_id, int seq_num, const chain::contracts::abi_serializer&);
+
     int get_latest_block_id(std::string& block_id);
     int set_block_irreversible(const std::string& block_id);
 
-    int add_trx(const trx_t&);
-    int get_trx(const std::string& trx_id, trx_t&);
-
-    int add_action(const action_t&);
-
-    int add_domain(domain_t&);
-
-    int add_token(token_t&);
-
-    int add_group(group_t&);
-
-    int add_fungible(fungible_t&);
+private:
+    int block_copy_to(const std::string& table, const std::string& data);
 
 private:
     pg_conn* conn_;
+
 };
 
 

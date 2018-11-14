@@ -1,6 +1,7 @@
 file(GLOB HEADERS "include/evt/postgres_plugin/*.hpp")
 add_library( postgres_plugin
              evt_pg.cpp
+             postgres_plugin.cpp
              ${HEADERS} )
 
 find_package(libpq REQUIRED)

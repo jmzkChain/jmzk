@@ -3,14 +3,10 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #pragma once
-
 #include <memory>
 
 #include <appbase/application.hpp>
-#include <mongocxx/client.hpp>
-
 #include <evt/chain_plugin/chain_plugin.hpp>
-#include <evt/chain/types.hpp>
 
 namespace evt {
 
