@@ -75,7 +75,7 @@ auto create_trxs_table = "CREATE TABLE IF NOT EXISTS public.transactions        
                               (block_num)                                                   \
                               TABLESPACE pg_default;";
 
-auto create_actions_table = "CREATE TABLE public.actions                                    \
+auto create_actions_table = "CREATE TABLE IF NOT EXISTS public.actions                                    \
                              (                                                              \
                                  block_id   character(64)            NOT NULL,              \
                                  block_num  integer                  NOT NULL,              \
@@ -211,7 +211,6 @@ pg::drop_table(const std::string& table) {
     return PG_OK;
 }
 
-
 int
 pg::prepare_stmts() {
     return PG_OK;
@@ -224,7 +223,7 @@ pg::new_copy_context() {
 
 int
 pg::block_copy_to(const std::string& table, const std::string& data) {
-    auto stmt = fmt::format("COPY {} FROM STDIN", table);
+    auto stmt = fmt::format("COPY {} FROM STDIN;", table);
 
     auto r = PQexec(conn_, stmt.c_str());
     EVT_ASSERT(PQresultStatus(r) == PGRES_COPY_IN, chain::postgresql_exec_exception, "Not expected COPY response, detail: ${s}", ("s",PQerrorMessage(conn_)));
