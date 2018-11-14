@@ -12,7 +12,7 @@ struct pg_conn;
 
 namespace evt {
 namespace chain { namespace contracts {
-class abi_serializer;
+struct abi_serializer;
 }}  // namespace chain::contracts
 
 #define PG_OK   1
@@ -23,7 +23,7 @@ using trx_recept_t = chain::transaction_receipt;
 using trx_t        = chain::signed_transaction;
 using action_t     = chain::action;
 
-class copy_context;
+struct copy_context;
 
 class pg : boost::noncopyable {
 public:

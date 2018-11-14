@@ -7,6 +7,7 @@
 #define FMT_STRING_ALIAS 1
 #include <fmt/format.h>
 #include <libpq-fe.h>
+#include <boost/lexical_cast.hpp>
 #include <fc/io/json.hpp>
 #include <evt/chain/exceptions.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
@@ -58,7 +59,7 @@ auto create_trxs_table = "CREATE TABLE IF NOT EXISTS public.transactions        
                               type          character varying(7)     NOT NULL,              \
                               status        character varying(9)     NOT NULL,              \
                               signatures    character(120)[]         NOT NULL,              \
-                              keys          character(53)            NOT NULL,              \
+                              keys          character(53)[]          NOT NULL,              \
                               elapsed       integer                  NOT NULL,              \
                               charge        integer                  NOT NULL,              \
                               suspend_name  character varying(21),                          \
@@ -236,9 +237,10 @@ pg::block_copy_to(const std::string& table, const std::string& data) {
     EVT_ASSERT(nr == 1, chain::postgresql_exec_exception, "Close data into COPY stream failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     auto r2 = PQgetResult(conn_);
-    EVT_ASSERT(r2 == nullptr, chain::postgresql_exec_exception, "Not expected COPY close response, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    EVT_ASSERT(PQresultStatus(r2) == PGRES_COMMAND_OK, chain::postgresql_exec_exception, "Execute COPY command failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    PQclear(r2);
 
-    return 0;
+    return PG_OK;
 }
 
 void
@@ -257,7 +259,7 @@ pg::commit_copy_context(copy_context& wctx) {
 int
 pg::add_block(copy_context& wctx, const block_ptr block) {
     fmt::format_to(wctx.blocks_copy_,
-        fmt("{}\t{:d}\t{}\t{}\t{}\t{:d}\t{}\t\\N\t\\N\n"),
+        fmt("{}\t{:d}\t{}\t{}\t{}\t{:d}\t{}\tf\tnow\n"),
         block->id.str(),
         (int32_t)block->block_num,
         block->header.previous.str(),
@@ -281,7 +283,7 @@ pg::add_trx(copy_context& wctx,
             int elapsed,
             int charge) {
     fmt::format_to(wctx.trxs_copy_,
-        fmt("{}\t{:d}\t{}\t{}\t{:d}\t{}\t{}\t{:d}\t{}\t\\N\t{}\t{}\t"),
+        fmt("{}\t{:d}\t{}\t{}\t{:d}\t{}\t{}\t{:d}\t{}\tf\t{}\t{}\t"),
         strx.id().str(),
         seq_num,
         block_id,
@@ -296,21 +298,21 @@ pg::add_trx(copy_context& wctx,
         );;
 
     // signatures
-    fmt::format_to(wctx.trxs_copy_, fmt("'{{"));
+    fmt::format_to(wctx.trxs_copy_, fmt("{{"));
     for(auto i = 0u; i < strx.signatures.size() - 1; i++) {
         auto& sig = strx.signatures[i];
-        fmt::format_to(wctx.trxs_copy_, fmt("\"{},\""), (std::string)sig);
+        fmt::format_to(wctx.trxs_copy_, fmt("\"{}\","), (std::string)sig);
     }
-    fmt::format_to(wctx.trxs_copy_, fmt("\"{}\"}}'\t"), (std::string)strx.signatures[strx.signatures.size()-1]);
+    fmt::format_to(wctx.trxs_copy_, fmt("\"{}\"}}\t"), (std::string)strx.signatures[strx.signatures.size()-1]);
 
     // keys
     auto keys = strx.get_signature_keys(chain_id);
-    fmt::format_to(wctx.trxs_copy_, fmt("'{{"));
+    fmt::format_to(wctx.trxs_copy_, fmt("{{"));
     for(auto i = 0u; i < keys.size(); i++) {
         auto& key = *keys.nth(i);
-        fmt::format_to(wctx.trxs_copy_, fmt("\"{},\""), (std::string)key);
+        fmt::format_to(wctx.trxs_copy_, fmt("\"{}\","), (std::string)key);
     }
-    fmt::format_to(wctx.trxs_copy_, fmt("\"{}\"}}'\t"), (std::string)*keys.nth(keys.size()-1));
+    fmt::format_to(wctx.trxs_copy_, fmt("\"{}\"}}\t"), (std::string)*keys.nth(keys.size()-1));
 
     // traces
     fmt::format_to(wctx.trxs_copy_, fmt("{}\t{}\t"), elapsed, charge);
@@ -329,10 +331,10 @@ pg::add_trx(copy_context& wctx,
     }
 
     if(has_ext) {
-        fmt::format_to(wctx.trxs_copy_, fmt("\\N\n"));
+        fmt::format_to(wctx.trxs_copy_, fmt("now\n"));
     }
     else {
-        fmt::format_to(wctx.trxs_copy_, fmt("\\N\t\\N\n"));
+        fmt::format_to(wctx.trxs_copy_, fmt("\\N\tnow\n"));
     }
 
     return PG_OK;
@@ -343,7 +345,7 @@ pg::add_action(copy_context& wctx, const action_t& act, const std::string& block
     auto data = abi.binary_to_variant(abi.get_action_type(act.name), act.data);
 
     fmt::format_to(wctx.actions_copy_,
-        fmt("{}\t{:d}\t{}\t{:d}\t{}\t{}\t{}\t'{}'::jsonb\t\\N\n"),
+        fmt("{}\t{:d}\t{}\t{:d}\t{}\t{}\t{}\t{}\tnow\n"),
         block_id,
         block_num,
         trx_id,
@@ -383,16 +385,22 @@ pg::set_block_irreversible(const std::string& block_id) {
         auto r = PQprepare(conn_, "sbi_plan", "UPDATE blocks SET pending = false WHERE block_id = $1", 0, NULL);
         EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgresql_exec_exception, "Prepare set block irreversible failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
         PQclear(r);
+
+        prepared = 1;
     }
 
     const char* values[] = { block_id.c_str() }; 
     auto r = PQexecPrepared(conn_, "sbi_plan", 1, values, NULL, NULL, 0);
-    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgresql_exec_exception, "Set block irreversiblefailed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgresql_exec_exception, "Set block irreversiblefailed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
-    if(PQntuples(r) == 0) {
-        return PG_FAIL;
+    auto rows = PQcmdTuples(r);
+    if(boost::lexical_cast<int>(rows) > 0) {
+        PQclear(r);
+        return PG_OK;
     }
-    return PG_OK;
+
+    PQclear(r);
+    return PG_FAIL;
 }
 
 }  // namepsace evt

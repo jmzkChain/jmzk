@@ -58,7 +58,7 @@ public:
         : abi_(evt_contract_abi(), fc::hours(1))
     { }
 
-    ~postgres_plugin_impl() = default;
+    ~postgres_plugin_impl();
 
 public:
     void consume_queues();
@@ -430,6 +430,21 @@ postgres_plugin_impl::init(const std::string& name) {
     //     interpreter.process_trx(trx, write_ctx_);
     //     write_ctx_.execute();
     // }
+}
+
+postgres_plugin_impl::~postgres_plugin_impl() {
+    if(!configured_) {
+        return;
+    }
+    try {
+        done_ = true;
+        cond_.notify_one();
+
+        consume_thread_.join();
+    }
+    catch(std::exception& e) {
+        elog("Exception on postgres_plugin shutdown of consume thread: ${e}", ("e", e.what()));
+    }
 }
 
 postgres_plugin::postgres_plugin()
