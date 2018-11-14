@@ -85,6 +85,10 @@ auto create_actions_table = "CREATE TABLE public.actions                        
                                  (trx_id)                                       \
                                  TABLESPACE pg_default;";
 
+auto insert_block_plan = "iblockplan";
+auto insert_trx_plan   = "itrxplan";
+auto insert_act_plan   = "iactplan";
+
 }  // namespace __internal
 
 int
@@ -167,6 +171,11 @@ pg::prepare_tables() {
         PQclear(r);
     }
     return 0;
+}
+
+int
+pg::prepare_stmts() {
+
 }
 
 }  // namepsace evt

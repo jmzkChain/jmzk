@@ -64,6 +64,7 @@ public:
     int exists_db(const std::string& db);
     int prepare_tables();
     int is_table_empty();
+    int prepare_stmts();
 
 public:
     write_context& new_write_context();
