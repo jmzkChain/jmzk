@@ -4,9 +4,6 @@
  */
 #include <evt/postgres_plugin/postgres_plugin.hpp>
 
-#include <evt/postgres_plugin/evt_pg.hpp>
-#include <evt/postgres_plugin/copy_context.hpp>
-
 #include <functional>
 #include <queue>
 #include <tuple>
@@ -25,8 +22,8 @@ using boost::condition_variable_any;
 #include <fc/time.hpp>
 
 #include <evt/chain/config.hpp>
-#include <evt/chain/genesis_state.hpp>
 #include <evt/chain/exceptions.hpp>
+#include <evt/chain/genesis_state.hpp>
 #include <evt/chain/plugin_interface.hpp>
 #include <evt/chain/transaction.hpp>
 #include <evt/chain/types.hpp>
@@ -34,9 +31,8 @@ using boost::condition_variable_any;
 #include <evt/chain/contracts/evt_contract.hpp>
 #include <evt/utilities/spinlock.hpp>
 
-namespace fc {
-class variant;
-}
+#include <evt/postgres_plugin/evt_pg.hpp>
+#include <evt/postgres_plugin/copy_context.hpp>
 
 namespace evt {
 
@@ -299,7 +295,16 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
         }
     }
 
-    db_.add_block(cctx, block);
+    auto actx = add_context {
+        .cctx      = cctx,
+        .block_id  = block->id.str(),
+        .block_num = (int)block->block_num,
+        .ts        = (std::string)block->header.timestamp.to_time_point(),
+        .chain_id  = *chain_id_,
+        .abi       = abi_
+    };
+
+    db_.add_block(actx, block);
 
     auto block_id  = block->id.str();
     auto block_num = block->block_num;
@@ -316,7 +321,7 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
         if(trx.status == transaction_receipt_header::executed && !strx.actions.empty()) {
             auto act_num = 0;
             for(const auto& act : strx.actions) {
-                db_.add_action(cctx, act, block_id, block_num, trx_id, act_num, abi_);
+                db_.add_action(actx, act, trx_id, act_num);
                 act_num++;
             }
 
@@ -336,7 +341,7 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
                     // only check latest
                     auto& act = trace->action_traces.back().act;
                     if(act.name == N(paycharge)) {
-                        db_.add_action(cctx, act, block_id, block_num, trx_id, act_num, abi_);
+                        db_.add_action(actx, act, trx_id, act_num);
                     }
                     break;
                 }
@@ -344,7 +349,7 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
             }
         }
 
-        db_.add_trx(cctx, trx, strx, block_id, block_num, ts, *chain_id_, trx_num, elapsed, charge);
+        db_.add_trx(actx, trx, strx, trx_num, elapsed, charge);
         ++trx_num;
     }
 

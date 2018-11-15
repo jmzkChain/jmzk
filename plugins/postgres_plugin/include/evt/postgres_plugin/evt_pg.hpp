@@ -22,8 +22,18 @@ using block_ptr    = chain::block_state_ptr;
 using trx_recept_t = chain::transaction_receipt;
 using trx_t        = chain::signed_transaction;
 using action_t     = chain::action;
+using abi_t        = chain::contracts::abi_serializer;
+using chain_id_t   = chain::chain_id_type;
 
 struct copy_context;
+struct add_context {
+    copy_context&     cctx;
+    std::string       block_id;
+    int               block_num;
+    std::string       ts;
+    const chain_id_t& chain_id;
+    const abi_t&      abi;
+};
 
 class pg : boost::noncopyable {
 public:
@@ -47,19 +57,9 @@ public:
     void commit_copy_context(copy_context&);
 
 public:
-    static int add_block(copy_context&, const block_ptr);
-    static int add_trx(copy_context&,
-                       const trx_recept_t&,
-                       const trx_t&,
-                       const std::string& block_id,
-                       int block_num,
-                       const std::string& ts,
-                       const chain::chain_id_type& chain_id,
-                       int seq_num,
-                       int elapsed,
-                       int charge);
-
-    static int add_action(copy_context&, const action_t&, const std::string& block_id, int block_num, const std::string& trx_id, int seq_num, const chain::contracts::abi_serializer&);
+    static int add_block(add_context&, const block_ptr);
+    static int add_trx(add_context&, const trx_recept_t&, const trx_t&, int seq_num, int elapsed, int charge);
+    static int add_action(add_context&, const action_t&, const std::string& trx_id, int seq_num);
 
     int get_latest_block_id(std::string& block_id);
     int set_block_irreversible(const std::string& block_id);
