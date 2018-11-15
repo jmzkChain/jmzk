@@ -373,6 +373,10 @@ postgres_plugin_impl::wipe_database(const std::string& name) {
         db_.drop_table("blocks");
         db_.drop_table("transactions");
         db_.drop_table("actions");
+        db_.drop_table("domains");
+        db_.drop_table("tokens");
+        db_.drop_table("groups");
+        db_.drop_table("fungibles");
     }
 }
 
