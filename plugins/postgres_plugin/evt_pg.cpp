@@ -298,20 +298,26 @@ pg::add_trx(copy_context& wctx,
 
     // signatures
     fmt::format_to(wctx.trxs_copy_, fmt("{{"));
-    for(auto i = 0u; i < strx.signatures.size() - 1; i++) {
-        auto& sig = strx.signatures[i];
-        fmt::format_to(wctx.trxs_copy_, fmt("\"{}\","), (std::string)sig);
+    if(!strx.signatures.empty()) {
+        for(auto i = 0u; i < strx.signatures.size() - 1; i++) {
+            auto& sig = strx.signatures[i];
+            fmt::format_to(wctx.trxs_copy_, fmt("\"{}\","), (std::string)sig);
+        }
+        fmt::format_to(wctx.trxs_copy_, fmt("\"{}\""), (std::string)strx.signatures[strx.signatures.size()-1]);
     }
-    fmt::format_to(wctx.trxs_copy_, fmt("\"{}\"}}\t"), (std::string)strx.signatures[strx.signatures.size()-1]);
+    fmt::format_to(wctx.trxs_copy_, fmt("}}\t"));
 
     // keys
-    auto keys = strx.get_signature_keys(chain_id);
     fmt::format_to(wctx.trxs_copy_, fmt("{{"));
-    for(auto i = 0u; i < keys.size(); i++) {
-        auto& key = *keys.nth(i);
-        fmt::format_to(wctx.trxs_copy_, fmt("\"{}\","), (std::string)key);
+    if(!strx.signatures.empty()) {
+        auto keys = strx.get_signature_keys(chain_id);
+        for(auto i = 0u; i < keys.size(); i++) {
+            auto& key = *keys.nth(i);
+            fmt::format_to(wctx.trxs_copy_, fmt("\"{}\","), (std::string)key);
+        }
+        fmt::format_to(wctx.trxs_copy_, fmt("\"{}\""), (std::string)*keys.nth(keys.size()-1));
     }
-    fmt::format_to(wctx.trxs_copy_, fmt("\"{}\"}}\t"), (std::string)*keys.nth(keys.size()-1));
+    fmt::format_to(wctx.trxs_copy_, fmt("}}\t"));
 
     // traces
     fmt::format_to(wctx.trxs_copy_, fmt("{}\t{}\t"), elapsed, charge);
