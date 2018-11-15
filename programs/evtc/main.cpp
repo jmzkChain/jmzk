@@ -863,7 +863,7 @@ struct set_fungible_subcommands {
         dfcmd->add_option("number", number, localized("Number of destroy asset"))->required();
         dfcmd->add_option("--memo,-m", memo, localized("Memo for this action"));
 
-        add_standard_transaction_options(rfcmd);
+        add_standard_transaction_options(dfcmd);
 
         dfcmd->set_callback([this] {
             destroyft dfact;
