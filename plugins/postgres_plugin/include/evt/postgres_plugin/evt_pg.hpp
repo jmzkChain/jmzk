@@ -26,7 +26,7 @@ using abi_t        = chain::contracts::abi_serializer;
 using chain_id_t   = chain::chain_id_type;
 
 struct copy_context;
-struct add_context {
+struct add_context : boost::noncopyable {
     copy_context&     cctx;
     std::string       block_id;
     int               block_num;

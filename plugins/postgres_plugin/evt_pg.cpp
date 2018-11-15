@@ -17,32 +17,32 @@ namespace evt {
 
 namespace __internal {
 
-auto create_blocks_table = "CREATE TABLE IF NOT EXISTS public.blocks                            \
-                            (                                                                   \
-                                block_id        character(64)            NOT NULL,              \
-                                block_num       integer                  NOT NULL,              \
-                                prev_block_id   character(64)            NOT NULL,              \
-                                \"timestamp\"   timestamp with time zone NOT NULL,              \
-                                trx_merkle_root character(64)            NOT NULL,              \
-                                trx_count       integer                  NOT NULL,              \
-                                producer        character varying(21)    NOT NULL,              \
-                                pending         boolean                  NOT NULL DEFAULT true, \
-                                created_at      timestamp with time zone NOT NULL DEFAULT now() \
-                            )                                                                   \
-                            WITH (                                                              \
-                                OIDS = FALSE                                                    \
-                            )                                                                   \
-                            TABLESPACE pg_default;                                              \
-                                                                                                \
-                            CREATE INDEX IF NOT EXISTS block_id_index                           \
-                                ON public.blocks USING btree                                    \
-                                (block_id)                                                      \
-                                TABLESPACE pg_default;                                          \
-                                                                                                \
-                            CREATE INDEX IF NOT EXISTS block_num_index                          \
-                                ON public.blocks USING btree                                    \
-                                (block_num)                                                     \
-                                TABLESPACE pg_default;";
+auto create_blocks_table = R"sql(CREATE TABLE IF NOT EXISTS public.blocks
+                                 (
+                                     block_id        character(64)            NOT NULL,
+                                     block_num       integer                  NOT NULL,
+                                     prev_block_id   character(64)            NOT NULL,
+                                     \"timestamp\"   timestamp with time zone NOT NULL,
+                                     trx_merkle_root character(64)            NOT NULL,
+                                     trx_count       integer                  NOT NULL,
+                                    producer        character varying(21)    NOT NULL,
+                                     pending         boolean                  NOT NULL DEFAULT true,
+                                     created_at      timestamp with time zone NOT NULL DEFAULT now()
+                                 )
+                                 WITH (
+                                     OIDS = FALSE
+                                 )
+                                 TABLESPACE pg_default;
+ 
+                                 CREATE INDEX IF NOT EXISTS block_id_index
+                                     ON public.blocks USING btree
+                                     (block_id)
+                                     TABLESPACE pg_default;
+ 
+                                 CREATE INDEX IF NOT EXISTS block_num_index
+                                     ON public.blocks USING btree
+                                     (block_num)
+                                     TABLESPACE pg_default;)sql";
 
 auto create_trxs_table = "CREATE TABLE IF NOT EXISTS public.transactions                    \
                           (                                                                 \
@@ -75,7 +75,7 @@ auto create_trxs_table = "CREATE TABLE IF NOT EXISTS public.transactions        
                               (block_num)                                                   \
                               TABLESPACE pg_default;";
 
-auto create_actions_table = "CREATE TABLE IF NOT EXISTS public.actions                                    \
+auto create_actions_table = "CREATE TABLE IF NOT EXISTS public.actions                      \
                              (                                                              \
                                  block_id   character(64)            NOT NULL,              \
                                  block_num  integer                  NOT NULL,              \
@@ -95,6 +95,61 @@ auto create_actions_table = "CREATE TABLE IF NOT EXISTS public.actions          
                              CREATE INDEX IF NOT EXISTS trx_id_index                        \
                                  ON public.actions USING btree                              \
                                  (trx_id)                                                   \
+                                 TABLESPACE pg_default;";
+
+auto create_metas_table = "CREATE SEQUENCE IF NOT EXISTS metas_id_seq;                                         \
+                           CREATE TABLE IF NOT EXISTS metas                                                    \
+                           (                                                                                   \
+                               id         integer                   NOT NULL  DEFAULT nextval('metas_id_seq'), \
+                               key        character varying(21)     NOT NULL,                                  \
+                               value      text                      NOT NULL,                                  \
+                               created_at timestamp with time zone  NOT NULL  DEFAULT now(),                   \
+                               CONSTRAINT metas_pkey PRIMARY KEY (id)                                          \
+                           )                                                                                   \
+                           WITH (                                                                              \
+                               OIDS = FALSE                                                                    \
+                           )                                                                                   \
+                           TABLESPACE pg_default;"
+
+auto create_domains_table = "CREATE TABLE IF NOT EXISTS public.domains                           \
+                             (                                                                   \
+                                 name       character varying(21)       NOT NULL,                \
+                                 creator    character(53)               NOT NULL,                \
+                                 issue      jsonb                       NOT NULL,                \
+                                 transfer   jsonb                       NOT NULL,                \
+                                 manage     jsonb                       NOT NULL,                \
+                                 metas      integer[]                   NOT NULL,                \
+                                 created_at timestamp with time zone    NOT NULL  DEFAULT now(), \
+                                 CONSTRAINT domains_pkey PRIMARY KEY (name)                      \
+                             )                                                                   \
+                             WITH (                                                              \
+                                 OIDS = FALSE                                                    \
+                             )                                                                   \
+                             TABLESPACE pg_default;                                              \
+                                                                                                 \
+                             CREATE INDEX creator_index                                          \
+                                 ON public.domains USING btree                                   \
+                                 (creator)                                                       \
+                                 TABLESPACE pg_default;";
+ 
+auto create_tokens_table = "CREATE TABLE IF NOT EXISTS public.tokens                             \
+                             (                                                                   \
+                                 id         character varying(42)       NOT NULL,                \
+                                 domain     character varying(21)       NOT NULL,                \
+                                 name       character varying(21)       NOT NULL,                \
+                                 owner      character(53)[]             NOT NULL,                \
+                                 metas      integer[]                   NOT NULL,                \
+                                 created_at timestamp with time zone    NOT NULL  DEFAULT now(), \
+                                 CONSTRAINT tokens_pkey PRIMARY KEY (id)                         \
+                             )                                                                   \
+                             WITH (                                                              \
+                                 OIDS = FALSE                                                    \
+                             )                                                                   \
+                             TABLESPACE pg_default;                                              \
+                                                                                                 \
+                             CREATE INDEX owner_index                                            \
+                                 ON public.tokens USING btree                                    \
+                                 (owner)                                                         \
                                  TABLESPACE pg_default;";
 
 }  // namespace __internal
