@@ -243,26 +243,26 @@ pg::block_copy_to(const std::string& table, const std::string& data) {
 }
 
 void
-pg::commit_copy_context(copy_context& wctx) {
-    if(wctx.blocks_copy_.size() > 0) {
-        block_copy_to("blocks", fmt::to_string(wctx.blocks_copy_));
+pg::commit_copy_context(copy_context& cctx) {
+    if(cctx.blocks_copy_.size() > 0) {
+        block_copy_to("blocks", fmt::to_string(cctx.blocks_copy_));
     }
-    if(wctx.trxs_copy_.size() > 0) {
-        block_copy_to("transactions", fmt::to_string(wctx.trxs_copy_));
+    if(cctx.trxs_copy_.size() > 0) {
+        block_copy_to("transactions", fmt::to_string(cctx.trxs_copy_));
     }
-    if(wctx.actions_copy_.size() > 0) {
-        block_copy_to("actions", fmt::to_string(wctx.actions_copy_));
+    if(cctx.actions_copy_.size() > 0) {
+        block_copy_to("actions", fmt::to_string(cctx.actions_copy_));
     }    
 }
 
 int
-pg::add_block(copy_context& wctx, const block_ptr block) {
-    fmt::format_to(wctx.blocks_copy_,
+pg::add_block(add_context& actx, const block_ptr block) {
+    fmt::format_to(actx.cctx.blocks_copy_,
         fmt("{}\t{:d}\t{}\t{}\t{}\t{:d}\t{}\tf\tnow\n"),
-        block->id.str(),
-        (int32_t)block->block_num,
+        actx.block_id,
+        actx.block_num,
         block->header.previous.str(),
-        (std::string)block->header.timestamp.to_time_point(),
+        actx.ts,
         block->header.transaction_mroot.str(),
         block->block->transactions.size(),
         (std::string)block->header.producer
@@ -271,24 +271,17 @@ pg::add_block(copy_context& wctx, const block_ptr block) {
 }
 
 int
-pg::add_trx(copy_context& wctx,
-            const trx_recept_t& trx,
-            const trx_t& strx,
-            const std::string& block_id,
-            int block_num,
-            const std::string& ts,
-            const chain::chain_id_type& chain_id,
-            int seq_num,
-            int elapsed,
-            int charge) {
-    fmt::format_to(wctx.trxs_copy_,
+pg::add_trx(add_context& actx, const trx_recept_t& trx, const trx_t& strx, int seq_num, int elapsed, int charge) {
+    auto& cctx = actx.cctx;
+
+    fmt::format_to(cctx.trxs_copy_,
         fmt("{}\t{:d}\t{}\t{}\t{:d}\t{}\t{}\t{:d}\t{}\tf\t{}\t{}\t"),
         strx.id().str(),
         seq_num,
-        block_id,
-        block_num,
+        actx.block_id,
+        actx.block_num,
         (int32_t)strx.actions.size(),
-        ts,
+        actx.ts,
         (std::string)strx.expiration,
         (int32_t)strx.max_charge,
         (std::string)strx.payer,
@@ -297,30 +290,30 @@ pg::add_trx(copy_context& wctx,
         );;
 
     // signatures
-    fmt::format_to(wctx.trxs_copy_, fmt("{{"));
+    fmt::format_to(cctx.trxs_copy_, fmt("{{"));
     if(!strx.signatures.empty()) {
         for(auto i = 0u; i < strx.signatures.size() - 1; i++) {
             auto& sig = strx.signatures[i];
-            fmt::format_to(wctx.trxs_copy_, fmt("\"{}\","), (std::string)sig);
+            fmt::format_to(cctx.trxs_copy_, fmt("\"{}\","), (std::string)sig);
         }
-        fmt::format_to(wctx.trxs_copy_, fmt("\"{}\""), (std::string)strx.signatures[strx.signatures.size()-1]);
+        fmt::format_to(cctx.trxs_copy_, fmt("\"{}\""), (std::string)strx.signatures[strx.signatures.size()-1]);
     }
-    fmt::format_to(wctx.trxs_copy_, fmt("}}\t"));
+    fmt::format_to(cctx.trxs_copy_, fmt("}}\t"));
 
     // keys
-    fmt::format_to(wctx.trxs_copy_, fmt("{{"));
+    fmt::format_to(cctx.trxs_copy_, fmt("{{"));
     if(!strx.signatures.empty()) {
-        auto keys = strx.get_signature_keys(chain_id);
+        auto keys = strx.get_signature_keys(actx.chain_id);
         for(auto i = 0u; i < keys.size(); i++) {
             auto& key = *keys.nth(i);
-            fmt::format_to(wctx.trxs_copy_, fmt("\"{}\","), (std::string)key);
+            fmt::format_to(cctx.trxs_copy_, fmt("\"{}\","), (std::string)key);
         }
-        fmt::format_to(wctx.trxs_copy_, fmt("\"{}\""), (std::string)*keys.nth(keys.size()-1));
+        fmt::format_to(cctx.trxs_copy_, fmt("\"{}\""), (std::string)*keys.nth(keys.size()-1));
     }
-    fmt::format_to(wctx.trxs_copy_, fmt("}}\t"));
+    fmt::format_to(cctx.trxs_copy_, fmt("}}\t"));
 
     // traces
-    fmt::format_to(wctx.trxs_copy_, fmt("{}\t{}\t"), elapsed, charge);
+    fmt::format_to(cctx.trxs_copy_, fmt("{}\t{}\t"), elapsed, charge);
 
     // extenscions
     auto has_ext = 0;
@@ -329,30 +322,30 @@ pg::add_trx(copy_context& wctx,
             auto& v    = std::get<1>(ext);
             auto  name = std::string(v.cbegin(), v.cend());
 
-            fmt::format_to(wctx.trxs_copy_, fmt("{}\t"), name);
+            fmt::format_to(cctx.trxs_copy_, fmt("{}\t"), name);
             has_ext = 1;
             break;
         }
     }
 
     if(has_ext) {
-        fmt::format_to(wctx.trxs_copy_, fmt("now\n"));
+        fmt::format_to(cctx.trxs_copy_, fmt("now\n"));
     }
     else {
-        fmt::format_to(wctx.trxs_copy_, fmt("\\N\tnow\n"));
+        fmt::format_to(cctx.trxs_copy_, fmt("\\N\tnow\n"));
     }
 
     return PG_OK;
 }
 
 int
-pg::add_action(copy_context& wctx, const action_t& act, const std::string& block_id, int block_num, const std::string& trx_id, int seq_num, const chain::contracts::abi_serializer& abi) {
-    auto data = abi.binary_to_variant(abi.get_action_type(act.name), act.data);
+pg::add_action(add_context& actx, const action_t& act, const std::string& trx_id, int seq_num) {
+    auto data = actx.abi.binary_to_variant(actx.abi.get_action_type(act.name), act.data);
 
-    fmt::format_to(wctx.actions_copy_,
+    fmt::format_to(actx.cctx.actions_copy_,
         fmt("{}\t{:d}\t{}\t{:d}\t{}\t{}\t{}\t{}\tnow\n"),
-        block_id,
-        block_num,
+        actx.block_id,
+        actx.block_num,
         trx_id,
         seq_num,
         act.name.to_string(),
