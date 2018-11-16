@@ -28,6 +28,7 @@ using boost::condition_variable_any;
 #include <evt/chain/transaction.hpp>
 #include <evt/chain/types.hpp>
 #include <evt/chain/token_database.hpp>
+#include <evt/chain/contracts/abi_serializer.hpp>
 #include <evt/chain/contracts/evt_contract.hpp>
 #include <evt/utilities/spinlock.hpp>
 
@@ -295,14 +296,10 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
         }
     }
 
-    auto actx = add_context {
-        .cctx      = cctx,
-        .block_id  = block->id.str(),
-        .block_num = (int)block->block_num,
-        .ts        = (std::string)block->header.timestamp.to_time_point(),
-        .chain_id  = *chain_id_,
-        .abi       = abi_
-    };
+    auto actx      = add_context(cctx, *chain_id_, abi_);
+    actx.block_id  = block->id.str();
+    actx.block_num = (int)block->block_num;
+    actx.ts        = (std::string)block->header.timestamp.to_time_point();
 
     db_.add_block(actx, block);
 

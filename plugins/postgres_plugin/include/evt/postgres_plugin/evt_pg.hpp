@@ -18,15 +18,20 @@ struct abi_serializer;
 #define PG_OK   1
 #define PG_FAIL 0
 
-using block_ptr    = chain::block_state_ptr;
-using trx_recept_t = chain::transaction_receipt;
-using trx_t        = chain::signed_transaction;
 using action_t     = chain::action;
 using abi_t        = chain::contracts::abi_serializer;
+using block_ptr    = chain::block_state_ptr;
 using chain_id_t   = chain::chain_id_type;
+using trx_recept_t = chain::transaction_receipt;
+using trx_t        = chain::signed_transaction;
 
 struct copy_context;
 struct add_context : boost::noncopyable {
+public:
+    add_context(copy_context& cctx, const chain_id_t& chain_id, const abi_t& abi)
+        : cctx(cctx), chain_id(chain_id), abi(abi) {}
+
+public:
     copy_context&     cctx;
     std::string       block_id;
     int               block_num;
