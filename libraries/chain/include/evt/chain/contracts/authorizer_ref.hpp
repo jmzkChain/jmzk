@@ -56,11 +56,13 @@ public:
         storage_ = name;
     }
 
-    int  type() const { return storage_.which(); }
+    int type() const { return storage_.which(); }
 
     bool is_account_ref() const { return type() == account_t; }
     bool is_owner_ref() const { return type() == owner_t; }
     bool is_group_ref() const { return type() == group_t; }
+
+    std::string to_string() const;
 
 private:
     storage_type storage_;

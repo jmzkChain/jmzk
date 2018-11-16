@@ -57,8 +57,11 @@ public:
     int drop_db(const std::string& db);
     int exists_db(const std::string& db);
     int is_table_empty(const std::string& table);
-    int prepare_tables();
     int drop_table(const std::string& table);
+    int drop_sequence(const std::string& seq);
+    int drop_all_tables();
+    int drop_all_sequences();
+    int prepare_tables();
     int prepare_stmts();
 
 public:
@@ -85,6 +88,7 @@ public:
     int upd_group(trx_context&, const updategroup&);
     int add_fungible(trx_context&, const newfungible&);
     int upd_fungible(trx_context&, const updfungible&);
+    int add_meta(trx_context&, const action_t&);
 
 private:
     int block_copy_to(const std::string& table, const std::string& data);

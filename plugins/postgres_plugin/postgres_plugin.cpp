@@ -291,6 +291,26 @@ postgres_plugin_impl::process_action(const action& act, trx_context& tctx) {
     case_act(updategroup,  upd_group);
     case_act(newfungible,  add_fungible);
     case_act(updfungible,  upd_fungible);
+    case N(addmeta): {
+        db_.add_meta(tctx, act);
+        break;
+    }
+    case N(everipass): {
+        auto& ep    = act.data_as<const everipass&>();
+        auto  link  = ep.link;
+        auto  flags = link.get_header();
+        auto& d     = *link.get_segment(evt_link::domain).strv;
+        auto& t     = *link.get_segment(evt_link::token).strv;
+
+        if(flags & evt_link::destroy) {
+            auto dt   = destroytoken();
+            dt.domain = d;
+            dt.name   = t;
+
+            db_.del_token(tctx, dt);
+        }
+        break;
+    }
     }; // switch
 }
 
@@ -371,13 +391,8 @@ void
 postgres_plugin_impl::wipe_database(const std::string& name) {
     ilog("wipe database");
     if(db_.exists_db(name)) {
-        db_.drop_table("blocks");
-        db_.drop_table("transactions");
-        db_.drop_table("actions");
-        db_.drop_table("domains");
-        db_.drop_table("tokens");
-        db_.drop_table("groups");
-        db_.drop_table("fungibles");
+        db_.drop_all_tables();
+        db_.drop_all_sequences();
     }
 }
 

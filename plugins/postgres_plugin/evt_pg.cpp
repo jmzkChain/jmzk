@@ -111,7 +111,7 @@ auto create_metas_table = R"sql(CREATE SEQUENCE IF NOT EXISTS metas_id_seq;
                                     id         integer                   NOT NULL  DEFAULT nextval('metas_id_seq'),
                                     key        character varying(21)     NOT NULL,
                                     value      text                      NOT NULL,
-                                    creator    character(53)             NOT NULL,
+                                    creator    character varying(57)     NOT NULL,
                                     created_at timestamp with time zone  NOT NULL  DEFAULT now(),
                                     CONSTRAINT metas_pkey PRIMARY KEY (id)
                                 )
@@ -288,12 +288,58 @@ pg::is_table_empty(const std::string& table) {
 }
 
 int
+pg::drop_table(const std::string& table) {
+    auto sql = "DROP TABLE IF EXISTS {};";
+    auto stmt = fmt::format(sql, table);
+
+    auto r = PQexec(conn_, stmt.c_str());
+    EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgresql_exec_exception, "Drop table failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+
+    PQclear(r);
+    return PG_OK;
+}
+
+int
+pg::drop_sequence(const std::string& seq) {
+    auto sql = "DROP SEQUENCE IF EXISTS {};";
+    auto stmt = fmt::format(sql, seq);
+
+    auto r = PQexec(conn_, stmt.c_str());
+    EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgresql_exec_exception, "Drop sequence failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+
+    PQclear(r);
+    return PG_OK;
+}
+
+int
+pg::drop_all_tables() {
+    drop_table("blocks");
+    drop_table("transactions");
+    drop_table("metas");
+    drop_table("actions");
+    drop_table("domains");
+    drop_table("tokens");
+    drop_table("groups");
+    drop_table("fungibles");
+
+    return PG_OK;
+}
+
+int
+pg::drop_all_sequences() {
+    drop_sequence("metas_id_seq");
+
+    return PG_OK;
+}
+
+int
 pg::prepare_tables() {
     using namespace __internal;
 
     const char* stmts[] = {
         create_blocks_table,
         create_trxs_table,
+        create_metas_table,
         create_actions_table,
         create_domains_table,
         create_tokens_table,
@@ -306,18 +352,6 @@ pg::prepare_tables() {
 
         PQclear(r);
     }
-    return PG_OK;
-}
-
-int
-pg::drop_table(const std::string& table) {
-    auto sql = "DROP TABLE IF EXISTS {};";
-    auto stmt = fmt::format(sql, table);
-
-    auto r = PQexec(conn_, stmt.c_str());
-    EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgresql_exec_exception, "Drop table failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
-
-    PQclear(r);
     return PG_OK;
 }
 
@@ -701,6 +735,45 @@ pg::upd_fungible(trx_context& tctx, const updfungible& uf) {
     }
 
     fmt::format_to(tctx.trx_buf_, fmt("EXECUTE uf_plan('{}','{}',{});\n"), i, m, (int64_t)uf.sym_id);
+
+    return PG_OK;
+}
+
+int
+pg::add_meta(trx_context& tctx, const action_t& act) {
+    static std::once_flag __flag;
+    std::call_once(__flag, [&] {
+        auto prepare = [&](auto name, auto sql) {
+            auto r = PQprepare(conn_, name, sql, 0, NULL);
+            EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgresql_exec_exception, "Prepare sql failed, sql: ${s}, detail: ${d}", ("s",sql)("d",PQerrorMessage(conn_)));
+            PQclear(r);
+        };
+        prepare("am_plan",  "INSERT INTO metas VALUES(DEFAULT, $1, $2, $3, now());");
+        prepare("amd_plan", "UPDATE domains SET metas = array_append(metas, $1) WHERE name = $2;");
+        prepare("amt_plan", "UPDATE tokens SET metas = array_append(metas, $1) WHERE id = $2;");
+        prepare("amg_plan", "UPDATE groups SET metas = array_append(metas, $1) WHERE name = $2;");
+        prepare("amf_plan", "UPDATE fungibles SET metas = array_append(metas, $1) WHERE sym_id = $2;");
+    });
+
+    auto& am = act.data_as<const addmeta&>();
+
+    fmt::format_to(tctx.trx_buf_, fmt("EXECUTE am_plan('{}','{}','{}');\n"), (std::string)am.key, am.value, am.creator.to_string());
+    if(act.domain == N128(.fungible)) {
+        // fungibles
+        fmt::format_to(tctx.trx_buf_, fmt("EXECUTE amf_plan(lastval(),{});\n"), boost::lexical_cast<int64_t>((std::string)act.key));   
+    }
+    else if(act.domain == N128(.group)) {
+        // groups
+        fmt::format_to(tctx.trx_buf_, fmt("EXECUTE amg_plan(lastval(),'{}');\n"), (std::string)act.key); 
+    }
+    else if(act.key == N128(.meta)) {
+        // domains
+        fmt::format_to(tctx.trx_buf_, fmt("EXECUTE amd_plan(lastval(),'{}');\n"), (std::string)act.domain); 
+    }
+    else {
+        // tokens
+        fmt::format_to(tctx.trx_buf_, fmt("EXECUTE amt_plan(lastval(),'{}:{}');\n"), (std::string)act.domain, (std::string)act.key); 
+    }
 
     return PG_OK;
 }
