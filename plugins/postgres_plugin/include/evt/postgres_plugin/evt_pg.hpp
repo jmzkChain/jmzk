@@ -7,6 +7,7 @@
 #include <boost/noncopyable.hpp>
 #include <evt/chain/block_state.hpp>
 #include <evt/chain/transaction.hpp>
+#include <evt/chain/contracts/types.hpp>
 
 struct pg_conn;
 
@@ -14,6 +15,8 @@ namespace evt {
 namespace chain { namespace contracts {
 struct abi_serializer;
 }}  // namespace chain::contracts
+
+using namespace evt::chain::contracts;
 
 #define PG_OK   1
 #define PG_FAIL 0
@@ -26,6 +29,7 @@ using trx_recept_t = chain::transaction_receipt;
 using trx_t        = chain::signed_transaction;
 
 struct copy_context;
+struct trx_context;
 struct add_context : boost::noncopyable {
 public:
     add_context(copy_context& cctx, const chain_id_t& chain_id, const abi_t& abi)
@@ -61,13 +65,21 @@ public:
     copy_context new_copy_context();
     void commit_copy_context(copy_context&);
 
+    trx_context new_trx_context();
+    void commit_trx_context(trx_context&);
+
 public:
     static int add_block(add_context&, const block_ptr);
     static int add_trx(add_context&, const trx_recept_t&, const trx_t&, int seq_num, int elapsed, int charge);
     static int add_action(add_context&, const action_t&, const std::string& trx_id, int seq_num);
-
+    
     int get_latest_block_id(std::string& block_id);
-    int set_block_irreversible(const std::string& block_id);
+
+    int set_block_irreversible(trx_context&, const std::string& block_id);
+    int add_domain(trx_context&, const newdomain&);
+    int add_tokens(trx_context&, const issuetoken&);
+    int add_group(trx_context&, const newgroup&);
+    int add_fungible(trx_context&, const newfungible&);
 
 private:
     int block_copy_to(const std::string& table, const std::string& data);

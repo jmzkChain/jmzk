@@ -4,6 +4,7 @@
  */
 #include <evt/postgres_plugin/evt_pg.hpp>
 
+#include <mutex>
 #define FMT_STRING_ALIAS 1
 #include <fmt/format.h>
 #include <libpq-fe.h>
@@ -12,10 +13,19 @@
 #include <evt/chain/exceptions.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
 #include <evt/postgres_plugin/copy_context.hpp>
+#include <evt/postgres_plugin/trx_context.hpp>
 
 namespace evt {
 
 namespace __internal {
+
+#define PREPARE_SQL_ONCE(name, sql) \
+    std::once_flag __##name##_flag; \
+    std::call_once(__##name##_flag, [&] { \
+        auto r = PQprepare(conn_, #name, sql, 0, NULL); \
+        EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgresql_exec_exception, "Prepare sql failed, sql: ${s}, detail: ${d}", ("s",sql)("d",PQerrorMessage(conn_))); \
+        PQclear(r); \
+    });
 
 auto create_blocks_table = R"sql(CREATE TABLE IF NOT EXISTS public.blocks
                                  (
@@ -152,8 +162,8 @@ auto create_tokens_table = R"sql(CREATE TABLE IF NOT EXISTS public.tokens
 auto create_groups_table = R"sql(CREATE TABLE IF NOT EXISTS public.groups
                                  (
                                      name       character varying(21)       NOT NULL,
+                                     key        character(53)               NOT NULL,
                                      def        jsonb                       NOT NULL,
-                                     creator    character(53)               NOT NULL,
                                      metas      integer[]                   NOT NULL,
                                      created_at timestamp with time zone    NOT NULL  DEFAULT now(),
                                      CONSTRAINT groups_pkey PRIMARY KEY (name)
@@ -168,26 +178,26 @@ auto create_groups_table = R"sql(CREATE TABLE IF NOT EXISTS public.groups
                                      TABLESPACE pg_default;)sql";
 
 auto create_fungibles_table = R"sql(CREATE TABLE IF NOT EXISTS public.fungibles
-                                  (
-                                      name       character varying(21)       NOT NULL,
-                                      sym_name   character varying(21)       NOT NULL,
-                                      sym        character varying(21)       NOT NULL,
-                                      sym_id     integer                     NOT NULL,
-                                      creator    character(53)               NOT NULL,
-                                      issue      jsonb                       NOT NULL,
-                                      manage     jsonb                       NOT NULL,
-                                      metas      integer[]                   NOT NULL,
-                                      created_at timestamp with time zone    NOT NULL  DEFAULT now(),
-                                      CONSTRAINT fungibles_pkey PRIMARY KEY (sym_id)
-                                  )
-                                  WITH (
-                                      OIDS = FALSE
-                                  )
-                                  TABLESPACE pg_default;
-                                  CREATE INDEX IF NOT EXISTS creator_index
-                                      ON public.fungibles USING btree
-                                      (creator)
-                                      TABLESPACE pg_default;)sql";
+                                    (
+                                        name       character varying(21)       NOT NULL,
+                                        sym_name   character varying(21)       NOT NULL,
+                                        sym        character varying(21)       NOT NULL,
+                                        sym_id     bigint                      NOT NULL,
+                                        creator    character(53)               NOT NULL,
+                                        issue      jsonb                       NOT NULL,
+                                        manage     jsonb                       NOT NULL,
+                                        metas      integer[]                   NOT NULL,
+                                        created_at timestamp with time zone    NOT NULL  DEFAULT now(),
+                                        CONSTRAINT fungibles_pkey PRIMARY KEY (sym_id)
+                                    )
+                                    WITH (
+                                        OIDS = FALSE
+                                    )
+                                    TABLESPACE pg_default;
+                                    CREATE INDEX IF NOT EXISTS creator_index
+                                        ON public.fungibles USING btree
+                                        (creator)
+                                        TABLESPACE pg_default;)sql";
 
 }  // namespace __internal
 
@@ -352,7 +362,22 @@ pg::commit_copy_context(copy_context& cctx) {
     }
     if(cctx.actions_copy_.size() > 0) {
         block_copy_to("actions", fmt::to_string(cctx.actions_copy_));
-    }    
+    }
+}
+
+trx_context
+pg::new_trx_context() {
+    return trx_context(*this);
+}
+
+void
+pg::commit_trx_context(trx_context& tctx) {
+    auto stmts = fmt::to_string(tctx.trx_buf_);
+
+    auto r = PQexec(conn_, stmts.c_str());
+    EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgresql_exec_exception, "Commit transactions failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+
+    PQclear(r);
 }
 
 int
@@ -459,14 +484,7 @@ pg::add_action(add_context& actx, const action_t& act, const std::string& trx_id
 
 int
 pg::get_latest_block_id(std::string& block_id) {
-    static int prepared = 0;
-    if(!prepared) {
-        auto r = PQprepare(conn_, "glb_plan", "SELECT block_id FROM blocks ORDER BY block_num DESC LIMIT 1;", 0, NULL);
-        EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgresql_exec_exception, "Prepare get latest block id failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
-        PQclear(r);
-
-        prepared = 1;
-    }
+    PREPARE_SQL_ONCE(glb_plan, "SELECT block_id FROM blocks ORDER BY block_num DESC LIMIT 1;");
 
     auto stmt = "SELECT block_id FROM blocks ORDER BY block_num DESC LIMIT 1;";
 
@@ -486,28 +504,100 @@ pg::get_latest_block_id(std::string& block_id) {
 }
 
 int
-pg::set_block_irreversible(const std::string& block_id) {
-    static int prepared = 0;
-    if(!prepared) {
-        auto r = PQprepare(conn_, "sbi_plan", "UPDATE blocks SET pending = false WHERE block_id = $1", 0, NULL);
-        EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgresql_exec_exception, "Prepare set block irreversible failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
-        PQclear(r);
+pg::set_block_irreversible(trx_context& tctx, const std::string& block_id) {
+    PREPARE_SQL_ONCE(sbi_plan, "UPDATE blocks SET pending = false WHERE block_id = $1");
 
-        prepared = 1;
+    fmt::format_to(tctx.trx_buf_, fmt("EXECUTE sbi_plan('{}')"), block_id);
+
+    return PG_OK;
+}
+
+int
+pg::add_domain(trx_context& tctx, const newdomain& nd) {
+    PREPARE_SQL_ONCE(nd_plan, "INSERT INTO domains VALUES($1, $2, $3, $4, $5, '{}', now);");
+
+    fc::variant issue, transfer, manage;
+    fc::to_variant(nd.issue, issue);
+    fc::to_variant(nd.transfer, transfer);
+    fc::to_variant(nd.manage, manage);
+
+    fmt::format_to(tctx.trx_buf_,
+        fmt("EXECUTE nd_plan('{}','{}','{}','{}','{}');\n"),
+        (std::string)nd.name,
+        (std::string)nd.creator,
+        fc::json::to_string(issue),
+        fc::json::to_string(transfer),
+        fc::json::to_string(manage)
+        );
+
+    return PG_OK;
+}
+
+int
+pg::add_tokens(trx_context& tctx, const issuetoken& it) {
+    PREPARE_SQL_ONCE(it_plan, "INSERT INTO tokens VALUES($1, $2, $3, $4, '{}', now);");
+
+    // cache owners
+    auto owners_buf = fmt::memory_buffer();
+    fmt::format_to(owners_buf, fmt("{{"));
+    if(!it.owner.empty()) {
+        for(auto i = 0u; i < it.owner.size() - 1; i++) {
+            fmt::format_to(owners_buf, fmt("\"{}\","), (std::string)it.owner[i]);
+        }
+        fmt::format_to(owners_buf, fmt("\"{}\""), (std::string)it.owner[it.owner.size()-1]);
     }
+    fmt::format_to(owners_buf, fmt("}}"));
 
-    const char* values[] = { block_id.c_str() }; 
-    auto r = PQexecPrepared(conn_, "sbi_plan", 1, values, NULL, NULL, 0);
-    EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgresql_exec_exception, "Set block irreversiblefailed, detail: ${s}", ("s",PQerrorMessage(conn_)));
-
-    auto rows = PQcmdTuples(r);
-    if(boost::lexical_cast<int>(rows) > 0) {
-        PQclear(r);
-        return PG_OK;
+    auto owners = fmt::to_string(owners_buf);
+    auto domain = (std::string)it.domain;
+    for(auto& name : it.names) {
+        fmt::format_to(tctx.trx_buf_,
+            fmt("EXECUTE it_plan('{0}:{1}','{0}','{1}','{2}');"),
+            domain,
+            (std::string)name,
+            owners
+            );
     }
+    return PG_OK;
+}
 
-    PQclear(r);
-    return PG_FAIL;
+int
+pg::add_group(trx_context& tctx, const newgroup& ng) {
+    PREPARE_SQL_ONCE(ng_plan, "INSERT INTO groups VALUES($1, $2, $3, '{}', now);");
+
+    fc::variant def;
+    fc::to_variant(ng.group, def);
+
+    fmt::format_to(tctx.trx_buf_,
+        fmt("EXECUTE ng_plan('{}','{}','{}');"),
+        (std::string)ng.name,
+        (std::string)ng.group.key(),
+        fc::json::to_string(def)
+        );
+
+    return PG_OK;
+}
+
+int
+pg::add_fungible(trx_context& tctx, const newfungible& nf) {
+    PREPARE_SQL_ONCE(nf_plan, "INSERT INTO fungibles VALUES($1, $2, $3, $4, $5, $6, $7, '{}', now);");
+
+    fc::variant issue, manage;
+    fc::to_variant(nf.issue, issue);
+    fc::to_variant(nf.manage, manage);
+
+    fmt::format_to(tctx.trx_buf_,
+        fmt("EXECUTE nf_plan('{}','{}','{}',{:d},'{}','{}','{}');"),
+        (std::string)nf.name,
+        (std::string)nf.sym_name,
+        (std::string)nf.sym,
+        (int64_t)nf.sym.id(),
+        (std::string)nf.creator,
+        fc::json::to_string(issue),
+        fc::json::to_string(manage)
+        );
+
+    return PG_OK;
 }
 
 }  // namepsace evt

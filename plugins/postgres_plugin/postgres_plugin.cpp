@@ -34,6 +34,7 @@ using boost::condition_variable_any;
 
 #include <evt/postgres_plugin/evt_pg.hpp>
 #include <evt/postgres_plugin/copy_context.hpp>
+#include <evt/postgres_plugin/trx_context.hpp>
 
 namespace evt {
 
@@ -64,12 +65,11 @@ public:
     void applied_irreversible_block(const block_state_ptr&);
     void applied_transaction(const transaction_trace_ptr&);
 
-    void process_block(const block_state_ptr, std::deque<transaction_trace_ptr>& traces, copy_context& cctx);
-    void _process_block(const block_state_ptr, std::deque<transaction_trace_ptr>& traces, copy_context& cctx);
-    void process_irreversible_block(const block_state_ptr, std::deque<transaction_trace_ptr>& traces, copy_context& cctx);
-    void _process_irreversible_block(const block_state_ptr, copy_context& cctx);
-    void process_transaction(const transaction_trace&, copy_context& cctx);
-    void _process_transaction(const transaction_trace&, copy_context& cctx);
+    void process_block(const block_state_ptr, std::deque<transaction_trace_ptr>& traces, copy_context& cctx, trx_context& tctx);
+    void _process_block(const block_state_ptr, std::deque<transaction_trace_ptr>& traces, copy_context& cctx, trx_context& tctx);
+    void process_irreversible_block(const block_state_ptr, std::deque<transaction_trace_ptr>& traces, copy_context& cctx, trx_context& tctx);
+    
+    void process_action(const action&, trx_context& tctx);
 
     void verify_last_block(const std::string& prev_block_id);
     void verify_no_blocks();
@@ -180,6 +180,7 @@ postgres_plugin_impl::consume_queues() {
             }
 
             auto cctx = db_.new_copy_context();
+            auto tctx = db_.new_trx_context();
             // process block states
             while(true) {
                 if(bqueue.empty()) {
@@ -188,15 +189,16 @@ postgres_plugin_impl::consume_queues() {
 
                 auto& b = bqueue.front();
                 if(std::get<IsIrreversible>(b)) {
-                    process_irreversible_block(std::get<BlockPtr>(b), traces, cctx);
+                    process_irreversible_block(std::get<BlockPtr>(b), traces, cctx, tctx);
                 }
                 else {
-                    process_block(std::get<BlockPtr>(b), traces, cctx);
+                    process_block(std::get<BlockPtr>(b), traces, cctx, tctx);
                 }
 
                 bqueue.pop_front();
             }
             cctx.commit();
+            tctx.commit();
 
             if(!traces.empty()) {
                 spinlock_guard lock(lock_);
@@ -235,14 +237,14 @@ postgres_plugin_impl::verify_no_blocks() {
 }
 
 void
-postgres_plugin_impl::process_irreversible_block(const block_state_ptr block, std::deque<transaction_trace_ptr>& traces, copy_context& cctx) {
+postgres_plugin_impl::process_irreversible_block(const block_state_ptr block, std::deque<transaction_trace_ptr>& traces, copy_context& cctx, trx_context& tctx) {
     try {
         if(block->block_num == 1) {
             // genesis block will not trigger on_block event
             // add it manually
-            _process_block(block, traces, cctx);
+            _process_block(block, traces, cctx, tctx);
         }
-        _process_irreversible_block(block, cctx);
+        db_.set_block_irreversible(tctx, block->id);
     }
     catch(fc::exception& e) {
         elog("Exception while processing irreversible block ${e}", ("e", e.to_string()));
@@ -256,14 +258,9 @@ postgres_plugin_impl::process_irreversible_block(const block_state_ptr block, st
 }
 
 void
-postgres_plugin_impl::process_block(const block_state_ptr block, std::deque<transaction_trace_ptr>& traces, copy_context& cctx) {
+postgres_plugin_impl::process_block(const block_state_ptr block, std::deque<transaction_trace_ptr>& traces, copy_context& cctx, trx_context& tctx) {
     try {
-        _process_block(block, traces, cctx);
-
-        // for(auto& ptrx : block->block->transactions) {
-        //     auto trx = ptrx.trx.get_transaction();
-        //     interpreter.process_trx(trx, cctx);
-        // }
+        _process_block(block, traces, cctx, tctx);
     }
     catch(fc::exception& e) {
         elog("Exception while processing block ${e}", ("e", e.to_string()));
@@ -276,13 +273,24 @@ postgres_plugin_impl::process_block(const block_state_ptr block, std::deque<tran
     }
 }
 
+#define case_act(act_name, func_name)                        \
+    case N(act_name): {                                      \
+        db_.func_name(tctx, act.data_as<const act_name&>()); \
+        break;                                               \
+    }
+
 void
-postgres_plugin_impl::process_transaction(const transaction_trace& trace, copy_context& cctx) {
-    return;
+postgres_plugin_impl::process_action(const action& act, trx_context& tctx) {
+    switch((uint64_t)act.name) {
+    case_act(newdomain, add_domain);
+    case_act(issuetoken, add_tokens);
+    case_act(newgroup, add_group);
+    case_act(newfungible, add_fungible);
+    }; // switch
 }
 
 void
-postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<transaction_trace_ptr>& traces, copy_context& cctx) {
+postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<transaction_trace_ptr>& traces, copy_context& cctx, trx_context& tctx) {
     using namespace evt::__internal;
 
     if(processed_ == 0) {
@@ -319,6 +327,7 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
             auto act_num = 0;
             for(const auto& act : strx.actions) {
                 db_.add_action(actx, act, trx_id, act_num);
+                process_action(act, tctx);
                 act_num++;
             }
 
@@ -351,16 +360,6 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
     }
 
     ++processed_;
-}
-
-void
-postgres_plugin_impl::_process_irreversible_block(const block_state_ptr block, copy_context& cctx) {
-    db_.set_block_irreversible(block->id);
-}
-
-void
-postgres_plugin_impl::_process_transaction(const transaction_trace& trace, copy_context& cctx) {
-    return;
 }
 
 void
