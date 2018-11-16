@@ -539,6 +539,32 @@ pg::add_domain(trx_context& tctx, const newdomain& nd) {
 }
 
 int
+pg::upd_domain(trx_context& tctx, const updatedomain& ud) {
+    PREPARE_SQL_ONCE(ud_plan, "UPDATE domains SET(issue, transfer, manage) = ($1, $2, $3) WHERE name = $4;");
+
+    std::string i = "issue", t = "transfer", m = "manage";
+    if(ud.issue.valid()) {
+        fc::variant u;
+        fc::to_variant(*ud.issue, u);
+        i = fc::json::to_string(u);
+    }
+    if(ud.transfer.valid()) {
+        fc::variant u;
+        fc::to_variant(*ud.transfer, u);
+        t = fc::json::to_string(u);
+    }
+    if(ud.manage.valid()) {
+        fc::variant u;
+        fc::to_variant(*ud.manage, u);
+        m = fc::json::to_string(u);
+    }
+
+    fmt::format_to(tctx.trx_buf_, fmt("EXECUTE up_plan('{}','{}','{}', '{}');\n"), i, t, m, (std::string)ud.name);
+
+    return PG_OK;
+}
+
+int
 pg::add_tokens(trx_context& tctx, const issuetoken& it) {
     PREPARE_SQL_ONCE(it_plan, "INSERT INTO tokens VALUES($1, $2, $3, $4, '{}', now());");
 
@@ -567,6 +593,43 @@ pg::add_tokens(trx_context& tctx, const issuetoken& it) {
 }
 
 int
+pg::upd_token(trx_context& tctx, const transfer& tf) {
+    PREPARE_SQL_ONCE(tf_plan, "UPDATE tokens SET(owner) = ($1) WHERE id = $2;");
+
+    auto owners_buf = fmt::memory_buffer();
+    fmt::format_to(owners_buf, fmt("{{"));
+    if(!tf.to.empty()) {
+        for(auto i = 0u; i < tf.to.size() - 1; i++) {
+            fmt::format_to(owners_buf, fmt("\"{}\","), (std::string)tf.to[i]);
+        }
+        fmt::format_to(owners_buf, fmt("\"{}\""), (std::string)tf.to[tf.to.size()-1]);
+    }
+    fmt::format_to(owners_buf, fmt("}}"));
+
+    fmt::format_to(tctx.trx_buf_,
+        fmt("EXECUTE tf_plan('{2}','{0}:{1}');"),
+        (std::string)tf.domain,
+        (std::string)tf.name,
+        fmt::to_string(owners_buf)
+        );
+
+    return PG_OK;
+}
+
+int
+pg::del_token(trx_context& tctx, const destroytoken& dt) {
+    PREPARE_SQL_ONCE(dt_plan, "UPDATE tokens SET(owner) = ('{\"EVT00000000000000000000000000000000000000000000000000\"}') WHERE id = $1;");
+
+    fmt::format_to(tctx.trx_buf_,
+        fmt("EXECUTE dt_plan('{0}:{1}');"),
+        (std::string)dt.domain,
+        (std::string)dt.name
+        );
+
+    return PG_OK;
+}
+
+int
 pg::add_group(trx_context& tctx, const newgroup& ng) {
     PREPARE_SQL_ONCE(ng_plan, "INSERT INTO groups VALUES($1, $2, $3, '{}', now());");
 
@@ -578,6 +641,22 @@ pg::add_group(trx_context& tctx, const newgroup& ng) {
         (std::string)ng.name,
         (std::string)ng.group.key(),
         fc::json::to_string(def["root"])
+        );
+
+    return PG_OK;
+}
+
+int
+pg::upd_group(trx_context& tctx, const updategroup& ug) {
+    PREPARE_SQL_ONCE(ug_plan, "UPDATE groups SET(def) = ($1) WHERE name = $2;");
+
+    fc::variant u;
+    fc::to_variant(ug.group, u);
+
+    fmt::format_to(tctx.trx_buf_,
+        fmt("EXECUTE ug_plan('{}','{}');"),
+        (std::string)ug.name,
+        fc::json::to_string(u["root"])
         );
 
     return PG_OK;
@@ -601,6 +680,27 @@ pg::add_fungible(trx_context& tctx, const newfungible& nf) {
         fc::json::to_string(issue),
         fc::json::to_string(manage)
         );
+
+    return PG_OK;
+}
+
+int
+pg::upd_fungible(trx_context& tctx, const updfungible& uf) {
+    PREPARE_SQL_ONCE(uf_plan, "UPDATE fungibles SET(issue, manage) = ($1, $2) WHERE sym_id = $3;");
+
+    std::string i = "issue", m = "manage";
+    if(uf.issue.valid()) {
+        fc::variant u;
+        fc::to_variant(*uf.issue, u);
+        i = fc::json::to_string(u);
+    }
+    if(uf.manage.valid()) {
+        fc::variant u;
+        fc::to_variant(*uf.manage, u);
+        m = fc::json::to_string(u);
+    }
+
+    fmt::format_to(tctx.trx_buf_, fmt("EXECUTE uf_plan('{}','{}',{});\n"), i, m, (int64_t)uf.sym_id);
 
     return PG_OK;
 }

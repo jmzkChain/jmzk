@@ -77,9 +77,14 @@ public:
 
     int set_block_irreversible(trx_context&, const std::string& block_id);
     int add_domain(trx_context&, const newdomain&);
+    int upd_domain(trx_context&, const updatedomain&);
     int add_tokens(trx_context&, const issuetoken&);
+    int upd_token(trx_context&, const transfer&);
+    int del_token(trx_context&, const destroytoken&);
     int add_group(trx_context&, const newgroup&);
+    int upd_group(trx_context&, const updategroup&);
     int add_fungible(trx_context&, const newfungible&);
+    int upd_fungible(trx_context&, const updfungible&);
 
 private:
     int block_copy_to(const std::string& table, const std::string& data);

@@ -282,10 +282,15 @@ postgres_plugin_impl::process_block(const block_state_ptr block, std::deque<tran
 void
 postgres_plugin_impl::process_action(const action& act, trx_context& tctx) {
     switch((uint64_t)act.name) {
-    case_act(newdomain, add_domain);
-    case_act(issuetoken, add_tokens);
-    case_act(newgroup, add_group);
-    case_act(newfungible, add_fungible);
+    case_act(newdomain,    add_domain);
+    case_act(updatedomain, upd_domain);
+    case_act(issuetoken,   add_tokens);
+    case_act(transfer,     upd_token);
+    case_act(destroytoken, del_token);
+    case_act(newgroup,     add_group);
+    case_act(updategroup,  upd_group);
+    case_act(newfungible,  add_fungible);
+    case_act(updfungible,  upd_fungible);
     }; // switch
 }
 
@@ -430,7 +435,7 @@ postgres_plugin_impl::init(const std::string& name) {
         process_action(get_nfact(gs.evt), tctx);
         process_action(get_nfact(gs.pevt), tctx);
         process_action(action(N128(.group), N128(.everiToken), ng), tctx);
-        
+
         tctx.commit();
     }
 }
