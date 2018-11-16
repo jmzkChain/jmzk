@@ -20,7 +20,7 @@ namespace evt {
 namespace __internal {
 
 #define PREPARE_SQL_ONCE(name, sql) \
-    std::once_flag __##name##_flag; \
+    static std::once_flag __##name##_flag; \
     std::call_once(__##name##_flag, [&] { \
         auto r = PQprepare(conn_, #name, sql, 0, NULL); \
         EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgresql_exec_exception, "Prepare sql failed, sql: ${s}, detail: ${d}", ("s",sql)("d",PQerrorMessage(conn_))); \
@@ -174,7 +174,7 @@ auto create_groups_table = R"sql(CREATE TABLE IF NOT EXISTS public.groups
                                  TABLESPACE pg_default;
                                  CREATE INDEX IF NOT EXISTS creator_index
                                      ON public.groups USING btree
-                                     (creator)
+                                     (key)
                                      TABLESPACE pg_default;)sql";
 
 auto create_fungibles_table = R"sql(CREATE TABLE IF NOT EXISTS public.fungibles
@@ -372,9 +372,14 @@ pg::new_trx_context() {
 
 void
 pg::commit_trx_context(trx_context& tctx) {
+    if(tctx.trx_buf_.size() == 0) {
+        return;
+    }
+
     auto stmts = fmt::to_string(tctx.trx_buf_);
 
     auto r = PQexec(conn_, stmts.c_str());
+    auto s = PQresultStatus(r);
     EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgresql_exec_exception, "Commit transactions failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     PQclear(r);
@@ -507,14 +512,14 @@ int
 pg::set_block_irreversible(trx_context& tctx, const std::string& block_id) {
     PREPARE_SQL_ONCE(sbi_plan, "UPDATE blocks SET pending = false WHERE block_id = $1");
 
-    fmt::format_to(tctx.trx_buf_, fmt("EXECUTE sbi_plan('{}')"), block_id);
+    fmt::format_to(tctx.trx_buf_, fmt("EXECUTE sbi_plan('{}');\n"), block_id);
 
     return PG_OK;
 }
 
 int
 pg::add_domain(trx_context& tctx, const newdomain& nd) {
-    PREPARE_SQL_ONCE(nd_plan, "INSERT INTO domains VALUES($1, $2, $3, $4, $5, '{}', now);");
+    PREPARE_SQL_ONCE(nd_plan, "INSERT INTO domains VALUES($1, $2, $3, $4, $5, '{}', now());");
 
     fc::variant issue, transfer, manage;
     fc::to_variant(nd.issue, issue);
@@ -535,7 +540,7 @@ pg::add_domain(trx_context& tctx, const newdomain& nd) {
 
 int
 pg::add_tokens(trx_context& tctx, const issuetoken& it) {
-    PREPARE_SQL_ONCE(it_plan, "INSERT INTO tokens VALUES($1, $2, $3, $4, '{}', now);");
+    PREPARE_SQL_ONCE(it_plan, "INSERT INTO tokens VALUES($1, $2, $3, $4, '{}', now());");
 
     // cache owners
     auto owners_buf = fmt::memory_buffer();
@@ -552,7 +557,7 @@ pg::add_tokens(trx_context& tctx, const issuetoken& it) {
     auto domain = (std::string)it.domain;
     for(auto& name : it.names) {
         fmt::format_to(tctx.trx_buf_,
-            fmt("EXECUTE it_plan('{0}:{1}','{0}','{1}','{2}');"),
+            fmt("EXECUTE it_plan('{0}:{1}','{0}','{1}','{2}');\n"),
             domain,
             (std::string)name,
             owners
@@ -563,16 +568,16 @@ pg::add_tokens(trx_context& tctx, const issuetoken& it) {
 
 int
 pg::add_group(trx_context& tctx, const newgroup& ng) {
-    PREPARE_SQL_ONCE(ng_plan, "INSERT INTO groups VALUES($1, $2, $3, '{}', now);");
+    PREPARE_SQL_ONCE(ng_plan, "INSERT INTO groups VALUES($1, $2, $3, '{}', now());");
 
     fc::variant def;
     fc::to_variant(ng.group, def);
 
     fmt::format_to(tctx.trx_buf_,
-        fmt("EXECUTE ng_plan('{}','{}','{}');"),
+        fmt("EXECUTE ng_plan('{}','{}','{}');\n"),
         (std::string)ng.name,
         (std::string)ng.group.key(),
-        fc::json::to_string(def)
+        fc::json::to_string(def["root"])
         );
 
     return PG_OK;
@@ -580,14 +585,14 @@ pg::add_group(trx_context& tctx, const newgroup& ng) {
 
 int
 pg::add_fungible(trx_context& tctx, const newfungible& nf) {
-    PREPARE_SQL_ONCE(nf_plan, "INSERT INTO fungibles VALUES($1, $2, $3, $4, $5, $6, $7, '{}', now);");
+    PREPARE_SQL_ONCE(nf_plan, "INSERT INTO fungibles VALUES($1, $2, $3, $4, $5, $6, $7, '{}', now());");
 
     fc::variant issue, manage;
     fc::to_variant(nf.issue, issue);
     fc::to_variant(nf.manage, manage);
 
     fmt::format_to(tctx.trx_buf_,
-        fmt("EXECUTE nf_plan('{}','{}','{}',{:d},'{}','{}','{}');"),
+        fmt("EXECUTE nf_plan('{}','{}','{}',{:d},'{}','{}','{}');\n"),
         (std::string)nf.name,
         (std::string)nf.sym_name,
         (std::string)nf.sym,
