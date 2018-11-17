@@ -332,9 +332,11 @@ FC_DECLARE_DERIVED_EXCEPTION( unsupported_abi_version_exception,    abi_exceptio
 FC_DECLARE_DERIVED_EXCEPTION( snapshot_exception, chain_exception, 3220000, "Snapshot exception" );
 FC_DECLARE_DERIVED_EXCEPTION( snapshot_validation_exception, snapshot_exception, 3220001, "Snapshot Validation Exception" );
 
-FC_DECLARE_DERIVED_EXCEPTION( postgresql_exception,            chain_exception, 3230000, "Postgresql plugin exception" );
-FC_DECLARE_DERIVED_EXCEPTION( postgresql_connection_exception, chain_exception, 3230001, "Connect to postgresql server failed" );
-FC_DECLARE_DERIVED_EXCEPTION( postgresql_exec_exception,       chain_exception, 3230002, "Execute statements failed" );
+FC_DECLARE_DERIVED_EXCEPTION( postgres_plugin_exception,     chain_exception,           3230000, "Postgres plugin exception" );
+FC_DECLARE_DERIVED_EXCEPTION( postgres_connection_exception, postgres_plugin_exception, 3230001, "Connect to postgresql server failed" );
+FC_DECLARE_DERIVED_EXCEPTION( postgres_exec_exception,       postgres_plugin_exception, 3230002, "Execute statements failed" );
+FC_DECLARE_DERIVED_EXCEPTION( postgres_version_exception,    postgres_plugin_exception, 3230003, "Version of postgres database is obsolete" );
+FC_DECLARE_DERIVED_EXCEPTION( postgres_sync_exception,       postgres_plugin_exception, 3230004, "Sync failed between postgres database and current blockchain state" );
 
 
 }} // evt::chain

@@ -10,6 +10,7 @@
 #include <libpq-fe.h>
 #include <boost/lexical_cast.hpp>
 #include <fc/io/json.hpp>
+#include <evt/chain/block_header.hpp>
 #include <evt/chain/exceptions.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
 #include <evt/postgres_plugin/copy_context.hpp>
@@ -17,15 +18,30 @@
 
 namespace evt {
 
+static auto pg_version = "1.0.0";
+
 namespace __internal {
 
 #define PREPARE_SQL_ONCE(name, sql) \
     static std::once_flag __##name##_flag; \
     std::call_once(__##name##_flag, [&] { \
         auto r = PQprepare(conn_, #name, sql, 0, NULL); \
-        EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgresql_exec_exception, "Prepare sql failed, sql: ${s}, detail: ${d}", ("s",sql)("d",PQerrorMessage(conn_))); \
+        EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgres_exec_exception, "Prepare sql failed, sql: ${s}, detail: ${d}", ("s",sql)("d",PQerrorMessage(conn_))); \
         PQclear(r); \
     });
+
+auto create_stats_table = R"sql(CREATE TABLE IF NOT EXISTS public.stats
+                                (
+                                    key         character varying(21)    NOT NULL,
+                                    value       character varying(64)    NOT NULL,
+                                    created_at  timestamp with time zone NOT NULL DEFAULT now(),
+                                    updated_at  timestamp with time zone NOT NULL DEFAULT now(),
+                                    CONSTRAINT  stats_pkey PRIMARY KEY (key)
+                                )
+                                WITH (
+                                    OIDS = FALSE
+                                )
+                                TABLESPACE pg_default;)sql";
 
 auto create_blocks_table = R"sql(CREATE TABLE IF NOT EXISTS public.blocks
                                  (
@@ -206,7 +222,7 @@ pg::connect(const std::string& conn) {
     conn_ = PQconnectdb(conn.c_str());
 
     auto status = PQstatus(conn_);
-    EVT_ASSERT(status == CONNECTION_OK, chain::postgresql_connection_exception, "Connect failed");
+    EVT_ASSERT(status == CONNECTION_OK, chain::postgres_connection_exception, "Connect failed");
 
     return PG_OK;
 }
@@ -231,7 +247,7 @@ pg::create_db(const std::string& db) {
     auto stmt = fmt::format(sql, db);
 
     auto r = PQexec(conn_, stmt.c_str());
-    EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgresql_exec_exception, "Create database failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgres_exec_exception, "Create database failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     PQclear(r);
     return PG_OK;
@@ -243,7 +259,7 @@ pg::drop_db(const std::string& db) {
     auto stmt = fmt::format(sql, db);
 
     auto r = PQexec(conn_, stmt.c_str());
-    EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgresql_exec_exception, "Drop database failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgres_exec_exception, "Drop database failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     PQclear(r);
     return PG_OK;
@@ -258,7 +274,7 @@ pg::exists_db(const std::string& db) {
     auto stmt = fmt::format(sql, db);
 
     auto r = PQexec(conn_, stmt.c_str());
-    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgresql_exec_exception, "Check if database existed failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_exec_exception, "Check if database existed failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     auto v = PQgetvalue(r, 0, 0);
     if(strcmp(v, "t") == 0) {
@@ -276,7 +292,7 @@ pg::is_table_empty(const std::string& table) {
     auto stmt = fmt::format("SELECT block_id FROM {} LIMIT 1;", table);
 
     auto r = PQexec(conn_, stmt.c_str());
-    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgresql_exec_exception, "Get one block id failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_exec_exception, "Get one block id failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     if(PQntuples(r) == 0) {
         PQclear(r);
@@ -293,7 +309,7 @@ pg::drop_table(const std::string& table) {
     auto stmt = fmt::format(sql, table);
 
     auto r = PQexec(conn_, stmt.c_str());
-    EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgresql_exec_exception, "Drop table failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgres_exec_exception, "Drop table failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     PQclear(r);
     return PG_OK;
@@ -305,7 +321,7 @@ pg::drop_sequence(const std::string& seq) {
     auto stmt = fmt::format(sql, seq);
 
     auto r = PQexec(conn_, stmt.c_str());
-    EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgresql_exec_exception, "Drop sequence failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgres_exec_exception, "Drop sequence failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     PQclear(r);
     return PG_OK;
@@ -313,6 +329,7 @@ pg::drop_sequence(const std::string& seq) {
 
 int
 pg::drop_all_tables() {
+    drop_table("stats");
     drop_table("blocks");
     drop_table("transactions");
     drop_table("metas");
@@ -337,6 +354,7 @@ pg::prepare_tables() {
     using namespace __internal;
 
     const char* stmts[] = {
+        create_stats_table,
         create_blocks_table,
         create_trxs_table,
         create_metas_table,
@@ -348,7 +366,7 @@ pg::prepare_tables() {
     };
     for(auto stmt : stmts) {
         auto r = PQexec(conn_, stmt);
-        EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgresql_exec_exception, "Create table failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+        EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgres_exec_exception, "Create table failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
         PQclear(r);
     }
@@ -356,8 +374,38 @@ pg::prepare_tables() {
 }
 
 int
-pg::prepare_stmts() {
+pg::prepare_stats() {
+    auto tctx = new_trx_context();
+    add_stat(tctx, "version", pg_version);
+    add_stat(tctx, "last_sync_block_id", "");
+
+    tctx.commit();
     return PG_OK;
+}
+
+int
+pg::check_version() {
+    auto cur_ver = std::string();
+    if(!read_stat("version", cur_ver)) {
+        EVT_THROW(chain::postgres_version_exception, "Version information doesn't exist in current database");
+    }
+    EVT_ASSERT(cur_ver >= pg_version, chain::postgres_version_exception, "Version of current postgres database is obsolete, cur: ${c}, latest: ${l}", ("c",cur_ver)("l",pg_version));
+    return PG_OK;
+}
+
+int
+pg::check_last_sync_block() {
+    auto sync_block_id = std::string();
+    if(!read_stat("last_sync_block_id", sync_block_id)) {
+        EVT_THROW(chain::postgres_sync_exception, "Last sync block id doesn't exist in current database");
+    }
+    auto last_block_id = std::string();
+    if(get_latest_block_id(last_block_id)) {
+        EVT_ASSERT(sync_block_id == last_block_id, chain::postgres_sync_exception, "Sync block and latest block are not match, sync is ${s}, latest is ${l}", ("s",sync_block_id)("l",last_block_id));
+        last_sync_block_id_ = last_block_id;
+        return PG_OK;
+    }
+    EVT_THROW(chain::postgres_sync_exception, "Cannot get latest block id");
 }
 
 copy_context
@@ -370,17 +418,17 @@ pg::block_copy_to(const std::string& table, const std::string& data) {
     auto stmt = fmt::format("COPY {} FROM STDIN;", table);
 
     auto r = PQexec(conn_, stmt.c_str());
-    EVT_ASSERT(PQresultStatus(r) == PGRES_COPY_IN, chain::postgresql_exec_exception, "Not expected COPY response, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    EVT_ASSERT(PQresultStatus(r) == PGRES_COPY_IN, chain::postgres_exec_exception, "Not expected COPY response, detail: ${s}", ("s",PQerrorMessage(conn_)));
     PQclear(r);
 
     auto nr = PQputCopyData(conn_, data.data(), (int)data.size());
-    EVT_ASSERT(nr == 1, chain::postgresql_exec_exception, "Put data into COPY stream failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    EVT_ASSERT(nr == 1, chain::postgres_exec_exception, "Put data into COPY stream failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     auto nr2 = PQputCopyEnd(conn_, NULL);
-    EVT_ASSERT(nr == 1, chain::postgresql_exec_exception, "Close data into COPY stream failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    EVT_ASSERT(nr == 1, chain::postgres_exec_exception, "Close data into COPY stream failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     auto r2 = PQgetResult(conn_);
-    EVT_ASSERT(PQresultStatus(r2) == PGRES_COMMAND_OK, chain::postgresql_exec_exception, "Execute COPY command failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    EVT_ASSERT(PQresultStatus(r2) == PGRES_COMMAND_OK, chain::postgres_exec_exception, "Execute COPY command failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
     PQclear(r2);
 
     return PG_OK;
@@ -414,7 +462,7 @@ pg::commit_trx_context(trx_context& tctx) {
 
     auto r = PQexec(conn_, stmts.c_str());
     auto s = PQresultStatus(r);
-    EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgresql_exec_exception, "Commit transactions failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgres_exec_exception, "Commit transactions failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     PQclear(r);
 }
@@ -525,10 +573,8 @@ int
 pg::get_latest_block_id(std::string& block_id) {
     PREPARE_SQL_ONCE(glb_plan, "SELECT block_id FROM blocks ORDER BY block_num DESC LIMIT 1;");
 
-    auto stmt = "SELECT block_id FROM blocks ORDER BY block_num DESC LIMIT 1;";
-
     auto r = PQexecPrepared(conn_, "glb_plan", 0, NULL, NULL, NULL, 0);
-    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgresql_exec_exception, "Get latest block id failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_exec_exception, "Get latest block id failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     if(PQntuples(r) == 0) {
         PQclear(r);
@@ -543,11 +589,64 @@ pg::get_latest_block_id(std::string& block_id) {
 }
 
 int
+pg::exists_block(const std::string& block_id) {
+    PREPARE_SQL_ONCE(eb_plan, "SELECT block_id FROM blocks WHERE block_id = $1;");
+
+    const char* params[] = { block_id.c_str() };
+
+    auto r = PQexecPrepared(conn_, "eb_plan", 1, params, NULL, NULL, 0);
+    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_exec_exception, "Check block existed failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+
+    if(PQntuples(r) == 0) {
+        PQclear(r);
+        return PG_FAIL;
+    }
+
+    PQclear(r);
+    return PG_OK;    
+}
+
+int
 pg::set_block_irreversible(trx_context& tctx, const std::string& block_id) {
     PREPARE_SQL_ONCE(sbi_plan, "UPDATE blocks SET pending = false WHERE block_id = $1");
 
     fmt::format_to(tctx.trx_buf_, fmt("EXECUTE sbi_plan('{}');\n"), block_id);
+    return PG_OK;
+}
 
+int
+pg::add_stat(trx_context& tctx, const std::string& key, const std::string& value) {
+    PREPARE_SQL_ONCE(as_plan, "INSERT INTO stats VALUES($1, $2, now(), now())");
+
+    fmt::format_to(tctx.trx_buf_, fmt("EXECUTE as_plan('{}','{}');\n"), key, value);
+    return PG_OK;
+}
+
+int
+pg::read_stat(const std::string& key, std::string& value) {
+    PREPARE_SQL_ONCE(rs_plan, "SELECT value FROM stats WHERE key = $1");
+
+    const char* params[] = { key.c_str() };
+    auto r = PQexecPrepared(conn_, "rs_plan", 1, params, NULL, NULL, 0);
+    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_exec_exception, "Get stat value failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+
+    if(PQntuples(r) == 0) {
+        PQclear(r);
+        return PG_FAIL;
+    }
+
+    auto v = PQgetvalue(r, 0, 0);
+    value = v;
+
+    PQclear(r);
+    return PG_OK;
+}
+
+int
+pg::upd_stat(trx_context& tctx, const std::string& key, const std::string& value) {
+    PREPARE_SQL_ONCE(us_plan, "UPDATE stats SET value = $1 WHERE key = $2");
+
+    fmt::format_to(tctx.trx_buf_, fmt("EXECUTE us_plan('{}','{}');\n"), value, key);
     return PG_OK;
 }
 
@@ -745,7 +844,7 @@ pg::add_meta(trx_context& tctx, const action_t& act) {
     std::call_once(__flag, [&] {
         auto prepare = [&](auto name, auto sql) {
             auto r = PQprepare(conn_, name, sql, 0, NULL);
-            EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgresql_exec_exception, "Prepare sql failed, sql: ${s}, detail: ${d}", ("s",sql)("d",PQerrorMessage(conn_)));
+            EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgres_exec_exception, "Prepare sql failed, sql: ${s}, detail: ${d}", ("s",sql)("d",PQerrorMessage(conn_)));
             PQclear(r);
         };
         prepare("am_plan",  "INSERT INTO metas VALUES(DEFAULT, $1, $2, $3, now());");

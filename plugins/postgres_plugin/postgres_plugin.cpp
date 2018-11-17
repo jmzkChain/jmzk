@@ -74,8 +74,8 @@ public:
     void verify_last_block(const std::string& prev_block_id);
     void verify_no_blocks();
 
-    void init(const std::string& name);
-    void wipe_database(const std::string& name);
+    void init(bool init_db);
+    void wipe_database();
 
 public:
     pg db_;
@@ -83,8 +83,8 @@ public:
     abi_serializer              abi_;
     fc::optional<chain_id_type> chain_id_;
 
-    bool configured_               = false;
-    bool wipe_database_on_startup_ = false;
+    bool     configured_          = false;
+    uint32_t last_sync_block_num_ = 0;
 
     size_t processed_  = 0;
     size_t queue_size_ = 0;
@@ -181,6 +181,7 @@ postgres_plugin_impl::consume_queues() {
 
             auto cctx = db_.new_copy_context();
             auto tctx = db_.new_trx_context();
+            auto back = std::get<BlockPtr>(bqueue.back()); 
             // process block states
             while(true) {
                 if(bqueue.empty()) {
@@ -197,6 +198,9 @@ postgres_plugin_impl::consume_queues() {
 
                 bqueue.pop_front();
             }
+            // update last sync block in postgres
+            db_.upd_stat(tctx, "last_sync_block_id", back->id.str());
+
             cctx.commit();
             tctx.commit();
 
@@ -222,17 +226,17 @@ void
 postgres_plugin_impl::verify_last_block(const std::string& prev_block_id) {
     auto last_block_id = std::string();
     if(!db_.get_latest_block_id(last_block_id)) {
-        EVT_THROW(postgresql_exception, "No blocks found in database");
+        EVT_THROW(postgres_plugin_exception, "No blocks found in database");
     }
 
-    EVT_ASSERT(prev_block_id == last_block_id, postgresql_exception,
+    EVT_ASSERT(prev_block_id == last_block_id, postgres_plugin_exception,
         "Did not find expected block ${pid}, instead found ${id}", ("pid", prev_block_id)("id", last_block_id));
 }
 
 void
 postgres_plugin_impl::verify_no_blocks() {
     if(!db_.is_table_empty("blocks")) {
-        EVT_THROW(postgresql_exception, "Existing blocks found in database");
+        EVT_THROW(postgres_plugin_exception, "Existing blocks found in database");
     }
 }
 
@@ -261,6 +265,9 @@ void
 postgres_plugin_impl::process_block(const block_state_ptr block, std::deque<transaction_trace_ptr>& traces, copy_context& cctx, trx_context& tctx) {
     try {
         _process_block(block, traces, cctx, tctx);
+    }
+    catch(postgres_sync_exception&) {
+        throw;
     }
     catch(fc::exception& e) {
         elog("Exception while processing block ${e}", ("e", e.to_string()));
@@ -318,6 +325,13 @@ void
 postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<transaction_trace_ptr>& traces, copy_context& cctx, trx_context& tctx) {
     using namespace evt::__internal;
 
+    auto id = block->id.str();
+    if(block->block_num <= last_sync_block_num_) {
+        EVT_ASSERT(db_.exists_block(id), postgres_sync_exception,
+            "Block is not existed in postgres database, please use --clear-postgres option to clear states");
+        return;
+    }
+
     if(processed_ == 0) {
         if(block->block_num <= 2) {
             // verify on start we have no previous blocks
@@ -330,15 +344,11 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
     }
 
     auto actx      = add_context(cctx, *chain_id_, abi_);
-    actx.block_id  = block->id.str();
+    actx.block_id  = id;
     actx.block_num = (int)block->block_num;
     actx.ts        = (std::string)block->header.timestamp.to_time_point();
 
     db_.add_block(actx, block);
-
-    auto block_id  = block->id.str();
-    auto block_num = block->block_num;
-    auto ts        = (std::string)block->header.timestamp.to_time_point(); 
 
     // transactions
     auto trx_num = 0;
@@ -388,25 +398,24 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
 }
 
 void
-postgres_plugin_impl::wipe_database(const std::string& name) {
+postgres_plugin_impl::wipe_database() {
     ilog("wipe database");
-    if(db_.exists_db(name)) {
-        db_.drop_all_tables();
-        db_.drop_all_sequences();
-    }
+    db_.drop_all_tables();
+    db_.drop_all_sequences();
 }
 
 void
-postgres_plugin_impl::init(const std::string& name) {
-    if(!db_.exists_db(name)) {
-        db_.create_db(name);
+postgres_plugin_impl::init(bool init_db) {
+    if(!init_db) {
+        try {
+            db_.check_version();
+            db_.check_last_sync_block();
+
+            last_sync_block_num_ = block_header::num_from_id(block_id_type(db_.last_sync_block_id()));
+        }
+        EVT_RETHROW_EXCEPTIONS(evt::postgres_plugin_exception,
+            "Check integrity of postgres database failed, please use --clear-postgres to clear database");
     }
-    db_.prepare_tables();
-
-    auto need_init = db_.is_table_empty("blocks");
-
-    // initilize evt interpreter
-    // interpreter.initialize_db();
 
     auto& chain_plug = app().get_plugin<chain_plugin>();
     auto& chain      = chain_plug.chain();
@@ -423,7 +432,10 @@ postgres_plugin_impl::init(const std::string& name) {
         applied_transaction(t);
     }));
 
-    if(need_init) {
+    if(init_db) {
+        db_.prepare_tables();
+        db_.prepare_stats();
+
         // HACK: Add EVT and PEVT manually
         auto gs = chain::genesis_state();
 
@@ -486,7 +498,7 @@ postgres_plugin::set_program_options(options_description& cli, options_descripti
     cfg.add_options()
         ("postgres-queue-size,q", bpo::value<uint>()->default_value(5120), "The queue size between evtd and postgres plugin thread.")
         ("postgres-uri,p", bpo::value<std::string>(), "PostgreSQL connection string, see: https://www.postgresql.org/docs/11/libpq-connect.html#LIBPQ-CONNSTRING for more detail.")
-        ("postgres-db", bpo::value<std::string>()->default_value("evt"), "Database name in postgres");
+        ("clear-postgres", bpo::bool_switch()->default_value(false), "clear postgres database")
         ;
 }
 
@@ -496,19 +508,20 @@ postgres_plugin::plugin_initialize(const variables_map& options) {
         ilog("initializing postgres_plugin");
         my_->configured_ = true;
 
-        if(options.at("replay-blockchain").as<bool>() || options.at("hard-replay-blockchain").as<bool>()) {
-            ilog("Replay requested: wiping postgres database on startup");
-            my_->wipe_database_on_startup_ = true;
-        } 
-        if(options.at("delete-all-blocks").as<bool>()) {
-            ilog("Deleted all blocks: wiping postgres database on startup");
-            my_->wipe_database_on_startup_ = true;
+        bool delete_state = false;
+        if(options.at("clear-postgres").as<bool>()) {
+            if(options.at("replay-blockchain").as<bool>() || options.at("hard-replay-blockchain").as<bool>()) {
+                ilog("Replay requested: wiping postgres database on startup");
+                delete_state = true;
+            }
+            if(options.at("delete-all-blocks").as<bool>()) {
+                ilog("Deleted all blocks: wiping postgres database on startup");
+                delete_state = true;
+            }
+            EVT_ASSERT(delete_state, postgres_plugin_exception,
+                "--clear-postgres option should be used with --(hard-)replay-blockchain or --delete-all-blocks option");
         }
-        if(options.count("import-reversible-blocks")) {
-            ilog("Importing reversible blocks: wiping postgres database on startup");
-            my_->wipe_database_on_startup_ = true;
-        }
-        
+
         if(options.count("postgres-queue-size")) {
             my_->queue_size_ = options.at("postgres-queue-size").as<uint>();
         }
@@ -516,16 +529,14 @@ postgres_plugin::plugin_initialize(const variables_map& options) {
         auto uri = options.at("postgres-uri").as<std::string>();
         ilog("connecting to ${u}", ("u", uri));
         
-        auto dbname = options.at("postgres-db").as<std::string>();
-
         my_->db_.connect(uri);
         my_->chain_id_ = app().get_plugin<chain_plugin>().chain().get_chain_id();
 
-        if(my_->wipe_database_on_startup_) {
-            my_->wipe_database(dbname);
+        if(delete_state) {
+            my_->wipe_database();
         }
 
-        my_->init(dbname);
+        my_->init(delete_state);
 
         my_->consume_thread_ = std::thread([this] { my_->consume_queues(); });
     }
