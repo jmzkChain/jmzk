@@ -4,7 +4,32 @@
  */
 #include <evt/chain/contracts/authorizer_ref.hpp>
 #include <boost/algorithm/string/predicate.hpp>
+#include <fmt/format.h>
 #include <evt/chain/exceptions.hpp>
+
+namespace evt { namespace chain { namespace contracts {
+
+std::string
+authorizer_ref::to_string() const {
+    switch(this->type()) {
+    case authorizer_ref::account_t: {
+        auto& key = this->get_account();
+        return fmt::format("[A] {}", (std::string)key);
+    }
+    case authorizer_ref::owner_t: {
+        return "[G] .OWNER";
+    }
+    case authorizer_ref::group_t: {
+        auto& name = this->get_group();
+        return fmt::format("[G] {}", (std::string)name);
+    }
+    default: {
+        EVT_ASSERT(false, authorizer_ref_type_exception, "Not valid ref type: ${type}", ("type",this->type()));
+    }
+    }  // switch
+}
+
+}}}  // namespac evt::chain::contracts
 
 namespace fc {
 
@@ -14,25 +39,7 @@ using evt::chain::contracts::authorizer_ref;
 
 void
 to_variant(const authorizer_ref& ref, fc::variant& v) {
-    switch(ref.type()) {
-    case authorizer_ref::account_t: {
-        auto& key = ref.get_account();
-        v = "[A] " + (std::string)key;
-        break;
-    }
-    case authorizer_ref::owner_t: {
-        v = "[G] .OWNER";
-        break;
-    }
-    case authorizer_ref::group_t: {
-        auto& name = ref.get_group();
-        v = "[G] " + (std::string)name;
-        break;
-    }
-    default: {
-        EVT_ASSERT(false, authorizer_ref_type_exception, "Not valid ref type: ${type}", ("type",ref.type()));
-    }
-    }  // switch
+    v = ref.to_string();
 }
 
 void
