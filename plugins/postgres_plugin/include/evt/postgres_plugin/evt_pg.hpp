@@ -113,9 +113,6 @@ private:
 private:
     pg_conn*    conn_;
     std::string last_sync_block_id_;
-
 };
-
-
 
 }  // namespace evt

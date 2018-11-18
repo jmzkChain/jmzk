@@ -4,7 +4,6 @@
  */
 #include <evt/postgres_plugin/evt_pg.hpp>
 
-#include <mutex>
 #define FMT_STRING_ALIAS 1
 #include <fmt/format.h>
 #include <libpq-fe.h>
