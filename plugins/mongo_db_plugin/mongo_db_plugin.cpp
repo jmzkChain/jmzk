@@ -183,8 +183,6 @@ mongo_db_plugin_impl::applied_transaction(const transaction_trace_ptr& ttp) {
 
 void
 mongo_db_plugin_impl::consume_queues() {
-    using namespace evt::__internal;
-
     try {
         while(true) {
             lock_.lock();

@@ -3,12 +3,12 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #pragma once
-#include <sstream>
+#include <stdint.h>
+#include <string>
+#include <fmt/format.h>
 #include <fc/exception/exception.hpp>
 #include <fc/reflect/reflect.hpp>
 #include <fc/variant.hpp>
-#include <stdint.h>
-#include <string>
 
 namespace evt { namespace chain {
 
@@ -39,14 +39,7 @@ public:
         v /= 100;
         int major = v;
 
-        std::string vstr;
-        vstr.reserve(10);
-        vstr.append(std::to_string(major));
-        vstr.push_back('.');
-        vstr.append(std::to_string(minor));
-        vstr.push_back('.');
-        vstr.append(std::to_string(patch));
-        return vstr;
+        return fmt::format("{}.{}.{}", major, minor, patch);
     }
 
 public:
