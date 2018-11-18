@@ -228,6 +228,20 @@ auto create_fungibles_table = R"sql(CREATE TABLE IF NOT EXISTS public.fungibles
                                         (creator)
                                         TABLESPACE pg_default;)sql";
 
+template<typename Iterator>
+void
+format_array_to(fmt::memory_buffer& buf, Iterator begin, Iterator end) {
+    fmt::format_to(buf, fmt("{{"));
+    if(begin != end) {
+        auto it = begin;
+        for(; it != end - 1; it++) {
+            fmt::format_to(buf, fmt("\"{}\","), (std::string)*it);
+        }
+        fmt::format_to(buf, fmt("\"{}\""), (std::string)*it);
+    }
+    fmt::format_to(buf, fmt("}}\t"));
+}
+
 }  // namespace __internal
 
 int
@@ -509,8 +523,9 @@ pg::add_block(add_context& actx, const block_ptr block) {
 
 int
 pg::add_trx(add_context& actx, const trx_recept_t& trx, const trx_t& strx, int seq_num, int elapsed, int charge) {
-    auto& cctx = actx.cctx;
+    using namespace __internal;
 
+    auto& cctx = actx.cctx;
     fmt::format_to(cctx.trxs_copy_,
         fmt("{}\t{:d}\t{}\t{}\t{:d}\t{}\t{}\t{:d}\t{}\tf\t{}\t{}\t"),
         strx.id().str(),
@@ -527,27 +542,11 @@ pg::add_trx(add_context& actx, const trx_recept_t& trx, const trx_t& strx, int s
         );;
 
     // signatures
-    fmt::format_to(cctx.trxs_copy_, fmt("{{"));
-    if(!strx.signatures.empty()) {
-        for(auto i = 0u; i < strx.signatures.size() - 1; i++) {
-            auto& sig = strx.signatures[i];
-            fmt::format_to(cctx.trxs_copy_, fmt("\"{}\","), (std::string)sig);
-        }
-        fmt::format_to(cctx.trxs_copy_, fmt("\"{}\""), (std::string)strx.signatures[strx.signatures.size()-1]);
-    }
-    fmt::format_to(cctx.trxs_copy_, fmt("}}\t"));
+    format_array_to(cctx.trxs_copy_, std::begin(strx.signatures), std::end(strx.signatures));
 
     // keys
-    fmt::format_to(cctx.trxs_copy_, fmt("{{"));
-    if(!strx.signatures.empty()) {
-        auto keys = strx.get_signature_keys(actx.chain_id);
-        for(auto i = 0u; i < keys.size(); i++) {
-            auto& key = *keys.nth(i);
-            fmt::format_to(cctx.trxs_copy_, fmt("\"{}\","), (std::string)key);
-        }
-        fmt::format_to(cctx.trxs_copy_, fmt("\"{}\""), (std::string)*keys.nth(keys.size()-1));
-    }
-    fmt::format_to(cctx.trxs_copy_, fmt("}}\t"));
+    auto keys = strx.get_signature_keys(actx.chain_id);
+    format_array_to(cctx.trxs_copy_, std::begin(keys), std::end(keys));
 
     // traces
     fmt::format_to(cctx.trxs_copy_, fmt("{}\t{}\t"), elapsed, charge);
@@ -755,15 +754,10 @@ PREPARE_SQL_ONCE(tf_plan, "UPDATE tokens SET owner = $1 WHERE id = $2;");
 
 int
 pg::upd_token(trx_context& tctx, const transfer& tf) {
+    using namespace __internal;
+
     auto owners_buf = fmt::memory_buffer();
-    fmt::format_to(owners_buf, fmt("{{"));
-    if(!tf.to.empty()) {
-        for(auto i = 0u; i < tf.to.size() - 1; i++) {
-            fmt::format_to(owners_buf, fmt("\"{}\","), (std::string)tf.to[i]);
-        }
-        fmt::format_to(owners_buf, fmt("\"{}\""), (std::string)tf.to[tf.to.size()-1]);
-    }
-    fmt::format_to(owners_buf, fmt("}}"));
+    format_array_to(owners_buf, std::begin(tf.to), std::end(tf.to));
 
     fmt::format_to(tctx.trx_buf_,
         fmt("EXECUTE tf_plan('{2}','{0}:{1}');"),
