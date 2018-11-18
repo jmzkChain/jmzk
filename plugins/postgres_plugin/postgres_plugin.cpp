@@ -408,6 +408,7 @@ void
 postgres_plugin_impl::init(bool init_db) {
     if(!init_db) {
         try {
+            db_.prepare_stmts();
             db_.check_version();
             db_.check_last_sync_block();
 
@@ -434,6 +435,7 @@ postgres_plugin_impl::init(bool init_db) {
 
     if(init_db) {
         db_.prepare_tables();
+        db_.prepare_stmts();
         db_.prepare_stats();
 
         // HACK: Add EVT and PEVT manually
@@ -497,8 +499,9 @@ void
 postgres_plugin::set_program_options(options_description& cli, options_description& cfg) {
     cfg.add_options()
         ("postgres-queue-size,q", bpo::value<uint>()->default_value(5120), "The queue size between evtd and postgres plugin thread.")
-        ("postgres-uri,p", bpo::value<std::string>(), "PostgreSQL connection string, see: https://www.postgresql.org/docs/11/libpq-connect.html#LIBPQ-CONNSTRING for more detail.")
-        ("clear-postgres", bpo::bool_switch()->default_value(false), "clear postgres database")
+        ("postgres-uri,p", bpo::value<std::string>(), 
+            "PostgreSQL connection string, see: https://www.postgresql.org/docs/11/libpq-connect.html#LIBPQ-CONNSTRING for more detail.")
+        ("clear-postgres", bpo::bool_switch()->default_value(false), "clear postgres database, use --delete-all-blocks otpion will force set this option")
         ;
 }
 
@@ -509,17 +512,17 @@ postgres_plugin::plugin_initialize(const variables_map& options) {
         my_->configured_ = true;
 
         bool delete_state = false;
+        if(options.at("delete-all-blocks").as<bool>()) {
+            ilog("Deleted all blocks: wiping postgres database on startup");
+            delete_state = true;
+        }
         if(options.at("clear-postgres").as<bool>()) {
             if(options.at("replay-blockchain").as<bool>() || options.at("hard-replay-blockchain").as<bool>()) {
                 ilog("Replay requested: wiping postgres database on startup");
                 delete_state = true;
             }
-            if(options.at("delete-all-blocks").as<bool>()) {
-                ilog("Deleted all blocks: wiping postgres database on startup");
-                delete_state = true;
-            }
             EVT_ASSERT(delete_state, postgres_plugin_exception,
-                "--clear-postgres option should be used with --(hard-)replay-blockchain or --delete-all-blocks option");
+                "--clear-postgres option should be used with --(hard-)replay-blockchain");
         }
 
         if(options.count("postgres-queue-size")) {

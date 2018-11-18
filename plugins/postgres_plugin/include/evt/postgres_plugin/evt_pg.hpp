@@ -62,6 +62,7 @@ public:
     int drop_all_tables();
     int drop_all_sequences();
     int prepare_tables();
+    int prepare_stmts();
     int prepare_stats();
 
 public:
@@ -83,13 +84,13 @@ public:
     static int add_trx(add_context&, const trx_recept_t&, const trx_t&, int seq_num, int elapsed, int charge);
     static int add_action(add_context&, const action_t&, const std::string& trx_id, int seq_num);
     
-    int get_latest_block_id(std::string& block_id);
+    int get_latest_block_id(std::string& block_id) const;
     int set_block_irreversible(trx_context&, const std::string& block_id);
-    int exists_block(const std::string& block_id);
+    int exists_block(const std::string& block_id) const;
 
     int add_stat(trx_context&, const std::string& key, const std::string& value);
     int upd_stat(trx_context&, const std::string& key, const std::string& value);
-    int read_stat(const std::string& key, std::string& value);
+    int read_stat(const std::string& key, std::string& value) const;
 
     int add_domain(trx_context&, const newdomain&);
     int upd_domain(trx_context&, const updatedomain&);
