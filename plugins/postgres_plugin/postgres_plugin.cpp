@@ -78,7 +78,8 @@ public:
     void wipe_database();
 
 public:
-    pg db_;
+    pg          db_;
+    std::string connstr_;
 
     abi_serializer              abi_;
     fc::optional<chain_id_type> chain_id_;
@@ -495,6 +496,11 @@ postgres_plugin::enabled() const {
     return my_->configured_;
 }
 
+const std::string&
+postgres_plugin::connstr() const {
+    return my_->connstr_;
+}
+
 void
 postgres_plugin::set_program_options(options_description& cli, options_description& cfg) {
     cfg.add_options()
@@ -534,6 +540,7 @@ postgres_plugin::plugin_initialize(const variables_map& options) {
         
         my_->db_.connect(uri);
         my_->chain_id_ = app().get_plugin<chain_plugin>().chain().get_chain_id();
+        my_->connstr_  = uri;
 
         if(delete_state) {
             my_->wipe_database();

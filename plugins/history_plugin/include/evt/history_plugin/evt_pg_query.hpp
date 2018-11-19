@@ -3,15 +3,20 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #pragma once
+#include <queue>
 #include <string>
 #include <boost/noncopyable.hpp>
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/ip/tcp.hpp>
 #include <evt/chain/block_state.hpp>
 #include <evt/chain/transaction.hpp>
 #include <evt/chain/contracts/types.hpp>
 
 struct pg_conn;
+struct pg_result;
 
 namespace evt {
+
 namespace chain { namespace contracts {
 struct abi_serializer;
 }}  // namespace chain::
@@ -23,17 +28,49 @@ using namespace evt::chain::contracts;
 
 
 class pg_query : boost::noncopyable {
+private:
+    struct task {
+    public:
+        task(int id, int type) : id(id), type(type) {}
+
+    public:
+        int id;
+        int type;
+    };
+
 public:
-    pg_query() : conn_(nullptr) {}
+    pg_query(boost::asio::io_context& io_serv)
+        : conn_(nullptr), io_serv_(io_serv), socket_(io_serv) {}
 
 public:
     int connect(const std::string& conn);
     int close();
     int prepare_stmts();
+    int begin_poll_read();
 
 public:
-    fc::variant get_tokens(const std::vector<chain::public_key_type>& pkeys, const fc::optional<domain_name>& domain);
+    int get_tokens_async(int id, const std::vector<chain::public_key_type>& pkeys, const fc::optional<domain_name>& domain);
+    int get_tokens_resume(int id, pg_result const*);
+
+    int get_domains_async(int id, const std::vector<chain::public_key_type>& pkeys);
+    int get_domains_resume(int id, pg_result const*);
+
+    int get_groups_async(int id, const std::vector<chain::public_key_type>& pkeys);
+    int get_groups_resume(int id, pg_result const*);
+
+    int get_fungibles_async(int id, const std::vector<chain::public_key_type>& pkeys);
+    int get_fungibles_resume(int id, pg_result const*);
+
+private:
+    int queue(int id, int task);
+    int poll_read();
 
 private:
     pg_conn* conn_;
+
+    std::queue<task>             tasks_;
+    boost::asio::io_context&     io_serv_;
+    boost::asio::ip::tcp::socket socket_;
 };
+
+}  // namespace evt

@@ -19,6 +19,7 @@
 #include <fc/variant_object.hpp>
 
 #include <evt/chain/contracts/evt_contract.hpp>
+#include <evt/history_plugin/evt_pg_query.hpp>
 
 namespace evt {
 
@@ -41,7 +42,8 @@ class history_plugin_impl {
 public:
     history_plugin_impl()
         : chain_(app().get_plugin<chain_plugin>().chain())
-        , abi_(chain_.get_abi_serializer()) {
+        , abi_(chain_.get_abi_serializer())
+        , pg_query_(app().get_io_service()) {
         auto& uri = app().get_plugin<mongo_db_plugin>().uri();
         
         client_ = mongocxx::client(uri);
@@ -59,6 +61,10 @@ public:
         tokens_col_    = db_["Tokens"];
         groups_col_    = db_["Groups"];
         fungibles_col_ = db_["Fungibles"];
+
+        pg_query_.connect(app().get_plugin<postgres_plugin>().connstr());
+        pg_query_.prepare_stmts();
+        pg_query_.begin_poll_read();
     }
 
 public:
@@ -101,6 +107,8 @@ public:
     
     const controller&     chain_;
     const abi_serializer& abi_;
+
+    pg_query pg_query_;
 
 private:
     mongocxx::collection blocks_col_;
@@ -521,41 +529,32 @@ history_plugin::plugin_shutdown() {
 
 namespace history_apis {
 
-fc::variant
-read_only::get_tokens(const get_tokens_params& params) {
+void
+read_only::get_tokens_async(int id, const get_tokens_params& params) {
     EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
 
-    return plugin_.my_->get_tokens_by_public_keys(params.keys, params.domain, params.name);
+    plugin_.my_->pg_query_.get_tokens_async(id, params.keys, params.domain);
 }
 
-fc::variant
-read_only::get_domains(const get_params& params) {
+void
+read_only::get_domains_async(int id, const get_params& params) {
     EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
 
-    auto domains = plugin_.my_->get_domains_by_public_keys(params.keys);
-    fc::variant result;
-    fc::to_variant(domains, result);
-    return result;
+    plugin_.my_->pg_query_.get_domains_async(id, params.keys);
 }
 
-fc::variant
-read_only::get_groups(const get_params& params) {
+void
+read_only::get_groups_async(int id, const get_params& params) {
     EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
 
-    auto groups = plugin_.my_->get_groups_by_public_keys(params.keys);
-    fc::variant result;
-    fc::to_variant(groups, result);
-    return result;
+    plugin_.my_->pg_query_.get_groups_async(id, params.keys);
 }
 
-fc::variant
-read_only::get_fungibles(const get_params& params) {
+void
+read_only::get_fungibles_async(int id, const get_params& params) {
     EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
 
-    auto fungibles = plugin_.my_->get_fungibles_by_public_keys(params.keys);
-    fc::variant result;
-    fc::to_variant(fungibles, result);
-    return result;
+    plugin_.my_->pg_query_.get_fungibles_async(id, params.keys);
 }
 
 fc::variant

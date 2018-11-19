@@ -337,6 +337,9 @@ FC_DECLARE_DERIVED_EXCEPTION( postgres_connection_exception, postgres_plugin_exc
 FC_DECLARE_DERIVED_EXCEPTION( postgres_exec_exception,       postgres_plugin_exception, 3230002, "Execute statements failed" );
 FC_DECLARE_DERIVED_EXCEPTION( postgres_version_exception,    postgres_plugin_exception, 3230003, "Version of postgres database is obsolete" );
 FC_DECLARE_DERIVED_EXCEPTION( postgres_sync_exception,       postgres_plugin_exception, 3230004, "Sync failed between postgres database and current blockchain state" );
+FC_DECLARE_DERIVED_EXCEPTION( postgres_send_exception,       postgres_plugin_exception, 3230005, "Send commands to postgres failed" );
+FC_DECLARE_DERIVED_EXCEPTION( postgres_poll_exception,       postgres_plugin_exception, 3230006, "Poll messages from postgres failed" );
+FC_DECLARE_DERIVED_EXCEPTION( postgres_query_exception,      postgres_plugin_exception, 3230007, "Query from postgres failed" );
 
 
 }} // evt::chain

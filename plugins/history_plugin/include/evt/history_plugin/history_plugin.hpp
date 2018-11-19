@@ -8,6 +8,7 @@
 #include <appbase/application.hpp>
 #include <evt/chain_plugin/chain_plugin.hpp>
 #include <evt/mongo_db_plugin/mongo_db_plugin.hpp>
+#include <evt/postgres_plugin/postgres_plugin.hpp>
 
 #include <evt/chain/controller.hpp>
 #include <evt/chain/types.hpp>
@@ -39,9 +40,8 @@ public:
     struct get_tokens_params {
         std::vector<public_key_type> keys;
         fc::optional<domain_name>    domain;
-        fc::optional<token_name>     name;
     };
-    fc::variant get_tokens(const get_tokens_params& params);
+    void get_tokens_async(int id, const get_tokens_params& params);
 
     struct get_params {
         std::vector<public_key_type> keys;
@@ -50,9 +50,9 @@ public:
     using get_groups_params = get_params;
     using get_fungibles_params = get_params;
 
-    fc::variant get_domains(const get_params& params);
-    fc::variant get_groups(const get_params& params);
-    fc::variant get_fungibles(const get_params& params);
+    void get_domains_async(int id, const get_params& params);
+    void get_groups_async(int id, const get_params& params);
+    void get_fungibles_async(int id, const get_params& params);
 
     struct get_actions_params {
         std::string                                     domain;
@@ -95,7 +95,7 @@ private:
 
 class history_plugin : public plugin<history_plugin> {
 public:
-    APPBASE_PLUGIN_REQUIRES((chain_plugin)(mongo_db_plugin))
+    APPBASE_PLUGIN_REQUIRES((chain_plugin)(mongo_db_plugin)(postgres_plugin))
 
     history_plugin();
     virtual ~history_plugin();
@@ -118,7 +118,7 @@ private:
 
 FC_REFLECT_ENUM(evt::history_apis::direction, (asc)(desc));
 FC_REFLECT(evt::history_apis::read_only::get_params, (keys));
-FC_REFLECT(evt::history_apis::read_only::get_tokens_params, (keys)(domain)(name));
+FC_REFLECT(evt::history_apis::read_only::get_tokens_params, (keys)(domain));
 FC_REFLECT(evt::history_apis::read_only::get_actions_params, (domain)(key)(dire)(names)(skip)(take));
 FC_REFLECT(evt::history_apis::read_only::get_fungible_actions_params, (sym_id)(dire)(addr)(skip)(take));
 FC_REFLECT(evt::history_apis::read_only::get_transaction_params, (id));

@@ -27,6 +27,7 @@ public:
 
 public:
     bool enabled() const;
+    const std::string& connstr() const;
 
 private:
     std::unique_ptr<class postgres_plugin_impl> my_;

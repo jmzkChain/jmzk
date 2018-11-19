@@ -4,6 +4,7 @@
  */
 #include <evt/history_plugin/evt_pg_query.hpp>
 
+#include <functional>
 #define FMT_STRING_ALIAS 1
 #include <fmt/format.h>
 #include <libpq-fe.h>
@@ -12,6 +13,7 @@
 #include <evt/chain/block_header.hpp>
 #include <evt/chain/exceptions.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
+#include <evt/http_plugin/http_plugin.hpp>
 
 namespace evt {
 
@@ -51,8 +53,21 @@ format_array_to(fmt::memory_buffer& buf, Iterator begin, Iterator end) {
     fmt::format_to(buf, fmt("}}\t"));
 }
 
-}  // namespace __internal
+enum task_type {
+    kGetTokens = 0,
+    kGetDomains,
+    kGetGroups,
+    kGetFungibles
+};
 
+template<typename T>
+int
+response_ok(int id, const T& obj) {
+    app().get_plugin<http_plugin>().set_deferred_response(id, 200, fc::json::to_string(obj));
+    return PG_OK;
+}
+
+}  // namespace __internal
 
 int
 pg_query::connect(const std::string& conn) {
@@ -61,6 +76,7 @@ pg_query::connect(const std::string& conn) {
     auto status = PQstatus(conn_);
     EVT_ASSERT(status == CONNECTION_OK, chain::postgres_connection_exception, "Connect failed");
 
+    socket_ = boost::asio::ip::tcp::socket(io_serv_, boost::asio::ip::tcp::v4(), PQsocket(conn_));
     return PG_OK;
 }
 
@@ -84,19 +100,202 @@ pg_query::prepare_stmts() {
     return PG_OK;
 }
 
-PREPARE_SQL_ONCE(gt_plan, "SELECT domain, name FROM tokens WHERE $1 <@ owner AND domain = $2");
+int
+pg_query::begin_poll_read() {
+    socket_.async_wait(boost::asio::ip::tcp::socket::wait_type::wait_read, std::bind(&pg_query::poll_read, this));
+    return PG_OK;
+}
 
-fc::variant
-pg::get_tokens(const std::vector<chain::public_key_type>& pkeys, const fc::optional<domain_name>& domain) {
+int
+pg_query::queue(int id, int task) {
+    tasks_.emplace(id, task);
+    return PG_OK;
+}
+
+int
+pg_query::poll_read() {
+    using namespace __internal;
+
+    while(1) {
+        auto r = PQconsumeInput(conn_);
+        EVT_ASSERT(r, chain::postgres_poll_exception, "Poll messages from postgres failed, detail: ${d}", ("d",PQerrorMessage(conn_)));
+
+        if(PQisBusy(conn_)) {
+            break;
+        }
+
+        auto re = PQgetResult(conn_);
+        if(re == NULL) {
+            break;
+        }
+
+        auto t = tasks_.front();
+        tasks_.pop();
+
+        switch(t.type) {
+        case kGetTokens: {
+            get_tokens_resume(t.id, re);
+            break;
+        }
+        case kGetDomains: {
+            get_domains_resume(t.id, re);
+            break;
+        }
+        case kGetGroups: {
+            get_groups_resume(t.id, re);
+            break;
+        }
+        case kGetFungibles: {
+            get_fungibles_resume(t.id, re);
+            break;
+        }
+        };  // switch
+
+        PQclear(re);
+    }
+
+    socket_.async_wait(boost::asio::ip::tcp::socket::wait_type::wait_read, std::bind(&pg_query::poll_read, this));
+    return PG_OK;
+}
+
+PREPARE_SQL_ONCE(gt_plan, "SELECT domain, name FROM tokens WHERE $1 @> owner AND domain = $2");
+PREPARE_SQL_ONCE(gt_plan2, "SELECT domain, name FROM tokens WHERE $1 @> owner");
+
+int
+pg_query::get_tokens_async(int id, const std::vector<chain::public_key_type>& pkeys, const fc::optional<domain_name>& domain) {
     using namespace __internal;
 
     auto pkeys_buf = fmt::memory_buffer();
     format_array_to(pkeys_buf, std::begin(pkeys), std::end(pkeys));
 
-    std::string d = domain.valid() ? (std::string)domain : "*";
+    auto stmt = std::string();
+    if(domain.valid()) {
+        stmt = fmt::format(fmt("EXECUTE gt_plan ('{}','{}');"), fmt::to_string(pkeys_buf), (std::string)*domain);
+    }
+    else {
+        stmt = fmt::format(fmt("EXECUTE gt_plan2 ('{}');"), fmt::to_string(pkeys_buf));
+    }
 
-    
+    auto r = PQsendQuery(conn_, stmt.c_str());
+    EVT_ASSERT(r == 1, chain::postgres_send_exception, "Send get tokens command failed, detail: ${d}", ("d",PQerrorMessage(conn_)));
 
-    return PG_OK;
+    return queue(id, kGetTokens);
 }
+
+int
+pg_query::get_tokens_resume(int id, pg_result const* r) {
+    using namespace __internal;
+
+    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get tokens failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+
+    auto results = fc::mutable_variant_object();
+    for(int i = 0; i < PQntuples(r); i++) {
+        auto domain = PQgetvalue(r, i, 0);
+        auto name   = PQgetvalue(r, i, 1);
+
+        if(results.find(domain) == results.end()) {
+            results.set(domain, fc::variants());
+        }
+        results[domain].get_array().emplace_back(name);
+    }
+
+    return response_ok(id, results);
+}
+
+PREPARE_SQL_ONCE(gd_plan, "SELECT name FROM domains WHERE creator = ANY($1);");
+
+int
+pg_query::get_domains_async(int id, const std::vector<chain::public_key_type>& pkeys) {
+    using namespace __internal;
+
+    auto pkeys_buf = fmt::memory_buffer();
+    format_array_to(pkeys_buf, std::begin(pkeys), std::end(pkeys));
+
+    auto stmt = fmt::format(fmt("EXECUTE gd_plan ('{}')"), fmt::to_string(pkeys_buf));
+
+    auto r = PQsendQuery(conn_, stmt.c_str());
+    EVT_ASSERT(r == 1, chain::postgres_send_exception, "Send get domains command failed, detail: ${d}", ("d",PQerrorMessage(conn_)));
+
+    return queue(id, kGetDomains);
+}
+
+int
+pg_query::get_domains_resume(int id, pg_result const* r) {
+    using namespace __internal;
+
+    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get domains failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+
+    auto results = std::vector<const char*>();
+    for(int i = 0; i < PQntuples(r); i++) {
+        auto name = PQgetvalue(r, i, 0);
+        results.emplace_back(name);
+    }
+
+    return response_ok(id, results);
+}
+
+PREPARE_SQL_ONCE(gg_plan, "SELECT name FROM groups WHERE key = ANY($1);");
+
+int
+pg_query::get_groups_async(int id, const std::vector<chain::public_key_type>& pkeys) {
+    using namespace __internal;
+
+    auto pkeys_buf = fmt::memory_buffer();
+    format_array_to(pkeys_buf, std::begin(pkeys), std::end(pkeys));
+
+    auto stmt = fmt::format(fmt("EXECUTE gg_plan ('{}')"), fmt::to_string(pkeys_buf));
+
+    auto r = PQsendQuery(conn_, stmt.c_str());
+    EVT_ASSERT(r == 1, chain::postgres_send_exception, "Send get groups command failed, detail: ${d}", ("d",PQerrorMessage(conn_)));
+
+    return queue(id, kGetGroups);
+}
+
+int
+pg_query::get_groups_resume(int id, pg_result const* r) {
+    using namespace __internal;
+
+    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get groups failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+
+    auto results = std::vector<const char*>();
+    for(int i = 0; i < PQntuples(r); i++) {
+        auto name = PQgetvalue(r, i, 0);
+        results.emplace_back(name);
+    }
+
+    return response_ok(id, results);
+}
+
+PREPARE_SQL_ONCE(gf_plan, "SELECT sym_id FROM fungibles WHERE creator = ANY($1);");
+
+int
+pg_query::get_fungibles_async(int id, const std::vector<chain::public_key_type>& pkeys) {
+    using namespace __internal;
+
+    auto pkeys_buf = fmt::memory_buffer();
+    format_array_to(pkeys_buf, std::begin(pkeys), std::end(pkeys));
+
+    auto stmt = fmt::format(fmt("EXECUTE gf_plan ('{}')"), fmt::to_string(pkeys_buf));
+
+    auto r = PQsendQuery(conn_, stmt.c_str());
+    EVT_ASSERT(r == 1, chain::postgres_send_exception, "Send get fungibles command failed, detail: ${d}", ("d",PQerrorMessage(conn_)));
+
+    return queue(id, kGetFungibles);
+}
+
+int
+pg_query::get_fungibles_resume(int id, pg_result const* r) {
+    using namespace __internal;
+
+    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get fungibles failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+
+    auto results = std::vector<int64_t>();
+    for(int i = 0; i < PQntuples(r); i++) {
+        auto sym_id = PQgetvalue(r, i, 0);
+        results.emplace_back(boost::lexical_cast<int64_t>(sym_id));
+    }
+
+    return response_ok(id, results);
+}
+
 }  // namepsace evt
