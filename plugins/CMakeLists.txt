@@ -16,16 +16,16 @@ add_subdirectory(trafficgen_plugin)
 
 if(ENABLE_MONGODB_SUPPORT)
     add_subdirectory(mongo_db_plugin)
-    add_subdirectory(history_plugin)
-    add_subdirectory(history_api_plugin)
 else()
-    message(STATUS "Not enabled mongo_db suuport, mongo_db_plugin and history_plguin will be omitted.")
+    message(STATUS "Not enabled mongo_db suuport, mongo_db_plugin will be omitted.")
 endif()
 
 if(ENABLE_POSTGRES_SUPPORT)
     add_subdirectory(postgres_plugin)
+    add_subdirectory(history_plugin)
+    add_subdirectory(history_api_plugin)
 else()
-    message(STATUS "Not enabled postgresql suuport, postgresql_plugin will be omitted.")
+    message(STATUS "Not enabled postgresql suuport, postgresql_plugin and history_plguin will be omitted.")
 endif()
 
 # Forward variables to top level so packaging picks them up
