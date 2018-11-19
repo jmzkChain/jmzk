@@ -130,6 +130,10 @@ auto create_actions_table = R"sql(CREATE TABLE IF NOT EXISTS public.actions
                                   CREATE INDEX IF NOT EXISTS trx_id_index
                                       ON public.actions USING btree
                                       (trx_id)
+                                      TABLESPACE pg_default;
+                                  CREATE INDEX IF NOT EXISTS data_index
+                                      ON public.actions USING gin
+                                      (data jsonb_path_ops)
                                       TABLESPACE pg_default;)sql";
 
 auto create_metas_table = R"sql(CREATE SEQUENCE IF NOT EXISTS metas_id_seq;
