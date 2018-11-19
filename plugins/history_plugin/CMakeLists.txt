@@ -20,8 +20,10 @@ target_compile_definitions(history_plugin
 )
 
 target_link_libraries(history_plugin
-    PUBLIC chain_plugin mongo_db_plugin postgres_plugin evt_chain appbase fc
+    PUBLIC chain_plugin mongo_db_plugin postgres_plugin evt_chain appbase fc fmt-header-only
     ${LIBBSONC_LIBRARIES} ${LIBMONGOC_LIBRARIES}
     ${LIBBSONCXX_LIBRARIES} ${LIBMONGOCXX_LIBRARIES}
     ${LIBPQ_LIBRARIES}
 )
+
+target_compile_definitions(history_plugin PUBLIC FMT_STRING_ALIAS=1)

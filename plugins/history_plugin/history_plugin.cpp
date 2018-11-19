@@ -533,36 +533,35 @@ void
 read_only::get_tokens_async(int id, const get_tokens_params& params) {
     EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
 
-    plugin_.my_->pg_query_.get_tokens_async(id, params.keys, params.domain);
+    plugin_.my_->pg_query_.get_tokens_async(id, params);
 }
 
 void
 read_only::get_domains_async(int id, const get_params& params) {
     EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
 
-    plugin_.my_->pg_query_.get_domains_async(id, params.keys);
+    plugin_.my_->pg_query_.get_domains_async(id, params);
 }
 
 void
 read_only::get_groups_async(int id, const get_params& params) {
     EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
 
-    plugin_.my_->pg_query_.get_groups_async(id, params.keys);
+    plugin_.my_->pg_query_.get_groups_async(id, params);
 }
 
 void
 read_only::get_fungibles_async(int id, const get_params& params) {
     EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
 
-    plugin_.my_->pg_query_.get_fungibles_async(id, params.keys);
+    plugin_.my_->pg_query_.get_fungibles_async(id, params);
 }
 
-fc::variant
-read_only::get_actions(const get_actions_params& params) {
+void
+read_only::get_actions_async(int id, const get_actions_params& params) {
     EVT_ASSERT(plugin_.my_, mongodb_plugin_not_enabled_exception, "Mongodb plugin is not enabled.");
 
-    auto dire = (params.dire.valid() && *params.dire == direction::asc) ? direction::asc : direction::desc;
-    return plugin_.my_->get_actions(params.domain, params.key, params.names, dire, params.skip, params.take);
+    plugin_.my_->pg_query_.get_actions_async(id, params);
 }
 
 fc::variant

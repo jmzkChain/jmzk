@@ -340,6 +340,7 @@ FC_DECLARE_DERIVED_EXCEPTION( postgres_sync_exception,       postgres_plugin_exc
 FC_DECLARE_DERIVED_EXCEPTION( postgres_send_exception,       postgres_plugin_exception, 3230005, "Send commands to postgres failed" );
 FC_DECLARE_DERIVED_EXCEPTION( postgres_poll_exception,       postgres_plugin_exception, 3230006, "Poll messages from postgres failed" );
 FC_DECLARE_DERIVED_EXCEPTION( postgres_query_exception,      postgres_plugin_exception, 3230007, "Query from postgres failed" );
+FC_DECLARE_DERIVED_EXCEPTION( postgres_limit_exception,      postgres_plugin_exception, 3230008, "Exceed postgres query limit" );
 
 
 }} // evt::chain

@@ -5,7 +5,6 @@
 #include <evt/history_plugin/evt_pg_query.hpp>
 
 #include <functional>
-#define FMT_STRING_ALIAS 1
 #include <fmt/format.h>
 #include <libpq-fe.h>
 #include <boost/lexical_cast.hpp>
@@ -57,13 +56,21 @@ enum task_type {
     kGetTokens = 0,
     kGetDomains,
     kGetGroups,
-    kGetFungibles
+    kGetFungibles,
+    kGetActions
 };
 
 template<typename T>
 int
 response_ok(int id, const T& obj) {
     app().get_plugin<http_plugin>().set_deferred_response(id, 200, fc::json::to_string(obj));
+    return PG_OK;
+}
+
+template<>
+int
+response_ok<std::string>(int id, const std::string& json) {
+    app().get_plugin<http_plugin>().set_deferred_response(id, 200, json);
     return PG_OK;
 }
 
@@ -149,6 +156,10 @@ pg_query::poll_read() {
             get_fungibles_resume(t.id, re);
             break;
         }
+        case kGetActions: {
+            get_actions_resume(t.id, re);
+            break;
+        }
         };  // switch
 
         PQclear(re);
@@ -158,19 +169,19 @@ pg_query::poll_read() {
     return PG_OK;
 }
 
-PREPARE_SQL_ONCE(gt_plan, "SELECT domain, name FROM tokens WHERE $1 @> owner AND domain = $2");
-PREPARE_SQL_ONCE(gt_plan2, "SELECT domain, name FROM tokens WHERE $1 @> owner");
+PREPARE_SQL_ONCE(gt_plan,  "SELECT domain, name FROM tokens WHERE $1 @> owner AND domain = $2");
+PREPARE_SQL_ONCE(gt_plan2, "SELECT domain, name FROM tokens WHERE $1 @> owner");  // without domain filter
 
 int
-pg_query::get_tokens_async(int id, const std::vector<chain::public_key_type>& pkeys, const fc::optional<domain_name>& domain) {
+pg_query::get_tokens_async(int id, const read_only::get_tokens_params& params) {
     using namespace __internal;
 
     auto pkeys_buf = fmt::memory_buffer();
-    format_array_to(pkeys_buf, std::begin(pkeys), std::end(pkeys));
+    format_array_to(pkeys_buf, std::begin(params.keys), std::end(params.keys));
 
     auto stmt = std::string();
-    if(domain.valid()) {
-        stmt = fmt::format(fmt("EXECUTE gt_plan ('{}','{}');"), fmt::to_string(pkeys_buf), (std::string)*domain);
+    if(params.domain.valid()) {
+        stmt = fmt::format(fmt("EXECUTE gt_plan ('{}','{}');"), fmt::to_string(pkeys_buf), (std::string)*params.domain);
     }
     else {
         stmt = fmt::format(fmt("EXECUTE gt_plan2 ('{}');"), fmt::to_string(pkeys_buf));
@@ -205,11 +216,11 @@ pg_query::get_tokens_resume(int id, pg_result const* r) {
 PREPARE_SQL_ONCE(gd_plan, "SELECT name FROM domains WHERE creator = ANY($1);");
 
 int
-pg_query::get_domains_async(int id, const std::vector<chain::public_key_type>& pkeys) {
+pg_query::get_domains_async(int id, const read_only::get_params& params) {
     using namespace __internal;
 
     auto pkeys_buf = fmt::memory_buffer();
-    format_array_to(pkeys_buf, std::begin(pkeys), std::end(pkeys));
+    format_array_to(pkeys_buf, std::begin(params.keys), std::end(params.keys));
 
     auto stmt = fmt::format(fmt("EXECUTE gd_plan ('{}')"), fmt::to_string(pkeys_buf));
 
@@ -237,11 +248,11 @@ pg_query::get_domains_resume(int id, pg_result const* r) {
 PREPARE_SQL_ONCE(gg_plan, "SELECT name FROM groups WHERE key = ANY($1);");
 
 int
-pg_query::get_groups_async(int id, const std::vector<chain::public_key_type>& pkeys) {
+pg_query::get_groups_async(int id, const read_only::get_params& params) {
     using namespace __internal;
 
     auto pkeys_buf = fmt::memory_buffer();
-    format_array_to(pkeys_buf, std::begin(pkeys), std::end(pkeys));
+    format_array_to(pkeys_buf, std::begin(params.keys), std::end(params.keys));
 
     auto stmt = fmt::format(fmt("EXECUTE gg_plan ('{}')"), fmt::to_string(pkeys_buf));
 
@@ -269,11 +280,11 @@ pg_query::get_groups_resume(int id, pg_result const* r) {
 PREPARE_SQL_ONCE(gf_plan, "SELECT sym_id FROM fungibles WHERE creator = ANY($1);");
 
 int
-pg_query::get_fungibles_async(int id, const std::vector<chain::public_key_type>& pkeys) {
+pg_query::get_fungibles_async(int id, const read_only::get_params& params) {
     using namespace __internal;
 
     auto pkeys_buf = fmt::memory_buffer();
-    format_array_to(pkeys_buf, std::begin(pkeys), std::end(pkeys));
+    format_array_to(pkeys_buf, std::begin(params.keys), std::end(params.keys));
 
     auto stmt = fmt::format(fmt("EXECUTE gf_plan ('{}')"), fmt::to_string(pkeys_buf));
 
@@ -296,6 +307,127 @@ pg_query::get_fungibles_resume(int id, pg_result const* r) {
     }
 
     return response_ok(id, results);
+}
+
+PREPARE_SQL_ONCE(ga_plan, R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
+                                FROM actions
+                                JOIN blocks ON actions.block_id = blocks.block_id
+                                WHERE domain = $1
+                                ORDER BY actions.created_at $2 actions.seq_num $2
+                                LIMIT $3 OFFSET $4
+                                )sql");
+
+// with key filter
+PREPARE_SQL_ONCE(ga_plan2, R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
+                                 FROM actions
+                                 JOIN blocks ON actions.block_id = blocks.block_id
+                                 WHERE domain = $1 AND key = $2
+                                 ORDER BY actions.created_at $3 actions.seq_num $3
+                                 LIMIT $4 OFFSET $5
+                                 )sql");
+
+
+// with name filter
+PREPARE_SQL_ONCE(ga_plan3, R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
+                                 FROM actions
+                                 JOIN blocks ON actions.block_id = blocks.block_id
+                                 WHERE domain = $1 AND name = ANY($2)
+                                 ORDER BY actions.created_at $3 actions.seq_num $3
+                                 LIMIT $4 OFFSET $5
+                                 )sql");
+
+
+// with key and name filter
+PREPARE_SQL_ONCE(ga_plan4, R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
+                                 FROM actions
+                                 JOIN blocks ON actions.block_id = blocks.block_id
+                                 WHERE domain = $1 AND key = $2 AND name = ANY($3)
+                                 ORDER BY actions.created_at $4 actions.seq_num $4
+                                 LIMIT $5 OFFSET $6
+                                 )sql");
+
+int
+pg_query::get_actions_async(int id, const read_only::get_actions_params& params) {
+    using namespace __internal;
+
+    int s = 0, t = 10;
+    if(params.skip.valid()) {
+        s = *params.skip;
+    }
+    if(params.take.valid()) {
+        t = *params.take;
+        EVT_ASSERT(t <= 20, chain::postgres_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 20 per query");
+    }
+
+    auto dire = (params.dire.valid() && *params.dire == direction::asc) ? "ASC" : "DESC";
+    auto stmt = std::string();
+
+    int j = 0;
+    if(params.key.valid()) {
+        j += 1;
+    }
+    if(!params.names.empty()) {
+        j += 2;
+    }
+
+    switch(j) {
+    case 0 : { // only domain
+        stmt = fmt::format(fmt("EXECUTE ga_plan ('{}',{},{},{});"), (std::string)params.domain, dire, t, s);
+        break;
+    }
+    case 1: { // domain + key
+        stmt = fmt::format(fmt("EXECUTE ga_plan2 ('{}','{}',{},{},{});"), (std::string)params.domain, (std::string)*params.key, dire, t, s);
+        break;
+    }
+    case 2: { // domain + name
+        auto names_buf = fmt::memory_buffer();
+        format_array_to(names_buf, std::begin(params.names), std::end(params.names));
+
+        stmt = fmt::format(fmt("EXECUTE ga_plan3 ('{}','{}',{},{},{});"), (std::string)params.domain, fmt::to_string(names_buf), dire, t, s);
+        break;
+    }
+    case 3: { // domain + key + name
+        auto names_buf = fmt::memory_buffer();
+        format_array_to(names_buf, std::begin(params.names), std::end(params.names));
+
+        stmt = fmt::format(fmt("EXECUTE ga_plan4 ('{}','{}','{}',{},{},{});"), (std::string)params.domain, (std::string)*params.key, fmt::to_string(names_buf), dire, t, s);
+        break;
+    }
+    };  // switch
+
+    auto r = PQsendQuery(conn_, stmt.c_str());
+    EVT_ASSERT(r == 1, chain::postgres_send_exception, "Send get fungibles command failed, detail: ${d}", ("d",PQerrorMessage(conn_)));
+
+    return queue(id, kGetActions);
+}
+
+int
+pg_query::get_actions_resume(int id, pg_result const* r) {
+    using namespace __internal;
+
+    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get actions failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+
+    auto builder = fmt::memory_buffer();
+    auto n       = PQntuples(r);
+
+    fmt::format_to(builder, "[");
+    for(int i = 0; i < n; i++) {
+        fmt::format_to(builder,
+            fmt(R"({{"trx_id":"{}","name":"{}","domain":"{}","key":"{}","data":{},"timestamp":"{}"}})"),
+            PQgetvalue(r, i, 0),
+            PQgetvalue(r, i, 1),
+            PQgetvalue(r, i, 2),
+            PQgetvalue(r, i, 3),
+            PQgetvalue(r, i, 4),
+            PQgetvalue(r, i, 5)
+            );
+        if(i < n - 1) {
+            fmt::format_to(builder, ",");
+        }
+    }
+    fmt::format_to(builder, "]");
+
+    return response_ok(id, fmt::to_string(builder));
 }
 
 }  // namepsace evt

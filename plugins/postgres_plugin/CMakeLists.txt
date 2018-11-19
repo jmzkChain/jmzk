@@ -13,3 +13,5 @@ target_include_directories(postgres_plugin
 target_link_libraries(postgres_plugin
       PUBLIC chain_plugin evt_chain appbase fc fmt-header-only ${LIBPQ_LIBRARIES}
       )
+
+target_compile_definitions(postgres_plugin PUBLIC FMT_STRING_ALIAS=1)

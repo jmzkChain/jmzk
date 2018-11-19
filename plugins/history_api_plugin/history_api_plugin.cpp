@@ -70,8 +70,7 @@ history_api_plugin::plugin_startup() {
     my.reset(new history_api_plugin_impl(app().get_plugin<chain_plugin>().chain()));
     auto ro_api = app().get_plugin<history_plugin>().get_read_only_api();
 
-    app().get_plugin<http_plugin>().add_api({HISTORY_RO_CALL(get_actions, 200),
-                                             HISTORY_RO_CALL(get_fungible_actions, 200),
+    app().get_plugin<http_plugin>().add_api({HISTORY_RO_CALL(get_fungible_actions, 200),
                                              HISTORY_RO_CALL(get_transaction, 200),
                                              HISTORY_RO_CALL(get_transactions, 200),
                                          });
@@ -79,7 +78,8 @@ history_api_plugin::plugin_startup() {
     app().get_plugin<http_plugin>().add_async_api({HISTORY_RO_ASYNC_CALL(get_tokens),
                                                    HISTORY_RO_ASYNC_CALL(get_domains),
                                                    HISTORY_RO_ASYNC_CALL(get_groups),
-                                                   HISTORY_RO_ASYNC_CALL(get_fungibles)});
+                                                   HISTORY_RO_ASYNC_CALL(get_fungibles),
+                                                   HISTORY_RO_ASYNC_CALL(get_actions)});
 }
 
 void

@@ -4,7 +4,6 @@
  */
 #include <evt/postgres_plugin/evt_pg.hpp>
 
-#define FMT_STRING_ALIAS 1
 #include <fmt/format.h>
 #include <libpq-fe.h>
 #include <boost/lexical_cast.hpp>

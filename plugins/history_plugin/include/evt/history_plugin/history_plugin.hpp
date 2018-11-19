@@ -62,7 +62,7 @@ public:
         fc::optional<int>                               skip;
         fc::optional<int>                               take;
     };
-    fc::variant get_actions(const get_actions_params& params);
+    void get_actions_async(int id, const get_actions_params& params);
 
     struct get_fungible_actions_params {
         symbol_id_type                                  sym_id;
