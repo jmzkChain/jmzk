@@ -1,6 +1,6 @@
 FROM ubuntu:18.04
 
-LABEL author="Harry <harrywong@live.com>" maintainer="Harry <harrywong@live.com>" version="0.1.0" \
+LABEL author="Harry <harrywong@live.com>" maintainer="Harry <harrywong@live.com>" version="1.1.0" \
   description="This is a base image for building everitoken/evt"
 
 RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
@@ -66,6 +66,13 @@ RUN git clone -b master https://github.com/everitoken/breakpad.git \
     && ./configure --prefix=/usr/local\
     && make -j$(nproc) install \
     && cd .. && rm -rf breakpad
+
+RUN wgt https://ftp.postgresql.org/pub/source/v11.1/postgresql-11.1.tar.bz2 -O - | tar -xj \
+    && cd postgresql-11.1 \
+    && ./configure --prefix=/usr/local \
+    && make -C src/include install \
+    && make -C src/interfaces install \
+    && cd .. && rm -rf postgresql-11.1
 
 RUN cp /usr/bin/ccache /usr/local/bin/
 RUN ln -s ccache /usr/local/bin/gcc
