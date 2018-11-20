@@ -35,8 +35,8 @@ public:
     const std::string& connstr() const;
 
 public:
-    void read_from_snapshot(const std::shared_ptr<snapshot_reader>& snapshot);
-    void write_snapshot(const std::shared_ptr<snapshot_writer>& snapshot) const;
+    void read_from_snapshot(const std::shared_ptr<chain::snapshot_reader>& snapshot);
+    void write_snapshot(const std::shared_ptr<chain::snapshot_writer>& snapshot) const;
 
 private:
     std::unique_ptr<class postgres_plugin_impl> my_;

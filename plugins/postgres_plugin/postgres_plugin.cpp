@@ -503,13 +503,13 @@ postgres_plugin::connstr() const {
 }
 
 void
-read_from_snapshot(const std::shared_ptr<snapshot_reader>& snapshot) {
-
+postgres_plugin::read_from_snapshot(const std::shared_ptr<chain::snapshot_reader>& snapshot) {
+    my_->db_.restore(snapshot);
 }
 
 void
-write_snapshot(const std::shared_ptr<snapshot_writer>& snapshot) const {
-
+postgres_plugin::write_snapshot(const std::shared_ptr<chain::snapshot_writer>& snapshot) const {
+    my_->db_.backup(snapshot);
 }
 
 void

@@ -15,9 +15,14 @@
 struct pg_conn;
 
 namespace evt {
-namespace chain { namespace contracts {
+namespace chain {
+class snapshot_writer;
+class snapshot_reader;
+
+namespace contracts {
 struct abi_serializer;
-}}  // namespace chain::contracts
+}  // namespace contracts
+}  // namespace chain
 
 using namespace evt::chain::contracts;
 
@@ -69,8 +74,8 @@ public:
     int prepare_stats();
 
 public:
-    int backup(const std::function<std::ostream&(std::string)>&) const;
-    int restore(const std::function<std::istream&(std::string)>&);
+    int backup(const std::shared_ptr<chain::snapshot_writer>& snapshot) const;
+    int restore(const std::shared_ptr<chain::snapshot_reader>& snapshot);
 
 public:
     int check_version();

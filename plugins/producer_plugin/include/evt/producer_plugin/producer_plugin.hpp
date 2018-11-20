@@ -72,3 +72,4 @@ private:
 FC_REFLECT(evt::producer_plugin::runtime_options, (max_transaction_time)(max_irreversible_block_age)(produce_time_offset_us)(last_block_time_offset_us));
 FC_REFLECT(evt::producer_plugin::integrity_hash_information, (head_block_id)(integrity_hash));
 FC_REFLECT(evt::producer_plugin::snapshot_information, (head_block_id)(snapshot_name));
+FC_REFLECT(evt::producer_plugin::create_snapshot_options, (postgres));

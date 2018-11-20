@@ -838,7 +838,7 @@ producer_plugin::get_integrity_hash() const {
 }
 
 producer_plugin::snapshot_information
-producer_plugin::create_snapshot() const {
+producer_plugin::create_snapshot(const create_snapshot_options& options) const {
     chain::controller& chain = app().get_plugin<chain_plugin>().chain();
 
     auto reschedule = fc::make_scoped_exit([this]() {
