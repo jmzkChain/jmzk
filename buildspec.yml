@@ -15,7 +15,7 @@ phases:
       - mkdir -p build && cd build
       - export CCACHE_DIR="${CODEBUILD_SRC_DIR}/build/.ccache"
       - export CCACHE_NODIRECT
-      - cmake ../ -G"Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=/usr/local/bin/cc -DCMAKE_CXX_COMPILER=/usr/local/bin/c++ -DSecp256k1_ROOT_DIR=/usr/local -DENABLE_BENCHMARKS=ON -DENABLE_MONGODB_SUPPORT=ON -DENABLE_BIND_LIBRARIES=ON
+      - cmake ../ -G"Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=/usr/local/bin/cc -DCMAKE_CXX_COMPILER=/usr/local/bin/c++ -DSecp256k1_ROOT_DIR=/usr/local -DENABLE_BENCHMARKS=ON -DENABLE_MONGODB_SUPPORT=ON -DENABLE_POSTGRES_SUPPORT=ON -DENABLE_BIND_LIBRARIES=ON
       - echo Building...
       - ninja -j$(nproc) all
   post_build:
