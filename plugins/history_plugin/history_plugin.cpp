@@ -20,6 +20,10 @@ public:
         pg_query_.begin_poll_read();
     }
 
+    ~history_plugin_impl() {
+        pg_query_.close();
+    }
+
 public:
     pg_query pg_query_;
 };

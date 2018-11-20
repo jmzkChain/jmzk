@@ -479,6 +479,7 @@ postgres_plugin_impl::~postgres_plugin_impl() {
         cond_.notify_one();
 
         consume_thread_.join();
+        db_.close();
     }
     catch(std::exception& e) {
         elog("Exception on postgres_plugin shutdown of consume thread: ${e}", ("e", e.what()));
@@ -499,6 +500,16 @@ postgres_plugin::enabled() const {
 const std::string&
 postgres_plugin::connstr() const {
     return my_->connstr_;
+}
+
+void
+read_from_snapshot(const std::shared_ptr<snapshot_reader>& snapshot) {
+
+}
+
+void
+write_snapshot(const std::shared_ptr<snapshot_writer>& snapshot) const {
+
 }
 
 void

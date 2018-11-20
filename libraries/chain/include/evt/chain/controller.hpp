@@ -7,7 +7,6 @@
 #include <boost/signals2/signal.hpp>
 #include <evt/chain/block_state.hpp>
 #include <evt/chain/genesis_state.hpp>
-#include <evt/chain/snapshot.hpp>
 #include <evt/chain/trace.hpp>
 
 namespace chainbase {
@@ -27,6 +26,9 @@ using chainbase::database;
 
 class dynamic_global_property_object;
 class global_property_object;
+
+class snapshot_writer;
+class snapshot_reader;
 
 namespace contracts {
 struct abi_serializer;
@@ -85,7 +87,7 @@ public:
     ~controller();
 
     void add_indices();
-    void startup(const snapshot_reader_ptr& snapshot = nullptr);
+    void startup(const std::shared_ptr<snapshot_reader>& snapshot = nullptr);
 
     /**
           * Starts a new pending block session upon which new transactions can
@@ -172,7 +174,7 @@ public:
     uint32_t get_block_num_for_trx_id(const transaction_id_type& trx_id) const;
 
     fc::sha256 calculate_integrity_hash() const;
-    void write_snapshot(const snapshot_writer_ptr& snapshot) const;
+    void write_snapshot(const std::shared_ptr<snapshot_writer>& snapshot) const;
 
     bool is_producing_block() const;
 

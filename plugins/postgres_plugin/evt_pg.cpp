@@ -230,6 +230,8 @@ auto create_fungibles_table = R"sql(CREATE TABLE IF NOT EXISTS public.fungibles
                                         (creator)
                                         TABLESPACE pg_default;)sql";
 
+const char* tables[] = { "stats", "blocks", "transactions", "metas", "actions", "domains", "tokens", "groups", "fungibles" };
+
 template<typename Iterator>
 void
 format_array_to(fmt::memory_buffer& buf, Iterator begin, Iterator end) {
@@ -358,15 +360,11 @@ pg::drop_sequence(const std::string& seq) {
 
 int
 pg::drop_all_tables() {
-    drop_table("stats");
-    drop_table("blocks");
-    drop_table("transactions");
-    drop_table("metas");
-    drop_table("actions");
-    drop_table("domains");
-    drop_table("tokens");
-    drop_table("groups");
-    drop_table("fungibles");
+    using namespace __internal;
+
+    for(auto t : tables) {
+        drop_table(t);
+    }
 
     return PG_OK;
 }
@@ -466,7 +464,7 @@ pg::block_copy_to(const std::string& table, const std::string& data) {
     EVT_ASSERT(nr == 1, chain::postgres_exec_exception, "Put data into COPY stream failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     auto nr2 = PQputCopyEnd(conn_, NULL);
-    EVT_ASSERT(nr == 1, chain::postgres_exec_exception, "Close data into COPY stream failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    EVT_ASSERT(nr2 == 1, chain::postgres_exec_exception, "Close data into COPY stream failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     auto r2 = PQgetResult(conn_);
     EVT_ASSERT(PQresultStatus(r2) == PGRES_COMMAND_OK, chain::postgres_exec_exception, "Execute COPY command failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
@@ -888,6 +886,73 @@ pg::add_meta(trx_context& tctx, const action_t& act) {
     else {
         // tokens
         fmt::format_to(tctx.trx_buf_, fmt("EXECUTE amt_plan(lastval(),'{}:{}');\n"), (std::string)act.domain, (std::string)act.key); 
+    }
+
+    return PG_OK;
+}
+
+int
+pg::backup(const std::function<std::ostream&(std::string)>& get_writer) const {
+    using namespace __internal;
+
+    for(auto t : tables) {
+        auto& writer = get_writer(t);
+        auto  stmt   = fmt::format("COPY {} TO STDOUT;", t);
+
+        auto r = PQexec(conn_, stmt.c_str());
+        EVT_ASSERT(PQresultStatus(r) == PGRES_COPY_OUT, chain::postgres_exec_exception, "Not expected COPY response, detail: ${s}", ("s",PQerrorMessage(conn_)));
+        PQclear(r);
+
+        int   cr;
+        char* buf;
+        while((cr = PQgetCopyData(conn_, &buf, 0)) > 0)  {
+            writer.write(buf, cr);
+            PQfreemem(buf);
+        }
+        if(cr == -1) {
+            continue;
+        }
+        else if(cr == -2) {
+            EVT_THROW(chain::postgres_exec_exception, "COPY OUT table failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+        }
+
+        auto r2 = PQgetResult(conn_);
+        EVT_ASSERT(PQresultStatus(r2) == PGRES_COMMAND_OK, chain::postgres_exec_exception, "Execute COPY command failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+        PQclear(r2);
+    }
+
+    return PG_OK;
+}
+
+int
+pg::restore(const std::function<std::istream&(std::string)>& get_reader) {
+    using namespace __internal;
+
+    prepare_tables();
+    prepare_stats();
+
+    for(auto t : tables) {
+        auto& reader = get_reader(t);
+        auto  stmt   = fmt::format("COPY {} FROM STDIN;", t);
+
+        auto r = PQexec(conn_, stmt.c_str());
+        EVT_ASSERT(PQresultStatus(r) == PGRES_COPY_OUT, chain::postgres_exec_exception, "Not expected COPY response, detail: ${s}", ("s",PQerrorMessage(conn_)));
+        PQclear(r);
+
+        char buf[1024000];
+        while(!reader.eof()) {
+            reader.read(buf, sizeof(buf));
+
+            auto nr = PQputCopyData(conn_, buf, reader.gcount());
+            EVT_ASSERT(nr == 1, chain::postgres_exec_exception, "Put data into COPY stream failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+        }
+
+        auto nr2 = PQputCopyEnd(conn_, NULL);
+        EVT_ASSERT(nr2 == 1, chain::postgres_exec_exception, "Close data into COPY stream failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+
+        auto r2 = PQgetResult(conn_);
+        EVT_ASSERT(PQresultStatus(r2) == PGRES_COMMAND_OK, chain::postgres_exec_exception, "Execute COPY command failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+        PQclear(r2);
     }
 
     return PG_OK;

@@ -34,6 +34,10 @@ public:
         std::string          snapshot_name;
     };
 
+    struct create_snapshot_options {
+        bool postgres = false;
+    };
+
     producer_plugin();
     virtual ~producer_plugin();
 
@@ -55,7 +59,7 @@ public:
     runtime_options get_runtime_options() const;
 
     integrity_hash_information get_integrity_hash() const;
-    snapshot_information create_snapshot() const;
+    snapshot_information create_snapshot(const create_snapshot_options& options) const;
 
     signal<void(const chain::producer_confirmation&)> confirmed_block;
 

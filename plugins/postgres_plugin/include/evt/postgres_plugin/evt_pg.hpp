@@ -3,6 +3,9 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #pragma once
+#include <functional>
+#include <istream>
+#include <ostream>
 #include <string>
 #include <boost/noncopyable.hpp>
 #include <evt/chain/block_state.hpp>
@@ -64,6 +67,10 @@ public:
     int prepare_tables();
     int prepare_stmts();
     int prepare_stats();
+
+public:
+    int backup(const std::function<std::ostream&(std::string)>&) const;
+    int restore(const std::function<std::istream&(std::string)>&);
 
 public:
     int check_version();
