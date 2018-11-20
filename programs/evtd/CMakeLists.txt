@@ -63,14 +63,14 @@ target_link_libraries(evtd
 if(ENABLE_MONGODB_SUPPORT)
     target_link_libraries( evtd
         PRIVATE -Wl,${whole_archive_flag} mongo_db_plugin -Wl,${no_whole_archive_flag} 
-        PRIVATE -Wl,${whole_archive_flag} history_plugin -Wl,${no_whole_archive_flag}
-        PRIVATE -Wl,${whole_archive_flag} history_api_plugin -Wl,${no_whole_archive_flag}
     )
 endif()
 
 if(ENABLE_POSTGRES_SUPPORT)
     target_link_libraries( evtd
-        PRIVATE -Wl,${whole_archive_flag} postgres_plugin -Wl,${no_whole_archive_flag} 
+        PRIVATE -Wl,${whole_archive_flag} postgres_plugin -Wl,${no_whole_archive_flag}
+        PRIVATE -Wl,${whole_archive_flag} history_plugin -Wl,${no_whole_archive_flag}
+        PRIVATE -Wl,${whole_archive_flag} history_api_plugin -Wl,${no_whole_archive_flag}
     )
 endif()
 

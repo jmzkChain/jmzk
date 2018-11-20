@@ -57,7 +57,8 @@ enum task_type {
     kGetDomains,
     kGetGroups,
     kGetFungibles,
-    kGetActions
+    kGetActions,
+    kGetFungibleActions
 };
 
 template<typename T>
@@ -158,6 +159,10 @@ pg_query::poll_read() {
         }
         case kGetActions: {
             get_actions_resume(t.id, re);
+            break;
+        }
+        case kGetFungibleActions: {
+            get_fungible_actions_resume(t.id, re);
             break;
         }
         };  // switch
@@ -309,42 +314,49 @@ pg_query::get_fungibles_resume(int id, pg_result const* r) {
     return response_ok(id, results);
 }
 
-PREPARE_SQL_ONCE(ga_plan, R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
-                                FROM actions
-                                JOIN blocks ON actions.block_id = blocks.block_id
-                                WHERE domain = $1
-                                ORDER BY actions.created_at $2 actions.seq_num $2
-                                LIMIT $3 OFFSET $4
-                                )sql");
+auto ga_plan0 = R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
+                      FROM actions
+                      JOIN blocks ON actions.block_id = blocks.block_id
+                      WHERE domain = $1
+                      ORDER BY actions.created_at {0}, actions.seq_num {0}
+                      LIMIT $2 OFFSET $3
+                      )sql";
 
 // with key filter
-PREPARE_SQL_ONCE(ga_plan2, R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
-                                 FROM actions
-                                 JOIN blocks ON actions.block_id = blocks.block_id
-                                 WHERE domain = $1 AND key = $2
-                                 ORDER BY actions.created_at $3 actions.seq_num $3
-                                 LIMIT $4 OFFSET $5
-                                 )sql");
-
+auto ga_plan1 = R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
+                      FROM actions
+                      JOIN blocks ON actions.block_id = blocks.block_id
+                      WHERE domain = $1 AND key = $2
+                      ORDER BY actions.created_at {0}, actions.seq_num {0}
+                      LIMIT $3 OFFSET $4
+                      )sql";
 
 // with name filter
-PREPARE_SQL_ONCE(ga_plan3, R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
-                                 FROM actions
-                                 JOIN blocks ON actions.block_id = blocks.block_id
-                                 WHERE domain = $1 AND name = ANY($2)
-                                 ORDER BY actions.created_at $3 actions.seq_num $3
-                                 LIMIT $4 OFFSET $5
-                                 )sql");
-
+auto ga_plan2 = R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
+                      FROM actions
+                      JOIN blocks ON actions.block_id = blocks.block_id
+                      WHERE domain = $1 AND name = ANY($2)
+                      ORDER BY actions.created_at {0}, actions.seq_num {0}
+                      LIMIT $3 OFFSET $4
+                      )sql";
 
 // with key and name filter
-PREPARE_SQL_ONCE(ga_plan4, R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
-                                 FROM actions
-                                 JOIN blocks ON actions.block_id = blocks.block_id
-                                 WHERE domain = $1 AND key = $2 AND name = ANY($3)
-                                 ORDER BY actions.created_at $4 actions.seq_num $4
-                                 LIMIT $5 OFFSET $6
-                                 )sql");
+auto ga_plan3 = R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
+                      FROM actions
+                      JOIN blocks ON actions.block_id = blocks.block_id
+                      WHERE domain = $1 AND key = $2 AND name = ANY($3)
+                      ORDER BY actions.created_at {0}, actions.seq_num {0}
+                      LIMIT $4 OFFSET $5
+                      )sql";
+
+PREPARE_SQL_ONCE(ga_plan01, fmt::format(ga_plan0, "DESC"));
+PREPARE_SQL_ONCE(ga_plan02, fmt::format(ga_plan0, "ASC"));
+PREPARE_SQL_ONCE(ga_plan11, fmt::format(ga_plan1, "DESC"));
+PREPARE_SQL_ONCE(ga_plan12, fmt::format(ga_plan1, "ASC"));
+PREPARE_SQL_ONCE(ga_plan21, fmt::format(ga_plan2, "DESC"));
+PREPARE_SQL_ONCE(ga_plan22, fmt::format(ga_plan2, "ASC"));
+PREPARE_SQL_ONCE(ga_plan31, fmt::format(ga_plan3, "DESC"));
+PREPARE_SQL_ONCE(ga_plan32, fmt::format(ga_plan3, "ASC"));
 
 int
 pg_query::get_actions_async(int id, const read_only::get_actions_params& params) {
@@ -359,44 +371,68 @@ pg_query::get_actions_async(int id, const read_only::get_actions_params& params)
         EVT_ASSERT(t <= 20, chain::postgres_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 20 per query");
     }
 
-    auto dire = (params.dire.valid() && *params.dire == direction::asc) ? "ASC" : "DESC";
     auto stmt = std::string();
 
     int j = 0;
-    if(params.key.valid()) {
+    if(params.dire.valid() && *params.dire == direction::asc) {
         j += 1;
     }
-    if(!params.names.empty()) {
+    if(params.key.valid()) {
         j += 2;
+    }
+    if(!params.names.empty()) {
+        j += 4;
     }
 
     switch(j) {
-    case 0 : { // only domain
-        stmt = fmt::format(fmt("EXECUTE ga_plan ('{}',{},{},{});"), (std::string)params.domain, dire, t, s);
+    case 0: { // only domain, desc
+        stmt = fmt::format(fmt("EXECUTE ga_plan01 ('{}',{},{});"), (std::string)params.domain, t, s);
         break;
     }
-    case 1: { // domain + key
-        stmt = fmt::format(fmt("EXECUTE ga_plan2 ('{}','{}',{},{},{});"), (std::string)params.domain, (std::string)*params.key, dire, t, s);
+    case 1: { // only domain, asc
+        stmt = fmt::format(fmt("EXECUTE ga_plan02 ('{}',{},{});"), (std::string)params.domain, t, s);
         break;
     }
-    case 2: { // domain + name
+    case 2: { // domain + key, desc
+        stmt = fmt::format(fmt("EXECUTE ga_plan11 ('{}','{}',{},{});"), (std::string)params.domain, (std::string)*params.key, t, s);
+        break;
+    }
+    case 3: { // domain + key, asc
+        stmt = fmt::format(fmt("EXECUTE ga_plan12 ('{}','{}',{},{});"), (std::string)params.domain, (std::string)*params.key, t, s);
+        break;
+    }
+    case 4: { // domain + name, desc
         auto names_buf = fmt::memory_buffer();
         format_array_to(names_buf, std::begin(params.names), std::end(params.names));
 
-        stmt = fmt::format(fmt("EXECUTE ga_plan3 ('{}','{}',{},{},{});"), (std::string)params.domain, fmt::to_string(names_buf), dire, t, s);
+        stmt = fmt::format(fmt("EXECUTE ga_plan21 ('{}','{}',{},{});"), (std::string)params.domain, fmt::to_string(names_buf), t, s);
         break;
     }
-    case 3: { // domain + key + name
+    case 5: { // domain + name, asc
         auto names_buf = fmt::memory_buffer();
         format_array_to(names_buf, std::begin(params.names), std::end(params.names));
 
-        stmt = fmt::format(fmt("EXECUTE ga_plan4 ('{}','{}','{}',{},{},{});"), (std::string)params.domain, (std::string)*params.key, fmt::to_string(names_buf), dire, t, s);
+        stmt = fmt::format(fmt("EXECUTE ga_plan22 ('{}','{}',{},{});"), (std::string)params.domain, fmt::to_string(names_buf), t, s);
+        break;
+    }
+    case 6: { // domain + key + name, desc
+        auto names_buf = fmt::memory_buffer();
+        format_array_to(names_buf, std::begin(params.names), std::end(params.names));
+
+        stmt = fmt::format(fmt("EXECUTE ga_plan31 ('{}','{}','{}',{},{});"), (std::string)params.domain, (std::string)*params.key, fmt::to_string(names_buf), t, s);
+        break;
+    }
+    case 7: { // domain + key + name, asc
+        auto names_buf = fmt::memory_buffer();
+        format_array_to(names_buf, std::begin(params.names), std::end(params.names));
+
+        stmt = fmt::format(fmt("EXECUTE ga_plan32 ('{}','{}','{}',{},{});"), (std::string)params.domain, (std::string)*params.key, fmt::to_string(names_buf), t, s);
         break;
     }
     };  // switch
 
     auto r = PQsendQuery(conn_, stmt.c_str());
-    EVT_ASSERT(r == 1, chain::postgres_send_exception, "Send get fungibles command failed, detail: ${d}", ("d",PQerrorMessage(conn_)));
+    EVT_ASSERT(r == 1, chain::postgres_send_exception, "Send get actions command failed, detail: ${d}", ("d",PQerrorMessage(conn_)));
 
     return queue(id, kGetActions);
 }
@@ -406,6 +442,119 @@ pg_query::get_actions_resume(int id, pg_result const* r) {
     using namespace __internal;
 
     EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get actions failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+
+    auto builder = fmt::memory_buffer();
+    auto n       = PQntuples(r);
+
+    fmt::format_to(builder, "[");
+    for(int i = 0; i < n; i++) {
+        fmt::format_to(builder,
+            fmt(R"({{"trx_id":"{}","name":"{}","domain":"{}","key":"{}","data":{},"timestamp":"{}"}})"),
+            PQgetvalue(r, i, 0),
+            PQgetvalue(r, i, 1),
+            PQgetvalue(r, i, 2),
+            PQgetvalue(r, i, 3),
+            PQgetvalue(r, i, 4),
+            PQgetvalue(r, i, 5)
+            );
+        if(i < n - 1) {
+            fmt::format_to(builder, ",");
+        }
+    }
+    fmt::format_to(builder, "]");
+
+    return response_ok(id, fmt::to_string(builder));
+}
+
+auto gfa_plan0 = R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
+                       FROM actions
+                       JOIN blocks ON actions.block_id = blocks.block_id
+                       WHERE
+                           domain = '.fungible'
+                           AND key = $1
+                           AND name = ANY('{{"issuefungible","transferft","recycleft","evt2pevt","everipay","paycharge"}}')
+                       ORDER BY actions.created_at {0}, actions.seq_num {0}
+                       LIMIT $2 OFFSET $3
+                       )sql";
+
+// with address filter
+auto gfa_plan1 = R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
+                       FROM actions
+                       JOIN blocks ON actions.block_id = blocks.block_id
+                       WHERE
+                           domain = '.fungible'
+                           AND key = $1
+                           AND name = ANY('{{"issuefungible","transferft","recycleft","evt2pevt","everipay","paycharge"}}')
+                           AND (
+                               data->>'address' = $2 OR
+                               data->>'from' = $2 OR
+                               data->>'to' = $2 OR
+                               data->>'payee' = $2 OR
+                               data->'link'->'keys' @> $3 OR
+                               data->>'payer' = $2
+                           )
+                       ORDER BY actions.created_at {0}, actions.seq_num {0}
+                       LIMIT $4 OFFSET $5
+                       )sql";
+
+PREPARE_SQL_ONCE(gfa_plan01, fmt::format(gfa_plan0, "DESC"));
+PREPARE_SQL_ONCE(gfa_plan02, fmt::format(gfa_plan0, "ASC"));
+PREPARE_SQL_ONCE(gfa_plan11, fmt::format(gfa_plan1, "DESC"));
+PREPARE_SQL_ONCE(gfa_plan12, fmt::format(gfa_plan1, "ASC"));
+
+int
+pg_query::get_fungible_actions_async(int id, const read_only::get_fungible_actions_params& params) {
+    using namespace __internal;
+
+    int s = 0, t = 10;
+    if(params.skip.valid()) {
+        s = *params.skip;
+    }
+    if(params.take.valid()) {
+        t = *params.take;
+        EVT_ASSERT(t <= 20, chain::postgres_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 20 per query");
+    }
+
+    auto stmt = std::string();
+
+    int j = 0;
+    if(params.dire.valid() && *params.dire == direction::asc) {
+        j += 1;
+    }
+    if(params.addr.valid()) {
+        j += 2;
+    }
+
+    switch(j) {
+    case 0: { // only sym id, desc
+        stmt = fmt::format(fmt("EXECUTE gfa_plan01 ('{}',{},{});"), params.sym_id, t, s);
+        break;
+    }
+    case 1: { // only sym id, asc
+        stmt = fmt::format(fmt("EXECUTE gfa_plan02 ('{}',{},{});"), params.sym_id, t, s);
+        break;
+    }
+    case 2: { // sym id + address, desc
+        stmt = fmt::format(fmt("EXECUTE gfa_plan11 ('{0}','{1}','\"{1}\"',{2},{3});"), params.sym_id, (std::string)*params.addr, t, s);
+        break;
+    }
+    case 3: { // sym id + address, asc
+        stmt = fmt::format(fmt("EXECUTE gfa_plan12 ('{0}','{1}','\"{1}\"',{2},{3});"), params.sym_id, (std::string)*params.addr, t, s);
+        break;
+    }
+    };  // switch
+
+    auto r = PQsendQuery(conn_, stmt.c_str());
+    EVT_ASSERT(r == 1, chain::postgres_send_exception, "Send get fungible actions command failed, detail: ${d}", ("d",PQerrorMessage(conn_)));
+
+    return queue(id, kGetFungibleActions);
+}
+
+int
+pg_query::get_fungible_actions_resume(int id, pg_result const* r) {
+    using namespace __internal;
+
+    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get fungible actions failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     auto builder = fmt::memory_buffer();
     auto n       = PQntuples(r);

@@ -257,9 +257,9 @@ FC_DECLARE_DERIVED_EXCEPTION( missing_net_api_plugin_exception,      plugin_exce
 FC_DECLARE_DERIVED_EXCEPTION( missing_evt_api_plugin_exception,      plugin_exception, 3130004, "Missing EVT API Plugin" );
 FC_DECLARE_DERIVED_EXCEPTION( missing_history_api_plugin_exception,  plugin_exception, 3130005, "Missing History API Plugin" );
 FC_DECLARE_DERIVED_EXCEPTION( plugin_config_exception,               plugin_exception, 3130006, "Incorrect plugin configuration" );
-FC_DECLARE_DERIVED_EXCEPTION( mongodb_plugin_not_enabled_exception,  plugin_exception, 3130007, "Mongodb plugin is not enabled" );
 FC_DECLARE_DERIVED_EXCEPTION( missing_chain_plugin_exception,        plugin_exception, 3130008, "Missing Chain Plugin" );
 FC_DECLARE_DERIVED_EXCEPTION( missing_producer_api_plugin_exception, plugin_exception, 3130009, "Missing Producer API Plugin" );
+FC_DECLARE_DERIVED_EXCEPTION( missing_postgres_plugin_exception,     plugin_exception, 3130010, "Missing postgres Plugin" );
 
 FC_DECLARE_DERIVED_EXCEPTION( wallet_exception,                  chain_exception,  3140000, "wallet exception" );
 FC_DECLARE_DERIVED_EXCEPTION( wallet_exist_exception,            wallet_exception, 3140001, "Wallet already exists" );
@@ -332,15 +332,16 @@ FC_DECLARE_DERIVED_EXCEPTION( unsupported_abi_version_exception,    abi_exceptio
 FC_DECLARE_DERIVED_EXCEPTION( snapshot_exception, chain_exception, 3220000, "Snapshot exception" );
 FC_DECLARE_DERIVED_EXCEPTION( snapshot_validation_exception, snapshot_exception, 3220001, "Snapshot Validation Exception" );
 
-FC_DECLARE_DERIVED_EXCEPTION( postgres_plugin_exception,     chain_exception,           3230000, "Postgres plugin exception" );
-FC_DECLARE_DERIVED_EXCEPTION( postgres_connection_exception, postgres_plugin_exception, 3230001, "Connect to postgresql server failed" );
-FC_DECLARE_DERIVED_EXCEPTION( postgres_exec_exception,       postgres_plugin_exception, 3230002, "Execute statements failed" );
-FC_DECLARE_DERIVED_EXCEPTION( postgres_version_exception,    postgres_plugin_exception, 3230003, "Version of postgres database is obsolete" );
-FC_DECLARE_DERIVED_EXCEPTION( postgres_sync_exception,       postgres_plugin_exception, 3230004, "Sync failed between postgres database and current blockchain state" );
-FC_DECLARE_DERIVED_EXCEPTION( postgres_send_exception,       postgres_plugin_exception, 3230005, "Send commands to postgres failed" );
-FC_DECLARE_DERIVED_EXCEPTION( postgres_poll_exception,       postgres_plugin_exception, 3230006, "Poll messages from postgres failed" );
-FC_DECLARE_DERIVED_EXCEPTION( postgres_query_exception,      postgres_plugin_exception, 3230007, "Query from postgres failed" );
-FC_DECLARE_DERIVED_EXCEPTION( postgres_limit_exception,      postgres_plugin_exception, 3230008, "Exceed postgres query limit" );
+FC_DECLARE_DERIVED_EXCEPTION( postgres_plugin_exception,      chain_exception,           3230000, "Postgres plugin exception" );
+FC_DECLARE_DERIVED_EXCEPTION( postgres_connection_exception,  postgres_plugin_exception, 3230001, "Connect to postgresql server failed" );
+FC_DECLARE_DERIVED_EXCEPTION( postgres_exec_exception,        postgres_plugin_exception, 3230002, "Execute statements failed" );
+FC_DECLARE_DERIVED_EXCEPTION( postgres_version_exception,     postgres_plugin_exception, 3230003, "Version of postgres database is obsolete" );
+FC_DECLARE_DERIVED_EXCEPTION( postgres_sync_exception,        postgres_plugin_exception, 3230004, "Sync failed between postgres database and current blockchain state" );
+FC_DECLARE_DERIVED_EXCEPTION( postgres_send_exception,        postgres_plugin_exception, 3230005, "Send commands to postgres failed" );
+FC_DECLARE_DERIVED_EXCEPTION( postgres_poll_exception,        postgres_plugin_exception, 3230006, "Poll messages from postgres failed" );
+FC_DECLARE_DERIVED_EXCEPTION( postgres_query_exception,       postgres_plugin_exception, 3230007, "Query from postgres failed" );
+FC_DECLARE_DERIVED_EXCEPTION( postgres_limit_exception,       postgres_plugin_exception, 3230008, "Exceed postgres query limit" );
+FC_DECLARE_DERIVED_EXCEPTION( postgres_not_enabled_exception, postgres_plugin_exception, 3230009, "Postgres plugin is not enabled" );
 
 
 }} // evt::chain
