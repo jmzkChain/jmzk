@@ -7,6 +7,7 @@ from twisted.internet.protocol import Protocol
 from twisted.web.client import Agent, readBody
 from twisted.web.iweb import IBodyProducer
 
+
 def singleton(cls):
     cls.__new_original__ = cls.__new__
 
@@ -15,16 +16,17 @@ def singleton(cls):
         it = cls.__dict__.get('__it__')
         if it is not None:
             return it
-        
+
         cls.__it__ = it = cls.__new_original__(cls, *args, **kwargs)
         it.__init_original__(*args, **kwargs)
         return it
-    
+
     cls.__new__ = singleton_new
     cls.__init_original__ = cls.__init__
     cls.__init__ = object.__init__
 
     return cls
+
 
 class StringProducer(object):
     def __init__(self, body):
@@ -41,6 +43,7 @@ class StringProducer(object):
     def stopProducing(self):
         pass
 
+
 class ResourcePrinter(Protocol):
     def __init__(self, finished):
         self.finished = finished
@@ -51,10 +54,12 @@ class ResourcePrinter(Protocol):
     def connectionLost(self, reason):
         self.finished.callback(None)
 
+
 def printResource(response):
     finished = Deferred()
     response.deliverBody(ResourcePrinter(finished))
     return finished
+
 
 def compare_block_num(body):
     j = json.loads(str(body, encoding='utf-8'))
@@ -63,6 +68,7 @@ def compare_block_num(body):
     if block_num <= WatchPool().irr_block_num:
         WatchPool().del_watch(link_id)
         print('del', link_id, WatchPool().size())
+
 
 def get_transaction(body):
     j = json.loads(str(body, encoding='utf-8'))
@@ -77,31 +83,38 @@ def get_transaction(body):
             "block_num": %d,
             "id": "%s"
         }
-        '''%(block_num, trx_id))
+        ''' % (block_num, trx_id))
     )
+
     def cb_read_body(response):
-        if response.code != 200: return
+        if response.code != 200:
+            return
         d = readBody(response)
         d.addCallback(compare_block_num)
     d2.addCallback(cb_read_body)
+
 
 def get_trx_id_for_link_id(url, link_id):
     agent = Agent(reactor)
     d1 = agent.request(
         bytes('POST', encoding='utf-8'),
         bytes(url + '/v1/evt_link/get_trx_id_for_link_id', encoding='utf-8'),
-        bodyProducer=StringProducer('{"link_id": "%s"}'%(link_id))
+        bodyProducer=StringProducer('{"link_id": "%s"}' % (link_id))
     )
+
     def cb_read_body(response):
-        if response.code != 200: return
+        if response.code != 200:
+            return
         d = readBody(response)
         d.addCallback(get_transaction)
     d1.addCallback(cb_read_body)
+
 
 def set_irr_block_num(body):
     j = json.loads(str(body, encoding='utf-8'))
     irr_block_num = j['last_irreversible_block_num']
     WatchPool().set_irr_block_num(irr_block_num)
+
 
 @singleton
 class WatchPool:
@@ -126,7 +139,7 @@ class WatchPool:
         self.watches.remove(link_id)
 
     def size(self):
-        return len(self.watches) 
+        return len(self.watches)
 
     def get_irr_block_num(self):
         agent = Agent(reactor)
@@ -134,8 +147,10 @@ class WatchPool:
             bytes('GET', encoding='utf-8'),
             bytes(self.url + '/v1/chain/get_info', encoding='utf-8')
         )
+
         def cb_read_body(response):
-            if response.code != 200: return
+            if response.code != 200:
+                return
             d = readBody(response)
             d.addCallback(set_irr_block_num)
         d.addCallback(cb_read_body)

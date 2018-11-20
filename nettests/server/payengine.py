@@ -4,20 +4,19 @@ import random
 from datetime import datetime
 
 import click
+from twisted.internet import reactor
 
 from pyevt import evt_link
 from pyevtsdk import api, base
 from pyevtsdk.action import ActionGenerator
 from pyevtsdk.transaction import TrxGenerator
-
-from twisted.internet import reactor
-
 from watchpool import WatchPool
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 AG = ActionGenerator()
+
 
 class PayEngine:
     def __init__(self, freq, users, sym='5,S#1', nodes=None):
@@ -73,7 +72,8 @@ class PayEngine:
         user1_link = self.build_evt_link(user1)
         WatchPool().add_watch(user1_link.get_link_id().hex())
 
-        act_pay = AG.new_action('everipay', payee=user2.pub_key, number=self.asset(1), link=user1_link.to_string())
+        act_pay = AG.new_action('everipay', payee=user2.pub_key, number=self.asset(
+            1), link=user1_link.to_string())
         trx = self.TG.new_trx()
         trx.add_action(act_pay)
         trx.add_sign(user2.priv_key)
@@ -83,6 +83,7 @@ class PayEngine:
 
         reactor.callLater(self.freq, self.run)
 
+
 def prepare_for_debug(filename):
     TG = TrxGenerator('http://127.0.0.1:8888', payer=None)
     Api = api.Api('http://127.0.0.1:8888')
@@ -90,7 +91,8 @@ def prepare_for_debug(filename):
     # issue fungible
     DBG_Symbol = base.Symbol('DBG', 666, 5)
     DBG_Asset = base.new_asset(DBG_Symbol)
-    act_newf = AG.new_action('newfungible', name='DBG', sym_name='DBG', sym=DBG_Symbol, creator=boss.pub_key, total_supply=DBG_Asset(1000000))
+    act_newf = AG.new_action('newfungible', name='DBG', sym_name='DBG',
+                             sym=DBG_Symbol, creator=boss.pub_key, total_supply=DBG_Asset(1000000))
     trx = TG.new_trx()
     trx.add_action(act_newf)
     trx.add_sign(boss.priv_key)
@@ -100,16 +102,19 @@ def prepare_for_debug(filename):
 
     with open(filename, 'r') as f:
         tmp = json.load(f)
-    users = [base.User.from_string(each['pub_key'], each['priv_key']) for each in tmp]
+    users = [base.User.from_string(
+        each['pub_key'], each['priv_key']) for each in tmp]
 
     trx = TG.new_trx()
     for user in users:
-        act_issue = AG.new_action('issuefungible', address=base.Address().set_public_key(user.pub_key), number=DBG_Asset(1000), memo='')
+        act_issue = AG.new_action('issuefungible', address=base.Address(
+        ).set_public_key(user.pub_key), number=DBG_Asset(1000), memo='')
         trx.add_action(act_issue)
     trx.add_sign(boss.priv_key)
     trx.set_payer(boss.pub_key.to_string())
     resp = Api.push_transaction(trx.dumps())
     print(resp)
+
 
 @click.command()
 @click.option('--freq', '-f', default=1)
@@ -128,9 +133,9 @@ def main(freq, users, symbol, debug):
     WatchPool().set_url('http://127.0.0.1:8888')
     ir_runid = reactor.callWhenRunning(WatchPool().get_irr_block_num)
     wp_runid = reactor.callWhenRunning(WatchPool().run)
-    
-    
+
     reactor.run()
+
 
 if __name__ == '__main__':
     main()
