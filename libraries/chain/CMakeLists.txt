@@ -64,12 +64,13 @@ target_include_directories( evt_chain
                             "${CMAKE_CURRENT_BINARY_DIR}/include"
                             )
 
-target_link_libraries( evt_chain_lite evt_utilities fc_lite fmt-header-only )
+target_link_libraries( evt_chain_lite fc_lite fmt-header-only )
 target_include_directories( evt_chain_lite
                             PUBLIC
                             "${CMAKE_CURRENT_SOURCE_DIR}/include"
                             "${CMAKE_CURRENT_BINARY_DIR}/include"
                             "${CMAKE_CURRENT_SOURCE_DIR}/../chainbase/include" 
+                            "${CMAKE_CURRENT_SOURCE_DIR}/../utilities/include" 
                             )
 
 set_target_properties( evt_chain PROPERTIES PUBLIC_HEADER "${HEADERS}" )

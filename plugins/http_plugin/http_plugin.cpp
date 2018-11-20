@@ -671,6 +671,18 @@ http_plugin::handle_exception(const char* api_name, const char* call_name, const
     }
 }
 
+void
+http_plugin::handle_async_exception(deferred_id id, const char* api_name, const char* call_name, const string& body) {
+    try {
+        throw;
+    }
+    catch(...) {
+        http_plugin::handle_exception(api_name, call_name, body, [id](auto code, auto body) {
+            app().get_plugin<http_plugin>().set_deferred_response(id, code, body);
+        });
+    }
+}
+
 bool
 http_plugin::is_on_loopback() const {
     return (!my->listen_endpoint || my->listen_endpoint->address().is_loopback()) && (!my->https_listen_endpoint || my->https_listen_endpoint->address().is_loopback());

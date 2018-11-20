@@ -54,6 +54,15 @@ using url_deferred_handler = std::function<void(string, string, deferred_id)>;
 using api_description = std::map<string, url_handler>;
 
 /**
+  * @brief An Async API, containing URLs and async handlers
+  *
+  * An Async API is composed of several calls, where each call has a URL and
+  * a async handler. The URL is the path on the web server that triggers the
+  * call, and the handler is the function which implements the Async API call
+  */
+using async_api_description = std::map<string, url_deferred_handler>;
+
+/**
   *  This plugin starts an HTTP server and dispatches queries to
   *  registered handles based upon URL. The handler is passed the
   *  URL that was requested and a callback method that should be
@@ -89,10 +98,18 @@ public:
         }
     }
 
+    void
+    add_async_api(const async_api_description& api) {
+        for(const auto& call : api) {
+            add_deferred_handler(call.first, call.second);
+        }
+    }
+
     void set_deferred_response(deferred_id id, int code, const string& body);
 
     // standard exception handling for api handlers
     static void handle_exception(const char *api_name, const char *call_name, const string& body, url_response_callback cb);
+    static void handle_async_exception(deferred_id id, const char *api_name, const char *call_name, const string& body);
 
     bool is_on_loopback() const;
     bool is_secure() const;
@@ -152,6 +169,6 @@ struct error_results {
 
 }  // namespace evt
 
-FC_REFLECT(evt::error_results::error_info::error_detail, (message)(file)(line_number)(method))
-FC_REFLECT(evt::error_results::error_info, (code)(name)(what)(details))
-FC_REFLECT(evt::error_results, (code)(message)(error))
+FC_REFLECT(evt::error_results::error_info::error_detail, (message)(file)(line_number)(method));
+FC_REFLECT(evt::error_results::error_info, (code)(name)(what)(details));
+FC_REFLECT(evt::error_results, (code)(message)(error));

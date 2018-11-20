@@ -4,7 +4,6 @@
  */
 #include <evt/postgres_plugin/evt_pg.hpp>
 
-#define FMT_STRING_ALIAS 1
 #include <fmt/format.h>
 #include <libpq-fe.h>
 #include <boost/lexical_cast.hpp>
@@ -131,6 +130,10 @@ auto create_actions_table = R"sql(CREATE TABLE IF NOT EXISTS public.actions
                                   CREATE INDEX IF NOT EXISTS trx_id_index
                                       ON public.actions USING btree
                                       (trx_id)
+                                      TABLESPACE pg_default;
+                                  CREATE INDEX IF NOT EXISTS data_index
+                                      ON public.actions USING gin
+                                      (data jsonb_path_ops)
                                       TABLESPACE pg_default;)sql";
 
 auto create_metas_table = R"sql(CREATE SEQUENCE IF NOT EXISTS metas_id_seq;
@@ -596,7 +599,7 @@ PREPARE_SQL_ONCE(glb_plan, "SELECT block_id FROM blocks ORDER BY block_num DESC 
 
 int
 pg::get_latest_block_id(std::string& block_id) const {
-    auto r = PQexecPrepared(conn_, "glb_plan", 0, NULL, NULL, NULL, 0);
+    auto r = PQexec(conn_, "EXECUTE glb_plan;");
     EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_exec_exception, "Get latest block id failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     if(PQntuples(r) == 0) {
@@ -615,9 +618,9 @@ PREPARE_SQL_ONCE(eb_plan, "SELECT block_id FROM blocks WHERE block_id = $1;");
 
 int
 pg::exists_block(const std::string& block_id) const {
-    const char* params[] = { block_id.c_str() };
+    auto stmt = fmt::format(fmt("EXECUTE eb_plan ('{}');"), block_id);
 
-    auto r = PQexecPrepared(conn_, "eb_plan", 1, params, NULL, NULL, 0);
+    auto r = PQexec(conn_, stmt.c_str());
     EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_exec_exception, "Check block existed failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     if(PQntuples(r) == 0) {
@@ -650,8 +653,9 @@ PREPARE_SQL_ONCE(rs_plan, "SELECT value FROM stats WHERE key = $1");
 
 int
 pg::read_stat(const std::string& key, std::string& value) const {
-    const char* params[] = { key.c_str() };
-    auto r = PQexecPrepared(conn_, "rs_plan", 1, params, NULL, NULL, 0);
+    auto stmt = fmt::format(fmt("EXECUTE rs_plan ('{}');"), key);
+
+    auto r = PQexec(conn_, stmt.c_str());
     EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_exec_exception, "Get stat value failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     if(PQntuples(r) == 0) {
