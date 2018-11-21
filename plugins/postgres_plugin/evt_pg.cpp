@@ -923,6 +923,7 @@ pg::backup(const std::shared_ptr<chain::snapshot_writer>& snapshot) const {
             EVT_ASSERT(PQresultStatus(r2) == PGRES_COMMAND_OK, chain::postgres_exec_exception, "Execute COPY command failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
             PQclear(r2);
         });
+        dlog("Written ${t} table", ("t",t));
     }
 
     return PG_OK;

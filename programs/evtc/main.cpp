@@ -1252,7 +1252,7 @@ struct set_producer_subcommands {
         });
 
         auto cscmd = actionRoot->add_subcommand("snapshot", localized("Create a snapshot till current head block"));
-        cscmd->add_option("-p,--postgres", postgres, localized("Add postgres to snapshot"));
+        cscmd->add_flag("-p,--postgres", postgres, localized("Add postgres to snapshot"));
         cscmd->set_callback([this] {
             auto arg = fc::mutable_variant_object();
             arg["postgres"] = postgres;
