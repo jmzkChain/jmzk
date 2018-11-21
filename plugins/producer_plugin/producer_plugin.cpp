@@ -26,6 +26,10 @@
 #include <evt/chain/transaction_object.hpp>
 #include <evt/chain/snapshot.hpp>
 
+#ifdef POSTGRES_SUPPORT
+#include <evt/postgres_plugin/postgres_plugin.hpp>
+#endif
+
 namespace bmi = boost::multi_index;
 using bmi::hashed_unique;
 using bmi::indexed_by;
@@ -853,15 +857,35 @@ producer_plugin::create_snapshot(const create_snapshot_options& options) const {
         reschedule.cancel();
     }
 
-    auto        head_id       = chain.head_block_id();
-    std::string snapshot_path = (my->_snapshots_dir / fc::format_string("snapshot-${id}.bin", fc::mutable_variant_object()("id", head_id))).generic_string();
+    auto head_id       = chain.head_block_id();
+    auto snapshot_path = (my->_snapshots_dir / fc::format_string("snapshot-${id}.bin", fc::mutable_variant_object()("id", head_id))).generic_string();
 
     EVT_ASSERT(!fc::is_regular_file(snapshot_path), snapshot_exists_exception,
                "snapshot named ${name} already exists", ("name", snapshot_path));
 
     auto snap_out = std::ofstream(snapshot_path, (std::ios::out | std::ios::binary));
     auto writer   = std::make_shared<ostream_snapshot_writer>(snap_out);
+
     chain.write_snapshot(writer);
+    if(options.postgres) {
+#ifdef POSTGRES_SUPPORT
+        if(app().find_plugin("evt::postgres_plugin") == nullptr) {
+            wlog("Cannot find postgres plugin, don't write postgres into snapshot");
+        }
+        else {
+            auto& pp = app().get_plugin<postgres_plugin>();
+            if(!pp.enabled()) {
+                wlog("Postgres plugin is not enabled, don't write postgres into snapshot");
+            }
+            else {
+                pp.write_snapshot(writer);
+            }
+        }
+#else
+        wlog("Postgres support is not enabled, don't write postgres into snapshot");
+#endif
+    }
+
     writer->finalize();
     snap_out.flush();
     snap_out.close();
