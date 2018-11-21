@@ -18,9 +18,12 @@ struct pg_result;
 
 namespace evt {
 
-namespace chain { namespace contracts {
+namespace chain {
+class controller;
+namespace contracts {
 struct abi_serializer;
-}}  // namespace chain::
+}  // namespace contracts
+}  // namespace chain
 
 using namespace evt::chain::contracts;
 using namespace evt::history_apis;
@@ -41,8 +44,8 @@ private:
     };
 
 public:
-    pg_query(boost::asio::io_context& io_serv)
-        : conn_(nullptr), io_serv_(io_serv), socket_(io_serv) {}
+    pg_query(boost::asio::io_context& io_serv, controller& chain)
+        : conn_(nullptr), io_serv_(io_serv), chain_(chain), socket_(io_serv) {}
 
 public:
     int connect(const std::string& conn);
@@ -69,6 +72,9 @@ public:
     int get_fungible_actions_async(int id, const read_only::get_fungible_actions_params& params);
     int get_fungible_actions_resume(int id, pg_result const*);
 
+    int get_transaction_async(int id, const read_only::get_transaction_params& params);
+    int get_transaction_resume(int id, pg_result const*);
+
 private:
     int queue(int id, int task);
     int poll_read();
@@ -78,6 +84,7 @@ private:
 
     std::queue<task>             tasks_;
     boost::asio::io_context&     io_serv_;
+    chain::controller&           chain_;
     boost::asio::ip::tcp::socket socket_;
 };
 

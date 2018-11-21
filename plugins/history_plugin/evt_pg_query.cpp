@@ -58,7 +58,8 @@ enum task_type {
     kGetGroups,
     kGetFungibles,
     kGetActions,
-    kGetFungibleActions
+    kGetFungibleActions,
+    kGetTransaction
 };
 
 template<typename T>
@@ -140,32 +141,42 @@ pg_query::poll_read() {
         auto t = tasks_.front();
         tasks_.pop();
 
-        switch(t.type) {
-        case kGetTokens: {
-            get_tokens_resume(t.id, re);
-            break;
+        try {
+            switch(t.type) {
+            case kGetTokens: {
+                get_tokens_resume(t.id, re);
+                break;
+            }
+            case kGetDomains: {
+                get_domains_resume(t.id, re);
+                break;
+            }
+            case kGetGroups: {
+                get_groups_resume(t.id, re);
+                break;
+            }
+            case kGetFungibles: {
+                get_fungibles_resume(t.id, re);
+                break;
+            }
+            case kGetActions: {
+                get_actions_resume(t.id, re);
+                break;
+            }
+            case kGetFungibleActions: {
+                get_fungible_actions_resume(t.id, re);
+                break;
+            }
+            case kGetTransaction: {
+                get_transaction_resume(t.id, re);
+                break;
+            }
+            };  // switch
         }
-        case kGetDomains: {
-            get_domains_resume(t.id, re);
-            break;
+        catch(...) {
+            // TODO: replace with real function name
+            app().get_plugin<http_plugin>().handle_async_exception(t.id, "history", "async_function", "");
         }
-        case kGetGroups: {
-            get_groups_resume(t.id, re);
-            break;
-        }
-        case kGetFungibles: {
-            get_fungibles_resume(t.id, re);
-            break;
-        }
-        case kGetActions: {
-            get_actions_resume(t.id, re);
-            break;
-        }
-        case kGetFungibleActions: {
-            get_fungible_actions_resume(t.id, re);
-            break;
-        }
-        };  // switch
 
         PQclear(re);
     }
@@ -577,6 +588,56 @@ pg_query::get_fungible_actions_resume(int id, pg_result const* r) {
     fmt::format_to(builder, "]");
 
     return response_ok(id, fmt::to_string(builder));
+}
+
+PREPARE_SQL_ONCE(gtrx_plan, "SELECT block_num, trx_id FROM transactions WHERE trx_id = $1;");
+
+int
+pg_query::get_transaction_async(int id, const read_only::get_transaction_params& params) {
+    using namespace __internal;
+
+    auto stmt = fmt::format(fmt("EXECUTE gtrx_plan('{}');"), (std::string)params.id);
+
+    auto r = PQsendQuery(conn_, stmt.c_str());
+    EVT_ASSERT(r == 1, chain::postgres_send_exception, "Send get transaction command failed, detail: ${d}", ("d",PQerrorMessage(conn_)));
+
+    return queue(id, kGetTransaction);
+}
+
+int
+pg_query::get_transaction_resume(int id, pg_result const* r) {
+    using namespace __internal;
+
+    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get transaction failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+
+    auto n = PQntuples(r);
+    if(n == 0) {
+        EVT_THROW(chain::unknown_transaction_exception, "Cannot find transaction");
+    }
+
+    auto trx_id = transaction_id_type(std::string(PQgetvalue(r, 0, 1), PQgetlength(r, 0, 1)));
+    for(int i = 0; i < n; i++) {
+        auto block_num = boost::lexical_cast<uint32_t>(PQgetvalue(r, i, 0));
+
+        auto block = chain_.fetch_block_by_number(block_num);
+        if(!block) {
+            continue;
+        }
+
+        for(auto& tx : block->transactions) {
+            if(tx.trx.id() == trx_id) {
+                auto var = fc::variant();
+                chain_.get_abi_serializer().to_variant(tx.trx, var);
+
+                auto mv = fc::mutable_variant_object(var);
+                mv["block_num"] = block_num;
+                mv["block_id"]  = block->id();
+
+                return response_ok(id, mv);
+            }
+        }
+    }    
+    EVT_THROW(chain::unknown_transaction_exception, "Cannot find transaction");
 }
 
 }  // namepsace evt

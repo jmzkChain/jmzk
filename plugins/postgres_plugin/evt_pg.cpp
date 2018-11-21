@@ -632,7 +632,7 @@ pg::exists_block(const std::string& block_id) const {
     }
 
     PQclear(r);
-    return PG_OK;    
+    return PG_OK;
 }
 
 PREPARE_SQL_ONCE(sbi_plan, "UPDATE blocks SET pending = false WHERE block_id = $1");
