@@ -3,6 +3,9 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #pragma once
+#include <functional>
+#include <istream>
+#include <ostream>
 #include <string>
 #include <boost/noncopyable.hpp>
 #include <evt/chain/block_state.hpp>
@@ -12,9 +15,14 @@
 struct pg_conn;
 
 namespace evt {
-namespace chain { namespace contracts {
+namespace chain {
+class snapshot_writer;
+class snapshot_reader;
+
+namespace contracts {
 struct abi_serializer;
-}}  // namespace chain::contracts
+}  // namespace contracts
+}  // namespace chain
 
 using namespace evt::chain::contracts;
 
@@ -46,7 +54,7 @@ public:
 
 class pg : boost::noncopyable {
 public:
-    pg() : conn_(nullptr) {}
+    pg() : conn_(nullptr), prepared_stmts_(0) {}
 
 public:
     int connect(const std::string& conn);
@@ -64,6 +72,10 @@ public:
     int prepare_tables();
     int prepare_stmts();
     int prepare_stats();
+
+public:
+    int backup(const std::shared_ptr<chain::snapshot_writer>& snapshot) const;
+    int restore(const std::shared_ptr<chain::snapshot_reader>& snapshot);
 
 public:
     int check_version();
@@ -113,6 +125,7 @@ private:
 private:
     pg_conn*    conn_;
     std::string last_sync_block_id_;
+    int         prepared_stmts_;
 };
 
 }  // namespace evt

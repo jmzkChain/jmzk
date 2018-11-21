@@ -10,6 +10,7 @@
 #include <fc/io/json.hpp>
 #include <evt/chain/block_header.hpp>
 #include <evt/chain/exceptions.hpp>
+#include <evt/chain/snapshot.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
 #include <evt/postgres_plugin/copy_context.hpp>
 #include <evt/postgres_plugin/trx_context.hpp>
@@ -230,6 +231,8 @@ auto create_fungibles_table = R"sql(CREATE TABLE IF NOT EXISTS public.fungibles
                                         (creator)
                                         TABLESPACE pg_default;)sql";
 
+const char* tables[] = { "stats", "blocks", "transactions", "metas", "actions", "domains", "tokens", "groups", "fungibles" };
+
 template<typename Iterator>
 void
 format_array_to(fmt::memory_buffer& buf, Iterator begin, Iterator end) {
@@ -358,15 +361,11 @@ pg::drop_sequence(const std::string& seq) {
 
 int
 pg::drop_all_tables() {
-    drop_table("stats");
-    drop_table("blocks");
-    drop_table("transactions");
-    drop_table("metas");
-    drop_table("actions");
-    drop_table("domains");
-    drop_table("tokens");
-    drop_table("groups");
-    drop_table("fungibles");
+    using namespace __internal;
+
+    for(auto t : tables) {
+        drop_table(t);
+    }
 
     return PG_OK;
 }
@@ -405,12 +404,16 @@ pg::prepare_tables() {
 
 int
 pg::prepare_stmts() {
+    if(prepared_stmts_) {
+        return PG_OK;
+    }
     for(auto it : __internal::__prepare_register::instance().stmts) {
         auto r = PQprepare(conn_, it.first.c_str(), it.second.c_str(), 0, NULL);
         EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgres_exec_exception,
             "Prepare sql failed, sql: ${s}, detail: ${d}", ("s",it.second)("d",PQerrorMessage(conn_)));
         PQclear(r);
     }
+    prepared_stmts_ = 1;
     return PG_OK;
 }
 
@@ -466,7 +469,7 @@ pg::block_copy_to(const std::string& table, const std::string& data) {
     EVT_ASSERT(nr == 1, chain::postgres_exec_exception, "Put data into COPY stream failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     auto nr2 = PQputCopyEnd(conn_, NULL);
-    EVT_ASSERT(nr == 1, chain::postgres_exec_exception, "Close data into COPY stream failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    EVT_ASSERT(nr2 == 1, chain::postgres_exec_exception, "Close data into COPY stream failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     auto r2 = PQgetResult(conn_);
     EVT_ASSERT(PQresultStatus(r2) == PGRES_COMMAND_OK, chain::postgres_exec_exception, "Execute COPY command failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
@@ -888,6 +891,79 @@ pg::add_meta(trx_context& tctx, const action_t& act) {
     else {
         // tokens
         fmt::format_to(tctx.trx_buf_, fmt("EXECUTE amt_plan(lastval(),'{}:{}');\n"), (std::string)act.domain, (std::string)act.key); 
+    }
+
+    return PG_OK;
+}
+
+int
+pg::backup(const std::shared_ptr<chain::snapshot_writer>& snapshot) const {
+    using namespace __internal;
+
+    for(auto t : tables) {
+        snapshot->write_section(fmt::format("pg-{}", t), [this, t](auto& writer) {
+            auto stmt = fmt::format("COPY {} TO STDOUT;", t);
+
+            auto r = PQexec(conn_, stmt.c_str());
+            EVT_ASSERT(PQresultStatus(r) == PGRES_COPY_OUT, chain::postgres_exec_exception, "Not expected COPY response, detail: ${s}", ("s",PQerrorMessage(conn_)));
+            PQclear(r);
+
+            int   cr;
+            char* buf;
+            while((cr = PQgetCopyData(conn_, &buf, 0)) > 0)  {
+                writer.add_row("size", (char*)&cr, sizeof(cr));
+                writer.add_row("raw", buf, cr);
+                PQfreemem(buf);
+            }
+            if(cr == -2) {
+                EVT_THROW(chain::postgres_exec_exception, "COPY OUT table failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+            }
+            EVT_ASSERT(cr == -1, chain::postgres_exec_exception, "Not expected COPY response, detail: ${s}", ("s",PQerrorMessage(conn_)));
+
+            auto r2 = PQgetResult(conn_);
+            EVT_ASSERT(PQresultStatus(r2) == PGRES_COMMAND_OK, chain::postgres_exec_exception, "Execute COPY command failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+            PQclear(r2);
+        });
+        dlog("Written ${t} table", ("t",t));
+    }
+
+    return PG_OK;
+}
+
+int
+pg::restore(const std::shared_ptr<chain::snapshot_reader>& snapshot) {
+    using namespace __internal;
+
+    prepare_tables();
+    prepare_stmts();
+
+    for(auto t : tables) {
+        snapshot->read_section(fmt::format("pg-{}", t), [this, t](auto& reader) {
+            auto stmt = fmt::format("COPY {} FROM STDIN;", t);
+
+            auto r = PQexec(conn_, stmt.c_str());
+            EVT_ASSERT(PQresultStatus(r) == PGRES_COPY_IN, chain::postgres_exec_exception, "Not expected COPY response, detail: ${s}", ("s",PQerrorMessage(conn_)));
+            PQclear(r);
+
+            auto buf = std::string();
+            while(!reader.eof()) {
+                int sz = 0;
+                reader.read_row(buf, sizeof(sz));
+                sz = *(int*)buf.data();
+
+                reader.read_row(buf, sz);
+
+                auto nr = PQputCopyData(conn_, buf.data(), sz);
+                EVT_ASSERT(nr == 1, chain::postgres_exec_exception, "Put data into COPY stream failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+            }
+
+            auto nr2 = PQputCopyEnd(conn_, NULL);
+            EVT_ASSERT(nr2 == 1, chain::postgres_exec_exception, "Close data into COPY stream failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+
+            auto r2 = PQgetResult(conn_);
+            EVT_ASSERT(PQresultStatus(r2) == PGRES_COMMAND_OK, chain::postgres_exec_exception, "Execute COPY command failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+            PQclear(r2);
+        });
     }
 
     return PG_OK;

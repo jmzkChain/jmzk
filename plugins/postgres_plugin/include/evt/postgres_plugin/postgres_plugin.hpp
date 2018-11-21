@@ -10,6 +10,11 @@
 
 namespace evt {
 
+namespace chain {
+class snapshot_writer;
+class snapshot_reader;
+}  // namespace chain
+
 using evt::chain::public_key_type;
 
 class postgres_plugin : public plugin<postgres_plugin> {
@@ -28,6 +33,10 @@ public:
 public:
     bool enabled() const;
     const std::string& connstr() const;
+
+public:
+    void read_from_snapshot(const std::shared_ptr<chain::snapshot_reader>& snapshot);
+    void write_snapshot(const std::shared_ptr<chain::snapshot_writer>& snapshot) const;
 
 private:
     std::unique_ptr<class postgres_plugin_impl> my_;

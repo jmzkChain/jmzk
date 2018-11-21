@@ -333,6 +333,11 @@ istream_snapshot_reader::empty() {
     return num_rows == 0;
 }
 
+bool
+istream_snapshot_reader::eof() {
+    return cur_row >= num_rows;
+}
+
 void
 istream_snapshot_reader::clear_section() {
     num_rows = 0;
