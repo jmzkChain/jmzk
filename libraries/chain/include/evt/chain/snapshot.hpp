@@ -351,6 +351,11 @@ public:
             return _reader.empty();
         }
 
+        bool
+        eof() {
+            return _reader.eof();
+        }
+
     private:
         friend class snapshot_reader;
         section_reader(snapshot_reader& _reader)
@@ -392,6 +397,7 @@ protected:
     virtual void set_section(const std::string& section_name)               = 0;
     virtual bool read_row(detail::abstract_snapshot_row_reader& row_reader) = 0;
     virtual bool empty()                                                    = 0;
+    virtual bool eof()                                                      = 0;
     virtual void clear_section()                                            = 0;
     virtual void build_section_indexes()                                    = 0;
 };
@@ -479,6 +485,7 @@ public:
     size_t get_section_size(const string& section_name) override;
     bool read_row(detail::abstract_snapshot_row_reader& row_reader) override;
     bool empty() override;
+    bool eof() override;
     void clear_section() override;
 
 private:

@@ -23,7 +23,6 @@
 
 #include <evt/chain/global_property_object.hpp>
 #include <evt/chain/plugin_interface.hpp>
-#include <evt/chain/transaction_object.hpp>
 #include <evt/chain/snapshot.hpp>
 
 #ifdef POSTGRES_SUPPORT

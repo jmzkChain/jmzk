@@ -404,12 +404,16 @@ pg::prepare_tables() {
 
 int
 pg::prepare_stmts() {
+    if(prepared_stmts_) {
+        return PG_OK;
+    }
     for(auto it : __internal::__prepare_register::instance().stmts) {
         auto r = PQprepare(conn_, it.first.c_str(), it.second.c_str(), 0, NULL);
         EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgres_exec_exception,
             "Prepare sql failed, sql: ${s}, detail: ${d}", ("s",it.second)("d",PQerrorMessage(conn_)));
         PQclear(r);
     }
+    prepared_stmts_ = 1;
     return PG_OK;
 }
 
@@ -910,14 +914,11 @@ pg::backup(const std::shared_ptr<chain::snapshot_writer>& snapshot) const {
                 writer.add_row("size", (char*)&cr, sizeof(cr));
                 writer.add_row("raw", buf, cr);
                 PQfreemem(buf);
-            
-                if(cr == -1) {
-                    continue;
-                }
-                else if(cr == -2) {
-                    EVT_THROW(chain::postgres_exec_exception, "COPY OUT table failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
-                }
             }
+            if(cr == -2) {
+                EVT_THROW(chain::postgres_exec_exception, "COPY OUT table failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+            }
+            EVT_ASSERT(cr == -1, chain::postgres_exec_exception, "Not expected COPY response, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
             auto r2 = PQgetResult(conn_);
             EVT_ASSERT(PQresultStatus(r2) == PGRES_COMMAND_OK, chain::postgres_exec_exception, "Execute COPY command failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
@@ -934,18 +935,18 @@ pg::restore(const std::shared_ptr<chain::snapshot_reader>& snapshot) {
     using namespace __internal;
 
     prepare_tables();
-    prepare_stats();
+    prepare_stmts();
 
     for(auto t : tables) {
         snapshot->read_section(fmt::format("pg-{}", t), [this, t](auto& reader) {
             auto stmt = fmt::format("COPY {} FROM STDIN;", t);
 
             auto r = PQexec(conn_, stmt.c_str());
-            EVT_ASSERT(PQresultStatus(r) == PGRES_COPY_OUT, chain::postgres_exec_exception, "Not expected COPY response, detail: ${s}", ("s",PQerrorMessage(conn_)));
+            EVT_ASSERT(PQresultStatus(r) == PGRES_COPY_IN, chain::postgres_exec_exception, "Not expected COPY response, detail: ${s}", ("s",PQerrorMessage(conn_)));
             PQclear(r);
 
             auto buf = std::string();
-            while(!reader.empty()) {
+            while(!reader.eof()) {
                 int sz = 0;
                 reader.read_row(buf, sizeof(sz));
                 sz = *(int*)buf.data();

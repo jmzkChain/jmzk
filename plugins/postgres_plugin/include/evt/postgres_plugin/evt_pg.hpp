@@ -54,7 +54,7 @@ public:
 
 class pg : boost::noncopyable {
 public:
-    pg() : conn_(nullptr) {}
+    pg() : conn_(nullptr), prepared_stmts_(0) {}
 
 public:
     int connect(const std::string& conn);
@@ -125,6 +125,7 @@ private:
 private:
     pg_conn*    conn_;
     std::string last_sync_block_id_;
+    int         prepared_stmts_;
 };
 
 }  // namespace evt

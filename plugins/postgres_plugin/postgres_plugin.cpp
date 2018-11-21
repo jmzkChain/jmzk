@@ -25,6 +25,7 @@ using boost::condition_variable_any;
 #include <evt/chain/exceptions.hpp>
 #include <evt/chain/genesis_state.hpp>
 #include <evt/chain/plugin_interface.hpp>
+#include <evt/chain/snapshot.hpp>
 #include <evt/chain/transaction.hpp>
 #include <evt/chain/types.hpp>
 #include <evt/chain/token_database.hpp>
@@ -555,6 +556,28 @@ postgres_plugin::plugin_initialize(const variables_map& options) {
 
         if(delete_state) {
             my_->wipe_database();
+        }
+
+        if(options.count("snapshot")) {
+            auto snapshot_path = options.at("snapshot").as<bfs::path>();
+            EVT_ASSERT(fc::exists(snapshot_path), plugin_config_exception,
+                       "Cannot load snapshot, ${name} does not exist", ("name", snapshot_path.generic_string()));
+
+            // recover genesis information from the snapshot
+            auto infile = std::ifstream(snapshot_path.generic_string(), (std::ios::in | std::ios::binary));
+            auto reader = std::make_shared<istream_snapshot_reader>(infile);
+            reader->validate();
+
+            if(reader->has_section("pg-blocks")) {
+                EVT_ASSERT(delete_state, postgres_plugin_exception, "Snapshot can only be used to initialize an empty database, please use --delete-all-blcoks or --clear-postgres option.");
+                my_->db_.restore(reader);
+                delete_state = false;
+            }
+            else {
+                wlog("Snapshot don't have postgres data, don't restore postgres");
+            }
+
+            infile.close();
         }
 
         my_->init(delete_state);
