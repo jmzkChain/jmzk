@@ -59,7 +59,8 @@ enum task_type {
     kGetFungibles,
     kGetActions,
     kGetFungibleActions,
-    kGetTransaction
+    kGetTransaction,
+    kGetTransactions
 };
 
 const char* call_names[] = {
@@ -69,7 +70,8 @@ const char* call_names[] = {
     "get_fungibles",
     "get_actions",
     "get_fungible_actions",
-    "get_transaction"
+    "get_transaction",
+    "get_transactions"
 };
 
 template<typename T>
@@ -179,6 +181,10 @@ pg_query::poll_read() {
             }
             case kGetTransaction: {
                 get_transaction_resume(t.id, re);
+                break;
+            }
+            case kGetTransactions: {
+                get_transactions_resume(t.id, re);
                 break;
             }
             };  // switch
@@ -646,7 +652,78 @@ pg_query::get_transaction_resume(int id, pg_result const* r) {
             }
         }
     }    
-    EVT_THROW(chain::unknown_transaction_exception, "Cannot find transaction");
+    EVT_THROW(chain::unknown_transaction_exception, "Cannot find transaction: ${t}", ("t", trx_id));
+}
+
+PREPARE_SQL_ONCE(gtrxs_plan0, "SELECT block_num, trx_id FROM transactions WHERE keys && $1 ORDER BY timestamp DESC LIMIT $2 OFFSET $3;")
+PREPARE_SQL_ONCE(gtrxs_plan1, "SELECT block_num, trx_id FROM transactions WHERE keys && $1 ORDER BY timestamp ASC  LIMIT $2 OFFSET $3;")
+
+int
+pg_query::get_transactions_async(int id, const read_only::get_transactions_params& params) {
+    using namespace __internal;
+
+    int s = 0, t = 10;
+    if(params.skip.valid()) {
+        s = *params.skip;
+    }
+    if(params.take.valid()) {
+        t = *params.take;
+        EVT_ASSERT(t <= 20, chain::postgres_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 20 per query");
+    }
+
+    auto keys_buf = fmt::memory_buffer();
+    format_array_to(keys_buf, std::begin(params.keys), std::end(params.keys));
+
+    auto stmt = std::string();
+    if(params.dire.valid() && *params.dire == direction::asc) {
+        stmt = fmt::format(fmt("EXECUTE gtrxs_plan0('{}',{},{});"), fmt::to_string(keys_buf), t, s);
+    }
+    else {
+        stmt = fmt::format(fmt("EXECUTE gtrxs_plan1('{}',{},{});"), fmt::to_string(keys_buf), t, s);
+    }
+
+    auto r = PQsendQuery(conn_, stmt.c_str());
+    EVT_ASSERT(r == 1, chain::postgres_send_exception, "Send get transactions command failed, detail: ${d}", ("d",PQerrorMessage(conn_)));
+
+    return queue(id, kGetTransactions);
+}
+
+int
+pg_query::get_transactions_resume(int id, pg_result const* r) {
+    using namespace __internal;
+
+    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get transaction failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+
+    auto n = PQntuples(r);
+    if(n == 0) {
+        return response_ok(id, "[]"); // return empty
+    }
+
+    auto results = fc::variants();
+    for(int i = 0; i < n; i++) {
+        auto trx_id    = transaction_id_type(std::string(PQgetvalue(r, i, 1), PQgetlength(r, i, 1)));
+        auto block_num = boost::lexical_cast<uint32_t>(PQgetvalue(r, i, 0));
+
+        auto block = chain_.fetch_block_by_number(block_num);
+        if(!block) {
+            continue;
+        }
+
+        for(auto& tx : block->transactions) {
+            if(tx.trx.id() == trx_id) {
+                auto var = fc::variant();
+                chain_.get_abi_serializer().to_variant(tx.trx, var);
+
+                auto mv = fc::mutable_variant_object(var);
+                mv["block_num"] = block_num;
+                mv["block_id"]  = block->id();
+
+                results.emplace_back(mv);
+                break;
+            }
+        }
+    }    
+    return response_ok(id, results);
 }
 
 }  // namepsace evt

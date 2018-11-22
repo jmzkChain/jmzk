@@ -105,6 +105,11 @@ read_only::get_transaction_async(int id, const get_transaction_params& params) {
     plugin_.my_->pg_query_.get_transaction_async(id, params);
 }
 
-}  // namespace history_apis
+void
+read_only::get_transactions_async(int id, const get_transactions_params& params) {
+    EVT_ASSERT(plugin_.my_, chain::postgres_not_enabled_exception, "Postgres plugin is not enabled.");
 
-}  // namespace evt
+    plugin_.my_->pg_query_.get_transactions_async(id, params);
+}
+
+}}  // namespace evt::history_apis

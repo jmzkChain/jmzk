@@ -1603,6 +1603,20 @@ main(int argc, char** argv) {
     set_get_suspend_subcommand  get_suspend(get);
     set_get_lock_subcommand     get_lock(get);
 
+    // get transaction
+    string   trx_id;
+    uint32_t block_num;
+
+    auto get_trx = get->add_subcommand("transaction", localized("Retrieve a transaction by its id and block num"));
+    get_trx->add_option("id", trx_id, localized("Id of transaction to be retrieved"))->required();
+    get_trx->add_option("block_num", block_num, localized("Block num of transaction to be retrieved"))->required();
+
+    get_trx->set_callback([&] {
+        auto args = mutable_variant_object("id", trx_id)("block_num", block_num);
+        print_info(call(get_transaction_func, args));
+    });
+
+
     // Net subcommand
     string new_host;
     auto   net = app.add_subcommand("net", localized("Interact with local p2p network connections"));

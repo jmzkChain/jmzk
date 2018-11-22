@@ -98,6 +98,7 @@ const std::string push_txns_func              = chain_func_base + "/push_transac
 const std::string json_to_bin_func            = chain_func_base + "/abi_json_to_bin";
 const std::string get_block_func              = chain_func_base + "/get_block";
 const std::string get_block_header_state_func = chain_func_base + "/get_block_header_state";
+const std::string get_transaction_func        = chain_func_base + "/get_transaction";
 const std::string get_required_keys           = chain_func_base + "/get_required_keys";
 const std::string get_suspend_required_keys   = chain_func_base + "/get_suspend_required_keys";
 const std::string get_charge                  = chain_func_base + "/get_charge";
