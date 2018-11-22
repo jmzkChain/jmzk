@@ -75,6 +75,9 @@ public:
     int get_transaction_async(int id, const read_only::get_transaction_params& params);
     int get_transaction_resume(int id, pg_result const*);
 
+    int get_transactions_async(int id, const read_only::get_transactions_params& params);
+    int get_transactions_resume(int id, pg_result const*);
+
 private:
     int queue(int id, int task);
     int poll_read();

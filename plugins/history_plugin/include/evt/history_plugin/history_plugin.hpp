@@ -77,6 +77,14 @@ public:
     };
     void get_transaction_async(int id, const get_transaction_params& params);
 
+    struct get_transactions_params {
+        std::vector<public_key_type>                    keys;
+        fc::optional<fc::enum_type<uint8_t, direction>> dire;
+        fc::optional<int>                               skip;
+        fc::optional<int>                               take;
+    };
+    void get_transactions_async(int id, const get_transactions_params& params);
+
 private:
     const history_plugin& plugin_;
 };
@@ -112,3 +120,4 @@ FC_REFLECT(evt::history_apis::read_only::get_tokens_params, (keys)(domain));
 FC_REFLECT(evt::history_apis::read_only::get_actions_params, (domain)(key)(dire)(names)(skip)(take));
 FC_REFLECT(evt::history_apis::read_only::get_fungible_actions_params, (sym_id)(dire)(addr)(skip)(take));
 FC_REFLECT(evt::history_apis::read_only::get_transaction_params, (id));
+FC_REFLECT(evt::history_apis::read_only::get_transactions_params, (keys)(dire)(skip)(take));
