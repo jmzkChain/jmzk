@@ -170,7 +170,7 @@ void
 evt_link_plugin_impl::get_trx_id_for_link_id(const link_id_type& link_id, deferred_id id) {
     // try to fetch from chain first
     try {
-        auto& obj = db_.get_link_obj_for_link_id(link_id);
+        auto obj = db_.get_link_obj_for_link_id(link_id);
         if(obj.block_num > db_.fork_db_head_block_num()) {
             // block not finalize yet
             add_and_schedule(link_id, id);

@@ -1087,8 +1087,8 @@ read_only::get_trx_id_for_link_id(const get_trx_id_for_link_id_params& params) c
         EVT_THROW(evt_link_id_exception, "EVT-Link id is not in proper length");
     }
 
-    auto& obj       = db.get_link_obj_for_link_id(*(link_id_type*)(&params.link_id[0]));
-    auto  vo        = fc::mutable_variant_object();
+    auto obj        = db.get_link_obj_for_link_id(*(link_id_type*)(&params.link_id[0]));
+    auto vo         = fc::mutable_variant_object();
     vo["block_num"] = obj.block_num;
     vo["trx_id"]    = obj.trx_id;
 

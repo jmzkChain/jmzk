@@ -134,7 +134,8 @@ enum act_data_type {
     kLock,
     kFungible,
     kProdVote,
-    kAsset
+    kAsset,
+    kEvtLink
 };
 
 template<uint128_t i>
@@ -149,7 +150,8 @@ auto act_data_map = hana::make_map(
     hana::make_pair(hana::int_c<kSuspend>, hana::make_tuple(uint128_c<N128(.suspend)>, hana::type_c<suspend_def>)),
     hana::make_pair(hana::int_c<kLock>, hana::make_tuple(uint128_c<N128(.lock)>, hana::type_c<lock_def>)),
     hana::make_pair(hana::int_c<kFungible>, hana::make_tuple(uint128_c<N128(.fungible)>, hana::type_c<fungible_def>)),
-    hana::make_pair(hana::int_c<kProdVote>, hana::make_tuple(uint128_c<N128(.prodvote)>, hana::type_c<prodvote>))
+    hana::make_pair(hana::int_c<kProdVote>, hana::make_tuple(uint128_c<N128(.prodvote)>, hana::type_c<prodvote>)),
+    hana::make_pair(hana::int_c<kEvtLink>, hana::make_tuple(uint128_c<N128(.evtlink)>, hana::type_c<evt_link_object>))
 );
 
 inline db_key
@@ -235,6 +237,12 @@ template<>
 name128
 get_key<fungible_def>(const fungible_def& v) {
     return v.sym.id();
+}
+
+template<>
+name128
+get_key<evt_link_object>(const evt_link_object& v) {
+    return v.link_id;
 }
 
 }  // namespace __internal
@@ -628,6 +636,18 @@ token_database::update_prodvote(const conf_key& key, const public_key_type& pkey
 }
 
 int
+token_database::add_evt_link(const evt_link_object& link_obj) {
+    using namespace __internal;
+    return my_->add_impl<kEvtLink>(link_obj);
+}
+
+int
+token_database::exists_evt_link(const link_id_type& id) const {
+    using namespace __internal;
+    return my_->exists_impl<kEvtLink>(id);
+}
+
+int
 token_database::read_domain(const domain_name& name, domain_def& domain) const {
     using namespace __internal;
     try {
@@ -779,6 +799,17 @@ token_database::read_prodvotes_no_throw(const conf_key& key, const read_prodvote
         }
     }
     return 0;
+}
+
+int
+token_database::read_evt_link(const link_id_type& id, evt_link_object& link_obj) const {
+    using namespace __internal;
+    try {
+        return my_->read_impl<kEvtLink>(id, link_obj);
+    }
+    catch(const tokendb_key_not_found&) {
+        EVT_THROW(evt_link_existed_exception, "Unknown Evt Link: ${id}", ("id",id));
+    }
 }
 
 int
@@ -993,6 +1024,10 @@ get_sp_key(const token_database::rt_action& act) {
     case kAsset: {
         auto data = GETPOINTER(rt_data_asset, act.data);
         return std::string(data->key, sizeof(data->key));
+    }
+    case kEvtLink: {
+        auto data = GETPOINTER(rt_data_key, act.data);
+        return get_db_key<kEvtLink>(data->key).as_string();
     }
     default: {
         EVT_THROW(fc::unrecoverable_exception, "Not excepted action type: ${t}", ("t",act.f.type));

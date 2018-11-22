@@ -35,8 +35,7 @@ using controller_index_set = index_set<
    global_property_multi_index,
    dynamic_global_property_multi_index,
    block_summary_multi_index,
-   transaction_multi_index,
-   evt_link_multi_index
+   transaction_multi_index
 >;
 
 class maybe_session {
@@ -1423,12 +1422,11 @@ controller::get_block_id_for_num(uint32_t block_num) const {
     FC_CAPTURE_AND_RETHROW((block_num))
 }
 
-const evt_link_object&
+evt_link_object
 controller::get_link_obj_for_link_id(const link_id_type& link_id) const {
-    if(const auto* l = my->db.find<evt_link_object, by_link_id>(link_id)) {
-        return *l;
-    }
-    EVT_THROW(evt_link_existed_exception, "EVT-Link: ${l} is not existed", ("l",link_id));
+    evt_link_object link_obj;
+    my->token_db.read_evt_link(link_id, link_obj);
+    return link_obj;
 }
 
 uint32_t
