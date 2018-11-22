@@ -4,12 +4,13 @@
 */
 #pragma once
 #include <deque>
+#include <functional>
 #include <memory>
 #include <boost/noncopyable.hpp>
+#include <rocksdb/options.h>
 #include <evt/chain/asset.hpp>
 #include <evt/chain/contracts/types.hpp>
-#include <functional>
-#include <rocksdb/options.h>
+#include <evt/chain/contracts/evt_link_object.hpp>
 
 namespace rocksdb {
 class DB;
@@ -166,6 +167,9 @@ public:
 
     int update_prodvote(const conf_key& key, const public_key_type& pkey, int64_t value);
 
+    int add_evt_link(const evt_link_object& link_obj);
+    int exists_evt_link(const link_id_type& id) const;
+
     int read_domain(const domain_name&, domain_def&) const;
     int read_token(const domain_name&, const token_name&, token_def&) const;
     int read_group(const group_name&, group_def&) const;
@@ -181,6 +185,8 @@ public:
     int read_all_assets(const address& addr, const read_fungible_func&) const;
 
     int read_prodvotes_no_throw(const conf_key& key, const read_prodvote_func&) const;
+
+    int read_evt_link(const link_id_type& id, evt_link_object& link_obj) const;
 
     int update_domain(const domain_def&);
     int update_group(const group_def&);

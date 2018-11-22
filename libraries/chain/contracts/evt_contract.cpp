@@ -1082,7 +1082,6 @@ EVT_ACTION_IMPL(everipay) {
     auto& epact = context.act.data_as<const everipay&>();
     try {
         auto& tokendb = context.token_db;
-        auto& db      = context.db;
 
         auto& link  = epact.link;
         auto  flags = link.get_header();
@@ -1103,18 +1102,14 @@ EVT_ACTION_IMPL(everipay) {
         }
 
         auto& link_id = link.get_link_id();
+        EVT_ASSERT(!tokendb.exists_evt_link(link_id), evt_link_dupe_exception, "Duplicate EVT-Link ${id}", ("id", fc::to_hex((char*)&link_id, sizeof(link_id))));
 
-        if(const auto* l = db.find<evt_link_object, by_link_id>(link_id)) {
-            // this link is executed successful, cannot be duplicate
-            EVT_THROW(evt_link_dupe_exception, "Duplicate EVT-Link ${id}", ("id", fc::to_hex((char*)&link_id, sizeof(link_id))));
-        }
-        else {
-            db.create<evt_link_object>([&](evt_link_object& li) {
-                li.block_num = context.control.pending_block_state()->block->block_num();
-                li.link_id   = link_id;
-                li.trx_id    = context.trx_context.trx.id;
-            });
-        }
+        auto link_obj = evt_link_object {
+            .link_id   = link_id,
+            .block_num = context.control.pending_block_state()->block->block_num(),
+            .trx_id    = context.trx_context.trx.id
+        };
+        tokendb.add_evt_link(link_obj);
 
         auto keys = link.restore_keys();
         EVT_ASSERT(keys.size() == 1, everipay_exception, "There're more than one signature on everiPay link, which is invalid");
