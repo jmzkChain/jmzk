@@ -85,6 +85,12 @@ public:
     };
     void get_transactions_async(int id, const get_transactions_params& params);
 
+    struct get_fungible_ids_params {
+        fc::optional<int> skip;
+        fc::optional<int> take;
+    };
+    void get_fungible_ids_async(int id, const get_fungible_ids_params& params);
+
 private:
     const history_plugin& plugin_;
 };
@@ -121,3 +127,4 @@ FC_REFLECT(evt::history_apis::read_only::get_actions_params, (domain)(key)(dire)
 FC_REFLECT(evt::history_apis::read_only::get_fungible_actions_params, (sym_id)(dire)(addr)(skip)(take));
 FC_REFLECT(evt::history_apis::read_only::get_transaction_params, (id));
 FC_REFLECT(evt::history_apis::read_only::get_transactions_params, (keys)(dire)(skip)(take));
+FC_REFLECT(evt::history_apis::read_only::get_fungible_ids_params, (skip)(take));

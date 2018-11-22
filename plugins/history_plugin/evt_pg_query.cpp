@@ -60,7 +60,8 @@ enum task_type {
     kGetActions,
     kGetFungibleActions,
     kGetTransaction,
-    kGetTransactions
+    kGetTransactions,
+    kGetFungibleIds
 };
 
 const char* call_names[] = {
@@ -71,7 +72,8 @@ const char* call_names[] = {
     "get_actions",
     "get_fungible_actions",
     "get_transaction",
-    "get_transactions"
+    "get_transactions",
+    "get_fungible_ids"
 };
 
 template<typename T>
@@ -185,6 +187,10 @@ pg_query::poll_read() {
             }
             case kGetTransactions: {
                 get_transactions_resume(t.id, re);
+                break;
+            }
+            case kGetFungibleIds: {
+                get_fungible_ids_resume(t.id, re);
                 break;
             }
             };  // switch
@@ -724,6 +730,53 @@ pg_query::get_transactions_resume(int id, pg_result const* r) {
         }
     }    
     return response_ok(id, results);
+}
+
+PREPARE_SQL_ONCE(gfi_plan, "SELECT sym_id FROM fungibles ORDER BY sym_id ASC LIMIT $1 OFFSET $2;");
+
+int
+pg_query::get_fungible_ids_async(int id, const read_only::get_fungible_ids_params& params) {
+    using namespace __internal;
+
+    int s = 0, t = 100;
+    if(params.skip.valid()) {
+        s = *params.skip;
+    }
+    if(params.take.valid()) {
+        t = *params.take;
+        EVT_ASSERT(t <= 100, chain::postgres_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 100 per query");
+    }
+
+    auto stmt = fmt::format(fmt("EXECUTE gfi_plan({},{});"), t, s);
+
+    auto r = PQsendQuery(conn_, stmt.c_str());
+    EVT_ASSERT(r == 1, chain::postgres_send_exception, "Send get transactions command failed, detail: ${d}", ("d",PQerrorMessage(conn_)));
+
+    return queue(id, kGetFungibleIds);
+}
+
+int
+pg_query::get_fungible_ids_resume(int id, pg_result const* r) {
+    using namespace __internal;
+
+    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get fungible ids failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+
+    auto n = PQntuples(r);
+    if(n == 0) {
+        return response_ok(id, "[]"); // return empty
+    }
+
+    auto buf = fmt::memory_buffer();
+    fmt::format_to(buf, "[");
+    for(int i = 0; i < n; i++) {
+        fmt::format_to(buf, "{}", PQgetvalue(r, i, 0));
+        if(i < n - 1) {
+            fmt::format_to(buf, ",");
+        }
+    }
+    fmt::format_to(buf, "]");
+
+    return response_ok(id, fmt::to_string(buf));
 }
 
 }  // namepsace evt

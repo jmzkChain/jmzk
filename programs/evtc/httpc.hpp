@@ -141,6 +141,7 @@ const std::string get_actions          = history_func_base + "/get_actions";
 const std::string get_fungible_actions = history_func_base + "/get_fungible_actions";
 const std::string get_transaction      = history_func_base + "/get_transaction";
 const std::string get_transactions     = history_func_base + "/get_transactions";
+const std::string get_fungible_ids     = history_func_base + "/get_fungible_ids";
 
 const std::string producer_func_base    = "/v1/producer";
 const std::string producer_pause        = producer_func_base + "/pause";
