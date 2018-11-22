@@ -538,6 +538,27 @@ class Test(unittest.TestCase):
         self.assertTrue('evt2pevt' in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
 
+    def test_get_history_transaction(self):
+        name = fake_name()
+        newdomain = AG.new_action('newdomain', name=name, creator=user.pub_key)
+
+        trx = TG.new_trx()
+        trx.add_action(newdomain)
+        trx.add_sign(user.priv_key)
+
+        resp = api.push_transaction(data=trx.dumps()).text
+        res_dict = json.loads(resp)
+        time.sleep(0.5)
+
+        req = {
+            'id': 'f0c789933e2b381e88281e8d8e750b561a4d447725fb0eb621f07f219fe2f738'
+        }
+        req['id'] = res_dict['transaction_id']
+
+        resp = api.get_history_transaction(json.dumps(req)).text
+        self.assertTrue('newdomain' in resp, msg=resp)
+        self.assertTrue(name in resp, msg=resp)
+
 
 @click.command()
 @click.option('--url', '-u', default='http://127.0.0.1:8888')
