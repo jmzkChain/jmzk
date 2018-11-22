@@ -70,7 +70,7 @@ class PayEngine:
             user1, user2 = user2, user1
 
         user1_link = self.build_evt_link(user1)
-        WatchPool().add_watch(user1_link.get_link_id().hex())
+        WatchPool().add_watch(user1_link.get_link_id().hex(), user1_link.get_timestamp())
 
         act_pay = AG.new_action('everipay', payee=user2.pub_key, number=self.asset(
             1), link=user1_link.to_string())
@@ -131,8 +131,7 @@ def main(freq, users, symbol, debug):
     pe.fetch_balances()
     pe_runid = reactor.callWhenRunning(pe.run)
     WatchPool().set_url('http://127.0.0.1:8888')
-    ir_runid = reactor.callWhenRunning(WatchPool().get_irr_block_num)
-    wp_runid = reactor.callWhenRunning(WatchPool().run)
+    WatchPool().run()
 
     reactor.run()
 
