@@ -559,6 +559,31 @@ class Test(unittest.TestCase):
         self.assertTrue('newdomain' in resp, msg=resp)
         self.assertTrue(name in resp, msg=resp)
 
+    def test_get_history_transactions(self):
+        req = {
+            'keys': [
+                'EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK'
+            ],
+            'skip': 0,
+            'take': 10
+        }
+        req['keys'] = [user.pub_key.to_string()]
+
+        resp = api.get_history_transactions(json.dumps(req)).text
+        self.assertTrue(domain_name in resp, msg=resp)
+        self.assertTrue(token1_name in resp, msg=resp)
+        self.assertTrue(group_name in resp, msg=resp)
+        self.assertTrue(str(sym_id) in resp, msg=resp)
+
+    def test_get_fungible_ids(self):
+        req = {
+            'skip': 0,
+            'take': 10
+        }
+
+        resp = api.get_fungible_ids(json.dumps(req)).text
+        self.assertTrue(str(sym_id) in resp, msg=resp)
+
 
 @click.command()
 @click.option('--url', '-u', default='http://127.0.0.1:8888')
