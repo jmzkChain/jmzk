@@ -62,6 +62,16 @@ enum task_type {
     kGetTransaction
 };
 
+const char* call_names[] = {
+    "get_tokens",
+    "get_domains",
+    "get_groups",
+    "get_fungibles",
+    "get_actions",
+    "get_fungible_actions",
+    "get_transaction"
+};
+
 template<typename T>
 int
 response_ok(int id, const T& obj) {
@@ -174,8 +184,7 @@ pg_query::poll_read() {
             };  // switch
         }
         catch(...) {
-            // TODO: replace with real function name
-            app().get_plugin<http_plugin>().handle_async_exception(t.id, "history", "async_function", "");
+            app().get_plugin<http_plugin>().handle_async_exception(t.id, "history", call_names[t.id], "");
         }
 
         PQclear(re);
