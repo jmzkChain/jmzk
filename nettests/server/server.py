@@ -31,7 +31,6 @@ class Server(object):
     def doRead(self):
         while self.socket.events & zmq.POLLIN:
             self.callback(self.socket)
-            self.socket.send_string('OK')
 
     def registerOn(self, reactor):
         if not self.callback:

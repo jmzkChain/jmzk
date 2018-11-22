@@ -1,5 +1,6 @@
 import functools
 import json
+from datetime import datetime
 
 from twisted.internet import reactor
 
@@ -91,15 +92,17 @@ class WatchPool:
     def __new__(cls):
         return object.__new__(cls)
 
-    def __init__(self, nodes=['http://127.0.0.1:8888']):
+    def __init__(self):
         self.watches = set([])
         self.status = True
         self.irr_block_num = 0
+
+    def set_socket(self, socket):
+        self.socket = socket
+
+    def set_nodes(self, nodes):
         self.nodes = [NodeInfo(each) for each in nodes]
         self.nodes_num = len(self.nodes)
-
-    def set_url(self, url):
-        self.url = url
 
     def add_watch(self, link_id, timestamp):
         self.watches.add(LinkInfo(link_id, timestamp))
@@ -122,6 +125,17 @@ class WatchPool:
             )
         reactor.callLater(2, self.get_irr_block_num)
 
+    def check_timeout(self):
+        if len(self.watches) == 0:
+            self.socket.send_string('Success')
+            reactor.stop()
+        now = int(datetime.now().timestamp())
+        for link_info in self.watches:
+            if now > link_info.timestamp + 20:
+                self.socket.send_string('Failed')
+                reactor.stop()
+        reactor.callLater(10, self.check_timeout)
+
     def watch(self):
         for each in self.watches:
             for node in self.nodes:
@@ -131,3 +145,4 @@ class WatchPool:
     def run(self):
         reactor.callWhenRunning(self.watch)
         reactor.callWhenRunning(self.get_irr_block_num)
+        reactor.callWhenRunning(self.check_timeout)

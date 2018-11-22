@@ -19,7 +19,7 @@ AG = ActionGenerator()
 
 
 class PayEngine:
-    def __init__(self, freq, users, sym='5,S#1', nodes=None):
+    def __init__(self, freq, users, sym='5,S#1', amount=10, nodes=None):
         self.freq = freq
         self.users = self.load_users(users)
         self.linkids = set([])
@@ -29,6 +29,7 @@ class PayEngine:
         self.balance = {}
         DBG_Symbol = base.Symbol('DBG', 666, 5)
         self.asset = base.new_asset(DBG_Symbol)
+        self.amount = amount
 
     def load_users(self, filename):
         with open(filename, 'r') as f:
@@ -61,7 +62,7 @@ class PayEngine:
         link.sign(user.priv_key)
         return link
 
-    def run(self):
+    def everipay(self):
         [user1, user2] = random.sample(self.users, 2)
         while self.balance[user1] == 0 and self.balance[user2] == 0:
             [user1, user2] = reandom.sample(self.users, 2)
@@ -80,8 +81,12 @@ class PayEngine:
         trx.set_payer(user2.pub_key.to_string())
         resp = self.Api.push_transaction(trx.dumps())
         print(user1_link.get_link_id().hex(), resp, WatchPool().size())
+        self.amount -= 1
+        if self.amount > 0:
+            reactor.callLater(self.freq, self.everipay)
 
-        reactor.callLater(self.freq, self.run)
+    def run(self):
+        return reactor.callWhenRunning(self.everipay)
 
 
 def prepare_for_debug(filename):
@@ -129,7 +134,7 @@ def main(freq, users, symbol, debug):
     pe = PayEngine(freq, users, sym=symbol, nodes=None)
     pe.set_url('http://127.0.0.1:8888')
     pe.fetch_balances()
-    pe_runid = reactor.callWhenRunning(pe.run)
+    pe.run()
     WatchPool().set_url('http://127.0.0.1:8888')
     WatchPool().run()
 
