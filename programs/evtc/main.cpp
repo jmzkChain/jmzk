@@ -1190,6 +1190,7 @@ struct set_producer_subcommands {
     string  producer;
     string  confkey;
     int64_t confvalue;
+    bool    postgres;
 
     vector<string> prodkeys;
 
@@ -1251,8 +1252,12 @@ struct set_producer_subcommands {
         });
 
         auto cscmd = actionRoot->add_subcommand("snapshot", localized("Create a snapshot till current head block"));
-        cscmd->set_callback([] {
-            const auto& v = call(url, create_snapshot);
+        cscmd->add_flag("-p,--postgres", postgres, localized("Add postgres to snapshot"));
+        cscmd->set_callback([this] {
+            auto arg = fc::mutable_variant_object();
+            arg["postgres"] = postgres;
+
+            const auto& v = call(url, create_snapshot, arg);
             print_info(v);
         });
 

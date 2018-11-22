@@ -15,6 +15,7 @@
 #include <evt/chain/charge_manager.hpp>
 #include <evt/chain/chain_snapshot.hpp>
 #include <evt/chain/fork_database.hpp>
+#include <evt/chain/snapshot.hpp>
 #include <evt/chain/token_database.hpp>
 #include <evt/chain/token_database_snapshot.hpp>
 #include <evt/chain/transaction_context.hpp>

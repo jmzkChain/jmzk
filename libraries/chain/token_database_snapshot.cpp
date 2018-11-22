@@ -432,16 +432,18 @@ snapshot_env::RenameFile(const std::string& src, const std::string& target) {
 
     if(boost::starts_with(src, kBackupPath)) {
         FC_ASSERT(boost::starts_with(target, kBackupPath));
+        
+        {
+            auto l = std::unique_lock<std::mutex>(mutex_);
+            writer_->write_section(target, [&src](auto& rw) {
+                size_t sz   = src.size();
+                int    type = kLink;
 
-        // only write to snapshot when close
-        writer_->write_section(target, [&src](auto& rw) {
-            size_t sz   = src.size();
-            int    type = kLink;
-
-            rw.add_row("type", (char*)&type,  sizeof(type));
-            rw.add_row("size", (char*)&sz,    sizeof(sz));
-            rw.add_row("raw",  src.data(),    sz);
-        });
+                rw.add_row("type", (char*)&type,  sizeof(type));
+                rw.add_row("size", (char*)&sz,    sizeof(sz));
+                rw.add_row("raw",  src.data(),    sz);
+            });
+        }
         created_files_.emplace_back(target);
         return Status::OK();
     }

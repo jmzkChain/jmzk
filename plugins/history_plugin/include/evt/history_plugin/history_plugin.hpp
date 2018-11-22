@@ -15,12 +15,14 @@
 namespace evt {
 
 class history_plugin;
-using evt::chain::public_key_type;
+
+using evt::chain::address;
 using evt::chain::action_name;
 using evt::chain::domain_name;
-using evt::chain::token_name;
+using evt::chain::public_key_type;
 using evt::chain::symbol_id_type;
-using evt::chain::address;
+using evt::chain::token_name;
+using evt::chain::transaction_id_type;
 
 namespace history_apis {
 
@@ -70,6 +72,11 @@ public:
     };
     void get_fungible_actions_async(int id, const get_fungible_actions_params& params);
 
+    struct get_transaction_params {
+        transaction_id_type id;
+    };
+    void get_transaction_async(int id, const get_transaction_params& params);
+
 private:
     const history_plugin& plugin_;
 };
@@ -104,3 +111,4 @@ FC_REFLECT(evt::history_apis::read_only::get_params, (keys));
 FC_REFLECT(evt::history_apis::read_only::get_tokens_params, (keys)(domain));
 FC_REFLECT(evt::history_apis::read_only::get_actions_params, (domain)(key)(dire)(names)(skip)(take));
 FC_REFLECT(evt::history_apis::read_only::get_fungible_actions_params, (sym_id)(dire)(addr)(skip)(take));
+FC_REFLECT(evt::history_apis::read_only::get_transaction_params, (id));

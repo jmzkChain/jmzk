@@ -14,10 +14,14 @@ static appbase::abstract_plugin& _history_plugin = app().register_plugin<history
 class history_plugin_impl {
 public:
     history_plugin_impl()
-        : pg_query_(app().get_io_service()) {
+        : pg_query_(app().get_io_service(), app().get_plugin<chain_plugin>().chain()) {
         pg_query_.connect(app().get_plugin<postgres_plugin>().connstr());
         pg_query_.prepare_stmts();
         pg_query_.begin_poll_read();
+    }
+
+    ~history_plugin_impl() {
+        pg_query_.close();
     }
 
 public:
@@ -92,6 +96,13 @@ read_only::get_fungible_actions_async(int id, const get_fungible_actions_params&
     EVT_ASSERT(plugin_.my_, chain::postgres_not_enabled_exception, "Postgres plugin is not enabled.");
 
     plugin_.my_->pg_query_.get_fungible_actions_async(id, params);
+}
+
+void
+read_only::get_transaction_async(int id, const get_transaction_params& params) {
+    EVT_ASSERT(plugin_.my_, chain::postgres_not_enabled_exception, "Postgres plugin is not enabled.");
+
+    plugin_.my_->pg_query_.get_transaction_async(id, params);
 }
 
 }  // namespace history_apis

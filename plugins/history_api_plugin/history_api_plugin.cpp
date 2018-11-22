@@ -57,7 +57,7 @@ history_api_plugin::plugin_initialize(const variables_map&) {}
                     api_handle.call_name##_async(id, fc::json::from_string(body).as<api_namespace::call_name##_params>());    \
                 }                                                                                                             \
                 catch (...) {                                                                                                 \
-                    http_plugin::handle_async_exception(id, #api_name, #call_name, body);                                           \
+                    http_plugin::handle_async_exception(id, #api_name, #call_name, body);                                     \
                 }                                                                                                             \
             }                                                                                                                 \
     }
@@ -75,7 +75,8 @@ history_api_plugin::plugin_startup() {
                                                    HISTORY_RO_ASYNC_CALL(get_groups),
                                                    HISTORY_RO_ASYNC_CALL(get_fungibles),
                                                    HISTORY_RO_ASYNC_CALL(get_actions),
-                                                   HISTORY_RO_ASYNC_CALL(get_fungible_actions)
+                                                   HISTORY_RO_ASYNC_CALL(get_fungible_actions),
+                                                   HISTORY_RO_ASYNC_CALL(get_transaction),
                                                   });
 }
 
