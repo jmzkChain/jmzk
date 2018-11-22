@@ -1515,6 +1515,22 @@ struct set_get_history_subcommands {
 
             print_info(call(get_fungible_actions, args));
         });
+
+        auto syncmd = hiscmd->add_subcommand("symbols", localized("Retrieve fungible symbol ids"));
+        syncmd->add_option("--skip,-s", skip, localized("How many records should be skipped"));
+        syncmd->add_option("--take,-t", take, localized("How many records should be returned"));
+
+        syncmd->set_callback([this] {
+            auto args = mutable_variant_object();
+            if(skip > 0) {
+                args["skip"] = skip;
+            }
+            if(take > 0) {
+                args["take"] = take;
+            }
+
+            print_info(call(get_fungible_ids, args));
+        });
     }
 };
 

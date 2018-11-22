@@ -78,6 +78,7 @@ history_api_plugin::plugin_startup() {
                                                    HISTORY_RO_ASYNC_CALL(get_fungible_actions),
                                                    HISTORY_RO_ASYNC_CALL(get_transaction),
                                                    HISTORY_RO_ASYNC_CALL(get_transactions),
+                                                   HISTORY_RO_ASYNC_CALL(get_fungible_ids),
                                                   });
 }
 
