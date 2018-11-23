@@ -27,19 +27,19 @@ def singleton(cls):
     return cls
 
 
-def compare_block_num(body, node_info, link_info):
+def compare_block_num(body, node_info, link_info, wp):
     j = json.loads(str(body, encoding='utf-8'))
     block_num = j['block_num']
 
     if block_num <= node_info.irr_block_num:
         link_info.accept_nodes.add(node_info)
 
-    if len(link_info.accept_nodes) == WatchPool().nodes_num:
+    if len(link_info.accept_nodes) == wp.nodes_num:
         print('remove %s' % (link_info.link_id))
-        WatchPool().watches.remove(link_info)
+        wp.watches.remove(link_info)
 
 
-def get_transaction(body, node_info, link_info):
+def get_transaction(body, node_info, link_info, wp):
     j = json.loads(str(body, encoding='utf-8'))
     block_num = j['block_num']
     trx_id = j['trx_id']
@@ -47,7 +47,7 @@ def get_transaction(body, node_info, link_info):
     post_cb(
         url=node_info.url + '/v1/chain/get_transaction',
         callback=compare_block_num,
-        args=(node_info, link_info),
+        args=(node_info, link_info, wp),
         method='POST',
         body='''
         {
@@ -58,11 +58,11 @@ def get_transaction(body, node_info, link_info):
     )
 
 
-def get_trx_id_for_link_id(node_info, link_info):
+def get_trx_id_for_link_id(node_info, link_info, wp):
     post_cb(
         url=node_info.url + '/v1/evt_link/get_trx_id_for_link_id',
         callback=get_transaction,
-        args=(node_info, link_info),
+        args=(node_info, link_info, wp),
         method='POST',
         body='{"link_id": "%s"}' % (link_info.link_id)
     )
@@ -87,7 +87,7 @@ class LinkInfo:
         self.status = True
 
 
-@singleton
+#@singleton
 class WatchPool:
     def __new__(cls):
         return object.__new__(cls)
@@ -131,18 +131,20 @@ class WatchPool:
         if len(self.watches) == 0:
             self.socket.send_string('Success')
             self.stop()
+            return
         now = int(datetime.now().timestamp())
         for link_info in self.watches:
             if now > link_info.timestamp + 20:
                 self.socket.send_string('Failed')
                 self.stop()
+                return
         if self.alive:
             reactor.callLater(10, self.check_timeout)
 
     def watch(self):
         for each in self.watches:
             for node in self.nodes:
-                get_trx_id_for_link_id(node, each)
+                get_trx_id_for_link_id(node, each, self)
         if self.alive:
             reactor.callLater(1, self.watch)
 
