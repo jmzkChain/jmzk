@@ -26,5 +26,6 @@ else
 fi
 
 DATA_DIR="--data-dir=/opt/evt/data"
+SNAPSHOTS_DIR="--snapshots-dir=/opt/evt/snapshots"
 
-exec /opt/evt/bin/evtd $CONFIG_DIR $DATA_DIR $@
+exec /opt/evt/bin/evtd $CONFIG_DIR $DATA_DIR $SNAPSHOTS_DIR $@

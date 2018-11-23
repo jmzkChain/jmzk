@@ -91,6 +91,10 @@ def detail(name):
         ports.append(
             '{}:{}->{}/{}'.format(p['IP'], p['PublicPort'], p['PrivatePort'], p['Type']))
 
+    volumes = []
+    for v in ct['Mounts']:
+        volumes.append('{}->{}'.format(v['Name'], v['Destination']))
+
     click.echo('      id: {}'.format(green(ct['Id'])))
     click.echo('   image: {}'.format(green(ct['Image'])))
     click.echo('image-id: {}'.format(green(ct['ImageID'])))
@@ -98,6 +102,7 @@ def detail(name):
     click.echo(' network: {}'.format(
         green(list(ct['NetworkSettings']['Networks'].keys())[0])))
     click.echo('   ports: {}'.format(green(', '.join(ports))))
+    click.echo(' volumes: {}'.format(green(', '.join(volumes))))
     click.echo('  status: {}'.format(green(ct['Status'])))
 
 
@@ -170,7 +175,6 @@ def init(ctx):
 @click.option('--net', '-n', default='evt-net', help='Name of the network for the environment')
 @click.option('--port', '-p', default=5432, help='Expose port for postgres')
 @click.option('--host', '-h', default='127.0.0.1', help='Host address for postgres')
-
 @click.pass_context
 def create(ctx, net, port, host, dbname):
     name = ctx.obj['name']
@@ -234,12 +238,13 @@ def createdb(ctx, dbname):
         click.echo('{} container is not existed'.format(green(name)))
         return
 
-
-    cmd1 = 'psql -U postgres -c "SELECT EXISTS(SELECT datname FROM pg_catalog.pg_database WHERE datname=\'{}\');"'.format(dbname)
+    cmd1 = 'psql -U postgres -c "SELECT EXISTS(SELECT datname FROM pg_catalog.pg_database WHERE datname=\'{}\');"'.format(
+        dbname)
     c1, logs1 = container.exec_run(cmd1)
 
     if 't\n' in logs1.decode('utf-8'):
-        click.echo('{} database is already created, skip creation'.format(green(name)))
+        click.echo(
+            '{} database is already created, skip creation'.format(green(name)))
         return
 
     cmd2 = "psql -U postgres -c 'CREATE DATABASE {}'".format(dbname)
@@ -455,6 +460,7 @@ def init(ctx):
     name = ctx.obj['name']
 
     volume_name = '{}-data-volume'.format(name)
+    volume2_name = '{}-snapshots-volume'.format(name)
     try:
         client.volumes.get(volume_name)
         click.echo('{} volume is already existed, no need to create one'.
@@ -462,6 +468,14 @@ def init(ctx):
     except docker.errors.NotFound:
         client.volumes.create(volume_name)
         click.echo('{} volume is created'.format(green(volume_name)))
+
+    try:
+        client.volumes.get(volume2_name)
+        click.echo('{} volume is already existed, no need to create one'.
+                   format(green(volume2_name)))
+    except docker.errors.NotFound:
+        client.volumes.create(volume2_name)
+        click.echo('{} volume is created'.format(green(volume2_name)))
 
 
 @evtd.command('export', help='Export reversible blocks to one backup file')
@@ -549,6 +563,7 @@ def importrb(ctx, file):
 def clear(ctx, all):
     name = ctx.obj['name']
     volume_name = '{}-data-volume'.format(name)
+    volume2_name = '{}-snapshots-volume'.format(name)
 
     try:
         container = client.containers.get(name)
@@ -572,6 +587,13 @@ def clear(ctx, all):
     except docker.errors.NotFound:
         click.echo('{} volume is not existed'.format(green(volume_name)))
 
+    try:
+        volume = client.volumes.get(volume2_name)
+        volume.remove()
+        click.echo('{} volume is removed'.format(green(volume2_name)))
+    except docker.errors.NotFound:
+        click.echo('{} volume is not existed'.format(green(volume2_name)))
+
 
 @evtd.command()
 @click.argument('arguments', nargs=-1)
@@ -587,6 +609,7 @@ def clear(ctx, all):
 def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_port, postgres_db, type, arguments):
     name = ctx.obj['name']
     volume_name = '{}-data-volume'.format(name)
+    volume2_name = '{}-snapshots-volume'.format(name)
 
     if type == 'testnet':
         image = 'everitoken/evt:latest'
@@ -597,6 +620,7 @@ def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_port, po
         client.images.get(image)
         client.networks.get(net)
         client.volumes.get(volume_name)
+        client.volumes.get(volume2_name)
     except docker.errors.ImageNotFound:
         click.echo(
             'Some necessary elements are not found, please run `evtd init` first')
@@ -653,7 +677,10 @@ def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_port, po
     client.containers.create(image, None, name=name, detach=True, network=net,
                              ports=ports,
                              volumes={volume_name: {
-                                 'bind': '/opt/evt/data', 'mode': 'rw'}},
+                                 'bind': '/opt/evt/data', 'mode': 'rw'},
+                                 volume2_name: {
+                                 'bind': '/opt/evt/snapshots', 'mode': 'rw'},
+                             },
                              entrypoint=entry
                              )
     click.echo('{} container is created'.format(green(name)))
