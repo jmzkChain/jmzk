@@ -46,4 +46,7 @@ ENV LD_LIBRARY_PATH /usr/local/lib
 RUN mkdir /opt/evt/data
 VOLUME /opt/evt/data
 
+RUN mkdir /opt/evt/snapshots
+VOLUME /opt/evt/snapshots
+
 ENV PATH /opt/evt/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin

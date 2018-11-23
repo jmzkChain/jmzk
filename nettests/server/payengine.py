@@ -65,7 +65,7 @@ class PayEngine:
     def everipay(self):
         [user1, user2] = random.sample(self.users, 2)
         while self.balance[user1] == 0 and self.balance[user2] == 0:
-            [user1, user2] = reandom.sample(self.users, 2)
+            [user1, user2] = random.sample(self.users, 2)
 
         if self.balance[user1] < self.balance[user2]:
             user1, user2 = user2, user1
