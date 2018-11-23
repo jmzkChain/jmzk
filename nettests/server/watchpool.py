@@ -96,6 +96,7 @@ class WatchPool:
         self.watches = set([])
         self.status = True
         self.irr_block_num = 0
+        self.alive = True
 
     def set_socket(self, socket):
         self.socket = socket
@@ -123,26 +124,34 @@ class WatchPool:
                 callback=set_irr_block_num,
                 args=(node,)
             )
-        reactor.callLater(2, self.get_irr_block_num)
+        if self.alive:
+            reactor.callLater(2, self.get_irr_block_num)
 
     def check_timeout(self):
         if len(self.watches) == 0:
             self.socket.send_string('Success')
-            reactor.stop()
+            self.stop()
         now = int(datetime.now().timestamp())
         for link_info in self.watches:
             if now > link_info.timestamp + 20:
                 self.socket.send_string('Failed')
-                reactor.stop()
-        reactor.callLater(10, self.check_timeout)
+                self.stop()
+        if self.alive:
+            reactor.callLater(10, self.check_timeout)
 
     def watch(self):
         for each in self.watches:
             for node in self.nodes:
                 get_trx_id_for_link_id(node, each)
-        reactor.callLater(1, self.watch)
+        if self.alive:
+            reactor.callLater(1, self.watch)
 
     def run(self):
+        self.alive = True
         reactor.callWhenRunning(self.watch)
         reactor.callWhenRunning(self.get_irr_block_num)
         reactor.callWhenRunning(self.check_timeout)
+
+    def stop(self):
+        self.alive = False
+        print('The WatchPool stops now')
