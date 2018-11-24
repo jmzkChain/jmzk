@@ -5,6 +5,7 @@ from twisted.internet import reactor
 from payengine import PayEngine, prepare_for_debug
 from watchpool import WatchPool
 
+context = {}
 
 class Handler:
     def __call__(self, socket):
@@ -23,15 +24,20 @@ class Handler:
                 symbol = '5,S#666'
             else:
                 symbol = '5,S#1'
-            pe = PayEngine(freq, users, sym=symbol, amount=amount)
+            
+            pe = PayEngine(freq, users, watch_pool=context[socket]['WP'], sym=symbol, amount=amount)
             pe.set_url(url)
             pe.fetch_balances()
             pe.run()
-            WatchPool().run()
+            context[socket]['PE'] = pe
+            context[socket]['WP'].run()
         elif func == 'watches':
             nodes = cmd['nodes']
-            WatchPool().set_nodes(nodes)
-            WatchPool().set_socket(socket)
+            wp = WatchPool()
+            wp.set_nodes(nodes)
+            wp.set_socket(socket)
+            context[socket] = {}
+            context[socket]['WP'] = wp
             socket.send_string('watches config succeed')
         else:
             raise Exception('No Such Function')
