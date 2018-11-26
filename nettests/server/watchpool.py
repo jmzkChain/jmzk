@@ -34,13 +34,19 @@ def compare_block_num(body, node_info, link_info):
     if block_num <= node_info.irr_block_num:
         link_info.accept_nodes.add(node_info)
 
-    if len(link_info.accept_nodes) == WatchPool().nodes_num:
+    if len(link_info.accept_nodes) == WatchPool().nodes_num and link_info in WatchPool().watches:
         print('remove %s' % (link_info.link_id))
         WatchPool().watches.remove(link_info)
 
 
 def get_transaction(body, node_info, link_info):
     j = json.loads(str(body, encoding='utf-8'))
+    if not 'block_num' in j:
+        print('not find: ', link_info.link_id)
+        link_info.ispack = False
+        return
+
+    link_info.ispack = True
     block_num = j['block_num']
     trx_id = j['trx_id']
 
@@ -83,6 +89,7 @@ class LinkInfo:
     def __init__(self, link_id, timestamp):
         self.link_id = link_id
         self.timestamp = timestamp
+        self.ispack = False
         self.accept_nodes = set([])
         self.status = True
 
@@ -133,9 +140,10 @@ class WatchPool:
             self.stop()
         now = int(datetime.now().timestamp())
         for link_info in self.watches:
-            if now > link_info.timestamp + 20:
+            if now > link_info.timestamp + 20 and not link_info.ispack:
                 self.socket.send_string('Failed')
                 self.stop()
+                break
         if self.alive:
             reactor.callLater(10, self.check_timeout)
 
@@ -148,10 +156,13 @@ class WatchPool:
 
     def run(self):
         self.alive = True
+        print('callWhenRunning')
         reactor.callWhenRunning(self.watch)
         reactor.callWhenRunning(self.get_irr_block_num)
         reactor.callWhenRunning(self.check_timeout)
 
     def stop(self):
         self.alive = False
+        self.watches.clear()
+        print('watch size : ', len(self.watches))
         print('The WatchPool stops now')

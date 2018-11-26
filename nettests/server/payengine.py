@@ -19,7 +19,7 @@ AG = ActionGenerator()
 
 
 class PayEngine:
-    def __init__(self, freq, users, sym='5,S#1', amount=10, nodes=None):
+    def __init__(self, freq, users, watch_pool, sym='5,S#1', amount=10, nodes=None):
         self.freq = freq
         self.users = self.load_users(users)
         self.linkids = set([])
@@ -30,6 +30,7 @@ class PayEngine:
         DBG_Symbol = base.Symbol('DBG', 666, 5)
         self.asset = base.new_asset(DBG_Symbol)
         self.amount = amount
+        self.wp = watch_pool
 
     def load_users(self, filename):
         with open(filename, 'r') as f:
@@ -71,7 +72,7 @@ class PayEngine:
             user1, user2 = user2, user1
 
         user1_link = self.build_evt_link(user1)
-        WatchPool().add_watch(user1_link.get_link_id().hex(), user1_link.get_timestamp())
+        self.wp.add_watch(user1_link.get_link_id().hex(), user1_link.get_timestamp())
 
         act_pay = AG.new_action('everipay', payee=user2.pub_key, number=self.asset(
             1), link=user1_link.to_string())
@@ -80,13 +81,13 @@ class PayEngine:
         trx.add_sign(user2.priv_key)
         trx.set_payer(user2.pub_key.to_string())
         resp = self.Api.push_transaction(trx.dumps())
-        print(user1_link.get_link_id().hex(), resp, WatchPool().size())
+        print(user1_link.get_link_id().hex(), resp, self.wp.size())
         self.amount -= 1
         if self.amount > 0:
             reactor.callLater(self.freq, self.everipay)
 
     def run(self):
-        return reactor.callWhenRunning(self.everipay)
+        reactor.callWhenRunning(self.everipay)
 
 
 def prepare_for_debug(filename):
