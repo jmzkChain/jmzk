@@ -248,7 +248,8 @@ public:
     deferred_id
     alloc_deferred_id(typename websocketpp::server<T>::connection_ptr con) {
         if(http_conn_size + https_conn_size >= max_deferred_connection_size) {
-            EVT_THROW(chain::exceed_deferred_request, "Exceed max allowed deferred connections, max: ${m}", ("m",max_deferred_connection_size));
+            EVT_THROW(chain::exceed_deferred_request, "Exceed max allowed deferred connections, max: ${m}",
+                ("m",max_deferred_connection_size));
         }
 
         if constexpr (std::is_same_v<T, http_config>) {
@@ -275,7 +276,8 @@ public:
                 }
             }
         }
-        EVT_THROW(chain::alloc_deferred_fail, "Alloc deferred id failed, http index: ${i}, https index: ${j}", ("i",http_conn_index)("j",https_conn_index));
+        EVT_THROW(chain::alloc_deferred_fail, "Alloc deferred id failed, http index: ${i}, https index: ${j}",
+            ("i",http_conn_index)("j",https_conn_index));
     }
 
     template<class T>
@@ -469,8 +471,10 @@ http_plugin::~http_plugin() {}
 void
 http_plugin::set_program_options(options_description&, options_description& cfg) {
     cfg.add_options()
-        ("unix-socket-path", bpo::value<string>()->default_value(current_http_plugin_defaults.default_unix_socket_path), "The filename (or relative to data-dir) to create a unix socket for HTTP RPC; set blank to disable.")
-        ("http-server-address", bpo::value<string>()->default_value("127.0.0.1:" + std::to_string(current_http_plugin_defaults.default_http_port)), "The local IP and port to listen for incoming http connections; set blank to disable.")
+        ("unix-socket-path", bpo::value<string>()->default_value(current_http_plugin_defaults.default_unix_socket_path),
+            "The filename (or relative to data-dir) to create a unix socket for HTTP RPC; set blank to disable.")
+        ("http-server-address", bpo::value<string>()->default_value("127.0.0.1:" + std::to_string(current_http_plugin_defaults.default_http_port)),
+            "The local IP and port to listen for incoming http connections; set blank to disable.")
         ("https-server-address", bpo::value<string>(), "The local IP and port to listen for incoming https connections; leave blank to disable.")
         ("https-certificate-chain-file", bpo::value<string>(), "Filename with the certificate chain to present on https connections. PEM format. Required for https.")
         ("https-private-key-file", bpo::value<string>(), "Filename with https private key in PEM format. Required for https")
@@ -495,7 +499,8 @@ http_plugin::set_program_options(options_description&, options_description& cfg)
         ("max-deferred-connection-size", bpo::value<uint32_t>()->default_value(8), "The maximum size allowed for deferred connections")
         ("verbose-http-errors", bpo::bool_switch()->default_value(false), "Append the error log to HTTP responses")
         ("http-validate-host", boost::program_options::value<bool>()->default_value(true), "If set to false, then any incoming \"Host\" header is considered valid")
-        ("http-alias", bpo::value<std::vector<string>>()->composing(), "Additionaly acceptable values for the \"Host\" header of incoming HTTP requests, can be specified multiple times.  Includes http/s_server_address by default.")
+        ("http-alias", bpo::value<std::vector<string>>()->composing(),
+            "Additionaly acceptable values for the \"Host\" header of incoming HTTP requests, can be specified multiple times.  Includes http/s_server_address by default.")
         ("http-no-response", bpo::bool_switch()->default_value(false), "special for load-testing, response all the requests with empty body")
         ;
 }
@@ -785,7 +790,9 @@ http_plugin::handle_async_exception(deferred_id id, const char* api_name, const 
 
 bool
 http_plugin::is_on_loopback() const {
-    return (!my->listen_endpoint || my->listen_endpoint->address().is_loopback()) && (!my->https_listen_endpoint || my->https_listen_endpoint->address().is_loopback());
+    return (!my->listen_endpoint
+        || my->listen_endpoint->address().is_loopback())
+        && (!my->https_listen_endpoint || my->https_listen_endpoint->address().is_loopback());
 }
 
 bool
