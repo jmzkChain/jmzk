@@ -2,19 +2,15 @@
  *  @file
  *  @copyright defined in evt/LICENSE.txt
  */
-#include <boost/asio.hpp>
-#include <boost/format.hpp>
-#include <fc/exception/exception.hpp>
-#include <fc/io/console.hpp>
-#include <fc/io/fstream.hpp>
-#include <fc/io/json.hpp>
-#include <fc/variant.hpp>
+
 #include <iostream>
 #include <limits>
 #include <regex>
 #include <string>
 #include <type_traits>
 #include <vector>
+
+#include <pwd.h>
 
 #pragma push_macro("N")
 #undef N
@@ -27,13 +23,19 @@
 #include <boost/process/spawn.hpp>
 #include <boost/range/algorithm/find_if.hpp>
 #include <boost/range/algorithm/sort.hpp>
+#include <boost/range/algorithm/copy.hpp>
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/split.hpp>
-#include <boost/range/algorithm/copy.hpp>
 #include <boost/algorithm/string/classification.hpp>
 
 #pragma pop_macro("N")
+
+#include <fc/exception/exception.hpp>
+#include <fc/io/console.hpp>
+#include <fc/io/fstream.hpp>
+#include <fc/io/json.hpp>
+#include <fc/variant.hpp>
 
 #include <evt/chain/config.hpp>
 #include <evt/chain/contracts/types.hpp>
@@ -69,9 +71,25 @@ FC_DECLARE_EXCEPTION(localized_exception, 10000000, "an error occured");
             FC_THROW_EXCEPTION(explained_exception, #TEST);   \
         } FC_MULTILINE_MACRO_END)
 
-string program    = "evtc";
-string url        = "http://127.0.0.1:8888";
-string wallet_url = "http://127.0.0.1:9999";
+bfs::path
+determine_home_directory() {
+    bfs::path      home;
+    struct passwd* pwd = getpwuid(getuid());
+    if(pwd) {
+        home = pwd->pw_dir;
+    }
+    else {
+        home = getenv("HOME");
+    }
+    if(home.empty())
+        home = "./";
+    return home;
+}
+
+string program            = "evtc";
+string url                = "http://127.0.0.1:8888";
+string default_wallet_url = "unix://" + fc::path(determine_home_directory() / "evt-wallet/evtwd.sock").to_native_ansi_path();
+string wallet_url; //to be set to default_wallet_url in main
 
 bool no_verify = false;
 vector<string> headers;
@@ -449,27 +467,24 @@ send_transaction(signed_transaction& trx, packed_transaction::compression_type c
 }
 
 bool
-local_port_used(const string& lo_address, uint16_t port) {
+local_port_used() {
     using namespace boost::asio;
 
     io_service ios;
-    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(lo_address), port);
-    boost::asio::ip::tcp::socket socket(ios);
-    boost::system::error_code ec = error::would_block;
-    //connecting/failing to connect to localhost should be always fast - don't care about timeouts
-    socket.async_connect(endpoint, [&](const boost::system::error_code& error) { ec = error; } );
-    do {
-        ios.run_one();
-    } while (ec == error::would_block);
+    local::stream_protocol::endpoint endpoint(wallet_url.substr(strlen("unix://")));
+    local::stream_protocol::socket socket(ios);
+    boost::system::error_code ec;
+    socket.connect(endpoint, ec);
+
     return !ec;
 }
 
 void
-try_local_port(const string& lo_address, uint16_t port, uint32_t duration) {
+try_local_port(uint32_t duration) {
     using namespace std::chrono;
     auto start_time = duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch() ).count();
-    while (!local_port_used(lo_address, port)) {
-        if(duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch()).count() - start_time > duration) {
+    while(!local_port_used()) {
+        if(duration_cast<std::chrono::milliseconds>(system_clock::now().time_since_epoch()).count() - start_time > duration) {
             std::cerr << "Unable to connect to evtwd, if evtwd is running please kill the process and try again.\n";
             throw connection_exception(fc::log_messages{FC_LOG_MESSAGE(error, "Unable to connect to evtwd")});
         }
@@ -479,24 +494,22 @@ try_local_port(const string& lo_address, uint16_t port, uint32_t duration) {
 void
 ensure_evtwd_running(CLI::App* app) {
     // version, net do not require evtwd
-    if(tx_skip_sign || app->got_subcommand("version") || app->got_subcommand("net"))
+    if(tx_skip_sign || app->got_subcommand("version") || app->got_subcommand("net")) {
         return;
-    if(app->get_subcommand("create")->got_subcommand("key")) // create key does not require wallet
+    }
+    if(app->get_subcommand("create")->got_subcommand("key")) { // create key does not require wallet
         return;
-    if(app->get_subcommand("wallet")->got_subcommand("stop")) // stop wallet not require wallet
-        return;
-
-    auto parsed_url = parse_url(wallet_url);
-    auto resolved_url = resolve_url(context, parsed_url);
-
-    if(!resolved_url.is_loopback) {
+    }
+    if(app->get_subcommand("wallet")->got_subcommand("stop")) { // stop wallet not require wallet
         return;
     }
 
-    for(const auto& addr: resolved_url.resolved_addresses) {
-        if(local_port_used(addr, resolved_url.resolved_port)) { // Hopefully taken by keosd
-            return;
-        }
+    if(wallet_url != default_wallet_url) {
+        return;
+    }
+
+    if(local_port_used()) {
+        return;
     }
 
     boost::filesystem::path binPath = boost::dll::program_location();
@@ -510,30 +523,29 @@ ensure_evtwd_running(CLI::App* app) {
         binPath.remove_filename().remove_filename().append("evtwd").append("evtwd");
     }
 
-    const auto& lo_address = resolved_url.resolved_addresses.front();
     if(boost::filesystem::exists(binPath)) {
         namespace bp = boost::process;
         binPath = boost::filesystem::canonical(binPath);
 
         vector<std::string> pargs;
-        pargs.push_back("--http-server-address=" + lo_address + ":" + std::to_string(resolved_url.resolved_port));
+        pargs.push_back("--unix-socket-path");
+        pargs.push_back(fc::path(determine_home_directory() / "evt-wallet/evtwd.sock").to_native_ansi_path());
 
         ::boost::process::child evtwd(binPath, pargs,
-                                     bp::std_in.close(),
-                                     bp::std_out > bp::null,
-                                     bp::std_err > bp::null);
+                                      bp::std_in.close(),
+                                      bp::std_out > bp::null,
+                                      bp::std_err > bp::null);
         if(evtwd.running()) {
             std::cerr << binPath << " launched" << std::endl;
             evtwd.detach();
-            try_local_port(lo_address, resolved_url.resolved_port, 2000);
+            try_local_port(2000);
         }
         else {
-            std::cerr << "No wallet service listening on " << lo_address << ":"
-                      << std::to_string(resolved_url.resolved_port) << ". Failed to launch " << binPath << std::endl;
+            std::cerr << "No wallet service listening on " << wallet_url << ". Failed to launch " << binPath << std::endl;
         }
     }
     else {
-        std::cerr << "No wallet service listening on " << lo_address << ":" << std::to_string(resolved_url.resolved_port)
+        std::cerr << "No wallet service listening on " << wallet_url
                   << ". Cannot automatically start evtwd because evtwd was not found." << std::endl;
     }
 }
@@ -1556,6 +1568,7 @@ main(int argc, char** argv) {
     bindtextdomain(locale_domain, locale_path);
     textdomain(locale_domain);
     context = evt::client::http::create_http_context();
+    wallet_url = default_wallet_url;
 
     CLI::App app{"Command Line Interface to everiToken Client"};
     app.require_subcommand();

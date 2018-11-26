@@ -142,6 +142,9 @@ inline custom_alloc_handler<Handler> make_custom_alloc_handler(
 template <typename config>
 class endpoint;
 
+template <typename config>
+class local_endpoint;
+
 typedef lib::function<void (lib::asio::error_code const & ec,
     size_t bytes_transferred)> async_read_handler;
 

@@ -85,8 +85,8 @@ producer_api_plugin::plugin_startup() {
         CALL(producer, producer, get_integrity_hash,
              INVOKE_R_V(producer, get_integrity_hash), 201),
         CALL(producer, producer, create_snapshot,
-             INVOKE_V_R(producer, create_snapshot, producer_plugin::create_snapshot_options), 201)
-    });
+             INVOKE_V_R(producer, create_snapshot, producer_plugin::create_snapshot_options), 201)},
+        true /* local only API */);
 }
 
 void

@@ -107,7 +107,8 @@ wallet_api_plugin::plugin_startup() {
                                              CALL(wallet, wallet_mgr, get_public_keys,
                                                   INVOKE_R_V(wallet_mgr, get_public_keys), 200),
                                              CALL(wallet, wallet_mgr, get_my_signatures,
-                                                  INVOKE_R_R(wallet_mgr, get_my_signatures, chain::chain_id_type), 200)});
+                                                  INVOKE_R_R(wallet_mgr, get_my_signatures, chain::chain_id_type), 200)},
+                                             true /* local only API */);
 }
 
 void
