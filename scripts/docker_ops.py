@@ -446,6 +446,13 @@ def detailmongo(ctx):
     ctx.invoke(detail, name=ctx.obj['name'])
 
 
+def check_evt_image():
+    try:
+        client.images.get('everitoken/evt:latest')
+    except docker.errors.ImageNotFound:
+        click.echo('Cannot find image: {}, please pull first'.format(green('everitoken/evt:latest')))
+
+
 @cli.group()
 @click.option('--name', '-n', default='evtd', help='Name of the container running evtd')
 @click.pass_context
@@ -458,6 +465,8 @@ def evtd(ctx, name):
 @click.pass_context
 def init(ctx):
     name = ctx.obj['name']
+
+    check_evt_image();
 
     volume_name = '{}-data-volume'.format(name)
     volume2_name = '{}-snapshots-volume'.format(name)
@@ -725,36 +734,34 @@ def evtwd(ctx, name):
 def init(ctx):
     name = ctx.obj['name']
 
+    check_evt_image();
+
     volume_name = '{}-data-volume'.format(name)
     try:
         client.volumes.get(volume_name)
-        click.echo('evtwd: {} volume is already existed, no need to create one'.
+        click.echo('{} volume is already existed, no need to create one'.
                    format(green(volume_name)))
     except docker.errors.NotFound:
         client.volumes.create(volume_name)
-        click.echo('evtwd: {} volume is created'.format(green(volume_name)))
+        click.echo('{} volume is created'.format(green(volume_name)))
 
 
 @evtwd.command()
-@click.option('--net', '-n', default='evt-net', help='Name of the network for the environment')
-@click.option('--port', '-p', default=0, help='Expose port for evtwd, leave zero for not exposed')
-@click.option('--host', '-h', default='127.0.0.1', help='Host address for evtwd')
 @click.pass_context
-def create(ctx, net, port, host):
+def create(ctx):
     name = ctx.obj['name']
     volume_name = '{}-data-volume'.format(name)
 
     try:
         client.images.get('everitoken/evt:latest')
-        client.networks.get(net)
         client.volumes.get(volume_name)
     except docker.errors.ImageNotFound:
         click.echo(
-            'evtwd: Some necessary elements are not found, please run `evtwd init` first')
+            'Some necessary elements are not found, please run `evtwd init` first')
         return
     except docker.errors.NotFound:
         click.echo(
-            'evtwd: Some necessary elements are not found, please run `evtwd init` first')
+            'Some necessary elements are not found, please run `evtwd init` first')
         return
 
     create = False
@@ -762,12 +769,12 @@ def create(ctx, net, port, host):
         container = client.containers.get(name)
         if container.status != 'running':
             click.echo(
-                'evtwd: {} container is existed but not running, try to remove old container and start a new one'.format(green(name)))
+                '{} container is existed but not running, try to remove old container and start a new one'.format(green(name)))
             container.remove()
             create = True
         else:
             click.echo(
-                'evtwd: {} container is already existed and running, cannot restart, run `evtwd stop` first'.format(green(name)))
+                '{} container is already existed and running, cannot restart, run `evtwd stop` first'.format(green(name)))
             return
     except docker.errors.NotFound:
         create = True
@@ -775,17 +782,13 @@ def create(ctx, net, port, host):
     if not create:
         return
 
-    ports = {}
-    if port != 0:
-        ports['9999/tcp'] = (host, port)
-    entry = '/opt/evt/bin/evtwd --http-server-address=0.0.0.0:9999'
-    client.containers.create('everitoken/evt:latest', None, name=name, detach=True, network=net,
-                             ports=ports,
+    entry = 'evtwd.sh --unix-socket-path=evtwd.sock'
+    client.containers.create('everitoken/evt:latest', None, name=name, detach=True,
                              volumes={volume_name: {
                                  'bind': '/opt/evt/data', 'mode': 'rw'}},
                              entrypoint=entry
                              )
-    click.echo('evtwd: {} container is created'.format(green(name)))
+    click.echo('{} container is created'.format(green(name)))
 
 
 @evtwd.command()
@@ -799,13 +802,13 @@ def clear(ctx, all):
         container = client.containers.get(name)
         if container.status == 'running':
             click.echo(
-                'evtwd: {} container is still running, cannot clean'.format(green(name)))
+                '{} container is still running, cannot clean'.format(green(name)))
             return
 
         container.remove()
-        click.echo('evtwd: {} container is removed'.format(green(name)))
+        click.echo('{} container is removed'.format(green(name)))
     except docker.errors.NotFound:
-        click.echo('evtwd: {} container is not existed'.format(green(name)))
+        click.echo('{} container is not existed'.format(green(name)))
 
     if not all:
         return
@@ -813,9 +816,9 @@ def clear(ctx, all):
     try:
         volume = client.volumes.get(volume_name)
         volume.remove(force=True)
-        click.echo('evtwd: {} volume is removed'.format(green(volume_name)))
+        click.echo('{} volume is removed'.format(green(volume_name)))
     except docker.errors.NotFound:
-        click.echo('evtwd: {} volume is not existed'.format(green(volume_name)))
+        click.echo('{} volume is not existed'.format(green(volume_name)))
 
 
 @evtwd.command('start')
@@ -859,10 +862,10 @@ def evtc(commands, evtwd):
         return
     except docker.errors.NotFound:
         click.echo(
-            'evtwd: Some necessary elements are not found, please run `evtwd init` first')
+            'Some necessary elements are not found, please run `evtwd init` first')
         return
 
-    entry = '/opt/evt/bin/evtc {}'.format(' '.join(commands))
+    entry = '/opt/evt/bin/evtc --wallet-url=unix://opt/evt/data/evtwd.sock {}'.format(' '.join(commands))
     code, result = container.exec_run(entry, stream=True)
 
     for line in result:

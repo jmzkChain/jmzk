@@ -37,8 +37,12 @@ COPY --from=builder /tmp/build/bin /opt/evt/bin
 COPY --from=builder /etc/evt-version /etc
 
 COPY config.ini /
-COPY evtd.sh /opt/evt/bin/evtd.sh
-RUN chmod +x /opt/evt/bin/evtd.sh
+COPY evtd.sh  /opt/evt/bin/evtd.sh
+COPY evtwd.sh /opt/evt/bin/evtwd.sh
+COPY evtc.sh  /opt/evt/bin/evtc.sh
+RUN chmod +x  /opt/evt/bin/evtd.sh
+RUN chmod +x  /opt/evt/bin/evtwd.sh
+RUN chmod +x  /opt/evt/bin/evtc.sh
 
 ENV EVT_ROOT=/opt/evt
 ENV LD_LIBRARY_PATH /usr/local/lib
