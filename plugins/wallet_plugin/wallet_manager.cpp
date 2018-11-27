@@ -329,7 +329,7 @@ wallet_manager::initialize_lock() {
     wallet_dir_lock = std::make_unique<boost::interprocess::file_lock>(lock_path.string().c_str());
     if(!wallet_dir_lock->try_lock()) {
         wallet_dir_lock.reset();
-        EVT_THROW(wallet_exception, "Failed to lock access to wallet directory; is another keosd running?");
+        EVT_THROW(wallet_exception, "Failed to lock access to wallet directory; is another evtwd running?");
     }
 }
 
