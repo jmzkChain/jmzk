@@ -470,11 +470,16 @@ http_plugin::~http_plugin() {}
 
 void
 http_plugin::set_program_options(options_description&, options_description& cfg) {
+    if(current_http_plugin_defaults.default_http_port > 0) {
+        cfg.add_options()("http-server-address", bpo::value<string>()->default_value("127.0.0.1:" + std::to_string(current_http_plugin_defaults.default_http_port)),
+            "The local IP and port to listen for incoming http connections; set blank to disable.");
+    }
+    if(!current_http_plugin_defaults.default_unix_socket_path.empty()) {
+        cfg.add_options()("unix-socket-path", bpo::value<string>()->default_value(current_http_plugin_defaults.default_unix_socket_path),
+            "The filename (or relative to data-dir) to create a unix socket for HTTP RPC; set blank to disable.");
+    }
+
     cfg.add_options()
-        ("unix-socket-path", bpo::value<string>()->default_value(current_http_plugin_defaults.default_unix_socket_path),
-            "The filename (or relative to data-dir) to create a unix socket for HTTP RPC; set blank to disable.")
-        ("http-server-address", bpo::value<string>()->default_value("127.0.0.1:" + std::to_string(current_http_plugin_defaults.default_http_port)),
-            "The local IP and port to listen for incoming http connections; set blank to disable.")
         ("https-server-address", bpo::value<string>(), "The local IP and port to listen for incoming https connections; leave blank to disable.")
         ("https-certificate-chain-file", bpo::value<string>(), "Filename with the certificate chain to present on https connections. PEM format. Required for https.")
         ("https-private-key-file", bpo::value<string>(), "Filename with https private key in PEM format. Required for https")
