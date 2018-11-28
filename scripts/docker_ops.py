@@ -176,7 +176,7 @@ def init(ctx):
 @click.option('--port', '-p', default=5432, help='Expose port for postgres')
 @click.option('--host', '-h', default='127.0.0.1', help='Host address for postgres')
 @click.pass_context
-def create(ctx, net, port, host, dbname):
+def create(ctx, net, port, host):
     name = ctx.obj['name']
     volume_name = '{}-data-volume'.format(name)
     image = 'bitnami/postgresql:11.1.0'
