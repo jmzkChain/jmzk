@@ -25,6 +25,6 @@ else
     CONFIG_DIR=""
 fi
 
-DATA_DIR="--data-dir=/opt/evt/data/wallet"
+WALLET_DIR="--wallet-dir=/opt/evt/data/wallet"
 
-exec /opt/evt/bin/evtwd $CONFIG_DIR $DATA_DIR $@
+exec /opt/evt/bin/evtwd $CONFIG_DIR $WALLET_DIR $@
