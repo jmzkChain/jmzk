@@ -781,7 +781,7 @@ def create(ctx):
     if not create:
         return
 
-    entry = 'evtwd.sh --unix-socket-path=evtwd.sock'
+    entry = 'evtwd.sh --unix-socket-path=/opt/evt/data/wallet/evtwd.sock'
     client.containers.create('everitoken/evt:latest', None, name=name, detach=True,
                              volumes={volume_name: {
                                  'bind': '/opt/evt/data', 'mode': 'rw'}},
@@ -864,7 +864,11 @@ def evtc(commands, evtwd):
             'Some necessary elements are not found, please run `evtwd init` first')
         return
 
-    entry = '/opt/evt/bin/evtc --wallet-url=unix://opt/evt/data/evtwd.sock {}'.format(' '.join(commands))
+    if container.status != 'running':
+        click.echo('{} container is not running, please start it first'.format(green('evtwd')))
+        return
+
+    entry = '/opt/evt/bin/evtc --wallet-url=unix://opt/evt/data/wallet/evtwd.sock {}'.format(' '.join(commands))
     code, result = container.exec_run(entry, stream=True)
 
     for line in result:
