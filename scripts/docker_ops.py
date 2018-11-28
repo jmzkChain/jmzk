@@ -612,10 +612,9 @@ def clear(ctx, all):
 @click.option('--p2p-port', default=7888, help='Expose port for p2p network, set 0 for not expose')
 @click.option('--host', '-h', default='127.0.0.1', help='Host address for evtd')
 @click.option('--postgres-name', '-g', default='pg', help='Container name or host address of postgres')
-@click.option('--postgres-port', default=5432, help='Port of postgres')
 @click.option('--postgres-db', default=None, help='Name of database in postgres, if set, postgres and history plugins will be enabled')
 @click.pass_context
-def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_port, postgres_db, type, arguments):
+def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_db, type, arguments):
     name = ctx.obj['name']
     volume_name = '{}-data-volume'.format(name)
     volume2_name = '{}-snapshots-volume'.format(name)
@@ -674,7 +673,7 @@ def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_port, po
             'history_plugin'), green('history_api_plugin')))
         entry += ' --plugin=evt::postgres_plugin --plugin=evt::history_plugin --plugin=evt::history_api_plugin'
         entry += ' --postgres-uri=postgresql://postgres@{}:{}/{}'.format(
-            postgres_name, postgres_port, postgres_db)
+            postgres_name, 5432, postgres_db)
     if arguments is not None and len(arguments) > 0:
         entry += ' ' + ' '.join(arguments)
 

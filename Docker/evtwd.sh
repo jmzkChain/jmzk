@@ -4,6 +4,7 @@ cd /opt/evt/bin
 if [ -f '/opt/evt/etc/evtwd/config.ini' ]; then
     echo
   else
+    mkdir /opt/evt/etc
     mkdir /opt/evt/etc/evtwd
 fi
 
