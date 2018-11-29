@@ -503,7 +503,15 @@ ensure_evtwd_running(CLI::App* app) {
     if(app->get_subcommand("wallet")->got_subcommand("stop")) { // stop wallet not require wallet
         return;
     }
+    if(app->got_subcommand("producer")) {
+        auto prod = app->get_subcommand("producer");
+        if(prod->got_subcommand("prodvote") || prod->got_subcommand("updsched")) {
+            goto next;
+        }
+        return;
+    }
 
+next:
     if(wallet_url != default_wallet_url) {
         return;
     }

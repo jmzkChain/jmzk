@@ -605,6 +605,34 @@ def clear(ctx, all):
 
 
 @evtd.command()
+@click.option('--postgres/--no-postgres', '-p', default=False, help='Whether export postgres data into snapshot(postgres plugin should be enabled)')
+@click.pass_context
+def snapshot(ctx, postgres):
+    name = ctx.obj['name']
+    
+    try:
+        container = client.containers.get(name)
+        if container.status != 'running':
+            click.echo(
+                '{} container is not running, cannot create snapshot'.format(green(name)))
+            return
+    except docker.errors.NotFound:
+        click.echo('{} container is not existed'.format(green(name)))
+        return
+
+    if postgres:
+        p = '-p'
+    else:
+        p = ''
+
+    entry = '/opt/evt/bin/evtc -u unix:///opt/evt/data/evtd.sock producer snapshot {}'.format(p)
+    code, result = container.exec_run(entry, stream=True)
+
+    for line in result:
+        click.echo(line.decode('utf-8'), nl=False)
+
+
+@evtd.command()
 @click.argument('arguments', nargs=-1)
 @click.option('--type', '-t', default='testnet', type=click.Choice(['testnet', 'mainnet']), help='Type of the image')
 @click.option('--net', '-n', default='evt-net', help='Name of the network for the environment')
