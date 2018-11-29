@@ -194,13 +194,6 @@ EVT_ACTION_IMPL(issuetoken) {
         EVT_ASSERT(context.has_authorized(itact.domain, N128(.issue)), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(!itact.owner.empty(), token_owner_exception, "Owner cannot be empty.");
 
-        auto check_owner = [](const auto& addr) {
-            EVT_ASSERT(addr.is_public_key(), token_owner_exception, "Owner should be public key address");
-        };
-        for(auto& addr : itact.owner) {
-            check_owner(addr);
-        }
-
         auto& tokendb = context.token_db;
         EVT_ASSERT(tokendb.exists_domain(itact.domain), unknown_domain_exception, "Domain ${name} does not exist.", ("name", itact.domain));
 
@@ -245,13 +238,6 @@ EVT_ACTION_IMPL(transfer) {
     try {
         EVT_ASSERT(context.has_authorized(ttact.domain, ttact.name), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(!ttact.to.empty(), token_owner_exception, "New owner cannot be empty.");
-
-        auto check_owner = [](const auto& addr) {
-            EVT_ASSERT(addr.is_public_key(), token_owner_exception, "Owner should be public key address");
-        };
-        for(auto& addr : ttact.to) {
-            check_owner(addr);
-        }
 
         auto& tokendb = context.token_db;
 
