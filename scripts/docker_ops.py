@@ -165,6 +165,8 @@ def init(ctx):
         click.echo('Pulled latest postgres image')
 
     volume_name = '{}-data-volume'.format(name)
+    volume2_name = '{}-config-volume'.format(name)
+
     try:
         client.volumes.get(volume_name)
         click.echo('{} volume is already existed, no need to create one'.
@@ -173,21 +175,32 @@ def init(ctx):
         client.volumes.create(volume_name)
         click.echo('{} volume is created'.format(green(volume_name)))
 
+    try:
+        client.volumes.get(volume2_name)
+        click.echo('{} volume is already existed, no need to create one'.
+                   format(green(volume2_name)))
+    except docker.errors.NotFound:
+        client.volumes.create(volume2_name)
+        click.echo('{} volume is created'.format(green(volume2_name)))
+
 
 @postgres.command()
 @click.option('--net', '-n', default='evt-net', help='Name of the network for the environment')
 @click.option('--port', '-p', default=5432, help='Expose port for postgres')
 @click.option('--host', '-h', default='127.0.0.1', help='Host address for postgres')
+@click.option('--password', '-x', default='', help='Password for \'postgres\' user, leave empty to diable password(anyone can login)')
 @click.pass_context
-def create(ctx, net, port, host):
+def create(ctx, net, port, host, password):
     name = ctx.obj['name']
     volume_name = '{}-data-volume'.format(name)
+    volume2_name = '{}-config-volume'.format(name)
     image = 'bitnami/postgresql:11.1.0'
 
     try:
         client.images.get(image)
         client.networks.get(net)
         client.volumes.get(volume_name)
+        client.volumes.get(volume2_name)
     except docker.errors.ImageNotFound:
         click.echo(
             'Some necessary elements are not found, please run `postgres init` first')
@@ -217,10 +230,33 @@ def create(ctx, net, port, host):
 
     client.containers.create(image, None, name=name, detach=True, network=net,
                              ports={'5432/tcp': (host, port)},
-                             volumes={volume_name: {
-                                 'bind': '/bitnami', 'mode': 'rw'}},
+                             volumes={
+                                volume_name: {
+                                 'bind': '/bitnami', 'mode': 'rw'},
+                                volume2_name: {
+                                 'bind': '/opt/bitnami/postgresql/conf', 'mode': 'rw'
+                                }
+                             },
                              )
     click.echo('{} container is created'.format(green(name)))
+
+    if len(password) > 0:
+        me = 'md5'
+        click.echo('{}: Password is set only if it\'s the first time creating postgres, otherwise it will reuse old password. Please use {} command.'.format(green('NOTICE'), green('postgres updpass')))
+    else:
+        me = 'trust'
+
+    conf = """# TYPE  DATABASE        USER            ADDRESS                 METHOD
+              local   all             all                                     trust
+              host    all             all             127.0.0.1/32            trust
+              host    all             all             ::1/128                 trust
+              host    all             all             0.0.0.0/0               {}""".format(me)
+
+    click.echo('Writting default {}'.format(green('pg_hba.conf')))
+    cmd = '/bin/bash -c "echo -e \'{}\' | cat > /opt/bitnami/postgresql/conf/pg_hba.conf"'.format(conf)
+    r = client.containers.run(image, cmd, auto_remove=True, volumes={volume2_name: {
+        'bind': '/opt/bitnami/postgresql/conf', 'mode': 'rw'
+        }})
 
 
 @postgres.command()
@@ -228,8 +264,6 @@ def create(ctx, net, port, host):
 @click.pass_context
 def createdb(ctx, dbname):
     name = ctx.obj['name']
-    volume_name = '{}-data-volume'.format(name)
-    image = 'bitnami/postgresql:11.1.0'
 
     try:
         container = client.containers.get(name)
@@ -255,6 +289,29 @@ def createdb(ctx, dbname):
 
     if 'CREATE DATABASE' in logs2.decode('utf-8'):
         click.echo('Created database: {} in postgres'.format(green(dbname)))
+
+
+@postgres.command()
+@click.argument('new-password', default='')
+@click.pass_context
+def updpass(ctx, new_password):
+    name = ctx.obj['name']
+
+    try:
+        container = client.containers.get(name)
+        if container.status != 'running':
+            click.echo(
+                '{} container is not running, cannot create database'.format(green(name)))
+            return
+    except docker.errors.NotFound:
+        click.echo('{} container is not existed'.format(green(name)))
+        return
+
+    cmd = 'psql -U postgres -c "ALTER USER postgres WITH PASSWORD \'{}\';"'.format(new_password)
+    c, logs = container.exec_run(cmd)
+
+    if 'ALTER ROLE' in logs.decode('utf-8'):
+        click.echo('Update password successfully')
 
 
 @postgres.command()
@@ -672,8 +729,9 @@ def snapshot(ctx, postgres, upload, aws_key, aws_secret):
 @click.option('--host', '-h', default='127.0.0.1', help='Host address for evtd')
 @click.option('--postgres-name', '-g', default='pg', help='Container name or host address of postgres')
 @click.option('--postgres-db', default=None, help='Name of database in postgres, if set, postgres and history plugins will be enabled')
+@click.option('--postgres-pass', default='', help='Password for postgres')
 @click.pass_context
-def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_db, type, arguments):
+def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_db, postgres_pass, type, arguments):
     name = ctx.obj['name']
     volume_name = '{}-data-volume'.format(name)
     volume2_name = '{}-snapshots-volume'.format(name)
@@ -731,8 +789,14 @@ def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_db, type
         click.echo('{}, {}, {} are enabled'.format(green('postgres_plugin'), green(
             'history_plugin'), green('history_api_plugin')))
         entry += ' --plugin=evt::postgres_plugin --plugin=evt::history_plugin --plugin=evt::history_api_plugin'
-        entry += ' --postgres-uri=postgresql://postgres@{}:{}/{}'.format(
-            postgres_name, 5432, postgres_db)
+
+        if len(postgres_pass) == 0:
+            entry += ' --postgres-uri=postgresql://postgres@{}:{}/{}'.format(
+                postgres_name, 5432, postgres_db)
+        else:
+            entry += ' --postgres-uri=postgresql://postgres:{}@{}:{}/{}'.format(
+                postgres_pass, postgres_name, 5432, postgres_db)
+
     if arguments is not None and len(arguments) > 0:
         entry += ' ' + ' '.join(arguments)
 
