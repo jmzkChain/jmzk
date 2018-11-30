@@ -28,7 +28,7 @@ def upload(file, block_id, block_num, block_time, bucket, aws_key, aws_secret):
         click.style(key, fg='red'), click.style(bucket, fg='green')))
     s3.Object(bucket, key).put(
         ACL='public-read',
-        Body=open(f, 'rb'),
+        Body=open(file, 'rb'),
         Metadata={
             'block-id': block_id,
             'block_num': block_num,
