@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+import json
+import pathlib
+import re
 from datetime import datetime
 
 import click
@@ -450,7 +453,8 @@ def check_evt_image():
     try:
         client.images.get('everitoken/evt:latest')
     except docker.errors.ImageNotFound:
-        click.echo('Cannot find image: {}, please pull first'.format(green('everitoken/evt:latest')))
+        click.echo('Cannot find image: {}, please pull first'.format(
+            green('everitoken/evt:latest')))
 
 
 @cli.group()
@@ -466,7 +470,7 @@ def evtd(ctx, name):
 def init(ctx):
     name = ctx.obj['name']
 
-    check_evt_image();
+    check_evt_image()
 
     volume_name = '{}-data-volume'.format(name)
     volume2_name = '{}-snapshots-volume'.format(name)
@@ -606,10 +610,14 @@ def clear(ctx, all):
 
 @evtd.command()
 @click.option('--postgres/--no-postgres', '-p', default=False, help='Whether export postgres data into snapshot(postgres plugin should be enabled)')
+@click.option('--upload/--no-upload', '-u', default=False, help='Whether upload to S3')
+@click.option('--aws-key', '-k', default='')
+@click.option('--aws-secret', '-s', default='')
 @click.pass_context
-def snapshot(ctx, postgres):
+def snapshot(ctx, postgres, upload, aws_key, aws_secret):
     name = ctx.obj['name']
-    
+    volume_name = '{}-snapshots-volume'.format(name)
+
     try:
         container = client.containers.get(name)
         if container.status != 'running':
@@ -625,11 +633,34 @@ def snapshot(ctx, postgres):
     else:
         p = ''
 
-    entry = '/opt/evt/bin/evtc -u unix:///opt/evt/data/evtd.sock producer snapshot {}'.format(p)
-    code, result = container.exec_run(entry, stream=True)
+    entry = '/opt/evt/bin/evtc -u unix:///opt/evt/data/evtd.sock producer snapshot {}'.format(
+        p)
+    code, result = container.exec_run(entry)
 
-    for line in result:
-        click.echo(line.decode('utf-8'), nl=False)
+    obj = {}
+    pat = re.compile(r'\|->([\w_]+) : (.*)')
+    it = pat.finditer(result.decode('utf-8'))
+    for m in it:
+        obj[m.group(1)] = m.group(2)
+
+    click.echo(json.dumps(obj, indent=2))
+
+    if not upload:
+        return
+
+    if aws_key == '' or aws_secret == '':
+        click.echo('AWS key or secret is empty, cannot upload to S3')
+        return
+
+    entry = "--file=/data/{} --block-id='{}' --block-num={} --block-time='{}' --aws-key={} --aws-secret={}".format(
+        pathlib.Path(obj['snapshot_name']).name, obj['head_block_id'], obj['head_block_num'], obj['head_block_time'], aws_key, aws_secret)
+
+    container = client.containers.run('everitoken/snapshot:latest', entry, detach=True,
+                                      volumes={volume_name: {'bind': '/data', 'mode': 'rw'}})
+    container.wait()
+    logs = container.logs().decode('utf-8')
+
+    click.echo(logs)
 
 
 @evtd.command()
@@ -761,7 +792,7 @@ def evtwd(ctx, name):
 def init(ctx):
     name = ctx.obj['name']
 
-    check_evt_image();
+    check_evt_image()
 
     volume_name = '{}-data-volume'.format(name)
     try:
@@ -893,10 +924,12 @@ def evtc(commands, evtwd):
         return
 
     if container.status != 'running':
-        click.echo('{} container is not running, please start it first'.format(green('evtwd')))
+        click.echo(
+            '{} container is not running, please start it first'.format(green('evtwd')))
         return
 
-    entry = '/opt/evt/bin/evtc --wallet-url=unix://opt/evt/data/wallet/evtwd.sock {}'.format(' '.join(commands))
+    entry = '/opt/evt/bin/evtc --wallet-url=unix://opt/evt/data/wallet/evtwd.sock {}'.format(
+        ' '.join(commands))
     code, result = container.exec_run(entry, stream=True)
 
     for line in result:
