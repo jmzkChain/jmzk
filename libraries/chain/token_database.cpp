@@ -329,6 +329,9 @@ public:
         auto dbkey  = get_db_key<DT>(key);
         auto status = self_.db_->Get(self_.read_opts_, dbkey.as_slice(), &value);
         if(!status.ok()) {
+            if(!status.IsNotFound()) {
+                FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+            }
             EVT_THROW(tokendb_key_not_found, "Cannot find key: ${k} with prefix: ${p}",
                 ("k",key)("p",name128(hana::at(hana::at_key(act_data_map, hana::int_c<DT>), hana::int_c<0>))));
         }
@@ -672,6 +675,30 @@ token_database::read_token(const domain_name& domain, const token_name& name, to
 }
 
 int
+token_database::read_tokens(const domain_name& domain, int skip, const read_token_func& func) const {
+    using namespace __internal;
+    auto it  = db_->NewIterator(read_opts_);
+    auto key = rocksdb::Slice((char*)&domain, sizeof(domain));
+    
+    it->Seek(key);
+    int i = 0;
+    while(it->Valid()) {
+        if(i++ < skip) {
+            it->Next();
+            continue;
+        }
+        auto v = read_value<token_def>(it->value());
+        if(!func(v)) {
+            delete it;
+            return 0;
+        }
+        it->Next();
+    }
+    delete it;
+    return 0;
+}
+
+int
 token_database::read_group(const group_name& name, group_def& group) const {
     using namespace __internal;
     try {
@@ -729,33 +756,35 @@ token_database::read_fungible(const symbol_id_type sym_id, fungible_def& fungibl
 int
 token_database::read_asset(const address& addr, const symbol symbol, asset& v) const {
     using namespace __internal;
-    auto it  = db_->NewIterator(read_opts_, assets_handle_);
-    auto key = get_asset_key(addr, symbol);
-    it->Seek(key.as_slice());
+    auto key   = get_asset_key(addr, symbol);
+    auto value = std::string();
 
-    if(!it->Valid() || it->key().compare(key.as_slice()) != 0) {
-        delete it;
+    auto status = db_->Get(read_opts_, assets_handle_, key.as_slice(), &value);
+    if(!status.ok()) {
+        if(!status.IsNotFound()) {
+            FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+        }
         EVT_THROW(balance_exception, "Cannot find any fungible(S#${id}) balance in address: {addr}", ("id",symbol.id())("addr",addr));
     }
-    v = read_value<asset>(it->value());
-    delete it;
+    v = read_value<asset>(value);
     return 0;
 }
 
 int
 token_database::read_asset_no_throw(const address& addr, const symbol symbol, asset& v) const {
     using namespace __internal;
-    auto it  = db_->NewIterator(read_opts_, assets_handle_);
-    auto key = get_asset_key(addr, symbol);
-    it->Seek(key.as_slice());
+    auto key   = get_asset_key(addr, symbol);
+    auto value = std::string();
 
-    if(!it->Valid() || it->key().compare(key.as_slice()) != 0) {
-        delete it;
+    auto status = db_->Get(read_opts_, assets_handle_, key.as_slice(), &value);
+    if(!status.ok()) {
+        if(!status.IsNotFound()) {
+            FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+        }
         v = asset(0, symbol);
         return 0;
     }
-    v = read_value<asset>(it->value());
-    delete it;
+    v = read_value<asset>(value);
     return 0;
 }
 

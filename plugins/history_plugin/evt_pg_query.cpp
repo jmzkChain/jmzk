@@ -400,7 +400,7 @@ pg_query::get_actions_async(int id, const read_only::get_actions_params& params)
     }
     if(params.take.valid()) {
         t = *params.take;
-        EVT_ASSERT(t <= 20, chain::postgres_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 20 per query");
+        EVT_ASSERT(t <= 20, chain::exceed_query_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 20 per query");
     }
 
     auto stmt = std::string();
@@ -544,7 +544,7 @@ pg_query::get_fungible_actions_async(int id, const read_only::get_fungible_actio
     }
     if(params.take.valid()) {
         t = *params.take;
-        EVT_ASSERT(t <= 20, chain::postgres_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 20 per query");
+        EVT_ASSERT(t <= 20, chain::exceed_query_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 20 per query");
     }
 
     auto stmt = std::string();
@@ -674,7 +674,7 @@ pg_query::get_transactions_async(int id, const read_only::get_transactions_param
     }
     if(params.take.valid()) {
         t = *params.take;
-        EVT_ASSERT(t <= 20, chain::postgres_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 20 per query");
+        EVT_ASSERT(t <= 20, chain::exceed_query_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 20 per query");
     }
 
     auto keys_buf = fmt::memory_buffer();
@@ -744,7 +744,7 @@ pg_query::get_fungible_ids_async(int id, const read_only::get_fungible_ids_param
     }
     if(params.take.valid()) {
         t = *params.take;
-        EVT_ASSERT(t <= 100, chain::postgres_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 100 per query");
+        EVT_ASSERT(t <= 100, chain::exceed_query_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 100 per query");
     }
 
     auto stmt = fmt::format(fmt("EXECUTE gfi_plan({},{});"), t, s);

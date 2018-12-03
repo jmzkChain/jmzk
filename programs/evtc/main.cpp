@@ -1306,6 +1306,8 @@ struct set_get_domain_subcommand {
 struct set_get_token_subcommand {
     string domain;
     string name;
+    int    skip = 0;
+    int    take = 20;
 
     set_get_token_subcommand(CLI::App* actionRoot) {
         auto gtcmd = actionRoot->add_subcommand("token", localized("Retrieve a token information"));
@@ -1317,6 +1319,19 @@ struct set_get_token_subcommand {
             arg.set("domain", domain);
             arg.set("name", name);
             print_info(call(get_token_func, arg));
+        });
+
+        auto gtscmd = actionRoot->add_subcommand("tokens", localized("Retrieve tokens in one domain"));
+        gtscmd->add_option("domain", domain, localized("Domain name of token to be retrieved"))->required();
+        gtscmd->add_option("--skip,-s", skip, localized("How many records should be skipped"));
+        gtscmd->add_option("--take,-t", take, localized("How many records should be returned"));
+
+        gtscmd->callback([this] {
+            auto arg = fc::mutable_variant_object();
+            arg.set("domain", domain);
+            arg.set("skip", skip);
+            arg.set("take", take);
+            print_info(call(get_tokens_func, arg));
         });
     }
 };

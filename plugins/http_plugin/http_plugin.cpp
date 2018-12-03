@@ -470,16 +470,11 @@ http_plugin::~http_plugin() {}
 
 void
 http_plugin::set_program_options(options_description&, options_description& cfg) {
-    if(current_http_plugin_defaults.default_http_port > 0) {
-        cfg.add_options()("http-server-address", bpo::value<string>()->default_value("127.0.0.1:" + std::to_string(current_http_plugin_defaults.default_http_port)),
-            "The local IP and port to listen for incoming http connections; set blank to disable.");
-    }
-    if(!current_http_plugin_defaults.default_unix_socket_path.empty()) {
-        cfg.add_options()("unix-socket-path", bpo::value<string>()->default_value(current_http_plugin_defaults.default_unix_socket_path),
-            "The filename (or relative to data-dir) to create a unix socket for HTTP RPC; set blank to disable.");
-    }
-
     cfg.add_options()
+        ("unix-socket-path", bpo::value<string>()->default_value(current_http_plugin_defaults.default_unix_socket_path),
+            "The filename (or relative to data-dir) to create a unix socket for HTTP RPC; set blank to disable.")
+        ("http-server-address", bpo::value<string>()->default_value("127.0.0.1:" + std::to_string(current_http_plugin_defaults.default_http_port)),
+            "The local IP and port to listen for incoming http connections; set blank to disable.")
         ("https-server-address", bpo::value<string>(), "The local IP and port to listen for incoming https connections; leave blank to disable.")
         ("https-certificate-chain-file", bpo::value<string>(), "Filename with the certificate chain to present on https connections. PEM format. Required for https.")
         ("https-private-key-file", bpo::value<string>(), "Filename with https private key in PEM format. Required for https")
@@ -520,14 +515,12 @@ http_plugin::plugin_initialize(const variables_map& options) {
         }
 
         tcp::resolver resolver(app().get_io_service());
-        if(options.count("http-server-address") && options.at("http-server-address").as<string>().length()) {
+
+
+        if(current_http_plugin_defaults.default_http_port > 0 && options.count("http-server-address") && options.at("http-server-address").as<string>().length()) {
             string lipstr = options.at("http-server-address").as<string>();
             string host   = lipstr.substr(0, lipstr.find(':'));
             string port   = lipstr.substr(host.size() + 1, lipstr.size());
-
-            if(port == "0") {
-                goto next;
-            }
             
             tcp::resolver::query query(tcp::v4(), host.c_str(), port.c_str());
 
@@ -546,8 +539,7 @@ http_plugin::plugin_initialize(const variables_map& options) {
             }
         }
 
-next:
-        if(options.count("unix-socket-path") && !options.at("unix-socket-path").as<string>().empty()) {
+        if(!current_http_plugin_defaults.default_unix_socket_path.empty() && options.count("unix-socket-path") && !options.at("unix-socket-path").as<string>().empty()) {
             boost::filesystem::path sock_path = options.at("unix-socket-path").as<string>();
             if(sock_path.is_relative()) {
                 sock_path = app().data_dir() / sock_path;
