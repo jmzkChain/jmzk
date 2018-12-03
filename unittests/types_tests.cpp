@@ -203,6 +203,28 @@ TEST_CASE("test_link_3", "[types]") {
     CHECK(pkeys.find(public_key_type(std::string("EVT7bUYEdpHiKcKT9Yi794MiwKzx5tGY3cHSh4DoCrL4B2LRjRgnt"))) != pkeys.end());
 }
 
+TEST_CASE("test_name", "[types]") {
+    auto CHECK_RESERVED = [](auto& str) {
+        auto n = name(str);
+        CHECK(n.reserved());
+    };
+    auto CHECK_NOT_RESERVED = [](auto& str) {
+        auto n = name(str);
+        CHECK(!n.reserved());
+    };
+
+    CHECK_RESERVED(".1");
+    CHECK_RESERVED(".12");
+    CHECK_RESERVED(".abc");
+    CHECK_RESERVED("..abc");
+
+    CHECK_NOT_RESERVED("1.1");
+    CHECK_NOT_RESERVED("123.a");
+    CHECK_NOT_RESERVED("abc.1");
+    CHECK_NOT_RESERVED("abc..12");
+    CHECK_NOT_RESERVED("abc...12");
+}
+
 TEST_CASE("test_name128", "[types]") {
     auto get_raw = [](auto& n) {
         auto bytes = fc::raw::pack(n);

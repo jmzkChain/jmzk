@@ -27,10 +27,9 @@ name128::operator string() const {
     
     auto tmp = value;
     tmp >>= 2;
-    for(uint32_t i = 0; i <= 20; ++i) {
+    for(auto i = 0u; i <= 20; ++i, tmp >>= 6) {
         auto c = charmap[tmp & 0x3f];
         str[i] = c;
-        tmp >>= 6;
     }
 
     str.erase(str.find_last_not_of('.') + 1);

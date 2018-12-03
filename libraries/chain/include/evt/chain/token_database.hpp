@@ -33,6 +33,7 @@ namespace evt { namespace chain {
 using namespace evt::chain::contracts;
 using read_fungible_func = std::function<bool(const asset&)>;
 using read_prodvote_func = std::function<bool(const public_key_type& pkey, int64_t value)>;
+using read_token_func    = std::function<bool(const token_def& token)>;
 
 class token_database : boost::noncopyable {
 public:
@@ -172,6 +173,7 @@ public:
 
     int read_domain(const domain_name&, domain_def&) const;
     int read_token(const domain_name&, const token_name&, token_def&) const;
+    int read_tokens(const domain_name&, int skip, const read_token_func&) const;
     int read_group(const group_name&, group_def&) const;
     int read_suspend(const proposal_name&, suspend_def&) const;
     int read_lock(const proposal_name&, lock_def&) const;

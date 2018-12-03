@@ -40,11 +40,16 @@ main(int argc, char** argv) {
         bfs::path home = determine_home_directory();
         app().set_default_data_dir(home / "evt-wallet");
         app().set_default_config_dir(home / "evt-wallet");
+        http_plugin::set_defaults({
+            .default_unix_socket_path = fc::path(app().data_dir() / "evtwd.sock").to_native_ansi_path(),
+            .default_http_port = 0
+        });
         app().register_plugin<wallet_api_plugin>();
-        if(!app().initialize<wallet_plugin, wallet_api_plugin, http_plugin>(argc, argv))
+        if(!app().initialize<wallet_plugin, wallet_api_plugin, http_plugin>(argc, argv)) {
             return -1;
+        }
         auto& http = app().get_plugin<http_plugin>();
-        http.add_handler("/v1/evtwd/stop", [](string, string, url_response_callback cb) { cb(200, "{}"); std::raise(SIGTERM); });
+        http.add_handler("/v1/evtwd/stop", [](string, string, url_response_callback cb) { cb(200, "{}"); std::raise(SIGTERM); }, true /* local only */);
         app().startup();
         app().exec();
     }

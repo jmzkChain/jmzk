@@ -85,27 +85,12 @@ producer_api_plugin::plugin_startup() {
         CALL(producer, producer, get_integrity_hash,
              INVOKE_R_V(producer, get_integrity_hash), 201),
         CALL(producer, producer, create_snapshot,
-             INVOKE_V_R(producer, create_snapshot, producer_plugin::create_snapshot_options), 201)
-    });
+             INVOKE_R_R(producer, create_snapshot, producer_plugin::create_snapshot_options), 201)},
+        true /* local only API */);
 }
 
 void
-producer_api_plugin::plugin_initialize(const variables_map& options) {
-    try {
-        const auto& _http_plugin = app().get_plugin<http_plugin>();
-        if(!_http_plugin.is_on_loopback()) {
-            wlog("\n"
-                "**********SECURITY WARNING**********\n"
-                "*                                  *\n"
-                "* --        Producer API        -- *\n"
-                "* - EXPOSED to the LOCAL NETWORK - *\n"
-                "* - USE ONLY ON SECURE NETWORKS! - *\n"
-                "*                                  *\n"
-                "************************************\n");
-        }
-    }
-    FC_LOG_AND_RETHROW();
-}
+producer_api_plugin::plugin_initialize(const variables_map& options) {}
 
 #undef INVOKE_R_R
 #undef INVOKE_R_R_R_R

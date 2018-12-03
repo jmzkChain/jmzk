@@ -837,7 +837,7 @@ producer_plugin::get_integrity_hash() const {
         reschedule.cancel();
     }
 
-    return {chain.head_block_id(), chain.calculate_integrity_hash()};
+    return {chain.head_block_num(), chain.head_block_id(), chain.head_block_time(), chain.calculate_integrity_hash()};
 }
 
 producer_plugin::snapshot_information
@@ -865,6 +865,8 @@ producer_plugin::create_snapshot(const create_snapshot_options& options) const {
     auto snap_out = std::ofstream(snapshot_path, (std::ios::out | std::ios::binary));
     auto writer   = std::make_shared<ostream_snapshot_writer>(snap_out);
 
+    bool postgres = false;
+
     chain.write_snapshot(writer);
     if(options.postgres) {
 #ifdef POSTGRES_SUPPORT
@@ -878,6 +880,7 @@ producer_plugin::create_snapshot(const create_snapshot_options& options) const {
             }
             else {
                 pp.write_snapshot(writer);
+                postgres = true;
             }
         }
 #else
@@ -889,7 +892,7 @@ producer_plugin::create_snapshot(const create_snapshot_options& options) const {
     snap_out.flush();
     snap_out.close();
 
-    return {head_id, snapshot_path};
+    return {chain.head_block_num(), head_id, chain.head_block_time(), snapshot_path, postgres};
 }
 
 optional<fc::time_point>

@@ -2,19 +2,15 @@
  *  @file
  *  @copyright defined in evt/LICENSE.txt
  */
-#include <boost/asio.hpp>
-#include <boost/format.hpp>
-#include <fc/exception/exception.hpp>
-#include <fc/io/console.hpp>
-#include <fc/io/fstream.hpp>
-#include <fc/io/json.hpp>
-#include <fc/variant.hpp>
+
 #include <iostream>
 #include <limits>
 #include <regex>
 #include <string>
 #include <type_traits>
 #include <vector>
+
+#include <pwd.h>
 
 #pragma push_macro("N")
 #undef N
@@ -27,13 +23,19 @@
 #include <boost/process/spawn.hpp>
 #include <boost/range/algorithm/find_if.hpp>
 #include <boost/range/algorithm/sort.hpp>
+#include <boost/range/algorithm/copy.hpp>
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/split.hpp>
-#include <boost/range/algorithm/copy.hpp>
 #include <boost/algorithm/string/classification.hpp>
 
 #pragma pop_macro("N")
+
+#include <fc/exception/exception.hpp>
+#include <fc/io/console.hpp>
+#include <fc/io/fstream.hpp>
+#include <fc/io/json.hpp>
+#include <fc/variant.hpp>
 
 #include <evt/chain/config.hpp>
 #include <evt/chain/contracts/types.hpp>
@@ -69,9 +71,25 @@ FC_DECLARE_EXCEPTION(localized_exception, 10000000, "an error occured");
             FC_THROW_EXCEPTION(explained_exception, #TEST);   \
         } FC_MULTILINE_MACRO_END)
 
-string program    = "evtc";
-string url        = "http://127.0.0.1:8888";
-string wallet_url = "http://127.0.0.1:9999";
+bfs::path
+determine_home_directory() {
+    bfs::path      home;
+    struct passwd* pwd = getpwuid(getuid());
+    if(pwd) {
+        home = pwd->pw_dir;
+    }
+    else {
+        home = getenv("HOME");
+    }
+    if(home.empty())
+        home = "./";
+    return home;
+}
+
+string program            = "evtc";
+string url                = "http://127.0.0.1:8888";
+string default_wallet_url = "unix://" + fc::path(determine_home_directory() / "evt-wallet/evtwd.sock").to_native_ansi_path();
+string wallet_url; //to be set to default_wallet_url in main
 
 bool no_verify = false;
 vector<string> headers;
@@ -449,27 +467,24 @@ send_transaction(signed_transaction& trx, packed_transaction::compression_type c
 }
 
 bool
-local_port_used(const string& lo_address, uint16_t port) {
+local_port_used() {
     using namespace boost::asio;
 
     io_service ios;
-    boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::address::from_string(lo_address), port);
-    boost::asio::ip::tcp::socket socket(ios);
-    boost::system::error_code ec = error::would_block;
-    //connecting/failing to connect to localhost should be always fast - don't care about timeouts
-    socket.async_connect(endpoint, [&](const boost::system::error_code& error) { ec = error; } );
-    do {
-        ios.run_one();
-    } while (ec == error::would_block);
+    local::stream_protocol::endpoint endpoint(wallet_url.substr(strlen("unix://")));
+    local::stream_protocol::socket socket(ios);
+    boost::system::error_code ec;
+    socket.connect(endpoint, ec);
+
     return !ec;
 }
 
 void
-try_local_port(const string& lo_address, uint16_t port, uint32_t duration) {
+try_local_port(uint32_t duration) {
     using namespace std::chrono;
     auto start_time = duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch() ).count();
-    while (!local_port_used(lo_address, port)) {
-        if(duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch()).count() - start_time > duration) {
+    while(!local_port_used()) {
+        if(duration_cast<std::chrono::milliseconds>(system_clock::now().time_since_epoch()).count() - start_time > duration) {
             std::cerr << "Unable to connect to evtwd, if evtwd is running please kill the process and try again.\n";
             throw connection_exception(fc::log_messages{FC_LOG_MESSAGE(error, "Unable to connect to evtwd")});
         }
@@ -479,24 +494,30 @@ try_local_port(const string& lo_address, uint16_t port, uint32_t duration) {
 void
 ensure_evtwd_running(CLI::App* app) {
     // version, net do not require evtwd
-    if(tx_skip_sign || app->got_subcommand("version") || app->got_subcommand("net"))
+    if(tx_skip_sign || app->got_subcommand("version") || app->got_subcommand("net")) {
         return;
-    if(app->get_subcommand("create")->got_subcommand("key")) // create key does not require wallet
+    }
+    if(app->get_subcommand("create")->got_subcommand("key")) { // create key does not require wallet
         return;
-    if(app->get_subcommand("wallet")->got_subcommand("stop")) // stop wallet not require wallet
+    }
+    if(app->get_subcommand("wallet")->got_subcommand("stop")) { // stop wallet not require wallet
         return;
-
-    auto parsed_url = parse_url(wallet_url);
-    auto resolved_url = resolve_url(context, parsed_url);
-
-    if(!resolved_url.is_loopback) {
+    }
+    if(app->got_subcommand("producer")) {
+        auto prod = app->get_subcommand("producer");
+        if(prod->got_subcommand("prodvote") || prod->got_subcommand("updsched")) {
+            goto next;
+        }
         return;
     }
 
-    for(const auto& addr: resolved_url.resolved_addresses) {
-        if(local_port_used(addr, resolved_url.resolved_port)) { // Hopefully taken by keosd
-            return;
-        }
+next:
+    if(wallet_url != default_wallet_url) {
+        return;
+    }
+
+    if(local_port_used()) {
+        return;
     }
 
     boost::filesystem::path binPath = boost::dll::program_location();
@@ -510,30 +531,29 @@ ensure_evtwd_running(CLI::App* app) {
         binPath.remove_filename().remove_filename().append("evtwd").append("evtwd");
     }
 
-    const auto& lo_address = resolved_url.resolved_addresses.front();
     if(boost::filesystem::exists(binPath)) {
         namespace bp = boost::process;
         binPath = boost::filesystem::canonical(binPath);
 
         vector<std::string> pargs;
-        pargs.push_back("--http-server-address=" + lo_address + ":" + std::to_string(resolved_url.resolved_port));
+        pargs.push_back("--unix-socket-path");
+        pargs.push_back(fc::path(determine_home_directory() / "evt-wallet/evtwd.sock").to_native_ansi_path());
 
         ::boost::process::child evtwd(binPath, pargs,
-                                     bp::std_in.close(),
-                                     bp::std_out > bp::null,
-                                     bp::std_err > bp::null);
+                                      bp::std_in.close(),
+                                      bp::std_out > bp::null,
+                                      bp::std_err > bp::null);
         if(evtwd.running()) {
             std::cerr << binPath << " launched" << std::endl;
             evtwd.detach();
-            try_local_port(lo_address, resolved_url.resolved_port, 2000);
+            try_local_port(2000);
         }
         else {
-            std::cerr << "No wallet service listening on " << lo_address << ":"
-                      << std::to_string(resolved_url.resolved_port) << ". Failed to launch " << binPath << std::endl;
+            std::cerr << "No wallet service listening on " << wallet_url << ". Failed to launch " << binPath << std::endl;
         }
     }
     else {
-        std::cerr << "No wallet service listening on " << lo_address << ":" << std::to_string(resolved_url.resolved_port)
+        std::cerr << "No wallet service listening on " << wallet_url
                   << ". Cannot automatically start evtwd because evtwd was not found." << std::endl;
     }
 }
@@ -604,7 +624,7 @@ struct set_domain_subcommands {
 
         add_standard_transaction_options(ndcmd);
 
-        ndcmd->set_callback([&] {
+        ndcmd->callback([&] {
             newdomain nd;
             nd.name     = name128(name);
             nd.creator  = get_public_key(creator);
@@ -624,7 +644,7 @@ struct set_domain_subcommands {
 
         add_standard_transaction_options(udcmd);
 
-        udcmd->set_callback([&] {
+        udcmd->callback([&] {
             updatedomain ud;
             ud.name = name128(name);
             if(issue != "default") {
@@ -656,7 +676,7 @@ struct set_issue_token_subcommand {
 
         add_standard_transaction_options(itcmd);
 
-        itcmd->set_callback([this] {
+        itcmd->callback([this] {
             issuetoken it;
             it.domain = name128(domain);
             std::transform(names.cbegin(), names.cend(), std::back_inserter(it.names), [](auto& str) { return name128(str); });
@@ -683,7 +703,7 @@ struct set_token_subcommands {
 
         add_standard_transaction_options(ttcmd);
 
-        ttcmd->set_callback([this] {
+        ttcmd->callback([this] {
             transfer tt;
             tt.domain = name128(domain);
             tt.name   = name128(name);
@@ -700,7 +720,7 @@ struct set_token_subcommands {
 
         add_standard_transaction_options(dtcmd);
 
-        dtcmd->set_callback([this] {
+        dtcmd->callback([this] {
             destroytoken dt;
             dt.domain = name128(domain);
             dt.name   = name128(name);
@@ -723,7 +743,7 @@ struct set_group_subcommands {
 
         add_standard_transaction_options(ngcmd);
 
-        ngcmd->set_callback([this] {
+        ngcmd->callback([this] {
             newgroup ng;
             FC_ASSERT(!name.empty(), "Group name cannot be empty");
             ng.name = name;
@@ -745,7 +765,7 @@ struct set_group_subcommands {
 
         add_standard_transaction_options(ugcmd);
 
-        ugcmd->set_callback([this] {
+        ugcmd->callback([this] {
             updategroup ug;
             FC_ASSERT(!name.empty(), "Group name cannot be empty");
             ug.name = name;
@@ -789,7 +809,7 @@ struct set_fungible_subcommands {
 
         add_standard_transaction_options(nfcmd);
 
-        nfcmd->set_callback([&] {
+        nfcmd->callback([&] {
             newfungible nf;
             nf.name         = (name128)fungible_name;
             nf.sym_name     = (name128)sym_name;
@@ -812,7 +832,7 @@ struct set_fungible_subcommands {
 
         add_standard_transaction_options(ufcmd);
 
-        ufcmd->set_callback([&] {
+        ufcmd->callback([&] {
             updfungible uf;
             uf.sym_id = sym_id;
             if(issue != "default") {
@@ -833,7 +853,7 @@ struct set_fungible_subcommands {
 
         add_standard_transaction_options(ifcmd);
 
-        ifcmd->set_callback([this] {
+        ifcmd->callback([this] {
             issuefungible ifact;
             ifact.address = get_address(address);
             ifact.number  = asset::from_string(number);
@@ -849,7 +869,7 @@ struct set_fungible_subcommands {
 
         add_standard_transaction_options(rfcmd);
 
-        rfcmd->set_callback([this] {
+        rfcmd->callback([this] {
             recycleft rfact;
             rfact.address = get_address(address);
             rfact.number  = asset::from_string(number);
@@ -865,7 +885,7 @@ struct set_fungible_subcommands {
 
         add_standard_transaction_options(dfcmd);
 
-        dfcmd->set_callback([this] {
+        dfcmd->callback([this] {
             destroyft dfact;
             dfact.address = get_address(address);
             dfact.number  = asset::from_string(number);
@@ -891,7 +911,7 @@ struct set_assets_subcommands {
 
         add_standard_transaction_options(tfcmd);
 
-        tfcmd->set_callback([this] {
+        tfcmd->callback([this] {
             transferft tf;
             tf.from   = get_address(from);
             tf.to     = get_address(to);
@@ -910,7 +930,7 @@ struct set_assets_subcommands {
 
         add_standard_transaction_options(epcmd);
 
-        epcmd->set_callback([this] {
+        epcmd->callback([this] {
             evt2pevt ep;
             ep.from   = get_address(from);
             ep.to     = get_address(to);
@@ -945,7 +965,7 @@ struct set_meta_subcommands {
         auto dmcmd = actionRoot->add_subcommand("domain", localized("Add metadata to one domain"));
         dmcmd->add_option("name", domain, localized("Name of domain adding to"))->required();
         addcmds(dmcmd);
-        dmcmd->set_callback([this] {
+        dmcmd->callback([this] {
             addmeta am;
             am.key = (meta_key)metakey;
             am.value = metavalue;
@@ -958,7 +978,7 @@ struct set_meta_subcommands {
         auto gmcmd = actionRoot->add_subcommand("group", localized("Add metadata to one group"));
         gmcmd->add_option("name", key, localized("Name of group adding to"))->required();
         addcmds(gmcmd);
-        gmcmd->set_callback([this] {
+        gmcmd->callback([this] {
             addmeta am;
             am.key = (meta_key)metakey;
             am.value = metavalue;
@@ -972,7 +992,7 @@ struct set_meta_subcommands {
         tmcmd->add_option("domain", domain, localized("Domain name of token adding to"))->required();
         tmcmd->add_option("name", key, localized("Name of token adding to"))->required();
         addcmds(tmcmd);
-        tmcmd->set_callback([this] {
+        tmcmd->callback([this] {
             addmeta am;
             am.key = (meta_key)metakey;
             am.value = metavalue;
@@ -985,7 +1005,7 @@ struct set_meta_subcommands {
         auto fmcmd = actionRoot->add_subcommand("fungible", localized("Add metadata to one fungible asset"));
         fmcmd->add_option("id", key, localized("Symbol id of fungible asset adding to"))->required();
         addcmds(fmcmd);
-        fmcmd->set_callback([this] {
+        fmcmd->callback([this] {
             addmeta am;
             am.key = (meta_key)metakey;
             am.value = metavalue;
@@ -1006,7 +1026,7 @@ struct set_suspend_subcommands {
         add_standard_transaction_options(adcmd);
 
         adcmd->add_option("name", name, localized("Proposal name of specific suspend transaction"))->required();
-        adcmd->set_callback([this] {
+        adcmd->callback([this] {
             auto varsuspend = call(get_suspend_func, fc::mutable_variant_object("name", (proposal_name)name));
             auto suspend = suspend_def();
 
@@ -1036,7 +1056,7 @@ struct set_suspend_subcommands {
         add_standard_transaction_options(cdcmd);
 
         cdcmd->add_option("name", name, localized("Proposal name of specific suspend transaction"))->required();
-        cdcmd->set_callback([this] {
+        cdcmd->callback([this] {
             auto cdact = cancelsuspend();
             cdact.name = (proposal_name)name;
 
@@ -1049,7 +1069,7 @@ struct set_suspend_subcommands {
         
         edcmd->add_option("name", name, localized("Proposal name of specific suspend transaction"))->required();
         edcmd->add_option("executor", executor, localized("Public key of executor for this suspend transaction"))->required();
-        edcmd->set_callback([this] {
+        edcmd->callback([this] {
             auto esact = execsuspend(); 
             esact.name = (proposal_name)name;
             esact.executor = get_public_key(executor);
@@ -1123,7 +1143,7 @@ struct set_lock_subcommands {
 
         add_standard_transaction_options(lacmd);
 
-        lacmd->set_callback([this] {
+        lacmd->callback([this] {
             auto nl = newlock();
 
             nl.name        = (name128)name;
@@ -1160,7 +1180,7 @@ struct set_lock_subcommands {
 
         add_standard_transaction_options(alcmd);
 
-        alcmd->set_callback([this] {
+        alcmd->callback([this] {
             auto al = aprvlock();
 
             al.name     = (name128)name;
@@ -1202,7 +1222,7 @@ struct set_producer_subcommands {
 
         add_standard_transaction_options(pvcmd);
 
-        pvcmd->set_callback([this] {
+        pvcmd->callback([this] {
             auto pvact = prodvote();
             pvact.producer = (account_name)producer;
             pvact.key      = (conf_key)confkey;
@@ -1217,7 +1237,7 @@ struct set_producer_subcommands {
 
         add_standard_transaction_options(uscmd);
 
-        uscmd->set_callback([this] {
+        uscmd->callback([this] {
             auto usact = updsched();
             for(auto& prodkey : prodkeys) {
                 usact.producers.emplace_back(parse_prodkey(prodkey));
@@ -1228,32 +1248,32 @@ struct set_producer_subcommands {
         });
 
         auto ppcmd = actionRoot->add_subcommand("pause", localized("Pause current producing state"));
-        ppcmd->set_callback([] {
+        ppcmd->callback([] {
             const auto& v = call(url, producer_pause);
             print_info(v);
         });
 
         auto rpcmd = actionRoot->add_subcommand("resume", localized("Resume producing"));
-        rpcmd->set_callback([] {
+        rpcmd->callback([] {
             const auto& v = call(url, producer_resume);
             print_info(v);
         });
 
         auto isppcmd = actionRoot->add_subcommand("paused", localized("Get current producing state"));
-        isppcmd->set_callback([] {
+        isppcmd->callback([] {
             const auto& v = call(url, producer_paused);
             print_info(v);
         });
 
         auto rocmd = actionRoot->add_subcommand("runtime", localized("Get current runtime options"));
-        rocmd->set_callback([] {
+        rocmd->callback([] {
             const auto& v = call(url, producer_runtime_opts);
             print_info(v);
         });
 
         auto cscmd = actionRoot->add_subcommand("snapshot", localized("Create a snapshot till current head block"));
         cscmd->add_flag("-p,--postgres", postgres, localized("Add postgres to snapshot"));
-        cscmd->set_callback([this] {
+        cscmd->callback([this] {
             auto arg = fc::mutable_variant_object();
             arg["postgres"] = postgres;
 
@@ -1262,7 +1282,7 @@ struct set_producer_subcommands {
         });
 
         auto ihcmd = actionRoot->add_subcommand("integrity_hash", localized("Get integrity hash till current head block"));
-        ihcmd->set_callback([] {
+        ihcmd->callback([] {
             const auto& v = call(url, get_integrity_hash);
             print_info(v);
         });
@@ -1276,7 +1296,7 @@ struct set_get_domain_subcommand {
         auto gdcmd = actionRoot->add_subcommand("domain", localized("Retrieve a domain information"));
         gdcmd->add_option("name", name, localized("Name of domain to be retrieved"))->required();
 
-        gdcmd->set_callback([this] {
+        gdcmd->callback([this] {
             auto arg = fc::mutable_variant_object("name", name);
             print_info(call(get_domain_func, arg));
         });
@@ -1286,17 +1306,32 @@ struct set_get_domain_subcommand {
 struct set_get_token_subcommand {
     string domain;
     string name;
+    int    skip = 0;
+    int    take = 20;
 
     set_get_token_subcommand(CLI::App* actionRoot) {
         auto gtcmd = actionRoot->add_subcommand("token", localized("Retrieve a token information"));
         gtcmd->add_option("domain", domain, localized("Domain name of token to be retrieved"))->required();
         gtcmd->add_option("name", name, localized("Name of token to be retrieved"))->required();
 
-        gtcmd->set_callback([this] {
+        gtcmd->callback([this] {
             auto arg = fc::mutable_variant_object();
             arg.set("domain", domain);
             arg.set("name", name);
             print_info(call(get_token_func, arg));
+        });
+
+        auto gtscmd = actionRoot->add_subcommand("tokens", localized("Retrieve tokens in one domain"));
+        gtscmd->add_option("domain", domain, localized("Domain name of token to be retrieved"))->required();
+        gtscmd->add_option("--skip,-s", skip, localized("How many records should be skipped"));
+        gtscmd->add_option("--take,-t", take, localized("How many records should be returned"));
+
+        gtscmd->callback([this] {
+            auto arg = fc::mutable_variant_object();
+            arg.set("domain", domain);
+            arg.set("skip", skip);
+            arg.set("take", take);
+            print_info(call(get_tokens_func, arg));
         });
     }
 };
@@ -1309,7 +1344,7 @@ struct set_get_group_subcommand {
         auto ggcmd = actionRoot->add_subcommand("group", localized("Retrieve a permission group information"));
         ggcmd->add_option("name", name, localized("Name of group to be retrieved"))->required();
 
-        ggcmd->set_callback([this] {
+        ggcmd->callback([this] {
             FC_ASSERT(!name.empty(), "Group name cannot be empty");
 
             auto arg = fc::mutable_variant_object("name", name);
@@ -1325,7 +1360,7 @@ struct set_get_fungible_subcommand {
         auto gfcmd = actionRoot->add_subcommand("fungible", localized("Retrieve a fungible asset information"));
         gfcmd->add_option("id", id, localized("Symbol id of fungible asset to be retrieved"))->required();
         
-        gfcmd->set_callback([this] {
+        gfcmd->callback([this] {
 
             auto arg = fc::mutable_variant_object("id", id);
             print_info(call(get_fungible_func, arg));
@@ -1342,7 +1377,7 @@ struct set_get_balance_subcommand {
         gbcmd->add_option("address", address, localized("Address where assets stored"))->required();
         gbcmd->add_option("symbol", sym, localized("Specific symbol to be retrieved, leave empty to retrieve all assets"));
 
-        gbcmd->set_callback([this] {
+        gbcmd->callback([this] {
             FC_ASSERT(!address.empty(), "Address cannot be empty");
 
             auto arg = fc::mutable_variant_object("address", get_address(address));
@@ -1361,7 +1396,7 @@ struct set_get_suspend_subcommand {
         auto gdcmd = actionRoot->add_subcommand("suspend", localized("Retrieve a suspend transaction information"));
         gdcmd->add_option("name", name, localized("Name of suspend transaction to be retrieved"))->required();
 
-        gdcmd->set_callback([this] {
+        gdcmd->callback([this] {
             auto arg = fc::mutable_variant_object("name", name);
             print_info(call(get_suspend_func, arg));
         });
@@ -1375,7 +1410,7 @@ struct set_get_lock_subcommand {
         auto gdcmd = actionRoot->add_subcommand("lock", localized("Retrieve a lock assets proposal"));
         gdcmd->add_option("name", name, localized("Name of lock assets proposal to be retrieved"))->required();
 
-        gdcmd->set_callback([this] {
+        gdcmd->callback([this] {
             auto arg = fc::mutable_variant_object("name", name);
             print_info(call(get_lock_func, arg));
         });
@@ -1401,22 +1436,22 @@ struct set_get_my_subcommands {
         mycmd->require_subcommand();
 
         auto mydomain = mycmd->add_subcommand("domains", localized("Retrieve my created domains"));
-        mydomain->set_callback([] {
+        mydomain->callback([] {
             get_my_resources(get_my_domains);
         });
 
         auto mytoken = mycmd->add_subcommand("tokens", localized("Retrieve my owned tokens"));
-        mytoken->set_callback([] {
+        mytoken->callback([] {
             get_my_resources(get_my_tokens);
         });
 
         auto mygroup = mycmd->add_subcommand("groups", localized("Retrieve my created groups"));
-        mygroup->set_callback([] {
+        mygroup->callback([] {
             get_my_resources(get_my_groups);
         });
 
         auto myfungible = mycmd->add_subcommand("fungibles", localized("Retrieve my created fungibles"));
-        myfungible->set_callback([] {
+        myfungible->callback([] {
             get_my_resources(get_my_fungibles);
         });
 
@@ -1424,7 +1459,7 @@ struct set_get_my_subcommands {
         trxscmd->add_option("--skip,-s", skip, localized("How many records should be skipped"));
         trxscmd->add_option("--take,-t", take, localized("How many records should be returned"));
 
-        trxscmd->set_callback([this] {
+        trxscmd->callback([this] {
             auto args = mutable_variant_object();
             args["keys"] = call(wallet_url, wallet_public_keys);
             
@@ -1464,7 +1499,7 @@ struct set_get_history_subcommands {
         actscmd->add_option("--skip,-s", skip, localized("How many records should be skipped"));
         actscmd->add_option("--take,-t", take, localized("How many records should be returned"));
 
-        actscmd->set_callback([this] {
+        actscmd->callback([this] {
             auto args = mutable_variant_object();
             args["domain"] = domain;
             if(!key.empty()) {
@@ -1488,7 +1523,7 @@ struct set_get_history_subcommands {
         auto trxcmd = hiscmd->add_subcommand("transaction", localized("Retrieve a transaction by its id"));
         trxcmd->add_option("id", trx_id, localized("Id of transaction to be retrieved"))->required();
 
-        trxcmd->set_callback([this] {
+        trxcmd->callback([this] {
             auto args = mutable_variant_object("id", trx_id);
             print_info(call(get_transaction, args));
         });
@@ -1499,7 +1534,7 @@ struct set_get_history_subcommands {
         funcmd->add_option("--skip,-s", skip, localized("How many records should be skipped"));
         funcmd->add_option("--take,-t", take, localized("How many records should be returned"));
 
-        funcmd->set_callback([this] {
+        funcmd->callback([this] {
             auto args = mutable_variant_object();
             args["sym_id"] = sym_id;
             if(!addr.empty()) {
@@ -1520,7 +1555,7 @@ struct set_get_history_subcommands {
         syncmd->add_option("--skip,-s", skip, localized("How many records should be skipped"));
         syncmd->add_option("--take,-t", take, localized("How many records should be returned"));
 
-        syncmd->set_callback([this] {
+        syncmd->callback([this] {
             auto args = mutable_variant_object();
             if(skip > 0) {
                 args["skip"] = skip;
@@ -1556,26 +1591,29 @@ main(int argc, char** argv) {
     bindtextdomain(locale_domain, locale_path);
     textdomain(locale_domain);
     context = evt::client::http::create_http_context();
+    wallet_url = default_wallet_url;
 
     CLI::App app{"Command Line Interface to everiToken Client"};
     app.require_subcommand();
 
-    app.add_option("-u,--url", url, localized("the http/https URL where evtd is running"), true);
-    app.add_option("--wallet-url", wallet_url, localized("the http/https URL where evtwd is running"), true);
+    app.add_option("-u,--url", url, localized("the http/https/unix-socket URL where evtd is running"), true);
+    app.add_option("--wallet-url", wallet_url, localized("the http/https/unix-socket URL where evtwd is running"), true);
 
     app.add_option( "-r,--header", header_opt_callback, localized("pass specific HTTP header; repeat this option to pass multiple headers"));
     app.add_flag( "-n,--no-verify", no_verify, localized("don't verify peer certificate when using HTTPS"));
-    app.set_callback([&app]{ ensure_evtwd_running(&app);});
+    app.callback([&app]{ ensure_evtwd_running(&app);});
 
     bool verbose_errors = false;
     app.add_flag("-v,--verbose", verbose_errors, localized("output verbose actions on error"));
     app.add_flag("--print-request", print_request, localized("print HTTP request to STDERR"));
     app.add_flag("--print-response", print_response, localized("print HTTP response to STDERR"));
 
+    app.set_help_all_flag("--help-all");
+
     auto version = app.add_subcommand("version", localized("Retrieve version information"));
     version->require_subcommand();
 
-    version->add_subcommand("client", localized("Retrieve version information of the client"))->set_callback([] {
+    version->add_subcommand("client", localized("Retrieve version information of the client"))->callback([] {
         std::cout << localized("Build version: ${ver}", ("ver", evt::client::config::version_str)) << std::endl;
     });
 
@@ -1584,7 +1622,7 @@ main(int argc, char** argv) {
     create->require_subcommand();
 
     // create key
-    auto create_key = create->add_subcommand("key", localized("Create a new keypair and print the public and private keys"))->set_callback([](){
+    auto create_key = create->add_subcommand("key", localized("Create a new keypair and print the public and private keys"))->callback([](){
         auto pk    = private_key_type::generate();
         auto privs = string(pk);
         auto pubs  = string(pk.get_public_key());
@@ -1596,7 +1634,7 @@ main(int argc, char** argv) {
     get->require_subcommand();
 
     // get info
-    get->add_subcommand("info", localized("Get current blockchain information"))->set_callback([] {
+    get->add_subcommand("info", localized("Get current blockchain information"))->callback([] {
         std::cout << fc::json::to_pretty_string(get_info()) << std::endl;
     });
 
@@ -1604,7 +1642,7 @@ main(int argc, char** argv) {
     string blockArg;
     auto   getBlock = get->add_subcommand("block", localized("Retrieve a full block from the blockchain"));
     getBlock->add_option("block", blockArg, localized("The number or ID of the block to retrieve"))->required();
-    getBlock->set_callback([&blockArg] {
+    getBlock->callback([&blockArg] {
         auto arg = fc::mutable_variant_object("block_num_or_id", blockArg);
         std::cout << fc::json::to_pretty_string(call(get_block_func, arg)) << std::endl;
     });
@@ -1627,7 +1665,7 @@ main(int argc, char** argv) {
     get_trx->add_option("id", trx_id, localized("Id of transaction to be retrieved"))->required();
     get_trx->add_option("block_num", block_num, localized("Block num of transaction to be retrieved"))->required();
 
-    get_trx->set_callback([&] {
+    get_trx->callback([&] {
         auto args = mutable_variant_object("id", trx_id)("block_num", block_num);
         print_info(call(get_transaction_func, args));
     });
@@ -1639,27 +1677,27 @@ main(int argc, char** argv) {
     net->require_subcommand();
     auto connect = net->add_subcommand("connect", localized("start a new connection to a peer"));
     connect->add_option("host", new_host, localized("The hostname:port to connect to."))->required();
-    connect->set_callback([&] {
+    connect->callback([&] {
         const auto& v = call(net_connect, new_host);
         std::cout << fc::json::to_pretty_string(v) << std::endl;
     });
 
     auto disconnect = net->add_subcommand("disconnect", localized("close an existing connection"));
     disconnect->add_option("host", new_host, localized("The hostname:port to disconnect from."))->required();
-    disconnect->set_callback([&] {
+    disconnect->callback([&] {
         const auto& v = call(net_disconnect, new_host);
         std::cout << fc::json::to_pretty_string(v) << std::endl;
     });
 
     auto status = net->add_subcommand("status", localized("status of existing connection"));
     status->add_option("host", new_host, localized("The hostname:port to query status of connection"))->required();
-    status->set_callback([&] {
+    status->callback([&] {
         const auto& v = call(net_status, new_host);
         std::cout << fc::json::to_pretty_string(v) << std::endl;
     });
 
     auto connections = net->add_subcommand("peers", localized("status of all existing peers"));
-    connections->set_callback([&] {
+    connections->callback([&] {
         const auto& v = call(net_connections, new_host);
         std::cout << fc::json::to_pretty_string(v) << std::endl;
     });
@@ -1726,7 +1764,7 @@ main(int argc, char** argv) {
     string wallet_name  = "default";
     auto   createWallet = wallet->add_subcommand("create", localized("Create a new wallet locally"));
     createWallet->add_option("-n,--name", wallet_name, localized("The name of the new wallet"), true);
-    createWallet->set_callback([&wallet_name] {
+    createWallet->callback([&wallet_name] {
         const auto& v = call(wallet_url, wallet_create, wallet_name);
         std::cout << localized("Creating wallet: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
         std::cout << localized("Save password to use in the future to unlock this wallet.") << std::endl;
@@ -1737,7 +1775,7 @@ main(int argc, char** argv) {
     // open wallet
     auto openWallet = wallet->add_subcommand("open", localized("Open an existing wallet"));
     openWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to open"));
-    openWallet->set_callback([&wallet_name] {
+    openWallet->callback([&wallet_name] {
         call(wallet_url, wallet_open, wallet_name);
         std::cout << localized("Opened: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
     });
@@ -1745,14 +1783,14 @@ main(int argc, char** argv) {
     // lock wallet
     auto lockWallet = wallet->add_subcommand("lock", localized("Lock wallet"));
     lockWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to lock"));
-    lockWallet->set_callback([&wallet_name] {
+    lockWallet->callback([&wallet_name] {
         call(wallet_url, wallet_lock, wallet_name);
         std::cout << localized("Locked: ${wallet_name}", ("wallet_name", wallet_name)) << std::endl;
     });
 
     // lock all wallets
     auto locakAllWallets = wallet->add_subcommand("lock_all", localized("Lock all unlocked wallets"));
-    locakAllWallets->set_callback([] {
+    locakAllWallets->callback([] {
         call(wallet_url, wallet_lock_all);
         std::cout << localized("Locked All Wallets") << std::endl;
     });
@@ -1762,7 +1800,7 @@ main(int argc, char** argv) {
     auto   unlockWallet = wallet->add_subcommand("unlock", localized("Unlock wallet"));
     unlockWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to unlock"));
     unlockWallet->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
-    unlockWallet->set_callback([&wallet_name, &wallet_pw] {
+    unlockWallet->callback([&wallet_name, &wallet_pw] {
         if(wallet_pw.size() == 0) {
             std::cout << localized("password: ");
             fc::set_console_echo(false);
@@ -1780,7 +1818,7 @@ main(int argc, char** argv) {
     auto   importWallet = wallet->add_subcommand("import", localized("Import private key into wallet"));
     importWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to import key into"));
     importWallet->add_option("key", wallet_key_str, localized("Private key in WIF format to import"))->required();
-    importWallet->set_callback([&wallet_name, &wallet_key_str] {
+    importWallet->callback([&wallet_name, &wallet_key_str] {
         private_key_type wallet_key;
         try {
             wallet_key = private_key_type(wallet_key_str);
@@ -1802,7 +1840,7 @@ main(int argc, char** argv) {
     removeKeyWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to remove key from"));
     removeKeyWallet->add_option("key", wallet_rm_key_str, localized("Public key in WIF format to remove"))->required();
     removeKeyWallet->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
-    removeKeyWallet->set_callback([&wallet_name, &wallet_pw, &wallet_rm_key_str] {
+    removeKeyWallet->callback([&wallet_name, &wallet_pw, &wallet_rm_key_str] {
         if(wallet_pw.size() == 0) {
             std::cout << localized("password: ");
             fc::set_console_echo(false);
@@ -1825,8 +1863,8 @@ main(int argc, char** argv) {
     string wallet_create_key_type;
     auto createKeyInWallet = wallet->add_subcommand("create_key", localized("Create private key within wallet"));
     createKeyInWallet->add_option("-n,--name", wallet_name, localized("The name of the wallet to create key into"), true);
-    createKeyInWallet->add_option("key_type", wallet_create_key_type, localized("Key type to create (K1/R1)"), true)->set_type_name("K1/R1");
-    createKeyInWallet->set_callback([&wallet_name, &wallet_create_key_type] {
+    createKeyInWallet->add_option("key_type", wallet_create_key_type, localized("Key type to create (K1)"), true)->type_name("K1");
+    createKeyInWallet->callback([&wallet_name, &wallet_create_key_type] {
         //an empty key type is allowed -- it will let the underlying wallet pick which type it prefers
         fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_create_key_type)};
         const auto& v = call(wallet_url, wallet_create_key, vs);
@@ -1835,7 +1873,7 @@ main(int argc, char** argv) {
 
     // list wallets
     auto listWallet = wallet->add_subcommand("list", localized("List opened wallets, * = unlocked"));
-    listWallet->set_callback([] {
+    listWallet->callback([] {
         std::cout << localized("Wallets:") << std::endl;
         const auto& v = call(wallet_url, wallet_list);
         std::cout << fc::json::to_pretty_string(v) << std::endl;
@@ -1843,7 +1881,7 @@ main(int argc, char** argv) {
 
     // list keys
     auto listKeys = wallet->add_subcommand("keys", localized("List of public keys from all unlocked wallets."));
-    listKeys->set_callback([] {
+    listKeys->callback([] {
         const auto& v = call(wallet_url, wallet_public_keys);
         std::cout << fc::json::to_pretty_string(v) << std::endl;
     });
@@ -1852,7 +1890,7 @@ main(int argc, char** argv) {
     auto listPrivKeys = wallet->add_subcommand("private_keys", localized("List of private keys from an unlocked wallet in wif or PVT_R1 format."));
     listPrivKeys->add_option("-n,--name", wallet_name, localized("The name of the wallet to list keys from"), true);
     listPrivKeys->add_option("--password", wallet_pw, localized("The password returned by wallet create"));
-    listPrivKeys->set_callback([&wallet_name, &wallet_pw] {
+    listPrivKeys->callback([&wallet_name, &wallet_pw] {
         if(wallet_pw.size() == 0) {
             std::cout << localized("password: ");
             fc::set_console_echo(false);
@@ -1866,7 +1904,7 @@ main(int argc, char** argv) {
 
     // stop evtwd
     auto stopEvtwd = wallet->add_subcommand("stop", localized("Stop evtwd (doesn't work with evtd)."));
-    stopEvtwd->set_callback([] {
+    stopEvtwd->callback([] {
         const auto& v = call(wallet_url, evtwd_stop);
         if (!v.is_object() || v.get_object().size() != 0) { //on success evtwd responds with empty object
             std::cerr << fc::json::to_pretty_string(v) << std::endl;
@@ -1890,7 +1928,7 @@ main(int argc, char** argv) {
     sign->add_option("-c,--chain-id", str_chain_id, localized("The chain id that will be used to sign the transaction"));
     sign->add_flag("-p,--push-transaction", push_trx, localized("Push transaction after signing"));
 
-    sign->set_callback([&] {
+    sign->callback([&] {
         signed_transaction trx;
 
         fc::optional<chain_id_type> chain_id;
@@ -1939,7 +1977,7 @@ main(int argc, char** argv) {
     auto   trxSubcommand = push->add_subcommand("transaction", localized("Push an arbitrary JSON transaction"));
     trxSubcommand->add_option("transaction", trx_to_push, localized("The JSON of the transaction to push, or the name of a JSON file containing the transaction"))->required();
 
-    trxSubcommand->set_callback([&] {
+    trxSubcommand->callback([&] {
         fc::variant trx_var;
         try {
             if(fc::is_regular_file(trx_to_push)) {
@@ -1958,7 +1996,7 @@ main(int argc, char** argv) {
     string trxsJson;
     auto   trxsSubcommand = push->add_subcommand("transactions", localized("Push an array of arbitrary JSON transactions"));
     trxsSubcommand->add_option("transactions", trxsJson, localized("The JSON array of the transactions to push"))->required();
-    trxsSubcommand->set_callback([&] {
+    trxsSubcommand->callback([&] {
         fc::variant trx_var;
         try {
             trx_var = fc::json::from_string(trxsJson);

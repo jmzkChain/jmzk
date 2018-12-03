@@ -116,6 +116,7 @@ FC_DECLARE_DERIVED_EXCEPTION( action_exception,           chain_exception,  3040
 FC_DECLARE_DERIVED_EXCEPTION( action_authorize_exception, action_exception, 3040001, "invalid action authorization" );
 FC_DECLARE_DERIVED_EXCEPTION( action_args_exception,      action_exception, 3040002, "Invalid arguments for action" );
 FC_DECLARE_DERIVED_EXCEPTION( name_reserved_exception,    action_exception, 3040003, "Name is reserved." );
+FC_DECLARE_DERIVED_EXCEPTION( address_reserved_exception, action_exception, 3040004, "Address is reserved." );
 
 FC_DECLARE_DERIVED_EXCEPTION( domain_exception,           action_exception, 3040100, "Domain exception" );
 FC_DECLARE_DERIVED_EXCEPTION( unknown_domain_exception,   domain_exception, 3040101, "Domain does not exist." );
@@ -260,6 +261,7 @@ FC_DECLARE_DERIVED_EXCEPTION( plugin_config_exception,               plugin_exce
 FC_DECLARE_DERIVED_EXCEPTION( missing_chain_plugin_exception,        plugin_exception, 3130008, "Missing Chain Plugin" );
 FC_DECLARE_DERIVED_EXCEPTION( missing_producer_api_plugin_exception, plugin_exception, 3130009, "Missing Producer API Plugin" );
 FC_DECLARE_DERIVED_EXCEPTION( missing_postgres_plugin_exception,     plugin_exception, 3130010, "Missing postgres Plugin" );
+FC_DECLARE_DERIVED_EXCEPTION( exceed_query_limit_exception,          plugin_exception, 3130011, "Exceed max query limit" );
 
 FC_DECLARE_DERIVED_EXCEPTION( wallet_exception,                  chain_exception,  3140000, "wallet exception" );
 FC_DECLARE_DERIVED_EXCEPTION( wallet_exist_exception,            wallet_exception, 3140001, "Wallet already exists" );
@@ -340,8 +342,7 @@ FC_DECLARE_DERIVED_EXCEPTION( postgres_sync_exception,        postgres_plugin_ex
 FC_DECLARE_DERIVED_EXCEPTION( postgres_send_exception,        postgres_plugin_exception, 3230005, "Send commands to postgres failed" );
 FC_DECLARE_DERIVED_EXCEPTION( postgres_poll_exception,        postgres_plugin_exception, 3230006, "Poll messages from postgres failed" );
 FC_DECLARE_DERIVED_EXCEPTION( postgres_query_exception,       postgres_plugin_exception, 3230007, "Query from postgres failed" );
-FC_DECLARE_DERIVED_EXCEPTION( postgres_limit_exception,       postgres_plugin_exception, 3230008, "Exceed postgres query limit" );
-FC_DECLARE_DERIVED_EXCEPTION( postgres_not_enabled_exception, postgres_plugin_exception, 3230009, "Postgres plugin is not enabled" );
+FC_DECLARE_DERIVED_EXCEPTION( postgres_not_enabled_exception, postgres_plugin_exception, 3230008, "Postgres plugin is not enabled" );
 
 
 }} // evt::chain

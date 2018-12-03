@@ -93,6 +93,7 @@ evt_link_plugin_impl::applied_block(const block_state_ptr& bs) {
             response(epact.link.get_link_id(), [&] {
                 auto vo         = fc::mutable_variant_object();
                 vo["block_num"] = bs->block_num;
+                vo["block_id"]  = bs->id;
                 vo["trx_id"]    = trx->id;
                 vo["err_code"]  = 0;
 
@@ -179,6 +180,7 @@ evt_link_plugin_impl::get_trx_id_for_link_id(const link_id_type& link_id, deferr
 
         auto vo         = fc::mutable_variant_object();
         vo["block_num"] = obj.block_num;
+        vo["block_id"]  = db_.get_block_id_for_num(obj.block_num);
         vo["trx_id"]    = obj.trx_id;
 
         app().get_plugin<http_plugin>().set_deferred_response(id, 200, fc::json::to_string(vo));

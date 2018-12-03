@@ -58,10 +58,11 @@ evt_api_plugin::plugin_startup() {
     app().get_plugin<http_plugin>().add_api({EVT_RO_CALL(get_domain, 200),
                                              EVT_RO_CALL(get_group, 200),
                                              EVT_RO_CALL(get_token, 200),
+                                             EVT_RO_CALL(get_tokens, 200),
                                              EVT_RO_CALL(get_fungible, 200),
                                              EVT_RO_CALL(get_fungible_balance, 200),
                                              EVT_RO_CALL(get_suspend, 200),
-                                             EVT_RO_CALL(get_lock, 200)
+                                             EVT_RO_CALL(get_lock, 200),
                                          });
 }
 

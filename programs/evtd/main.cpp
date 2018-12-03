@@ -129,6 +129,11 @@ main(int argc, char** argv) {
         auto root = fc::app_path();
         app().set_default_data_dir(root / "evt/evtd/data");
         app().set_default_config_dir(root / "evt/evtd/config");
+        http_plugin::set_defaults({
+            .default_unix_socket_path = "evtd.sock",
+            .default_http_port = 8888
+        });
+
         if(!app().initialize<chain_plugin, http_plugin, net_plugin, producer_plugin>(argc, argv)) {
             return INITIALIZE_FAIL;
         }

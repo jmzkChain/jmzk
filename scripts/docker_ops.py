@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+import json
+import pathlib
+import re
 from datetime import datetime
 
 import click
@@ -162,6 +165,8 @@ def init(ctx):
         click.echo('Pulled latest postgres image')
 
     volume_name = '{}-data-volume'.format(name)
+    volume2_name = '{}-config-volume'.format(name)
+
     try:
         client.volumes.get(volume_name)
         click.echo('{} volume is already existed, no need to create one'.
@@ -170,21 +175,32 @@ def init(ctx):
         client.volumes.create(volume_name)
         click.echo('{} volume is created'.format(green(volume_name)))
 
+    try:
+        client.volumes.get(volume2_name)
+        click.echo('{} volume is already existed, no need to create one'.
+                   format(green(volume2_name)))
+    except docker.errors.NotFound:
+        client.volumes.create(volume2_name)
+        click.echo('{} volume is created'.format(green(volume2_name)))
+
 
 @postgres.command()
 @click.option('--net', '-n', default='evt-net', help='Name of the network for the environment')
 @click.option('--port', '-p', default=5432, help='Expose port for postgres')
 @click.option('--host', '-h', default='127.0.0.1', help='Host address for postgres')
+@click.option('--password', '-x', default='', help='Password for \'postgres\' user, leave empty to diable password(anyone can login)')
 @click.pass_context
-def create(ctx, net, port, host, dbname):
+def create(ctx, net, port, host, password):
     name = ctx.obj['name']
     volume_name = '{}-data-volume'.format(name)
+    volume2_name = '{}-config-volume'.format(name)
     image = 'bitnami/postgresql:11.1.0'
 
     try:
         client.images.get(image)
         client.networks.get(net)
         client.volumes.get(volume_name)
+        client.volumes.get(volume2_name)
     except docker.errors.ImageNotFound:
         click.echo(
             'Some necessary elements are not found, please run `postgres init` first')
@@ -214,10 +230,33 @@ def create(ctx, net, port, host, dbname):
 
     client.containers.create(image, None, name=name, detach=True, network=net,
                              ports={'5432/tcp': (host, port)},
-                             volumes={volume_name: {
-                                 'bind': '/bitnami', 'mode': 'rw'}},
+                             volumes={
+                                volume_name: {
+                                 'bind': '/bitnami', 'mode': 'rw'},
+                                volume2_name: {
+                                 'bind': '/opt/bitnami/postgresql/conf', 'mode': 'rw'
+                                }
+                             },
                              )
     click.echo('{} container is created'.format(green(name)))
+
+    if len(password) > 0:
+        me = 'md5'
+        click.echo('{}: Password is set only if it\'s the first time creating postgres, otherwise it will reuse old password. Please use {} command.'.format(green('NOTICE'), green('postgres updpass')))
+    else:
+        me = 'trust'
+
+    conf = """# TYPE  DATABASE        USER            ADDRESS                 METHOD
+              local   all             all                                     trust
+              host    all             all             127.0.0.1/32            trust
+              host    all             all             ::1/128                 trust
+              host    all             all             0.0.0.0/0               {}""".format(me)
+
+    click.echo('Writting default {}'.format(green('pg_hba.conf')))
+    cmd = '/bin/bash -c "echo -e \'{}\' | cat > /opt/bitnami/postgresql/conf/pg_hba.conf"'.format(conf)
+    r = client.containers.run(image, cmd, auto_remove=True, volumes={volume2_name: {
+        'bind': '/opt/bitnami/postgresql/conf', 'mode': 'rw'
+        }})
 
 
 @postgres.command()
@@ -225,8 +264,6 @@ def create(ctx, net, port, host, dbname):
 @click.pass_context
 def createdb(ctx, dbname):
     name = ctx.obj['name']
-    volume_name = '{}-data-volume'.format(name)
-    image = 'bitnami/postgresql:11.1.0'
 
     try:
         container = client.containers.get(name)
@@ -252,6 +289,29 @@ def createdb(ctx, dbname):
 
     if 'CREATE DATABASE' in logs2.decode('utf-8'):
         click.echo('Created database: {} in postgres'.format(green(dbname)))
+
+
+@postgres.command()
+@click.argument('new-password', default='')
+@click.pass_context
+def updpass(ctx, new_password):
+    name = ctx.obj['name']
+
+    try:
+        container = client.containers.get(name)
+        if container.status != 'running':
+            click.echo(
+                '{} container is not running, cannot create database'.format(green(name)))
+            return
+    except docker.errors.NotFound:
+        click.echo('{} container is not existed'.format(green(name)))
+        return
+
+    cmd = 'psql -U postgres -c "ALTER USER postgres WITH PASSWORD \'{}\';"'.format(new_password)
+    c, logs = container.exec_run(cmd)
+
+    if 'ALTER ROLE' in logs.decode('utf-8'):
+        click.echo('Update password successfully')
 
 
 @postgres.command()
@@ -446,6 +506,14 @@ def detailmongo(ctx):
     ctx.invoke(detail, name=ctx.obj['name'])
 
 
+def check_evt_image():
+    try:
+        client.images.get('everitoken/evt:latest')
+    except docker.errors.ImageNotFound:
+        click.echo('Cannot find image: {}, please pull first'.format(
+            green('everitoken/evt:latest')))
+
+
 @cli.group()
 @click.option('--name', '-n', default='evtd', help='Name of the container running evtd')
 @click.pass_context
@@ -458,6 +526,8 @@ def evtd(ctx, name):
 @click.pass_context
 def init(ctx):
     name = ctx.obj['name']
+
+    check_evt_image()
 
     volume_name = '{}-data-volume'.format(name)
     volume2_name = '{}-snapshots-volume'.format(name)
@@ -596,6 +666,61 @@ def clear(ctx, all):
 
 
 @evtd.command()
+@click.option('--postgres/--no-postgres', '-p', default=False, help='Whether export postgres data into snapshot(postgres plugin should be enabled)')
+@click.option('--upload/--no-upload', '-u', default=False, help='Whether upload to S3')
+@click.option('--aws-key', '-k', default='')
+@click.option('--aws-secret', '-s', default='')
+@click.pass_context
+def snapshot(ctx, postgres, upload, aws_key, aws_secret):
+    name = ctx.obj['name']
+    volume_name = '{}-snapshots-volume'.format(name)
+
+    try:
+        container = client.containers.get(name)
+        if container.status != 'running':
+            click.echo(
+                '{} container is not running, cannot create snapshot'.format(green(name)))
+            return
+    except docker.errors.NotFound:
+        click.echo('{} container is not existed'.format(green(name)))
+        return
+
+    if postgres:
+        p = '-p'
+    else:
+        p = ''
+
+    entry = '/opt/evt/bin/evtc -u unix:///opt/evt/data/evtd.sock producer snapshot {}'.format(
+        p)
+    code, result = container.exec_run(entry)
+
+    obj = {}
+    pat = re.compile(r'\|->([\w_]+) : (.*)')
+    it = pat.finditer(result.decode('utf-8'))
+    for m in it:
+        obj[m.group(1)] = m.group(2)
+
+    click.echo(json.dumps(obj, indent=2))
+
+    if not upload:
+        return
+
+    if aws_key == '' or aws_secret == '':
+        click.echo('AWS key or secret is empty, cannot upload to S3')
+        return
+
+    entry = "--file=/data/{} --block-id='{}' --block-num={} --block-time='{}' --aws-key={} --aws-secret={}".format(
+        pathlib.Path(obj['snapshot_name']).name, obj['head_block_id'], obj['head_block_num'], obj['head_block_time'], aws_key, aws_secret)
+
+    container = client.containers.run('everitoken/snapshot:latest', entry, detach=True,
+                                      volumes={volume_name: {'bind': '/data', 'mode': 'rw'}})
+    container.wait()
+    logs = container.logs().decode('utf-8')
+
+    click.echo(logs)
+
+
+@evtd.command()
 @click.argument('arguments', nargs=-1)
 @click.option('--type', '-t', default='testnet', type=click.Choice(['testnet', 'mainnet']), help='Type of the image')
 @click.option('--net', '-n', default='evt-net', help='Name of the network for the environment')
@@ -603,10 +728,10 @@ def clear(ctx, all):
 @click.option('--p2p-port', default=7888, help='Expose port for p2p network, set 0 for not expose')
 @click.option('--host', '-h', default='127.0.0.1', help='Host address for evtd')
 @click.option('--postgres-name', '-g', default='pg', help='Container name or host address of postgres')
-@click.option('--postgres-port', default=5432, help='Port of postgres')
 @click.option('--postgres-db', default=None, help='Name of database in postgres, if set, postgres and history plugins will be enabled')
+@click.option('--postgres-pass', default='', help='Password for postgres')
 @click.pass_context
-def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_port, postgres_db, type, arguments):
+def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_db, postgres_pass, type, arguments):
     name = ctx.obj['name']
     volume_name = '{}-data-volume'.format(name)
     volume2_name = '{}-snapshots-volume'.format(name)
@@ -664,8 +789,14 @@ def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_port, po
         click.echo('{}, {}, {} are enabled'.format(green('postgres_plugin'), green(
             'history_plugin'), green('history_api_plugin')))
         entry += ' --plugin=evt::postgres_plugin --plugin=evt::history_plugin --plugin=evt::history_api_plugin'
-        entry += ' --postgres-uri=postgresql://postgres@{}:{}/{}'.format(
-            postgres_name, postgres_port, postgres_db)
+
+        if len(postgres_pass) == 0:
+            entry += ' --postgres-uri=postgresql://postgres@{}:{}/{}'.format(
+                postgres_name, 5432, postgres_db)
+        else:
+            entry += ' --postgres-uri=postgresql://postgres:{}@{}:{}/{}'.format(
+                postgres_pass, postgres_name, 5432, postgres_db)
+
     if arguments is not None and len(arguments) > 0:
         entry += ' ' + ' '.join(arguments)
 
@@ -725,36 +856,34 @@ def evtwd(ctx, name):
 def init(ctx):
     name = ctx.obj['name']
 
+    check_evt_image()
+
     volume_name = '{}-data-volume'.format(name)
     try:
         client.volumes.get(volume_name)
-        click.echo('evtwd: {} volume is already existed, no need to create one'.
+        click.echo('{} volume is already existed, no need to create one'.
                    format(green(volume_name)))
     except docker.errors.NotFound:
         client.volumes.create(volume_name)
-        click.echo('evtwd: {} volume is created'.format(green(volume_name)))
+        click.echo('{} volume is created'.format(green(volume_name)))
 
 
 @evtwd.command()
-@click.option('--net', '-n', default='evt-net', help='Name of the network for the environment')
-@click.option('--port', '-p', default=0, help='Expose port for evtwd, leave zero for not exposed')
-@click.option('--host', '-h', default='127.0.0.1', help='Host address for evtwd')
 @click.pass_context
-def create(ctx, net, port, host):
+def create(ctx):
     name = ctx.obj['name']
     volume_name = '{}-data-volume'.format(name)
 
     try:
         client.images.get('everitoken/evt:latest')
-        client.networks.get(net)
         client.volumes.get(volume_name)
     except docker.errors.ImageNotFound:
         click.echo(
-            'evtwd: Some necessary elements are not found, please run `evtwd init` first')
+            'Some necessary elements are not found, please run `evtwd init` first')
         return
     except docker.errors.NotFound:
         click.echo(
-            'evtwd: Some necessary elements are not found, please run `evtwd init` first')
+            'Some necessary elements are not found, please run `evtwd init` first')
         return
 
     create = False
@@ -762,12 +891,12 @@ def create(ctx, net, port, host):
         container = client.containers.get(name)
         if container.status != 'running':
             click.echo(
-                'evtwd: {} container is existed but not running, try to remove old container and start a new one'.format(green(name)))
+                '{} container is existed but not running, try to remove old container and start a new one'.format(green(name)))
             container.remove()
             create = True
         else:
             click.echo(
-                'evtwd: {} container is already existed and running, cannot restart, run `evtwd stop` first'.format(green(name)))
+                '{} container is already existed and running, cannot restart, run `evtwd stop` first'.format(green(name)))
             return
     except docker.errors.NotFound:
         create = True
@@ -775,17 +904,13 @@ def create(ctx, net, port, host):
     if not create:
         return
 
-    ports = {}
-    if port != 0:
-        ports['9999/tcp'] = (host, port)
-    entry = '/opt/evt/bin/evtwd --http-server-address=0.0.0.0:9999'
-    client.containers.create('everitoken/evt:latest', None, name=name, detach=True, network=net,
-                             ports=ports,
+    entry = 'evtwd.sh --unix-socket-path=/opt/evt/data/wallet/evtwd.sock'
+    client.containers.create('everitoken/evt:latest', None, name=name, detach=True,
                              volumes={volume_name: {
                                  'bind': '/opt/evt/data', 'mode': 'rw'}},
                              entrypoint=entry
                              )
-    click.echo('evtwd: {} container is created'.format(green(name)))
+    click.echo('{} container is created'.format(green(name)))
 
 
 @evtwd.command()
@@ -799,13 +924,13 @@ def clear(ctx, all):
         container = client.containers.get(name)
         if container.status == 'running':
             click.echo(
-                'evtwd: {} container is still running, cannot clean'.format(green(name)))
+                '{} container is still running, cannot clean'.format(green(name)))
             return
 
         container.remove()
-        click.echo('evtwd: {} container is removed'.format(green(name)))
+        click.echo('{} container is removed'.format(green(name)))
     except docker.errors.NotFound:
-        click.echo('evtwd: {} container is not existed'.format(green(name)))
+        click.echo('{} container is not existed'.format(green(name)))
 
     if not all:
         return
@@ -813,9 +938,9 @@ def clear(ctx, all):
     try:
         volume = client.volumes.get(volume_name)
         volume.remove(force=True)
-        click.echo('evtwd: {} volume is removed'.format(green(volume_name)))
+        click.echo('{} volume is removed'.format(green(volume_name)))
     except docker.errors.NotFound:
-        click.echo('evtwd: {} volume is not existed'.format(green(volume_name)))
+        click.echo('{} volume is not existed'.format(green(volume_name)))
 
 
 @evtwd.command('start')
@@ -859,10 +984,16 @@ def evtc(commands, evtwd):
         return
     except docker.errors.NotFound:
         click.echo(
-            'evtwd: Some necessary elements are not found, please run `evtwd init` first')
+            'Some necessary elements are not found, please run `evtwd init` first')
         return
 
-    entry = '/opt/evt/bin/evtc {}'.format(' '.join(commands))
+    if container.status != 'running':
+        click.echo(
+            '{} container is not running, please start it first'.format(green('evtwd')))
+        return
+
+    entry = '/opt/evt/bin/evtc --wallet-url=unix://opt/evt/data/wallet/evtwd.sock {}'.format(
+        ' '.join(commands))
     code, result = container.exec_run(entry, stream=True)
 
     for line in result:

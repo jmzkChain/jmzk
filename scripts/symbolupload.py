@@ -42,7 +42,7 @@ def upload(folder, bucket, ref, aws_key, aws_secret):
         key = ref + '/' + '/'.join(pathlib.Path(f).parts[-3:])
         click.echo('Uploading: {} to {} bucket'.format(
             click.style(key, fg='red'), click.style(bucket, fg='green')))
-        s3.Object(bucket, key).put(Body=open(f, 'rb'))
+        s3.Object(bucket, key).put(ACL='public-read', Body=open(f, 'rb'))
     t2 = time.monotonic()
 
     click.echo('Uploaded all the symbols, took {} ms'.format(

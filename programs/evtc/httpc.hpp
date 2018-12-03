@@ -50,6 +50,9 @@ struct resolved_url : parsed_url {
         , is_loopback(is_loopback) {
     }
 
+    //used for unix domain, where resolving and ports are nonapplicable
+    resolved_url(const parsed_url& url) : parsed_url(url) {}
+
     vector<string> resolved_addresses;
     uint16_t       resolved_port;
     bool           is_loopback;
@@ -126,6 +129,7 @@ const std::string wallet_sign_trx      = wallet_func_base + "/sign_transaction";
 const std::string evt_func_base             = "/v1/evt";
 const std::string get_domain_func           = evt_func_base + "/get_domain";
 const std::string get_token_func            = evt_func_base + "/get_token";
+const std::string get_tokens_func           = evt_func_base + "/get_tokens";
 const std::string get_group_func            = evt_func_base + "/get_group";
 const std::string get_fungible_func         = evt_func_base + "/get_fungible";
 const std::string get_fungible_balance_func = evt_func_base + "/get_fungible_balance";

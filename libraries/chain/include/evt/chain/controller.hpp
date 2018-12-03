@@ -32,8 +32,8 @@ class snapshot_reader;
 
 namespace contracts {
 struct abi_serializer;
-class evt_link_object;
-}
+struct evt_link_object;
+}  // namespace contracts
 
 using contracts::evt_link_object;
 

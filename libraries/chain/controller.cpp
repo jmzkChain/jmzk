@@ -1110,19 +1110,6 @@ struct controller_impl {
     finalize_block() {
         EVT_ASSERT(pending, block_validate_exception, "it is not valid to finalize when there is no pending block");
         try {
-            /*
-      ilog( "finalize block ${n} (${id}) at ${t} by ${p} (${signing_key}); schedule_version: ${v} lib: ${lib} #dtrxs: ${ndtrxs} ${np}",
-            ("n",pending->_pending_block_state->block_num)
-            ("id",pending->_pending_block_state->header.id())
-            ("t",pending->_pending_block_state->header.timestamp)
-            ("p",pending->_pending_block_state->header.producer)
-            ("signing_key", pending->_pending_block_state->block_signing_key)
-            ("v",pending->_pending_block_state->header.schedule_version)
-            ("lib",pending->_pending_block_state->dpos_irreversible_blocknum)
-            ("ndtrxs",db.get_index<generated_transaction_multi_index,by_trx_id>().size())
-            ("np",pending->_pending_block_state->header.new_producers)
-            );
-      */
             set_action_merkle();
             set_trx_merkle();
 
