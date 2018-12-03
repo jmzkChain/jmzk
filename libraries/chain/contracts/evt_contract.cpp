@@ -116,6 +116,21 @@ check_name_reserved(const name128& name) {
     EVT_ASSERT(!name.empty() && !name.reserved(), name_reserved_exception, "Name starting with '.' is reserved for system usages.");
 }
 
+inline void
+check_address_reserved(const address& addr) {
+    switch(addr.type()) {
+    case address::reserved_t: {
+        EVT_THROW(address_reserved_exception, "Address is reserved and cannot be used here");
+    }
+    case address::public_key_t: {
+        return;
+    }
+    case address::generated_t: {
+        EVT_ASSERT(!addr.get_prefix().reserved(), address_reserved_exception, "Address is reserved and cannot be used here");
+    }
+    }  // switch
+}
+
 enum class reserved_meta_key {
     disable_destroy = 0
 };
@@ -193,6 +208,9 @@ EVT_ACTION_IMPL(issuetoken) {
     try {
         EVT_ASSERT(context.has_authorized(itact.domain, N128(.issue)), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(!itact.owner.empty(), token_owner_exception, "Owner cannot be empty.");
+        for(auto& o : itact.owner) {
+            check_address_reserved(o);
+        }
 
         auto& tokendb = context.token_db;
         EVT_ASSERT(tokendb.exists_domain(itact.domain), unknown_domain_exception, "Domain ${name} does not exist.", ("name", itact.domain));
@@ -238,6 +256,9 @@ EVT_ACTION_IMPL(transfer) {
     try {
         EVT_ASSERT(context.has_authorized(ttact.domain, ttact.name), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(!ttact.to.empty(), token_owner_exception, "New owner cannot be empty.");
+        for(auto& addr : ttact.to) {
+            check_address_reserved(addr);
+        }
 
         auto& tokendb = context.token_db;
 
@@ -476,7 +497,7 @@ EVT_ACTION_IMPL(issuefungible) {
     try {
         auto sym = ifact.number.sym();
         EVT_ASSERT(context.has_authorized(N128(.fungible), (name128)std::to_string(sym.id())), action_authorize_exception, "Authorized information does not match.");
-        EVT_ASSERT(!ifact.address.is_reserved(), fungible_address_exception, "Cannot issue fungible tokens to reserved address");
+        check_address_reserved(ifact.address);
 
         auto& tokendb = context.token_db;
         EVT_ASSERT(tokendb.exists_fungible(sym), fungible_duplicate_exception, "{sym} fungible tokens doesn't exist", ("sym",sym));
@@ -506,9 +527,9 @@ EVT_ACTION_IMPL(transferft) {
     try {
         auto sym = tfact.number.sym();
         EVT_ASSERT(context.has_authorized(N128(.fungible), (name128)std::to_string(sym.id())), action_authorize_exception, "Authorized information does not match.");
-        EVT_ASSERT(!tfact.to.is_reserved(), fungible_address_exception, "Cannot transfer fungible tokens to reserved address");
         EVT_ASSERT(tfact.from != tfact.to, fungible_address_exception, "From and to are the same address");
         EVT_ASSERT(sym != pevt_sym(), fungible_symbol_exception, "Pinned EVT cannot be transfered");
+        check_address_reserved(tfact.to);
 
         auto& tokendb = context.token_db;
         
@@ -592,7 +613,7 @@ EVT_ACTION_IMPL(evt2pevt) {
     try {
         EVT_ASSERT(epact.number.sym() == evt_sym(), fungible_symbol_exception, "Only EVT tokens can be converted to Pinned EVT tokens");
         EVT_ASSERT(context.has_authorized(N128(.fungible), (name128)std::to_string(evt_sym().id())), action_authorize_exception, "Authorized information does not match.");
-        EVT_ASSERT(!epact.to.is_reserved(), fungible_address_exception, "Cannot convert Pinned EVT tokens to reserved address");
+        check_address_reserved(epact.to);
 
         auto& tokendb = context.token_db;
         
@@ -1067,6 +1088,8 @@ EVT_ACTION_IMPL(everipay) {
 
     auto& epact = context.act.data_as<const everipay&>();
     try {
+        check_address_reserved(epact.payee);
+
         auto& tokendb = context.token_db;
 
         auto& link  = epact.link;
@@ -1245,6 +1268,7 @@ EVT_ACTION_IMPL(newlock) {
         EVT_ASSERT(nlact.deadline > now && nlact.deadline > nlact.unlock_time, lock_unlock_time_exception,
             "Now is ahead of unlock time or deadline, unlock time is ${u}, now is ${n}", ("u",nlact.unlock_time)("n",now));
 
+        // check condition
         switch(nlact.condition.type()) {
         case lock_type::cond_keys: {
             auto& lck = nlact.condition.get<lock_condkeys>();
@@ -1252,6 +1276,15 @@ EVT_ACTION_IMPL(newlock) {
         }    
         }  // switch
         
+        // check succeed and fiil addresses(shouldn't be reserved)
+        for(auto& addr : nlact.succeed) {
+            check_address_reserved(addr);
+        }
+        for(auto& addr : nlact.failed) {
+            check_address_reserved(addr);
+        }
+
+        // check assets(need to has authority)
         EVT_ASSERT(nlact.assets.size() > 0, lock_assets_exception, "Assets for lock should not be empty");
 
         auto has_fungible = false;
@@ -1289,6 +1322,7 @@ EVT_ACTION_IMPL(newlock) {
             }  // switch
         }
 
+        // check succeed and fail addresses(size should be match)
         if(has_fungible) {
             // because fungible assets cannot be transfer to multiple addresses.
             EVT_ASSERT(nlact.succeed.size() == 1, lock_address_exception, "Size of address for succeed situation should be only one when there's fungible assets needs to lock");
@@ -1332,6 +1366,7 @@ EVT_ACTION_IMPL(newlock) {
             }  // switch
         }
 
+        // add locl proposal to token database
         auto lock        = lock_def();
         lock.name        = nlact.name;
         lock.proposer    = nlact.proposer;
