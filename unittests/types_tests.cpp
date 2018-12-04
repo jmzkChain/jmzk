@@ -269,6 +269,18 @@ TEST_CASE("test_name128", "[types]") {
 
     auto n4 = name128(N128(ABCDEFGZZ));
     CHECK((std::string)n4 == "ABCDEFGZZ");
+
+    auto CHECK_NUM = [](auto v) {
+        auto n1 = name128::from_number(v);
+        auto n2 = name128(std::to_string(v));
+
+        INFO(v);
+        REQUIRE(n1.value == n2.value);
+        REQUIRE(n1.to_string() == n2.to_string());
+    };
+    for(uint128_t i = 0u; i < std::numeric_limits<uint64_t>::max(); i = i * 10 + 1) {
+        CHECK_NUM(i);
+    }
 }
 
 TEST_CASE("test_symbol", "[types]") {

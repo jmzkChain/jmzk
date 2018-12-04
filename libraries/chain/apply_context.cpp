@@ -33,7 +33,7 @@ apply_context::exec_one(action_trace& trace) {
 
     auto start = fc::time_point::now();
 
-    action_receipt r;
+    auto r            = action_receipt();
     r.act_digest      = digest_type::hash(act);
     r.global_sequence = next_global_sequence();
 
@@ -47,7 +47,7 @@ apply_context::exec_one(action_trace& trace) {
         try {
             types_invoker<void, apply_action>::invoke(act.name, *this);
         }
-        FC_RETHROW_EXCEPTIONS(warn, "pending console output: ${console}", ("console", _pending_console_output.str()));
+        FC_RETHROW_EXCEPTIONS(warn, "pending console output: ${console}", ("console", fmt::to_string(_pending_console_output)));
     }
     catch(fc::exception& e) {
         trace.receipt = r; // fill with known data
@@ -69,12 +69,10 @@ apply_context::exec_one(action_trace& trace) {
 
 void
 apply_context::finalize_trace(action_trace& trace, const fc::time_point& start) {
-    trace.console = _pending_console_output.str();
+    trace.console = fmt::to_string(_pending_console_output);
     reset_console();
-
     trace.elapsed = fc::time_point::now() - start;
 }
-
 
 void
 apply_context::exec(action_trace& trace) {
@@ -88,8 +86,7 @@ apply_context::has_authorized(const domain_name& domain, const domain_key& key) 
 
 void
 apply_context::reset_console() {
-    _pending_console_output = std::ostringstream();
-    _pending_console_output.setf(std::ios::scientific, std::ios::floatfield);
+    _pending_console_output = fmt::memory_buffer();
 }
 
 uint64_t

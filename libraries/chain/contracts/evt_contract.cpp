@@ -977,7 +977,7 @@ EVT_ACTION_IMPL(execsuspend) {
         bool transaction_failed = trace && trace->except;
         if(transaction_failed) {
             suspend.status = suspend_status::failed;
-            context.console_append(trace->except->to_string());
+            fmt::format_to(context.get_console_buffer(), "{}", trace->except->to_string());
         }
         else {
             suspend.status = suspend_status::executed;
