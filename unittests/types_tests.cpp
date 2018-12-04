@@ -279,7 +279,7 @@ TEST_CASE("test_name128", "[types]") {
         REQUIRE(n1.to_string() == n2.to_string());
     };
     for(uint128_t i = 0u; i < std::numeric_limits<uint64_t>::max(); i = i * 10 + 1) {
-        CHECK_NUM(i);
+        CHECK_NUM((uint64_t)i);
     }
 }
 
