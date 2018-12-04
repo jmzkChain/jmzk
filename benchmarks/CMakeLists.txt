@@ -11,4 +11,5 @@ add_executable( evt_benchmarks
     sha256/fc.cpp
     sha256/cgminer.cpp
     )
-target_link_libraries( evt_benchmarks evt_chain evt_testing fc ${BENCHMARK_LIBRARIES} cryptopp )
+target_link_libraries( evt_benchmarks evt_chain evt_testing fc ${BENCHMARK_LIBRARIES} )
+# target_link_libraries( cryptopp )

@@ -1,5 +1,4 @@
 #include "sha256.hpp"
-#include <cryptopp/sha.h>
 
 namespace sha256 { namespace cgminer {
 
