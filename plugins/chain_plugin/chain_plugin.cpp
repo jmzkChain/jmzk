@@ -229,6 +229,7 @@ chain_plugin::set_program_options(options_description& cli, options_description&
             "Chain validation mode (\"full\" or \"light\").\n"
             "In \"full\" mode all incoming blocks will be fully validated.\n"
             "In \"light\" mode all incoming blocks headers will be fully validated; transactions in those validated blocks will be trusted \n")
+        ("trusted-producer", bpo::value<vector<string>>()->composing(), "Indicate a producer whose blocks headers signed by it will be fully validated, but transactions in those validated blocks will be trusted.")
         ;
 
     cli.add_options()

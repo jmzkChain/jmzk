@@ -150,6 +150,10 @@ postgres_plugin_impl::applied_block(const block_state_ptr& bsp) {
 
 void
 postgres_plugin_impl::applied_transaction(const transaction_trace_ptr& ttp) {
+    if(!ttp->receipt || (ttp->receipt->status != transaction_receipt_header::executed &&
+        ttp->receipt->status != transaction_receipt_header::soft_fail)) {
+        return;
+    }
     evt::__internal::queuet(transaction_trace_queue_, ttp, lock_, cond_);
 }
 
