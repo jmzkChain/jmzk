@@ -18,7 +18,7 @@ socket.connect('tcp://localhost:6666')
 def watches_config():
     d = {}
     d['func'] = 'watches'
-    d['nodes'] = ['http://127.0.0.1:8888','http://127.0.0.1:8889','http://127.0.0.1:8890','http://127.0.0.1:8891']
+    d['nodes'] = ['http://127.0.0.1:8888','http://127.0.0.1:8889','http://127.0.0.1:8890','http://127.0.0.1:8891','http://127.0.0.1:8893']
     return d
 
 
@@ -44,18 +44,20 @@ class Test(unittest.TestCase):
             Max = max(Max, tmp)
         self.assertTrue(Max-Min<dif, msg = '{} {}'.format(Min, Max))
 
-        socket = ctx.socket(zmq.REQ)
-        socket.connect('tcp://localhost:6666')
-        j = json.dumps(everipay())
-        socket.send_string(j)
-        rep = socket.recv_string()
-        self.assertTrue(rep == 'Success', msg =rep)
+        for i in range(5):
+            socket = ctx.socket(zmq.REQ)
+            socket.connect('tcp://localhost:6666')
+            j = json.dumps(everipay())
+            socket.send_string(j)
+            rep = socket.recv_string()
+            self.assertTrue(rep == 'Success', msg =rep)
 
     def test_1(self):
         p = subprocess.Popen(['pumba', 'netem', '--tc-image', 'gaiadocker/iproute2', '--duration', '5m', 'delay', '--time', '1000', '--jitter', '500', 'evtd_0'],
                              stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=False)
         time.sleep(2)
         self._test_block(20)
+        print('kill')
         p.kill()
 
     def test_2(self):
@@ -65,6 +67,20 @@ class Test(unittest.TestCase):
         self._test_block(20)
         print('kill')
         p.kill()
+
+    def test_3(self):
+        subps = []
+        cmd = ['pumba', 'netem', '--tc-image', 'gaiadocker/iproute2', '--duration', '5m', 'delay', '--time', '3000', '--jitter', '500']
+        for i in range(5):
+            cmd_t = cmd
+            cmd_t.append('evtd_{}'.format(i))
+            p = subprocess.Popen(cmd_t, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=False)
+            subps.append(p)
+        time.sleep(2)
+        self._test_block(100)
+        print('kill')
+        for p in subps:
+            p.kill()
 
 @click.command()
 def main():

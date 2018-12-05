@@ -72,27 +72,28 @@ class PayEngine:
             user1, user2 = user2, user1
 
         user1_link = self.build_evt_link(user1)
-        self.wp.add_watch(user1_link.get_link_id().hex(), user1_link.get_timestamp())
+        if self.wp.alive:
+            self.wp.add_watch(user1_link.get_link_id().hex(), user1_link.get_timestamp())
 
-        act_pay = AG.new_action('everipay', payee=user2.pub_key, number=self.asset(
-            1), link=user1_link.to_string())
-        trx = self.TG.new_trx()
-        trx.add_action(act_pay)
-        trx.add_sign(user2.priv_key)
-        trx.set_payer(user2.pub_key.to_string())
-        resp = self.Api.push_transaction(trx.dumps())
-        print(user1_link.get_link_id().hex(), resp, self.wp.size())
-        self.amount -= 1
-        if self.amount > 0:
-            reactor.callLater(self.freq, self.everipay)
+            act_pay = AG.new_action('everipay', payee=user2.pub_key, number=self.asset(
+                1), link=user1_link.to_string())
+            trx = self.TG.new_trx()
+            trx.add_action(act_pay)
+            trx.add_sign(user2.priv_key)
+            trx.set_payer(user2.pub_key.to_string())
+            resp = self.Api.push_transaction(trx.dumps())
+            print(user1_link.get_link_id().hex(), resp, self.wp.size())
+            self.amount -= 1
+            if self.amount > 0:
+                reactor.callLater(self.freq, self.everipay)
 
     def run(self):
         reactor.callWhenRunning(self.everipay)
 
 
 def prepare_for_debug(filename):
-    TG = TrxGenerator('http://127.0.0.1:8888', payer=None)
-    Api = api.Api('http://127.0.0.1:8888')
+    TG = TrxGenerator('http://127.0.0.1:8897', payer=None)
+    Api = api.Api('http://127.0.0.1:8897')
     boss = base.User()
     # issue fungible
     DBG_Symbol = base.Symbol('DBG', 666, 5)
@@ -133,10 +134,10 @@ def main(freq, users, symbol, debug):
         symbol = '5,S#666'
 
     pe = PayEngine(freq, users, sym=symbol, nodes=None)
-    pe.set_url('http://127.0.0.1:8888')
+    pe.set_url('http://127.0.0.1:8897')
     pe.fetch_balances()
     pe.run()
-    WatchPool().set_url('http://127.0.0.1:8888')
+    WatchPool().set_url('http://127.0.0.1:8897')
     WatchPool().run()
 
     reactor.run()

@@ -18,10 +18,10 @@ def watches_config():
 def everipay():
     d = {}
     d['func'] = 'run'
-    d['url'] = 'http://127.0.0.1:8888'
+    d['url'] = 'http://127.0.0.1:8891'
     d['freq'] = 2
     d['users'] = 'payers.json'
-    d['amount'] = 5
+    d['amount'] = 10
     d['debug'] = 1
     return d
 
