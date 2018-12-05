@@ -161,6 +161,8 @@ namespace fc
             return "error";
          case log_level::off:
             return "off";
+         default:
+            return "";
       }
    }
 

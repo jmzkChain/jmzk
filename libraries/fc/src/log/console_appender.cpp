@@ -22,6 +22,7 @@ namespace fc {
      config                      cfg;
      boost::mutex                log_mutex;
      color::type                 lc[log_level::off+1];
+     bool                        use_syslog_header{getenv("JOURNAL_STREAM")};
 #ifdef WIN32
      HANDLE                      console_handle;
 #endif
@@ -98,19 +99,37 @@ namespace fc {
       FILE* out = stream::std_error ? stderr : stdout;
 
       //fc::string fmt_str = fc::format_string( cfg.format, mutable_variant_object(m.get_context())( "message", message)  );
-      
-      std::string file_line = m.get_context().get_file().substr( 0, 22 );
+
+      const log_context context = m.get_context();
+      std::string file_line = context.get_file().substr( 0, 22 );
       file_line += ':';
-      file_line += fixed_size(  6, fc::to_string( m.get_context().get_line_number() ) );
+      file_line += fixed_size(  6, fc::to_string( context.get_line_number() ) );
 
       std::string line;
       line.reserve( 256 );
-      line += fixed_size(  5, m.get_context().get_log_level().to_string() ); line += ' ';
-      line += string( m.get_context().get_timestamp() ); line += ' ';
-      line += fixed_size(  9, m.get_context().get_thread_name() ); line += ' ';
+      if(my->use_syslog_header) {
+         switch(m.get_context().get_log_level()) {
+            case log_level::error:
+               line += "<3>";
+               break;
+            case log_level::warn:
+               line += "<4>";
+               break;
+            case log_level::info:
+               line += "<6>";
+               break;
+            case log_level::debug:
+               line += "<7>";
+               break;
+         }
+      }
+      line += fixed_size(  5, context.get_log_level().to_string() ); line += ' ';
+      // use now() instead of context.get_timestamp() because log_message construction can include user provided long running calls
+      line += string( time_point::now() ); line += ' ';
+      line += fixed_size(  9, context.get_thread_name() ); line += ' ';
       line += fixed_size( 29, file_line ); line += ' ';
 
-      auto me = m.get_context().get_method();
+      auto me = context.get_method();
       // strip all leading scopes...
       if( me.size() ) {
          uint32_t p = 0;
@@ -119,14 +138,14 @@ namespace fc {
          }
 
          if( me[p] == ':' ) ++p;
-         line += fixed_size( 20, m.get_context().get_method().substr( p, 20 ) ); line += ' ';
+         line += fixed_size( 20, context.get_method().substr( p, 20 ) ); line += ' ';
       }
       line += "] ";
       line += fc::format_string( m.get_format(), m.get_data() );
 
       std::unique_lock<boost::mutex> lock(my->log_mutex);
 
-      print( line, my->lc[m.get_context().get_log_level()] );
+      print( line, my->lc[context.get_log_level()] );
 
       fprintf( out, "\n" );
 

@@ -75,6 +75,8 @@ target_include_directories( evt_chain_lite
 
 set_target_properties( evt_chain PROPERTIES PUBLIC_HEADER "${HEADERS}" )
 
+target_compile_definitions(evt_chain PUBLIC FMT_STRING_ALIAS=1)
+
 # find_package(TBB)
 
 if(ENABLE_MAINNET_BUILD)

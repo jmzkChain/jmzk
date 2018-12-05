@@ -27,13 +27,17 @@ def upload(file, block_id, block_num, block_time, bucket, aws_key, aws_secret):
     click.echo('Uploading: {} to {} bucket'.format(
         click.style(key, fg='red'), click.style(bucket, fg='green')))
     s3.Object(bucket, key).put(
-        ACL='public-read',
         Body=open(file, 'rb'),
         Metadata={
             'block-id': block_id,
             'block_num': block_num,
             'block_time': block_time
-        }
+        },
+        StorageClass='STANDARD_IA'
+    )
+
+    s3.ObjectAcl(bucket, key).put(
+        ACL='public-read'
     )
 
     t2 = time.monotonic()

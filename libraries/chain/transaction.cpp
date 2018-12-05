@@ -143,8 +143,9 @@ unpack_transaction(const bytes& data) {
 static bytes
 zlib_decompress(const bytes& data) {
     try {
-        bytes                  out;
-        bio::filtering_ostream decomp;
+        auto out    = bytes();
+        auto decomp = bio::filtering_ostream();
+
         decomp.push(bio::zlib_decompressor());
         decomp.push(read_limiter<1 * 1024 * 1024>());  // limit to 10 megs decompressed for zip bomb protections
         decomp.push(bio::back_inserter(out));
@@ -174,9 +175,10 @@ pack_transaction(const transaction& t) {
 
 static bytes
 zlib_compress_transaction(const transaction& t) {
-    bytes                  in = pack_transaction(t);
-    bytes                  out;
-    bio::filtering_ostream comp;
+    auto in   = pack_transaction(t);
+    auto out  = bytes();
+    auto comp = bio::filtering_ostream();
+
     comp.push(bio::zlib_compressor(bio::zlib::best_compression));
     comp.push(bio::back_inserter(out));
     bio::write(comp, in.data(), in.size());

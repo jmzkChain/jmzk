@@ -276,6 +276,7 @@ namespace fc
                  if (dot)
                     FC_THROW_EXCEPTION(parse_error_exception, "Can't parse a number with two decimal places");
                  dot = true;
+                 [[fallthrough]];
               case '0':
               case '1':
               case '2':
@@ -750,10 +751,17 @@ namespace fc
               }
               break;
             case 'n':
-              //If we're in quotes and see a \n, just print it literally but unset the escape flag.
-              if( quote && escape )
+              //If we're in quotes and see a \n, \b, \f, \r, \t, or \u, just print it literally but unset the escape flag.
+            case 'b':
+            case 'f':
+            case 'r':
+            case 't':
+            case 'u':
+              if( quote && escape ) {
                 escape = false;
-              //No break; fall through to default case
+              }
+                //No break; fall through to default case
+              [[fallthrough]];
             default:
               if( first ) {
                  ss<<'\n';

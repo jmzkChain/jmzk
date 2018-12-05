@@ -19,8 +19,8 @@ public:
     public:
         weight_type weight;     // for root node, its weight is zero
         weight_type threshold;  // for leaf node, its threshold is zero
-        uint16_t    index;      // for leaf node, it's the key index, otherwise is the node index
-        uint16_t    size;       // not for leaf node, indicates how many child nodes it has
+        uint16_t    index;      // for leaf node, it's the key index, otherwise is the node index for non-leaf or root node
+        uint16_t    size;       // for non-leaf node, indicates how many child nodes it has
 
     public:
         bool is_root() const { return weight == 0; }
@@ -32,7 +32,7 @@ public:
                 return threshold > 0 && index > 0 && size > 0;
             }
             if(is_leaf()) {
-                return index >= 0 && size == 0;
+                return size == 0;
             }
             return index > 0 && size > 0;
         }

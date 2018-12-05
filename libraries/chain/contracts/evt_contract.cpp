@@ -389,7 +389,7 @@ namespace __internal {
 
 address
 get_fungible_address(symbol sym) {
-    return address(N(fungible), (fungible_name)std::to_string(sym.id()), 0);
+    return address(N(fungible), name128::from_number(sym.id()), 0);
 }
 
 void
@@ -412,7 +412,7 @@ EVT_ACTION_IMPL(newfungible) {
 
     auto nfact = context.act.data_as<newfungible>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.fungible), (name128)std::to_string(nfact.sym.id())), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(nfact.sym.id())), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(!nfact.name.empty(), fungible_name_exception, "Fungible name cannot be empty");
         EVT_ASSERT(!nfact.sym_name.empty(), fungible_symbol_exception, "Fungible symbol name cannot be empty");
         EVT_ASSERT(nfact.sym.id() > 0, fungible_symbol_exception, "Fungible symbol id should be larger than zero");
@@ -460,7 +460,7 @@ EVT_ACTION_IMPL(updfungible) {
 
     auto ufact = context.act.data_as<updfungible>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.fungible), (name128)std::to_string(ufact.sym_id)), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(ufact.sym_id)), action_authorize_exception, "Authorized information does not match.");
 
         auto& tokendb = context.token_db;
 
@@ -496,7 +496,7 @@ EVT_ACTION_IMPL(issuefungible) {
 
     try {
         auto sym = ifact.number.sym();
-        EVT_ASSERT(context.has_authorized(N128(.fungible), (name128)std::to_string(sym.id())), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(sym.id())), action_authorize_exception, "Authorized information does not match.");
         check_address_reserved(ifact.address);
 
         auto& tokendb = context.token_db;
@@ -526,7 +526,7 @@ EVT_ACTION_IMPL(transferft) {
 
     try {
         auto sym = tfact.number.sym();
-        EVT_ASSERT(context.has_authorized(N128(.fungible), (name128)std::to_string(sym.id())), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(sym.id())), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(tfact.from != tfact.to, fungible_address_exception, "From and to are the same address");
         EVT_ASSERT(sym != pevt_sym(), fungible_symbol_exception, "Pinned EVT cannot be transfered");
         check_address_reserved(tfact.to);
@@ -556,7 +556,7 @@ EVT_ACTION_IMPL(recycleft) {
 
     try {
         auto sym = rfact.number.sym();
-        EVT_ASSERT(context.has_authorized(N128(.fungible), (name128)std::to_string(sym.id())), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(sym.id())), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(sym != pevt_sym(), fungible_symbol_exception, "Pinned EVT cannot be recycled");
 
         auto& tokendb = context.token_db;
@@ -584,7 +584,7 @@ EVT_ACTION_IMPL(destroyft) {
 
     try {
         auto sym = rfact.number.sym();
-        EVT_ASSERT(context.has_authorized(N128(.fungible), (name128)std::to_string(sym.id())), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(sym.id())), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(sym != pevt_sym(), fungible_symbol_exception, "Pinned EVT cannot be destroyed");
 
         auto& tokendb = context.token_db;
@@ -612,7 +612,7 @@ EVT_ACTION_IMPL(evt2pevt) {
 
     try {
         EVT_ASSERT(epact.number.sym() == evt_sym(), fungible_symbol_exception, "Only EVT tokens can be converted to Pinned EVT tokens");
-        EVT_ASSERT(context.has_authorized(N128(.fungible), (name128)std::to_string(evt_sym().id())), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(evt_sym().id())), action_authorize_exception, "Authorized information does not match.");
         check_address_reserved(epact.to);
 
         auto& tokendb = context.token_db;
@@ -977,7 +977,7 @@ EVT_ACTION_IMPL(execsuspend) {
         bool transaction_failed = trace && trace->except;
         if(transaction_failed) {
             suspend.status = suspend_status::failed;
-            context.console_append(trace->except->to_string());
+            fmt::format_to(context.get_console_buffer(), "{}", trace->except->to_string());
         }
         else {
             suspend.status = suspend_status::executed;
@@ -1099,7 +1099,7 @@ EVT_ACTION_IMPL(everipay) {
         EVT_ASSERT(flags & evt_link::everiPay, evt_link_type_exception, "Not a everiPay link");
 
         auto& lsym_id = *link.get_segment(evt_link::symbol_id).intv;
-        EVT_ASSERT(context.has_authorized(N128(.fungible), name128(std::to_string(lsym_id))), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(lsym_id)), action_authorize_exception, "Authorized information does not match.");
 
         if(!context.control.loadtest_mode()) {
             auto  ts    = *link.get_segment(evt_link::timestamp).intv;
@@ -1315,7 +1315,7 @@ EVT_ACTION_IMPL(newlock) {
                 tf.from   = fungible.from;
                 tf.number = fungible.amount;
 
-                auto tfact = action(N128(.fungible), name128(std::to_string(fungible.amount.sym().id())), tf);
+                auto tfact = action(N128(.fungible), name128::from_number(fungible.amount.sym().id()), tf);
                 context.control.check_authorization(keys, tfact);
                 break;
             }

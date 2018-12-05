@@ -390,7 +390,7 @@ std::vector<char> aes_load( const fc::path& file, const fc::sha512& key )
 struct openssl_thread_config
 {
   static boost::mutex* openssl_mutexes;
-  static unsigned long get_thread_id();
+  static void set_thread_id(CRYPTO_THREADID* id);
   static void locking_callback(int mode, int type, const char *file, int line);
   openssl_thread_config();
   ~openssl_thread_config();
@@ -399,14 +399,9 @@ openssl_thread_config openssl_thread_config_manager;
 
 boost::mutex*         openssl_thread_config::openssl_mutexes = nullptr;
 
-unsigned long openssl_thread_config::get_thread_id()
+void openssl_thread_config::set_thread_id(CRYPTO_THREADID* id)
 {
-#ifdef _WIN32
-  return (unsigned long)::GetCurrentThreadId();
-#else
-  return std::hash<std::thread::id>()(std::this_thread::get_id());
-//  return (unsigned long)(&fc::thread::current());    // TODO: should expose boost thread id
-#endif
+  CRYPTO_THREADID_set_numeric(id, std::hash<std::thread::id>()(std::this_thread::get_id()));
 }
 
 void openssl_thread_config::locking_callback(int mode, int type, const char *file, int line)
@@ -423,19 +418,21 @@ void openssl_thread_config::locking_callback(int mode, int type, const char *fil
 // each library that does this to make sure they will play nice.
 openssl_thread_config::openssl_thread_config()
 {
-  if (CRYPTO_get_id_callback() == NULL &&
+  if (CRYPTO_THREADID_get_callback() == NULL &&
       CRYPTO_get_locking_callback() == NULL)
   {
     openssl_mutexes = new boost::mutex[CRYPTO_num_locks()];
-    CRYPTO_set_id_callback(&get_thread_id);
+    auto r [[maybe_unused]] = CRYPTO_THREADID_set_callback(set_thread_id);
     CRYPTO_set_locking_callback(&locking_callback);
   }
 }
+
+#pragma GCC diagnostic ignored "-Waddress"
 openssl_thread_config::~openssl_thread_config()
 {
-  if (CRYPTO_get_id_callback() == &get_thread_id)
+  if (CRYPTO_THREADID_get_callback() == set_thread_id)
   {
-    CRYPTO_set_id_callback(NULL);
+    auto r [[maybe_unused]] = CRYPTO_THREADID_set_callback(NULL);
     CRYPTO_set_locking_callback(NULL);
     delete[] openssl_mutexes;
     openssl_mutexes = nullptr;

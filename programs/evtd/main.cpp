@@ -149,7 +149,9 @@ main(int argc, char** argv) {
 #endif
 
         ilog("evtd version ${ver}", ("ver", app().version_string()));
-        ilog("evt root is ${root}", ("root", root.string()));
+        ilog("evd root is ${root}", ("root", root.string()));
+        ilog("evtd using configuration file ${c}", ("c", app().full_config_file_path().string()));
+        ilog("evtd data directory is ${d}", ("d", app().data_dir().string()));
 
         app().startup();
         app().exec();

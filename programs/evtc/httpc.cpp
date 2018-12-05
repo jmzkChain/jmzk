@@ -143,23 +143,25 @@ resolve_url(const http_context& context, const parsed_url& url) {
         return resolved_url(url);
     }
 
-    tcp::resolver             resolver(context->ios);
-    boost::system::error_code ec;
-    auto                      result = resolver.resolve(url.server, url.port, ec);
+    auto resolver = tcp::resolver(context->ios);
+    auto ec       = boost::system::error_code();
+    auto  result  = resolver.resolve(url.server, url.port, ec);
     if(ec) {
         FC_THROW("Error resolving \"${server}:${url}\" : ${m}", ("server", url.server)("port", url.port)("m", ec.message()));
     }
 
     // non error results are guaranteed to return a non-empty range
-    vector<string> resolved_addresses;
-    resolved_addresses.reserve(result.size());
-    optional<uint16_t> resolved_port;
-    bool               is_loopback = true;
+    auto resolved_addresses = vector<string>();
+    auto resolved_port      = optional<uint16_t>();
+    auto is_loopback        = true;
 
+    resolved_addresses.reserve(result.size());
     for(const auto& r : result) {
         const auto& addr = r.endpoint().address();
-        if (addr.is_v6()) continue;
-        uint16_t    port = r.endpoint().port();
+        if(addr.is_v6()) {
+            continue;
+        }
+        uint16_t port = r.endpoint().port();
         resolved_addresses.emplace_back(addr.to_string());
         is_loopback = is_loopback && addr.is_loopback();
 
@@ -206,12 +208,12 @@ do_http_call(const connection_param& cp,
     request_stream << "Content-Length: " << postjson.size() << "\r\n";
     request_stream << "Accept: */*\r\n";
     request_stream << "Connection: close\r\n";
-    request_stream << "\r\n";
     // append more customized headers
     std::vector<string>::iterator itr;
     for(itr = cp.headers.begin(); itr != cp.headers.end(); itr++) {
         request_stream << *itr << "\r\n";
     }
+    request_stream << "\r\n";
     request_stream << postjson;
 
     if(print_request) {

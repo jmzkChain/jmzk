@@ -30,6 +30,7 @@ using namespace evt::chain::contracts;
 #define PG_FAIL 0
 
 using action_t     = chain::action;
+using act_trace_t  = chain::action_trace;
 using abi_t        = chain::contracts::abi_serializer;
 using block_ptr    = chain::block_state_ptr;
 using chain_id_t   = chain::chain_id_type;
@@ -94,7 +95,7 @@ public:
 public:
     static int add_block(add_context&, const block_ptr);
     static int add_trx(add_context&, const trx_recept_t&, const trx_t&, int seq_num, int elapsed, int charge);
-    static int add_action(add_context&, const action_t&, const std::string& trx_id, int seq_num);
+    static int add_action(add_context&, const act_trace_t&, const std::string& trx_id, int seq_num);
     
     int get_latest_block_id(std::string& block_id) const;
     int set_block_irreversible(trx_context&, const std::string& block_id);

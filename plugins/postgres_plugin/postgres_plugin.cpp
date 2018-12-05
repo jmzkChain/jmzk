@@ -150,6 +150,10 @@ postgres_plugin_impl::applied_block(const block_state_ptr& bsp) {
 
 void
 postgres_plugin_impl::applied_transaction(const transaction_trace_ptr& ttp) {
+    if(!ttp->receipt || (ttp->receipt->status != transaction_receipt_header::executed &&
+        ttp->receipt->status != transaction_receipt_header::soft_fail)) {
+        return;
+    }
     evt::__internal::queuet(transaction_trace_queue_, ttp, lock_, cond_);
 }
 
@@ -361,13 +365,6 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
         auto charge  = 0;
 
         if(trx.status == transaction_receipt_header::executed && !strx.actions.empty()) {
-            auto act_num = 0;
-            for(const auto& act : strx.actions) {
-                db_.add_action(actx, act, trx_id, act_num);
-                process_action(act, tctx);
-                act_num++;
-            }
-
             auto it = traces.begin();
             while(it != traces.end()) {
                 auto trace = *it;
@@ -380,11 +377,12 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
                     if(trace->action_traces.empty()) {
                         break;
                     }
-                    // because paycharage action is alwasys the latest action
-                    // only check latest
-                    auto& act = trace->action_traces.back().act;
-                    if(act.name == N(paycharge)) {
-                        db_.add_action(actx, act, trx_id, act_num);
+
+                    auto act_num = 0;
+                    for(auto& act_trace : trace->action_traces) {
+                        db_.add_action(actx, act_trace, trx_id, act_num);
+                        process_action(act_trace.act, tctx);
+                        act_num++;
                     }
                     break;
                 }

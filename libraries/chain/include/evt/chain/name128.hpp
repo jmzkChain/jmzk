@@ -48,9 +48,12 @@ public:
     constexpr name128(uint128_t v) : value(v) {}
 
     name128(const char* str) { set(str); }
-    name128(const string& str) { set(str.c_str()); }
+    name128(const string& str) { set(str); }
 
     void set(const char* str);
+    void set(const string& str);
+
+    static name128 from_number(uint64_t v);
 
     explicit operator string() const;
     operator bool() const { return value; }

@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <sstream>
 #include <boost/noncopyable.hpp>
+#include <fmt/format.h>
 #include <fc/utility.hpp>
 #include <evt/chain/controller.hpp>
 
@@ -43,32 +44,9 @@ public:
 public:
     void reset_console();
 
-    std::ostringstream&
-    get_console_stream() {
+    fmt::memory_buffer&
+    get_console_buffer() {
         return _pending_console_output;
-    }
-
-    const std::ostringstream&
-    get_console_stream() const {
-        return _pending_console_output;
-    }
-
-    template <typename T>
-    void
-    console_append(T val) {
-        _pending_console_output << val;
-    }
-
-    template <typename T, typename... Ts>
-    void
-    console_append(T val, Ts... rest) {
-        console_append(val);
-        console_append(rest...);
-    };
-
-    inline void
-    console_append_formatted(const string& fmt, const variant_object& vo) {
-        console_append(fc::format_string(fmt, vo));
     }
 
 public:
@@ -79,7 +57,7 @@ public:
     const action&        act;
 
 private:
-    std::ostringstream _pending_console_output;
+    fmt::memory_buffer _pending_console_output;
 };
 
 }}  // namespace evt::chain

@@ -109,6 +109,7 @@ set( fc_sources
      src/network/http/http_client.cpp
      src/compress/smaz.cpp
      src/compress/zlib.cpp
+     src/compress/miniz.c
      )
 
 set( fc_lite_sources
