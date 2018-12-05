@@ -76,9 +76,9 @@ struct producer_confirmation {
 
 }}  // namespace evt::chain
 
-FC_REFLECT_ENUM(evt::chain::transaction_receipt::status_enum, (executed)(soft_fail)(hard_fail)(expired))
-FC_REFLECT_ENUM(evt::chain::transaction_receipt::type_enum, (input)(suspend))
+FC_REFLECT_ENUM(evt::chain::transaction_receipt::status_enum, (executed)(soft_fail)(hard_fail)(expired));
+FC_REFLECT_ENUM(evt::chain::transaction_receipt::type_enum, (input)(suspend));
 
-FC_REFLECT(evt::chain::transaction_receipt_header, (status)(type))
-FC_REFLECT_DERIVED(evt::chain::transaction_receipt, (evt::chain::transaction_receipt_header), (trx))
-FC_REFLECT_DERIVED(evt::chain::signed_block, (evt::chain::signed_block_header), (transactions)(block_extensions))
+FC_REFLECT(evt::chain::transaction_receipt_header, (status)(type));
+FC_REFLECT_DERIVED(evt::chain::transaction_receipt, (evt::chain::transaction_receipt_header), (trx));
+FC_REFLECT_DERIVED(evt::chain::signed_block, (evt::chain::signed_block_header), (transactions)(block_extensions));

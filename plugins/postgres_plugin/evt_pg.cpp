@@ -17,7 +17,9 @@
 
 namespace evt {
 
-static auto pg_version = "1.0.0";
+// Update:
+// - 1.1.0: add `global_seq` field to `actions` table
+static auto pg_version = "1.1.0";
 
 namespace __internal {
 
@@ -72,12 +74,12 @@ auto create_blocks_table = R"sql(CREATE TABLE IF NOT EXISTS public.blocks
                                  )
                                  TABLESPACE pg_default;
  
-                                 CREATE INDEX IF NOT EXISTS block_id_index
+                                 CREATE INDEX IF NOT EXISTS blocks_block_id_index
                                      ON public.blocks USING btree
                                      (block_id)
                                      TABLESPACE pg_default;
  
-                                 CREATE INDEX IF NOT EXISTS block_num_index
+                                 CREATE INDEX IF NOT EXISTS blocks_block_num_index
                                      ON public.blocks USING btree
                                      (block_num)
                                      TABLESPACE pg_default;)sql";
@@ -107,7 +109,7 @@ auto create_trxs_table = R"sql(CREATE TABLE IF NOT EXISTS public.transactions
                                    OIDS = FALSE
                                )
                                TABLESPACE pg_default;
-                               CREATE INDEX IF NOT EXISTS block_num_index
+                               CREATE INDEX IF NOT EXISTS transactions_block_num_index
                                    ON public.transactions USING btree
                                    (block_num)
                                    TABLESPACE pg_default;)sql";
@@ -118,6 +120,7 @@ auto create_actions_table = R"sql(CREATE TABLE IF NOT EXISTS public.actions
                                       block_num  integer                  NOT NULL,
                                       trx_id     character varying(64)    NOT NULL,
                                       seq_num    integer                  NOT NULL,
+                                      global_seq bigint                   NOT NULL,
                                       name       character varying(13)    NOT NULL,
                                       domain     character varying(21)    NOT NULL,
                                       key        character varying(21)    NOT NULL,
@@ -128,11 +131,11 @@ auto create_actions_table = R"sql(CREATE TABLE IF NOT EXISTS public.actions
                                       OIDS = FALSE
                                   )
                                   TABLESPACE pg_default;
-                                  CREATE INDEX IF NOT EXISTS trx_id_index
+                                  CREATE INDEX IF NOT EXISTS actions_trx_id_index
                                       ON public.actions USING btree
                                       (trx_id)
                                       TABLESPACE pg_default;
-                                  CREATE INDEX IF NOT EXISTS data_index
+                                  CREATE INDEX IF NOT EXISTS actions_data_index
                                       ON public.actions USING gin
                                       (data jsonb_path_ops)
                                       TABLESPACE pg_default;)sql";
@@ -167,7 +170,7 @@ auto create_domains_table = R"sql(CREATE TABLE IF NOT EXISTS public.domains
                                       OIDS = FALSE
                                   )
                                   TABLESPACE pg_default;
-                                  CREATE INDEX IF NOT EXISTS creator_index
+                                  CREATE INDEX IF NOT EXISTS domains_creator_index
                                       ON public.domains USING btree
                                       (creator)
                                       TABLESPACE pg_default;)sql";
@@ -186,7 +189,7 @@ auto create_tokens_table = R"sql(CREATE TABLE IF NOT EXISTS public.tokens
                                      OIDS = FALSE
                                  )
                                  TABLESPACE pg_default;
-                                 CREATE INDEX IF NOT EXISTS owner_index
+                                 CREATE INDEX IF NOT EXISTS tokens_owner_index
                                      ON public.tokens USING gin
                                      (owner)
                                      TABLESPACE pg_default;)sql";
@@ -204,7 +207,7 @@ auto create_groups_table = R"sql(CREATE TABLE IF NOT EXISTS public.groups
                                      OIDS = FALSE
                                  )
                                  TABLESPACE pg_default;
-                                 CREATE INDEX IF NOT EXISTS creator_index
+                                 CREATE INDEX IF NOT EXISTS groups_creator_index
                                      ON public.groups USING btree
                                      (key)
                                      TABLESPACE pg_default;)sql";
@@ -226,7 +229,7 @@ auto create_fungibles_table = R"sql(CREATE TABLE IF NOT EXISTS public.fungibles
                                         OIDS = FALSE
                                     )
                                     TABLESPACE pg_default;
-                                    CREATE INDEX IF NOT EXISTS creator_index
+                                    CREATE INDEX IF NOT EXISTS fungibles_creator_index
                                         ON public.fungibles USING btree
                                         (creator)
                                         TABLESPACE pg_default;)sql";
@@ -580,15 +583,17 @@ pg::add_trx(add_context& actx, const trx_recept_t& trx, const trx_t& strx, int s
 }
 
 int
-pg::add_action(add_context& actx, const action_t& act, const std::string& trx_id, int seq_num) {
-    auto data = actx.abi.binary_to_variant(actx.abi.get_action_type(act.name), act.data);
+pg::add_action(add_context& actx, const act_trace_t& act_trace, const std::string& trx_id, int seq_num) {
+    auto& act  = act_trace.act;
+    auto  data = actx.abi.binary_to_variant(actx.abi.get_action_type(act.name), act.data);
 
     fmt::format_to(actx.cctx.actions_copy_,
-        fmt("{}\t{:d}\t{}\t{:d}\t{}\t{}\t{}\t{}\tnow\n"),
+        fmt("{}\t{:d}\t{}\t{:d}\t{:d}\t{}\t{}\t{}\t{}\tnow\n"),
         actx.block_id,
         actx.block_num,
         trx_id,
         seq_num,
+        act_trace.receipt.global_sequence,
         act.name.to_string(),
         act.domain.to_string(),
         act.key.to_string(),

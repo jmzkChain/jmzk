@@ -5,6 +5,7 @@
 #include <evt/chain/controller.hpp>
 
 #include <chainbase/chainbase.hpp>
+#include <fmt/format.h>
 
 #include <fc/io/json.hpp>
 #include <fc/scoped_exit.hpp>
@@ -309,11 +310,11 @@ struct controller_impl {
         while(auto next = blog.read_block_by_num(head->block_num + 1)) {
             self.push_block(next, controller::block_status::irreversible);
             if(next->block_num() % 100 == 0) {
-                std::cerr << std::setw(10) << next->block_num() << " of " << blog_head->block_num() << "\r";
+                std::cerr << std::setw(10) << fmt::format("{:n}", next->block_num()) << " of " << fmt::format("{:n}", blog_head->block_num()) << "\r";
             }
         }
         std::cerr << "\n";
-        ilog("${n} blocks replayed", ("n", head->block_num));
+        ilog("${n} blocks replayed", ("n", fmt::format("{:n}", head->block_num)));
 
         // if the irreverible log is played without undo sessions enabled, we need to sync the
         // revision ordinal to the appropriate expected value here.
@@ -326,10 +327,13 @@ struct controller_impl {
             self.push_block(obj->get_block(), controller::block_status::validated);
         }
 
-        ilog("${n} reversible blocks replayed", ("n", rev));
+        ilog("${n} reversible blocks replayed", ("n", fmt::format("{:n}", rev)));
         auto end = fc::time_point::now();
         ilog("replayed ${n} blocks in ${duration} seconds, ${mspb} ms/block",
-             ("n", head->block_num)("duration", (end - start).count() / 1000000)("mspb", ((end - start).count() / 1000.0) / head->block_num));
+            ("n", fmt::format("{:n}", head->block_num))
+            ("duration", fmt::format("{:n}", (end - start).count() / 1000000))
+            ("mspb", fmt::format("{:.3f}", ((end - start).count() / 1000.0) / head->block_num))
+            );
         replaying = false;
         replay_head_time.reset();
     }
