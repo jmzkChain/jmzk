@@ -38,8 +38,7 @@ tn_data_*
 
 .vscode/
 .idea/
-cmake-build-debug/
-cmake-build-release/
+cmake-build-*/
 diff/
 
 bind/pyevt/build

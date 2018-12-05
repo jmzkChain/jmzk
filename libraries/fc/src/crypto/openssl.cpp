@@ -37,8 +37,11 @@ namespace  fc
        }
        openssl_scope()
        {
-          ERR_load_crypto_strings(); 
-          OpenSSL_add_all_algorithms();
+          OPENSSL_init_crypto(
+             OPENSSL_INIT_LOAD_CRYPTO_STRINGS |
+             OPENSSL_INIT_ADD_ALL_CIPHERS |
+             OPENSSL_INIT_ADD_ALL_DIGESTS |
+             OPENSSL_INIT_LOAD_CONFIG, NULL);
 
           const boost::filesystem::path& boostPath = config_path();
           if(boostPath.empty() == false)
@@ -51,8 +54,6 @@ namespace  fc
             putenv((char*)varSetting.c_str());
 #endif
           }
-
-          OPENSSL_config(nullptr);
        }
 
        ~openssl_scope()

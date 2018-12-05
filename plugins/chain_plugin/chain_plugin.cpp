@@ -992,7 +992,9 @@ read_only::get_info(const read_only::get_info_params&) const {
         db.last_irreversible_block_id(),
         db.fork_db_head_block_id(),
         db.fork_db_head_block_time(),
-        db.fork_db_head_block_producer()};
+        db.fork_db_head_block_producer(),
+        app().version_string()
+    };
 }
 
 fc::variant

@@ -90,10 +90,10 @@ namespace fc {
     std::vector<char> ve = v.as< std::vector<char> >();
     if( ve.size() )
     {
-        memcpy(&bi, ve.data(), fc::min<size_t>(ve.size(),sizeof(bi)) );
+        memcpy(&bi._hash, ve.data(), fc::min<size_t>(ve.size(),sizeof(bi._hash)));
     }
     else
-        memset( &bi, char(0), sizeof(bi) );
+        memset(&bi._hash, char(0), sizeof(bi._hash));
   }
 
     template<>

@@ -1427,7 +1427,7 @@ producer_plugin_impl::produce_block() {
         return signature_provider_itr->second(d);
     });
     chain.commit_block();
-    auto hbt = chain.head_block_time();
+    auto hbt [[maybe_unused]] = chain.head_block_time();
     //idump((fc::time_point::now() - hbt));
 
     block_state_ptr new_bs = chain.head_block_state();

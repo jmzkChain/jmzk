@@ -1,6 +1,6 @@
 #include <fc/compress/zlib.hpp>
 
-#include "miniz.c"
+#include "miniz.h"
 
 namespace fc
 {
