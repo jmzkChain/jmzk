@@ -9,7 +9,8 @@ RUN git clone -b $branch https://github.com/everitoken/evt.git --recursive \
     && cd evt && echo "$branch:$(git rev-parse HEAD)" > /etc/evt-version \
     && cmake -H. -B"/tmp/build" -G"Ninja" -DCMAKE_BUILD_TYPE=Release \
        -DCMAKE_INSTALL_PREFIX=/tmp/build  -DSecp256k1_ROOT_DIR=/usr/local -DENABLE_MONGODB_SUPPORT=OFF \
-       -DENABLE_POSTGRES_SUPPORT=ON -DENABLE_BREAKPAD_SUPPORT=ON -DENABLE_MAINNET_BUILD=ON -DEVT_ROOT_KEY=$rootkey
+       -DENABLE_POSTGRES_SUPPORT=ON -DENABLE_BREAKPAD_SUPPORT=ON -DENABLE_MAINNET_BUILD=ON \
+       -DENABLE_BUILD_LTO=ON -DEVT_ROOT_KEY=$rootkey
 RUN ninja -C /tmp/build -j $bjobs evtd evtwd evtc && ninja -C /tmp/build install
 
 RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \

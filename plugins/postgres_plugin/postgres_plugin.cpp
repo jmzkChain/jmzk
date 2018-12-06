@@ -20,6 +20,7 @@ using boost::condition_variable_any;
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
 #include <fc/time.hpp>
+#include <fmt/format.h>
 
 #include <evt/chain/config.hpp>
 #include <evt/chain/exceptions.hpp>
@@ -178,10 +179,10 @@ postgres_plugin_impl::consume_queues() {
 
             // warn if queue size greater than 75%
             if(bqueue.size() > (queue_size_ * 0.75)) {
-                wlog("queue size: ${q}, head block num: ${b}", ("q", bqueue.size())("b",std::get<BlockPtr>(bqueue.front())->block_num));
+                wlog("queue size: ${q}, head block num: ${b}", ("q", fmt::format("{:n}",bqueue.size()))("b",fmt::format("{:n}",std::get<BlockPtr>(bqueue.front())->block_num)));
             }
             else if(done_) {
-                ilog("draining queue, size: ${q}", ("q", bqueue.size()));
+                ilog("draining queue, size: ${q}", ("q", fmt::format("{:n}",bqueue.size())));
                 break;
             }
 
