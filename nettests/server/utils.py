@@ -47,7 +47,8 @@ def post_cb(url, callback, args=None, method='GET', body=None):
     )
 
     def cb_read_body(response):
-        if response.code != 200:
+        if response.code != 200 and response.code != 500:
+            # print('response :', response.code)
             return
         d = readBody(response)
         d.addCallback(callback, *args)

@@ -25,6 +25,7 @@ class Handler:
             else:
                 symbol = '5,S#1'
             
+            context[socket]['WP'].alive = True
             pe = PayEngine(freq, users, watch_pool=context[socket]['WP'], sym=symbol, amount=amount)
             pe.set_url(url)
             pe.fetch_balances()
