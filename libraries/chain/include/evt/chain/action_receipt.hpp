@@ -21,4 +21,4 @@ struct action_receipt {
 
 }}  // namespace evt::chain
 
-FC_REFLECT(evt::chain::action_receipt, (act_digest)(global_sequence))
+FC_REFLECT(evt::chain::action_receipt, (act_digest)(global_sequence));

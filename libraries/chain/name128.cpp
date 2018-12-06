@@ -20,6 +20,17 @@ name128::set(const char* str) {
                ("name", string(str))("normalized", to_string()));
 }
 
+void
+name128::set(const std::string& str) {
+    const auto len = str.size();
+    EVT_ASSERT(len <= 21, name128_type_exception, "Name128 is longer than 21 characters (${name}) ",
+               ("name", str));
+    value = string_to_name128(str.c_str());
+    EVT_ASSERT(to_string() == str, name128_type_exception,
+               "Name128 not properly normalized (name: ${name}, normalized: ${normalized}) ",
+               ("name", str)("normalized", to_string()));
+}
+
 name128::operator string() const {
     static const char* charmap = ".-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -27,14 +38,44 @@ name128::operator string() const {
     
     auto tmp = value;
     tmp >>= 2;
-    for(uint32_t i = 0; i <= 20; ++i) {
+    for(auto i = 0u; i <= 20; ++i, tmp >>= 6) {
         auto c = charmap[tmp & 0x3f];
         str[i] = c;
-        tmp >>= 6;
     }
 
     str.erase(str.find_last_not_of('.') + 1);
     return str;
+}
+
+name128
+name128::from_number(uint64_t v) {
+    auto r = name128();
+
+    int i = 0;
+    do {
+        auto d = v % 10;
+        r.value |= (uint128_t(d + 2) & 0x3f) << (128 - (6 * (i++ + 1)));
+
+        v /= 10;
+    }
+    while(v > 0);
+
+    r.value >>= 6 * (21 - i);
+
+    if(i <= 5) {
+        r.value |= name128::i32;
+    }
+    else if(i <= 10) {
+        r.value |= name128::i64;
+    }
+    else if(i <= 15) {
+        r.value |= name128::i96;
+    }
+    else {
+        r.value |= name128::i128;
+    }
+
+    return r;
 }
 
 }}  // namespace evt::chain

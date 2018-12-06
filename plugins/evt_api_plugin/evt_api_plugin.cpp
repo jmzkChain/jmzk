@@ -53,15 +53,15 @@ evt_api_plugin::plugin_startup() {
     ilog("starting evt_api_plugin");
     my.reset(new evt_api_plugin_impl(app().get_plugin<chain_plugin>().chain()));
     auto ro_api = app().get_plugin<evt_plugin>().get_read_only_api();
-    auto rw_api = app().get_plugin<evt_plugin>().get_read_write_api();
 
     app().get_plugin<http_plugin>().add_api({EVT_RO_CALL(get_domain, 200),
                                              EVT_RO_CALL(get_group, 200),
                                              EVT_RO_CALL(get_token, 200),
+                                             EVT_RO_CALL(get_tokens, 200),
                                              EVT_RO_CALL(get_fungible, 200),
                                              EVT_RO_CALL(get_fungible_balance, 200),
                                              EVT_RO_CALL(get_suspend, 200),
-                                             EVT_RO_CALL(get_lock, 200)
+                                             EVT_RO_CALL(get_lock, 200),
                                          });
 }
 

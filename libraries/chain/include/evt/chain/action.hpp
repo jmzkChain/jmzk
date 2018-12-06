@@ -17,8 +17,41 @@ public:
     domain_key  key;
     bytes       data;
 
+public:
     action() {}
 
+    // don't copy cache_ when in copy ctor.
+    action(const action& lhs)
+        : name(lhs.name)
+        , domain(lhs.domain)
+        , key(lhs.key)
+        , data(lhs.data)
+        , cache_() {}
+
+    action(action&& lhs) = default;
+
+    action& operator=(const action& lhs) {
+        if(this != &lhs) { // self-assignment check expected
+            name   = lhs.name;
+            domain = lhs.domain;
+            key    = lhs.key;
+            data   = lhs.data;
+        }
+        return *this;
+    }
+
+    action& operator=(action&& lhs) noexcept {
+        if(this != &lhs) { // self-assignment check expected
+            name   = lhs.name;
+            domain = lhs.domain;
+            key    = lhs.key;
+            data   = lhs.data;
+            cache_ = std::move(lhs.cache_);
+        }
+        return *this;
+    }
+
+public:
     template<typename T>
     action(const domain_name& domain, const domain_key& key, const T& value)
         : domain(domain)

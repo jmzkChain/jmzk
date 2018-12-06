@@ -229,6 +229,7 @@ chain_plugin::set_program_options(options_description& cli, options_description&
             "Chain validation mode (\"full\" or \"light\").\n"
             "In \"full\" mode all incoming blocks will be fully validated.\n"
             "In \"light\" mode all incoming blocks headers will be fully validated; transactions in those validated blocks will be trusted \n")
+        ("trusted-producer", bpo::value<vector<string>>()->composing(), "Indicate a producer whose blocks headers signed by it will be fully validated, but transactions in those validated blocks will be trusted.")
         ;
 
     cli.add_options()
@@ -991,7 +992,9 @@ read_only::get_info(const read_only::get_info_params&) const {
         db.last_irreversible_block_id(),
         db.fork_db_head_block_id(),
         db.fork_db_head_block_time(),
-        db.fork_db_head_block_producer()};
+        db.fork_db_head_block_producer(),
+        app().version_string()
+    };
 }
 
 fc::variant
@@ -1087,8 +1090,8 @@ read_only::get_trx_id_for_link_id(const get_trx_id_for_link_id_params& params) c
         EVT_THROW(evt_link_id_exception, "EVT-Link id is not in proper length");
     }
 
-    auto& obj       = db.get_link_obj_for_link_id(*(link_id_type*)(&params.link_id[0]));
-    auto  vo        = fc::mutable_variant_object();
+    auto obj        = db.get_link_obj_for_link_id(*(link_id_type*)(&params.link_id[0]));
+    auto vo         = fc::mutable_variant_object();
     vo["block_num"] = obj.block_num;
     vo["trx_id"]    = obj.trx_id;
 

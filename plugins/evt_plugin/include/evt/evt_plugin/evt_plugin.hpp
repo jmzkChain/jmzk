@@ -39,21 +39,25 @@ public:
     struct get_domain_params {
         domain_name name;
     };
-
     fc::variant get_domain(const get_domain_params& params);
 
     struct get_group_params {
         group_name name;
     };
-
     fc::variant get_group(const get_group_params& params);
 
     struct get_token_params {
         domain_name domain;
         token_name  name;
     };
-
     fc::variant get_token(const get_token_params& params);
+
+    struct get_tokens_params {
+        domain_name       domain;
+        fc::optional<int> skip;
+        fc::optional<int> take;
+    };
+    fc::variant get_tokens(const get_tokens_params& params);
 
     struct get_fungible_params {
         symbol_id_type id;
@@ -78,14 +82,7 @@ private:
     const controller& db_;
 };
 
-class read_write {
-public:
-    read_write(controller& db)
-        : db_(db) {}
-
-private:
-    const controller& db_;
-};
+class read_write {};
 
 }  // namespace evt_apis
 
@@ -114,6 +111,7 @@ private:
 FC_REFLECT(evt::evt_apis::read_only::get_domain_params, (name));
 FC_REFLECT(evt::evt_apis::read_only::get_group_params, (name));
 FC_REFLECT(evt::evt_apis::read_only::get_token_params, (domain)(name));
+FC_REFLECT(evt::evt_apis::read_only::get_tokens_params, (domain)(skip)(take));
 FC_REFLECT(evt::evt_apis::read_only::get_fungible_params, (id));
 FC_REFLECT(evt::evt_apis::read_only::get_fungible_balance_params, (address)(sym_id));
 FC_REFLECT(evt::evt_apis::read_only::get_suspend_params, (name));

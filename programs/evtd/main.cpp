@@ -129,6 +129,11 @@ main(int argc, char** argv) {
         auto root = fc::app_path();
         app().set_default_data_dir(root / "evt/evtd/data");
         app().set_default_config_dir(root / "evt/evtd/config");
+        http_plugin::set_defaults({
+            .default_unix_socket_path = "evtd.sock",
+            .default_http_port = 8888
+        });
+
         if(!app().initialize<chain_plugin, http_plugin, net_plugin, producer_plugin>(argc, argv)) {
             return INITIALIZE_FAIL;
         }
@@ -144,7 +149,9 @@ main(int argc, char** argv) {
 #endif
 
         ilog("evtd version ${ver}", ("ver", app().version_string()));
-        ilog("evt root is ${root}", ("root", root.string()));
+        ilog("evd root is ${root}", ("root", root.string()));
+        ilog("evtd using configuration file ${c}", ("c", app().full_config_file_path().string()));
+        ilog("evtd data directory is ${d}", ("d", app().data_dir().string()));
 
         app().startup();
         app().exec();

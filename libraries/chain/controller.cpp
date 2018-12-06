@@ -5,6 +5,7 @@
 #include <evt/chain/controller.hpp>
 
 #include <chainbase/chainbase.hpp>
+#include <fmt/format.h>
 
 #include <fc/io/json.hpp>
 #include <fc/scoped_exit.hpp>
@@ -15,6 +16,7 @@
 #include <evt/chain/charge_manager.hpp>
 #include <evt/chain/chain_snapshot.hpp>
 #include <evt/chain/fork_database.hpp>
+#include <evt/chain/snapshot.hpp>
 #include <evt/chain/token_database.hpp>
 #include <evt/chain/token_database_snapshot.hpp>
 #include <evt/chain/transaction_context.hpp>
@@ -34,8 +36,7 @@ using controller_index_set = index_set<
    global_property_multi_index,
    dynamic_global_property_multi_index,
    block_summary_multi_index,
-   transaction_multi_index,
-   evt_link_multi_index
+   transaction_multi_index
 >;
 
 class maybe_session {
@@ -309,11 +310,11 @@ struct controller_impl {
         while(auto next = blog.read_block_by_num(head->block_num + 1)) {
             self.push_block(next, controller::block_status::irreversible);
             if(next->block_num() % 100 == 0) {
-                std::cerr << std::setw(10) << next->block_num() << " of " << blog_head->block_num() << "\r";
+                std::cerr << std::setw(10) << fmt::format("{:n}", next->block_num()) << " of " << fmt::format("{:n}", blog_head->block_num()) << "\r";
             }
         }
         std::cerr << "\n";
-        ilog("${n} blocks replayed", ("n", head->block_num));
+        ilog("${n} blocks replayed", ("n", fmt::format("{:n}", head->block_num)));
 
         // if the irreverible log is played without undo sessions enabled, we need to sync the
         // revision ordinal to the appropriate expected value here.
@@ -326,10 +327,13 @@ struct controller_impl {
             self.push_block(obj->get_block(), controller::block_status::validated);
         }
 
-        ilog("${n} reversible blocks replayed", ("n", rev));
+        ilog("${n} reversible blocks replayed", ("n", fmt::format("{:n}", rev)));
         auto end = fc::time_point::now();
         ilog("replayed ${n} blocks in ${duration} seconds, ${mspb} ms/block",
-             ("n", head->block_num)("duration", (end - start).count() / 1000000)("mspb", ((end - start).count() / 1000.0) / head->block_num));
+            ("n", fmt::format("{:n}", head->block_num))
+            ("duration", fmt::format("{:n}", (end - start).count() / 1000000))
+            ("mspb", fmt::format("{:.3f}", ((end - start).count() / 1000.0) / head->block_num))
+            );
         replaying = false;
         replay_head_time.reset();
     }
@@ -1110,19 +1114,6 @@ struct controller_impl {
     finalize_block() {
         EVT_ASSERT(pending, block_validate_exception, "it is not valid to finalize when there is no pending block");
         try {
-            /*
-      ilog( "finalize block ${n} (${id}) at ${t} by ${p} (${signing_key}); schedule_version: ${v} lib: ${lib} #dtrxs: ${ndtrxs} ${np}",
-            ("n",pending->_pending_block_state->block_num)
-            ("id",pending->_pending_block_state->header.id())
-            ("t",pending->_pending_block_state->header.timestamp)
-            ("p",pending->_pending_block_state->header.producer)
-            ("signing_key", pending->_pending_block_state->block_signing_key)
-            ("v",pending->_pending_block_state->header.schedule_version)
-            ("lib",pending->_pending_block_state->dpos_irreversible_blocknum)
-            ("ndtrxs",db.get_index<generated_transaction_multi_index,by_trx_id>().size())
-            ("np",pending->_pending_block_state->header.new_producers)
-            );
-      */
             set_action_merkle();
             set_trx_merkle();
 
@@ -1422,12 +1413,11 @@ controller::get_block_id_for_num(uint32_t block_num) const {
     FC_CAPTURE_AND_RETHROW((block_num))
 }
 
-const evt_link_object&
+evt_link_object
 controller::get_link_obj_for_link_id(const link_id_type& link_id) const {
-    if(const auto* l = my->db.find<evt_link_object, by_link_id>(link_id)) {
-        return *l;
-    }
-    EVT_THROW(evt_link_existed_exception, "EVT-Link: ${l} is not existed", ("l",link_id));
+    evt_link_object link_obj;
+    my->token_db.read_evt_link(link_id, link_obj);
+    return link_obj;
 }
 
 uint32_t

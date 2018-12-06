@@ -1,11 +1,12 @@
 #!/bin/sh
 cd /opt/evt/bin
 
-if [ -f '/opt/evt/etc/config.ini' ]; then
+if [ -f '/opt/evt/etc/evtd/config.ini' ]; then
     echo
   else
     mkdir /opt/evt/etc
-    cp /config.ini /opt/evt/etc
+    mkdir /opt/evt/etc/evtd
+    cp /config.ini /opt/evt/etc/evtd
 fi
 
 while :; do
@@ -20,11 +21,12 @@ while :; do
 done
 
 if [ ! "$CONFIG_DIR" ]; then
-    CONFIG_DIR="--config-dir=/opt/evt/etc"
+    CONFIG_DIR="--config-dir=/opt/evt/etc/evtd"
 else
     CONFIG_DIR=""
 fi
 
 DATA_DIR="--data-dir=/opt/evt/data"
+SNAPSHOTS_DIR="--snapshots-dir=/opt/evt/snapshots"
 
-exec /opt/evt/bin/evtd $CONFIG_DIR $DATA_DIR $@
+exec /opt/evt/bin/evtd $CONFIG_DIR $DATA_DIR $SNAPSHOTS_DIR $@

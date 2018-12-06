@@ -51,23 +51,21 @@ transaction::sig_digest(const chain_id_type& chain_id) const {
 flat_set<public_key_type>
 transaction::get_signature_keys(const vector<signature_type>& signatures, const chain_id_type& chain_id,
                                 bool allow_duplicate_keys) const {
-    try {
-        using boost::adaptors::transformed;
+    if(signatures.empty()) {
+        return flat_set<public_key_type>();
+    }
 
-        constexpr size_t  recovery_cache_size = 1000;
-        const digest_type digest = sig_digest(chain_id);
+    try {
+        auto digest = sig_digest(chain_id);
 
         flat_set<public_key_type> recovered_pub_keys;
-        for(const signature_type& sig : signatures) {
-            public_key_type recov;
-            recov = public_key_type(sig, digest);
-
+        for(auto& sig : signatures) {
             bool successful_insertion                   = false;
-            std::tie(std::ignore, successful_insertion) = recovered_pub_keys.insert(recov);
+            std::tie(std::ignore, successful_insertion) = recovered_pub_keys.emplace(sig, digest);
             EVT_ASSERT(allow_duplicate_keys || successful_insertion, tx_duplicate_sig,
                        "transaction includes more than one signature signed using the same key associated with public "
                        "key: ${key}",
-                       ("key", recov));
+                       ("key", public_key_type(sig, digest)));
         }
 
         return recovered_pub_keys;
@@ -145,8 +143,9 @@ unpack_transaction(const bytes& data) {
 static bytes
 zlib_decompress(const bytes& data) {
     try {
-        bytes                  out;
-        bio::filtering_ostream decomp;
+        auto out    = bytes();
+        auto decomp = bio::filtering_ostream();
+
         decomp.push(bio::zlib_decompressor());
         decomp.push(read_limiter<1 * 1024 * 1024>());  // limit to 10 megs decompressed for zip bomb protections
         decomp.push(bio::back_inserter(out));
@@ -176,9 +175,10 @@ pack_transaction(const transaction& t) {
 
 static bytes
 zlib_compress_transaction(const transaction& t) {
-    bytes                  in = pack_transaction(t);
-    bytes                  out;
-    bio::filtering_ostream comp;
+    auto in   = pack_transaction(t);
+    auto out  = bytes();
+    auto comp = bio::filtering_ostream();
+
     comp.push(bio::zlib_compressor(bio::zlib::best_compression));
     comp.push(bio::back_inserter(out));
     bio::write(comp, in.data(), in.size());

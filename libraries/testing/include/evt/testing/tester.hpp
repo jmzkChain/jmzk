@@ -1,12 +1,12 @@
 #pragma once
+#include <iosfwd>
 #include <boost/test/unit_test.hpp>
+#include <fc/io/json.hpp>
 #include <evt/chain/asset.hpp>
 #include <evt/chain/controller.hpp>
+#include <evt/chain/snapshot.hpp>
 #include <evt/chain/contracts/evt_contract.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
-#include <fc/io/json.hpp>
-
-#include <iosfwd>
 
 #define REQUIRE_EQUAL_OBJECTS(left, right)                                                                                           \
     {                                                                                                                                \

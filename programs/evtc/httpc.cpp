@@ -9,19 +9,24 @@
 //
 
 #include "httpc.hpp"
-#include <boost/algorithm/string.hpp>
-#include <boost/asio.hpp>
-#include <boost/asio/ssl.hpp>
-#include <evt/chain/exceptions.hpp>
-#include <evt/chain_plugin/chain_plugin.hpp>
-#include <evt/http_plugin/http_plugin.hpp>
-#include <fc/io/json.hpp>
-#include <fc/variant.hpp>
+
 #include <iostream>
 #include <istream>
 #include <ostream>
 #include <regex>
 #include <string>
+
+#include <boost/algorithm/string.hpp>
+#include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
+
+#include <fc/io/json.hpp>
+#include <fc/variant.hpp>
+#include <fc/network/platform_root_ca.hpp>
+
+#include <evt/chain/exceptions.hpp>
+#include <evt/chain_plugin/chain_plugin.hpp>
+#include <evt/http_plugin/http_plugin.hpp>
 
 using boost::asio::ip::tcp;
 namespace evt { namespace client { namespace http {
@@ -105,6 +110,13 @@ parsed_url
 parse_url(const string& server_url) {
     parsed_url res;
 
+    //unix socket doesn't quite follow classical "URL" rules so deal with it manually
+    if(boost::algorithm::starts_with(server_url, "unix://")) {
+        res.scheme = "unix";
+        res.server = server_url.substr(strlen("unix://"));
+        return res;
+    }
+
     //via rfc3986 and modified a bit to suck out the port number
     //Sadly this doesn't work for ipv6 addresses
     std::regex  rgx(R"xx(^(([^:/?#]+):)?(//([^:/?#]*)(:(\d+))?)?([^?#]*)(\?([^#]*))?(#(.*))?)xx");
@@ -127,23 +139,29 @@ parse_url(const string& server_url) {
 
 resolved_url
 resolve_url(const http_context& context, const parsed_url& url) {
-    tcp::resolver             resolver(context->ios);
-    boost::system::error_code ec;
-    auto                      result = resolver.resolve(url.server, url.port, ec);
+    if(url.scheme == "unix") {
+        return resolved_url(url);
+    }
+
+    auto resolver = tcp::resolver(context->ios);
+    auto ec       = boost::system::error_code();
+    auto  result  = resolver.resolve(url.server, url.port, ec);
     if(ec) {
         FC_THROW("Error resolving \"${server}:${url}\" : ${m}", ("server", url.server)("port", url.port)("m", ec.message()));
     }
 
     // non error results are guaranteed to return a non-empty range
-    vector<string> resolved_addresses;
-    resolved_addresses.reserve(result.size());
-    optional<uint16_t> resolved_port;
-    bool               is_loopback = true;
+    auto resolved_addresses = vector<string>();
+    auto resolved_port      = optional<uint16_t>();
+    auto is_loopback        = true;
 
+    resolved_addresses.reserve(result.size());
     for(const auto& r : result) {
         const auto& addr = r.endpoint().address();
-        if (addr.is_v6()) continue;
-        uint16_t    port = r.endpoint().port();
+        if(addr.is_v6()) {
+            continue;
+        }
+        uint16_t port = r.endpoint().port();
         resolved_addresses.emplace_back(addr.to_string());
         is_loopback = is_loopback && addr.is_loopback();
 
@@ -190,12 +208,12 @@ do_http_call(const connection_param& cp,
     request_stream << "Content-Length: " << postjson.size() << "\r\n";
     request_stream << "Accept: */*\r\n";
     request_stream << "Connection: close\r\n";
-    request_stream << "\r\n";
     // append more customized headers
     std::vector<string>::iterator itr;
     for(itr = cp.headers.begin(); itr != cp.headers.end(); itr++) {
         request_stream << *itr << "\r\n";
     }
+    request_stream << "\r\n";
     request_stream << postjson;
 
     if(print_request) {
@@ -211,36 +229,31 @@ do_http_call(const connection_param& cp,
     std::string  re;
 
     try {
-        if(url.scheme == "http") {
+        if(url.scheme == "unix") {
+            boost::asio::local::stream_protocol::socket unix_socket(cp.context->ios);
+            unix_socket.connect(boost::asio::local::stream_protocol::endpoint(url.server));
+            re = do_txrx(unix_socket, request, status_code);
+        }
+        else if(url.scheme == "http") {
             tcp::socket socket(cp.context->ios);
             do_connect(socket, url);
             re = do_txrx(socket, request, status_code);
         }
         else {  //https
             boost::asio::ssl::context ssl_context(boost::asio::ssl::context::sslv23_client);
-    #if defined(__APPLE__)
-            //TODO: this is undocumented/not supported; fix with keychain based approach
-            ssl_context.load_verify_file("/private/etc/ssl/cert.pem");
-    #elif defined(_WIN32)
-            FC_THROW("HTTPS on Windows not supported");
-    #else
-            ssl_context.set_default_verify_paths();
-    #endif
+            fc::add_platform_root_cas_to_context(ssl_context);
 
             boost::asio::ssl::stream<boost::asio::ip::tcp::socket> socket(cp.context->ios, ssl_context);
             SSL_set_tlsext_host_name(socket.native_handle(), url.server.c_str());
-            if(cp.verify_cert)
+            if(cp.verify_cert) {
                 socket.set_verify_mode(boost::asio::ssl::verify_peer);
-
+                socket.set_verify_callback(boost::asio::ssl::rfc2818_verification(url.server));
+            }
             do_connect(socket.next_layer(), url);
             socket.handshake(boost::asio::ssl::stream_base::client);
             re = do_txrx(socket, request, status_code);
             //try and do a clean shutdown; but swallow if this fails (other side could have already gave TCP the ax)
-            try {
-                socket.shutdown();
-            }
-            catch(...) {
-            }
+            try {socket.shutdown();} catch(...) {}
         }
     }
     catch(chain::invalid_http_request& e) {
@@ -260,24 +273,34 @@ do_http_call(const connection_param& cp,
         return response_result;
     }
     else if(status_code == 404) {
-        // Unknown endpoint
-        if(url.path.compare(0, chain_func_base.size(), chain_func_base) == 0) {
-            throw chain::missing_chain_api_plugin_exception(FC_LOG_MESSAGE(error, "Chain API plugin is not enabled"));
+        if(url.scheme == "unix") {
+            if(url.path.compare(0, wallet_func_base.size(), wallet_func_base) == 0) {
+                throw chain::missing_wallet_api_plugin_exception(FC_LOG_MESSAGE(error, "Wallet is not available"));
+            }
+            else if(url.path.compare(0, producer_func_base.size(), producer_func_base) == 0) {
+                throw chain::missing_producer_api_plugin_exception(FC_LOG_MESSAGE(error, "Producer API plugin is not enabled"));
+            }
         }
-        else if(url.path.compare(0, wallet_func_base.size(), wallet_func_base) == 0) {
-            throw chain::missing_wallet_api_plugin_exception(FC_LOG_MESSAGE(error, "Wallet is not available"));
-        }
-        else if(url.path.compare(0, net_func_base.size(), net_func_base) == 0) {
-            throw chain::missing_net_api_plugin_exception(FC_LOG_MESSAGE(error, "Net API plugin is not enabled"));
-        }
-        else if(url.path.compare(0, evt_func_base.size(), evt_func_base) == 0) {
-            throw chain::missing_evt_api_plugin_exception(FC_LOG_MESSAGE(error, "EVT API plugin is not enabled"));
-        }
-        else if(url.path.compare(0, history_func_base.size(), history_func_base) == 0) {
-            throw chain::missing_history_api_plugin_exception(FC_LOG_MESSAGE(error, "History API plugin is not enabled"));
-        }
-        else if(url.path.compare(0, producer_func_base.size(), producer_func_base) == 0) {
-            throw chain::missing_producer_api_plugin_exception(FC_LOG_MESSAGE(error, "Producer API plugin is not enabled"));
+        else {
+            // Unknown endpoint
+            if(url.path.compare(0, wallet_func_base.size(), wallet_func_base) == 0) {
+                throw chain::missing_wallet_api_plugin_exception(FC_LOG_MESSAGE(error, "Wallet can only be called via unix socket"));
+            }
+            else if(url.path.compare(0, chain_func_base.size(), chain_func_base) == 0) {
+                throw chain::missing_chain_api_plugin_exception(FC_LOG_MESSAGE(error, "Chain API plugin is not enabled"));
+            }
+            else if(url.path.compare(0, net_func_base.size(), net_func_base) == 0) {
+                throw chain::missing_net_api_plugin_exception(FC_LOG_MESSAGE(error, "Net API plugin is not enabled"));
+            }
+            else if(url.path.compare(0, evt_func_base.size(), evt_func_base) == 0) {
+                throw chain::missing_evt_api_plugin_exception(FC_LOG_MESSAGE(error, "EVT API plugin is not enabled"));
+            }
+            else if(url.path.compare(0, history_func_base.size(), history_func_base) == 0) {
+                throw chain::missing_history_api_plugin_exception(FC_LOG_MESSAGE(error, "History API plugin is not enabled"));
+            }
+            else if(url.path.compare(0, producer_func_base.size(), producer_func_base) == 0) {
+                throw chain::missing_producer_api_plugin_exception(FC_LOG_MESSAGE(error, "Producer API can only be called via unix socket"));
+            }
         }
     }
     else {

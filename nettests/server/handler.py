@@ -1,63 +1,44 @@
 import json
 
 from twisted.internet import reactor
-from twisted.internet.defer import Deferred, succeed
-from twisted.internet.protocol import Protocol
-from twisted.web.client import Agent
-from twisted.web.iweb import IBodyProducer
 
+from payengine import PayEngine, prepare_for_debug
+from watchpool import WatchPool
 
-class StringProducer(object):
-    def __init__(self, body):
-        self.body = bytes(body, encoding='utf-8')
-        self.length = len(body)
-
-    def startProducing(self, consumer):
-        consumer.write(self.body)
-        return succeed(None)
-
-    def pauseProducing(self):
-        pass
-
-    def stopProducing(self):
-        pass
-
-
-class ResourcePrinter(Protocol):
-    def __init__(self, finished):
-        self.finished = finished
-
-    def dataReceived(self, data):
-        print(str(data, encoding='utf-8'))
-
-    def connectionLost(self, reason):
-        self.finished.callback(None)
-
-
-def printResource(response):
-    finished = Deferred()
-    response.deliverBody(ResourcePrinter(finished))
-    return finished
-
-
-def printError(failure):
-    print(failure)
-
+context = {}
 
 class Handler:
     def __call__(self, socket):
         data = socket.recv_string()
         cmd = json.loads(data)
         func = cmd['func']
-        if func == 'kill':
+        if func == 'stop':
             reactor.stop()
-        elif func == 'send':
-            agent = Agent(reactor)
-            body = StringProducer(cmd['data'])
-            d = agent.request(
-                bytes('POST', encoding='utf-8'),
-                bytes(cmd['url'], encoding='utf-8'),
-                bodyProducer=body)
-            d.addCallback(printResource)
+        elif func == 'run':
+            freq = cmd['freq']
+            url = cmd['url']
+            users = cmd['users']
+            amount = cmd['amount']
+            if 'debug' in cmd:
+                prepare_for_debug(users)
+                symbol = '5,S#666'
+            else:
+                symbol = '5,S#1'
+            
+            context[socket]['WP'].alive = True
+            pe = PayEngine(freq, users, watch_pool=context[socket]['WP'], sym=symbol, amount=amount)
+            pe.set_url(url)
+            pe.fetch_balances()
+            pe.run()
+            context[socket]['PE'] = pe
+            context[socket]['WP'].run()
+        elif func == 'watches':
+            nodes = cmd['nodes']
+            wp = WatchPool()
+            wp.set_nodes(nodes)
+            wp.set_socket(socket)
+            context[socket] = {}
+            context[socket]['WP'] = wp
+            socket.send_string('watches config succeed')
         else:
-            raise Exception('No such function')
+            raise Exception('No Such Function')

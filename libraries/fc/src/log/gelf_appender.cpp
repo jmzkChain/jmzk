@@ -113,7 +113,8 @@ namespace fc
     gelf_message["host"] = my->cfg.host;
     gelf_message["short_message"] = format_string(message.get_format(), message.get_data());
 
-    const auto time_ns = context.get_timestamp().time_since_epoch().count();
+    // use now() instead of context.get_timestamp() because log_message construction can include user provided long running calls
+    const auto time_ns = time_point::now().time_since_epoch().count();
     gelf_message["timestamp"] = time_ns / 1000000.;
     gelf_message["_timestamp_ns"] = time_ns;
 

@@ -38,7 +38,7 @@ def free_container(name, client):
                 break
 
     try:
-        container = client.containers.get('mongo')
+        container = client.containers.get('postgre')
         container.stop()
         container.remove()
     except docker.errors.NotFound:
@@ -84,12 +84,12 @@ def create(config):
     except docker.errors.NotFound:
         network=client.networks.create("evt-net",driver="bridge")
 
-    container = client.containers.run(image='mongo:latest',
-                                              name='mongo',
+    container = client.containers.run(image='bitnami/postgresql:11.1.0',
+                                              name='postgre',
                                               network='evt-net',
                                               detach=True,
                                               volumes={
-                                                  'mongo': {'bind': '/opt/evtd/data', 'mode': 'rw'}}
+                                                  'pg-data-volume': {'bind': '/bitnami', 'mode': 'rw'}}
                                               )
 
     # begin the nodes one by one
@@ -110,13 +110,13 @@ def create(config):
         cmd.add_option('--delete-all-blocks')
         cmd.add_option('--http-validate-host=false')
         cmd.add_option('--charge-free-mode')
-        cmd.add_option('--plugin=evt::mongo_db_plugin')
-        cmd.add_option('--plugin=evt::history_plugin')
-        cmd.add_option('--plugin=evt::history_api_plugin')
+        # cmd.add_option('--plugin=evt::postgres_plugin')
+        # cmd.add_option('--plugin=evt::history_plugin')
+        # cmd.add_option('--plugin=evt::history_api_plugin')
         cmd.add_option('--plugin=evt::evt_link_plugin')
         cmd.add_option('--plugin=evt::chain_api_plugin')
         cmd.add_option('--plugin=evt::evt_api_plugin')
-        cmd.add_option('--mongodb-uri=mongodb://mongo:27017/EVT{}'.format(i))
+        # cmd.add_option('--postgres-uri=postgresql://postgres@localhost:5432/evt{}'.format(i))
 
         if(i < producer_number):
             cmd.add_option('--enable-stale-production')
@@ -172,26 +172,7 @@ def create(config):
                                               #
                                               )
     # update producers
-    producers_json_raw = '''
-    {
-        "producers": [{
-            "producer_name": "evt",
-            "block_signing_key": "EVT7vuvMYQwm6WYLoopw6DqhBumM4hC7RA5ufK8WSqU7VQyfmoLwA"
-        },{
-           "producer_name": "evt1",
-            "block_signing_key": "EVT7vuvMYQwm6WYLoopw6DqhBumM4hC7RA5ufK8WSqU7VQyfmoLwA"
-        },{
-           "producer_name": "evt2",
-            "block_signing_key": "EVT7vuvMYQwm6WYLoopw6DqhBumM4hC7RA5ufK8WSqU7VQyfmoLwA"
-        },{
-           "producer_name": "evt3",
-            "block_signing_key": "EVT7vuvMYQwm6WYLoopw6DqhBumM4hC7RA5ufK8WSqU7VQyfmoLwA"
-        },{
-           "producer_name": "evt4",
-            "block_signing_key": "EVT7vuvMYQwm6WYLoopw6DqhBumM4hC7RA5ufK8WSqU7VQyfmoLwA"
-        }]
-    }
-    '''
+    # producers_json = json.dumps(paras['producers_config'])
     url = 'http://127.0.0.1:8888'
     priv_evt = ecc.PrivateKey.from_string(
             '5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3')
@@ -202,7 +183,19 @@ def create(config):
     Api = api.Api(url)
     AG = action.ActionGenerator()
 
-    producers_json = json.loads(producers_json_raw)
+    producers_json = {}
+    producers = []
+    for i in range(0, producer_number):
+        dic = {}
+        if(i > 0) :
+            dic['producer_name'] = "evt{}".format(i)
+        else :
+            dic['producer_name'] = "evt"
+
+        dic['block_signing_key'] = "EVT7vuvMYQwm6WYLoopw6DqhBumM4hC7RA5ufK8WSqU7VQyfmoLwA"
+        producers.append(dic)
+
+    producers_json['producers'] = producers
     updsched = AG.new_action_from_json('updsched', json.dumps(producers_json))
 
     trx = TG.new_trx()

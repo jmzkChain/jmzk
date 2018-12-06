@@ -25,14 +25,16 @@ name::operator string() const {
 
     string str(13, '.');
 
-    uint64_t tmp = value;
-    for(uint32_t i = 0; i <= 12; ++i) {
-        char c      = charmap[tmp & (i == 0 ? 0x0f : 0x1f)];
-        str[12 - i] = c;
-        tmp >>= (i == 0 ? 4 : 5);
+    auto tmp = value;
+    str[12] = charmap[tmp & 0x0f];
+    tmp >>= 4;
+
+    for(auto i = 1u; i <= 12; ++i, tmp >>= 5) {
+        char c    = charmap[tmp & 0x1f];
+        str[12-i] = c;
     }
 
-    boost::algorithm::trim_right_if(str, [](char c) { return c == '.'; });
+    str.erase(str.find_last_not_of('.') + 1);
     return str;
 }
 

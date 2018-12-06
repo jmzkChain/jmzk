@@ -10,7 +10,9 @@
 #define CONFIG_HPP_IN
 
 namespace evt { namespace evtd { namespace config {
-  constexpr uint64_t version = 0x${evtd_BUILD_VERSION};
-}}}
+
+constexpr uint64_t version = 0x${evtd_BUILD_VERSION};
+
+}}}  // namespace evt::evtd::config
 
 #endif // CONFIG_HPP_IN

@@ -125,6 +125,7 @@ def pre_action():
         'evt2pevt', _from=base.Address().set_public_key(user.pub_key), to=base.Address().set_public_key(user.pub_key), number=asset_evt(100), memo='goodluck')
 
     pay_link = evt_link.EvtLink()
+    pay_link.set_timestamp(int(time.time()))
     pay_link.set_max_pay(999999999)
     pay_link.set_header(evt_link.HeaderType.version1.value |
                         evt_link.HeaderType.everiPay.value)
@@ -190,6 +191,7 @@ class Test(unittest.TestCase):
         asset = base.new_asset(symbol)
 
         pay_link = evt_link.EvtLink()
+        pay_link.set_timestamp(int(time.time()))
         pay_link.set_max_pay(999999999)
         pay_link.set_header(evt_link.HeaderType.version1.value |
                             evt_link.HeaderType.everiPay.value)
@@ -218,6 +220,7 @@ class Test(unittest.TestCase):
         asset = base.new_asset(symbol)
 
         pay_link = evt_link.EvtLink()
+        pay_link.set_timestamp(int(time.time()))
         pay_link.set_max_pay(999999999)
         pay_link.set_header(evt_link.HeaderType.version1.value |
                             evt_link.HeaderType.everiPay.value)
@@ -253,6 +256,7 @@ class Test(unittest.TestCase):
             sym_name=sym_name, sym_id=sym_id, precision=sym_prec)
         asset = base.new_asset(symbol)
         pay_link = evt_link.EvtLink()
+        pay_link.set_timestamp(int(time.time()))
         pay_link.set_max_pay(999999999)
         pay_link.set_header(evt_link.HeaderType.version1.value |
                             evt_link.HeaderType.everiPay.value)
@@ -267,7 +271,7 @@ class Test(unittest.TestCase):
         url = 'http://127.0.0.1:8888/v1/evt_link/get_trx_id_for_link_id'
 
         tasks = []
-        for i in range(1500):
+        for i in range(200):
             pay_link.set_link_id_rand()
             req['link_id'] = pay_link.get_link_id().hex()
             tasks.append(grequests.post(url, data=json.dumps(req)))
@@ -280,6 +284,7 @@ class Test(unittest.TestCase):
             sym_name=sym_name, sym_id=sym_id, precision=sym_prec)
         asset = base.new_asset(symbol)
         pay_link = evt_link.EvtLink()
+        pay_link.set_timestamp(int(time.time()))
         pay_link.set_max_pay(999999999)
         pay_link.set_header(evt_link.HeaderType.version1.value |
                             evt_link.HeaderType.everiPay.value)
@@ -300,7 +305,7 @@ class Test(unittest.TestCase):
             tasks.append(grequests.post(url, data=json.dumps(req)))
 
         i = 0
-        for resp in grequests.imap(tasks, size=900):
+        for resp in grequests.imap(tasks, size=50):
             self.assertEqual(resp.status_code, 500, msg=resp.content)
             i += 1
             if i % 100 == 0:
@@ -317,21 +322,34 @@ class Test(unittest.TestCase):
 
 
         req = {
+            'skip': 0,
+            'take': 10
+        }
+        req['domain'] = domain_name
+        resp = api.get_tokens(json.dumps(req)).text
+        self.assertTrue(token1_name in resp, msg=resp)
+        self.assertTrue(token2_name in resp, msg=resp)
+        self.assertTrue(token3_name in resp, msg=resp)
+
+    def test_get_history_tokens(self):
+
+
+        req = {
             'keys': [user.pub_key.to_string()]
         }
         req['domain'] = domain_name
         req['name'] = token1_name
-        resp = api.get_tokens(json.dumps(req)).text
+        resp = api.get_history_tokens(json.dumps(req)).text
         self.assertTrue(token1_name in resp, msg=resp)
         self.assertFalse(token2_name in resp, msg=resp)
         self.assertFalse(token3_name in resp, msg=resp)
 
         req['domain'] = domain_name
-        resp = api.get_tokens(json.dumps(req)).text
+        resp = api.get_history_tokens(json.dumps(req)).text
         self.assertTrue(token1_name in resp, msg=resp)
 
         req['name'] = token1_name
-        resp = api.get_tokens(json.dumps(req)).text
+        resp = api.get_history_tokens(json.dumps(req)).text
         self.assertTrue(token1_name in resp, msg=resp)
 
     def test_get_groups(self):
@@ -372,7 +390,68 @@ class Test(unittest.TestCase):
     def test_get_actions(self):
         req = {
             'domain': '.fungible',
+            'skip': 0,
+            'take': 10
+        }
+        req['domain'] = domain_name
+
+        resp = api.get_actions(json.dumps(req)).text
+        self.assertTrue(token1_name in resp, msg=resp)
+        self.assertTrue('timestamp' in resp, msg=resp)
+
+        req = {
+            'domain': '.fungible',
+            'dire': 'asc',
+            'skip': 0,
+            'take': 10
+        }
+        req['domain'] = domain_name
+
+        resp = api.get_actions(json.dumps(req)).text
+        self.assertTrue(token1_name in resp, msg=resp)
+        self.assertTrue('timestamp' in resp, msg=resp)
+
+        req = {
+            'domain': '.fungible',
             'key': '.issue',
+            'skip': 0,
+            'take': 10
+        }
+        req['domain'] = domain_name
+
+        resp = api.get_actions(json.dumps(req)).text
+        self.assertTrue(token1_name in resp, msg=resp)
+        self.assertTrue('timestamp' in resp, msg=resp)
+
+        req = {
+            'domain': '.fungible',
+            'key': '.issue',
+            'dire': 'asc',
+            'skip': 0,
+            'take': 10
+        }
+        req['domain'] = domain_name
+
+        resp = api.get_actions(json.dumps(req)).text
+        self.assertTrue(token1_name in resp, msg=resp)
+        self.assertTrue('timestamp' in resp, msg=resp)
+
+        req = {
+            'domain': '.fungible',
+            'names': [
+                'issuetoken'
+            ],
+            'skip': 0,
+            'take': 10
+        }
+        req['domain'] = domain_name
+
+        resp = api.get_actions(json.dumps(req)).text
+        self.assertTrue(token1_name in resp, msg=resp)
+        self.assertTrue('timestamp' in resp, msg=resp)
+
+        req = {
+            'domain': '.fungible',
             'names': [
                 'issuetoken'
             ],
@@ -384,7 +463,21 @@ class Test(unittest.TestCase):
 
         resp = api.get_actions(json.dumps(req)).text
         self.assertTrue(token1_name in resp, msg=resp)
-        self.assertTrue('block_num' in resp, msg=resp)
+        self.assertTrue('timestamp' in resp, msg=resp)
+
+        req = {
+            'domain': '.fungible',
+            'names': [
+                'issuetoken'
+            ],
+            'key': '.issue',
+            'skip': 0,
+            'take': 10
+        }
+        req['domain'] = domain_name
+
+        resp = api.get_actions(json.dumps(req)).text
+        self.assertTrue(token1_name in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
 
         req = {
@@ -401,10 +494,36 @@ class Test(unittest.TestCase):
 
         resp = api.get_actions(json.dumps(req)).text
         self.assertTrue('everipay' in resp, msg=resp)
-        self.assertTrue('block_num' in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
 
     def test_get_fungible_actions(self):
+        req = {
+            'sym_id': 338422621,
+            'address': 'EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV',
+            'dire': 'asc',
+            'skip': 0,
+            'take': 10
+        }
+        req['sym_id'] = sym_id
+
+        resp = api.get_fungible_actions(json.dumps(req)).text
+        self.assertTrue('issuefungible' in resp, msg=resp)
+        self.assertTrue(str(sym_id) in resp, msg=resp)
+        self.assertTrue('timestamp' in resp, msg=resp)
+
+        req = {
+            'sym_id': 338422621,
+            'dire': 'asc',
+            'skip': 0,
+            'take': 10
+        }
+        req['sym_id'] = sym_id
+
+        resp = api.get_fungible_actions(json.dumps(req)).text
+        self.assertTrue('issuefungible' in resp, msg=resp)
+        self.assertTrue(str(sym_id) in resp, msg=resp)
+        self.assertTrue('timestamp' in resp, msg=resp)
+
         req = {
             'sym_id': 338422621,
             'address': 'EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV',
@@ -416,13 +535,25 @@ class Test(unittest.TestCase):
         resp = api.get_fungible_actions(json.dumps(req)).text
         self.assertTrue('issuefungible' in resp, msg=resp)
         self.assertTrue(str(sym_id) in resp, msg=resp)
-        self.assertTrue('block_num' in resp, msg=resp)
+        self.assertTrue('timestamp' in resp, msg=resp)
+
+        req = {
+            'sym_id': 338422621,
+            'address': 'EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV',
+            'dire': 'asc',
+            'skip': 0,
+            'take': 10
+        }
+        req['sym_id'] = sym_id
+
+        resp = api.get_fungible_actions(json.dumps(req)).text
+        self.assertTrue('issuefungible' in resp, msg=resp)
+        self.assertTrue(str(sym_id) in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
 
         req['sym_id'] = 1
         resp = api.get_fungible_actions(json.dumps(req)).text
         self.assertTrue('evt2pevt' in resp, msg=resp)
-        self.assertTrue('block_num' in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
 
     def test_get_history_transaction(self):
@@ -462,6 +593,15 @@ class Test(unittest.TestCase):
         self.assertTrue(group_name in resp, msg=resp)
         self.assertTrue(str(sym_id) in resp, msg=resp)
 
+    def test_get_fungible_ids(self):
+        req = {
+            'skip': 0,
+            'take': 10
+        }
+
+        resp = api.get_fungible_ids(json.dumps(req)).text
+        self.assertTrue(str(sym_id) in resp, msg=resp)
+
 
 @click.command()
 @click.option('--url', '-u', default='http://127.0.0.1:8888')
@@ -477,10 +617,11 @@ def main(url, start_evtd, evtd_path, public_key, private_key):
     if start_evtd == True:
         evtdout = open('/tmp/evt_api_tests_evtd.log', 'w')
 
-        p = subprocess.Popen([evtd_path, '-e', '--http-validate-host=false', '--charge-free-mode', '--loadtest-mode', '--plugin=evt::mongo_db_plugin',
+        p = subprocess.Popen([evtd_path, '-e', '--http-validate-host=false', '--charge-free-mode', '--plugin=evt::postgres_plugin',
                               '--plugin=evt::history_plugin', '--plugin=evt::history_api_plugin', '--plugin=evt::chain_api_plugin', '--plugin=evt::evt_api_plugin',
-                              '--plugin=evt::evt_link_plugin', '--producer-name=evt', '--delete-all-blocks', '-d', '/tmp/evt', '-m', 'mongodb://127.0.0.1:27017'],
+                              '--plugin=evt::evt_link_plugin', '--producer-name=evt', '--delete-all-blocks', '-d', './tmp', '--postgres-uri=postgresql://postgres@localhost:5432/evt'],
                              stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=evtdout, shell=False)
+        
         # wait for evtd to initialize
         time.sleep(3)
 

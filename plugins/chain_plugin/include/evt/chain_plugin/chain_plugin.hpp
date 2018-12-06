@@ -68,8 +68,7 @@ public:
         chain::block_id_type head_block_id;
         fc::time_point_sec   head_block_time;
         account_name         head_block_producer;
-        string               recent_slots;
-        double               participation_rate = 0;
+        optional<string>     server_version_string;
     };
     get_info_results get_info(const get_info_params&) const;
 
@@ -245,7 +244,7 @@ private:
 FC_REFLECT(evt::chain_apis::empty, );
 FC_REFLECT(evt::chain_apis::read_only::get_info_results,
           (server_version)(chain_id)(evt_api_version)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)
-          (head_block_id)(head_block_time)(head_block_producer)(recent_slots)(participation_rate));
+          (head_block_id)(head_block_time)(head_block_producer)(server_version));
 FC_REFLECT(evt::chain_apis::read_only::get_block_params, (block_num_or_id));
 FC_REFLECT(evt::chain_apis::read_only::get_block_header_state_params, (block_num_or_id));
 FC_REFLECT(evt::chain_apis::read_only::get_transaction_params, (block_num)(id));

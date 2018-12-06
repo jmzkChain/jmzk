@@ -56,6 +56,12 @@ struct name {
         return !empty();
     }
 
+    bool
+    reserved() const {
+        constexpr auto flag = ((uint64_t)0x1f << (64-5));
+        return !(value & flag);
+    }
+
     name(const char* str) { set(str); }
     name(const string& str) { set(str.c_str()); }
 
@@ -142,7 +148,7 @@ struct name {
 inline std::vector<name>
 sort_names(std::vector<name>&& names) {
     fc::deduplicate(names);
-    return names;
+    return std::move(names);
 }
 
 }}  // namespace evt::chain

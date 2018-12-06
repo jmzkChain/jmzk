@@ -14,6 +14,7 @@
 #include <evt/chain/controller.hpp>
 #include <evt/chain/token_database.hpp>
 #include <evt/chain/contracts/types.hpp>
+#include <evt/chain/contracts/evt_link_object.hpp>
 
 using namespace evt;
 using namespace chain;
@@ -830,16 +831,28 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_checkpoint_test", "[tokendb]") {
     tokendb.update_asset(address, asset(2000, pevt));
 
     tokendb.rollback_to_latest_savepoint();
+
     asset a;
     tokendb.read_asset(address, pevt, a);
     CHECK(a == asset(1000, pevt));
 
+    tokendb.add_savepoint(get_time());
+    evt_link_object link_obj;
+    link_obj.link_id = 111;
+    tokendb.add_evt_link(link_obj);
+
     auto r = tokendb.rollback_to_latest_savepoint();
     CHECK(r == 0);
+
+    CHECK(!tokendb.exists_evt_link(111));
+
+    r = tokendb.rollback_to_latest_savepoint();
+    CHECK(r == 0);
+
     CHECK(!tokendb.exists_fungible(PEVT_SYM_ID));
     CHECK(!tokendb.exists_any_asset(address));
     CHECK(!tokendb.exists_asset(address, pevt));
-
+    
     tokendb.add_savepoint(get_time());
     tokendb.add_savepoint(get_time());
     tokendb.add_savepoint(get_time());

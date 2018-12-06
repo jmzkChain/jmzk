@@ -50,6 +50,9 @@ struct resolved_url : parsed_url {
         , is_loopback(is_loopback) {
     }
 
+    //used for unix domain, where resolving and ports are nonapplicable
+    resolved_url(const parsed_url& url) : parsed_url(url) {}
+
     vector<string> resolved_addresses;
     uint16_t       resolved_port;
     bool           is_loopback;
@@ -98,6 +101,7 @@ const std::string push_txns_func              = chain_func_base + "/push_transac
 const std::string json_to_bin_func            = chain_func_base + "/abi_json_to_bin";
 const std::string get_block_func              = chain_func_base + "/get_block";
 const std::string get_block_header_state_func = chain_func_base + "/get_block_header_state";
+const std::string get_transaction_func        = chain_func_base + "/get_transaction";
 const std::string get_required_keys           = chain_func_base + "/get_required_keys";
 const std::string get_suspend_required_keys   = chain_func_base + "/get_suspend_required_keys";
 const std::string get_charge                  = chain_func_base + "/get_charge";
@@ -125,6 +129,7 @@ const std::string wallet_sign_trx      = wallet_func_base + "/sign_transaction";
 const std::string evt_func_base             = "/v1/evt";
 const std::string get_domain_func           = evt_func_base + "/get_domain";
 const std::string get_token_func            = evt_func_base + "/get_token";
+const std::string get_tokens_func           = evt_func_base + "/get_tokens";
 const std::string get_group_func            = evt_func_base + "/get_group";
 const std::string get_fungible_func         = evt_func_base + "/get_fungible";
 const std::string get_fungible_balance_func = evt_func_base + "/get_fungible_balance";
@@ -140,6 +145,7 @@ const std::string get_actions          = history_func_base + "/get_actions";
 const std::string get_fungible_actions = history_func_base + "/get_fungible_actions";
 const std::string get_transaction      = history_func_base + "/get_transaction";
 const std::string get_transactions     = history_func_base + "/get_transactions";
+const std::string get_fungible_ids     = history_func_base + "/get_fungible_ids";
 
 const std::string producer_func_base    = "/v1/producer";
 const std::string producer_pause        = producer_func_base + "/pause";

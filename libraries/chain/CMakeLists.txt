@@ -70,9 +70,12 @@ target_include_directories( evt_chain_lite
                             "${CMAKE_CURRENT_SOURCE_DIR}/include"
                             "${CMAKE_CURRENT_BINARY_DIR}/include"
                             "${CMAKE_CURRENT_SOURCE_DIR}/../chainbase/include" 
+                            "${CMAKE_CURRENT_SOURCE_DIR}/../utilities/include" 
                             )
 
 set_target_properties( evt_chain PROPERTIES PUBLIC_HEADER "${HEADERS}" )
+
+target_compile_definitions(evt_chain PUBLIC FMT_STRING_ALIAS=1)
 
 # find_package(TBB)
 

@@ -56,7 +56,7 @@ evt_plugin::get_read_only_api() const {
 
 evt_apis::read_write
 evt_plugin::get_read_write_api() {
-    return evt_apis::read_write(my_->db_);
+    return evt_apis::read_write();
 }
 
 namespace evt_apis {
@@ -64,6 +64,7 @@ namespace evt_apis {
 fc::variant
 read_only::get_domain(const read_only::get_domain_params& params) {
     const auto& db = db_.token_db();
+
     variant    var;
     domain_def domain;
     db.read_domain(params.name, domain);
@@ -77,6 +78,7 @@ read_only::get_domain(const read_only::get_domain_params& params) {
 fc::variant
 read_only::get_group(const read_only::get_group_params& params) {
     const auto& db = db_.token_db();
+
     variant   var;
     group_def group;
     db.read_group(params.name, group);
@@ -87,6 +89,7 @@ read_only::get_group(const read_only::get_group_params& params) {
 fc::variant
 read_only::get_token(const read_only::get_token_params& params) {
     const auto& db = db_.token_db();
+
     variant   var;
     token_def token;
     db.read_token(params.domain, params.name, token);
@@ -95,8 +98,38 @@ read_only::get_token(const read_only::get_token_params& params) {
 }
 
 fc::variant
+read_only::get_tokens(const get_tokens_params& params) {
+    const auto& db = db_.token_db();
+
+    auto vars = fc::variants();
+    int s = 0, t = 10;
+    if(params.skip.valid()) {
+        s = *params.skip;
+    }
+    if(params.take.valid()) {
+        t = *params.take;
+        EVT_ASSERT(t <= 100, chain::exceed_query_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 100 per query");
+    }
+
+    int i = 0;
+    db.read_tokens(params.domain, s, [&](auto& token) {
+        auto var = fc::variant();
+        fc::to_variant(token, var);
+        vars.emplace_back(std::move(var));
+
+        if(++i == t) {
+            return false;
+        }
+        return true;
+    });
+
+    return vars;
+}
+
+fc::variant
 read_only::get_fungible(const get_fungible_params& params) {
     const auto& db = db_.token_db();
+
     variant      var;
     fungible_def fungible;
     db.read_fungible(params.id, fungible);

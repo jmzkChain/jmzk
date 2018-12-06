@@ -6,23 +6,23 @@
 #include <memory>
 
 #include <appbase/application.hpp>
-#include <evt/chain_plugin/chain_plugin.hpp>
-#include <evt/mongo_db_plugin/mongo_db_plugin.hpp>
-
-#include <evt/chain/controller.hpp>
-#include <evt/chain/types.hpp>
-
 #include <fc/optional.hpp>
+
+#include <evt/chain_plugin/chain_plugin.hpp>
+#include <evt/postgres_plugin/postgres_plugin.hpp>
+#include <evt/chain/types.hpp>
 
 namespace evt {
 
 class history_plugin;
-using evt::chain::public_key_type;
+
+using evt::chain::address;
 using evt::chain::action_name;
 using evt::chain::domain_name;
-using evt::chain::token_name;
+using evt::chain::public_key_type;
 using evt::chain::symbol_id_type;
-using evt::chain::address;
+using evt::chain::token_name;
+using evt::chain::transaction_id_type;
 
 namespace history_apis {
 
@@ -39,9 +39,8 @@ public:
     struct get_tokens_params {
         std::vector<public_key_type> keys;
         fc::optional<domain_name>    domain;
-        fc::optional<token_name>     name;
     };
-    fc::variant get_tokens(const get_tokens_params& params);
+    void get_tokens_async(int id, const get_tokens_params& params);
 
     struct get_params {
         std::vector<public_key_type> keys;
@@ -50,9 +49,9 @@ public:
     using get_groups_params = get_params;
     using get_fungibles_params = get_params;
 
-    fc::variant get_domains(const get_params& params);
-    fc::variant get_groups(const get_params& params);
-    fc::variant get_fungibles(const get_params& params);
+    void get_domains_async(int id, const get_params& params);
+    void get_groups_async(int id, const get_params& params);
+    void get_fungibles_async(int id, const get_params& params);
 
     struct get_actions_params {
         std::string                                     domain;
@@ -62,7 +61,7 @@ public:
         fc::optional<int>                               skip;
         fc::optional<int>                               take;
     };
-    fc::variant get_actions(const get_actions_params& params);
+    void get_actions_async(int id, const get_actions_params& params);
 
     struct get_fungible_actions_params {
         symbol_id_type                                  sym_id;
@@ -71,12 +70,12 @@ public:
         fc::optional<int>                               skip;
         fc::optional<int>                               take; 
     };
-    fc::variant get_fungible_actions(const get_fungible_actions_params& params);
+    void get_fungible_actions_async(int id, const get_fungible_actions_params& params);
 
     struct get_transaction_params {
-        chain::transaction_id_type id;
+        transaction_id_type id;
     };
-    fc::variant get_transaction(const get_transaction_params& params);
+    void get_transaction_async(int id, const get_transaction_params& params);
 
     struct get_transactions_params {
         std::vector<public_key_type>                    keys;
@@ -84,8 +83,13 @@ public:
         fc::optional<int>                               skip;
         fc::optional<int>                               take;
     };
-    fc::variant get_transactions(const get_transactions_params& params);
+    void get_transactions_async(int id, const get_transactions_params& params);
 
+    struct get_fungible_ids_params {
+        fc::optional<int> skip;
+        fc::optional<int> take;
+    };
+    void get_fungible_ids_async(int id, const get_fungible_ids_params& params);
 
 private:
     const history_plugin& plugin_;
@@ -95,7 +99,7 @@ private:
 
 class history_plugin : public plugin<history_plugin> {
 public:
-    APPBASE_PLUGIN_REQUIRES((chain_plugin)(mongo_db_plugin))
+    APPBASE_PLUGIN_REQUIRES((chain_plugin)(postgres_plugin))
 
     history_plugin();
     virtual ~history_plugin();
@@ -118,8 +122,9 @@ private:
 
 FC_REFLECT_ENUM(evt::history_apis::direction, (asc)(desc));
 FC_REFLECT(evt::history_apis::read_only::get_params, (keys));
-FC_REFLECT(evt::history_apis::read_only::get_tokens_params, (keys)(domain)(name));
+FC_REFLECT(evt::history_apis::read_only::get_tokens_params, (keys)(domain));
 FC_REFLECT(evt::history_apis::read_only::get_actions_params, (domain)(key)(dire)(names)(skip)(take));
 FC_REFLECT(evt::history_apis::read_only::get_fungible_actions_params, (sym_id)(dire)(addr)(skip)(take));
 FC_REFLECT(evt::history_apis::read_only::get_transaction_params, (id));
 FC_REFLECT(evt::history_apis::read_only::get_transactions_params, (keys)(dire)(skip)(take));
+FC_REFLECT(evt::history_apis::read_only::get_fungible_ids_params, (skip)(take));

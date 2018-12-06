@@ -183,8 +183,6 @@ mongo_db_plugin_impl::applied_transaction(const transaction_trace_ptr& ttp) {
 
 void
 mongo_db_plugin_impl::consume_queues() {
-    using namespace evt::__internal;
-
     try {
         while(true) {
             lock_.lock();
@@ -301,7 +299,7 @@ verify_last_block(mongocxx::collection& blocks, const std::string& prev_block_id
 
 void
 verify_no_blocks(mongocxx::collection& blocks) {
-    if(blocks.count(bsoncxx::from_json("{}")) > 0) {
+    if(blocks.count_documents(bsoncxx::from_json("{}")) > 0) {
         FC_THROW("Existing blocks found in database");
     }
 }
@@ -615,7 +613,7 @@ mongo_db_plugin_impl::init() {
     auto blocks = mongo_db[blocks_col];  // Blocks
     bsoncxx::builder::stream::document doc{};
 
-    auto need_init = blocks.count(doc.view()) == 0;
+    auto need_init = blocks.count_documents(doc.view()) == 0;
     if(need_init) {
         // Blocks indexes
         blocks.create_index(bsoncxx::from_json(R"xxx({ "block_num" : 1 })xxx"));

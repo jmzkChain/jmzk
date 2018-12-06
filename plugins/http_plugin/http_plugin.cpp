@@ -3,7 +3,11 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #include <evt/http_plugin/http_plugin.hpp>
-#include <evt/chain/exceptions.hpp>
+
+#include <memory>
+#include <thread>
+#include <type_traits>
+#include <regex>
 
 #include <fc/optional.hpp>
 #include <fc/crypto/openssl.hpp>
@@ -21,14 +25,19 @@
 #include <websocketpp/logger/stub.hpp>
 #include <websocketpp/server.hpp>
 
-#include <memory>
-#include <thread>
-#include <type_traits>
-#include <regex>
+#include <evt/chain/exceptions.hpp>
+#include <evt/http_plugin/local_endpoint.hpp>
 
 namespace evt {
 
 static appbase::abstract_plugin& _http_plugin = app().register_plugin<http_plugin>();
+
+static http_plugin_defaults current_http_plugin_defaults;
+
+void
+http_plugin::set_defaults(const http_plugin_defaults config) {
+    current_http_plugin_defaults = config;
+}
 
 namespace asio = boost::asio;
 
@@ -44,7 +53,7 @@ using websocketpp::connection_hdl;
 
 namespace detail {
 
-template <class T>
+template <template<typename> class TENDPOINT, typename TSOCKET>
 struct asio_with_stub_log : public websocketpp::config::asio {
     typedef asio_with_stub_log type;
     typedef asio               base;
@@ -71,23 +80,28 @@ struct asio_with_stub_log : public websocketpp::config::asio {
         typedef type::elog_type        elog_type;
         typedef type::request_type     request_type;
         typedef type::response_type    response_type;
-        typedef T                      socket_type;
+        typedef TSOCKET                socket_type;
 
         static bool const enable_multithreading = false;
     };
 
-    typedef websocketpp::transport::asio::endpoint<transport_config>
-        transport_type;
+    typedef TENDPOINT<transport_config> transport_type;
 
     static const long timeout_open_handshake = 0;
 };
+
 }  // namespace detail
 
-using websocket_server_type     = websocketpp::server<detail::asio_with_stub_log<websocketpp::transport::asio::basic_socket::endpoint>>;
-using websocket_server_tls_type = websocketpp::server<detail::asio_with_stub_log<websocketpp::transport::asio::tls_socket::endpoint>>;
-using http_connection_ptr_type  = websocketpp::server<detail::asio_with_stub_log<websocketpp::transport::asio::basic_socket::endpoint>>::connection_ptr;
-using https_connection_ptr_type = websocketpp::server<detail::asio_with_stub_log<websocketpp::transport::asio::tls_socket::endpoint>>::connection_ptr;
-using ssl_context_ptr           = websocketpp::lib::shared_ptr<websocketpp::lib::asio::ssl::context>;
+using http_config  = detail::asio_with_stub_log<websocketpp::transport::asio::endpoint, websocketpp::transport::asio::basic_socket::endpoint>;
+using https_config = detail::asio_with_stub_log<websocketpp::transport::asio::endpoint, websocketpp::transport::asio::tls_socket::endpoint>;
+using local_config = detail::asio_with_stub_log<websocketpp::transport::asio::local_endpoint, websocketpp::transport::asio::local_socket::endpoint>;
+
+using websocket_server_type       = websocketpp::server<http_config>;
+using websocket_server_tls_type   = websocketpp::server<https_config>;
+using websocket_server_local_type = websocketpp::server<local_config>;
+using http_connection_ptr_type    = websocketpp::server<http_config>::connection_ptr;
+using https_connection_ptr_type   = websocketpp::server<https_config>::connection_ptr;
+using ssl_context_ptr             = websocketpp::lib::shared_ptr<websocketpp::lib::asio::ssl::context>;
 
 static bool verbose_http_errors = false;
 
@@ -97,6 +111,7 @@ public:
 
 public:
     map<string, url_handler>          url_handlers;
+    map<string, url_handler>          url_local_handlers;
     map<string, url_deferred_handler> url_deferred_handlers;
     optional<tcp::endpoint>           listen_endpoint;
     string                            access_control_allow_origin;
@@ -121,6 +136,9 @@ public:
     string                  https_key;
 
     websocket_server_tls_type https_server;
+
+    optional<asio::local::stream_protocol::endpoint> unix_endpoint;
+    websocket_server_local_type                      unix_server;
 
     bool        validate_host;
     set<string> valid_hosts;
@@ -189,7 +207,7 @@ public:
 
     template <class T>
     static void
-    handle_exception(typename websocketpp::server<detail::asio_with_stub_log<T>>::connection_ptr con) {
+    handle_exception(typename websocketpp::server<T>::connection_ptr con) {
         string err = "Internal Service error, http: ";
         try {
             con->set_status(websocketpp::http::status_code::internal_server_error);
@@ -228,12 +246,13 @@ public:
 
     template <typename T>
     deferred_id
-    alloc_deferred_id(typename websocketpp::server<detail::asio_with_stub_log<T>>::connection_ptr con) {
+    alloc_deferred_id(typename websocketpp::server<T>::connection_ptr con) {
         if(http_conn_size + https_conn_size >= max_deferred_connection_size) {
-            EVT_THROW(chain::exceed_deferred_request, "Exceed max allowed deferred connections, max: ${m}", ("m",max_deferred_connection_size));
+            EVT_THROW(chain::exceed_deferred_request, "Exceed max allowed deferred connections, max: ${m}",
+                ("m",max_deferred_connection_size));
         }
 
-        if constexpr (std::is_same_v<T, websocketpp::transport::asio::basic_socket::endpoint>) {
+        if constexpr (std::is_same_v<T, http_config>) {
             // http
             FC_ASSERT(http_conns.size() == max_deferred_connection_size);
             for(auto i = http_conn_index; i < http_conn_index + max_deferred_connection_size; i++) {
@@ -245,7 +264,7 @@ public:
                 }
             }
         }
-        if constexpr (std::is_same_v<T, websocketpp::transport::asio::tls_socket::endpoint>) {
+        if constexpr (std::is_same_v<T, https_config>) {
             // https
             FC_ASSERT(https_conns.size() == max_deferred_connection_size);
             for(auto i = https_conn_index; i < https_conn_index + max_deferred_connection_size; i++) {
@@ -257,25 +276,36 @@ public:
                 }
             }
         }
-        EVT_THROW(chain::alloc_deferred_fail, "Alloc deferred id failed, http index: ${i}, https index: ${j}", ("i",http_conn_index)("j",https_conn_index));
+        EVT_THROW(chain::alloc_deferred_fail, "Alloc deferred id failed, http index: ${i}, https index: ${j}",
+            ("i",http_conn_index)("j",https_conn_index));
     }
 
+    template<class T>
+    bool
+    allow_host(const typename T::request_type& req, typename websocketpp::server<T>::connection_ptr con) {
+        bool is_secure = con->get_uri()->get_secure();
+        const auto& local_endpoint = con->get_socket().lowest_layer().local_endpoint();
+        auto local_socket_host_port = local_endpoint.address().to_string() + ":" + std::to_string(local_endpoint.port());
+
+        const auto& host_str = req.get_header("Host");
+        if(host_str.empty() || !host_is_valid(host_str, local_socket_host_port, is_secure)) {
+            con->set_status(websocketpp::http::status_code::bad_request);
+            return false;
+        }
+        return true;
+    }
 
     template <class T>
     void
-    handle_http_request(typename websocketpp::server<detail::asio_with_stub_log<T>>::connection_ptr con) {
+    handle_http_request(typename websocketpp::server<T>::connection_ptr con) {
         try {
-            bool is_secure = con->get_uri()->get_secure();
-            const auto& local_endpoint = con->get_socket().lowest_layer().local_endpoint();
-            auto local_socket_host_port = local_endpoint.address().to_string() + ":" + std::to_string(local_endpoint.port());
-
             auto& req = con->get_request();
-            const auto& host_str = req.get_header("Host");
-            if(host_str.empty() || !host_is_valid(host_str, local_socket_host_port, is_secure)) {
-                con->set_status(websocketpp::http::status_code::bad_request);
-                return;
-            }
 
+            if constexpr (!std::is_same_v<T, local_config>) {
+                if(!allow_host<T>(req, con)) {
+                    return;
+                }
+            }
             if(!access_control_allow_origin.empty()) {
                 con->append_header("Access-Control-Allow-Origin", access_control_allow_origin);
             }
@@ -315,7 +345,7 @@ public:
                 }
             }
 
-            {
+            if constexpr (!std::is_same_v<T, local_config>) {
                 auto deferred_handler_it = url_deferred_handlers.find(resource);
                 if(deferred_handler_it != url_deferred_handlers.end()) {
                     auto id = alloc_deferred_id<T>(con); 
@@ -325,6 +355,21 @@ public:
                         visit_connection(id, [](auto&) { return false; });
                     });
                     deferred_handler_it->second(resource, body, id);
+
+                    return;
+                }
+            }
+            else {
+                auto handler_itr = url_local_handlers.find(resource);
+                if(handler_itr != url_local_handlers.end()) {
+                    con->defer_http_response();
+                    handler_itr->second(resource, body, [this, con](auto code, auto&& body) {
+                        con->set_status(websocketpp::http::status_code::value(code));
+                        if(!http_no_response) {
+                            con->set_body(std::move(body));
+                        }
+                        con->send_http_response();
+                    });
 
                     return;
                 }
@@ -379,7 +424,7 @@ public:
                     con->send_http_response();
                 }
                 catch(...) {
-                    handle_exception<typename std::decay_t<decltype(*con)>::config_type::transport_type::socket_type>(con);
+                    handle_exception<typename std::decay_t<decltype(*con)>::config_type>(con);
                 }
                 return false;  // return false to indicate release connection
             });
@@ -389,7 +434,7 @@ public:
 
     template <class T>
     void
-    create_server_for_endpoint(const tcp::endpoint& ep, websocketpp::server<detail::asio_with_stub_log<T>>& ws) {
+    create_server_for_endpoint(const tcp::endpoint& ep, websocketpp::server<T>& ws) {
         try {
             ws.clear_access_channels(websocketpp::log::alevel::all);
             ws.init_asio(&app().get_io_service());
@@ -426,7 +471,10 @@ http_plugin::~http_plugin() {}
 void
 http_plugin::set_program_options(options_description&, options_description& cfg) {
     cfg.add_options()
-        ("http-server-address", bpo::value<string>()->default_value("127.0.0.1:8888"), "The local IP and port to listen for incoming http connections; set blank to disable.")
+        ("unix-socket-path", bpo::value<string>()->default_value(current_http_plugin_defaults.default_unix_socket_path),
+            "The filename (or relative to data-dir) to create a unix socket for HTTP RPC; set blank to disable.")
+        ("http-server-address", bpo::value<string>()->default_value("127.0.0.1:" + std::to_string(current_http_plugin_defaults.default_http_port)),
+            "The local IP and port to listen for incoming http connections; set blank to disable.")
         ("https-server-address", bpo::value<string>(), "The local IP and port to listen for incoming https connections; leave blank to disable.")
         ("https-certificate-chain-file", bpo::value<string>(), "Filename with the certificate chain to present on https connections. PEM format. Required for https.")
         ("https-private-key-file", bpo::value<string>(), "Filename with https private key in PEM format. Required for https")
@@ -451,7 +499,8 @@ http_plugin::set_program_options(options_description&, options_description& cfg)
         ("max-deferred-connection-size", bpo::value<uint32_t>()->default_value(8), "The maximum size allowed for deferred connections")
         ("verbose-http-errors", bpo::bool_switch()->default_value(false), "Append the error log to HTTP responses")
         ("http-validate-host", boost::program_options::value<bool>()->default_value(true), "If set to false, then any incoming \"Host\" header is considered valid")
-        ("http-alias", bpo::value<std::vector<string>>()->composing(), "Additionaly acceptable values for the \"Host\" header of incoming HTTP requests, can be specified multiple times.  Includes http/s_server_address by default.")
+        ("http-alias", bpo::value<std::vector<string>>()->composing(),
+            "Additionaly acceptable values for the \"Host\" header of incoming HTTP requests, can be specified multiple times.  Includes http/s_server_address by default.")
         ("http-no-response", bpo::bool_switch()->default_value(false), "special for load-testing, response all the requests with empty body")
         ;
 }
@@ -466,7 +515,9 @@ http_plugin::plugin_initialize(const variables_map& options) {
         }
 
         tcp::resolver resolver(app().get_io_service());
-        if(options.count("http-server-address") && options.at("http-server-address").as<string>().length()) {
+
+
+        if(current_http_plugin_defaults.default_http_port > 0 && options.count("http-server-address") && options.at("http-server-address").as<string>().length()) {
             string lipstr = options.at("http-server-address").as<string>();
             string host   = lipstr.substr(0, lipstr.find(':'));
             string port   = lipstr.substr(host.size() + 1, lipstr.size());
@@ -486,6 +537,14 @@ http_plugin::plugin_initialize(const variables_map& options) {
             if(my->listen_endpoint) {
                 my->add_aliases_for_endpoint(*my->listen_endpoint, host, port);
             }
+        }
+
+        if(!current_http_plugin_defaults.default_unix_socket_path.empty() && options.count("unix-socket-path") && !options.at("unix-socket-path").as<string>().empty()) {
+            boost::filesystem::path sock_path = options.at("unix-socket-path").as<string>();
+            if(sock_path.is_relative()) {
+                sock_path = app().data_dir() / sock_path;
+            }
+            my->unix_endpoint = asio::local::stream_protocol::endpoint(sock_path.string());
         }
 
         if(options.count("https-server-address") && options.at("https-server-address").as<string>().length()) {
@@ -562,6 +621,31 @@ http_plugin::plugin_startup() {
         }
     }
 
+    if(my->unix_endpoint) {
+        try {
+            my->unix_server.clear_access_channels(websocketpp::log::alevel::all);
+            my->unix_server.init_asio(&app().get_io_service());
+            my->unix_server.set_max_http_body_size(my->max_body_size);
+            my->unix_server.listen(*my->unix_endpoint);
+            my->unix_server.set_http_handler([&](connection_hdl hdl) {
+                my->handle_http_request<local_config>(my->unix_server.get_con_from_hdl(hdl));
+            });
+            my->unix_server.start_accept();
+        }
+        catch(const fc::exception& e) {
+            elog("unix socket service failed to start: ${e}", ("e",e.to_detail_string()));
+            throw;
+        }
+        catch(const std::exception& e) {
+            elog( "unix socket service failed to start: ${e}", ("e",e.what()));
+            throw;
+        }
+        catch (...) {
+            elog("error thrown from unix socket io service");
+            throw;
+        }
+    }
+
     if(my->https_listen_endpoint) {
         try {
             my->https_conns.resize(my->max_deferred_connection_size);
@@ -594,17 +678,35 @@ http_plugin::plugin_startup() {
 
 void
 http_plugin::plugin_shutdown() {
-    if(my->server.is_listening())
+    if(my->server.is_listening()) {
         my->server.stop_listening();
-    if(my->https_server.is_listening())
+    }
+    if(my->unix_server.is_listening()) {
+        my->unix_server.stop_listening();
+    }
+    if(my->https_server.is_listening()) {
         my->https_server.stop_listening();
+    }
 }
 
 void
-http_plugin::add_handler(const string& url, const url_handler& handler) {
-    ilog("add api url: ${c}", ("c", url));
+http_plugin::add_handler(const string& url, const url_handler& handler, bool local_only) {
+    if(!local_only) {
+        ilog("add api url: ${c}", ("c", url));
+    }
+    else {
+        ilog("add local only api url: ${c}", ("c", url));
+    }
     boost::asio::post(app().get_io_service(), [=]() {
-        my->url_handlers.insert(std::make_pair(url, handler));
+        if(!local_only) {
+            my->url_handlers.insert(std::make_pair(url, handler));
+        }
+        else {
+            if(!my->unix_endpoint) {
+                wlog("Unix server is not enabled, ${u} API cannot be used", ("u",url));
+            }
+            my->url_local_handlers.insert(std::make_pair(url, handler));
+        }
     });
 }
 
@@ -671,9 +773,23 @@ http_plugin::handle_exception(const char* api_name, const char* call_name, const
     }
 }
 
+void
+http_plugin::handle_async_exception(deferred_id id, const char* api_name, const char* call_name, const string& body) {
+    try {
+        throw;
+    }
+    catch(...) {
+        http_plugin::handle_exception(api_name, call_name, body, [id](auto code, auto body) {
+            app().get_plugin<http_plugin>().set_deferred_response(id, code, body);
+        });
+    }
+}
+
 bool
 http_plugin::is_on_loopback() const {
-    return (!my->listen_endpoint || my->listen_endpoint->address().is_loopback()) && (!my->https_listen_endpoint || my->https_listen_endpoint->address().is_loopback());
+    return (!my->listen_endpoint
+        || my->listen_endpoint->address().is_loopback())
+        && (!my->https_listen_endpoint || my->https_listen_endpoint->address().is_loopback());
 }
 
 bool

@@ -10,34 +10,9 @@
 #include <fc/array.hpp>
 #include <evt/chain/types.hpp>
 #include <evt/chain/exceptions.hpp>
+#include <evt/utilities/common.hpp>
 
 namespace evt { namespace chain {
-
-namespace __internal {
-
-template<typename Storage>
-struct eq_comparator {
-    struct visitor : public fc::visitor<bool> {
-        visitor(const Storage &b)
-            : b_(b) {}
-
-        template<typename ValueType>
-        bool
-        operator()(const ValueType& a) const {
-            const auto& b = b_.template get<ValueType>();
-            return a == b;
-        }
-
-        const Storage& b_;
-    };
-
-    static bool
-    apply(const Storage& a, const Storage& b) {
-        return a.which() == b.which() && a.visit(visitor(b));
-    }
-};
-
-}  // namespace __internal
 
 class address {
 public:
@@ -138,8 +113,7 @@ public:
 
     friend bool
     operator==(const address& a, const address& b) {
-        using namespace __internal;
-        return eq_comparator<storage_type>::apply(a.storage_, b.storage_);
+        return utilities::common::eq_comparator<storage_type>::apply(a.storage_, b.storage_);
     }
 
     friend bool
