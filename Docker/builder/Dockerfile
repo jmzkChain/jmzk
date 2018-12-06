@@ -1,6 +1,6 @@
 FROM ubuntu:18.04
 
-LABEL author="Harry <harrywong@live.com>" maintainer="Harry <harrywong@live.com>" version="1.1.0" \
+LABEL author="Harry <harrywong@live.com>" maintainer="Harry <harrywong@live.com>" version="1.2.0" \
   description="This is a base image for building everitoken/evt"
 
 RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
@@ -8,11 +8,11 @@ RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
     && apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y sudo wget curl net-tools ccache ninja-build ca-certificates \
        unzip gnupg git build-essential libtool autoconf automake m4 openssl libssl1.1 libssl-dev libgmp-dev zlib1g-dev \
-       libreadline-dev
+       libreadline-dev gcc-8 g++-8
 
-RUN wget --no-check-certificate https://cmake.org/files/v3.12/cmake-3.12.3-Linux-x86_64.sh \
-    && bash cmake-3.12.3-Linux-x86_64.sh --prefix=/usr/local --exclude-subdir --skip-license \
-    && rm cmake-3.12.3-Linux-x86_64.sh
+RUN wget --no-check-certificate https://github.com/Kitware/CMake/releases/download/v3.13.1/cmake-3.13.1-Linux-x86_64.sh -O cmake-latest-Linux-x86_64.sh \
+    && bash cmake-latest-Linux-x86_64.sh --prefix=/usr/local --exclude-subdir --skip-license \
+    && rm cmake-latest-Linux-x86_64.sh
 
 RUN wget https://dl.bintray.com/boostorg/release/1.68.0/source/boost_1_68_0.tar.bz2 -O - | tar -xj \
     && cd boost_1_68_0 \
