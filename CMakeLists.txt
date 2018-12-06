@@ -61,7 +61,6 @@ set(CXX_FLAGS
     -Wextra
     -Werror
     -Wno-unused-parameter
-    -Wno-maybe-uninitialized
     )
 string(REPLACE ";" " " CMAKE_CXX_FLAGS "${CXX_FLAGS}")
 
@@ -70,6 +69,12 @@ set(CXX_FLAGS_RELEASE
     -DNDEBUG
     )
 string(REPLACE ";" " " CMAKE_CXX_FLAGS_RELEASE "${CXX_FLAGS_RELEASE}")
+
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-uninitialized")
+elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-maybe-uninitialized")
+endif()
 
 if(USE_PCH)
     include(cotire)

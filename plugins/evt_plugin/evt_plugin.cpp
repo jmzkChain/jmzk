@@ -56,7 +56,7 @@ evt_plugin::get_read_only_api() const {
 
 evt_apis::read_write
 evt_plugin::get_read_write_api() {
-    return evt_apis::read_write(my_->db_);
+    return evt_apis::read_write();
 }
 
 namespace evt_apis {

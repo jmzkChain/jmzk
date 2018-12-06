@@ -181,7 +181,7 @@ string_to_name128(const char* str) {
 inline std::vector<name128>
 sort_names(std::vector<name128>&& names) {
     fc::deduplicate(names);
-    return names;
+    return std::move(names);
 }
 
 }}  // namespace evt::chain

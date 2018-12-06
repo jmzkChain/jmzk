@@ -82,14 +82,7 @@ private:
     const controller& db_;
 };
 
-class read_write {
-public:
-    read_write(controller& db)
-        : db_(db) {}
-
-private:
-    const controller& db_;
-};
+class read_write {};
 
 }  // namespace evt_apis
 
