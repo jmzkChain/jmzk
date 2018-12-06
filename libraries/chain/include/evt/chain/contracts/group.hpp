@@ -44,8 +44,8 @@ public:
     const group_name& name() const { return name_; }
     const address& key() const { return key_; }
     const node& root() const { FC_ASSERT(nodes_.size() > 0); return nodes_[0]; }
-    const bool empty() const { return nodes_.empty(); }
-    const auto metas() const { return metas_; }
+    bool empty() const { return nodes_.empty(); }
+    const auto& metas() const { return metas_; }
 
 public:
     void visit_root(const visit_func&) const;

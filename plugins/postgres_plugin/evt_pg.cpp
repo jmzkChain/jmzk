@@ -98,7 +98,7 @@ auto create_trxs_table = R"sql(CREATE TABLE IF NOT EXISTS public.transactions
                                    pending       boolean                  NOT NULL DEFAULT true,
                                    type          character varying(7)     NOT NULL,
                                    status        character varying(9)     NOT NULL,
-                                   signatures    character(120)[]         NOT NULL,
+                                   signatures    character(101)[]         NOT NULL,
                                    keys          character(53)[]          NOT NULL,
                                    elapsed       integer                  NOT NULL,
                                    charge        integer                  NOT NULL,
@@ -547,7 +547,7 @@ pg::add_trx(add_context& actx, const trx_recept_t& trx, const trx_t& strx, int s
         (std::string)strx.payer,
         (std::string)trx.type,
         (std::string)trx.status
-        );;
+        );
 
     // signatures
     format_array_to(cctx.trxs_copy_, std::begin(strx.signatures), std::end(strx.signatures));
