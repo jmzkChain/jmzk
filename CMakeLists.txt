@@ -61,6 +61,7 @@ set(CXX_FLAGS
     -Wextra
     -Werror
     -Wno-unused-parameter
+    -Wno-maybe-uninitialized
     )
 string(REPLACE ";" " " CMAKE_CXX_FLAGS "${CXX_FLAGS}")
 
