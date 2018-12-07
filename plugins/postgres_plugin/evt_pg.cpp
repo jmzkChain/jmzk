@@ -36,7 +36,11 @@ public:
 
 struct __insert_prepare {
     __insert_prepare(const std::string& name, const std::string sql) {
-        __prepare_register::instance().stmts[name] = sql;
+        auto& stmts = __prepare_register::instance().stmts;
+        if(stmts.find(name) != stmts.end()) {
+            throw new std::runtime_error(fmt::format("{} is already registered", name));
+        }
+        stmts[name] = sql;
     }
 };
 
@@ -728,7 +732,7 @@ pg::upd_domain(trx_context& tctx, const updatedomain& ud) {
         m = fc::json::to_string(u);
     }
 
-    fmt::format_to(tctx.trx_buf_, fmt("EXECUTE up_plan('{}','{}','{}', '{}');\n"), i, t, m, (std::string)ud.name);
+    fmt::format_to(tctx.trx_buf_, fmt("EXECUTE ud_plan('{}','{}','{}', '{}');\n"), i, t, m, (std::string)ud.name);
 
     return PG_OK;
 }
