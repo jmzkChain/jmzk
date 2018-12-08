@@ -507,6 +507,8 @@ def detailmongo(ctx):
 
 
 def check_evt_image():
+    missing_evt = False
+    missing_evt_mainnet = False
     try:
         client.images.get('everitoken/evt:latest')
     except docker.errors.ImageNotFound:
