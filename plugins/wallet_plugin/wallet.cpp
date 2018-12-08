@@ -348,9 +348,10 @@ void
 soft_wallet::unlock(string password) {
     try {
         FC_ASSERT(password.size() > 0);
-        auto         pw        = fc::sha512::hash(password.c_str(), password.size());
-        vector<char> decrypted = fc::aes_decrypt(pw, my->_wallet.cipher_keys);
-        auto         pk        = fc::raw::unpack<plain_keys>(decrypted);
+        auto pw        = fc::sha512::hash(password.c_str(), password.size());
+        auto decrypted = fc::aes_decrypt(pw, my->_wallet.cipher_keys);
+        auto pk        = fc::raw::unpack<plain_keys>(decrypted);
+
         FC_ASSERT(pk.checksum == pw);
         my->_keys     = std::move(pk.keys);
         my->_checksum = pk.checksum;
@@ -363,9 +364,9 @@ void
 soft_wallet::check_password(string password) {
     try {
         FC_ASSERT(password.size() > 0);
-        auto         pw        = fc::sha512::hash(password.c_str(), password.size());
-        vector<char> decrypted = fc::aes_decrypt(pw, my->_wallet.cipher_keys);
-        auto         pk        = fc::raw::unpack<plain_keys>(decrypted);
+        auto pw        = fc::sha512::hash(password.c_str(), password.size());
+        auto decrypted = fc::aes_decrypt(pw, my->_wallet.cipher_keys);
+        auto pk        = fc::raw::unpack<plain_keys>(decrypted);
         FC_ASSERT(pk.checksum == pw);
     }
     EVT_RETHROW_EXCEPTIONS(chain::wallet_invalid_password_exception,

@@ -77,8 +77,9 @@ wallet_manager::create(const std::string& name) {
     }
 
     auto password = gen_password();
-    wallet_data d;
-    auto        wallet = make_unique<soft_wallet>(d);
+    
+    auto d      = wallet_data();
+    auto wallet = make_unique<soft_wallet>(d);
     wallet->set_password(password);
     wallet->set_wallet_filename(wallet_filename.string());
     wallet->unlock(password);
