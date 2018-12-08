@@ -516,7 +516,6 @@ http_plugin::plugin_initialize(const variables_map& options) {
 
         tcp::resolver resolver(app().get_io_service());
 
-
         if(current_http_plugin_defaults.default_http_port > 0 && options.count("http-server-address") && options.at("http-server-address").as<string>().length()) {
             string lipstr = options.at("http-server-address").as<string>();
             string host   = lipstr.substr(0, lipstr.find(':'));
@@ -595,7 +594,7 @@ http_plugin::plugin_initialize(const variables_map& options) {
 
 void
 http_plugin::plugin_startup() {
-    if(my->listen_endpoint) {
+    if(my->listen_endpoint && (!my->url_handlers.empty() || !my->url_deferred_handlers.empty())) {
         try {
             my->http_conns.resize(my->max_deferred_connection_size);
             my->http_conn_index = 0;
@@ -621,7 +620,7 @@ http_plugin::plugin_startup() {
         }
     }
 
-    if(my->unix_endpoint) {
+    if(my->unix_endpoint && !my->url_local_handlers.empty()) {
         try {
             my->unix_server.clear_access_channels(websocketpp::log::alevel::all);
             my->unix_server.init_asio(&app().get_io_service());
@@ -646,7 +645,7 @@ http_plugin::plugin_startup() {
         }
     }
 
-    if(my->https_listen_endpoint) {
+    if(my->https_listen_endpoint && (!my->url_handlers.empty() || !my->url_deferred_handlers.empty())) {
         try {
             my->https_conns.resize(my->max_deferred_connection_size);
             my->https_conn_index = 0;
