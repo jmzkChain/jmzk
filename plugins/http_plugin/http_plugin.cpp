@@ -594,7 +594,7 @@ http_plugin::plugin_initialize(const variables_map& options) {
 
 void
 http_plugin::plugin_startup() {
-    if(my->listen_endpoint && (!my->url_handlers.empty() || !my->url_deferred_handlers.empty())) {
+    if(my->listen_endpoint) {
         try {
             my->http_conns.resize(my->max_deferred_connection_size);
             my->http_conn_index = 0;
@@ -620,7 +620,7 @@ http_plugin::plugin_startup() {
         }
     }
 
-    if(my->unix_endpoint && !my->url_local_handlers.empty()) {
+    if(my->unix_endpoint) {
         try {
             my->unix_server.clear_access_channels(websocketpp::log::alevel::all);
             my->unix_server.init_asio(&app().get_io_service());
@@ -645,7 +645,7 @@ http_plugin::plugin_startup() {
         }
     }
 
-    if(my->https_listen_endpoint && (!my->url_handlers.empty() || !my->url_deferred_handlers.empty())) {
+    if(my->https_listen_endpoint) {
         try {
             my->https_conns.resize(my->max_deferred_connection_size);
             my->https_conn_index = 0;
