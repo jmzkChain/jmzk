@@ -4,6 +4,7 @@
  */
 #pragma once
 #include <algorithm>
+#include <chrono>
 #include <sstream>
 #include <boost/noncopyable.hpp>
 #include <fmt/format.h>
@@ -39,7 +40,7 @@ public:
 
     bool has_authorized(const domain_name& domain, const domain_key& key) const;
     
-    void finalize_trace( action_trace& trace, const fc::time_point& start );
+    void finalize_trace( action_trace& trace, const std::chrono::steady_clock::time_point& start);
 
 public:
     void reset_console();

@@ -31,7 +31,7 @@ void
 apply_context::exec_one(action_trace& trace) {
     using namespace contracts;
 
-    auto start = fc::time_point::now();
+    auto start = std::chrono::steady_clock::now();
 
     auto r            = action_receipt();
     r.act_digest      = digest_type::hash(act);
@@ -68,10 +68,10 @@ apply_context::exec_one(action_trace& trace) {
 }
 
 void
-apply_context::finalize_trace(action_trace& trace, const fc::time_point& start) {
+apply_context::finalize_trace(action_trace& trace, const std::chrono::steady_clock::time_point& start) {
     trace.console = fmt::to_string(_pending_console_output);
     reset_console();
-    trace.elapsed = fc::time_point::now() - start;
+    trace.elapsed = fc::microseconds(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start).count());
 }
 
 void
