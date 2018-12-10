@@ -1301,18 +1301,21 @@ struct pd_header {
 
 int
 token_database::persist_savepoints() const {
-    auto filename = fc::path(db_path_) / config::tokendb_persisit_filename;
-    if(fc::exists(filename)) {
-        fc::remove(filename);
+    try {
+        auto filename = fc::path(db_path_) / config::tokendb_persisit_filename;
+        if(fc::exists(filename)) {
+            fc::remove(filename);
+        }
+        auto fs = std::fstream();
+        fs.exceptions(std::fstream::failbit | std::fstream::badbit);
+        fs.open(filename.to_native_ansi_path(), (std::ios::out | std::ios::binary));
+
+        persist_savepoints(fs);
+
+        fs.flush();
+        fs.close();
     }
-    auto fs = std::fstream();
-    fs.exceptions(std::fstream::failbit | std::fstream::badbit);
-    fs.open(filename.to_native_ansi_path(), (std::ios::out | std::ios::binary));
-
-    persist_savepoints(fs);
-
-    fs.flush();
-    fs.close();
+    EVT_CAPTURE_AND_RETHROW(tokendb_persist_exception);
     return 0;
 }
 

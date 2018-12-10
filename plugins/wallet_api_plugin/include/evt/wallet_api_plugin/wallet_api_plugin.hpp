@@ -20,18 +20,19 @@ public:
     wallet_api_plugin()                         = default;
     wallet_api_plugin(const wallet_api_plugin&) = delete;
     wallet_api_plugin(wallet_api_plugin&&)      = delete;
+    virtual ~wallet_api_plugin() override       = default;
+
     wallet_api_plugin& operator=(const wallet_api_plugin&) = delete;
     wallet_api_plugin& operator=(wallet_api_plugin&&) = delete;
-    virtual ~wallet_api_plugin() override             = default;
 
-    virtual void
-    set_program_options(options_description& cli, options_description& cfg) override {}
+    virtual void set_program_options(options_description& cli, options_description& cfg) override;
+    
     void plugin_initialize(const variables_map& vm);
     void plugin_startup();
-    void
-    plugin_shutdown() {}
+    void plugin_shutdown() {}
 
 private:
+    bool listen_http_;
 };
 
 }  // namespace evt

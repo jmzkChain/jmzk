@@ -286,6 +286,8 @@ FC_DECLARE_DERIVED_EXCEPTION( tokendb_seq_not_valid,        tokendb_exception, 3
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_db_action_exception,  tokendb_exception, 3150006, "Unknown db action type." );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_dirty_flag_exception, tokendb_exception, 3150007, "Checkspoints log file is in dirty." );
 FC_DECLARE_DERIVED_EXCEPTION( tokendb_squash_exception,     tokendb_exception, 3150008, "Cannot perform squash operation now" );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_snapshot_exception,   tokendb_exception, 3150009, "Create or restore snapshot failed" );
+FC_DECLARE_DERIVED_EXCEPTION( tokendb_persist_exception,    tokendb_exception, 3150010, "Persist savepoints failed" );
 
 FC_DECLARE_DERIVED_EXCEPTION( guard_exception,            database_exception, 3160101, "Database exception" );
 FC_DECLARE_DERIVED_EXCEPTION( database_guard_exception,   guard_exception,    3160102, "Database usage is at unsafe levels" );

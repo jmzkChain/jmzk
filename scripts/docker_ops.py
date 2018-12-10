@@ -507,12 +507,21 @@ def detailmongo(ctx):
 
 
 def check_evt_image():
+    missing_evt = False
+    missing_evt_mainnet = False
     try:
         client.images.get('everitoken/evt:latest')
     except docker.errors.ImageNotFound:
-        click.echo('Cannot find image: {}, please pull first'.format(
-            green('everitoken/evt:latest')))
+        missing_evt = True
 
+    try:
+        client.images.get('everitoken/evt-mainnet:latest')
+    except docker.errors.ImageNotFound:
+        missing_evt_mainnet = True
+
+    if missing_evt and missing_evt_mainnet:
+        click.echo('Nither find image: {} or {}, please pull one first'.format(
+            green('everitoken/evt:latest'), green('everitoken/evt-mainnet:latest')))
 
 @cli.group()
 @click.option('--name', '-n', default='evtd', help='Name of the container running evtd')

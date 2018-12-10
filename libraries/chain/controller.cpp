@@ -241,7 +241,7 @@ struct controller_impl {
         }
 
         const auto& log_head       = blog.head();
-        bool        append_to_blog = false;
+        auto        append_to_blog = false;
         if(!log_head) {
             if(s->block) {
                 EVT_ASSERT(s->block_num == blog.first_block_num(), block_log_exception, "block log has no blocks and is appending the wrong first block.  Expected ${expected}, but received: ${actual}",
@@ -262,6 +262,7 @@ struct controller_impl {
         }
 
         db.commit(s->block_num);
+        token_db.pop_savepoints(s->block_num);
 
         if(append_to_blog) {
             blog.append(s->block);
