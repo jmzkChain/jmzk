@@ -5,6 +5,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive \
     && rm -rf /var/lib/apt/lists/*
 
 RUN wget https://github.com/everitoken/evt/raw/master/scripts/snapshot_upload.py
+RUN wget https://github.com/everitoken/evt/raw/master/scripts/snapshot_fetch.py
 
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8

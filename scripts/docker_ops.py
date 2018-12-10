@@ -730,6 +730,23 @@ def snapshot(ctx, postgres, upload, aws_key, aws_secret):
 
 
 @evtd.command()
+@click.option('--name', '-n', help='Name of snapshot to fetch', required=True)
+@click.pass_context
+def getsnapshot(ctx, name):
+    name = ctx.obj['name']
+    volume_name = '{}-snapshots-volume'.format(name)
+
+    entry = 'python3 snapshot_fetch.py --name={0} --file=/data/{0}'.format(name)
+
+    container = client.containers.run('everitoken/snapshot:latest', entry, detach=True,
+                                      volumes={volume_name: {'bind': '/data', 'mode': 'rw'}})
+    container.wait()
+    logs = container.logs().decode('utf-8')
+
+    click.echo(logs)
+
+
+@evtd.command()
 @click.argument('arguments', nargs=-1)
 @click.option('--type', '-t', default='testnet', type=click.Choice(['testnet', 'mainnet']), help='Type of the image')
 @click.option('--net', '-n', default='evt-net', help='Name of the network for the environment')
