@@ -6,7 +6,9 @@ import time
 
 import boto3
 import click
+from botocore.exceptions import ClientError
 from botocore.handlers import disable_signing
+
 
 def green(text):
     return click.style(text, fg='green')
@@ -33,15 +35,22 @@ def upload(file, block_id, block_num, block_time, postgres, bucket, aws_key, aws
 
     t = time.monotonic()
 
+    key = file
     click.echo('Uploading: {} to {} bucket'.format(
         click.style(key, fg='red'), click.style(bucket, fg='green')))
+
+    if postgres:
+        pg = 'true'
+    else:
+        pg = 'false'
+
     s3.Object(bucket, key).put(
         Body=open(file, 'rb'),
         Metadata={
             'block-id': block_id,
             'block_num': block_num,
             'block_time': block_time,
-            'postgres': postgres
+            'postgres': pg
         },
         StorageClass='STANDARD_IA'
     )
@@ -60,7 +69,7 @@ def upload(file, block_id, block_num, block_time, postgres, bucket, aws_key, aws
 @click.option('--name', '-n', required=True)
 @click.option('--bucket', '-b', default='evt-snapshots')
 @click.option('--file', '-f', required=True)
-def fetch(name, bucket, file, aws_key, aws_secret):
+def fetch(name, bucket, file):
     s3 = boto3.resource('s3')
     s3.meta.client.meta.events.register('choose-signer.s3.*', disable_signing)
 
@@ -71,11 +80,13 @@ def fetch(name, bucket, file, aws_key, aws_secret):
 
     try:
         s3.Bucket(bucket).download_file(name, file)
-    except botocore.exceptions.ClientError as e:
-        if e.response['Error']['Code'] == "404":
-            print("The object does not exist.")
+    except ClientError as e:
+        if e.response['Error']['Code'] == '404':
+            print('The object does not exist.')
         else:
             raise
+
+    t2 = time.monotonic()
 
     click.echo('Download finished, took {} ms'.format(
                click.style(str(round((t2-t) * 1000)), fg='green')))
@@ -88,12 +99,12 @@ def list(number, bucket):
     s3 = boto3.resource('s3')
     s3.meta.client.meta.events.register('choose-signer.s3.*', disable_signing)
 
-    objs = s3.Bucket(bucket).objects.limit(count = number)
-    
+    objs = s3.Bucket(bucket).objects.limit(count=number)
+
     click.echo('{:<80} {:>12} {:<12}'.format('name', 'number', 'postgres'))
     for obj in objs:
         name = obj.key
-        metas = s3.Object(bucket, name).metadata;
+        metas = s3.Object(bucket, name).metadata
         num = metas['block_num']
         if 'postgres' in metas:
             pg = metas['postgres']

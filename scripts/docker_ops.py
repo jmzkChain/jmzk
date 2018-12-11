@@ -231,18 +231,19 @@ def create(ctx, net, port, host, password):
     client.containers.create(image, None, name=name, detach=True, network=net,
                              ports={'5432/tcp': (host, port)},
                              volumes={
-                                volume_name: {
-                                 'bind': '/bitnami', 'mode': 'rw'},
-                                volume2_name: {
-                                 'bind': '/opt/bitnami/postgresql/conf', 'mode': 'rw'
-                                }
+                                 volume_name: {
+                                     'bind': '/bitnami', 'mode': 'rw'},
+                                 volume2_name: {
+                                     'bind': '/opt/bitnami/postgresql/conf', 'mode': 'rw'
+                                 }
                              },
                              )
     click.echo('{} container is created'.format(green(name)))
 
     if len(password) > 0:
         me = 'md5'
-        click.echo('{}: Password is set only if it\'s the first time creating postgres, otherwise it will reuse old password. Please use {} command.'.format(green('NOTICE'), green('postgres updpass')))
+        click.echo('{}: Password is set only if it\'s the first time creating postgres, otherwise it will reuse old password. Please use {} command.'.format(
+            green('NOTICE'), green('postgres updpass')))
     else:
         me = 'trust'
 
@@ -253,10 +254,11 @@ def create(ctx, net, port, host, password):
               host    all             all             0.0.0.0/0               {}""".format(me)
 
     click.echo('Writting default {}'.format(green('pg_hba.conf')))
-    cmd = '/bin/bash -c "echo -e \'{}\' | cat > /opt/bitnami/postgresql/conf/pg_hba.conf"'.format(conf)
+    cmd = '/bin/bash -c "echo -e \'{}\' | cat > /opt/bitnami/postgresql/conf/pg_hba.conf"'.format(
+        conf)
     r = client.containers.run(image, cmd, auto_remove=True, volumes={volume2_name: {
         'bind': '/opt/bitnami/postgresql/conf', 'mode': 'rw'
-        }})
+    }})
 
 
 @postgres.command()
@@ -307,7 +309,8 @@ def updpass(ctx, new_password):
         click.echo('{} container is not existed'.format(green(name)))
         return
 
-    cmd = 'psql -U postgres -c "ALTER USER postgres WITH PASSWORD \'{}\';"'.format(new_password)
+    cmd = 'psql -U postgres -c "ALTER USER postgres WITH PASSWORD \'{}\';"'.format(
+        new_password)
     c, logs = container.exec_run(cmd)
 
     if 'ALTER ROLE' in logs.decode('utf-8'):
@@ -523,6 +526,7 @@ def check_evt_image():
         click.echo('Nither find image: {} or {}, please pull one first'.format(
             green('everitoken/evt:latest'), green('everitoken/evt-mainnet:latest')))
 
+
 @cli.group()
 @click.option('--name', '-n', default='evtd', help='Name of the container running evtd')
 @click.pass_context
@@ -699,7 +703,8 @@ def snapshot(ctx, postgres, upload, aws_key, aws_secret):
     else:
         p = ''
 
-    entry = '/opt/evt/bin/evtc -u unix:///opt/evt/data/evtd.sock producer snapshot {}'.format(p)
+    entry = '/opt/evt/bin/evtc -u unix:///opt/evt/data/evtd.sock producer snapshot {}'.format(
+        p)
     code, result = container.exec_run(entry)
 
     obj = {}
@@ -717,8 +722,13 @@ def snapshot(ctx, postgres, upload, aws_key, aws_secret):
         click.echo('AWS key or secret is empty, cannot upload to S3')
         return
 
-    entry = "upload --file=/data/{} --block-id='{}' --block-num={} --block-time='{}' --postgres={} --aws-key={} --aws-secret={}".format(
-        pathlib.Path(obj['snapshot_name']).name, obj['head_block_id'], obj['head_block_num'], obj['head_block_time'], obj['postgres'], aws_key, aws_secret)
+    if obj['postgres'] == 'true':
+        pg = '--postgres'
+    else:
+        pg = '--no-postgres'
+
+    entry = "upload --file=/data/{} --block-id='{}' --block-num={} --block-time='{}' {} --aws-key={} --aws-secret={}".format(
+        pathlib.Path(obj['snapshot_name']).name, obj['head_block_id'], obj['head_block_num'], obj['head_block_time'], pg, aws_key, aws_secret)
 
     container = client.containers.run('everitoken/snapshot:latest', entry, detach=True,
                                       volumes={volume_name: {'bind': '/data', 'mode': 'rw'}})
@@ -729,13 +739,13 @@ def snapshot(ctx, postgres, upload, aws_key, aws_secret):
 
 
 @evtd.command()
-@click.option('--name', '-n', help='Name of snapshot to fetch', required=True)
+@click.argument('snapshot')
 @click.pass_context
-def getsnapshot(ctx, name):
+def getsnapshot(ctx, snapshot):
     name = ctx.obj['name']
     volume_name = '{}-snapshots-volume'.format(name)
 
-    entry = 'python3 snapshot_fetch.py --name={0} --file=/data/{0}'.format(name)
+    entry = 'fetch --name={0} --file=/data/{0}'.format(snapshot)
 
     container = client.containers.run('everitoken/snapshot:latest', entry, detach=True,
                                       volumes={volume_name: {'bind': '/data', 'mode': 'rw'}})
