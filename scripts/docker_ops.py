@@ -756,6 +756,17 @@ def getsnapshot(ctx, snapshot):
 
 
 @evtd.command()
+def lsnapshots():
+    entry = 'list -n 20'
+
+    container = client.containers.run('everitoken/snapshot:latest', entry, detach=True)
+    container.wait()
+    logs = container.logs().decode('utf-8')
+
+    click.echo(logs)
+
+
+@evtd.command()
 @click.argument('arguments', nargs=-1)
 @click.option('--type', '-t', default='testnet', type=click.Choice(['testnet', 'mainnet']), help='Type of the image')
 @click.option('--net', '-n', default='evt-net', help='Name of the network for the environment')
