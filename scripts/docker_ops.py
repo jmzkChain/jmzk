@@ -699,8 +699,7 @@ def snapshot(ctx, postgres, upload, aws_key, aws_secret):
     else:
         p = ''
 
-    entry = '/opt/evt/bin/evtc -u unix:///opt/evt/data/evtd.sock producer snapshot {}'.format(
-        p)
+    entry = '/opt/evt/bin/evtc -u unix:///opt/evt/data/evtd.sock producer snapshot {}'.format(p)
     code, result = container.exec_run(entry)
 
     obj = {}
@@ -718,8 +717,8 @@ def snapshot(ctx, postgres, upload, aws_key, aws_secret):
         click.echo('AWS key or secret is empty, cannot upload to S3')
         return
 
-    entry = "--file=/data/{} --block-id='{}' --block-num={} --block-time='{}' --aws-key={} --aws-secret={}".format(
-        pathlib.Path(obj['snapshot_name']).name, obj['head_block_id'], obj['head_block_num'], obj['head_block_time'], aws_key, aws_secret)
+    entry = "upload --file=/data/{} --block-id='{}' --block-num={} --block-time='{}' --postgres={} --aws-key={} --aws-secret={}".format(
+        pathlib.Path(obj['snapshot_name']).name, obj['head_block_id'], obj['head_block_num'], obj['head_block_time'], obj['postgres'], aws_key, aws_secret)
 
     container = client.containers.run('everitoken/snapshot:latest', entry, detach=True,
                                       volumes={volume_name: {'bind': '/data', 'mode': 'rw'}})
