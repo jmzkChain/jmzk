@@ -35,7 +35,7 @@ def upload(file, block_id, block_num, block_time, postgres, bucket, aws_key, aws
 
     t = time.monotonic()
 
-    key = file
+    key = pathlib.Path(file).name
     click.echo('Uploading: {} to {} bucket'.format(
         click.style(key, fg='red'), click.style(bucket, fg='green')))
 
@@ -105,7 +105,7 @@ def list(number, bucket):
     for obj in objs:
         name = obj.key
         metas = s3.Object(bucket, name).metadata
-        num = metas['block_num']
+        num = int(metas['block_num'])
         if 'postgres' in metas:
             pg = metas['postgres']
         else:
