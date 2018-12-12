@@ -109,6 +109,21 @@ def detail(name):
     click.echo('  status: {}'.format(green(ct['Status'])))
 
 
+@cli.command()
+@click.option('--prefix', '-p', help='Prefix of snapshots to list')
+def snapshots(prefix):
+    if prefix is not None:
+        entry = 'list -p {}'.format(prefix)
+    else:
+        entry = 'list'
+
+    container = client.containers.run('everitoken/snapshot:latest', entry, detach=True)
+    container.wait()
+    logs = container.logs().decode('utf-8')
+
+    click.echo(logs)
+
+
 @cli.group('network')
 @click.option('--name', '-n', default='evt-net', help='Name of the network for the environment')
 @click.pass_context
@@ -745,21 +760,10 @@ def getsnapshot(ctx, snapshot):
     name = ctx.obj['name']
     volume_name = '{}-snapshots-volume'.format(name)
 
-    entry = 'fetch --name={0} --file=/data/{0}'.format(snapshot)
+    entry = 'fetch --name={} --file=/data/{}'.format(snapshot, snapshot[8:])
 
     container = client.containers.run('everitoken/snapshot:latest', entry, detach=True,
                                       volumes={volume_name: {'bind': '/data', 'mode': 'rw'}})
-    container.wait()
-    logs = container.logs().decode('utf-8')
-
-    click.echo(logs)
-
-
-@evtd.command()
-def lsnapshots():
-    entry = 'list -n 20'
-
-    container = client.containers.run('everitoken/snapshot:latest', entry, detach=True)
     container.wait()
     logs = container.logs().decode('utf-8')
 

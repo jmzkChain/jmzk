@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import datetime
 import os
 import pathlib
 import time
@@ -35,7 +36,7 @@ def upload(file, block_id, block_num, block_time, postgres, bucket, aws_key, aws
 
     t = time.monotonic()
 
-    key = pathlib.Path(file).name
+    key = '{}/{}'.format(datetime.datetime.now().strftime('%Y-%m'), pathlib.Path(file).name)
     click.echo('Uploading: {} to {} bucket'.format(
         click.style(key, fg='red'), click.style(bucket, fg='green')))
 
@@ -61,7 +62,7 @@ def upload(file, block_id, block_num, block_time, postgres, bucket, aws_key, aws
 
     t2 = time.monotonic()
 
-    click.echo('Uploaded all the symbols, took {} ms'.format(
+    click.echo('Uploaded snapshot, took {} ms'.format(
                click.style(str(round((t2-t) * 1000)), fg='green')))
 
 
@@ -88,30 +89,36 @@ def fetch(name, bucket, file):
 
     t2 = time.monotonic()
 
-    click.echo('Download finished, took {} ms'.format(
-               click.style(str(round((t2-t) * 1000)), fg='green')))
+    click.echo('Download to {} finished, took {} ms'.format(
+               green(file), click.style(str(round((t2-t) * 1000)), fg='green')))
 
 
 @cli.command()
-@click.option('--number', '-n', default=10, help='Number of latest snapshots to list')
+@click.option('--prefix', '-p', help='Prefix of snapshots to list')
 @click.option('--bucket', '-b', default='evt-snapshots')
-def list(number, bucket):
+def list(prefix, bucket):
     s3 = boto3.resource('s3')
     s3.meta.client.meta.events.register('choose-signer.s3.*', disable_signing)
 
-    objs = s3.Bucket(bucket).objects.limit(count=number)
+    if prefix is None:
+        prefix = datetime.datetime.now().strftime('%Y-%m')
 
-    click.echo('{:<80} {:>12} {:<12}'.format('name', 'number', 'postgres'))
+    click.echo("Querying snapshots with prefix: {}".format(green(prefix)))
+
+    objs = s3.Bucket(bucket).objects.filter(Prefix=prefix)
+
+    click.echo('{:<80} {:>12} {:<12} {:<25}'.format('name', 'number', 'postgres', 'time'))
     for obj in objs:
         name = obj.key
         metas = s3.Object(bucket, name).metadata
         num = int(metas['block_num'])
+        time = metas['block_time']
         if 'postgres' in metas:
             pg = metas['postgres']
         else:
             pg = 'NA'
 
-        click.echo('{:<80} {:>12n} {:<12}'.format(name, num, pg))
+        click.echo('{:<80} {:>12n} {:<12} {:<25}'.format(name, num, pg, time))
 
 
 if __name__ == '__main__':
