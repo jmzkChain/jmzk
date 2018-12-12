@@ -41,9 +41,9 @@ def upload(file, block_id, block_num, block_time, postgres, bucket, aws_key, aws
         click.style(key, fg='red'), click.style(bucket, fg='green')))
 
     if postgres:
-        pg = 'true'
+        pg = 'yes'
     else:
-        pg = 'false'
+        pg = 'no'
 
     s3.Object(bucket, key).put(
         Body=open(file, 'rb'),
@@ -103,12 +103,15 @@ def list(prefix, bucket):
     if prefix is None:
         prefix = datetime.datetime.now().strftime('%Y-%m')
 
-    click.echo("Querying snapshots with prefix: {}".format(green(prefix)))
+    click.echo("Querying snapshots with prefix: {}\n".format(green(prefix)))
 
     objs = s3.Bucket(bucket).objects.filter(Prefix=prefix)
 
-    click.echo('{:<80} {:>12} {:<12} {:<25}'.format('name', 'number', 'postgres', 'time'))
+    click.echo('{:<90} {:>12} {:<10} {:<25}'.format('name', 'number', 'postgres', 'time'))
     for obj in objs:
+        if len(obj.key) == 8:
+            continue
+
         name = obj.key
         metas = s3.Object(bucket, name).metadata
         num = int(metas['block_num'])
@@ -118,7 +121,7 @@ def list(prefix, bucket):
         else:
             pg = 'NA'
 
-        click.echo('{:<80} {:>12n} {:<12} {:<25}'.format(name, num, pg, time))
+        click.echo('{:<90} {:>12n} {:<10} {:<25}'.format(name, num, pg, time))
 
 
 if __name__ == '__main__':
