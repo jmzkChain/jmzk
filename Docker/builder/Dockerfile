@@ -14,12 +14,12 @@ RUN wget --no-check-certificate https://github.com/Kitware/CMake/releases/downlo
     && bash cmake-latest-Linux-x86_64.sh --prefix=/usr/local --exclude-subdir --skip-license \
     && rm cmake-latest-Linux-x86_64.sh
 
-RUN wget https://dl.bintray.com/boostorg/release/1.68.0/source/boost_1_68_0.tar.bz2 -O - | tar -xj \
-    && cd boost_1_68_0 \
+RUN wget https://dl.bintray.com/boostorg/release/1.69.0/source/boost_1_69_0.tar.bz2 -O - | tar -xj \
+    && cd boost_1_69_0 \
     && ./bootstrap.sh --prefix=/usr/local \
     && ./b2 -d0 -j$(nproc) --with-thread --with-date_time --with-system --with-filesystem --with-program_options \
-       --with-signals --with-serialization --with-chrono --with-test --with-context --with-locale --with-coroutine --with-iostreams toolset=gcc link=shared install \
-    && cd .. && rm -rf boost_1_68_0
+       --with-serialization --with-chrono --with-test --with-context --with-locale --with-coroutine --with-iostreams toolset=gcc link=shared install \
+    && cd .. && rm -rf boost_1_69_0
 
 RUN git clone --depth 1 git://github.com/cryptonomex/secp256k1-zkp \
     && cd secp256k1-zkp \
