@@ -862,7 +862,9 @@ def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_db, post
                                  volume2_name: {
                                  'bind': '/opt/evt/snapshots', 'mode': 'rw'},
                              },
-                             entrypoint=entry
+                             entrypoint=entry,
+                             cap_add='SYS_PTRACE',
+                             security_opt='apparmor:unconfined',
                              )
     click.echo('{} container is created'.format(green(name)))
 
