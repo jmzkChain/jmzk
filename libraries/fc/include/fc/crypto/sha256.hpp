@@ -15,7 +15,7 @@ class sha256
     explicit sha256( const char *data, size_t size );
 
     string str()const;
-    operator string()const;
+    explicit operator string()const;
 
     char*    data()const;
     size_t data_size()const { return 256 / 8; }

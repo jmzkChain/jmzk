@@ -11,7 +11,7 @@ class sha1
     explicit sha1( const string& hex_str );
 
     string str()const;
-    operator string()const;
+    explicit operator string()const;
 
     char*    data()const;
     size_t data_size()const { return 20; }
