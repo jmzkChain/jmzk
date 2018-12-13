@@ -127,13 +127,12 @@ else()
     set(Boost_USE_STATIC_LIBS OFF CACHE STRING "ON or OFF")
 endif()
 
-FIND_PACKAGE(Boost 1.64 REQUIRED COMPONENTS
+FIND_PACKAGE(Boost 1.69 REQUIRED COMPONENTS
     thread
     date_time
     filesystem
     system
     program_options
-    signals
     serialization
     chrono
     unit_test_framework
