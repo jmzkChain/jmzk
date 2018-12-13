@@ -23,11 +23,11 @@ RUN mkdir /tmp/build/symbols
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 
-RUN python3 /evt/scripts/symbolstore.py -s /tmp/build/symbols /tmp/build/bin/evtd
-RUN python3 /evt/scripts/symbolstore.py -s /tmp/build/symbols /tmp/build/bin/evtc
-RUN python3 /evt/scripts/symbolstore.py -s /tmp/build/symbols /tmp/build/bin/evtwd
+RUN python3 /evt/scripts/symbol_ops.py export -s /tmp/build/symbols /tmp/build/bin/evtd
+RUN python3 /evt/scripts/symbol_ops.py export -s /tmp/build/symbols /tmp/build/bin/evtc
+RUN python3 /evt/scripts/symbol_ops.py export -s /tmp/build/symbols /tmp/build/bin/evtwd
 
-RUN python3 /evt/scripts/symbolupload.py -f /tmp/build/symbols -k $awskey -s $awssecret -r evt-mainnet -b evt-symbols
+RUN python3 /evt/scripts/symbol_ops.py upload -f /tmp/build/symbols -k $awskey -s $awssecret -r evt-mainnet -b evt-symbols
 
 FROM ubuntu:18.04
 
