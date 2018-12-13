@@ -255,7 +255,7 @@ postgres_plugin_impl::process_irreversible_block(const block_state_ptr block, st
             // add it manually
             _process_block(block, traces, cctx, tctx);
         }
-        db_.set_block_irreversible(tctx, block->id);
+        db_.set_block_irreversible(tctx, block->id.str());
     }
     catch(fc::exception& e) {
         elog("Exception while processing irreversible block ${e}", ("e", e.to_string()));
@@ -360,10 +360,11 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
     // transactions
     auto trx_num = 0;
     for(const auto& trx : block->block->transactions) {
-        auto strx    = trx.trx.get_signed_transaction();
-        auto trx_id  = strx.id();
-        auto elapsed = 0;
-        auto charge  = 0;
+        auto strx       = trx.trx.get_signed_transaction();
+        auto trx_id     = strx.id();
+        auto str_trx_id = strx.id().str();
+        auto elapsed    = 0;
+        auto charge     = 0;
 
         if(trx.status == transaction_receipt_header::executed && !strx.actions.empty()) {
             auto it = traces.begin();
@@ -379,9 +380,11 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
                         break;
                     }
 
+                    tctx.set_trx_id(str_trx_id);
+
                     auto act_num = 0;
                     for(auto& act_trace : trace->action_traces) {
-                        db_.add_action(actx, act_trace, trx_id, act_num);
+                        db_.add_action(actx, act_trace, str_trx_id, act_num);
                         process_action(act_trace.act, tctx);
                         act_num++;
                     }

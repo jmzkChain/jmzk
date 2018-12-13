@@ -19,7 +19,8 @@ namespace evt {
 
 // Update:
 // - 1.1.0: add `global_seq` field to `actions` table
-static auto pg_version = "1.1.0";
+// - 1.2.0: add `trx_id` feild to `metas`, `domains`, `tokens`, `groups` and `fungibles` tables
+static auto pg_version = "1.2.0";
 
 namespace __internal {
 
@@ -122,7 +123,7 @@ auto create_actions_table = R"sql(CREATE TABLE IF NOT EXISTS public.actions
                                   (
                                       block_id   character(64)            NOT NULL,
                                       block_num  integer                  NOT NULL,
-                                      trx_id     character varying(64)    NOT NULL,
+                                      trx_id     character(64)            NOT NULL,
                                       seq_num    integer                  NOT NULL,
                                       global_seq bigint                   NOT NULL,
                                       name       character varying(13)    NOT NULL,
@@ -151,6 +152,7 @@ auto create_metas_table = R"sql(CREATE SEQUENCE IF NOT EXISTS metas_id_seq;
                                     key        character varying(21)     NOT NULL,
                                     value      text                      NOT NULL,
                                     creator    character varying(57)     NOT NULL,
+                                    trx_id     character(64)             NOT NULL,
                                     created_at timestamp with time zone  NOT NULL  DEFAULT now(),
                                     CONSTRAINT metas_pkey PRIMARY KEY (id)
                                 )
@@ -167,6 +169,7 @@ auto create_domains_table = R"sql(CREATE TABLE IF NOT EXISTS public.domains
                                       transfer   jsonb                       NOT NULL,
                                       manage     jsonb                       NOT NULL,
                                       metas      integer[]                   NOT NULL,
+                                      trx_id     character(64)               NOT NULL,
                                       created_at timestamp with time zone    NOT NULL  DEFAULT now(),
                                       CONSTRAINT domains_pkey PRIMARY KEY (name)
                                   )
@@ -186,6 +189,7 @@ auto create_tokens_table = R"sql(CREATE TABLE IF NOT EXISTS public.tokens
                                      name       character varying(21)       NOT NULL,
                                      owner      character(53)[]             NOT NULL,
                                      metas      integer[]                   NOT NULL,
+                                     trx_id     character(64)               NOT NULL,
                                      created_at timestamp with time zone    NOT NULL  DEFAULT now(),
                                      CONSTRAINT tokens_pkey PRIMARY KEY (id)
                                  )
@@ -204,6 +208,7 @@ auto create_groups_table = R"sql(CREATE TABLE IF NOT EXISTS public.groups
                                      key        character(53)               NOT NULL,
                                      def        jsonb                       NOT NULL,
                                      metas      integer[]                   NOT NULL,
+                                     trx_id     character(64)               NOT NULL,
                                      created_at timestamp with time zone    NOT NULL  DEFAULT now(),
                                      CONSTRAINT groups_pkey PRIMARY KEY (name)
                                  )
@@ -226,6 +231,7 @@ auto create_fungibles_table = R"sql(CREATE TABLE IF NOT EXISTS public.fungibles
                                         issue      jsonb                       NOT NULL,
                                         manage     jsonb                       NOT NULL,
                                         metas      integer[]                   NOT NULL,
+                                        trx_id     character(64)               NOT NULL,
                                         created_at timestamp with time zone    NOT NULL  DEFAULT now(),
                                         CONSTRAINT fungibles_pkey PRIMARY KEY (sym_id)
                                     )
@@ -690,7 +696,7 @@ pg::upd_stat(trx_context& tctx, const std::string& key, const std::string& value
     return PG_OK;
 }
 
-PREPARE_SQL_ONCE(nd_plan, "INSERT INTO domains VALUES($1, $2, $3, $4, $5, '{}', now());");
+PREPARE_SQL_ONCE(nd_plan, "INSERT INTO domains VALUES($1, $2, $3, $4, $5, '{}', $6, now());");
 
 int
 pg::add_domain(trx_context& tctx, const newdomain& nd) {
@@ -700,12 +706,13 @@ pg::add_domain(trx_context& tctx, const newdomain& nd) {
     fc::to_variant(nd.manage, manage);
 
     fmt::format_to(tctx.trx_buf_,
-        fmt("EXECUTE nd_plan('{}','{}','{}','{}','{}');\n"),
+        fmt("EXECUTE nd_plan('{}','{}','{}','{}','{}','{}');\n"),
         (std::string)nd.name,
         (std::string)nd.creator,
         fc::json::to_string(issue),
         fc::json::to_string(transfer),
-        fc::json::to_string(manage)
+        fc::json::to_string(manage),
+        tctx.trx_id()
         );
 
     return PG_OK;
@@ -737,7 +744,7 @@ pg::upd_domain(trx_context& tctx, const updatedomain& ud) {
     return PG_OK;
 }
 
-PREPARE_SQL_ONCE(it_plan, "INSERT INTO tokens VALUES($1, $2, $3, $4, '{}', now());");
+PREPARE_SQL_ONCE(it_plan, "INSERT INTO tokens VALUES($1, $2, $3, $4, '{}', $5, now());");
 
 int
 pg::add_tokens(trx_context& tctx, const issuetoken& it) {
@@ -756,10 +763,11 @@ pg::add_tokens(trx_context& tctx, const issuetoken& it) {
     auto domain = (std::string)it.domain;
     for(auto& name : it.names) {
         fmt::format_to(tctx.trx_buf_,
-            fmt("EXECUTE it_plan('{0}:{1}','{0}','{1}','{2}');\n"),
+            fmt("EXECUTE it_plan('{0}:{1}','{0}','{1}','{2}','{3}');\n"),
             domain,
             (std::string)name,
-            owners
+            owners,
+            tctx.trx_id()
             );
     }
     return PG_OK;
@@ -797,7 +805,7 @@ pg::del_token(trx_context& tctx, const destroytoken& dt) {
     return PG_OK;
 }
 
-PREPARE_SQL_ONCE(ng_plan, "INSERT INTO groups VALUES($1, $2, $3, '{}', now());");
+PREPARE_SQL_ONCE(ng_plan, "INSERT INTO groups VALUES($1, $2, $3, '{}', $4, now());");
 
 int
 pg::add_group(trx_context& tctx, const newgroup& ng) {
@@ -805,10 +813,11 @@ pg::add_group(trx_context& tctx, const newgroup& ng) {
     fc::to_variant(ng.group, def);
 
     fmt::format_to(tctx.trx_buf_,
-        fmt("EXECUTE ng_plan('{}','{}','{}');\n"),
+        fmt("EXECUTE ng_plan('{}','{}','{}','{}');\n"),
         (std::string)ng.name,
         (std::string)ng.group.key(),
-        fc::json::to_string(def["root"])
+        fc::json::to_string(def["root"]),
+        tctx.trx_id()
         );
 
     return PG_OK;
@@ -830,7 +839,7 @@ pg::upd_group(trx_context& tctx, const updategroup& ug) {
     return PG_OK;
 }
 
-PREPARE_SQL_ONCE(nf_plan, "INSERT INTO fungibles VALUES($1, $2, $3, $4, $5, $6, $7, '{}', now());");
+PREPARE_SQL_ONCE(nf_plan, "INSERT INTO fungibles VALUES($1, $2, $3, $4, $5, $6, $7, '{}', $8, now());");
 
 int
 pg::add_fungible(trx_context& tctx, const newfungible& nf) {
@@ -839,14 +848,15 @@ pg::add_fungible(trx_context& tctx, const newfungible& nf) {
     fc::to_variant(nf.manage, manage);
 
     fmt::format_to(tctx.trx_buf_,
-        fmt("EXECUTE nf_plan('{}','{}','{}',{:d},'{}','{}','{}');\n"),
+        fmt("EXECUTE nf_plan('{}','{}','{}',{:d},'{}','{}','{}','{}');\n"),
         (std::string)nf.name,
         (std::string)nf.sym_name,
         (std::string)nf.sym,
         (int64_t)nf.sym.id(),
         (std::string)nf.creator,
         fc::json::to_string(issue),
-        fc::json::to_string(manage)
+        fc::json::to_string(manage),
+        tctx.trx_id()
         );
 
     return PG_OK;
@@ -874,7 +884,7 @@ pg::upd_fungible(trx_context& tctx, const updfungible& uf) {
     return PG_OK;
 }
 
-PREPARE_SQL_ONCE(am_plan,  "INSERT INTO metas VALUES(DEFAULT, $1, $2, $3, now());");
+PREPARE_SQL_ONCE(am_plan,  "INSERT INTO metas VALUES(DEFAULT, $1, $2, $3, $4, now());");
 PREPARE_SQL_ONCE(amd_plan, "UPDATE domains SET metas = array_append(metas, $1) WHERE name = $2;");
 PREPARE_SQL_ONCE(amg_plan, "UPDATE groups SET metas = array_append(metas, $1) WHERE name = $2;");
 PREPARE_SQL_ONCE(amt_plan, "UPDATE tokens SET metas = array_append(metas, $1) WHERE id = $2;");
@@ -884,7 +894,7 @@ int
 pg::add_meta(trx_context& tctx, const action_t& act) {
     auto& am = act.data_as<const addmeta&>();
 
-    fmt::format_to(tctx.trx_buf_, fmt("EXECUTE am_plan('{}','{}','{}');\n"), (std::string)am.key, am.value, am.creator.to_string());
+    fmt::format_to(tctx.trx_buf_, fmt("EXECUTE am_plan('{}','{}','{}','{}');\n"), (std::string)am.key, am.value, am.creator.to_string(), tctx.trx_id());
     if(act.domain == N128(.fungible)) {
         // fungibles
         fmt::format_to(tctx.trx_buf_, fmt("EXECUTE amf_plan(lastval(),{});\n"), boost::lexical_cast<int64_t>((std::string)act.key));   
