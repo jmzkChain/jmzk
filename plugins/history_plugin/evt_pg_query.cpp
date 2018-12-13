@@ -90,6 +90,18 @@ response_ok<std::string>(int id, const std::string& json) {
     return PG_OK;
 }
 
+// This function is used to fix the representation of timestamp returned by postgres
+// Use 'T' as the separate the date and time to follow the ISO 8601 standard
+char*
+fix_pg_timestamp(char* str) {
+    auto sz = strlen(str);
+    if(sz <= 10) {
+        return str;
+    }
+    str[10] = 'T';
+    return str;
+}
+
 }  // namespace __internal
 
 int
@@ -487,7 +499,7 @@ pg_query::get_actions_resume(int id, pg_result const* r) {
             PQgetvalue(r, i, 2),
             PQgetvalue(r, i, 3),
             PQgetvalue(r, i, 4),
-            PQgetvalue(r, i, 5)
+            fix_pg_timestamp(PQgetvalue(r, i, 5))
             );
         if(i < n - 1) {
             fmt::format_to(builder, ",");
@@ -600,7 +612,7 @@ pg_query::get_fungible_actions_resume(int id, pg_result const* r) {
             PQgetvalue(r, i, 2),
             PQgetvalue(r, i, 3),
             PQgetvalue(r, i, 4),
-            PQgetvalue(r, i, 5)
+            fix_pg_timestamp(PQgetvalue(r, i, 5))
             );
         if(i < n - 1) {
             fmt::format_to(builder, ",");
