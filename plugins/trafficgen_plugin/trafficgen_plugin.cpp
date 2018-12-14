@@ -51,6 +51,8 @@ public:
     address          from_addr_;
     private_key_type from_priv_;
 
+    std::string type_;
+
     std::vector<packed_transaction_ptr> packed_trxs_;
 
     fc::optional<boost::signals2::scoped_connection> accepted_block_connection_;
@@ -147,10 +149,11 @@ trafficgen_plugin_impl::push_once(int index) {
 void
 trafficgen_plugin::set_program_options(options_description&, options_description& cfg) {
     cfg.add_options()
-        ("traffic-start-num", bpo::value<uint32_t>()->default_value(0), "At which block num start trafficgen.")
+        ("traffic-start-num", bpo::value<uint32_t>()->default_value(0), "From which block num start trafficgen.")
         ("traffic-total", bpo::value<size_t>()->default_value(0), "Total transactions to be generated")
-        ("traffic-from", bpo::value<std::string>(), "From address when generating")
-        ("traffic-from-priv", bpo::value<std::string>(), "From private key when generating")
+        ("traffic-from", bpo::value<std::string>(), "Address of sender when generating")
+        ("traffic-from-priv", bpo::value<std::string>(), "Private key of sender when generating")
+        ("traffic-type", bpo::value<std::string>()->default_value("ft"), "Type of transactions, can be 'nft' or 'ft'")
     ;
 }
 
@@ -159,10 +162,17 @@ trafficgen_plugin::plugin_initialize(const variables_map& options) {
     my_ = std::make_shared<trafficgen_plugin_impl>(app().get_plugin<chain_plugin>().chain());
     my_->start_num_ = options.at("traffic-start-num").as<uint32_t>();
     my_->total_num_ = options.at("traffic-total").as<size_t>();
+
     if(options.count("traffic-from") && options.count("traffic-from-priv")) {
         my_->from_addr_ = address(options.at("traffic-from").as<std::string>());
         my_->from_priv_ = private_key_type(options.at("traffic-from-priv").as<std::string>());
         my_->init(); 
+    }
+
+    if(options.count("traffic-type")) {
+        auto type = options.at("traffic-type").as<std::string>();
+        EVT_ASSERT(type == "ft" || type == "nft", chain::plugin_config_exception, "Not valid value for --traffic-type option");
+        my_->type_ = type;
     }
 }
 
