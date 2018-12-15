@@ -17,9 +17,12 @@
 
 namespace evt {
 
-// Update:
-// - 1.1.0: add `global_seq` field to `actions` table
-// - 1.2.0: add `trx_id` feild to `metas`, `domains`, `tokens`, `groups` and `fungibles` tables
+/*
+ * Update:
+ * - 1.1.0: add `global_seq` field to `actions` table
+ * - 1.2.0: add `trx_id` feild to `metas`, `domains`, `tokens`, `groups` and `fungibles` tables
+ *          add `total_supply` field to `fungibles` table
+ */
 static auto pg_version = "1.2.0";
 
 namespace __internal {
@@ -72,17 +75,13 @@ auto create_blocks_table = R"sql(CREATE TABLE IF NOT EXISTS public.blocks
                                      trx_count       integer                  NOT NULL,
                                      producer        character varying(21)    NOT NULL,
                                      pending         boolean                  NOT NULL DEFAULT true,
-                                     created_at      timestamp with time zone NOT NULL DEFAULT now()
+                                     created_at      timestamp with time zone NOT NULL DEFAULT now(),
+                                     CONSTRAINT      blocks_pkey PRIMARY KEY (block_id)
                                  )
                                  WITH (
                                      OIDS = FALSE
                                  )
                                  TABLESPACE pg_default;
- 
-                                 CREATE INDEX IF NOT EXISTS blocks_block_id_index
-                                     ON public.blocks USING btree
-                                     (block_id)
-                                     TABLESPACE pg_default;
  
                                  CREATE INDEX IF NOT EXISTS blocks_block_num_index
                                      ON public.blocks USING btree
@@ -108,7 +107,8 @@ auto create_trxs_table = R"sql(CREATE TABLE IF NOT EXISTS public.transactions
                                    elapsed       integer                  NOT NULL,
                                    charge        integer                  NOT NULL,
                                    suspend_name  character varying(21),
-                                   created_at    timestamp with time zone NOT NULL DEFAULT now()
+                                   created_at    timestamp with time zone NOT NULL DEFAULT now(),
+                                   CONSTRAINT    transactions_pkey PRIMARY KEY (trx_id)
                                )
                                WITH (
                                    OIDS = FALSE
@@ -223,17 +223,18 @@ auto create_groups_table = R"sql(CREATE TABLE IF NOT EXISTS public.groups
 
 auto create_fungibles_table = R"sql(CREATE TABLE IF NOT EXISTS public.fungibles
                                     (
-                                        name       character varying(21)       NOT NULL,
-                                        sym_name   character varying(21)       NOT NULL,
-                                        sym        character varying(21)       NOT NULL,
-                                        sym_id     bigint                      NOT NULL,
-                                        creator    character(53)               NOT NULL,
-                                        issue      jsonb                       NOT NULL,
-                                        manage     jsonb                       NOT NULL,
-                                        metas      integer[]                   NOT NULL,
-                                        trx_id     character(64)               NOT NULL,
-                                        created_at timestamp with time zone    NOT NULL  DEFAULT now(),
-                                        CONSTRAINT fungibles_pkey PRIMARY KEY (sym_id)
+                                        name         character varying(21)       NOT NULL,
+                                        sym_name     character varying(21)       NOT NULL,
+                                        sym          character varying(21)       NOT NULL,
+                                        sym_id       bigint                      NOT NULL,
+                                        creator      character(53)               NOT NULL,
+                                        issue        jsonb                       NOT NULL,
+                                        manage       jsonb                       NOT NULL,
+                                        total_supply character varying(32)       NOT NULL,
+                                        metas        integer[]                   NOT NULL,
+                                        trx_id       character(64)               NOT NULL,
+                                        created_at   timestamp with time zone    NOT NULL  DEFAULT now(),
+                                        CONSTRAINT   fungibles_pkey PRIMARY KEY (sym_id)
                                     )
                                     WITH (
                                         OIDS = FALSE
@@ -839,7 +840,7 @@ pg::upd_group(trx_context& tctx, const updategroup& ug) {
     return PG_OK;
 }
 
-PREPARE_SQL_ONCE(nf_plan, "INSERT INTO fungibles VALUES($1, $2, $3, $4, $5, $6, $7, '{}', $8, now());");
+PREPARE_SQL_ONCE(nf_plan, "INSERT INTO fungibles VALUES($1, $2, $3, $4, $5, $6, $7, $8, '{}', $9, now());");
 
 int
 pg::add_fungible(trx_context& tctx, const newfungible& nf) {
@@ -848,7 +849,7 @@ pg::add_fungible(trx_context& tctx, const newfungible& nf) {
     fc::to_variant(nf.manage, manage);
 
     fmt::format_to(tctx.trx_buf_,
-        fmt("EXECUTE nf_plan('{}','{}','{}',{:d},'{}','{}','{}','{}');\n"),
+        fmt("EXECUTE nf_plan('{}','{}','{}',{:d},'{}','{}','{}','{}','{}');\n"),
         (std::string)nf.name,
         (std::string)nf.sym_name,
         (std::string)nf.sym,
@@ -856,6 +857,7 @@ pg::add_fungible(trx_context& tctx, const newfungible& nf) {
         (std::string)nf.creator,
         fc::json::to_string(issue),
         fc::json::to_string(manage),
+        nf.total_supply.to_string(),
         tctx.trx_id()
         );
 
