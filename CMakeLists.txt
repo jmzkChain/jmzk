@@ -18,10 +18,10 @@ option(ENABLE_FULL_STATIC_BUILD "Enable full static build" OFF)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libraries/fc/CMakeModules")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 
-include( GNUInstallDirs )
-include( VersionMacros )
-include( SetupTargetMacros )
-include( InstallDirectoryPermissions )
+include(GNUInstallDirs)
+include(VersionMacros)
+include(SetupTargetMacros)
+include(InstallDirectoryPermissions)
 
 set(BLOCKCHAIN_NAME "EVT")
 
@@ -70,49 +70,55 @@ set(CXX_FLAGS_RELEASE
     )
 string(REPLACE ";" " " CMAKE_CXX_FLAGS_RELEASE "${CXX_FLAGS_RELEASE}")
 
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-uninitialized")
+elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-maybe-uninitialized")
+endif()
+
 if(USE_PCH)
     include(cotire)
 endif()
 
 # add defaults for openssl
 if("${OPENSSL_ROOT_DIR}" STREQUAL "")
-   if(NOT "$ENV{OPENSSL_ROOT_DIR}" STREQUAL "")
-      set(OPENSSL_ROOT_DIR $ENV{OPENSSL_ROOT_DIR})
-      set(OPENSSL_INCLUDE_DIR ${OPENSSL_ROOT_DIR}/include)
-   elseif (APPLE)
-      set(OPENSSL_ROOT_DIR "/usr/local/opt/openssl")
-      set(OPENSSL_INCLUDE_DIR "/usr/local/opt/openssl/include")
-   elseif(UNIX AND NOT APPLE)
-      set(OPENSSL_ROOT_DIR "/usr/include/openssl")
-      set(OPENSSL_INCLUDE_DIR "/usr/include/openssl/include")
-   else()
-      message(FATAL_ERROR "openssl not found and don't know where to look, please specify OPENSSL_ROOT_DIR")
-   endif()
+    if(NOT "$ENV{OPENSSL_ROOT_DIR}" STREQUAL "")
+        set(OPENSSL_ROOT_DIR $ENV{OPENSSL_ROOT_DIR})
+        set(OPENSSL_INCLUDE_DIR ${OPENSSL_ROOT_DIR}/include)
+    elseif (APPLE)
+        set(OPENSSL_ROOT_DIR "/usr/local/opt/openssl")
+        set(OPENSSL_INCLUDE_DIR "/usr/local/opt/openssl/include")
+    elseif(UNIX AND NOT APPLE)
+        set(OPENSSL_ROOT_DIR "/usr/include/openssl")
+        set(OPENSSL_INCLUDE_DIR "/usr/include/openssl/include")
+    else()
+        message(FATAL_ERROR "openssl not found and don't know where to look, please specify OPENSSL_ROOT_DIR")
+    endif()
 endif()
 
 if("${OPENSSL_LIBRARIES}" STREQUAL "")
-   if (NOT "$ENV{OPENSSL_LIBRARIES}" STREQUAL "")
-      set(OPENSSL_LIBRARIES $ENV{OPENSSL_LIBRARIES})
-   elseif (APPLE)
-      set(OPENSSL_LIBRARIES "/usr/local/opt/openssl/lib")
-   elseif(UNIX AND NOT APPLE)
-      set(OPENSSL_LIBRARIES "/usr/include/openssl")
-   else()
-      message(FATAL_ERROR "openssl libs not found and don't know where to look, please specify OPENSSL_LIBRARIES")
-   endif()
+    if(NOT "$ENV{OPENSSL_LIBRARIES}" STREQUAL "")
+        set(OPENSSL_LIBRARIES $ENV{OPENSSL_LIBRARIES})
+    elseif (APPLE)
+        set(OPENSSL_LIBRARIES "/usr/local/opt/openssl/lib")
+    elseif(UNIX AND NOT APPLE)
+        set(OPENSSL_LIBRARIES "/usr/include/openssl")
+    else()
+        message(FATAL_ERROR "openssl libs not found and don't know where to look, please specify OPENSSL_LIBRARIES")
+    endif()
 endif()
 
 if(UNIX)
-  if(APPLE)
-    set(whole_archive_flag "-force_load")
-    set(no_whole_archive_flag "")
-  else()
+    if(APPLE)
+        set(whole_archive_flag "-force_load")
+        set(no_whole_archive_flag "")
+    else()
+        set(whole_archive_flag "--whole-archive")
+        set(no_whole_archive_flag "--no-whole-archive")
+    endif()
+else()
     set(whole_archive_flag "--whole-archive")
     set(no_whole_archive_flag "--no-whole-archive")
-  endif()
-else()
-  set(whole_archive_flag "--whole-archive")
-  set(no_whole_archive_flag "--no-whole-archive")
 endif()
 
 if(ENABLE_FULL_STATIC_BUILD)
@@ -121,13 +127,12 @@ else()
     set(Boost_USE_STATIC_LIBS OFF CACHE STRING "ON or OFF")
 endif()
 
-FIND_PACKAGE(Boost 1.64 REQUIRED COMPONENTS
+FIND_PACKAGE(Boost 1.69 REQUIRED COMPONENTS
     thread
     date_time
     filesystem
     system
     program_options
-    signals
     serialization
     chrono
     unit_test_framework
@@ -202,9 +207,9 @@ if(ENABLE_TESTING)
     enable_testing()
 endif()
 
-add_subdirectory( libraries )
-add_subdirectory( plugins )
-add_subdirectory( programs )
+add_subdirectory(libraries)
+add_subdirectory(plugins)
+add_subdirectory(programs)
 
 if(ENABLE_BIND_LIBRARIES)
     add_subdirectory(bind)

@@ -60,7 +60,7 @@ struct header_confirmation {
 }}  // namespace evt::chain
 
 FC_REFLECT(evt::chain::block_header, (timestamp)(producer)(confirmed)(previous)(transaction_mroot)(action_mroot)
-                                     (schedule_version)(new_producers)(header_extensions))
+                                     (schedule_version)(new_producers)(header_extensions));
 
-FC_REFLECT_DERIVED(evt::chain::signed_block_header, (evt::chain::block_header), (producer_signature))
-FC_REFLECT(evt::chain::header_confirmation, (block_id)(producer)(producer_signature))
+FC_REFLECT_DERIVED(evt::chain::signed_block_header, (evt::chain::block_header), (producer_signature));
+FC_REFLECT(evt::chain::header_confirmation, (block_id)(producer)(producer_signature));

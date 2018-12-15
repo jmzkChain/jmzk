@@ -109,6 +109,21 @@ def detail(name):
     click.echo('  status: {}'.format(green(ct['Status'])))
 
 
+@cli.command()
+@click.option('--prefix', '-p', help='Prefix of snapshots to list')
+def snapshots(prefix):
+    if prefix is not None:
+        entry = 'list -p {}'.format(prefix)
+    else:
+        entry = 'list'
+
+    container = client.containers.run('everitoken/snapshot:latest', entry, detach=True)
+    container.wait()
+    logs = container.logs().decode('utf-8')
+
+    click.echo(logs)
+
+
 @cli.group('network')
 @click.option('--name', '-n', default='evt-net', help='Name of the network for the environment')
 @click.pass_context
@@ -231,18 +246,19 @@ def create(ctx, net, port, host, password):
     client.containers.create(image, None, name=name, detach=True, network=net,
                              ports={'5432/tcp': (host, port)},
                              volumes={
-                                volume_name: {
-                                 'bind': '/bitnami', 'mode': 'rw'},
-                                volume2_name: {
-                                 'bind': '/opt/bitnami/postgresql/conf', 'mode': 'rw'
-                                }
+                                 volume_name: {
+                                     'bind': '/bitnami', 'mode': 'rw'},
+                                 volume2_name: {
+                                     'bind': '/opt/bitnami/postgresql/conf', 'mode': 'rw'
+                                 }
                              },
                              )
     click.echo('{} container is created'.format(green(name)))
 
     if len(password) > 0:
         me = 'md5'
-        click.echo('{}: Password is set only if it\'s the first time creating postgres, otherwise it will reuse old password. Please use {} command.'.format(green('NOTICE'), green('postgres updpass')))
+        click.echo('{}: Password is set only if it\'s the first time creating postgres, otherwise it will reuse old password. Please use {} command.'.format(
+            green('NOTICE'), green('postgres updpass')))
     else:
         me = 'trust'
 
@@ -253,10 +269,11 @@ def create(ctx, net, port, host, password):
               host    all             all             0.0.0.0/0               {}""".format(me)
 
     click.echo('Writting default {}'.format(green('pg_hba.conf')))
-    cmd = '/bin/bash -c "echo -e \'{}\' | cat > /opt/bitnami/postgresql/conf/pg_hba.conf"'.format(conf)
+    cmd = '/bin/bash -c "echo -e \'{}\' | cat > /opt/bitnami/postgresql/conf/pg_hba.conf"'.format(
+        conf)
     r = client.containers.run(image, cmd, auto_remove=True, volumes={volume2_name: {
         'bind': '/opt/bitnami/postgresql/conf', 'mode': 'rw'
-        }})
+    }})
 
 
 @postgres.command()
@@ -307,7 +324,8 @@ def updpass(ctx, new_password):
         click.echo('{} container is not existed'.format(green(name)))
         return
 
-    cmd = 'psql -U postgres -c "ALTER USER postgres WITH PASSWORD \'{}\';"'.format(new_password)
+    cmd = 'psql -U postgres -c "ALTER USER postgres WITH PASSWORD \'{}\';"'.format(
+        new_password)
     c, logs = container.exec_run(cmd)
 
     if 'ALTER ROLE' in logs.decode('utf-8'):
@@ -507,11 +525,21 @@ def detailmongo(ctx):
 
 
 def check_evt_image():
+    missing_evt = False
+    missing_evt_mainnet = False
     try:
         client.images.get('everitoken/evt:latest')
     except docker.errors.ImageNotFound:
-        click.echo('Cannot find image: {}, please pull first'.format(
-            green('everitoken/evt:latest')))
+        missing_evt = True
+
+    try:
+        client.images.get('everitoken/evt-mainnet:latest')
+    except docker.errors.ImageNotFound:
+        missing_evt_mainnet = True
+
+    if missing_evt and missing_evt_mainnet:
+        click.echo('Nither find image: {} or {}, please pull one first'.format(
+            green('everitoken/evt:latest'), green('everitoken/evt-mainnet:latest')))
 
 
 @cli.group()
@@ -709,8 +737,30 @@ def snapshot(ctx, postgres, upload, aws_key, aws_secret):
         click.echo('AWS key or secret is empty, cannot upload to S3')
         return
 
-    entry = "--file=/data/{} --block-id='{}' --block-num={} --block-time='{}' --aws-key={} --aws-secret={}".format(
-        pathlib.Path(obj['snapshot_name']).name, obj['head_block_id'], obj['head_block_num'], obj['head_block_time'], aws_key, aws_secret)
+    if obj['postgres'] == 'true':
+        pg = '--postgres'
+    else:
+        pg = '--no-postgres'
+
+    entry = "upload --file=/data/{} --block-id='{}' --block-num={} --block-time='{}' {} --aws-key={} --aws-secret={}".format(
+        pathlib.Path(obj['snapshot_name']).name, obj['head_block_id'], obj['head_block_num'], obj['head_block_time'], pg, aws_key, aws_secret)
+
+    container = client.containers.run('everitoken/snapshot:latest', entry, detach=True,
+                                      volumes={volume_name: {'bind': '/data', 'mode': 'rw'}})
+    container.wait()
+    logs = container.logs().decode('utf-8')
+
+    click.echo(logs)
+
+
+@evtd.command()
+@click.argument('snapshot')
+@click.pass_context
+def getsnapshot(ctx, snapshot):
+    name = ctx.obj['name']
+    volume_name = '{}-snapshots-volume'.format(name)
+
+    entry = 'fetch --name={} --file=/data/{}'.format(snapshot, snapshot[8:])
 
     container = client.containers.run('everitoken/snapshot:latest', entry, detach=True,
                                       volumes={volume_name: {'bind': '/data', 'mode': 'rw'}})
@@ -812,7 +862,9 @@ def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_db, post
                                  volume2_name: {
                                  'bind': '/opt/evt/snapshots', 'mode': 'rw'},
                              },
-                             entrypoint=entry
+                             entrypoint=entry,
+                             cap_add=['SYS_PTRACE'],
+                             security_opt=['apparmor:unconfined'],
                              )
     click.echo('{} container is created'.format(green(name)))
 

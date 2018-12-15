@@ -108,7 +108,16 @@ wallet_api_plugin::plugin_startup() {
                                                   INVOKE_R_V(wallet_mgr, get_public_keys), 200),
                                              CALL(wallet, wallet_mgr, get_my_signatures,
                                                   INVOKE_R_R(wallet_mgr, get_my_signatures, chain::chain_id_type), 200)},
-                                             true /* local only API */);
+                                             !listen_http_ /* local only API */);
+}
+
+void
+wallet_api_plugin::set_program_options(options_description& cli, options_description& cfg) {
+    cfg.add_options()
+        ("listen-http", boost::program_options::bool_switch()->default_value(false)->notifier(
+            [this](bool l) { this->listen_http_ = l; }),
+            "Wallet APIs are only listened on unix sockets defaultly, use this option also listen on http protocol.")
+        ;
 }
 
 void

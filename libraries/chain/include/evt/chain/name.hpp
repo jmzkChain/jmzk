@@ -148,7 +148,7 @@ struct name {
 inline std::vector<name>
 sort_names(std::vector<name>&& names) {
     fc::deduplicate(names);
-    return names;
+    return std::move(names);
 }
 
 }}  // namespace evt::chain

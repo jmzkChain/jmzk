@@ -516,7 +516,6 @@ http_plugin::plugin_initialize(const variables_map& options) {
 
         tcp::resolver resolver(app().get_io_service());
 
-
         if(current_http_plugin_defaults.default_http_port > 0 && options.count("http-server-address") && options.at("http-server-address").as<string>().length()) {
             string lipstr = options.at("http-server-address").as<string>();
             string host   = lipstr.substr(0, lipstr.find(':'));

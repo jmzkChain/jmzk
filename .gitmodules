@@ -10,9 +10,6 @@
 	path = libraries/rocksdb
 	url = https://github.com/facebook/rocksdb.git
 	branch = 5.15.fb
-[submodule "libraries/safeint"]
-	path = libraries/safeint
-	url = https://github.com/dcleblanc/SafeInt.git
 [submodule "libraries/rapidjson"]
 	path = libraries/rapidjson
 	url = https://github.com/everitoken/rapidjson.git

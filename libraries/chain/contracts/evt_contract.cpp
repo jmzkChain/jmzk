@@ -7,7 +7,14 @@
 #include <algorithm>
 #include <string>
 
-#include <boost/hana.hpp>
+#include <boost/hana/at.hpp>
+#include <boost/hana/at_key.hpp>
+#include <boost/hana/integral_constant.hpp>
+#include <boost/hana/map.hpp>
+#include <boost/hana/pair.hpp>
+#include <boost/hana/tuple.hpp>
+#include <boost/safe_numerics/checked_default.hpp>
+#include <boost/safe_numerics/checked_integer.hpp>
 
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/ripemd160.hpp>
@@ -19,7 +26,6 @@
 #include <evt/chain/contracts/types.hpp>
 #include <evt/chain/contracts/evt_link.hpp>
 #include <evt/chain/contracts/evt_link_object.hpp>
-#include <evt/utilities/safemath.hpp>
 
 #if defined(__clang__)
 #pragma GCC diagnostic ignored "-Winstantiation-after-specialization"
@@ -394,12 +400,11 @@ get_fungible_address(symbol sym) {
 
 void
 transfer_fungible(asset& from, asset& to, uint64_t total) {
-    bool r1, r2;
-    decltype(from.amount()) r;
+    using namespace boost::safe_numerics;
 
-    r1 = safemath::test_sub(from.amount(), total, r);
-    r2 = safemath::test_add(to.amount(), total, r);
-    EVT_ASSERT(r1 && r2, math_overflow_exception, "Opeartions resulted in overflows.");
+    auto r1 = checked::subtract<uint64_t>(from.amount(), total);
+    auto r2 = checked::add<uint64_t>(to.amount(), total);
+    EVT_ASSERT(!r1.exception() && !r2.exception(), math_overflow_exception, "Opeartions resulted in overflows.");
     
     from -= asset(total, from.sym());
     to += asset(total, to.sym());

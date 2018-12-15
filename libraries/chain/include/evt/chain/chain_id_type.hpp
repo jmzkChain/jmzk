@@ -22,6 +22,9 @@ namespace chain {
 struct chain_id_type : public fc::sha256 {
     using fc::sha256::sha256;
 
+    chain_id_type(const fc::sha256& v) : fc::sha256(v) {}
+    chain_id_type(fc::sha256&& v) : fc::sha256(std::move(v)) {}
+
     template <typename T>
     inline friend T&
     operator<<(T& ds, const chain_id_type& cid) {

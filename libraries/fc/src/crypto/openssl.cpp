@@ -37,23 +37,28 @@ namespace  fc
        }
        openssl_scope()
        {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
           OPENSSL_init_crypto(
              OPENSSL_INIT_LOAD_CRYPTO_STRINGS |
              OPENSSL_INIT_ADD_ALL_CIPHERS |
              OPENSSL_INIT_ADD_ALL_DIGESTS |
              OPENSSL_INIT_LOAD_CONFIG, NULL);
+#else
+          ERR_load_crypto_strings(); 
+          OpenSSL_add_all_algorithms();
+#endif
 
           const boost::filesystem::path& boostPath = config_path();
           if(boostPath.empty() == false)
           {
             std::string varSetting("OPENSSL_CONF=");
             varSetting += config_path().to_native_ansi_path();
-#if defined(WIN32)
-            _putenv((char*)varSetting.c_str());
-#else
             putenv((char*)varSetting.c_str());
-#endif
           }
+
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+          OPENSSL_config(nullptr);
+#endif
        }
 
        ~openssl_scope()

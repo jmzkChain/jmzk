@@ -4,7 +4,7 @@
  */
 #pragma once
 
-#include <string>
+#include <string_view>
 #include <memory>
 #include <fmt/format.h>
 #include <evt/postgres_plugin/evt_pg.hpp>
@@ -21,11 +21,15 @@ public:
         db_.commit_trx_context(*this);
     }
 
+    void set_trx_id(const std::string& trx_id) { trx_id_ = trx_id; }
+    const std::string_view& trx_id() const { return trx_id_; }
+
 private:
     fmt::memory_buffer trx_buf_;
 
 private:
-    pg& db_;
+    pg&              db_;
+    std::string_view trx_id_;
 
 private:
     friend class pg;

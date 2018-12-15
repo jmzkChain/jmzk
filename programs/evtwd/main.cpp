@@ -42,7 +42,7 @@ main(int argc, char** argv) {
         app().set_default_config_dir(home / "evt-wallet");
         http_plugin::set_defaults({
             .default_unix_socket_path = fc::path(app().data_dir() / "evtwd.sock").to_native_ansi_path(),
-            .default_http_port = 0
+            .default_http_port = 9999
         });
         app().register_plugin<wallet_api_plugin>();
         if(!app().initialize<wallet_plugin, wallet_api_plugin, http_plugin>(argc, argv)) {

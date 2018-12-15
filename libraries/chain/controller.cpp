@@ -241,11 +241,11 @@ struct controller_impl {
         }
 
         const auto& log_head       = blog.head();
-        bool        append_to_blog = false;
+        auto        append_to_blog = false;
         if(!log_head) {
             if(s->block) {
                 EVT_ASSERT(s->block_num == blog.first_block_num(), block_log_exception, "block log has no blocks and is appending the wrong first block.  Expected ${expected}, but received: ${actual}",
-                           ("expected", blog.first_block_num())("actual", s->block_num));
+                           ("expected", fmt::format("{:n}", blog.first_block_num()))("actual", fmt::format("{:n}", s->block_num)));
                 append_to_blog = true;
             }
             else {
@@ -255,13 +255,14 @@ struct controller_impl {
         else {
             auto lh_block_num = log_head->block_num();
             if(s->block_num > lh_block_num) {
-                EVT_ASSERT(s->block_num - 1 == lh_block_num, unlinkable_block_exception, "unlinkable block", ("s->block_num", s->block_num)("lh_block_num", lh_block_num));
+                EVT_ASSERT(s->block_num - 1 == lh_block_num, unlinkable_block_exception, "unlinkable block", ("s->block_num",fmt::format("{:n}", s->block_num))("lh_block_num",fmt::format("{:n}", lh_block_num)));
                 EVT_ASSERT(s->block->previous == log_head->id(), unlinkable_block_exception, "irreversible doesn't link to block log head");
                 append_to_blog = true;
             }
         }
 
         db.commit(s->block_num);
+        token_db.pop_savepoints(s->block_num);
 
         if(append_to_blog) {
             blog.append(s->block);
@@ -304,7 +305,7 @@ struct controller_impl {
         auto blog_head_time = blog_head->timestamp.to_time_point();
         replaying           = true;
         replay_head_time    = blog_head_time;
-        ilog("existing block log, attempting to replay ${n} blocks", ("n", blog_head->block_num()));
+        ilog("existing block log, attempting to replay ${n} blocks", ("n", fmt::format("{:n}", blog_head->block_num())));
 
         auto start = fc::time_point::now();
         while(auto next = blog.read_block_by_num(head->block_num + 1)) {

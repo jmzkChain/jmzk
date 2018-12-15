@@ -7,6 +7,7 @@
 #include <istream>
 #include <ostream>
 #include <string>
+#include <string_view>
 #include <boost/noncopyable.hpp>
 #include <evt/chain/block_state.hpp>
 #include <evt/chain/transaction.hpp>
@@ -46,7 +47,7 @@ public:
 
 public:
     copy_context&     cctx;
-    std::string       block_id;
+    std::string_view  block_id;
     int               block_num;
     std::string       ts;
     const chain_id_t& chain_id;
