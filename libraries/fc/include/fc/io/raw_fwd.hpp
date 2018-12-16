@@ -1,15 +1,17 @@
 #pragma once
+#include <deque>
+#include <unordered_set>
+#include <unordered_map>
+#include <string>
+#include <set>
+#include <vector>
+
 #include <fc/container/flat_fwd.hpp>
 #include <fc/container/deque_fwd.hpp>
+#include <fc/container/small_vector_fwd.hpp>
 #include <fc/io/varint.hpp>
 #include <fc/array.hpp>
 #include <fc/safe.hpp>
-#include <deque>
-#include <vector>
-#include <string>
-#include <unordered_set>
-#include <unordered_map>
-#include <set>
 
 #define MAX_NUM_ARRAY_ELEMENTS (1024*1024)
 #define MAX_SIZE_OF_BYTE_ARRAYS (20*1024*1024)
@@ -43,8 +45,6 @@ namespace fc {
     inline void pack( Stream& s, const fc::enum_type<IntType,EnumType>& tp );
     template<typename Stream, typename IntType, typename EnumType>
     inline void unpack( Stream& s, fc::enum_type<IntType,EnumType>& tp );
-
-
 
     template<typename Stream, typename T> inline void pack( Stream& s, const std::set<T>& value );
     template<typename Stream, typename T> inline void unpack( Stream& s, std::set<T>& value );
@@ -116,6 +116,9 @@ namespace fc {
 
     template<typename Stream, typename T> inline void pack( Stream& s, const std::vector<T>& v );
     template<typename Stream, typename T> inline void unpack( Stream& s, std::vector<T>& v );
+
+    template<typename Stream, typename T, std::size_t N> inline void pack( Stream& s, const small_vector<T,N>& v );
+    template<typename Stream, typename T, std::size_t N> inline void unpack( Stream& s, small_vector<T,N>& v );
 
     template<typename Stream> inline void pack( Stream& s, const signed_int& v );
     template<typename Stream> inline void unpack( Stream& s, signed_int& vi );

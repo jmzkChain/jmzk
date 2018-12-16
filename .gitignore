@@ -38,6 +38,7 @@ tn_data_*
 
 .vscode/
 .idea/
+build-*/
 cmake-build-*/
 diff/
 

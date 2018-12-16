@@ -49,7 +49,7 @@ transaction::sig_digest(const chain_id_type& chain_id) const {
 }
 
 flat_set<public_key_type>
-transaction::get_signature_keys(const vector<signature_type>& signatures, const chain_id_type& chain_id,
+transaction::get_signature_keys(const signatures_base_type& signatures, const chain_id_type& chain_id,
                                 bool allow_duplicate_keys) const {
     if(signatures.empty()) {
         return flat_set<public_key_type>();

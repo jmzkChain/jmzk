@@ -482,8 +482,9 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
             return var.as<bytes>();
         }
 
-        bytes                 temp(1024 * 1024);
-        fc::datastream<char*> ds(temp.data(), temp.size());
+        auto temp = bytes(1024 * 1024);
+        auto ds   = fc::datastream<char*>(temp.data(), temp.size());
+
         _variant_to_binary(type, var, ds, ctx);
         temp.resize(ds.tellp());
         return temp;
@@ -508,8 +509,9 @@ abi_serializer::variant_to_binary(const type_name& type, const fc::variant& var,
 type_name
 abi_serializer::get_action_type(name action) const {
     auto itr = actions.find(action);
-    if(itr != actions.end())
+    if(itr != actions.end()) {
         return itr->second;
+    }
     return type_name();
 }
 

@@ -11,12 +11,13 @@
 #include <string.h> // memset
 
 #include <fc/optional.hpp>
+#include <fc/smart_ref_fwd.hpp>
 #include <fc/string.hpp>
 #include <fc/container/deque_fwd.hpp>
 #include <fc/container/flat_fwd.hpp>
-#include <fc/smart_ref_fwd.hpp>
-#include <boost/multi_index_container_fwd.hpp>
+#include <fc/container/small_vector_fwd.hpp>
 
+#include <boost/multi_index_container_fwd.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 
 namespace fc
@@ -145,6 +146,11 @@ namespace fc
    void to_variant( const fc::flat_set<T>& var,  variant& vo );
    template<typename T>
    void from_variant( const variant& var, fc::flat_set<T>& vo );
+
+   template<typename T, int N>
+   void to_variant( const fc::small_vector<T,N>& var,  variant& vo );
+   template<typename T, int N>
+   void from_variant( const variant& var, fc::small_vector<T,N>& vo );
 
    template<typename T>
    void to_variant( const std::set<T>& var,  variant& vo );

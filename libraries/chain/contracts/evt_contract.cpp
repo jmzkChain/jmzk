@@ -1434,7 +1434,8 @@ EVT_ACTION_IMPL(tryunlock) {
         auto now = context.control.pending_block_time();
         EVT_ASSERT(lock.unlock_time < now, lock_not_reach_unlock_time, "Not reach unlock time, cannot unlock, unlock time is ${u}, now is ${n}", ("u",lock.unlock_time)("n",now));
 
-        std::vector<address>* pkeys = nullptr;
+        // std::add_pointer_t<decltype(lock.succeed)> pkeys = nullptr;
+        fc::small_vector_base<address>* pkeys = nullptr;
         switch(lock.condition.type()) {
         case lock_type::cond_keys: {
             auto& lck = lock.condition.get<lock_condkeys>();
