@@ -35,19 +35,24 @@ auto
 pack_unpack() {
     return std::make_pair<abi_serializer::unpack_function, abi_serializer::pack_function>(
         [](fc::datastream<const char*>& stream, bool is_array, bool is_optional) -> fc::variant {
-            if(is_array)
-                return variant_from_stream<vector<T>>(stream);
-            else if(is_optional)
+            if(is_array) {
+                return variant_from_stream<fc::small_vector<T, 4>>(stream);
+            }
+            else if(is_optional) {
                 return variant_from_stream<optional<T>>(stream);
+            }
             return variant_from_stream<T>(stream);
         },
         [](const fc::variant& var, fc::datastream<char*>& ds, bool is_array, bool is_optional) {
-            if(is_array)
-                fc::raw::pack(ds, var.as<vector<T>>());
-            else if(is_optional)
+            if(is_array) {
+                fc::raw::pack(ds, var.as<fc::small_vector<T, 4>>());
+            }
+            else if(is_optional) {
                 fc::raw::pack(ds, var.as<optional<T>>());
-            else
+            }
+            else {
                 fc::raw::pack(ds, var.as<T>());
+            }
         });
 }
 
@@ -297,7 +302,7 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
     if(st.base != type_name()) {
         _binary_to_variant(resolve_type(st.base), stream, obj, ctx);
     }
-    for(uint32_t i = 0; i < st.fields.size(); ++i) {
+    for(auto i = 0u; i < st.fields.size(); ++i) {
         const auto& field = st.fields[i];
         if(!stream.remaining()) {
             EVT_THROW(unpack_exception, "Stream unexpectedly ended; unable to unpack field '${f}' of struct '${p}'",
@@ -324,13 +329,13 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
     }
     if(is_array(rtype)) {
         ctx.hint_array_type_if_in_array();
-        fc::unsigned_int size;
+        auto size = fc::unsigned_int();
         try {
             fc::raw::unpack(stream, size);
         }
         EVT_RETHROW_EXCEPTIONS(unpack_exception, "Unable to unpack size of array '${p}'", ("p", ctx.get_path_string()))
-        vector<fc::variant> vars;
-        auto                h1 = ctx.push_to_path(impl::array_index_path_item{});
+        auto vars = fc::small_vector<fc::variant, 4>();
+        auto h1   = ctx.push_to_path(impl::array_index_path_item{});
         for(decltype(size.value) i = 0; i < size; ++i) {
             ctx.set_array_index_of_path_back(i);
             auto v = _binary_to_variant(ftype, stream, ctx);
@@ -365,8 +370,8 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
 
 fc::variant
 abi_serializer::_binary_to_variant(const type_name& type, const bytes& binary, impl::binary_to_variant_context& ctx) const {
-    auto                        h = ctx.enter_scope();
-    fc::datastream<const char*> ds(binary.data(), binary.size());
+    auto h  = ctx.enter_scope();
+    auto ds = fc::datastream(binary.data(), binary.size());
     return _binary_to_variant(type, ds, ctx);
 }
 
@@ -398,7 +403,7 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
         }
         else if(is_array(rtype)) {
             ctx.hint_array_type_if_in_array();
-            vector<fc::variant> vars = var.get_array();
+            auto vars = var.get_array();
             fc::raw::pack(ds, (fc::unsigned_int)vars.size());
 
             auto h1 = ctx.push_to_path(impl::array_index_path_item{});

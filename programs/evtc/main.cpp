@@ -448,7 +448,7 @@ push_transaction(signed_transaction& trx, packed_transaction::compression_type c
 }
 
 fc::variant
-push_actions(std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::none) {
+push_actions(fc::small_vector<chain::action, 4>&& actions, packed_transaction::compression_type compression = packed_transaction::none) {
     signed_transaction trx;
     trx.actions = std::forward<decltype(actions)>(actions);
 
@@ -456,7 +456,7 @@ push_actions(std::vector<chain::action>&& actions, packed_transaction::compressi
 }
 
 void
-send_actions(std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::none) {
+send_actions(fc::small_vector<chain::action, 4>&& actions, packed_transaction::compression_type compression = packed_transaction::none) {
     auto result = push_actions(std::forward<decltype(actions)>(actions), compression);
     print_result( result );
 }
