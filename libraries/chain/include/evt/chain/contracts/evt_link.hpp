@@ -49,6 +49,10 @@ public:
     };
 
 public:
+    using segments_type   = fc::flat_map<uint8_t, segment, std::less<uint8_t>, fc::small_vector<std::pair<uint8_t, segment>, 6>>;
+    using signatures_type = fc::flat_set<signature_type, std::less<signature_type>, fc::small_vector<signature_type, 2>>;
+
+public:
     static evt_link parse_from_evtli(const std::string& str);
     std::string to_string(int prefix = 0) const;
 
@@ -60,8 +64,8 @@ public:
 
     const link_id_type& get_link_id() const;
 
-    const fc::flat_map<uint8_t, segment>& get_segments() const { return segments_; }
-    const fc::flat_set<signature_type>& get_signatures() const { return signatures_; }
+    const segments_type& get_segments() const { return segments_; }
+    const signatures_type& get_signatures() const { return signatures_; }
 
 public:
     void set_header(uint16_t header) { header_ = header; }
@@ -75,9 +79,9 @@ public:
     public_keys_type restore_keys() const;
 
 private:
-    uint16_t                       header_;
-    fc::flat_map<uint8_t, segment> segments_;
-    fc::flat_set<signature_type>   signatures_;
+    uint16_t        header_;
+    segments_type   segments_;
+    signatures_type signatures_;
 
 private:
     friend struct fc::reflector<evt_link>;

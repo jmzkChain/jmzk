@@ -54,14 +54,14 @@ decode(const std::string& nums, uint pos, uint end) {
     return b;
 }
 
-fc::flat_map<uint8_t, evt_link::segment>
+evt_link::segments_type
 parse_segments(const bytes& b, uint16_t& header) {
     FC_ASSERT(b.size() > 2);
 
     auto h  = *(uint16_t*)&b[0];
     header  = boost::endian::big_to_native(h);
 
-    auto segs = fc::flat_map<uint8_t, evt_link::segment>();
+    auto segs = evt_link::segments_type();
 
     auto i  = 2u;
     auto pk = 0u;
@@ -122,10 +122,10 @@ parse_segments(const bytes& b, uint16_t& header) {
     return segs;
 }
 
-fc::flat_set<signature_type>
+evt_link::signatures_type
 parse_signatures(const bytes& b) {
     FC_ASSERT(b.size() > 0 && b.size() % 65 == 0);
-    auto sigs = fc::flat_set<signature_type>();
+    auto sigs = evt_link::signatures_type();
 
     for(auto i = 0u; i < b.size() / 65u; i++) {
         auto shim = fc::ecc::compact_signature();
