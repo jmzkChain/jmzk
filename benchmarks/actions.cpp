@@ -1150,7 +1150,7 @@ BM_Action_get_signature_keys(benchmark::State& state) {
     for(auto _ : state) {
         state.PauseTiming();
 
-        auto sigs = std::vector<signature_type>();
+        auto sigs = fc::small_vector<signature_type, 4>();
         sigs.reserve(state.range(1));
 
         for(int i = 0; i < state.range(0); i++) {
