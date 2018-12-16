@@ -7,7 +7,7 @@
 
 #include <fc/scoped_exit.hpp>
 
-#include <boost/algorithm/cxx11/all_of.hpp>
+#include <boost/dynamic_bitset.hpp>
 #include <boost/range/algorithm/find.hpp>
 
 #include <evt/chain/controller.hpp>
@@ -40,11 +40,11 @@ struct check_authority {};
 */
 class authority_checker {
 private:
-    const controller&         control_;
-    const public_keys_type&   signing_keys_;
-    const token_database&     token_db_;
-    const uint32_t            max_recursion_depth_;
-    fc::small_vector<bool, 4> used_keys_;
+    const controller&               control_;
+    const public_keys_type&         signing_keys_;
+    const token_database&           token_db_;
+    const uint32_t                  max_recursion_depth_;
+    boost::dynamic_bitset<uint64_t> used_keys_;
 
 public:
     struct weight_tally_visitor {
@@ -278,7 +278,7 @@ public:
     }
 
     bool
-    all_keys_used() const { return boost::algorithm::all_of_equal(used_keys_, true); }
+    all_keys_used() const { return used_keys_.all(); }
 
     public_keys_type
     used_keys() const {
