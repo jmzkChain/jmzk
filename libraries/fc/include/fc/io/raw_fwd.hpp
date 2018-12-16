@@ -57,8 +57,8 @@ namespace fc {
     template<typename Stream, typename ENUM, typename... ARGS> void pack( Stream& s, const variant_wrapper<ENUM, ARGS...>& vw );
     template<typename Stream, typename ENUM, typename... ARGS> void unpack( Stream& s, variant_wrapper<ENUM, ARGS...>& vw );
 
-    template<typename Stream, typename T> inline void pack( Stream& s, const flat_set<T>& value );
-    template<typename Stream, typename T> inline void unpack( Stream& s, flat_set<T>& value );
+    template<typename Stream, typename T, typename Compare, typename Container> inline void pack( Stream& s, const flat_set<T, Compare, Container>& value );
+    template<typename Stream, typename T, typename Compare, typename Container> inline void unpack( Stream& s, flat_set<T, Compare, Container>& value );
 
     template<typename Stream, typename T> inline void pack( Stream& s, const std::deque<T>& value );
     template<typename Stream, typename T> inline void unpack( Stream& s, std::deque<T>& value );

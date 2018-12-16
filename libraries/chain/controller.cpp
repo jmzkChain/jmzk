@@ -655,7 +655,7 @@ struct controller_impl {
     }
 
     void
-    check_authorization(const flat_set<public_key_type>& signed_keys, const transaction& trx) {
+    check_authorization(const public_keys_type& signed_keys, const transaction& trx) {
         auto& conf = db.get<global_property_object>().configuration;
 
         auto checker = authority_checker(self, signed_keys, token_db, conf.max_authority_depth);
@@ -667,7 +667,7 @@ struct controller_impl {
     }
 
     void
-    check_authorization(const flat_set<public_key_type>& signed_keys, const action& act) {
+    check_authorization(const public_keys_type& signed_keys, const action& act) {
         auto& conf = db.get<global_property_object>().configuration;
 
         auto checker = authority_checker(self, signed_keys, token_db, conf.max_authority_depth);
@@ -1251,12 +1251,12 @@ controller::push_suspend_transaction(const transaction_metadata_ptr& trx, fc::ti
 }
 
 void
-controller::check_authorization(const flat_set<public_key_type>& signed_keys, const transaction& trx) {
+controller::check_authorization(const public_keys_type& signed_keys, const transaction& trx) {
     return my->check_authorization(signed_keys, trx);
 }
 
 void
-controller::check_authorization(const flat_set<public_key_type>& signed_keys, const action& act) {
+controller::check_authorization(const public_keys_type& signed_keys, const action& act) {
     return my->check_authorization(signed_keys, act);
 }
 
@@ -1694,8 +1694,8 @@ controller::is_known_unexpired_transaction(const transaction_id_type& id) const 
     return db().find<transaction_object, by_trx_id>(id);
 }
 
-flat_set<public_key_type>
-controller::get_required_keys(const transaction& trx, const flat_set<public_key_type>& candidate_keys) const {
+public_keys_type
+controller::get_required_keys(const transaction& trx, const public_keys_type& candidate_keys) const {
     const static uint32_t max_authority_depth = my->conf.genesis.initial_configuration.max_authority_depth;
     auto checker = authority_checker(*this, candidate_keys, my->token_db, max_authority_depth);
 
@@ -1712,8 +1712,8 @@ controller::get_required_keys(const transaction& trx, const flat_set<public_key_
     return keys;
 }
 
-flat_set<public_key_type>
-controller::get_suspend_required_keys(const transaction& trx, const flat_set<public_key_type>& candidate_keys) const {
+public_keys_type
+controller::get_suspend_required_keys(const transaction& trx, const public_keys_type& candidate_keys) const {
     const static uint32_t max_authority_depth = my->conf.genesis.initial_configuration.max_authority_depth;
     auto checker = authority_checker(*this, candidate_keys, my->token_db, max_authority_depth);
 
@@ -1728,8 +1728,8 @@ controller::get_suspend_required_keys(const transaction& trx, const flat_set<pub
     return keys;
 }
 
-flat_set<public_key_type>
-controller::get_suspend_required_keys(const proposal_name& name, const flat_set<public_key_type>& candidate_keys) const {
+public_keys_type
+controller::get_suspend_required_keys(const proposal_name& name, const public_keys_type& candidate_keys) const {
     suspend_def suspend;
     my->token_db.read_suspend(name, suspend);
     

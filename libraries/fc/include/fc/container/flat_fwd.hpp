@@ -10,10 +10,10 @@ namespace fc {
    namespace bip = boost::interprocess;
 
    namespace raw {
-       template<typename Stream, typename T>
-       void pack( Stream& s, const flat_set<T>& value );
-       template<typename Stream, typename T>
-       void unpack( Stream& s, flat_set<T>& value );
+       template<typename Stream, typename T, typename Compare, typename Container>
+       void pack( Stream& s, const flat_set<T, Compare, Container>& value );
+       template<typename Stream, typename T, typename Compare, typename Container>
+       void unpack( Stream& s, flat_set<T, Compare, Container>& value );
        template<typename Stream, typename K, typename... V>
        void pack( Stream& s, const flat_map<K,V...>& value );
        template<typename Stream, typename K, typename... V>

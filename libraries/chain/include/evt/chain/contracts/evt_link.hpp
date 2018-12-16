@@ -61,7 +61,7 @@ public:
     const link_id_type& get_link_id() const;
 
     const fc::flat_map<uint8_t, segment>& get_segments() const { return segments_; }
-    const fc::flat_set<signature_type>& get_signatures() const {return signatures_; }
+    const fc::flat_set<signature_type>& get_signatures() const { return signatures_; }
 
 public:
     void set_header(uint16_t header) { header_ = header; }
@@ -72,7 +72,7 @@ public:
 
 public:
     fc::sha256 digest() const;
-    fc::flat_set<public_key_type> restore_keys() const;
+    public_keys_type restore_keys() const;
 
 private:
     uint16_t                       header_;

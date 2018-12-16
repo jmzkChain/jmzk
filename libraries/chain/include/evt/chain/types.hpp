@@ -91,6 +91,7 @@ using fc::ecc::range_proof_info;
 using fc::ecc::range_proof_type;
 
 using public_key_type      = fc::crypto::public_key;
+using public_keys_type     = fc::flat_set<public_key_type, std::less<public_key_type>, fc::small_vector<public_key_type, 4>>;
 using private_key_type     = fc::crypto::private_key;
 using signature_type       = fc::crypto::signature;
 using signatures_type      = fc::small_vector<signature_type, 4>;

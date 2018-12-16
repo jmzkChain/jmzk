@@ -125,8 +125,8 @@ struct suspend_def {
     public_key_type                        proposer;
     fc::enum_type<uint8_t, suspend_status> status;
     transaction                            trx;
-    flat_set<public_key_type>              signed_keys;
-    small_vector<signature_type, 4>        signatures;
+    public_keys_type                       signed_keys;
+    signatures_type                        signatures;
 };
 
 enum class asset_type {

@@ -7,8 +7,8 @@
 
 namespace fc {
    namespace raw {
-       template<typename Stream, typename T>
-       inline void pack( Stream& s, const flat_set<T>& value ) {
+       template<typename Stream, typename T, typename Compare, typename Container>
+       inline void pack( Stream& s, const flat_set<T, Compare, Container>& value ) {
          FC_ASSERT( value.size() <= MAX_NUM_ARRAY_ELEMENTS );
          pack( s, unsigned_int((uint32_t)value.size()) );
          auto itr = value.begin();
@@ -18,8 +18,8 @@ namespace fc {
            ++itr;
          }
        }
-       template<typename Stream, typename T>
-       inline void unpack( Stream& s, flat_set<T>& value ) {
+       template<typename Stream, typename T, typename Compare, typename Container>
+       inline void unpack( Stream& s, flat_set<T, Compare, Container>& value ) {
          unsigned_int size; unpack( s, size );
          FC_ASSERT( size.value <= MAX_NUM_ARRAY_ELEMENTS );
          value.clear();
@@ -90,8 +90,8 @@ namespace fc {
    } // namespace raw
 
 
-   template<typename T>
-   void to_variant( const flat_set<T>& var,  variant& vo )
+   template<typename T, typename Compare, typename Container>
+   void to_variant( const flat_set<T, Compare, Container>& var,  variant& vo )
    {
        std::vector<variant> vars(var.size());
        size_t i = 0;
@@ -99,8 +99,8 @@ namespace fc {
           vars[i] = variant(*itr);
        vo = vars;
    }
-   template<typename T>
-   void from_variant( const variant& var,  flat_set<T>& vo )
+   template<typename T, typename Compare, typename Container>
+   void from_variant( const variant& var,  flat_set<T, Compare, Container>& vo )
    {
       const variants& vars = var.get_array();
       vo.clear();

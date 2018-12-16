@@ -329,10 +329,10 @@ evt_link::to_string(int prefix) const {
     return str;
 }
 
-fc::flat_set<public_key_type>
+public_keys_type
 evt_link::restore_keys() const {
     auto hash = digest();
-    auto keys = fc::flat_set<public_key_type>();
+    auto keys = public_keys_type();
 
     keys.reserve(signatures_.size());
     for(auto& sig : signatures_) {

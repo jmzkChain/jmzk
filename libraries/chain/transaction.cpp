@@ -48,19 +48,19 @@ transaction::sig_digest(const chain_id_type& chain_id) const {
     return enc.result();
 }
 
-flat_set<public_key_type>
+public_keys_type
 transaction::get_signature_keys(const signatures_base_type& signatures, const chain_id_type& chain_id,
                                 bool allow_duplicate_keys) const {
     if(signatures.empty()) {
-        return flat_set<public_key_type>();
+        return public_keys_type();
     }
 
     try {
         auto digest = sig_digest(chain_id);
 
-        flat_set<public_key_type> recovered_pub_keys;
+        auto recovered_pub_keys = public_keys_type();
         for(auto& sig : signatures) {
-            bool successful_insertion                   = false;
+            auto successful_insertion                   = false;
             std::tie(std::ignore, successful_insertion) = recovered_pub_keys.emplace(sig, digest);
             EVT_ASSERT(allow_duplicate_keys || successful_insertion, tx_duplicate_sig,
                        "transaction includes more than one signature signed using the same key associated with public "
@@ -84,7 +84,7 @@ signed_transaction::sign(const private_key_type& key, const chain_id_type& chain
     return key.sign(sig_digest(chain_id));
 }
 
-flat_set<public_key_type>
+public_keys_type
 signed_transaction::get_signature_keys(const chain_id_type& chain_id, bool allow_duplicate_keys) const {
     return transaction::get_signature_keys(signatures, chain_id, allow_duplicate_keys);
 }

@@ -63,9 +63,9 @@ struct transaction : public transaction_header {
 
     transaction_id_type id() const;
     digest_type         sig_digest(const chain_id_type& chain_id) const;
-    flat_set<public_key_type> get_signature_keys(const signatures_base_type& signatures,
-                                                 const chain_id_type&        chain_id,
-                                                 bool                        allow_duplicate_keys = false) const;
+    public_keys_type    get_signature_keys(const signatures_base_type& signatures,
+                                           const chain_id_type&        chain_id,
+                                           bool                        allow_duplicate_keys = false) const;
 
     uint32_t
     total_actions() const {
@@ -84,10 +84,10 @@ struct signed_transaction : public transaction {
 
     signatures_type signatures;
 
-    const signature_type&     sign(const private_key_type& key, const chain_id_type& chain_id);
-    signature_type            sign(const private_key_type& key, const chain_id_type& chain_id) const;
-    flat_set<public_key_type> get_signature_keys(const chain_id_type& chain_id,
-                                                 bool                 allow_duplicate_keys = false) const;
+    const signature_type& sign(const private_key_type& key, const chain_id_type& chain_id);
+    signature_type        sign(const private_key_type& key, const chain_id_type& chain_id) const;
+    public_keys_type      get_signature_keys(const chain_id_type& chain_id,
+                                             bool                 allow_duplicate_keys = false) const;
 };
 
 struct packed_transaction {
