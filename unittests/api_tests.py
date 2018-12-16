@@ -8,6 +8,7 @@ import string
 import subprocess
 import sys
 import time
+import iso8601
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from io import StringIO
@@ -396,6 +397,9 @@ class Test(unittest.TestCase):
         req['domain'] = domain_name
 
         resp = api.get_actions(json.dumps(req)).text
+        dic = json.loads(resp)
+        self.assertTrue('T' in dic[0]['timestamp'], msg=dic[0]['timestamp'])
+        self.assertTrue(type(iso8601.parse_date(dic[0]['timestamp'])) is datetime.datetime, msg=dic[0]['timestamp'])
         self.assertTrue(token1_name in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
 
