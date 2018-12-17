@@ -81,11 +81,6 @@ public:
 
     variant_object(mutable_variant_object&& obj);
 
-    template <typename T, typename = typename std::enable_if<!std::is_same_v<variant_object, std::decay_t<T>>>::type>
-    explicit variant_object(T&& v) {
-        fc::to_variant(fc::forward<T>(v), *this);
-    }
-
     template <typename Key, typename T>
     variant_object(Key&& key, T&& val) {
         _key_value.emplace_back(std::forward<Key>(key), variant(std::forward<T>(val)));
