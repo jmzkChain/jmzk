@@ -2,7 +2,11 @@
  *  @file
  *  @copyright defined in evt/LICENSE.txt
  */
+
+// This fixes the issue in safe_numerics in boost 1.69
+#include <evt/chain/workaround/boost/safe_numerics/exception.hpp>
 #include <boost/safe_numerics/safe_integer.hpp>
+
 #include <boost/rational.hpp>
 #include <fc/reflect/variant.hpp>
 #include <evt/chain/asset.hpp>

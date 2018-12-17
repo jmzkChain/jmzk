@@ -13,6 +13,9 @@
 #include <boost/hana/map.hpp>
 #include <boost/hana/pair.hpp>
 #include <boost/hana/tuple.hpp>
+
+// This fixes the issue in safe_numerics in boost 1.69
+#include <evt/chain/workaround/boost/safe_numerics/exception.hpp>
 #include <boost/safe_numerics/checked_default.hpp>
 #include <boost/safe_numerics/checked_integer.hpp>
 
