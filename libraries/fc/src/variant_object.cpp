@@ -82,11 +82,13 @@ variant_object::find(const char* key) const {
     return end();
 }
 
-const variant& variant_object::operator[](const string& key) const {
+const variant&
+variant_object::operator[](const string& key) const {
     return (*this)[key.c_str()];
 }
 
-const variant& variant_object::operator[](const char* key) const {
+const variant&
+variant_object::operator[](const char* key) const {
     auto itr = find(key);
     if(itr != end())
         return itr->value();
@@ -197,21 +199,25 @@ mutable_variant_object::find(const char* key) {
     return end();
 }
 
-const variant& mutable_variant_object::operator[](const string& key) const {
+const variant&
+mutable_variant_object::operator[](const string& key) const {
     return (*this)[key.c_str()];
 }
 
-const variant& mutable_variant_object::operator[](const char* key) const {
+const variant&
+mutable_variant_object::operator[](const char* key) const {
     auto itr = find(key);
     if(itr != end())
         return itr->value();
     FC_THROW_EXCEPTION(key_not_found_exception, "Key ${key}", ("key", key));
 }
-variant& mutable_variant_object::operator[](const string& key) {
+variant&
+mutable_variant_object::operator[](const string& key) {
     return (*this)[key.c_str()];
 }
 
-variant& mutable_variant_object::operator[](const char* key) {
+variant&
+mutable_variant_object::operator[](const char* key) {
     auto itr = find(key);
     if(itr != end())
         return itr->value();
@@ -275,8 +281,8 @@ mutable_variant_object::set(string key, variant var) {
 }
 
 /** Appends \a key and \a var without checking for duplicates, designed to
-    *  simplify construction of dictionaries using (key,val)(key2,val2) syntax
-    */
+  *  simplify construction of dictionaries using (key,val)(key2,val2) syntax
+  */
 mutable_variant_object&
 mutable_variant_object::operator()(string key, variant var) {
     _key_value.push_back(entry(fc::move(key), fc::move(var)));

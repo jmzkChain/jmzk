@@ -6,16 +6,16 @@ namespace fc {
 class mutable_variant_object;
 
 /**
-    *  @ingroup Serializable
-    *
-    *  @brief An order-perserving dictionary of variant's.  
-    *
-    *  Keys are kept in the order they are inserted.
-    *  This dictionary implements copy-on-write
-    *
-    *  @note This class is not optimized for random-access on large
-    *        sets of key-value pairs.
-    */
+  *  @ingroup Serializable
+  *
+  *  @brief An order-perserving dictionary of variant's.  
+  *
+  *  Keys are kept in the order they are inserted.
+  *  This dictionary implements copy-on-write
+  *
+  *  @note This class is not optimized for random-access on large
+  *        sets of key-value pairs.
+  */
 class variant_object {
 public:
     /** @brief a key/value pair */
@@ -54,11 +54,11 @@ public:
     using const_iterator = entry_vec::const_iterator;
 
     /**
-         * @name Immutable Interface
-         *
-         * Calling these methods will not result in copies of the
-         * underlying type.
-         */
+      * @name Immutable Interface
+      *
+      * Calling these methods will not result in copies of the
+      * underlying type.
+      */
     ///@{
     const_iterator begin() const;
     const_iterator end() const;
@@ -81,7 +81,7 @@ public:
 
     variant_object(mutable_variant_object&& obj);
 
-    template <typename Key, typename T>
+    template<typename Key, typename T>
     variant_object(Key&& key, T&& val) {
         _key_value.emplace_back(std::forward<Key>(key), variant(std::forward<T>(val)));
     }
@@ -103,16 +103,16 @@ void to_variant(const variant_object& var, variant& vo);
 void from_variant(const variant& var, variant_object& vo);
 
 /**
-   *  @ingroup Serializable
-   *
-   *  @brief An order-perserving dictionary of variant's.  
-   *
-   *  Keys are kept in the order they are inserted.
-   *  This dictionary implements copy-on-write
-   *
-   *  @note This class is not optimized for random-access on large
-   *        sets of key-value pairs.
-   */
+  *  @ingroup Serializable
+  *
+  *  @brief An order-perserving dictionary of variant's.  
+  *
+  *  Keys are kept in the order they are inserted.
+  *  This dictionary implements copy-on-write
+  *
+  *  @note This class is not optimized for random-access on large
+  *        sets of key-value pairs.
+  */
 class mutable_variant_object {
 public:
     /** @brief a key/value pair */
@@ -122,11 +122,11 @@ public:
     using const_iterator = entry_vec::const_iterator;
 
     /**
-         * @name Immutable Interface
-         *
-         * Calling these methods will not result in copies of the
-         * underlying type.
-         */
+      * @name Immutable Interface
+      *
+      * Calling these methods will not result in copies of the
+      * underlying type.
+      */
     ///@{
     const_iterator begin() const;
     const_iterator end() const;
@@ -140,20 +140,20 @@ public:
     variant& operator[](const char* key);
 
     /**
-         * @name mutable Interface
-         *
-         * Calling these methods will result in a copy of the underlying type 
-         * being created if there is more than one reference to this object.
-         */
+      * @name mutable Interface
+      *
+      * Calling these methods will result in a copy of the underlying type 
+      * being created if there is more than one reference to this object.
+      */
     ///@{
     void     reserve(size_t s);
     iterator begin();
     iterator end();
     void     erase(const string& key);
     /**
-         *
-         * @return end() if key is not found
-         */
+      *
+      * @return end() if key is not found
+      */
     iterator find(const string& key);
     iterator find(const char* key);
 
@@ -174,19 +174,19 @@ public:
       */
     mutable_variant_object& operator()(string key, variant var);
 
-    template <typename T>
+    template<typename T>
     mutable_variant_object&
     operator()(string key, T&& var) {
         set(std::move(key), variant(fc::forward<T>(var)));
         return *this;
     }
     /**
-       * Copy a variant_object into this mutable_variant_object.
-       */
+      * Copy a variant_object into this mutable_variant_object.
+      */
     mutable_variant_object& operator()(const variant_object& vo);
     /**
-       * Copy another mutable_variant_object into this mutable_variant_object.
-       */
+      * Copy another mutable_variant_object into this mutable_variant_object.
+      */
     mutable_variant_object& operator()(const mutable_variant_object& mvo);
     ///@}
 
@@ -200,12 +200,12 @@ public:
         : _key_value(obj._key_value) {
     }
 
-    template <typename T, typename = typename std::enable_if<!std::is_same_v<mutable_variant_object, std::decay_t<T>>>::type>
+    template<typename T, typename = typename std::enable_if<!std::is_same_v<mutable_variant_object, std::decay_t<T>>>::type>
     explicit mutable_variant_object(T&& v) {
         *this = variant(fc::forward<T>(v)).get_object();
     }
 
-    template <typename Key, typename T>
+    template<typename Key, typename T>
     mutable_variant_object(Key&& key, T&& val) {
         _key_value.emplace_back(std::forward<Key>(key), variant(std::forward<T>(val)));
     }
