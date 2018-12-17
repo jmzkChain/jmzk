@@ -23,9 +23,9 @@ class variant;
 namespace evt {
 using namespace appbase;
 using std::unique_ptr;
+using std::optional;
 
 using boost::container::flat_set;
-using fc::optional;
 
 using chain::account_name;
 using chain::bytes;
@@ -150,7 +150,7 @@ public:
     fc::variant get_head_block_header_state(const get_head_block_header_state_params& params) const;
 
     struct get_transaction_params {
-        fc::optional<uint32_t>     block_num;
+        optional<uint32_t>         block_num;
         chain::transaction_id_type id;
     };
     fc::variant get_transaction(const get_transaction_params& params);

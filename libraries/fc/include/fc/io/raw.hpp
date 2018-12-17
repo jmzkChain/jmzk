@@ -1,7 +1,8 @@
 #pragma once
 #include <array>
-#include <map>
 #include <deque>
+#include <map>
+#include <optional>
 #include <tuple>
 
 #include <boost/multiprecision/cpp_int.hpp>
@@ -13,7 +14,6 @@
 #include <fc/io/raw_variant.hpp>
 #include <fc/io/datastream.hpp>
 #include <fc/io/varint.hpp>
-#include <fc/optional.hpp>
 #include <fc/variant_wrapper.hpp>
 #include <fc/fwd.hpp>
 #include <fc/smart_ref_fwd.hpp>
@@ -287,13 +287,13 @@ namespace fc {
 
     // optional
     template<typename Stream, typename T>
-    void pack( Stream& s, const fc::optional<T>& v ) {
-      fc::raw::pack( s, bool(!!v) );
-      if( !!v ) fc::raw::pack( s, *v );
+    void pack( Stream& s, const std::optional<T>& v ) {
+      fc::raw::pack( s, bool(v.has_value()) );
+      if( v.has_value() ) fc::raw::pack( s, *v );
     }
 
     template<typename Stream, typename T>
-    void unpack( Stream& s, fc::optional<T>& v )
+    void unpack( Stream& s, std::optional<T>& v )
     { try {
       bool b; fc::raw::unpack( s, b );
       if( b ) { v = T(); fc::raw::unpack( s, *v ); }

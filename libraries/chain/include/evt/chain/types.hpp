@@ -7,12 +7,12 @@
 #include <deque>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include <chainbase/chainbase.hpp>
 
 #include <fc/fixed_string.hpp>
-#include <fc/optional.hpp>
 #include <fc/safe.hpp>
 #include <fc/smart_ref_fwd.hpp>
 #include <fc/static_variant.hpp>
@@ -60,6 +60,7 @@ using std::forward;
 using std::make_pair;
 using std::map;
 using std::move;
+using std::optional;
 using std::pair;
 using std::set;
 using std::shared_ptr;
@@ -74,7 +75,6 @@ using std::weak_ptr;
 using fc::enum_type;
 using fc::flat_map;
 using fc::flat_set;
-using fc::optional;
 using fc::path;
 using fc::safe;
 using fc::signed_int;

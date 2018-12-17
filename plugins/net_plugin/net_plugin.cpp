@@ -475,7 +475,7 @@ public:
     socket_ptr              socket;
 
     fc::message_buffer<1024 * 1024> pending_message_buffer;
-    fc::optional<std::size_t>       outstanding_read_bytes;
+    std::optional<std::size_t>      outstanding_read_bytes;
     vector<char>                    blk_buffer;
 
     struct queued_write {
@@ -598,11 +598,11 @@ public:
 
     bool add_peer_block(const peer_block_state &pbs);
 
-    fc::optional<fc::variant_object> _logger_variant;
+    std::optional<fc::variant_object> _logger_variant;
 
     const fc::variant_object&
     get_logger_variant() {
-        if(!_logger_variant) {
+        if(!_logger_variant.has_value()) {
             boost::system::error_code ec;
             auto rep = socket->remote_endpoint(ec);
             string ip = ec ? "<unknown>" : rep.address().to_string();
@@ -1103,7 +1103,7 @@ connection::cancel_sync(go_away_reason reason) {
 bool
 connection::enqueue_sync_block() {
     controller& cc = app().find_plugin<chain_plugin>()->chain();
-    if(!peer_requested)
+    if(!peer_requested.has_value())
         return false;
     uint32_t num          = ++peer_requested->last;
     bool     trigger_send = num == peer_requested->start_block;
@@ -1219,7 +1219,7 @@ connection::peer_name() {
 void
 connection::fetch_timeout(boost::system::error_code ec) {
     if(!ec) {
-        if(pending_fetch.valid() && !(pending_fetch->req_trx.empty() || pending_fetch->req_blocks.empty())) {
+        if(pending_fetch.has_value() && !(pending_fetch->req_trx.empty() || pending_fetch->req_blocks.empty())) {
             my_impl->dispatcher->retry_fetch(shared_from_this());
         }
     }
@@ -1924,7 +1924,7 @@ dispatch_manager::recv_notice(connection_ptr c, const notice_message& msg, bool 
 
 void
 dispatch_manager::retry_fetch(connection_ptr c) {
-    if(!c->last_req) {
+    if(!c->last_req.has_value()) {
         return;
     }
     fc_wlog(logger, "failed to fetch from ${p}", ("p", c->peer_name()));
@@ -2597,7 +2597,7 @@ net_plugin_impl::handle_message(connection_ptr c, const packed_transaction& msg)
         }
         else {
             auto trace = result.get<transaction_trace_ptr>();
-            if(!trace->except) {
+            if(!trace->except.has_value()) {
                 fc_dlog(logger, "chain accepted transaction");
                 dispatcher->bcast_transaction(msg);
                 return;

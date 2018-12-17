@@ -1,10 +1,10 @@
 #pragma once
-#include <utility>
 #include <memory>
+#include <optional>
+#include <utility>
 
 #include <fc/string.hpp>
 #include <fc/reflect/typename.hpp>
-#include <fc/optional.hpp>
 #include <fc/fwd.hpp>
 
 namespace boost {
@@ -194,13 +194,13 @@ namespace fc {
   {
   public:
      inline ~temp_file_base() { remove(); }
-     inline operator bool() const { return _path.valid(); }
-     inline bool operator!() const { return !_path; }
+     inline operator bool() const { return _path.has_value(); }
+     inline bool operator!() const { return !_path.has_value(); }
      const fc::path& path() const;
      void remove();
      void release();
   protected:
-     typedef fc::optional<fc::path> path_t;
+     typedef std::optional<fc::path> path_t;
      inline temp_file_base(const path_t& path) : _path(path) {}
      inline temp_file_base(path_t&& path) : _path(std::move(path)) {}
      path_t _path;

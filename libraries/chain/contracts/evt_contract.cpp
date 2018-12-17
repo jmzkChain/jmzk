@@ -159,10 +159,10 @@ constexpr auto get_metakey = [](auto& metas) {
 auto get_metavalue = [](const auto& obj, auto k) {
     for(const auto& p : obj.metas) {
         if(p.key.value == k) {
-            return fc::optional<std::string>{ p.value };
+            return optional<std::string>{ p.value };
         }
     }
-    return fc::optional<std::string>();
+    return optional<std::string>();
 };
 
 } // namespace __internal
@@ -293,7 +293,7 @@ EVT_ACTION_IMPL(destroytoken) {
         tokendb.read_domain(dtact.domain, domain);
 
         auto dd = get_metavalue(domain, get_metakey<(int)reserved_meta_key::disable_destroy>(domain_metas));
-        if(dd.valid() && *dd == "true") {
+        if(dd.has_value() && *dd == "true") {
             EVT_THROW(token_cannot_destroy_exception, "Token in this domain: ${d} cannot be destroyed", ("d",dtact.domain));
         }
 
@@ -363,21 +363,21 @@ EVT_ACTION_IMPL(updatedomain) {
         tokendb.read_domain(udact.name, domain);
 
         auto pchecker = make_permission_checker(tokendb);
-        if(udact.issue.valid()) {
+        if(udact.issue.has_value()) {
             EVT_ASSERT(udact.issue->name == "issue", permission_type_exception, "Name ${name} does not match with the name of issue permission.", ("name",udact.issue->name));
             EVT_ASSERT(udact.issue->threshold > 0 && validate(*udact.issue), permission_type_exception, "Issue permission is not valid, which may be caused by invalid threshold, duplicated keys.");
             pchecker(*udact.issue, false);
 
             domain.issue = std::move(*udact.issue);
         }
-        if(udact.transfer.valid()) {
+        if(udact.transfer.has_value()) {
             EVT_ASSERT(udact.transfer->name == "transfer", permission_type_exception, "Name ${name} does not match with the name of transfer permission.", ("name",udact.transfer->name));
             EVT_ASSERT(validate(*udact.transfer), permission_type_exception, "Transfer permission is not valid, which may be caused by duplicated keys.");
             pchecker(*udact.transfer, true);
 
             domain.transfer = std::move(*udact.transfer);
         }
-        if(udact.manage.valid()) {
+        if(udact.manage.has_value()) {
             // manage permission's threshold can be 0 which means no one can update permission later.
             EVT_ASSERT(udact.manage->name == "manage", permission_type_exception, "Name ${name} does not match with the name of manage permission.", ("name",udact.manage->name));
             EVT_ASSERT(validate(*udact.manage), permission_type_exception, "Manage permission is not valid, which may be caused by duplicated keys.");
@@ -473,14 +473,14 @@ EVT_ACTION_IMPL(updfungible) {
         tokendb.read_fungible(ufact.sym_id, fungible);
 
         auto pchecker = make_permission_checker(tokendb);
-        if(ufact.issue.valid()) {
+        if(ufact.issue.has_value()) {
             EVT_ASSERT(ufact.issue->name == "issue", permission_type_exception, "Name ${name} does not match with the name of issue permission.", ("name",ufact.issue->name));
             EVT_ASSERT(ufact.issue->threshold > 0 && validate(*ufact.issue), permission_type_exception, "Issue permission is not valid, which may be caused by invalid threshold, duplicated keys.");
             pchecker(*ufact.issue, false);
 
             fungible.issue = std::move(*ufact.issue);
         }
-        if(ufact.manage.valid()) {
+        if(ufact.manage.has_value()) {
             // manage permission's threshold can be 0 which means no one can update permission later.
             EVT_ASSERT(ufact.manage->name == "manage", permission_type_exception, "Name ${name} does not match with the name of manage permission.", ("name",ufact.manage->name));
             EVT_ASSERT(validate(*ufact.manage), permission_type_exception, "Manage permission is not valid, which may be caused by duplicated keys.");
@@ -1201,7 +1201,7 @@ EVT_ACTION_IMPL(prodvote) {
         } // switch
 
         auto pkey = sche.get_producer_key(pvact.producer);
-        EVT_ASSERT(pkey.valid(), prodvote_producer_exception, "${p} is not a valid producer", ("p",pvact.producer));
+        EVT_ASSERT(pkey.has_value(), prodvote_producer_exception, "${p} is not a valid producer", ("p",pvact.producer));
 
         tokendb.update_prodvote(pvact.key, *pkey, pvact.value);
 

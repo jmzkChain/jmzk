@@ -297,9 +297,9 @@ public:
 
     vector<char> _out_buffer;
     //boost::beast::multi_buffer                                  _in_buffer;
-    boost::beast::flat_buffer        _in_buffer;
-    flat_set<block_id_type>          _block_header_notices;
-    fc::optional<fc::variant_object> _logger_variant;
+    boost::beast::flat_buffer    _in_buffer;
+    flat_set<block_id_type>      _block_header_notices;
+    optional<fc::variant_object> _logger_variant;
 
     int
     next_session_id() const {
@@ -1153,7 +1153,7 @@ public:
 
     const fc::variant_object&
     get_logger_variant() {
-        if (!_logger_variant) {
+        if (!_logger_variant.has_value()) {
             boost::system::error_code ec;
             auto rep = _ws->lowest_layer().remote_endpoint(ec);
             string ip = ec ? "<unknown>" : rep.address().to_string();

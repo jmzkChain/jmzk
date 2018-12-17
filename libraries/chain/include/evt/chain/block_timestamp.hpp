@@ -3,14 +3,14 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #pragma once
-#include <evt/chain/config.hpp>
-
 #include <stdint.h>
+
 #include <fc/time.hpp>
 #include <fc/variant.hpp>
 #include <fc/string.hpp>
-#include <fc/optional.hpp>
 #include <fc/exception/exception.hpp>
+
+#include <evt/chain/config.hpp>
 #include <evt/chain/exceptions.hpp>
 
 namespace evt { namespace chain {

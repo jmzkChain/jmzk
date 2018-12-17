@@ -18,10 +18,10 @@ public:
     APPBASE_PLUGIN_REQUIRES((chain_plugin)(http_client_plugin))
 
     struct runtime_options {
-        fc::optional<int32_t> max_transaction_time;
-        fc::optional<int32_t> max_irreversible_block_age;
-        fc::optional<int32_t> produce_time_offset_us;
-        fc::optional<int32_t> last_block_time_offset_us;
+        optional<int32_t> max_transaction_time;
+        optional<int32_t> max_irreversible_block_age;
+        optional<int32_t> produce_time_offset_us;
+        optional<int32_t> last_block_time_offset_us;
     };
 
     struct integrity_hash_information {

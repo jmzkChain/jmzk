@@ -174,17 +174,17 @@ interpreter_impl::process_updatedomain(const updatedomain& ud, write_context& wr
 
     document update{};
     update << "$set" << open_document;
-    if(ud.issue.valid()) {
+    if(ud.issue.has_value()) {
         fc::variant u;
         fc::to_variant(*ud.issue, u);
         update << "issue" << bsoncxx::from_json(fc::json::to_string(u));
     }
-    if(ud.transfer.valid()) {
+    if(ud.transfer.has_value()) {
         fc::variant u;
         fc::to_variant(*ud.transfer, u);
         update << "transfer" << bsoncxx::from_json(fc::json::to_string(u));
     }
-    if(ud.manage.valid()) {
+    if(ud.manage.has_value()) {
         fc::variant u;
         fc::to_variant(*ud.manage, u);
         update << "manage" << bsoncxx::from_json(fc::json::to_string(u));
@@ -380,12 +380,12 @@ interpreter_impl::process_updfungible(const updfungible& uf, write_context& writ
 
     document update{};
     update << "$set" << open_document;
-    if(uf.issue.valid()) {
+    if(uf.issue.has_value()) {
         fc::variant u;
         fc::to_variant(*uf.issue, u);
         update << "issue" << bsoncxx::from_json(fc::json::to_string(u));
     }
-    if(uf.manage.valid()) {
+    if(uf.manage.has_value()) {
         fc::variant u;
         fc::to_variant(*uf.manage, u);
         update << "manage" << bsoncxx::from_json(fc::json::to_string(u));

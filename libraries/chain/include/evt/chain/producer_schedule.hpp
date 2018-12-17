@@ -33,14 +33,14 @@ struct producer_schedule_type {
     uint32_t             version = 0;  ///< sequentially incrementing version number
     vector<producer_key> producers;
 
-    fc::optional<public_key_type>
+    std::optional<public_key_type>
     get_producer_key(account_name p) const {
         for(const auto& i : producers) {
             if(i.producer_name == p) {
                 return i.block_signing_key;
             }
         }
-        return fc::optional<public_key_type>();
+        return std::optional<public_key_type>();
     }
 };
 

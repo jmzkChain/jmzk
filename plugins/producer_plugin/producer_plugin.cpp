@@ -156,8 +156,8 @@ public:
 
     transaction_id_with_expiry_index _blacklisted_transactions;
 
-    fc::optional<scoped_connection> _accepted_block_connection;
-    fc::optional<scoped_connection> _irreversible_block_connection;
+    optional<scoped_connection> _accepted_block_connection;
+    optional<scoped_connection> _irreversible_block_connection;
 
     /*
        * HACK ALERT
@@ -1399,7 +1399,7 @@ make_debug_time_logger() {
 }
 
 static auto
-maybe_make_debug_time_logger() -> fc::optional<decltype(make_debug_time_logger())> {
+maybe_make_debug_time_logger() -> optional<decltype(make_debug_time_logger())> {
     if(_log.is_enabled(fc::log_level::debug)) {
         return make_debug_time_logger();
     }

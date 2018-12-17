@@ -1,3 +1,13 @@
+#include <iomanip>
+#include <iostream>
+#include <mutex>
+#include <queue>
+#include <sstream>
+#include <iostream>
+
+#include <boost/lexical_cast.hpp>
+#include <boost/thread/mutex.hpp>
+
 #include <fc/network/udp_socket.hpp>
 #include <fc/network/ip.hpp>
 #include <fc/network/resolve.hpp>
@@ -8,15 +18,6 @@
 #include <fc/io/json.hpp>
 #include <fc/crypto/city.hpp>
 #include <fc/compress/zlib.hpp>
-
-#include <boost/lexical_cast.hpp>
-#include <iomanip>
-#include <iostream>
-#include <mutex>
-#include <queue>
-#include <sstream>
-#include <iostream>
-#include <boost/thread/mutex.hpp>
 
 namespace fc
 {
@@ -31,10 +32,10 @@ namespace fc
   class gelf_appender::impl : public retainable
   {
   public:
-    config                                    cfg;
-    optional<boost::asio::ip::udp::endpoint>  gelf_endpoint;
-    udp_socket                                gelf_socket;
-    boost::mutex                              gelf_log_mutex;
+    config                                        cfg;
+    std::optional<boost::asio::ip::udp::endpoint> gelf_endpoint;
+    udp_socket                                    gelf_socket;
+    boost::mutex                                  gelf_log_mutex;
 
     impl(const config& c) :
       cfg(c)
@@ -63,7 +64,7 @@ namespace fc
       catch (...)
       {
       }
-      if (!my->gelf_endpoint)
+      if (!my->gelf_endpoint.has_value())
       {
         // couldn't parse as a numeric ip address, try resolving as a DNS name.
         // This can yield, so don't do it in the catch block above
@@ -85,7 +86,7 @@ namespace fc
         }
       }
 
-      if (my->gelf_endpoint)
+      if (my->gelf_endpoint.has_value())
       {
         my->gelf_socket.initialize(io_service);
         my->gelf_socket.open();
@@ -103,7 +104,7 @@ namespace fc
 
   void gelf_appender::log(const log_message& message)
   {
-    if (!my->gelf_endpoint)
+    if (!my->gelf_endpoint.has_value())
       return;
 
     log_context context = message.get_context();
