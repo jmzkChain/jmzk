@@ -1,6 +1,5 @@
 #pragma once
 #include <memory>
-#include <fc/retainable.hpp>
 #include <fc/string.hpp>
 #include <fc/time.hpp>
 #include <fc/log/log_message.hpp>

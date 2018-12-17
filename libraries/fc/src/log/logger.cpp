@@ -8,7 +8,7 @@
 
 namespace fc {
 
-    class logger::impl : public fc::retainable {
+    class logger::impl {
       public:
          impl()
          :_parent(nullptr),_enabled(true),_additivity(false),_level(log_level::warn){}

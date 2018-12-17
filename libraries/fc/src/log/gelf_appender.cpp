@@ -29,7 +29,7 @@ namespace fc
     }
   }
 
-  class gelf_appender::impl : public retainable
+  class gelf_appender::impl
   {
   public:
     config                                        cfg;

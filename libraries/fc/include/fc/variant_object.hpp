@@ -1,5 +1,4 @@
 #pragma once
-#include <fc/retainable.hpp>
 #include <fc/variant.hpp>
 
 namespace fc

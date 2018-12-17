@@ -1,7 +1,6 @@
 #pragma once
 #include <memory>
 #include <boost/any.hpp>
-#include <fc/retainable.hpp>
 #include <fc/string.hpp>
 
 #if BOOST_VERSION >= 106600
@@ -15,7 +14,7 @@ namespace fc {
    class log_message;
    class variant;
 
-   class appender_factory : public fc::retainable {
+   class appender_factory {
       public:
        typedef std::shared_ptr<appender_factory> ptr;
 
@@ -27,13 +26,13 @@ namespace fc {
       template<typename T>
       class appender_factory_impl : public appender_factory {
         public:
-           virtual std::shared_ptr<appender> create( const variant& args ) {
-              return std::shared_ptr<appender>(new T(args));
+           virtual std::shared_ptr<appender> create( const variant& args ) override {
+              return std::make_shared<T>(args);
            }
       };
    }
 
-   class appender : public fc::retainable {
+   class appender {
       public:
          typedef std::shared_ptr<appender> ptr;
 

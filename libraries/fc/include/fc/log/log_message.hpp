@@ -4,7 +4,6 @@
  * @brief Defines types and helper macros necessary for generating log messages.
  */
 #include <memory>
-#include <fc/retainable.hpp>
 #include <fc/time.hpp>
 #include <fc/variant_object.hpp>
 

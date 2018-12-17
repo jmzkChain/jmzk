@@ -1,7 +1,10 @@
+#include <mutex>
+#include <string>
+#include <unordered_map>
+
+#include <fc/variant.hpp>
 #include <fc/log/appender.hpp>
 #include <fc/log/logger.hpp>
-#include <unordered_map>
-#include <string>
 #include <fc/log/console_appender.hpp>
 
 #ifndef FCLITE
@@ -9,8 +12,6 @@
 #include <fc/log/gelf_appender.hpp>
 #endif
 
-#include <fc/variant.hpp>
-#include <mutex>
 #include "console_defines.h"
 
 
