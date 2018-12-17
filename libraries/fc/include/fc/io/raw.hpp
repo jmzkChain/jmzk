@@ -20,7 +20,6 @@
 #include <fc/array.hpp>
 #include <fc/time.hpp>
 #include <fc/filesystem.hpp>
-#include <fc/safe.hpp>
 #include <fc/crypto/hex.hpp>
 #include <fc/reflect/reflect.hpp>
 #include <fc/exception/exception.hpp>
@@ -263,12 +262,6 @@ namespace fc {
     }
 
     template<typename Stream> inline void pack( Stream& s, const char* v ) { fc::raw::pack( s, fc::string(v) ); }
-
-    template<typename Stream, typename T>
-    void pack( Stream& s, const safe<T>& v ) { fc::raw::pack( s, v.value ); }
-
-    template<typename Stream, typename T>
-    void unpack( Stream& s, fc::safe<T>& v ) { fc::raw::unpack( s, v.value ); }
 
     template<typename Stream, typename T, unsigned int S, typename Align>
     void pack( Stream& s, const fc::fwd<T,S,Align>& v ) {
