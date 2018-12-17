@@ -1,17 +1,20 @@
 #include <fc/log/logger_config.hpp>
-#include <fc/log/appender.hpp>
-#include <fc/io/json.hpp>
-#include <fc/filesystem.hpp>
-#include <unordered_map>
+
+#include <iostream>
 #include <string>
+#include <unordered_map>
+
+#include <fc/filesystem.hpp>
+#include <fc/reflect/variant.hpp>
+#include <fc/exception/exception.hpp>
+#include <fc/io/json.hpp>
+
+#include <fc/log/appender.hpp>
 #include <fc/log/console_appender.hpp>
 
 #ifndef FCLITE
 #include <fc/log/gelf_appender.hpp>
 #endif
-
-#include <fc/reflect/variant.hpp>
-#include <fc/exception/exception.hpp>
 
 namespace fc {
    extern std::unordered_map<std::string,logger>& get_logger_map();

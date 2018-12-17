@@ -12,7 +12,6 @@
 #include <vector>
 
 #include <boost/multi_index_container_fwd.hpp>
-#include <boost/multiprecision/cpp_int.hpp>
 
 #include <fc/smart_ref_fwd.hpp>
 #include <fc/string.hpp>
@@ -53,27 +52,6 @@ namespace fc
 
    template<typename T, typename... Args> void to_variant( const boost::multi_index_container<T,Args...>& s, variant& v );
    template<typename T, typename... Args> void from_variant( const variant& v, boost::multi_index_container<T,Args...>& s );
-
-   using namespace boost::multiprecision;
-   template<size_t Size>
-   using UInt = number<cpp_int_backend<Size, Size, unsigned_magnitude, unchecked, void> >;
-   template<size_t Size>
-   using Int = number<cpp_int_backend<Size, Size, signed_magnitude, unchecked, void> >;
-
-   void to_variant( const UInt<8>& n, variant& v );
-   void from_variant( const variant& v, UInt<8>& n );
-
-   void to_variant( const UInt<16>& n, variant& v );
-   void from_variant( const variant& v, UInt<16>& n );
-
-   void to_variant( const UInt<32>& n, variant& v );
-   void from_variant( const variant& v, UInt<32>& n );
-
-   void to_variant( const UInt<64>& n, variant& v );
-   void from_variant( const variant& v, UInt<64>& n );
-
-   template<typename T> void to_variant( const boost::multiprecision::number<T>& n, variant& v );
-   template<typename T> void from_variant( const variant& v, boost::multiprecision::number<T>& n );
 
    template<typename T> void to_variant( const smart_ref<T>& s, variant& v );
    template<typename T> void from_variant( const variant& v, smart_ref<T>& s );
@@ -655,12 +633,6 @@ namespace fc
       c.clear();
       for( const auto& item : vars )
          c.insert( item.as<T>() );
-   }
-   template<typename T> void to_variant( const boost::multiprecision::number<T>& n, variant& v ) {
-      v = n.str();
-   }
-   template<typename T> void from_variant( const variant& v, boost::multiprecision::number<T>& n ) {
-      n = boost::multiprecision::number<T>(v.get_string());
    }
 
    variant operator + ( const variant& a, const variant& b );
