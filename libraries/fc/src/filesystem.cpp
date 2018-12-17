@@ -310,6 +310,7 @@ bool
 is_regular_file(const path& p) {
     return boost::filesystem::is_regular_file(p);
 }
+
 uint64_t
 file_size(const path& p) {
     return boost::filesystem::file_size(p);
@@ -338,6 +339,7 @@ void
 remove_all(const path& p) {
     boost::filesystem::remove_all(p);
 }
+
 void
 copy(const path& f, const path& t) {
     boost::system::error_code ec;

@@ -13,7 +13,6 @@
 #include <chainbase/chainbase.hpp>
 
 #include <fc/fixed_string.hpp>
-#include <fc/safe.hpp>
 #include <fc/smart_ref_fwd.hpp>
 #include <fc/static_variant.hpp>
 #include <fc/string.hpp>
@@ -76,16 +75,15 @@ using fc::enum_type;
 using fc::flat_map;
 using fc::flat_set;
 using fc::path;
-using fc::safe;
 using fc::signed_int;
 using fc::smart_ref;
+using fc::small_vector;
 using fc::static_variant;
 using fc::time_point;
 using fc::time_point_sec;
 using fc::unsigned_int;
 using fc::variant;
 using fc::variant_object;
-using fc::small_vector;
 using fc::ecc::commitment_type;
 using fc::ecc::range_proof_info;
 using fc::ecc::range_proof_type;

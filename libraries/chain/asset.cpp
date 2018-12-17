@@ -2,9 +2,10 @@
  *  @file
  *  @copyright defined in evt/LICENSE.txt
  */
+#include <boost/safe_numerics/safe_integer.hpp>
 #include <boost/rational.hpp>
-#include <evt/chain/asset.hpp>
 #include <fc/reflect/variant.hpp>
+#include <evt/chain/asset.hpp>
 
 namespace evt { namespace chain {
 
@@ -59,6 +60,8 @@ asset::to_string() const {
 
 asset
 asset::from_string(const string& from) {
+    using namespace boost::safe_numerics;
+
     try {
         string s = fc::trim(from);
 
@@ -93,7 +96,7 @@ asset::from_string(const string& from) {
         }
         amount = fc::to_int64(amount_str);
 
-        return asset(amount.value, symbol(precision, sym_id));
+        return asset((int64_t)amount, symbol(precision, sym_id));
     }
     EVT_CAPTURE_AND_RETHROW(asset_type_exception, (from));
 }
