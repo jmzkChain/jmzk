@@ -135,6 +135,9 @@ public:
     public:
         session&
         operator=(session&& rhs) noexcept {
+            if(this == &rhs) {
+                return *this;
+            }
             *this = std::move(rhs);
             return *this;
         }
