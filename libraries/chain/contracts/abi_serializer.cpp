@@ -228,8 +228,8 @@ void
 abi_serializer::validate(impl::abi_traverse_context& ctx) const {
     for(const auto& t : typedefs) {
         try {
-            vector<type_name> types_seen{t.first, t.second};
-            auto              itr = typedefs.find(t.second);
+            auto types_seen = vector<type_name>{t.first, t.second};
+            auto itr        = typedefs.find(t.second);
             while(itr != typedefs.end()) {
                 ctx.check_deadline();
                 EVT_ASSERT(find(types_seen.begin(), types_seen.end(), itr->second) == types_seen.end(), abi_circular_def_exception, "Circular reference in type ${type}", ("type", t.first));
@@ -248,8 +248,8 @@ abi_serializer::validate(impl::abi_traverse_context& ctx) const {
     for(const auto& s : structs) {
         try {
             if(s.second.base != type_name()) {
-                struct_def        current = s.second;
-                vector<type_name> types_seen{current.name};
+                auto current    = s.second;
+                auto types_seen = vector<type_name>{current.name};
                 while(current.base != type_name()) {
                     ctx.check_deadline();
                     const auto& base = get_struct(current.base);  //<-- force struct to inherit from another struct

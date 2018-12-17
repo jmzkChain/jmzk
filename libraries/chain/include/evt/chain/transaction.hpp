@@ -136,8 +136,6 @@ private:
 
 using packed_transaction_ptr = std::shared_ptr<packed_transaction>;
 
-uint128_t transaction_id_to_sender_id(const transaction_id_type& tid);
-
 }}  // namespace evt::chain
 
 FC_REFLECT(evt::chain::transaction_header, (expiration)(ref_block_num)(ref_block_prefix)(max_charge));

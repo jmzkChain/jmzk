@@ -35,6 +35,7 @@ using chain::digest_type;
 using chain::name;
 using chain::proposal_name;
 using chain::public_key_type;
+using chain::public_keys_type;
 using chain::version;
 using chain::contracts::abi_serializer;
 
@@ -104,21 +105,21 @@ public:
     trx_json_to_digest_result trx_json_to_digest(const trx_json_to_digest_params& params) const;
 
     struct get_required_keys_params {
-        fc::variant               transaction;
-        flat_set<public_key_type> available_keys;
+        fc::variant      transaction;
+        public_keys_type available_keys;
     };
     struct get_required_keys_result {
-        flat_set<public_key_type> required_keys;
+        public_keys_type required_keys;
     };
 
     get_required_keys_result get_required_keys(const get_required_keys_params& params) const;
 
     struct get_suspend_required_keys_params {
         proposal_name             name;
-        flat_set<public_key_type> available_keys;
+        public_keys_type available_keys;
     };
     struct get_suspend_required_keys_result {
-        flat_set<public_key_type> required_keys;
+        public_keys_type required_keys;
     };
 
     get_suspend_required_keys_result get_suspend_required_keys(const get_suspend_required_keys_params& params) const;
