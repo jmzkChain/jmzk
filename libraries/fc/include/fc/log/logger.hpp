@@ -1,7 +1,8 @@
 #pragma once
+#include <memory>
+#include <fc/retainable.hpp>
 #include <fc/string.hpp>
 #include <fc/time.hpp>
-#include <fc/shared_ptr.hpp>
 #include <fc/log/log_message.hpp>
 
 namespace fc  
@@ -43,16 +44,16 @@ namespace fc
          void  set_name( const fc::string& n );
          const fc::string& name()const;
 
-         void add_appender( const fc::shared_ptr<appender>& a );
-         std::vector<fc::shared_ptr<appender> > get_appenders()const;
-         void remove_appender( const fc::shared_ptr<appender>& a );
+         void add_appender( const std::shared_ptr<appender>& a );
+         std::vector<std::shared_ptr<appender> > get_appenders()const;
+         void remove_appender( const std::shared_ptr<appender>& a );
 
          bool is_enabled( log_level e )const;
          void log( log_message m );
 
       private:
          class impl;
-         fc::shared_ptr<impl> my;
+         std::shared_ptr<impl> my;
    };
 
 } // namespace fc

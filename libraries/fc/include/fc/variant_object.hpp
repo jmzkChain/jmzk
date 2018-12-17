@@ -1,7 +1,7 @@
 #pragma once
-#include <fc/variant.hpp>
-#include <fc/shared_ptr.hpp>
+#include <fc/retainable.hpp>
 #include <fc/unique_ptr.hpp>
+#include <fc/variant.hpp>
 
 namespace fc
 {

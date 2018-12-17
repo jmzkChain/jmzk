@@ -1,6 +1,6 @@
+#include <fc/retainable.hpp>
 #include <assert.h>
 #include <atomic>
-#include <fc/shared_ptr.hpp>
 
 namespace fc {
   retainable::retainable()

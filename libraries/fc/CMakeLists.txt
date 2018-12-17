@@ -58,7 +58,7 @@ set( fc_sources
      src/exception.cpp
      src/variant_object.cpp
      src/string.cpp
-     src/shared_ptr.cpp
+     src/retainable.cpp
      src/time.cpp
      src/utf8.cpp
      src/io/datastream.cpp
@@ -117,7 +117,7 @@ set( fc_lite_sources
     src/exception.cpp
     src/variant_object.cpp
     src/string.cpp
-    src/shared_ptr.cpp
+    src/retainable.cpp
     src/time.cpp
     src/utf8.cpp
     src/io/datastream.cpp
