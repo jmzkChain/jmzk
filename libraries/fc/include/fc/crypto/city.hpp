@@ -43,12 +43,8 @@
 
 #include <stdlib.h>  // for size_t.
 #include <stdint.h>
+#include <array>
 #include <utility>
-
-namespace std {
-template<typename T, size_t S>
-class array;
-}  // namespace std
 
 namespace fc {
 
