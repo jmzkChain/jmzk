@@ -95,8 +95,8 @@ public:
     void wipe_database();
 
 public:
-    abi_serializer              evt_abi;
-    fc::optional<chain_id_type> chain_id;
+    abi_serializer               evt_abi;
+    std::optional<chain_id_type> chain_id;
 
     bool configured{false};
     bool wipe_database_on_startup{false};
@@ -120,9 +120,9 @@ public:
 
     write_context write_ctx_;
 
-    fc::optional<boost::signals2::scoped_connection> accepted_block_connection;
-    fc::optional<boost::signals2::scoped_connection> irreversible_block_connection;
-    fc::optional<boost::signals2::scoped_connection> applied_transaction_connection;
+    std::optional<boost::signals2::scoped_connection> accepted_block_connection;
+    std::optional<boost::signals2::scoped_connection> irreversible_block_connection;
+    std::optional<boost::signals2::scoped_connection> applied_transaction_connection;
 
 public:
     const std::string blocks_col        = "Blocks";

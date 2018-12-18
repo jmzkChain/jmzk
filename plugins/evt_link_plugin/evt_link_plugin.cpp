@@ -73,7 +73,7 @@ public:
 
     std::unordered_multimap<link_id_type, deferred_pair, evt_link_id_hasher> link_ids_;
 
-    fc::optional<boost::signals2::scoped_connection> accepted_block_connection_;
+    std::optional<boost::signals2::scoped_connection> accepted_block_connection_;
 };
 
 void

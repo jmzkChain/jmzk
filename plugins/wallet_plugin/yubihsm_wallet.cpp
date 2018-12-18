@@ -210,11 +210,11 @@ struct yubihsm_wallet_impl {
         });
     }
 
-    fc::optional<signature_type>
+    std::optional<signature_type>
     try_sign_digest(const digest_type d, const public_key_type public_key) {
         auto it = _keys.find(public_key);
         if(it == _keys.end())
-            return fc::optional<signature_type>{};
+            return std::optional<signature_type>{};
 
         size_t  der_sig_sz = 128;
         uint8_t der_sig[der_sig_sz];
@@ -241,7 +241,7 @@ struct yubihsm_wallet_impl {
 
         char serialized_signature[sizeof(compact_sig) + 1];
         serialized_signature[0] = 0x01;
-        memcpy(serialized_signature + 1, compact_sig.data, sizeof(compact_sig));
+        memcpy(serialized_signature + 1, compact_sig.data(), sizeof(compact_sig));
 
         signature_type              final_signature;
         fc::datastream<const char*> ds(serialized_signature, sizeof(serialized_signature));
@@ -351,7 +351,7 @@ yubihsm_wallet::remove_key(string key) {
     return true;
 }
 
-fc::optional<signature_type>
+std::optional<signature_type>
 yubihsm_wallet::try_sign_digest(const digest_type digest, const public_key_type public_key) {
     return my->try_sign_digest(digest, public_key);
 }

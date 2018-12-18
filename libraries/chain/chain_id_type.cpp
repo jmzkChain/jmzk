@@ -2,8 +2,9 @@
  *  @file
  *  @copyright defined in evt/LICENSE.txt
  */
-
 #include <evt/chain/chain_id_type.hpp>
+
+#include <fc/variant.hpp>
 #include <evt/chain/exceptions.hpp>
 
 namespace evt { namespace chain {

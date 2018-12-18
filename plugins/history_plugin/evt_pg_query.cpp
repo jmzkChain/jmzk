@@ -229,7 +229,7 @@ pg_query::get_tokens_async(int id, const read_only::get_tokens_params& params) {
     format_array_to(pkeys_buf, std::begin(params.keys), std::end(params.keys));
 
     auto stmt = std::string();
-    if(params.domain.valid()) {
+    if(params.domain.has_value()) {
         stmt = fmt::format(fmt("EXECUTE gt_plan ('{}','{}');"), fmt::to_string(pkeys_buf), (std::string)*params.domain);
     }
     else {
@@ -407,10 +407,10 @@ pg_query::get_actions_async(int id, const read_only::get_actions_params& params)
     using namespace __internal;
 
     int s = 0, t = 10;
-    if(params.skip.valid()) {
+    if(params.skip.has_value()) {
         s = *params.skip;
     }
-    if(params.take.valid()) {
+    if(params.take.has_value()) {
         t = *params.take;
         EVT_ASSERT(t <= 20, chain::exceed_query_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 20 per query");
     }
@@ -418,10 +418,10 @@ pg_query::get_actions_async(int id, const read_only::get_actions_params& params)
     auto stmt = std::string();
 
     int j = 0;
-    if(params.dire.valid() && *params.dire == direction::asc) {
+    if(params.dire.has_value() && *params.dire == direction::asc) {
         j += 1;
     }
-    if(params.key.valid()) {
+    if(params.key.has_value()) {
         j += 2;
     }
     if(!params.names.empty()) {
@@ -551,10 +551,10 @@ pg_query::get_fungible_actions_async(int id, const read_only::get_fungible_actio
     using namespace __internal;
 
     int s = 0, t = 10;
-    if(params.skip.valid()) {
+    if(params.skip.has_value()) {
         s = *params.skip;
     }
-    if(params.take.valid()) {
+    if(params.take.has_value()) {
         t = *params.take;
         EVT_ASSERT(t <= 20, chain::exceed_query_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 20 per query");
     }
@@ -562,10 +562,10 @@ pg_query::get_fungible_actions_async(int id, const read_only::get_fungible_actio
     auto stmt = std::string();
 
     int j = 0;
-    if(params.dire.valid() && *params.dire == direction::asc) {
+    if(params.dire.has_value() && *params.dire == direction::asc) {
         j += 1;
     }
-    if(params.addr.valid()) {
+    if(params.addr.has_value()) {
         j += 2;
     }
 
@@ -681,10 +681,10 @@ pg_query::get_transactions_async(int id, const read_only::get_transactions_param
     using namespace __internal;
 
     int s = 0, t = 10;
-    if(params.skip.valid()) {
+    if(params.skip.has_value()) {
         s = *params.skip;
     }
-    if(params.take.valid()) {
+    if(params.take.has_value()) {
         t = *params.take;
         EVT_ASSERT(t <= 20, chain::exceed_query_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 20 per query");
     }
@@ -693,7 +693,7 @@ pg_query::get_transactions_async(int id, const read_only::get_transactions_param
     format_array_to(keys_buf, std::begin(params.keys), std::end(params.keys));
 
     auto stmt = std::string();
-    if(params.dire.valid() && *params.dire == direction::asc) {
+    if(params.dire.has_value() && *params.dire == direction::asc) {
         stmt = fmt::format(fmt("EXECUTE gtrxs_plan0('{}',{},{});"), fmt::to_string(keys_buf), t, s);
     }
     else {
@@ -751,10 +751,10 @@ pg_query::get_fungible_ids_async(int id, const read_only::get_fungible_ids_param
     using namespace __internal;
 
     int s = 0, t = 100;
-    if(params.skip.valid()) {
+    if(params.skip.has_value()) {
         s = *params.skip;
     }
-    if(params.take.valid()) {
+    if(params.take.has_value()) {
         t = *params.take;
         EVT_ASSERT(t <= 100, chain::exceed_query_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 100 per query");
     }

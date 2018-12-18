@@ -130,7 +130,7 @@ parse_signatures(const bytes& b) {
     for(auto i = 0u; i < b.size() / 65u; i++) {
         auto shim = fc::ecc::compact_signature();
         static_assert(sizeof(shim) == 65);
-        memcpy(shim.data, &b[0] + i * 65, 65);
+        memcpy(shim.data(), &b[0] + i * 65, 65);
 
         sigs.emplace(fc::ecc::signature_shim(shim));
     }
@@ -244,13 +244,12 @@ public:
     template<typename Sig>
     void
     operator()(const Sig& sig) const {
-        static_assert(sizeof(sig._data.data) == 65, "sig size is expected to be 65");
-        stream_.write((char*)sig._data.data, 65);
+        static_assert(sizeof(sig._data) == 65, "sig size is expected to be 65");
+        stream_.write((char*)sig._data.data(), 65);
     }
 
 private:
     Stream& stream_;
-
 };
 
 template<typename Stream>

@@ -507,7 +507,7 @@ block_log::repair_log(const fc::path& data_dir, uint32_t truncate_at_block) {
             break;
     }
 
-    if(bad_block.valid()) {
+    if(bad_block.has_value()) {
         ilog("Recovered only up to block number ${num}. Last block in block log was not properly committed:\n${last_block}",
              ("num", block_num)("last_block", *bad_block));
     }

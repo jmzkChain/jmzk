@@ -63,14 +63,14 @@ verify_type_round_trip_conversion(const abi_serializer& abis, const type_name& t
 }
 
 struct optionaltest {
-    fc::optional<int> a;
-    fc::optional<int> b;
+    std::optional<int> a;
+    std::optional<int> b;
 };
 FC_REFLECT(optionaltest, (a)(b));
 
 struct optionaltest2 {
-    fc::optional<optionaltest> a;
-    fc::optional<optionaltest> b;
+    std::optional<optionaltest> a;
+    std::optional<optionaltest> b;
 };
 FC_REFLECT(optionaltest2, (a)(b));
 
@@ -102,11 +102,11 @@ TEST_CASE("optional_test", "[abis]") {
     optionaltest2 ot2;
     fc::from_variant(var2, ot2);
 
-    CHECK(ot.a.valid());
-    CHECK(!ot.b.valid());
+    CHECK(ot.a.has_value());
+    CHECK(!ot.b.has_value());
 
-    CHECK(ot2.a.valid());
-    CHECK(!ot2.b.valid());
+    CHECK(ot2.a.has_value());
+    CHECK(!ot2.b.has_value());
 
     fc::variant var21, var22;
     fc::to_variant(ot, var21);
@@ -1083,7 +1083,7 @@ TEST_CASE("everipass_abi_test", "[abis]") {
 
     CHECK(link.get_header() == 3);
     CHECK(*link.get_segment(evt_link::timestamp).intv == 1532465234);
-    CHECK(link.get_segment(evt_link::domain).intv.valid() == false);
+    CHECK(link.get_segment(evt_link::domain).intv.has_value() == false);
     CHECK(*link.get_segment(evt_link::domain).strv == "nd1532465232490");
     CHECK(*link.get_segment(evt_link::token).strv == "tk3064930465.8381");
 
@@ -1135,7 +1135,7 @@ TEST_CASE("everipay_abi_test", "[abis]") {
 
     CHECK(link.get_header() == 5);
     CHECK(*link.get_segment(evt_link::timestamp).intv == 1532962996);
-    CHECK(link.get_segment(evt_link::symbol_id).strv.valid() == false);
+    CHECK(link.get_segment(evt_link::symbol_id).strv.has_value() == false);
     CHECK(*link.get_segment(evt_link::symbol_id).intv == 4);
     CHECK(*link.get_segment(evt_link::max_pay).intv == 354);
 

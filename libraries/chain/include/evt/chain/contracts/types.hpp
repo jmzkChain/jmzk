@@ -234,9 +234,9 @@ struct updategroup {
 struct updatedomain {
     domain_name name;
 
-    fc::optional<permission_def> issue;
-    fc::optional<permission_def> transfer;
-    fc::optional<permission_def> manage;
+    optional<permission_def> issue;
+    optional<permission_def> transfer;
+    optional<permission_def> manage;
 
     EVT_ACTION(updatedomain);
 };
@@ -258,8 +258,8 @@ struct newfungible {
 struct updfungible {
     symbol_id_type sym_id;
 
-    fc::optional<permission_def> issue;
-    fc::optional<permission_def> manage;
+    optional<permission_def> issue;
+    optional<permission_def> manage;
 
     EVT_ACTION(updfungible);
 };

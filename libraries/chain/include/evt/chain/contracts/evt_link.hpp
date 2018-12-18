@@ -3,9 +3,9 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #pragma once
+#include <optional>
 #include <fc/container/flat_fwd.hpp>
 #include <fc/static_variant.hpp>
-#include <fc/optional.hpp>
 #include <fc/variant.hpp>
 #include <fc/reflect/reflect.hpp>
 #include <fc/crypto/sha256.hpp>
@@ -24,9 +24,9 @@ public:
         segment(uint8_t key, const std::string& strv)
             : key(key), strv(strv) {}
 
-        uint8_t                   key;
-        fc::optional<uint32_t>    intv;
-        fc::optional<std::string> strv;
+        uint8_t                    key;
+        std::optional<uint32_t>    intv;
+        std::optional<std::string> strv;
     };
 
 public:

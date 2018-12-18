@@ -164,12 +164,12 @@ public:
     bool                              readonly = false;
     flat_map<uint32_t, block_id_type> loaded_checkpoints;
 
-    fc::optional<fork_database>      fork_db;
-    fc::optional<block_log>          block_logger;
-    fc::optional<controller::config> chain_config;
-    fc::optional<controller>         chain;
-    fc::optional<chain_id_type>      chain_id;
-    fc::optional<bfs::path>          snapshot_path;
+    std::optional<fork_database>      fork_db;
+    std::optional<block_log>          block_logger;
+    std::optional<controller::config> chain_config;
+    std::optional<controller>         chain;
+    std::optional<chain_id_type>      chain_id;
+    std::optional<bfs::path>          snapshot_path;
 
     // retained references to channels for easy publication
     channels::pre_accepted_block::channel_type&    pre_accepted_block_channel;
@@ -192,13 +192,13 @@ public:
     methods::get_last_irreversible_block_number::method_type::handle get_last_irreversible_block_number_provider;
 
     // scoped connections for chain controller
-    fc::optional<scoped_connection> pre_accepted_block_connection;
-    fc::optional<scoped_connection> accepted_block_header_connection;
-    fc::optional<scoped_connection> accepted_block_connection;
-    fc::optional<scoped_connection> irreversible_block_connection;
-    fc::optional<scoped_connection> accepted_transaction_connection;
-    fc::optional<scoped_connection> applied_transaction_connection;
-    fc::optional<scoped_connection> accepted_confirmation_connection;
+    std::optional<scoped_connection> pre_accepted_block_connection;
+    std::optional<scoped_connection> accepted_block_header_connection;
+    std::optional<scoped_connection> accepted_block_connection;
+    std::optional<scoped_connection> irreversible_block_connection;
+    std::optional<scoped_connection> accepted_transaction_connection;
+    std::optional<scoped_connection> applied_transaction_connection;
+    std::optional<scoped_connection> accepted_confirmation_connection;
 };
 
 chain_plugin::chain_plugin()
@@ -939,7 +939,7 @@ chain_plugin::chain() const {
 
 chain::chain_id_type
 chain_plugin::get_chain_id() const {
-    EVT_ASSERT(my->chain_id.valid(), chain_id_type_exception, "Chain ID has not been initialized yet");
+    EVT_ASSERT(my->chain_id.has_value(), chain_id_type_exception, "Chain ID has not been initialized yet");
     return *my->chain_id;
 }
 
@@ -1030,7 +1030,7 @@ read_only::get_block_header_state(const get_block_header_state_params& params) c
     catch(...) {
     }
 
-    if(block_num.valid()) {
+    if(block_num.has_value()) {
         b = db.fetch_block_state_by_number(*block_num);
     }
     else {
@@ -1060,7 +1060,7 @@ read_only::get_head_block_header_state(const get_head_block_header_state_params&
 fc::variant
 read_only::get_transaction(const get_transaction_params& params) {
     auto block_num = 0;
-    if(!params.block_num.valid()) {
+    if(!params.block_num.has_value()) {
         block_num = db.get_block_num_for_trx_id(params.id);
     }
     else {

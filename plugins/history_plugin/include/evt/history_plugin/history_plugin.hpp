@@ -4,9 +4,9 @@
  */
 #pragma once
 #include <memory>
+#include <optional>
 
 #include <appbase/application.hpp>
-#include <fc/optional.hpp>
 
 #include <evt/chain_plugin/chain_plugin.hpp>
 #include <evt/postgres_plugin/postgres_plugin.hpp>
@@ -38,7 +38,7 @@ public:
 public:
     struct get_tokens_params {
         std::vector<public_key_type> keys;
-        fc::optional<domain_name>    domain;
+        optional<domain_name>        domain;
     };
     void get_tokens_async(int id, const get_tokens_params& params);
 
@@ -54,21 +54,21 @@ public:
     void get_fungibles_async(int id, const get_params& params);
 
     struct get_actions_params {
-        std::string                                     domain;
-        fc::optional<std::string>                       key;
-        std::vector<action_name>                        names;
-        fc::optional<fc::enum_type<uint8_t, direction>> dire;
-        fc::optional<int>                               skip;
-        fc::optional<int>                               take;
+        std::string                                 domain;
+        optional<std::string>                       key;
+        std::vector<action_name>                    names;
+        optional<fc::enum_type<uint8_t, direction>> dire;
+        optional<int>                               skip;
+        optional<int>                               take;
     };
     void get_actions_async(int id, const get_actions_params& params);
 
     struct get_fungible_actions_params {
-        symbol_id_type                                  sym_id;
-        fc::optional<fc::enum_type<uint8_t, direction>> dire;
-        fc::optional<address>                           addr;
-        fc::optional<int>                               skip;
-        fc::optional<int>                               take; 
+        symbol_id_type                              sym_id;
+        optional<fc::enum_type<uint8_t, direction>> dire;
+        optional<address>                           addr;
+        optional<int>                               skip;
+        optional<int>                               take; 
     };
     void get_fungible_actions_async(int id, const get_fungible_actions_params& params);
 
@@ -78,16 +78,16 @@ public:
     void get_transaction_async(int id, const get_transaction_params& params);
 
     struct get_transactions_params {
-        std::vector<public_key_type>                    keys;
-        fc::optional<fc::enum_type<uint8_t, direction>> dire;
-        fc::optional<int>                               skip;
-        fc::optional<int>                               take;
+        std::vector<public_key_type>                keys;
+        optional<fc::enum_type<uint8_t, direction>> dire;
+        optional<int>                               skip;
+        optional<int>                               take;
     };
     void get_transactions_async(int id, const get_transactions_params& params);
 
     struct get_fungible_ids_params {
-        fc::optional<int> skip;
-        fc::optional<int> take;
+        optional<int> skip;
+        optional<int> take;
     };
     void get_fungible_ids_async(int id, const get_fungible_ids_params& params);
 

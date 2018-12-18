@@ -103,10 +103,10 @@ read_only::get_tokens(const get_tokens_params& params) {
 
     auto vars = fc::variants();
     int s = 0, t = 10;
-    if(params.skip.valid()) {
+    if(params.skip.has_value()) {
         s = *params.skip;
     }
-    if(params.take.valid()) {
+    if(params.take.has_value()) {
         t = *params.take;
         EVT_ASSERT(t <= 100, chain::exceed_query_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 100 per query");
     }
@@ -150,7 +150,7 @@ read_only::get_fungible_balance(const get_fungible_balance_params& params) {
     const auto& db = db_.token_db();
 
     variants vars;
-    if(params.sym_id.valid()) {
+    if(params.sym_id.has_value()) {
         fungible_def fungible;
         db.read_fungible(*params.sym_id, fungible);
 

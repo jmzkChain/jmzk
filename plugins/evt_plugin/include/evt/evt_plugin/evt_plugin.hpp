@@ -53,9 +53,9 @@ public:
     fc::variant get_token(const get_token_params& params);
 
     struct get_tokens_params {
-        domain_name       domain;
-        fc::optional<int> skip;
-        fc::optional<int> take;
+        domain_name        domain;
+        std::optional<int> skip;
+        std::optional<int> take;
     };
     fc::variant get_tokens(const get_tokens_params& params);
 
@@ -65,8 +65,8 @@ public:
     fc::variant get_fungible(const get_fungible_params& params);
 
     struct get_fungible_balance_params {
-        address_type                 address;
-        fc::optional<symbol_id_type> sym_id;
+        address_type                  address;
+        std::optional<symbol_id_type> sym_id;
     };
     fc::variant get_fungible_balance(const get_fungible_balance_params& params);
 
