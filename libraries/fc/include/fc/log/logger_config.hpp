@@ -2,6 +2,7 @@
 #include <fc/log/logger.hpp>
 
 namespace fc {
+
 class path;
 struct appender_config {
     appender_config(const string& name = "",
@@ -46,9 +47,10 @@ bool configure_logging(const logging_config& l);
 
 void          set_thread_name(const string& name);
 const string& get_thread_name();
+
 }  // namespace fc
 
 #include <fc/reflect/reflect.hpp>
-FC_REFLECT(fc::appender_config, (name)(type)(args)(enabled))
-FC_REFLECT(fc::logger_config, (name)(parent)(level)(enabled)(additivity)(appenders))
-FC_REFLECT(fc::logging_config, (includes)(appenders)(loggers))
+FC_REFLECT(fc::appender_config, (name)(type)(args)(enabled));
+FC_REFLECT(fc::logger_config, (name)(parent)(level)(enabled)(additivity)(appenders));
+FC_REFLECT(fc::logging_config, (includes)(appenders)(loggers));

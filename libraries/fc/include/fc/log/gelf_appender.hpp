@@ -5,6 +5,7 @@
 #include <fc/time.hpp>
 
 namespace fc {
+
 // Log appender that sends log messages in JSON format over UDP
 // https://www.graylog2.org/resources/gelf/specification
 class gelf_appender : public appender {
@@ -30,6 +31,7 @@ private:
     class impl;
     std::shared_ptr<impl> my;
 };
+
 }  // namespace fc
 
 #include <fc/reflect/reflect.hpp>

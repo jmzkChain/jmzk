@@ -9,15 +9,15 @@ namespace fc {
 class appender;
 
 /**
-    *
-    *
-    @code
-      void my_class::func() 
-      {
-         fc_dlog( my_class_logger, "Format four: ${arg}  five: ${five}", ("arg",4)("five",5) );
-      }
-    @endcode
-    */
+  *
+  *
+  @code
+    void my_class::func() 
+    {
+       fc_dlog( my_class_logger, "Format four: ${arg}  five: ${five}", ("arg",4)("five",5) );
+    }
+  @endcode
+  */
 class logger {
 public:
     static logger get(const fc::string& name = "default");
@@ -106,9 +106,9 @@ private:
     FC_MULTILINE_MACRO_END
 
 /**
- * Sends the log message to a special 'user' log stream designed for messages that
- * the end user may like to see.
- */
+  * Sends the log message to a special 'user' log stream designed for messages that
+  * the end user may like to see.
+  */
 #define ulog(FORMAT, ...)                                                          \
     FC_MULTILINE_MACRO_BEGIN                                                       \
     if((fc::logger::get("user")).is_enabled(fc::log_level::debug))                 \

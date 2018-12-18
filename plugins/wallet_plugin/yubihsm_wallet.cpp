@@ -241,7 +241,7 @@ struct yubihsm_wallet_impl {
 
         char serialized_signature[sizeof(compact_sig) + 1];
         serialized_signature[0] = 0x01;
-        memcpy(serialized_signature + 1, compact_sig.data, sizeof(compact_sig));
+        memcpy(serialized_signature + 1, compact_sig.data(), sizeof(compact_sig));
 
         signature_type              final_signature;
         fc::datastream<const char*> ds(serialized_signature, sizeof(serialized_signature));

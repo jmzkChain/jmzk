@@ -4,6 +4,7 @@
 #include <vector>
 
 namespace fc {
+
 class console_appender : public appender {
 public:
     struct color {
@@ -63,6 +64,7 @@ private:
     class impl;
     std::unique_ptr<impl> my;
 };
+
 }  // namespace fc
 
 #include <fc/reflect/reflect.hpp>

@@ -48,6 +48,8 @@ struct chain_id_type : public fc::sha256 {
 private:
     chain_id_type() = default;
 
+    friend class fc::variant;
+
     friend class evt::chain_apis::read_only;
 
     friend class evt::net_plugin_impl;

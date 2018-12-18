@@ -8,22 +8,23 @@
 #include <fc/variant_object.hpp>
 
 namespace fc {
+
 namespace detail {
 class log_context_impl;
 class log_message_impl;
 }  // namespace detail
 
 /**
-    * Named scope for log_level enumeration.
-    */
+  * Named scope for log_level enumeration.
+  */
 class log_level {
 public:
     /**
-          * @brief Define's the various log levels for reporting.  
-          *
-          * Each log level includes all higher levels such that 
-          * Debug includes Error, but Error does not include Debug.
-          */
+      * @brief Define's the various log levels for reporting.  
+      *
+      * Each log level includes all higher levels such that 
+      * Debug includes Error, but Error does not include Debug.
+      */
     enum values {
         all,
         debug,
@@ -32,10 +33,13 @@ public:
         error,
         off
     };
+
     log_level(values v = off)
         : value(v) {}
+
     explicit log_level(int v)
         : value(static_cast<values>(v)) {}
+
     operator int() const { return value; }
     string to_string() const;
     values value;
@@ -83,23 +87,23 @@ void to_variant(const log_context& l, variant& v);
 void from_variant(const variant& l, log_context& c);
 
 /**
-    *  @brief aggregates a message along with the context and associated meta-information.
-    *  @ingroup AthenaSerializable
-    *
-    *  @note log_message has reference semantics, all copies refer to the same log message
-    *  and the message is read-only after construction.
-    *
-    *  When converted to JSON, log_message has the following form:
-    *  @code
-    *  {
-    *     "context" : { ... },
-    *     "format"  : "string with ${keys}",
-    *     "data"    : { "keys" : "values" }
-    *  }
-    *  @endcode
-    *
-    *  @see FC_LOG_MESSAGE
-    */
+  *  @brief aggregates a message along with the context and associated meta-information.
+  *  @ingroup AthenaSerializable
+  *
+  *  @note log_message has reference semantics, all copies refer to the same log message
+  *  and the message is read-only after construction.
+  *
+  *  When converted to JSON, log_message has the following form:
+  *  @code
+  *  {
+  *     "context" : { ... },
+  *     "format"  : "string with ${keys}",
+  *     "data"    : { "keys" : "values" }
+  *  }
+  *  @endcode
+  *
+  *  @see FC_LOG_MESSAGE
+  */
 class log_message {
 public:
     log_message();

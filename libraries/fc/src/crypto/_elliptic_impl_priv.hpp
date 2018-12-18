@@ -7,19 +7,17 @@
 
 namespace fc { namespace ecc { namespace detail {
 
-
 const secp256k1_context_t* _get_context();
-void _init_lib();
+void                       _init_lib();
 
-class private_key_impl
-{
-    public:
-        private_key_impl() BOOST_NOEXCEPT;
-        private_key_impl( const private_key_impl& cpy ) BOOST_NOEXCEPT;
+class private_key_impl {
+public:
+    private_key_impl() BOOST_NOEXCEPT;
+    private_key_impl(const private_key_impl& cpy) BOOST_NOEXCEPT;
 
-        private_key_impl& operator=( const private_key_impl& pk ) BOOST_NOEXCEPT;
+    private_key_impl& operator=(const private_key_impl& pk) BOOST_NOEXCEPT;
 
-        private_key_secret _key;
+    private_key_secret _key;
 };
 
-}}}
+}}}  // namespace fc::ecc::detail

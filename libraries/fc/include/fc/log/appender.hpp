@@ -9,6 +9,7 @@ typedef io_context io_service;
 }}  // namespace boost::asio
 
 namespace fc {
+
 class appender;
 class log_message;
 class variant;
@@ -22,6 +23,7 @@ public:
 };
 
 namespace detail {
+
 template<typename T>
 class appender_factory_impl : public appender_factory {
 public:
@@ -29,6 +31,7 @@ public:
         return std::make_shared<T>(args);
     }
 };
+
 }  // namespace detail
 
 class appender {
@@ -48,4 +51,5 @@ public:
     virtual void initialize(boost::asio::io_service& io_service) = 0;
     virtual void log(const log_message& m)                       = 0;
 };
+
 }  // namespace fc
