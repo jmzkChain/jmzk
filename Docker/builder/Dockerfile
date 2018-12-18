@@ -13,7 +13,7 @@ RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
 RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 999
 RUN update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 999
 RUN update-alternatives --install /usr/bin/cc  cc  /usr/bin/gcc 999
-RUN update-alternatives --install /usr/bin/c++ c++ /usr/bin/c++ 999
+RUN update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++ 999
 RUN update-alternatives --set cc  /usr/bin/gcc
 RUN update-alternatives --set c++ /usr/bin/g++
 
