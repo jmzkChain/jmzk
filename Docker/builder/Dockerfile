@@ -7,7 +7,7 @@ RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
     && echo 'APT::Install-Suggests 0;' >> /etc/apt/apt.conf.d/01norecommends \
     && apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y sudo wget curl net-tools ccache ninja-build ca-certificates \
-       unzip gnupg git build-essential libtool autoconf automake m4 openssl libssl1.1 libssl-dev libgmp-dev zlib1g-dev \
+       unzip gnupg git make libtool autoconf automake m4 openssl libssl1.1 libssl-dev libgmp-dev zlib1g-dev \
        libreadline-dev gcc-8 g++-8
 
 RUN wget --no-check-certificate https://github.com/Kitware/CMake/releases/download/v3.13.1/cmake-3.13.1-Linux-x86_64.sh -O cmake-latest-Linux-x86_64.sh \
