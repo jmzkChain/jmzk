@@ -1,6 +1,6 @@
 FROM ubuntu:18.04
 
-LABEL author="Harry <harrywong@live.com>" maintainer="Harry <harrywong@live.com>" version="1.2.0" \
+LABEL author="Harry <harrywong@live.com>" maintainer="Harry <harrywong@live.com>" version="1.3.0" \
   description="This is a base image for building everitoken/evt"
 
 RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
