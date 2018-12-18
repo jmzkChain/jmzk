@@ -1,13 +1,15 @@
+#include <string.h>
+#include <algorithm>
+
+#include <boost/scoped_array.hpp>
+
 #include <fc/variant.hpp>
 #include <fc/variant_object.hpp>
 #include <fc/exception/exception.hpp>
-#include <string.h>
-#include <fc/crypto/base64.hpp>
-#include <fc/crypto/hex.hpp>
-#include <boost/scoped_array.hpp>
 #include <fc/reflect/variant.hpp>
 #include <fc/io/json.hpp>
-#include <algorithm>
+#include <fc/crypto/base64.hpp>
+#include <fc/crypto/hex.hpp>
 
 namespace fc {
 /**

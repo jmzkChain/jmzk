@@ -53,7 +53,7 @@ namespace fc { namespace ecc {
                 public_key_data _key;
         };
 
-        typedef fc::array<char,37> chr37;
+        typedef std::array<char,37> chr37;
         chr37 _derive_message( const public_key_data& key, int i );
         fc::sha256 _left( const fc::sha512& v );
         fc::sha256 _right( const fc::sha512& v );
@@ -62,8 +62,8 @@ namespace fc { namespace ecc {
         const private_key_secret& get_half_curve_order();
     }
 
-    static const public_key_data empty_pub;
-    static const private_key_secret empty_priv;
+    static const public_key_data empty_pub{};
+    static const private_key_secret empty_priv{};
 
     fc::sha512 private_key::get_shared_secret( const public_key& other )const
     {
@@ -134,7 +134,7 @@ namespace fc { namespace ecc {
 
     public_key::public_key( const public_key_point_data& dat )
     {
-        const char* front = &dat.data[0];
+        const char* front = &dat[0];
         if( *front == 0 ){}
         else
         {
@@ -155,7 +155,7 @@ namespace fc { namespace ecc {
 
     public_key::public_key( const compact_signature& c, const fc::sha256& digest, bool check_canonical )
     {
-        int nV = c.data[0];
+        int nV = c[0];
         if (nV<27 || nV>=35)
             FC_THROW_EXCEPTION( exception, "unable to reconstruct public key from signature" );
 

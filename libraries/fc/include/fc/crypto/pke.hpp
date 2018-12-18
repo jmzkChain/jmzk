@@ -4,7 +4,6 @@
 #include <fc/crypto/sha1.hpp>
 #include <fc/crypto/sha256.hpp>
 #include <fc/io/raw_fwd.hpp>
-#include <fc/array.hpp>
 
 namespace fc {
     namespace detail { class pke_impl; }

@@ -146,9 +146,14 @@ template<typename T>
 void from_variant(const variant& var, std::set<T>& vo);
 
 template<typename T, std::size_t S>
-void to_variant(const std::array<T, S>& var, variant& vo);
+auto to_variant(const std::array<T, S>& var, variant& vo) -> std::enable_if_t<std::is_trivially_copyable_v<T>>;
 template<typename T, std::size_t S>
-void from_variant(const variant& var, std::array<T, S>& vo);
+auto from_variant(const variant& var, std::array<T, S>& vo) -> std::enable_if_t<std::is_trivially_copyable_v<T>>;
+
+template<typename T, std::size_t S>
+auto to_variant(const std::array<T, S>& var, variant& vo) -> std::enable_if_t<!std::is_trivially_copyable_v<T>>;
+template<typename T, std::size_t S>
+auto from_variant(const variant& var, std::array<T, S>& vo) -> std::enable_if_t<!std::is_trivially_copyable_v<T>>;
 
 void to_variant(const time_point& var, variant& vo);
 void from_variant(const variant& var, time_point& vo);
@@ -531,21 +536,43 @@ to_variant(const std::vector<T>& t, variant& v) {
 
 /** @ingroup Serializable */
 template<typename T, std::size_t S>
-void
-from_variant(const variant& var, std::array<T, S>& tmp) {
+auto
+from_variant(const variant& var, std::array<T, S>& t) -> std::enable_if_t<!std::is_trivially_copyable_v<T>> {
     const variants& vars = var.get_array();
-    for(std::size_t i = 0; i < S; ++i)
-        tmp[i] = vars.at(i).as<T>();
+    for(std::size_t i = 0; i < S; ++i) {
+        t[i] = vars.at(i).as<T>();
+    }
 }
 
 /** @ingroup Serializable */
 template<typename T, std::size_t S>
-void
-to_variant(const std::array<T, S>& t, variant& v) {
+auto
+to_variant(const std::array<T, S>& t, variant& v) -> std::enable_if_t<!std::is_trivially_copyable_v<T>> {
     std::vector<variant> vars(S);
-    for(std::size_t i = 0; i < S; ++i)
+    for(std::size_t i = 0; i < S; ++i) {
         vars[i] = variant(t[i]);
+    }
     v = std::move(vars);
+}
+
+/** @ingroup Serializable */
+template<typename T, size_t N>
+auto
+from_variant(const variant& v, std::array<T, N>& bi) -> std::enable_if_t<std::is_trivially_copyable_v<T>>{
+    std::vector<char> ve = v.as<std::vector<char>>();
+    if(ve.size()) {
+        memcpy(bi.data(), ve.data(), fc::min<size_t>(ve.size(), sizeof(bi)));
+    }
+    else {
+        memset(bi.data(), char(0), sizeof(bi));
+    }
+}
+
+/** @ingroup Serializable */
+template<typename T, size_t N>
+auto
+to_variant(const std::array<T, N>& bi, variant& v) -> std::enable_if_t<std::is_trivially_copyable_v<T>> {
+    v = std::vector<char>(bi.data(), bi.data() + sizeof(bi));
 }
 
 /** @ingroup Serializable */

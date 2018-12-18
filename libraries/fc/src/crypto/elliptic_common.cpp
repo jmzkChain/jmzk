@@ -20,8 +20,10 @@
 
 namespace fc { namespace ecc {
 
+using std::array;
+
     namespace detail {
-        typedef fc::array<char,37> chr37;
+        typedef std::array<char,37> chr37;
 
         fc::sha256 _left( const fc::sha512& v )
         {
@@ -129,10 +131,10 @@ namespace fc { namespace ecc {
 
     std::string public_key::to_base58( const public_key_data &key )
     {
-      uint32_t check = (uint32_t)sha256::hash(key.data, sizeof(key))._hash[0];
+      uint32_t check = (uint32_t)sha256::hash(key.data(), sizeof(key))._hash[0];
       static_assert(sizeof(key) + sizeof(check) == 37, ""); // hack around gcc bug: key.size() should be constexpr, but isn't
       array<char, 37> data;
-      memcpy(data.data, key.begin(), key.size());
+      memcpy(data.data(), key.begin(), key.size());
       memcpy(data.begin() + key.size(), (const char*)&check, sizeof(check));
       return fc::to_base58(data.begin(), data.size());
     }
@@ -144,9 +146,9 @@ namespace fc { namespace ecc {
         FC_ASSERT( s == sizeof(data) );
 
         public_key_data key;
-        uint32_t check = (uint32_t)sha256::hash(data.data, sizeof(key))._hash[0];
-        FC_ASSERT( memcmp( (char*)&check, data.data + sizeof(key), sizeof(check) ) == 0 );
-        memcpy( (char*)key.data, data.data, sizeof(key) );
+        uint32_t check = (uint32_t)sha256::hash(data.data(), sizeof(key))._hash[0];
+        FC_ASSERT( memcmp( (char*)&check, data.data() + sizeof(key), sizeof(check) ) == 0 );
+        memcpy( (char*)key.data(), data.data(), sizeof(key) );
         return from_key_data(key);
     }
 
@@ -159,10 +161,10 @@ namespace fc { namespace ecc {
     }
 
     bool public_key::is_canonical( const compact_signature& c ) {
-        return !(c.data[1] & 0x80)
-               && !(c.data[1] == 0 && !(c.data[2] & 0x80))
-               && !(c.data[33] & 0x80)
-               && !(c.data[33] == 0 && !(c.data[34] & 0x80));
+        return !(c[1] & 0x80)
+               && !(c[1] == 0 && !(c[2] & 0x80))
+               && !(c[33] & 0x80)
+               && !(c[33] == 0 && !(c[34] & 0x80));
     }
 
     private_key private_key::generate_from_seed( const fc::sha256& seed, const fc::sha256& offset )
