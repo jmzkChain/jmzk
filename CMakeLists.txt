@@ -192,7 +192,7 @@ endif()
 
 if(ENABLE_BUILD_LTO)
     message(STATUS "Build EVT with link-time optimization")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fuse-linker-plugin -flto -fno-fat-lto-objects -flto-partition=1to1")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fuse-linker-plugin -flto -fno-fat-lto-objects -flto-partition=none")
 endif()
 
 include_directories(libraries/rocksdb/include)
