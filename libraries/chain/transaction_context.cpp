@@ -169,20 +169,26 @@ transaction_context::check_paid() const {
     case address::generated_t: {
         auto  prefix = payer.get_prefix();
         auto& key    = payer.get_key();
-        if(prefix == N(.domain)) {
+
+        switch(prefix.value) {
+        case N(.domain): {
             for(auto& act : trx.trx.actions) {
                 EVT_ASSERT(act.domain == key, payer_exception, "Only actions in '${d}' domain can be paid by the payer", ("d",act.domain));
             }
+            break;
         }
-        else if(prefix == N(.fungible)) {
+        case N(.fungible): {
             EVT_ASSERT(key != N128(EVT_SYM_ID) && key != N128(PEVT_SYM_ID), payer_exception, "EVT or PEVT is not allowed to use this payer");
             for(auto& act : trx.trx.actions) {
-                EVT_ASSERT(act.domain == N128(.fungible) && act.key == key, payer_exception, "Only actions with S#'${d}' fungible can be paid by the payer", ("d",act.key));
+                EVT_ASSERT(act.domain == N128(.fungible) && act.key == key, payer_exception, "Only actions with S#${d} fungible can be paid by the payer", ("d",act.key));
             }
+            break;
         }
-        else {
+        default: {
             EVT_THROW(payer_exception, "Only domain or fungible generated address can be payer");
+            break;
         }
+        }  // switch
         break;
     }
     }  // switch
