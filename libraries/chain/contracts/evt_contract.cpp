@@ -398,7 +398,7 @@ namespace __internal {
 
 address
 get_fungible_address(symbol sym) {
-    return address(N(fungible), name128::from_number(sym.id()), 0);
+    return address(N(.fungible), name128::from_number(sym.id()), 0);
 }
 
 void
@@ -1342,7 +1342,7 @@ EVT_ACTION_IMPL(newlock) {
         }
 
         // transfer assets to lock address
-        auto laddr = address(N(lock), N128(nlact.name), 0);
+        auto laddr = address(N(.lock), N128(nlact.name), 0);
         for(auto& la : nlact.assets) {
             switch(la.type()) {
             case asset_type::tokens: {
@@ -1457,7 +1457,7 @@ EVT_ACTION_IMPL(tryunlock) {
             lock.status = lock_status::failed;
         }
 
-        auto laddr = address(N(lock), N128(nlact.name), 0);
+        auto laddr = address(N(.lock), N128(nlact.name), 0);
         for(auto& la : lock.assets) {
             switch(la.type()) {
             case asset_type::tokens: {
