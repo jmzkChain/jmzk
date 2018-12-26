@@ -196,6 +196,7 @@ namespace fc { namespace json_relaxed
              case '\'':
                  if( strict )
                      FC_THROW_EXCEPTION( parse_error_exception, "expected: '\"' at beginning of string, got '\''" );
+                 [[fallthrough]];
                  // falls through
              case '"':
                  return quoteStringFromStream<T, strict, true>( in );

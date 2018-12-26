@@ -7,8 +7,11 @@
 #include <unordered_set>
 #include <fstream>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 #define XXH_INLINE_ALL
 #include <xxhash.h>
+#pragma GCC diagnostic pop
 
 #include <rocksdb/db.h>
 #include <rocksdb/merge_operator.h>
