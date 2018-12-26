@@ -83,10 +83,9 @@ response_ok(int id, const T& obj) {
     return PG_OK;
 }
 
-template<>
 int
-response_ok<std::string>(int id, const std::string& json) {
-    app().get_plugin<http_plugin>().set_deferred_response(id, 200, json);
+response_raw(int id, int code, const std::string& json) {
+    app().get_plugin<http_plugin>().set_deferred_response(id, code, json);
     return PG_OK;
 }
 
@@ -229,7 +228,7 @@ pg_query::get_tokens_async(int id, const read_only::get_tokens_params& params) {
     format_array_to(pkeys_buf, std::begin(params.keys), std::end(params.keys));
 
     auto stmt = std::string();
-    if(params.domain.valid()) {
+    if(params.domain.has_value()) {
         stmt = fmt::format(fmt("EXECUTE gt_plan ('{}','{}');"), fmt::to_string(pkeys_buf), (std::string)*params.domain);
     }
     else {
@@ -248,8 +247,13 @@ pg_query::get_tokens_resume(int id, pg_result const* r) {
 
     EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get tokens failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
+    auto n = PQntuples(r);
+    if(n == 0) {
+        return response_raw(id, 200, "[]"); // return empty
+    }
+
     auto results = fc::mutable_variant_object();
-    for(int i = 0; i < PQntuples(r); i++) {
+    for(int i = 0; i < n; i++) {
         auto domain = PQgetvalue(r, i, 0);
         auto name   = PQgetvalue(r, i, 1);
 
@@ -285,8 +289,13 @@ pg_query::get_domains_resume(int id, pg_result const* r) {
 
     EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get domains failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
+    auto n = PQntuples(r);
+    if(n == 0) {
+        return response_raw(id, 200, "[]"); // return empty
+    }
+
     auto results = std::vector<const char*>();
-    for(int i = 0; i < PQntuples(r); i++) {
+    for(int i = 0; i < n; i++) {
         auto name = PQgetvalue(r, i, 0);
         results.emplace_back(name);
     }
@@ -317,8 +326,13 @@ pg_query::get_groups_resume(int id, pg_result const* r) {
 
     EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get groups failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
+    auto n = PQntuples(r);
+    if(n == 0) {
+        return response_raw(id, 200, "[]"); // return empty
+    }
+
     auto results = std::vector<const char*>();
-    for(int i = 0; i < PQntuples(r); i++) {
+    for(int i = 0; i < n; i++) {
         auto name = PQgetvalue(r, i, 0);
         results.emplace_back(name);
     }
@@ -349,8 +363,13 @@ pg_query::get_fungibles_resume(int id, pg_result const* r) {
 
     EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get fungibles failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
+    auto n = PQntuples(r);
+    if(n == 0) {
+        return response_raw(id, 200, "[]"); // return empty
+    }
+
     auto results = std::vector<int64_t>();
-    for(int i = 0; i < PQntuples(r); i++) {
+    for(int i = 0; i < n; i++) {
         auto sym_id = PQgetvalue(r, i, 0);
         results.emplace_back(boost::lexical_cast<int64_t>(sym_id));
     }
@@ -407,10 +426,10 @@ pg_query::get_actions_async(int id, const read_only::get_actions_params& params)
     using namespace __internal;
 
     int s = 0, t = 10;
-    if(params.skip.valid()) {
+    if(params.skip.has_value()) {
         s = *params.skip;
     }
-    if(params.take.valid()) {
+    if(params.take.has_value()) {
         t = *params.take;
         EVT_ASSERT(t <= 20, chain::exceed_query_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 20 per query");
     }
@@ -418,10 +437,10 @@ pg_query::get_actions_async(int id, const read_only::get_actions_params& params)
     auto stmt = std::string();
 
     int j = 0;
-    if(params.dire.valid() && *params.dire == direction::asc) {
+    if(params.dire.has_value() && *params.dire == direction::asc) {
         j += 1;
     }
-    if(params.key.valid()) {
+    if(params.key.has_value()) {
         j += 2;
     }
     if(!params.names.empty()) {
@@ -486,9 +505,12 @@ pg_query::get_actions_resume(int id, pg_result const* r) {
     using namespace __internal;
 
     EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get actions failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    auto n = PQntuples(r);
+    if(n == 0) {
+        return response_raw(id, 200, "[]"); // return empty
+    }
 
     auto builder = fmt::memory_buffer();
-    auto n       = PQntuples(r);
 
     fmt::format_to(builder, "[");
     for(int i = 0; i < n; i++) {
@@ -551,10 +573,10 @@ pg_query::get_fungible_actions_async(int id, const read_only::get_fungible_actio
     using namespace __internal;
 
     int s = 0, t = 10;
-    if(params.skip.valid()) {
+    if(params.skip.has_value()) {
         s = *params.skip;
     }
-    if(params.take.valid()) {
+    if(params.take.has_value()) {
         t = *params.take;
         EVT_ASSERT(t <= 20, chain::exceed_query_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 20 per query");
     }
@@ -562,10 +584,10 @@ pg_query::get_fungible_actions_async(int id, const read_only::get_fungible_actio
     auto stmt = std::string();
 
     int j = 0;
-    if(params.dire.valid() && *params.dire == direction::asc) {
+    if(params.dire.has_value() && *params.dire == direction::asc) {
         j += 1;
     }
-    if(params.addr.valid()) {
+    if(params.addr.has_value()) {
         j += 2;
     }
 
@@ -600,8 +622,12 @@ pg_query::get_fungible_actions_resume(int id, pg_result const* r) {
 
     EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get fungible actions failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
+    auto n = PQntuples(r);
+    if(n == 0) {
+        return response_raw(id, 200, "[]"); // return empty
+    }
+
     auto builder = fmt::memory_buffer();
-    auto n       = PQntuples(r);
 
     fmt::format_to(builder, "[");
     for(int i = 0; i < n; i++) {
@@ -681,10 +707,10 @@ pg_query::get_transactions_async(int id, const read_only::get_transactions_param
     using namespace __internal;
 
     int s = 0, t = 10;
-    if(params.skip.valid()) {
+    if(params.skip.has_value()) {
         s = *params.skip;
     }
-    if(params.take.valid()) {
+    if(params.take.has_value()) {
         t = *params.take;
         EVT_ASSERT(t <= 20, chain::exceed_query_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 20 per query");
     }
@@ -693,7 +719,7 @@ pg_query::get_transactions_async(int id, const read_only::get_transactions_param
     format_array_to(keys_buf, std::begin(params.keys), std::end(params.keys));
 
     auto stmt = std::string();
-    if(params.dire.valid() && *params.dire == direction::asc) {
+    if(params.dire.has_value() && *params.dire == direction::asc) {
         stmt = fmt::format(fmt("EXECUTE gtrxs_plan0('{}',{},{});"), fmt::to_string(keys_buf), t, s);
     }
     else {
@@ -714,7 +740,7 @@ pg_query::get_transactions_resume(int id, pg_result const* r) {
 
     auto n = PQntuples(r);
     if(n == 0) {
-        return response_ok(id, "[]"); // return empty
+        return response_raw(id, 200, "[]"); // return empty
     }
 
     auto results = fc::variants();
@@ -751,10 +777,10 @@ pg_query::get_fungible_ids_async(int id, const read_only::get_fungible_ids_param
     using namespace __internal;
 
     int s = 0, t = 100;
-    if(params.skip.valid()) {
+    if(params.skip.has_value()) {
         s = *params.skip;
     }
-    if(params.take.valid()) {
+    if(params.take.has_value()) {
         t = *params.take;
         EVT_ASSERT(t <= 100, chain::exceed_query_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 100 per query");
     }
@@ -775,7 +801,7 @@ pg_query::get_fungible_ids_resume(int id, pg_result const* r) {
 
     auto n = PQntuples(r);
     if(n == 0) {
-        return response_ok(id, "[]"); // return empty
+        return response_raw(id, 200, "[]"); // return empty
     }
 
     auto buf = fmt::memory_buffer();

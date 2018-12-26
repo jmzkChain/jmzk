@@ -60,7 +60,7 @@ public:
 
     std::vector<packed_transaction_ptr> packed_trxs_;
 
-    fc::optional<boost::signals2::scoped_connection> accepted_block_connection_;
+    std::optional<boost::signals2::scoped_connection> accepted_block_connection_;
 };
 
 void

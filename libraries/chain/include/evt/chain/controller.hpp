@@ -113,8 +113,8 @@ public:
     transaction_trace_ptr push_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline);
     transaction_trace_ptr push_suspend_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline);
 
-    void check_authorization(const flat_set<public_key_type>& signed_keys, const transaction& trx);
-    void check_authorization(const flat_set<public_key_type>& signed_keys, const action& act);
+    void check_authorization(const public_keys_type& signed_keys, const transaction& trx);
+    void check_authorization(const public_keys_type& signed_keys, const action& act);
 
     void finalize_block();
     void sign_block(const std::function<signature_type(const digest_type&)>& signer_callback);
@@ -213,9 +213,9 @@ public:
     signal<void(const header_confirmation&)>      accepted_confirmation;
     signal<void(const int&)>                      bad_alloc;
 
-    flat_set<public_key_type> get_required_keys(const transaction& trx, const flat_set<public_key_type>& candidate_keys) const;
-    flat_set<public_key_type> get_suspend_required_keys(const transaction& trx, const flat_set<public_key_type>& candidate_keys) const;
-    flat_set<public_key_type> get_suspend_required_keys(const proposal_name& name, const flat_set<public_key_type>& candidate_keys) const;
+    public_keys_type get_required_keys(const transaction& trx, const public_keys_type& candidate_keys) const;
+    public_keys_type get_suspend_required_keys(const transaction& trx, const public_keys_type& candidate_keys) const;
+    public_keys_type get_suspend_required_keys(const proposal_name& name, const public_keys_type& candidate_keys) const;
 
     uint32_t get_charge(const transaction& trx, size_t signautres_num) const;
 

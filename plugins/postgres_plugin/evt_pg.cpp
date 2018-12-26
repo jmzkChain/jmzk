@@ -724,17 +724,17 @@ PREPARE_SQL_ONCE(ud_plan, "UPDATE domains SET(issue, transfer, manage) = ($1, $2
 int
 pg::upd_domain(trx_context& tctx, const updatedomain& ud) {
     std::string i = "issue", t = "transfer", m = "manage";
-    if(ud.issue.valid()) {
+    if(ud.issue.has_value()) {
         fc::variant u;
         fc::to_variant(*ud.issue, u);
         i = fc::json::to_string(u);
     }
-    if(ud.transfer.valid()) {
+    if(ud.transfer.has_value()) {
         fc::variant u;
         fc::to_variant(*ud.transfer, u);
         t = fc::json::to_string(u);
     }
-    if(ud.manage.valid()) {
+    if(ud.manage.has_value()) {
         fc::variant u;
         fc::to_variant(*ud.manage, u);
         m = fc::json::to_string(u);
@@ -870,12 +870,12 @@ int
 pg::upd_fungible(trx_context& tctx, const updfungible& uf) {
 
     std::string i = "issue", m = "manage";
-    if(uf.issue.valid()) {
+    if(uf.issue.has_value()) {
         fc::variant u;
         fc::to_variant(*uf.issue, u);
         i = fc::json::to_string(u);
     }
-    if(uf.manage.valid()) {
+    if(uf.manage.has_value()) {
         fc::variant u;
         fc::to_variant(*uf.manage, u);
         m = fc::json::to_string(u);

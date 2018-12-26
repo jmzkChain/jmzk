@@ -921,8 +921,9 @@ def init(ctx):
 
 
 @evtwd.command()
+@click.option('--net', '-n', default='evt-net', help='Name of the network for the environment')
 @click.pass_context
-def create(ctx):
+def create(ctx, net):
     name = ctx.obj['name']
     volume_name = '{}-data-volume'.format(name)
 
@@ -958,6 +959,7 @@ def create(ctx):
 
     entry = 'evtwd.sh --unix-socket-path=/opt/evt/data/wallet/evtwd.sock'
     client.containers.create('everitoken/evt:latest', None, name=name, detach=True,
+                             network=net,
                              volumes={volume_name: {
                                  'bind': '/opt/evt/data', 'mode': 'rw'}},
                              entrypoint=entry
@@ -1028,6 +1030,9 @@ def detailevtwd(ctx):
 @click.argument('commands', nargs=-1, type=click.UNPROCESSED)
 @click.option('--evtwd', '-w', default='evtwd', help='Name of evtwd container')
 def evtc(commands, evtwd):
+    import subprocess
+    import sys
+
     try:
         container = client.containers.get(evtwd)
     except docker.errors.ImageNotFound:
@@ -1044,12 +1049,11 @@ def evtc(commands, evtwd):
             '{} container is not running, please start it first'.format(green('evtwd')))
         return
 
-    entry = '/opt/evt/bin/evtc --wallet-url=unix://opt/evt/data/wallet/evtwd.sock {}'.format(
-        ' '.join(commands))
-    code, result = container.exec_run(entry, stream=True)
+    commands = map(lambda x: '"{}"'.format(x) if ' ' in x else x, commands)
+    args = 'docker exec -i {} /opt/evt/bin/evtc --wallet-url=unix://opt/evt/data/wallet/evtwd.sock {}'.format(evtwd, ' '.join(commands))
 
-    for line in result:
-        click.echo(line.decode('utf-8'), nl=False)
+    proc = subprocess.Popen(args, stdin=sys.stdin, stdout=sys.stdout, stderr=sys.stdout, shell=True)
+    proc.wait()
 
 
 if __name__ == '__main__':

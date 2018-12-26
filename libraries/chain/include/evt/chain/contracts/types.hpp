@@ -38,13 +38,12 @@ using fungible_name   = evt::chain::fungible_name;
 using symbol_name     = evt::chain::symbol_name;
 using symbol_id_type  = evt::chain::symbol_id_type;
 using user_id         = evt::chain::public_key_type;
-using user_list       = std::vector<user_id>;
 using group_name      = evt::chain::group_name;
 using group_key       = evt::chain::address;
 using group_def       = group;
 using balance_type    = evt::chain::asset;
 using address_type    = evt::chain::address;
-using address_list    = std::vector<address_type>;
+using address_list    = small_vector<address_type, 4>;
 using conf_key        = evt::chain::conf_key;
 
 struct token_def {
@@ -78,9 +77,9 @@ struct authorizer_weight {
 struct permission_def {
     permission_def() = default;
 
-    permission_name           name;
-    uint32_t                  threshold;
-    vector<authorizer_weight> authorizers;
+    permission_name                    name;
+    uint32_t                           threshold;
+    small_vector<authorizer_weight, 4> authorizers;
 };
 
 struct domain_def {
@@ -126,8 +125,8 @@ struct suspend_def {
     public_key_type                        proposer;
     fc::enum_type<uint8_t, suspend_status> status;
     transaction                            trx;
-    flat_set<public_key_type>              signed_keys;
-    vector<signature_type>                 signatures;
+    public_keys_type                       signed_keys;
+    signatures_type                        signatures;
 };
 
 enum class asset_type {
@@ -139,8 +138,8 @@ enum class lock_status {
 };
 
 struct locknft_def {
-    domain_name             domain;
-    std::vector<token_name> names;
+    domain_name                 domain;
+    small_vector<token_name, 4> names;
 };
 
 struct lockft_def {
@@ -166,13 +165,13 @@ struct lock_def {
     user_id                             proposer;
     fc::enum_type<uint8_t, lock_status> status;
 
-    time_point_sec          unlock_time;
-    time_point_sec          deadline;
-    std::vector<lock_asset> assets;
+    time_point_sec              unlock_time;
+    time_point_sec              deadline;
+    small_vector<lock_asset, 4> assets;
     
-    lock_condition       condition;
-    std::vector<address> succeed;
-    std::vector<address> failed;
+    lock_condition           condition;
+    small_vector<address, 4> succeed;
+    small_vector<address, 4> failed;
 
     flat_set<public_key_type> signed_keys;
 };
@@ -195,9 +194,9 @@ struct newdomain {
 };
 
 struct issuetoken {
-    domain_name             domain;
-    std::vector<token_name> names;
-    address_list            owner;
+    domain_name                 domain;
+    small_vector<token_name, 4> names;
+    address_list                owner;
 
     EVT_ACTION(issuetoken);
 };
@@ -235,9 +234,9 @@ struct updategroup {
 struct updatedomain {
     domain_name name;
 
-    fc::optional<permission_def> issue;
-    fc::optional<permission_def> transfer;
-    fc::optional<permission_def> manage;
+    optional<permission_def> issue;
+    optional<permission_def> transfer;
+    optional<permission_def> manage;
 
     EVT_ACTION(updatedomain);
 };
@@ -259,8 +258,8 @@ struct newfungible {
 struct updfungible {
     symbol_id_type sym_id;
 
-    fc::optional<permission_def> issue;
-    fc::optional<permission_def> manage;
+    optional<permission_def> issue;
+    optional<permission_def> manage;
 
     EVT_ACTION(updfungible);
 };
@@ -330,8 +329,8 @@ struct cancelsuspend {
 };
 
 struct aprvsuspend {
-    proposal_name               name;
-    std::vector<signature_type> signatures;
+    proposal_name                       name;
+    fc::small_vector<signature_type, 4> signatures;
 
     EVT_ACTION(aprvsuspend);
 };
@@ -382,13 +381,13 @@ struct newlock {
     proposal_name name;
     user_id       proposer;
 
-    time_point_sec          unlock_time;
-    time_point_sec          deadline;
-    std::vector<lock_asset> assets;
+    time_point_sec              unlock_time;
+    time_point_sec              deadline;
+    small_vector<lock_asset, 4> assets;
     
-    lock_condition       condition;
-    std::vector<address> succeed;
-    std::vector<address> failed;
+    lock_condition           condition;
+    small_vector<address, 4> succeed;
+    small_vector<address, 4> failed;
 
     EVT_ACTION(newlock);
 };

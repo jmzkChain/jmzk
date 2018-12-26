@@ -110,7 +110,7 @@ public:
             , _seq(seq)
             , _accept(0) {}
         session(const session& s) = delete;
-        session(session&& s)
+        session(session&& s) noexcept
             : _token_db(s._token_db)
             , _seq(s._seq)
             , _accept(s._accept) {
@@ -131,6 +131,16 @@ public:
         void undo()   { _accept = 1; _token_db.rollback_to_latest_savepoint(); }
 
         int seq() const { return _seq; }
+
+    public:
+        session&
+        operator=(session&& rhs) noexcept {
+            if(this == &rhs) {
+                return *this;
+            }
+            *this = std::move(rhs);
+            return *this;
+        }
 
     private:
         token_database& _token_db;

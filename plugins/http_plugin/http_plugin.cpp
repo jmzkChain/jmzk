@@ -5,11 +5,11 @@
 #include <evt/http_plugin/http_plugin.hpp>
 
 #include <memory>
+#include <optional>
 #include <thread>
 #include <type_traits>
 #include <regex>
 
-#include <fc/optional.hpp>
 #include <fc/crypto/openssl.hpp>
 #include <fc/io/json.hpp>
 #include <fc/log/logger_config.hpp>
@@ -17,7 +17,6 @@
 #include <fc/reflect/variant.hpp>
 
 #include <boost/asio.hpp>
-#include <boost/optional.hpp>
 
 #include <websocketpp/client.hpp>
 #include <websocketpp/config/asio.hpp>
@@ -44,11 +43,11 @@ namespace asio = boost::asio;
 using boost::asio::ip::tcp;
 using boost::asio::ip::address_v4;
 using boost::asio::ip::address_v6;
-using std::vector;
+using std::optional;
+using std::regex;
 using std::set;
 using std::string;
-using std::regex;
-using fc::optional;
+using std::vector;
 using websocketpp::connection_hdl;
 
 namespace detail {
@@ -594,7 +593,7 @@ http_plugin::plugin_initialize(const variables_map& options) {
 
 void
 http_plugin::plugin_startup() {
-    if(my->listen_endpoint) {
+    if(my->listen_endpoint.has_value()) {
         try {
             my->http_conns.resize(my->max_deferred_connection_size);
             my->http_conn_index = 0;
@@ -620,7 +619,7 @@ http_plugin::plugin_startup() {
         }
     }
 
-    if(my->unix_endpoint) {
+    if(my->unix_endpoint.has_value()) {
         try {
             my->unix_server.clear_access_channels(websocketpp::log::alevel::all);
             my->unix_server.init_asio(&app().get_io_service());
@@ -645,7 +644,7 @@ http_plugin::plugin_startup() {
         }
     }
 
-    if(my->https_listen_endpoint) {
+    if(my->https_listen_endpoint.has_value()) {
         try {
             my->https_conns.resize(my->max_deferred_connection_size);
             my->https_conn_index = 0;
@@ -786,14 +785,14 @@ http_plugin::handle_async_exception(deferred_id id, const char* api_name, const 
 
 bool
 http_plugin::is_on_loopback() const {
-    return (!my->listen_endpoint
+    return (!my->listen_endpoint.has_value()
         || my->listen_endpoint->address().is_loopback())
-        && (!my->https_listen_endpoint || my->https_listen_endpoint->address().is_loopback());
+        && (!my->https_listen_endpoint.has_value() || my->https_listen_endpoint->address().is_loopback());
 }
 
 bool
 http_plugin::is_secure() const {
-    return (!my->listen_endpoint || my->listen_endpoint->address().is_loopback());
+    return (!my->listen_endpoint.has_value() || my->listen_endpoint->address().is_loopback());
 }
 
 bool

@@ -3,9 +3,9 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #pragma once
+#include <optional>
 #include <fc/container/flat_fwd.hpp>
 #include <fc/static_variant.hpp>
-#include <fc/optional.hpp>
 #include <fc/variant.hpp>
 #include <fc/reflect/reflect.hpp>
 #include <fc/crypto/sha256.hpp>
@@ -24,9 +24,9 @@ public:
         segment(uint8_t key, const std::string& strv)
             : key(key), strv(strv) {}
 
-        uint8_t                   key;
-        fc::optional<uint32_t>    intv;
-        fc::optional<std::string> strv;
+        uint8_t                    key;
+        std::optional<uint32_t>    intv;
+        std::optional<std::string> strv;
     };
 
 public:
@@ -49,6 +49,10 @@ public:
     };
 
 public:
+    using segments_type   = fc::flat_map<uint8_t, segment, std::less<uint8_t>, fc::small_vector<std::pair<uint8_t, segment>, 6>>;
+    using signatures_type = fc::flat_set<signature_type, std::less<signature_type>, fc::small_vector<signature_type, 2>>;
+
+public:
     static evt_link parse_from_evtli(const std::string& str);
     std::string to_string(int prefix = 0) const;
 
@@ -60,8 +64,8 @@ public:
 
     const link_id_type& get_link_id() const;
 
-    const fc::flat_map<uint8_t, segment>& get_segments() const { return segments_; }
-    const fc::flat_set<signature_type>& get_signatures() const {return signatures_; }
+    const segments_type& get_segments() const { return segments_; }
+    const signatures_type& get_signatures() const { return signatures_; }
 
 public:
     void set_header(uint16_t header) { header_ = header; }
@@ -72,12 +76,12 @@ public:
 
 public:
     fc::sha256 digest() const;
-    fc::flat_set<public_key_type> restore_keys() const;
+    public_keys_type restore_keys() const;
 
 private:
-    uint16_t                       header_;
-    fc::flat_map<uint8_t, segment> segments_;
-    fc::flat_set<signature_type>   signatures_;
+    uint16_t        header_;
+    segments_type   segments_;
+    signatures_type signatures_;
 
 private:
     friend struct fc::reflector<evt_link>;

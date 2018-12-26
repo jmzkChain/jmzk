@@ -32,7 +32,7 @@ namespace hana = boost::hana;
 
 namespace __internal {
 
-const size_t PKEY_SIZE = sizeof(public_key_type::storage_type::type_at<0>);
+const size_t PKEY_SIZE = sizeof(fc::ecc::public_key_shim);
 
 struct db_key : boost::noncopyable {
     template<typename T>

@@ -6,6 +6,7 @@
 
 #include <evt/chain/types.hpp>
 #include <fc/io/raw.hpp>
+#include <fc/crypto/base64.hpp>
 
 namespace evt { namespace chain {
 

@@ -54,14 +54,14 @@ decode(const std::string& nums, uint pos, uint end) {
     return b;
 }
 
-fc::flat_map<uint8_t, evt_link::segment>
+evt_link::segments_type
 parse_segments(const bytes& b, uint16_t& header) {
     FC_ASSERT(b.size() > 2);
 
     auto h  = *(uint16_t*)&b[0];
     header  = boost::endian::big_to_native(h);
 
-    auto segs = fc::flat_map<uint8_t, evt_link::segment>();
+    auto segs = evt_link::segments_type();
 
     auto i  = 2u;
     auto pk = 0u;
@@ -122,15 +122,15 @@ parse_segments(const bytes& b, uint16_t& header) {
     return segs;
 }
 
-fc::flat_set<signature_type>
+evt_link::signatures_type
 parse_signatures(const bytes& b) {
     FC_ASSERT(b.size() > 0 && b.size() % 65 == 0);
-    auto sigs = fc::flat_set<signature_type>();
+    auto sigs = evt_link::signatures_type();
 
     for(auto i = 0u; i < b.size() / 65u; i++) {
         auto shim = fc::ecc::compact_signature();
         static_assert(sizeof(shim) == 65);
-        memcpy(shim.data, &b[0] + i * 65, 65);
+        memcpy(shim.data(), &b[0] + i * 65, 65);
 
         sigs.emplace(fc::ecc::signature_shim(shim));
     }
@@ -244,13 +244,12 @@ public:
     template<typename Sig>
     void
     operator()(const Sig& sig) const {
-        static_assert(sizeof(sig._data.data) == 65, "sig size is expected to be 65");
-        stream_.write((char*)sig._data.data, 65);
+        static_assert(sizeof(sig._data) == 65, "sig size is expected to be 65");
+        stream_.write((char*)sig._data.data(), 65);
     }
 
 private:
     Stream& stream_;
-
 };
 
 template<typename Stream>
@@ -329,10 +328,10 @@ evt_link::to_string(int prefix) const {
     return str;
 }
 
-fc::flat_set<public_key_type>
+public_keys_type
 evt_link::restore_keys() const {
     auto hash = digest();
-    auto keys = fc::flat_set<public_key_type>();
+    auto keys = public_keys_type();
 
     keys.reserve(signatures_.size());
     for(auto& sig : signatures_) {

@@ -6,6 +6,7 @@
 
 #include <string>
 #include <memory>
+#include <optional>
 #include <boost/scope_exit.hpp>
 #include <bsoncxx/exception/exception.hpp>
 #include <bsoncxx/json.hpp>
@@ -14,7 +15,6 @@
 #include <mongocxx/exception/operation_exception.hpp>
 #include <mongocxx/exception/logic_error.hpp>
 #include <appbase/application.hpp>
-#include <fc/optional.hpp>
 
 namespace evt {
 
@@ -23,8 +23,8 @@ using mongocxx::collection;
 using mongocxx::bulk_write;
 
 #define define_collection(n)                                        \
-    collection                n##_collection;                       \
-    fc::optional<bulk_write>  n##_commits;                          \
+    collection                 n##_collection;                       \
+    std::optional<bulk_write>  n##_commits;                          \
                                                                     \
     auto& get_##n() {                                               \
         if(!(n##_commits)) {                                        \
@@ -35,7 +35,7 @@ using mongocxx::bulk_write;
     }
 
 #define commit_collection(n)            \
-    if(n##_commits) {                   \
+    if(n##_commits.has_value()) {       \
         BOOST_SCOPE_EXIT_ALL(&) {       \
             n##_commits.reset();        \
         };                              \

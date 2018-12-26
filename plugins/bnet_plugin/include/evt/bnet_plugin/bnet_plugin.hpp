@@ -12,12 +12,15 @@ class variant;
 }
 
 namespace evt {
-using chain::transaction_id_type;
-using std::shared_ptr;
+
 using namespace appbase;
+
+using std::shared_ptr;
+using std::optional;
+
 using chain::name;
 using chain::uint128_t;
-using fc::optional;
+using chain::transaction_id_type;
 
 typedef shared_ptr<class bnet_plugin_impl>       bnet_ptr;
 typedef shared_ptr<const class bnet_plugin_impl> bnet_const_ptr;

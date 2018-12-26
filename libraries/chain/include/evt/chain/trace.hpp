@@ -24,25 +24,25 @@ struct action_trace {
     uint32_t             block_num = 0;
     block_timestamp_type block_time;
 
-    fc::optional<block_id_type> producer_block_id;
-    fc::optional<fc::exception> except;
+    std::optional<block_id_type> producer_block_id;
+    std::optional<fc::exception> except;
 };
 
 struct transaction_trace;
 using transaction_trace_ptr = std::shared_ptr<transaction_trace>;
 
 struct transaction_trace {
-    transaction_id_type                      id;
-    fc::optional<transaction_receipt_header> receipt;
-    fc::microseconds                         elapsed;
-    bool                                     is_suspend = false;
-    vector<action_trace>                     action_traces;  ///< disposable
+    transaction_id_type                       id;
+    std::optional<transaction_receipt_header> receipt;
+    fc::microseconds                          elapsed;
+    bool                                      is_suspend = false;
+    vector<action_trace>                      action_traces;  ///< disposable
 
     uint32_t charge;
     uint64_t net_usage;
 
-    fc::optional<fc::exception> except;
-    std::exception_ptr          except_ptr;
+    std::optional<fc::exception> except;
+    std::exception_ptr           except_ptr;
 };
 
 }}  // namespace evt::chain

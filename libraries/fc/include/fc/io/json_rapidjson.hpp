@@ -7,6 +7,7 @@
 #include <vector>
 #include <tuple>
 #include <fc/io/json.hpp>
+#include <fc/container/small_vector_fwd.hpp>
 #include <fc/static_variant.hpp>
 #include <rapidjson/document.h>
 #include <rapidjson/reader.h>
@@ -193,7 +194,7 @@ private:
     using obj_level = static_variant<mutable_variant_object, variants>;
 
     template<typename T>
-    using stack = std::stack<T, std::vector<T>>;
+    using stack = std::stack<T, fc::small_vector<T, 8>>;
 
     stack<std::string> key_levels_;
     stack<obj_level>   obj_levels_;
