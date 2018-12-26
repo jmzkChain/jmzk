@@ -83,10 +83,9 @@ response_ok(int id, const T& obj) {
     return PG_OK;
 }
 
-template<>
 int
-response_ok<std::string>(int id, const std::string& json) {
-    app().get_plugin<http_plugin>().set_deferred_response(id, 200, json);
+response_raw(int id, int code, const std::string& json) {
+    app().get_plugin<http_plugin>().set_deferred_response(id, code, json);
     return PG_OK;
 }
 
@@ -248,8 +247,13 @@ pg_query::get_tokens_resume(int id, pg_result const* r) {
 
     EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get tokens failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
+    auto n = PQntuples(r);
+    if(n == 0) {
+        return response_raw(id, 200, "[]"); // return empty
+    }
+
     auto results = fc::mutable_variant_object();
-    for(int i = 0; i < PQntuples(r); i++) {
+    for(int i = 0; i < n; i++) {
         auto domain = PQgetvalue(r, i, 0);
         auto name   = PQgetvalue(r, i, 1);
 
@@ -285,8 +289,13 @@ pg_query::get_domains_resume(int id, pg_result const* r) {
 
     EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get domains failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
+    auto n = PQntuples(r);
+    if(n == 0) {
+        return response_raw(id, 200, "[]"); // return empty
+    }
+
     auto results = std::vector<const char*>();
-    for(int i = 0; i < PQntuples(r); i++) {
+    for(int i = 0; i < n; i++) {
         auto name = PQgetvalue(r, i, 0);
         results.emplace_back(name);
     }
@@ -317,8 +326,13 @@ pg_query::get_groups_resume(int id, pg_result const* r) {
 
     EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get groups failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
+    auto n = PQntuples(r);
+    if(n == 0) {
+        return response_raw(id, 200, "[]"); // return empty
+    }
+
     auto results = std::vector<const char*>();
-    for(int i = 0; i < PQntuples(r); i++) {
+    for(int i = 0; i < n; i++) {
         auto name = PQgetvalue(r, i, 0);
         results.emplace_back(name);
     }
@@ -349,8 +363,13 @@ pg_query::get_fungibles_resume(int id, pg_result const* r) {
 
     EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get fungibles failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
+    auto n = PQntuples(r);
+    if(n == 0) {
+        return response_raw(id, 200, "[]"); // return empty
+    }
+
     auto results = std::vector<int64_t>();
-    for(int i = 0; i < PQntuples(r); i++) {
+    for(int i = 0; i < n; i++) {
         auto sym_id = PQgetvalue(r, i, 0);
         results.emplace_back(boost::lexical_cast<int64_t>(sym_id));
     }
@@ -486,9 +505,12 @@ pg_query::get_actions_resume(int id, pg_result const* r) {
     using namespace __internal;
 
     EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get actions failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    auto n = PQntuples(r);
+    if(n == 0) {
+        return response_raw(id, 200, "[]"); // return empty
+    }
 
     auto builder = fmt::memory_buffer();
-    auto n       = PQntuples(r);
 
     fmt::format_to(builder, "[");
     for(int i = 0; i < n; i++) {
@@ -600,8 +622,12 @@ pg_query::get_fungible_actions_resume(int id, pg_result const* r) {
 
     EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get fungible actions failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
+    auto n = PQntuples(r);
+    if(n == 0) {
+        return response_raw(id, 200, "[]"); // return empty
+    }
+
     auto builder = fmt::memory_buffer();
-    auto n       = PQntuples(r);
 
     fmt::format_to(builder, "[");
     for(int i = 0; i < n; i++) {
@@ -714,7 +740,7 @@ pg_query::get_transactions_resume(int id, pg_result const* r) {
 
     auto n = PQntuples(r);
     if(n == 0) {
-        return response_ok(id, "[]"); // return empty
+        return response_raw(id, 200, "[]"); // return empty
     }
 
     auto results = fc::variants();
@@ -775,7 +801,7 @@ pg_query::get_fungible_ids_resume(int id, pg_result const* r) {
 
     auto n = PQntuples(r);
     if(n == 0) {
-        return response_ok(id, "[]"); // return empty
+        return response_raw(id, 200, "[]"); // return empty
     }
 
     auto buf = fmt::memory_buffer();
