@@ -178,21 +178,21 @@ void to_variant(const std::shared_ptr<T>& var, variant& vo);
 template<typename T>
 void from_variant(const variant& var, std::shared_ptr<T>& vo);
 
-typedef std::vector<variant> variants;
+typedef fc::small_vector<variant, 4> variants;
 template<typename A, typename B>
 void to_variant(const std::pair<A, B>& t, variant& v);
 template<typename A, typename B>
 void from_variant(const variant& v, std::pair<A, B>& p);
 
 /**
-    * @brief stores null, int64, uint64, double, bool, string, std::vector<variant>,
-    *        and variant_object's.
-    *
-    * variant's allocate everything but strings, arrays, and objects on the
-    * stack and are 'move aware' for values allcoated on the heap.
-    *
-    * Memory usage on 64 bit systems is 16 bytes and 12 bytes on 32 bit systems.
-    */
+  * @brief stores null, int64, uint64, double, bool, string, fc::small_vector<variant>,
+  *        and variant_object's.
+  *
+  * variant's allocate everything but strings, arrays, and objects on the
+  * stack and are 'move aware' for values allcoated on the heap.
+  *
+  * Memory usage on 64 bit systems is 16 bytes and 12 bytes on 32 bit systems.
+  */
 class variant {
 public:
     enum type_id {
@@ -399,8 +399,8 @@ from_variant(const variant& var, std::optional<T>& vo) {
 template<typename T>
 void
 to_variant(const std::unordered_set<T>& var, variant& vo) {
-    std::vector<variant> vars(var.size());
-    size_t               i = 0;
+    variants vars(var.size());
+    size_t   i = 0;
     for(auto itr = var.begin(); itr != var.end(); ++itr, ++i)
         vars[i] = variant(*itr);
     vo = vars;
@@ -419,8 +419,8 @@ from_variant(const variant& var, std::unordered_set<T>& vo) {
 template<typename K, typename T>
 void
 to_variant(const std::unordered_map<K, T>& var, variant& vo) {
-    std::vector<variant> vars(var.size());
-    size_t               i = 0;
+    variants vars(var.size());
+    size_t   i = 0;
     for(auto itr = var.begin(); itr != var.end(); ++itr, ++i)
         vars[i] = fc::variant(*itr);
     vo = vars;
@@ -438,8 +438,8 @@ from_variant(const variant& var, std::unordered_map<K, T>& vo) {
 template<typename K, typename T>
 void
 to_variant(const std::map<K, T>& var, variant& vo) {
-    std::vector<variant> vars(var.size());
-    size_t               i = 0;
+    variants vars(var.size());
+    size_t   i = 0;
     for(auto itr = var.begin(); itr != var.end(); ++itr, ++i)
         vars[i] = fc::variant(*itr);
     vo = vars;
@@ -457,8 +457,8 @@ from_variant(const variant& var, std::map<K, T>& vo) {
 template<typename K, typename T>
 void
 to_variant(const std::multimap<K, T>& var, variant& vo) {
-    std::vector<variant> vars(var.size());
-    size_t               i = 0;
+    variants vars(var.size());
+    size_t   i = 0;
     for(auto itr = var.begin(); itr != var.end(); ++itr, ++i)
         vars[i] = fc::variant(*itr);
     vo = vars;
@@ -476,8 +476,8 @@ from_variant(const variant& var, std::multimap<K, T>& vo) {
 template<typename T>
 void
 to_variant(const std::set<T>& var, variant& vo) {
-    std::vector<variant> vars(var.size());
-    size_t               i = 0;
+    variants vars(var.size());
+    size_t   i = 0;
     for(auto itr = var.begin(); itr != var.end(); ++itr, ++i)
         vars[i] = variant(*itr);
     vo = vars;
@@ -507,7 +507,7 @@ from_variant(const variant& var, std::deque<T>& tmp) {
 template<typename T>
 void
 to_variant(const std::deque<T>& t, variant& v) {
-    std::vector<variant> vars(t.size());
+    variants vars(t.size());
     for(size_t i = 0; i < t.size(); ++i)
         vars[i] = variant(t[i]);
     v = std::move(vars);
@@ -528,7 +528,7 @@ from_variant(const variant& var, std::vector<T>& tmp) {
 template<typename T>
 void
 to_variant(const std::vector<T>& t, variant& v) {
-    std::vector<variant> vars(t.size());
+    variants vars(t.size());
     for(size_t i = 0; i < t.size(); ++i)
         vars[i] = variant(t[i]);
     v = std::move(vars);
@@ -548,7 +548,7 @@ from_variant(const variant& var, std::array<T, S>& t) -> std::enable_if_t<!std::
 template<typename T, std::size_t S>
 auto
 to_variant(const std::array<T, S>& t, variant& v) -> std::enable_if_t<!std::is_trivially_copyable_v<T>> {
-    std::vector<variant> vars(S);
+    variants vars(S);
     for(std::size_t i = 0; i < S; ++i) {
         vars[i] = variant(t[i]);
     }
@@ -579,7 +579,7 @@ to_variant(const std::array<T, N>& bi, variant& v) -> std::enable_if_t<std::is_t
 template<typename A, typename B>
 void
 to_variant(const std::pair<A, B>& t, variant& v) {
-    std::vector<variant> vars(2);
+    variants vars(2);
     vars[0] = variant(t.first);
     vars[1] = variant(t.second);
     v       = vars;
@@ -678,7 +678,7 @@ from_variant(const variant& v, smart_ref<T>& s) {
 template<typename T, typename... Args>
 void
 to_variant(const boost::multi_index_container<T, Args...>& c, variant& v) {
-    std::vector<variant> vars;
+    variants vars;
     vars.reserve(c.size());
     for(const auto& item : c)
         vars.emplace_back(variant(item));

@@ -43,7 +43,7 @@ using group_key       = evt::chain::address;
 using group_def       = group;
 using balance_type    = evt::chain::asset;
 using address_type    = evt::chain::address;
-using address_list    = small_vector<address_type, 2>;
+using address_list    = small_vector<address_type, 4>;
 using conf_key        = evt::chain::conf_key;
 
 struct token_def {
@@ -79,7 +79,7 @@ struct permission_def {
 
     permission_name                    name;
     uint32_t                           threshold;
-    small_vector<authorizer_weight, 2> authorizers;
+    small_vector<authorizer_weight, 4> authorizers;
 };
 
 struct domain_def {
@@ -167,11 +167,11 @@ struct lock_def {
 
     time_point_sec              unlock_time;
     time_point_sec              deadline;
-    small_vector<lock_asset, 2> assets;
+    small_vector<lock_asset, 4> assets;
     
     lock_condition           condition;
-    small_vector<address, 2> succeed;
-    small_vector<address, 2> failed;
+    small_vector<address, 4> succeed;
+    small_vector<address, 4> failed;
 
     flat_set<public_key_type> signed_keys;
 };
@@ -330,7 +330,7 @@ struct cancelsuspend {
 
 struct aprvsuspend {
     proposal_name                       name;
-    fc::small_vector<signature_type, 2> signatures;
+    fc::small_vector<signature_type, 4> signatures;
 
     EVT_ACTION(aprvsuspend);
 };
@@ -383,11 +383,11 @@ struct newlock {
 
     time_point_sec              unlock_time;
     time_point_sec              deadline;
-    small_vector<lock_asset, 2> assets;
+    small_vector<lock_asset, 4> assets;
     
     lock_condition           condition;
-    small_vector<address, 2> succeed;
-    small_vector<address, 2> failed;
+    small_vector<address, 4> succeed;
+    small_vector<address, 4> failed;
 
     EVT_ACTION(newlock);
 };

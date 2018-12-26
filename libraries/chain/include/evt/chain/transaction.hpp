@@ -57,7 +57,7 @@ enum class transaction_ext : uint16_t {
  *  read and write scopes.
  */
 struct transaction : public transaction_header {
-    fc::small_vector<action, 2> actions;
+    fc::small_vector<action, 4> actions;
     address                     payer;
     extensions_type             transaction_extensions;
 
