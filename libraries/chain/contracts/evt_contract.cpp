@@ -442,18 +442,18 @@ EVT_ACTION_IMPL(newfungible) {
         pchecker(nfact.issue, false);
         pchecker(nfact.manage, false);
 
-        fungible_def fungible;
-
-        fungible.name           = nfact.name;
-        fungible.sym_name       = nfact.sym_name;
-        fungible.sym            = nfact.sym;
-        fungible.creator        = nfact.creator;
+        auto fungible = fungible_def();
+        
+        fungible.name         = nfact.name;
+        fungible.sym_name     = nfact.sym_name;
+        fungible.sym          = nfact.sym;
+        fungible.creator      = nfact.creator;
         // NOTICE: we should use pending_block_time() below
         // but for historical mistakes, we use head_block_time()
-        fungible.create_time    = context.control.head_block_time();
-        fungible.issue          = std::move(nfact.issue);
-        fungible.manage         = std::move(nfact.manage);
-        fungible.total_supply   = nfact.total_supply;
+        fungible.create_time  = context.control.head_block_time();
+        fungible.issue        = std::move(nfact.issue);
+        fungible.manage       = std::move(nfact.manage);
+        fungible.total_supply = nfact.total_supply;
 
         tokendb.add_fungible(fungible);
 
@@ -893,7 +893,7 @@ EVT_ACTION_IMPL(newsuspend) {
         auto& tokendb = context.token_db;
         EVT_ASSERT(!tokendb.exists_suspend(nsact.name), suspend_duplicate_exception, "Suspend ${name} already exists.", ("name",nsact.name));
 
-        suspend_def suspend;
+        auto suspend     = suspend_def();
         suspend.name     = nsact.name;
         suspend.proposer = nsact.proposer;
         suspend.status   = suspend_status::proposed;

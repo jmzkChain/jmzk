@@ -10,8 +10,12 @@
 #include <unordered_map>
 #include <thread>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 #define XXH_INLINE_ALL
 #include <xxhash.h>
+#pragma GCC diagnostic pop
+
 
 #include <boost/asio.hpp>
 #include <fc/io/json.hpp>
