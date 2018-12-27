@@ -117,13 +117,11 @@ def pre_action():
     issuefungible1 = AG.new_action(
         'issuefungible', address=base.Address().set_public_key(user.pub_key), number=asset(100), memo='goodluck')
 
-    asset_evt = base.new_asset(base.Symbol(
-        sym_name=sym_name, sym_id=1, precision=5))
     issuefungible2 = AG.new_action(
-        'issuefungible', address=base.Address().set_public_key(user.pub_key), number=asset_evt(100), memo='goodluck')
+        'issuefungible', address=base.Address().set_public_key(user.pub_key), number=base.EvtAsset(100), memo='goodluck')
 
     e2p = AG.new_action(
-        'evt2pevt', _from=base.Address().set_public_key(user.pub_key), to=base.Address().set_public_key(user.pub_key), number=asset_evt(100), memo='goodluck')
+        'evt2pevt', _from=base.Address().set_public_key(user.pub_key), to=base.Address().set_public_key(user.pub_key), number=base.EvtAsset(100), memo='goodluck')
 
     pay_link = evt_link.EvtLink()
     pay_link.set_timestamp(int(time.time()))
@@ -397,7 +395,7 @@ class Test(unittest.TestCase):
         req['domain'] = domain_name
 
         resp = api.get_actions(json.dumps(req)).text
-        dic = json.loads(resp)
+        dic = json.loads(json.loads(resp))
         self.assertTrue('T' in dic[0]['timestamp'], msg=dic[0]['timestamp'])
         self.assertTrue(type(iso8601.parse_date(dic[0]['timestamp'])) is datetime.datetime, msg=dic[0]['timestamp'])
         self.assertTrue(token1_name in resp, msg=resp)
@@ -556,6 +554,7 @@ class Test(unittest.TestCase):
         self.assertTrue('timestamp' in resp, msg=resp)
 
         req['sym_id'] = 1
+        req['address'] = user.pub_key.to_string()
         resp = api.get_fungible_actions(json.dumps(req)).text
         self.assertTrue('evt2pevt' in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
@@ -589,11 +588,13 @@ class Test(unittest.TestCase):
             'skip': 0,
             'take': 10
         }
-        req['keys'] = [user.pub_key.to_string()]
 
         resp = api.get_history_transactions(json.dumps(req)).text
+        self.assertTrue('[]' == resp, msg=resp)
+
+        req['keys'] = [user.pub_key.to_string()]
+        resp = api.get_history_transactions(json.dumps(req)).text
         self.assertTrue(domain_name in resp, msg=resp)
-        self.assertTrue(token1_name in resp, msg=resp)
         self.assertTrue(group_name in resp, msg=resp)
         self.assertTrue(str(sym_id) in resp, msg=resp)
 
@@ -623,7 +624,7 @@ def main(url, start_evtd, evtd_path, public_key, private_key):
 
         p = subprocess.Popen([evtd_path, '-e', '--http-validate-host=false', '--charge-free-mode', '--plugin=evt::postgres_plugin',
                               '--plugin=evt::history_plugin', '--plugin=evt::history_api_plugin', '--plugin=evt::chain_api_plugin', '--plugin=evt::evt_api_plugin',
-                              '--plugin=evt::evt_link_plugin', '--producer-name=evt', '--delete-all-blocks', '-d', './tmp', '--postgres-uri=postgresql://postgres@localhost:5432/evt'],
+                              '--plugin=evt::evt_link_plugin', '--producer-name=evt', '--delete-all-blocks', '--replay-blockchain', '-d', './tmp', '--postgres-uri=postgresql://postgres@localhost:5432/evt'],
                              stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=evtdout, shell=False)
         
         # wait for evtd to initialize
