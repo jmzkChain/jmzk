@@ -710,6 +710,21 @@ TEST_CASE_METHOD(contracts_test, "contract_issuefungible_test", "[contracts]") {
     tokendb.read_asset(key, symbol(5, get_sym_id()), ast);
     CHECK(5000000 == ast.amount());
 
+    issfg.number = asset::from_string(string("15.00000 S#1"));
+    to_variant(issfg, var);
+
+    signed_transaction trx;
+    trx.actions.emplace_back(my_tester->get_action(N(issuefungible), N128(.fungible), (name128)std::to_string(1), var.get_object()));
+    my_tester->set_transaction_headers(trx, payer, 1'000'000, base_tester::DEFAULT_EXPIRATION_DELTA);
+    for(const auto& auth : key_seeds) {
+        trx.sign(my_tester->get_private_key(auth), my_tester->control->get_chain_id());
+    }
+    trx.sign(fc::crypto::private_key(std::string("5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3")), my_tester->control->get_chain_id());
+    my_tester->push_transaction(trx);
+
+    tokendb.read_asset(issfg.address, symbol(5, 1), ast);
+    CHECK(1500000 == ast.amount());
+
     my_tester->produce_blocks();
 }
 
