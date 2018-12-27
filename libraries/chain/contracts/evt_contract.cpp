@@ -893,7 +893,7 @@ EVT_ACTION_IMPL(newsuspend) {
         auto& tokendb = context.token_db;
         EVT_ASSERT(!tokendb.exists_suspend(nsact.name), suspend_duplicate_exception, "Suspend ${name} already exists.", ("name",nsact.name));
 
-        suspend_def suspend;
+        auto suspend     = suspend_def();
         suspend.name     = nsact.name;
         suspend.proposer = nsact.proposer;
         suspend.status   = suspend_status::proposed;
