@@ -112,7 +112,7 @@ FC_DECLARE_DERIVED_EXCEPTION( too_many_tx_at_once,             transaction_excep
 FC_DECLARE_DERIVED_EXCEPTION( tx_too_big,                      transaction_exception, 3030014, "Transaction is too big" );
 FC_DECLARE_DERIVED_EXCEPTION( unknown_transaction_compression, transaction_exception, 3030015, "Unknown transaction compression" );
 
-FC_DECLARE_DERIVED_EXCEPTION( action_exception,           chain_exception,  3040000, "action validation exception" );
+FC_DECLARE_DERIVED_EXCEPTION( action_exception,           chain_exception,  3040000, "action exception" );
 FC_DECLARE_DERIVED_EXCEPTION( action_authorize_exception, action_exception, 3040001, "invalid action authorization" );
 FC_DECLARE_DERIVED_EXCEPTION( action_args_exception,      action_exception, 3040002, "Invalid arguments for action" );
 FC_DECLARE_DERIVED_EXCEPTION( name_reserved_exception,    action_exception, 3040003, "Name is reserved." );

@@ -4,7 +4,7 @@
  */
 #pragma once
 
-#include <fc/variant_wrapper.hpp>
+#include <boost/hana/integral_constant.hpp>
 
 #include <evt/chain/address.hpp>
 #include <evt/chain/asset.hpp>
@@ -21,13 +21,29 @@
 
 namespace evt { namespace chain { namespace contracts {
 
-#define EVT_ACTION(typename)       \
-    typename() = default;          \
-                                   \
-    static constexpr action_name   \
-    get_name() {                   \
-        return N(typename);        \
+#define EVT_ACTION(actname, version, acttypename)    \
+    acttypename() = default;                         \
+                                                     \
+    using hana_tag = boost::hana::ulong<N(actname)>; \
+                                                     \
+    static constexpr auto                            \
+    get_action_name() {                              \
+        return evt::chain::name(N(actname));         \
+    }                                                \
+                                                     \
+    static constexpr auto                            \
+    get_type_name() {                                \
+        return evt::chain::name(N(acttypename));     \
+    }                                                \
+                                                     \
+    static constexpr auto                            \
+    get_version() {                                  \
+        return version;                              \
     }
+
+#define EVT_ACTION_VER0(actname)              EVT_ACTION(actname, 0, actname)
+#define EVT_ACTION_VER1(actname, acttypename) EVT_ACTION(actname, 1, acttypename)
+#define EVT_ACTION_VER2(actname, acttypename) EVT_ACTION(actname, 2, acttypename)
 
 using domain_name     = evt::chain::domain_name;
 using domian_key      = evt::chain::domain_key;
@@ -147,7 +163,7 @@ struct lockft_def {
     asset   amount;
 };
 
-using lock_asset = fc::variant_wrapper<asset_type, locknft_def, lockft_def>;
+using lock_asset = variant_wrapper<asset_type, locknft_def, lockft_def>;
 
 enum class lock_type {
     cond_keys = 0, max_value = 0
@@ -158,7 +174,7 @@ struct lock_condkeys {
     std::vector<public_key_type> cond_keys;
 };
 
-using lock_condition = fc::variant_wrapper<lock_type, lock_condkeys>;
+using lock_condition = variant_wrapper<lock_type, lock_condkeys>;
 
 struct lock_def {
     proposal_name                       name;
@@ -173,14 +189,14 @@ struct lock_def {
     small_vector<address, 4> succeed;
     small_vector<address, 4> failed;
 
-    flat_set<public_key_type> signed_keys;
+    public_keys_type signed_keys;
 };
 
 enum class lock_aprv_type {
     cond_key = 0, max_value = 0
 };
 
-using lock_aprvdata = fc::variant_wrapper<lock_aprv_type, void_t>;
+using lock_aprvdata = variant_wrapper<lock_aprv_type, void_t>;
 
 struct newdomain {
     domain_name name;
@@ -190,7 +206,7 @@ struct newdomain {
     permission_def transfer;
     permission_def manage;
 
-    EVT_ACTION(newdomain);
+    EVT_ACTION_VER0(newdomain);
 };
 
 struct issuetoken {
@@ -198,7 +214,7 @@ struct issuetoken {
     small_vector<token_name, 4> names;
     address_list                owner;
 
-    EVT_ACTION(issuetoken);
+    EVT_ACTION_VER0(issuetoken);
 };
 
 struct transfer {
@@ -207,28 +223,28 @@ struct transfer {
     address_list to;
     string       memo;
 
-    EVT_ACTION(transfer);
+    EVT_ACTION_VER0(transfer);
 };
 
 struct destroytoken {
     domain_name domain;
     token_name  name;
 
-    EVT_ACTION(destroytoken);
+    EVT_ACTION_VER0(destroytoken);
 };
 
 struct newgroup {
     group_name name;
     group_def  group;
 
-    EVT_ACTION(newgroup);
+    EVT_ACTION_VER0(newgroup);
 };
 
 struct updategroup {
     group_name name;
     group_def  group;
 
-    EVT_ACTION(updategroup);
+    EVT_ACTION_VER0(updategroup);
 };
 
 struct updatedomain {
@@ -238,7 +254,7 @@ struct updatedomain {
     optional<permission_def> transfer;
     optional<permission_def> manage;
 
-    EVT_ACTION(updatedomain);
+    EVT_ACTION_VER0(updatedomain);
 };
 
 struct newfungible {
@@ -252,7 +268,7 @@ struct newfungible {
 
     asset total_supply;
 
-    EVT_ACTION(newfungible);
+    EVT_ACTION_VER0(newfungible);
 };
 
 struct updfungible {
@@ -261,7 +277,7 @@ struct updfungible {
     optional<permission_def> issue;
     optional<permission_def> manage;
 
-    EVT_ACTION(updfungible);
+    EVT_ACTION_VER0(updfungible);
 };
 
 struct issuefungible {
@@ -269,7 +285,7 @@ struct issuefungible {
     asset        number;
     string       memo;
 
-    EVT_ACTION(issuefungible);
+    EVT_ACTION_VER0(issuefungible);
 };
 
 struct transferft {
@@ -278,7 +294,7 @@ struct transferft {
     asset        number;
     string       memo;
 
-    EVT_ACTION(transferft);
+    EVT_ACTION_VER0(transferft);
 };
 
 struct recycleft {
@@ -286,7 +302,7 @@ struct recycleft {
     asset        number;
     string       memo;
 
-    EVT_ACTION(recycleft);
+    EVT_ACTION_VER0(recycleft);
 };
 
 struct destroyft {
@@ -294,7 +310,7 @@ struct destroyft {
     asset        number;
     string       memo;
 
-    EVT_ACTION(destroyft);
+    EVT_ACTION_VER0(destroyft);
 };
 
 struct evt2pevt {
@@ -303,7 +319,7 @@ struct evt2pevt {
     asset        number;
     string       memo;
 
-    EVT_ACTION(evt2pevt);
+    EVT_ACTION_VER0(evt2pevt);
 };
 
 struct addmeta {
@@ -311,7 +327,7 @@ struct addmeta {
     meta_value     value;
     authorizer_ref creator;
 
-    EVT_ACTION(addmeta);
+    EVT_ACTION_VER0(addmeta);
 };
 
 struct newsuspend {
@@ -319,40 +335,40 @@ struct newsuspend {
     user_id       proposer;
     transaction   trx;
 
-    EVT_ACTION(newsuspend);
+    EVT_ACTION_VER0(newsuspend);
 };
 
 struct cancelsuspend {
     proposal_name name;
 
-    EVT_ACTION(cancelsuspend);
+    EVT_ACTION_VER0(cancelsuspend);
 };
 
 struct aprvsuspend {
     proposal_name                       name;
     fc::small_vector<signature_type, 4> signatures;
 
-    EVT_ACTION(aprvsuspend);
+    EVT_ACTION_VER0(aprvsuspend);
 };
 
 struct execsuspend {
     proposal_name name;
     user_id       executor;
 
-    EVT_ACTION(execsuspend);
+    EVT_ACTION_VER0(execsuspend);
 };
 
 struct paycharge {
     address  payer;
     uint32_t charge;
 
-    EVT_ACTION(paycharge);
+    EVT_ACTION_VER0(paycharge);
 };
 
 struct everipass {
     evt_link link;
 
-    EVT_ACTION(everipass);
+    EVT_ACTION_VER0(everipass);
 };
 
 struct everipay {
@@ -360,7 +376,7 @@ struct everipay {
     address  payee;
     asset    number;
 
-    EVT_ACTION(everipay);
+    EVT_ACTION_VER0(everipay);
 };
 
 struct prodvote {
@@ -368,13 +384,13 @@ struct prodvote {
     conf_key     key;
     int64_t      value;
 
-    EVT_ACTION(prodvote);
+    EVT_ACTION_VER0(prodvote);
 };
 
 struct updsched {
     vector<producer_key> producers;
 
-    EVT_ACTION(updsched);
+    EVT_ACTION_VER0(updsched);
 };
 
 struct newlock {
@@ -389,7 +405,7 @@ struct newlock {
     small_vector<address, 4> succeed;
     small_vector<address, 4> failed;
 
-    EVT_ACTION(newlock);
+    EVT_ACTION_VER0(newlock);
 };
 
 struct aprvlock {
@@ -397,14 +413,14 @@ struct aprvlock {
     user_id       approver;
     lock_aprvdata data;
 
-    EVT_ACTION(aprvlock);
+    EVT_ACTION_VER0(aprvlock);
 };
 
 struct tryunlock {
     proposal_name name;
     user_id       executor;
 
-    EVT_ACTION(tryunlock);
+    EVT_ACTION_VER0(tryunlock);
 };
 
 }}}  // namespace evt::chain::contracts

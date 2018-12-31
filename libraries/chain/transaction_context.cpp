@@ -213,7 +213,7 @@ transaction_context::finalize_pay() {
     pcact.charge = charge;
 
     auto act   = action();
-    act.name   = paycharge::get_name();
+    act.name   = paycharge::get_action_name();
     act.data   = fc::raw::pack(pcact);
     act.domain = N128(.charge);
     

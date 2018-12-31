@@ -44,7 +44,7 @@ template<typename T>
 struct get_act_charge {
     static act_charge_result
     invoke(const action& act, const chain_config& config) {
-        FC_ASSERT(act.name == T::get_name());
+        FC_ASSERT(act.name == T::get_action_name());
 
         using charge = act_charge<T>;
         uint32_t s = 0;

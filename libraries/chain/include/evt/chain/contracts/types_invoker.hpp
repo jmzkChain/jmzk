@@ -12,7 +12,7 @@ namespace evt { namespace chain { namespace contracts {
 
 #define case_act(name)                                                 \
     case N(name): {                                                    \
-        static_assert(name::get_name().value == N(name));              \
+        static_assert(name::get_action_name().value == N(name));       \
         if constexpr (std::is_void<RType>::value) {                    \
             Invoker<name>::invoke(std::forward<Args>(args)...);        \
         }                                                              \

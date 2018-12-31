@@ -56,7 +56,7 @@ public:
     action(const domain_name& domain, const domain_key& key, const T& value)
         : domain(domain)
         , key(key) {
-        name   = T::get_name();
+        name   = T::get_action_name();
         data   = fc::raw::pack(value);
         cache_ = std::make_any<T>(value);
     }
@@ -81,7 +81,7 @@ public:
     data_as() const {
         if(!cache_.has_value()) {
             using raw_type = std::remove_const_t<std::remove_reference_t<T>>;
-            EVT_ASSERT(name == raw_type::get_name(), action_type_exception, "action name is not consistent with action struct");
+            EVT_ASSERT(name == raw_type::get_action_name(), action_type_exception, "action name is not consistent with action struct");
             cache_ = std::make_any<raw_type>(fc::raw::unpack<raw_type>(data));
         }
         // no need to check name here, `any_cast` will throws exception if types don't match
@@ -94,4 +94,4 @@ private:
 
 }}  // namespace evt::chain
 
-FC_REFLECT(evt::chain::action, (name)(domain)(key)(data))
+FC_REFLECT(evt::chain::action, (name)(domain)(key)(data));
