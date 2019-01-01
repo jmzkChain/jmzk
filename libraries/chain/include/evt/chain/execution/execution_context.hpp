@@ -83,19 +83,46 @@ public:
     template <typename RType, template<uint64_t> typename Invoker, typename ... Args>
     RType
     invoke(int actindex, Args&&... args) {
-        auto fn = [](auto i) {
-            auto& name = act_names_[i];
-            auto  vers = hana::sort.by(hana::ordering([](auto& act) { return hana::int_c<decltype(+act)::type::get_version()>; }), 
+        auto fn = [&](auto i) {
+            auto& name  = act_names_[i];
+            auto  vers  = hana::sort.by(hana::ordering([](auto& act) { return hana::int_c<decltype(+act)::type::get_version()>; }), 
                 hana::take_while(act_types_, [&](auto& t) { return hana::ulong_c<decltype(+t)::type::get_action_name().value> == name; }));
-            auto  cver = curr_vers_[Index];
+            auto  cver = curr_vers_[i];
 
-            hana::for_each(vers, [cver](auto& v) {
-                using ty = decltype(+v)::type;
+            hana::for_each(vers, [&, cver](auto& v) {
+                using ty = typename decltype(+v)::type;
                 if(ty::get_version() == cver) {
-                    Invoker::invoke(hana::type_c<ty>, std::forward<Args>(args)...);
+                    if constexpr (std::is_void<RType>::value) {     
+                        Invoker<name>::invoke(hana::type_c<ty>, std::forward<Args>(args)...);
+                    }
+                    else {
+                        return Invoker<name>::invoke(hana::type_c<ty>, std::forward<Args>(args)...);
+                    }
                 }
             });
         };
+
+        auto range  = hana::make_range(hana::int_c<0>, hana::length(act_names_));
+
+        if constexpr (std::is_void<RType>::value) {
+            hana::for_each(range, [](auto i) {
+                if(i == actindex) {
+                    fn(i);
+                }
+            });
+        }
+        else {
+            auto result = std::optional<RType>();
+            hana::for_each(range, [&](auto i) {
+                if(i == actindex) {
+                    result = fn(i);
+                }
+            });
+
+            if(result.has_value()) {
+                return *result;
+            }
+        }
     }
 
 private:
