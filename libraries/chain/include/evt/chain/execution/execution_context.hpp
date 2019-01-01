@@ -8,16 +8,7 @@
 #include <array>
 #include <functional>
 
-#include <boost/hana/index_if.hpp>
-#include <boost/hana/integral_constant.hpp>
-#include <boost/hana/length.hpp>
-#include <boost/hana/ordering.hpp>
-#include <boost/hana/sort.hpp>
-#include <boost/hana/take_while.hpp>
-#include <boost/hana/tuple.hpp>
-#include <boost/hana/type.hpp>
-#include <boost/hana/unique.hpp>
-#include <boost/hana/unpack.hpp>
+#include <boost/hana.hpp>
 
 #include <evt/chain/config.hpp>
 #include <evt/chain/exceptions.hpp>
@@ -83,12 +74,15 @@ public:
     template <typename RType, template<uint64_t> typename Invoker, typename ... Args>
     RType
     invoke(int actindex, Args&&... args) {
-        auto fn = [&](auto i) {
-            auto& name  = act_names_[i];
-            auto  vers  = hana::sort.by(hana::ordering([](auto& act) { return hana::int_c<decltype(+act)::type::get_version()>; }), 
-                hana::take_while(act_types_, [&](auto& t) { return hana::ulong_c<decltype(+t)::type::get_action_name().value> == name; }));
-            auto  cver = curr_vers_[i];
+        auto fn = [&](auto i) -> std::optional<RType> {
+            auto name  = act_names_[i];
+            auto vers  = hana::take_while(act_types_,
+                [&](auto& t) { return hana::equal(name, hana::ulong_c<decltype(+t)::type::get_action_name().value>); });
+            auto cver = curr_vers_[i];
 
+            static_assert(hana::length(vers) > hana::size_c<0>, "empty version actions!");
+
+            auto result = std::optional<RType>();
             hana::for_each(vers, [&, cver](auto& v) {
                 using ty = typename decltype(+v)::type;
                 if(ty::get_version() == cver) {
@@ -96,33 +90,24 @@ public:
                         Invoker<name>::invoke(hana::type_c<ty>, std::forward<Args>(args)...);
                     }
                     else {
-                        return Invoker<name>::invoke(hana::type_c<ty>, std::forward<Args>(args)...);
+                        result = Invoker<name>::invoke(hana::type_c<ty>, std::forward<Args>(args)...);
                     }
                 }
             });
+
+            return result;
         };
 
         auto range  = hana::make_range(hana::int_c<0>, hana::length(act_names_));
-
-        if constexpr (std::is_void<RType>::value) {
-            hana::for_each(range, [](auto i) {
-                if(i == actindex) {
-                    fn(i);
-                }
-            });
-        }
-        else {
-            auto result = std::optional<RType>();
-            hana::for_each(range, [&](auto i) {
-                if(i == actindex) {
-                    result = fn(i);
-                }
-            });
-
-            if(result.has_value()) {
-                return *result;
+        auto result = std::optional<RType>();
+        hana::for_each(range, [&](auto i) {
+            if(i() == actindex) {
+                result = fn(i);
             }
-        }
+        });
+
+        EVT_ASSERT(result.has_value(), action_exception, "Unknown action index: ${act}", ("act", actindex));
+        return *result;
     }
 
 private:

@@ -82,7 +82,8 @@ TEST_CASE_METHOD(execution_tests, "test_serializer", "[execution]") {
 template<uint64_t N>
 struct tinvoke {
     template <typename Type>
-    static int invoke(Type type) {
+    static uint64_t invoke(Type type) {
+        INFO("hello");
         return N;
     }
 };
@@ -90,7 +91,8 @@ struct tinvoke {
 template<>
 struct tinvoke<N(newdomain)> {
     template <typename Type>
-    static int invoke(Type type) {
+    static uint64_t invoke(Type type) {
+        INFO("hello2");
         CHECK(type == hana::type_c<contracts::newdomain>);
         return 0;
     }
@@ -100,6 +102,6 @@ TEST_CASE_METHOD(execution_tests, "test_invoke", "[execution]") {
     auto ind = ctx_.index_of(N(newdomain));
     auto iit = ctx_.index_of(N(issuetoken));
 
-    CHECK(ctx_.invoke<int, tinvoke>(ind) == 0);
-    CHECK(ctx_.invoke<int, tinvoke>(iit) == N(issuetoken));
+    CHECK(ctx_.invoke<uint64_t, tinvoke>(ind) == 0);
+    CHECK(ctx_.invoke<uint64_t, tinvoke>(iit) == N(issuetoken));
 }
