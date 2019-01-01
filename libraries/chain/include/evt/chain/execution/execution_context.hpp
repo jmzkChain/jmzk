@@ -13,6 +13,7 @@
 #include <boost/hana/length.hpp>
 #include <boost/hana/ordering.hpp>
 #include <boost/hana/sort.hpp>
+#include <boost/hana/take_while.hpp>
 #include <boost/hana/tuple.hpp>
 #include <boost/hana/type.hpp>
 #include <boost/hana/unique.hpp>
@@ -49,15 +50,17 @@ public:
             FC_ASSERT(type_names_[i].size() == decltype(+act)::type::get_version());
             type_names_[i].emplace_back(decltype(+act)::type::get_type_name());
         });
+
+        act_names_arr_ = hana::unpack(act_names_, [](auto ...i) {
+            return std::array<uint64_t, sizeof...(i)>{{i...}};
+        });
     }
 
 public:
-    static int
+    int
     index_of(name act) {
-        auto arr = hana::unpack(act_names_, [](auto ...i) {
-            return std::array<uint64_t, sizeof...(i)>{{i...}};
-        });
-        auto it = std::lower_bound(std::cbegin(arr), std::cend(arr), act.value);
+        auto& arr = act_names_arr_;
+        auto it   = std::lower_bound(std::cbegin(arr), std::cend(arr), act.value);
         EVT_ASSERT(it != std::cend(arr) && *it == act.value, action_exception, "Unknown action: ${act}", ("act", act));
 
         return std::distance(std::cbegin(arr), it);
@@ -77,6 +80,24 @@ public:
         return abi_.variant_to_binary(acttype.to_string(), var, short_path);
     }
 
+    template <typename RType, template<uint64_t> typename Invoker, typename ... Args>
+    RType
+    invoke(int actindex, Args&&... args) {
+        auto fn = [](auto i) {
+            auto& name = act_names_[i];
+            auto  vers = hana::sort.by(hana::ordering([](auto& act) { return hana::int_c<decltype(+act)::type::get_version()>; }), 
+                hana::take_while(act_types_, [&](auto& t) { return hana::ulong_c<decltype(+t)::type::get_action_name().value> == name; }));
+            auto  cver = curr_vers_[Index];
+
+            hana::for_each(vers, [cver](auto& v) {
+                using ty = decltype(+v)::type;
+                if(ty::get_version() == cver) {
+                    Invoker::invoke(hana::type_c<ty>, std::forward<Args>(args)...);
+                }
+            });
+        };
+    }
+
 private:
     int
     get_curr_ver(int index) const {
@@ -94,6 +115,7 @@ private:
 
 private:
     std::array<int, hana::length(act_names_)>                   curr_vers_;
+    std::array<uint64_t, hana::length(act_names_)>              act_names_arr_;
     std::array<small_vector<name, 4>, hana::length(act_names_)> type_names_;
 
 private:
