@@ -4,6 +4,8 @@
  */
 #include <evt/history_plugin/evt_pg_query.hpp>
 
+#pragma GCC diagnostic ignored "-Wunused-local-typedefs"
+
 #include <functional>
 #include <fmt/format.h>
 #include <libpq-fe.h>

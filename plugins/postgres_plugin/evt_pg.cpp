@@ -4,6 +4,8 @@
  */
 #include <evt/postgres_plugin/evt_pg.hpp>
 
+#pragma GCC diagnostic ignored "-Wunused-local-typedefs"
+
 #include <fmt/format.h>
 #include <libpq-fe.h>
 #include <boost/lexical_cast.hpp>
@@ -886,6 +888,30 @@ pg::upd_fungible(trx_context& tctx, const updfungible& uf) {
     return PG_OK;
 }
 
+namespace __internal {
+
+std::string
+escape_string(const std::string& text) {
+    auto estr = std::string();
+    estr.reserve(text.size() + 8);
+    for(auto c : text) {
+        if(c == '\'') {
+            estr.push_back('\'');
+            estr.push_back('\'');
+            continue;
+        }
+        if(c == '\"') {
+            estr.push_back('\"');
+            estr.push_back('\"');
+            continue;
+        }
+        estr.push_back(c);
+    }
+    return estr;
+}
+
+}  // namespace __internal
+
 PREPARE_SQL_ONCE(am_plan,  "INSERT INTO metas VALUES(DEFAULT, $1, $2, $3, $4, now());");
 PREPARE_SQL_ONCE(amd_plan, "UPDATE domains SET metas = array_append(metas, $1) WHERE name = $2;");
 PREPARE_SQL_ONCE(amg_plan, "UPDATE groups SET metas = array_append(metas, $1) WHERE name = $2;");
@@ -894,9 +920,11 @@ PREPARE_SQL_ONCE(amf_plan, "UPDATE fungibles SET metas = array_append(metas, $1)
 
 int
 pg::add_meta(trx_context& tctx, const action_t& act) {
+    using namespace __internal;
+
     auto& am = act.data_as<const addmeta&>();
 
-    fmt::format_to(tctx.trx_buf_, fmt("EXECUTE am_plan('{}','{}','{}','{}');\n"), (std::string)am.key, am.value, am.creator.to_string(), tctx.trx_id());
+    fmt::format_to(tctx.trx_buf_, fmt("EXECUTE am_plan('{}','{}','{}','{}');\n"), (std::string)am.key, escape_string(am.value), am.creator.to_string(), tctx.trx_id());
     if(act.domain == N128(.fungible)) {
         // fungibles
         fmt::format_to(tctx.trx_buf_, fmt("EXECUTE amf_plan(lastval(),{});\n"), boost::lexical_cast<int64_t>((std::string)act.key));   
