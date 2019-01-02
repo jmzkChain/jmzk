@@ -149,7 +149,7 @@ template<typename Data>
 struct shim {
     using data_type = Data;
 
-    shim() {}
+    shim() : _data() {}
 
     shim(data_type&& data)
         : _data(forward<data_type>(data)) {}
