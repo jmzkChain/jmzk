@@ -76,7 +76,7 @@ public:
     invoke(int actindex, Args&&... args) {
         auto fn = [&](auto i) -> std::optional<RType> {
             auto name  = act_names_[i];
-            auto vers  = hana::take_while(act_types_,
+            auto vers  = hana::filter(act_types_,
                 [&](auto& t) { return hana::equal(name, hana::ulong_c<decltype(+t)::type::get_action_name().value>); });
             auto cver = curr_vers_[i];
 
