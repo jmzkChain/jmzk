@@ -28,13 +28,12 @@ filter_data_by_marker(DataRange data, MarkerRange markers, const Marker value) {
     FC_ASSERT(size == markers.size(), "The size of data and markers should be match");
 
     auto itd = std::cbegin(data);
-    auto itm = std::cbegin(markers);
 
     auto r = DataRange();
     r.reserve(size);
 
-    for(uint i = 0; i < size; i++, itd++, itm++) {
-        if(*itm == value) {
+    for(uint i = 0; i < size; i++, itd++) {
+        if(markers[i] == value) {
             r.emplace(*itd);
         }
     }

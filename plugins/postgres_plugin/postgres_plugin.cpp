@@ -6,6 +6,7 @@
 
 #include <functional>
 #include <queue>
+#include <optional>
 #include <tuple>
 #include <thread>
 
@@ -83,8 +84,8 @@ public:
     pg          db_;
     std::string connstr_;
 
-    abi_serializer              abi_;
-    fc::optional<chain_id_type> chain_id_;
+    abi_serializer               abi_;
+    std::optional<chain_id_type> chain_id_;
 
     bool     configured_          = false;
     uint32_t last_sync_block_num_ = 0;
@@ -100,9 +101,9 @@ public:
     std::thread                 consume_thread_;
     std::atomic_bool            done_ = false;
 
-    fc::optional<boost::signals2::scoped_connection> accepted_block_connection_;
-    fc::optional<boost::signals2::scoped_connection> irreversible_block_connection_;
-    fc::optional<boost::signals2::scoped_connection> applied_transaction_connection_;
+    std::optional<boost::signals2::scoped_connection> accepted_block_connection_;
+    std::optional<boost::signals2::scoped_connection> irreversible_block_connection_;
+    std::optional<boost::signals2::scoped_connection> applied_transaction_connection_;
 };
 
 namespace __internal {
@@ -151,7 +152,7 @@ postgres_plugin_impl::applied_block(const block_state_ptr& bsp) {
 
 void
 postgres_plugin_impl::applied_transaction(const transaction_trace_ptr& ttp) {
-    if(!ttp->receipt || (ttp->receipt->status != transaction_receipt_header::executed &&
+    if(!ttp->receipt.has_value() || (ttp->receipt->status != transaction_receipt_header::executed &&
         ttp->receipt->status != transaction_receipt_header::soft_fail)) {
         return;
     }

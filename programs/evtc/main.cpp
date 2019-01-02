@@ -198,7 +198,7 @@ print_result(const fc::variant& result) {
             cerr << "total charge: " << asset(processed["charge"].as_int64(), evt_sym()) << std::endl;
 
             if(status == "failed") {
-                auto soft_except = processed["except"].as<fc::optional<fc::exception>>();
+                auto soft_except = processed["except"].as<std::optional<fc::exception>>();
                 if(soft_except) {
                     edump((soft_except->to_detail_string()));
                 }
@@ -319,7 +319,7 @@ get_info() {
 
 public_key_type
 get_public_key(const std::string& key_or_ref) {
-    static fc::optional<fc::variant> pkeys;
+    static std::optional<fc::variant> pkeys;
 
     try {
         auto pkey = (public_key_type)key_or_ref;
@@ -327,7 +327,7 @@ get_public_key(const std::string& key_or_ref) {
     }
     catch(...) {}
 
-    if(!pkeys.valid()) {
+    if(!pkeys.has_value()) {
         pkeys = call(wallet_url, wallet_public_keys);
     }
 
@@ -346,7 +346,7 @@ get_public_key(const std::string& key_or_ref) {
 
 address
 get_address(const std::string& addr_or_ref) {
-    static fc::optional<fc::variant> pkeys;
+    static std::optional<fc::variant> pkeys;
 
     try {
         auto addr = (address)addr_or_ref;
@@ -354,7 +354,7 @@ get_address(const std::string& addr_or_ref) {
     }
     catch(...) {}
 
-    if(!pkeys.valid()) {
+    if(!pkeys.has_value()) {
         pkeys = call(wallet_url, wallet_public_keys);
     }
 
@@ -448,7 +448,7 @@ push_transaction(signed_transaction& trx, packed_transaction::compression_type c
 }
 
 fc::variant
-push_actions(std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::none) {
+push_actions(fc::small_vector<chain::action, 4>&& actions, packed_transaction::compression_type compression = packed_transaction::none) {
     signed_transaction trx;
     trx.actions = std::forward<decltype(actions)>(actions);
 
@@ -456,7 +456,7 @@ push_actions(std::vector<chain::action>&& actions, packed_transaction::compressi
 }
 
 void
-send_actions(std::vector<chain::action>&& actions, packed_transaction::compression_type compression = packed_transaction::none) {
+send_actions(fc::small_vector<chain::action, 4>&& actions, packed_transaction::compression_type compression = packed_transaction::none) {
     auto result = push_actions(std::forward<decltype(actions)>(actions), compression);
     print_result( result );
 }
@@ -1931,7 +1931,7 @@ main(int argc, char** argv) {
     sign->callback([&] {
         signed_transaction trx;
 
-        fc::optional<chain_id_type> chain_id;
+        std::optional<chain_id_type> chain_id;
 
         if(str_chain_id.size() == 0) {
             ilog("grabbing chain_id from evtd");

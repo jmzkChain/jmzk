@@ -3,28 +3,27 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #pragma once
-#include <cstdint>
+#include <stdint.h>
 #include <deque>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include <chainbase/chainbase.hpp>
 
-#include <fc/container/flat.hpp>
-#include <fc/container/flat_fwd.hpp>
-#include <fc/crypto/private_key.hpp>
-#include <fc/crypto/ripemd160.hpp>
-#include <fc/crypto/sha224.hpp>
 #include <fc/fixed_string.hpp>
-#include <fc/io/enum_type.hpp>
-#include <fc/io/raw.hpp>
-#include <fc/io/varint.hpp>
-#include <fc/optional.hpp>
-#include <fc/safe.hpp>
 #include <fc/smart_ref_fwd.hpp>
 #include <fc/static_variant.hpp>
 #include <fc/string.hpp>
+#include <fc/container/flat.hpp>
+#include <fc/container/small_vector.hpp>
+#include <fc/crypto/private_key.hpp>
+#include <fc/crypto/ripemd160.hpp>
+#include <fc/crypto/sha224.hpp>
+#include <fc/io/enum_type.hpp>
+#include <fc/io/raw.hpp>
+#include <fc/io/varint.hpp>
 
 #include <evt/chain/name.hpp>
 #include <evt/chain/name128.hpp>
@@ -60,6 +59,7 @@ using std::forward;
 using std::make_pair;
 using std::map;
 using std::move;
+using std::optional;
 using std::pair;
 using std::set;
 using std::shared_ptr;
@@ -74,11 +74,10 @@ using std::weak_ptr;
 using fc::enum_type;
 using fc::flat_map;
 using fc::flat_set;
-using fc::optional;
 using fc::path;
-using fc::safe;
 using fc::signed_int;
 using fc::smart_ref;
+using fc::small_vector;
 using fc::static_variant;
 using fc::time_point;
 using fc::time_point_sec;
@@ -89,9 +88,12 @@ using fc::ecc::commitment_type;
 using fc::ecc::range_proof_info;
 using fc::ecc::range_proof_type;
 
-using public_key_type  = fc::crypto::public_key;
-using private_key_type = fc::crypto::private_key;
-using signature_type   = fc::crypto::signature;
+using public_key_type      = fc::crypto::public_key;
+using public_keys_type     = fc::flat_set<public_key_type, std::less<public_key_type>, fc::small_vector<public_key_type, 4>>;
+using private_key_type     = fc::crypto::private_key;
+using signature_type       = fc::crypto::signature;
+using signatures_type      = fc::small_vector<signature_type, 4>;
+using signatures_base_type = fc::small_vector_base<signature_type>;
 
 struct void_t {};
 
@@ -156,7 +158,7 @@ using bytes               = vector<char>;
  *  Extentions are prefixed with type and are a buffer that can be
  *  interpreted by code that is aware and ignored by unaware code.
  */
-typedef vector<std::pair<uint16_t, vector<char>>> extensions_type;
+typedef fc::small_vector<std::pair<uint16_t, vector<char>>, 2> extensions_type;
 
 }}  // namespace evt::chain
 

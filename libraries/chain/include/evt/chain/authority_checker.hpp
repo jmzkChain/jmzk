@@ -5,6 +5,11 @@
 #pragma once
 #include <functional>
 
+#include <fc/scoped_exit.hpp>
+
+#include <boost/dynamic_bitset.hpp>
+#include <boost/range/algorithm/find.hpp>
+
 #include <evt/chain/controller.hpp>
 #include <evt/chain/config.hpp>
 #include <evt/chain/contracts/types.hpp>
@@ -13,11 +18,6 @@
 #include <evt/chain/types.hpp>
 #include <evt/chain/producer_schedule.hpp>
 #include <evt/utilities/parallel_markers.hpp>
-
-#include <fc/scoped_exit.hpp>
-
-#include <boost/algorithm/cxx11/all_of.hpp>
-#include <boost/range/algorithm/find.hpp>
 
 namespace evt { namespace chain {
 
@@ -40,11 +40,11 @@ struct check_authority {};
 */
 class authority_checker {
 private:
-    const controller&                control_;
-    const flat_set<public_key_type>& signing_keys_;
-    const token_database&            token_db_;
-    const uint32_t                   max_recursion_depth_;
-    vector<bool>                     used_keys_;
+    const controller&               control_;
+    const public_keys_type&         signing_keys_;
+    const token_database&           token_db_;
+    const uint32_t                  max_recursion_depth_;
+    boost::dynamic_bitset<uint64_t> used_keys_;
 
 public:
     struct weight_tally_visitor {
@@ -89,7 +89,7 @@ public:
     template<typename> friend struct __internal::check_authority;
 
 public:
-    authority_checker(const controller& control, const flat_set<public_key_type>& signing_keys, const token_database& token_db, uint32_t max_recursion_depth)
+    authority_checker(const controller& control, const public_keys_type& signing_keys, const token_database& token_db, uint32_t max_recursion_depth)
         : control_(control)
         , signing_keys_(signing_keys)
         , token_db_(token_db)
@@ -278,15 +278,15 @@ public:
     }
 
     bool
-    all_keys_used() const { return boost::algorithm::all_of_equal(used_keys_, true); }
+    all_keys_used() const { return used_keys_.all(); }
 
-    flat_set<public_key_type>
+    public_keys_type
     used_keys() const {
         auto range = utilities::filter_data_by_marker(signing_keys_, used_keys_, true);
         return range;
     }
 
-    flat_set<public_key_type>
+    public_keys_type
     unused_keys() const {
         auto range = utilities::filter_data_by_marker(signing_keys_, used_keys_, false);
         return range;

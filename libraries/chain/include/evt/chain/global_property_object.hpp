@@ -3,9 +3,6 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #pragma once
-#include <fc/array.hpp>
-#include <fc/uint128.hpp>
-
 #include "multi_index_includes.hpp"
 #include <chainbase/chainbase.hpp>
 #include <evt/chain/block_timestamp.hpp>

@@ -1,15 +1,13 @@
 #pragma once
-#include <fc/utility.hpp>
 #include <string.h>
 #include <stdint.h>
-
-#include <boost/multiprecision/cpp_int.hpp>
+#include <fc/utility.hpp>
 
 namespace fc {
 
 namespace detail
 {
-  NO_RETURN void throw_datastream_range_error( const char* file, size_t len, int64_t over );
+    NO_RETURN void throw_datastream_range_error( const char* file, size_t len, int64_t over );
 }
 
 /**

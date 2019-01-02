@@ -7,8 +7,11 @@
 #include <unordered_set>
 #include <fstream>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 #define XXH_INLINE_ALL
 #include <xxhash.h>
+#pragma GCC diagnostic pop
 
 #include <rocksdb/db.h>
 #include <rocksdb/merge_operator.h>
@@ -32,7 +35,7 @@ namespace hana = boost::hana;
 
 namespace __internal {
 
-const size_t PKEY_SIZE = sizeof(public_key_type::storage_type::type_at<0>);
+const size_t PKEY_SIZE = sizeof(fc::ecc::public_key_shim);
 
 struct db_key : boost::noncopyable {
     template<typename T>

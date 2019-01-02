@@ -217,10 +217,10 @@ TEST_CASE_METHOD(contracts_test, "contract_issuetoken_test", "[contracts]") {
     istk.owner[0] = key;
     to_variant(istk, var);
 
-    CHECK_THROWS_AS(my_tester->push_action(N(issuetoken), name128(get_domain_name()), N128(.issue), var.get_object(), key_seeds, address(N(domain), name128(get_domain_name()), 0)), charge_exceeded_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(issuetoken), name128(get_domain_name()), N128(.issue), var.get_object(), key_seeds, address(N(.domain), name128(get_domain_name()), 0)), charge_exceeded_exception);
 
-    my_tester->add_money(address(N(domain), name128(get_domain_name()), 0), asset(10'000'000, symbol(5, EVT_SYM_ID)));
-    my_tester->push_action(N(issuetoken), name128(get_domain_name()), N128(.issue), var.get_object(), key_seeds, address(N(domain), name128(get_domain_name()), 0));
+    my_tester->add_money(address(N(.domain), name128(get_domain_name()), 0), asset(10'000'000, symbol(5, EVT_SYM_ID)));
+    my_tester->push_action(N(issuetoken), name128(get_domain_name()), N128(.issue), var.get_object(), key_seeds, address(N(.domain), name128(get_domain_name()), 0));
 
     istk.domain = get_domain_name(1);
     my_tester->push_action(action(get_domain_name(1), N128(.issue), istk), key_seeds, payer);
@@ -426,7 +426,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newgroup_test", "[contracts]") {
     )=====";
 
     auto  var         = fc::json::from_string(test_data);
-    auto  group_payer = address(N(domain), ".group", 0);
+    auto  group_payer = address(N(.domain), ".group", 0);
     auto& tokendb     = my_tester->control->token_db();
 
     CHECK(!tokendb.exists_group(get_group_name()));
@@ -578,7 +578,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newfungible_test", "[contracts]") {
     )=====";
 
     auto var            = fc::json::from_string(test_data);
-    auto fungible_payer = address(N(domain), ".fungible", 0);
+    auto fungible_payer = address(N(.domain), ".fungible", 0);
     my_tester->add_money(fungible_payer, asset(10'000'000, symbol(5, EVT_SYM_ID)));
     auto& tokendb = my_tester->control->token_db();
 
@@ -710,6 +710,21 @@ TEST_CASE_METHOD(contracts_test, "contract_issuefungible_test", "[contracts]") {
     tokendb.read_asset(key, symbol(5, get_sym_id()), ast);
     CHECK(5000000 == ast.amount());
 
+    issfg.number = asset::from_string(string("15.00000 S#1"));
+    to_variant(issfg, var);
+
+    signed_transaction trx;
+    trx.actions.emplace_back(my_tester->get_action(N(issuefungible), N128(.fungible), (name128)std::to_string(1), var.get_object()));
+    my_tester->set_transaction_headers(trx, payer, 1'000'000, base_tester::DEFAULT_EXPIRATION_DELTA);
+    for(const auto& auth : key_seeds) {
+        trx.sign(my_tester->get_private_key(auth), my_tester->control->get_chain_id());
+    }
+    trx.sign(fc::crypto::private_key(std::string("5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3")), my_tester->control->get_chain_id());
+    my_tester->push_transaction(trx);
+
+    tokendb.read_asset(issfg.address, symbol(5, 1), ast);
+    CHECK(1500000 == ast.amount());
+
     my_tester->produce_blocks();
 }
 
@@ -748,10 +763,19 @@ TEST_CASE_METHOD(contracts_test, "contract_transferft_test", "[contracts]") {
     key_seeds.push_back(N(to));
     my_tester->push_action(N(transferft), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer);
 
+    auto payer2 = address(N(fungible), name128::from_number(get_sym_id()), 0);
+    CHECK_THROWS_AS(my_tester->push_action(N(transferft), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer2), payer_exception);
+
+    payer2 = address(N(.fungible), name128::from_number(get_sym_id()), 0);
+    CHECK_THROWS_AS(my_tester->push_action(N(transferft), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer2), charge_exceeded_exception);
+
+    my_tester->add_money(payer2, asset(100'000'000, evt_sym()));
+    my_tester->push_action(N(transferft), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer2);
+
     auto& tokendb = my_tester->control->token_db();
     asset ast;
     tokendb.read_asset(address(tester::get_public_key(N(to))), symbol(5, get_sym_id()), ast);
-    CHECK(1500000 == ast.amount());
+    CHECK(3'000'000 == ast.amount());
 
     //from == to test
     trft.from = address(tester::get_public_key(N(to)));
@@ -789,7 +813,7 @@ TEST_CASE_METHOD(contracts_test, "contract_recycleft_test", "[contracts]") {
     rf.address = key;
     to_variant(rf, var);
 
-    address fungible_address = address(N(fungible), (fungible_name)std::to_string(get_sym_id()), 0);
+    address fungible_address = address(N(.fungible), (fungible_name)std::to_string(get_sym_id()), 0);
     asset ast_from_before;
     asset ast_to_before;
     tokendb.read_asset(rf.address, symbol(5, get_sym_id()), ast_from_before);
@@ -1230,9 +1254,9 @@ TEST_CASE_METHOD(contracts_test, "contract_charge_test", "[contracts]") {
 
     CHECK_THROWS_AS(my_tester->push_action(N(issuefungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, address()), payer_exception);
 
-    CHECK_THROWS_AS(my_tester->push_action(N(issuefungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, address(N(notdomain), "domain", 0)), payer_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(issuefungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, address(N(.notdomain), "domain", 0)), payer_exception);
 
-    CHECK_THROWS_AS(my_tester->push_action(N(issuefungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, address(N(domain), "domain", 0)), payer_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(issuefungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, address(N(.domain), "domain", 0)), payer_exception);
 
     auto trace = my_tester->push_action(N(issuefungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer);
 
@@ -1798,7 +1822,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newnftlock_test", "[contracts]") {
     token_def tk;
     tokendb.read_token(get_domain_name(), "t3", tk);
     CHECK(tk.owner.size() == 1);
-    CHECK(tk.owner[0] == address(N(lock), N128(nlact.name), 0));
+    CHECK(tk.owner[0] == address(N(.lock), N128(nlact.name), 0));
 
     my_tester->produce_blocks();
 }
@@ -1887,7 +1911,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newftlock_test", "[contracts]") {
     CHECK(lock_.status == lock_status::proposed);
 
     asset ast;
-    tokendb.read_asset(address(N(lock), N128(nlact.name), 0), nl.assets[0].get<lockft_def>().amount.sym(), ast);
+    tokendb.read_asset(address(N(.lock), N128(nlact.name), 0), nl.assets[0].get<lockft_def>().amount.sym(), ast);
     CHECK(ast.amount() == 500000);
 
     my_tester->produce_blocks();

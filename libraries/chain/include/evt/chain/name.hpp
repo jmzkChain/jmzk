@@ -67,9 +67,8 @@ struct name {
 
     void set(const char* str);
 
-    constexpr name(uint64_t v)
-        : value(v) {}
-    name() {}
+    constexpr name(uint64_t v) : value(v) {}
+    constexpr name() {}
 
     explicit operator string() const;
 

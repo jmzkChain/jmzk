@@ -22,8 +22,8 @@ struct meta {
     meta_value     value;
     authorizer_ref creator;
 };
-using meta_list = std::vector<meta>;
+using meta_list = small_vector<meta, 4>;
 
 }}}  // namespac evt::chain::contracts
 
-FC_REFLECT(evt::chain::contracts::meta, (key)(value)(creator))
+FC_REFLECT(evt::chain::contracts::meta, (key)(value)(creator));

@@ -1,14 +1,13 @@
+#include <iostream>
+#include <fstream>
+#include <sstream>
+
 #include <fc/io/json.hpp>
 #include <fc/exception/exception.hpp>
 //#include <fc/io/fstream.hpp>
 //#include <fc/io/sstream.hpp>
 #include <fc/log/logger.hpp>
 //#include <utfcpp/utf8.h>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-
-#include <boost/filesystem/fstream.hpp>
 
 namespace fc
 {
@@ -811,19 +810,19 @@ namespace fc
       //auto tmp = std::make_shared<fc::ifstream>( p, ifstream::binary );
       //auto tmp = std::make_shared<std::ifstream>( p.generic_string().c_str(), std::ios::binary );
       //buffered_istream bi( tmp );
-      boost::filesystem::ifstream bi( p, std::ios::binary );
+      std::ifstream bi( p.string(), std::ios::binary );
       switch( ptype )
       {
           case legacy_parser:
-             return variant_from_stream<boost::filesystem::ifstream, legacy_parser>( bi, max_depth );
+             return variant_from_stream<std::ifstream, legacy_parser>( bi, max_depth );
           case legacy_parser_with_string_doubles:
-              return variant_from_stream<boost::filesystem::ifstream, legacy_parser_with_string_doubles>( bi, max_depth );
+              return variant_from_stream<std::ifstream, legacy_parser_with_string_doubles>( bi, max_depth );
           case strict_parser:
-              return json_relaxed::variant_from_stream<boost::filesystem::ifstream, true>( bi, max_depth );
+              return json_relaxed::variant_from_stream<std::ifstream, true>( bi, max_depth );
           case relaxed_parser:
-              return json_relaxed::variant_from_stream<boost::filesystem::ifstream, false>( bi, max_depth );
+              return json_relaxed::variant_from_stream<std::ifstream, false>( bi, max_depth );
           case rapidjson_parser:
-              return rapidjson::variant_from_stream<boost::filesystem::ifstream, false>( bi, max_depth );
+              return rapidjson::variant_from_stream<std::ifstream, false>( bi, max_depth );
           default:
               FC_ASSERT( false, "Unknown JSON parser type {ptype}", ("ptype", ptype) );
       }

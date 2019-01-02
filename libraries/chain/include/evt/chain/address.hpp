@@ -7,7 +7,6 @@
 #include <tuple>
 #include <fc/reflect/reflect.hpp>
 #include <fc/variant.hpp>
-#include <fc/array.hpp>
 #include <evt/chain/types.hpp>
 #include <evt/chain/exceptions.hpp>
 #include <evt/utilities/common.hpp>

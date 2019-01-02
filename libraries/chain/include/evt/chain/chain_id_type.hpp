@@ -8,6 +8,10 @@
 
 struct hello;
 
+namespace fc {
+class variant;
+}  // namespace fc
+
 namespace evt {
 
 class net_plugin_impl;
@@ -44,9 +48,7 @@ struct chain_id_type : public fc::sha256 {
 private:
     chain_id_type() = default;
 
-    // Some exceptions are unfortunately necessary:
-    template <typename T>
-    friend T fc::variant::as() const;
+    friend class fc::variant;
 
     friend class evt::chain_apis::read_only;
 

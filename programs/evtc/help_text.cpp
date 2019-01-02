@@ -4,6 +4,7 @@
  */
 #include "help_text.hpp"
 #include "localize.hpp"
+#include <iostream>
 #include <regex>
 #include <fc/io/json.hpp>
 

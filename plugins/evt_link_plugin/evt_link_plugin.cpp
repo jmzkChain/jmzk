@@ -10,8 +10,12 @@
 #include <unordered_map>
 #include <thread>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 #define XXH_INLINE_ALL
 #include <xxhash.h>
+#pragma GCC diagnostic pop
+
 
 #include <boost/asio.hpp>
 #include <fc/io/json.hpp>
@@ -73,7 +77,7 @@ public:
 
     std::unordered_multimap<link_id_type, deferred_pair, evt_link_id_hasher> link_ids_;
 
-    fc::optional<boost::signals2::scoped_connection> accepted_block_connection_;
+    std::optional<boost::signals2::scoped_connection> accepted_block_connection_;
 };
 
 void

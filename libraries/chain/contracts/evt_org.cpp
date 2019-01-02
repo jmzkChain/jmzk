@@ -19,7 +19,7 @@ initialize_evt_org(token_database& token_db, const genesis_state& genesis) {
     if(!token_db.exists_fungible(evt_sym())) {
         token_db.add_fungible(genesis.evt);
 
-        auto addr = address(N(fungible), (name128)std::to_string(evt_sym().id()), 0);
+        auto addr = address(N(.fungible), (name128)std::to_string(evt_sym().id()), 0);
         token_db.update_asset(addr, genesis.evt.total_supply);
     }
 

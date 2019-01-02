@@ -68,7 +68,7 @@ TEST_CASE("test_link_1", "[types]") {
 
     CHECK(link.get_header() == 3);
     CHECK(*link.get_segment(evt_link::timestamp).intv == 1532465234);
-    CHECK(link.get_segment(evt_link::domain).intv.valid() == false);
+    CHECK(link.get_segment(evt_link::domain).intv.has_value() == false);
     CHECK(*link.get_segment(evt_link::domain).strv == "nd1532465232490");
     CHECK(*link.get_segment(evt_link::token).strv == "tk3064930465.8381");
 
@@ -115,7 +115,7 @@ TEST_CASE("test_link_2", "[types]") {
 
     CHECK(link.get_header() == 11);
     CHECK(*link.get_segment(evt_link::timestamp).intv == 1532465608);
-    CHECK(link.get_segment(evt_link::domain).intv.valid() == false);
+    CHECK(link.get_segment(evt_link::domain).intv.has_value() == false);
     CHECK(*link.get_segment(evt_link::domain).strv == "testdomain");
     CHECK(*link.get_segment(evt_link::token).strv == "testtoken");
 
@@ -164,7 +164,7 @@ TEST_CASE("test_link_3", "[types]") {
 
     CHECK(link.get_header() == 11);
     CHECK(*link.get_segment(evt_link::timestamp).intv == 1532468461);
-    CHECK(link.get_segment(evt_link::domain).intv.valid() == false);
+    CHECK(link.get_segment(evt_link::domain).intv.has_value() == false);
     CHECK(*link.get_segment(evt_link::domain).strv == "testdomain");
     CHECK(*link.get_segment(evt_link::token).strv == "testtoken");
 

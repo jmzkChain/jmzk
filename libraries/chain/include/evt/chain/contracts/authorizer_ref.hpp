@@ -7,7 +7,6 @@
 #include <string>
 #include <fc/reflect/reflect.hpp>
 #include <fc/variant.hpp>
-#include <fc/array.hpp>
 #include <evt/chain/types.hpp>
 
 namespace evt { namespace chain { namespace contracts {

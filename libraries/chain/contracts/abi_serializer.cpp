@@ -35,19 +35,24 @@ auto
 pack_unpack() {
     return std::make_pair<abi_serializer::unpack_function, abi_serializer::pack_function>(
         [](fc::datastream<const char*>& stream, bool is_array, bool is_optional) -> fc::variant {
-            if(is_array)
-                return variant_from_stream<vector<T>>(stream);
-            else if(is_optional)
+            if(is_array) {
+                return variant_from_stream<fc::small_vector<T, 4>>(stream);
+            }
+            else if(is_optional) {
                 return variant_from_stream<optional<T>>(stream);
+            }
             return variant_from_stream<T>(stream);
         },
         [](const fc::variant& var, fc::datastream<char*>& ds, bool is_array, bool is_optional) {
-            if(is_array)
-                fc::raw::pack(ds, var.as<vector<T>>());
-            else if(is_optional)
+            if(is_array) {
+                fc::raw::pack(ds, var.as<fc::small_vector<T, 4>>());
+            }
+            else if(is_optional) {
                 fc::raw::pack(ds, var.as<optional<T>>());
-            else
+            }
+            else {
                 fc::raw::pack(ds, var.as<T>());
+            }
         });
 }
 
@@ -223,8 +228,8 @@ void
 abi_serializer::validate(impl::abi_traverse_context& ctx) const {
     for(const auto& t : typedefs) {
         try {
-            vector<type_name> types_seen{t.first, t.second};
-            auto              itr = typedefs.find(t.second);
+            auto types_seen = vector<type_name>{t.first, t.second};
+            auto itr        = typedefs.find(t.second);
             while(itr != typedefs.end()) {
                 ctx.check_deadline();
                 EVT_ASSERT(find(types_seen.begin(), types_seen.end(), itr->second) == types_seen.end(), abi_circular_def_exception, "Circular reference in type ${type}", ("type", t.first));
@@ -243,8 +248,8 @@ abi_serializer::validate(impl::abi_traverse_context& ctx) const {
     for(const auto& s : structs) {
         try {
             if(s.second.base != type_name()) {
-                struct_def        current = s.second;
-                vector<type_name> types_seen{current.name};
+                auto current    = s.second;
+                auto types_seen = vector<type_name>{current.name};
                 while(current.base != type_name()) {
                     ctx.check_deadline();
                     const auto& base = get_struct(current.base);  //<-- force struct to inherit from another struct
@@ -297,7 +302,7 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
     if(st.base != type_name()) {
         _binary_to_variant(resolve_type(st.base), stream, obj, ctx);
     }
-    for(uint32_t i = 0; i < st.fields.size(); ++i) {
+    for(auto i = 0u; i < st.fields.size(); ++i) {
         const auto& field = st.fields[i];
         if(!stream.remaining()) {
             EVT_THROW(unpack_exception, "Stream unexpectedly ended; unable to unpack field '${f}' of struct '${p}'",
@@ -324,13 +329,13 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
     }
     if(is_array(rtype)) {
         ctx.hint_array_type_if_in_array();
-        fc::unsigned_int size;
+        auto size = fc::unsigned_int();
         try {
             fc::raw::unpack(stream, size);
         }
         EVT_RETHROW_EXCEPTIONS(unpack_exception, "Unable to unpack size of array '${p}'", ("p", ctx.get_path_string()))
-        vector<fc::variant> vars;
-        auto                h1 = ctx.push_to_path(impl::array_index_path_item{});
+        auto vars = fc::small_vector<fc::variant, 4>();
+        auto h1   = ctx.push_to_path(impl::array_index_path_item{});
         for(decltype(size.value) i = 0; i < size; ++i) {
             ctx.set_array_index_of_path_back(i);
             auto v = _binary_to_variant(ftype, stream, ctx);
@@ -365,8 +370,8 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
 
 fc::variant
 abi_serializer::_binary_to_variant(const type_name& type, const bytes& binary, impl::binary_to_variant_context& ctx) const {
-    auto                        h = ctx.enter_scope();
-    fc::datastream<const char*> ds(binary.data(), binary.size());
+    auto h  = ctx.enter_scope();
+    auto ds = fc::datastream(binary.data(), binary.size());
     return _binary_to_variant(type, ds, ctx);
 }
 
@@ -398,7 +403,7 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
         }
         else if(is_array(rtype)) {
             ctx.hint_array_type_if_in_array();
-            vector<fc::variant> vars = var.get_array();
+            auto vars = var.get_array();
             fc::raw::pack(ds, (fc::unsigned_int)vars.size());
 
             auto h1 = ctx.push_to_path(impl::array_index_path_item{});
@@ -482,8 +487,9 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
             return var.as<bytes>();
         }
 
-        bytes                 temp(1024 * 1024);
-        fc::datastream<char*> ds(temp.data(), temp.size());
+        auto temp = bytes(1024 * 1024);
+        auto ds   = fc::datastream<char*>(temp.data(), temp.size());
+
         _variant_to_binary(type, var, ds, ctx);
         temp.resize(ds.tellp());
         return temp;
@@ -508,8 +514,9 @@ abi_serializer::variant_to_binary(const type_name& type, const fc::variant& var,
 type_name
 abi_serializer::get_action_type(name action) const {
     auto itr = actions.find(action);
-    if(itr != actions.end())
+    if(itr != actions.end()) {
         return itr->second;
+    }
     return type_name();
 }
 

@@ -4,9 +4,9 @@
  */
 #pragma once
 
+#include <numeric>
 #include <evt/chain/action.hpp>
 #include <evt/chain/address.hpp>
-#include <numeric>
 
 namespace evt { namespace chain {
 
@@ -57,15 +57,15 @@ enum class transaction_ext : uint16_t {
  *  read and write scopes.
  */
 struct transaction : public transaction_header {
-    vector<action>  actions;
-    address         payer;
-    extensions_type transaction_extensions;
+    fc::small_vector<action, 4> actions;
+    address                     payer;
+    extensions_type             transaction_extensions;
 
     transaction_id_type id() const;
     digest_type         sig_digest(const chain_id_type& chain_id) const;
-    flat_set<public_key_type> get_signature_keys(const vector<signature_type>& signatures,
-                                                 const chain_id_type&          chain_id,
-                                                 bool                          allow_duplicate_keys = false) const;
+    public_keys_type    get_signature_keys(const signatures_base_type& signatures,
+                                           const chain_id_type&        chain_id,
+                                           bool                        allow_duplicate_keys = false) const;
 
     uint32_t
     total_actions() const {
@@ -75,19 +75,19 @@ struct transaction : public transaction_header {
 
 struct signed_transaction : public transaction {
     signed_transaction() = default;
-    signed_transaction(const transaction& trx, const vector<signature_type>& signatures)
+    signed_transaction(const transaction& trx, const signatures_type& signatures)
         : transaction(trx)
         , signatures(signatures) {}
-    signed_transaction(transaction&& trx, const vector<signature_type>& signatures)
+    signed_transaction(transaction&& trx, const signatures_type& signatures)
         : transaction(std::move(trx))
         , signatures(signatures) {}
 
-    vector<signature_type> signatures;
+    signatures_type signatures;
 
-    const signature_type&     sign(const private_key_type& key, const chain_id_type& chain_id);
-    signature_type            sign(const private_key_type& key, const chain_id_type& chain_id) const;
-    flat_set<public_key_type> get_signature_keys(const chain_id_type& chain_id,
-                                                 bool                 allow_duplicate_keys = false) const;
+    const signature_type& sign(const private_key_type& key, const chain_id_type& chain_id);
+    signature_type        sign(const private_key_type& key, const chain_id_type& chain_id) const;
+    public_keys_type      get_signature_keys(const chain_id_type& chain_id,
+                                             bool                 allow_duplicate_keys = false) const;
 };
 
 struct packed_transaction {
@@ -117,7 +117,7 @@ struct packed_transaction {
 
     digest_type packed_digest() const;
 
-    vector<signature_type>                   signatures;
+    signatures_type                          signatures;
     fc::enum_type<uint8_t, compression_type> compression;
     bytes                                    packed_trx;
 
@@ -135,8 +135,6 @@ private:
 };
 
 using packed_transaction_ptr = std::shared_ptr<packed_transaction>;
-
-uint128_t transaction_id_to_sender_id(const transaction_id_type& tid);
 
 }}  // namespace evt::chain
 

@@ -71,7 +71,7 @@ read_only::get_domain(const read_only::get_domain_params& params) {
     fc::to_variant(domain, var);
 
     auto mvar = fc::mutable_variant_object(var);
-    mvar["address"] = address(N(domain), domain.name, 0);
+    mvar["address"] = address(N(.domain), domain.name, 0);
     return mvar;
 }
 
@@ -103,10 +103,10 @@ read_only::get_tokens(const get_tokens_params& params) {
 
     auto vars = fc::variants();
     int s = 0, t = 10;
-    if(params.skip.valid()) {
+    if(params.skip.has_value()) {
         s = *params.skip;
     }
-    if(params.take.valid()) {
+    if(params.take.has_value()) {
         t = *params.take;
         EVT_ASSERT(t <= 100, chain::exceed_query_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 100 per query");
     }
@@ -136,12 +136,13 @@ read_only::get_fungible(const get_fungible_params& params) {
     fc::to_variant(fungible, var);
 
     auto mvar = fc::mutable_variant_object(var);
-    auto addr = address(N(fungible), (fungible_name)std::to_string(params.id), 0);
+    auto addr = address(N(.fungible), name128::from_number(params.id), 0);
 
     asset as;
     db_.token_db().read_asset_no_throw(addr, fungible.sym, as);
+
     mvar["current_supply"] = fungible.total_supply - as;
-    mvar["address"] = addr;
+    mvar["address"]        = addr;
     return mvar;
 }
 
@@ -150,7 +151,7 @@ read_only::get_fungible_balance(const get_fungible_balance_params& params) {
     const auto& db = db_.token_db();
 
     variants vars;
-    if(params.sym_id.valid()) {
+    if(params.sym_id.has_value()) {
         fungible_def fungible;
         db.read_fungible(*params.sym_id, fungible);
 

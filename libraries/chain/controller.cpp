@@ -655,7 +655,7 @@ struct controller_impl {
     }
 
     void
-    check_authorization(const flat_set<public_key_type>& signed_keys, const transaction& trx) {
+    check_authorization(const public_keys_type& signed_keys, const transaction& trx) {
         auto& conf = db.get<global_property_object>().configuration;
 
         auto checker = authority_checker(self, signed_keys, token_db, conf.max_authority_depth);
@@ -667,7 +667,7 @@ struct controller_impl {
     }
 
     void
-    check_authorization(const flat_set<public_key_type>& signed_keys, const action& act) {
+    check_authorization(const public_keys_type& signed_keys, const action& act) {
         auto& conf = db.get<global_property_object>().configuration;
 
         auto checker = authority_checker(self, signed_keys, token_db, conf.max_authority_depth);
@@ -822,7 +822,7 @@ struct controller_impl {
 
     void
     start_block(block_timestamp_type when, uint16_t confirm_block_count, controller::block_status s, const optional<block_id_type>& producer_block_id) {
-        EVT_ASSERT(!pending, block_validate_exception, "pending block already exists");
+        EVT_ASSERT(!pending.has_value(), block_validate_exception, "pending block already exists");
 
         auto guard_pending = fc::make_scoped_exit([this]() {
             pending.reset();
@@ -850,7 +850,7 @@ struct controller_impl {
         //modify state in speculative block only if we are speculative reads mode (other wise we need clean state for head or irreversible reads)
         if(read_mode == db_read_mode::SPECULATIVE || pending->_block_status != controller::block_status::incomplete) {
             const auto& gpo = db.get<global_property_object>();
-            if(gpo.proposed_schedule_block_num.valid() &&                                                          // if there is a proposed schedule that was proposed in a block ...
+            if(gpo.proposed_schedule_block_num.has_value() &&                                                      // if there is a proposed schedule that was proposed in a block ...
                (*gpo.proposed_schedule_block_num <= pending->_pending_block_state->dpos_irreversible_blocknum) &&  // ... that has now become irreversible ...
                pending->_pending_block_state->pending_schedule.producers.size() == 0 &&                            // ... and there is room for a new pending schedule ...
                !was_pending_promoted                                                                               // ... and not just because it was promoted to active at the start of this block, then:
@@ -963,7 +963,7 @@ struct controller_impl {
 
     void
     push_block(const signed_block_ptr& b, controller::block_status s) {
-        EVT_ASSERT(!pending, block_validate_exception, "it is not valid to push a block when there is a pending block");
+        EVT_ASSERT(!pending.has_value(), block_validate_exception, "it is not valid to push a block when there is a pending block");
 
         auto reset_prod_light_validation = fc::make_scoped_exit([old_value=trusted_producer_light_validation, this]() {
             trusted_producer_light_validation = old_value;
@@ -994,7 +994,7 @@ struct controller_impl {
 
     void
     push_confirmation(const header_confirmation& c) {
-        EVT_ASSERT(!pending, block_validate_exception, "it is not valid to push a confirmation when there is a pending block");
+        EVT_ASSERT(!pending.has_value(), block_validate_exception, "it is not valid to push a confirmation when there is a pending block");
         fork_db.add(c);
         emit(self.accepted_confirmation, c);
         if(read_mode != db_read_mode::IRREVERSIBLE) {
@@ -1073,7 +1073,7 @@ struct controller_impl {
 
     void
     abort_block() {
-        if(pending) {
+        if(pending.has_value()) {
             if(read_mode == db_read_mode::SPECULATIVE) {
                 for(const auto& t : pending->_pending_block_state->trxs) {
                     unapplied_transactions[t->signed_id] = t;
@@ -1113,7 +1113,7 @@ struct controller_impl {
 
     void
     finalize_block() {
-        EVT_ASSERT(pending, block_validate_exception, "it is not valid to finalize when there is no pending block");
+        EVT_ASSERT(pending.has_value(), block_validate_exception, "it is not valid to finalize when there is no pending block");
         try {
             set_action_merkle();
             set_trx_merkle();
@@ -1251,12 +1251,12 @@ controller::push_suspend_transaction(const transaction_metadata_ptr& trx, fc::ti
 }
 
 void
-controller::check_authorization(const flat_set<public_key_type>& signed_keys, const transaction& trx) {
+controller::check_authorization(const public_keys_type& signed_keys, const transaction& trx) {
     return my->check_authorization(signed_keys, trx);
 }
 
 void
-controller::check_authorization(const flat_set<public_key_type>& signed_keys, const action& act) {
+controller::check_authorization(const public_keys_type& signed_keys, const action& act) {
     return my->check_authorization(signed_keys, act);
 }
 
@@ -1312,19 +1312,19 @@ controller::fork_db_head_block_producer() const {
 
 block_state_ptr
 controller::pending_block_state() const {
-    if(my->pending)
+    if(my->pending.has_value())
         return my->pending->_pending_block_state;
     return block_state_ptr();
 }
 time_point
 controller::pending_block_time() const {
-    EVT_ASSERT(my->pending, block_validate_exception, "no pending block");
+    EVT_ASSERT(my->pending.has_value(), block_validate_exception, "no pending block");
     return my->pending->_pending_block_state->header.timestamp;
 }
 
 optional<block_id_type>
 controller::pending_producer_block_id() const {
-   EVT_ASSERT(my->pending, block_validate_exception, "no pending block");
+   EVT_ASSERT(my->pending.has_value(), block_validate_exception, "no pending block");
    return my->pending->_producer_block_id;
 }
 
@@ -1439,7 +1439,7 @@ controller::calculate_integrity_hash() const {
 
 void
 controller::write_snapshot(const snapshot_writer_ptr& snapshot) const {
-    EVT_ASSERT(!my->pending, block_validate_exception, "cannot take a consistent snapshot with a pending block");
+    EVT_ASSERT(!my->pending.has_value(), block_validate_exception, "cannot take a consistent snapshot with a pending block");
     return my->add_to_snapshot(snapshot);
 }
 
@@ -1453,7 +1453,7 @@ controller::set_proposed_producers(vector<producer_key> producers) {
     const auto& gpo           = get_global_properties();
     auto        cur_block_num = head_block_num() + 1;
 
-    if(gpo.proposed_schedule_block_num.valid()) {
+    if(gpo.proposed_schedule_block_num.has_value()) {
         if(*gpo.proposed_schedule_block_num != cur_block_num)
             return -1;  // there is already a proposed schedule set in a previous block, wait for it to become pending
 
@@ -1504,14 +1504,14 @@ controller::set_chain_config(const chain_config& config) {
 
 const producer_schedule_type&
 controller::active_producers() const {
-    if(!(my->pending))
+    if(!(my->pending.has_value()))
         return my->head->active_schedule;
     return my->pending->_pending_block_state->active_schedule;
 }
 
 const producer_schedule_type&
 controller::pending_producers() const {
-    if(!(my->pending))
+    if(!(my->pending.has_value()))
         return my->head->pending_schedule;
     return my->pending->_pending_block_state->pending_schedule;
 }
@@ -1519,7 +1519,7 @@ controller::pending_producers() const {
 optional<producer_schedule_type>
 controller::proposed_producers() const {
     const auto& gpo = get_global_properties();
-    if(!gpo.proposed_schedule_block_num.valid())
+    if(!gpo.proposed_schedule_block_num.has_value())
         return optional<producer_schedule_type>();
 
     return gpo.proposed_schedule;
@@ -1527,7 +1527,7 @@ controller::proposed_producers() const {
 
 bool
 controller::light_validation_allowed(bool replay_opts_disabled_by_policy) const {
-    if(!my->pending || my->in_trx_requiring_checks) {
+    if(!my->pending.has_value() || my->in_trx_requiring_checks) {
         return false;
     }
 
@@ -1638,7 +1638,7 @@ controller::drop_all_unapplied_transactions() {
 
 bool
 controller::is_producing_block() const {
-   if(!my->pending) return false;
+   if(!my->pending.has_value()) return false;
 
    return (my->pending->_block_status == block_status::incomplete);
 }
@@ -1694,8 +1694,8 @@ controller::is_known_unexpired_transaction(const transaction_id_type& id) const 
     return db().find<transaction_object, by_trx_id>(id);
 }
 
-flat_set<public_key_type>
-controller::get_required_keys(const transaction& trx, const flat_set<public_key_type>& candidate_keys) const {
+public_keys_type
+controller::get_required_keys(const transaction& trx, const public_keys_type& candidate_keys) const {
     const static uint32_t max_authority_depth = my->conf.genesis.initial_configuration.max_authority_depth;
     auto checker = authority_checker(*this, candidate_keys, my->token_db, max_authority_depth);
 
@@ -1712,8 +1712,8 @@ controller::get_required_keys(const transaction& trx, const flat_set<public_key_
     return keys;
 }
 
-flat_set<public_key_type>
-controller::get_suspend_required_keys(const transaction& trx, const flat_set<public_key_type>& candidate_keys) const {
+public_keys_type
+controller::get_suspend_required_keys(const transaction& trx, const public_keys_type& candidate_keys) const {
     const static uint32_t max_authority_depth = my->conf.genesis.initial_configuration.max_authority_depth;
     auto checker = authority_checker(*this, candidate_keys, my->token_db, max_authority_depth);
 
@@ -1728,8 +1728,8 @@ controller::get_suspend_required_keys(const transaction& trx, const flat_set<pub
     return keys;
 }
 
-flat_set<public_key_type>
-controller::get_suspend_required_keys(const proposal_name& name, const flat_set<public_key_type>& candidate_keys) const {
+public_keys_type
+controller::get_suspend_required_keys(const proposal_name& name, const public_keys_type& candidate_keys) const {
     suspend_def suspend;
     my->token_db.read_suspend(name, suspend);
     

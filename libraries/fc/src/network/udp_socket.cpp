@@ -8,7 +8,7 @@
 
 namespace fc
 {
-  class udp_socket::impl : public fc::retainable
+  class udp_socket::impl
   {
     public:
       impl(){}

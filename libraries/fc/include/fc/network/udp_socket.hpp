@@ -1,9 +1,7 @@
 #pragma once
-#include <fc/utility.hpp>
-#include <fc/shared_ptr.hpp>
-#include <memory>
-
 #include <boost/asio.hpp>
+#include <memory>
+#include <fc/utility.hpp>
 
 namespace fc {
   namespace ip {
@@ -33,8 +31,8 @@ namespace fc {
       const boost::asio::ip::udp::endpoint local_endpoint() const;
 
     private:
-      class                impl;
-      fc::shared_ptr<impl> my;
+      class impl;
+      std::shared_ptr<impl> my;
   };
 
 }

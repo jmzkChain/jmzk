@@ -66,11 +66,11 @@ public:
     }
 
 public:
-    group_name                      name_;
-    address                         key_;
-    std::vector<node>               nodes_;
-    std::vector<public_key_type>    keys_;
-    meta_list                       metas_;
+    group_name                       name_;
+    address                          key_;
+    small_vector<node, 4>            nodes_;
+    small_vector<public_key_type, 4> keys_;
+    meta_list                        metas_;
 };
 
 }}}  // namespac evt::chain::contracts
