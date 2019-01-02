@@ -8,7 +8,7 @@ RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
     && apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y sudo wget curl net-tools ccache ninja-build ca-certificates \
        unzip gnupg git make libtool autoconf automake m4 openssl libssl1.1 libssl-dev libgmp-dev zlib1g-dev \
-       libreadline-dev gcc-7 g++-8 gcc-8 g++-8
+       libreadline-dev gcc-7 g++-7 gcc-8 g++-8
 
 RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 999
 RUN update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-7 999
