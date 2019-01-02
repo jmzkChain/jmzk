@@ -12,12 +12,22 @@
 
 using namespace evt::chain;
 
+struct test {
+    EVT_ACTION_VER0(test);
+};
+
+struct test2 {
+    EVT_ACTION_VER1(test, test2);
+};
+
 using execution::execution_context;
 using execution_context_test = execution_context<
                                    contracts::newdomain,
                                    contracts::updatedomain,
                                    contracts::issuetoken,
-                                   contracts::transfer
+                                   contracts::transfer,
+                                   test,
+                                   test2
                                >;
 
 class execution_tests {
@@ -82,8 +92,9 @@ TEST_CASE_METHOD(execution_tests, "test_serializer", "[execution]") {
 template<uint64_t N>
 struct tinvoke {
     template <typename Type>
-    static uint64_t invoke(Type type) {
-        INFO("hello");
+    static uint64_t invoke(Type type, int& ver) {
+        CHECK(type != hana::type_c<contracts::newdomain>);
+        CHECK(ver == 0);
         return N;
     }
 };
@@ -91,17 +102,38 @@ struct tinvoke {
 template<>
 struct tinvoke<N(newdomain)> {
     template <typename Type>
-    static uint64_t invoke(Type type) {
-        INFO("hello2");
+    static uint64_t invoke(Type type, int& ver) {
         CHECK(type == hana::type_c<contracts::newdomain>);
+        CHECK(ver == 0);
         return 0;
+    }
+};
+
+template<>
+struct tinvoke<N(test)> {
+    template <typename Type>
+    static uint64_t invoke(Type type, int& ver) {
+        if(ver == 0) {
+            CHECK(type == hana::type_c<test>);
+        }
+        else if(ver == 1) {
+            CHECK(type == hana::type_c<test2>);
+        }
+        return decltype(type)::type::get_type_name().value;
     }
 };
 
 TEST_CASE_METHOD(execution_tests, "test_invoke", "[execution]") {
     auto ind = ctx_.index_of(N(newdomain));
     auto iit = ctx_.index_of(N(issuetoken));
+    auto ite = ctx_.index_of(N(test));
 
-    CHECK(ctx_.invoke<uint64_t, tinvoke>(ind) == 0);
-    CHECK(ctx_.invoke<uint64_t, tinvoke>(iit) == N(issuetoken));
+    CHECK(ctx_.invoke<uint64_t, tinvoke, int>(ind, 0) == 0);
+    CHECK(ctx_.invoke<uint64_t, tinvoke, int>(iit, 0) == N(issuetoken));
+
+    CHECK(ctx_.invoke<uint64_t, tinvoke, int>(ite, 0) == N(test));
+    // update version of `test` to 1
+    CHECK(ctx_.set_version("test", 1) == 0);
+    CHECK(ctx_.invoke<uint64_t, tinvoke, int>(ite, 1) == N(test2));
+
 }

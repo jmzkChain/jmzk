@@ -4,8 +4,6 @@
  */
 #pragma once
 
-#include <boost/hana/integral_constant.hpp>
-
 #include <evt/chain/address.hpp>
 #include <evt/chain/asset.hpp>
 #include <evt/chain/chain_config.hpp>
@@ -23,8 +21,6 @@ namespace evt { namespace chain { namespace contracts {
 
 #define EVT_ACTION(actname, version, acttypename)    \
     acttypename() = default;                         \
-                                                     \
-    using hana_tag = boost::hana::ulong<N(actname)>; \
                                                      \
     static constexpr auto                            \
     get_action_name() {                              \

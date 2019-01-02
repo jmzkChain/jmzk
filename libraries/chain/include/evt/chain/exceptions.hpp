@@ -346,5 +346,9 @@ FC_DECLARE_DERIVED_EXCEPTION( postgres_poll_exception,        postgres_plugin_ex
 FC_DECLARE_DERIVED_EXCEPTION( postgres_query_exception,       postgres_plugin_exception, 3230007, "Query from postgres failed" );
 FC_DECLARE_DERIVED_EXCEPTION( postgres_not_enabled_exception, postgres_plugin_exception, 3230008, "Postgres plugin is not enabled" );
 
+FC_DECLARE_DERIVED_EXCEPTION( execution_exception,      chain_exception,     3240000, "Execution exception" );
+FC_DECLARE_DERIVED_EXCEPTION( unknown_action_exception, execution_exception, 3240001, "Unknown action exception" );
+FC_DECLARE_DERIVED_EXCEPTION( action_index_exception,   execution_exception, 3240002, "Invalid action index exception" );
+FC_DECLARE_DERIVED_EXCEPTION( action_version_exception, execution_exception, 3240003, "Invalid action version exception" );
 
 }} // evt::chain

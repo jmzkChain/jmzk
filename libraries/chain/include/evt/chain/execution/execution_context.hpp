@@ -52,9 +52,37 @@ public:
     index_of(name act) {
         auto& arr = act_names_arr_;
         auto it   = std::lower_bound(std::cbegin(arr), std::cend(arr), act.value);
-        EVT_ASSERT(it != std::cend(arr) && *it == act.value, action_exception, "Unknown action: ${act}", ("act", act));
+        EVT_ASSERT(it != std::cend(arr) && *it == act.value, unknown_action_exception, "Unknown action: ${act}", ("act", act));
 
         return std::distance(std::cbegin(arr), it);
+    }
+
+    int
+    set_version(name act, int newver) {
+        auto fn = [&](auto i) -> int {
+            auto name  = act_names_[i];
+            auto vers  = hana::filter(act_types_,
+                [&](auto& t) { return hana::equal(name, hana::ulong_c<decltype(+t)::type::get_action_name().value>); });
+            auto cver = curr_vers_[i];
+
+            EVT_ASSERT(newver > cver && newver <= (int)hana::length(vers)(), action_version_exception, "New version should be in range (${c},${m}]", ("c",cver)("m",hana::length(vers)()));
+
+            auto old_ver  = curr_vers_[i];
+            curr_vers_[i] = newver;
+
+            return old_ver;
+        };
+
+        auto actindex = index_of(act);
+        auto range    = hana::make_range(hana::int_c<0>, hana::length(act_names_));
+        auto old_ver  = 0;
+        hana::for_each(range, [&](auto i) {
+            if(i() == actindex) {
+                old_ver = fn(i);
+            }
+        });
+
+        return old_ver;
     }
 
     fc::variant
@@ -83,14 +111,16 @@ public:
             static_assert(hana::length(vers) > hana::size_c<0>, "empty version actions!");
 
             auto result = std::optional<RType>();
-            hana::for_each(vers, [&, cver](auto& v) {
+            hana::for_each(vers, [&, cver](auto v) {
                 using ty = typename decltype(+v)::type;
+
+                constexpr auto n = ty::get_action_name().value;
                 if(ty::get_version() == cver) {
                     if constexpr (std::is_void<RType>::value) {     
-                        Invoker<name>::invoke(hana::type_c<ty>, std::forward<Args>(args)...);
+                        Invoker<n>::invoke(hana::type_c<ty>, std::forward<Args>(args)...);
                     }
                     else {
-                        result = Invoker<name>::invoke(hana::type_c<ty>, std::forward<Args>(args)...);
+                        result = Invoker<n>::invoke(hana::type_c<ty>, std::forward<Args>(args)...);
                     }
                 }
             });
@@ -106,7 +136,7 @@ public:
             }
         });
 
-        EVT_ASSERT(result.has_value(), action_exception, "Unknown action index: ${act}", ("act", actindex));
+        EVT_ASSERT(result.has_value(), action_index_exception, "Invalid action index: ${act}", ("act", actindex));
         return *result;
     }
 
