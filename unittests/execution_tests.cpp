@@ -92,7 +92,7 @@ TEST_CASE_METHOD(execution_tests, "test_serializer", "[execution]") {
 template<uint64_t N>
 struct tinvoke {
     template <typename Type>
-    static uint64_t invoke(Type type, int& ver) {
+    static uint64_t invoke(Type type, int ver) {
         CHECK(type != hana::type_c<contracts::newdomain>);
         CHECK(ver == 0);
         return N;
@@ -102,7 +102,7 @@ struct tinvoke {
 template<>
 struct tinvoke<N(newdomain)> {
     template <typename Type>
-    static uint64_t invoke(Type type, int& ver) {
+    static uint64_t invoke(Type type, int ver) {
         CHECK(type == hana::type_c<contracts::newdomain>);
         CHECK(ver == 0);
         return 0;
@@ -112,7 +112,8 @@ struct tinvoke<N(newdomain)> {
 template<>
 struct tinvoke<N(test)> {
     template <typename Type>
-    static uint64_t invoke(Type type, int& ver) {
+    static uint64_t invoke(Type type, int ver) {
+        CHECK(((ver == 0) || (ver == 1)));
         if(ver == 0) {
             CHECK(type == hana::type_c<test>);
         }
@@ -128,12 +129,12 @@ TEST_CASE_METHOD(execution_tests, "test_invoke", "[execution]") {
     auto iit = ctx_.index_of(N(issuetoken));
     auto ite = ctx_.index_of(N(test));
 
-    CHECK(ctx_.invoke<uint64_t, tinvoke, int>(ind, 0) == 0);
-    CHECK(ctx_.invoke<uint64_t, tinvoke, int>(iit, 0) == N(issuetoken));
+    CHECK(ctx_.invoke<tinvoke, uint64_t, int>(ind, 0) == 0);
+    CHECK(ctx_.invoke<tinvoke, uint64_t, int>(iit, 0) == N(issuetoken));
 
-    CHECK(ctx_.invoke<uint64_t, tinvoke, int>(ite, 0) == N(test));
+    CHECK(ctx_.invoke<tinvoke, uint64_t, int>(ite, 0) == N(test));
     // update version of `test` to 1
     CHECK(ctx_.set_version("test", 1) == 0);
-    CHECK(ctx_.invoke<uint64_t, tinvoke, int>(ite, 1) == N(test2));
+    CHECK(ctx_.invoke<tinvoke, uint64_t, int>(ite, 1) == N(test2));
 
 }

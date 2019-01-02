@@ -99,7 +99,7 @@ public:
         return abi_.variant_to_binary(acttype.to_string(), var, short_path);
     }
 
-    template <typename RType, template<uint64_t> typename Invoker, typename ... Args>
+    template <template<uint64_t> typename Invoker, typename RType, typename ... Args>
     RType
     invoke(int actindex, Args&&... args) {
         auto fn = [&](auto i) -> std::optional<RType> {
