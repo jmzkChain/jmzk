@@ -85,9 +85,10 @@ response_ok(int id, const T& obj) {
     return PG_OK;
 }
 
+template<>
 int
-response_raw(int id, int code, const std::string& json) {
-    app().get_plugin<http_plugin>().set_deferred_response(id, code, json);
+response_ok<std::string>(int id, const std::string& str) {
+    app().get_plugin<http_plugin>().set_deferred_response(id, 200, str);
     return PG_OK;
 }
 
@@ -251,7 +252,7 @@ pg_query::get_tokens_resume(int id, pg_result const* r) {
 
     auto n = PQntuples(r);
     if(n == 0) {
-        return response_raw(id, 200, "[]"); // return empty
+        return response_ok(id, std::string("[]")); // return empty
     }
 
     auto results = fc::mutable_variant_object();
@@ -293,7 +294,7 @@ pg_query::get_domains_resume(int id, pg_result const* r) {
 
     auto n = PQntuples(r);
     if(n == 0) {
-        return response_raw(id, 200, "[]"); // return empty
+        return response_ok(id, std::string("[]")); // return empty
     }
 
     auto results = std::vector<const char*>();
@@ -330,7 +331,7 @@ pg_query::get_groups_resume(int id, pg_result const* r) {
 
     auto n = PQntuples(r);
     if(n == 0) {
-        return response_raw(id, 200, "[]"); // return empty
+        return response_ok(id, std::string("[]")); // return empty
     }
 
     auto results = std::vector<const char*>();
@@ -367,7 +368,7 @@ pg_query::get_fungibles_resume(int id, pg_result const* r) {
 
     auto n = PQntuples(r);
     if(n == 0) {
-        return response_raw(id, 200, "[]"); // return empty
+        return response_ok(id, std::string("[]")); // return empty
     }
 
     auto results = std::vector<int64_t>();
@@ -509,7 +510,7 @@ pg_query::get_actions_resume(int id, pg_result const* r) {
     EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get actions failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
     auto n = PQntuples(r);
     if(n == 0) {
-        return response_raw(id, 200, "[]"); // return empty
+        return response_ok(id, std::string("[]")); // return empty
     }
 
     auto builder = fmt::memory_buffer();
@@ -626,7 +627,7 @@ pg_query::get_fungible_actions_resume(int id, pg_result const* r) {
 
     auto n = PQntuples(r);
     if(n == 0) {
-        return response_raw(id, 200, "[]"); // return empty
+        return response_ok(id, std::string("[]")); // return empty
     }
 
     auto builder = fmt::memory_buffer();
@@ -742,7 +743,7 @@ pg_query::get_transactions_resume(int id, pg_result const* r) {
 
     auto n = PQntuples(r);
     if(n == 0) {
-        return response_raw(id, 200, "[]"); // return empty
+        return response_ok(id, std::string("[]")); // return empty
     }
 
     auto results = fc::variants();
@@ -803,7 +804,7 @@ pg_query::get_fungible_ids_resume(int id, pg_result const* r) {
 
     auto n = PQntuples(r);
     if(n == 0) {
-        return response_raw(id, 200, "[]"); // return empty
+        return response_ok(id, std::string("[]")); // return empty
     }
 
     auto buf = fmt::memory_buffer();

@@ -1,4 +1,4 @@
-FROM ubuntu:18.04 as source
+FROM debian:buster-slim as source
 ARG branch=master
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive && apt-get install -y git
@@ -7,7 +7,7 @@ RUN git clone -b $branch https://github.com/everitoken/evt.git
 FROM everitoken/pyevt:latest as pyevt
 RUN python3 /pyevt/setup.py bdist_wheel
 
-FROM ubuntu:18.04
+FROM debian:buster-slim
 
 FROM everitoken/pyenv
 

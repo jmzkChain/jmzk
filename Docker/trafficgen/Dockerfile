@@ -1,4 +1,4 @@
-FROM ubuntu:18.04 as source
+FROM debian:buster-slim as source
 ARG branch=master
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive && apt-get install -y git
