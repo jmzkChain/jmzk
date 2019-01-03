@@ -86,7 +86,7 @@ public:
     };
 
 public:
-    template<typename> friend struct __internal::check_authority;
+    template<uint64_t> friend struct __internal::check_authority;
 
 public:
     authority_checker(const controller& control, const public_keys_type& signing_keys, const token_database& token_db, uint32_t max_recursion_depth)
@@ -268,6 +268,9 @@ public:
             used_keys_ = keys;
         });
 
+        if(act.index_ == -1) {
+            act.index_ = control_.execution_context().index_of(act.name);
+        }
         bool result = control_.execution_context().invoke<check_authority, bool>(act.index_, act, this);
 
         if(result) {

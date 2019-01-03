@@ -45,6 +45,9 @@ apply_context::exec_one(action_trace& trace) {
 
     try {
         try {
+            if(act.index_ == -1) {
+                act.index_ = control.execution_context().index_of(act.name);
+            }
             control.execution_context().invoke<apply_action, void>(act.index_, *this);
         }
         FC_RETHROW_EXCEPTIONS(warn, "pending console output: ${console}", ("console", fmt::to_string(_pending_console_output)));

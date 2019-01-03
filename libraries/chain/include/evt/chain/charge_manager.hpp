@@ -69,9 +69,8 @@ private:
     network(const packed_transaction& ptrx, size_t sig_num) const {
         uint32_t s = 0;
 
-        s += ptrx.packed_trx.size();
+        s += ptrx.get_unprunable_size();
         s += sig_num * sizeof(signature_type);
-        s += config::fixed_net_overhead_of_packed_trx;
 
         return s;
     }
@@ -83,9 +82,10 @@ private:
 
 public:
     uint32_t
-    calculate(const packed_transaction& ptrx, size_t sig_num = 0) const {
+    calculate(const packed_transaction& ptrx, const transaction& trx, size_t sig_num = 0) const {
         using namespace __internal;
-        EVT_ASSERT(!ptrx.get_transaction().actions.empty(), tx_no_action, "There's not any actions in this transaction");
+        
+        EVT_ASSERT(!trx.actions.empty(), tx_no_action, "There's not any actions in this transaction");
 
         sig_num = std::max(sig_num, ptrx.signatures.size());
 
@@ -93,9 +93,11 @@ public:
         ts += network(ptrx, sig_num) * config_.base_network_charge_factor;
         ts += cpu(ptrx, sig_num) * config_.base_cpu_charge_factor;
 
-        const auto& trx = ptrx.get_transaction();
-        auto        pts = ts / trx.actions.size();
+        auto pts = ts / trx.actions.size();
         for(auto& act : trx.actions) {
+            if(act.index_ == -1) {
+                act.index_ = control_.execution_context().index_of(act.name);
+            }
             auto as = control_.execution_context().invoke<get_act_charge, act_charge_result>(act.index_, act, config_);
             s += (std::get<0>(as) + pts) * std::get<1>(as);  // std::get<1>(as): extra factor per action
         }

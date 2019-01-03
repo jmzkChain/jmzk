@@ -54,6 +54,15 @@ public:
         return std::distance(std::cbegin(arr), it);
     }
 
+    template<typename T>
+    constexpr int
+    index_of() {
+        auto i = hana::index_if(act_names_, hana::equal.to(hana::ulong_c<T::get_action_name().value>));
+        static_assert(i != hana::nothing, "T is not valid action type");
+
+        return i.value()();
+    }
+
     int
     set_version(name act, int newver) {
         auto fn = [&](auto i) -> int {

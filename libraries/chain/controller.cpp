@@ -1749,7 +1749,7 @@ uint32_t
 controller::get_charge(const transaction& trx, size_t signautres_num) const {   
     auto packed_trx = packed_transaction(trx);
     auto charge     = get_charge_manager();
-    return charge.calculate(packed_trx, signautres_num);
+    return charge.calculate(packed_trx, trx, signautres_num);
 }
 
 }}  // namespace evt::chain

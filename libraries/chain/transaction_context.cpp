@@ -144,7 +144,7 @@ transaction_context::check_time() const {
 void
 transaction_context::check_charge() {
     auto cm = control.get_charge_manager();
-    charge = cm.calculate(trx.packed_trx);
+    charge = cm.calculate(trx.packed_trx, trx.trx);
     if(charge > trx.trx.max_charge) {
         EVT_THROW(max_charge_exceeded_exception, "max charge exceeded, expected: ${ex}, max provided: ${mp}",
             ("ex",charge)("mp",trx.trx.max_charge));
@@ -235,6 +235,8 @@ transaction_context::finalize_pay() {
     }  // switch
 
     trace->action_traces.emplace_back();
+
+    act.set_index(control.execution_context().index_of<paycharge>());
     dispatch_action(trace->action_traces.back(), act);
 }
 

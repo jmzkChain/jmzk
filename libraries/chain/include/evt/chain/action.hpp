@@ -10,6 +10,10 @@
 
 namespace evt { namespace chain {
 
+class apply_context;
+class authority_checker;
+class charge_manager;
+
 struct action {
 public:
     action_name name;
@@ -18,10 +22,7 @@ public:
     bytes       data;
 
 public:
-    int index_; // internal usage only
-
-public:
-    action() {}
+    action() : index_(-1) {}
 
     // don't copy cache_ when in copy ctor.
     action(const action& lhs)
@@ -60,18 +61,19 @@ public:
 public:
     template<typename T>
     action(const domain_name& domain, const domain_key& key, const T& value)
-        : domain(domain)
-        , key(key) {
-        name   = T::get_action_name();
-        data   = fc::raw::pack(value);
-        cache_ = std::make_any<T>(value);
-    }
+        : name(T::get_action_name())
+        , domain(domain)
+        , key(key)
+        , data(fc::raw::pack(value))
+        , index_(-1)
+        , cache_(std::make_any<T>(value)) {}
 
     action(const action_name name, const domain_name& domain, const domain_key& key, const bytes& data)
         : name(name)
         , domain(domain)
         , key(key)
-        , data(data) {}
+        , data(data)
+        , index_(-1) {}
 
     template<typename T>
     void
@@ -100,7 +102,13 @@ public:
     }
 
 private:
+    mutable int      index_;
     mutable std::any cache_;
+
+private:
+    friend class apply_context;
+    friend class authority_checker;
+    friend class charge_manager;
 };
 
 }}  // namespace evt::chain
