@@ -5,14 +5,15 @@
 #pragma once
 #include <math.h>
 #include <tuple>
-#include <evt/chain/transaction.hpp>
+
 #include <evt/chain/action.hpp>
 #include <evt/chain/config.hpp>
 #include <evt/chain/chain_config.hpp>
 #include <evt/chain/controller.hpp>
 #include <evt/chain/global_property_object.hpp>
+#include <evt/chain/transaction.hpp>
 #include <evt/chain/contracts/types.hpp>
-#include <evt/chain/contracts/types_invoker.hpp>
+#include <evt/chain/execution/execution_context.hpp>
 
 namespace evt { namespace chain {
 
@@ -37,16 +38,15 @@ struct base_act_charge {
     }
 };
 
-template<typename T>
+template<uint64_t N, typename T>
 struct act_charge : public base_act_charge {};
 
-template<typename T>
+template<uint64_t N>
 struct get_act_charge {
+    template<typename T>
     static act_charge_result
     invoke(const action& act, const chain_config& config) {
-        FC_ASSERT(act.name == T::get_action_name());
-
-        using charge = act_charge<T>;
+        using charge = act_charge<N, T>;
         uint32_t s = 0;
 
         s += charge::storage(act) * config.base_storage_charge_factor;
@@ -96,7 +96,8 @@ public:
         const auto& trx = ptrx.get_transaction();
         auto        pts = ts / trx.actions.size();
         for(auto& act : trx.actions) {
-            auto as = types_invoker<act_charge_result, get_act_charge>::invoke(act.name, act, config_);
+            auto index = control_.execution_context().index_of(act.name);
+            auto as    = control_.execution_context().invoke<get_act_charge, act_charge_result>(index, act, config_);
             s += (std::get<0>(as) + pts) * std::get<1>(as);  // std::get<1>(as): extra factor per action
         }
 
@@ -123,11 +124,11 @@ namespace __internal {
 
 using namespace contracts;
 
-template<>
-struct act_charge<issuetoken> : public base_act_charge {
+template<typename T>
+struct act_charge<N(issuetoken), T> : public base_act_charge {
     static uint32_t
     cpu(const action& act) {
-        auto& itact = act.data_as<const issuetoken&>();
+        auto& itact = act.data_as<execution::add_clr_t<T>>();
         if(itact.names.empty()) {
             return 15;
         }
@@ -135,8 +136,8 @@ struct act_charge<issuetoken> : public base_act_charge {
     }
 };
 
-template<>
-struct act_charge<addmeta> : public base_act_charge {
+template<typename T>
+struct act_charge<N(addmeta), T> : public base_act_charge {
     static uint32_t
     cpu(const action& act) {
         return 600;
@@ -148,11 +149,11 @@ struct act_charge<addmeta> : public base_act_charge {
     }
 };
 
-template<>
-struct act_charge<issuefungible> : public base_act_charge {
+template<typename T>
+struct act_charge<N(issuefungible), T> : public base_act_charge {
     static uint32_t
     extra_factor(const action& act) {
-        auto& ifact = act.data_as<const issuefungible&>();
+        auto& ifact = act.data_as<execution::add_clr_t<T>>();
         auto sym = ifact.number.sym();
         // set charge to zero when issuing EVT
         if(sym == evt_sym()) {

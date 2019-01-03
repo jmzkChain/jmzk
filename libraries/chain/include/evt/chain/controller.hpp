@@ -8,6 +8,7 @@
 #include <evt/chain/block_state.hpp>
 #include <evt/chain/genesis_state.hpp>
 #include <evt/chain/trace.hpp>
+#include <evt/chain/execution/execution_context.hpp>
 
 namespace chainbase {
 class database;
@@ -36,6 +37,7 @@ struct evt_link_object;
 }  // namespace contracts
 
 using contracts::evt_link_object;
+using execution::execution_context_impl;
 
 enum class db_read_mode {
     SPECULATIVE,
@@ -134,6 +136,8 @@ public:
     token_database& token_db() const;
 
     charge_manager get_charge_manager() const;
+
+    execution_context_impl& execution_context() const;
 
     const global_property_object&         get_global_properties() const;
     const dynamic_global_property_object& get_dynamic_global_properties() const;

@@ -23,6 +23,7 @@
 #include <evt/chain/contracts/abi_serializer.hpp>
 #include <evt/chain/contracts/evt_contract.hpp>
 #include <evt/chain/contracts/evt_org.hpp>
+#include <evt/chain/execution/execution_context.hpp>
 
 #include <evt/chain/block_summary_object.hpp>
 #include <evt/chain/global_property_object.hpp>
@@ -140,6 +141,8 @@ struct controller_impl {
     token_database           token_db;
     controller::config       conf;
     chain_id_type            chain_id;
+    execution_context_impl   exec_ctx;
+
 
     bool                     replaying = false;
     optional<fc::time_point> replay_head_time;
@@ -1192,6 +1195,11 @@ controller::token_db() const {
 charge_manager
 controller::get_charge_manager() const {
     return charge_manager(*this);
+}
+
+execution_context_impl&
+controller::execution_context() const {
+    return my->exec_ctx;
 }
 
 void

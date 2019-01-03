@@ -92,8 +92,8 @@ TEST_CASE_METHOD(execution_tests, "test_serializer", "[execution]") {
 template<uint64_t N>
 struct tinvoke {
     template <typename Type>
-    static uint64_t invoke(Type type, int ver) {
-        CHECK(type != hana::type_c<contracts::newdomain>);
+    static uint64_t invoke(int ver) {
+        CHECK(hana::type_c<Type> != hana::type_c<contracts::newdomain>);
         CHECK(ver == 0);
         return N;
     }
@@ -102,8 +102,8 @@ struct tinvoke {
 template<>
 struct tinvoke<N(newdomain)> {
     template <typename Type>
-    static uint64_t invoke(Type type, int ver) {
-        CHECK(type == hana::type_c<contracts::newdomain>);
+    static uint64_t invoke(int ver) {
+        CHECK(hana::type_c<Type> == hana::type_c<contracts::newdomain>);
         CHECK(ver == 0);
         return 0;
     }
@@ -112,15 +112,15 @@ struct tinvoke<N(newdomain)> {
 template<>
 struct tinvoke<N(test)> {
     template <typename Type>
-    static uint64_t invoke(Type type, int ver) {
+    static uint64_t invoke(int ver) {
         CHECK(((ver == 0) || (ver == 1)));
         if(ver == 0) {
-            CHECK(type == hana::type_c<test>);
+            CHECK(hana::type_c<Type> == hana::type_c<test>);
         }
         else if(ver == 1) {
-            CHECK(type == hana::type_c<test2>);
+            CHECK(hana::type_c<Type> == hana::type_c<test2>);
         }
-        return decltype(type)::type::get_type_name().value;
+        return Type::get_type_name().value;
     }
 };
 
@@ -136,5 +136,4 @@ TEST_CASE_METHOD(execution_tests, "test_invoke", "[execution]") {
     // update version of `test` to 1
     CHECK(ctx_.set_version("test", 1) == 0);
     CHECK(ctx_.invoke<tinvoke, uint64_t, int>(ite, 1) == N(test2));
-
 }

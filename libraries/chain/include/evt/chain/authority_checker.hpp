@@ -12,11 +12,11 @@
 
 #include <evt/chain/controller.hpp>
 #include <evt/chain/config.hpp>
-#include <evt/chain/contracts/types.hpp>
-#include <evt/chain/contracts/types_invoker.hpp>
 #include <evt/chain/token_database.hpp>
 #include <evt/chain/types.hpp>
 #include <evt/chain/producer_schedule.hpp>
+#include <evt/chain/contracts/types.hpp>
+#include <evt/chain/execution/execution_context.hpp>
 #include <evt/utilities/parallel_markers.hpp>
 
 namespace evt { namespace chain {
@@ -25,19 +25,19 @@ class authority_checker;
 
 namespace __internal {
 
-template<typename T>
+template<uint64_t>
 struct check_authority {};
 
 }  // namespace __internal
 
 /**
-* @brief This class determines whether a set of signing keys are sufficient to satisfy an authority or not
-*
-* To determine whether an authority is satisfied or not, we first determine which keys have approved of a message, and
-* then determine whether that list of keys is sufficient to satisfy the authority. This class takes a list of keys and
-* provides the @ref satisfied method to determine whether that list of keys satisfies a provided authority.
-*
-*/
+ * @brief This class determines whether a set of signing keys are sufficient to satisfy an authority or not
+ *
+ * To determine whether an authority is satisfied or not, we first determine which keys have approved of a message, and
+ * then determine whether that list of keys is sufficient to satisfy the authority. This class takes a list of keys and
+ * provides the @ref satisfied method to determine whether that list of keys satisfies a provided authority.
+ *
+ */
 class authority_checker {
 private:
     const controller&               control_;
@@ -268,7 +268,8 @@ public:
             used_keys_ = keys;
         });
 
-        bool result = types_invoker<bool, check_authority>::invoke(act.name, act, this);
+        auto index  = control_.execution_context().index_of(act.name);
+        bool result = control_.execution_context().invoke<check_authority, bool>(index, act, this);
 
         if(result) {
             KeyReverter.cancel();
@@ -303,11 +304,12 @@ namespace __internal {
 using namespace contracts;
 
 template<>
-struct check_authority<newdomain> {
+struct check_authority<N(newdomain)> {
+    template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& nd     = act.data_as<const newdomain&>();
+            auto& nd     = act.data_as<execution::add_clr_t<Type>>();
             auto  vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(nd.creator, 1) == 1) {
                 return true;
@@ -319,7 +321,8 @@ struct check_authority<newdomain> {
 };
 
 template<>
-struct check_authority<issuetoken> {
+struct check_authority<N(issuetoken)> {
+    template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
         return checker->satisfied_domain_permission(act, N(issue));
@@ -327,7 +330,8 @@ struct check_authority<issuetoken> {
 };
 
 template<>
-struct check_authority<transfer> {
+struct check_authority<N(transfer)> {
+    template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
         return checker->satisfied_domain_permission(act, N(transfer));
@@ -335,7 +339,8 @@ struct check_authority<transfer> {
 };
 
 template<>
-struct check_authority<destroytoken> {
+struct check_authority<N(destroytoken)> {
+    template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
         return checker->satisfied_domain_permission(act, N(transfer));
@@ -343,11 +348,12 @@ struct check_authority<destroytoken> {
 };
 
 template<>
-struct check_authority<newgroup> {
+struct check_authority<N(newgroup)> {
+    template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& ng = act.data_as<const newgroup&>();
+            auto& ng = act.data_as<execution::add_clr_t<Type>>();
             if(ng.group.key().is_reserved()) {
                 // if group key is reserved, no need to check authority
                 return true;
@@ -364,7 +370,8 @@ struct check_authority<newgroup> {
 };
 
 template<>
-struct check_authority<updategroup> {
+struct check_authority<N(updategroup)> {
+    template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
         bool result = false;
@@ -380,7 +387,8 @@ struct check_authority<updategroup> {
 };
 
 template<>
-struct check_authority<updatedomain> {
+struct check_authority<N(updatedomain)> {
+    template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
         return checker->satisfied_domain_permission(act, N(manage));
@@ -388,11 +396,12 @@ struct check_authority<updatedomain> {
 };
 
 template<>
-struct check_authority<newfungible> {
+struct check_authority<N(newfungible)> {
+    template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& nf    = act.data_as<const newfungible&>();
+            auto& nf    = act.data_as<execution::add_clr_t<Type>>();
             auto vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(nf.creator, 1) == 1) {
                 return true;
@@ -410,7 +419,8 @@ get_symbol_id(const name128& key) {
 }
 
 template<>
-struct check_authority<issuefungible> {
+struct check_authority<N(issuefungible)> {
+    template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
         return checker->satisfied_fungible_permission(get_symbol_id(act.key), act, N(issue));
@@ -418,7 +428,8 @@ struct check_authority<issuefungible> {
 };
 
 template<>
-struct check_authority<updfungible> {
+struct check_authority<N(updfungible)> {
+    template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
         return checker->satisfied_fungible_permission(get_symbol_id(act.key), act, N(manage));
@@ -426,11 +437,12 @@ struct check_authority<updfungible> {
 };
 
 template<>
-struct check_authority<transferft> {
+struct check_authority<N(transferft)> {
+    template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& tf    = act.data_as<const transferft&>();
+            auto& tf    = act.data_as<execution::add_clr_t<Type>>();
             auto vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(tf.from, 1) == 1) {
                 return true;
@@ -442,11 +454,12 @@ struct check_authority<transferft> {
 };
 
 template<>
-struct check_authority<recycleft> {
+struct check_authority<N(recycleft)> {
+    template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& rf    = act.data_as<const recycleft&>();
+            auto& rf    = act.data_as<execution::add_clr_t<Type>>();
             auto vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(rf.address, 1) == 1) {
                 return true;
@@ -458,11 +471,12 @@ struct check_authority<recycleft> {
 };
 
 template<>
-struct check_authority<destroyft> {
+struct check_authority<N(destroyft)> {
+    template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& rf    = act.data_as<const destroyft&>();
+            auto& rf    = act.data_as<execution::add_clr_t<Type>>();
             auto vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(rf.address, 1) == 1) {
                 return true;
@@ -475,11 +489,12 @@ struct check_authority<destroyft> {
 
 
 template<>
-struct check_authority<evt2pevt> {
+struct check_authority<N(evt2pevt)> {
+    template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& ep    = act.data_as<const evt2pevt&>();
+            auto& ep    = act.data_as<execution::add_clr_t<Type>>();
             auto vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(ep.from, 1) == 1) {
                 return true;
@@ -491,11 +506,12 @@ struct check_authority<evt2pevt> {
 };
 
 template<>
-struct check_authority<newsuspend> {
+struct check_authority<N(newsuspend)> {
+    template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& ns    = act.data_as<const newsuspend&>();
+            auto& ns    = act.data_as<execution::add_clr_t<Type>>();
             auto vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(ns.proposer, 1) == 1) {
                 return true;
@@ -507,7 +523,8 @@ struct check_authority<newsuspend> {
 };
 
 template<>
-struct check_authority<aprvsuspend> {
+struct check_authority<N(aprvsuspend)> {
+    template <typename Type>
     static bool
     invoke(const action&, authority_checker*) {
         // will check signatures when applying
@@ -516,7 +533,8 @@ struct check_authority<aprvsuspend> {
 };
 
 template<>
-struct check_authority<cancelsuspend> {
+struct check_authority<N(cancelsuspend)> {
+    template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
         bool result = false;
@@ -531,11 +549,12 @@ struct check_authority<cancelsuspend> {
 };
 
 template<>
-struct check_authority<execsuspend> {
+struct check_authority<N(execsuspend)> {
+    template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& es    = act.data_as<const execsuspend&>();
+            auto& es    = act.data_as<execution::add_clr_t<Type>>();
             auto vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(es.executor, 1) == 1) {
                 return true;
@@ -547,11 +566,12 @@ struct check_authority<execsuspend> {
 };
 
 template<>
-struct check_authority<addmeta> {
+struct check_authority<N(addmeta)> {
+    template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& am = act.data_as<const addmeta&>();
+            auto& am = act.data_as<execution::add_clr_t<Type>>();
 
             auto& ref        = am.creator;
             bool  ref_result = false;
@@ -585,7 +605,8 @@ struct check_authority<addmeta> {
 };
 
 template<>
-struct check_authority<everipass> {
+struct check_authority<N(everipass)> {
+    template <typename Type>
     static bool
     invoke(const action&, authority_checker*) {
         // check authority when apply
@@ -594,7 +615,8 @@ struct check_authority<everipass> {
 };
 
 template<>
-struct check_authority<everipay> {
+struct check_authority<N(everipay)> {
+    template <typename Type>
     static bool
     invoke(const action&, authority_checker*) {
         // check authority when apply
@@ -603,11 +625,12 @@ struct check_authority<everipay> {
 };
 
 template<>
-struct check_authority<prodvote> {
+struct check_authority<N(prodvote)> {
+    template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& pv = act.data_as<const prodvote&>();
+            auto& pv = act.data_as<execution::add_clr_t<Type>>();
 
             bool result = false;
             checker->get_producer_key(pv.producer, [&](auto& key) {
@@ -623,7 +646,8 @@ struct check_authority<prodvote> {
 };
 
 template<>
-struct check_authority<updsched> {
+struct check_authority<N(updsched)> {
+    template <typename Type>
     static bool
     invoke(const action&, authority_checker* checker) {
         return checker->satisfied_group(checker->get_control().get_genesis_state().evt_org.name());
@@ -631,11 +655,12 @@ struct check_authority<updsched> {
 };
 
 template<>
-struct check_authority<newlock> {
+struct check_authority<N(newlock)> {
+    template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& nl     = act.data_as<const newlock&>();
+            auto& nl     = act.data_as<execution::add_clr_t<Type>>();
             auto  vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(nl.proposer, 1) == 1) {
                 return true;
@@ -647,11 +672,12 @@ struct check_authority<newlock> {
 };
 
 template<>
-struct check_authority<aprvlock> {
+struct check_authority<N(aprvlock)> {
+    template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& al     = act.data_as<const aprvlock&>();
+            auto& al     = act.data_as<execution::add_clr_t<Type>>();
             auto  vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(al.approver, 1) == 1) {
                 return true;
@@ -663,11 +689,12 @@ struct check_authority<aprvlock> {
 };
 
 template<>
-struct check_authority<tryunlock> {
+struct check_authority<N(tryunlock)> {
+    template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& tl     = act.data_as<const tryunlock&>();
+            auto& tl     = act.data_as<execution::add_clr_t<Type>>();
             auto  vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(tl.executor, 1) == 1) {
                 return true;
@@ -679,7 +706,8 @@ struct check_authority<tryunlock> {
 };
 
 template<>
-struct check_authority<paycharge> {
+struct check_authority<N(paycharge)> {
+    template <typename Type>
     static bool
     invoke(const action&, authority_checker*) {
         // not allowed user to use this action

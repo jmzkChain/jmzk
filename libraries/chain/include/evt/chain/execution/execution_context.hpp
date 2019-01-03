@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <array>
 #include <functional>
+#include <type_traits>
 
 #include <boost/hana.hpp>
 
@@ -108,7 +109,7 @@ public:
                 [&](auto& t) { return hana::equal(name, hana::ulong_c<decltype(+t)::type::get_action_name().value>); });
             auto cver = curr_vers_[i];
 
-            static_assert(hana::length(vers) > hana::size_c<0>, "empty version actions!");
+            static_assert(hana::length(vers)() > hana::size_c<0>(), "empty version actions!");
 
             auto result = std::optional<RType>();
             hana::for_each(vers, [&, cver](auto v) {
@@ -120,7 +121,7 @@ public:
                         Invoker<n>::invoke(hana::type_c<ty>, std::forward<Args>(args)...);
                     }
                     else {
-                        result = Invoker<n>::invoke(hana::type_c<ty>, std::forward<Args>(args)...);
+                        result = Invoker<n>::template invoke<ty>(std::forward<Args>(args)...);
                     }
                 }
             });
@@ -168,7 +169,34 @@ using execution_context_impl = execution_context<
                                    contracts::newdomain,
                                    contracts::updatedomain,
                                    contracts::issuetoken,
-                                   contracts::transfer
+                                   contracts::transfer,
+                                   contracts::destroytoken,
+                                   contracts::newgroup,
+                                   contracts::updategroup,
+                                   contracts::newfungible,
+                                   contracts::updfungible,
+                                   contracts::issuefungible,
+                                   contracts::transferft,
+                                   contracts::recycleft,
+                                   contracts::destroyft,
+                                   contracts::evt2pevt,
+                                   contracts::addmeta,
+                                   contracts::newsuspend,
+                                   contracts::cancelsuspend,
+                                   contracts::aprvsuspend,
+                                   contracts::execsuspend,
+                                   contracts::paycharge,
+                                   contracts::everipass,
+                                   contracts::everipay,
+                                   contracts::prodvote,
+                                   contracts::updsched,
+                                   contracts::newlock,
+                                   contracts::aprvlock,
+                                   contracts::tryunlock
                                >;
+
+// helper method to add const lvalue reference to type object
+template<typename T>
+using add_clr_t = typename std::add_const<typename std::add_lvalue_reference<T>::type>::type;
 
 }}}  // namespace evt::chain::execution
