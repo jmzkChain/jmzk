@@ -117,11 +117,11 @@ struct pending_state {
     pending_state(pending_state&& ps)
         : _db_session(move(ps._db_session)) {}
 
-    maybe_session            _db_session;
-    block_state_ptr          _pending_block_state;
-    vector<action_receipt>   _actions;
-    controller::block_status _block_status = controller::block_status::incomplete;
-    optional<block_id_type>  _producer_block_id;
+    maybe_session                   _db_session;
+    block_state_ptr                 _pending_block_state;
+    small_vector<action_receipt, 4> _actions;
+    controller::block_status        _block_status = controller::block_status::incomplete;
+    optional<block_id_type>         _producer_block_id;
 
     void
     push() {

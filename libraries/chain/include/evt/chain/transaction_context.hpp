@@ -53,7 +53,7 @@ public:
     transaction_trace_ptr trace;
     fc::time_point        start;
 
-    vector<action_receipt> executed;
+    small_vector<action_receipt, 4> executed;
 
     bool      is_input  = false;
     uint32_t  charge    = 0;
