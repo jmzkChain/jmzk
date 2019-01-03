@@ -32,7 +32,7 @@ using boost::condition_variable_any;
 #include <evt/chain/types.hpp>
 #include <evt/chain/token_database.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
-#include <evt/chain/contracts/evt_contract.hpp>
+#include <evt/chain/contracts/evt_contract_abi.hpp>
 #include <evt/utilities/spinlock.hpp>
 
 #include <evt/postgres_plugin/evt_pg.hpp>

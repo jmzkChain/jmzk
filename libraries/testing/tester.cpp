@@ -4,7 +4,6 @@
 #include <boost/test/unit_test.hpp>
 
 #include <evt/chain/token_database.hpp>
-#include <evt/chain/contracts/evt_contract.hpp>
 
 using namespace evt::chain::contracts;
 

@@ -96,8 +96,7 @@ public:
         const auto& trx = ptrx.get_transaction();
         auto        pts = ts / trx.actions.size();
         for(auto& act : trx.actions) {
-            auto index = control_.execution_context().index_of(act.name);
-            auto as    = control_.execution_context().invoke<get_act_charge, act_charge_result>(index, act, config_);
+            auto as = control_.execution_context().invoke<get_act_charge, act_charge_result>(act.index_, act, config_);
             s += (std::get<0>(as) + pts) * std::get<1>(as);  // std::get<1>(as): extra factor per action
         }
 

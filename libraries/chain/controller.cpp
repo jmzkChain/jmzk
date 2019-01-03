@@ -21,7 +21,7 @@
 #include <evt/chain/token_database_snapshot.hpp>
 #include <evt/chain/transaction_context.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
-#include <evt/chain/contracts/evt_contract.hpp>
+#include <evt/chain/contracts/evt_contract_abi.hpp>
 #include <evt/chain/contracts/evt_org.hpp>
 #include <evt/chain/execution/execution_context.hpp>
 
@@ -192,6 +192,7 @@ struct controller_impl {
         , token_db(cfg.tokendb_dir)
         , conf(cfg)
         , chain_id(cfg.genesis.compute_chain_id())
+        , exec_ctx(system_api)
         , read_mode(cfg.read_mode)
         , system_api(contracts::evt_contract_abi(), cfg.max_serialization_time) {
 

@@ -2,7 +2,7 @@
  *  @file
  *  @copyright defined in evt/LICENSE.txt
  */
-#include <evt/chain/contracts/evt_contract.hpp>
+#include <evt/chain/contracts/evt_contract_abi.hpp>
 #include <evt/chain/contracts/types.hpp>
 #include <evt/chain/contracts/abi_types.hpp>
 #include <evt/chain/version.hpp>

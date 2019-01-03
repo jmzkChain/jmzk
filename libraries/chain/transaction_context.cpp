@@ -40,6 +40,12 @@ void
 transaction_context::init(uint64_t initial_net_usage) {
     EVT_ASSERT(!is_initialized, transaction_exception, "cannot initialize twice");
     EVT_ASSERT(!trx.trx.actions.empty(), tx_no_action, "There's any actions in this transaction");
+
+    // set index for action
+    auto& exec_ctx = control.execution_context();
+    for(auto& act : trx.trx.actions) {
+        act.set_index(exec_ctx.index_of(act.name));
+    }
     
     check_time();    // Fail early if deadline has already been exceeded
     if(!control.charge_free_mode()) {

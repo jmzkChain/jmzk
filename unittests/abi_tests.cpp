@@ -11,7 +11,7 @@
 #include <fc/variant.hpp>
 
 #include <evt/chain/contracts/abi_serializer.hpp>
-#include <evt/chain/contracts/evt_contract.hpp>
+#include <evt/chain/contracts/evt_contract_abi.hpp>
 #include <evt/chain/contracts/types.hpp>
 
 using namespace evt;

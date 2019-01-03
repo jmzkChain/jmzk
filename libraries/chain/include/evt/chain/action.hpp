@@ -18,6 +18,9 @@ public:
     bytes       data;
 
 public:
+    int index_; // internal usage only
+
+public:
     action() {}
 
     // don't copy cache_ when in copy ctor.
@@ -26,6 +29,7 @@ public:
         , domain(lhs.domain)
         , key(lhs.key)
         , data(lhs.data)
+        , index_(lhs.index_)
         , cache_() {}
 
     action(action&& lhs) = default;
@@ -36,6 +40,7 @@ public:
             domain = lhs.domain;
             key    = lhs.key;
             data   = lhs.data;
+            index_ = lhs.index_;
         }
         return *this;
     }
@@ -46,6 +51,7 @@ public:
             domain = lhs.domain;
             key    = lhs.key;
             data   = lhs.data;
+            index_ = lhs.index_;
             cache_ = std::move(lhs.cache_);
         }
         return *this;
@@ -72,6 +78,11 @@ public:
     set_data(const T& value) {
         data   = fc::raw::pack(value);
         cache_ = std::make_any<T>(value);
+    }
+
+    void
+    set_index(int index) {
+        index_ = index;
     }
 
     // if T is a reference, will return the reference to the internal cache value

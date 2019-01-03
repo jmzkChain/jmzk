@@ -20,7 +20,7 @@
 #include <evt/chain/types.hpp>
 #include <evt/chain/genesis_state.hpp>
 #include <evt/chain/snapshot.hpp>
-#include <evt/chain/contracts/evt_contract.hpp>
+#include <evt/chain/contracts/evt_contract_abi.hpp>
 #include <evt/chain/contracts/evt_link.hpp>
 #include <evt/chain/contracts/evt_link_object.hpp>
 

@@ -11,27 +11,23 @@
 
 #include <boost/hana.hpp>
 
-#include <evt/chain/config.hpp>
 #include <evt/chain/exceptions.hpp>
 #include <evt/chain/types.hpp>
-#include <evt/chain/contracts/abi_serializer.hpp>
-#include <evt/chain/contracts/evt_contract.hpp>
 #include <evt/chain/contracts/types.hpp>
+#include <evt/chain/contracts/abi_serializer.hpp>
 
 namespace hana = boost::hana;
 
 namespace evt { namespace chain {
-
-class authority_checker;
 
 namespace execution {
 
 template<typename ... ACTTYPE>
 struct execution_context {
 public:
-    execution_context()
+    execution_context(const contracts::abi_serializer& abi)
         : curr_vers_()
-        , abi_(contracts::evt_contract_abi(), fc::milliseconds(config::default_abi_serializer_max_time_ms)) {
+        , abi_(abi) {
         constexpr auto index_of = [](auto& act) {
             return hana::index_if(act_names_, hana::equal.to(hana::ulong_c<decltype(+act)::type::get_action_name().value>)).value();
         };
@@ -103,7 +99,9 @@ public:
     template <template<uint64_t> typename Invoker, typename RType, typename ... Args>
     RType
     invoke(int actindex, Args&&... args) {
-        auto fn = [&](auto i) -> std::optional<RType> {
+        using opt_type = std::conditional_t<std::is_void<RType>::value, int, RType>;
+
+        auto fn = [&](auto i) -> std::optional<opt_type> {
             auto name  = act_names_[i];
             auto vers  = hana::filter(act_types_,
                 [&](auto& t) { return hana::equal(name, hana::ulong_c<decltype(+t)::type::get_action_name().value>); });
@@ -111,14 +109,15 @@ public:
 
             static_assert(hana::length(vers)() > hana::size_c<0>(), "empty version actions!");
 
-            auto result = std::optional<RType>();
+            auto result = std::optional<opt_type>();
             hana::for_each(vers, [&, cver](auto v) {
                 using ty = typename decltype(+v)::type;
 
                 constexpr auto n = ty::get_action_name().value;
                 if(ty::get_version() == cver) {
-                    if constexpr (std::is_void<RType>::value) {     
-                        Invoker<n>::invoke(hana::type_c<ty>, std::forward<Args>(args)...);
+                    if constexpr (std::is_void<RType>::value) {
+                        Invoker<n>::template invoke<ty>(std::forward<Args>(args)...);
+                        result = 1;
                     }
                     else {
                         result = Invoker<n>::template invoke<ty>(std::forward<Args>(args)...);
@@ -130,7 +129,7 @@ public:
         };
 
         auto range  = hana::make_range(hana::int_c<0>, hana::length(act_names_));
-        auto result = std::optional<RType>();
+        auto result = std::optional<opt_type>();
         hana::for_each(range, [&](auto i) {
             if(i() == actindex) {
                 result = fn(i);
@@ -138,7 +137,9 @@ public:
         });
 
         EVT_ASSERT(result.has_value(), action_index_exception, "Invalid action index: ${act}", ("act", actindex));
-        return *result;
+        if constexpr (!std::is_void<RType>::value) {
+            return *result;
+        }
     }
 
 private:
@@ -162,7 +163,7 @@ private:
     std::array<small_vector<name, 4>, hana::length(act_names_)> type_names_;
 
 private:
-    contracts::abi_serializer abi_;
+    const contracts::abi_serializer& abi_;
 };
 
 using execution_context_impl = execution_context<

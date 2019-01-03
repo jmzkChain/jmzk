@@ -8,6 +8,7 @@
 #include <fc/io/json.hpp>
 
 #include <evt/chain/contracts/types.hpp>
+#include <evt/chain/contracts/evt_contract_abi.hpp>
 #include <evt/chain/execution/execution_context.hpp>
 
 using namespace evt::chain;
@@ -33,7 +34,8 @@ using execution_context_test = execution_context<
 class execution_tests {
 public:
     execution_tests()
-        : abi_(contracts::evt_contract_abi(), fc::milliseconds(config::default_abi_serializer_max_time_ms)) {}
+        : ctx_(abi_)
+        , abi_(contracts::evt_contract_abi(), fc::milliseconds(config::default_abi_serializer_max_time_ms)) {}
 
 public:
     execution_context_test    ctx_;

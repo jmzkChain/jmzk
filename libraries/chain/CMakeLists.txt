@@ -32,7 +32,6 @@ add_library( evt_chain
              contracts/group.cpp
              contracts/evt_link.cpp
              contracts/evt_org.cpp
-             contracts/evt_contract.cpp
              contracts/evt_contract_abi.cpp
              contracts/abi_serializer.cpp
 

@@ -5,7 +5,7 @@
 #include <evt/chain/asset.hpp>
 #include <evt/chain/controller.hpp>
 #include <evt/chain/snapshot.hpp>
-#include <evt/chain/contracts/evt_contract.hpp>
+#include <evt/chain/contracts/evt_contract_abi.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
 
 #define REQUIRE_EQUAL_OBJECTS(left, right)                                                                                           \

@@ -7,7 +7,7 @@
 #include <evt/chain/types.hpp>
 #include <evt/chain/asset.hpp>
 #include <evt/chain/token_database.hpp>
-#include <evt/chain/contracts/evt_contract.hpp>
+#include <evt/chain/contracts/evt_contract_abi.hpp>
 
 #include <fc/container/flat.hpp>
 #include <fc/io/json.hpp>

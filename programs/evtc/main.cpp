@@ -40,7 +40,7 @@
 #include <evt/chain/config.hpp>
 #include <evt/chain/contracts/types.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
-#include <evt/chain/contracts/evt_contract.hpp>
+#include <evt/chain/contracts/evt_contract_abi.hpp>
 #include <evt/chain/exceptions.hpp>
 #include <evt/chain_plugin/chain_plugin.hpp>
 #include <evt/utilities/key_conversion.hpp>

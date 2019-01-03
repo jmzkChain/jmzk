@@ -26,7 +26,7 @@ using boost::condition_variable_any;
 #include <evt/chain/transaction.hpp>
 #include <evt/chain/types.hpp>
 #include <evt/chain/token_database.hpp>
-#include <evt/chain/contracts/evt_contract.hpp>
+#include <evt/chain/contracts/evt_contract_abi.hpp>
 
 #include <evt/utilities/spinlock.hpp>
 

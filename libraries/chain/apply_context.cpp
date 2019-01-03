@@ -7,8 +7,8 @@
 #include <evt/chain/controller.hpp>
 #include <evt/chain/transaction_context.hpp>
 #include <evt/chain/global_property_object.hpp>
-#include <evt/chain/contracts/types_invoker.hpp>
 #include <evt/chain/contracts/evt_contract.hpp>
+#include <evt/chain/execution/execution_context.hpp>
 
 namespace evt { namespace chain {
 
@@ -45,7 +45,7 @@ apply_context::exec_one(action_trace& trace) {
 
     try {
         try {
-            types_invoker<void, apply_action>::invoke(act.name, *this);
+            control.execution_context().invoke<apply_action, void>(act.index_, *this);
         }
         FC_RETHROW_EXCEPTIONS(warn, "pending console output: ${console}", ("console", fmt::to_string(_pending_console_output)));
     }

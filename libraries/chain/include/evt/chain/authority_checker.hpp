@@ -268,8 +268,7 @@ public:
             used_keys_ = keys;
         });
 
-        auto index  = control_.execution_context().index_of(act.name);
-        bool result = control_.execution_context().invoke<check_authority, bool>(index, act, this);
+        bool result = control_.execution_context().invoke<check_authority, bool>(act.index_, act, this);
 
         if(result) {
             KeyReverter.cancel();
