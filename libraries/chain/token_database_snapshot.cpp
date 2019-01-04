@@ -67,6 +67,9 @@ public:
 public:
     bool
     init(const std::string& name) {
+        // no need to lock here
+        // will be lock protected in caller method
+
         auto type   = int();
         auto data   = std::string();
         auto result = false;
@@ -196,6 +199,8 @@ snapshot_env::NewSequentialFile(const std::string&               fname,
             return Status::NotFound();
         }
         else {
+            auto l  = std::unique_lock<std::mutex>(mutex_); // protect snapshot context
+
             if(!reader_->has_section(fname)) {
                 return Status::NotFound();
             }
@@ -224,9 +229,12 @@ snapshot_env::NewRandomAccessFile(const std::string&                 fname,
             return Status::NotFound();
         }
         else {
+            auto l  = std::unique_lock<std::mutex>(mutex_); // protect snapshot context
+
             if(!reader_->has_section(fname)) {
                 return Status::NotFound();
             }
+
             auto sr = std::make_unique<SnapshotReadableFile>(reader_);
             if(!sr->init(fname)) {
                 return Status::IOError();
@@ -310,6 +318,7 @@ snapshot_env::FileExists(const std::string& fname) {
                 }
             }
             else {
+                auto l = std::unique_lock<std::mutex>(mutex_);
                 return reader_->has_section(fname) ? Status::OK() : Status::NotFound();
             }
         }
@@ -331,6 +340,7 @@ snapshot_env::GetChildren(const std::string& dir, std::vector<std::string>* resu
             return Status::OK();
         }
         else {
+            auto l     = std::unique_lock<std::mutex>(mutex_);
             auto names = reader_->get_section_names(dir);
             for(auto& name : names) {
                 if(!boost::ends_with(name, ".tmp")) {
@@ -350,6 +360,7 @@ snapshot_env::GetChildrenFileAttributes(const std::string& dir, std::vector<Env:
             return Status::NotSupported();
         }
         else {
+            auto l     = std::unique_lock<std::mutex>(mutex_); // protect snapshot context
             auto names = reader_->get_section_names(dir);
             for(auto& name : names) {
                 if(!boost::ends_with(name, ".tmp")) {

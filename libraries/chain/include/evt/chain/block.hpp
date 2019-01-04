@@ -55,15 +55,13 @@ struct transaction_receipt : public transaction_receipt_header {
     }
 };
 
-/**
- */
 struct signed_block : public signed_block_header {
     using signed_block_header::signed_block_header;
     signed_block() = default;
     signed_block(const signed_block_header& h) : signed_block_header(h) {}
 
-    vector<transaction_receipt> transactions;  /// new or generated transactions
-    extensions_type             block_extensions;
+    small_vector<transaction_receipt, 4> transactions;  /// new or generated transactions
+    extensions_type                      block_extensions;
 };
 using signed_block_ptr = std::shared_ptr<signed_block>;
 

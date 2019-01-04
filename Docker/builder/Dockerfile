@@ -1,6 +1,6 @@
-FROM ubuntu:18.04
+FROM debian:buster-slim
 
-LABEL author="Harry <harrywong@live.com>" maintainer="Harry <harrywong@live.com>" version="1.3.0" \
+LABEL author="Harry <harrywong@live.com>" maintainer="Harry <harrywong@live.com>" version="1.4.0" \
   description="This is a base image for building everitoken/evt"
 
 RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
@@ -36,7 +36,7 @@ RUN git clone --depth 1 --single-branch --branch master https://github.com/faceb
     && make -j${nproc} install \
     && cd .. && rm -rf zstd
 
-RUN wget https://dl.bintray.com/boostorg/release/1.69.0/source/boost_1_69_0.tar.bz2 -O - | tar -xj \
+RUN wget https://dl.bintray.com/boostorg/release/1.69.0/source/boost_1_69_0.tar.gz -O - | tar -xz \
     && cd boost_1_69_0 \
     && ./bootstrap.sh --prefix=/usr/local --with-toolset=gcc \
     && ./b2 -d0 -j$(nproc) --with-thread --with-date_time --with-system --with-filesystem --with-program_options \
@@ -69,7 +69,7 @@ RUN git clone -b master https://github.com/everitoken/breakpad.git \
     && make -j$(nproc) install \
     && cd .. && rm -rf breakpad
 
-RUN wget https://ftp.postgresql.org/pub/source/v11.1/postgresql-11.1.tar.bz2 -O - | tar -xj \
+RUN wget https://ftp.postgresql.org/pub/source/v11.1/postgresql-11.1.tar.gz -O - | tar -xz \
     && cd postgresql-11.1 \
     && ./configure --prefix=/usr/local \
     && make -C src/include install \

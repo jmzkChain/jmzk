@@ -245,7 +245,7 @@ private:
 FC_REFLECT(evt::chain_apis::empty, );
 FC_REFLECT(evt::chain_apis::read_only::get_info_results,
           (server_version)(chain_id)(evt_api_version)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)
-          (head_block_id)(head_block_time)(head_block_producer)(server_version));
+          (head_block_id)(head_block_time)(head_block_producer)(server_version_string));
 FC_REFLECT(evt::chain_apis::read_only::get_block_params, (block_num_or_id));
 FC_REFLECT(evt::chain_apis::read_only::get_block_header_state_params, (block_num_or_id));
 FC_REFLECT(evt::chain_apis::read_only::get_transaction_params, (block_num)(id));
