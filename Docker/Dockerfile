@@ -12,7 +12,7 @@ RUN git clone -b $branch https://github.com/everitoken/evt.git --recursive \
        -DCMAKE_C_COMPILER=/usr/bin/gcc -DCMAKE_CXX_COMPILER=/usr/bin/g++ \
        -DCMAKE_AR=/usr/bin/gcc-ar -DCMAKE_RANLIB=/usr/bin/gcc-ranlib \
        -DSecp256k1_ROOT_DIR=/usr/local -DENABLE_MONGODB_SUPPORT=ON \
-       -DENABLE_POSTGRES_SUPPORT=ON -DENABLE_BREAKPAD_SUPPORT=ON -DENABLE_BUILD_LTO=ON  \
+       -DENABLE_POSTGRES_SUPPORT=ON -DENABLE_BREAKPAD_SUPPORT=ON -DENABLE_BUILD_LTO=OFF  \
        -DEVT_ROOT_KEY=$rootkey
 RUN ninja -C /tmp/build -j $bjobs evtd evtwd evtc && ninja -C /tmp/build install
 
@@ -32,7 +32,7 @@ RUN python3 /evt/scripts/symbol_ops.py export -s /tmp/build/symbols /tmp/build/b
 
 RUN python3 /evt/scripts/symbol_ops.py upload -f /tmp/build/symbols -k $awskey -s $awssecret -r evt -b evt-symbols
 
-FROM ubuntu:18.04
+FROM debian:buster-slim
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive && apt-get install -y openssl libssl1.1 && rm -rf /var/lib/apt/lists/*
 

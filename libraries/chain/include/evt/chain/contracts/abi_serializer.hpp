@@ -207,8 +207,8 @@ struct abi_traverse_context_with_path : public abi_traverse_context {
     string maybe_shorten(const string& str);
 
 protected:
-    path_root         root_of_path;
-    vector<path_item> path;
+    path_root                  root_of_path;
+    small_vector<path_item, 8> path;
 
 public:
     bool short_path = false;
@@ -305,8 +305,23 @@ struct abi_to_variant {
     template <typename M, require_abi_t<M> = 1>
     static void
     add(mutable_variant_object& mvo, const char* name, const vector<M>& v, abi_traverse_context& ctx) {
-        auto            h = ctx.enter_scope();
-        vector<variant> array;
+        auto h     = ctx.enter_scope();
+        auto array = small_vector<variant, 4>();
+        array.reserve(v.size());
+
+        for(const auto& iter : v) {
+            mutable_variant_object elem_mvo;
+            add(elem_mvo, "_", iter, ctx);
+            array.emplace_back(std::move(elem_mvo["_"]));
+        }
+        mvo(name, std::move(array));
+    }
+
+    template <typename M, std::size_t N, require_abi_t<M> = 1>
+    static void
+    add(mutable_variant_object& mvo, const char* name, const small_vector<M,N>& v, abi_traverse_context& ctx) {
+        auto h     = ctx.enter_scope();
+        auto array = small_vector<variant, 4>();
         array.reserve(v.size());
 
         for(const auto& iter : v) {
@@ -461,9 +476,23 @@ struct abi_from_variant {
        * template which overloads extract for vectors of types which contain ABI information in their trees
        * for these members we call ::extract in order to trigger further processing
        */
-    template <typename M,require_abi_t<M> = 1>
+    template <typename M, require_abi_t<M> = 1>
     static void
     extract(const variant& v, vector<M>& o, abi_traverse_context& ctx) {
+        auto        h     = ctx.enter_scope();
+        const auto& array = v.get_array();
+        o.clear();
+        o.reserve(array.size());
+        for(auto itr = array.begin(); itr != array.end(); ++itr) {
+            M o_iter;
+            extract(*itr, o_iter, ctx);
+            o.emplace_back(std::move(o_iter));
+        }
+    }
+
+    template <typename M, std::size_t N, require_abi_t<M> = 1>
+    static void
+    extract(const variant& v, small_vector<M,N>& o, abi_traverse_context& ctx) {
         auto        h     = ctx.enter_scope();
         const auto& array = v.get_array();
         o.clear();

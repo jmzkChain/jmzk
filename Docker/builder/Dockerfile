@@ -1,6 +1,6 @@
-FROM ubuntu:18.04
+FROM debian:buster-slim
 
-LABEL author="Harry <harrywong@live.com>" maintainer="Harry <harrywong@live.com>" version="1.3.0" \
+LABEL author="Harry <harrywong@live.com>" maintainer="Harry <harrywong@live.com>" version="1.4.0" \
   description="This is a base image for building everitoken/evt"
 
 RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
@@ -8,16 +8,16 @@ RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
     && apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y sudo wget curl net-tools ccache ninja-build ca-certificates \
        unzip gnupg git make libtool autoconf automake m4 openssl libssl1.1 libssl-dev libgmp-dev zlib1g-dev \
-       libreadline-dev gcc-7 g++-7 gcc-8 g++-8
+       libreadline-dev gcc-8 g++-8
 
-RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 999
-RUN update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-7 999
+RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 999
+RUN update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 999
 RUN update-alternatives --install /usr/bin/cc  cc  /usr/bin/gcc   999
 RUN update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++   999
 
-RUN update-alternatives --install /usr/bin/gcc-ar     gcc-ar     /usr/bin/gcc-ar-7     999
-RUN update-alternatives --install /usr/bin/gcc-nm     gcc-nm     /usr/bin/gcc-nm-7     999
-RUN update-alternatives --install /usr/bin/gcc-ranlib gcc-ranlib /usr/bin/gcc-ranlib-7 999
+RUN update-alternatives --install /usr/bin/gcc-ar     gcc-ar     /usr/bin/gcc-ar-8     999
+RUN update-alternatives --install /usr/bin/gcc-nm     gcc-nm     /usr/bin/gcc-nm-8     999
+RUN update-alternatives --install /usr/bin/gcc-ranlib gcc-ranlib /usr/bin/gcc-ranlib-8 999
 
 RUN update-alternatives --set cc  /usr/bin/gcc
 RUN update-alternatives --set c++ /usr/bin/g++
@@ -36,7 +36,7 @@ RUN git clone --depth 1 --single-branch --branch master https://github.com/faceb
     && make -j${nproc} install \
     && cd .. && rm -rf zstd
 
-RUN wget https://dl.bintray.com/boostorg/release/1.69.0/source/boost_1_69_0.tar.bz2 -O - | tar -xj \
+RUN wget https://dl.bintray.com/boostorg/release/1.69.0/source/boost_1_69_0.tar.gz -O - | tar -xz \
     && cd boost_1_69_0 \
     && ./bootstrap.sh --prefix=/usr/local --with-toolset=gcc \
     && ./b2 -d0 -j$(nproc) --with-thread --with-date_time --with-system --with-filesystem --with-program_options \
@@ -69,7 +69,7 @@ RUN git clone -b master https://github.com/everitoken/breakpad.git \
     && make -j$(nproc) install \
     && cd .. && rm -rf breakpad
 
-RUN wget https://ftp.postgresql.org/pub/source/v11.1/postgresql-11.1.tar.bz2 -O - | tar -xj \
+RUN wget https://ftp.postgresql.org/pub/source/v11.1/postgresql-11.1.tar.gz -O - | tar -xz \
     && cd postgresql-11.1 \
     && ./configure --prefix=/usr/local \
     && make -C src/include install \
