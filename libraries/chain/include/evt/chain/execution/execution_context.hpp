@@ -14,7 +14,6 @@
 #include <evt/chain/exceptions.hpp>
 #include <evt/chain/types.hpp>
 #include <evt/chain/contracts/types.hpp>
-#include <evt/chain/contracts/abi_serializer.hpp>
 
 namespace hana = boost::hana;
 
@@ -25,9 +24,8 @@ namespace execution {
 template<typename ... ACTTYPE>
 struct execution_context {
 public:
-    execution_context(const contracts::abi_serializer& abi)
-        : curr_vers_()
-        , abi_(abi) {
+    execution_context()
+        : curr_vers_() {
         constexpr auto index_of = [](auto& act) {
             return hana::index_if(act_names_, hana::equal.to(hana::ulong_c<decltype(+act)::type::get_action_name().value>)).value();
         };
@@ -46,7 +44,7 @@ public:
 
 public:
     int
-    index_of(name act) {
+    index_of(name act) const {
         auto& arr = act_names_arr_;
         auto it   = std::lower_bound(std::cbegin(arr), std::cend(arr), act.value);
         EVT_ASSERT(it != std::cend(arr) && *it == act.value, unknown_action_exception, "Unknown action: ${act}", ("act", act));
@@ -56,7 +54,7 @@ public:
 
     template<typename T>
     constexpr int
-    index_of() {
+    index_of() const {
         auto i = hana::index_if(act_names_, hana::equal.to(hana::ulong_c<T::get_action_name().value>));
         static_assert(i != hana::nothing, "T is not valid action type");
 
@@ -91,23 +89,14 @@ public:
         return old_ver;
     }
 
-    fc::variant
-    binary_to_variant(int actindex, const bytes& binary, bool short_path = false) const {
-        auto ver     = get_curr_ver(actindex);
-        auto acttype = get_acttype_name(actindex, ver);
-        return abi_.binary_to_variant(acttype.to_string(), binary, short_path);
-    }
-
-    bytes
-    variant_to_binary(int actindex, const fc::variant& var, bool short_path = false) const {
-        auto ver     = get_curr_ver(actindex);
-        auto acttype = get_acttype_name(actindex, ver);
-        return abi_.variant_to_binary(acttype.to_string(), var, short_path);
+    name
+    get_acttype_name(int index) const {
+        return type_names_[index][get_curr_ver(index)];
     }
 
     template <template<uint64_t> typename Invoker, typename RType, typename ... Args>
     RType
-    invoke(int actindex, Args&&... args) {
+    invoke(int actindex, Args&&... args) const {
         using opt_type = std::conditional_t<std::is_void<RType>::value, int, RType>;
 
         auto fn = [&](auto i) -> std::optional<opt_type> {
@@ -170,9 +159,6 @@ private:
     std::array<int, hana::length(act_names_)>                   curr_vers_;
     std::array<uint64_t, hana::length(act_names_)>              act_names_arr_;
     std::array<small_vector<name, 4>, hana::length(act_names_)> type_names_;
-
-private:
-    const contracts::abi_serializer& abi_;
 };
 
 using execution_context_impl = execution_context<

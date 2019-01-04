@@ -56,8 +56,9 @@ pack_unpack() {
         });
 }
 
-abi_serializer::abi_serializer(const abi_def& abi, const fc::microseconds max_serialization_time)
-    : max_serialization_time(max_serialization_time) {
+abi_serializer::abi_serializer(const execution::execution_context_impl& exec_ctx, const abi_def& abi, const fc::microseconds max_serialization_time_)
+    : exec_ctx_(exec_ctx)
+    , max_serialization_time_(max_serialization_time_) {
     configure_built_in_types();
     set_abi(abi);
 }
@@ -65,91 +66,91 @@ abi_serializer::abi_serializer(const abi_def& abi, const fc::microseconds max_se
 void
 abi_serializer::add_specialized_unpack_pack(const string& name,
                                             std::pair<abi_serializer::unpack_function, abi_serializer::pack_function> unpack_pack) {
-    built_in_types[name] = std::move(unpack_pack);
+    built_in_types_[name] = std::move(unpack_pack);
 }
 
 void
 abi_serializer::configure_built_in_types() {
-    built_in_types.emplace("public_key", pack_unpack<public_key_type>());
-    built_in_types.emplace("signature", pack_unpack<signature_type>());
+    built_in_types_.emplace("public_key", pack_unpack<public_key_type>());
+    built_in_types_.emplace("signature", pack_unpack<signature_type>());
 
-    built_in_types.emplace("address", pack_unpack<address>());
-    built_in_types.emplace("symbol", pack_unpack<symbol>());
-    built_in_types.emplace("asset", pack_unpack<asset>());
+    built_in_types_.emplace("address", pack_unpack<address>());
+    built_in_types_.emplace("symbol", pack_unpack<symbol>());
+    built_in_types_.emplace("asset", pack_unpack<asset>());
 
-    built_in_types.emplace("bytes", pack_unpack<bytes>());
-    built_in_types.emplace("string", pack_unpack<string>());
+    built_in_types_.emplace("bytes", pack_unpack<bytes>());
+    built_in_types_.emplace("string", pack_unpack<string>());
     
-    built_in_types.emplace("time_point", pack_unpack<fc::time_point>());
-    built_in_types.emplace("time_point_sec", pack_unpack<fc::time_point_sec>());
-    built_in_types.emplace("block_timestamp_type", pack_unpack<block_timestamp_type>());
+    built_in_types_.emplace("time_point", pack_unpack<fc::time_point>());
+    built_in_types_.emplace("time_point_sec", pack_unpack<fc::time_point_sec>());
+    built_in_types_.emplace("block_timestamp_type", pack_unpack<block_timestamp_type>());
     
-    built_in_types.emplace("checksum160", pack_unpack<checksum160_type>());
-    built_in_types.emplace("checksum256", pack_unpack<checksum256_type>());
-    built_in_types.emplace("checksum512", pack_unpack<checksum512_type>());
+    built_in_types_.emplace("checksum160", pack_unpack<checksum160_type>());
+    built_in_types_.emplace("checksum256", pack_unpack<checksum256_type>());
+    built_in_types_.emplace("checksum512", pack_unpack<checksum512_type>());
     
-    built_in_types.emplace("bool", pack_unpack<uint8_t>());
-    built_in_types.emplace("int8", pack_unpack<int8_t>());
-    built_in_types.emplace("uint8", pack_unpack<uint8_t>());
-    built_in_types.emplace("int16", pack_unpack<int16_t>());
-    built_in_types.emplace("uint16", pack_unpack<uint16_t>());
-    built_in_types.emplace("int32", pack_unpack<int32_t>());
-    built_in_types.emplace("uint32", pack_unpack<uint32_t>());
-    built_in_types.emplace("int64", pack_unpack<int64_t>());
-    built_in_types.emplace("uint64", pack_unpack<uint64_t>());
-    built_in_types.emplace("uint128", pack_unpack<uint128_t>());
+    built_in_types_.emplace("bool", pack_unpack<uint8_t>());
+    built_in_types_.emplace("int8", pack_unpack<int8_t>());
+    built_in_types_.emplace("uint8", pack_unpack<uint8_t>());
+    built_in_types_.emplace("int16", pack_unpack<int16_t>());
+    built_in_types_.emplace("uint16", pack_unpack<uint16_t>());
+    built_in_types_.emplace("int32", pack_unpack<int32_t>());
+    built_in_types_.emplace("uint32", pack_unpack<uint32_t>());
+    built_in_types_.emplace("int64", pack_unpack<int64_t>());
+    built_in_types_.emplace("uint64", pack_unpack<uint64_t>());
+    built_in_types_.emplace("uint128", pack_unpack<uint128_t>());
 
-    built_in_types.emplace("float32", pack_unpack<float>());
-    built_in_types.emplace("float64", pack_unpack<double>());
-    built_in_types.emplace("float128", pack_unpack<uint128_t>());
+    built_in_types_.emplace("float32", pack_unpack<float>());
+    built_in_types_.emplace("float64", pack_unpack<double>());
+    built_in_types_.emplace("float128", pack_unpack<uint128_t>());
 
-    built_in_types.emplace("name", pack_unpack<name>());
-    built_in_types.emplace("name128", pack_unpack<name128>());
-    built_in_types.emplace("group", pack_unpack<group>());
-    built_in_types.emplace("authorizer_ref", pack_unpack<authorizer_ref>());
-    built_in_types.emplace("producer_schedule", pack_unpack<producer_schedule_type>());
-    built_in_types.emplace("extensions", pack_unpack<extensions_type>());
-    built_in_types.emplace("evt_link", pack_unpack<evt_link>());
-    built_in_types.emplace("lock_status", pack_unpack<fc::enum_type<uint8_t, lock_status>>());
-    built_in_types.emplace("lock_asset", pack_unpack<lock_asset>());
-    built_in_types.emplace("lock_condition", pack_unpack<lock_condition>());
-    built_in_types.emplace("lock_aprvdata", pack_unpack<lock_aprvdata>());
+    built_in_types_.emplace("name", pack_unpack<name>());
+    built_in_types_.emplace("name128", pack_unpack<name128>());
+    built_in_types_.emplace("group", pack_unpack<group>());
+    built_in_types_.emplace("authorizer_ref", pack_unpack<authorizer_ref>());
+    built_in_types_.emplace("producer_schedule", pack_unpack<producer_schedule_type>());
+    built_in_types_.emplace("extensions", pack_unpack<extensions_type>());
+    built_in_types_.emplace("evt_link", pack_unpack<evt_link>());
+    built_in_types_.emplace("lock_status", pack_unpack<fc::enum_type<uint8_t, lock_status>>());
+    built_in_types_.emplace("lock_asset", pack_unpack<lock_asset>());
+    built_in_types_.emplace("lock_condition", pack_unpack<lock_condition>());
+    built_in_types_.emplace("lock_aprvdata", pack_unpack<lock_aprvdata>());
 }
 
 void
 abi_serializer::set_abi(const abi_def& abi) {
     impl::abi_traverse_context ctx(*this);
 
-    typedefs.clear();
-    structs.clear();
-    actions.clear();
+    typedefs_.clear();
+    structs_.clear();
+    actions_.clear();
 
     for(const auto& st : abi.structs)
-        structs[st.name] = st;
+        structs_[st.name] = st;
 
     for(const auto& td : abi.types) {
         EVT_ASSERT(_is_type(td.type, ctx), invalid_type_inside_abi, "invalid type ${type}", ("type", td.type));
         EVT_ASSERT(!_is_type(td.new_type_name, ctx), duplicate_abi_type_def_exception, "type already exists", ("new_type_name", td.new_type_name));
-        typedefs[td.new_type_name] = td.type;
+        typedefs_[td.new_type_name] = td.type;
     }
 
     for(const auto& a : abi.actions)
-        actions[a.name] = a.type;
+        actions_[a.name] = a.type;
 
     /**
        *  The ABI vector may contain duplicates which would make it
        *  an invalid ABI
        */
-    EVT_ASSERT(typedefs.size() == abi.types.size(), duplicate_abi_type_def_exception, "duplicate type definition detected");
-    EVT_ASSERT(structs.size() == abi.structs.size(), duplicate_abi_struct_def_exception, "duplicate struct definition detected");
-    EVT_ASSERT(actions.size() == abi.actions.size(), duplicate_abi_action_def_exception, "duplicate action definition detected");
+    EVT_ASSERT(typedefs_.size() == abi.types.size(), duplicate_abi_type_def_exception, "duplicate type definition detected");
+    EVT_ASSERT(structs_.size() == abi.structs.size(), duplicate_abi_struct_def_exception, "duplicate struct definition detected");
+    EVT_ASSERT(actions_.size() == abi.actions.size(), duplicate_abi_action_def_exception, "duplicate action definition detected");
 
     validate(ctx);
 }
 
 bool
 abi_serializer::is_builtin_type(const type_name& type) const {
-    return built_in_types.find(type) != built_in_types.end();
+    return built_in_types_.find(type) != built_in_types_.end();
 }
 
 bool
@@ -172,7 +173,7 @@ abi_serializer::get_integer_size(const type_name& type) const {
 
 bool
 abi_serializer::is_struct(const type_name& type) const {
-    return structs.find(resolve_type(type)) != structs.end();
+    return structs_.find(resolve_type(type)) != structs_.end();
 }
 
 bool
@@ -208,44 +209,44 @@ bool
 abi_serializer::_is_type(const type_name& rtype, impl::abi_traverse_context& ctx) const {
     auto h    = ctx.enter_scope();
     auto type = fundamental_type(rtype);
-    if(built_in_types.find(type) != built_in_types.end())
+    if(built_in_types_.find(type) != built_in_types_.end())
         return true;
-    if(typedefs.find(type) != typedefs.end())
-        return _is_type(typedefs.find(type)->second, ctx);
-    if(structs.find(type) != structs.end())
+    if(typedefs_.find(type) != typedefs_.end())
+        return _is_type(typedefs_.find(type)->second, ctx);
+    if(structs_.find(type) != structs_.end())
         return true;
     return false;
 }
 
 const struct_def&
 abi_serializer::get_struct(const type_name& type) const {
-    auto itr = structs.find(resolve_type(type));
-    EVT_ASSERT(itr != structs.end(), invalid_type_inside_abi, "Unknown struct ${type}", ("type", type));
+    auto itr = structs_.find(resolve_type(type));
+    EVT_ASSERT(itr != structs_.end(), invalid_type_inside_abi, "Unknown struct ${type}", ("type", type));
     return itr->second;
 }
 
 void
 abi_serializer::validate(impl::abi_traverse_context& ctx) const {
-    for(const auto& t : typedefs) {
+    for(const auto& t : typedefs_) {
         try {
             auto types_seen = vector<type_name>{t.first, t.second};
-            auto itr        = typedefs.find(t.second);
-            while(itr != typedefs.end()) {
+            auto itr        = typedefs_.find(t.second);
+            while(itr != typedefs_.end()) {
                 ctx.check_deadline();
                 EVT_ASSERT(find(types_seen.begin(), types_seen.end(), itr->second) == types_seen.end(), abi_circular_def_exception, "Circular reference in type ${type}", ("type", t.first));
                 types_seen.emplace_back(itr->second);
-                itr = typedefs.find(itr->second);
+                itr = typedefs_.find(itr->second);
             }
         }
         FC_CAPTURE_AND_RETHROW((t))
     }
-    for(const auto& t : typedefs) {
+    for(const auto& t : typedefs_) {
         try {
             EVT_ASSERT(_is_type(t.second, ctx), invalid_type_inside_abi, "${type}", ("type", t.second));
         }
         FC_CAPTURE_AND_RETHROW((t))
     }
-    for(const auto& s : structs) {
+    for(const auto& s : structs_) {
         try {
             if(s.second.base != type_name()) {
                 auto current    = s.second;
@@ -268,7 +269,7 @@ abi_serializer::validate(impl::abi_traverse_context& ctx) const {
         }
         FC_CAPTURE_AND_RETHROW((s))
     }
-    for(const auto& a : actions) {
+    for(const auto& a : actions_) {
         try {
             ctx.check_deadline();
             EVT_ASSERT(_is_type(a.second, ctx), invalid_type_inside_abi, "${type}", ("type", a.second));
@@ -279,12 +280,12 @@ abi_serializer::validate(impl::abi_traverse_context& ctx) const {
 
 type_name
 abi_serializer::resolve_type(const type_name& type) const {
-    auto itr = typedefs.find(type);
-    if(itr != typedefs.end()) {
-        for(auto i = typedefs.size(); i > 0; --i) {  // avoid infinite recursion
+    auto itr = typedefs_.find(type);
+    if(itr != typedefs_.end()) {
+        for(auto i = typedefs_.size(); i > 0; --i) {  // avoid infinite recursion
             const type_name& t = itr->second;
-            itr                = typedefs.find(t);
-            if(itr == typedefs.end())
+            itr                = typedefs_.find(t);
+            if(itr == typedefs_.end())
                 return t;
         }
     }
@@ -295,8 +296,8 @@ void
 abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const char*>& stream,
                                    fc::mutable_variant_object& obj, impl::binary_to_variant_context& ctx) const {
     auto h     = ctx.enter_scope();
-    auto s_itr = structs.find(type);
-    EVT_ASSERT(s_itr != structs.end(), invalid_type_inside_abi, "Unknown type ${type}", ("type", ctx.maybe_shorten(type)));
+    auto s_itr = structs_.find(type);
+    EVT_ASSERT(s_itr != structs_.end(), invalid_type_inside_abi, "Unknown type ${type}", ("type", ctx.maybe_shorten(type)));
     ctx.hint_struct_type_if_in_array(s_itr);
     const auto& st = s_itr->second;
     if(st.base != type_name()) {
@@ -319,8 +320,8 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
     auto      h     = ctx.enter_scope();
     type_name rtype = resolve_type(type);
     auto      ftype = fundamental_type(rtype);
-    auto      btype = built_in_types.find(ftype);
-    if(btype != built_in_types.end()) {
+    auto      btype = built_in_types_.find(ftype);
+    if(btype != built_in_types_.end()) {
         try {
             return btype->second.first(stream, is_array(rtype), is_optional(rtype));
         }
@@ -363,7 +364,7 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
 
     fc::mutable_variant_object mvo;
     _binary_to_variant(rtype, stream, mvo, ctx);
-    // QUESTION: Is this assert actually desired? It disallows unpacking empty structs from datastream.
+    // QUESTION: Is this assert actually desired? It disallows unpacking empty structs_ from datastream.
     EVT_ASSERT(mvo.size() > 0, unpack_exception, "Unable to unpack '${p}' from stream", ("p", ctx.get_path_string()));
     return fc::variant(std::move(mvo));
 }
@@ -395,10 +396,10 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
         auto h     = ctx.enter_scope();
         auto rtype = resolve_type(type);
 
-        auto s_itr = structs.end();
+        auto s_itr = structs_.end();
 
-        auto btype = built_in_types.find(fundamental_type(rtype));
-        if(btype != built_in_types.end()) {
+        auto btype = built_in_types_.find(fundamental_type(rtype));
+        if(btype != built_in_types_.end()) {
             btype->second.second(var, ds, is_array(rtype), is_optional(rtype));
         }
         else if(is_array(rtype)) {
@@ -425,7 +426,7 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
                 _variant_to_binary(fundamental_type(rtype), var, ds, ctx);
             }
         }
-        else if((s_itr = structs.find(rtype)) != structs.end()) {
+        else if((s_itr = structs_.find(rtype)) != structs_.end()) {
             ctx.hint_struct_type_if_in_array(s_itr);
             const auto& st = s_itr->second;
 
@@ -454,7 +455,7 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
             else if(var.is_array()) {
                 const auto& va = var.get_array();
                 EVT_ASSERT(st.base == type_name(), invalid_type_inside_abi,
-                           "Using input array to specify the fields of the derived struct '${p}'; input arrays are currently only allowed for structs without a base",
+                           "Using input array to specify the fields of the derived struct '${p}'; input arrays are currently only allowed for structs_ without a base",
                            ("p", ctx.get_path_string()));
                 for(uint32_t i = 0; i < st.fields.size(); ++i) {
                     const auto& field = st.fields[i];
@@ -512,9 +513,10 @@ abi_serializer::variant_to_binary(const type_name& type, const fc::variant& var,
 }
 
 type_name
-abi_serializer::get_action_type(name action) const {
-    auto itr = actions.find(action);
-    if(itr != actions.end()) {
+abi_serializer::get_action_type(action_name name) const {
+    auto action = exec_ctx_.get_acttype_name(exec_ctx_.index_of(name));
+    auto itr = actions_.find(action);
+    if(itr != actions_.end()) {
         return itr->second;
     }
     return type_name();
@@ -551,8 +553,8 @@ abi_traverse_context_with_path::set_path_root(const type_name& type) {
         root_of_path = array_type_path_root{};
     }
     else {
-        auto itr1 = self.structs.find(rtype);
-        if(itr1 != self.structs.end()) {
+        auto itr1 = self.structs_.find(rtype);
+        if(itr1 != self.structs_.end()) {
             root_of_path = struct_type_path_root{.struct_itr = itr1};
         }
     }

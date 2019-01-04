@@ -192,9 +192,9 @@ struct controller_impl {
         , token_db(cfg.tokendb_dir)
         , conf(cfg)
         , chain_id(cfg.genesis.compute_chain_id())
-        , exec_ctx(system_api)
+        , exec_ctx()
         , read_mode(cfg.read_mode)
-        , system_api(contracts::evt_contract_abi(), cfg.max_serialization_time) {
+        , system_api(exec_ctx, contracts::evt_contract_abi(), cfg.max_serialization_time) {
 
         fork_db.irreversible.connect([&](auto b) {
             on_irreversible(b);

@@ -12,13 +12,10 @@
 #include <evt/chain/config.hpp>
 #include <evt/chain/contracts/abi_types.hpp>
 #include <evt/chain/contracts/types.hpp>
+#include <evt/chain/execution/execution_context.hpp>
 
 namespace evt { namespace chain { namespace contracts {
 
-using std::map;
-using std::string;
-using std::function;
-using std::pair;
 using namespace fc;
 
 namespace impl {
@@ -36,8 +33,8 @@ struct variant_to_binary_context;
  *  be converted to and from JSON.
  */
 struct abi_serializer : boost::noncopyable {
-    abi_serializer() { configure_built_in_types(); }
-    abi_serializer(const abi_def& abi, const fc::microseconds max_serialization_time);
+    abi_serializer(const execution::execution_context_impl& exec_ctx) : exec_ctx_(exec_ctx) { configure_built_in_types(); }
+    abi_serializer(const execution::execution_context_impl& exec_ctx, const abi_def& abi, const fc::microseconds max_serialization_time);
     void set_abi(const abi_def& abi);
 
     type_name resolve_type(const type_name& t) const;
@@ -52,8 +49,7 @@ struct abi_serializer : boost::noncopyable {
 
     const struct_def& get_struct(const type_name& type) const;
 
-    type_name get_action_type(name action) const;
-    type_name get_table_type(name action) const;
+    type_name get_action_type(const action_name name) const;
 
     optional<string> get_error_message(uint64_t error_code) const;
 
@@ -110,13 +106,15 @@ private:
     void validate(impl::abi_traverse_context& ctx) const;
 
 private:
-    map<type_name, type_name>  typedefs;
-    map<type_name, struct_def> structs;
-    map<name, type_name>       actions;
+    const execution::execution_context_impl& exec_ctx_;
 
-    map<type_name, pair<unpack_function, pack_function>> built_in_types;
+    std::map<type_name, type_name>  typedefs_;
+    std::map<type_name, struct_def> structs_;
+    std::map<name, type_name>       actions_;
 
-    fc::microseconds max_serialization_time;
+    std::map<type_name, pair<unpack_function, pack_function>> built_in_types_;
+
+    fc::microseconds max_serialization_time_;
 
 private:
     friend struct impl::abi_from_variant;
@@ -130,13 +128,13 @@ namespace impl {
 struct abi_traverse_context {
     abi_traverse_context(const abi_serializer& self)
         : self(self)
-        , max_serialization_time(self.max_serialization_time)
+        , max_serialization_time(self.max_serialization_time_)
         , deadline(fc::time_point::now() + max_serialization_time)
         , recursion_depth(0) {}
 
     abi_traverse_context(const abi_serializer& self, fc::time_point deadline)
         : self(self)
-        , max_serialization_time(self.max_serialization_time)
+        , max_serialization_time(self.max_serialization_time_)
         , deadline(deadline)
         , recursion_depth(0) {}
 
@@ -435,12 +433,12 @@ public:
         , _ctx(_ctx) {}
 
     /**
-          * Visit a single member and add it to the variant object
-          * @tparam Member - the member to visit
-          * @tparam Class - the class we are traversing
-          * @tparam member - pointer to the member
-          * @param name - the name of the member
-          */
+      * Visit a single member and add it to the variant object
+      * @tparam Member - the member to visit
+      * @tparam Class - the class we are traversing
+      * @tparam member - pointer to the member
+      * @param name - the name of the member
+      */
     template <typename Member, class Class, Member(Class::*member)>
     void
     operator()(const char* name) const {

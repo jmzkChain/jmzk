@@ -36,7 +36,8 @@ verify_byte_round_trip_conversion(const abi_serializer& abis, const type_name& t
 
 const auto&
 get_evt_abi() {
-    static auto abis = abi_serializer(evt_contract_abi(), fc::hours(1));
+    static execution::execution_context_impl exec_ctx;
+    static auto abis = abi_serializer(exec_ctx, evt_contract_abi(), fc::hours(1));
     return abis;
 }
 
@@ -81,7 +82,8 @@ TEST_CASE("optional_test", "[abis]") {
     abi.structs.emplace_back(struct_def{
         "optionaltest2", "", {{"a", "optionaltest?"}, {"b", "optionaltest?"}}});
 
-    auto abis = abi_serializer(abi, fc::hours(1));
+    auto exec_ctx = execution::execution_context_impl();
+    auto abis     = abi_serializer(exec_ctx, abi, fc::hours(1));
 
     auto json   = R"( { "a": 0 } )";
     auto json2  = R"( {"a": { "a": 0 } } )";
