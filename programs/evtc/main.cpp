@@ -1030,7 +1030,8 @@ struct set_suspend_subcommands {
             auto varsuspend = call(get_suspend_func, fc::mutable_variant_object("name", (proposal_name)name));
             auto suspend = suspend_def();
 
-            auto abi = abi_serializer(evt_contract_abi(), fc::hours(1));
+            auto exec_ctx = execution_context_impl();
+            auto abi = abi_serializer(exec_ctx, evt_contract_abi(), fc::hours(1));
             abi.from_variant(varsuspend, suspend);
 
             auto public_keys = call(wallet_url, wallet_public_keys);

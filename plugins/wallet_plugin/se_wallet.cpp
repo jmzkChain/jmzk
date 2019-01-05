@@ -39,8 +39,8 @@ struct se_wallet_impl {
         public_key_data pub_key_data;
         if(!error) {
             const UInt8* cfdata = CFDataGetBytePtr(keyrep);
-            memcpy(pub_key_data.data + 1, cfdata + 1, 32);
-            pub_key_data.data[0] = 0x02 + (cfdata[64] & 1);
+            memcpy(pub_key_data.data() + 1, cfdata + 1, 32);
+            pub_key_data.data()[0] = 0x02 + (cfdata[64] & 1);
         }
 
         CFRelease(keyrep);
@@ -61,7 +61,7 @@ struct se_wallet_impl {
         serialized_pub_key[0] = 0x01;
 
         public_key_data pub_key_data = get_public_key_data(key);
-        memcpy(serialized_pub_key + 1, pub_key_data.data, sizeof(pub_key_data));
+        memcpy(serialized_pub_key + 1, pub_key_data.data(), sizeof(pub_key_data));
 
         public_key_type             pub_key;
         fc::datastream<const char*> ds(serialized_pub_key, sizeof(serialized_pub_key));
@@ -227,7 +227,7 @@ struct se_wallet_impl {
 
         char serialized_signature[sizeof(compact_sig) + 1];
         serialized_signature[0] = 0x01;
-        memcpy(serialized_signature + 1, compact_sig.data, sizeof(compact_sig));
+        memcpy(serialized_signature + 1, compact_sig.data(), sizeof(compact_sig));
 
         signature_type              final_signature;
         fc::datastream<const char*> ds(serialized_signature, sizeof(serialized_signature));
