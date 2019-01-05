@@ -315,7 +315,8 @@ class Test(unittest.TestCase):
             'keys': [user.pub_key.to_string()]
         }
         resp = api.get_domains(json.dumps(req)).text
-        self.assertTrue(domain_name in resp, msg=resp)
+        res_dict = json.loads(resp)
+        self.assertEqual(res_dict[0], domain_name, msg=resp)
 
     def test_get_tokens(self):
 
@@ -326,9 +327,8 @@ class Test(unittest.TestCase):
         }
         req['domain'] = domain_name
         resp = api.get_tokens(json.dumps(req)).text
-        self.assertTrue(token1_name in resp, msg=resp)
-        self.assertTrue(token2_name in resp, msg=resp)
-        self.assertTrue(token3_name in resp, msg=resp)
+        res_dict = json.loads(resp)
+        self.assertEqual(res_dict[0]['name'], token3_name, msg=resp)
 
     def test_get_history_tokens(self):
 
@@ -339,17 +339,21 @@ class Test(unittest.TestCase):
         req['domain'] = domain_name
         req['name'] = token1_name
         resp = api.get_history_tokens(json.dumps(req)).text
-        self.assertTrue(token1_name in resp, msg=resp)
+        res_dict = json.loads(resp)
+        self.assertEqual(res_dict['cookie'][0], token1_name, msg=resp)
         self.assertFalse(token2_name in resp, msg=resp)
         self.assertFalse(token3_name in resp, msg=resp)
 
         req['domain'] = domain_name
         resp = api.get_history_tokens(json.dumps(req)).text
-        self.assertTrue(token1_name in resp, msg=resp)
+        res_dict = json.loads(resp)
+        self.assertEqual(res_dict['cookie'][0], token1_name, msg=resp)
+
 
         req['name'] = token1_name
         resp = api.get_history_tokens(json.dumps(req)).text
-        self.assertTrue(token1_name in resp, msg=resp)
+        res_dict = json.loads(resp)
+        self.assertEqual(res_dict['cookie'][0], token1_name, msg=resp)
 
     def test_get_groups(self):
         req = {
@@ -357,7 +361,8 @@ class Test(unittest.TestCase):
         }
 
         resp = api.get_groups(json.dumps(req)).text
-        self.assertTrue(group_name in resp, msg=resp)
+        res_dict = json.loads(resp)
+        self.assertEqual(res_dict[0], group_name, msg=resp)
 
     def test_get_fungibles(self):
         req = {
@@ -365,7 +370,8 @@ class Test(unittest.TestCase):
         }
 
         resp = api.get_fungibles(json.dumps(req)).text
-        self.assertTrue(str(sym_id) in resp, msg=resp)
+        res_dict = json.loads(resp)
+        self.assertEqual(res_dict[0], sym_id, msg=resp)
 
     def test_get_assets(self):
         req = {
@@ -373,18 +379,19 @@ class Test(unittest.TestCase):
         }
 
         resp = api.get_assets(json.dumps(req)).text
-        self.assertTrue(str(sym_id) in resp, msg=resp)
-        self.assertTrue(str(2) in resp, msg=resp)
-        self.assertTrue('97' in resp, msg=resp)
-        self.assertTrue('100' in resp, msg=resp)
+        res_dict = json.loads(resp)
+        self.assertEqual(res_dict[0], '0.00000 S#1', msg=resp)
+        self.assertEqual(res_dict[1], '100.00000 S#2', msg=resp)
+        self.assertEqual(res_dict[2], '97.00000 S#3', msg=resp)
 
         req = {
             'address': pub2.to_string()
         }
 
         resp = api.get_assets(json.dumps(req)).text
-        self.assertTrue(str(sym_id) in resp, msg=resp)
-        self.assertTrue('3' in resp, msg=resp)
+        res_dict = json.loads(resp)
+        self.assertTrue(type(res_dict) is list)
+        self.assertEqual(res_dict[0], '3.00000 S#3', msg=resp)
 
     def test_get_actions(self):
         req = {
@@ -395,9 +402,9 @@ class Test(unittest.TestCase):
         req['domain'] = domain_name
 
         resp = api.get_actions(json.dumps(req)).text
-        dic = json.loads(json.loads(resp))
-        self.assertTrue('T' in dic[0]['timestamp'], msg=dic[0]['timestamp'])
-        self.assertTrue(type(iso8601.parse_date(dic[0]['timestamp'])) is datetime.datetime, msg=dic[0]['timestamp'])
+        res_dict = json.loads(resp)
+        self.assertTrue('T' in res_dict[0]['timestamp'], msg=res_dict[0]['timestamp'])
+        self.assertTrue(type(iso8601.parse_date(res_dict[0]['timestamp'])) is datetime.datetime, msg=res_dict[0]['timestamp'])
         self.assertTrue(token1_name in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
 
@@ -590,10 +597,13 @@ class Test(unittest.TestCase):
         }
 
         resp = api.get_history_transactions(json.dumps(req)).text
-        self.assertTrue('[]' == resp, msg=resp)
+        res_dict = json.loads(resp)
+        self.assertTrue([] == res_dict, msg=resp)
 
         req['keys'] = [user.pub_key.to_string()]
         resp = api.get_history_transactions(json.dumps(req)).text
+        res_dict = json.loads(resp)
+        self.assertTrue(domain_name == res_dict[0]['transaction']['actions'][0]['domain'])
         self.assertTrue(domain_name in resp, msg=resp)
         self.assertTrue(group_name in resp, msg=resp)
         self.assertTrue(str(sym_id) in resp, msg=resp)
