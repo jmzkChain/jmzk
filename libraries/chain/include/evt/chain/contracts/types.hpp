@@ -27,9 +27,9 @@ namespace evt { namespace chain { namespace contracts {
         return evt::chain::name(N(actname));         \
     }                                                \
                                                      \
-    static constexpr auto                            \
+    static std::string                               \
     get_type_name() {                                \
-        return evt::chain::name(N(acttypename));     \
+        return #acttypename;                         \
     }                                                \
                                                      \
     static constexpr auto                            \

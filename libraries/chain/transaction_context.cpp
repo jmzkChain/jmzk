@@ -3,28 +3,31 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #include <evt/chain/transaction_context.hpp>
+
 #include <evt/chain/apply_context.hpp>
 #include <evt/chain/charge_manager.hpp>
+#include <evt/chain/controller.hpp>
 #include <evt/chain/exceptions.hpp>
 #include <evt/chain/global_property_object.hpp>
 #include <evt/chain/transaction_object.hpp>
 
 namespace evt { namespace chain {
 
-transaction_context::transaction_context(controller&           c,
-                                         transaction_metadata& t,
-                                         fc::time_point        s)
-    : control(c)
+transaction_context::transaction_context(controller&            control,
+                                         evt_execution_context& exec_ctx,
+                                         transaction_metadata&  trx_meta,
+                                         fc::time_point         start)
+    : control(control)
+    , exec_ctx(exec_ctx)
     , undo_session()
     , undo_token_session()
-    , trx(t)
+    , trx(trx_meta)
     , trace(std::make_shared<transaction_trace>())
-    , start(s)
+    , start(start)
     , net_usage(trace->net_usage) {
-
-    if(!c.skip_db_sessions()) {
-        undo_session       = c.db().start_undo_session(true);
-        undo_token_session = c.token_db().new_savepoint_session();
+    if(!control.skip_db_sessions()) {
+        undo_session       = control.db().start_undo_session(true);
+        undo_token_session = control.token_db().new_savepoint_session();
     }
     trace->id = trx.id;
     executed.reserve(trx.total_actions() + 1); // one for paycharge action
@@ -42,7 +45,6 @@ transaction_context::init(uint64_t initial_net_usage) {
     EVT_ASSERT(!trx.trx.actions.empty(), tx_no_action, "There's any actions in this transaction");
 
     // set index for action
-    auto& exec_ctx = control.execution_context();
     for(auto& act : trx.trx.actions) {
         act.set_index(exec_ctx.index_of(act.name));
     }
@@ -236,7 +238,7 @@ transaction_context::finalize_pay() {
 
     trace->action_traces.emplace_back();
 
-    act.set_index(control.execution_context().index_of<paycharge>());
+    act.set_index(exec_ctx.index_of<paycharge>());
     dispatch_action(trace->action_traces.back(), act);
 }
 
@@ -250,8 +252,7 @@ transaction_context::check_net_usage() const {
 
 void
 transaction_context::dispatch_action(action_trace& trace, const action& act) {
-    apply_context apply(control, *this, act);
-
+    auto apply = apply_context(control, *this, act);
     apply.exec(trace);
 }
 

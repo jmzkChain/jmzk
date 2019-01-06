@@ -28,7 +28,6 @@
 #include <evt/chain/contracts/types.hpp>
 #include <evt/chain/contracts/evt_link.hpp>
 #include <evt/chain/contracts/evt_link_object.hpp>
-#include <evt/chain/execution/execution_context.hpp>
 
 #if defined(__clang__)
 #pragma GCC diagnostic ignored "-Winstantiation-after-specialization"

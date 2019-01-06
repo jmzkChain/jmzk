@@ -15,6 +15,7 @@
 #include <evt/chain/block_log.hpp>
 #include <evt/chain/charge_manager.hpp>
 #include <evt/chain/chain_snapshot.hpp>
+#include <evt/chain/execution_context_impl.hpp>
 #include <evt/chain/fork_database.hpp>
 #include <evt/chain/snapshot.hpp>
 #include <evt/chain/token_database.hpp>
@@ -23,7 +24,6 @@
 #include <evt/chain/contracts/abi_serializer.hpp>
 #include <evt/chain/contracts/evt_contract_abi.hpp>
 #include <evt/chain/contracts/evt_org.hpp>
-#include <evt/chain/execution/execution_context.hpp>
 
 #include <evt/chain/block_summary_object.hpp>
 #include <evt/chain/global_property_object.hpp>
@@ -141,7 +141,7 @@ struct controller_impl {
     token_database           token_db;
     controller::config       conf;
     chain_id_type            chain_id;
-    execution_context_impl   exec_ctx;
+    evt_execution_context    exec_ctx;
 
 
     bool                     replaying = false;
@@ -194,7 +194,7 @@ struct controller_impl {
         , chain_id(cfg.genesis.compute_chain_id())
         , exec_ctx()
         , read_mode(cfg.read_mode)
-        , system_api(exec_ctx, contracts::evt_contract_abi(), cfg.max_serialization_time) {
+        , system_api(contracts::evt_contract_abi(), cfg.max_serialization_time) {
 
         fork_db.irreversible.connect([&](auto b) {
             on_irreversible(b);
@@ -662,7 +662,7 @@ struct controller_impl {
     check_authorization(const public_keys_type& signed_keys, const transaction& trx) {
         auto& conf = db.get<global_property_object>().configuration;
 
-        auto checker = authority_checker(self, signed_keys, token_db, conf.max_authority_depth);
+        auto checker = authority_checker(self, exec_ctx, signed_keys, conf.max_authority_depth);
         for(const auto& act : trx.actions) {
             EVT_ASSERT(checker.satisfied(act), unsatisfied_authorization,
                        "${name} action in domain: ${domain} with key: ${key} authorized failed",
@@ -674,7 +674,7 @@ struct controller_impl {
     check_authorization(const public_keys_type& signed_keys, const action& act) {
         auto& conf = db.get<global_property_object>().configuration;
 
-        auto checker = authority_checker(self, signed_keys, token_db, conf.max_authority_depth);
+        auto checker = authority_checker(self, exec_ctx, signed_keys, conf.max_authority_depth);
         EVT_ASSERT(checker.satisfied(act), unsatisfied_authorization,
                    "${name} action in domain: ${domain} with key: ${key} authorized failed",
                    ("domain", act.domain)("key", act.key)("name", act.name));
@@ -688,7 +688,7 @@ struct controller_impl {
             });
             in_trx_requiring_checks = true;
 
-            transaction_context trx_context(self, *trx);
+            transaction_context trx_context(self, exec_ctx, *trx);
             trx_context.deadline = deadline;
 
             auto trace = trx_context.trace;
@@ -749,7 +749,7 @@ struct controller_impl {
 
         transaction_trace_ptr trace;
         try {
-            transaction_context trx_context(self, *trx);
+            transaction_context trx_context(self, exec_ctx, *trx);
             trx_context.deadline = deadline;
             trace                = trx_context.trace;
 
@@ -1195,11 +1195,11 @@ controller::token_db() const {
 
 charge_manager
 controller::get_charge_manager() const {
-    return charge_manager(*this);
+    return charge_manager(*this, my->exec_ctx);
 }
 
-execution_context_impl&
-controller::execution_context() const {
+execution_context&
+controller::get_execution_context() const {
     return my->exec_ctx;
 }
 
@@ -1706,7 +1706,7 @@ controller::is_known_unexpired_transaction(const transaction_id_type& id) const 
 public_keys_type
 controller::get_required_keys(const transaction& trx, const public_keys_type& candidate_keys) const {
     const static uint32_t max_authority_depth = my->conf.genesis.initial_configuration.max_authority_depth;
-    auto checker = authority_checker(*this, candidate_keys, my->token_db, max_authority_depth);
+    auto checker = authority_checker(*this, my->exec_ctx, candidate_keys, max_authority_depth);
 
     for(const auto& act : trx.actions) {
         EVT_ASSERT(checker.satisfied(act), unsatisfied_authorization,
@@ -1724,7 +1724,7 @@ controller::get_required_keys(const transaction& trx, const public_keys_type& ca
 public_keys_type
 controller::get_suspend_required_keys(const transaction& trx, const public_keys_type& candidate_keys) const {
     const static uint32_t max_authority_depth = my->conf.genesis.initial_configuration.max_authority_depth;
-    auto checker = authority_checker(*this, candidate_keys, my->token_db, max_authority_depth);
+    auto checker = authority_checker(*this, my->exec_ctx, candidate_keys, max_authority_depth);
 
     for(const auto& act : trx.actions) {
         checker.satisfied(act);

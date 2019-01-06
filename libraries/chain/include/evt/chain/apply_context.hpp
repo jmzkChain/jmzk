@@ -10,6 +10,8 @@
 #include <fmt/format.h>
 #include <fc/utility.hpp>
 #include <evt/chain/controller.hpp>
+#include <evt/chain/execution_context_impl.hpp>
+#include <evt/chain/transaction_context.hpp>
 
 namespace chainbase {
 class database;
@@ -18,12 +20,14 @@ class database;
 namespace evt { namespace chain {
 
 struct action_trace;
+class controller;
 class transaction_context;
 
 class apply_context : boost::noncopyable {
 public:
     apply_context(controller& con, transaction_context& trx_ctx, const action& action)
         : control(con)
+        , exec_ctx(trx_ctx.exec_ctx)
         , db(con.db())
         , token_db(con.token_db())
         , trx_context(trx_ctx)
@@ -51,11 +55,12 @@ public:
     }
 
 public:
-    controller&          control;
-    chainbase::database& db;
-    token_database&      token_db;
-    transaction_context& trx_context;
-    const action&        act;
+    controller&            control;
+    evt_execution_context& exec_ctx;
+    chainbase::database&   db;
+    token_database&        token_db;
+    transaction_context&   trx_context;
+    const action&          act;
 
 private:
     fmt::memory_buffer _pending_console_output;

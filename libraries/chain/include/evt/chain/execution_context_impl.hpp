@@ -7,10 +7,12 @@
 #include <algorithm>
 #include <array>
 #include <functional>
+#include <string>
 #include <type_traits>
 
 #include <boost/hana.hpp>
 
+#include <evt/chain/execution_context.hpp>
 #include <evt/chain/exceptions.hpp>
 #include <evt/chain/types.hpp>
 #include <evt/chain/contracts/types.hpp>
@@ -19,12 +21,10 @@ namespace hana = boost::hana;
 
 namespace evt { namespace chain {
 
-namespace execution {
-
 template<typename ... ACTTYPE>
-struct execution_context {
+class execution_context_impl : public execution_context {
 public:
-    execution_context()
+    execution_context_impl()
         : curr_vers_() {
         constexpr auto index_of = [](auto& act) {
             return hana::index_if(act_names_, hana::equal.to(hana::ulong_c<decltype(+act)::type::get_action_name().value>)).value();
@@ -44,7 +44,7 @@ public:
 
 public:
     int
-    index_of(name act) const {
+    index_of(name act) const override {
         auto& arr = act_names_arr_;
         auto it   = std::lower_bound(std::cbegin(arr), std::cend(arr), act.value);
         EVT_ASSERT(it != std::cend(arr) && *it == act.value, unknown_action_exception, "Unknown action: ${act}", ("act", act));
@@ -89,8 +89,8 @@ public:
         return old_ver;
     }
 
-    name
-    get_acttype_name(int index) const {
+    std::string
+    get_acttype_name(int index) const override {
         return type_names_[index][get_curr_ver(index)];
     }
 
@@ -146,7 +146,7 @@ private:
         return curr_vers_[index];
     }
 
-    name
+    std::string
     get_acttype_name(int index, int version) const {
         return type_names_[index][version];
     }
@@ -156,43 +156,39 @@ private:
     static constexpr auto act_names_ = hana::sort(hana::unique(hana::transform(act_types_, [](auto& a) { return hana::ulong_c<decltype(+a)::type::get_action_name().value>; })));
 
 private:
-    std::array<int, hana::length(act_names_)>                   curr_vers_;
-    std::array<uint64_t, hana::length(act_names_)>              act_names_arr_;
-    std::array<small_vector<name, 4>, hana::length(act_names_)> type_names_;
+    std::array<int, hana::length(act_names_)>                          curr_vers_;
+    std::array<uint64_t, hana::length(act_names_)>                     act_names_arr_;
+    std::array<small_vector<std::string, 4>, hana::length(act_names_)> type_names_;
 };
 
-using execution_context_impl = execution_context<
-                                   contracts::newdomain,
-                                   contracts::updatedomain,
-                                   contracts::issuetoken,
-                                   contracts::transfer,
-                                   contracts::destroytoken,
-                                   contracts::newgroup,
-                                   contracts::updategroup,
-                                   contracts::newfungible,
-                                   contracts::updfungible,
-                                   contracts::issuefungible,
-                                   contracts::transferft,
-                                   contracts::recycleft,
-                                   contracts::destroyft,
-                                   contracts::evt2pevt,
-                                   contracts::addmeta,
-                                   contracts::newsuspend,
-                                   contracts::cancelsuspend,
-                                   contracts::aprvsuspend,
-                                   contracts::execsuspend,
-                                   contracts::paycharge,
-                                   contracts::everipass,
-                                   contracts::everipay,
-                                   contracts::prodvote,
-                                   contracts::updsched,
-                                   contracts::newlock,
-                                   contracts::aprvlock,
-                                   contracts::tryunlock
-                               >;
+using evt_execution_context = execution_context_impl<
+                                  contracts::newdomain,
+                                  contracts::updatedomain,
+                                  contracts::issuetoken,
+                                  contracts::transfer,
+                                  contracts::destroytoken,
+                                  contracts::newgroup,
+                                  contracts::updategroup,
+                                  contracts::newfungible,
+                                  contracts::updfungible,
+                                  contracts::issuefungible,
+                                  contracts::transferft,
+                                  contracts::recycleft,
+                                  contracts::destroyft,
+                                  contracts::evt2pevt,
+                                  contracts::addmeta,
+                                  contracts::newsuspend,
+                                  contracts::cancelsuspend,
+                                  contracts::aprvsuspend,
+                                  contracts::execsuspend,
+                                  contracts::paycharge,
+                                  contracts::everipass,
+                                  contracts::everipay,
+                                  contracts::prodvote,
+                                  contracts::updsched,
+                                  contracts::newlock,
+                                  contracts::aprvlock,
+                                  contracts::tryunlock
+                              >;
 
-// helper method to add const lvalue reference to type object
-template<typename T>
-using add_clr_t = typename std::add_const<typename std::add_lvalue_reference<T>::type>::type;
-
-}}}  // namespace evt::chain::execution
+}}  // namespace evt::chain

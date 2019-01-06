@@ -7,12 +7,12 @@
 #include <fc/variant_object.hpp>
 #include <fc/scoped_exit.hpp>
 
-#include <evt/chain/trace.hpp>
-#include <evt/chain/exceptions.hpp>
 #include <evt/chain/config.hpp>
+#include <evt/chain/exceptions.hpp>
+#include <evt/chain/execution_context.hpp>
+#include <evt/chain/trace.hpp>
 #include <evt/chain/contracts/abi_types.hpp>
 #include <evt/chain/contracts/types.hpp>
-#include <evt/chain/execution/execution_context.hpp>
 
 namespace evt { namespace chain { namespace contracts {
 
@@ -33,8 +33,8 @@ struct variant_to_binary_context;
  *  be converted to and from JSON.
  */
 struct abi_serializer : boost::noncopyable {
-    abi_serializer(const execution::execution_context_impl& exec_ctx) : exec_ctx_(exec_ctx) { configure_built_in_types(); }
-    abi_serializer(const execution::execution_context_impl& exec_ctx, const abi_def& abi, const fc::microseconds max_serialization_time);
+    abi_serializer() { configure_built_in_types(); }
+    abi_serializer(const abi_def& abi, const fc::microseconds max_serialization_time);
     void set_abi(const abi_def& abi);
 
     type_name resolve_type(const type_name& t) const;
@@ -49,21 +49,19 @@ struct abi_serializer : boost::noncopyable {
 
     const struct_def& get_struct(const type_name& type) const;
 
-    type_name get_action_type(const action_name name) const;
-
     optional<string> get_error_message(uint64_t error_code) const;
 
-    fc::variant binary_to_variant(const type_name& type, const bytes& binary, bool short_path = false) const;
-    fc::variant binary_to_variant(const type_name& type, fc::datastream<const char*>& binary, bool short_path = false) const;
+    fc::variant binary_to_variant(const type_name& type, const bytes& binary, const execution_context&, bool short_path = false) const;
+    fc::variant binary_to_variant(const type_name& type, fc::datastream<const char*>& binary, const execution_context&, bool short_path = false) const;
 
-    bytes variant_to_binary(const type_name& type, const fc::variant& var, bool short_path = false) const;
-    void  variant_to_binary(const type_name& type, const fc::variant& var, fc::datastream<char*>& ds, bool short_path = false) const;
-
-    template <typename T>
-    void to_variant(const T& o, fc::variant& vo) const;
+    bytes variant_to_binary(const type_name& type, const fc::variant& var, const execution_context&,  bool short_path = false) const;
+    void  variant_to_binary(const type_name& type, const fc::variant& var, fc::datastream<char*>& ds, const execution_context&, bool short_path = false) const;
 
     template <typename T>
-    void from_variant(const fc::variant& v, T& o) const;
+    void to_variant(const T& o, fc::variant& vo, const execution_context&) const;
+
+    template <typename T>
+    void from_variant(const fc::variant& v, T& o, const execution_context&) const;
 
     template <typename Vec>
     static bool
@@ -101,16 +99,13 @@ private:
     void  _variant_to_binary(const type_name& type, const fc::variant& var,
                              fc::datastream<char*>& ds, impl::variant_to_binary_context& ctx) const;
 
-    bool _is_type(const type_name& type, impl::abi_traverse_context& ctx) const;
+    bool _is_type(const type_name& type) const;
 
-    void validate(impl::abi_traverse_context& ctx) const;
+    void validate() const;
 
 private:
-    const execution::execution_context_impl& exec_ctx_;
-
     std::map<type_name, type_name>  typedefs_;
     std::map<type_name, struct_def> structs_;
-    std::map<name, type_name>       actions_;
 
     std::map<type_name, pair<unpack_function, pack_function>> built_in_types_;
 
@@ -126,14 +121,16 @@ private:
 namespace impl {
 
 struct abi_traverse_context {
-    abi_traverse_context(const abi_serializer& self)
+    abi_traverse_context(const abi_serializer& self, const execution_context& exec_ctx)
         : self(self)
+        , exec_ctx(exec_ctx)
         , max_serialization_time(self.max_serialization_time_)
         , deadline(fc::time_point::now() + max_serialization_time)
         , recursion_depth(0) {}
 
-    abi_traverse_context(const abi_serializer& self, fc::time_point deadline)
+    abi_traverse_context(const abi_serializer& self, const execution_context& exec_ctx, fc::time_point deadline)
         : self(self)
+        , exec_ctx(exec_ctx)
         , max_serialization_time(self.max_serialization_time_)
         , deadline(deadline)
         , recursion_depth(0) {}
@@ -143,12 +140,13 @@ struct abi_traverse_context {
     fc::scoped_exit<std::function<void()>> enter_scope();
 
 public:
-    const abi_serializer& self;
+    const abi_serializer&    self;
+    const execution_context& exec_ctx;
 
 protected:
-    fc::microseconds max_serialization_time;
-    fc::time_point   deadline;
-    size_t           recursion_depth;
+    fc::microseconds   max_serialization_time;
+    fc::time_point     deadline;
+    size_t             recursion_depth;
 };
 
 struct empty_path_root {};
@@ -177,13 +175,13 @@ struct field_path_item {
 using path_item = static_variant<empty_path_item, array_index_path_item, field_path_item>;
 
 struct abi_traverse_context_with_path : public abi_traverse_context {
-    abi_traverse_context_with_path(const abi_serializer& self, const type_name& type)
-        : abi_traverse_context(self) {
+    abi_traverse_context_with_path(const abi_serializer& self, const execution_context& exec_ctx, const type_name& type)
+        : abi_traverse_context(self, exec_ctx) {
         set_path_root(type);
     }
 
-    abi_traverse_context_with_path(const abi_serializer& self, fc::time_point deadline, const type_name& type)
-        : abi_traverse_context(self, deadline) {
+    abi_traverse_context_with_path(const abi_serializer& self, const execution_context& exec_ctx, fc::time_point deadline, const type_name& type)
+        : abi_traverse_context(self, exec_ctx, deadline) {
         set_path_root(type);
     }
 
@@ -221,9 +219,9 @@ struct variant_to_binary_context : public abi_traverse_context_with_path {
 };
 
 /**
-    * Determine if a type contains ABI related info, perhaps deeply nested
-    * @tparam T - the type to check
-    */
+  * Determine if a type contains ABI related info, perhaps deeply nested
+  * @tparam T - the type to check
+  */
 template <typename T>
 constexpr bool
 single_type_requires_abi_v() {
@@ -385,7 +383,7 @@ struct abi_to_variant {
         mvo("key", act.key);
 
         const auto& self = ctx.self;
-        auto        type = self.get_action_type(act.name);
+        auto        type = ctx.exec_ctx.get_acttype_name(act.name);
         if(!type.empty()) {
             try {
                 binary_to_variant_context _ctx(ctx, type);
@@ -543,9 +541,9 @@ struct abi_from_variant {
             }
             else if(data.is_object()) {
                 const auto& self = ctx.self;
-                auto        type = self.get_action_type(act.name);
+                auto        type = ctx.exec_ctx.get_acttype_name(act.name);
                 if(!type.empty()) {
-                    variant_to_binary_context _ctx(ctx, type);
+                    auto _ctx = variant_to_binary_context(ctx, type);
                     _ctx.short_path  = true;  // Just to be safe while avoiding the complexity of threading an override boolean all over the place
                     act.data         = self._variant_to_binary(type, data, _ctx);
                     valid_empty_data = act.data.empty();
@@ -638,10 +636,10 @@ abi_from_variant::extract(const variant& v, M& o, abi_traverse_context& ctx) {
 
 template <typename T>
 void
-abi_serializer::to_variant(const T& o, variant& vo) const {
+abi_serializer::to_variant(const T& o, variant& vo, const execution_context& exec_ctx) const {
     try {
         auto mvo = mutable_variant_object();
-        impl::abi_traverse_context ctx(*this);
+        impl::abi_traverse_context ctx(*this, exec_ctx);
         impl::abi_to_variant::add(mvo, "_", o, ctx);
         vo = std::move(mvo["_"]);
     }
@@ -650,9 +648,9 @@ abi_serializer::to_variant(const T& o, variant& vo) const {
 
 template <typename T>
 void
-abi_serializer::from_variant(const variant& v, T& o) const {
+abi_serializer::from_variant(const variant& v, T& o, const execution_context& exec_ctx) const {
     try {
-        impl::abi_traverse_context ctx(*this);
+        impl::abi_traverse_context ctx(*this, exec_ctx);
         impl::abi_from_variant::extract(v, o, ctx);
     }
     FC_RETHROW_EXCEPTIONS(error, "Failed to deserialize variant", ("variant", v))

@@ -10,10 +10,10 @@
 #include <evt/chain/config.hpp>
 #include <evt/chain/chain_config.hpp>
 #include <evt/chain/controller.hpp>
+#include <evt/chain/execution_context_impl.hpp>
 #include <evt/chain/global_property_object.hpp>
 #include <evt/chain/transaction.hpp>
 #include <evt/chain/contracts/types.hpp>
-#include <evt/chain/execution/execution_context.hpp>
 
 namespace evt { namespace chain {
 
@@ -60,9 +60,10 @@ struct get_act_charge {
 
 class charge_manager {
 public:
-    charge_manager(const controller& control)
+    charge_manager(const controller& control, const evt_execution_context& exec_ctx)
         : control_(control)
-        , config_(control.get_global_properties().configuration) {}
+        , config_(control.get_global_properties().configuration)
+        , exec_ctx_(exec_ctx) {}
 
 private:
     uint32_t
@@ -96,9 +97,9 @@ public:
         auto pts = ts / trx.actions.size();
         for(auto& act : trx.actions) {
             if(act.index_ == -1) {
-                act.index_ = control_.execution_context().index_of(act.name);
+                act.index_ = exec_ctx_.index_of(act.name);
             }
-            auto as = control_.execution_context().invoke<get_act_charge, act_charge_result>(act.index_, act, config_);
+            auto as = exec_ctx_.invoke<get_act_charge, act_charge_result>(act.index_, act, config_);
             s += (std::get<0>(as) + pts) * std::get<1>(as);  // std::get<1>(as): extra factor per action
         }
 
@@ -117,8 +118,9 @@ public:
     }
 
 private:
-    const controller&   control_;
-    const chain_config& config_;
+    const controller&            control_;
+    const chain_config&          config_;
+    const evt_execution_context& exec_ctx_;
 };
 
 namespace __internal {
@@ -129,7 +131,7 @@ template<typename T>
 struct act_charge<N(issuetoken), T> : public base_act_charge {
     static uint32_t
     cpu(const action& act) {
-        auto& itact = act.data_as<execution::add_clr_t<T>>();
+        auto& itact = act.data_as<add_clr_t<T>>();
         if(itact.names.empty()) {
             return 15;
         }
@@ -154,7 +156,7 @@ template<typename T>
 struct act_charge<N(issuefungible), T> : public base_act_charge {
     static uint32_t
     extra_factor(const action& act) {
-        auto& ifact = act.data_as<execution::add_clr_t<T>>();
+        auto& ifact = act.data_as<add_clr_t<T>>();
         auto sym = ifact.number.sym();
         // set charge to zero when issuing EVT
         if(sym == evt_sym()) {

@@ -3,19 +3,23 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #pragma once
-#include <evt/chain/controller.hpp>
+#include <evt/chain/execution_context_impl.hpp>
 #include <evt/chain/trace.hpp>
 #include <evt/chain/token_database.hpp>
 
 namespace evt { namespace chain {
+
+class controller;
+class transaction_metadata;
 
 class transaction_context {
 private:
     void init(uint64_t initial_net_usage);
 
 public:
-    transaction_context(controller&            c,
-                        transaction_metadata&  t,
+    transaction_context(controller&            control,
+                        evt_execution_context& exec_ctx,
+                        transaction_metadata&  trx_meta,
                         fc::time_point         start = fc::time_point::now());
 
     void init_for_implicit_trx();
@@ -44,7 +48,8 @@ private:
     void finalize_pay();
 
 public:
-    controller& control;
+    controller&            control;
+    evt_execution_context& exec_ctx;
     
     optional<chainbase::database::session> undo_session;
     optional<token_database::session>      undo_token_session;

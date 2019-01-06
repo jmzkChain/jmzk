@@ -8,7 +8,6 @@
 #include <evt/chain/block_state.hpp>
 #include <evt/chain/genesis_state.hpp>
 #include <evt/chain/trace.hpp>
-#include <evt/chain/execution/execution_context.hpp>
 
 namespace chainbase {
 class database;
@@ -20,6 +19,7 @@ class fork_database;
 class token_database;
 class apply_context;
 class charge_manager;
+class execution_context;
 
 struct controller_impl;
 using boost::signals2::signal;
@@ -36,8 +36,8 @@ struct abi_serializer;
 struct evt_link_object;
 }  // namespace contracts
 
+using contracts::abi_serializer;
 using contracts::evt_link_object;
-using execution::execution_context_impl;
 
 enum class db_read_mode {
     SPECULATIVE,
@@ -137,7 +137,7 @@ public:
 
     charge_manager get_charge_manager() const;
 
-    execution_context_impl& execution_context() const;
+    execution_context& get_execution_context() const;
 
     const global_property_object&         get_global_properties() const;
     const dynamic_global_property_object& get_dynamic_global_properties() const;
@@ -223,7 +223,7 @@ public:
 
     uint32_t get_charge(const transaction& trx, size_t signautres_num) const;
 
-    const contracts::abi_serializer& get_abi_serializer() const;
+    const abi_serializer& get_abi_serializer() const;
 
 private:
     std::unique_ptr<controller_impl> my;

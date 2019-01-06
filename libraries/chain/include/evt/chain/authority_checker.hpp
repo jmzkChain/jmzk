@@ -12,11 +12,11 @@
 
 #include <evt/chain/controller.hpp>
 #include <evt/chain/config.hpp>
+#include <evt/chain/execution_context_impl.hpp>
 #include <evt/chain/token_database.hpp>
 #include <evt/chain/types.hpp>
 #include <evt/chain/producer_schedule.hpp>
 #include <evt/chain/contracts/types.hpp>
-#include <evt/chain/execution/execution_context.hpp>
 #include <evt/utilities/parallel_markers.hpp>
 
 namespace evt { namespace chain {
@@ -41,6 +41,7 @@ struct check_authority {};
 class authority_checker {
 private:
     const controller&               control_;
+    const evt_execution_context&    exec_ctx_;
     const public_keys_type&         signing_keys_;
     const token_database&           token_db_;
     const uint32_t                  max_recursion_depth_;
@@ -89,10 +90,11 @@ public:
     template<uint64_t> friend struct __internal::check_authority;
 
 public:
-    authority_checker(const controller& control, const public_keys_type& signing_keys, const token_database& token_db, uint32_t max_recursion_depth)
+    authority_checker(const controller& control, const evt_execution_context& exec_ctx, const public_keys_type& signing_keys, uint32_t max_recursion_depth)
         : control_(control)
+        , exec_ctx_(exec_ctx)
         , signing_keys_(signing_keys)
-        , token_db_(token_db)
+        , token_db_(control.token_db())
         , max_recursion_depth_(max_recursion_depth)
         , used_keys_(signing_keys.size(), false) {}
 
@@ -269,9 +271,9 @@ public:
         });
 
         if(act.index_ == -1) {
-            act.index_ = control_.execution_context().index_of(act.name);
+            act.index_ = exec_ctx_.index_of(act.name);
         }
-        bool result = control_.execution_context().invoke<check_authority, bool>(act.index_, act, this);
+        bool result = exec_ctx_.invoke<check_authority, bool>(act.index_, act, this);
 
         if(result) {
             KeyReverter.cancel();
@@ -311,7 +313,7 @@ struct check_authority<N(newdomain)> {
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& nd     = act.data_as<execution::add_clr_t<Type>>();
+            auto& nd     = act.data_as<add_clr_t<Type>>();
             auto  vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(nd.creator, 1) == 1) {
                 return true;
@@ -355,7 +357,7 @@ struct check_authority<N(newgroup)> {
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& ng = act.data_as<execution::add_clr_t<Type>>();
+            auto& ng = act.data_as<add_clr_t<Type>>();
             if(ng.group.key().is_reserved()) {
                 // if group key is reserved, no need to check authority
                 return true;
@@ -403,7 +405,7 @@ struct check_authority<N(newfungible)> {
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& nf    = act.data_as<execution::add_clr_t<Type>>();
+            auto& nf    = act.data_as<add_clr_t<Type>>();
             auto vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(nf.creator, 1) == 1) {
                 return true;
@@ -444,7 +446,7 @@ struct check_authority<N(transferft)> {
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& tf    = act.data_as<execution::add_clr_t<Type>>();
+            auto& tf    = act.data_as<add_clr_t<Type>>();
             auto vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(tf.from, 1) == 1) {
                 return true;
@@ -461,7 +463,7 @@ struct check_authority<N(recycleft)> {
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& rf    = act.data_as<execution::add_clr_t<Type>>();
+            auto& rf    = act.data_as<add_clr_t<Type>>();
             auto vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(rf.address, 1) == 1) {
                 return true;
@@ -478,7 +480,7 @@ struct check_authority<N(destroyft)> {
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& rf    = act.data_as<execution::add_clr_t<Type>>();
+            auto& rf    = act.data_as<add_clr_t<Type>>();
             auto vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(rf.address, 1) == 1) {
                 return true;
@@ -496,7 +498,7 @@ struct check_authority<N(evt2pevt)> {
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& ep    = act.data_as<execution::add_clr_t<Type>>();
+            auto& ep    = act.data_as<add_clr_t<Type>>();
             auto vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(ep.from, 1) == 1) {
                 return true;
@@ -513,7 +515,7 @@ struct check_authority<N(newsuspend)> {
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& ns    = act.data_as<execution::add_clr_t<Type>>();
+            auto& ns    = act.data_as<add_clr_t<Type>>();
             auto vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(ns.proposer, 1) == 1) {
                 return true;
@@ -556,7 +558,7 @@ struct check_authority<N(execsuspend)> {
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& es    = act.data_as<execution::add_clr_t<Type>>();
+            auto& es    = act.data_as<add_clr_t<Type>>();
             auto vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(es.executor, 1) == 1) {
                 return true;
@@ -573,7 +575,7 @@ struct check_authority<N(addmeta)> {
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& am = act.data_as<execution::add_clr_t<Type>>();
+            auto& am = act.data_as<add_clr_t<Type>>();
 
             auto& ref        = am.creator;
             bool  ref_result = false;
@@ -632,7 +634,7 @@ struct check_authority<N(prodvote)> {
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& pv = act.data_as<execution::add_clr_t<Type>>();
+            auto& pv = act.data_as<add_clr_t<Type>>();
 
             bool result = false;
             checker->get_producer_key(pv.producer, [&](auto& key) {
@@ -662,7 +664,7 @@ struct check_authority<N(newlock)> {
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& nl     = act.data_as<execution::add_clr_t<Type>>();
+            auto& nl     = act.data_as<add_clr_t<Type>>();
             auto  vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(nl.proposer, 1) == 1) {
                 return true;
@@ -679,7 +681,7 @@ struct check_authority<N(aprvlock)> {
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& al     = act.data_as<execution::add_clr_t<Type>>();
+            auto& al     = act.data_as<add_clr_t<Type>>();
             auto  vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(al.approver, 1) == 1) {
                 return true;
@@ -696,7 +698,7 @@ struct check_authority<N(tryunlock)> {
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
-            auto& tl     = act.data_as<execution::add_clr_t<Type>>();
+            auto& tl     = act.data_as<add_clr_t<Type>>();
             auto  vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(tl.executor, 1) == 1) {
                 return true;

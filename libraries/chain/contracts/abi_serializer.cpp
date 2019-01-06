@@ -12,6 +12,7 @@
 #include <evt/chain/transaction.hpp>
 #include <evt/chain/asset.hpp>
 #include <evt/chain/exceptions.hpp>
+#include <evt/chain/execution_context.hpp>
 
 using namespace boost;
 
@@ -56,9 +57,8 @@ pack_unpack() {
         });
 }
 
-abi_serializer::abi_serializer(const execution::execution_context_impl& exec_ctx, const abi_def& abi, const fc::microseconds max_serialization_time_)
-    : exec_ctx_(exec_ctx)
-    , max_serialization_time_(max_serialization_time_) {
+abi_serializer::abi_serializer(const abi_def& abi, const fc::microseconds max_serialization_time_)
+    : max_serialization_time_(max_serialization_time_) {
     configure_built_in_types();
     set_abi(abi);
 }
@@ -119,33 +119,22 @@ abi_serializer::configure_built_in_types() {
 
 void
 abi_serializer::set_abi(const abi_def& abi) {
-    impl::abi_traverse_context ctx(*this);
-
     typedefs_.clear();
     structs_.clear();
-    actions_.clear();
 
     for(const auto& st : abi.structs)
         structs_[st.name] = st;
 
     for(const auto& td : abi.types) {
-        EVT_ASSERT(_is_type(td.type, ctx), invalid_type_inside_abi, "invalid type ${type}", ("type", td.type));
-        EVT_ASSERT(!_is_type(td.new_type_name, ctx), duplicate_abi_type_def_exception, "type already exists", ("new_type_name", td.new_type_name));
+        EVT_ASSERT(_is_type(td.type), invalid_type_inside_abi, "invalid type ${type}", ("type", td.type));
+        EVT_ASSERT(!_is_type(td.new_type_name), duplicate_abi_type_def_exception, "type already exists", ("new_type_name", td.new_type_name));
         typedefs_[td.new_type_name] = td.type;
     }
 
-    for(const auto& a : abi.actions)
-        actions_[a.name] = a.type;
-
-    /**
-       *  The ABI vector may contain duplicates which would make it
-       *  an invalid ABI
-       */
     EVT_ASSERT(typedefs_.size() == abi.types.size(), duplicate_abi_type_def_exception, "duplicate type definition detected");
     EVT_ASSERT(structs_.size() == abi.structs.size(), duplicate_abi_struct_def_exception, "duplicate struct definition detected");
-    EVT_ASSERT(actions_.size() == abi.actions.size(), duplicate_abi_action_def_exception, "duplicate action definition detected");
 
-    validate(ctx);
+    validate();
 }
 
 bool
@@ -155,13 +144,13 @@ abi_serializer::is_builtin_type(const type_name& type) const {
 
 bool
 abi_serializer::is_integer(const type_name& type) const {
-    string stype = type;
+    auto stype = type;
     return boost::starts_with(stype, "uint") || boost::starts_with(stype, "int");
 }
 
 int
 abi_serializer::get_integer_size(const type_name& type) const {
-    string stype = type;
+    auto stype = type;
     EVT_ASSERT(is_integer(type), invalid_type_inside_abi, "${stype} is not an integer type", ("stype", stype));
     if(boost::starts_with(stype, "uint")) {
         return boost::lexical_cast<int>(stype.substr(4));
@@ -188,8 +177,7 @@ abi_serializer::is_optional(const type_name& type) const {
 
 bool
 abi_serializer::is_type(const type_name& type) const {
-    impl::abi_traverse_context ctx(*this);
-    return _is_type(type, ctx);
+    return _is_type(type);
 }
 
 type_name
@@ -206,15 +194,17 @@ abi_serializer::fundamental_type(const type_name& type) const {
 }
 
 bool
-abi_serializer::_is_type(const type_name& rtype, impl::abi_traverse_context& ctx) const {
-    auto h    = ctx.enter_scope();
+abi_serializer::_is_type(const type_name& rtype) const {
     auto type = fundamental_type(rtype);
-    if(built_in_types_.find(type) != built_in_types_.end())
+    if(built_in_types_.find(type) != built_in_types_.end()) {
         return true;
-    if(typedefs_.find(type) != typedefs_.end())
-        return _is_type(typedefs_.find(type)->second, ctx);
-    if(structs_.find(type) != structs_.end())
+    }
+    if(typedefs_.find(type) != typedefs_.end()) {
+        return _is_type(typedefs_.find(type)->second);
+    }
+    if(structs_.find(type) != structs_.end()) {
         return true;
+    }
     return false;
 }
 
@@ -226,13 +216,12 @@ abi_serializer::get_struct(const type_name& type) const {
 }
 
 void
-abi_serializer::validate(impl::abi_traverse_context& ctx) const {
+abi_serializer::validate() const {
     for(const auto& t : typedefs_) {
         try {
             auto types_seen = vector<type_name>{t.first, t.second};
             auto itr        = typedefs_.find(t.second);
             while(itr != typedefs_.end()) {
-                ctx.check_deadline();
                 EVT_ASSERT(find(types_seen.begin(), types_seen.end(), itr->second) == types_seen.end(), abi_circular_def_exception, "Circular reference in type ${type}", ("type", t.first));
                 types_seen.emplace_back(itr->second);
                 itr = typedefs_.find(itr->second);
@@ -242,7 +231,7 @@ abi_serializer::validate(impl::abi_traverse_context& ctx) const {
     }
     for(const auto& t : typedefs_) {
         try {
-            EVT_ASSERT(_is_type(t.second, ctx), invalid_type_inside_abi, "${type}", ("type", t.second));
+            EVT_ASSERT(_is_type(t.second), invalid_type_inside_abi, "${type}", ("type", t.second));
         }
         FC_CAPTURE_AND_RETHROW((t))
     }
@@ -252,7 +241,6 @@ abi_serializer::validate(impl::abi_traverse_context& ctx) const {
                 auto current    = s.second;
                 auto types_seen = vector<type_name>{current.name};
                 while(current.base != type_name()) {
-                    ctx.check_deadline();
                     const auto& base = get_struct(current.base);  //<-- force struct to inherit from another struct
                     EVT_ASSERT(find(types_seen.begin(), types_seen.end(), base.name) == types_seen.end(), abi_circular_def_exception, "Circular reference in struct ${type}", ("type", s.second.name));
                     types_seen.emplace_back(base.name);
@@ -261,20 +249,12 @@ abi_serializer::validate(impl::abi_traverse_context& ctx) const {
             }
             for(const auto& field : s.second.fields) {
                 try {
-                    ctx.check_deadline();
-                    EVT_ASSERT(_is_type(field.type, ctx), invalid_type_inside_abi, "${type}", ("type", field.type));
+                    EVT_ASSERT(_is_type(field.type), invalid_type_inside_abi, "${type}", ("type", field.type));
                 }
                 FC_CAPTURE_AND_RETHROW((field))
             }
         }
         FC_CAPTURE_AND_RETHROW((s))
-    }
-    for(const auto& a : actions_) {
-        try {
-            ctx.check_deadline();
-            EVT_ASSERT(_is_type(a.second, ctx), invalid_type_inside_abi, "${type}", ("type", a.second));
-        }
-        FC_CAPTURE_AND_RETHROW((a))
     }
 }
 
@@ -377,15 +357,15 @@ abi_serializer::_binary_to_variant(const type_name& type, const bytes& binary, i
 }
 
 fc::variant
-abi_serializer::binary_to_variant(const type_name& type, const bytes& binary, bool short_path) const {
-    impl::binary_to_variant_context ctx(*this, type);
+abi_serializer::binary_to_variant(const type_name& type, const bytes& binary, const execution_context& exec_ctx, bool short_path) const {
+    auto ctx = impl::binary_to_variant_context(*this, exec_ctx, type);
     ctx.short_path = short_path;
     return _binary_to_variant(type, binary, ctx);
 }
 
 fc::variant
-abi_serializer::binary_to_variant(const type_name& type, fc::datastream<const char*>& binary, bool short_path) const {
-    impl::binary_to_variant_context ctx(*this, type);
+abi_serializer::binary_to_variant(const type_name& type, fc::datastream<const char*>& binary, const execution_context& exec_ctx, bool short_path) const {
+    auto ctx = impl::binary_to_variant_context(*this, exec_ctx, type);
     ctx.short_path = short_path;
     return _binary_to_variant(type, binary, ctx);
 }
@@ -484,7 +464,7 @@ bytes
 abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var, impl::variant_to_binary_context& ctx) const {
     try {
         auto h = ctx.enter_scope();
-        if(!_is_type(type, ctx)) {
+        if(!_is_type(type)) {
             return var.as<bytes>();
         }
 
@@ -499,27 +479,17 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
 }
 
 bytes
-abi_serializer::variant_to_binary(const type_name& type, const fc::variant& var, bool short_path) const {
-    impl::variant_to_binary_context ctx(*this, type);
+abi_serializer::variant_to_binary(const type_name& type, const fc::variant& var, const execution_context& exec_ctx, bool short_path) const {
+    auto ctx = impl::variant_to_binary_context(*this, exec_ctx, type);
     ctx.short_path = short_path;
     return _variant_to_binary(type, var, ctx);
 }
 
 void
-abi_serializer::variant_to_binary(const type_name& type, const fc::variant& var, fc::datastream<char*>& ds, bool short_path) const {
-    impl::variant_to_binary_context ctx(*this, type);
+abi_serializer::variant_to_binary(const type_name& type, const fc::variant& var, fc::datastream<char*>& ds, const execution_context& exec_ctx, bool short_path) const {
+    auto ctx = impl::variant_to_binary_context(*this, exec_ctx, type);
     ctx.short_path = short_path;
     _variant_to_binary(type, var, ds, ctx);
-}
-
-type_name
-abi_serializer::get_action_type(action_name name) const {
-    auto action = exec_ctx_.get_acttype_name(exec_ctx_.index_of(name));
-    auto itr = actions_.find(action);
-    if(itr != actions_.end()) {
-        return itr->second;
-    }
-    return type_name();
 }
 
 namespace impl {
