@@ -616,6 +616,7 @@ class Test(unittest.TestCase):
         req['keys'] = [user.pub_key.to_string()]
         resp = api.get_history_transactions(json.dumps(req)).text
         res_dict = json.loads(resp)
+
         self.assertEqual(domain_name, res_dict[0]['transaction']['actions'][0]['domain'], msg=resp)
         self.assertTrue(group_name in resp, msg=resp)
         self.assertTrue(str(sym_id) in resp, msg=resp)
