@@ -417,6 +417,7 @@ class Test(unittest.TestCase):
         req['domain'] = domain_name
 
         resp = api.get_actions(json.dumps(req)).text
+        res_dict = json.loads(resp)
         self.assertTrue(token1_name in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
 
@@ -429,6 +430,7 @@ class Test(unittest.TestCase):
         req['domain'] = domain_name
 
         resp = api.get_actions(json.dumps(req)).text
+        res_dict = json.loads(resp)
         self.assertTrue(token1_name in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
 
@@ -442,6 +444,7 @@ class Test(unittest.TestCase):
         req['domain'] = domain_name
 
         resp = api.get_actions(json.dumps(req)).text
+        res_dict = json.loads(resp)
         self.assertTrue(token1_name in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
 
@@ -456,6 +459,7 @@ class Test(unittest.TestCase):
         req['domain'] = domain_name
 
         resp = api.get_actions(json.dumps(req)).text
+        res_dict = json.loads(resp)
         self.assertTrue(token1_name in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
 
@@ -471,6 +475,7 @@ class Test(unittest.TestCase):
         req['domain'] = domain_name
 
         resp = api.get_actions(json.dumps(req)).text
+        res_dict = json.loads(resp)
         self.assertTrue(token1_name in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
 
@@ -486,6 +491,7 @@ class Test(unittest.TestCase):
         req['domain'] = domain_name
 
         resp = api.get_actions(json.dumps(req)).text
+        res_dict = json.loads(resp)
         self.assertTrue(token1_name in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
 
@@ -502,6 +508,7 @@ class Test(unittest.TestCase):
         req['key'] = sym_id
 
         resp = api.get_actions(json.dumps(req)).text
+        res_dict = json.loads(resp)
         self.assertTrue('everipay' in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
 
@@ -516,7 +523,8 @@ class Test(unittest.TestCase):
         req['sym_id'] = sym_id
 
         resp = api.get_fungible_actions(json.dumps(req)).text
-        self.assertTrue('issuefungible' in resp, msg=resp)
+        res_dict = json.loads(resp)
+        self.assertEqual(res_dict[0]['name'], 'issuefungible', msg=resp)
         self.assertTrue(str(sym_id) in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
 
@@ -529,7 +537,8 @@ class Test(unittest.TestCase):
         req['sym_id'] = sym_id
 
         resp = api.get_fungible_actions(json.dumps(req)).text
-        self.assertTrue('issuefungible' in resp, msg=resp)
+        res_dict = json.loads(resp)
+        self.assertEqual(res_dict[0]['name'], 'issuefungible', msg=resp)
         self.assertTrue(str(sym_id) in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
 
@@ -542,7 +551,8 @@ class Test(unittest.TestCase):
         req['sym_id'] = sym_id
 
         resp = api.get_fungible_actions(json.dumps(req)).text
-        self.assertTrue('issuefungible' in resp, msg=resp)
+        res_dict = json.loads(resp)
+        self.assertEqual(res_dict[0]['name'], 'everipay', msg=resp)
         self.assertTrue(str(sym_id) in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
 
@@ -556,6 +566,7 @@ class Test(unittest.TestCase):
         req['sym_id'] = sym_id
 
         resp = api.get_fungible_actions(json.dumps(req)).text
+        res_dict = json.loads(resp)
         self.assertTrue('issuefungible' in resp, msg=resp)
         self.assertTrue(str(sym_id) in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
@@ -563,6 +574,7 @@ class Test(unittest.TestCase):
         req['sym_id'] = 1
         req['address'] = user.pub_key.to_string()
         resp = api.get_fungible_actions(json.dumps(req)).text
+        res_dict = json.loads(resp)
         self.assertTrue('evt2pevt' in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
 
@@ -584,7 +596,8 @@ class Test(unittest.TestCase):
         req['id'] = res_dict['transaction_id']
 
         resp = api.get_history_transaction(json.dumps(req)).text
-        self.assertTrue('newdomain' in resp, msg=resp)
+        res_dict = json.loads(resp)
+        self.assertEqual(res_dict['transaction']['actions'][0]['name'], 'newdomain', msg=resp)
         self.assertTrue(name in resp, msg=resp)
 
     def test_get_history_transactions(self):
@@ -603,8 +616,7 @@ class Test(unittest.TestCase):
         req['keys'] = [user.pub_key.to_string()]
         resp = api.get_history_transactions(json.dumps(req)).text
         res_dict = json.loads(resp)
-        self.assertTrue(domain_name == res_dict[0]['transaction']['actions'][0]['domain'])
-        self.assertTrue(domain_name in resp, msg=resp)
+        self.assertEqual(domain_name, res_dict[0]['transaction']['actions'][0]['domain'], msg=resp)
         self.assertTrue(group_name in resp, msg=resp)
         self.assertTrue(str(sym_id) in resp, msg=resp)
 
