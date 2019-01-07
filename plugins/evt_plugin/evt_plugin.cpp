@@ -179,7 +179,7 @@ read_only::get_suspend(const get_suspend_params& params) {
     variant     var;
     suspend_def suspend;
     db.read_suspend(params.name, suspend);
-    db_.get_abi_serializer().to_variant(suspend, var);
+    db_.get_abi_serializer().to_variant(suspend, var, db_.get_execution_context());
     return var;
 }
 

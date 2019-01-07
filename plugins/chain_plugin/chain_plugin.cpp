@@ -999,7 +999,7 @@ read_only::get_info(const read_only::get_info_params&) const {
 
 fc::variant
 read_only::get_block(const read_only::get_block_params& params) const {
-    signed_block_ptr block;
+    auto block = signed_block_ptr();
     EVT_ASSERT(!params.block_num_or_id.empty() && params.block_num_or_id.size() <= 64, chain::block_id_type_exception, "Invalid Block number or ID, must be greater than 0 and less than 64 characters");
     try {
         block = db.fetch_block_by_id(fc::variant(params.block_num_or_id).as<block_id_type>());
@@ -1011,8 +1011,8 @@ read_only::get_block(const read_only::get_block_params& params) const {
 
     EVT_ASSERT(block, unknown_block_exception, "Could not find block: ${block}", ("block", params.block_num_or_id));
 
-    fc::variant pretty_output;
-    db.get_abi_serializer().to_variant(*block, pretty_output);
+    auto pretty_output = fc::variant();
+    db.get_abi_serializer().to_variant(*block, pretty_output, db.get_execution_context());
 
     uint32_t ref_block_prefix = block->id()._hash[1];
 
@@ -1024,6 +1024,7 @@ read_only::get_block_header_state(const get_block_header_state_params& params) c
     block_state_ptr    b;
     optional<uint64_t> block_num;
     std::exception_ptr e;
+
     try {
         block_num = fc::to_uint64(params.block_num_or_id);
     }
@@ -1072,7 +1073,7 @@ read_only::get_transaction(const get_transaction_params& params) {
     for(auto& tx : block->transactions) {
         if(tx.trx.id() == params.id) {
             auto var = fc::variant();
-            db.get_abi_serializer().to_variant(tx.trx, var);
+            db.get_abi_serializer().to_variant(tx.trx, var, db.get_execution_context());
 
             auto mv = fc::mutable_variant_object(var);
             mv["block_num"] = block_num;
@@ -1116,13 +1117,14 @@ read_write::push_block(const read_write::push_block_params& params, next_functio
 void
 read_write::push_transaction(const read_write::push_transaction_params& params, next_function<read_write::push_transaction_results> next) {
     try {
-        auto pretty_input = std::make_shared<packed_transaction>();
+        auto  ptrx     = std::make_shared<packed_transaction>();
+        auto& exec_ctx = db.get_execution_context();
         try {
-            db.get_abi_serializer().from_variant(params, *pretty_input);
+            db.get_abi_serializer().from_variant(params, *ptrx, exec_ctx);
         }
         EVT_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-        app().get_method<incoming::methods::transaction_async>()(pretty_input, true, [this, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+        app().get_method<incoming::methods::transaction_async>()(ptrx, true, [this, next, &exec_ctx](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
             if(result.contains<fc::exception_ptr>()) {
                 next(result.get<fc::exception_ptr>());
             }
@@ -1130,10 +1132,10 @@ read_write::push_transaction(const read_write::push_transaction_params& params, 
                 auto trx_trace_ptr = result.get<transaction_trace_ptr>();
 
                 try {
-                    fc::variant pretty_output;
-                    db.get_abi_serializer().to_variant(*trx_trace_ptr, pretty_output);
+                    auto pretty_output = fc::variant();
+                    db.get_abi_serializer().to_variant(*trx_trace_ptr, pretty_output, exec_ctx);
 
-                    chain::transaction_id_type id = trx_trace_ptr->id;
+                    auto id = trx_trace_ptr->id;
                     next(read_write::push_transaction_results{id, pretty_output});
                 }
                 CATCH_AND_CALL(next);
@@ -1150,7 +1152,7 @@ read_write::push_transaction(const read_write::push_transaction_params& params, 
 }
 
 static void
-push_recurse(read_write* rw, int index, const std::shared_ptr<read_write::push_transactions_params>& params,const std::shared_ptr<read_write::push_transactions_results>& results, const next_function<read_write::push_transactions_results>& next) {
+push_recurse(read_write* rw, int index, const std::shared_ptr<read_write::push_transactions_params>& params, const std::shared_ptr<read_write::push_transactions_results>& results, const next_function<read_write::push_transactions_results>& next) {
     auto wrapped_next = [=](const fc::static_variant<fc::exception_ptr, read_write::push_transaction_results>& result) {
         if(result.contains<fc::exception_ptr>()) {
             const auto& e = result.get<fc::exception_ptr>();
@@ -1188,7 +1190,7 @@ read_write::push_transactions(const read_write::push_transactions_params& params
 
 static variant
 action_abi_to_variant(const abi_serializer& abi, contracts::type_name action_type) {
-    variant v;
+    auto v = fc::variant();
     if(abi.is_struct(action_type)) {
         to_variant(abi.get_struct(action_type), v);
     }
@@ -1197,13 +1199,14 @@ action_abi_to_variant(const abi_serializer& abi, contracts::type_name action_typ
 
 read_only::abi_json_to_bin_result
 read_only::abi_json_to_bin(const read_only::abi_json_to_bin_params& params) const try {
-    auto& abi = db.get_abi_serializer();
+    auto& abi      = db.get_abi_serializer();
+    auto& exec_ctx = db.get_execution_context();
 
     auto result      = abi_json_to_bin_result();
-    auto action_type = abi.get_action_type(params.action);
-    EVT_ASSERT(!action_type.empty(), action_exception, "Unknown action ${action}", ("action", params.action));
+    auto action_type = exec_ctx.get_acttype_name(exec_ctx.index_of(params.action));
+
     try {
-        result.binargs = abi.variant_to_binary(action_type, params.args, shorten_abi_errors);
+        result.binargs = abi.variant_to_binary(action_type, params.args, exec_ctx, shorten_abi_errors);
     }
     EVT_RETHROW_EXCEPTIONS(chain::action_args_exception,
                            "'${args}' is invalid args for action '${action}'. expected '${proto}'",
@@ -1214,10 +1217,13 @@ FC_CAPTURE_AND_RETHROW((params.action)(params.args))
 
 read_only::abi_bin_to_json_result
 read_only::abi_bin_to_json(const read_only::abi_bin_to_json_params& params) const {
-    auto& abi = db.get_abi_serializer();
+    auto& abi      = db.get_abi_serializer();
+    auto& exec_ctx = db.get_execution_context();
 
-    auto result = abi_bin_to_json_result();
-    result.args = abi.binary_to_variant(abi.get_action_type(params.action), params.binargs, shorten_abi_errors);
+    auto result      = abi_bin_to_json_result();
+    auto action_type = exec_ctx.get_acttype_name(exec_ctx.index_of(params.action));
+
+    result.args = abi.binary_to_variant(action_type, params.binargs, exec_ctx, shorten_abi_errors);
     return result;
 }
 
@@ -1227,7 +1233,7 @@ read_only::trx_json_to_digest(const trx_json_to_digest_params& params) const {
     try {
         auto trx = std::make_shared<transaction>();
         try {
-            db.get_abi_serializer().from_variant(params, *trx);
+            db.get_abi_serializer().from_variant(params, *trx, db.get_execution_context());
         }
         EVT_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid transaction")
         result.digest = trx->sig_digest(db.get_chain_id());
@@ -1248,7 +1254,7 @@ read_only::get_required_keys_result
 read_only::get_required_keys(const get_required_keys_params& params) const {
     auto trx = transaction();
     try {
-        db.get_abi_serializer().from_variant(params.transaction, trx);
+        db.get_abi_serializer().from_variant(params.transaction, trx, db.get_execution_context());
     }
     EVT_RETHROW_EXCEPTIONS(chain::transaction_type_exception, "Invalid transaction");
 
@@ -1269,7 +1275,7 @@ read_only::get_charge_result
 read_only::get_charge(const get_charge_params& params) const {
     auto trx = transaction();
     try {
-        db.get_abi_serializer().from_variant(params.transaction, trx);
+        db.get_abi_serializer().from_variant(params.transaction, trx, db.get_execution_context());
     }
     EVT_RETHROW_EXCEPTIONS(chain::transaction_type_exception, "Invalid transaction");
 
@@ -1281,7 +1287,7 @@ read_only::get_charge(const get_charge_params& params) const {
 
 fc::variant
 read_only::get_transaction_ids_for_block(const get_transaction_ids_for_block_params& params) const {
-    signed_block_ptr block;
+    auto block = signed_block_ptr();
     try {
         block = db.fetch_block_by_id(params.block_id);
     }

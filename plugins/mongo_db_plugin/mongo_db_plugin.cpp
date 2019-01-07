@@ -63,10 +63,10 @@ private:
     using inblock_ptr = std::tuple<block_state_ptr, bool>; // true for irreversible block
 
 public:
-    mongo_db_plugin_impl()
-        : evt_abi(evt_contract_abi(), fc::hours(1))
+    mongo_db_plugin_impl(const controller& control)
+        : control_(control)
         , mongo_conn{}
-    { }
+    {}
 
     ~mongo_db_plugin_impl();
 
@@ -95,8 +95,7 @@ public:
     void wipe_database();
 
 public:
-    abi_serializer               evt_abi;
-    std::optional<chain_id_type> chain_id;
+    const controller& control_;
 
     bool configured{false};
     bool wipe_database_on_startup{false};
@@ -254,12 +253,15 @@ namespace __internal {
 void
 add_data(bsoncxx::builder::basic::document& act_doc,
          const chain::action&               act,
-         const abi_serializer&              evt_abi) {
+         const abi_serializer&              evt_abi,
+         const execution_context&           exec_ctx) {
     using bsoncxx::builder::basic::kvp;
     try {
-        auto& abis = evt_abi;
-        auto v     = abis.binary_to_variant(abis.get_action_type(act.name), act.data);
-        auto json  = fc::json::to_string(v);
+        auto& abis    = evt_abi;
+        auto  acttype = exec_ctx.get_acttype_name(exec_ctx.index_of(act.name));
+
+        auto v    = abis.binary_to_variant(acttype, act.data, exec_ctx);
+        auto json = fc::json::to_string(v);
         try {
             const auto& value = bsoncxx::from_json(json);
             act_doc.append(kvp("data", value));
@@ -411,7 +413,7 @@ mongo_db_plugin_impl::_process_block(const signed_block& block, std::deque<trans
                    kvp("key", msg.key.to_string()),
                    kvp("created_at", b_date{now}));
 
-        add_data(doc, msg, evt_abi);
+        add_data(doc, msg, control_.get_abi_serializer(), control_.get_execution_context());
         write_ctx.get_actions().append(insert_one(doc.view()));
     };
 
@@ -470,7 +472,7 @@ mongo_db_plugin_impl::_process_block(const signed_block& block, std::deque<trans
             }
         }));
 
-        auto keys = trx.get_signature_keys(*chain_id);
+        auto keys = trx.get_signature_keys(control_.get_chain_id());
         doc.append(kvp("keys", [&keys](bsoncxx::builder::basic::sub_array subarr) {
             for(const auto& key : keys) {
                 subarr.append((std::string)key);
@@ -710,12 +712,9 @@ mongo_db_plugin_impl::init() {
 // mongo_db_plugin
 ////////////
 
-mongo_db_plugin::mongo_db_plugin()
-    : my_(new mongo_db_plugin_impl) {
-}
+mongo_db_plugin::mongo_db_plugin() {}
 
-mongo_db_plugin::~mongo_db_plugin() {
-}
+mongo_db_plugin::~mongo_db_plugin() {}
 
 const mongocxx::uri&
 mongo_db_plugin::uri() const {
@@ -738,6 +737,8 @@ mongo_db_plugin::set_program_options(options_description& cli, options_descripti
 
 void
 mongo_db_plugin::plugin_initialize(const variables_map& options) {
+    my_ = std::make_unique<mongo_db_plugin_impl>(app().get_plugin<chain_plugin>().chain());
+
     if(options.count("mongodb-uri")) {
         ilog("initializing mongo_db_plugin");
         my_->configured = true;
@@ -772,7 +773,6 @@ mongo_db_plugin::plugin_initialize(const variables_map& options) {
         my_->mongo_uri  = std::move(uri);
         my_->mongo_conn = mongocxx::client{my_->mongo_uri};
         my_->mongo_db   = my_->mongo_conn[dbname];
-        my_->chain_id   = app().get_plugin<chain_plugin>().chain().get_chain_id();
 
         if(my_->wipe_database_on_startup) {
             my_->wipe_database();

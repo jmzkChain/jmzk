@@ -38,10 +38,11 @@
 #include <fc/variant.hpp>
 
 #include <evt/chain/config.hpp>
+#include <evt/chain/exceptions.hpp>
+#include <evt/chain/execution_context_impl.hpp>
 #include <evt/chain/contracts/types.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
 #include <evt/chain/contracts/evt_contract_abi.hpp>
-#include <evt/chain/exceptions.hpp>
 #include <evt/chain_plugin/chain_plugin.hpp>
 #include <evt/utilities/key_conversion.hpp>
 
@@ -1030,9 +1031,9 @@ struct set_suspend_subcommands {
             auto varsuspend = call(get_suspend_func, fc::mutable_variant_object("name", (proposal_name)name));
             auto suspend = suspend_def();
 
-            auto exec_ctx = execution_context_impl();
-            auto abi = abi_serializer(exec_ctx, evt_contract_abi(), fc::hours(1));
-            abi.from_variant(varsuspend, suspend);
+            auto exec_ctx = evt_execution_context();
+            auto abi = abi_serializer(evt_contract_abi(), fc::hours(1));
+            abi.from_variant(varsuspend, suspend, exec_ctx);
 
             auto public_keys = call(wallet_url, wallet_public_keys);
             auto get_arg     = fc::mutable_variant_object("name", (proposal_name)name)("available_keys", public_keys);

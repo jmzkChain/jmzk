@@ -24,7 +24,9 @@ using boost::condition_variable_any;
 #include <fmt/format.h>
 
 #include <evt/chain/config.hpp>
+#include <evt/chain/controller.hpp>
 #include <evt/chain/exceptions.hpp>
+#include <evt/chain/execution_context.hpp>
 #include <evt/chain/genesis_state.hpp>
 #include <evt/chain/plugin_interface.hpp>
 #include <evt/chain/snapshot.hpp>
@@ -55,10 +57,7 @@ private:
     using inblock_ptr = std::tuple<block_state_ptr, bool>; // true for irreversible block
 
 public:
-    postgres_plugin_impl()
-        : abi_(evt_contract_abi(), fc::hours(1))
-    { }
-
+    postgres_plugin_impl(const controller& control) : control_(control) {}
     ~postgres_plugin_impl();
 
 public:
@@ -84,8 +83,7 @@ public:
     pg          db_;
     std::string connstr_;
 
-    abi_serializer               abi_;
-    std::optional<chain_id_type> chain_id_;
+    const controller& control_;
 
     bool     configured_          = false;
     uint32_t last_sync_block_num_ = 0;
@@ -351,7 +349,7 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
         }
     }
 
-    auto actx      = add_context(cctx, *chain_id_, abi_);
+    auto actx      = add_context(cctx, control_.get_chain_id(), control_.get_abi_serializer(), control_.get_execution_context());
     actx.block_id  = id;
     actx.block_num = (int)block->block_num;
     actx.ts        = (std::string)block->header.timestamp.to_time_point();
@@ -490,9 +488,7 @@ postgres_plugin_impl::~postgres_plugin_impl() {
     }
 }
 
-postgres_plugin::postgres_plugin()
-    : my_(new postgres_plugin_impl()) {
-}
+postgres_plugin::postgres_plugin() {}
 
 postgres_plugin::~postgres_plugin() {}
 
@@ -528,6 +524,8 @@ postgres_plugin::set_program_options(options_description& cli, options_descripti
 
 void
 postgres_plugin::plugin_initialize(const variables_map& options) {
+    my_ = std::make_unique<postgres_plugin_impl>(app().get_plugin<chain_plugin>().chain());
+
     if(options.count("postgres-uri")) {
         ilog("initializing postgres_plugin");
         my_->configured_ = true;
@@ -554,8 +552,7 @@ postgres_plugin::plugin_initialize(const variables_map& options) {
         ilog("connecting to ${u}", ("u", uri));
         
         my_->db_.connect(uri);
-        my_->chain_id_ = app().get_plugin<chain_plugin>().chain().get_chain_id();
-        my_->connstr_  = uri;
+        my_->connstr_ = uri;
 
         if(delete_state) {
             my_->wipe_database();

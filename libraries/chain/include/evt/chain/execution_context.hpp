@@ -4,13 +4,14 @@
  */
 #pragma once
 
+#include <boost/noncopyable.hpp>
 #include <evt/chain/exceptions.hpp>
 #include <evt/chain/types.hpp>
 #include <evt/chain/contracts/types.hpp>
 
 namespace evt { namespace chain {
 
-class execution_context {
+class execution_context : boost::noncopyable {
 public:
     virtual int index_of(name act) const = 0;
     virtual std::string get_acttype_name(int index) const = 0;

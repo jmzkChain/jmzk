@@ -29,16 +29,12 @@
 #include <evt/chain/contracts/evt_link.hpp>
 #include <evt/chain/contracts/evt_link_object.hpp>
 
-#if defined(__clang__)
-#pragma GCC diagnostic ignored "-Winstantiation-after-specialization"
-#endif
-
 namespace evt { namespace chain { namespace contracts {
 
 #define EVT_ACTION_IMPL_BEGIN(name)                   \
     template<>                                        \
     struct apply_action<N(name)> {                    \
-        template<typename T>                          \
+        template<typename ACT>                        \
         static void invoke(apply_context& context)
 
 #define EVT_ACTION_IMPL_END() };
@@ -168,7 +164,7 @@ auto get_metavalue = [](const auto& obj, auto k) {
 EVT_ACTION_IMPL_BEGIN(newdomain) {
     using namespace __internal;
 
-    auto ndact = context.act.data_as<newdomain>();
+    auto ndact = context.act.data_as<ACT>();
     try {
         EVT_ASSERT(context.has_authorized(ndact.name, N128(.create)), action_authorize_exception, "Authorized information does not match.");
 
@@ -209,7 +205,7 @@ EVT_ACTION_IMPL_END()
 EVT_ACTION_IMPL_BEGIN(issuetoken) {
     using namespace __internal;
 
-    auto itact = context.act.data_as<issuetoken>();
+    auto itact = context.act.data_as<ACT>();
     try {
         EVT_ASSERT(context.has_authorized(itact.domain, N128(.issue)), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(!itact.owner.empty(), token_owner_exception, "Owner cannot be empty.");
@@ -258,7 +254,7 @@ check_token_locked(const token_def& token) {
 EVT_ACTION_IMPL_BEGIN(transfer) {
     using namespace __internal;
 
-    auto ttact = context.act.data_as<transfer>();
+    auto ttact = context.act.data_as<ACT>();
     try {
         EVT_ASSERT(context.has_authorized(ttact.domain, ttact.name), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(!ttact.to.empty(), token_owner_exception, "New owner cannot be empty.");
@@ -284,7 +280,7 @@ EVT_ACTION_IMPL_END()
 EVT_ACTION_IMPL_BEGIN(destroytoken) {
     using namespace __internal;
 
-    auto dtact = context.act.data_as<destroytoken>();
+    auto dtact = context.act.data_as<ACT>();
     try {
         EVT_ASSERT(context.has_authorized(dtact.domain, dtact.name), action_authorize_exception, "Authorized information does not match.");
 
@@ -314,7 +310,7 @@ EVT_ACTION_IMPL_END()
 EVT_ACTION_IMPL_BEGIN(newgroup) {
     using namespace __internal;
 
-    auto ngact = context.act.data_as<newgroup>();
+    auto ngact = context.act.data_as<ACT>();
     try {
         EVT_ASSERT(context.has_authorized(N128(.group), ngact.name), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(!ngact.group.key().is_generated(), group_key_exception, "Group key cannot be generated key");
@@ -335,7 +331,7 @@ EVT_ACTION_IMPL_END()
 EVT_ACTION_IMPL_BEGIN(updategroup) {
     using namespace __internal;
 
-    auto ugact = context.act.data_as<updategroup>();
+    auto ugact = context.act.data_as<ACT>();
     try {
         EVT_ASSERT(context.has_authorized(N128(.group), ugact.name), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(ugact.name == ugact.group.name(), group_name_exception, "Names in action are not the same.");
@@ -357,7 +353,7 @@ EVT_ACTION_IMPL_END()
 EVT_ACTION_IMPL_BEGIN(updatedomain) {
     using namespace __internal;
 
-    auto udact = context.act.data_as<updatedomain>();
+    auto udact = context.act.data_as<ACT>();
     try {
         EVT_ASSERT(context.has_authorized(udact.name, N128(.update)), action_authorize_exception, "Authorized information does not match");
 
@@ -420,7 +416,7 @@ transfer_fungible(asset& from, asset& to, uint64_t total) {
 EVT_ACTION_IMPL_BEGIN(newfungible) {
     using namespace __internal;
 
-    auto nfact = context.act.data_as<newfungible>();
+    auto nfact = context.act.data_as<ACT>();
     try {
         EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(nfact.sym.id())), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(!nfact.name.empty(), fungible_name_exception, "Fungible name cannot be empty");
@@ -469,7 +465,7 @@ EVT_ACTION_IMPL_END()
 EVT_ACTION_IMPL_BEGIN(updfungible) {
     using namespace __internal;
 
-    auto ufact = context.act.data_as<updfungible>();
+    auto ufact = context.act.data_as<ACT>();
     try {
         EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(ufact.sym_id)), action_authorize_exception, "Authorized information does not match.");
 
@@ -504,7 +500,7 @@ EVT_ACTION_IMPL_END()
 EVT_ACTION_IMPL_BEGIN(issuefungible) {
     using namespace __internal;
 
-    auto ifact = context.act.data_as<issuefungible>();
+    auto& ifact = context.act.data_as<add_clr_t<ACT>>();
 
     try {
         auto sym = ifact.number.sym();
@@ -535,7 +531,7 @@ EVT_ACTION_IMPL_END()
 EVT_ACTION_IMPL_BEGIN(transferft) {
     using namespace __internal;
 
-    auto tfact = context.act.data_as<const transferft&>();
+    auto& tfact = context.act.data_as<add_clr_t<ACT>>();
 
     try {
         auto sym = tfact.number.sym();
@@ -565,7 +561,7 @@ EVT_ACTION_IMPL_END()
 EVT_ACTION_IMPL_BEGIN(recycleft) {
     using namespace __internal;
 
-    auto rfact = context.act.data_as<const recycleft&>();
+    auto& rfact = context.act.data_as<add_clr_t<ACT>>();
 
     try {
         auto sym = rfact.number.sym();
@@ -594,7 +590,7 @@ EVT_ACTION_IMPL_END()
 EVT_ACTION_IMPL_BEGIN(destroyft) {
     using namespace __internal;
 
-    auto rfact = context.act.data_as<const destroyft&>();
+    auto& rfact = context.act.data_as<add_clr_t<ACT>>();
 
     try {
         auto sym = rfact.number.sym();
@@ -623,7 +619,7 @@ EVT_ACTION_IMPL_END()
 EVT_ACTION_IMPL_BEGIN(evt2pevt) {
     using namespace __internal;
 
-    auto epact = context.act.data_as<evt2pevt>();
+    auto& epact = context.act.data_as<add_clr_t<ACT>>();
 
     try {
         EVT_ASSERT(epact.number.sym() == evt_sym(), fungible_symbol_exception, "Only EVT tokens can be converted to Pinned EVT tokens");
@@ -775,7 +771,7 @@ EVT_ACTION_IMPL_BEGIN(addmeta) {
     using namespace hana;
 
     const auto& act   = context.act;
-    auto        amact = context.act.data_as<addmeta>();
+    auto&       amact = context.act.data_as<add_clr_t<ACT>>();
     try {
         auto& tokendb = context.token_db;
 
@@ -917,7 +913,7 @@ EVT_ACTION_IMPL_END()
 EVT_ACTION_IMPL_BEGIN(aprvsuspend) {
     using namespace __internal;
 
-    auto aeact = context.act.data_as<aprvsuspend>();
+    auto& aeact = context.act.data_as<add_clr_t<ACT>>();
     try {
         EVT_ASSERT(context.has_authorized(N128(.suspend), aeact.name), action_authorize_exception, "Authorized information does not match.");
 
@@ -947,7 +943,7 @@ EVT_ACTION_IMPL_END()
 EVT_ACTION_IMPL_BEGIN(cancelsuspend) {
     using namespace __internal;
 
-    auto csact = context.act.data_as<cancelsuspend>();
+    auto& csact = context.act.data_as<add_clr_t<ACT>>();
     try {
         EVT_ASSERT(context.has_authorized(N128(.suspend), csact.name), action_authorize_exception, "Authorized information does not match.");
 
@@ -965,7 +961,7 @@ EVT_ACTION_IMPL_BEGIN(cancelsuspend) {
 EVT_ACTION_IMPL_END()
 
 EVT_ACTION_IMPL_BEGIN(execsuspend) {
-    auto esact = context.act.data_as<execsuspend>();
+    auto& esact = context.act.data_as<add_clr_t<ACT>>();
     try {
         EVT_ASSERT(context.has_authorized(N128(.suspend), esact.name), action_authorize_exception, "Authorized information does not match.");
 
@@ -1011,7 +1007,7 @@ EVT_ACTION_IMPL_END()
 EVT_ACTION_IMPL_BEGIN(paycharge) {
     using namespace __internal;
     
-    auto& pcact = context.act.data_as<const paycharge&>();
+    auto& pcact = context.act.data_as<add_clr_t<ACT>>();
     try {
         auto& tokendb = context.token_db;
 
@@ -1049,7 +1045,7 @@ EVT_ACTION_IMPL_END()
 EVT_ACTION_IMPL_BEGIN(everipass) {
     using namespace __internal;
 
-    auto& epact = context.act.data_as<const everipass&>();
+    auto& epact = context.act.data_as<add_clr_t<ACT>>();
     try {
 
         auto& tokendb = context.token_db;
@@ -1109,7 +1105,7 @@ EVT_ACTION_IMPL_END()
 EVT_ACTION_IMPL_BEGIN(everipay) {
     using namespace __internal;
 
-    auto& epact = context.act.data_as<const everipay&>();
+    auto& epact = context.act.data_as<add_clr_t<ACT>>();
     try {
         check_address_reserved(epact.payee);
 
@@ -1179,7 +1175,7 @@ EVT_ACTION_IMPL_BEGIN(everipay) {
 EVT_ACTION_IMPL_END()
 
 EVT_ACTION_IMPL_BEGIN(prodvote) {
-    auto pvact = context.act.data_as<const prodvote&>();
+    auto& pvact = context.act.data_as<add_clr_t<ACT>>();
     try {
         EVT_ASSERT(context.has_authorized(N128(.prodvote), pvact.key), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(pvact.value > 0 && pvact.value < 1'000'000, prodvote_value_exception, "Invalid prodvote value: ${v}", ("v",pvact.value));
@@ -1270,7 +1266,7 @@ EVT_ACTION_IMPL_BEGIN(prodvote) {
 EVT_ACTION_IMPL_END()
 
 EVT_ACTION_IMPL_BEGIN(updsched) {
-    auto usact = context.act.data_as<updsched>();
+    auto usact = context.act.data_as<ACT>();
     try {
         EVT_ASSERT(context.has_authorized(N128(.prodsched), N128(.update)), action_authorize_exception, "Authorized information does not match.");
         context.control.set_proposed_producers(std::move(usact.producers));
@@ -1282,7 +1278,7 @@ EVT_ACTION_IMPL_END()
 EVT_ACTION_IMPL_BEGIN(newlock) {
     using namespace __internal;
 
-    auto nlact = context.act.data_as<newlock>();
+    auto nlact = context.act.data_as<ACT>();
     try {
         EVT_ASSERT(context.has_authorized(N128(.lock), nlact.name), action_authorize_exception, "Authorized information does not match.");
 
@@ -1297,7 +1293,7 @@ EVT_ACTION_IMPL_BEGIN(newlock) {
         // check condition
         switch(nlact.condition.type()) {
         case lock_type::cond_keys: {
-            auto& lck = nlact.condition.get<lock_condkeys>();
+            auto& lck = nlact.condition.template get<lock_condkeys>();
             EVT_ASSERT(lck.threshold > 0 && lck.cond_keys.size() >= lck.threshold, lock_condition_exception, "Conditional keys for lock should not be empty or threshold should not be zero");
         }    
         }  // switch
@@ -1318,7 +1314,7 @@ EVT_ACTION_IMPL_BEGIN(newlock) {
         for(auto& la : nlact.assets) {
             switch(la.type()) {
             case asset_type::tokens: {
-                auto& tokens = la.get<locknft_def>();
+                auto& tokens = la.template get<locknft_def>();
                 EVT_ASSERT(tokens.names.size() > 0, lock_assets_exception, "NFT assets should be provided.");
 
                 auto tt   = transfer();
@@ -1332,7 +1328,7 @@ EVT_ACTION_IMPL_BEGIN(newlock) {
                 break;
             }
             case asset_type::fungible: {
-                auto& fungible = la.get<lockft_def>();
+                auto& fungible = la.template get<lockft_def>();
 
                 EVT_ASSERT(fungible.amount.sym().id() != PEVT_SYM_ID, lock_assets_exception, "Pinned EVT cannot be used to be locked.");
                 has_fungible = true;
@@ -1364,7 +1360,7 @@ EVT_ACTION_IMPL_BEGIN(newlock) {
         for(auto& la : nlact.assets) {
             switch(la.type()) {
             case asset_type::tokens: {
-                auto& tokens = la.get<locknft_def>();
+                auto& tokens = la.template get<locknft_def>();
 
                 for(auto& tn : tokens.names) {
                     token_def token;
@@ -1376,7 +1372,7 @@ EVT_ACTION_IMPL_BEGIN(newlock) {
                 break;
             }
             case asset_type::fungible: {
-                auto& fungible = la.get<lockft_def>();
+                auto& fungible = la.template get<lockft_def>();
 
                 asset fass, tass;
                 tokendb.read_asset(fungible.from, fungible.amount.sym(), fass);
@@ -1413,7 +1409,7 @@ EVT_ACTION_IMPL_END()
 EVT_ACTION_IMPL_BEGIN(aprvlock) {
     using namespace __internal;
 
-    auto alact = context.act.data_as<const aprvlock&>();
+    auto& alact = context.act.data_as<add_clr_t<ACT>>();
     try {
         EVT_ASSERT(context.has_authorized(N128(.lock), alact.name), action_authorize_exception, "Authorized information does not match.");
 
@@ -1445,7 +1441,7 @@ EVT_ACTION_IMPL_END()
 EVT_ACTION_IMPL_BEGIN(tryunlock) {
     using namespace __internal;
 
-    auto tuact = context.act.data_as<const tryunlock&>();
+    auto& tuact = context.act.data_as<add_clr_t<ACT>>();
     try {
         EVT_ASSERT(context.has_authorized(N128(.lock), tuact.name), action_authorize_exception, "Authorized information does not match.");
 
