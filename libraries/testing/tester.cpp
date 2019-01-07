@@ -277,7 +277,7 @@ base_tester::push_action(const action_name&               acttype,
                          uint32_t                         expiration)
 {
     try {
-        signed_transaction trx;
+        auto trx = signed_transaction();
         trx.actions.emplace_back(get_action(acttype, domain, key, data));
         set_transaction_headers(trx, payer, max_charge, expiration);
         for(const auto& auth : auths) {
@@ -292,15 +292,16 @@ base_tester::push_action(const action_name&               acttype,
 action
 base_tester::get_action(action_name acttype, const domain_name& domain, const domain_key& key, const variant_object& data) const {
     try {
-        auto& abi  = control->get_abi_serializer();
-        auto  type = abi.get_action_type(acttype);
+        auto& abi      = control->get_abi_serializer();
+        auto& exec_ctx = control->get_execution_context();
+        auto  type     = exec_ctx.get_acttype_name(exec_ctx.index_of(acttype));
         FC_ASSERT(!type.empty(), "unknown action type ${a}", ("a", acttype));
 
         action act;
         act.name   = acttype;
         act.domain = domain;
         act.key    = key;
-        act.data   = abi.variant_to_binary(type, data);
+        act.data   = abi.variant_to_binary(type, data, exec_ctx);
         
         return act;
     }
