@@ -3,6 +3,7 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #pragma once
+#include <chrono>
 #include <functional>
 #include <boost/signals2/signal.hpp>
 #include <evt/chain/block_state.hpp>
@@ -68,7 +69,7 @@ public:
         bool     charge_free_mode       = false;
         bool     contracts_console      = false;
 
-        fc::microseconds max_serialization_time = fc::milliseconds(chain::config::default_abi_serializer_max_time_ms);
+        std::chrono::microseconds max_serialization_time = std::chrono::milliseconds(chain::config::default_abi_serializer_max_time_ms);
 
         db_read_mode    read_mode             = db_read_mode::SPECULATIVE;
         validation_mode block_validation_mode = validation_mode::FULL;

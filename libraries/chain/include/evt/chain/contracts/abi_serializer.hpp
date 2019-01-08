@@ -3,6 +3,8 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #pragma once
+#include <chrono>
+
 #include <boost/noncopyable.hpp>
 #include <fc/variant_object.hpp>
 #include <fc/scoped_exit.hpp>
@@ -34,7 +36,7 @@ struct variant_to_binary_context;
   */
 struct abi_serializer : boost::noncopyable {
     abi_serializer() { configure_built_in_types(); }
-    abi_serializer(const abi_def& abi, const fc::microseconds max_serialization_time);
+    abi_serializer(const abi_def& abi, const std::chrono::microseconds max_serialization_time);
     void set_abi(const abi_def& abi);
 
     type_name resolve_type(const type_name& t) const;
@@ -109,7 +111,7 @@ private:
 
     std::map<type_name, pair<unpack_function, pack_function>> built_in_types_;
 
-    fc::microseconds max_serialization_time_;
+    std::chrono::microseconds max_serialization_time_;
 
 private:
     friend struct impl::abi_from_variant;
@@ -125,10 +127,10 @@ struct abi_traverse_context {
         : self(self)
         , exec_ctx(exec_ctx)
         , max_serialization_time(self.max_serialization_time_)
-        , deadline(fc::time_point::now() + max_serialization_time)
+        , deadline(std::chrono::steady_clock::now() + max_serialization_time)
         , recursion_depth(0) {}
 
-    abi_traverse_context(const abi_serializer& self, const execution_context& exec_ctx, fc::time_point deadline)
+    abi_traverse_context(const abi_serializer& self, const execution_context& exec_ctx, std::chrono::steady_clock::time_point deadline)
         : self(self)
         , exec_ctx(exec_ctx)
         , max_serialization_time(self.max_serialization_time_)
@@ -144,9 +146,9 @@ public:
     const execution_context& exec_ctx;
 
 protected:
-    fc::microseconds max_serialization_time;
-    fc::time_point   deadline;
-    size_t           recursion_depth;
+    std::chrono::microseconds             max_serialization_time;
+    std::chrono::steady_clock::time_point deadline;
+    size_t                                recursion_depth;
 };
 
 struct empty_path_root {};
@@ -180,7 +182,7 @@ struct abi_traverse_context_with_path : public abi_traverse_context {
         set_path_root(type);
     }
 
-    abi_traverse_context_with_path(const abi_serializer& self, const execution_context& exec_ctx, fc::time_point deadline, const type_name& type)
+    abi_traverse_context_with_path(const abi_serializer& self, const execution_context& exec_ctx, std::chrono::steady_clock::time_point deadline, const type_name& type)
         : abi_traverse_context(self, exec_ctx, deadline) {
         set_path_root(type);
     }

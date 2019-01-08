@@ -346,7 +346,7 @@ chain_plugin::plugin_initialize(const variables_map& options) {
         }
 
         if(options.count("abi-serializer-max-time-ms")) {
-            my->chain_config->max_serialization_time = fc::milliseconds(options.at("abi-serializer-max-time-ms").as<uint32_t>());
+            my->chain_config->max_serialization_time = std::chrono::milliseconds(options.at("abi-serializer-max-time-ms").as<uint32_t>());
         }
 
         my->chain_config->blocks_dir  = my->blocks_dir;

@@ -57,7 +57,7 @@ pack_unpack() {
         });
 }
 
-abi_serializer::abi_serializer(const abi_def& abi, const fc::microseconds max_serialization_time_)
+abi_serializer::abi_serializer(const abi_def& abi, const std::chrono::microseconds max_serialization_time_)
     : max_serialization_time_(max_serialization_time_) {
     configure_built_in_types();
     set_abi(abi);
@@ -496,8 +496,8 @@ namespace impl {
 
 void
 abi_traverse_context::check_deadline() const {
-    EVT_ASSERT(fc::time_point::now() < deadline, abi_serialization_deadline_exception,
-               "serialization time limit ${t}us exceeded", ("t", max_serialization_time));
+    EVT_ASSERT(std::chrono::steady_clock::now() < deadline, abi_serialization_deadline_exception,
+               "serialization time limit ${t}us exceeded", ("t", max_serialization_time.count()));
 }
 
 fc::scoped_exit<std::function<void()>>
