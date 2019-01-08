@@ -44,7 +44,7 @@ extern "C" {
 
 void*
 evt_abi() {
-    auto abi = new abi_serializer(evt::chain::contracts::evt_contract_abi(), fc::hours(1));
+    auto abi = new abi_serializer(evt::chain::contracts::evt_contract_abi(), std::chrono::hours(1));
     return (void*)abi;
 }
 

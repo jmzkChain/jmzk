@@ -1063,7 +1063,7 @@ struct set_suspend_subcommands {
             auto suspend = suspend_def();
 
             auto exec_ctx = evt_execution_context();
-            auto abi = abi_serializer(evt_contract_abi(), fc::hours(1));
+            auto abi = abi_serializer(evt_contract_abi(), std::chrono::hours(1));
             abi.from_variant(varsuspend, suspend, exec_ctx);
 
             auto public_keys = call(wallet_url, wallet_public_keys);
