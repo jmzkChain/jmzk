@@ -23,6 +23,9 @@ public:
     virtual std::string get_acttype_name(int index) const = 0;
     virtual int set_version(name act, int ver) = 0;
     virtual std::vector<action_ver> get_current_actions() const = 0;
+
+public:
+    void set_versions(const std::vector<action_ver>& acts);
 };
 
 // helper method to add const lvalue reference to type object

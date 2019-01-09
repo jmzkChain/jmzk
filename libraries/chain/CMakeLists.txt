@@ -26,6 +26,7 @@ add_library( evt_chain
              snapshot.cpp
 
              apply_context.cpp
+             execution_context.cpp
              controller.cpp
 
              contracts/authorizer_ref.cpp

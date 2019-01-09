@@ -307,6 +307,12 @@ call(const std::string& url,
     return call(url, path, fc::variant()); 
 }
 
+void
+set_execution_context(execution_context& exec_ctx) {
+    auto acts = call(get_evt_actions, fc::variant()).as<std::vector<action_ver>>();
+    exec_ctx.set_versions(acts);
+}
+
 template <typename T>
 chain::action
 create_action(const domain_name& domain, const domain_key& key, const T& value) {
@@ -1063,6 +1069,8 @@ struct set_suspend_subcommands {
             auto suspend = suspend_def();
 
             auto exec_ctx = evt_execution_context();
+            set_execution_context(exec_ctx);
+
             auto abi = abi_serializer(evt_contract_abi(), std::chrono::hours(1));
             abi.from_variant(varsuspend, suspend, exec_ctx);
 
