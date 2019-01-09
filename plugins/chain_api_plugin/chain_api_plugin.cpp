@@ -24,10 +24,8 @@ public:
 chain_api_plugin::chain_api_plugin() {}
 chain_api_plugin::~chain_api_plugin() {}
 
-void
-chain_api_plugin::set_program_options(options_description&, options_description&) {}
-void
-chain_api_plugin::plugin_initialize(const variables_map&) {}
+void chain_api_plugin::set_program_options(options_description&, options_description&) {}
+void chain_api_plugin::plugin_initialize(const variables_map&) {}
 
 struct async_result_visitor : public fc::visitor<std::string> {
     template <typename T>
@@ -37,21 +35,33 @@ struct async_result_visitor : public fc::visitor<std::string> {
     }
 };
 
+namespace __internal {
+
+template<typename T>
+std::string
+get_json(const T& value) {
+    return fc::json::to_string(value);
+}
+
+template<>
+std::string
+get_json<std::string>(const std::string& value) {
+    return value;
+}
+
+}  // namespace __internal
+
 #define CALL(api_name, api_handle, api_namespace, call_name, http_response_code)                                             \
     {                                                                                                                        \
         std::string("/v1/" #api_name "/" #call_name),                                                                        \
             [api_handle](string, string body, url_response_callback cb) mutable {                                            \
+                using namespace __internal;                                                                                  \
                 try {                                                                                                        \
                     if(body.empty()) {                                                                                       \
                         body = "{}";                                                                                         \
                     }                                                                                                        \
                     auto result = api_handle.call_name(fc::json::from_string(body).as<api_namespace::call_name##_params>()); \
-                    if constexpr (std::is_same_v<std::decay_t<decltype(result)>, std::string>) {                             \
-                        cb(http_response_code, result);                                                                      \
-                    }                                                                                                        \
-                    else {                                                                                                   \
-                        cb(http_response_code, fc::json::to_string(result));                                                 \
-                    }                                                                                                        \
+                    cb(http_response_code, get_json(result));                                                                \
                 }                                                                                                            \
                 catch(...) {                                                                                                 \
                     http_plugin::handle_exception(#api_name, #call_name, body, cb);                                          \

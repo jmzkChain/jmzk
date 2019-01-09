@@ -12,8 +12,8 @@
 namespace evt { namespace chain {
 
 struct action_ver {
-    name   name;
-    int    version;
+    name   act;
+    int    ver;
     string type;
 };
 
@@ -31,4 +31,4 @@ using add_clr_t = typename std::add_const<typename std::add_lvalue_reference<T>:
 
 }}  // namespace evt::chain
 
-FC_REFLECT(evt::chain::action_ver, (name)(version)(type));
+FC_REFLECT(evt::chain::action_ver, (act)(ver)(type));

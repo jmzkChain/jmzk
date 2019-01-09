@@ -483,7 +483,7 @@ local_port_used() {
 void
 try_local_port(uint32_t duration) {
     using namespace std::chrono;
-    auto start_time = duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch() ).count();
+    auto start_time = duration_cast<std::chrono::milliseconds>(system_clock::now().time_since_epoch()).count();
     while(!local_port_used()) {
         if(duration_cast<std::chrono::milliseconds>(system_clock::now().time_since_epoch()).count() - start_time > duration) {
             std::cerr << "Unable to connect to evtwd, if evtwd is running please kill the process and try again.\n";
@@ -1662,6 +1662,7 @@ main(int argc, char** argv) {
         std::cout << localized("Private key: ${key}", ("key", privs)) << std::endl;
         std::cout << localized("Public key: ${key}",  ("key", pubs))  << std::endl;
     });
+
     // Get subcommand
     auto get = app.add_subcommand("get", localized("Retrieve various items and information from the blockchain"));
     get->require_subcommand();
@@ -1669,6 +1670,16 @@ main(int argc, char** argv) {
     // get info
     get->add_subcommand("info", localized("Get current blockchain information"))->callback([] {
         std::cout << fc::json::to_pretty_string(get_info()) << std::endl;
+    });
+
+    // get actions
+    get->add_subcommand("actions", localized("Get current actions"))->callback([] {
+        std::cout << fc::json::to_pretty_string(call(get_evt_actions, fc::variant())) << std::endl;
+    });
+
+    // get abi
+    get->add_subcommand("abi", localized("Get current ABI"))->callback([] {
+        std::cout << fc::json::to_pretty_string(call(get_evt_abi, fc::variant())) << std::endl;
     });
 
     // get block

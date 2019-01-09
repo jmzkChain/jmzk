@@ -640,8 +640,8 @@ struct controller_impl {
     }
 
     /**
-    *  Adds the transaction receipt to the pending block and returns it.
-    */
+     *  Adds the transaction receipt to the pending block and returns it.
+     */
     template <typename T>
     const transaction_receipt&
     push_receipt(const T& trx, transaction_receipt_header::status_enum status, transaction_receipt_header::type_enum type) {
@@ -688,7 +688,7 @@ struct controller_impl {
             });
             in_trx_requiring_checks = true;
 
-            transaction_context trx_context(self, exec_ctx, *trx);
+            auto trx_context     = transaction_context(self, exec_ctx, *trx);
             trx_context.deadline = deadline;
 
             auto trace = trx_context.trace;
@@ -749,7 +749,7 @@ struct controller_impl {
 
         transaction_trace_ptr trace;
         try {
-            transaction_context trx_context(self, exec_ctx, *trx);
+            auto trx_context     = transaction_context(self, exec_ctx, *trx);
             trx_context.deadline = deadline;
             trace                = trx_context.trace;
 

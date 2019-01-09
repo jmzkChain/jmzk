@@ -105,6 +105,8 @@ const std::string get_transaction_func        = chain_func_base + "/get_transact
 const std::string get_required_keys           = chain_func_base + "/get_required_keys";
 const std::string get_suspend_required_keys   = chain_func_base + "/get_suspend_required_keys";
 const std::string get_charge                  = chain_func_base + "/get_charge";
+const std::string get_evt_actions             = chain_func_base + "/get_actions";
+const std::string get_evt_abi                 = chain_func_base + "/get_abi";
 
 const std::string net_func_base   = "/v1/net";
 const std::string net_connect     = net_func_base + "/connect";

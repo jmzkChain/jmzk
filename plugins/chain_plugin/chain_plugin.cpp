@@ -1304,7 +1304,7 @@ read_only::get_transaction_ids_for_block(const get_transaction_ids_for_block_par
 }
 
 const std::string&
-read_only::get_abi() const {
+read_only::get_abi(const get_abi_params&) const {
     static std::string _abi_json;
     
     if(_abi_json.empty()) {
@@ -1324,7 +1324,7 @@ read_only::get_abi() const {
 }
 
 const std::string&
-read_only::get_actions() const {
+read_only::get_actions(const get_actions_params&) const {
     static std::string             _actions_json;
     static std::vector<action_ver> _actions;
 
@@ -1339,7 +1339,7 @@ read_only::get_actions() const {
         FC_ASSERT(_actions.size() == acts.size());
         
         for(auto i = 0u; i < acts.size(); i++) {
-            if(acts[i].version != _actions[i].version) {
+            if(acts[i].ver != _actions[i].ver) {
                 _actions      = std::move(acts);
                 _actions_json = fc::json::to_string(_actions);
 

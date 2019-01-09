@@ -147,9 +147,9 @@ public:
         
         for(auto i = 0u; i < act_names_arr_.size(); i++) {
             acts.emplace_back(action_ver {
-                .name    = name(act_names_arr_[i]),
-                .version = curr_vers_[i],
-                .type    = type_names_[i][curr_vers_[i]]
+                .act  = name(act_names_arr_[i]),
+                .ver  = curr_vers_[i],
+                .type = type_names_[i][curr_vers_[i]]
             });
         }
 
