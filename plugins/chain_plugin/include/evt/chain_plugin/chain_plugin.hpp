@@ -164,6 +164,9 @@ public:
         block_id_type block_id;
     };
     fc::variant get_transaction_ids_for_block(const get_transaction_ids_for_block_params& params) const;
+
+    const std::string& get_abi() const;
+    const std::string& get_actions() const;
 };
 
 class read_write {

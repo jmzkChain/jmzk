@@ -1303,5 +1303,53 @@ read_only::get_transaction_ids_for_block(const get_transaction_ids_for_block_par
     return arr;
 }
 
+const std::string&
+read_only::get_abi() const {
+    static std::string _abi_json;
+    
+    if(_abi_json.empty()) {
+        auto abi = evt::chain::contracts::evt_contract_abi();
+        auto ver = evt::chain::contracts::evt_contract_abi_version();
+
+        auto var = fc::variant();
+        fc::to_variant(abi, var);
+
+        auto varobj = fc::mutable_variant_object(var);
+        varobj["version"] = ver;
+
+        _abi_json = fc::json::to_string(varobj);
+    }
+
+    return _abi_json;
+}
+
+const std::string&
+read_only::get_actions() const {
+    static std::string             _actions_json;
+    static std::vector<action_ver> _actions;
+
+    auto acts = db.get_execution_context().get_current_actions();
+    if(_actions.empty()) {
+        _actions      = std::move(acts);
+        _actions_json = fc::json::to_string(_actions);
+
+        return _actions_json;
+    }
+    else {
+        FC_ASSERT(_actions.size() == acts.size());
+        
+        for(auto i = 0u; i < acts.size(); i++) {
+            if(acts[i].version != _actions[i].version) {
+                _actions      = std::move(acts);
+                _actions_json = fc::json::to_string(_actions);
+
+                break;
+            }
+        }
+
+        return _actions_json;
+    }
+}
+
 }  // namespace chain_apis
 }  // namespace evt

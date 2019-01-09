@@ -7,9 +7,9 @@
 
 namespace evt { namespace chain { namespace contracts {
 
-using type_name       = string;
-using field_name      = string;
-using action_name     = evt::chain::action_name;
+using type_name   = string;
+using field_name  = string;
+using action_name = evt::chain::action_name;
 
 struct type_def {
     type_def() = default;
