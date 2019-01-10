@@ -1577,9 +1577,10 @@ sync_manager::verify_catchup(connection_ptr c, uint32_t num, block_id_type id) {
     request_message req;
     req.req_blocks.mode = catch_up;
     for(auto cc : my_impl->connections) {
-        if(cc->fork_head == id || cc->fork_head_num > num)
+        if(cc->fork_head == id || cc->fork_head_num > num) {
             req.req_blocks.mode = none;
-        break;
+            break;
+        }
     }
     if(req.req_blocks.mode == catch_up) {
         c->fork_head     = id;
@@ -2472,7 +2473,7 @@ net_plugin_impl::handle_message(connection_ptr c, const notice_message& msg) {
     request_message req;
     bool            send_req = false;
     if(msg.known_trx.mode != none) {
-        fc_dlog(logger, "this is a ${m} notice with ${n} blocks", ("m", modes_str(msg.known_trx.mode))("n", msg.known_trx.pending));
+        fc_dlog(logger, "this is a ${m} notice with ${n} transactions", ("m", modes_str(msg.known_trx.mode))("n", msg.known_trx.pending));
     }
     switch(msg.known_trx.mode) {
     case none:
@@ -2506,9 +2507,6 @@ net_plugin_impl::handle_message(connection_ptr c, const notice_message& msg) {
     }
     switch(msg.known_blocks.mode) {
     case none: {
-        if(msg.known_trx.mode != normal) {
-            return;
-        }
         break;
     }
     case last_irr_catch_up:

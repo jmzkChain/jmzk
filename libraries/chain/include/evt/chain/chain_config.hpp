@@ -51,14 +51,41 @@ struct chain_config {
 
                    << "EVT-Link expried secs: " << c.evt_link_expired_secs << "\n";
     }
+
+    friend inline bool
+    operator ==(const chain_config& lhs, const chain_config& rhs) {
+        return std::tie(lhs.max_block_net_usage,
+                        lhs.target_block_net_usage_pct,
+                        lhs.max_transaction_net_usage,
+                        lhs.base_per_transaction_net_usage,
+                        lhs.base_network_charge_factor,
+                        lhs.base_storage_charge_factor,
+                        lhs.base_cpu_charge_factor,
+                        lhs.global_charge_factor,
+                        lhs.max_transaction_lifetime,
+                        lhs.max_authority_depth,
+                        lhs.evt_link_expired_secs
+                        )
+               ==
+               std::tie(lhs.max_block_net_usage,
+                        lhs.target_block_net_usage_pct,
+                        lhs.max_transaction_net_usage,
+                        lhs.base_per_transaction_net_usage,
+                        lhs.base_network_charge_factor,
+                        lhs.base_storage_charge_factor,
+                        lhs.base_cpu_charge_factor,
+                        lhs.global_charge_factor,
+                        lhs.max_transaction_lifetime,
+                        lhs.max_authority_depth,
+                        lhs.evt_link_expired_secs
+                        );
+    };
+
+    friend inline bool
+    operator !=(const chain_config& lhs, const chain_config& rhs) {
+        return !(lhs == rhs);
+    }
 };
-
-bool operator==(const chain_config& a, const chain_config& b);
-
-inline bool
-operator!=(const chain_config& a, const chain_config& b) {
-    return !(a == b);
-}
 
 }}  // namespace evt::chain
 

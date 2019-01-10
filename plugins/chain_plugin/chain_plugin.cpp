@@ -519,7 +519,17 @@ chain_plugin::plugin_initialize(const variables_map& options) {
             }
         }
         else {
+            auto genesis_file                = bfs::path();
+            bool genesis_timestamp_specified = false;
+            auto existing_genesis            = std::optional<genesis_state>();
+
+            if(fc::exists(my->blocks_dir / "blocks.log" )) {
+                my->chain_config->genesis = block_log::extract_genesis_state( my->blocks_dir );
+                existing_genesis = my->chain_config->genesis;
+            }
+
             if(options.count("genesis-json")) {
+                genesis_file = options.at( "genesis-json" ).as<bfs::path>();
                 EVT_ASSERT(!fc::exists(my->blocks_dir / "blocks.log"),
                            plugin_config_exception,
                            "Genesis state can only be set on a fresh blockchain.");
@@ -535,32 +545,39 @@ chain_plugin::plugin_initialize(const variables_map& options) {
                            ("genesis", genesis_file.generic_string()));
 
                 my->chain_config->genesis = fc::json::from_file(genesis_file).as<genesis_state>();
-
-                ilog("Using genesis state provided in '${genesis}'", ("genesis", genesis_file.generic_string()));
-
-                if(options.count("genesis-timestamp")) {
-                    my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp(
-                        options.at("genesis-timestamp").as<string>());
-                }
-
-                wlog("Starting up fresh blockchain with provided genesis state.");
             }
-            else if(options.count("genesis-timestamp")) {
-                EVT_ASSERT(!fc::exists(my->blocks_dir / "blocks.log"),
-                           plugin_config_exception,
-                           "Genesis state can only be set on a fresh blockchain.");
 
+            if(options.count("genesis-timestamp")) {
                 my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp(
                     options.at("genesis-timestamp").as<string>());
-
-                wlog("Starting up fresh blockchain with default genesis state but with adjusted genesis timestamp.");
+                genesis_timestamp_specified = true;
             }
-            else if(fc::is_regular_file(my->blocks_dir / "blocks.log")) {
-                my->chain_config->genesis = block_log::extract_genesis_state(my->blocks_dir);
+
+            if(!existing_genesis) {
+                if(!genesis_file.empty()) {
+                    if(genesis_timestamp_specified) {
+                        ilog("Using genesis state provided in '${genesis}' but with adjusted genesis timestamp",
+                            ("genesis", genesis_file.generic_string()));
+                    }
+                    else {
+                        ilog("Using genesis state provided in '${genesis}'", ("genesis", genesis_file.generic_string()));
+                    }
+                    wlog("Starting up fresh blockchain with provided genesis state.");
+                }
+                else if(genesis_timestamp_specified) {
+                    wlog("Starting up fresh blockchain with default genesis state but with adjusted genesis timestamp.");
+                }
+                else {
+                    wlog("Starting up fresh blockchain with default genesis state.");
+                }
             }
             else {
-                wlog("Starting up fresh blockchain with default genesis state.");
+                EVT_ASSERT(my->chain_config->genesis == *existing_genesis, plugin_config_exception,
+                           "Genesis state provided via command line arguments does not match the existing genesis state in blocks.log. "
+                           "It is not necessary to provide genesis state arguments when a blocks.log file already exists."
+                           );
             }
+
         }
 
         if(options.count("read-mode")) {

@@ -30,7 +30,7 @@ struct block_header_state {
     vector<uint8_t>                  confirm_count;
     vector<header_confirmation>      confirmations;
 
-    block_header_state next(const signed_block_header& h, bool trust = false) const;
+    block_header_state next(const signed_block_header& h, bool skip_validate_signee = false) const;
     block_header_state generate_next(block_timestamp_type when) const;
 
     void set_new_producers(producer_schedule_type next_pending);
@@ -63,6 +63,7 @@ struct block_header_state {
     digest_type     sig_digest() const;
     void            sign(const std::function<signature_type(const digest_type&)>& signer);
     public_key_type signee() const;
+    void            verify_signee(const public_key_type& signee)const;
 };
 
 }}  // namespace evt::chain
@@ -70,4 +71,4 @@ struct block_header_state {
 FC_REFLECT(evt::chain::block_header_state,
            (id)(block_num)(header)(dpos_proposed_irreversible_blocknum)(dpos_irreversible_blocknum)(bft_irreversible_blocknum)(pending_schedule_lib_num)
            (pending_schedule_hash)(pending_schedule)(active_schedule)(blockroot_merkle)(producer_to_last_produced)(producer_to_last_implied_irb)
-           (block_signing_key)(confirm_count)(confirmations))
+           (block_signing_key)(confirm_count)(confirmations));

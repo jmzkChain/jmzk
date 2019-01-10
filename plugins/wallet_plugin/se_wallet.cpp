@@ -312,6 +312,14 @@ se_wallet::se_wallet()
                 return;
             }
         }
+        if(sscanf(model, "Macmini%u", &major) == 1 && major >= 8) {
+            my->populate_existing_keys();
+            return;
+        }
+        if(sscanf(model, "MacBookAir%u", &major) == 1 && major >= 8) {
+            my->populate_existing_keys();
+            return;
+        }
     }
 
     EVT_THROW(secure_enclave_exception, "Secure Enclave not supported on this hardware");
@@ -329,6 +337,7 @@ bool
 se_wallet::is_locked() const {
     return my->locked;
 }
+
 void
 se_wallet::lock() {
     EVT_ASSERT(!is_locked(), wallet_locked_exception, "You can not lock an already locked wallet");
@@ -344,10 +353,12 @@ se_wallet::unlock(string password) {
         FC_THROW_EXCEPTION(chain::wallet_invalid_password_exception, "Local user authentication failed");
     my->locked = false;
 }
+
 void
 se_wallet::check_password(string password) {
     //just leave this as a noop for now; remove_key from wallet_mgr calls through here
 }
+
 void
 se_wallet::set_password(string password) {
     FC_THROW_EXCEPTION(chain::wallet_exception, "Secure Enclave wallet cannot have a password set");
@@ -357,6 +368,7 @@ map<public_key_type, private_key_type>
 se_wallet::list_keys() {
     FC_THROW_EXCEPTION(chain::wallet_exception, "Getting the private keys from the Secure Enclave wallet is impossible");
 }
+
 flat_set<public_key_type>
 se_wallet::list_public_keys() {
     flat_set<public_key_type> keys;

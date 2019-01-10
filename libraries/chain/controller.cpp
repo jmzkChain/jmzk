@@ -305,21 +305,23 @@ struct controller_impl {
 
     void
     replay() {
-        auto blog_head      = blog.read_head();
-        auto blog_head_time = blog_head->timestamp.to_time_point();
-        replaying           = true;
-        replay_head_time    = blog_head_time;
-        ilog("existing block log, attempting to replay ${n} blocks", ("n", fmt::format("{:n}", blog_head->block_num())));
+        auto blog_head       = blog.read_head();
+        auto blog_head_time  = blog_head->timestamp.to_time_point();
+        replaying            = true;
+        replay_head_time     = blog_head_time;
+        auto start_block_num = head->block_num + 1;
+        ilog("existing block log, attempting to replay from ${s} to ${n} blocks",
+            ("s", fmt::format("{:n}", start_block_num))("n", fmt::format("{:n}", blog_head->block_num())));
 
         auto start = fc::time_point::now();
         while(auto next = blog.read_block_by_num(head->block_num + 1)) {
-            self.push_block(next, controller::block_status::irreversible);
+            replay_push_block(next, controller::block_status::irreversible);
             if(next->block_num() % 100 == 0) {
                 std::cerr << std::setw(10) << fmt::format("{:n}", next->block_num()) << " of " << fmt::format("{:n}", blog_head->block_num()) << "\r";
             }
         }
         std::cerr << "\n";
-        ilog("${n} blocks replayed", ("n", fmt::format("{:n}", head->block_num)));
+        ilog("${n} blocks replayed", ("n", fmt::format("{:n}", head->block_num - start_block_num)));
 
         // if the irreverible log is played without undo sessions enabled, we need to sync the
         // revision ordinal to the appropriate expected value here.
@@ -329,15 +331,15 @@ struct controller_impl {
         int rev = 0;
         while(auto obj = reversible_blocks.find<reversible_block_object, by_num>(head->block_num + 1)) {
             ++rev;
-            self.push_block(obj->get_block(), controller::block_status::validated);
+            replay_push_block(obj->get_block(), controller::block_status::validated);
         }
 
         ilog("${n} reversible blocks replayed", ("n", fmt::format("{:n}", rev)));
         auto end = fc::time_point::now();
         ilog("replayed ${n} blocks in ${duration} seconds, ${mspb} ms/block",
-            ("n", fmt::format("{:n}", head->block_num))
+            ("n", fmt::format("{:n}", head->block_num - start_block_num))
             ("duration", fmt::format("{:n}", (end - start).count() / 1000000))
-            ("mspb", fmt::format("{:.3f}", ((end - start).count() / 1000.0) / head->block_num))
+            ("mspb", fmt::format("{:.3f}", ((end - start).count() / 1000.0) / (head->block_num - start_block_num)))
             );
         replaying = false;
         replay_head_time.reset();
@@ -347,6 +349,8 @@ struct controller_impl {
     void
     init(const snapshot_reader_ptr& snapshot) {
         token_db.open();
+
+        bool report_integrity_hash = !!snapshot;
         if(snapshot) {
             EVT_ASSERT(!head, fork_database_exception, "");
             snapshot->validate();
@@ -365,16 +369,19 @@ struct controller_impl {
                            "Block log is provided with snapshot but does not contain the head block from the snapshot");
             }
         }
-        else if(!head) {
-            initialize_fork_db();  // set head to genesis state
-            initialize_token_db();
+        else {
+            if(!head) {
+                initialize_fork_db();  // set head to genesis state
+                initialize_token_db();
+            }
 
             auto end = blog.read_head();
-            if(end && end->block_num() > 1) {
-                replay();
-            }
-            else if(!end) {
+            if(!end) {
                 blog.reset(conf.genesis, head->block);
+            }
+            else if(end->block_num() > head->block_num) {
+                replay();
+                report_integrity_hash = true;
             }
         }
 
@@ -410,7 +417,7 @@ struct controller_impl {
             token_db.rollback_to_latest_savepoint();
         }
 
-        if(snapshot) {
+        if(report_integrity_hash) {
             const auto hash = calculate_integrity_hash();
             ilog("database initialized with hash: ${hash}", ("hash", hash));
         }
@@ -594,7 +601,7 @@ struct controller_impl {
         try {
             if(add_to_fork_db) {
                 pending->_pending_block_state->validated = true;
-                auto new_bsp = fork_db.add(pending->_pending_block_state);
+                auto new_bsp = fork_db.add(pending->_pending_block_state, true);
                 emit(self.accepted_block_header, pending->_pending_block_state);
                 head = fork_db.head();
                 EVT_ASSERT(new_bsp == head, fork_database_exception, "committed block did not become the new head in fork database");
@@ -965,23 +972,51 @@ struct controller_impl {
         FC_CAPTURE_AND_RETHROW()
     }  /// apply_block
 
+
+
     void
-    push_block(const signed_block_ptr& b, controller::block_status s) {
+    push_block(const signed_block_ptr& b) {
+        auto s = controller::block_status::complete;
         EVT_ASSERT(!pending.has_value(), block_validate_exception, "it is not valid to push a block when there is a pending block");
 
         auto reset_prod_light_validation = fc::make_scoped_exit([old_value=trusted_producer_light_validation, this]() {
             trusted_producer_light_validation = old_value;
         });
+
         try {
             EVT_ASSERT(b, block_validate_exception, "trying to push empty block");
             EVT_ASSERT(s != controller::block_status::incomplete, block_validate_exception, "invalid block status for a completed block");
             emit(self.pre_accepted_block, b);
 
-            bool trust = !conf.force_all_checks && (s == controller::block_status::irreversible || s == controller::block_status::validated);
-            auto new_header_state = fork_db.add(b, trust);
+            auto new_header_state = fork_db.add(b, false);
+
             if(conf.trusted_producers.count(b->producer)) {
                 trusted_producer_light_validation = true;
             };
+            emit(self.accepted_block_header, new_header_state);
+
+            if(read_mode != db_read_mode::IRREVERSIBLE) {
+                maybe_switch_forks(s);
+            }
+        }
+        FC_LOG_AND_RETHROW()
+    }
+
+    void
+    replay_push_block(const signed_block_ptr& b, controller::block_status s) {
+        self.validate_db_available_size();
+        self.validate_reversible_available_size();
+
+        EVT_ASSERT(!pending.has_value(), block_validate_exception, "it is not valid to push a block when there is a pending block");
+
+        try {
+            EVT_ASSERT(b, block_validate_exception, "trying to push empty block");
+            EVT_ASSERT(s != controller::block_status::incomplete, block_validate_exception, "invalid block status for a completed block");
+            emit(self.pre_accepted_block, b);
+
+            const bool skip_validate_signee = !conf.force_all_checks;
+            auto new_header_state = fork_db.add(b, skip_validate_signee);
+
             emit(self.accepted_block_header, new_header_state);
 
             if(read_mode != db_read_mode::IRREVERSIBLE) {
@@ -994,16 +1029,6 @@ struct controller_impl {
             }
         }
         FC_LOG_AND_RETHROW()
-    }
-
-    void
-    push_confirmation(const header_confirmation& c) {
-        EVT_ASSERT(!pending.has_value(), block_validate_exception, "it is not valid to push a confirmation when there is a pending block");
-        fork_db.add(c);
-        emit(self.accepted_confirmation, c);
-        if(read_mode != db_read_mode::IRREVERSIBLE) {
-            maybe_switch_forks();
-        }
     }
 
     void
@@ -1233,16 +1258,10 @@ controller::abort_block() {
 }
 
 void
-controller::push_block(const signed_block_ptr& b, block_status s) {
+controller::push_block(const signed_block_ptr& b) {
     validate_db_available_size();
     validate_reversible_available_size();
-    my->push_block(b, s);
-}
-
-void
-controller::push_confirmation(const header_confirmation& c) {
-    validate_db_available_size();
-    my->push_confirmation(c);
+    my->push_block(b);
 }
 
 transaction_trace_ptr
