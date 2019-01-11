@@ -497,8 +497,8 @@ struct controller_impl {
 
     sha256
     calculate_integrity_hash() const {
-        sha256::encoder enc;
-        auto            hash_writer = std::make_shared<integrity_hash_snapshot_writer>(enc);
+        auto enc = sha256::encoder();
+        auto hash_writer = std::make_shared<integrity_hash_snapshot_writer>(enc);
         add_to_snapshot(hash_writer);
         hash_writer->finalize();
 

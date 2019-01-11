@@ -489,10 +489,9 @@ token_database_snapshot::add_to_snapshot(snapshot_writer_ptr writer, const token
         auto s = BackupEngine::Open(Env::Default(), BackupableDBOptions(kBackupPath, &env), &backup_engine);
         EVT_ASSERT(s.ok(), snapshot_exception, "Cannot open snapshot for token database, reason: ${d}", ("d",s.getState()));
 
-        s = db.db_->Flush(rocksdb::FlushOptions());
-        EVT_ASSERT(s.ok(), tokendb_exception, "Flush rocksdb failed, reason: ${d}", ("d",s.getState()));
+        db.flush();
 
-        s = backup_engine->CreateNewBackup(db.db_, true);
+        s = backup_engine->CreateNewBackup(db.internal_db(), true);
         EVT_ASSERT(s.ok(), snapshot_exception, "Backup to snapshot for token database failed, reason: ${d}", ("d",s.getState()));
 
         delete backup_engine;
@@ -539,7 +538,7 @@ token_database_snapshot::read_from_snapshot(snapshot_reader_ptr reader, token_da
 
         db.close(false);
 
-        s = backup_engine->RestoreDBFromLatestBackup(db.db_path_, kBackupPath);
+        s = backup_engine->RestoreDBFromLatestBackup(db.get_db_path(), kBackupPath);
         EVT_ASSERT(s.ok(), snapshot_exception, "Restore from snapshot for token database failed, reason: ${d}", ("d",s.getState()));
 
         delete backup_engine;

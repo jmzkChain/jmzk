@@ -4,6 +4,7 @@
  */
 #include <evt/chain/token_database.hpp>
 
+#include <deque>
 #include <unordered_set>
 #include <fstream>
 
@@ -14,6 +15,7 @@
 #pragma GCC diagnostic pop
 
 #include <rocksdb/db.h>
+#include <rocksdb/options.h>
 #include <rocksdb/merge_operator.h>
 #include <rocksdb/slice_transform.h>
 #include <rocksdb/table.h>
@@ -206,6 +208,71 @@ read_value(const V& value) {
     return v;
 }
 
+struct flag {
+public:
+    flag(uint8_t type, uint8_t op) : type(type), op(op) {}
+
+public:
+    char    payload[6];
+    uint8_t type;
+    uint8_t op;
+};
+
+// realtime action
+// stored in memory
+struct rt_action {
+public:
+    rt_action(uint8_t type, uint8_t op, void* data)
+        : f(type, op) {
+        SETPOINTER(void, this->data, data);
+    }
+
+    union {
+        flag  f;
+        void* data;
+    };
+};
+
+struct rt_group {
+    const void*            rb_snapshot;
+    std::vector<rt_action> actions;
+};
+
+// persistent action
+// stored in disk
+struct pd_action {
+    uint16_t    op;
+    uint16_t    type;
+    std::string key;
+    std::string value;
+};
+
+struct pd_group {
+    int64_t                seq; // used for persistent
+    std::vector<pd_action> actions;
+};
+
+struct sp_node {
+public:
+    sp_node(uint8_t type) : f(type, 0) {}
+
+public:
+    union {
+        flag  f;
+        void* group;
+    };
+};
+
+struct savepoint {
+public:
+    savepoint(int64_t seq, uint8_t type)
+        : seq(seq), node(type) {}
+
+public:
+    int64_t seq;
+    sp_node node;
+};
+
 struct rt_data_key {
     name128 key;
 };
@@ -222,6 +289,10 @@ struct rt_data_keys {
 
 struct rt_data_asset {
     char key[PKEY_SIZE + sizeof(symbol)];
+};
+
+struct pd_header {
+    int dirty_flag;
 };
 
 template<typename T>
@@ -252,7 +323,8 @@ get_key<evt_link_object>(const evt_link_object& v) {
 
 class token_database_impl {
 public:
-    token_database_impl(token_database& self) : self_(self) {}
+    token_database_impl();
+    token_database_impl(const std::string& db_path);
 
 public:
     template<int DT, typename TV = typename decltype(hana::at(hana::at_key(__internal::act_data_map, hana::int_c<DT>), hana::int_c<1>))::type>
@@ -264,14 +336,14 @@ public:
         auto key    = get_key<TV>(v);
         auto dbkey  = get_db_key<DT>(key);
         auto value  = get_value(v);
-        auto status = self_.db_->Put(self_.write_opts_, dbkey.as_slice(), value);
+        auto status = db_->Put(write_opts_, dbkey.as_slice(), value);
         if(!status.ok()) {
             FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
         }
-        if(self_.should_record()) {
+        if(should_record()) {
             auto data = (rt_data_key*)malloc(sizeof(rt_data_key));
             data->key = key;
-            self_.record(DT, kNew, data);
+            record(DT, kNew, data);
         }
         return 0;
     }
@@ -292,21 +364,21 @@ public:
         }
 
         auto value  = get_value(v);
-        auto status = self_.db_->Put(self_.write_opts_, dbkey, value);
+        auto status = db_->Put(write_opts_, dbkey, value);
         if(!status.ok()) {
             FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
         }
-        if(self_.should_record()) {
+        if(should_record()) {
             if constexpr(DT == kToken) {
                 auto data  = (rt_data_key2*)malloc(sizeof(rt_data_key2));
                 data->key1 = v.domain;
                 data->key2 = v.name;
-                self_.record(DT, kUpdate, data);
+                record(DT, kUpdate, data);
             }
             else {
                 auto data = (rt_data_key*)malloc(sizeof(rt_data_key));
                 data->key = get_key<TV>(v);
-                self_.record(DT, kUpdate, data);
+                record(DT, kUpdate, data);
             }
         }
         return 0;
@@ -319,7 +391,7 @@ public:
 
         auto dbkey  = get_db_key<DT>(key);
         auto value  = std::string();
-        auto status = self_.db_->Get(self_.read_opts_, dbkey.as_slice(), &value);
+        auto status = db_->Get(read_opts_, dbkey.as_slice(), &value);
         return status.ok();
     }
 
@@ -330,7 +402,7 @@ public:
 
         auto value  = std::string();
         auto dbkey  = get_db_key<DT>(key);
-        auto status = self_.db_->Get(self_.read_opts_, dbkey.as_slice(), &value);
+        auto status = db_->Get(read_opts_, dbkey.as_slice(), &value);
         if(!status.ok()) {
             if(!status.IsNotFound()) {
                 FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
@@ -342,30 +414,65 @@ public:
         return 0;
     }
 
-private:
-    token_database& self_;
+public:
+    int open(int load_persistence = true);
+    int close(int persist = true);
+
+    int add_savepoint(int64_t seq);
+    int rollback_to_latest_savepoint();
+    int pop_savepoints(int64_t until);
+    int pop_back_savepoint();
+    int squash();
+
+    int64_t latest_savepoint_seq() const;
+    int64_t new_savepoint_session_seq() const;
+    size_t  savepoints_size() const { return savepoints_.size(); }
+
+    int rollback_rt_group(__internal::rt_group*);
+    int rollback_pd_group(__internal::pd_group*);
+
+    int should_record() { return !savepoints_.empty(); }
+    int record(uint8_t type, uint8_t op, void* data);
+    int free_savepoint(__internal::savepoint&);
+    int free_all_savepoints();
+
+    int persist_savepoints() const;
+    int load_savepoints();
+    int persist_savepoints(std::ostream&) const;
+    int load_savepoints(std::istream&);
+
+    int flush() const;
+
+    std::string get_db_path() const { return db_path_; }
+
+public:
+    std::string db_path_;
+
+    rocksdb::DB*          db_;
+    rocksdb::ReadOptions  read_opts_;
+    rocksdb::WriteOptions write_opts_;
+
+    rocksdb::ColumnFamilyHandle* tokens_handle_;
+    rocksdb::ColumnFamilyHandle* assets_handle_;
+
+    std::deque<__internal::savepoint> savepoints_;
 };
 
-token_database::token_database() 
+token_database_impl::token_database_impl()
     : db_(nullptr)
     , read_opts_()
     , write_opts_()
     , tokens_handle_(nullptr)
     , assets_handle_(nullptr)
-    , savepoints_()
-    , my_(std::make_unique<token_database_impl>(*this)) {}
+    , savepoints_() {}
 
-token_database::token_database(const fc::path& dbpath)
-    : token_database() {
-    db_path_ = dbpath.to_native_ansi_path();
-}
-
-token_database::~token_database() {
-    close();
+token_database_impl::token_database_impl(const std::string& db_path)
+    : token_database_impl() {
+    db_path_ = db_path;
 }
 
 int
-token_database::open(int load_persistence) {
+token_database_impl::open(int load_persistence) {
     using namespace rocksdb;
     using namespace __internal;
 
@@ -437,7 +544,7 @@ token_database::open(int load_persistence) {
 }
 
 int
-token_database::close(int persist) {
+token_database_impl::close(int persist) {
     if(db_ != nullptr) {
         if(persist) {
             persist_savepoints();
@@ -461,458 +568,7 @@ token_database::close(int persist) {
 }
 
 int
-token_database::add_domain(const domain_def& domain) {
-    using namespace __internal;
-    return my_->add_impl<kDomain>(domain);
-}
-
-int
-token_database::exists_domain(const domain_name& name) const {
-    using namespace __internal;
-    return my_->exists_impl<kDomain>(name);
-}
-
-int
-token_database::issue_tokens(const issuetoken& issue) {
-    using namespace __internal;
-    if(!exists_domain(issue.domain)) {
-        EVT_THROW(tokendb_key_not_found, "Cannot find key: ${name} with type: `domain`", ("name",issue.domain));
-    }
-    rocksdb::WriteBatch batch;
-    for(auto name : issue.names) {
-        auto key   = get_db_key(issue.domain, name);
-        auto value = get_value(token_def(issue.domain, name, issue.owner));
-        batch.Put(key.as_slice(), value);
-    }
-    auto status = db_->Write(write_opts_, &batch);
-    if(!status.ok()) {
-        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
-    }
-    if(should_record()) {
-        auto data     = (rt_data_keys*)malloc(sizeof(rt_data_keys) + sizeof(name128) * (issue.names.size() + 1));
-        data->sz      = issue.names.size() + 1;
-        data->keys[0] = issue.domain;
-        memcpy(data->keys + 1, &issue.names[0], sizeof(name128) * issue.names.size());
-        record(kToken, kNew, data);
-    }
-    return 0;
-}
-
-int
-token_database::exists_token(const domain_name& domain, const token_name& name) const {
-    using namespace __internal;
-    auto key    = get_db_key(domain, name);
-    auto value  = std::string();
-    auto status = db_->Get(read_opts_, key.as_slice(), &value);
-    return status.ok();
-}
-
-int
-token_database::add_group(const group_def& group) {
-    using namespace __internal;
-    return my_->add_impl<kGroup>(group);
-}
-
-int
-token_database::exists_group(const group_name& name) const {
-    using namespace __internal;
-    return my_->exists_impl<kGroup>(name);
-}
-
-int
-token_database::add_suspend(const suspend_def& suspend) {
-    using namespace __internal;
-    return my_->add_impl<kSuspend>(suspend);
-}
-
-int
-token_database::exists_suspend(const proposal_name& name) const {
-    using namespace __internal;
-    return my_->exists_impl<kSuspend>(name);
-}
-
-int
-token_database::add_lock(const lock_def& lock) {
-    using namespace __internal;
-    return my_->add_impl<kLock>(lock);
-}
-
-int
-token_database::exists_lock(const proposal_name& name) const {
-    using namespace __internal;
-    return my_->exists_impl<kLock>(name);
-}
-
-int
-token_database::add_fungible(const fungible_def& fungible) {
-    using namespace __internal;
-    return my_->add_impl<kFungible>(fungible);
-}
-
-int
-token_database::exists_fungible(const symbol sym) const {
-    using namespace __internal;
-    return my_->exists_impl<kFungible>((uint128_t)sym.id());
-}
-
-int
-token_database::exists_fungible(const symbol_id_type sym_id) const {
-    using namespace __internal;
-    return my_->exists_impl<kFungible>((uint128_t)sym_id);
-}
-
-int
-token_database::update_asset(const address& addr, const asset& asset) {
-    using namespace __internal;
-    auto key    = get_asset_key(addr, asset);
-    auto value  = get_value(asset);
-    auto status = db_->Put(write_opts_, assets_handle_, key.as_slice(), value);
-    if(!status.ok()) {
-        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
-    }
-    if(should_record()) {
-        auto act  = (rt_data_asset*)malloc(sizeof(rt_data_asset));
-        memcpy(act->key, key.buf, sizeof(key.buf));
-        record(kAsset, kNewOrUpdate, act);
-    }
-    return 0;
-}
-
-int
-token_database::exists_any_asset(const address& addr) const {
-    using namespace __internal;
-    auto it  = db_->NewIterator(read_opts_, assets_handle_);
-    auto key = get_asset_prefix_key(addr);
-    it->Seek(key.as_slice());
-
-    auto existed = it->Valid();
-    delete it;
-
-    return existed;
-}
-
-int
-token_database::exists_asset(const address& addr, const symbol symbol) const {
-    using namespace __internal;
-    auto it  = db_->NewIterator(read_opts_, assets_handle_);
-    auto key = get_asset_key(addr, symbol);
-    it->Seek(key.as_slice());
-
-    auto existed = it->Valid() && it->key().compare(key.as_slice()) == 0;
-    delete it;
-
-    return existed;
-}
-
-int
-token_database::update_prodvote(const conf_key& key, const public_key_type& pkey, int64_t value) {
-    using namespace __internal;
-    using boost::container::flat_map;
-
-    auto dbkey  = get_db_key<kProdVote>(key);
-    auto v      = std::string();
-    auto map    = flat_map<public_key_type, int64_t>();
-    auto status = db_->Get(read_opts_, dbkey.as_slice(), &v);
-    if(!status.ok()) {
-        if(status.code() != rocksdb::Status::kNotFound) {
-            FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
-        }
-        map.emplace(pkey, value);
-    }
-    else {
-        map = read_value<decltype(map)>(v);
-        auto it = map.emplace(pkey, value);
-        if(it.second == false) {
-            // existed
-            it.first->second = value;
-        }
-    }
-    v = get_value(map);
-    
-    status = db_->Put(write_opts_, dbkey.as_slice(), v);
-    if(!status.ok()) {
-        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
-    }
-    if(should_record()) {
-        auto act  = (rt_data_key*)malloc(sizeof(rt_data_key));
-        act->key = key;
-        record(kProdVote, kNewOrUpdate, act);
-    }
-    return 0;
-}
-
-int
-token_database::add_evt_link(const evt_link_object& link_obj) {
-    using namespace __internal;
-    return my_->add_impl<kEvtLink>(link_obj);
-}
-
-int
-token_database::exists_evt_link(const link_id_type& id) const {
-    using namespace __internal;
-    return my_->exists_impl<kEvtLink>(id);
-}
-
-int
-token_database::read_domain(const domain_name& name, domain_def& domain) const {
-    using namespace __internal;
-    try {
-        return my_->read_impl<kDomain>(name, domain);
-    }
-    catch(const tokendb_key_not_found&) {
-        EVT_THROW(unknown_domain_exception, "Unknown domain: ${n}", ("n",name));
-    }
-}
-
-int
-token_database::read_token(const domain_name& domain, const token_name& name, token_def& token) const {
-    using namespace __internal;
-    auto value  = std::string();
-    auto key    = get_db_key(domain, name);
-    auto status = db_->Get(read_opts_, key.as_slice(), &value);
-    if(!status.ok()) {
-        EVT_THROW(unknown_token_exception, "Unknown token: ${name} in ${domain}", ("domain",domain)("name",name));
-    }
-    token = read_value<token_def>(value);
-    return 0;
-}
-
-int
-token_database::read_tokens(const domain_name& domain, int skip, const read_token_func& func) const {
-    using namespace __internal;
-    auto it  = db_->NewIterator(read_opts_);
-    auto key = rocksdb::Slice((char*)&domain, sizeof(domain));
-    
-    it->Seek(key);
-    int i = 0;
-    while(it->Valid()) {
-        if(i++ < skip) {
-            it->Next();
-            continue;
-        }
-        auto v = read_value<token_def>(it->value());
-        if(!func(v)) {
-            delete it;
-            return 0;
-        }
-        it->Next();
-    }
-    delete it;
-    return 0;
-}
-
-int
-token_database::read_group(const group_name& name, group_def& group) const {
-    using namespace __internal;
-    try {
-        return my_->read_impl<kGroup>(name, group);
-    }
-    catch(const tokendb_key_not_found&) {
-        EVT_THROW(unknown_group_exception, "Unknown group: ${n}", ("n",name));
-    }
-}
-
-int
-token_database::read_suspend(const proposal_name& name, suspend_def& suspend) const {
-    using namespace __internal;
-    try {
-        return my_->read_impl<kSuspend>(name, suspend);
-    }
-    catch(const tokendb_key_not_found&) {
-        EVT_THROW(unknown_suspend_exception, "Unknown suspend proposal: ${n}", ("n",name));
-    }
-}
-
-int
-token_database::read_lock(const proposal_name& name, lock_def& lock) const {
-    using namespace __internal;
-    try {
-        return my_->read_impl<kLock>(name, lock);
-    }
-    catch(const tokendb_key_not_found&) {
-        EVT_THROW(unknown_lock_exception, "Unknown lock assets proposal: ${n}", ("n",name));
-    }
-}
-
-int
-token_database::read_fungible(const symbol sym, fungible_def& fungible) const {
-    using namespace __internal;
-    try {
-        return my_->read_impl<kFungible>((uint128_t)sym.id(), fungible);
-    }
-    catch(const tokendb_key_not_found&) {
-        EVT_THROW(unknown_fungible_exception, "Unknown fungible symbol id: ${id}", ("id",sym.id()));
-    }
-}
-
-int
-token_database::read_fungible(const symbol_id_type sym_id, fungible_def& fungible) const {
-    using namespace __internal;
-    try {
-        return my_->read_impl<kFungible>((uint128_t)sym_id, fungible);
-    }
-    catch(const tokendb_key_not_found&) {
-        EVT_THROW(unknown_fungible_exception, "Unknown fungible symbol id: ${id}", ("id",sym_id));
-    }
-}
-
-int
-token_database::read_asset(const address& addr, const symbol symbol, asset& v) const {
-    using namespace __internal;
-    auto key   = get_asset_key(addr, symbol);
-    auto value = std::string();
-
-    auto status = db_->Get(read_opts_, assets_handle_, key.as_slice(), &value);
-    if(!status.ok()) {
-        if(!status.IsNotFound()) {
-            FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
-        }
-        EVT_THROW(balance_exception, "Cannot find any fungible(S#${id}) balance in address: {addr}", ("id",symbol.id())("addr",addr));
-    }
-    v = read_value<asset>(value);
-    return 0;
-}
-
-int
-token_database::read_asset_no_throw(const address& addr, const symbol symbol, asset& v) const {
-    using namespace __internal;
-    auto key   = get_asset_key(addr, symbol);
-    auto value = std::string();
-
-    auto status = db_->Get(read_opts_, assets_handle_, key.as_slice(), &value);
-    if(!status.ok()) {
-        if(!status.IsNotFound()) {
-            FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
-        }
-        v = asset(0, symbol);
-        return 0;
-    }
-    v = read_value<asset>(value);
-    return 0;
-}
-
-int
-token_database::read_all_assets(const address& addr, const read_fungible_func& func) const {
-    using namespace __internal;
-    auto it  = db_->NewIterator(read_opts_, assets_handle_);
-    auto key = get_asset_prefix_key(addr);
-    it->Seek(key.as_slice());
-
-    while(it->Valid()) {
-        auto v = read_value<asset>(it->value());
-        if(!func(v)) {
-            break;
-        }
-        it->Next();
-    }
-    delete it;
-    return 0;
-}
-
-int
-token_database::read_prodvotes_no_throw(const conf_key& key, const read_prodvote_func& func) const {
-    using namespace __internal;
-    using boost::container::flat_map;
-
-    auto value  = std::string();
-    auto dbkey  = get_db_key<kProdVote>(key);
-    auto status = db_->Get(read_opts_, dbkey.as_slice(), &value);
-    if(!status.ok() && status.code() != rocksdb::Status::kNotFound) {
-        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
-    }
-    if(value.empty()) {
-        return 0;
-    }
-
-    auto map = read_value<flat_map<public_key_type, int64_t>>(value);
-    for(auto& it : map) {
-        if(!func(it.first, it.second)) {
-            break;
-        }
-    }
-    return 0;
-}
-
-int
-token_database::read_evt_link(const link_id_type& id, evt_link_object& link_obj) const {
-    using namespace __internal;
-    try {
-        return my_->read_impl<kEvtLink>(id, link_obj);
-    }
-    catch(const tokendb_key_not_found&) {
-        EVT_THROW(evt_link_existed_exception, "Unknown Evt Link: ${id}", ("id",id));
-    }
-}
-
-int
-token_database::update_domain(const domain_def& domain) {
-    using namespace __internal;
-    return my_->update_impl<kDomain>(domain);
-}
-
-int
-token_database::update_group(const group& group) {
-    using namespace __internal;
-    return my_->update_impl<kGroup>(group);
-}
-
-int
-token_database::update_token(const token_def& token) {
-    using namespace __internal;
-    return my_->update_impl<kToken>(token);
-}
-
-int
-token_database::update_suspend(const suspend_def& suspend) {
-    using namespace __internal;
-    return my_->update_impl<kSuspend>(suspend);
-}
-
-int
-token_database::update_lock(const lock_def& lock) {
-    using namespace __internal;
-    return my_->update_impl<kLock>(lock);
-}
-
-int
-token_database::update_fungible(const fungible_def& fungible) {
-    using namespace __internal;
-    return my_->update_impl<kFungible>(fungible);
-}
-
-int
-token_database::record(uint8_t type, uint8_t op, void* data) {
-    using namespace __internal;
-
-    if(!should_record()) {
-        return 0;
-    }
-    auto n = savepoints_.back().node;
-    FC_ASSERT(n.f.type == kRT);
-
-    GETPOINTER(rt_group, n.group)->actions.emplace_back(rt_action(type, op, data));
-    return 0;
-}
-
-token_database::session
-token_database::new_savepoint_session(int64_t seq) {
-    add_savepoint(seq);
-    return session(*this, seq);
-}
-
-token_database::session
-token_database::new_savepoint_session() {
-    int64_t seq = 1;
-    if(!savepoints_.empty()) {
-        seq = savepoints_.back().seq + 1;
-    }
-
-    add_savepoint(seq);
-    return session(*this, seq);
-}
-
-int
-token_database::add_savepoint(int64_t seq) {
+token_database_impl::add_savepoint(int64_t seq) {
     using namespace __internal;
 
     if(!savepoints_.empty()) {
@@ -931,7 +587,7 @@ token_database::add_savepoint(int64_t seq) {
 }
 
 int
-token_database::free_savepoint(savepoint& sp) {
+token_database_impl::free_savepoint(__internal::savepoint& sp) {
     using namespace __internal;
 
     auto n = sp.node;
@@ -960,7 +616,7 @@ token_database::free_savepoint(savepoint& sp) {
 }
 
 int
-token_database::free_all_savepoints() {
+token_database_impl::free_all_savepoints() {
     for(auto& sp : savepoints_) {
         free_savepoint(sp);
     }
@@ -969,7 +625,7 @@ token_database::free_all_savepoints() {
 }
 
 int
-token_database::pop_savepoints(int64_t until) {
+token_database_impl::pop_savepoints(int64_t until) {
     while(!savepoints_.empty() && savepoints_.front().seq < until) {
         auto it = std::move(savepoints_.front());
         savepoints_.pop_front();
@@ -979,7 +635,7 @@ token_database::pop_savepoints(int64_t until) {
 }
 
 int
-token_database::pop_back_savepoint() {
+token_database_impl::pop_back_savepoint() {
     EVT_ASSERT(!savepoints_.empty(), tokendb_no_savepoint, "There's no savepoints anymore");
 
     auto it = std::move(savepoints_.back());
@@ -989,7 +645,7 @@ token_database::pop_back_savepoint() {
 }
 
 int
-token_database::squash() {
+token_database_impl::squash() {
     using namespace __internal;
     EVT_ASSERT(savepoints_.size() >= 2, tokendb_squash_exception, "Squash needs at least two savepoints.");
     
@@ -1014,15 +670,39 @@ token_database::squash() {
 }
 
 int64_t
-token_database::latest_savepoint_seq() const {
+token_database_impl::latest_savepoint_seq() const {
     EVT_ASSERT(!savepoints_.empty(), tokendb_no_savepoint, "There's no savepoints anymore");
     return savepoints_.back().seq;
 }
 
+int64_t
+token_database_impl::new_savepoint_session_seq() const {
+    int64_t seq = 1;
+    if(!savepoints_.empty()) {
+        seq = savepoints_.back().seq + 1;
+    }
+    return seq;
+}
+
+int
+token_database_impl::record(uint8_t type, uint8_t op, void* data) {
+    using namespace __internal;
+
+    if(!should_record()) {
+        return 0;
+    }
+    auto n = savepoints_.back().node;
+    FC_ASSERT(n.f.type == kRT);
+
+    GETPOINTER(rt_group, n.group)->actions.emplace_back(rt_action(type, op, data));
+    return 0;
+}
+
+
 namespace __internal {
 
 std::string
-get_sp_key(const token_database::rt_action& act) {
+get_sp_key(const rt_action& act) {
     switch(act.f.type) {
     case kDomain: {
         auto data = GETPOINTER(rt_data_key, act.data);
@@ -1070,7 +750,7 @@ get_sp_key(const token_database::rt_action& act) {
 }  // namespace __internal
 
 int
-token_database::rollback_rt_group(rt_group* rt) {
+token_database_impl::rollback_rt_group(__internal::rt_group* rt) {
     using namespace __internal;
 
     if(rt->actions.empty()) {
@@ -1190,7 +870,7 @@ token_database::rollback_rt_group(rt_group* rt) {
 }
 
 int
-token_database::rollback_pd_group(pd_group* pd) {
+token_database_impl::rollback_pd_group(__internal::pd_group* pd) {
     using namespace __internal;
 
     if(pd->actions.empty()) {
@@ -1264,7 +944,7 @@ token_database::rollback_pd_group(pd_group* pd) {
 }
 
 int
-token_database::rollback_to_latest_savepoint() {
+token_database_impl::rollback_to_latest_savepoint() {
     using namespace __internal;
     EVT_ASSERT(!savepoints_.empty(), tokendb_no_savepoint, "There's no savepoints anymore");
 
@@ -1294,16 +974,8 @@ token_database::rollback_to_latest_savepoint() {
     return 0;
 }
 
-namespace __internal {
-
-struct pd_header {
-    int dirty_flag;
-};
-
-}  // namespace __internal
-
 int
-token_database::persist_savepoints() const {
+token_database_impl::persist_savepoints() const {
     try {
         auto filename = fc::path(db_path_) / config::tokendb_persisit_filename;
         if(fc::exists(filename)) {
@@ -1323,7 +995,7 @@ token_database::persist_savepoints() const {
 }
 
 int
-token_database::load_savepoints() {
+token_database_impl::load_savepoints() {
     auto filename = fc::path(db_path_) / config::tokendb_persisit_filename;
     if(!fc::exists(filename)) {
         wlog("No savepoints log in token database");
@@ -1344,7 +1016,7 @@ token_database::load_savepoints() {
 }
 
 int
-token_database::persist_savepoints(std::ostream& os) const {
+token_database_impl::persist_savepoints(std::ostream& os) const {
     using namespace __internal;
 
     auto h = pd_header {
@@ -1473,7 +1145,7 @@ token_database::persist_savepoints(std::ostream& os) const {
 }
 
 int
-token_database::load_savepoints(std::istream& is) {
+token_database_impl::load_savepoints(std::istream& is) {
     using namespace __internal;
 
     auto h = pd_header();
@@ -1493,8 +1165,530 @@ token_database::load_savepoints(std::istream& is) {
     return 0;
 }
 
+int
+token_database_impl::flush() const {
+    auto status = db_->Flush(rocksdb::FlushOptions());
+    if(!status.ok()) {
+        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+    }
+    return 0;
+}
+
+token_database::token_database() 
+    : my_(std::make_unique<token_database_impl>()) {}
+
+token_database::token_database(const fc::path& dbpath)
+    : my_(std::make_unique<token_database_impl>(dbpath.to_native_ansi_path())) {}
+
+token_database::~token_database() {
+    my_->close();
+}
+
+int
+token_database::open(int load_persistence) {
+    return my_->open(load_persistence);
+}
+
+int
+token_database::close(int persist) {
+    return my_->close(persist);
+}
+
+int
+token_database::add_domain(const domain_def& domain) {
+    using namespace __internal;
+    return my_->add_impl<kDomain>(domain);
+}
+
+int
+token_database::exists_domain(const domain_name& name) const {
+    using namespace __internal;
+    return my_->exists_impl<kDomain>(name);
+}
+
+int
+token_database::issue_tokens(const issuetoken& issue) {
+    using namespace __internal;
+    if(!exists_domain(issue.domain)) {
+        EVT_THROW(tokendb_key_not_found, "Cannot find key: ${name} with type: `domain`", ("name",issue.domain));
+    }
+    rocksdb::WriteBatch batch;
+    for(auto name : issue.names) {
+        auto key   = get_db_key(issue.domain, name);
+        auto value = get_value(token_def(issue.domain, name, issue.owner));
+        batch.Put(key.as_slice(), value);
+    }
+    auto status = my_->db_->Write(my_->write_opts_, &batch);
+    if(!status.ok()) {
+        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+    }
+    if(my_->should_record()) {
+        auto data     = (rt_data_keys*)malloc(sizeof(rt_data_keys) + sizeof(name128) * (issue.names.size() + 1));
+        data->sz      = issue.names.size() + 1;
+        data->keys[0] = issue.domain;
+        memcpy(data->keys + 1, &issue.names[0], sizeof(name128) * issue.names.size());
+        my_->record(kToken, kNew, data);
+    }
+    return 0;
+}
+
+int
+token_database::exists_token(const domain_name& domain, const token_name& name) const {
+    using namespace __internal;
+    auto key    = get_db_key(domain, name);
+    auto value  = std::string();
+    auto status = my_->db_->Get(my_->read_opts_, key.as_slice(), &value);
+    return status.ok();
+}
+
+int
+token_database::add_group(const group_def& group) {
+    using namespace __internal;
+    return my_->add_impl<kGroup>(group);
+}
+
+int
+token_database::exists_group(const group_name& name) const {
+    using namespace __internal;
+    return my_->exists_impl<kGroup>(name);
+}
+
+int
+token_database::add_suspend(const suspend_def& suspend) {
+    using namespace __internal;
+    return my_->add_impl<kSuspend>(suspend);
+}
+
+int
+token_database::exists_suspend(const proposal_name& name) const {
+    using namespace __internal;
+    return my_->exists_impl<kSuspend>(name);
+}
+
+int
+token_database::add_lock(const lock_def& lock) {
+    using namespace __internal;
+    return my_->add_impl<kLock>(lock);
+}
+
+int
+token_database::exists_lock(const proposal_name& name) const {
+    using namespace __internal;
+    return my_->exists_impl<kLock>(name);
+}
+
+int
+token_database::add_fungible(const fungible_def& fungible) {
+    using namespace __internal;
+    return my_->add_impl<kFungible>(fungible);
+}
+
+int
+token_database::exists_fungible(const symbol sym) const {
+    using namespace __internal;
+    return my_->exists_impl<kFungible>((uint128_t)sym.id());
+}
+
+int
+token_database::exists_fungible(const symbol_id_type sym_id) const {
+    using namespace __internal;
+    return my_->exists_impl<kFungible>((uint128_t)sym_id);
+}
+
+int
+token_database::update_asset(const address& addr, const asset& asset) {
+    using namespace __internal;
+    auto key    = get_asset_key(addr, asset);
+    auto value  = get_value(asset);
+    auto status = my_->db_->Put(my_->write_opts_, my_->assets_handle_, key.as_slice(), value);
+    if(!status.ok()) {
+        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+    }
+    if(my_->should_record()) {
+        auto act  = (rt_data_asset*)malloc(sizeof(rt_data_asset));
+        memcpy(act->key, key.buf, sizeof(key.buf));
+        my_->record(kAsset, kNewOrUpdate, act);
+    }
+    return 0;
+}
+
+int
+token_database::exists_any_asset(const address& addr) const {
+    using namespace __internal;
+    auto it  = my_->db_->NewIterator(my_->read_opts_, my_->assets_handle_);
+    auto key = get_asset_prefix_key(addr);
+    it->Seek(key.as_slice());
+
+    auto existed = it->Valid();
+    delete it;
+
+    return existed;
+}
+
+int
+token_database::exists_asset(const address& addr, const symbol symbol) const {
+    using namespace __internal;
+    auto it  = my_->db_->NewIterator(my_->read_opts_, my_->assets_handle_);
+    auto key = get_asset_key(addr, symbol);
+    it->Seek(key.as_slice());
+
+    auto existed = it->Valid() && it->key().compare(key.as_slice()) == 0;
+    delete it;
+
+    return existed;
+}
+
+int
+token_database::update_prodvote(const conf_key& key, const public_key_type& pkey, int64_t value) {
+    using namespace __internal;
+    using boost::container::flat_map;
+
+    auto dbkey  = get_db_key<kProdVote>(key);
+    auto v      = std::string();
+    auto map    = flat_map<public_key_type, int64_t>();
+    auto status = my_->db_->Get(my_->read_opts_, dbkey.as_slice(), &v);
+    if(!status.ok()) {
+        if(status.code() != rocksdb::Status::kNotFound) {
+            FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+        }
+        map.emplace(pkey, value);
+    }
+    else {
+        map = read_value<decltype(map)>(v);
+        auto it = map.emplace(pkey, value);
+        if(it.second == false) {
+            // existed
+            it.first->second = value;
+        }
+    }
+    v = get_value(map);
+    
+    status = my_->db_->Put(my_->write_opts_, dbkey.as_slice(), v);
+    if(!status.ok()) {
+        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+    }
+    if(my_->should_record()) {
+        auto act  = (rt_data_key*)malloc(sizeof(rt_data_key));
+        act->key = key;
+        my_->record(kProdVote, kNewOrUpdate, act);
+    }
+    return 0;
+}
+
+int
+token_database::add_evt_link(const evt_link_object& link_obj) {
+    using namespace __internal;
+    return my_->add_impl<kEvtLink>(link_obj);
+}
+
+int
+token_database::exists_evt_link(const link_id_type& id) const {
+    using namespace __internal;
+    return my_->exists_impl<kEvtLink>(id);
+}
+
+int
+token_database::read_domain(const domain_name& name, domain_def& domain) const {
+    using namespace __internal;
+    try {
+        return my_->read_impl<kDomain>(name, domain);
+    }
+    catch(const tokendb_key_not_found&) {
+        EVT_THROW(unknown_domain_exception, "Unknown domain: ${n}", ("n",name));
+    }
+}
+
+int
+token_database::read_token(const domain_name& domain, const token_name& name, token_def& token) const {
+    using namespace __internal;
+    auto value  = std::string();
+    auto key    = get_db_key(domain, name);
+    auto status = my_->db_->Get(my_->read_opts_, key.as_slice(), &value);
+    if(!status.ok()) {
+        EVT_THROW(unknown_token_exception, "Unknown token: ${name} in ${domain}", ("domain",domain)("name",name));
+    }
+    token = read_value<token_def>(value);
+    return 0;
+}
+
+int
+token_database::read_tokens(const domain_name& domain, int skip, const read_token_func& func) const {
+    using namespace __internal;
+    auto it  = my_->db_->NewIterator(my_->read_opts_);
+    auto key = rocksdb::Slice((char*)&domain, sizeof(domain));
+    
+    it->Seek(key);
+    int i = 0;
+    while(it->Valid()) {
+        if(i++ < skip) {
+            it->Next();
+            continue;
+        }
+        auto v = read_value<token_def>(it->value());
+        if(!func(v)) {
+            delete it;
+            return 0;
+        }
+        it->Next();
+    }
+    delete it;
+    return 0;
+}
+
+int
+token_database::read_group(const group_name& name, group_def& group) const {
+    using namespace __internal;
+    try {
+        return my_->read_impl<kGroup>(name, group);
+    }
+    catch(const tokendb_key_not_found&) {
+        EVT_THROW(unknown_group_exception, "Unknown group: ${n}", ("n",name));
+    }
+}
+
+int
+token_database::read_suspend(const proposal_name& name, suspend_def& suspend) const {
+    using namespace __internal;
+    try {
+        return my_->read_impl<kSuspend>(name, suspend);
+    }
+    catch(const tokendb_key_not_found&) {
+        EVT_THROW(unknown_suspend_exception, "Unknown suspend proposal: ${n}", ("n",name));
+    }
+}
+
+int
+token_database::read_lock(const proposal_name& name, lock_def& lock) const {
+    using namespace __internal;
+    try {
+        return my_->read_impl<kLock>(name, lock);
+    }
+    catch(const tokendb_key_not_found&) {
+        EVT_THROW(unknown_lock_exception, "Unknown lock assets proposal: ${n}", ("n",name));
+    }
+}
+
+int
+token_database::read_fungible(const symbol sym, fungible_def& fungible) const {
+    using namespace __internal;
+    try {
+        return my_->read_impl<kFungible>((uint128_t)sym.id(), fungible);
+    }
+    catch(const tokendb_key_not_found&) {
+        EVT_THROW(unknown_fungible_exception, "Unknown fungible symbol id: ${id}", ("id",sym.id()));
+    }
+}
+
+int
+token_database::read_fungible(const symbol_id_type sym_id, fungible_def& fungible) const {
+    using namespace __internal;
+    try {
+        return my_->read_impl<kFungible>((uint128_t)sym_id, fungible);
+    }
+    catch(const tokendb_key_not_found&) {
+        EVT_THROW(unknown_fungible_exception, "Unknown fungible symbol id: ${id}", ("id",sym_id));
+    }
+}
+
+int
+token_database::read_asset(const address& addr, const symbol symbol, asset& v) const {
+    using namespace __internal;
+    auto key   = get_asset_key(addr, symbol);
+    auto value = std::string();
+
+    auto status = my_->db_->Get(my_->read_opts_, my_->assets_handle_, key.as_slice(), &value);
+    if(!status.ok()) {
+        if(!status.IsNotFound()) {
+            FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+        }
+        EVT_THROW(balance_exception, "Cannot find any fungible(S#${id}) balance in address: {addr}", ("id",symbol.id())("addr",addr));
+    }
+    v = read_value<asset>(value);
+    return 0;
+}
+
+int
+token_database::read_asset_no_throw(const address& addr, const symbol symbol, asset& v) const {
+    using namespace __internal;
+    auto key   = get_asset_key(addr, symbol);
+    auto value = std::string();
+
+    auto status = my_->db_->Get(my_->read_opts_, my_->assets_handle_, key.as_slice(), &value);
+    if(!status.ok()) {
+        if(!status.IsNotFound()) {
+            FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+        }
+        v = asset(0, symbol);
+        return 0;
+    }
+    v = read_value<asset>(value);
+    return 0;
+}
+
+int
+token_database::read_all_assets(const address& addr, const read_fungible_func& func) const {
+    using namespace __internal;
+    auto it  = my_->db_->NewIterator(my_->read_opts_, my_->assets_handle_);
+    auto key = get_asset_prefix_key(addr);
+    it->Seek(key.as_slice());
+
+    while(it->Valid()) {
+        auto v = read_value<asset>(it->value());
+        if(!func(v)) {
+            break;
+        }
+        it->Next();
+    }
+    delete it;
+    return 0;
+}
+
+int
+token_database::read_prodvotes_no_throw(const conf_key& key, const read_prodvote_func& func) const {
+    using namespace __internal;
+    using boost::container::flat_map;
+
+    auto value  = std::string();
+    auto dbkey  = get_db_key<kProdVote>(key);
+    auto status = my_->db_->Get(my_->read_opts_, dbkey.as_slice(), &value);
+    if(!status.ok() && status.code() != rocksdb::Status::kNotFound) {
+        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+    }
+    if(value.empty()) {
+        return 0;
+    }
+
+    auto map = read_value<flat_map<public_key_type, int64_t>>(value);
+    for(auto& it : map) {
+        if(!func(it.first, it.second)) {
+            break;
+        }
+    }
+    return 0;
+}
+
+int
+token_database::read_evt_link(const link_id_type& id, evt_link_object& link_obj) const {
+    using namespace __internal;
+    try {
+        return my_->read_impl<kEvtLink>(id, link_obj);
+    }
+    catch(const tokendb_key_not_found&) {
+        EVT_THROW(evt_link_existed_exception, "Unknown Evt Link: ${id}", ("id",id));
+    }
+}
+
+int
+token_database::update_domain(const domain_def& domain) {
+    using namespace __internal;
+    return my_->update_impl<kDomain>(domain);
+}
+
+int
+token_database::update_group(const group& group) {
+    using namespace __internal;
+    return my_->update_impl<kGroup>(group);
+}
+
+int
+token_database::update_token(const token_def& token) {
+    using namespace __internal;
+    return my_->update_impl<kToken>(token);
+}
+
+int
+token_database::update_suspend(const suspend_def& suspend) {
+    using namespace __internal;
+    return my_->update_impl<kSuspend>(suspend);
+}
+
+int
+token_database::update_lock(const lock_def& lock) {
+    using namespace __internal;
+    return my_->update_impl<kLock>(lock);
+}
+
+int
+token_database::update_fungible(const fungible_def& fungible) {
+    using namespace __internal;
+    return my_->update_impl<kFungible>(fungible);
+}
+
+token_database::session
+token_database::new_savepoint_session(int64_t seq) {
+    my_->add_savepoint(seq);
+    return session(*this, seq);
+}
+
+token_database::session
+token_database::new_savepoint_session() {
+    auto seq = my_->new_savepoint_session_seq();
+    my_->add_savepoint(seq);
+    return session(*this, seq);
+}
+
+size_t
+token_database::savepoints_size() const {
+    return my_->savepoints_size();
+}
+
+int
+token_database::add_savepoint(int64_t seq) {
+    return my_->add_savepoint(seq);
+}
+
+int
+token_database::rollback_to_latest_savepoint() {
+    return my_->rollback_to_latest_savepoint();
+}
+
+int
+token_database::pop_savepoints(int64_t until) {
+    return my_->pop_savepoints(until);
+}
+
+int
+token_database::pop_back_savepoint() {
+    return my_->pop_back_savepoint();
+}
+
+int
+token_database::squash() {
+    return my_->squash();
+}
+
+int64_t
+token_database::latest_savepoint_seq() const {
+    return my_->latest_savepoint_seq();
+}
+
+int
+token_database::flush() const {
+    return my_->flush();
+}
+
+int
+token_database::persist_savepoints(std::ostream& os) const {
+    return my_->persist_savepoints(os);
+}
+
+int
+token_database::load_savepoints(std::istream& is) {
+    return my_->load_savepoints(is);
+}
+
+rocksdb::DB*
+token_database::internal_db() const {
+    return my_->db_;
+}
+
+std::string
+token_database::get_db_path() const {
+    return my_->get_db_path();
+}
+
 }}  // namespace evt::chain
 
 FC_REFLECT(evt::chain::__internal::pd_header, (dirty_flag));
-FC_REFLECT(evt::chain::token_database::pd_action, (op)(type)(key)(value));
-FC_REFLECT(evt::chain::token_database::pd_group, (seq)(actions));
+FC_REFLECT(evt::chain::__internal::pd_action, (op)(type)(key)(value));
+FC_REFLECT(evt::chain::__internal::pd_group,  (seq)(actions));

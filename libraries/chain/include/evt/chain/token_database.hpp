@@ -3,11 +3,9 @@
  *  @copyright defined in evt/LICENSE.txt
 */
 #pragma once
-#include <deque>
 #include <functional>
 #include <memory>
 #include <boost/noncopyable.hpp>
-#include <rocksdb/options.h>
 #include <evt/chain/asset.hpp>
 #include <evt/chain/contracts/types.hpp>
 #include <evt/chain/contracts/evt_link_object.hpp>
@@ -15,6 +13,7 @@
 namespace rocksdb {
 class DB;
 }  // namespace rocksdb
+
 
 // Use only lower 48-bit address for some pointers.
 /*
@@ -36,72 +35,6 @@ using read_prodvote_func = std::function<bool(const public_key_type& pkey, int64
 using read_token_func    = std::function<bool(const token_def& token)>;
 
 class token_database : boost::noncopyable {
-public:
-    struct flag {
-    public:
-        flag(uint8_t type, uint8_t op) : type(type), op(op) {}
-
-    public:
-        char     payload[6];
-        uint8_t  type;
-        uint8_t  op;
-    };
-
-    // realtime action
-    // stored in memory
-    struct rt_action {
-    public:
-        rt_action(uint8_t type, uint8_t op, void* data)
-            : f(type, op) {
-            SETPOINTER(void, this->data, data);
-        }
-
-        union {
-            flag  f;
-            void* data;
-        };
-    };
-
-    struct rt_group {
-        const void*            rb_snapshot;
-        std::vector<rt_action> actions;
-    };
-
-    // persistent action
-    // stored in disk
-    struct pd_action {
-        uint16_t    op;
-        uint16_t    type;
-        std::string key;
-        std::string value;
-    };
-
-    struct pd_group {
-        int64_t                seq; // used for persistent
-        std::vector<pd_action> actions;
-    };
-
-    struct sp_node {
-    public:
-        sp_node(uint8_t type) : f(type, 0) {}
-
-    public:
-        union {
-            flag  f;
-            void* group;
-        };
-    };
-
-    struct savepoint {
-    public:
-        savepoint(int64_t seq, uint8_t type)
-            : seq(seq), node(type) {}
-
-    public:
-        int64_t  seq;
-        sp_node  node;
-    };
-
 public:
     class session {
     public:
@@ -219,40 +152,20 @@ public:
     session new_savepoint_session(int64_t seq);
     session new_savepoint_session();
 
-    size_t savepoints_size() const { return savepoints_.size(); }
+    size_t savepoints_size() const;
 
 private:
-    int rollback_rt_group(rt_group*);
-    int rollback_pd_group(pd_group*);
-
-private:
-    int should_record() { return !savepoints_.empty(); }
-    int record(uint8_t type, uint8_t op, void* data);
-    int free_savepoint(savepoint&);
-    int free_all_savepoints();
-
-private:
-    int persist_savepoints() const;
-    int load_savepoints();
+    int flush() const;
     int persist_savepoints(std::ostream&) const;
     int load_savepoints(std::istream&);
 
+    rocksdb::DB* internal_db() const;
+    std::string  get_db_path() const;
+
 private:
-    std::string db_path_;
-
-    rocksdb::DB*          db_;
-    rocksdb::ReadOptions  read_opts_;
-    rocksdb::WriteOptions write_opts_;
-
-    rocksdb::ColumnFamilyHandle* tokens_handle_;
-    rocksdb::ColumnFamilyHandle* assets_handle_;  
-
-    std::deque<savepoint> savepoints_;
-
     std::unique_ptr<class token_database_impl> my_;
 
 private:
-    friend class token_database_impl;
     friend class token_database_snapshot;
 };
 

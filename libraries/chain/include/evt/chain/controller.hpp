@@ -93,22 +93,22 @@ public:
     void startup(const std::shared_ptr<snapshot_reader>& snapshot = nullptr);
 
     /**
-          * Starts a new pending block session upon which new transactions can
-          * be pushed.
-          */
+     * Starts a new pending block session upon which new transactions can
+     * be pushed.
+     */
     void start_block(block_timestamp_type time = block_timestamp_type(), uint16_t confirm_block_count = 0);
 
     void abort_block();
 
     /**
-          *  These transactions were previously pushed by have since been unapplied, recalling push_transaction
-          *  with the transaction_metadata_ptr will remove them from the source of this data IFF it succeeds.
-          *
-          *  The caller is responsible for calling drop_unapplied_transaction on a failing transaction that
-          *  they never intend to retry
-          *
-          *  @return vector of transactions which have been unapplied
-          */
+     *  These transactions were previously pushed by have since been unapplied, recalling push_transaction
+     *  with the transaction_metadata_ptr will remove them from the source of this data IFF it succeeds.
+     *
+     *  The caller is responsible for calling drop_unapplied_transaction on a failing transaction that
+     *  they never intend to retry
+     *
+     *  @return vector of transactions which have been unapplied
+     */
     vector<transaction_metadata_ptr> get_unapplied_transactions() const;
     void                             drop_unapplied_transaction(const transaction_metadata_ptr& trx);
     void                             drop_all_unapplied_transactions();
@@ -240,4 +240,4 @@ FC_REFLECT(evt::chain::controller::config,
            (contracts_console)
            (trusted_producers)
            (genesis)
-           )
+           );
