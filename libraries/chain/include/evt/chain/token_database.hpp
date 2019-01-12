@@ -103,18 +103,31 @@ public:
     ~token_database();
 
 public:
-    int open(int load_persistence = true);
-    int close(int persist = true);
+    void open(int load_persistence = true);
+    void close(int persist = true);
 
 public:
-    
+    void add_token(action_type type, const name128& prefix, const name128& key, const std::string& data);
+    void update_token(action_type type, const name128& prefix, const name128& key, const std::string& data);
+    void put_token(action_type type, const name128& prefix, const name128& key, const std::string& data);
+    void add_tokens(action_type type, const name128& prefix, small_vector<name128, 4>&& keys, const small_vector<std::reference_wrapper<std::string>, 4>& data);
+    void put_asset(const address& addr, const symbol sym, const std::string& data);
+
+    int exists_token(const name128& prefix, const name128& key) const;
+    int exists_asset(const address& addr, const symbol sym) const;
+
+    int read_token(const name128& prefix, const name128& key, std::string& out, bool no_throw = false) const;
+    int read_asset(const address& addr, const symbol sym, std::string& out, bool no_throw = false) const;
+
+    int read_tokens_range(const name128& prefix, int skip, const read_value_func& func) const;
+    int read_assets_range(const symbol sym, int skip, const read_value_func& func) const;
 
 public:
-    int add_savepoint(int64_t seq);
-    int rollback_to_latest_savepoint();
-    int pop_savepoints(int64_t until);
-    int pop_back_savepoint();
-    int squash();
+    void add_savepoint(int64_t seq);
+    void rollback_to_latest_savepoint();
+    void pop_savepoints(int64_t until);
+    void pop_back_savepoint();
+    void squash();
 
     int64_t latest_savepoint_seq() const;
 
@@ -124,9 +137,9 @@ public:
     size_t savepoints_size() const;
 
 private:
-    int flush() const;
-    int persist_savepoints(std::ostream&) const;
-    int load_savepoints(std::istream&);
+    void flush() const;
+    void persist_savepoints(std::ostream&) const;
+    void load_savepoints(std::istream&);
 
     rocksdb::DB* internal_db() const;
     std::string  get_db_path() const;
