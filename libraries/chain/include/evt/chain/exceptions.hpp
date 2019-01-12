@@ -277,17 +277,17 @@ FC_DECLARE_DERIVED_EXCEPTION( unsupported_key_type_exception,    wallet_exceptio
 FC_DECLARE_DERIVED_EXCEPTION( invalid_lock_timeout_exception,    wallet_exception, 3140011, "Wallet lock timeout is invalid" );
 FC_DECLARE_DERIVED_EXCEPTION( secure_enclave_exception,          wallet_exception, 3140012, "Secure Enclave Exception" );
 
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_exception,            chain_exception,   3150000, "tokendb exception" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_key_already_existed,  tokendb_exception, 3150001, "Key is already existed." );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_key_not_found,        tokendb_exception, 3150002, "Not found specific key." );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_rocksdb_exception,    tokendb_exception, 3150003, "Rocksdb internal error occurred." );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_no_savepoint,         tokendb_exception, 3150004, "No savepoints anymore" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_seq_not_valid,        tokendb_exception, 3150005, "Seq for checkpoint is not valid." );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_db_action_exception,  tokendb_exception, 3150006, "Unknown db action type." );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_dirty_flag_exception, tokendb_exception, 3150007, "Checkspoints log file is in dirty." );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_squash_exception,     tokendb_exception, 3150008, "Cannot perform squash operation now" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_snapshot_exception,   tokendb_exception, 3150009, "Create or restore snapshot failed" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_persist_exception,    tokendb_exception, 3150010, "Persist savepoints failed" );
+FC_DECLARE_DERIVED_EXCEPTION( token_database_exception,            chain_exception,          3150000, "token_database exception" );
+FC_DECLARE_DERIVED_EXCEPTION( token_database_key_already_existed,  token_database_exception, 3150001, "Key is already existed." );
+FC_DECLARE_DERIVED_EXCEPTION( token_database_key_not_found,        token_database_exception, 3150002, "Not found specific key." );
+FC_DECLARE_DERIVED_EXCEPTION( token_database_rocksdb_exception,    token_database_exception, 3150003, "Rocksdb internal error occurred." );
+FC_DECLARE_DERIVED_EXCEPTION( token_database_no_savepoint,         token_database_exception, 3150004, "No savepoints anymore" );
+FC_DECLARE_DERIVED_EXCEPTION( token_database_seq_not_valid,        token_database_exception, 3150005, "Seq for checkpoint is not valid." );
+FC_DECLARE_DERIVED_EXCEPTION( token_database_db_action_exception,  token_database_exception, 3150006, "Unknown db action type." );
+FC_DECLARE_DERIVED_EXCEPTION( token_database_dirty_flag_exception, token_database_exception, 3150007, "Checkspoints log file is in dirty." );
+FC_DECLARE_DERIVED_EXCEPTION( token_database_squash_exception,     token_database_exception, 3150008, "Cannot perform squash operation now" );
+FC_DECLARE_DERIVED_EXCEPTION( token_database_snapshot_exception,   token_database_exception, 3150009, "Create or restore snapshot failed" );
+FC_DECLARE_DERIVED_EXCEPTION( token_database_persist_exception,    token_database_exception, 3150010, "Persist savepoints failed" );
 
 FC_DECLARE_DERIVED_EXCEPTION( guard_exception,            database_exception, 3160101, "Database exception" );
 FC_DECLARE_DERIVED_EXCEPTION( database_guard_exception,   guard_exception,    3160102, "Database usage is at unsafe levels" );

@@ -6,9 +6,6 @@
 #include <functional>
 #include <memory>
 #include <boost/noncopyable.hpp>
-#include <evt/chain/asset.hpp>
-#include <evt/chain/contracts/types.hpp>
-#include <evt/chain/contracts/evt_link_object.hpp>
 
 namespace rocksdb {
 class DB;
@@ -29,13 +26,33 @@ class DB;
 
 namespace evt { namespace chain {
 
-using namespace evt::chain::contracts;
-using read_fungible_func = std::function<bool(const asset&)>;
-using read_prodvote_func = std::function<bool(const public_key_type& pkey, int64_t value)>;
-using read_token_func    = std::function<bool(const token_def& token)>;
+using read_value_func = std::function<int(const std::string_view& key, std::string&&)>;
+
+enum class storage_profile {
+    disk   = 0,
+    memory = 1
+};
+
+enum class action_type {
+    asset = 0,
+    domain,
+    token,
+    group,
+    suspend,
+    lock,
+    fungible,
+    prodvote,
+    evtlink
+};
 
 class token_database : boost::noncopyable {
 public:
+    struct config {
+        storage_profile profile;
+        uint32_t        cache_size; // MBytes
+        std::string     db_path;
+    };
+
     class session {
     public:
         session(token_database& token_db, int seq)
@@ -82,8 +99,7 @@ public:
     };
 
 public:
-    token_database();
-    token_database(const fc::path& dbpath);
+    token_database(const config&);
     ~token_database();
 
 public:
@@ -91,54 +107,7 @@ public:
     int close(int persist = true);
 
 public:
-    int add_domain(const domain_def&);
-    int exists_domain(const domain_name&) const;
-    int issue_tokens(const issuetoken&);
-    int exists_token(const domain_name&, const token_name&) const;
-    int add_group(const group_def&);
-    int exists_group(const group_name&) const;
-    int add_suspend(const suspend_def&);
-    int exists_suspend(const proposal_name&) const;
-    int add_fungible(const fungible_def&);
-    int exists_fungible(const symbol) const;
-    int exists_fungible(const symbol_id_type) const;
-    int exists_lock(const proposal_name&) const;
-    int add_lock(const lock_def&);
-
-    int update_asset(const address& addr, const asset&);
-    int exists_any_asset(const address& addr) const;
-    int exists_asset(const address& addr, const symbol) const;
-
-    int update_prodvote(const conf_key& key, const public_key_type& pkey, int64_t value);
-
-    int add_evt_link(const evt_link_object& link_obj);
-    int exists_evt_link(const link_id_type& id) const;
-
-    int read_domain(const domain_name&, domain_def&) const;
-    int read_token(const domain_name&, const token_name&, token_def&) const;
-    int read_tokens(const domain_name&, int skip, const read_token_func&) const;
-    int read_group(const group_name&, group_def&) const;
-    int read_suspend(const proposal_name&, suspend_def&) const;
-    int read_lock(const proposal_name&, lock_def&) const;
-
-    int read_fungible(const symbol, fungible_def&) const;
-    int read_fungible(const symbol_id_type, fungible_def&) const;
-    int read_asset(const address& addr, const symbol, asset&) const;
-    // this function returns asset(0, symbol) when there's no asset key in address
-    // instead of throwing an exception
-    int read_asset_no_throw(const address& addr, const symbol, asset&) const;
-    int read_all_assets(const address& addr, const read_fungible_func&) const;
-
-    int read_prodvotes_no_throw(const conf_key& key, const read_prodvote_func&) const;
-
-    int read_evt_link(const link_id_type& id, evt_link_object& link_obj) const;
-
-    int update_domain(const domain_def&);
-    int update_group(const group_def&);
-    int update_token(const token_def&);
-    int update_suspend(const suspend_def&);
-    int update_fungible(const fungible_def&);
-    int update_lock(const lock_def&);
+    
 
 public:
     int add_savepoint(int64_t seq);
