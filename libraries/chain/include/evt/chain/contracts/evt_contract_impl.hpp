@@ -159,6 +159,53 @@ auto get_metavalue = [](const auto& obj, auto k) {
     return optional<std::string>();
 };
 
+template<typename T>
+name128
+get_db_key(const T& v) {
+    return v.name;
+}
+
+template<>
+name128
+get_db_key<group_def>(const group_def& v) {
+    return v.name();
+}
+
+template<>
+name128
+get_db_key<fungible_def>(const fungible_def& v) {
+    return v.sym.id();
+}
+
+template<>
+name128
+get_db_key<evt_link_object>(const evt_link_object& v) {
+    return v.link_id;
+}
+
+template <typename T>
+std::string
+get_db_value(const T& v) {
+    auto value = std::string();
+    auto size  = fc::raw::pack_size(v);
+    value.resize(size);
+
+    auto ds = fc::datastream<char*>((char*)value.data(), size);
+    fc::raw::pack(ds, v);
+
+    return value;
+}
+
+template <typename T, typename V>
+T
+read_db_value(const V& value) {
+    auto v  = T{};
+    auto ds = fc::datastream<const char*>(value.data(), value.size());
+    fc::raw::unpack(ds, v);
+    
+    return v;
+}
+
 } // namespace __internal
 
 EVT_ACTION_IMPL_BEGIN(newdomain) {
@@ -186,7 +233,7 @@ EVT_ACTION_IMPL_BEGIN(newdomain) {
         pchecker(ndact.transfer, true);
         pchecker(ndact.manage, false);
 
-        domain_def domain;
+        auto domain        = domain_def();
         domain.name        = ndact.name;
         domain.creator     = ndact.creator;
         // NOTICE: we should use pending_block_time() below
@@ -196,7 +243,7 @@ EVT_ACTION_IMPL_BEGIN(newdomain) {
         domain.transfer    = std::move(ndact.transfer);
         domain.manage      = std::move(ndact.manage);
         
-        tokendb.add_domain(domain);       
+        tokendb.add_token(action_type::domain, std::nullopt, get_db_key(domain), get_db_value(domain));
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -220,11 +267,22 @@ EVT_ACTION_IMPL_BEGIN(issuetoken) {
             check_name_reserved(name);
             EVT_ASSERT(!tokendb.exists_token(itact.domain, name), token_duplicate_exception, "Token ${domain}-${name} already exists.", ("domain",itact.domain)("name",name));
         };
+
+        auto values  = small_vector<std::string, 4>();
+        auto data    = small_vector<std::reference_wrapper<std::string>, 4>();
+        auto token   = token_def();
+        token.domain = itact.domain;
+        token.owner  = itact.owner;
+
         for(auto& n : itact.names) {
             check_name(n);
+
+            token.name = n;
+            values.emplace_back(get_db_value(token));
+            data.emplace_back(values.back());
         }
 
-        tokendb.issue_tokens(itact);
+        tokendb.add_tokens(action_type::token, itact.domain, std::move(itact.names), data);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }

@@ -11,19 +11,6 @@ namespace rocksdb {
 class DB;
 }  // namespace rocksdb
 
-
-// Use only lower 48-bit address for some pointers.
-/*
-    This optimization uses the fact that current X86-64 architecture only implement lower 48-bit virtual address.
-    The higher 16-bit can be used for storing other data.
-*/
-#if defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || defined(__x86_64) || defined(_M_X64) || defined(_M_AMD64)
-#define SETPOINTER(type, p, x) (p = reinterpret_cast<type *>((reinterpret_cast<uintptr_t>(p) & static_cast<uintptr_t>(0xFFFF000000000000UL)) | reinterpret_cast<uintptr_t>(reinterpret_cast<const void*>(x))))
-#define GETPOINTER(type, p) (reinterpret_cast<type *>(reinterpret_cast<uintptr_t>(p) & static_cast<uintptr_t>(0x0000FFFFFFFFFFFFUL)))
-#else
-#error EVT can only be compiled in X86-64 architecture
-#endif
-
 namespace evt { namespace chain {
 
 using read_value_func = std::function<int(const std::string_view& key, std::string&&)>;
@@ -107,19 +94,19 @@ public:
     void close(int persist = true);
 
 public:
-    void add_token(action_type type, const name128& prefix, const name128& key, const std::string& data);
-    void update_token(action_type type, const name128& prefix, const name128& key, const std::string& data);
-    void put_token(action_type type, const name128& prefix, const name128& key, const std::string& data);
-    void add_tokens(action_type type, const name128& prefix, small_vector<name128, 4>&& keys, const small_vector<std::reference_wrapper<std::string>, 4>& data);
+    void add_token(action_type type, const std::optional<name128>& domain, const name128& key, const std::string& data);
+    void update_token(action_type type, const std::optional<name128>& domain, const name128& key, const std::string& data);
+    void put_token(action_type type, const std::optional<name128>& domain, const name128& key, const std::string& data);
+    void add_tokens(action_type type, const std::optional<name128>& domain, small_vector<name128, 4>&& keys, const small_vector<std::reference_wrapper<std::string>, 4>& data);
     void put_asset(const address& addr, const symbol sym, const std::string& data);
 
-    int exists_token(const name128& prefix, const name128& key) const;
+    int exists_token(const name128& domain, const name128& key) const;
     int exists_asset(const address& addr, const symbol sym) const;
 
-    int read_token(const name128& prefix, const name128& key, std::string& out, bool no_throw = false) const;
+    int read_token(const name128& domain, const name128& key, std::string& out, bool no_throw = false) const;
     int read_asset(const address& addr, const symbol sym, std::string& out, bool no_throw = false) const;
 
-    int read_tokens_range(const name128& prefix, int skip, const read_value_func& func) const;
+    int read_tokens_range(const name128& domain, int skip, const read_value_func& func) const;
     int read_assets_range(const symbol sym, int skip, const read_value_func& func) const;
 
 public:

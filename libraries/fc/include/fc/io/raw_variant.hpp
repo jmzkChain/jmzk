@@ -42,7 +42,6 @@ namespace fc { namespace raw {
          }
         
          Stream& s;
-        
     };
 
 
@@ -52,6 +51,7 @@ namespace fc { namespace raw {
        pack( s, uint8_t(v.get_type()) );
        v.visit( variant_packer<Stream>(s) );
     }
+
     template<typename Stream> 
     inline void unpack( Stream& s, variant& v )
     {
@@ -126,6 +126,7 @@ namespace fc { namespace raw {
           pack( s, itr->value() );
        }
     }
+
     template<typename Stream> 
     inline void unpack( Stream& s, variant_object& v ) 
     {

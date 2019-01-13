@@ -32,9 +32,21 @@ namespace evt { namespace chain {
 
 namespace __internal {
 
+// Use only lower 48-bit address for some pointers.
+/*
+    This optimization uses the fact that current X86-64 architecture only implement lower 48-bit virtual address.
+    The higher 16-bit can be used for storing other data.
+*/
+#if defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || defined(__x86_64) || defined(_M_X64) || defined(_M_AMD64)
+#define SETPOINTER(type, p, x) (p = reinterpret_cast<type *>((reinterpret_cast<uintptr_t>(p) & static_cast<uintptr_t>(0xFFFF000000000000UL)) | reinterpret_cast<uintptr_t>(reinterpret_cast<const void*>(x))))
+#define GETPOINTER(type, p) (reinterpret_cast<type *>(reinterpret_cast<uintptr_t>(p) & static_cast<uintptr_t>(0x0000FFFFFFFFFFFFUL)))
+#else
+#error EVT can only be compiled in X86-64 architecture
+#endif
+
 const char*  kAssetsColumnFamilyName = "Assets"
-const size_t kSymbolSize    = sizeof(symbol);
-const size_t kPublicKeySize = sizeof(fc::ecc::public_key_shim);
+const size_t kSymbolSize             = sizeof(symbol);
+const size_t kPublicKeySize          = sizeof(fc::ecc::public_key_shim);
 
 struct db_token_key : boost::noncopyable {
 public:
@@ -409,6 +421,7 @@ token_database_impl::put_token(action_type type, action_op op, const name128& pr
         // for `token` action, needs to record both prefix and key, prefix refers to the domain
         // for `non-token` action, prefix is not necessary which can be inferred by the `type`
         if(type != action_type::token) {
+            assert(prefix == action_key_prefixes[(int)type]);
             data = new rt_token_key { .key = key };
         }
         else {
@@ -1148,25 +1161,37 @@ token_database::close(int persist) {
 }
 
 void
-token_database::add_token(action_type type, const name128& prefix, const name128& key, const std::string& data) {
+token_database::add_token(action_type type, const std::optional<name128>& domain, const name128& key, const std::string& data) {
+    assert(type != action_type::asset);
+    assert(type == action_type::token || domain.has_value());
+    auto& prefix = domain.has_value() ? *domain : action_key_prefixes[(int)type];
     my_->put_token(type, kAdd, prefix, key, data);
 }
 
 void
-token_database::update_token(action_type type, const name128& prefix, const name128& key, const std::string& data) {
+token_database::update_token(action_type type, const std::optional<name128>& domain, const name128& key, const std::string& data) {
+    assert(type != action_type::asset);
+    assert(type == action_type::token || domain.has_value());
+    auto& prefix = domain.has_value() ? *domain : action_key_prefixes[(int)type];
     my_->put_token(type, kUpdate, prefix, key, data);
 }
 
 void
-token_database::put_token(action_type type, const name128& prefix, const name128& key, const std::string& data) {
+token_database::put_token(action_type type, const std::optional<name128>& domain, const name128& key, const std::string& data) {
+    assert(type != action_type::asset);
+    assert(type == action_type::token || domain.has_value());
+    auto& prefix = domain.has_value() ? *domain : action_key_prefixes[(int)type];
     my_->put_token(type, kPut, prefix, key, data);
 }
 
 void
 token_database::add_tokens(action_type type,
-                           const name128& prefix,
+                           const std::optional<name128>& domain,
                            small_vector<name128, 4>&& keys
                            const small_vector<std::reference_wrapper<std::string>, 4>& data) {
+    assert(type != action_type::asset);
+    assert(type == action_type::token || domain.has_value());
+    auto& prefix = domain.has_value() ? *domain : action_key_prefixes[(int)type];
     my_->put_tokens(type, kAdd, prefix, keys, data);
 }
 
@@ -1176,8 +1201,8 @@ token_database::put_asset(const address& addr, const symbol sym, const std::stri
 }
 
 int
-token_database::exists_token(const name128& prefix, const name128& key) const {
-    return my_->exists_token(prefix, key);
+token_database::exists_token(const name128& domain, const name128& key) const {
+    return my_->exists_token(domain, key);
 }
 
 int
@@ -1186,8 +1211,8 @@ token_database::exists_asset(const address& addr, const symbol sym) const {
 }
 
 int
-token_database::read_token(const name128& prefix, const name128& key, std::string& out) const {
-    return my_->read_token(prefix, key, out, no_throw)
+token_database::read_token(const name128& domain, const name128& key, std::string& out) const {
+    return my_->read_token(domain, key, out, no_throw)
 }
 
 int
@@ -1196,8 +1221,8 @@ token_database::read_asset(const address& addr, const symbol sym, std::string& o
 }
 
 int
-token_database::read_tokens_range(const name128& prefix, int skip, const read_value_func& func) const {
-    return my_->read_tokens_range(prefix, skip, func);
+token_database::read_tokens_range(const name128& domain, int skip, const read_value_func& func) const {
+    return my_->read_tokens_range(domain, skip, func);
 }
 
 int

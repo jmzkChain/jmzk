@@ -132,4 +132,4 @@ namespace fc {
     template<typename T> inline T unpack( const std::vector<char>& s );
     template<typename T> inline T unpack( const char* d, uint32_t s );
     template<typename T> inline void unpack( const char* d, uint32_t s, T& v );
-} }
+}}
