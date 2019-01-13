@@ -119,4 +119,11 @@ read_only::get_fungible_ids_async(int id, const get_fungible_ids_params& params)
     plugin_.my_->pg_query_.get_fungible_ids_async(id, params);
 }
 
+void
+read_only::get_transaction_actions_async(int id, const get_transaction_actions_params& params) {
+    EVT_ASSERT(plugin_.my_, chain::postgres_not_enabled_exception, "Postgres plugin is not enabled.");
+
+    plugin_.my_->pg_query_.get_transaction_actions_async(id, params);
+}
+
 }}  // namespace evt::history_apis

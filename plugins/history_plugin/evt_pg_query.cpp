@@ -63,7 +63,8 @@ enum task_type {
     kGetFungibleActions,
     kGetTransaction,
     kGetTransactions,
-    kGetFungibleIds
+    kGetFungibleIds,
+    kGetTransactionActions
 };
 
 const char* call_names[] = {
@@ -75,7 +76,8 @@ const char* call_names[] = {
     "get_fungible_actions",
     "get_transaction",
     "get_transactions",
-    "get_fungible_ids"
+    "get_fungible_ids",
+    "get_transaction_actions"
 };
 
 template<typename T>
@@ -205,6 +207,10 @@ pg_query::poll_read() {
             }
             case kGetFungibleIds: {
                 get_fungible_ids_resume(t.id, re);
+                break;
+            }
+            case kGetTransactionActions: {
+                get_transaction_actions_resume(t.id, re);
                 break;
             }
             };  // switch
@@ -818,6 +824,58 @@ pg_query::get_fungible_ids_resume(int id, pg_result const* r) {
     fmt::format_to(buf, "]");
 
     return response_ok(id, fmt::to_string(buf));
+}
+
+PREPARE_SQL_ONCE(gta_plan, R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
+                                 FROM actions
+                                 JOIN blocks ON actions.block_id = blocks.block_id
+                                 WHERE trx_id = $1
+                                 ORDER actions.seq_num {0}
+                                 )sql");
+
+int
+pg_query::get_transaction_actions_async(int id, const read_only::get_transaction_actions_params& params) {
+    using namespace __internal;
+
+    auto stmt = fmt::format(fmt("EXECUTE gta_plan('{}');"), (std::string)params.id);
+
+    auto r = PQsendQuery(conn_, stmt.c_str());
+    EVT_ASSERT(r == 1, chain::postgres_send_exception, "Send get transaction actions command failed, detail: ${d}", ("d",PQerrorMessage(conn_)));
+
+    return queue(id, kGetTransactionActions);
+}
+
+int
+pg_query::get_transaction_actions_resume(int id, pg_result const* r) {
+    using namespace __internal;
+
+    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get transaction actions failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+
+    auto n = PQntuples(r);
+    if(n == 0) {
+        EVT_THROW(chain::unknown_transaction_exception, "Cannot find transaction");
+    }
+
+    auto builder = fmt::memory_buffer();
+
+    fmt::format_to(builder, "[");
+    for(int i = 0; i < n; i++) {
+        fmt::format_to(builder,
+            fmt(R"({{"trx_id":"{}","name":"{}","domain":"{}","key":"{}","data":{},"timestamp":"{}"}})"),
+            PQgetvalue(r, i, 0),
+            PQgetvalue(r, i, 1),
+            PQgetvalue(r, i, 2),
+            PQgetvalue(r, i, 3),
+            PQgetvalue(r, i, 4),
+            fix_pg_timestamp(PQgetvalue(r, i, 5))
+            );
+        if(i < n - 1) {
+            fmt::format_to(builder, ",");
+        }
+    }
+    fmt::format_to(builder, "]");
+
+    return response_ok(id, fmt::to_string(builder));
 }
 
 }  // namepsace evt
