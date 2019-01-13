@@ -849,9 +849,9 @@ token_database_impl::rollback_pd_group(__internal::pd_group* pd) {
     for(auto it = pd->actions.begin(); it < pd->actions.end(); it++) {
         switch(it->op) {
         case kAdd: {
-            FC_ASSERT(key_set.find(it->key) == key_set.cend());
+            assert(key_set.find(it->key) == key_set.cend());
+            assert(it->value.empty());
 
-            FC_ASSERT(it->value.empty());
             batch.Delete(it->key);
 
             key_set.emplace(it->key);
@@ -862,7 +862,7 @@ token_database_impl::rollback_pd_group(__internal::pd_group* pd) {
                 break;
             }
 
-            FC_ASSERT(!it->value.empty());
+            assert(!it->value.empty());
             batch.Put(it->key, it->value);
 
             key_set.emplace(it->key);
@@ -895,7 +895,7 @@ token_database_impl::rollback_pd_group(__internal::pd_group* pd) {
             break;
         }
         default: {
-            FC_ASSERT(false);
+            assert(false);
         }
         }  // switch
     }
@@ -928,7 +928,7 @@ token_database_impl::rollback_to_latest_savepoint() {
         break;
     }
     default: {
-        FC_ASSERT(false);
+        assert(false);
     }
     }  // switch
 
@@ -1039,7 +1039,7 @@ token_database_impl::persist_savepoints(std::ostream& os) const {
 
                 switch(op) {
                 case kAdd: {
-                    FC_ASSERT(key_set.find(key) == key_set.cend());
+                    assert(key_set.find(key) == key_set.cend());
 
                     // no need to read value
                     key_set.emplace(std::move(key));
