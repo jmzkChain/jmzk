@@ -830,7 +830,7 @@ PREPARE_SQL_ONCE(gta_plan, R"sql(SELECT trx_id, name, domain, key, data, blocks.
                                  FROM actions
                                  JOIN blocks ON actions.block_id = blocks.block_id
                                  WHERE trx_id = $1
-                                 ORDER actions.seq_num {0}
+                                 ORDER BY actions.seq_num ASC
                                  )sql");
 
 int

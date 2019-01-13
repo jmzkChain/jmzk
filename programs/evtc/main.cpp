@@ -1558,6 +1558,14 @@ struct set_get_history_subcommands {
             print_info(call(get_transaction, args));
         });
 
+        auto trxactscmd = hiscmd->add_subcommand("trxactions", localized("Retrieve actions by transaction id"));
+        trxactscmd->add_option("id", trx_id, localized("Id of transaction to be retrieved"))->required();
+
+        trxactscmd->callback([this] {
+            auto args = mutable_variant_object("id", trx_id);
+            print_info(call(get_transaction_actions, args));
+        });
+
         auto funcmd = hiscmd->add_subcommand("fungible", localized("Retrieve fungible actions history"));
         funcmd->add_option("sym_id", sym_id, localized("Symbol Id to be retrieved"))->required();
         funcmd->add_option("address", addr, localized("Address involved in fungible actions"));
