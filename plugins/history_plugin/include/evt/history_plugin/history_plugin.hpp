@@ -91,6 +91,9 @@ public:
     };
     void get_fungible_ids_async(int id, const get_fungible_ids_params& params);
 
+    using get_transaction_actions_params = get_transaction_params;
+    void get_transaction_actions_async(int id, const get_transaction_actions_params& params);
+
 private:
     const history_plugin& plugin_;
 };

@@ -81,6 +81,9 @@ public:
     int get_fungible_ids_async(int id, const read_only::get_fungible_ids_params& params);
     int get_fungible_ids_resume(int id, pg_result const*);
 
+    int get_transaction_actions_async(int id, const read_only::get_transaction_actions_params& params);
+    int get_transaction_actions_resume(int id, pg_result const*);
+
 private:
     int queue(int id, int task);
     int poll_read();
