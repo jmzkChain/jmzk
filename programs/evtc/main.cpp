@@ -11,16 +11,15 @@
 #include <vector>
 
 #include <pwd.h>
+#include <unistd.h>
 
 #pragma push_macro("N")
 #undef N
 
-#include <boost/asio.hpp>
-#include <boost/format.hpp>
+#include <boost/asio/local/stream_protocol.hpp>
 #include <boost/dll/runtime_symbol_info.hpp>
 #include <boost/filesystem.hpp>
-#include <boost/process.hpp>
-#include <boost/process/spawn.hpp>
+// #include <boost/process.hpp>
 #include <boost/range/algorithm/find_if.hpp>
 #include <boost/range/algorithm/sort.hpp>
 #include <boost/range/algorithm/copy.hpp>
@@ -520,36 +519,67 @@ next:
         return;
     }
 
-    boost::filesystem::path binPath = boost::dll::program_location();
-    binPath.remove_filename();
+    auto bin_path = boost::dll::program_location();
+    bin_path.remove_filename();
     // This extra check is necessary when running evtc like this: ./evtc ...
-    if(binPath.filename_is_dot()) {
-        binPath.remove_filename();
+    if(bin_path.filename_is_dot()) {
+        bin_path.remove_filename();
     }
-    binPath.append("evtwd"); // if evtc and evtwd are in the same installation directory
-    if(!boost::filesystem::exists(binPath)) {
-        binPath.remove_filename().remove_filename().append("evtwd").append("evtwd");
+    bin_path.append("evtwd"); // if evtc and evtwd are in the same installation directory
+    if(!boost::filesystem::exists(bin_path)) {
+        bin_path.remove_filename().remove_filename().append("evtwd").append("evtwd");
     }
 
-    if(boost::filesystem::exists(binPath)) {
-        namespace bp = boost::process;
-        binPath = boost::filesystem::canonical(binPath);
+    if(boost::filesystem::exists(bin_path)) {
+        bin_path = boost::filesystem::canonical(bin_path);
 
-        vector<std::string> pargs;
+        auto pargs = vector<std::string>();
         pargs.push_back("--unix-socket-path");
         pargs.push_back(fc::path(determine_home_directory() / "evt-wallet/evtwd.sock").to_native_ansi_path());
 
-        ::boost::process::child evtwd(binPath, pargs,
-                                      bp::std_in.close(),
-                                      bp::std_out > bp::null,
-                                      bp::std_err > bp::null);
-        if(evtwd.running()) {
-            std::cerr << binPath << " launched" << std::endl;
-            evtwd.detach();
-            try_local_port(2000);
+        // namespace bp = boost::process;
+        // ::boost::process::child evtwd(binPath, pargs,
+        //                               bp::std_in.close(),
+        //                               bp::std_out > bp::null,
+        //                               bp::std_err > bp::null);
+        // if(evtwd.running()) {
+        //     std::cerr << binPath << " launched" << std::endl;
+        //     evtwd.detach();
+        //     try_local_port(2000);
+        // }
+        // else {
+        //     std::cerr << "No wallet service listening on " << wallet_url << ". Failed to launch " << binPath << std::endl;
+        // }
+
+        auto argv = vector<char*>();
+        argv.emplace_back((char*)bin_path.c_str());
+        for(auto& parg : pargs) {
+            argv.emplace_back((char*)parg.c_str());
+        }
+        argv.emplace_back(nullptr);
+
+        auto pid = 0;
+        if((pid = fork()) == 0) {
+            // child
+            if(setsid() < 0) {
+                exit(-1);
+            }
+
+            close(STDIN_FILENO);
+            close(STDOUT_FILENO);
+            close(STDERR_FILENO);
+
+            auto r = execv(bin_path.c_str(), argv.data());
+            if(r == -1) {
+                exit(-1);
+            }
+        }
+        else if(pid < 0) {
+            std::cerr << "Cannot fork to start evtwd" << std::endl;
         }
         else {
-            std::cerr << "No wallet service listening on " << wallet_url << ". Failed to launch " << binPath << std::endl;
+            std::cerr << bin_path << " launched" << std::endl;
+            try_local_port(2000);
         }
     }
     else {
@@ -1526,6 +1556,14 @@ struct set_get_history_subcommands {
         trxcmd->callback([this] {
             auto args = mutable_variant_object("id", trx_id);
             print_info(call(get_transaction, args));
+        });
+
+        auto trxactscmd = hiscmd->add_subcommand("trxactions", localized("Retrieve actions by transaction id"));
+        trxactscmd->add_option("id", trx_id, localized("Id of transaction to be retrieved"))->required();
+
+        trxactscmd->callback([this] {
+            auto args = mutable_variant_object("id", trx_id);
+            print_info(call(get_transaction_actions, args));
         });
 
         auto funcmd = hiscmd->add_subcommand("fungible", localized("Retrieve fungible actions history"));
