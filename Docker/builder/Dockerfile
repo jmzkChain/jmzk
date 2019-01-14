@@ -39,7 +39,7 @@ RUN git clone --depth 1 --single-branch --branch master https://github.com/faceb
 RUN wget https://dl.bintray.com/boostorg/release/1.69.0/source/boost_1_69_0.tar.gz -O - | tar -xz \
     && cd boost_1_69_0 \
     && ./bootstrap.sh --prefix=/usr/local --with-toolset=gcc \
-    && ./b2 -d0 -j$(nproc) --with-thread --with-date_time --with-system --with-filesystem --with-program_options \
+    && ./b2 -d0 -j$(nproc) --with-thread --with-date_time --with-system --with-filesystem --with-program_options --with-timer \
        --with-serialization --with-chrono --with-test --with-context --with-locale --with-coroutine --with-iostreams toolset=gcc link=shared install \
     && cd .. && rm -rf boost_1_69_0
 
