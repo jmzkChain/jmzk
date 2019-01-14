@@ -922,8 +922,9 @@ def init(ctx):
 
 @evtwd.command()
 @click.option('--net', '-n', default='evt-net', help='Name of the network for the environment')
+@click.option('--http/--no-http', default=False, help='Whether enable http server')
 @click.pass_context
-def create(ctx, net):
+def create(ctx, net, http):
     name = ctx.obj['name']
     volume_name = '{}-data-volume'.format(name)
 
@@ -958,6 +959,9 @@ def create(ctx, net):
         return
 
     entry = 'evtwd.sh --unix-socket-path=/opt/evt/data/wallet/evtwd.sock'
+    if http:
+        entry += ' --listen-http'
+
     client.containers.create('everitoken/evt:latest', None, name=name, detach=True,
                              network=net,
                              volumes={volume_name: {
