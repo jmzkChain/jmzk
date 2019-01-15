@@ -3,10 +3,12 @@
 #include <fc/string.hpp>
 #include <fc/time.hpp>
 #include <fc/log/log_message.hpp>
+#include <fc/container/small_vector_fwd.hpp>
 
 namespace fc {
 
 class appender;
+using appender_vec = fc::small_vector<std::shared_ptr<appender>, 4>;
 
 /**
   *
@@ -41,9 +43,9 @@ public:
     void              set_name(const fc::string& n);
     const fc::string& name() const;
 
-    void                                   add_appender(const std::shared_ptr<appender>& a);
-    std::vector<std::shared_ptr<appender>> get_appenders() const;
-    void                                   remove_appender(const std::shared_ptr<appender>& a);
+    void                add_appender(const std::shared_ptr<appender>& a);
+    const appender_vec& get_appenders() const;
+    void                remove_appender(const std::shared_ptr<appender>& a);
 
     bool is_enabled(log_level e) const;
     void log(log_message m);
