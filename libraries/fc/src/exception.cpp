@@ -170,8 +170,8 @@ namespace fc
          for( auto itr = my->_elog.begin(); itr != my->_elog.end(); ) {
             try {
                ss << itr->get_message() << "\n"; //fc::format_string( itr->get_format(), itr->get_data() ) <<"\n";
-               ss << "    " << json::to_string( itr->get_data()) << "\n";
-               ss << "    " << itr->get_context().to_string();
+               ss << "    " << json::to_string(itr->args) << "\n";
+               ss << "    " << itr->context.to_string();
                ++itr;
             } catch( std::bad_alloc& ) {
                throw;
@@ -205,7 +205,7 @@ namespace fc
          }
          for( auto itr = my->_elog.begin(); itr != my->_elog.end(); ++itr ) {
             try {
-               ss << fc::format_string( itr->get_format(), itr->get_data()) << "\n";
+               ss << fc::format_string( itr->format, itr->args ) << "\n";
                //      ss << "    " << itr->get_context().to_string() <<"\n";
             } catch( std::bad_alloc& ) {
                throw;
@@ -229,7 +229,7 @@ namespace fc
    {
       for( auto itr = my->_elog.begin(); itr != my->_elog.end(); ++itr )
       {
-         auto s = fc::format_string( itr->get_format(), itr->get_data() );
+         auto s = fc::format_string( itr->format, itr->args );
          if (!s.empty()) {
             return s;
          }

@@ -135,9 +135,9 @@ void to_variant(const fc::flat_set<T, Compare, Container>& var, variant& vo);
 template<typename T, typename Compare, typename Container>
 void from_variant(const variant& var, fc::flat_set<T, Compare, Container>& vo);
 
-template<typename T, int N>
+template<typename T, size_t N>
 void to_variant(const fc::small_vector<T, N>& var, variant& vo);
-template<typename T, int N>
+template<typename T, size_t N>
 void from_variant(const variant& var, fc::small_vector<T, N>& vo);
 
 template<typename T>
