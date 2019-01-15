@@ -16,8 +16,9 @@
 #pragma GCC diagnostic pop
 
 #include <rocksdb/db.h>
+#include <rocksdb/cache.h>
 #include <rocksdb/options.h>
-#include <rocksdb/merge_operator.h>
+#include <rocksdb/filter_policy.h>
 #include <rocksdb/slice_transform.h>
 #include <rocksdb/table.h>
 
@@ -44,13 +45,13 @@ namespace __internal {
 #error EVT can only be compiled in X86-64 architecture
 #endif
 
-const char*  kAssetsColumnFamilyName = "Assets"
+const char*  kAssetsColumnFamilyName = "Assets";
 const size_t kSymbolSize             = sizeof(symbol);
 const size_t kPublicKeySize          = sizeof(fc::ecc::public_key_shim);
 
 struct db_token_key : boost::noncopyable {
 public:
-    db_key(const name128& prefix, const name128& key)
+    db_token_key(const name128& prefix, const name128& key)
         : prefix(prefix)
         , key(key)
         , slice((const char*)this, sizeof(name128) * 2) {}
@@ -96,7 +97,7 @@ private:
     rocksdb::Slice slice;
 };
 
-name128[] action_key_prefixes = {
+name128 action_key_prefixes[] = {
     N128(.asset),
     N128(.domain),
     N128(.token),
@@ -203,8 +204,8 @@ struct rt_token_fullkey {
 };
 
 struct rt_token_keys {
-    name128                  prefix;
-    small_vector<name128, 4> keys;
+    name128                    prefix;
+    small_vector_base<name128> keys;
 };
 
 struct rt_asset_key {
@@ -226,13 +227,13 @@ public:
     void close(int persist = true);
 
 public:
-    void put_token(action_type type, action_op op, const name128& prefix, const name128& key, const std::string& data);
-    void put_tokens(action_type type,
+    void put_token(token_type type, action_op op, const name128& prefix, const name128& key, const std::string_view& data);
+    void put_tokens(token_type type,
                     action_op op,
                     const name128& prefix,
-                    small_vector<name128, 4>&& keys,
-                    const small_vector<std::reference_wrapper<std::string>, 4>& data);
-    void put_asset(const address& addr, const symbol sym, const std::string& data);
+                    small_vector_base<name128>&& keys,
+                    const small_vector_base<std::string_view>& data);
+    void put_asset(const address& addr, const symbol sym, const std::string_view& data);
 
     int exists_token(const name128& prefix, const name128& key) const;
     int exists_asset(const address& addr, const symbol sym) const;
@@ -310,7 +311,7 @@ token_database_impl::open(int load_persistence) {
     options.compression            = CompressionType::kLZ4Compression;
     options.bottommost_compression = CompressionType::kZSTD;
     options.prefix_extractor.reset(NewFixedPrefixTransform(sizeof(name128)));
-    options.filter_policy.reset(NewBloomFilterPolicy(10, false));
+
     options.memtable_factory.reset(NewHashSkipListRepFactory());
 
     auto assets_options = ColumnFamilyOptions(options);
@@ -318,10 +319,11 @@ token_database_impl::open(int load_persistence) {
     if(config_.profile == storage_profile::disk) {
         auto table_opts = BlockBasedTableOptions();
 
-        table_opts.index_type     = kHashSearch;
+        table_opts.index_type     = BlockBasedTableOptions::kHashSearch;
         table_opts.checksum       = kxxHash64;
         table_opts.block_cache    = new NewClockCache(config_.cache_size * 1024 * 1024);
         table_opts.format_version = 4;
+        table_opts.filter_policy.reset(NewBloomFilterPolicy(10, false));
 
         options.table_factory.reset(NewBlockBasedTableFactory(table_opts));
         assets_options.prefix_extractor.reset(NewFixedPrefixTransform(kPublicKeySize));
@@ -343,11 +345,11 @@ token_database_impl::open(int load_persistence) {
     read_opts_.total_order_seek     = false;
     read_opts_.prefix_same_as_start = true;
 
-    if(!fc::exists(db_path_)) {
+    if(!fc::exists(config.db_path_)) {
         // create new database and open
-        fc::create_directories(db_path_);
+        fc::create_directories(config.db_path_);
 
-        auto status = DB::Open(options, db_path_, &db_);
+        auto status = DB::Open(options, config.db_path_, &db_);
         if(!status.ok()) {
             EVT_THROW(token_database_rocksdb_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
         }
@@ -369,7 +371,7 @@ token_database_impl::open(int load_persistence) {
 
     auto handles = std::vector<ColumnFamilyHandle*>();
 
-    auto status = DB::Open(options, db_path_, columns, &handles, &db_);
+    auto status = DB::Open(options, config.db_path_, columns, &handles, &db_);
     if(!status.ok()) {
         EVT_THROW(token_database_rocksdb_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
@@ -407,7 +409,7 @@ token_database_impl::close(int persist) {
 }
 
 void
-token_database_impl::put_token(action_type type, action_op op, const name128& prefix, const name128& key, const std::string& data) {
+token_database_impl::put_token(token_type type, action_op op, const name128& prefix, const name128& key, const std::string& data) {
     using namespace __internal;
 
     auto dbkey  = db_token_key(prefix, key);
@@ -420,7 +422,7 @@ token_database_impl::put_token(action_type type, action_op op, const name128& pr
 
         // for `token` action, needs to record both prefix and key, prefix refers to the domain
         // for `non-token` action, prefix is not necessary which can be inferred by the `type`
-        if(type != action_type::token) {
+        if(type != token_type::token) {
             assert(prefix == action_key_prefixes[(int)type]);
             data = new rt_token_key { .key = key };
         }
@@ -432,11 +434,11 @@ token_database_impl::put_token(action_type type, action_op op, const name128& pr
 }
 
 void
-token_database_impl::put_tokens(action_type type,
-                                action_op op,
+token_database_impl::put_tokens(token_type type,
+                                __internal::action_op op,
                                 const name128& prefix,
-                                small_vector<name128, 4>&& keys,
-                                const small_vector<std::reference_wrapper<std::string>, 4>& data){
+                                small_vector_base<name128>&& keys,
+                                const small_vector_base<std::string_view>& data){
     using namespace __internal;
 
     for(auto i = 0u; i < keys.size(); i++) {
@@ -465,7 +467,7 @@ token_database_impl::put_asset(const address& addr, symbol sym, const std::strin
     if(should_record()) {
         auto act = new rt_data_asset();
         memcpy(act->key, slice.data(), slice.size());
-        record((int)action_type::asset, action_op::put, act);
+        record((int)token_type::asset, action_op::put, act);
     }
 }
 
@@ -1161,48 +1163,51 @@ token_database::close(int persist) {
 }
 
 void
-token_database::add_token(action_type type, const std::optional<name128>& domain, const name128& key, const std::string& data) {
-    assert(type != action_type::asset);
-    assert(type == action_type::token || domain.has_value());
+token_database::add_token(token_type type, const std::optional<name128>& domain, const name128& key, const std::string_view& data) {
+    assert(type != token_type::asset);
+    assert(type == token_type::token || domain.has_value());
     auto& prefix = domain.has_value() ? *domain : action_key_prefixes[(int)type];
     my_->put_token(type, kAdd, prefix, key, data);
 }
 
 void
-token_database::update_token(action_type type, const std::optional<name128>& domain, const name128& key, const std::string& data) {
-    assert(type != action_type::asset);
-    assert(type == action_type::token || domain.has_value());
+token_database::update_token(token_type type, const std::optional<name128>& domain, const name128& key, const std::string_view& data) {
+    assert(type != token_type::asset);
+    assert(type == token_type::token || domain.has_value());
     auto& prefix = domain.has_value() ? *domain : action_key_prefixes[(int)type];
     my_->put_token(type, kUpdate, prefix, key, data);
 }
 
 void
-token_database::put_token(action_type type, const std::optional<name128>& domain, const name128& key, const std::string& data) {
-    assert(type != action_type::asset);
-    assert(type == action_type::token || domain.has_value());
+token_database::put_token(token_type type, const std::optional<name128>& domain, const name128& key, const std::string_view& data) {
+    assert(type != token_type::asset);
+    assert(type == token_type::token || domain.has_value());
     auto& prefix = domain.has_value() ? *domain : action_key_prefixes[(int)type];
     my_->put_token(type, kPut, prefix, key, data);
 }
 
 void
-token_database::add_tokens(action_type type,
+token_database::add_tokens(token_type type,
                            const std::optional<name128>& domain,
-                           small_vector<name128, 4>&& keys
-                           const small_vector<std::reference_wrapper<std::string>, 4>& data) {
-    assert(type != action_type::asset);
-    assert(type == action_type::token || domain.has_value());
+                           small_vector_base<name128>&& keys
+                           const small_vector_base<std::string_view>& data) {
+    assert(type != token_type::asset);
+    assert(type == token_type::token || domain.has_value());
     auto& prefix = domain.has_value() ? *domain : action_key_prefixes[(int)type];
     my_->put_tokens(type, kAdd, prefix, keys, data);
 }
 
 void
-token_database::put_asset(const address& addr, const symbol sym, const std::string& data) {
+token_database::put_asset(const address& addr, const symbol sym, const std::string_view& data) {
     my_->put_asset(addr, sym, data);
 }
 
 int
-token_database::exists_token(const name128& domain, const name128& key) const {
-    return my_->exists_token(domain, key);
+token_database::exists_token(token_type type, const std::optional<name128>& domain, const name128& key) const {
+    assert(type != token_type::asset);
+    assert(type == token_type::token || domain.has_value());
+    auto& prefix = domain.has_value() ? *domain : action_key_prefixes[(int)type];
+    return my_->exists_token(prefix, key);
 }
 
 int
@@ -1211,8 +1216,11 @@ token_database::exists_asset(const address& addr, const symbol sym) const {
 }
 
 int
-token_database::read_token(const name128& domain, const name128& key, std::string& out) const {
-    return my_->read_token(domain, key, out, no_throw)
+token_database::read_token(token_type type, const std::optional<name128>& domain, const name128& key, std::string& out) const {
+    assert(type != token_type::asset);
+    assert(type == token_type::token || domain.has_value());
+    auto& prefix = domain.has_value() ? *domain : action_key_prefixes[(int)type];    
+    return my_->read_token(prefix, key, out, no_throw)
 }
 
 int
@@ -1221,8 +1229,11 @@ token_database::read_asset(const address& addr, const symbol sym, std::string& o
 }
 
 int
-token_database::read_tokens_range(const name128& domain, int skip, const read_value_func& func) const {
-    return my_->read_tokens_range(domain, skip, func);
+token_database::read_tokens_range(token_type type, const std::optional<name128>& domain, int skip, const read_value_func& func) const {
+    assert(type != token_type::asset);
+    assert(type == token_type::token || domain.has_value());
+    auto& prefix = domain.has_value() ? *domain : action_key_prefixes[(int)type];
+    return my_->read_tokens_range(prefix, skip, func);
 }
 
 int

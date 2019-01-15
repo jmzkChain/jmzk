@@ -79,6 +79,7 @@ using fc::path;
 using fc::signed_int;
 using fc::smart_ref;
 using fc::small_vector;
+using fc::small_vector_base;
 using fc::static_variant;
 using fc::time_point;
 using fc::time_point_sec;

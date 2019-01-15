@@ -12,7 +12,14 @@
         FC_THROW_EXCEPTION(exc_type, FORMAT, __VA_ARGS__); \
     FC_MULTILINE_MACRO_END
 
-#define EVT_THROW(exc_type, FORMAT, ...) throw exc_type(FC_LOG_MESSAGE(error, FORMAT, __VA_ARGS__));
+#define EVT_ASSERT2(expr, exc_type, FORMAT, ...)            \
+    FC_MULTILINE_MACRO_BEGIN                                \
+    if(!(expr))                                             \
+        FC_THROW_EXCEPTION2(exc_type, FORMAT, __VA_ARGS__); \
+    FC_MULTILINE_MACRO_END
+
+#define EVT_THROW(exc_type, FORMAT, ...)  throw exc_type(FC_LOG_MESSAGE(error, FORMAT, __VA_ARGS__));
+#define EVT_THROW2(exc_type, FORMAT, ...) throw exc_type(FC_LOG_MESSAGE2(error, FORMAT, __VA_ARGS__));
 
 /**
  * Macro inspired from FC_RETHROW_EXCEPTIONS
@@ -42,6 +49,31 @@
     }                                                                                                       \
     catch(...) {                                                                                            \
         throw fc::unhandled_exception(FC_LOG_MESSAGE(warn, FORMAT, __VA_ARGS__), std::current_exception()); \
+    }
+
+#define EVT_RETHROW_EXCEPTIONS2(exception_type, FORMAT, ...)                                                 \
+    catch(const boost::interprocess::bad_alloc&) {                                                           \
+        throw;                                                                                               \
+    }                                                                                                        \
+    catch(const fc::unrecoverable_exception&) {                                                              \
+        throw;                                                                                               \
+    }                                                                                                        \
+    catch(chain_exception & e) {                                                                             \
+        FC_RETHROW_EXCEPTION2(e, warn, FORMAT, __VA_ARGS__);                                                 \
+    }                                                                                                        \
+    catch(fc::exception & e) {                                                                               \
+        exception_type new_exception(FC_LOG_MESSAGE2(warn, FORMAT, __VA_ARGS__));                            \
+        for(const auto& log : e.get_log()) {                                                                 \
+            new_exception.append_log(log);                                                                   \
+        }                                                                                                    \
+        throw new_exception;                                                                                 \
+    }                                                                                                        \
+    catch(const std::exception& e) {                                                                         \
+        exception_type fce(FC_LOG_MESSAGE2(warn, FORMAT " (${what})", __VA_ARGS__("what", e.what())));       \
+        throw fce;                                                                                           \
+    }                                                                                                        \
+    catch(...) {                                                                                             \
+        throw fc::unhandled_exception(FC_LOG_MESSAGE2(warn, FORMAT, __VA_ARGS__), std::current_exception()); \
     }
 
 /**

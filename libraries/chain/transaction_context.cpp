@@ -153,6 +153,18 @@ transaction_context::check_charge() {
     }
 }
 
+#define READ_DB_ASSET_NO_THROW(ADDR, SYM, VALUEREF)                        \
+    {                                                                      \
+        auto str = std::string();                                          \
+        if(!tokendb.read_asset(ADDR, SYM, str, true /* no throw */)) {     \
+            VALUEREF = asset(0, SYM);                                      \
+        }                                                                  \
+        else {                                                             \
+            auto ds = fc::datastream<const char*>(str.data(), str.size()); \
+            fc::raw::unpack(ds, VALUEREF);                                 \
+        }                                                                  \
+    }
+
 void
 transaction_context::check_paid() const {
     auto& tokendb = control.token_db();
@@ -202,11 +214,12 @@ transaction_context::check_paid() const {
     }  // switch
     
     asset evt, pevt;
-    tokendb.read_asset_no_throw(payer, pevt_sym(), pevt);
+    READ_DB_ASSET_NO_THROW(payer, pevt_sym(), pevt);
     if(pevt.amount() > charge) {
         return;
     }
-    tokendb.read_asset_no_throw(payer, evt_sym(), evt);
+
+    READ_DB_ASSET_NO_THROW(payer, evt_sym(), evt);
     if(pevt.amount() + evt.amount() >= charge) {
         return;
     }
@@ -215,13 +228,13 @@ transaction_context::check_paid() const {
 
 void
 transaction_context::finalize_pay() {
-    auto pcact = paycharge();
+    auto pcact = contracts::paycharge();
 
     pcact.payer  = trx.trx.payer;
     pcact.charge = charge;
 
     auto act   = action();
-    act.name   = paycharge::get_action_name();
+    act.name   = contracts::paycharge::get_action_name();
     act.data   = fc::raw::pack(pcact);
     act.domain = N128(.charge);
     
@@ -238,7 +251,7 @@ transaction_context::finalize_pay() {
 
     trace->action_traces.emplace_back();
 
-    act.set_index(exec_ctx.index_of<paycharge>());
+    act.set_index(exec_ctx.index_of<contracts::paycharge>());
     dispatch_action(trace->action_traces.back(), act);
 }
 

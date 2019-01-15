@@ -731,6 +731,11 @@ from_variant(const variant& var, std::vector<char>& vo) {
 
 string
 format_string(const string& format, const variant_object& args) {
+    // add fast path for format version 2 (aka. using fmt library)
+    if(args.size() == 0) {
+        return format;
+    }
+
     std::stringstream ss;
     size_t            prev = 0;
     auto              next = format.find('$');

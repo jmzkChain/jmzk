@@ -33,7 +33,7 @@ public:
         , index_(lhs.index_)
         , cache_() {}
 
-    action(action&& lhs) = default;
+    action(action&& lhs) noexcept = default;
 
     action& operator=(const action& lhs) {
         if(this != &lhs) { // self-assignment check expected

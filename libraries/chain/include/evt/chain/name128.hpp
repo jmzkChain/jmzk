@@ -8,6 +8,7 @@
 #include <iosfwd>
 #include <string>
 #include <vector>
+#include <fmt/format.h>
 #include <fc/reflect/reflect.hpp>
 #include <fc/io/raw.hpp>
 
@@ -271,3 +272,18 @@ struct unpacker<name128> {
 }  // namespace raw
 
 }  // namespace fc
+
+namespace fmt {
+
+template <>
+struct formatter<evt::chain::name128> {
+    template <typename ParseContext>
+    constexpr auto parse(ParseContext& ctx) { return ctx.begin(); }
+
+    template <typename FormatContext>
+    auto format(const evt::chain::name128& n, FormatContext &ctx) {
+        return format_to(ctx.begin(), n.to_string());
+    }
+};
+
+}  // namespace fmt

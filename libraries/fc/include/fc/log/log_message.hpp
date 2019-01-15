@@ -108,7 +108,6 @@ public:
     log_message(log_context&& ctx, std::string&& format, variant_object&& args)
         : context(std::move(ctx)), format(std::move(format)), args(std::move(args)) {}
 
-    template<typename... Args>
     log_message(log_context&& ctx, std::string&& message)
         : context(std::move(ctx))
         , format(std::move(message)) {}
@@ -157,3 +156,7 @@ FC_REFLECT_TYPENAME(fc::log_message);
  */
 #define FC_LOG_MESSAGE(LOG_LEVEL, FORMAT, ...) \
     fc::log_message(FC_LOG_CONTEXT(LOG_LEVEL), FORMAT, fc::mutable_variant_object() __VA_ARGS__)
+
+#define FC_LOG_MESSAGE2(LOG_LEVEL, FORMAT, ...) \
+    fc::log_message(FC_LOG_CONTEXT(LOG_LEVEL), fmt::format(FORMAT, __VA_ARGS__))
+

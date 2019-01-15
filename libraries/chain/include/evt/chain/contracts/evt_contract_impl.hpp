@@ -5,7 +5,9 @@
 
 #include <algorithm>
 #include <string>
+#include <variant>
 
+#include <boost/noncopyable.hpp>
 #include <boost/hana/at.hpp>
 #include <boost/hana/at_key.hpp>
 #include <boost/hana/integral_constant.hpp>
@@ -183,28 +185,112 @@ get_db_key<evt_link_object>(const evt_link_object& v) {
     return v.link_id;
 }
 
-template <typename T>
-std::string
-get_db_value(const T& v) {
-    auto value = std::string();
-    auto size  = fc::raw::pack_size(v);
-    value.resize(size);
-
-    auto ds = fc::datastream<char*>((char*)value.data(), size);
-    fc::raw::pack(ds, v);
-
-    return value;
+template<typename T>
+std::optional<name128>
+get_db_prefix(const T& v) {
+    return std::nullopt;
 }
 
-template <typename T, typename V>
-T
-read_db_value(const V& value) {
-    auto v  = T{};
-    auto ds = fc::datastream<const char*>(value.data(), value.size());
-    fc::raw::unpack(ds, v);
+template<>
+std::optional<name128>
+get_db_prefix<token_def>(const T& v) {
+    return v.domain;
+}
+
+struct db_value : boost::noncopyable {
+public:
+    template<typename T>
+    db_value(const T& v) : var_(std::in_place_index_t<0>) {
+        auto sz = fc::raw::pack_size(v);
+        if(sz <= arr_.size()) {
+            auto& arr = std::get<0>(var_);
+            auto  ds  = fc::datastream<char*>(arr.data(), arr.size());
+            fc::raw::pack(ds, v);
+
+            view_ = std::string_view(arr.data(), sz);
+        }
+        else {
+            str_.resize(sz);
+            auto& str = std::get<1>(var_);
+            auto  ds  = fc::datastream<char*>((char*)str.data(), str.size());
+            fc::raw::pack(ds, v);
+
+            view_ = std::string_view(str.data(), sz);
+        }
+    }
+
+public:
+    const std::string_view& as_string_view() const { return view_; }
+
+private:
+    std::variant<std::array<char, 1024 * 1024>, std::string> var_;
+    std::string_view                                         view_;
+};
+
+#define ADD_DB_TOKEN(TYPE, VALUE)                                                              \
+    {                                                                                          \
+        auto dv = db_value(VALUE);                                                             \
+        tokendb.add_token(TYPE, get_db_prefix(VALUE), get_db_key(VALUE), dv.as_string_view()); \
+    }
+
+#define UPD_DB_TOKEN(TYPE, VALUE)                                                                 \
+    {                                                                                             \
+        auto dv = db_value(VALUE);                                                                \
+        tokendb.update_token(TYPE, get_db_prefix(VALUE), get_db_key(VALUE), dv.as_string_view()); \
+    }
+
+#define PUT_DB_TOKEN(TYPE, VALUE)                                                             \
+    {                                                                                         \
+        auto dv = db_value(VALUE);                                                            \
+        tokendb.put_token(YPE, get_db_prefix(VALUE), get_db_key(VALUE), dv.as_string_view()); \
+    }
+
+#define PUT_DB_ASSET(ADDR, VALUE)                                  \
+    {                                                              \
+        auto dv = db_value(VALUE);                                 \
+        tokendb.put_asset(ADDR, VALUE.sym(), dv.as_string_view()); \
+    }
+
+#define READ_DB_TOKEN(TYPE, PREFIX, KEY, VALUEREF, EXCEPTION, FORMAT, ...)  \
+    try {                                                                   \
+        auto str = std::string();                                           \
+        tokendb.read_token(TYPE, PREFIX, KEY, str);                         \
+                                                                            \
+        auto ds = fc::datastream<const char*>(str.data(), str.size());      \
+        fc::raw::unpack(ds, VALUEREF);                                      \
+    }                                                                       \
+    EVT_RETHROW_EXCEPTIONS2(EXCEPTION, FORMAT, __VA_ARGS__);
     
-    return v;
-}
+#define READ_DB_TOKEN_NO_THROW(TYPE, PREFIX, KEY, VALUEREF)              \
+    {                                                                    \
+        auto str = std::string();                                        \
+        tokendb.read_token(TYPE, PREFIX, KEY, str, true /* no throw */); \
+                                                                         \
+        auto ds = fc::datastream<const char*>(str.data(), str.size());   \
+        fc::raw::unpack(ds, VALUEREF);                                   \
+    }
+
+#define READ_DB_ASSET(ADDR, SYM, VALUEREF)                                                              \
+    try {                                                                                               \
+        auto str = std::string();                                                                       \
+        tokendb.read_asset(ADDR, SYM, str);                                                             \
+                                                                                                        \
+        auto ds = fc::datastream<const char*>(str.data(), str.size());                                  \
+        fc::raw::unpack(ds, VALUEREF);                                                                  \
+    }                                                                                                   \
+    EVT_RETHROW_EXCEPTIONS2(balance_exception, "There's no balance left in {} with sym: {}", addr, sym);
+
+#define READ_DB_ASSET_NO_THROW(ADDR, SYM, VALUEREF)                        \
+    {                                                                      \
+        auto str = std::string();                                          \
+        if(!tokendb.read_asset(ADDR, SYM, str, true /* no throw */)) {     \
+            VALUEREF = asset(0, SYM);                                      \
+        }                                                                  \
+        else {                                                             \
+            auto ds = fc::datastream<const char*>(str.data(), str.size()); \
+            fc::raw::unpack(ds, VALUEREF);                                 \
+        }                                                                  \
+    }
 
 } // namespace __internal
 
@@ -218,7 +304,7 @@ EVT_ACTION_IMPL_BEGIN(newdomain) {
         check_name_reserved(ndact.name);
 
         auto& tokendb = context.token_db;
-        EVT_ASSERT(!tokendb.exists_domain(ndact.name), domain_duplicate_exception, "Domain ${name} already exists.", ("name",ndact.name));
+        EVT_ASSERT(!tokendb.exists_token(token_type::domain, std::nullopt, ndact.name), domain_duplicate_exception, "Domain ${name} already exists.", ("name",ndact.name));
 
         EVT_ASSERT(ndact.issue.name == "issue", permission_type_exception, "Name ${name} does not match with the name of issue permission.", ("name",ndact.issue.name));
         EVT_ASSERT(ndact.issue.threshold > 0 && validate(ndact.issue), permission_type_exception, "Issue permission is not valid, which may be caused by invalid threshold, duplicated keys.");
@@ -243,7 +329,7 @@ EVT_ACTION_IMPL_BEGIN(newdomain) {
         domain.transfer    = std::move(ndact.transfer);
         domain.manage      = std::move(ndact.manage);
         
-        tokendb.add_token(action_type::domain, std::nullopt, get_db_key(domain), get_db_value(domain));
+        ADD_DB_TOKEN(token_type::domain, domain);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -261,15 +347,15 @@ EVT_ACTION_IMPL_BEGIN(issuetoken) {
         }
 
         auto& tokendb = context.token_db;
-        EVT_ASSERT(tokendb.exists_domain(itact.domain), unknown_domain_exception, "Domain ${name} does not exist.", ("name", itact.domain));
+        EVT_ASSERT(tokendb.exists_token(token_type::domain, std::nullopt, itact.domain), unknown_domain_exception, "Domain ${name} does not exist.", ("name", itact.domain));
 
         auto check_name = [&](const auto& name) {
             check_name_reserved(name);
             EVT_ASSERT(!tokendb.exists_token(itact.domain, name), token_duplicate_exception, "Token ${domain}-${name} already exists.", ("domain",itact.domain)("name",name));
         };
 
-        auto values  = small_vector<std::string, 4>();
-        auto data    = small_vector<std::reference_wrapper<std::string>, 4>();
+        auto values  = small_vector<db_value, 4>();
+        auto data    = small_vector<std::string_view, 4>();
         auto token   = token_def();
         token.domain = itact.domain;
         token.owner  = itact.owner;
@@ -278,11 +364,11 @@ EVT_ACTION_IMPL_BEGIN(issuetoken) {
             check_name(n);
 
             token.name = n;
-            values.emplace_back(get_db_value(token));
-            data.emplace_back(values.back());
+            values.emplace_back(token);
+            data.emplace_back(values.as_string_view());
         }
 
-        tokendb.add_tokens(action_type::token, itact.domain, std::move(itact.names), data);
+        tokendb.add_tokens(token_type::token, itact.domain, std::move(itact.names), data);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -323,13 +409,13 @@ EVT_ACTION_IMPL_BEGIN(transfer) {
         auto& tokendb = context.token_db;
 
         token_def token;
-        tokendb.read_token(ttact.domain, ttact.name, token);
+        READ_DB_TOKEN(token_type::token, ttact.domain, ttact.name, token, unknown_token_exception, "Cannot find token: {} in {}", ttact.name, ttact.domain);
 
         EVT_ASSERT(!check_token_destroy(token), token_destroyed_exception, "Destroyed token cannot be transfered.");
         EVT_ASSERT(!check_token_locked(token), token_locked_exception, "Locked token cannot be transfered.");
 
         token.owner = std::move(ttact.to);
-        tokendb.update_token(token);
+        UPD_DB_TOKEN(token_type::token, token);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -345,7 +431,7 @@ EVT_ACTION_IMPL_BEGIN(destroytoken) {
         auto& tokendb = context.token_db;
 
         domain_def domain;
-        tokendb.read_domain(dtact.domain, domain);
+        READ_DB_TOKEN(tokendb, token_type::domain, std::nullopt, dtact.domain, domain, unknown_domain_exception, "Cannot find domain: {}", dtact.domain);       
 
         auto dd = get_metavalue(domain, get_metakey<(int)reserved_meta_key::disable_destroy>(domain_metas));
         if(dd.has_value() && *dd == "true") {
@@ -353,13 +439,13 @@ EVT_ACTION_IMPL_BEGIN(destroytoken) {
         }
 
         token_def token;
-        tokendb.read_token(dtact.domain, dtact.name, token);
+        READ_DB_TOKEN(token_type::token, dtact.domain, dtact.name, token, unknown_token_exception, "Cannot find token: {} in {}", dtact.name, dtact.domain);
 
         EVT_ASSERT(!check_token_destroy(token), token_destroyed_exception, "Token is already destroyed.");
         EVT_ASSERT(!check_token_locked(token), token_locked_exception, "Locked token cannot be destroyed.");
 
         token.owner = address_list{ address() };
-        tokendb.update_token(token);
+        UPD_DB_TOKEN(token_type::token, token);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -377,10 +463,10 @@ EVT_ACTION_IMPL_BEGIN(newgroup) {
         check_name_reserved(ngact.name);
         
         auto& tokendb = context.token_db;
-        EVT_ASSERT(!tokendb.exists_group(ngact.name), group_duplicate_exception, "Group ${name} already exists.", ("name",ngact.name));
+        EVT_ASSERT(!tokendb.exists_token(token_type::group, std::nullopt, ngact.name), group_duplicate_exception, "Group ${name} already exists.", ("name",ngact.name));
         EVT_ASSERT(validate(ngact.group), group_type_exception, "Input group is not valid.");
 
-        tokendb.add_group(std::move(ngact.group));
+        ADD_DB_TOKEN(token_type::group, ngact.group);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -397,12 +483,12 @@ EVT_ACTION_IMPL_BEGIN(updategroup) {
         auto& tokendb = context.token_db;
         
         group_def group;
-        tokendb.read_group(ugact.name, group);
+        READ_DB_TOKEN(token_type::group, std::nullopt, ugact.name, group, unknown_group_exception, "Cannot find group: {}", ugact.name);
         
         EVT_ASSERT(!group.key().is_reserved(), group_key_exception, "Reserved group key cannot be used to udpate group");
         EVT_ASSERT(validate(ugact.group), group_type_exception, "Updated group is not valid.");
 
-        tokendb.update_group(std::move(ugact.group));
+        UPD_DB_TOKEN(token_type::group, ugact.group);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -418,7 +504,7 @@ EVT_ACTION_IMPL_BEGIN(updatedomain) {
         auto& tokendb = context.token_db;
 
         domain_def domain;
-        tokendb.read_domain(udact.name, domain);
+        READ_DB_TOKEN(token_type::domain, std::nullopt, udact.name, domain, unknown_domain_exception, "Cannot find domain: {}", udact.name);
 
         auto pchecker = make_permission_checker(tokendb);
         if(udact.issue.has_value()) {
@@ -444,7 +530,7 @@ EVT_ACTION_IMPL_BEGIN(updatedomain) {
             domain.manage = std::move(*udact.manage);
         }
 
-        tokendb.update_domain(domain);
+        UPD_DB_TOKEN(token_type::domain, domain);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -486,7 +572,7 @@ EVT_ACTION_IMPL_BEGIN(newfungible) {
 
         auto& tokendb = context.token_db;
 
-        EVT_ASSERT(!tokendb.exists_fungible(nfact.sym), fungible_duplicate_exception, "Fungible with symbol id: ${s} is already existed", ("s",nfact.sym.id()));
+        EVT_ASSERT(!tokendb.exists_token(token_type::fungible, nfact.sym.id()), fungible_duplicate_exception, "Fungible with symbol id: ${s} is already existed", ("s",nfact.sym.id()));
 
         EVT_ASSERT(nfact.issue.name == "issue", permission_type_exception, "Name ${name} does not match with the name of issue permission.", ("name",nfact.issue.name));
         EVT_ASSERT(nfact.issue.threshold > 0 && validate(nfact.issue), permission_type_exception, "Issue permission is not valid, which may be caused by invalid threshold, duplicated keys.");
@@ -511,10 +597,10 @@ EVT_ACTION_IMPL_BEGIN(newfungible) {
         fungible.manage       = std::move(nfact.manage);
         fungible.total_supply = nfact.total_supply;
 
-        tokendb.add_fungible(fungible);
+        ADD_DB_TOKEN(token_type::fungible, fungible);
 
         auto addr = get_fungible_address(fungible.sym);
-        tokendb.update_asset(addr, fungible.total_supply);
+        PUT_DB_ASSET(addr, fungible.total_supply);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -530,7 +616,7 @@ EVT_ACTION_IMPL_BEGIN(updfungible) {
         auto& tokendb = context.token_db;
 
         fungible_def fungible;
-        tokendb.read_fungible(ufact.sym_id, fungible);
+        READ_DB_TOKEN(token_type::fungible, std::nullopt, ufact.sym_id, fungible, unknown_fungible_exception, "Cannot find fungible with sym id: {}", ufact.sym_id);
 
         auto pchecker = make_permission_checker(tokendb);
         if(ufact.issue.has_value()) {
@@ -549,7 +635,7 @@ EVT_ACTION_IMPL_BEGIN(updfungible) {
             fungible.manage = std::move(*ufact.manage);
         }
 
-        tokendb.update_fungible(fungible);
+        UPD_DB_TOKEN(token_type::fungible, fungible);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -566,21 +652,21 @@ EVT_ACTION_IMPL_BEGIN(issuefungible) {
         check_address_reserved(ifact.address);
 
         auto& tokendb = context.token_db;
-        EVT_ASSERT(tokendb.exists_fungible(sym), fungible_duplicate_exception, "{sym} fungible tokens doesn't exist", ("sym",sym));
+        EVT_ASSERT(tokendb.exists_token(token_type::fungible, std::nullopt, sym), fungible_duplicate_exception, "{sym} fungible tokens doesn't exist", ("sym",sym));
 
         auto addr = get_fungible_address(sym);
         EVT_ASSERT(addr != ifact.address, fungible_address_exception, "From and to are the same address");
 
         asset from, to;
-        tokendb.read_asset(addr, sym, from);
-        tokendb.read_asset_no_throw(ifact.address, sym, to);
+        READ_DB_ASSET(addr, sym, from);
+        READ_DB_ASSET_NO_THROW(ifact.address, sym, to);
 
         EVT_ASSERT(from >= ifact.number, fungible_supply_exception, "Exceeds total supply of ${sym} fungible tokens.", ("sym",sym));
 
         transfer_fungible(from, to, ifact.number.amount());
 
-        tokendb.update_asset(ifact.address, to);
-        tokendb.update_asset(addr, from);
+        PUT_DB_ASSET(ifact.address, to);
+        PUT_DB_ASSET(addr, from);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -600,17 +686,16 @@ EVT_ACTION_IMPL_BEGIN(transferft) {
 
         auto& tokendb = context.token_db;
         
-        auto facc = asset(0, sym);
-        auto tacc = asset(0, sym);
-        tokendb.read_asset(tfact.from, sym, facc);
-        tokendb.read_asset_no_throw(tfact.to, sym, tacc);
+        asset facc, tacc;
+        READ_DB_ASSET(tfact.from, sym, facc);
+        READ_DB_ASSET_NO_THROW(tfact.to, sym, tacc);
 
         EVT_ASSERT(facc >= tfact.number, balance_exception, "Address does not have enough balance left.");
 
         transfer_fungible(facc, tacc, tfact.number.amount());
 
-        tokendb.update_asset(tfact.to, tacc);
-        tokendb.update_asset(tfact.from, facc);
+        PUT_DB_ASSET(tfact.to, tacc);
+        PUT_DB_ASSET(tfact.from, facc);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -629,17 +714,17 @@ EVT_ACTION_IMPL_BEGIN(recycleft) {
         auto& tokendb = context.token_db;
 
         auto addr = get_fungible_address(sym);
-        auto facc = asset(0, sym);
-        auto tacc = asset(0, sym);
-        tokendb.read_asset(rfact.address, sym, facc);
-        tokendb.read_asset_no_throw(addr, sym, tacc);
+        
+        asset facc, tacc;
+        READ_DB_ASSET(rfact.address, sym, facc);
+        READ_DB_ASSET_NO_THROW(addr, sym, tacc);
 
         EVT_ASSERT(facc >= rfact.number, balance_exception, "Address does not have enough balance left.");
 
         transfer_fungible(facc, tacc, rfact.number.amount());
 
-        tokendb.update_asset(addr, tacc);
-        tokendb.update_asset(rfact.address, facc);
+        PUT_DB_ASSET(addr, tacc);
+        PUT_DB_ASSET(rfact.address, facc);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -658,17 +743,17 @@ EVT_ACTION_IMPL_BEGIN(destroyft) {
         auto& tokendb = context.token_db;
 
         auto addr = address();
-        auto facc = asset(0, sym);
-        auto tacc = asset(0, sym);
-        tokendb.read_asset(rfact.address, sym, facc);
-        tokendb.read_asset_no_throw(addr, sym, tacc);
+
+        asset facc, tacc;
+        READ_DB_ASSET(rfact.address, sym, facc);
+        READ_DB_ASSET_NO_THROW(addr, sym, tacc);
 
         EVT_ASSERT(facc >= rfact.number, balance_exception, "Address does not have enough balance left.");
 
         transfer_fungible(facc, tacc, rfact.number.amount());
 
-        tokendb.update_asset(addr, tacc);
-        tokendb.update_asset(rfact.address, facc);
+        PUT_DB_ASSET(addr, tacc);
+        PUT_DB_ASSET(rfact.address, facc);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -686,17 +771,16 @@ EVT_ACTION_IMPL_BEGIN(evt2pevt) {
 
         auto& tokendb = context.token_db;
         
-        auto facc = asset(0, evt_sym());
-        auto tacc = asset(0, pevt_sym());
-        tokendb.read_asset(epact.from, evt_sym(), facc);
-        tokendb.read_asset_no_throw(epact.to, pevt_sym(), tacc);
+        asset facc, tacc;
+        READ_DB_ASSET(epact.from, evt_sym(), facc);
+        READ_DB_ASSET_NO_THROW(epact.to, pevt_sym(), tacc);
 
         EVT_ASSERT(facc >= epact.number, balance_exception, "Address does not have enough balance left.");
 
         transfer_fungible(facc, tacc, epact.number.amount());
 
-        tokendb.update_asset(epact.to, tacc);
-        tokendb.update_asset(epact.from, facc);
+        PUT_DB_ASSET(epact.to, tacc);
+        PUT_DB_ASSET(epact.from, facc);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -837,7 +921,7 @@ EVT_ACTION_IMPL_BEGIN(addmeta) {
             check_meta_key_reserved(amact.key);
 
             group_def group;
-            tokendb.read_group(act.key, group);
+            READ_DB_TOKEN(token_type::group, std::nullopt, act.key, group, unknown_group_exception, "Cannot find group: {}", act.key);
 
             EVT_ASSERT(!check_duplicate_meta(group, amact.key), meta_key_exception, "Metadata with key ${key} already exists.", ("key",amact.key));
             if(amact.creator.is_group_ref()) {
@@ -848,13 +932,13 @@ EVT_ACTION_IMPL_BEGIN(addmeta) {
                 EVT_ASSERT(check_involved_group(group, amact.creator.get_account()), meta_involve_exception, "Creator is not involved in group: ${name}.", ("name",act.key));
             }
             group.metas_.emplace_back(meta(amact.key, amact.value, amact.creator));
-            tokendb.update_group(group);
+            UPD_DB_TOKEN(token_type::group, group);
         }
         else if(act.domain == N128(.fungible)) {  // fungible
             check_meta_key_reserved(amact.key);
 
             fungible_def fungible;
-            tokendb.read_fungible((symbol_id_type)std::stoul((std::string)act.key), fungible);
+            READ_DB_TOKEN(token_type::fungible, std::nullopt, (symbol_id_type)std::stoul((std::string)act.key), fungible, unknown_fungible_exception, "Cannot find fungible with symbol id: {}", act.key);
 
             EVT_ASSERT(!check_duplicate_meta(fungible, amact.key), meta_key_exception, "Metadata with key ${key} already exists.", ("key",amact.key));
             
@@ -869,7 +953,7 @@ EVT_ACTION_IMPL_BEGIN(addmeta) {
                 EVT_ASSERT(check_involved_fungible(tokendb, fungible, N(manage), amact.creator), meta_involve_exception, "Creator is not involved in fungible: ${name}.", ("name",act.key));
             }
             fungible.metas.emplace_back(meta(amact.key, amact.value, amact.creator));
-            tokendb.update_fungible(fungible);
+            UPD_DB_TOKEN(token_type::fungible, fungible);
         }
         else if(act.key == N128(.meta)) {  // domain
             if(amact.key.reserved()) {
@@ -891,27 +975,27 @@ EVT_ACTION_IMPL_BEGIN(addmeta) {
             }
 
             domain_def domain;
-            tokendb.read_domain(act.domain, domain);
+            READ_DB_TOKEN(token_type::domain, std::nullopt, amact.key, domain, unknown_domain_exception, "Cannot find domain: {}", amact.key);
 
             EVT_ASSERT(!check_duplicate_meta(domain, amact.key), meta_key_exception, "Metadata with key ${key} already exists.", ("key",amact.key));
             // check involved, only person involved in `manage` permission can add meta
             EVT_ASSERT(check_involved_domain(tokendb, domain, N(manage), amact.creator), meta_involve_exception, "Creator is not involved in domain: ${name}.", ("name",act.key));
 
             domain.metas.emplace_back(meta(amact.key, amact.value, amact.creator));
-            tokendb.update_domain(domain);
+            UPD_DB_TOKEN(token_type::domain, domain);
         }
         else {  // token
             check_meta_key_reserved(amact.key);
 
             token_def token;
-            tokendb.read_token(act.domain, act.key, token);
+            READ_DB_TOKEN(token_type::token, act.domain, act.key, token, unknown_token_exception, "Cannot find token: {} in {}", act.key, act.domain);
 
             EVT_ASSERT(!check_token_destroy(token), token_destroyed_exception, "Metadata cannot be added on destroyed token.");
             EVT_ASSERT(!check_token_locked(token), token_locked_exception, "Metadata cannot be added on locked token.");
             EVT_ASSERT(!check_duplicate_meta(token, amact.key), meta_key_exception, "Metadata with key ${key} already exists.", ("key",amact.key));
 
             domain_def domain;
-            tokendb.read_domain(act.domain, domain);
+            tREAD_DB_TOKEN(token_type::domain, std::nullopt, amact.domain, domain, unknown_domain_exception, "Cannot find domain: {}", amact.key);
 
             if(amact.creator.is_account_ref()) {
                 // check involved, only person involved in `issue` and `transfer` permissions or `owners` can add meta
@@ -927,7 +1011,7 @@ EVT_ACTION_IMPL_BEGIN(addmeta) {
                 EVT_ASSERT(involved, meta_involve_exception, "Creator is not involved in token ${domain}-${name}.", ("domain",act.domain)("name",act.key));
             }
             token.metas.emplace_back(meta(amact.key, amact.value, amact.creator));
-            tokendb.update_token(token);
+            UPD_DB_TOKEN(token_type::token, token);
         }
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
@@ -954,7 +1038,7 @@ EVT_ACTION_IMPL_BEGIN(newsuspend) {
         }
 
         auto& tokendb = context.token_db;
-        EVT_ASSERT(!tokendb.exists_suspend(nsact.name), suspend_duplicate_exception, "Suspend ${name} already exists.", ("name",nsact.name));
+        EVT_ASSERT(!tokendb.exists_token(token_type::suspend, nsact.name), suspend_duplicate_exception, "Suspend ${name} already exists.", ("name",nsact.name));
 
         auto suspend     = suspend_def();
         suspend.name     = nsact.name;
@@ -962,7 +1046,7 @@ EVT_ACTION_IMPL_BEGIN(newsuspend) {
         suspend.status   = suspend_status::proposed;
         suspend.trx      = std::move(nsact.trx);
 
-        tokendb.add_suspend(suspend);
+        PUT_DB_TOKEN(token_type::suspend, suspend);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -978,7 +1062,8 @@ EVT_ACTION_IMPL_BEGIN(aprvsuspend) {
         auto& tokendb = context.token_db;
 
         suspend_def suspend;
-        tokendb.read_suspend(aeact.name, suspend);
+        READ_DB_TOKEN(token_type::suspend, std::nullopt, aeact.name, unknown_suspend_exception, "Cannot find suspend proposal: {}", aeact.name);
+
         EVT_ASSERT(suspend.status == suspend_status::proposed, suspend_status_exception, "Suspend transaction is not in 'proposed' status.");
 
         auto signed_keys = suspend.trx.get_signature_keys(aeact.signatures, context.control.get_chain_id());
@@ -992,7 +1077,7 @@ EVT_ACTION_IMPL_BEGIN(aprvsuspend) {
         suspend.signed_keys.merge(signed_keys);
         suspend.signatures.insert(suspend.signatures.cend(), aeact.signatures.cbegin(), aeact.signatures.cend());
         
-        tokendb.update_suspend(suspend);
+        UPD_DB_TOKEN(token_type::suspend, suspend);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -1008,11 +1093,12 @@ EVT_ACTION_IMPL_BEGIN(cancelsuspend) {
         auto& tokendb = context.token_db;
 
         suspend_def suspend;
-        tokendb.read_suspend(csact.name, suspend);
+        READ_DB_TOKEN(token_type::suspend, std::nullopt, aeact.name, unknown_suspend_exception, "Cannot find suspend proposal: {}", csact.name);
+        
         EVT_ASSERT(suspend.status == suspend_status::proposed, suspend_status_exception, "Suspend transaction is not in 'proposed' status.");
-
         suspend.status = suspend_status::cancelled;
-        tokendb.update_suspend(suspend);
+
+        UPD_DB_TOKEN(token_type::suspend, suspend);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -1026,7 +1112,7 @@ EVT_ACTION_IMPL_BEGIN(execsuspend) {
         auto& tokendb = context.token_db;
 
         suspend_def suspend;
-        tokendb.read_suspend(esact.name, suspend);
+        READ_DB_TOKEN(token_type::suspend, std::nullopt, aeact.name, unknown_suspend_exception, "Cannot find suspend proposal: {}", esact.name);
 
         EVT_ASSERT(suspend.signed_keys.find(esact.executor) != suspend.signed_keys.end(), suspend_executor_exception, "Executor hasn't sign his key on this suspend transaction");
 
@@ -1056,7 +1142,7 @@ EVT_ACTION_IMPL_BEGIN(execsuspend) {
         else {
             suspend.status = suspend_status::executed;
         }
-        tokendb.update_suspend(suspend);
+        UPD_DB_TOKEN(token_type::suspend, suspend);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -1070,31 +1156,31 @@ EVT_ACTION_IMPL_BEGIN(paycharge) {
         auto& tokendb = context.token_db;
 
         asset evt, pevt;
-        tokendb.read_asset_no_throw(pcact.payer, pevt_sym(), pevt);
+        READ_DB_ASSET_NO_THROW(pcact.payer, pevt_sym(), pevt);
         auto paid = std::min(pcact.charge, (uint32_t)pevt.amount());
         if(paid > 0) {
             pevt -= asset(paid, pevt_sym());
-            tokendb.update_asset(pcact.payer, pevt);
+            PUT_DB_ASSET(pcact.payer, pevt);
         }
 
         if(paid < pcact.charge) {
-            tokendb.read_asset_no_throw(pcact.payer, evt_sym(), evt);
+            READ_DB_ASSET_NO_THROW(pcact.payer, evt_sym(), evt);
             auto remain = pcact.charge - paid;
             if(evt.amount() < (int64_t)remain) {
                 EVT_THROW(charge_exceeded_exception, "There are ${e} EVT and ${p} Pinned EVT left, but charge is ${c}", ("e",evt)("p",pevt)("c",pcact.charge));
             }
             evt -= asset(remain, evt_sym());
-            tokendb.update_asset(pcact.payer, evt);
+            PUT_DB_ASSET(pcact.payer, evt);
         }
 
         auto  pbs  = context.control.pending_block_state();
         auto& prod = pbs->get_scheduled_producer(pbs->header.timestamp).block_signing_key;
 
         asset prodasset;
-        tokendb.read_asset_no_throw(prod, evt_sym(), prodasset);
+        READ_DB_ASSET_NO_THROW(prod, evt_sym(), prodasset);
         // give charge to producer
         prodasset += asset(pcact.charge, evt_sym());
-        tokendb.update_asset(prod, prodasset);
+        PUT_DB_ASSET(prod, prodasset);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -1132,7 +1218,7 @@ EVT_ACTION_IMPL_BEGIN(everipass) {
         auto keys = link.restore_keys();
 
         token_def token;
-        tokendb.read_token(d, t, token);
+        READ_DB_TOKEN(token_type::token, d, t, token, unknown_token_exception, "Cannot find token: {} in {}", t, d);
 
         EVT_ASSERT(!check_token_destroy(token), token_destroyed_exception, "Destroyed token cannot be destroyed during everiPass.");
         EVT_ASSERT(!check_token_locked(token), token_locked_exception, "Locked token cannot be destroyed during everiPass.");
@@ -1146,7 +1232,7 @@ EVT_ACTION_IMPL_BEGIN(everipass) {
             context.control.check_authorization(keys, dtact);
 
             token.owner = address_list{ address() };
-            tokendb.update_token(token);
+            UPD_DB_TOKEN(token_type::token, token);
         }
         else {
             // only check owner
@@ -1188,14 +1274,14 @@ EVT_ACTION_IMPL_BEGIN(everipay) {
         }
 
         auto& link_id = link.get_link_id();
-        EVT_ASSERT(!tokendb.exists_evt_link(link_id), evt_link_dupe_exception, "Duplicate EVT-Link ${id}", ("id", fc::to_hex((char*)&link_id, sizeof(link_id))));
+        EVT_ASSERT(!tokendb.exists_token(token_type::evt_link, link_id), evt_link_dupe_exception, "Duplicate EVT-Link ${id}", ("id", fc::to_hex((char*)&link_id, sizeof(link_id))));
 
         auto link_obj = evt_link_object {
             .link_id   = link_id,
             .block_num = context.control.pending_block_state()->block->block_num(),
             .trx_id    = context.trx_context.trx.id
         };
-        tokendb.add_evt_link(link_obj);
+        ADD_DB_TOKEN(token_type::evt_link, link_obj);
 
         auto keys = link.restore_keys();
         EVT_ASSERT(keys.size() == 1, everipay_exception, "There're more than one signature on everiPay link, which is invalid");
@@ -1216,17 +1302,16 @@ EVT_ACTION_IMPL_BEGIN(everipay) {
         auto payer = address(*keys.begin());
         EVT_ASSERT(payer != epact.payee, everipay_exception, "Payer and payee shouldn't be the same one");
 
-        auto facc = asset(0, sym);
-        auto tacc = asset(0, sym);
-        tokendb.read_asset(payer, sym, facc);
-        tokendb.read_asset_no_throw(epact.payee, sym, tacc);
+        asset facc, tacc;
+        READ_DB_ASSET(payer, sym, facc);
+        READ_DB_ASSET_NO_THROW(epact.payee, sym, tacc);
 
         EVT_ASSERT(facc >= epact.number, everipay_exception, "Payer does not have enough balance left.");
 
         transfer_fungible(facc, tacc, epact.number.amount());
 
-        tokendb.update_asset(epact.payee, tacc);
-        tokendb.update_asset(payer, facc);
+        PUT_DB_ASSET(epact.payee, tacc);
+        PUT_DB_ASSET(payer, facc);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -1276,7 +1361,17 @@ EVT_ACTION_IMPL_BEGIN(prodvote) {
         auto pkey = sche.get_producer_key(pvact.producer);
         EVT_ASSERT(pkey.has_value(), prodvote_producer_exception, "${p} is not a valid producer", ("p",pvact.producer));
 
-        tokendb.update_prodvote(pvact.key, *pkey, pvact.value);
+        auto map = flat_map<public_key_type, int64_t>();
+        READ_DB_TOKEN_NO_THROW(token_type::prodvote, std::nullopt, pvact.key, map);
+
+        auto it = map.emplace(pkey, pvact.value);
+        if(it.second == false) {
+            // existed
+            it.first->second = value;
+        }
+
+        auto dv = db_value(map);
+        tokendb.put_token(token_type::prodvote, std::nullopt, pvact.key, db.as_string_view());
 
         auto is_prod = [&](auto& pk) {
             for(auto& p : sche.producers) {
@@ -1288,10 +1383,12 @@ EVT_ACTION_IMPL_BEGIN(prodvote) {
         };
 
         auto values = std::vector<int64_t>();
-        tokendb.read_prodvotes_no_throw(pvact.key, [&](const auto& pk, auto v) {
-            if(is_prod(pk)) {
-                values.emplace_back(v);
-            }
+        tokendb.read_tokens_range(token_type::prodvote, pvact.key, 0 /* skip */, [&](auto& key, auto& v) {
+            auto iv = int64_t(0);
+            auto ds = fc::datastream<const char*>(v.data(), v.size());
+            fc::raw::unpack(ds, iv);
+
+            values.emplace_back(iv);
             return true;
         });
 
@@ -1341,7 +1438,7 @@ EVT_ACTION_IMPL_BEGIN(newlock) {
         EVT_ASSERT(context.has_authorized(N128(.lock), nlact.name), action_authorize_exception, "Authorized information does not match.");
 
         auto& tokendb = context.control.token_db();
-        EVT_ASSERT(!tokendb.exists_lock(nlact.name), lock_duplicate_exception, "Lock assets with same name: ${n} is already existed", ("n",nlact.name));
+        EVT_ASSERT(!tokendb.exists_token(token_type::lock, std::nullopt, nlact.name), lock_duplicate_exception, "Lock assets with same name: ${n} is already existed", ("n",nlact.name));
 
         auto now = context.control.pending_block_time();
         EVT_ASSERT(nlact.unlock_time > now, lock_unlock_time_exception, "Now is ahead of unlock time, unlock time is ${u}, now is ${n}", ("u",nlact.unlock_time)("n",now));
@@ -1422,10 +1519,10 @@ EVT_ACTION_IMPL_BEGIN(newlock) {
 
                 for(auto& tn : tokens.names) {
                     token_def token;
-                    tokendb.read_token(tokens.domain, tn, token);
+                    READ_DB_TOKEN(token_type::token, tokens.domain, tn, token, unknown_token_exception, "Cannot find token: {} in {}", tn, tokens.domain);
                     token.owner = { laddr };
 
-                    tokendb.update_token(token);
+                    UPD_DB_TOKEN(token_type::token, token);
                 }
                 break;
             }
@@ -1433,14 +1530,14 @@ EVT_ACTION_IMPL_BEGIN(newlock) {
                 auto& fungible = la.template get<lockft_def>();
 
                 asset fass, tass;
-                tokendb.read_asset(fungible.from, fungible.amount.sym(), fass);
-                tokendb.read_asset_no_throw(laddr, fungible.amount.sym(), tass);
+                READ_DB_ASSET(fungible.from, fungible.amount.sym(), fass);
+                READ_DB_ASSET_NO_THROW(laddr, fungible.amount.sym(), tass);
                 
                 EVT_ASSERT(fass >= fungible.amount, lock_assets_exception, "From address donn't have enough balance left.");
                 transfer_fungible(fass, tass, fungible.amount.amount());
 
-                tokendb.update_asset(fungible.from, fass);
-                tokendb.update_asset(laddr, tass);
+                PUT_DB_ASSET(fungible.from, fass);
+                PUT_DB_ASSET(laddr, tass);
                 break;
             }
             }  // switch
@@ -1458,7 +1555,7 @@ EVT_ACTION_IMPL_BEGIN(newlock) {
         lock.succeed     = std::move(nlact.succeed);
         lock.failed      = std::move(nlact.failed);
 
-        tokendb.add_lock(lock);
+        ADD_DB_TOKEN(token_type::lock, lock);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -1474,7 +1571,7 @@ EVT_ACTION_IMPL_BEGIN(aprvlock) {
         auto& tokendb = context.control.token_db();
 
         lock_def lock;
-        tokendb.read_lock(alact.name, lock);
+        READ_DB_TOKEN(token_type::lock, std::nullopt, alact.name, lock, unknown_lock_exception, "Cannot find lock proposal: {}", alact.name);
 
         auto now = context.control.pending_block_time();
         EVT_ASSERT(lock.unlock_time > now, lock_expired_exception, "Now is ahead of unlock time, cannot approve anymore, unlock time is ${u}, now is ${n}", ("u",lock.unlock_time)("n",now));
@@ -1490,7 +1587,7 @@ EVT_ACTION_IMPL_BEGIN(aprvlock) {
         }  // switch
 
         lock.signed_keys.emplace(alact.approver);
-        tokendb.update_lock(lock);
+        UPD_DB_TOKEN(token_type::lock, lock);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -1506,7 +1603,7 @@ EVT_ACTION_IMPL_BEGIN(tryunlock) {
         auto& tokendb = context.control.token_db();
 
         lock_def lock;
-        tokendb.read_lock(tuact.name, lock);
+        READ_DB_TOKEN(token_type::lock, std::nullopt, tuact.name, lock, unknown_lock_exception, "Cannot find lock proposal: {}", tuact.name);
 
         auto now = context.control.pending_block_time();
         EVT_ASSERT(lock.unlock_time < now, lock_not_reach_unlock_time, "Not reach unlock time, cannot unlock, unlock time is ${u}, now is ${n}", ("u",lock.unlock_time)("n",now));
@@ -1539,9 +1636,9 @@ EVT_ACTION_IMPL_BEGIN(tryunlock) {
 
                 token_def token;
                 for(auto& tn : tokens.names) {
-                    tokendb.read_token(tokens.domain, tn, token);
+                    READ_DB_TOKEN(token_type::token, tokens.domain, tn, token, unknown_token_exception, "Cannot find token: {} in {}", tn, tokens.domain);
                     token.owner = *pkeys;
-                    tokendb.update_token(token);
+                    UPD_DB_TOKEN(token_type::token, token);
                 }
                 break;
             }
@@ -1552,19 +1649,19 @@ EVT_ACTION_IMPL_BEGIN(tryunlock) {
                 auto& toaddr   = (*pkeys)[0];
 
                 asset fass, tass;
-                tokendb.read_asset(laddr, fungible.amount.sym(), fass);
-                tokendb.read_asset_no_throw(toaddr, fungible.amount.sym(), tass);
+                READ_DB_ASSET(laddr, fungible.amount.sym(), fass);
+                READ_DB_ASSET_NO_THROW(toaddr, fungible.amount.sym(), tass);
                 
                 EVT_ASSERT(fass >= fungible.amount, lock_assets_exception, "From address donn't have enough balance left.");
                 transfer_fungible(fass, tass, fungible.amount.amount());
 
-                tokendb.update_asset(laddr, fass);
-                tokendb.update_asset(toaddr, tass);
+                PUT_DB_ASSET(laddr, fass);
+                PUT_DB_ASSET(toaddr, tass);
             }
             }  // switch
         }
 
-        tokendb.update_lock(lock);
+        UPD_DB_TOKEN(token_type::lock, lock);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }

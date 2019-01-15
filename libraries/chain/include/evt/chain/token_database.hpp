@@ -5,7 +5,12 @@
 #pragma once
 #include <functional>
 #include <memory>
+#include <optional>
+#include <string_view>
 #include <boost/noncopyable.hpp>
+#include <evt/chain/types.hpp>
+#include <evt/chain/asset.hpp>
+#include <evt/chain/address.hpp>
 
 namespace rocksdb {
 class DB;
@@ -20,7 +25,7 @@ enum class storage_profile {
     memory = 1
 };
 
-enum class action_type {
+enum class token_type {
     asset = 0,
     domain,
     token,
@@ -94,19 +99,19 @@ public:
     void close(int persist = true);
 
 public:
-    void add_token(action_type type, const std::optional<name128>& domain, const name128& key, const std::string& data);
-    void update_token(action_type type, const std::optional<name128>& domain, const name128& key, const std::string& data);
-    void put_token(action_type type, const std::optional<name128>& domain, const name128& key, const std::string& data);
-    void add_tokens(action_type type, const std::optional<name128>& domain, small_vector<name128, 4>&& keys, const small_vector<std::reference_wrapper<std::string>, 4>& data);
-    void put_asset(const address& addr, const symbol sym, const std::string& data);
+    void add_token(token_type type, const std::optional<name128>& domain, const name128& key, const std::string_view& data);
+    void update_token(token_type type, const std::optional<name128>& domain, const name128& key, const std::string_view& data);
+    void put_token(token_type type, const std::optional<name128>& domain, const name128& key, const std::string_view& data);
+    void add_tokens(token_type type, const std::optional<name128>& domain, small_vector_base<name128>&& keys, const small_vector_base<std::string_view>& data);
+    void put_asset(const address& addr, const symbol sym, const std::string_view& data);
 
-    int exists_token(const name128& domain, const name128& key) const;
+    int exists_token(token_type type, const std::optional<name128>& domain, const name128& key) const;
     int exists_asset(const address& addr, const symbol sym) const;
 
-    int read_token(const name128& domain, const name128& key, std::string& out, bool no_throw = false) const;
+    int read_token(token_type type, const std::optional<name128>& domain, const name128& key, std::string& out, bool no_throw = false) const;
     int read_asset(const address& addr, const symbol sym, std::string& out, bool no_throw = false) const;
 
-    int read_tokens_range(const name128& domain, int skip, const read_value_func& func) const;
+    int read_tokens_range(token_type type, const std::optional<name128>& domain, int skip, const read_value_func& func) const;
     int read_assets_range(const symbol sym, int skip, const read_value_func& func) const;
 
 public:

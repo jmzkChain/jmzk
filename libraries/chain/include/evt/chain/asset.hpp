@@ -3,6 +3,7 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #pragma once
+#include <fmt/format.h>
 #include <evt/chain/exceptions.hpp>
 #include <evt/chain/types.hpp>
 
@@ -210,6 +211,32 @@ from_variant(const fc::variant& var, evt::chain::asset& vo) {
 }
 
 }  // namespace fc
+
+namespace fmt {
+
+template <>
+struct formatter<evt::chain::symbol> {
+    template <typename ParseContext>
+    constexpr auto parse(ParseContext& ctx) { return ctx.begin(); }
+
+    template <typename FormatContext>
+    auto format(const evt::chain::symbol& s, FormatContext &ctx) {
+        return format_to(ctx.begin(), s.to_string());
+    }
+};
+
+template <>
+struct formatter<evt::chain::asset> {
+    template <typename ParseContext>
+    constexpr auto parse(ParseContext& ctx) { return ctx.begin(); }
+
+    template <typename FormatContext>
+    auto format(const evt::chain::asset& a, FormatContext &ctx) {
+        return format_to(ctx.begin(), a.to_string());
+    }
+};
+
+}  // namespace fmt
 
 FC_REFLECT(evt::chain::symbol, (value_));
 FC_REFLECT(evt::chain::asset, (amount_)(sym_));
