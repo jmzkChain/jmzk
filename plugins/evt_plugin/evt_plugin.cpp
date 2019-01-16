@@ -32,22 +32,16 @@ public:
 evt_plugin::evt_plugin() {}
 evt_plugin::~evt_plugin() {}
 
-void
-evt_plugin::set_program_options(options_description& cli, options_description& cfg) {
-}
+void evt_plugin::set_program_options(options_description& cli, options_description& cfg) {}
 
-void
-evt_plugin::plugin_initialize(const variables_map& options) {
-}
+void evt_plugin::plugin_initialize(const variables_map& options) {}
 
 void
 evt_plugin::plugin_startup() {
     this->my_.reset(new evt_plugin_impl(app().get_plugin<chain_plugin>().chain()));
 }
 
-void
-evt_plugin::plugin_shutdown() {
-}
+void evt_plugin::plugin_shutdown() {}
 
 evt_apis::read_only
 evt_plugin::get_read_only_api() const {
@@ -66,8 +60,7 @@ namespace evt_apis {
         auto str = std::string();                                           \
         db.read_token(TYPE, PREFIX, KEY, str);                              \
                                                                             \
-        auto ds = fc::datastream<const char*>(str.data(), str.size());      \
-        fc::raw::unpack(ds, VALUEREF);                                      \
+        extract_db_value(str, VALUEREF);                                    \
     }                                                                       \
     EVT_RETHROW_EXCEPTIONS2(EXCEPTION, FORMAT, __VA_ARGS__);
 
@@ -76,8 +69,7 @@ namespace evt_apis {
         auto str = std::string();                                                                       \
         db.read_asset(ADDR, SYM, str);                                                                  \
                                                                                                         \
-        auto ds = fc::datastream<const char*>(str.data(), str.size());                                  \
-        fc::raw::unpack(ds, VALUEREF);                                                                  \
+        extract_db_value(str, VALUEREF);                                                                \
     }                                                                                                   \
     EVT_RETHROW_EXCEPTIONS2(balance_exception, "There's no balance left in {} with sym: {}", ADDR, SYM);
 
@@ -88,8 +80,7 @@ namespace evt_apis {
             VALUEREF = asset(0, SYM);                                      \
         }                                                                  \
         else {                                                             \
-            auto ds = fc::datastream<const char*>(str.data(), str.size()); \
-            fc::raw::unpack(ds, VALUEREF);                                 \
+            extract_db_value(str, VALUEREF);                               \
         }                                                                  \
     }
 
@@ -151,9 +142,7 @@ read_only::get_tokens(const get_tokens_params& params) {
         auto var = fc::variant();
 
         token_def token;
-
-        auto ds = fc::datastream<const char*>(value.data(), value.size());
-        fc::raw::unpack(ds, token);
+        extract_db_value(value, token);
 
         fc::to_variant(token, var);
         vars.emplace_back(std::move(var));

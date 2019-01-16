@@ -20,7 +20,7 @@ class DB;
 
 namespace evt { namespace chain {
 
-using read_value_func = std::function<int(const std::string_view& key, std::string&&)>;
+using read_value_func = std::function<bool(const std::string_view& key, std::string&&)>;
 
 enum class storage_profile {
     disk   = 0,
@@ -44,6 +44,58 @@ enum class action_op {
     update,
     put
 };
+
+struct db_value {
+public:
+    db_value(const db_value&) = default;
+    db_value(db_value&&) = default;
+
+private:
+    template<typename T>
+    db_value(const T& v) : var_(std::in_place_index_t<0>()) {
+        auto sz = fc::raw::pack_size(v);
+        if(sz <= 1024 * 1024) {
+            auto& arr = std::get<0>(var_);
+            auto  ds  = fc::datastream<char*>(arr.data(), arr.size());
+            fc::raw::pack(ds, v);
+
+            view_ = std::string_view(arr.data(), sz);
+        }
+        else {
+            auto& str = std::get<1>(var_);
+            str.resize(sz);
+
+            auto ds = fc::datastream<char*>((char*)str.data(), str.size());
+            fc::raw::pack(ds, v);
+
+            view_ = std::string_view(str.data(), sz);
+        }
+    }
+
+public:
+    std::string_view as_string_view() const { return view_; }
+
+private:
+    std::variant<std::array<char, 1024 * 1024>, std::string> var_;
+    std::string_view                                         view_;
+
+public:
+    template<typename T>
+    friend db_value make_db_value(const T&);
+};
+
+template<typename T>
+db_value
+make_db_value(const T& v) {
+    return db_value(v);
+}
+
+template<typename T>
+void
+extract_db_value(const std::string& str, T& v) {
+    auto ds = fc::datastream<const char*>(str.data(), str.size());
+    fc::raw::unpack(ds, v);
+}
 
 using token_keys_t = small_vector<name128, 4>;
 

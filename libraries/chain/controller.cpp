@@ -1419,9 +1419,7 @@ controller::get_link_obj_for_link_id(const link_id_type& link_id) const {
     }
     EVT_RETHROW_EXCEPTIONS2(evt_link_existed_exception, "Cannot find EvtLink with id: {}", fc::to_hex((char*)&link_id, sizeof(link_id)));
 
-    auto ds = fc::datastream<const char*>(str.data(), str.size());
-    fc::raw::unpack(ds, link_obj);
-
+    extract_db_value(str, link_obj);
     return link_obj;
 }
 
@@ -1508,24 +1506,26 @@ controller::set_chain_config(const chain_config& config) {
 
 const producer_schedule_type&
 controller::active_producers() const {
-    if(!(my->pending.has_value()))
+    if(!(my->pending.has_value())) {
         return my->head->active_schedule;
+    }
     return my->pending->_pending_block_state->active_schedule;
 }
 
 const producer_schedule_type&
 controller::pending_producers() const {
-    if(!(my->pending.has_value()))
+    if(!(my->pending.has_value())) {
         return my->head->pending_schedule;
+    }
     return my->pending->_pending_block_state->pending_schedule;
 }
 
 optional<producer_schedule_type>
 controller::proposed_producers() const {
     const auto& gpo = get_global_properties();
-    if(!gpo.proposed_schedule_block_num.has_value())
+    if(!gpo.proposed_schedule_block_num.has_value()) {
         return optional<producer_schedule_type>();
-
+    }
     return gpo.proposed_schedule;
 }
 
@@ -1742,9 +1742,7 @@ controller::get_suspend_required_keys(const proposal_name& name, const public_ke
     }
     EVT_RETHROW_EXCEPTIONS2(unknown_lock_exception, "Cannot find suspend proposal: {}", name);
 
-    auto ds = fc::datastream<const char*>(str.data(), str.size());
-    fc::raw::unpack(ds, suspend);
-    
+    extract_db_value(str, suspend);
     return get_suspend_required_keys(suspend.trx, candidate_keys);
 }
 

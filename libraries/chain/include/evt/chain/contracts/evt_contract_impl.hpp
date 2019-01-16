@@ -197,61 +197,27 @@ get_db_prefix<token_def>(const token_def& v) {
     return v.domain;
 }
 
-struct db_value {
-public:
-    db_value(const db_value&) = default;
-    db_value(db_value&&) = default;
-
-    template<typename T>
-    db_value(const T& v) : var_(std::in_place_index_t<0>()) {
-        auto sz = fc::raw::pack_size(v);
-        if(sz <= 1024 * 1024) {
-            auto& arr = std::get<0>(var_);
-            auto  ds  = fc::datastream<char*>(arr.data(), arr.size());
-            fc::raw::pack(ds, v);
-
-            view_ = std::string_view(arr.data(), sz);
-        }
-        else {
-            auto& str = std::get<1>(var_);
-            str.resize(sz);
-
-            auto ds = fc::datastream<char*>((char*)str.data(), str.size());
-            fc::raw::pack(ds, v);
-
-            view_ = std::string_view(str.data(), sz);
-        }
-    }
-
-public:
-    std::string_view as_string_view() const { return view_; }
-
-private:
-    std::variant<std::array<char, 1024 * 1024>, std::string> var_;
-    std::string_view                                         view_;
-};
-
 #define ADD_DB_TOKEN(TYPE, VALUE)                                                                              \
     {                                                                                                          \
-        auto dv = db_value(VALUE);                                                                             \
+        auto dv = make_db_value(VALUE);                                                                        \
         tokendb.put_token(TYPE, action_op::add, get_db_prefix(VALUE), get_db_key(VALUE), dv.as_string_view()); \
     }
 
 #define UPD_DB_TOKEN(TYPE, VALUE)                                                                                 \
     {                                                                                                             \
-        auto dv = db_value(VALUE);                                                                                \
+        auto dv = make_db_value(VALUE);                                                                           \
         tokendb.put_token(TYPE, action_op::update, get_db_prefix(VALUE), get_db_key(VALUE), dv.as_string_view()); \
     }
 
 #define PUT_DB_TOKEN(TYPE, VALUE)                                                                              \
     {                                                                                                          \
-        auto dv = db_value(VALUE);                                                                             \
+        auto dv = make_db_value(VALUE);                                                                        \
         tokendb.put_token(TYPE, action_op::put, get_db_prefix(VALUE), get_db_key(VALUE), dv.as_string_view()); \
     }
 
 #define PUT_DB_ASSET(ADDR, VALUE)                                  \
     {                                                              \
-        auto dv = db_value(VALUE);                                 \
+        auto dv = make_db_value(VALUE);                            \
         tokendb.put_asset(ADDR, VALUE.sym(), dv.as_string_view()); \
     }
 
@@ -260,8 +226,7 @@ private:
         auto str = std::string();                                           \
         tokendb.read_token(TYPE, PREFIX, KEY, str);                         \
                                                                             \
-        auto ds = fc::datastream<const char*>(str.data(), str.size());      \
-        fc::raw::unpack(ds, VALUEREF);                                      \
+        extract_db_value(str, VALUEREF);                                    \
     }                                                                       \
     EVT_RETHROW_EXCEPTIONS2(EXCEPTION, FORMAT, __VA_ARGS__);
     
@@ -270,8 +235,7 @@ private:
         auto str = std::string();                                        \
         tokendb.read_token(TYPE, PREFIX, KEY, str, true /* no throw */); \
                                                                          \
-        auto ds = fc::datastream<const char*>(str.data(), str.size());   \
-        fc::raw::unpack(ds, VALUEREF);                                   \
+        extract_db_value(str, VALUEREF);                                 \
     }
 
 #define READ_DB_ASSET(ADDR, SYM, VALUEREF)                                                              \
@@ -279,8 +243,7 @@ private:
         auto str = std::string();                                                                       \
         tokendb.read_asset(ADDR, SYM, str);                                                             \
                                                                                                         \
-        auto ds = fc::datastream<const char*>(str.data(), str.size());                                  \
-        fc::raw::unpack(ds, VALUEREF);                                                                  \
+        extract_db_value(str, VALUEREF);                                                                \
     }                                                                                                   \
     EVT_RETHROW_EXCEPTIONS2(balance_exception, "There's no balance left in {} with sym: {}", ADDR, SYM);
 
@@ -291,8 +254,7 @@ private:
             VALUEREF = asset(0, SYM);                                      \
         }                                                                  \
         else {                                                             \
-            auto ds = fc::datastream<const char*>(str.data(), str.size()); \
-            fc::raw::unpack(ds, VALUEREF);                                 \
+            extract_db_value(str, VALUEREF);                               \
         }                                                                  \
     }
 
@@ -368,7 +330,7 @@ EVT_ACTION_IMPL_BEGIN(issuetoken) {
             check_name(n);
 
             token.name = n;
-            values.emplace_back(token);
+            values.emplace_back(make_db_value(token));
             data.emplace_back(values.back().as_string_view());
         }
 
@@ -1378,7 +1340,7 @@ EVT_ACTION_IMPL_BEGIN(prodvote) {
             it.first->second = pvact.value;
         }
 
-        auto dv = db_value(map);
+        auto dv = make_db_value(map);
         tokendb.put_token(token_type::prodvote, action_op::put, std::nullopt, pvact.key, dv.as_string_view());
 
         auto is_prod = [&](auto& pk) {
