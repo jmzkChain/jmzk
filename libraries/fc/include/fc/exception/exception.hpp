@@ -65,16 +65,20 @@ public:
     exception(int64_t            code       = unspecified_exception_code,
               const std::string& name_value = "exception",
               const std::string& what_value = "unspecified");
+
     exception(log_message&&, int64_t code = unspecified_exception_code,
               const std::string& name_value = "exception",
               const std::string& what_value = "unspecified");
+
     exception(log_messages&&, int64_t code = unspecified_exception_code,
               const std::string& name_value = "exception",
               const std::string& what_value = "unspecified");
+
     exception(const log_messages&,
               int64_t            code       = unspecified_exception_code,
               const std::string& name_value = "exception",
               const std::string& what_value = "unspecified");
+    
     exception(const exception& e);
     exception(exception&& e);
     virtual ~exception();

@@ -54,10 +54,7 @@ void from_variant(const variant& e, log_level& ll);
 class log_context {
 public:
     log_context() = default;
-    log_context(log_level   ll,
-                const char* file,
-                uint64_t    line,
-                const char* method);
+    log_context(log_level ll, const char* file, uint64_t line, const char* method);
 
     explicit log_context(const variant& v);
 
@@ -101,7 +98,7 @@ void from_variant(const variant& l, log_context& c);
  */
 class log_message {
 public:
-    log_message();
+    log_message() = default;
     /**
      *  @param ctx - generally provided using the FC_LOG_CONTEXT(LEVEL) macro 
      */

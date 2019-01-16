@@ -116,6 +116,18 @@ validate(boost::any&                     v,
     }
 }
 
+std::ostream&
+operator<<(std::ostream& osm, evt::chain::storage_profile m) {
+    if(m == evt::chain::storage_profile::disk) {
+        osm << "disk";
+    }
+    else if(m == evt::chain::storage_profile::memory) {
+        osm << "memory";
+    }
+
+    return osm;
+}
+
 void
 validate(boost::any&                     v,
          const std::vector<std::string>& values,
@@ -384,7 +396,7 @@ chain_plugin::plugin_initialize(const variables_map& options) {
         my->chain_config->state_dir   = app().data_dir() / config::default_state_dir_name;
         my->chain_config->read_only   = my->readonly;
 
-        my->chain_config->db_config.db_path = my->tokendb_dir.to_native_ansi_path();
+        my->chain_config->db_config.db_path = fc::path(my->tokendb_dir).to_native_ansi_path();
         
         if(options.count("token-db-cache-size-mb")) {
             my->chain_config->db_config.cache_size = options.at("token-db-cache-size-mb").as<uint64_t>();
@@ -467,7 +479,7 @@ chain_plugin::plugin_initialize(const variables_map& options) {
         else if(options.at("hard-replay-blockchain").as<bool>()) {
             ilog("Hard replay requested: deleting state database");
             clear_directory_contents(my->chain_config->state_dir);
-            fc::remove_all(my->chain_config->tokendb_dir);
+            fc::remove_all(my->tokendb_dir);
             auto backup_dir = block_log::repair_log(my->blocks_dir, options.at("truncate-at-block").as<uint32_t>());
             if(fc::exists(backup_dir / config::reversible_blocks_dir_name) || options.at("fix-reversible-blocks").as<bool>()) {
                 // Do not try to recover reversible blocks if the directory does not exist, unless the option was explicitly provided.
@@ -490,7 +502,7 @@ chain_plugin::plugin_initialize(const variables_map& options) {
             if(options.at("truncate-at-block").as<uint32_t>() > 0)
                 wlog("The --truncate-at-block option does not work for a regular replay of the blockchain.");
             clear_directory_contents(my->chain_config->state_dir);
-            fc::remove_all(my->chain_config->tokendb_dir);
+            fc::remove_all(my->tokendb_dir);
             if(options.at("fix-reversible-blocks").as<bool>()) {
                 if(!recover_reversible_blocks(my->chain_config->blocks_dir / config::reversible_blocks_dir_name,
                                               my->chain_config->reversible_cache_size)) {

@@ -56,6 +56,7 @@ void
 from_variant(const variant& l, log_message& c) {
     c = log_message(l);
 }
+
 void
 to_variant(const log_message& m, variant& v) {
     v = m.to_variant();
@@ -127,6 +128,14 @@ log_level::to_string() const {
         return "";
     }
 }
+
+log_context::log_context(log_level ll, const char* file, uint64_t line, const char* method)
+    : level(ll)
+    , file(fc::path(file).filename().generic_string())
+    , line(line)
+    , method(method)
+    , thread_name(fc::get_thread_name())
+    , timestamp(time_point::now()) {}
 
 variant
 log_context::to_variant() const {

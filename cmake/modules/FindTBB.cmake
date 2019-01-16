@@ -11,7 +11,7 @@ find_path(TBB_INCLUDE_DIR
     PATH_SUFFIXES include)
 
 find_library(TBB_LIBRARIES
-    NAMES libtbb.a
+    NAMES libtbb.so
     HINTS ENV LD_LIBRARY_PATH)
 
 include(FindPackageHandleStandardArgs)

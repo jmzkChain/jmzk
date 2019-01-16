@@ -9,6 +9,7 @@ set( WITH_LZ4 ON CACHE BOOL "build RocksDB with LZ4" FORCE )
 set( WITH_ZSTD ON CACHE BOOL "build RocksDB with zstd" FORCE )
 set( WITH_TESTS OFF CACHE BOOL "build RocksDB with Tests" FORCE )
 set( WITH_TOOLS OFF CACHE BOOL "build RocksDB with Tools" FORCE )
+set( WITH_TBB ON CACHE BOOL "build RocksDB with TBB" FORCE )
 set( PORTABLE ON CACHE BOOL "build a portable RocksDB library" FORCE )
 set( USE_RTTI ON CACHE BOOL "use RTTI in RocksDB" FORCE )
 

@@ -61,13 +61,46 @@ evt_plugin::get_read_write_api() {
 
 namespace evt_apis {
 
+#define READ_DB_TOKEN(TYPE, PREFIX, KEY, VALUEREF, EXCEPTION, FORMAT, ...)  \
+    try {                                                                   \
+        auto str = std::string();                                           \
+        db.read_token(TYPE, PREFIX, KEY, str);                              \
+                                                                            \
+        auto ds = fc::datastream<const char*>(str.data(), str.size());      \
+        fc::raw::unpack(ds, VALUEREF);                                      \
+    }                                                                       \
+    EVT_RETHROW_EXCEPTIONS2(EXCEPTION, FORMAT, __VA_ARGS__);
+
+#define READ_DB_ASSET(ADDR, SYM, VALUEREF)                                                              \
+    try {                                                                                               \
+        auto str = std::string();                                                                       \
+        db.read_asset(ADDR, SYM, str);                                                                  \
+                                                                                                        \
+        auto ds = fc::datastream<const char*>(str.data(), str.size());                                  \
+        fc::raw::unpack(ds, VALUEREF);                                                                  \
+    }                                                                                                   \
+    EVT_RETHROW_EXCEPTIONS2(balance_exception, "There's no balance left in {} with sym: {}", ADDR, SYM);
+
+#define READ_DB_ASSET_NO_THROW(ADDR, SYM, VALUEREF)                        \
+    {                                                                      \
+        auto str = std::string();                                          \
+        if(!db.read_asset(ADDR, SYM, str, true /* no throw */)) {          \
+            VALUEREF = asset(0, SYM);                                      \
+        }                                                                  \
+        else {                                                             \
+            auto ds = fc::datastream<const char*>(str.data(), str.size()); \
+            fc::raw::unpack(ds, VALUEREF);                                 \
+        }                                                                  \
+    }
+
 fc::variant
 read_only::get_domain(const read_only::get_domain_params& params) {
     const auto& db = db_.token_db();
 
     variant    var;
     domain_def domain;
-    db.read_domain(params.name, domain);
+    READ_DB_TOKEN(token_type::domain, std::nullopt, params.name, domain, unknown_domain_exception, "Cannot find domain: {}", params.name);
+
     fc::to_variant(domain, var);
 
     auto mvar = fc::mutable_variant_object(var);
@@ -81,7 +114,8 @@ read_only::get_group(const read_only::get_group_params& params) {
 
     variant   var;
     group_def group;
-    db.read_group(params.name, group);
+    READ_DB_TOKEN(token_type::group, std::nullopt, params.name, group, unknown_group_exception, "Cannot find group: {}", params.name);
+
     fc::to_variant(group, var);
     return var;
 }
@@ -92,7 +126,8 @@ read_only::get_token(const read_only::get_token_params& params) {
 
     variant   var;
     token_def token;
-    db.read_token(params.domain, params.name, token);
+    READ_DB_TOKEN(token_type::token, params.domain, params.name, token, unknown_token_exception, "Cannot find token: {} in {}", params.name, params.domain);
+
     fc::to_variant(token, var);
     return var;
 }
@@ -112,8 +147,14 @@ read_only::get_tokens(const get_tokens_params& params) {
     }
 
     int i = 0;
-    db.read_tokens(params.domain, s, [&](auto& token) {
+    db.read_tokens_range(token_type::token, params.domain, s, [&](auto& key, auto&& value) {
         auto var = fc::variant();
+
+        token_def token;
+
+        auto ds = fc::datastream<const char*>(value.data(), value.size());
+        fc::raw::unpack(ds, token);
+
         fc::to_variant(token, var);
         vars.emplace_back(std::move(var));
 
@@ -132,14 +173,15 @@ read_only::get_fungible(const get_fungible_params& params) {
 
     variant      var;
     fungible_def fungible;
-    db.read_fungible(params.id, fungible);
+    READ_DB_TOKEN(token_type::fungible, std::nullopt, params.id, fungible, unknown_fungible_exception, "Cannot find fungible with sym id: {}", params.id);
+
     fc::to_variant(fungible, var);
 
     auto mvar = fc::mutable_variant_object(var);
     auto addr = address(N(.fungible), name128::from_number(params.id), 0);
 
     asset as;
-    db_.token_db().read_asset_no_throw(addr, fungible.sym, as);
+    READ_DB_ASSET(addr, fungible.sym, as);
 
     mvar["current_supply"] = fungible.total_supply - as;
     mvar["address"]        = addr;
@@ -153,24 +195,17 @@ read_only::get_fungible_balance(const get_fungible_balance_params& params) {
     variants vars;
     if(params.sym_id.has_value()) {
         fungible_def fungible;
-        db.read_fungible(*params.sym_id, fungible);
+        READ_DB_TOKEN(token_type::fungible, std::nullopt, *params.sym_id, fungible, unknown_fungible_exception, "Cannot find fungible with sym id: {}", *params.sym_id);
 
         variant var;
         asset   as;
-        db.read_asset_no_throw(params.address, fungible.sym, as);
+        READ_DB_ASSET_NO_THROW(params.address, fungible.sym, as);
+
         fc::to_variant(as, var);
         vars.emplace_back(std::move(var));
         return vars;
     }
-    else {
-        db.read_all_assets(params.address, [&vars](const auto& as) {
-            variant var;
-            fc::to_variant(as, var);
-            vars.emplace_back(std::move(var));
-            return true;
-        });
-        return vars;
-    }
+    EVT_THROW(unsupported_feature, "Read all the assets within one address is not supported in evt_plugin anymore, please refer to the history_plugin");
 }
 
 fc::variant
@@ -178,7 +213,8 @@ read_only::get_suspend(const get_suspend_params& params) {
     const auto& db = db_.token_db();
     variant     var;
     suspend_def suspend;
-    db.read_suspend(params.name, suspend);
+    READ_DB_TOKEN(token_type::suspend, std::nullopt, params.name, suspend, unknown_suspend_exception, "Cannot find suspend proposal: {}", params.name);
+
     db_.get_abi_serializer().to_variant(suspend, var, db_.get_execution_context());
     return var;
 }
@@ -188,7 +224,8 @@ read_only::get_lock(const get_lock_params& params) {
     const auto& db = db_.token_db();
     variant  var;
     lock_def lock;
-    db.read_lock(params.name, lock);
+    READ_DB_TOKEN(token_type::lock, std::nullopt, params.name, lock, unknown_lock_exception, "Cannot find lock proposal: {}", params.name);
+
     fc::to_variant(lock, var);
     return var;
 }
