@@ -189,7 +189,7 @@ struct controller_impl {
              cfg.reversible_cache_size)
         , blog(cfg.blocks_dir)
         , fork_db(cfg.state_dir)
-        , token_db(cfg.tokendb_dir)
+        , token_db(cfg.db_config)
         , conf(cfg)
         , chain_id(cfg.genesis.compute_chain_id())
         , exec_ctx()
@@ -406,9 +406,9 @@ struct controller_impl {
             wlog("warning: database revision (${db}) is greater than head block number (${head}), "
                  "attempting to undo pending changes",
                  ("db", db.revision())("head", head->block_num));
-            EVT_ASSERT(token_db.savepoints_size() > 0, tokendb_exception,
+            EVT_ASSERT(token_db.savepoints_size() > 0, token_database_exception,
                 "token database is inconsistent with fork database: don't have any savepoints to pop");
-            EVT_ASSERT(token_db.latest_savepoint_seq() == db.revision(), tokendb_exception,
+            EVT_ASSERT(token_db.latest_savepoint_seq() == db.revision(), token_database_exception,
                 "token database(${seq}) is inconsistent with fork database(${db})",
                 ("seq",token_db.latest_savepoint_seq())("db",db.revision()));
         }
@@ -553,39 +553,6 @@ struct controller_impl {
 
     void
     initialize_token_db() {
-        if(!token_db.exists_domain(".domain")) {
-            auto dd = domain_def();
-            dd.name = ".domain";
-            dd.creator = conf.genesis.initial_key;
-            dd.create_time = conf.genesis.initial_timestamp;
-            auto r = token_db.add_domain(dd);
-            FC_ASSERT(r == 0, "Add `.domain` domain failed");
-        }
-        if(!token_db.exists_domain(".group")) {
-            auto gd = domain_def();
-            gd.name = ".group";
-            gd.creator = conf.genesis.initial_key;
-            gd.create_time = conf.genesis.initial_timestamp;
-            auto r = token_db.add_domain(gd);
-            FC_ASSERT(r == 0, "Add `.group` domain failed");
-        }
-        if(!token_db.exists_domain(".suspend")) {
-            auto dd = domain_def();
-            dd.name = ".suspend";
-            dd.creator = conf.genesis.initial_key;
-            dd.create_time = conf.genesis.initial_timestamp;
-            auto r = token_db.add_domain(dd);
-            FC_ASSERT(r == 0, "Add `.suspend` domain failed");
-        }
-        if(!token_db.exists_domain(".fungible")) {
-            auto dd = domain_def();
-            dd.name = ".fungible";
-            dd.creator = conf.genesis.initial_key;
-            dd.create_time = conf.genesis.initial_timestamp;
-            auto r = token_db.add_domain(dd);
-            FC_ASSERT(r == 0, "Add `.fungible` domain failed");
-        }
-
         initialize_evt_org(token_db, conf.genesis);
     }
 
@@ -1445,7 +1412,16 @@ controller::get_block_id_for_num(uint32_t block_num) const {
 evt_link_object
 controller::get_link_obj_for_link_id(const link_id_type& link_id) const {
     evt_link_object link_obj;
-    my->token_db.read_evt_link(link_id, link_obj);
+
+    auto str = std::string();
+    try {
+        my->token_db.read_token(token_type::evtlink, std::nullopt, link_id, str);
+    }
+    EVT_RETHROW_EXCEPTIONS2(evt_link_existed_exception, "Cannot find EvtLink with id: {}", fc::to_hex((char*)&link_id, sizeof(link_id)));
+
+    auto ds = fc::datastream<const char*>(str.data(), str.size());
+    fc::raw::unpack(ds, link_obj);
+
     return link_obj;
 }
 
@@ -1759,7 +1735,15 @@ controller::get_suspend_required_keys(const transaction& trx, const public_keys_
 public_keys_type
 controller::get_suspend_required_keys(const proposal_name& name, const public_keys_type& candidate_keys) const {
     suspend_def suspend;
-    my->token_db.read_suspend(name, suspend);
+
+    auto str = std::string();
+    try {
+        my->token_db.read_token(token_type::suspend, std::nullopt, name, str);
+    }
+    EVT_RETHROW_EXCEPTIONS2(unknown_lock_exception, "Cannot find suspend proposal: {}", name);
+
+    auto ds = fc::datastream<const char*>(str.data(), str.size());
+    fc::raw::unpack(ds, suspend);
     
     return get_suspend_required_keys(suspend.trx, candidate_keys);
 }

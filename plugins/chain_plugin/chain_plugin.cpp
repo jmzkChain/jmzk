@@ -116,6 +116,31 @@ validate(boost::any&                     v,
     }
 }
 
+void
+validate(boost::any&                     v,
+         const std::vector<std::string>& values,
+         evt::chain::storage_profile* /* target_type */,
+         int) {
+    using namespace boost::program_options;
+
+    // Make sure no previous assignment to 'v' was made.
+    validators::check_first_occurrence(v);
+
+    // Extract the first string from 'values'. If there is more than
+    // one string, it's an error, and exception will be thrown.
+    std::string const& s = validators::get_single_string(values);
+
+    if(s == "disk") {
+        v = boost::any(evt::chain::storage_profile::disk);
+    }
+    else if(s == "memory") {
+        v = boost::any(evt::chain::storage_profile::memory);
+    }
+    else {
+        throw validation_error(validation_error::invalid_option_value);
+    }
+}
+
 }  // namespace chain
 
 using namespace evt;
@@ -210,7 +235,13 @@ void
 chain_plugin::set_program_options(options_description& cli, options_description& cfg) {
     cfg.add_options()
         ("blocks-dir", bpo::value<bfs::path>()->default_value("blocks"), "the location of the blocks directory (absolute path or relative to application data dir)")
-        ("tokendb-dir", bpo::value<bfs::path>()->default_value("tokendb"), "the location of the token database directory (absolute path or relative to application data dir)")
+        ("token-db-dir", bpo::value<bfs::path>()->default_value("tokendb"), "the location of the token database directory (absolute path or relative to application data dir)")
+        ("token-db-cache-size-mb", bpo::value<uint32_t>()->default_value(256), "the cache size of token database in MBytes")
+        ("token-db-profile", boost::program_options::value<evt::chain::storage_profile>()->default_value(evt::chain::storage_profile::disk),
+            "Token database profile (\"disk\", or \"memory\").\n"
+            "In \"disk\" profile database is optimized for the standard storage devices.\n"
+            "In \"memory\" mode database is optimized for the usage in ultra-low latency devices like memory\n"
+        )
         ("checkpoint", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
         ("abi-serializer-max-time-ms", bpo::value<uint32_t>()->default_value(config::default_abi_serializer_max_time_ms), "Override default maximum ABI serialization time allowed in ms")
         ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024 * 1024)), "Maximum size (in MiB) of the chain state database")
@@ -321,7 +352,7 @@ chain_plugin::plugin_initialize(const variables_map& options) {
         }
 
         if(options.count("tokendb-dir")) {
-            auto tod = options.at("tokendb-dir").as<bfs::path>();
+            auto tod = options.at("token-db-dir").as<bfs::path>();
             if(tod.is_relative())
                 my->tokendb_dir = app().data_dir() / tod;
             else
@@ -350,9 +381,18 @@ chain_plugin::plugin_initialize(const variables_map& options) {
         }
 
         my->chain_config->blocks_dir  = my->blocks_dir;
-        my->chain_config->tokendb_dir = my->tokendb_dir;
         my->chain_config->state_dir   = app().data_dir() / config::default_state_dir_name;
         my->chain_config->read_only   = my->readonly;
+
+        my->chain_config->db_config.db_path = my->tokendb_dir.to_native_ansi_path();
+        
+        if(options.count("token-db-cache-size-mb")) {
+            my->chain_config->db_config.cache_size = options.at("token-db-cache-size-mb").as<uint64_t>();
+        }
+
+        if(options.count("token-db-profile")) {
+            my->chain_config->db_config.profile = options.at("token-db-profile").as<storage_profile>();
+        }
 
         if(options.count("chain-state-db-size-mb"))
             my->chain_config->state_size = options.at("chain-state-db-size-mb").as<uint64_t>() * 1024 * 1024;

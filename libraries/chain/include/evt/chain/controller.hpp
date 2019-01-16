@@ -8,7 +8,7 @@
 #include <boost/signals2/signal.hpp>
 #include <evt/chain/block_state.hpp>
 #include <evt/chain/genesis_state.hpp>
-#include <evt/chain/trace.hpp>
+#include <evt/chain/token_database.hpp>
 
 namespace chainbase {
 class database;
@@ -17,7 +17,6 @@ class database;
 namespace evt { namespace chain {
 
 class fork_database;
-class token_database;
 class apply_context;
 class charge_manager;
 class execution_context;
@@ -57,7 +56,6 @@ public:
     struct config {
         path     blocks_dir             = chain::config::default_blocks_dir_name;
         path     state_dir              = chain::config::default_state_dir_name;
-        path     tokendb_dir            = chain::config::default_tokendb_dir_name;
         uint64_t state_size             = chain::config::default_state_size;
         uint64_t state_guard_size       = chain::config::default_state_guard_size;
         uint64_t reversible_cache_size  = chain::config::default_reversible_cache_size;
@@ -75,6 +73,8 @@ public:
         validation_mode block_validation_mode = validation_mode::FULL;
 
         flat_set<account_name> trusted_producers;
+
+        token_database::config db_config;
 
         genesis_state genesis;
     };
@@ -229,7 +229,6 @@ private:
 FC_REFLECT(evt::chain::controller::config,
            (blocks_dir)
            (state_dir)
-           (tokendb_dir)
            (state_size)
            (reversible_cache_size)
            (read_only)
@@ -239,5 +238,6 @@ FC_REFLECT(evt::chain::controller::config,
            (charge_free_mode)
            (contracts_console)
            (trusted_producers)
+           (db_config)
            (genesis)
            );

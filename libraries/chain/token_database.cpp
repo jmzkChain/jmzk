@@ -15,7 +15,10 @@
 #include <xxhash.h>
 #pragma GCC diagnostic pop
 
+#ifndef __cpp_lib_string_view
 #define __cpp_lib_string_view
+#endif
+
 #include <rocksdb/db.h>
 #include <rocksdb/cache.h>
 #include <rocksdb/options.h>
@@ -237,13 +240,13 @@ public:
     void close(int persist = true);
 
 public:
-    void put_token(token_type type, action_op op, const name128& prefix, const name128& key, std::string_view& data);
+    void put_token(token_type type, action_op op, const name128& prefix, const name128& key, const std::string_view& data);
     void put_tokens(token_type type,
                     action_op op,
                     const name128& prefix,
                     token_keys_t&& keys,
                     const small_vector_base<std::string_view>& data);
-    void put_asset(const address& addr, const symbol sym, std::string_view& data);
+    void put_asset(const address& addr, const symbol sym, const std::string_view& data);
 
     int exists_token(const name128& prefix, const name128& key) const;
     int exists_asset(const address& addr, const symbol sym) const;
@@ -418,7 +421,7 @@ token_database_impl::close(int persist) {
 }
 
 void
-token_database_impl::put_token(token_type type, action_op op, const name128& prefix, const name128& key, std::string_view& data) {
+token_database_impl::put_token(token_type type, action_op op, const name128& prefix, const name128& key, const std::string_view& data) {
     using namespace __internal;
 
     auto dbkey  = db_token_key(prefix, key);
@@ -473,7 +476,7 @@ token_database_impl::put_tokens(token_type type,
 }
 
 void
-token_database_impl::put_asset(const address& addr, symbol sym, std::string_view& data) {
+token_database_impl::put_asset(const address& addr, symbol sym, const std::string_view& data) {
     using namespace __internal;
 
     auto  dbkey = db_asset_key(addr, sym);
@@ -1187,7 +1190,7 @@ token_database::close(int persist) {
 }
 
 void
-token_database::put_token(token_type type, action_op op, const std::optional<name128>& domain, const name128& key, std::string_view& data) {
+token_database::put_token(token_type type, action_op op, const std::optional<name128>& domain, const name128& key, const std::string_view& data) {
     using namespace __internal;
 
     assert(type != token_type::asset);
@@ -1211,7 +1214,7 @@ token_database::put_tokens(token_type type,
 }
 
 void
-token_database::put_asset(const address& addr, const symbol sym, std::string_view& data) {
+token_database::put_asset(const address& addr, const symbol sym, const std::string_view& data) {
     my_->put_asset(addr, sym, data);
 }
 

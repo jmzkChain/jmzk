@@ -8,9 +8,11 @@
 #include <optional>
 #include <string_view>
 #include <boost/noncopyable.hpp>
+#include <fc/reflect/reflect.hpp>
 #include <evt/chain/types.hpp>
 #include <evt/chain/asset.hpp>
 #include <evt/chain/address.hpp>
+#include <evt/chain/config.hpp>
 
 namespace rocksdb {
 class DB;
@@ -48,9 +50,9 @@ using token_keys_t = small_vector<name128, 4>;
 class token_database : boost::noncopyable {
 public:
     struct config {
-        storage_profile profile;
-        uint32_t        cache_size; // MBytes
-        std::string     db_path;
+        storage_profile profile    = storage_profile::disk;
+        uint32_t        cache_size = 256; // MBytes
+        std::string     db_path    = ::evt::chain::config::default_token_database_dir_name;
     };
 
     class session {
@@ -107,9 +109,9 @@ public:
     void close(int persist = true);
 
 public:
-    void put_token(token_type type, action_op op, const std::optional<name128>& domain, const name128& key, std::string_view& data);
+    void put_token(token_type type, action_op op, const std::optional<name128>& domain, const name128& key, const std::string_view& data);
     void put_tokens(token_type type, action_op op, const std::optional<name128>& domain, token_keys_t&& keys, const small_vector_base<std::string_view>& data);
-    void put_asset(const address& addr, const symbol sym, std::string_view& data);
+    void put_asset(const address& addr, const symbol sym, const std::string_view& data);
 
     int exists_token(token_type type, const std::optional<name128>& domain, const name128& key) const;
     int exists_asset(const address& addr, const symbol sym) const;
@@ -150,3 +152,5 @@ private:
 };
 
 }}  // namespace evt::chain
+
+FC_REFLECT(evt::chain::token_database::config, (profile)(cache_size)(db_path));

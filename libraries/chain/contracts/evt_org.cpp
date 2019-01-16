@@ -8,24 +8,46 @@
 
 namespace evt { namespace chain { namespace contracts {
 
+namespace __internal {
+
+template <typename T>
+std::string
+get_value(const T& v) {
+    auto value = std::string();
+    auto size  = fc::raw::pack_size(v);
+    value.resize(size);
+
+    auto ds = fc::datastream<char*>((char*)value.data(), size);
+    fc::raw::pack(ds, v);
+
+    return value;
+}
+
+}  // namespace __internal
+
 void
-initialize_evt_org(token_database& token_db, const genesis_state& genesis) {
+initialize_evt_org(token_database& tokendb, const genesis_state& genesis) {
+    using namespace __internal;
+
     // Add reserved everiToken foundation group
-    if(!token_db.exists_group(".everiToken")) {
-        token_db.add_group(genesis.evt_org);
+    if(!tokendb.exists_token(token_type::group, std::nullopt, N128(.everiToken))) {
+        auto v = get_value(genesis.evt_org);
+        tokendb.put_token(token_type::group, action_op::add, std::nullopt, N128(.everiToken), v);
     }
 
-    // Add reserved EVT fungible tokens
-    if(!token_db.exists_fungible(evt_sym())) {
-        token_db.add_fungible(genesis.evt);
+    // Add reserved EVT & PEVT fungible tokens
+    if(!tokendb.exists_token(token_type::fungible, std::nullopt, evt_sym().id())) {
+        assert(!tokendb.exists_token(token_type::fungible, std::nullopt, pevt_sym().id()));
 
-        auto addr = address(N(.fungible), (name128)std::to_string(evt_sym().id()), 0);
-        token_db.update_asset(addr, genesis.evt.total_supply);
-    }
+        auto v = get_value(genesis.evt);
+        tokendb.put_token(token_type::fungible, action_op::add, std::nullopt, evt_sym().id(), v);
 
-    // Add reserved Pined EVT fungible tokens
-    if(!token_db.exists_fungible(pevt_sym())) {
-        token_db.add_fungible(genesis.pevt);
+        auto v2 = get_value(genesis.pevt);
+        tokendb.put_token(token_type::fungible, action_op::add, std::nullopt, pevt_sym().id(), v2);
+
+        auto addr = address(N(.fungible), name128::from_number(evt_sym().id()), 0);
+        auto v3   = get_value(genesis.evt.total_supply);
+        tokendb.put_asset(addr, evt_sym(), v3);
     }
 }
 

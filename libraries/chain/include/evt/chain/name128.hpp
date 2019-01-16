@@ -57,8 +57,8 @@ public:
     static name128 from_number(uint64_t v);
 
     explicit operator string() const;
-    operator bool() const { return value; }
-    operator uint128_t() const { return value; }
+    explicit operator bool() const { return value; }
+    explicit operator uint128_t() const { return value; }
 
     string
     to_string() const {

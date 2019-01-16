@@ -21,12 +21,24 @@
 
 namespace evt { namespace chain {
 
+using namespace contracts;
+
 class authority_checker;
 
 namespace __internal {
 
 template<uint64_t>
 struct check_authority {};
+
+#define READ_DB_TOKEN(TYPE, PREFIX, KEY, VALUEREF, EXCEPTION, FORMAT, ...)  \
+    try {                                                                   \
+        auto str = std::string();                                           \
+        token_db_.read_token(TYPE, PREFIX, KEY, str);                       \
+                                                                            \
+        auto ds = fc::datastream<const char*>(str.data(), str.size());      \
+        fc::raw::unpack(ds, VALUEREF);                                      \
+    }                                                                       \
+    EVT_RETHROW_EXCEPTIONS2(EXCEPTION, FORMAT, __VA_ARGS__);
 
 }  // namespace __internal
 
@@ -102,7 +114,8 @@ private:
     void
     get_domain_permission(const domain_name& domain_name, const permission_name name, std::function<void(const permission_def&)>&& cb) {
         domain_def domain;
-        token_db_.read_domain(domain_name, domain);
+        READ_DB_TOKEN(token_type::domain, std::nullopt, domain_name, domain, unknown_domain_exception, "Cannot find domain: {}", domain_name);
+
         if(name == N(issue)) {
             cb(domain.issue);
         }
@@ -117,7 +130,8 @@ private:
     void
     get_fungible_permission(const symbol_id_type sym_id, const permission_name name, std::function<void(const permission_def&)>&& cb) {
         fungible_def fungible;
-        token_db_.read_fungible(sym_id, fungible);
+        READ_DB_TOKEN(token_type::fungible, std::nullopt, sym_id, fungible, unknown_fungible_exception, "Cannot find fungible with symbol id: {}", sym_id);
+
         if(name == N(issue)) {
             cb(fungible.issue);
         }
@@ -129,21 +143,24 @@ private:
     void
     get_group(const group_name& name, std::function<void(const group_def&)>&& cb) {
         group_def group;
-        token_db_.read_group(name, group);
+        READ_DB_TOKEN(token_type::group, std::nullopt, name, group, unknown_group_exception, "Cannot find group: {}", name);
+
         cb(group);
     }
 
     void
     get_owner(const domain_name& domain, const name128& name, std::function<void(const address_list&)>&& cb) {
         token_def token;
-        token_db_.read_token(domain, name, token);
+        READ_DB_TOKEN(token_type::token, domain, name, token, unknown_token_exception, "Cannot find token: {} in {}", name, domain);
+
         cb(token.owner);
     }
 
     void
     get_suspend(const proposal_name& proposal, std::function<void(const suspend_def&)>&& cb) {
         suspend_def suspend;
-        token_db_.read_suspend(proposal, suspend);
+        READ_DB_TOKEN(token_type::suspend, std::nullopt, proposal, suspend, unknown_suspend_exception, "Cannot find suspend proposal: {}", proposal);
+
         cb(suspend);
     }
 
