@@ -227,22 +227,22 @@ private:
     std::string_view                                         view_;
 };
 
-#define ADD_DB_TOKEN(TYPE, VALUE)                                                              \
-    {                                                                                          \
-        auto dv = db_value(VALUE);                                                             \
-        tokendb.add_token(TYPE, get_db_prefix(VALUE), get_db_key(VALUE), dv.as_string_view()); \
+#define ADD_DB_TOKEN(TYPE, VALUE)                                                                              \
+    {                                                                                                          \
+        auto dv = db_value(VALUE);                                                                             \
+        tokendb.put_token(TYPE, action_op::add, get_db_prefix(VALUE), get_db_key(VALUE), dv.as_string_view()); \
     }
 
-#define UPD_DB_TOKEN(TYPE, VALUE)                                                                 \
-    {                                                                                             \
-        auto dv = db_value(VALUE);                                                                \
-        tokendb.update_token(TYPE, get_db_prefix(VALUE), get_db_key(VALUE), dv.as_string_view()); \
+#define UPD_DB_TOKEN(TYPE, VALUE)                                                                                    \
+    {                                                                                                                \
+        auto dv = db_value(VALUE);                                                                                   \
+        tokendb.update_token(TYPE, action_op::update, get_db_prefix(VALUE), get_db_key(VALUE), dv.as_string_view()); \
     }
 
-#define PUT_DB_TOKEN(TYPE, VALUE)                                                             \
-    {                                                                                         \
-        auto dv = db_value(VALUE);                                                            \
-        tokendb.put_token(YPE, get_db_prefix(VALUE), get_db_key(VALUE), dv.as_string_view()); \
+#define PUT_DB_TOKEN(TYPE, VALUE)                                                                              \
+    {                                                                                                          \
+        auto dv = db_value(VALUE);                                                                             \
+        tokendb.put_token(TYPE, action_op::put, get_db_prefix(VALUE), get_db_key(VALUE), dv.as_string_view()); \
     }
 
 #define PUT_DB_ASSET(ADDR, VALUE)                                  \
@@ -368,7 +368,7 @@ EVT_ACTION_IMPL_BEGIN(issuetoken) {
             data.emplace_back(values.as_string_view());
         }
 
-        tokendb.add_tokens(token_type::token, itact.domain, std::move(itact.names), data);
+        tokendb.put_tokens(token_type::token, action_op::add, itact.domain, std::move(itact.names), data);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }

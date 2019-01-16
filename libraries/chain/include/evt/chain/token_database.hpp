@@ -37,6 +37,14 @@ enum class token_type {
     evtlink
 };
 
+enum class action_op {
+    add = 0,
+    update,
+    put
+};
+
+using token_keys_t = small_vector<name128, 4>;
+
 class token_database : boost::noncopyable {
 public:
     struct config {
@@ -99,11 +107,9 @@ public:
     void close(int persist = true);
 
 public:
-    void add_token(token_type type, const std::optional<name128>& domain, const name128& key, const std::string_view& data);
-    void update_token(token_type type, const std::optional<name128>& domain, const name128& key, const std::string_view& data);
-    void put_token(token_type type, const std::optional<name128>& domain, const name128& key, const std::string_view& data);
-    void add_tokens(token_type type, const std::optional<name128>& domain, small_vector_base<name128>&& keys, const small_vector_base<std::string_view>& data);
-    void put_asset(const address& addr, const symbol sym, const std::string_view& data);
+    void put_token(token_type type, action_op op, const std::optional<name128>& domain, const name128& key, std::string_view& data);
+    void put_tokens(token_type type, action_op op, const std::optional<name128>& domain, token_keys_t&& keys, const small_vector_base<std::string_view>& data);
+    void put_asset(const address& addr, const symbol sym, std::string_view& data);
 
     int exists_token(token_type type, const std::optional<name128>& domain, const name128& key) const;
     int exists_asset(const address& addr, const symbol sym) const;
