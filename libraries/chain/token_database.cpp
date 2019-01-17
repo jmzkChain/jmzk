@@ -157,7 +157,7 @@ public:
     }
 
     token_type get_token_type() const { return (token_type)f.type; }
-    action_op  get_action_op()  const { return (action_op)(f.exts & 0xFF); }
+    action_op  get_action_op()  const { return (action_op)(f.exts & 0xF); }
     data_type  get_data_type()  const { return (data_type)(f.exts >> 4); }
 
 public:
@@ -317,11 +317,11 @@ token_database_impl::open(int load_persistence) {
     auto options = Options();
     options.OptimizeUniversalStyleCompaction();
 
-    options.create_if_missing      = true;
-    options.compression            = CompressionType::kLZ4Compression;
-    options.bottommost_compression = CompressionType::kZSTD;
+    options.create_if_missing               = true;
+    options.compression                     = CompressionType::kLZ4Compression;
+    options.bottommost_compression          = CompressionType::kZSTD;
+    options.allow_concurrent_memtable_write = false;
     options.prefix_extractor.reset(NewFixedPrefixTransform(sizeof(name128)));
-
     options.memtable_factory.reset(NewHashSkipListRepFactory());
 
     auto assets_options = ColumnFamilyOptions(options);
@@ -456,6 +456,7 @@ token_database_impl::put_tokens(token_type type,
                                 token_keys_t&& keys,
                                 const small_vector_base<std::string_view>& data){
     using namespace __internal;
+    assert(keys.size() == data.size());
 
     for(auto i = 0u; i < keys.size(); i++) {
         auto dbkey  = db_token_key(prefix, keys[i]);
@@ -521,7 +522,7 @@ token_database_impl::read_token(const name128& prefix, const name128& key, std::
             FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
         }
         if(!no_throw) {
-            EVT_THROW(token_database_key_not_found, "Cannot find key: ${k} with prefix: ${p}", ("k",key)("p",prefix));
+            EVT_THROW(unknown_token_database_key, "Cannot find key: ${k} with prefix: ${p}", ("k",key)("p",prefix));
         }
         return false;
     }
@@ -842,7 +843,7 @@ token_database_impl::rollback_rt_group(__internal::rt_group* rt) {
                 break;
             }
             default: {
-                FC_ASSERT(false);
+                assert(false);
             }
             }  // switch
         };
@@ -1192,7 +1193,7 @@ token_database::put_token(token_type type, action_op op, const std::optional<nam
     using namespace __internal;
 
     assert(type != token_type::asset);
-    assert(type == token_type::token || domain.has_value());
+    assert((type == token_type::token) != (!domain.has_value()));
     auto& prefix = domain.has_value() ? *domain : action_key_prefixes[(int)type];
     my_->put_token(type, op, prefix, key, data);
 }
@@ -1206,7 +1207,7 @@ token_database::put_tokens(token_type type,
     using namespace __internal;
 
     assert(type != token_type::asset);
-    assert(type == token_type::token || domain.has_value());
+    assert((type == token_type::token) != (!domain.has_value()));
     auto& prefix = domain.has_value() ? *domain : action_key_prefixes[(int)type];
     my_->put_tokens(type, op, prefix, std::move(keys), data);
 }
@@ -1221,7 +1222,7 @@ token_database::exists_token(token_type type, const std::optional<name128>& doma
     using namespace __internal;
 
     assert(type != token_type::asset);
-    assert(type == token_type::token || domain.has_value());
+    assert((type == token_type::token) != (!domain.has_value()));
     auto& prefix = domain.has_value() ? *domain : action_key_prefixes[(int)type];
     return my_->exists_token(prefix, key);
 }
@@ -1236,7 +1237,7 @@ token_database::read_token(token_type type, const std::optional<name128>& domain
     using namespace __internal;
 
     assert(type != token_type::asset);
-    assert(type == token_type::token || domain.has_value());
+    assert((type == token_type::token) != (!domain.has_value()));
     auto& prefix = domain.has_value() ? *domain : action_key_prefixes[(int)type];    
     return my_->read_token(prefix, key, out, no_throw);
 }
@@ -1251,7 +1252,7 @@ token_database::read_tokens_range(token_type type, const std::optional<name128>&
     using namespace __internal;
 
     assert(type != token_type::asset);
-    assert(type == token_type::token || domain.has_value());
+    assert((type == token_type::token) != (!domain.has_value()));
     auto& prefix = domain.has_value() ? *domain : action_key_prefixes[(int)type];
     return my_->read_tokens_range(prefix, skip, func);
 }

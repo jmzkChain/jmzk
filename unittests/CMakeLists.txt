@@ -4,7 +4,7 @@ add_executable(evt_unittests
     contracts_tests.cpp
     # tokendb_tests.cpp
     types_tests.cpp
-    snapshot_tests.cpp
+    # snapshot_tests.cpp
     execution_tests.cpp
     )
 

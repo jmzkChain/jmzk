@@ -33,10 +33,10 @@
     catch(const fc::unrecoverable_exception&) {                                                             \
         throw;                                                                                              \
     }                                                                                                       \
-    catch(chain_exception & e) {                                                                            \
+    catch(chain_exception& e) {                                                                             \
         FC_RETHROW_EXCEPTION(e, warn, FORMAT, __VA_ARGS__);                                                 \
     }                                                                                                       \
-    catch(fc::exception & e) {                                                                              \
+    catch(fc::exception& e) {                                                                               \
         exception_type new_exception(FC_LOG_MESSAGE(warn, FORMAT, __VA_ARGS__));                            \
         for(const auto& log : e.get_log()) {                                                                \
             new_exception.append_log(log);                                                                  \
@@ -58,10 +58,10 @@
     catch(const fc::unrecoverable_exception&) {                                                              \
         throw;                                                                                               \
     }                                                                                                        \
-    catch(chain_exception & e) {                                                                             \
+    catch(chain_exception& e) {                                                                              \
         FC_RETHROW_EXCEPTION2(e, warn, FORMAT, __VA_ARGS__);                                                 \
     }                                                                                                        \
-    catch(fc::exception & e) {                                                                               \
+    catch(fc::exception& e) {                                                                                \
         exception_type new_exception(FC_LOG_MESSAGE2(warn, FORMAT, __VA_ARGS__));                            \
         for(const auto& log : e.get_log()) {                                                                 \
             new_exception.append_log(log);                                                                   \
@@ -310,8 +310,8 @@ FC_DECLARE_DERIVED_EXCEPTION( invalid_lock_timeout_exception,    wallet_exceptio
 FC_DECLARE_DERIVED_EXCEPTION( secure_enclave_exception,          wallet_exception, 3140012, "Secure Enclave Exception" );
 
 FC_DECLARE_DERIVED_EXCEPTION( token_database_exception,            chain_exception,          3150000, "token_database exception" );
-FC_DECLARE_DERIVED_EXCEPTION( token_database_key_already_existed,  token_database_exception, 3150001, "Key is already existed." );
-FC_DECLARE_DERIVED_EXCEPTION( token_database_key_not_found,        token_database_exception, 3150002, "Not found specific key." );
+FC_DECLARE_DERIVED_EXCEPTION( token_database_dupe_key,             token_database_exception, 3150001, "Duplicate key in token database." );
+FC_DECLARE_DERIVED_EXCEPTION( unknown_token_database_key,          token_database_exception, 3150002, "Unknown key in token database." );
 FC_DECLARE_DERIVED_EXCEPTION( token_database_rocksdb_exception,    token_database_exception, 3150003, "Rocksdb internal error occurred." );
 FC_DECLARE_DERIVED_EXCEPTION( token_database_no_savepoint,         token_database_exception, 3150004, "No savepoints anymore" );
 FC_DECLARE_DERIVED_EXCEPTION( token_database_seq_not_valid,        token_database_exception, 3150005, "Seq for checkpoint is not valid." );

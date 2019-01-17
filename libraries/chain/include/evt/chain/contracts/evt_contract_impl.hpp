@@ -228,14 +228,17 @@ get_db_prefix<token_def>(const token_def& v) {
                                                                             \
         extract_db_value(str, VALUEREF);                                    \
     }                                                                       \
+    catch(token_database_exception& e) {                                    \
+        EVT_THROW2(EXCEPTION, FORMAT, __VA_ARGS__);                         \
+    }                                                                       \
     EVT_RETHROW_EXCEPTIONS2(EXCEPTION, FORMAT, __VA_ARGS__);
     
-#define READ_DB_TOKEN_NO_THROW(TYPE, PREFIX, KEY, VALUEREF)              \
-    {                                                                    \
-        auto str = std::string();                                        \
-        tokendb.read_token(TYPE, PREFIX, KEY, str, true /* no throw */); \
-                                                                         \
-        extract_db_value(str, VALUEREF);                                 \
+#define READ_DB_TOKEN_NO_THROW(TYPE, PREFIX, KEY, VALUEREF)                   \
+    {                                                                         \
+        auto str = std::string();                                             \
+        if(tokendb.read_token(TYPE, PREFIX, KEY, str, true /* no throw */)) { \
+            extract_db_value(str, VALUEREF);                                  \
+        }                                                                     \
     }
 
 #define READ_DB_ASSET(ADDR, SYM, VALUEREF)                                                              \
@@ -244,6 +247,9 @@ get_db_prefix<token_def>(const token_def& v) {
         tokendb.read_asset(ADDR, SYM, str);                                                             \
                                                                                                         \
         extract_db_value(str, VALUEREF);                                                                \
+    }                                                                                                   \
+    catch(token_database_exception& e) {                                                                \
+        EVT_THROW2(balance_exception, "There's no balance left in {} with sym: {}", ADDR, SYM);         \
     }                                                                                                   \
     EVT_RETHROW_EXCEPTIONS2(balance_exception, "There's no balance left in {} with sym: {}", ADDR, SYM);
 
@@ -322,6 +328,9 @@ EVT_ACTION_IMPL_BEGIN(issuetoken) {
 
         auto values  = small_vector<db_value, 4>();
         auto data    = small_vector<std::string_view, 4>();
+        values.reserve(itact.names.size());
+        data.reserve(itact.names.size());
+
         auto token   = token_def();
         token.domain = itact.domain;
         token.owner  = itact.owner;
@@ -376,6 +385,7 @@ EVT_ACTION_IMPL_BEGIN(transfer) {
 
         token_def token;
         READ_DB_TOKEN(token_type::token, ttact.domain, ttact.name, token, unknown_token_exception, "Cannot find token: {} in {}", ttact.name, ttact.domain);
+        assert(token.name == ttact.name);
 
         EVT_ASSERT(!check_token_destroy(token), token_destroyed_exception, "Destroyed token cannot be transfered.");
         EVT_ASSERT(!check_token_locked(token), token_locked_exception, "Locked token cannot be transfered.");
@@ -406,6 +416,7 @@ EVT_ACTION_IMPL_BEGIN(destroytoken) {
 
         token_def token;
         READ_DB_TOKEN(token_type::token, dtact.domain, dtact.name, token, unknown_token_exception, "Cannot find token: {} in {}", dtact.name, dtact.domain);
+        assert(token.name == dtact.name);
 
         EVT_ASSERT(!check_token_destroy(token), token_destroyed_exception, "Token is already destroyed.");
         EVT_ASSERT(!check_token_locked(token), token_locked_exception, "Locked token cannot be destroyed.");
@@ -941,7 +952,7 @@ EVT_ACTION_IMPL_BEGIN(addmeta) {
             }
 
             domain_def domain;
-            READ_DB_TOKEN(token_type::domain, std::nullopt, amact.key, domain, unknown_domain_exception, "Cannot find domain: {}", amact.key);
+            READ_DB_TOKEN(token_type::domain, std::nullopt, act.domain, domain, unknown_domain_exception, "Cannot find domain: {}", act.domain);
 
             EVT_ASSERT(!check_duplicate_meta(domain, amact.key), meta_key_exception, "Metadata with key ${key} already exists.", ("key",amact.key));
             // check involved, only person involved in `manage` permission can add meta

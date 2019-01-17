@@ -1417,6 +1417,9 @@ controller::get_link_obj_for_link_id(const link_id_type& link_id) const {
     try {
         my->token_db.read_token(token_type::evtlink, std::nullopt, link_id, str);
     }
+    catch(token_database_exception& e) {
+        EVT_THROW2(evt_link_existed_exception, "Cannot find EvtLink with id: {}", fc::to_hex((char*)&link_id, sizeof(link_id)));
+    }
     EVT_RETHROW_EXCEPTIONS2(evt_link_existed_exception, "Cannot find EvtLink with id: {}", fc::to_hex((char*)&link_id, sizeof(link_id)));
 
     extract_db_value(str, link_obj);

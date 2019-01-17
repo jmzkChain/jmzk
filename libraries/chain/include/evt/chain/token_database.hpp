@@ -48,8 +48,13 @@ enum class action_op {
 
 struct db_value {
 public:
-    db_value(const db_value&) = default;
-    db_value(db_value&&) = default;
+    db_value(const db_value& lhs) : var_(lhs.var_) {
+        set_view();
+    }
+
+    db_value(db_value&& lhs) noexcept : var_(std::move(lhs.var_)) {
+        set_view();
+    }
 
 private:
     template<typename T>
@@ -73,12 +78,19 @@ private:
         }
     }
 
+    void
+    set_view() {
+        std::visit([this](auto& buf) {
+            view_ = std::string_view(buf.data(), buf.size());
+        }, var_);
+    }
+
 public:
     std::string_view as_string_view() const { return view_; }
 
 private:
-    std::variant<std::array<char, 1024 * 1024>, std::string> var_;
-    std::string_view                                         view_;
+    std::variant<std::array<char, 1024 * 4>, std::string> var_;
+    std::string_view                                      view_;
 
 public:
     template<typename T>
