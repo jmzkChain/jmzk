@@ -160,8 +160,7 @@ transaction_context::check_charge() {
             VALUEREF = asset(0, SYM);                                      \
         }                                                                  \
         else {                                                             \
-            auto ds = fc::datastream<const char*>(str.data(), str.size()); \
-            fc::raw::unpack(ds, VALUEREF);                                 \
+            extract_db_value(str, VALUEREF);                               \
         }                                                                  \
     }
 

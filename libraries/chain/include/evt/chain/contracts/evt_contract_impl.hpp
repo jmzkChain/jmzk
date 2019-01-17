@@ -95,7 +95,8 @@ auto make_permission_checker = [](const auto& tokendb) {
                 continue;
             }
             case authorizer_ref::owner_t: {
-                EVT_ASSERT(allowed_owner, permission_type_exception, "Owner group does not show up in ${name} permission, and it only appears in Transfer.", ("name", p.name));
+                EVT_ASSERT(allowed_owner, permission_type_exception,
+                    "Owner group does not show up in ${name} permission, and it only appears in Transfer.", ("name", p.name));
                 continue;  
             }
             case authorizer_ref::group_t: {
@@ -228,10 +229,9 @@ get_db_prefix<token_def>(const token_def& v) {
                                                                             \
         extract_db_value(str, VALUEREF);                                    \
     }                                                                       \
-    catch(token_database_exception& e) {                                    \
+    catch(token_database_exception&) {                                      \
         EVT_THROW2(EXCEPTION, FORMAT, __VA_ARGS__);                         \
-    }                                                                       \
-    EVT_RETHROW_EXCEPTIONS2(EXCEPTION, FORMAT, __VA_ARGS__);
+    }
     
 #define READ_DB_TOKEN_NO_THROW(TYPE, PREFIX, KEY, VALUEREF)                   \
     {                                                                         \
@@ -248,10 +248,9 @@ get_db_prefix<token_def>(const token_def& v) {
                                                                                                         \
         extract_db_value(str, VALUEREF);                                                                \
     }                                                                                                   \
-    catch(token_database_exception& e) {                                                                \
+    catch(token_database_exception&) {                                                                  \
         EVT_THROW2(balance_exception, "There's no balance left in {} with sym: {}", ADDR, SYM);         \
-    }                                                                                                   \
-    EVT_RETHROW_EXCEPTIONS2(balance_exception, "There's no balance left in {} with sym: {}", ADDR, SYM);
+    }
 
 #define READ_DB_ASSET_NO_THROW(ADDR, SYM, VALUEREF)                        \
     {                                                                      \
@@ -276,15 +275,22 @@ EVT_ACTION_IMPL_BEGIN(newdomain) {
         check_name_reserved(ndact.name);
 
         auto& tokendb = context.token_db;
-        EVT_ASSERT(!tokendb.exists_token(token_type::domain, std::nullopt, ndact.name), domain_duplicate_exception, "Domain ${name} already exists.", ("name",ndact.name));
+        EVT_ASSERT(!tokendb.exists_token(token_type::domain, std::nullopt, ndact.name), domain_duplicate_exception,
+            "Domain ${name} already exists.", ("name",ndact.name));
 
-        EVT_ASSERT(ndact.issue.name == "issue", permission_type_exception, "Name ${name} does not match with the name of issue permission.", ("name",ndact.issue.name));
-        EVT_ASSERT(ndact.issue.threshold > 0 && validate(ndact.issue), permission_type_exception, "Issue permission is not valid, which may be caused by invalid threshold, duplicated keys.");
-        EVT_ASSERT(ndact.transfer.name == "transfer", permission_type_exception, "Name ${name} does not match with the name of transfer permission.", ("name",ndact.transfer.name));
-        EVT_ASSERT(validate(ndact.transfer), permission_type_exception, "Transfer permission is not valid, which may be caused by duplicated keys.");
+        EVT_ASSERT(ndact.issue.name == "issue", permission_type_exception,
+            "Name ${name} does not match with the name of issue permission.", ("name",ndact.issue.name));
+        EVT_ASSERT(ndact.issue.threshold > 0 && validate(ndact.issue), permission_type_exception,
+            "Issue permission is not valid, which may be caused by invalid threshold, duplicated keys.");
+        EVT_ASSERT(ndact.transfer.name == "transfer", permission_type_exception,
+            "Name ${name} does not match with the name of transfer permission.", ("name",ndact.transfer.name));
+        EVT_ASSERT(validate(ndact.transfer), permission_type_exception,
+            "Transfer permission is not valid, which may be caused by duplicated keys.");
         // manage permission's threshold can be 0 which means no one can update permission later.
-        EVT_ASSERT(ndact.manage.name == "manage", permission_type_exception, "Name ${name} does not match with the name of manage permission.", ("name",ndact.manage.name));
-        EVT_ASSERT(validate(ndact.manage), permission_type_exception, "Manage permission is not valid, which may be caused by duplicated keys.");
+        EVT_ASSERT(ndact.manage.name == "manage", permission_type_exception,
+            "Name ${name} does not match with the name of manage permission.", ("name",ndact.manage.name));
+        EVT_ASSERT(validate(ndact.manage), permission_type_exception,
+            "Manage permission is not valid, which may be caused by duplicated keys.");
 
         auto pchecker = make_permission_checker(tokendb);
         pchecker(ndact.issue, false);
@@ -312,18 +318,21 @@ EVT_ACTION_IMPL_BEGIN(issuetoken) {
 
     auto itact = context.act.data_as<ACT>();
     try {
-        EVT_ASSERT(context.has_authorized(itact.domain, N128(.issue)), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(itact.domain, N128(.issue)), action_authorize_exception,
+            "Authorized information does not match.");
         EVT_ASSERT(!itact.owner.empty(), token_owner_exception, "Owner cannot be empty.");
         for(auto& o : itact.owner) {
             check_address_reserved(o);
         }
 
         auto& tokendb = context.token_db;
-        EVT_ASSERT2(tokendb.exists_token(token_type::domain, std::nullopt, itact.domain), unknown_domain_exception, "Cannot find domain: {}.", itact.domain);
+        EVT_ASSERT2(tokendb.exists_token(token_type::domain, std::nullopt, itact.domain), unknown_domain_exception,
+            "Cannot find domain: {}.", itact.domain);
 
         auto check_name = [&](const auto& name) {
             check_name_reserved(name);
-            EVT_ASSERT2(!tokendb.exists_token(token_type::token, itact.domain, name), token_duplicate_exception, "Token: {} in {} is already exists.", name, itact.domain);
+            EVT_ASSERT2(!tokendb.exists_token(token_type::token, itact.domain, name), token_duplicate_exception,
+                "Token: {} in {} is already exists.", name, itact.domain);
         };
 
         auto values  = small_vector<db_value, 4>();
@@ -384,7 +393,8 @@ EVT_ACTION_IMPL_BEGIN(transfer) {
         auto& tokendb = context.token_db;
 
         token_def token;
-        READ_DB_TOKEN(token_type::token, ttact.domain, ttact.name, token, unknown_token_exception, "Cannot find token: {} in {}", ttact.name, ttact.domain);
+        READ_DB_TOKEN(token_type::token, ttact.domain, ttact.name, token, unknown_token_exception,
+            "Cannot find token: {} in {}", ttact.name, ttact.domain);
         assert(token.name == ttact.name);
 
         EVT_ASSERT(!check_token_destroy(token), token_destroyed_exception, "Destroyed token cannot be transfered.");
@@ -407,7 +417,8 @@ EVT_ACTION_IMPL_BEGIN(destroytoken) {
         auto& tokendb = context.token_db;
 
         domain_def domain;
-        READ_DB_TOKEN(token_type::domain, std::nullopt, dtact.domain, domain, unknown_domain_exception, "Cannot find domain: {}", dtact.domain);       
+        READ_DB_TOKEN(token_type::domain, std::nullopt, dtact.domain, domain, unknown_domain_exception,
+            "Cannot find domain: {}", dtact.domain);       
 
         auto dd = get_metavalue(domain, get_metakey<(int)reserved_meta_key::disable_destroy>(domain_metas));
         if(dd.has_value() && *dd == "true") {
@@ -415,7 +426,8 @@ EVT_ACTION_IMPL_BEGIN(destroytoken) {
         }
 
         token_def token;
-        READ_DB_TOKEN(token_type::token, dtact.domain, dtact.name, token, unknown_token_exception, "Cannot find token: {} in {}", dtact.name, dtact.domain);
+        READ_DB_TOKEN(token_type::token, dtact.domain, dtact.name, token, unknown_token_exception,
+            "Cannot find token: {} in {}", dtact.name, dtact.domain);
         assert(token.name == dtact.name);
 
         EVT_ASSERT(!check_token_destroy(token), token_destroyed_exception, "Token is already destroyed.");
@@ -435,12 +447,14 @@ EVT_ACTION_IMPL_BEGIN(newgroup) {
     try {
         EVT_ASSERT(context.has_authorized(N128(.group), ngact.name), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(!ngact.group.key().is_generated(), group_key_exception, "Group key cannot be generated key");
-        EVT_ASSERT(ngact.name == ngact.group.name(), group_name_exception, "Group name not match, act: ${n1}, group: ${n2}", ("n1",ngact.name)("n2",ngact.group.name()));
+        EVT_ASSERT(ngact.name == ngact.group.name(), group_name_exception,
+            "Group name not match, act: ${n1}, group: ${n2}", ("n1",ngact.name)("n2",ngact.group.name()));
         
         check_name_reserved(ngact.name);
         
         auto& tokendb = context.token_db;
-        EVT_ASSERT(!tokendb.exists_token(token_type::group, std::nullopt, ngact.name), group_duplicate_exception, "Group ${name} already exists.", ("name",ngact.name));
+        EVT_ASSERT(!tokendb.exists_token(token_type::group, std::nullopt, ngact.name), group_duplicate_exception,
+            "Group ${name} already exists.", ("name",ngact.name));
         EVT_ASSERT(validate(ngact.group), group_type_exception, "Input group is not valid.");
 
         ADD_DB_TOKEN(token_type::group, ngact.group);
@@ -485,23 +499,29 @@ EVT_ACTION_IMPL_BEGIN(updatedomain) {
 
         auto pchecker = make_permission_checker(tokendb);
         if(udact.issue.has_value()) {
-            EVT_ASSERT(udact.issue->name == "issue", permission_type_exception, "Name ${name} does not match with the name of issue permission.", ("name",udact.issue->name));
-            EVT_ASSERT(udact.issue->threshold > 0 && validate(*udact.issue), permission_type_exception, "Issue permission is not valid, which may be caused by invalid threshold, duplicated keys.");
+            EVT_ASSERT(udact.issue->name == "issue", permission_type_exception,
+                "Name ${name} does not match with the name of issue permission.", ("name",udact.issue->name));
+            EVT_ASSERT(udact.issue->threshold > 0 && validate(*udact.issue), permission_type_exception,
+                "Issue permission is not valid, which may be caused by invalid threshold, duplicated keys.");
             pchecker(*udact.issue, false);
 
             domain.issue = std::move(*udact.issue);
         }
         if(udact.transfer.has_value()) {
-            EVT_ASSERT(udact.transfer->name == "transfer", permission_type_exception, "Name ${name} does not match with the name of transfer permission.", ("name",udact.transfer->name));
-            EVT_ASSERT(validate(*udact.transfer), permission_type_exception, "Transfer permission is not valid, which may be caused by duplicated keys.");
+            EVT_ASSERT(udact.transfer->name == "transfer", permission_type_exception,
+                "Name ${name} does not match with the name of transfer permission.", ("name",udact.transfer->name));
+            EVT_ASSERT(validate(*udact.transfer), permission_type_exception,
+                "Transfer permission is not valid, which may be caused by duplicated keys.");
             pchecker(*udact.transfer, true);
 
             domain.transfer = std::move(*udact.transfer);
         }
         if(udact.manage.has_value()) {
             // manage permission's threshold can be 0 which means no one can update permission later.
-            EVT_ASSERT(udact.manage->name == "manage", permission_type_exception, "Name ${name} does not match with the name of manage permission.", ("name",udact.manage->name));
-            EVT_ASSERT(validate(*udact.manage), permission_type_exception, "Manage permission is not valid, which may be caused by duplicated keys.");
+            EVT_ASSERT(udact.manage->name == "manage", permission_type_exception,
+                "Name ${name} does not match with the name of manage permission.", ("name",udact.manage->name));
+            EVT_ASSERT(validate(*udact.manage), permission_type_exception,
+                "Manage permission is not valid, which may be caused by duplicated keys.");
             pchecker(*udact.manage, false);
 
             domain.manage = std::move(*udact.manage);
@@ -539,7 +559,8 @@ EVT_ACTION_IMPL_BEGIN(newfungible) {
 
     auto nfact = context.act.data_as<ACT>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(nfact.sym.id())), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(nfact.sym.id())), action_authorize_exception,
+            "Authorized information does not match.");
         EVT_ASSERT(!nfact.name.empty(), fungible_name_exception, "Fungible name cannot be empty");
         EVT_ASSERT(!nfact.sym_name.empty(), fungible_symbol_exception, "Fungible symbol name cannot be empty");
         EVT_ASSERT(nfact.sym.id() > 0, fungible_symbol_exception, "Fungible symbol id should be larger than zero");
@@ -549,13 +570,18 @@ EVT_ACTION_IMPL_BEGIN(newfungible) {
 
         auto& tokendb = context.token_db;
 
-        EVT_ASSERT(!tokendb.exists_token(token_type::fungible, std::nullopt, nfact.sym.id()), fungible_duplicate_exception, "Fungible with symbol id: ${s} is already existed", ("s",nfact.sym.id()));
+        EVT_ASSERT(!tokendb.exists_token(token_type::fungible, std::nullopt, nfact.sym.id()), fungible_duplicate_exception,
+            "Fungible with symbol id: ${s} is already existed", ("s",nfact.sym.id()));
 
-        EVT_ASSERT(nfact.issue.name == "issue", permission_type_exception, "Name ${name} does not match with the name of issue permission.", ("name",nfact.issue.name));
-        EVT_ASSERT(nfact.issue.threshold > 0 && validate(nfact.issue), permission_type_exception, "Issue permission is not valid, which may be caused by invalid threshold, duplicated keys.");
+        EVT_ASSERT(nfact.issue.name == "issue", permission_type_exception,
+            "Name ${name} does not match with the name of issue permission.", ("name",nfact.issue.name));
+        EVT_ASSERT(nfact.issue.threshold > 0 && validate(nfact.issue), permission_type_exception,
+            "Issue permission is not valid, which may be caused by invalid threshold, duplicated keys.");
         // manage permission's threshold can be 0 which means no one can update permission later.
-        EVT_ASSERT(nfact.manage.name == "manage", permission_type_exception, "Name ${name} does not match with the name of manage permission.", ("name",nfact.manage.name));
-        EVT_ASSERT(validate(nfact.manage), permission_type_exception, "Manage permission is not valid, which may be caused by duplicated keys.");
+        EVT_ASSERT(nfact.manage.name == "manage", permission_type_exception,
+            "Name ${name} does not match with the name of manage permission.", ("name",nfact.manage.name));
+        EVT_ASSERT(validate(nfact.manage), permission_type_exception,
+            "Manage permission is not valid, which may be caused by duplicated keys.");
 
         auto pchecker = make_permission_checker(tokendb);
         pchecker(nfact.issue, false);
@@ -588,25 +614,31 @@ EVT_ACTION_IMPL_BEGIN(updfungible) {
 
     auto ufact = context.act.data_as<ACT>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(ufact.sym_id)), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(ufact.sym_id)), action_authorize_exception,
+            "Authorized information does not match.");
 
         auto& tokendb = context.token_db;
 
         fungible_def fungible;
-        READ_DB_TOKEN(token_type::fungible, std::nullopt, ufact.sym_id, fungible, unknown_fungible_exception, "Cannot find fungible with sym id: {}", ufact.sym_id);
+        READ_DB_TOKEN(token_type::fungible, std::nullopt, ufact.sym_id, fungible, unknown_fungible_exception,
+            "Cannot find fungible with sym id: {}", ufact.sym_id);
 
         auto pchecker = make_permission_checker(tokendb);
         if(ufact.issue.has_value()) {
-            EVT_ASSERT(ufact.issue->name == "issue", permission_type_exception, "Name ${name} does not match with the name of issue permission.", ("name",ufact.issue->name));
-            EVT_ASSERT(ufact.issue->threshold > 0 && validate(*ufact.issue), permission_type_exception, "Issue permission is not valid, which may be caused by invalid threshold, duplicated keys.");
+            EVT_ASSERT(ufact.issue->name == "issue", permission_type_exception,
+                "Name ${name} does not match with the name of issue permission.", ("name",ufact.issue->name));
+            EVT_ASSERT(ufact.issue->threshold > 0 && validate(*ufact.issue), permission_type_exception,
+                "Issue permission is not valid, which may be caused by invalid threshold, duplicated keys.");
             pchecker(*ufact.issue, false);
 
             fungible.issue = std::move(*ufact.issue);
         }
         if(ufact.manage.has_value()) {
             // manage permission's threshold can be 0 which means no one can update permission later.
-            EVT_ASSERT(ufact.manage->name == "manage", permission_type_exception, "Name ${name} does not match with the name of manage permission.", ("name",ufact.manage->name));
-            EVT_ASSERT(validate(*ufact.manage), permission_type_exception, "Manage permission is not valid, which may be caused by duplicated keys.");
+            EVT_ASSERT(ufact.manage->name == "manage", permission_type_exception,
+                "Name ${name} does not match with the name of manage permission.", ("name",ufact.manage->name));
+            EVT_ASSERT(validate(*ufact.manage), permission_type_exception,
+                "Manage permission is not valid, which may be caused by duplicated keys.");
             pchecker(*ufact.manage, false);
 
             fungible.manage = std::move(*ufact.manage);
@@ -625,11 +657,13 @@ EVT_ACTION_IMPL_BEGIN(issuefungible) {
 
     try {
         auto sym = ifact.number.sym();
-        EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(sym.id())), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(sym.id())), action_authorize_exception,
+            "Authorized information does not match.");
         check_address_reserved(ifact.address);
 
         auto& tokendb = context.token_db;
-        EVT_ASSERT(tokendb.exists_token(token_type::fungible, std::nullopt, sym.id()), fungible_duplicate_exception, "{sym} fungible tokens doesn't exist", ("sym",sym));
+        EVT_ASSERT(tokendb.exists_token(token_type::fungible, std::nullopt, sym.id()), fungible_duplicate_exception,
+            "{sym} fungible tokens doesn't exist", ("sym",sym));
 
         auto addr = get_fungible_address(sym);
         EVT_ASSERT(addr != ifact.address, fungible_address_exception, "From and to are the same address");
@@ -656,7 +690,8 @@ EVT_ACTION_IMPL_BEGIN(transferft) {
 
     try {
         auto sym = tfact.number.sym();
-        EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(sym.id())), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(sym.id())), action_authorize_exception,
+            "Authorized information does not match.");
         EVT_ASSERT(tfact.from != tfact.to, fungible_address_exception, "From and to are the same address");
         EVT_ASSERT(sym != pevt_sym(), fungible_symbol_exception, "Pinned EVT cannot be transfered");
         check_address_reserved(tfact.to);
@@ -685,7 +720,8 @@ EVT_ACTION_IMPL_BEGIN(recycleft) {
 
     try {
         auto sym = rfact.number.sym();
-        EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(sym.id())), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(sym.id())), action_authorize_exception,
+            "Authorized information does not match.");
         EVT_ASSERT(sym != pevt_sym(), fungible_symbol_exception, "Pinned EVT cannot be recycled");
 
         auto& tokendb = context.token_db;
@@ -714,7 +750,8 @@ EVT_ACTION_IMPL_BEGIN(destroyft) {
 
     try {
         auto sym = rfact.number.sym();
-        EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(sym.id())), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(sym.id())), action_authorize_exception,
+            "Authorized information does not match.");
         EVT_ASSERT(sym != pevt_sym(), fungible_symbol_exception, "Pinned EVT cannot be destroyed");
 
         auto& tokendb = context.token_db;
@@ -743,7 +780,8 @@ EVT_ACTION_IMPL_BEGIN(evt2pevt) {
 
     try {
         EVT_ASSERT(epact.number.sym() == evt_sym(), fungible_symbol_exception, "Only EVT tokens can be converted to Pinned EVT tokens");
-        EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(evt_sym().id())), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(evt_sym().id())), action_authorize_exception,
+            "Authorized information does not match.");
         check_address_reserved(epact.to);
 
         auto& tokendb = context.token_db;
@@ -900,13 +938,14 @@ EVT_ACTION_IMPL_BEGIN(addmeta) {
             group_def group;
             READ_DB_TOKEN(token_type::group, std::nullopt, act.key, group, unknown_group_exception, "Cannot find group: {}", act.key);
 
-            EVT_ASSERT(!check_duplicate_meta(group, amact.key), meta_key_exception, "Metadata with key ${key} already exists.", ("key",amact.key));
+            EVT_ASSERT2(!check_duplicate_meta(group, amact.key), meta_key_exception,"Metadata with key: {} already exists.", amact.key);
             if(amact.creator.is_group_ref()) {
                 EVT_ASSERT(amact.creator.get_group() == group.name_, meta_involve_exception, "Only group itself can add its own metadata");
             }
             else {
                 // check involved, only group manager(aka. group key) can add meta
-                EVT_ASSERT(check_involved_group(group, amact.creator.get_account()), meta_involve_exception, "Creator is not involved in group: ${name}.", ("name",act.key));
+                EVT_ASSERT(check_involved_group(group, amact.creator.get_account()), meta_involve_exception,
+                    "Creator is not involved in group: ${name}.", ("name",act.key));
             }
             group.metas_.emplace_back(meta(amact.key, amact.value, amact.creator));
             UPD_DB_TOKEN(token_type::group, group);
@@ -915,9 +954,11 @@ EVT_ACTION_IMPL_BEGIN(addmeta) {
             check_meta_key_reserved(amact.key);
 
             fungible_def fungible;
-            READ_DB_TOKEN(token_type::fungible, std::nullopt, (symbol_id_type)std::stoul((std::string)act.key), fungible, unknown_fungible_exception, "Cannot find fungible with symbol id: {}", act.key);
+            READ_DB_TOKEN(token_type::fungible, std::nullopt, (symbol_id_type)std::stoul((std::string)act.key),
+                fungible, unknown_fungible_exception, "Cannot find fungible with symbol id: {}", act.key);
 
-            EVT_ASSERT(!check_duplicate_meta(fungible, amact.key), meta_key_exception, "Metadata with key ${key} already exists.", ("key",amact.key));
+            EVT_ASSERT(!check_duplicate_meta(fungible, amact.key), meta_key_exception,
+                "Metadata with key ${key} already exists.", ("key",amact.key));
             
             if(amact.creator.is_account_ref()) {
                 // check involved, only creator or person in `manage` permission can add meta
@@ -927,7 +968,8 @@ EVT_ACTION_IMPL_BEGIN(addmeta) {
             }
             else {
                 // check involved, only group in `manage` permission can add meta
-                EVT_ASSERT(check_involved_fungible(tokendb, fungible, N(manage), amact.creator), meta_involve_exception, "Creator is not involved in fungible: ${name}.", ("name",act.key));
+                EVT_ASSERT(check_involved_fungible(tokendb, fungible, N(manage), amact.creator), meta_involve_exception,
+                    "Creator is not involved in fungible: ${name}.", ("name",act.key));
             }
             fungible.metas.emplace_back(meta(amact.key, amact.value, amact.creator));
             UPD_DB_TOKEN(token_type::fungible, fungible);
@@ -952,11 +994,14 @@ EVT_ACTION_IMPL_BEGIN(addmeta) {
             }
 
             domain_def domain;
-            READ_DB_TOKEN(token_type::domain, std::nullopt, act.domain, domain, unknown_domain_exception, "Cannot find domain: {}", act.domain);
+            READ_DB_TOKEN(token_type::domain, std::nullopt, act.domain, domain, unknown_domain_exception,
+                "Cannot find domain: {}", act.domain);
 
-            EVT_ASSERT(!check_duplicate_meta(domain, amact.key), meta_key_exception, "Metadata with key ${key} already exists.", ("key",amact.key));
+            EVT_ASSERT(!check_duplicate_meta(domain, amact.key), meta_key_exception,
+                "Metadata with key ${key} already exists.", ("key",amact.key));
             // check involved, only person involved in `manage` permission can add meta
-            EVT_ASSERT(check_involved_domain(tokendb, domain, N(manage), amact.creator), meta_involve_exception, "Creator is not involved in domain: ${name}.", ("name",act.key));
+            EVT_ASSERT(check_involved_domain(tokendb, domain, N(manage), amact.creator), meta_involve_exception,
+                "Creator is not involved in domain: ${name}.", ("name",act.key));
 
             domain.metas.emplace_back(meta(amact.key, amact.value, amact.creator));
             UPD_DB_TOKEN(token_type::domain, domain);
@@ -1003,7 +1048,8 @@ EVT_ACTION_IMPL_BEGIN(newsuspend) {
         EVT_ASSERT(context.has_authorized(N128(.suspend), nsact.name), action_authorize_exception, "Authorized information does not match.");
 
         auto now = context.control.pending_block_time();
-        EVT_ASSERT(nsact.trx.expiration > now, suspend_expired_tx_exception, "Expiration of suspend transaction is ahead of now, expired is ${expir}, now is ${now}", ("expir",nsact.trx.expiration)("now",now));
+        EVT_ASSERT(nsact.trx.expiration > now, suspend_expired_tx_exception,
+            "Expiration of suspend transaction is ahead of now, expired is ${expir}, now is ${now}", ("expir",nsact.trx.expiration)("now",now));
 
         context.control.validate_tapos(nsact.trx);
 
@@ -1015,7 +1061,8 @@ EVT_ACTION_IMPL_BEGIN(newsuspend) {
         }
 
         auto& tokendb = context.token_db;
-        EVT_ASSERT(!tokendb.exists_token(token_type::suspend, std::nullopt, nsact.name), suspend_duplicate_exception, "Suspend ${name} already exists.", ("name",nsact.name));
+        EVT_ASSERT(!tokendb.exists_token(token_type::suspend, std::nullopt, nsact.name), suspend_duplicate_exception,
+            "Suspend ${name} already exists.", ("name",nsact.name));
 
         auto suspend     = suspend_def();
         suspend.name     = nsact.name;
@@ -1039,16 +1086,20 @@ EVT_ACTION_IMPL_BEGIN(aprvsuspend) {
         auto& tokendb = context.token_db;
 
         suspend_def suspend;
-        READ_DB_TOKEN(token_type::suspend, std::nullopt, aeact.name, suspend, unknown_suspend_exception, "Cannot find suspend proposal: {}", aeact.name);
+        READ_DB_TOKEN(token_type::suspend, std::nullopt, aeact.name, suspend, unknown_suspend_exception,
+            "Cannot find suspend proposal: {}", aeact.name);
 
-        EVT_ASSERT(suspend.status == suspend_status::proposed, suspend_status_exception, "Suspend transaction is not in 'proposed' status.");
+        EVT_ASSERT(suspend.status == suspend_status::proposed, suspend_status_exception,
+            "Suspend transaction is not in 'proposed' status.");
 
         auto signed_keys = suspend.trx.get_signature_keys(aeact.signatures, context.control.get_chain_id());
         auto required_keys = context.control.get_suspend_required_keys(suspend.trx, signed_keys);
-        EVT_ASSERT(signed_keys == required_keys, suspend_not_required_keys_exception, "Provided keys are not required in this suspend transaction, provided keys: ${keys}", ("keys",signed_keys));
+        EVT_ASSERT(signed_keys == required_keys, suspend_not_required_keys_exception,
+            "Provided keys are not required in this suspend transaction, provided keys: ${keys}", ("keys",signed_keys));
        
         for(auto it = signed_keys.cbegin(); it != signed_keys.cend(); it++) {
-            EVT_ASSERT(suspend.signed_keys.find(*it) == suspend.signed_keys.end(), suspend_duplicate_key_exception, "Public key ${key} is already signed this suspend transaction", ("key",*it)); 
+            EVT_ASSERT(suspend.signed_keys.find(*it) == suspend.signed_keys.end(), suspend_duplicate_key_exception,
+                "Public key ${key} is already signed this suspend transaction", ("key",*it)); 
         }
 
         suspend.signed_keys.merge(signed_keys);
@@ -1065,14 +1116,17 @@ EVT_ACTION_IMPL_BEGIN(cancelsuspend) {
 
     auto& csact = context.act.data_as<add_clr_t<ACT>>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.suspend), csact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.suspend), csact.name), action_authorize_exception,
+            "Authorized information does not match.");
 
         auto& tokendb = context.token_db;
 
         suspend_def suspend;
-        READ_DB_TOKEN(token_type::suspend, std::nullopt, csact.name, suspend, unknown_suspend_exception, "Cannot find suspend proposal: {}", csact.name);
+        READ_DB_TOKEN(token_type::suspend, std::nullopt, csact.name, suspend, unknown_suspend_exception,
+            "Cannot find suspend proposal: {}", csact.name);
         
-        EVT_ASSERT(suspend.status == suspend_status::proposed, suspend_status_exception, "Suspend transaction is not in 'proposed' status.");
+        EVT_ASSERT(suspend.status == suspend_status::proposed, suspend_status_exception,
+            "Suspend transaction is not in 'proposed' status.");
         suspend.status = suspend_status::cancelled;
 
         UPD_DB_TOKEN(token_type::suspend, suspend);
@@ -1091,13 +1145,17 @@ EVT_ACTION_IMPL_BEGIN(execsuspend) {
         auto& tokendb = context.token_db;
 
         suspend_def suspend;
-        READ_DB_TOKEN(token_type::suspend, std::nullopt, esact.name, suspend, unknown_suspend_exception, "Cannot find suspend proposal: {}", esact.name);
+        READ_DB_TOKEN(token_type::suspend, std::nullopt, esact.name, suspend, unknown_suspend_exception,
+            "Cannot find suspend proposal: {}", esact.name);
 
-        EVT_ASSERT(suspend.signed_keys.find(esact.executor) != suspend.signed_keys.end(), suspend_executor_exception, "Executor hasn't sign his key on this suspend transaction");
+        EVT_ASSERT(suspend.signed_keys.find(esact.executor) != suspend.signed_keys.end(), suspend_executor_exception,
+            "Executor hasn't sign his key on this suspend transaction");
 
         auto now = context.control.pending_block_time();
-        EVT_ASSERT(suspend.status == suspend_status::proposed, suspend_status_exception, "Suspend transaction is not in 'proposed' status.");
-        EVT_ASSERT(suspend.trx.expiration > now, suspend_expired_tx_exception, "Suspend transaction is expired at ${expir}, now is ${now}", ("expir",suspend.trx.expiration)("now",now));
+        EVT_ASSERT(suspend.status == suspend_status::proposed, suspend_status_exception,
+            "Suspend transaction is not in 'proposed' status.");
+        EVT_ASSERT(suspend.trx.expiration > now, suspend_expired_tx_exception,
+            "Suspend transaction is expired at ${expir}, now is ${now}", ("expir",suspend.trx.expiration)("now",now));
 
         // instead of add signatures to transaction, check authorization and payer here
         context.control.check_authorization(suspend.signed_keys, suspend.trx);
@@ -1146,7 +1204,8 @@ EVT_ACTION_IMPL_BEGIN(paycharge) {
             READ_DB_ASSET_NO_THROW(pcact.payer, evt_sym(), evt);
             auto remain = pcact.charge - paid;
             if(evt.amount() < (int64_t)remain) {
-                EVT_THROW(charge_exceeded_exception, "There are ${e} EVT and ${p} Pinned EVT left, but charge is ${c}", ("e",evt)("p",pevt)("c",pcact.charge));
+                EVT_THROW2(charge_exceeded_exception,"There are {} EVT and {} Pinned EVT left, but charge is {:n}",
+                    evt, pevt, asset(pcact.charge, evt_sym()));
             }
             evt -= asset(remain, evt_sym());
             PUT_DB_ASSET(pcact.payer, evt);
@@ -1177,7 +1236,7 @@ EVT_ACTION_IMPL_BEGIN(everipass) {
         auto& link  = epact.link;
         auto  flags = link.get_header();
 
-        EVT_ASSERT(flags & evt_link::version1, evt_link_version_exception, "EVT-Link version is not expected, current supported version is Versoin-1");
+        EVT_ASSERT(flags & evt_link::version1, evt_link_version_exception, "Unexpected EvtLink version, current supported version is Versoin 1");
         EVT_ASSERT(flags & evt_link::everiPass, evt_link_type_exception, "Not a everiPass link");
 
         auto& d = *link.get_segment(evt_link::domain).strv;
@@ -1190,7 +1249,8 @@ EVT_ACTION_IMPL_BEGIN(everipass) {
             auto  since = std::abs((context.control.pending_block_time() - fc::time_point_sec(ts)).to_seconds());
             auto& conf  = context.control.get_global_properties().configuration;
             if(since > conf.evt_link_expired_secs) {
-                EVT_THROW(evt_link_expiration_exception, "EVT-Link is expired, now: ${n}, timestamp: ${t}", ("n",context.control.pending_block_time())("t",fc::time_point_sec(ts)));
+                EVT_THROW(evt_link_expiration_exception, "EVT-Link is expired, now: ${n}, timestamp: ${t}",
+                    ("n",context.control.pending_block_time())("t",fc::time_point_sec(ts)));
             }
         }
 
@@ -1237,23 +1297,27 @@ EVT_ACTION_IMPL_BEGIN(everipay) {
         auto& link  = epact.link;
         auto  flags = link.get_header();
 
-        EVT_ASSERT(flags & evt_link::version1, evt_link_version_exception, "EVT-Link version is not expected, current supported version is Versoin-1");
+        EVT_ASSERT(flags & evt_link::version1, evt_link_version_exception,
+            "EVT-Link version is not expected, current supported version is Versoin-1");
         EVT_ASSERT(flags & evt_link::everiPay, evt_link_type_exception, "Not a everiPay link");
 
         auto& lsym_id = *link.get_segment(evt_link::symbol_id).intv;
-        EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(lsym_id)), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(lsym_id)), action_authorize_exception,
+            "Authorized information does not match.");
 
         if(!context.control.loadtest_mode()) {
             auto  ts    = *link.get_segment(evt_link::timestamp).intv;
             auto  since = std::abs((context.control.pending_block_time() - fc::time_point_sec(ts)).to_seconds());
             auto& conf  = context.control.get_global_properties().configuration;
             if(since > conf.evt_link_expired_secs) {
-                EVT_THROW(evt_link_expiration_exception, "EVT-Link is expired, now: ${n}, timestamp: ${t}", ("n",context.control.pending_block_time())("t",fc::time_point_sec(ts)));
+                EVT_THROW(evt_link_expiration_exception,"EVT-Link is expired, now: ${n}, timestamp: ${t}",
+                    ("n",context.control.pending_block_time())("t",fc::time_point_sec(ts)));
             }
         }
 
         auto& link_id = link.get_link_id();
-        EVT_ASSERT(!tokendb.exists_token(token_type::evtlink, std::nullopt, link_id), evt_link_dupe_exception, "Duplicate EVT-Link ${id}", ("id", fc::to_hex((char*)&link_id, sizeof(link_id))));
+        EVT_ASSERT(!tokendb.exists_token(token_type::evtlink, std::nullopt, link_id), evt_link_dupe_exception,
+            "Duplicate EVT-Link ${id}", ("id", fc::to_hex((char*)&link_id, sizeof(link_id))));
 
         auto link_obj = evt_link_object {
             .link_id   = link_id,
@@ -1266,8 +1330,9 @@ EVT_ACTION_IMPL_BEGIN(everipay) {
         EVT_ASSERT(keys.size() == 1, everipay_exception, "There're more than one signature on everiPay link, which is invalid");
         
         auto sym = epact.number.sym();
-        EVT_ASSERT(lsym_id == sym.id(), everipay_exception, "Symbol ids don't match, provided: ${p}, expected: ${e}", ("p",lsym_id)("e",sym.id()));
-        EVT_ASSERT(lsym_id != PEVT_SYM_ID, everipay_exception, "Pinned EVT cannot be used to be paid.");
+        EVT_ASSERT2(lsym_id == sym.id(), everipay_exception,
+            "Id of symbols don't match, provided: {}, expected: {}", lsym_id, sym.id());
+        EVT_ASSERT(lsym_id != PEVT_SYM_ID, everipay_exception, "Pinned EVT cannot be paid.");
 
         auto max_pay = uint32_t(0);
         if(link.has_segment(evt_link::max_pay)) {
@@ -1276,7 +1341,8 @@ EVT_ACTION_IMPL_BEGIN(everipay) {
         else {
             max_pay = std::stoul(*link.get_segment(evt_link::max_pay_str).strv);
         }
-        EVT_ASSERT(epact.number.amount() <= max_pay, everipay_exception, "Exceed max pay number: ${m}, expected: ${e}", ("m",max_pay)("e",epact.number.amount()));
+        EVT_ASSERT2(epact.number.amount() <= max_pay, everipay_exception,
+            "Exceed max allowd paid amount: {:n}, actual: {:n}", max_pay, epact.number.amount());
 
         auto payer = address(*keys.begin());
         EVT_ASSERT(payer != epact.payee, everipay_exception, "Payer and payee shouldn't be the same one");
@@ -1401,7 +1467,8 @@ EVT_ACTION_IMPL_END()
 EVT_ACTION_IMPL_BEGIN(updsched) {
     auto usact = context.act.data_as<ACT>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.prodsched), N128(.update)), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.prodsched), N128(.update)), action_authorize_exception,
+            "Authorized information does not match.");
         context.control.set_proposed_producers(std::move(usact.producers));
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
@@ -1416,10 +1483,12 @@ EVT_ACTION_IMPL_BEGIN(newlock) {
         EVT_ASSERT(context.has_authorized(N128(.lock), nlact.name), action_authorize_exception, "Authorized information does not match.");
 
         auto& tokendb = context.control.token_db();
-        EVT_ASSERT(!tokendb.exists_token(token_type::lock, std::nullopt, nlact.name), lock_duplicate_exception, "Lock assets with same name: ${n} is already existed", ("n",nlact.name));
+        EVT_ASSERT(!tokendb.exists_token(token_type::lock, std::nullopt, nlact.name), lock_duplicate_exception,
+            "Lock assets with same name: ${n} is already existed", ("n",nlact.name));
 
         auto now = context.control.pending_block_time();
-        EVT_ASSERT(nlact.unlock_time > now, lock_unlock_time_exception, "Now is ahead of unlock time, unlock time is ${u}, now is ${n}", ("u",nlact.unlock_time)("n",now));
+        EVT_ASSERT(nlact.unlock_time > now, lock_unlock_time_exception,
+            "Now is ahead of unlock time, unlock time is ${u}, now is ${n}", ("u",nlact.unlock_time)("n",now));
         EVT_ASSERT(nlact.deadline > now && nlact.deadline > nlact.unlock_time, lock_unlock_time_exception,
             "Now is ahead of unlock time or deadline, unlock time is ${u}, now is ${n}", ("u",nlact.unlock_time)("n",now));
 
@@ -1427,7 +1496,8 @@ EVT_ACTION_IMPL_BEGIN(newlock) {
         switch(nlact.condition.type()) {
         case lock_type::cond_keys: {
             auto& lck = nlact.condition.template get<lock_condkeys>();
-            EVT_ASSERT(lck.threshold > 0 && lck.cond_keys.size() >= lck.threshold, lock_condition_exception, "Conditional keys for lock should not be empty or threshold should not be zero");
+            EVT_ASSERT(lck.threshold > 0 && lck.cond_keys.size() >= lck.threshold, lock_condition_exception,
+                "Conditional keys for lock should not be empty or threshold should not be zero");
         }    
         }  // switch
         
@@ -1480,8 +1550,10 @@ EVT_ACTION_IMPL_BEGIN(newlock) {
         // check succeed and fail addresses(size should be match)
         if(has_fungible) {
             // because fungible assets cannot be transfer to multiple addresses.
-            EVT_ASSERT(nlact.succeed.size() == 1, lock_address_exception, "Size of address for succeed situation should be only one when there's fungible assets needs to lock");
-            EVT_ASSERT(nlact.failed.size() == 1, lock_address_exception, "Size of address for failed situation should be only one when there's fungible assets needs to lock");
+            EVT_ASSERT(nlact.succeed.size() == 1, lock_address_exception,
+                "Size of address for succeed situation should be only one when there's fungible assets needs to lock");
+            EVT_ASSERT(nlact.failed.size() == 1, lock_address_exception,
+                "Size of address for failed situation should be only one when there's fungible assets needs to lock");
         }
         else {
             EVT_ASSERT(nlact.succeed.size() > 0, lock_address_exception, "Size of address for succeed situation should not be empty");
@@ -1497,7 +1569,8 @@ EVT_ACTION_IMPL_BEGIN(newlock) {
 
                 for(auto& tn : tokens.names) {
                     token_def token;
-                    READ_DB_TOKEN(token_type::token, tokens.domain, tn, token, unknown_token_exception, "Cannot find token: {} in {}", tn, tokens.domain);
+                    READ_DB_TOKEN(token_type::token, tokens.domain, tn, token, unknown_token_exception,
+                        "Cannot find token: {} in {}", tn, tokens.domain);
                     token.owner = { laddr };
 
                     UPD_DB_TOKEN(token_type::token, token);
@@ -1552,15 +1625,19 @@ EVT_ACTION_IMPL_BEGIN(aprvlock) {
         READ_DB_TOKEN(token_type::lock, std::nullopt, alact.name, lock, unknown_lock_exception, "Cannot find lock proposal: {}", alact.name);
 
         auto now = context.control.pending_block_time();
-        EVT_ASSERT(lock.unlock_time > now, lock_expired_exception, "Now is ahead of unlock time, cannot approve anymore, unlock time is ${u}, now is ${n}", ("u",lock.unlock_time)("n",now));
+        EVT_ASSERT(lock.unlock_time > now, lock_expired_exception,
+            "Now is ahead of unlock time, cannot approve anymore, unlock time is ${u}, now is ${n}", ("u",lock.unlock_time)("n",now));
 
         switch(lock.condition.type()) {
         case lock_type::cond_keys: {
-            EVT_ASSERT(alact.data.type() == lock_aprv_type::cond_key, lock_aprv_data_exception, "Type of approve data is not conditional key");
+            EVT_ASSERT(alact.data.type() == lock_aprv_type::cond_key, lock_aprv_data_exception,
+                "Type of approve data is not conditional key");
             auto& lck = lock.condition.get<lock_condkeys>();
 
-            EVT_ASSERT(std::find(lck.cond_keys.cbegin(), lck.cond_keys.cend(), alact.approver) != lck.cond_keys.cend(), lock_aprv_data_exception, "Approver is not valid");
-            EVT_ASSERT(lock.signed_keys.find(alact.approver) == lock.signed_keys.cend(), lock_duplicate_key_exception, "Approver is already signed this lock assets proposal");
+            EVT_ASSERT(std::find(lck.cond_keys.cbegin(), lck.cond_keys.cend(), alact.approver) != lck.cond_keys.cend(),
+                lock_aprv_data_exception, "Approver is not valid");
+            EVT_ASSERT(lock.signed_keys.find(alact.approver) == lock.signed_keys.cend(), lock_duplicate_key_exception,
+                "Approver is already signed this lock assets proposal");
         }
         }  // switch
 
@@ -1584,7 +1661,8 @@ EVT_ACTION_IMPL_BEGIN(tryunlock) {
         READ_DB_TOKEN(token_type::lock, std::nullopt, tuact.name, lock, unknown_lock_exception, "Cannot find lock proposal: {}", tuact.name);
 
         auto now = context.control.pending_block_time();
-        EVT_ASSERT(lock.unlock_time < now, lock_not_reach_unlock_time, "Not reach unlock time, cannot unlock, unlock time is ${u}, now is ${n}", ("u",lock.unlock_time)("n",now));
+        EVT_ASSERT(lock.unlock_time < now, lock_not_reach_unlock_time,
+            "Not reach unlock time, cannot unlock, unlock time is ${u}, now is ${n}", ("u",lock.unlock_time)("n",now));
 
         // std::add_pointer_t<decltype(lock.succeed)> pkeys = nullptr;
         fc::small_vector_base<address>* pkeys = nullptr;
@@ -1601,7 +1679,8 @@ EVT_ACTION_IMPL_BEGIN(tryunlock) {
 
         if(pkeys == nullptr) {
             // not succeed
-            EVT_ASSERT(lock.deadline < now, lock_not_reach_deadline, "Not reach deadline and conditions are not satisfied, proposal is still avaiable.");
+            EVT_ASSERT(lock.deadline < now, lock_not_reach_deadline,
+                "Not reach deadline and conditions are not satisfied, proposal is still avaiable.");
             pkeys       = &lock.failed;
             lock.status = lock_status::failed;
         }
@@ -1614,7 +1693,8 @@ EVT_ACTION_IMPL_BEGIN(tryunlock) {
 
                 token_def token;
                 for(auto& tn : tokens.names) {
-                    READ_DB_TOKEN(token_type::token, tokens.domain, tn, token, unknown_token_exception, "Cannot find token: {} in {}", tn, tokens.domain);
+                    READ_DB_TOKEN(token_type::token, tokens.domain, tn, token, unknown_token_exception,
+                        "Cannot find token: {} in {}", tn, tokens.domain);
                     token.owner = *pkeys;
                     UPD_DB_TOKEN(token_type::token, token);
                 }

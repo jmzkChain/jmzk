@@ -1417,10 +1417,9 @@ controller::get_link_obj_for_link_id(const link_id_type& link_id) const {
     try {
         my->token_db.read_token(token_type::evtlink, std::nullopt, link_id, str);
     }
-    catch(token_database_exception& e) {
+    catch(token_database_exception&) {
         EVT_THROW2(evt_link_existed_exception, "Cannot find EvtLink with id: {}", fc::to_hex((char*)&link_id, sizeof(link_id)));
     }
-    EVT_RETHROW_EXCEPTIONS2(evt_link_existed_exception, "Cannot find EvtLink with id: {}", fc::to_hex((char*)&link_id, sizeof(link_id)));
 
     extract_db_value(str, link_obj);
     return link_obj;
@@ -1743,7 +1742,9 @@ controller::get_suspend_required_keys(const proposal_name& name, const public_ke
     try {
         my->token_db.read_token(token_type::suspend, std::nullopt, name, str);
     }
-    EVT_RETHROW_EXCEPTIONS2(unknown_lock_exception, "Cannot find suspend proposal: {}", name);
+    catch(token_database_exception&) {
+        EVT_THROW2(unknown_lock_exception, "Cannot find suspend proposal: {}", name);
+    }
 
     extract_db_value(str, suspend);
     return get_suspend_required_keys(suspend.trx, candidate_keys);

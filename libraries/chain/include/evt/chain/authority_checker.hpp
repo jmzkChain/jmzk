@@ -35,10 +35,11 @@ struct check_authority {};
         auto str = std::string();                                           \
         token_db_.read_token(TYPE, PREFIX, KEY, str);                       \
                                                                             \
-        auto ds = fc::datastream<const char*>(str.data(), str.size());      \
-        fc::raw::unpack(ds, VALUEREF);                                      \
+        extract_db_value(str, VALUEREF);                                    \
     }                                                                       \
-    EVT_RETHROW_EXCEPTIONS2(EXCEPTION, FORMAT, __VA_ARGS__);
+    catch(token_database_exception&) {                                      \
+        EVT_THROW2(EXCEPTION, FORMAT, __VA_ARGS__);                         \
+    }
 
 }  // namespace __internal
 
