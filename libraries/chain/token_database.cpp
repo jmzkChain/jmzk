@@ -283,7 +283,7 @@ public:
     void load_savepoints(std::istream&);
     void flush() const;
 
-    std::string get_db_path() const { return config_.db_path; }
+    std::string get_db_path() const { return config_.db_path.to_native_ansi_path(); }
 
 public:
     token_database::config config_;
@@ -305,9 +305,7 @@ token_database_impl::token_database_impl(const token_database::config& config)
     , write_opts_()
     , tokens_handle_(nullptr)
     , assets_handle_(nullptr)
-    , savepoints_() {
-    EVT_ASSERT(!config.db_path.empty(), token_database_exception, "Invalid db path for token database");
-}
+    , savepoints_() {}
 
 void
 token_database_impl::open(int load_persistence) {
@@ -361,7 +359,7 @@ token_database_impl::open(int load_persistence) {
         // create new database and open
         fc::create_directories(config_.db_path);
 
-        auto status = DB::Open(options, config_.db_path, &db_);
+        auto status = DB::Open(options, config_.db_path.to_native_ansi_path(), &db_);
         if(!status.ok()) {
             EVT_THROW(token_database_rocksdb_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
         }
@@ -383,7 +381,7 @@ token_database_impl::open(int load_persistence) {
 
     auto handles = std::vector<ColumnFamilyHandle*>();
 
-    auto status = DB::Open(options, config_.db_path, columns, &handles, &db_);
+    auto status = DB::Open(options, config_.db_path.to_native_ansi_path(), columns, &handles, &db_);
     if(!status.ok()) {
         EVT_THROW(token_database_rocksdb_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
@@ -981,7 +979,7 @@ token_database_impl::rollback_to_latest_savepoint() {
 void
 token_database_impl::persist_savepoints() const {
     try {
-        auto filename = fc::path(config_.db_path) / config::token_database_persisit_filename;
+        auto filename = config_.db_path / config::token_database_persisit_filename;
         if(fc::exists(filename)) {
             fc::remove(filename);
         }
@@ -999,7 +997,7 @@ token_database_impl::persist_savepoints() const {
 
 void
 token_database_impl::load_savepoints() {
-    auto filename = fc::path(config_.db_path) / config::token_database_persisit_filename;
+    auto filename = config_.db_path / config::token_database_persisit_filename;
     if(!fc::exists(filename)) {
         wlog("No savepoints log in token database");
         return;
@@ -1331,7 +1329,7 @@ token_database::internal_db() const {
     return my_->db_;
 }
 
-std::string
+fc::path
 token_database::get_db_path() const {
     return my_->get_db_path();
 }

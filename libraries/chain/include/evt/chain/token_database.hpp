@@ -9,6 +9,7 @@
 #include <string_view>
 #include <boost/noncopyable.hpp>
 #include <fc/reflect/reflect.hpp>
+#include <fc/filesystem.hpp>
 #include <evt/chain/types.hpp>
 #include <evt/chain/asset.hpp>
 #include <evt/chain/address.hpp>
@@ -104,7 +105,7 @@ public:
     struct config {
         storage_profile profile    = storage_profile::disk;
         uint32_t        cache_size = 256; // MBytes
-        std::string     db_path    = ::evt::chain::config::default_token_database_dir_name;
+        fc::path        db_path    = ::evt::chain::config::default_token_database_dir_name;
     };
 
     class session {
@@ -194,7 +195,7 @@ private:
     void load_savepoints(std::istream&);
 
     rocksdb::DB* internal_db() const;
-    std::string  get_db_path() const;
+    fc::path     get_db_path() const;
 
 private:
     std::unique_ptr<class token_database_impl> my_;

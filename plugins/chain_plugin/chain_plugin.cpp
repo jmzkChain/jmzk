@@ -357,18 +357,22 @@ chain_plugin::plugin_initialize(const variables_map& options) {
 
         if(options.count("blocks-dir")) {
             auto bld = options.at("blocks-dir").as<bfs::path>();
-            if(bld.is_relative())
+            if(bld.is_relative()) {
                 my->blocks_dir = app().data_dir() / bld;
-            else
+            }
+            else {
                 my->blocks_dir = bld;
+            }
         }
 
         if(options.count("tokendb-dir")) {
             auto tod = options.at("token-db-dir").as<bfs::path>();
-            if(tod.is_relative())
+            if(tod.is_relative()) {
                 my->tokendb_dir = app().data_dir() / tod;
-            else
+            }
+            else {
                 my->tokendb_dir = tod;
+            }
         }
 
         if(options.count("checkpoint")) {
@@ -392,11 +396,11 @@ chain_plugin::plugin_initialize(const variables_map& options) {
             my->chain_config->max_serialization_time = std::chrono::milliseconds(options.at("abi-serializer-max-time-ms").as<uint32_t>());
         }
 
-        my->chain_config->blocks_dir  = my->blocks_dir;
-        my->chain_config->state_dir   = app().data_dir() / config::default_state_dir_name;
-        my->chain_config->read_only   = my->readonly;
+        my->chain_config->blocks_dir = my->blocks_dir;
+        my->chain_config->state_dir  = app().data_dir() / config::default_state_dir_name;
+        my->chain_config->read_only  = my->readonly;
 
-        my->chain_config->db_config.db_path = fc::path(my->tokendb_dir).to_native_ansi_path();
+        my->chain_config->db_config.db_path = my->tokendb_dir;
         
         if(options.count("token-db-cache-size-mb")) {
             my->chain_config->db_config.cache_size = options.at("token-db-cache-size-mb").as<uint64_t>();

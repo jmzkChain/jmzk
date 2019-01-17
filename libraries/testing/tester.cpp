@@ -37,7 +37,7 @@ void
 base_tester::init(bool push_genesis) {
     cfg.blocks_dir            = tempdir.path() / config::default_blocks_dir_name;
     cfg.state_dir             = tempdir.path() / config::default_state_dir_name;
-    cfg.tokendb_dir           = tempdir.path() / config::default_tokendb_dir_name;
+    cfg.db_config.db_path     = tempdir.path() / config::default_token_database_dir_name;
     cfg.contracts_console     = true;
     cfg.loadtest_mode         = false;
     cfg.charge_free_mode      = false;
@@ -101,8 +101,8 @@ base_tester::_produce_block(fc::microseconds skip_time, bool skip_pending_trxs, 
         _start_block(next_time);
     }
 
-    auto             producer = control->head_block_state()->get_scheduled_producer(next_time);
-    private_key_type priv_key;
+    auto producer = control->head_block_state()->get_scheduled_producer(next_time);
+    auto priv_key = private_key_type();
     // Check if signing private key exist in the list
     auto private_key_itr = block_signing_private_keys.find(producer.block_signing_key);
     if(private_key_itr == block_signing_private_keys.end()) {
@@ -383,10 +383,17 @@ base_tester::add_money(const address& addr, const asset& number) {
 
     auto s = tokendb.new_savepoint_session();
 
-    auto as = asset();
-    tokendb.read_asset_no_throw(addr, number.sym(), as);
+    auto str = std::string();
+    auto as  = asset(0, number.sym());
+    
+    if(tokendb.read_asset(addr, number.sym(), str, true)) {
+        extract_db_value(str, as);
+    }
+
     as += number;
-    tokendb.update_asset(addr, as);
+
+    auto dv = make_db_value(as);
+    tokendb.put_asset(addr, as.sym(), dv.as_string_view());
 
     s.accept();
     tokendb.pop_back_savepoint();

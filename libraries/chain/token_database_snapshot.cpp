@@ -534,7 +534,7 @@ token_database_snapshot::read_from_snapshot(snapshot_reader_ptr reader, token_da
 
         db.close(false);
 
-        s = backup_engine->RestoreDBFromLatestBackup(db.get_db_path(), kBackupPath);
+        s = backup_engine->RestoreDBFromLatestBackup(db.get_db_path().to_native_ansi_path(), kBackupPath);
         EVT_ASSERT(s.ok(), snapshot_exception, "Restore from snapshot for token database failed, reason: ${d}", ("d",s.getState()));
 
         delete backup_engine;
