@@ -263,8 +263,8 @@ abi_serializer::resolve_type(const type_name& type) const {
     auto itr = typedefs_.find(type);
     if(itr != typedefs_.end()) {
         for(auto i = typedefs_.size(); i > 0; --i) {  // avoid infinite recursion
-            const type_name& t = itr->second;
-            itr                = typedefs_.find(t);
+            auto& t = itr->second;
+            itr     = typedefs_.find(t);
             if(itr == typedefs_.end())
                 return t;
         }
@@ -464,9 +464,7 @@ bytes
 abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var, impl::variant_to_binary_context& ctx) const {
     try {
         auto h = ctx.enter_scope();
-        if(!_is_type(type)) {
-            return var.as<bytes>();
-        }
+        EVT_ASSERT2(_is_type(type), unknown_abi_type_exception, "Unknown type: {} in ABI", type);
 
         auto temp = bytes(1024 * 1024);
         auto ds   = fc::datastream<char*>(temp.data(), temp.size());

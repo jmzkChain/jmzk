@@ -258,7 +258,7 @@ add_data(bsoncxx::builder::basic::document& act_doc,
     using bsoncxx::builder::basic::kvp;
     try {
         auto& abis    = evt_abi;
-        auto  acttype = exec_ctx.get_acttype_name(exec_ctx.index_of(act.name));
+        auto  acttype = exec_ctx.get_acttype_name(act.name);
 
         auto v    = abis.binary_to_variant(acttype, act.data, exec_ctx);
         auto json = fc::json::to_string(v);

@@ -8,6 +8,7 @@
 #include <variant>
 
 #include <boost/noncopyable.hpp>
+#include <boost/algorithm/string.hpp>
 #include <boost/hana/at.hpp>
 #include <boost/hana/at_key.hpp>
 #include <boost/hana/integral_constant.hpp>
@@ -1362,6 +1363,34 @@ EVT_ACTION_IMPL_BEGIN(everipay) {
 }
 EVT_ACTION_IMPL_END()
 
+namespace __internal {
+
+auto update_chain_config = [](auto& conf, auto key, auto v) {
+    switch(key.value) {
+    case N128(network-charge-factor): {
+        conf.base_network_charge_factor = v;
+        break;
+    }
+    case N128(storage-charge-factor): {
+        conf.base_storage_charge_factor = v;
+        break;
+    }
+    case N128(cpu-charge-factor): {
+        conf.base_cpu_charge_factor = v;
+        break;
+    }
+    case N128(global-charge-factor): {
+        conf.global_charge_factor = v;
+        break;
+    }
+    default: {
+        EVT_THROW2(prodvote_key_exception, "Configuration key: {} is not valid", key);
+    }
+    } // switch
+};
+
+}  // namespace __internal
+
 EVT_ACTION_IMPL_BEGIN(prodvote) {
     using namespace __internal;
 
@@ -1370,40 +1399,32 @@ EVT_ACTION_IMPL_BEGIN(prodvote) {
         EVT_ASSERT(context.has_authorized(N128(.prodvote), pvact.key), action_authorize_exception, "Authorized information does not match.");
         EVT_ASSERT(pvact.value > 0 && pvact.value < 1'000'000, prodvote_value_exception, "Invalid prodvote value: ${v}", ("v",pvact.value));
 
-        auto  conf    = context.control.get_global_properties().configuration;
-        auto& sche    = context.control.active_producers();
-        auto& tokendb = context.token_db;
+        auto  conf     = context.control.get_global_properties().configuration;
+        auto& sche     = context.control.active_producers();
+        auto& exec_ctx = context.control.get_execution_context();
+        auto& tokendb  = context.token_db;
 
-        std::function<void(int64_t)> set_func;
-        switch(pvact.key.value) {
-        case N128(network-charge-factor): {
-            set_func = [&](int64_t v) {
-                conf.base_network_charge_factor = v;
-            };
-            break;
+        auto updact = false;
+        auto act    = name();
+
+        // test if it's action-upgrade vote and wheather action is valid
+        {
+            auto key = pvact.key.to_string();
+            if(boost::starts_with(key, "action-")) {
+                try {
+                    act = name(key.substr(7));
+                }
+                catch(name_type_exception&) {
+                    EVT_THROW2(prodvote_key_exception, "Invalid action name provided: {}", key.substr(7));
+                }
+
+                auto cver = exec_ctx.get_current_version(act);
+                auto mver = exec_ctx.get_max_version(act);
+                EVT_ASSERT2(pvact.value > cver && pvact.value <= exec_ctx.get_max_version(act), prodvote_value_exception,
+                    "Provided version: {} for action: {} is not valid, should be in range ({},{}]", pvact.value, act, cver, mver);
+                updact = true;
+            }
         }
-        case N128(storage-charge-factor): {
-            set_func = [&](int64_t v) {
-                conf.base_storage_charge_factor = v;
-            };
-            break;
-        }
-        case N128(cpu-charge-factor): {
-            set_func = [&](int64_t v) {
-                conf.base_cpu_charge_factor = v;
-            };
-            break;
-        }
-        case N128(global-charge-factor): {
-            set_func = [&](int64_t v) {
-                conf.global_charge_factor = v;
-            };
-            break;
-        }
-        default: {
-            EVT_THROW(prodvote_key_exception, "Configuration key: ${k} is not valid", ("k",pvact.key));
-        }
-        } // switch
 
         auto pkey = sche.get_producer_key(pvact.producer);
         EVT_ASSERT(pkey.has_value(), prodvote_producer_exception, "${p} is not a valid producer", ("p",pvact.producer));
@@ -1436,7 +1457,15 @@ EVT_ACTION_IMPL_BEGIN(prodvote) {
             }
         }
 
-        if(values.size() >= ::ceil(2.0 * sche.producers.size() / 3.0)) {
+        auto limit = ::ceil(2.0 * sche.producers.size() / 3.0);
+        if(values.size() < limit) {
+            // if the number of votes is less than 2/3 producers
+            // don't update
+            return;
+        }
+
+        if(!updact) {
+            // general global config updates, find the median and update
             int64_t nv = 0;
 
             // find median
@@ -1456,8 +1485,26 @@ EVT_ACTION_IMPL_BEGIN(prodvote) {
                 nv = *it;
             }
 
-            set_func(nv);
+            update_chain_config(conf, pvact.key, nv);
             context.control.set_chain_config(conf);
+        }
+        else {
+            // update action version
+            // find the all the votes which vote-version is large than current version
+            // and update version with the version which has more than 2/3 votes of producers
+            auto cver = exec_ctx.get_current_version(act);
+            auto map  = flat_map<int, int>();  // maps version to votes
+            for(auto& v : values) {
+                if(v > cver) {
+                    map[v] += 1;
+                }
+            }
+            for(auto& it : map) {
+                if(it.second >= limit) {
+                    exec_ctx.set_version(act, it.first);
+                    break;
+                }
+            }
         }
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);

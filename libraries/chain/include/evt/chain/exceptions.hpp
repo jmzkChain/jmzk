@@ -364,6 +364,7 @@ FC_DECLARE_DERIVED_EXCEPTION( unpack_exception,                     abi_exceptio
 FC_DECLARE_DERIVED_EXCEPTION( pack_exception,                       abi_exception,   3210014, "Pack data exception" );
 FC_DECLARE_DERIVED_EXCEPTION( duplicate_abi_variant_def_exception,  abi_exception,   3210015, "Duplicate variant definition in the ABI" );
 FC_DECLARE_DERIVED_EXCEPTION( unsupported_abi_version_exception,    abi_exception,   3210016, "ABI has an unsupported version" );
+FC_DECLARE_DERIVED_EXCEPTION( unknown_abi_type_exception,           abi_exception,   3210017, "Unknown type in ABI" );
 
 FC_DECLARE_DERIVED_EXCEPTION( snapshot_exception, chain_exception, 3220000, "Snapshot exception" );
 FC_DECLARE_DERIVED_EXCEPTION( snapshot_validation_exception, snapshot_exception, 3220001, "Snapshot Validation Exception" );

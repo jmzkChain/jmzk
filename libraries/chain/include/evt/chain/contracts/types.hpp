@@ -367,12 +367,28 @@ struct everipass {
     EVT_ACTION_VER0(everipass);
 };
 
+struct everipass_v1 {
+    evt_link link;
+    string   memo;
+
+    EVT_ACTION_VER1(everipass, everipass_v1);
+};
+
 struct everipay {
     evt_link link;
     address  payee;
     asset    number;
 
     EVT_ACTION_VER0(everipay);
+};
+
+struct everipay_v1 {
+    evt_link link;
+    address  payee;
+    asset    number;
+    string   memo;
+
+    EVT_ACTION_VER1(everipay, everipay_v1);
 };
 
 struct prodvote {
@@ -459,7 +475,9 @@ FC_REFLECT(evt::chain::contracts::aprvsuspend, (name)(signatures));
 FC_REFLECT(evt::chain::contracts::execsuspend, (name)(executor));
 FC_REFLECT(evt::chain::contracts::paycharge, (payer)(charge));
 FC_REFLECT(evt::chain::contracts::everipass, (link));
+FC_REFLECT(evt::chain::contracts::everipass_v1, (link)(memo));
 FC_REFLECT(evt::chain::contracts::everipay, (link)(payee)(number));
+FC_REFLECT(evt::chain::contracts::everipay_v1, (link)(payee)(number)(memo));
 FC_REFLECT(evt::chain::contracts::prodvote, (producer)(key)(value));
 FC_REFLECT(evt::chain::contracts::updsched, (producers));
 FC_REFLECT(evt::chain::contracts::newlock, (name)(proposer)(unlock_time)(deadline)(assets)(condition)(succeed)(failed));

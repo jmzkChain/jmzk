@@ -1276,7 +1276,7 @@ read_only::abi_json_to_bin(const read_only::abi_json_to_bin_params& params) cons
     auto& exec_ctx = db.get_execution_context();
 
     auto result      = abi_json_to_bin_result();
-    auto action_type = exec_ctx.get_acttype_name(exec_ctx.index_of(params.action));
+    auto action_type = exec_ctx.get_acttype_name(params.action);
 
     try {
         result.binargs = abi.variant_to_binary(action_type, params.args, exec_ctx, shorten_abi_errors);
@@ -1294,7 +1294,7 @@ read_only::abi_bin_to_json(const read_only::abi_bin_to_json_params& params) cons
     auto& exec_ctx = db.get_execution_context();
 
     auto result      = abi_bin_to_json_result();
-    auto action_type = exec_ctx.get_acttype_name(exec_ctx.index_of(params.action));
+    auto action_type = exec_ctx.get_acttype_name(params.action);
 
     result.args = abi.binary_to_variant(action_type, params.binargs, exec_ctx, shorten_abi_errors);
     return result;

@@ -21,7 +21,8 @@ namespace evt { namespace chain {
  *
  * This is an implementation detail. The values here are set by committee_members to tune the blockchain parameters.
  */
-class global_property_object : public chainbase::object<global_property_object_type, global_property_object> {
+class global_property_object
+    : public chainbase::object<global_property_object_type, global_property_object> {
     OBJECT_CTOR(global_property_object, (proposed_schedule))
 
     id_type                       id;

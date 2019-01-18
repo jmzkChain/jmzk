@@ -294,7 +294,7 @@ base_tester::get_action(action_name acttype, const domain_name& domain, const do
     try {
         auto& abi      = control->get_abi_serializer();
         auto& exec_ctx = control->get_execution_context();
-        auto  type     = exec_ctx.get_acttype_name(exec_ctx.index_of(acttype));
+        auto  type     = exec_ctx.get_acttype_name(acttype);
         FC_ASSERT(!type.empty(), "unknown action type ${a}", ("a", acttype));
 
         action act;

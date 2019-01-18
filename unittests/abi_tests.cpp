@@ -25,7 +25,7 @@ get_evt_abi() {
     return abis;
 }
 
-const auto&
+auto&
 get_exec_ctx() {
     static auto exec_ctx = evt_execution_context();
     return exec_ctx;
@@ -1125,6 +1125,37 @@ TEST_CASE("everipass_abi_test", "[abis]") {
     CHECK(pkeys.size() == 1);
 
     CHECK(pkeys.find(public_key_type(std::string("EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"))) != pkeys.end());
+
+
+    // multiple versions tests
+    auto get_var = [&](auto& var) {
+        auto& exec_ctx = get_exec_ctx();
+        auto& abis     = get_evt_abi();
+
+        auto type  = exec_ctx.get_acttype_name("everipass");
+        auto bytes = abis.variant_to_binary(type, var, exec_ctx);
+        auto var2  = abis.binary_to_variant(type, bytes, exec_ctx);
+
+        return var2;
+    };
+
+    auto mv = mutable_variant_object(var);
+    mv["memo"] = "tttesttt";
+
+    auto var_v1 = variant(mv);
+
+    CHECK(get_exec_ctx().get_current_version("everipass") == 0);
+    CHECK_NOTHROW(get_var(var));
+
+    // additional field in variant don't trigger error
+    CHECK_NOTHROW(get_var(var_v1));
+
+    // upgrade version
+    get_exec_ctx().set_version("everipass", 1);
+
+    CHECK_THROWS_AS(get_var(var), pack_exception);
+    CHECK_NOTHROW(get_var(var_v1));
+    CHECK(get_var(var_v1)["memo"] == "tttesttt");
 }
 
 TEST_CASE("everipay_abi_test", "[abis]") {
