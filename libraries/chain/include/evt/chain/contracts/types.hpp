@@ -166,8 +166,8 @@ enum class lock_type {
 };
 
 struct lock_condkeys {
-    uint16_t                     threshold;
-    std::vector<public_key_type> cond_keys;
+    uint16_t         threshold;
+    public_keys_type cond_keys;
 };
 
 using lock_condition = variant_wrapper<lock_type, lock_condkeys>;
@@ -193,6 +193,19 @@ enum class lock_aprv_type {
 };
 
 using lock_aprvdata = variant_wrapper<lock_aprv_type, void_t>;
+
+enum class dist_rule_type {
+    fixed = 0, percent, remaining_percent, stack
+};
+
+
+
+struct static_bonus {
+    double   rate;
+    uint64_t base_charge;
+    uint64_t minimum_charge;
+    uint64_t threshold;
+};
 
 struct newdomain {
     domain_name name;
