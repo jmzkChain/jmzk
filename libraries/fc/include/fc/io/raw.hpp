@@ -10,6 +10,10 @@
 #include <boost/interprocess/allocators/allocator.hpp>
 #include <boost/interprocess/managed_mapped_file.hpp>
 
+#include <boost/hana/for_each.hpp>
+#include <boost/hana/range.hpp>
+#include <boost/hana/integral_constant.hpp>
+
 #include <fc/io/raw_fwd.hpp>
 #include <fc/io/raw_variant.hpp>
 #include <fc/io/datastream.hpp>
@@ -780,19 +784,46 @@ namespace fc {
 
 
     template<typename Stream, typename... T>
-    void pack( Stream& s, const static_variant<T...>& sv )
+    void pack(Stream& s, const static_variant<T...>& sv)
     {
        fc::raw::pack( s, unsigned_int(sv.which()) );
        sv.visit( pack_static_variant<Stream>(s) );
     }
 
     template<typename Stream, typename... T>
-    void unpack( Stream& s, static_variant<T...>& sv )
+    void unpack(Stream& s, static_variant<T...>& sv)
     {
        unsigned_int w;
        fc::raw::unpack( s, w );
        sv.set_which(w.value);
        sv.visit( unpack_static_variant<Stream>(s) );
+    }
+
+    template<typename Stream, typename... T>
+    void pack(Stream& s, const std::variant<T...>& var)
+    {
+       fc::raw::pack(s, unsigned_int(var.index()));
+       std::visit([&s](auto& v) {
+          fc::raw::pack(s, v);
+       }, var);
+    }
+
+    template<typename Stream, typename... T>
+    void unpack(Stream& s, std::variant<T...>& var)
+    {
+       unsigned_int w;
+       fc::raw::unpack(s, w);
+
+       auto range = boost::hana::range_c<int, 0, sizeof...(T)>;
+       boost::hana::for_each(range, [&](auto i) {
+          if((int)w == i()) {
+             using obj_t = std::variant_alternative_t<i(), std::decay_t<decltype(var)>>;
+             auto  obj   = obj_t{};
+
+             fc::raw::unpack(s, obj);
+             var.template emplace<obj_t>(std::move(obj));
+          }
+       });
     }
 
     template<typename Stream, typename ENUM, typename... ARGS>

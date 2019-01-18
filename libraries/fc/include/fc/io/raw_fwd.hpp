@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <vector>
+#include <variant>
 
 #include <fc/container/flat_fwd.hpp>
 #include <fc/container/deque_fwd.hpp>
@@ -50,6 +51,9 @@ namespace fc {
 
     template<typename Stream, typename... T> void pack( Stream& s, const static_variant<T...>& sv );
     template<typename Stream, typename... T> void unpack( Stream& s, static_variant<T...>& sv );
+
+    template<typename Stream, typename... T> void pack( Stream& s, const std::variant<T...>& var );
+    template<typename Stream, typename... T> void unpack( Stream& s, std::variant<T...>& var );
 
     template<typename Stream, typename ENUM, typename... ARGS> void pack( Stream& s, const variant_wrapper<ENUM, ARGS...>& vw );
     template<typename Stream, typename ENUM, typename... ARGS> void unpack( Stream& s, variant_wrapper<ENUM, ARGS...>& vw );
