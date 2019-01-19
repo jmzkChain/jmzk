@@ -4,6 +4,8 @@
  */
 #pragma once
 
+#include <boost/multiprecision/cpp_dec_float.hpp> 
+
 #include <evt/chain/address.hpp>
 #include <evt/chain/asset.hpp>
 #include <evt/chain/chain_config.hpp>
@@ -57,6 +59,9 @@ using balance_type    = evt::chain::asset;
 using address_type    = evt::chain::address;
 using address_list    = small_vector<address_type, 4>;
 using conf_key        = evt::chain::conf_key;
+
+template<int Precision>
+using decimal = boost::multiprecision::cpp_dec_float<Precision>;
 
 struct token_def {
     token_def() = default;
@@ -142,7 +147,7 @@ struct suspend_def {
 };
 
 enum class asset_type {
-    tokens = 0, fungible = 1, max_value = 1
+    tokens = 0, fungible, max_value = fungible
 };
 
 enum class lock_status {
@@ -162,12 +167,12 @@ struct lockft_def {
 using lock_asset = variant_wrapper<asset_type, locknft_def, lockft_def>;
 
 enum class lock_type {
-    cond_keys = 0, max_value = 0
+    cond_keys = 0, max_value = cond_keys
 };
 
 struct lock_condkeys {
-    uint16_t         threshold;
-    public_keys_type cond_keys;
+    uint16_t                         threshold;
+    small_vector<public_key_type, 4> cond_keys;
 };
 
 using lock_condition = variant_wrapper<lock_type, lock_condkeys>;
@@ -189,22 +194,40 @@ struct lock_def {
 };
 
 enum class lock_aprv_type {
-    cond_key = 0, max_value = 0
+    cond_key = 0, max_value = cond_key
 };
 
 using lock_aprvdata = variant_wrapper<lock_aprv_type, void_t>;
 
 enum class dist_rule_type {
-    fixed = 0, percent, remaining_percent, stack
+    fixed = 0, percent, remaining_percent, stack, max_value = stack
 };
 
+struct dist_fixed_rule {
+    address receiver;
+    int64_t amount;
+};
 
+struct dist_percent_rule {
+    address    receiver;
+    decimal<6> percent;
+};
+
+struct dist_stack_rule {
+    symbol_id_type sym_id;
+    uint64_t       threshold;
+};
+
+using dist_rule  = variant_wrapper<dist_fixed_rule, dist_fixed_rule, dist_percent_rule, dist_percent_rule, dist_stack_rule>;
+using dist_rules = small_vector<dist_rule, 4>;
 
 struct static_bonus {
-    double   rate;
-    uint64_t base_charge;
-    uint64_t minimum_charge;
-    uint64_t threshold;
+    double     rate;
+    uint64_t   base_charge;
+    uint64_t   minimum_charge;
+    uint64_t   threshold;
+    uint64_t   amount_per_round;
+    dist_rules rules;
 };
 
 struct newdomain {
@@ -448,6 +471,13 @@ struct tryunlock {
     EVT_ACTION_VER0(tryunlock);
 };
 
+struct setsticbouns {
+    symbol_id_type sym_id;
+    static_bonus   data;
+
+    EVT_ACTION_VER0(setsticbouns);
+};
+
 }}}  // namespace evt::chain::contracts
 
 FC_REFLECT(evt::chain::contracts::token_def, (domain)(name)(owner)(metas));
@@ -456,8 +486,10 @@ FC_REFLECT(evt::chain::contracts::authorizer_weight, (ref)(weight));
 FC_REFLECT(evt::chain::contracts::permission_def, (name)(threshold)(authorizers));
 FC_REFLECT(evt::chain::contracts::domain_def, (name)(creator)(create_time)(issue)(transfer)(manage)(metas));
 FC_REFLECT(evt::chain::contracts::fungible_def, (name)(sym_name)(sym)(creator)(create_time)(issue)(manage)(total_supply)(metas));
+
 FC_REFLECT_ENUM(evt::chain::contracts::suspend_status, (proposed)(executed)(failed)(cancelled));
 FC_REFLECT(evt::chain::contracts::suspend_def, (name)(proposer)(status)(trx)(signed_keys)(signatures));
+
 FC_REFLECT_ENUM(evt::chain::contracts::asset_type, (tokens)(fungible));
 FC_REFLECT_ENUM(evt::chain::contracts::lock_status, (proposed)(succeed)(failed));
 FC_REFLECT(evt::chain::contracts::locknft_def, (domain)(names));
@@ -466,6 +498,12 @@ FC_REFLECT_ENUM(evt::chain::contracts::lock_type, (cond_keys));
 FC_REFLECT(evt::chain::contracts::lock_condkeys, (threshold)(cond_keys));
 FC_REFLECT(evt::chain::contracts::lock_def, (name)(proposer)(status)(unlock_time)(deadline)(assets)(condition)(succeed)(failed)(signed_keys));
 FC_REFLECT_ENUM(evt::chain::contracts::lock_aprv_type, (cond_key));
+
+FC_REFLECT_ENUM(evt::chain::contracts::dist_rule_type, (fixed)(percent)(remaining_percent)(stack));
+FC_REFLECT(evt::chain::contracts::dist_fixed_rule, (receiver)(amount));
+FC_REFLECT(evt::chain::contracts::dist_percent_rule, (receiver)(percent));
+FC_REFLECT(evt::chain::contracts::dist_stack_rule, (sym_id)(threshold));
+FC_REFLECT(evt::chain::contracts::static_bonus, (rate)(base_charge)(minimum_charge)(threshold)(amount_per_round)(rules));
 
 FC_REFLECT(evt::chain::contracts::newdomain, (name)(creator)(issue)(transfer)(manage));
 FC_REFLECT(evt::chain::contracts::issuetoken, (domain)(names)(owner));
@@ -496,3 +534,4 @@ FC_REFLECT(evt::chain::contracts::updsched, (producers));
 FC_REFLECT(evt::chain::contracts::newlock, (name)(proposer)(unlock_time)(deadline)(assets)(condition)(succeed)(failed));
 FC_REFLECT(evt::chain::contracts::aprvlock, (name)(approver)(data));
 FC_REFLECT(evt::chain::contracts::tryunlock, (name)(executor));
+FC_REFLECT(evt::chain::contracts::setsticbouns, (sym_id)(data));

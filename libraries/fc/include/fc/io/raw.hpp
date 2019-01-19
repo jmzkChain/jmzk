@@ -6,6 +6,8 @@
 #include <tuple>
 
 #include <boost/multiprecision/cpp_int.hpp>
+#include <boost/multiprecision/cpp_dec_float.hpp>
+
 #include <boost/interprocess/containers/string.hpp>
 #include <boost/interprocess/allocators/allocator.hpp>
 #include <boost/interprocess/managed_mapped_file.hpp>
@@ -32,6 +34,7 @@ namespace raw {
 
 namespace bip = boost::interprocess;
 using namespace boost::multiprecision;
+
 using shared_string = bip::basic_string<char, std::char_traits<char>, bip::allocator<char, bip::managed_mapped_file::segment_manager>>;
 
 template<typename T>
