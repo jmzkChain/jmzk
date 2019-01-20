@@ -1781,25 +1781,39 @@ EVT_ACTION_IMPL_BEGIN(tryunlock) {
 }
 EVT_ACTION_IMPL_END()
 
-EVT_ACTION_IMPL_BEGIN(setsticbouns) {
+namespace __internal {
+
+bool
+check_bonus_rules(const dist_rules& rules, uint64_t amount) {
+
+}
+
+} // namespace __internal
+
+EVT_ACTION_IMPL_BEGIN(setpsvbouns) {
     using namespace __internal;
 
-    auto& sbact = context.act.data_as<ACT>();
+    auto& spbact = context.act.data_as<ACT>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.bonus), name128::from_number(tuact.sym_id)), action_authorize_exception, "Invalid authorization fields(domain and key).");
+        auto sym = spbact.sym;
+        EVT_ASSERT(context.has_authorized(N128(.bonus), name128::from_number(sym.id())), action_authorize_exception, "Invalid authorization fields(domain and key).");
 
         auto& tokendb = context.control.token_db();
-        EVT_ASSERT2(!tokendb.exists_token(token_type::bonus, std::nullopt, get_bonus_db_key(tuact.sym_id, 0)),
-            bonus_dupe_exception, "It's now allowd to update static bonus currently.");
+        EVT_ASSERT2(!tokendb.exists_token(token_type::bonus, std::nullopt, get_bonus_db_key(sym.id(), 0)),
+            bonus_dupe_exception, "It's now allowd to update passive bonus currently.");
 
-        auto sb             = static_bonus();
-        sb.rate             = sbact.rate;
-        sb.base_charge      = sbact.base_charge;
-        sb.minimum_charge   = sbact.minimum_charge;
-        sb.threshold        = sbact.threshold;
-        sb.amount_per_round = sbact.amount_per_round;
-        sb.rules            = std::move(sbact.rules);
-        sb.round            = 0;
+        auto check_sym_rtn = [sym](auto& asset) {
+            EVT_ASSERT2(asset.sym() == sym, )
+        };
+
+        auto pb             = passive_bonus();
+        pb.rate             = spbact.rate;
+        pb.base_charge      = spbact.base_charge;
+        pb.charge_threshold = spbact.charge_threshold;
+        pb.minimum_charge   = spbact.minimum_charge;
+        pb.dist_threshold   = spbact.dist_threshold;
+        pb.rules            = std::move(spbact.rules);
+        pb.round            = 0;
     }
 }
 EVT_ACTION_IMPL_END()
