@@ -37,7 +37,8 @@ enum class token_type {
     lock,
     fungible,
     prodvote,
-    evtlink
+    evtlink,
+    bonus
 };
 
 enum class action_op {

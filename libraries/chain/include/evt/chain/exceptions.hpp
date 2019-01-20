@@ -227,6 +227,10 @@ FC_DECLARE_DERIVED_EXCEPTION( lock_duplicate_key_exception, lock_exception,   30
 FC_DECLARE_DERIVED_EXCEPTION( lock_not_reach_unlock_time,   lock_exception,   3040911, "Unlock time is not reach." );
 FC_DECLARE_DERIVED_EXCEPTION( lock_not_reach_deadline,      lock_exception,   3040912, "Deadline is not reach." );
 
+FC_DECLARE_DERIVED_EXCEPTION( bonus_exception,         action_exception, 3041000, "Bonus exception" );
+FC_DECLARE_DERIVED_EXCEPTION( unknown_bonus_exception, action_exception, 3041000, "Unknown bonus exception" );
+FC_DECLARE_DERIVED_EXCEPTION( bonus_dupe_exception,    action_exception, 3041000, "Duplicate bonus exception" );
+
 FC_DECLARE_DERIVED_EXCEPTION( producer_exception,                      chain_exception,    3050000, "Producer exception" );
 FC_DECLARE_DERIVED_EXCEPTION( producer_priv_key_not_found,             producer_exception, 3050001, "Producer private key is not available" );
 FC_DECLARE_DERIVED_EXCEPTION( missing_pending_block_state,             producer_exception, 3050002, "Pending block state is missing" );

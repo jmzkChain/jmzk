@@ -199,6 +199,15 @@ get_db_prefix<token_def>(const token_def& v) {
     return v.domain;
 }
 
+// for bonus_id, 0 is always stand for static bonus
+// otherwise it's dynamic bonus
+name128
+get_bonus_db_key(uint64_t sym_id, uint64_t bonus_id) {
+    uint128_t v = bonus_id;
+    v |= (sym_id << 64);
+    return v;
+}
+
 #define ADD_DB_TOKEN(TYPE, VALUE)                                                                              \
     {                                                                                                          \
         auto dv = make_db_value(VALUE);                                                                        \
@@ -271,7 +280,7 @@ EVT_ACTION_IMPL_BEGIN(newdomain) {
 
     auto ndact = context.act.data_as<ACT>();
     try {
-        EVT_ASSERT(context.has_authorized(ndact.name, N128(.create)), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(ndact.name, N128(.create)), action_authorize_exception, "Invalid authorization fields(domain and key).");
 
         check_name_reserved(ndact.name);
 
@@ -320,7 +329,7 @@ EVT_ACTION_IMPL_BEGIN(issuetoken) {
     auto itact = context.act.data_as<ACT>();
     try {
         EVT_ASSERT(context.has_authorized(itact.domain, N128(.issue)), action_authorize_exception,
-            "Authorized information does not match.");
+            "Invalid authorization fields(domain and key).");
         EVT_ASSERT(!itact.owner.empty(), token_owner_exception, "Owner cannot be empty.");
         for(auto& o : itact.owner) {
             check_address_reserved(o);
@@ -385,7 +394,7 @@ EVT_ACTION_IMPL_BEGIN(transfer) {
 
     auto ttact = context.act.data_as<ACT>();
     try {
-        EVT_ASSERT(context.has_authorized(ttact.domain, ttact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(ttact.domain, ttact.name), action_authorize_exception, "Invalid authorization fields(domain and key).");
         EVT_ASSERT(!ttact.to.empty(), token_owner_exception, "New owner cannot be empty.");
         for(auto& addr : ttact.to) {
             check_address_reserved(addr);
@@ -413,7 +422,7 @@ EVT_ACTION_IMPL_BEGIN(destroytoken) {
 
     auto dtact = context.act.data_as<ACT>();
     try {
-        EVT_ASSERT(context.has_authorized(dtact.domain, dtact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(dtact.domain, dtact.name), action_authorize_exception, "Invalid authorization fields(domain and key).");
 
         auto& tokendb = context.token_db;
 
@@ -446,7 +455,7 @@ EVT_ACTION_IMPL_BEGIN(newgroup) {
 
     auto ngact = context.act.data_as<ACT>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.group), ngact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.group), ngact.name), action_authorize_exception, "Invalid authorization fields(domain and key).");
         EVT_ASSERT(!ngact.group.key().is_generated(), group_key_exception, "Group key cannot be generated key");
         EVT_ASSERT(ngact.name == ngact.group.name(), group_name_exception,
             "Group name not match, act: ${n1}, group: ${n2}", ("n1",ngact.name)("n2",ngact.group.name()));
@@ -469,7 +478,7 @@ EVT_ACTION_IMPL_BEGIN(updategroup) {
 
     auto ugact = context.act.data_as<ACT>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.group), ugact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.group), ugact.name), action_authorize_exception, "Invalid authorization fields(domain and key).");
         EVT_ASSERT(ugact.name == ugact.group.name(), group_name_exception, "Names in action are not the same.");
 
         auto& tokendb = context.token_db;
@@ -561,7 +570,7 @@ EVT_ACTION_IMPL_BEGIN(newfungible) {
     auto nfact = context.act.data_as<ACT>();
     try {
         EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(nfact.sym.id())), action_authorize_exception,
-            "Authorized information does not match.");
+            "Invalid authorization fields(domain and key).");
         EVT_ASSERT(!nfact.name.empty(), fungible_name_exception, "Fungible name cannot be empty");
         EVT_ASSERT(!nfact.sym_name.empty(), fungible_symbol_exception, "Fungible symbol name cannot be empty");
         EVT_ASSERT(nfact.sym.id() > 0, fungible_symbol_exception, "Fungible symbol id should be larger than zero");
@@ -616,7 +625,7 @@ EVT_ACTION_IMPL_BEGIN(updfungible) {
     auto ufact = context.act.data_as<ACT>();
     try {
         EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(ufact.sym_id)), action_authorize_exception,
-            "Authorized information does not match.");
+            "Invalid authorization fields(domain and key).");
 
         auto& tokendb = context.token_db;
 
@@ -659,7 +668,7 @@ EVT_ACTION_IMPL_BEGIN(issuefungible) {
     try {
         auto sym = ifact.number.sym();
         EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(sym.id())), action_authorize_exception,
-            "Authorized information does not match.");
+            "Invalid authorization fields(domain and key).");
         check_address_reserved(ifact.address);
 
         auto& tokendb = context.token_db;
@@ -692,7 +701,7 @@ EVT_ACTION_IMPL_BEGIN(transferft) {
     try {
         auto sym = tfact.number.sym();
         EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(sym.id())), action_authorize_exception,
-            "Authorized information does not match.");
+            "Invalid authorization fields(domain and key).");
         EVT_ASSERT(tfact.from != tfact.to, fungible_address_exception, "From and to are the same address");
         EVT_ASSERT(sym != pevt_sym(), fungible_symbol_exception, "Pinned EVT cannot be transfered");
         check_address_reserved(tfact.to);
@@ -722,7 +731,7 @@ EVT_ACTION_IMPL_BEGIN(recycleft) {
     try {
         auto sym = rfact.number.sym();
         EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(sym.id())), action_authorize_exception,
-            "Authorized information does not match.");
+            "Invalid authorization fields(domain and key).");
         EVT_ASSERT(sym != pevt_sym(), fungible_symbol_exception, "Pinned EVT cannot be recycled");
 
         auto& tokendb = context.token_db;
@@ -752,7 +761,7 @@ EVT_ACTION_IMPL_BEGIN(destroyft) {
     try {
         auto sym = rfact.number.sym();
         EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(sym.id())), action_authorize_exception,
-            "Authorized information does not match.");
+            "Invalid authorization fields(domain and key).");
         EVT_ASSERT(sym != pevt_sym(), fungible_symbol_exception, "Pinned EVT cannot be destroyed");
 
         auto& tokendb = context.token_db;
@@ -782,7 +791,7 @@ EVT_ACTION_IMPL_BEGIN(evt2pevt) {
     try {
         EVT_ASSERT(epact.number.sym() == evt_sym(), fungible_symbol_exception, "Only EVT tokens can be converted to Pinned EVT tokens");
         EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(evt_sym().id())), action_authorize_exception,
-            "Authorized information does not match.");
+            "Invalid authorization fields(domain and key).");
         check_address_reserved(epact.to);
 
         auto& tokendb = context.token_db;
@@ -1046,7 +1055,7 @@ EVT_ACTION_IMPL_BEGIN(newsuspend) {
 
     auto nsact = context.act.data_as<newsuspend>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.suspend), nsact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.suspend), nsact.name), action_authorize_exception, "Invalid authorization fields(domain and key).");
 
         auto now = context.control.pending_block_time();
         EVT_ASSERT(nsact.trx.expiration > now, suspend_expired_tx_exception,
@@ -1082,7 +1091,7 @@ EVT_ACTION_IMPL_BEGIN(aprvsuspend) {
 
     auto& aeact = context.act.data_as<add_clr_t<ACT>>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.suspend), aeact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.suspend), aeact.name), action_authorize_exception, "Invalid authorization fields(domain and key).");
 
         auto& tokendb = context.token_db;
 
@@ -1118,7 +1127,7 @@ EVT_ACTION_IMPL_BEGIN(cancelsuspend) {
     auto& csact = context.act.data_as<add_clr_t<ACT>>();
     try {
         EVT_ASSERT(context.has_authorized(N128(.suspend), csact.name), action_authorize_exception,
-            "Authorized information does not match.");
+            "Invalid authorization fields(domain and key).");
 
         auto& tokendb = context.token_db;
 
@@ -1141,7 +1150,7 @@ EVT_ACTION_IMPL_BEGIN(execsuspend) {
 
     auto& esact = context.act.data_as<add_clr_t<ACT>>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.suspend), esact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.suspend), esact.name), action_authorize_exception, "Invalid authorization fields(domain and key).");
 
         auto& tokendb = context.token_db;
 
@@ -1243,7 +1252,7 @@ EVT_ACTION_IMPL_BEGIN(everipass) {
         auto& d = *link.get_segment(evt_link::domain).strv;
         auto& t = *link.get_segment(evt_link::token).strv;
 
-        EVT_ASSERT(context.has_authorized(name128(d), name128(t)), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(name128(d), name128(t)), action_authorize_exception, "Invalid authorization fields(domain and key).");
 
         if(!context.control.loadtest_mode()) {
             auto  ts    = *link.get_segment(evt_link::timestamp).intv;
@@ -1304,7 +1313,7 @@ EVT_ACTION_IMPL_BEGIN(everipay) {
 
         auto& lsym_id = *link.get_segment(evt_link::symbol_id).intv;
         EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(lsym_id)), action_authorize_exception,
-            "Authorized information does not match.");
+            "Invalid authorization fields(domain and key).");
 
         if(!context.control.loadtest_mode()) {
             auto  ts    = *link.get_segment(evt_link::timestamp).intv;
@@ -1396,7 +1405,7 @@ EVT_ACTION_IMPL_BEGIN(prodvote) {
 
     auto& pvact = context.act.data_as<add_clr_t<ACT>>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.prodvote), pvact.key), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.prodvote), pvact.key), action_authorize_exception, "Invalid authorization fields(domain and key).");
         EVT_ASSERT(pvact.value > 0 && pvact.value < 1'000'000, prodvote_value_exception, "Invalid prodvote value: ${v}", ("v",pvact.value));
 
         auto  conf     = context.control.get_global_properties().configuration;
@@ -1515,7 +1524,7 @@ EVT_ACTION_IMPL_BEGIN(updsched) {
     auto usact = context.act.data_as<ACT>();
     try {
         EVT_ASSERT(context.has_authorized(N128(.prodsched), N128(.update)), action_authorize_exception,
-            "Authorized information does not match.");
+            "Invalid authorization fields(domain and key).");
         context.control.set_proposed_producers(std::move(usact.producers));
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
@@ -1527,7 +1536,7 @@ EVT_ACTION_IMPL_BEGIN(newlock) {
 
     auto nlact = context.act.data_as<ACT>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.lock), nlact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.lock), nlact.name), action_authorize_exception, "Invalid authorization fields(domain and key).");
 
         auto& tokendb = context.control.token_db();
         EVT_ASSERT(!tokendb.exists_token(token_type::lock, std::nullopt, nlact.name), lock_duplicate_exception,
@@ -1664,7 +1673,7 @@ EVT_ACTION_IMPL_BEGIN(aprvlock) {
 
     auto& alact = context.act.data_as<add_clr_t<ACT>>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.lock), alact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.lock), alact.name), action_authorize_exception, "Invalid authorization fields(domain and key).");
 
         auto& tokendb = context.control.token_db();
 
@@ -1700,7 +1709,7 @@ EVT_ACTION_IMPL_BEGIN(tryunlock) {
 
     auto& tuact = context.act.data_as<add_clr_t<ACT>>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.lock), tuact.name), action_authorize_exception, "Authorized information does not match.");
+        EVT_ASSERT(context.has_authorized(N128(.lock), tuact.name), action_authorize_exception, "Invalid authorization fields(domain and key).");
 
         auto& tokendb = context.control.token_db();
 
@@ -1769,6 +1778,29 @@ EVT_ACTION_IMPL_BEGIN(tryunlock) {
         UPD_DB_TOKEN(token_type::lock, lock);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+}
+EVT_ACTION_IMPL_END()
+
+EVT_ACTION_IMPL_BEGIN(setsticbouns) {
+    using namespace __internal;
+
+    auto& sbact = context.act.data_as<ACT>();
+    try {
+        EVT_ASSERT(context.has_authorized(N128(.bonus), name128::from_number(tuact.sym_id)), action_authorize_exception, "Invalid authorization fields(domain and key).");
+
+        auto& tokendb = context.control.token_db();
+        EVT_ASSERT2(!tokendb.exists_token(token_type::bonus, std::nullopt, get_bonus_db_key(tuact.sym_id, 0)),
+            bonus_dupe_exception, "It's now allowd to update static bonus currently.");
+
+        auto sb             = static_bonus();
+        sb.rate             = sbact.rate;
+        sb.base_charge      = sbact.base_charge;
+        sb.minimum_charge   = sbact.minimum_charge;
+        sb.threshold        = sbact.threshold;
+        sb.amount_per_round = sbact.amount_per_round;
+        sb.rules            = std::move(sbact.rules);
+        sb.round            = 0;
+    }
 }
 EVT_ACTION_IMPL_END()
 

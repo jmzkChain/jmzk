@@ -110,7 +110,8 @@ name128 action_key_prefixes[] = {
     N128(.lock),
     N128(.fungible),
     N128(.prodvote),
-    N128(.evtlink)
+    N128(.evtlink),
+    N128(.bonus)
 };
 
 struct key_hasher {

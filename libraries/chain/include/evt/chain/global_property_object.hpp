@@ -44,8 +44,9 @@ class dynamic_global_property_object
     : public chainbase::object<dynamic_global_property_object_type, dynamic_global_property_object> {
     OBJECT_CTOR(dynamic_global_property_object)
 
-    id_type  id;
-    uint64_t global_action_sequence = 0;
+    id_type          id;
+    uint64_t         global_action_sequence = 0;
+    vector<uint32_t> fungibles_with_bonus;
 };
 
 using global_property_multi_index = chainbase::shared_multi_index_container<
@@ -63,5 +64,5 @@ using dynamic_global_property_multi_index = chainbase::shared_multi_index_contai
 CHAINBASE_SET_INDEX_TYPE(evt::chain::global_property_object, evt::chain::global_property_multi_index);
 CHAINBASE_SET_INDEX_TYPE(evt::chain::dynamic_global_property_object, evt::chain::dynamic_global_property_multi_index);
 
-FC_REFLECT(evt::chain::dynamic_global_property_object, (global_action_sequence));
+FC_REFLECT(evt::chain::dynamic_global_property_object, (global_action_sequence)(fungibles_with_bonus));
 FC_REFLECT(evt::chain::global_property_object, (proposed_schedule_block_num)(proposed_schedule)(configuration));

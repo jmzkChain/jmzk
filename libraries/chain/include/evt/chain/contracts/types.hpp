@@ -218,7 +218,7 @@ struct dist_stack_rule {
     uint64_t       threshold;
 };
 
-using dist_rule  = variant_wrapper<dist_fixed_rule, dist_fixed_rule, dist_percent_rule, dist_percent_rule, dist_stack_rule>;
+using dist_rule  = variant_wrapper<dist_rule_type, dist_fixed_rule, dist_percent_rule, dist_percent_rule, dist_stack_rule>;
 using dist_rules = small_vector<dist_rule, 4>;
 
 struct static_bonus {
@@ -228,6 +228,9 @@ struct static_bonus {
     uint64_t   threshold;
     uint64_t   amount_per_round;
     dist_rules rules;
+
+    int32_t               round;
+    small_vector<int32_t> receiver_rounds;
 };
 
 struct newdomain {
@@ -473,7 +476,12 @@ struct tryunlock {
 
 struct setsticbouns {
     symbol_id_type sym_id;
-    static_bonus   data;
+    double         rate;
+    uint64_t       base_charge;
+    uint64_t       minimum_charge;
+    uint64_t       threshold;
+    uint64_t       amount_per_round;
+    dist_rules     rules;
 
     EVT_ACTION_VER0(setsticbouns);
 };
@@ -503,7 +511,7 @@ FC_REFLECT_ENUM(evt::chain::contracts::dist_rule_type, (fixed)(percent)(remainin
 FC_REFLECT(evt::chain::contracts::dist_fixed_rule, (receiver)(amount));
 FC_REFLECT(evt::chain::contracts::dist_percent_rule, (receiver)(percent));
 FC_REFLECT(evt::chain::contracts::dist_stack_rule, (sym_id)(threshold));
-FC_REFLECT(evt::chain::contracts::static_bonus, (rate)(base_charge)(minimum_charge)(threshold)(amount_per_round)(rules));
+FC_REFLECT(evt::chain::contracts::static_bonus, (rate)(base_charge)(minimum_charge)(threshold)(amount_per_round)(rules)(round)(receiver_rounds));
 
 FC_REFLECT(evt::chain::contracts::newdomain, (name)(creator)(issue)(transfer)(manage));
 FC_REFLECT(evt::chain::contracts::issuetoken, (domain)(names)(owner));
@@ -534,4 +542,4 @@ FC_REFLECT(evt::chain::contracts::updsched, (producers));
 FC_REFLECT(evt::chain::contracts::newlock, (name)(proposer)(unlock_time)(deadline)(assets)(condition)(succeed)(failed));
 FC_REFLECT(evt::chain::contracts::aprvlock, (name)(approver)(data));
 FC_REFLECT(evt::chain::contracts::tryunlock, (name)(executor));
-FC_REFLECT(evt::chain::contracts::setsticbouns, (sym_id)(data));
+FC_REFLECT(evt::chain::contracts::setsticbouns, (sym_id)(rate)(base_charge)(minimum_charge)(threshold)(amount_per_round)(rules));
