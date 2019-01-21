@@ -227,10 +227,13 @@ FC_DECLARE_DERIVED_EXCEPTION( lock_duplicate_key_exception, lock_exception,   30
 FC_DECLARE_DERIVED_EXCEPTION( lock_not_reach_unlock_time,   lock_exception,   3040911, "Unlock time is not reach." );
 FC_DECLARE_DERIVED_EXCEPTION( lock_not_reach_deadline,      lock_exception,   3040912, "Deadline is not reach." );
 
-FC_DECLARE_DERIVED_EXCEPTION( bonus_exception,         action_exception, 3041000, "Bonus exception" );
-FC_DECLARE_DERIVED_EXCEPTION( unknown_bonus_exception, action_exception, 3041001, "Unknown bonus exception" );
-FC_DECLARE_DERIVED_EXCEPTION( bonus_dupe_exception,    action_exception, 3041002, "Duplicate bonus exception" );
-FC_DECLARE_DERIVED_EXCEPTION( bonus_asset_exception,   action_exception, 3041003, "Duplicate bonus exception" );
+FC_DECLARE_DERIVED_EXCEPTION( bonus_exception,               action_exception, 3041000, "Bonus exception" );
+FC_DECLARE_DERIVED_EXCEPTION( unknown_bonus_exception,       bonus_exception,  3041001, "Unknown bonus exception" );
+FC_DECLARE_DERIVED_EXCEPTION( bonus_dupe_exception,          bonus_exception,  3041002, "Duplicate bonus exception" );
+FC_DECLARE_DERIVED_EXCEPTION( bonus_asset_exception,         bonus_exception,  3041003, "Duplicate bonus exception" );
+FC_DECLARE_DERIVED_EXCEPTION( bonus_rules_exception,         bonus_exception,  3041004, "Invalid rules for bonus" );
+FC_DECLARE_DERIVED_EXCEPTION( bonus_rule_order_exception,    bonus_exception,  3041005, "Invalid order of rules for bonus" );
+FC_DECLARE_DERIVED_EXCEPTION( bonus_percent_value_exception, bonus_exception,  3041006, "Invalid percent value" );
 
 FC_DECLARE_DERIVED_EXCEPTION( producer_exception,                      chain_exception,    3050000, "Producer exception" );
 FC_DECLARE_DERIVED_EXCEPTION( producer_priv_key_not_found,             producer_exception, 3050001, "Producer private key is not available" );

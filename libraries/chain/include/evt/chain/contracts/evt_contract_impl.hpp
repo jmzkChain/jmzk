@@ -1783,9 +1783,64 @@ EVT_ACTION_IMPL_END()
 
 namespace __internal {
 
-bool
-check_bonus_rules(const dist_rules& rules, uint64_t amount) {
+enum class bonus_check_type {
+    natural = 0,
+    positive
+};
 
+auto check_n_rtn = [](auto& asset, auto sym, auto ctype) -> decltype(asset) {
+    EVT_ASSERT2(asset.sym() == sym, bonus_asset_exception, "Invalid symbol of assets, expected: {}, provided:  {}", sym, asset.sym());
+    switch(bonus_check_type) {
+    case natural: {
+        EVT_ASSERT2(asset.amount() >= 0, bonus_asset_exception, "Invalid amount of assets, must be natural number. Provided: {}", asset);
+        break;
+    }
+    case positive: {
+        EVT_ASSERT2(asset.amount() > 0, bonus_asset_exception, "Invalid amount of assets, must be positive. Provided: {}", asset);
+        break;
+    }
+    default: {
+        break;
+    }
+    }  // switch
+    
+    return asset;
+};
+
+bool
+check_bonus_rules(const dist_rules& rules, asset_type amount) {
+    auto sym             = amount.sym();
+    auto remain          = amount.amount();
+    auto remain_percents = percent_type(0);
+
+    for(auto& rule : rules) {
+        switch(rule.type()) {
+        case dist_rule_type::fixed: {
+            EVT_ASSERT2(remain_percents == 0, bonus_rule_order_exception, "Fix rule should be defined in front of remain-percent rules");
+            auto& fr  = rule.get<dist_fixed_rule>();
+            auto& frv = check_n_rtn(fr.amount, sym, bonus_check_type::positive);
+            if(frv.amount() > remain) {
+                return false;
+            }
+            remain -= frv.amount();
+            break;
+        }
+        case dist_rule_type::percent: {
+            EVT_ASSERT2(remain_percents == 0, bonus_rule_order_exception, "Percent rule should be defined in front of remain-percent rules");
+            auto& pr = rule.get<dist_percent_rule>();
+            EVT_ASSERT2(fr.percent > 0 && fr.percent <= 1, bonus_percent_value_exception, "Precent value should be in range (0,1]");
+            auto prv = fr.percent * amount.amount();
+            if(prv > remain) {
+                return false;
+            }
+            remain -= prv;
+            break;
+        }
+        case dist_rule_type::remaining_percent: {
+
+        }
+        }  // switch
+    }
 }
 
 } // namespace __internal
@@ -1802,16 +1857,31 @@ EVT_ACTION_IMPL_BEGIN(setpsvbouns) {
         EVT_ASSERT2(!tokendb.exists_token(token_type::bonus, std::nullopt, get_bonus_db_key(sym.id(), 0)),
             bonus_dupe_exception, "It's now allowd to update passive bonus currently.");
 
-        auto check_sym_rtn = [sym](auto& asset) {
-            EVT_ASSERT2(asset.sym() == sym, )
+        auto check_n_rtn = [sym](auto& asset, auto ctype) -> decltype(asset) {
+            EVT_ASSERT2(asset.sym() == sym, bonus_asset_exception, "Invalid symbol of assets, expected: {}, provided:  {}", sym, asset.sym());
+            switch(bonus_check_type) {
+            case natural: {
+                EVT_ASSERT2(asset.amount() >= 0, bonus_asset_exception, "Invalid amount of assets, must be natural number. Provided: {}", asset);
+                break;
+            }
+            case positive: {
+                EVT_ASSERT2(asset.amount() > 0, bonus_asset_exception, "Invalid amount of assets, must be positive. Provided: {}", asset);
+                break;
+            }
+            default: {
+                break;
+            }
+            }  // switch
+            
+            return asset;
         };
 
         auto pb             = passive_bonus();
-        pb.rate             = spbact.rate;
-        pb.base_charge      = spbact.base_charge;
-        pb.charge_threshold = spbact.charge_threshold;
-        pb.minimum_charge   = spbact.minimum_charge;
-        pb.dist_threshold   = spbact.dist_threshold;
+        pb.rate             = check_n_rtn(spbact.rate, sym, bonus_check_type::positive);
+        pb.base_charge      = check_n_rtn(spbact.base_charge, sym, bonus_check_type::natural);
+        pb.charge_threshold = check_n_rtn(spbact.charge_threshold, sym, bonus_check_type::natural);
+        pb.minimum_charge   = check_n_rtn(spbact.minimum_charge, sym, bonus_check_type::natural);
+        pb.dist_threshold   = check_n_rtn(spbact.dist_threshold, sym, bonus_check_type::positive);
         pb.rules            = std::move(spbact.rules);
         pb.round            = 0;
     }

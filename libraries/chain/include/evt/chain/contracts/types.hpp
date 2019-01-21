@@ -43,6 +43,9 @@ namespace evt { namespace chain { namespace contracts {
 #define EVT_ACTION_VER1(actname, acttypename) EVT_ACTION(actname, 1, acttypename)
 #define EVT_ACTION_VER2(actname, acttypename) EVT_ACTION(actname, 2, acttypename)
 
+template<int Precision>
+using decimal = boost::multiprecision::cpp_dec_float<Precision>;
+
 using domain_name     = evt::chain::domain_name;
 using domian_key      = evt::chain::domain_key;
 using token_name      = evt::chain::token_name;
@@ -59,9 +62,7 @@ using balance_type    = evt::chain::asset;
 using address_type    = evt::chain::address;
 using address_list    = small_vector<address_type, 4>;
 using conf_key        = evt::chain::conf_key;
-
-template<int Precision>
-using decimal = boost::multiprecision::cpp_dec_float<Precision>;
+using percent_type    = decimal<6>;
 
 struct token_def {
     token_def() = default;
@@ -220,19 +221,19 @@ struct dist_fixed_rule {
 
 struct dist_percent_rule {
     dist_receiver receiver;
-    decimal<6>    percent;
+    percent_type  percent;
 };
 
 using dist_rule  = variant_wrapper<dist_rule_type, dist_fixed_rule, dist_percent_rule, dist_percent_rule>;
 using dist_rules = small_vector<dist_rule, 4>;
 
 struct passive_bonus {
-    decimal<6> rate;
-    asset_type base_charge;
-    asset_type charge_threshold;
-    asset_type minimum_charge;
-    asset_type dist_threshold;
-    dist_rules rules;
+    percent_type rate;
+    asset_type   base_charge;
+    asset_type   charge_threshold;
+    asset_type   minimum_charge;
+    asset_type   dist_threshold;
+    dist_rules   rules;
 
     int32_t               round;
     small_vector<int32_t> receiver_rounds;

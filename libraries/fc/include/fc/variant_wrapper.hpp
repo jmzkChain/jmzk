@@ -44,6 +44,12 @@ public:
         return (ENUM)value_.index();
     }
 
+    template<typename Visitor>
+    void
+    visit(Visitor&& visitor) const {
+        std::visit(std::forward<Visitor>(visitor), value_);
+    }
+
 public:
     std::variant<ARGS...> value_;
 };
