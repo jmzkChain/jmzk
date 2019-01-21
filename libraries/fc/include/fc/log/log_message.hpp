@@ -7,6 +7,7 @@
 #include <boost/preprocessor/punctuation/comma_if.hpp>
 #include <boost/preprocessor/variadic/size.hpp>
 #include <fmt/core.h>
+#include <fmt/ostream.h>
 #include <fc/time.hpp>
 #include <fc/variant_object.hpp>
 #include <fc/container/small_vector_fwd.hpp>

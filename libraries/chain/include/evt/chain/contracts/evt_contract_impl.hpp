@@ -21,8 +21,6 @@
 #include <boost/safe_numerics/checked_default.hpp>
 #include <boost/safe_numerics/checked_integer.hpp>
 
-#include <fmt/ostream.h>
-
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/ripemd160.hpp>
 
@@ -1890,7 +1888,7 @@ check_bonus_rules(const token_database& tokendb, const dist_rules& rules, asset 
             EVT_ASSERT2(prv >= 1, bonus_percent_result_exception,
                 "Rule #{} is not valid, the amount for this rule shoule be as least large than one unit of asset, but it's zero now.", index);
             remain_percent += pr.percent;
-            EVT_ASSERT2(remain_percent <= 1, bonus_percent_value_exception, "Sum of remaining percents is large than 100%, current: {}", remain_percent);
+            EVT_ASSERT2(remain_percent <= 1, bonus_percent_value_exception, "Sum of remaining percents is large than 100%, current: {}", remain_percent.str());
             break;
         }
         default: {
@@ -1902,7 +1900,7 @@ check_bonus_rules(const token_database& tokendb, const dist_rules& rules, asset 
 
     if(remain > 0) {
         EVT_ASSERT2(remain_percent == 1, bonus_rules_not_fullfill,
-            "Rules are not fullfill amount, total: {}, remains: {}, remains precent fill: {}", amount, asset(remain, sym), remain_percent);
+            "Rules are not fullfill amount, total: {}, remains: {}, remains precent fill: {}", amount, asset(remain, sym), remain_percent.str());
     }
 }
 
