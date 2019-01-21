@@ -38,7 +38,8 @@ enum class token_type {
     fungible,
     prodvote,
     evtlink,
-    bonus
+    bonus,
+    max_value = bonus
 };
 
 enum class action_op {

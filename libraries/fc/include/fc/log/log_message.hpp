@@ -4,6 +4,8 @@
  * @brief Defines types and helper macros necessary for generating log messages.
  */
 #include <memory>
+#include <boost/preprocessor/punctuation/comma_if.hpp>
+#include <boost/preprocessor/variadic/size.hpp>
 #include <fmt/core.h>
 #include <fc/time.hpp>
 #include <fc/variant_object.hpp>
@@ -155,5 +157,4 @@ FC_REFLECT_TYPENAME(fc::log_message);
     fc::log_message(FC_LOG_CONTEXT(LOG_LEVEL), FORMAT, fc::mutable_variant_object() __VA_ARGS__)
 
 #define FC_LOG_MESSAGE2(LOG_LEVEL, FORMAT, ...) \
-    fc::log_message(FC_LOG_CONTEXT(LOG_LEVEL), fmt::format(FORMAT, __VA_ARGS__))
-
+    fc::log_message(FC_LOG_CONTEXT(LOG_LEVEL), fmt::format(FORMAT, ##__VA_ARGS__))

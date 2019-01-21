@@ -26,6 +26,8 @@
 #include <fc/io/raw.hpp>
 #include <fc/io/varint.hpp>
 
+#include <boost/multiprecision/cpp_dec_float.hpp> 
+
 #include <evt/chain/name.hpp>
 #include <evt/chain/name128.hpp>
 #include <evt/chain/chain_id_type.hpp>
@@ -120,6 +122,12 @@ using symbol_name     = name128;
 using conf_key        = name128;
 using user_id         = public_key_type;
 
+template<int Precision>
+using decimal = boost::multiprecision::number<boost::multiprecision::cpp_dec_float<Precision>>;
+
+using percent_type = decimal<6>;
+using real_type    = decimal<24>;
+
 /**
  * List all object types from all namespaces here so they can
  * be easily reflected and displayed in debug output.  If a 3rd party
@@ -190,5 +198,5 @@ FC_REFLECT_ENUM(
     evt::chain::object_type,
     (null_object_type)(global_property_object_type)(dynamic_global_property_object_type)
     (block_summary_object_type)(transaction_object_type)(reversible_block_object_type)(evt_link_object_type)
-    (OBJECT_TYPE_COUNT))
-FC_REFLECT(evt::chain::void_t, )
+    (OBJECT_TYPE_COUNT));
+FC_REFLECT(evt::chain::void_t, );

@@ -102,7 +102,7 @@ public:
     bool is_amount_within_range() const { return -max_amount <= amount_ && amount_ <= max_amount; }
     bool is_valid() const { return is_amount_within_range() && sym_.valid(); }
 
-    double to_real() const { return static_cast<double>(amount_) / std::pow(10, precision()); }
+    real_type to_real() const { return real_type(amount_) / boost::multiprecision::pow(real_type(10), precision()); }
 
     uint32_t symbol_id() const { return sym_.id(); };
     uint8_t  precision() const { return sym_.precision(); };

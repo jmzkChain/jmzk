@@ -12,14 +12,14 @@
         FC_THROW_EXCEPTION(exc_type, FORMAT, __VA_ARGS__); \
     FC_MULTILINE_MACRO_END
 
-#define EVT_ASSERT2(expr, exc_type, FORMAT, ...)            \
-    FC_MULTILINE_MACRO_BEGIN                                \
-    if(!(expr))                                             \
-        FC_THROW_EXCEPTION2(exc_type, FORMAT, __VA_ARGS__); \
+#define EVT_ASSERT2(expr, exc_type, FORMAT, ...)              \
+    FC_MULTILINE_MACRO_BEGIN                                  \
+    if(!(expr))                                               \
+        FC_THROW_EXCEPTION2(exc_type, FORMAT, ##__VA_ARGS__); \
     FC_MULTILINE_MACRO_END
 
 #define EVT_THROW(exc_type, FORMAT, ...)  throw exc_type(FC_LOG_MESSAGE(error, FORMAT, __VA_ARGS__));
-#define EVT_THROW2(exc_type, FORMAT, ...) throw exc_type(FC_LOG_MESSAGE2(error, FORMAT, __VA_ARGS__));
+#define EVT_THROW2(exc_type, FORMAT, ...) throw exc_type(FC_LOG_MESSAGE2(error, FORMAT, ##__VA_ARGS__));
 
 /**
  * Macro inspired from FC_RETHROW_EXCEPTIONS
@@ -69,7 +69,7 @@
         throw new_exception;                                                                                 \
     }                                                                                                        \
     catch(const std::exception& e) {                                                                         \
-        exception_type fce(FC_LOG_MESSAGE2(warn, FORMAT " ({})", __VA_ARGS__, e.what()));                    \
+        exception_type fce(FC_LOG_MESSAGE2(warn, FORMAT " ({})", ##__VA_ARGS__, e.what()));                  \
         throw fce;                                                                                           \
     }                                                                                                        \
     catch(...) {                                                                                             \
@@ -227,13 +227,16 @@ FC_DECLARE_DERIVED_EXCEPTION( lock_duplicate_key_exception, lock_exception,   30
 FC_DECLARE_DERIVED_EXCEPTION( lock_not_reach_unlock_time,   lock_exception,   3040911, "Unlock time is not reach." );
 FC_DECLARE_DERIVED_EXCEPTION( lock_not_reach_deadline,      lock_exception,   3040912, "Deadline is not reach." );
 
-FC_DECLARE_DERIVED_EXCEPTION( bonus_exception,               action_exception, 3041000, "Bonus exception" );
-FC_DECLARE_DERIVED_EXCEPTION( unknown_bonus_exception,       bonus_exception,  3041001, "Unknown bonus exception" );
-FC_DECLARE_DERIVED_EXCEPTION( bonus_dupe_exception,          bonus_exception,  3041002, "Duplicate bonus exception" );
-FC_DECLARE_DERIVED_EXCEPTION( bonus_asset_exception,         bonus_exception,  3041003, "Duplicate bonus exception" );
-FC_DECLARE_DERIVED_EXCEPTION( bonus_rules_exception,         bonus_exception,  3041004, "Invalid rules for bonus" );
-FC_DECLARE_DERIVED_EXCEPTION( bonus_rule_order_exception,    bonus_exception,  3041005, "Invalid order of rules for bonus" );
-FC_DECLARE_DERIVED_EXCEPTION( bonus_percent_value_exception, bonus_exception,  3041006, "Invalid percent value" );
+FC_DECLARE_DERIVED_EXCEPTION( bonus_exception,                action_exception, 3041000, "Bonus exception" );
+FC_DECLARE_DERIVED_EXCEPTION( unknown_bonus_exception,        bonus_exception,  3041001, "Unknown bonus exception" );
+FC_DECLARE_DERIVED_EXCEPTION( bonus_dupe_exception,           bonus_exception,  3041002, "Duplicate bonus exception" );
+FC_DECLARE_DERIVED_EXCEPTION( bonus_asset_exception,          bonus_exception,  3041003, "Duplicate bonus exception" );
+FC_DECLARE_DERIVED_EXCEPTION( bonus_rules_exception,          bonus_exception,  3041004, "Invalid rules for bonus" );
+FC_DECLARE_DERIVED_EXCEPTION( bonus_rules_order_exception,    bonus_exception,  3041005, "Invalid order of rules for bonus" );
+FC_DECLARE_DERIVED_EXCEPTION( bonus_percent_value_exception,  bonus_exception,  3041006, "Invalid percent value" );
+FC_DECLARE_DERIVED_EXCEPTION( bonus_percent_result_exception, bonus_exception,  3041007, "Invalid result after calculating the percent" );
+FC_DECLARE_DERIVED_EXCEPTION( bonus_rules_not_fullfill,       bonus_exception,  3041008, "Rules are not fullfile the provided amount" );
+FC_DECLARE_DERIVED_EXCEPTION( bonus_receiver_exception,       bonus_exception,  3041009, "Invalid receiver for bonus" );
 
 FC_DECLARE_DERIVED_EXCEPTION( producer_exception,                      chain_exception,    3050000, "Producer exception" );
 FC_DECLARE_DERIVED_EXCEPTION( producer_priv_key_not_found,             producer_exception, 3050001, "Producer private key is not available" );

@@ -4,8 +4,6 @@
  */
 #pragma once
 
-#include <boost/multiprecision/cpp_dec_float.hpp> 
-
 #include <evt/chain/address.hpp>
 #include <evt/chain/asset.hpp>
 #include <evt/chain/chain_config.hpp>
@@ -43,9 +41,6 @@ namespace evt { namespace chain { namespace contracts {
 #define EVT_ACTION_VER1(actname, acttypename) EVT_ACTION(actname, 1, acttypename)
 #define EVT_ACTION_VER2(actname, acttypename) EVT_ACTION(actname, 2, acttypename)
 
-template<int Precision>
-using decimal = boost::multiprecision::cpp_dec_float<Precision>;
-
 using domain_name     = evt::chain::domain_name;
 using domian_key      = evt::chain::domain_key;
 using token_name      = evt::chain::token_name;
@@ -62,7 +57,7 @@ using balance_type    = evt::chain::asset;
 using address_type    = evt::chain::address;
 using address_list    = small_vector<address_type, 4>;
 using conf_key        = evt::chain::conf_key;
-using percent_type    = decimal<6>;
+using percent_type    = evt::chain::percent_type;
 
 struct token_def {
     token_def() = default;
@@ -201,11 +196,11 @@ enum class lock_aprv_type {
 using lock_aprvdata = variant_wrapper<lock_aprv_type, void_t>;
 
 enum class dist_receiver_type {
-    address = 0, stack, max_value = stack
+    address = 0, ftholders, max_value = ftholders
 };
 
 struct dist_stack_receiver {
-    asset_type threshold;
+    asset threshold;
 };
 
 using dist_receiver = variant_wrapper<dist_receiver_type, address, dist_stack_receiver>;
@@ -215,8 +210,8 @@ enum class dist_rule_type {
 };
 
 struct dist_fixed_rule {
-    address    receiver;
-    asset_type amount;
+    dist_receiver receiver;
+    asset         amount;
 };
 
 struct dist_percent_rule {
@@ -224,19 +219,23 @@ struct dist_percent_rule {
     percent_type  percent;
 };
 
-using dist_rule  = variant_wrapper<dist_rule_type, dist_fixed_rule, dist_percent_rule, dist_percent_rule>;
+struct dist_rpercent_rule {
+    dist_receiver receiver;
+    percent_type  percent;
+};
+
+using dist_rule  = variant_wrapper<dist_rule_type, dist_fixed_rule, dist_percent_rule, dist_rpercent_rule>;
 using dist_rules = small_vector<dist_rule, 4>;
 
 struct passive_bonus {
-    percent_type rate;
-    asset_type   base_charge;
-    asset_type   charge_threshold;
-    asset_type   minimum_charge;
-    asset_type   dist_threshold;
-    dist_rules   rules;
-
-    int32_t               round;
-    small_vector<int32_t> receiver_rounds;
+    symbol_id_type sym_id;
+    percent_type   rate;
+    asset          base_charge;
+    asset          charge_threshold;
+    asset          minimum_charge;
+    asset          dist_threshold;
+    dist_rules     rules;
+    uint32_t       round;
 };
 
 struct newdomain {
@@ -483,13 +482,13 @@ struct tryunlock {
 struct setpsvbouns {
     symbol     sym;
     decimal<6> rate;
-    asset_type base_charge;
-    asset_type charge_threshold;
-    asset_type minimum_charge;
-    asset_type dist_threshold;
+    asset      base_charge;
+    asset      charge_threshold;
+    asset      minimum_charge;
+    asset      dist_threshold;
     dist_rules rules;
 
-    EVT_ACTION_VER0(setpsivbouns);
+    EVT_ACTION_VER0(setpsvbouns);
 };
 
 struct distpsvbonus {
@@ -521,13 +520,13 @@ FC_REFLECT(evt::chain::contracts::lock_condkeys, (threshold)(cond_keys));
 FC_REFLECT(evt::chain::contracts::lock_def, (name)(proposer)(status)(unlock_time)(deadline)(assets)(condition)(succeed)(failed)(signed_keys));
 FC_REFLECT_ENUM(evt::chain::contracts::lock_aprv_type, (cond_key));
 
-FC_REFLECT_ENUM(dist_receiver_type, (address)(stack));
-FC_REFLECT(dist_stack_receiver, (sym_id)(threshold));
+FC_REFLECT_ENUM(evt::chain::contracts::dist_receiver_type, (address)(ftholders));
+FC_REFLECT(evt::chain::contracts::dist_stack_receiver, (threshold));
 FC_REFLECT_ENUM(evt::chain::contracts::dist_rule_type, (fixed)(percent)(remaining_percent));
 FC_REFLECT(evt::chain::contracts::dist_fixed_rule, (receiver)(amount));
 FC_REFLECT(evt::chain::contracts::dist_percent_rule, (receiver)(percent));
-FC_REFLECT(evt::chain::contracts::dist_stack_rule, (sym_id)(threshold));
-FC_REFLECT(evt::chain::contracts::passive_bonus, (rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(round)(receiver_rounds));
+FC_REFLECT(evt::chain::contracts::dist_rpercent_rule, (receiver)(percent));
+FC_REFLECT(evt::chain::contracts::passive_bonus, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(round));
 
 FC_REFLECT(evt::chain::contracts::newdomain, (name)(creator)(issue)(transfer)(manage));
 FC_REFLECT(evt::chain::contracts::issuetoken, (domain)(names)(owner));
@@ -558,5 +557,5 @@ FC_REFLECT(evt::chain::contracts::updsched, (producers));
 FC_REFLECT(evt::chain::contracts::newlock, (name)(proposer)(unlock_time)(deadline)(assets)(condition)(succeed)(failed));
 FC_REFLECT(evt::chain::contracts::aprvlock, (name)(approver)(data));
 FC_REFLECT(evt::chain::contracts::tryunlock, (name)(executor));
-FC_REFLECT(evt::chain::contracts::setpsvbouns, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules));
+FC_REFLECT(evt::chain::contracts::setpsvbouns, (sym)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules));
 FC_REFLECT(evt::chain::contracts::distpsvbonus, (sym_id)(deadline)(final_receiver));

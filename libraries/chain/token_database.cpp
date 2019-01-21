@@ -114,6 +114,8 @@ name128 action_key_prefixes[] = {
     N128(.bonus)
 };
 
+static_assert(sizeof(action_key_prefixes) / sizeof(name128) == (int)token_type::max_value + 1);
+
 struct key_hasher {
     size_t
     operator()(const std::string& key) const {

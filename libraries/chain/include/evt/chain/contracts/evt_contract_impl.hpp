@@ -21,6 +21,8 @@
 #include <boost/safe_numerics/checked_default.hpp>
 #include <boost/safe_numerics/checked_integer.hpp>
 
+#include <fmt/ostream.h>
+
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/ripemd160.hpp>
 
@@ -163,6 +165,15 @@ auto get_metavalue = [](const auto& obj, auto k) {
     return optional<std::string>();
 };
 
+// for bonus_id, 0 is always stand for passive bonus
+// otherwise it's active bonus
+name128
+get_bonus_db_key(uint64_t sym_id, uint64_t bonus_id) {
+    uint128_t v = bonus_id;
+    v |= ((uint128_t)sym_id << 64);
+    return v;
+}
+
 template<typename T>
 name128
 get_db_key(const T& v) {
@@ -187,6 +198,12 @@ get_db_key<evt_link_object>(const evt_link_object& v) {
     return v.link_id;
 }
 
+template<>
+name128
+get_db_key<passive_bonus>(const passive_bonus& pb) {
+    return get_bonus_db_key(pb.sym_id, 0);
+}
+
 template<typename T>
 std::optional<name128>
 get_db_prefix(const T& v) {
@@ -197,15 +214,6 @@ template<>
 std::optional<name128>
 get_db_prefix<token_def>(const token_def& v) {
     return v.domain;
-}
-
-// for bonus_id, 0 is always stand for static bonus
-// otherwise it's dynamic bonus
-name128
-get_bonus_db_key(uint64_t sym_id, uint64_t bonus_id) {
-    uint128_t v = bonus_id;
-    v |= (sym_id << 64);
-    return v;
 }
 
 #define ADD_DB_TOKEN(TYPE, VALUE)                                                                              \
@@ -1790,56 +1798,111 @@ enum class bonus_check_type {
 
 auto check_n_rtn = [](auto& asset, auto sym, auto ctype) -> decltype(asset) {
     EVT_ASSERT2(asset.sym() == sym, bonus_asset_exception, "Invalid symbol of assets, expected: {}, provided:  {}", sym, asset.sym());
-    switch(bonus_check_type) {
-    case natural: {
+    switch(ctype) {
+    case bonus_check_type::natural: {
         EVT_ASSERT2(asset.amount() >= 0, bonus_asset_exception, "Invalid amount of assets, must be natural number. Provided: {}", asset);
         break;
     }
-    case positive: {
+    case bonus_check_type::positive: {
         EVT_ASSERT2(asset.amount() > 0, bonus_asset_exception, "Invalid amount of assets, must be positive. Provided: {}", asset);
         break;
     }
     default: {
-        break;
+        assert(false);
     }
     }  // switch
     
     return asset;
 };
 
-bool
-check_bonus_rules(const dist_rules& rules, asset_type amount) {
-    auto sym             = amount.sym();
-    auto remain          = amount.amount();
-    auto remain_percents = percent_type(0);
+void
+check_bonus_receiver(const token_database& tokendb, const dist_receiver& receiver) {
+    switch(receiver.type()) {
+    case dist_receiver_type::address: {
+        auto& addr = receiver.get<address>();
+        EVT_ASSERT2(addr.is_public_key(), bonus_receiver_exception, "Only public key address can be used for receiving bonus now.");
+        break;
+    }
+    case dist_receiver_type::ftholders: {
+        auto& sr     = receiver.get<dist_stack_receiver>();
+        auto  sym_id = sr.threshold.symbol_id();
+        EVT_ASSERT2(tokendb.exists_token(token_type::fungible, std::nullopt, name128::from_number(sym_id)),
+            bonus_receiver_exception, "Provided bonus tokens, which has sym id: {}, used for receiving is not existed", sym_id);
+        break;
+    }
+    default: {
+        assert(false);
+    }
+    } // switch
+}
+
+void
+check_bonus_rules(const token_database& tokendb, const dist_rules& rules, asset amount) {
+    auto sym            = amount.sym();
+    auto remain         = amount.amount();
+    auto remain_percent = percent_type(0);
+    auto index          = 0;
 
     for(auto& rule : rules) {
         switch(rule.type()) {
         case dist_rule_type::fixed: {
-            EVT_ASSERT2(remain_percents == 0, bonus_rule_order_exception, "Fix rule should be defined in front of remain-percent rules");
+            EVT_ASSERT2(remain_percent == 0, bonus_rules_order_exception,
+                "Rule #{} is not valid, fix rule should be defined in front of remain-percent rules", index);
             auto& fr  = rule.get<dist_fixed_rule>();
+            // check receiver
+            check_bonus_receiver(tokendb, fr.receiver);
+            // check sym and > 0
             auto& frv = check_n_rtn(fr.amount, sym, bonus_check_type::positive);
-            if(frv.amount() > remain) {
-                return false;
-            }
+            // check large than remain
+            EVT_ASSERT2(frv.amount() <= remain, bonus_rules_exception,
+                "Rule #{} is not valid, its required amount: {} is large than remainning: {}", index, frv, asset(remain, sym));
             remain -= frv.amount();
             break;
         }
         case dist_rule_type::percent: {
-            EVT_ASSERT2(remain_percents == 0, bonus_rule_order_exception, "Percent rule should be defined in front of remain-percent rules");
+            EVT_ASSERT2(remain_percent == 0, bonus_rules_order_exception,
+                "Rule #{} is not valid, percent rule should be defined in front of remain-percent rules", index);
             auto& pr = rule.get<dist_percent_rule>();
-            EVT_ASSERT2(fr.percent > 0 && fr.percent <= 1, bonus_percent_value_exception, "Precent value should be in range (0,1]");
-            auto prv = fr.percent * amount.amount();
-            if(prv > remain) {
-                return false;
-            }
+            // check receiver
+            check_bonus_receiver(tokendb, pr.receiver);
+            // check valid precent
+            EVT_ASSERT2(pr.percent > 0 && pr.percent <= 1, bonus_percent_value_exception,
+                "Rule #{} is not valid, precent value should be in range (0,1]", index);
+            auto prv = (int64_t)boost::multiprecision::ceil(pr.percent * real_type(amount.amount()));
+            // check large than remain
+            EVT_ASSERT2(prv <= remain, bonus_rules_exception,
+                "Rule #{} is not valid, its required amount: {} is large than remainning: {}", index, asset(prv, sym), asset(remain, sym));
+            // check percent result is large than minial unit of asset
+            EVT_ASSERT2(prv >= 1, bonus_percent_result_exception,
+                "Rule #{} is not valid, the amount for this rule shoule be as least large than one unit of asset, but it's zero now.", index);
             remain -= prv;
             break;
         }
         case dist_rule_type::remaining_percent: {
-
+            EVT_ASSERT2(remain > 0, bonus_rules_exception, "There's no bonus left for reamining-percent rule to distribute");
+            auto& pr = rule.get<dist_percent_rule>();
+            // check receiver
+            check_bonus_receiver(tokendb, pr.receiver);
+            // check valid precent
+            EVT_ASSERT2(pr.percent > 0 && pr.percent <= 1, bonus_percent_value_exception, "Precent value should be in range (0,1]");
+            auto prv = (int64_t)boost::multiprecision::ceil(pr.percent * real_type(remain));
+            // check percent result is large than minial unit of asset
+            EVT_ASSERT2(prv >= 1, bonus_percent_result_exception,
+                "Rule #{} is not valid, the amount for this rule shoule be as least large than one unit of asset, but it's zero now.", index);
+            remain_percent += pr.percent;
+            EVT_ASSERT2(remain_percent <= 1, bonus_percent_value_exception, "Sum of remaining percents is large than 100%, current: {}", remain_percent);
+            break;
+        }
+        default: {
+            assert(false);
         }
         }  // switch
+        index++;
+    }
+
+    if(remain > 0) {
+        EVT_ASSERT2(remain_percent == 1, bonus_rules_not_fullfill,
+            "Rules are not fullfill amount, total: {}, remains: {}, remains precent fill: {}", amount, asset(remain, sym), remain_percent);
     }
 }
 
@@ -1859,12 +1922,12 @@ EVT_ACTION_IMPL_BEGIN(setpsvbouns) {
 
         auto check_n_rtn = [sym](auto& asset, auto ctype) -> decltype(asset) {
             EVT_ASSERT2(asset.sym() == sym, bonus_asset_exception, "Invalid symbol of assets, expected: {}, provided:  {}", sym, asset.sym());
-            switch(bonus_check_type) {
-            case natural: {
+            switch(ctype) {
+            case bonus_check_type::natural: {
                 EVT_ASSERT2(asset.amount() >= 0, bonus_asset_exception, "Invalid amount of assets, must be natural number. Provided: {}", asset);
                 break;
             }
-            case positive: {
+            case bonus_check_type::positive: {
                 EVT_ASSERT2(asset.amount() > 0, bonus_asset_exception, "Invalid amount of assets, must be positive. Provided: {}", asset);
                 break;
             }
@@ -1882,9 +1945,14 @@ EVT_ACTION_IMPL_BEGIN(setpsvbouns) {
         pb.charge_threshold = check_n_rtn(spbact.charge_threshold, sym, bonus_check_type::natural);
         pb.minimum_charge   = check_n_rtn(spbact.minimum_charge, sym, bonus_check_type::natural);
         pb.dist_threshold   = check_n_rtn(spbact.dist_threshold, sym, bonus_check_type::positive);
-        pb.rules            = std::move(spbact.rules);
-        pb.round            = 0;
+
+        check_bonus_rules(spbact.rules, spbact.dist_threshold);
+        pb.rules = std::move(spbact.rules);
+        pb.round = 0;
+
+        ADD_DB_TOKEN(token_type::bonus, pb);
     }
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 EVT_ACTION_IMPL_END()
 
