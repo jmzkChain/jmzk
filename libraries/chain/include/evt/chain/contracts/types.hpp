@@ -148,7 +148,7 @@ struct suspend_def {
     public_key_type                        proposer;
     fc::enum_type<uint8_t, suspend_status> status;
     transaction                            trx;
-    public_keys_type                       signed_keys;
+    public_keys_set                        signed_keys;
     signatures_type                        signatures;
 };
 
@@ -196,7 +196,7 @@ struct lock_def {
     small_vector<address, 4> succeed;
     small_vector<address, 4> failed;
 
-    public_keys_type signed_keys;
+    public_keys_set signed_keys;
 };
 
 enum class lock_aprv_type {
