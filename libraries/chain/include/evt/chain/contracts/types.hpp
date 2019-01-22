@@ -61,6 +61,14 @@ using address_list    = small_vector<address_type, 4>;
 using conf_key        = evt::chain::conf_key;
 using percent_type    = evt::chain::percent_type;
 
+// represent for property for one symbol in one account
+// also records the create time
+struct property {
+    int64_t  amount;        // amount for asset
+    uint32_t created_at;    // utc seconds
+    uint32_t created_index; // action index at that time
+};
+
 struct token_def {
     token_def() = default;
     token_def(const domain_name& domain, const token_name& name, const address_list& owner)
@@ -238,6 +246,11 @@ struct passive_bonus {
     asset          dist_threshold;
     dist_rules     rules;
     uint32_t       round;
+    time_point     deadline;  // deadline for latest round
+};
+
+struct passive_bonus_dist {
+
 };
 
 struct newdomain {
@@ -495,7 +508,7 @@ struct setpsvbouns {
 
 struct distpsvbonus {
     symbol_id_type    sym_id;
-    time_point_sec    deadline;
+    time_point        deadline;
     optional<address> final_receiver;
 
     EVT_ACTION_VER0(distpsvbonus);
@@ -503,6 +516,7 @@ struct distpsvbonus {
 
 }}}  // namespace evt::chain::contracts
 
+FC_REFLECT(evt::chain::contracts::property, (amount)(created_at)(created_index));
 FC_REFLECT(evt::chain::contracts::token_def, (domain)(name)(owner)(metas));
 FC_REFLECT(evt::chain::contracts::key_weight, (key)(weight));
 FC_REFLECT(evt::chain::contracts::authorizer_weight, (ref)(weight));

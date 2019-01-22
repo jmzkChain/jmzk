@@ -43,8 +43,9 @@ public:
     uint64_t next_global_sequence();
 
     bool has_authorized(const domain_name& domain, const domain_key& key) const;
-    
     void finalize_trace( action_trace& trace, const std::chrono::steady_clock::time_point& start);
+    
+    uint32_t get_index_of_trx() const { return (uint32_t)trx_context.executed.size(); }
 
 public:
     void reset_console();

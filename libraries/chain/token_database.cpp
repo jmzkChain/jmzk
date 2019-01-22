@@ -4,20 +4,14 @@
  */
 #include <evt/chain/token_database.hpp>
 
+#ifndef __cpp_lib_string_view
+#define __cpp_lib_string_view
+#endif
+
 #include <deque>
 #include <fstream>
 #include <string_view>
 #include <unordered_set>
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
-#define XXH_INLINE_ALL
-#include <xxhash.h>
-#pragma GCC diagnostic pop
-
-#ifndef __cpp_lib_string_view
-#define __cpp_lib_string_view
-#endif
 
 #include <rocksdb/db.h>
 #include <rocksdb/cache.h>
@@ -29,6 +23,7 @@
 #include <fc/filesystem.hpp>
 #include <fc/io/datastream.hpp>
 #include <fc/io/raw.hpp>
+#include <fc/crypto/city.hpp>
 
 #include <evt/chain/config.hpp>
 #include <evt/chain/exceptions.hpp>
@@ -112,7 +107,7 @@ name128 action_key_prefixes[] = {
     N128(.prodvote),
     N128(.evtlink),
     N128(.bonus),
-    N128(.bonusdist)
+    N128(.bonuspsvdist)
 };
 
 static_assert(sizeof(action_key_prefixes) / sizeof(name128) == (int)token_type::max_value + 1);
@@ -120,7 +115,7 @@ static_assert(sizeof(action_key_prefixes) / sizeof(name128) == (int)token_type::
 struct key_hasher {
     size_t
     operator()(const std::string& key) const {
-        return XXH64(key.data(), key.size(), 0);
+        return fc::city_hash_size_t(key.data(), key.size());
     }
 };
 

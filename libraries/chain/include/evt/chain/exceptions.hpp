@@ -237,6 +237,7 @@ FC_DECLARE_DERIVED_EXCEPTION( bonus_percent_value_exception,  bonus_exception,  
 FC_DECLARE_DERIVED_EXCEPTION( bonus_percent_result_exception, bonus_exception,  3041007, "Invalid result after calculating the percent" );
 FC_DECLARE_DERIVED_EXCEPTION( bonus_rules_not_fullfill,       bonus_exception,  3041008, "Rules are not fullfile the provided amount" );
 FC_DECLARE_DERIVED_EXCEPTION( bonus_receiver_exception,       bonus_exception,  3041009, "Invalid receiver for bonus" );
+FC_DECLARE_DERIVED_EXCEPTION( bonus_latest_not_expired,       bonus_exception,  3041010, "Latest bonus distribution is not expired" );
 
 FC_DECLARE_DERIVED_EXCEPTION( producer_exception,                      chain_exception,    3050000, "Producer exception" );
 FC_DECLARE_DERIVED_EXCEPTION( producer_priv_key_not_found,             producer_exception, 3050001, "Producer private key is not available" );

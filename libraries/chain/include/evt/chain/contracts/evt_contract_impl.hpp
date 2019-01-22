@@ -21,14 +21,9 @@
 #include <boost/safe_numerics/checked_default.hpp>
 #include <boost/safe_numerics/checked_integer.hpp>
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
-#define XXH_INLINE_ALL
-#include <xxhash.h>
-#pragma GCC diagnostic pop
-
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/ripemd160.hpp>
+#include <fc/crypto/city.hpp>
 
 #include <evt/chain/apply_context.hpp>
 #include <evt/chain/token_database.hpp>
@@ -239,10 +234,10 @@ get_db_prefix<token_def>(const token_def& v) {
         tokendb.put_token(TYPE, action_op::put, get_db_prefix(VALUE), get_db_key(VALUE), dv.as_string_view()); \
     }
 
-#define PUT_DB_ASSET(ADDR, VALUE)                                  \
+#define PUT_DB_ASSET(ADDR, SYM, VALUE)                                  \
     {                                                              \
         auto dv = make_db_value(VALUE);                            \
-        tokendb.put_asset(ADDR, VALUE.sym(), dv.as_string_view()); \
+        tokendb.put_asset(ADDR, SYM, dv.as_string_view()); \
     }
 
 #define READ_DB_TOKEN(TYPE, PREFIX, KEY, VALUEREF, EXCEPTION, FORMAT, ...)  \
@@ -264,6 +259,13 @@ get_db_prefix<token_def>(const token_def& v) {
         }                                                                     \
     }
 
+#define MAKE_PROPERTY(AMOUNT)                                                 \
+    property {                                                                \
+        .amount = AMOUNT,                                                     \
+        .created_at = context.control.pending_block_time().sec_since_epoch(), \
+        .created_index = context.get_index_of_trx()                           \
+    }
+
 #define READ_DB_ASSET(ADDR, SYM, VALUEREF)                                                              \
     try {                                                                                               \
         auto str = std::string();                                                                       \
@@ -275,15 +277,15 @@ get_db_prefix<token_def>(const token_def& v) {
         EVT_THROW2(balance_exception, "There's no balance left in {} with sym: {}", ADDR, SYM);         \
     }
 
-#define READ_DB_ASSET_NO_THROW(ADDR, SYM, VALUEREF)                        \
-    {                                                                      \
-        auto str = std::string();                                          \
-        if(!tokendb.read_asset(ADDR, SYM, str, true /* no throw */)) {     \
-            VALUEREF = asset(0, SYM);                                      \
-        }                                                                  \
-        else {                                                             \
-            extract_db_value(str, VALUEREF);                               \
-        }                                                                  \
+#define READ_DB_ASSET_NO_THROW(ADDR, SYM, VALUEREF)                                   \
+    {                                                                                 \
+        auto str = std::string();                                                     \
+        if(!tokendb.read_asset(ADDR, SYM, str, true /* no throw */)) {                \
+            VALUEREF = MAKE_PROPERTY(0);                                              \
+        }                                                                             \
+        else {                                                                        \
+            extract_db_value(str, VALUEREF);                                          \
+        }                                                                             \
     }
 
 } // namespace __internal
@@ -563,16 +565,21 @@ get_fungible_address(symbol sym) {
     return address(N(.fungible), name128::from_number(sym.id()), 0);
 }
 
+address
+get_bonus_address(symbol_id_type sym_id, uint32_t bonus_id) {
+    return address(N(.bonus), name128::from_number(sym_id), bonus_id);
+}
+
 void
-transfer_fungible(asset& from, asset& to, uint64_t total) {
+transfer_fungible(property& from, property& to, uint64_t total) {
     using namespace boost::safe_numerics;
 
-    auto r1 = checked::subtract<uint64_t>(from.amount(), total);
-    auto r2 = checked::add<uint64_t>(to.amount(), total);
+    auto r1 = checked::subtract<uint64_t>(from.amount, total);
+    auto r2 = checked::add<uint64_t>(to.amount, total);
     EVT_ASSERT(!r1.exception() && !r2.exception(), math_overflow_exception, "Opeartions resulted in overflows.");
     
-    from -= asset(total, from.sym());
-    to += asset(total, to.sym());
+    from.amount -= total;
+    to.amount   += total;
 }
 
 }  // namespace __internal
@@ -626,7 +633,8 @@ EVT_ACTION_IMPL_BEGIN(newfungible) {
         ADD_DB_TOKEN(token_type::fungible, fungible);
 
         auto addr = get_fungible_address(fungible.sym);
-        PUT_DB_ASSET(addr, fungible.total_supply);
+        auto prop = MAKE_PROPERTY(fungible.total_supply.amount());
+        PUT_DB_ASSET(addr, fungible.sym, prop);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -691,16 +699,16 @@ EVT_ACTION_IMPL_BEGIN(issuefungible) {
         auto addr = get_fungible_address(sym);
         EVT_ASSERT(addr != ifact.address, fungible_address_exception, "From and to are the same address");
 
-        asset from, to;
+        property from, to;
         READ_DB_ASSET(addr, sym, from);
         READ_DB_ASSET_NO_THROW(ifact.address, sym, to);
 
-        EVT_ASSERT(from >= ifact.number, fungible_supply_exception, "Exceeds total supply of ${sym} fungible tokens.", ("sym",sym));
+        EVT_ASSERT(from.amount >= ifact.number.amount(), fungible_supply_exception, "Exceeds total supply of ${sym} fungible tokens.", ("sym",sym));
 
         transfer_fungible(from, to, ifact.number.amount());
 
-        PUT_DB_ASSET(ifact.address, to);
-        PUT_DB_ASSET(addr, from);
+        PUT_DB_ASSET(ifact.address, sym, to);
+        PUT_DB_ASSET(addr, sym, from);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -721,16 +729,16 @@ EVT_ACTION_IMPL_BEGIN(transferft) {
 
         auto& tokendb = context.token_db;
         
-        asset facc, tacc;
-        READ_DB_ASSET(tfact.from, sym, facc);
-        READ_DB_ASSET_NO_THROW(tfact.to, sym, tacc);
+        property from, to;
+        READ_DB_ASSET(tfact.from, sym, from);
+        READ_DB_ASSET_NO_THROW(tfact.to, sym, to);
 
-        EVT_ASSERT(facc >= tfact.number, balance_exception, "Address does not have enough balance left.");
+        EVT_ASSERT(from.amount >= tfact.number.amount(), balance_exception, "Address does not have enough balance left.");
 
-        transfer_fungible(facc, tacc, tfact.number.amount());
+        transfer_fungible(from, to, tfact.number.amount());
 
-        PUT_DB_ASSET(tfact.to, tacc);
-        PUT_DB_ASSET(tfact.from, facc);
+        PUT_DB_ASSET(tfact.to, sym, to);
+        PUT_DB_ASSET(tfact.from, sym, from);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -751,16 +759,16 @@ EVT_ACTION_IMPL_BEGIN(recycleft) {
 
         auto addr = get_fungible_address(sym);
         
-        asset facc, tacc;
-        READ_DB_ASSET(rfact.address, sym, facc);
-        READ_DB_ASSET_NO_THROW(addr, sym, tacc);
+        property from, to;
+        READ_DB_ASSET(rfact.address, sym, from);
+        READ_DB_ASSET_NO_THROW(addr, sym, to);
 
-        EVT_ASSERT(facc >= rfact.number, balance_exception, "Address does not have enough balance left.");
+        EVT_ASSERT(from.amount >= rfact.number.amount(), balance_exception, "Address does not have enough balance left.");
 
-        transfer_fungible(facc, tacc, rfact.number.amount());
+        transfer_fungible(from, to, rfact.number.amount());
 
-        PUT_DB_ASSET(addr, tacc);
-        PUT_DB_ASSET(rfact.address, facc);
+        PUT_DB_ASSET(addr, sym, to);
+        PUT_DB_ASSET(rfact.address, sym, from);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -781,16 +789,16 @@ EVT_ACTION_IMPL_BEGIN(destroyft) {
 
         auto addr = address();
 
-        asset facc, tacc;
-        READ_DB_ASSET(rfact.address, sym, facc);
-        READ_DB_ASSET_NO_THROW(addr, sym, tacc);
+        property from, to;
+        READ_DB_ASSET(rfact.address, sym, from);
+        READ_DB_ASSET_NO_THROW(addr, sym, to);
 
-        EVT_ASSERT(facc >= rfact.number, balance_exception, "Address does not have enough balance left.");
+        EVT_ASSERT(from.amount >= rfact.number.amount(), balance_exception, "Address does not have enough balance left.");
 
-        transfer_fungible(facc, tacc, rfact.number.amount());
+        transfer_fungible(from, to, rfact.number.amount());
 
-        PUT_DB_ASSET(addr, tacc);
-        PUT_DB_ASSET(rfact.address, facc);
+        PUT_DB_ASSET(addr, sym, to);
+        PUT_DB_ASSET(rfact.address, sym, from);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -809,16 +817,16 @@ EVT_ACTION_IMPL_BEGIN(evt2pevt) {
 
         auto& tokendb = context.token_db;
         
-        asset facc, tacc;
-        READ_DB_ASSET(epact.from, evt_sym(), facc);
-        READ_DB_ASSET_NO_THROW(epact.to, pevt_sym(), tacc);
+        property from, to;
+        READ_DB_ASSET(epact.from, evt_sym(), from);
+        READ_DB_ASSET_NO_THROW(epact.to, pevt_sym(), to);
 
-        EVT_ASSERT(facc >= epact.number, balance_exception, "Address does not have enough balance left.");
+        EVT_ASSERT(from.amount >= epact.number.amount(), balance_exception, "Address does not have enough balance left.");
 
-        transfer_fungible(facc, tacc, epact.number.amount());
+        transfer_fungible(from, to, epact.number.amount());
 
-        PUT_DB_ASSET(epact.to, tacc);
-        PUT_DB_ASSET(epact.from, facc);
+        PUT_DB_ASSET(epact.to, pevt_sym(), to);
+        PUT_DB_ASSET(epact.from, evt_sym(), from);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -1215,33 +1223,33 @@ EVT_ACTION_IMPL_BEGIN(paycharge) {
     try {
         auto& tokendb = context.token_db;
 
-        asset evt, pevt;
+        property evt, pevt;
         READ_DB_ASSET_NO_THROW(pcact.payer, pevt_sym(), pevt);
-        auto paid = std::min(pcact.charge, (uint32_t)pevt.amount());
+        auto paid = std::min((int64_t)pcact.charge, pevt.amount);
         if(paid > 0) {
-            pevt -= asset(paid, pevt_sym());
-            PUT_DB_ASSET(pcact.payer, pevt);
+            pevt.amount -= paid;
+            PUT_DB_ASSET(pcact.payer, pevt_sym(), pevt);
         }
 
         if(paid < pcact.charge) {
             READ_DB_ASSET_NO_THROW(pcact.payer, evt_sym(), evt);
             auto remain = pcact.charge - paid;
-            if(evt.amount() < (int64_t)remain) {
-                EVT_THROW2(charge_exceeded_exception,"There are {} EVT and {} Pinned EVT left, but charge is {:n}",
-                    evt, pevt, asset(pcact.charge, evt_sym()));
+            if(evt.amount < (int64_t)remain) {
+                EVT_THROW2(charge_exceeded_exception,"There are only {} and {} left, but charge is {}",
+                    asset(evt.amount, evt_sym()), asset(pevt.amount, pevt_sym()), asset(pcact.charge, evt_sym()));
             }
-            evt -= asset(remain, evt_sym());
-            PUT_DB_ASSET(pcact.payer, evt);
+            evt.amount -= remain;
+            PUT_DB_ASSET(pcact.payer, evt_sym(), evt);
         }
 
         auto  pbs  = context.control.pending_block_state();
         auto& prod = pbs->get_scheduled_producer(pbs->header.timestamp).block_signing_key;
 
-        asset prodasset;
-        READ_DB_ASSET_NO_THROW(prod, evt_sym(), prodasset);
+        property bp;
+        READ_DB_ASSET_NO_THROW(prod, evt_sym(), bp);
         // give charge to producer
-        prodasset += asset(pcact.charge, evt_sym());
-        PUT_DB_ASSET(prod, prodasset);
+        bp.amount += pcact.charge;
+        PUT_DB_ASSET(prod, evt_sym(), bp);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -1370,16 +1378,16 @@ EVT_ACTION_IMPL_BEGIN(everipay) {
         auto payer = address(*keys.begin());
         EVT_ASSERT(payer != epact.payee, everipay_exception, "Payer and payee shouldn't be the same one");
 
-        asset facc, tacc;
-        READ_DB_ASSET(payer, sym, facc);
-        READ_DB_ASSET_NO_THROW(epact.payee, sym, tacc);
+        property from, to;
+        READ_DB_ASSET(payer, sym, from);
+        READ_DB_ASSET_NO_THROW(epact.payee, sym, to);
 
-        EVT_ASSERT(facc >= epact.number, everipay_exception, "Payer does not have enough balance left.");
+        EVT_ASSERT(from.amount >= epact.number.amount(), everipay_exception, "Payer does not have enough balance left.");
 
-        transfer_fungible(facc, tacc, epact.number.amount());
+        transfer_fungible(from, to, epact.number.amount());
 
-        PUT_DB_ASSET(epact.payee, tacc);
-        PUT_DB_ASSET(payer, facc);
+        PUT_DB_ASSET(epact.payee, sym, to);
+        PUT_DB_ASSET(payer, sym, from);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -1648,16 +1656,17 @@ EVT_ACTION_IMPL_BEGIN(newlock) {
             }
             case asset_type::fungible: {
                 auto& fungible = la.template get<lockft_def>();
+                auto  sym      = fungible.amount.sym();
 
-                asset fass, tass;
-                READ_DB_ASSET(fungible.from, fungible.amount.sym(), fass);
-                READ_DB_ASSET_NO_THROW(laddr, fungible.amount.sym(), tass);
+                property from, to;
+                READ_DB_ASSET(fungible.from, sym, from);
+                READ_DB_ASSET_NO_THROW(laddr, sym, to);
                 
-                EVT_ASSERT(fass >= fungible.amount, lock_assets_exception, "From address donn't have enough balance left.");
-                transfer_fungible(fass, tass, fungible.amount.amount());
+                EVT_ASSERT(from.amount >= fungible.amount.amount(), lock_assets_exception, "From address donn't have enough balance left.");
+                transfer_fungible(from, to, fungible.amount.amount());
 
-                PUT_DB_ASSET(fungible.from, fass);
-                PUT_DB_ASSET(laddr, tass);
+                PUT_DB_ASSET(fungible.from, sym, from);
+                PUT_DB_ASSET(laddr, sym, to);
                 break;
             }
             }  // switch
@@ -1774,16 +1783,17 @@ EVT_ACTION_IMPL_BEGIN(tryunlock) {
 
                 auto& fungible = la.get<lockft_def>();
                 auto& toaddr   = (*pkeys)[0];
+                auto  sym      = fungible.amount.sym();
 
-                asset fass, tass;
-                READ_DB_ASSET(laddr, fungible.amount.sym(), fass);
-                READ_DB_ASSET_NO_THROW(toaddr, fungible.amount.sym(), tass);
+                property from, to;
+                READ_DB_ASSET(laddr, sym, from);
+                READ_DB_ASSET_NO_THROW(toaddr, sym, to);
                 
-                EVT_ASSERT(fass >= fungible.amount, lock_assets_exception, "From address donn't have enough balance left.");
-                transfer_fungible(fass, tass, fungible.amount.amount());
+                EVT_ASSERT(from.amount >= fungible.amount.amount(), lock_assets_exception, "From address donn't have enough balance left.");
+                transfer_fungible(from, to, fungible.amount.amount());
 
-                PUT_DB_ASSET(laddr, fass);
-                PUT_DB_ASSET(toaddr, tass);
+                PUT_DB_ASSET(laddr, sym, from);
+                PUT_DB_ASSET(toaddr, sym, to);
             }
             }  // switch
         }
@@ -1965,8 +1975,8 @@ namespace __internal {
 
 struct pubkey_hasher {
     size_t
-    operator()(const public_key_type& pkey) const {
-        return XXH64((char*)&pkey, sizeof(public_key_type::storage_type::type_at<0>), 0);
+    operator()(const std::string& key) const {
+        return fc::city_hash_size_t(key.data(), key.size());
     }
 };
 
@@ -1974,7 +1984,7 @@ template<typename T>
 struct no_hasher {
     size_t
     operator()(const T v) const {
-        static_assert(sizeof(v) == sizeof(size_t));
+        static_assert(sizeof(v) <= sizeof(size_t));
         return (size_t)v;
     }
 };
@@ -1982,12 +1992,44 @@ struct no_hasher {
 // it's a very special map that holds the hash value as key
 // so the hasher method simplely return the key directly
 // key is the hash(pubkey) and value is the amount of asset
-using holder_slim_map = google::dense_hash_map<uint64_t, uint64_t, no_hasher>;
+using holder_slim_map = google::dense_hash_map<uint32_t, int64_t, no_hasher<uint32_t>>;
 // map for storing the pubkeys of collision
-using holder_miss_map = std::unordered_map<public_key_type, uint64_t, pubkey_hasher>;
+using holder_coll_map = std::unordered_map<std::string, int64_t, pubkey_hasher>;
+
+struct holder_dist {
+    symbol_id_type  sym_id;
+    holder_slim_map slim;
+    holder_coll_map coll;
+    uint64_t        total;
+};
+
+void
+build_holder_dist(const token_database& tokendb, symbol sym, holder_dist& dist) {
+    dist.sym_id = sym.id();
+    tokendb.read_assets_range(sym, 0, [&dist](auto& k, auto&& v) {
+        property prop;
+        extract_db_value(v, prop);
+
+        auto h  = fc::city_hash32(k.data(), k.size());
+        auto it = dist.slim.emplace(h, prop.amount);
+        if(it.second == false) {
+            // meet collision
+            dist.coll.emplace(std::string(k.data(), k.size()), prop.amount);
+        }
+        dist.total += prop.amount;
+
+        return true;
+    });
+};
+
+using holder_dists = small_vector<holder_dist, 4>;
 
 struct bonusdist {
-    
+    uint32_t          created_at;    // utc seconds
+    uint32_t          created_index; // action index at that time
+    holder_dists      holders;
+    time_point_sec    deadline;
+    optional<address> final_receiver;
 };
 
 }  // namespace __internal
@@ -1997,10 +2039,69 @@ EVT_ACTION_IMPL_BEGIN(distpsvbonus) {
 
     auto& spbact = context.act.data_as<ACT>();
     try {
+        EVT_ASSERT(context.has_authorized(N128(.bonus), name128::from_number(spbact.sym_id)), action_authorize_exception, "Invalid authorization fields(domain and key).");
 
+        auto& tokendb = context.control.token_db();
+
+        auto pb = passive_bonus();
+        READ_DB_TOKEN(token_type::bonus, std::nullopt,  get_bonus_db_key(spbact.sym_id, 0), pb, unknown_bonus_exception,
+            "Cannot find passive bonus registered for fungible with sym id: {}.", spbact.sym_id);
+
+        if(pb.round > 0) {
+            // already has dist round
+            EVT_ASSERT2(context.control.pending_block_time() > pb.deadline, bonus_latest_not_expired,
+                "Latest bonus distribution is not expired. Its deadline is {}", pb.deadline);
+        }
+
+        auto bd = bonusdist();
+        for(auto& rule : pb.rules) {
+            auto ftrev = std::optional<dist_stack_receiver>();
+
+            switch(rule.type()) {
+            case dist_rule_type::fixed: {
+                auto& fr = rule.get<dist_fixed_rule>();
+                if(fr.receiver.type() == dist_receiver_type::ftholders) {
+                    ftrev = fr.receiver.get<dist_stack_receiver>();
+                }
+                break;
+            }
+            case dist_rule_type::percent:
+            case dist_rule_type::remaining_percent: {
+                auto& pr = rule.get<dist_percent_rule>();
+                if(pr.receiver.type() == dist_receiver_type::ftholders) {
+                    ftrev = pr.receiver.get<dist_stack_receiver>();
+                }
+                break;
+            }
+            default: {
+                assert(false);
+            }
+            }  // switch
+
+            if(ftrev.has_value()) {
+                auto dist = holder_dist();
+                build_holder_dist(tokendb, ftrev->threshold.sym(), dist);
+                bd.holders.emplace_back(std::move(dist));
+            }
+        }
+
+        bd.created_at     = context.control.pending_block_time();
+        bd.created_index  = context.get_index_of_trx();
+        bd.deadline       = spbact.deadline;
+        bd.final_receiver = spbact.final_receiver;
+
+        auto dbv = make_db_value(bd);
+        tokendb.put_token(token_type::bonuspsvdist, action_op::add, std::nullopt, get_bonus_db_key(spbact.sym_id, pb.round), dbv.as_string_view());
+
+        pb.round++;
+        pb.deadline = spbact.deadline;
+        PUT_DB_TOKEN(token_type::bonus, pb);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 EVT_ACTION_IMPL_END()
 
 }}} // namespace evt::chain::contracts
+
+FC_REFLECT(evt::chain::contracts::__internal::holder_dist, (sym_id)(slim)(coll)(total));
+FC_REFLECT(evt::chain::contracts::__internal::bonusdist, (created_at)(created_index)(holders)(deadline)(final_receiver));
