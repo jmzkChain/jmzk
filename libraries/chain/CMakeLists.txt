@@ -57,7 +57,7 @@ add_library( evt_chain_lite SHARED
              ${HEADERS}
              )
 
-target_link_libraries( evt_chain evt_utilities fc chainbase rocksdb xxhash fmt-header-only sparsehash )
+target_link_libraries( evt_chain evt_utilities fc chainbase rocksdb fmt-header-only sparsehash )
 target_include_directories( evt_chain
                             PUBLIC
                             "${CMAKE_CURRENT_SOURCE_DIR}/include"
