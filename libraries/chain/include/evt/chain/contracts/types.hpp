@@ -4,6 +4,8 @@
  */
 #pragma once
 
+#include <boost/multiprecision/cpp_dec_float.hpp>
+
 #include <evt/chain/address.hpp>
 #include <evt/chain/asset.hpp>
 #include <evt/chain/chain_config.hpp>

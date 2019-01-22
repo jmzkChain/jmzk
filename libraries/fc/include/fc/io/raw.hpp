@@ -5,7 +5,6 @@
 #include <optional>
 #include <tuple>
 
-#include <boost/multiprecision/cpp_int.hpp>
 #include <boost/multiprecision/cpp_dec_float.hpp>
 
 #include <boost/interprocess/containers/string.hpp>
@@ -65,18 +64,6 @@ has_custom_function() {
     return has_custom_function_helper<T>(0);
 }
 
-template<size_t Size>
-using UInt = number<cpp_int_backend<Size, Size, unsigned_magnitude, unchecked, void>>;
-template<size_t Size>
-using Int = number<cpp_int_backend<Size, Size, signed_magnitude, unchecked, void>>;
-template<typename Stream>
-void pack(Stream& s, const UInt<256>& n);
-template<typename Stream>
-void unpack(Stream& s, UInt<256>& n);
-template<typename Stream>
-void pack(Stream& s, const Int<256>& n);
-template<typename Stream>
-void unpack(Stream& s, Int<256>& n);
 template<typename Stream, typename T>
 void pack(Stream& s, const boost::multiprecision::number<T>& n);
 template<typename Stream, typename T>
@@ -1003,24 +990,6 @@ void
 unpack(Stream& s, boost::multiprecision::number<T>& n) {
     static_assert(sizeof(n) == (std::numeric_limits<boost::multiprecision::number<T>>::digits + 1) / 8, "unexpected padding");
     s.read((char*)&n, sizeof(n));
-}
-
-template<typename Stream>
-void
-pack(Stream& s, const UInt<256>& n) {
-    pack(s, static_cast<UInt<128>>(n));
-    pack(s, static_cast<UInt<128>>(n >> 128));
-}
-
-template<typename Stream>
-void
-unpack(Stream& s, UInt<256>& n) {
-    UInt<128> tmp[2];
-    unpack(s, tmp[0]);
-    unpack(s, tmp[1]);
-    n = tmp[1];
-    n <<= 128;
-    n |= tmp[0];
 }
 
 }}  // namespace fc::raw

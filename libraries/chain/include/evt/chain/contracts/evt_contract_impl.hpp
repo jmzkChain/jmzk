@@ -21,6 +21,12 @@
 #include <boost/safe_numerics/checked_default.hpp>
 #include <boost/safe_numerics/checked_integer.hpp>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+#define XXH_INLINE_ALL
+#include <xxhash.h>
+#pragma GCC diagnostic pop
+
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/ripemd160.hpp>
 
@@ -28,6 +34,7 @@
 #include <evt/chain/token_database.hpp>
 #include <evt/chain/transaction_context.hpp>
 #include <evt/chain/global_property_object.hpp>
+#include <evt/chain/dense_hash.hpp>
 #include <evt/chain/contracts/types.hpp>
 #include <evt/chain/contracts/evt_link.hpp>
 #include <evt/chain/contracts/evt_link_object.hpp>
@@ -1949,6 +1956,48 @@ EVT_ACTION_IMPL_BEGIN(setpsvbouns) {
         pb.round = 0;
 
         ADD_DB_TOKEN(token_type::bonus, pb);
+    }
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+}
+EVT_ACTION_IMPL_END()
+
+namespace __internal {
+
+struct pubkey_hasher {
+    size_t
+    operator()(const public_key_type& pkey) const {
+        return XXH64((char*)&pkey, sizeof(public_key_type::storage_type::type_at<0>), 0);
+    }
+};
+
+template<typename T>
+struct no_hasher {
+    size_t
+    operator()(const T v) const {
+        static_assert(sizeof(v) == sizeof(size_t));
+        return (size_t)v;
+    }
+};
+
+// it's a very special map that holds the hash value as key
+// so the hasher method simplely return the key directly
+// key is the hash(pubkey) and value is the amount of asset
+using holder_slim_map = google::dense_hash_map<uint64_t, uint64_t, no_hasher>;
+// map for storing the pubkeys of collision
+using holder_miss_map = std::unordered_map<public_key_type, uint64_t, pubkey_hasher>;
+
+struct bonusdist {
+    
+};
+
+}  // namespace __internal
+
+EVT_ACTION_IMPL_BEGIN(distpsvbonus) {
+    using namespace __internal;
+
+    auto& spbact = context.act.data_as<ACT>();
+    try {
+
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }

@@ -39,7 +39,8 @@ enum class token_type {
     prodvote,
     evtlink,
     bonus,
-    max_value = bonus
+    bonusdist
+    max_value = bonusdist
 };
 
 enum class action_op {
