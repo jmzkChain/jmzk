@@ -1966,6 +1966,12 @@ EVT_ACTION_IMPL_BEGIN(setpsvbouns) {
         pb.round = 0;
 
         ADD_DB_TOKEN(token_type::bonus, pb);
+
+        // update global config states
+        auto& p = context.control.get_dynamic_global_properties();
+        context.db.modify(p, [&](auto& dgp) {
+            dgp.passive_bonuses.emplace_back(passive_bonus_slim { .sym_id = sym.id(), .rate = pb.rate });
+        });
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }

@@ -76,7 +76,7 @@ public:
 
 public:
     fc::sha256 digest() const;
-    public_keys_type restore_keys() const;
+    public_keys_set restore_keys() const;
 
 private:
     uint16_t        header_;

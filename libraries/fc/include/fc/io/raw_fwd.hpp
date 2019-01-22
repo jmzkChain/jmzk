@@ -34,10 +34,6 @@ struct variant_wrapper;
 template<typename IntType, typename EnumType>
 class enum_type;
 
-namespace ip {
-class endpoint;
-}  // namespace ip
-
 namespace ecc {
 class public_key;
 class private_key;
@@ -145,10 +141,6 @@ template<typename Stream>
 inline void pack(Stream& s, const path& v);
 template<typename Stream>
 inline void unpack(Stream& s, path& v);
-template<typename Stream>
-inline void pack(Stream& s, const ip::endpoint& v);
-template<typename Stream>
-inline void unpack(Stream& s, ip::endpoint& v);
 
 template<typename Stream, typename T>
 void unpack(Stream& s, std::optional<T>& v);

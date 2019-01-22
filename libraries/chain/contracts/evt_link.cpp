@@ -328,10 +328,10 @@ evt_link::to_string(int prefix) const {
     return str;
 }
 
-public_keys_type
+public_keys_set
 evt_link::restore_keys() const {
     auto hash = digest();
-    auto keys = public_keys_type();
+    auto keys = public_keys_set();
 
     keys.reserve(signatures_.size());
     for(auto& sig : signatures_) {

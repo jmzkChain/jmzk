@@ -48,17 +48,17 @@ transaction::sig_digest(const chain_id_type& chain_id) const {
     return enc.result();
 }
 
-public_keys_type
+public_keys_set
 transaction::get_signature_keys(const signatures_base_type& signatures, const chain_id_type& chain_id,
                                 bool allow_duplicate_keys) const {
     if(signatures.empty()) {
-        return public_keys_type();
+        return public_keys_set();
     }
 
     try {
         auto digest = sig_digest(chain_id);
 
-        auto recovered_pub_keys = public_keys_type();
+        auto recovered_pub_keys = public_keys_set();
         for(auto& sig : signatures) {
             auto successful_insertion                   = false;
             std::tie(std::ignore, successful_insertion) = recovered_pub_keys.emplace(sig, digest);
@@ -84,7 +84,7 @@ signed_transaction::sign(const private_key_type& key, const chain_id_type& chain
     return key.sign(sig_digest(chain_id));
 }
 
-public_keys_type
+public_keys_set
 signed_transaction::get_signature_keys(const chain_id_type& chain_id, bool allow_duplicate_keys) const {
     return transaction::get_signature_keys(signatures, chain_id, allow_duplicate_keys);
 }
