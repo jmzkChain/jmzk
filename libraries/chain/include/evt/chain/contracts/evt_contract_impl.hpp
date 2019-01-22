@@ -2091,7 +2091,7 @@ EVT_ACTION_IMPL_BEGIN(distpsvbonus) {
             }
         }
 
-        bd.created_at     = context.control.pending_block_time();
+        bd.created_at     = context.control.pending_block_time().sec_since_epoch();
         bd.created_index  = context.get_index_of_trx();
         bd.deadline       = spbact.deadline;
         bd.final_receiver = spbact.final_receiver;
