@@ -575,11 +575,51 @@ get_bonus_address(symbol_id_type sym_id, uint32_t bonus_id) {
     return address(N(.bonus), name128::from_number(sym_id), bonus_id);
 }
 
+std::pair<int64_t, int64_t>
+calucate_passive_bonus(const token_database& tokendb,
+                       symbol_id_type        sym_id,
+                       int64_t               amount,
+                       action_name           act) {
+    auto pbs = passive_bonus_slim();
+    READ_DB_TOKEN_NO_THROW(token_type::bonus_slim, std::nullopt, get_bonus_db_key(sym_id, 0), pbs);
+    
+    if(pbs.sym_id == 0) {
+        return std::make_pair(amount, 0l);
+    }
+
+    auto bonus = pbs.minimum_charge;
+    bonus += (int64_t)boost::multiprecision::ceil(pbs.rate * amount);  // add trx fees
+    bonus  = std::max(pbs.minimum_charge, bonus);    // >= minimum
+    bonus  = std::min(pbs.charge_threshold, bonus);  // <= threshold
+
+    auto method = passive_method_type::within_amount;
+
+    auto it = pbs.methods.find(act);
+    if(it != pbs.methods.cend()) {
+        method = it->second;
+    }
+
+    switch(method) {
+    case passive_method_type::within_amount: {
+        return std::make_pair(amount - bonus, bonus);
+        break;
+    }
+    case passive_method_type::outside_amount: {
+        return std::make_pair(amount + bonus, bonus);
+        break;
+    }
+    default: {
+        assert(false);
+    }
+    }  // switch
+}
+
 void
 transfer_fungible(apply_context&  context,
                   const address&  from,
                   const address&  to,
                   const asset&    total,
+                  action_name     act,
                   bool            pay_bonus = true) {
     using namespace boost::safe_numerics;
 
@@ -598,18 +638,43 @@ transfer_fungible(apply_context&  context,
         READ_DB_ASSET_NO_THROW(to, sym, pto);
     }
 
-
+    // fast path check
     EVT_ASSERT2(pfrom.amount >= total.amount(), balance_exception, "Address: {} does not have enough balance({}) left.", from, total);
 
-    auto r1 = checked::subtract<int64_t>(pfrom.amount, total.amount());
-    auto r2 = checked::add<int64_t>(pto.amount, total.amount());
+    int64_t actual_amount = total.amount(), bonus_amount = 0;
+    // evt and pevt cannot have passive bonus
+    if(sym.id() > PEVT_SYM_ID && pay_bonus) {
+        // check if fungible has passive bonus settings
+        std::tie(actual_amount, bonus_amount) = calucate_passive_bonus(tokendb, sym.id(), total.amount(), act);
+    }
+
+    EVT_ASSERT2(pfrom.amount >= actual_amount, balance_exception,
+        "Address: {} does not have enough balance({}) left.", from, asset(actual_amount, sym));
+
+    auto r1 = checked::subtract<int64_t>(pfrom.amount, actual_amount);
+    auto r2 = checked::add<int64_t>(pto.amount, actual_amount);
     EVT_ASSERT(!r1.exception() && !r2.exception(), math_overflow_exception, "Opeartions resulted in overflows.");
     
-    pfrom.amount -= total.amount();
-    pto.amount   += total.amount();
+    // update payee and payer
+    pfrom.amount -= actual_amount;
+    pto.amount   += actual_amount;
 
     PUT_DB_ASSET(to, sym, pto);
     PUT_DB_ASSET(from, sym, pfrom);
+
+    // update bonus if needed
+    if(bonus_amount > 0) {
+        auto addr = get_bonus_address(sym.id(), 0);
+
+        property pbonus;
+        READ_DB_ASSET_NO_THROW(addr, sym, pbonus);
+
+        auto r = checked::add<int64_t>(pbonus.amount, bonus_amount);
+        EVT_ASSERT2(!r.exception(), math_overflow_exception, "Opeartions resulted in overflows.");
+
+        pbonus.amount += bonus_amount;
+        PUT_DB_ASSET(addr, sym, pbonus);
+    }
 }
 
 }  // namespace __internal
@@ -730,7 +795,7 @@ EVT_ACTION_IMPL_BEGIN(issuefungible) {
         EVT_ASSERT(addr != ifact.address, fungible_address_exception, "From and to are the same address");
 
         try {
-            transfer_fungible(context, addr, ifact.address, ifact.number);
+            transfer_fungible(context, addr, ifact.address, ifact.number, N(issuefungible), false /* pay charge */);
         }
         catch(balance_exception&) {
             EVT_THROW2(fungible_supply_exception, "Exceeds total supply of fungible with sym id: {}.", sym.id());
@@ -753,7 +818,7 @@ EVT_ACTION_IMPL_BEGIN(transferft) {
         EVT_ASSERT(sym != pevt_sym(), fungible_symbol_exception, "Pinned EVT cannot be transfered");
         check_address_reserved(tfact.to);
 
-        transfer_fungible(context, tfact.from, tfact.to, tfact.number);
+        transfer_fungible(context, tfact.from, tfact.to, tfact.number, N(transferft));
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -771,7 +836,7 @@ EVT_ACTION_IMPL_BEGIN(recycleft) {
         EVT_ASSERT(sym != pevt_sym(), fungible_symbol_exception, "Pinned EVT cannot be recycled");
 
         auto addr = get_fungible_address(sym);
-        transfer_fungible(context, rfact.address, addr, rfact.number);
+        transfer_fungible(context, rfact.address, addr, rfact.number, N(recycleft), false /* pay bonus */);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -789,7 +854,7 @@ EVT_ACTION_IMPL_BEGIN(destroyft) {
         EVT_ASSERT(sym != pevt_sym(), fungible_symbol_exception, "Pinned EVT cannot be destroyed");
 
         auto addr = address();
-        transfer_fungible(context, dfact.address, addr, dfact.number);
+        transfer_fungible(context, dfact.address, addr, dfact.number, N(destroyft), false /* pay bonus */);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -806,7 +871,7 @@ EVT_ACTION_IMPL_BEGIN(evt2pevt) {
             "Invalid authorization fields(domain and key).");
         check_address_reserved(epact.to);
 
-        transfer_fungible(context, epact.from, epact.to, asset(epact.number.amount(), pevt_sym()));
+        transfer_fungible(context, epact.from, epact.to, asset(epact.number.amount(), pevt_sym()), N(evt2pevt), false /* pay bonus */);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -1361,7 +1426,7 @@ EVT_ACTION_IMPL_BEGIN(everipay) {
         auto payer = address(*keys.begin());
         EVT_ASSERT(payer != epact.payee, everipay_exception, "Payer and payee shouldn't be the same one");
 
-        transfer_fungible(context, payer, epact.payee, epact.number);
+        transfer_fungible(context, payer, epact.payee, epact.number, N(everipay));
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -1633,7 +1698,7 @@ EVT_ACTION_IMPL_BEGIN(newlock) {
                 auto& fungible = la.template get<lockft_def>();
                 // the transfer below doesn't need to pay for the passive bonus
                 // will pay in the unlock time
-                transfer_fungible(context, fungible.from, laddr, fungible.amount, false /* pay bonus */);
+                transfer_fungible(context, fungible.from, laddr, fungible.amount, N(newlock), false /* pay bonus */);
                 break;
             }
             }  // switch
@@ -1752,7 +1817,7 @@ EVT_ACTION_IMPL_BEGIN(tryunlock) {
                 auto& fungible = la.get<lockft_def>();
                 auto& toaddr   = (*pkeys)[0];
                 
-                transfer_fungible(context, laddr, toaddr, fungible.amount);
+                transfer_fungible(context, laddr, toaddr, fungible.amount, N(tryunlock));
             }
             }  // switch
         }
@@ -1880,6 +1945,14 @@ check_bonus_rules(const token_database& tokendb, const dist_rules& rules, asset 
     }
 }
 
+void
+check_passive_methods(const execution_context& exec_ctx, const passive_methods& methods) {
+    for(auto& it : methods) {
+        // check if it's a valid action
+        exec_ctx.index_of(it.first);
+    }
+}
+
 } // namespace __internal
 
 EVT_ACTION_IMPL_BEGIN(setpsvbouns) {
@@ -1923,15 +1996,22 @@ EVT_ACTION_IMPL_BEGIN(setpsvbouns) {
 
         check_bonus_rules(spbact.rules, spbact.dist_threshold);
         pb.rules = std::move(spbact.rules);
+        check_passive_methods(context.control.get_execution_context(), spbact.methods);
+        pb.methods = std::move(spbact.methods);
         pb.round = 0;
 
         ADD_DB_TOKEN(token_type::bonus, pb);
 
-        // update global config states
-        auto& p = context.control.get_dynamic_global_properties();
-        context.db.modify(p, [&](auto& dgp) {
-            dgp.passive_bonuses.emplace_back(passive_bonus_slim { .sym_id = sym.id(), .rate = pb.rate });
-        });
+        // add passive bonus slim for quick read
+        auto pbs             = passive_bonus_slim();
+        pbs.sym_id           = sym.id();
+        pbs.rate             = pb.rate;
+        pbs.base_charge      = pb.base_charge.amount();
+        pbs.charge_threshold = pb.charge_threshold.amount();
+        pbs.minimum_charge   = pb.minimum_charge.amount();
+        pbs.methods          = pb.methods;
+
+        ADD_DB_TOKEN(token_type::bonus_slim, pbs);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -2058,7 +2138,7 @@ EVT_ACTION_IMPL_BEGIN(distpsvbonus) {
         bd.final_receiver = spbact.final_receiver;
 
         auto dbv = make_db_value(bd);
-        tokendb.put_token(token_type::bonuspsvdist, action_op::add, std::nullopt, get_bonus_db_key(spbact.sym_id, pb.round), dbv.as_string_view());
+        tokendb.put_token(token_type::bonus_psvdist, action_op::add, std::nullopt, get_bonus_db_key(spbact.sym_id, pb.round), dbv.as_string_view());
 
         pb.round++;
         pb.deadline = spbact.deadline;

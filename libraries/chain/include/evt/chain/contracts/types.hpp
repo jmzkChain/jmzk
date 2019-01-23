@@ -237,20 +237,32 @@ struct dist_rpercent_rule {
 using dist_rule  = variant_wrapper<dist_rule_type, dist_fixed_rule, dist_percent_rule, dist_rpercent_rule>;
 using dist_rules = small_vector<dist_rule, 4>;
 
+enum class passive_method_type {
+    within_amount = 0,
+    outside_amount
+};
+using passive_methods = flat_map<name, passive_method_type, std::less<name>, small_vector<std::pair<name, passive_method_type>, 4>>;
+
 struct passive_bonus {
-    symbol_id_type sym_id;
-    percent_type   rate;
-    asset          base_charge;
-    asset          charge_threshold;
-    asset          minimum_charge;
-    asset          dist_threshold;
-    dist_rules     rules;
-    uint32_t       round;
-    time_point     deadline;  // deadline for latest round
+    symbol_id_type  sym_id;
+    percent_type    rate;
+    asset           base_charge;
+    asset           charge_threshold;
+    asset           minimum_charge;
+    asset           dist_threshold;
+    dist_rules      rules;
+    passive_methods methods;   // without actions specify here, others will be `within` defaultly
+    uint32_t        round;
+    time_point      deadline;  // deadline for latest round
 };
 
-struct passive_bonus_dist {
-
+struct passive_bonus_slim {
+    symbol_id_type  sym_id;
+    percent_type    rate;
+    int64_t         base_charge;
+    int64_t         charge_threshold;
+    int64_t         minimum_charge;
+    passive_methods methods;
 };
 
 struct newdomain {
@@ -420,6 +432,13 @@ struct paycharge {
     EVT_ACTION_VER0(paycharge);
 };
 
+struct paybonus {
+    address payer;
+    asset   amount;
+
+    EVT_ACTION_VER0(paybonus);
+};
+
 struct everipass {
     evt_link link;
 
@@ -495,13 +514,14 @@ struct tryunlock {
 };
 
 struct setpsvbouns {
-    symbol     sym;
-    decimal<6> rate;
-    asset      base_charge;
-    asset      charge_threshold;
-    asset      minimum_charge;
-    asset      dist_threshold;
-    dist_rules rules;
+    symbol          sym;
+    decimal<6>      rate;
+    asset           base_charge;
+    asset           charge_threshold;
+    asset           minimum_charge;
+    asset           dist_threshold;
+    dist_rules      rules;
+    passive_methods methods;
 
     EVT_ACTION_VER0(setpsvbouns);
 };
@@ -542,7 +562,9 @@ FC_REFLECT_ENUM(evt::chain::contracts::dist_rule_type, (fixed)(percent)(remainin
 FC_REFLECT(evt::chain::contracts::dist_fixed_rule, (receiver)(amount));
 FC_REFLECT(evt::chain::contracts::dist_percent_rule, (receiver)(percent));
 FC_REFLECT(evt::chain::contracts::dist_rpercent_rule, (receiver)(percent));
-FC_REFLECT(evt::chain::contracts::passive_bonus, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(round));
+FC_REFLECT_ENUM(evt::chain::contracts::passive_method_type, (within_amount)(outside_amount));
+FC_REFLECT(evt::chain::contracts::passive_bonus, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods)(round));
+FC_REFLECT(evt::chain::contracts::passive_bonus_slim, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(methods));
 
 FC_REFLECT(evt::chain::contracts::newdomain, (name)(creator)(issue)(transfer)(manage));
 FC_REFLECT(evt::chain::contracts::issuetoken, (domain)(names)(owner));
@@ -573,5 +595,5 @@ FC_REFLECT(evt::chain::contracts::updsched, (producers));
 FC_REFLECT(evt::chain::contracts::newlock, (name)(proposer)(unlock_time)(deadline)(assets)(condition)(succeed)(failed));
 FC_REFLECT(evt::chain::contracts::aprvlock, (name)(approver)(data));
 FC_REFLECT(evt::chain::contracts::tryunlock, (name)(executor));
-FC_REFLECT(evt::chain::contracts::setpsvbouns, (sym)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules));
+FC_REFLECT(evt::chain::contracts::setpsvbouns, (sym)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods));
 FC_REFLECT(evt::chain::contracts::distpsvbonus, (sym_id)(deadline)(final_receiver));

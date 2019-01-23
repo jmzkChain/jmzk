@@ -107,7 +107,8 @@ name128 action_key_prefixes[] = {
     N128(.prodvote),
     N128(.evtlink),
     N128(.bonus),
-    N128(.bonuspsvdist)
+    N128(.bonus-slim),
+    N128(.bonus-psvdist)
 };
 
 static_assert(sizeof(action_key_prefixes) / sizeof(name128) == (int)token_type::max_value + 1);

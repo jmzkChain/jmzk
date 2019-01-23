@@ -39,8 +39,9 @@ enum class token_type {
     prodvote,
     evtlink,
     bonus,
-    bonuspsvdist,
-    max_value = bonuspsvdist
+    bonus_slim,
+    bonus_psvdist,
+    max_value = bonus_psvdist
 };
 
 enum class action_op {

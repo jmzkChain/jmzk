@@ -31,13 +31,6 @@ class global_property_object
     chain_config                  configuration;
 };
 
-struct passive_bonus_slim {
-    symbol_id_type sym_id;
-    percent_type   rate;
-};
-
-using shared_passive_bonus = shared_vector<passive_bonus_slim>;
-
 /**
  * @class dynamic_global_property_object
  * @brief Maintains global state information (committee_member list, current fees)
@@ -49,11 +42,10 @@ using shared_passive_bonus = shared_vector<passive_bonus_slim>;
  */
 class dynamic_global_property_object
     : public chainbase::object<dynamic_global_property_object_type, dynamic_global_property_object> {
-    OBJECT_CTOR(dynamic_global_property_object, (passive_bonuses))
+    OBJECT_CTOR(dynamic_global_property_object)
 
     id_type              id;
     uint64_t             global_action_sequence = 0;
-    shared_passive_bonus passive_bonuses;
 };
 
 using global_property_multi_index = chainbase::shared_multi_index_container< 
@@ -71,6 +63,5 @@ using dynamic_global_property_multi_index = chainbase::shared_multi_index_contai
 CHAINBASE_SET_INDEX_TYPE(evt::chain::global_property_object, evt::chain::global_property_multi_index);
 CHAINBASE_SET_INDEX_TYPE(evt::chain::dynamic_global_property_object, evt::chain::dynamic_global_property_multi_index);
 
-FC_REFLECT(evt::chain::passive_bonus_slim, (sym_id)(rate));
-FC_REFLECT(evt::chain::dynamic_global_property_object, (global_action_sequence)(passive_bonuses));
+FC_REFLECT(evt::chain::dynamic_global_property_object, (global_action_sequence));
 FC_REFLECT(evt::chain::global_property_object, (proposed_schedule_block_num)(proposed_schedule)(configuration));
