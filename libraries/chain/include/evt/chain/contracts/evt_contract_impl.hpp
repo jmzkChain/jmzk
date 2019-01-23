@@ -409,7 +409,8 @@ EVT_ACTION_IMPL_BEGIN(transfer) {
 
     auto ttact = context.act.data_as<ACT>();
     try {
-        EVT_ASSERT(context.has_authorized(ttact.domain, ttact.name), action_authorize_exception, "Invalid authorization fields(domain and key).");
+        EVT_ASSERT(context.has_authorized(ttact.domain, ttact.name), action_authorize_exception,
+            "Invalid authorization fields(domain and key).");
         EVT_ASSERT(!ttact.to.empty(), token_owner_exception, "New owner cannot be empty.");
         for(auto& addr : ttact.to) {
             check_address_reserved(addr);
@@ -437,7 +438,8 @@ EVT_ACTION_IMPL_BEGIN(destroytoken) {
 
     auto dtact = context.act.data_as<ACT>();
     try {
-        EVT_ASSERT(context.has_authorized(dtact.domain, dtact.name), action_authorize_exception, "Invalid authorization fields(domain and key).");
+        EVT_ASSERT(context.has_authorized(dtact.domain, dtact.name), action_authorize_exception,
+            "Invalid authorization fields(domain and key).");
 
         auto& tokendb = context.token_db;
 
@@ -470,7 +472,8 @@ EVT_ACTION_IMPL_BEGIN(newgroup) {
 
     auto ngact = context.act.data_as<ACT>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.group), ngact.name), action_authorize_exception, "Invalid authorization fields(domain and key).");
+        EVT_ASSERT(context.has_authorized(N128(.group), ngact.name), action_authorize_exception,
+            "Invalid authorization fields(domain and key).");
         EVT_ASSERT(!ngact.group.key().is_generated(), group_key_exception, "Group key cannot be generated key");
         EVT_ASSERT(ngact.name == ngact.group.name(), group_name_exception,
             "Group name not match, act: ${n1}, group: ${n2}", ("n1",ngact.name)("n2",ngact.group.name()));
@@ -493,7 +496,8 @@ EVT_ACTION_IMPL_BEGIN(updategroup) {
 
     auto ugact = context.act.data_as<ACT>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.group), ugact.name), action_authorize_exception, "Invalid authorization fields(domain and key).");
+        EVT_ASSERT(context.has_authorized(N128(.group), ugact.name), action_authorize_exception,
+            "Invalid authorization fields(domain and key).");
         EVT_ASSERT(ugact.name == ugact.group.name(), group_name_exception, "Names in action are not the same.");
 
         auto& tokendb = context.token_db;
@@ -515,12 +519,13 @@ EVT_ACTION_IMPL_BEGIN(updatedomain) {
 
     auto udact = context.act.data_as<ACT>();
     try {
-        EVT_ASSERT(context.has_authorized(udact.name, N128(.update)), action_authorize_exception, "Authorized information does not match");
+        EVT_ASSERT(context.has_authorized(udact.name, N128(.update)), action_authorize_exception,
+            "Authorized information does not match");
 
         auto& tokendb = context.token_db;
 
         domain_def domain;
-        READ_DB_TOKEN(token_type::domain, std::nullopt, udact.name, domain, unknown_domain_exception, "Cannot find domain: {}", udact.name);
+        READ_DB_TOKEN(token_type::domain, std::nullopt, udact.name, domain, unknown_domain_exception,"Cannot find domain: {}", udact.name);
 
         auto pchecker = make_permission_checker(tokendb);
         if(udact.issue.has_value()) {
@@ -571,15 +576,40 @@ get_bonus_address(symbol_id_type sym_id, uint32_t bonus_id) {
 }
 
 void
-transfer_fungible(property& from, property& to, uint64_t total) {
+transfer_fungible(apply_context&  context,
+                  const address&  from,
+                  const address&  to,
+                  const asset&    total,
+                  bool            pay_bonus = true) {
     using namespace boost::safe_numerics;
 
-    auto r1 = checked::subtract<uint64_t>(from.amount, total);
-    auto r2 = checked::add<uint64_t>(to.amount, total);
+    auto& tokendb = context.token_db;
+    auto  sym     = total.sym();
+
+    property pfrom, pto;
+    if(sym == pevt_sym()) {
+        // special process the situciation where sym is pevt_sym()
+        // evt2pevt action
+        READ_DB_ASSET(from, evt_sym(), pfrom);
+        READ_DB_ASSET_NO_THROW(to, pevt_sym(), pto);
+    }
+    else {
+        READ_DB_ASSET(from, sym, pfrom);
+        READ_DB_ASSET_NO_THROW(to, sym, pto);
+    }
+
+
+    EVT_ASSERT2(pfrom.amount >= total.amount(), balance_exception, "Address: {} does not have enough balance({}) left.", from, total);
+
+    auto r1 = checked::subtract<int64_t>(pfrom.amount, total.amount());
+    auto r2 = checked::add<int64_t>(pto.amount, total.amount());
     EVT_ASSERT(!r1.exception() && !r2.exception(), math_overflow_exception, "Opeartions resulted in overflows.");
     
-    from.amount -= total;
-    to.amount   += total;
+    pfrom.amount -= total.amount();
+    pto.amount   += total.amount();
+
+    PUT_DB_ASSET(to, sym, pto);
+    PUT_DB_ASSET(from, sym, pfrom);
 }
 
 }  // namespace __internal
@@ -699,16 +729,12 @@ EVT_ACTION_IMPL_BEGIN(issuefungible) {
         auto addr = get_fungible_address(sym);
         EVT_ASSERT(addr != ifact.address, fungible_address_exception, "From and to are the same address");
 
-        property from, to;
-        READ_DB_ASSET(addr, sym, from);
-        READ_DB_ASSET_NO_THROW(ifact.address, sym, to);
-
-        EVT_ASSERT(from.amount >= ifact.number.amount(), fungible_supply_exception, "Exceeds total supply of ${sym} fungible tokens.", ("sym",sym));
-
-        transfer_fungible(from, to, ifact.number.amount());
-
-        PUT_DB_ASSET(ifact.address, sym, to);
-        PUT_DB_ASSET(addr, sym, from);
+        try {
+            transfer_fungible(context, addr, ifact.address, ifact.number);
+        }
+        catch(balance_exception&) {
+            EVT_THROW2(fungible_supply_exception, "Exceeds total supply of fungible with sym id: {}.", sym.id());
+        }
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -727,18 +753,7 @@ EVT_ACTION_IMPL_BEGIN(transferft) {
         EVT_ASSERT(sym != pevt_sym(), fungible_symbol_exception, "Pinned EVT cannot be transfered");
         check_address_reserved(tfact.to);
 
-        auto& tokendb = context.token_db;
-        
-        property from, to;
-        READ_DB_ASSET(tfact.from, sym, from);
-        READ_DB_ASSET_NO_THROW(tfact.to, sym, to);
-
-        EVT_ASSERT(from.amount >= tfact.number.amount(), balance_exception, "Address does not have enough balance left.");
-
-        transfer_fungible(from, to, tfact.number.amount());
-
-        PUT_DB_ASSET(tfact.to, sym, to);
-        PUT_DB_ASSET(tfact.from, sym, from);
+        transfer_fungible(context, tfact.from, tfact.to, tfact.number);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -755,20 +770,8 @@ EVT_ACTION_IMPL_BEGIN(recycleft) {
             "Invalid authorization fields(domain and key).");
         EVT_ASSERT(sym != pevt_sym(), fungible_symbol_exception, "Pinned EVT cannot be recycled");
 
-        auto& tokendb = context.token_db;
-
         auto addr = get_fungible_address(sym);
-        
-        property from, to;
-        READ_DB_ASSET(rfact.address, sym, from);
-        READ_DB_ASSET_NO_THROW(addr, sym, to);
-
-        EVT_ASSERT(from.amount >= rfact.number.amount(), balance_exception, "Address does not have enough balance left.");
-
-        transfer_fungible(from, to, rfact.number.amount());
-
-        PUT_DB_ASSET(addr, sym, to);
-        PUT_DB_ASSET(rfact.address, sym, from);
+        transfer_fungible(context, rfact.address, addr, rfact.number);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -777,28 +780,16 @@ EVT_ACTION_IMPL_END()
 EVT_ACTION_IMPL_BEGIN(destroyft) {
     using namespace __internal;
 
-    auto& rfact = context.act.data_as<add_clr_t<ACT>>();
+    auto& dfact = context.act.data_as<add_clr_t<ACT>>();
 
     try {
-        auto sym = rfact.number.sym();
+        auto sym = dfact.number.sym();
         EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(sym.id())), action_authorize_exception,
             "Invalid authorization fields(domain and key).");
         EVT_ASSERT(sym != pevt_sym(), fungible_symbol_exception, "Pinned EVT cannot be destroyed");
 
-        auto& tokendb = context.token_db;
-
         auto addr = address();
-
-        property from, to;
-        READ_DB_ASSET(rfact.address, sym, from);
-        READ_DB_ASSET_NO_THROW(addr, sym, to);
-
-        EVT_ASSERT(from.amount >= rfact.number.amount(), balance_exception, "Address does not have enough balance left.");
-
-        transfer_fungible(from, to, rfact.number.amount());
-
-        PUT_DB_ASSET(addr, sym, to);
-        PUT_DB_ASSET(rfact.address, sym, from);
+        transfer_fungible(context, dfact.address, addr, dfact.number);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -815,18 +806,7 @@ EVT_ACTION_IMPL_BEGIN(evt2pevt) {
             "Invalid authorization fields(domain and key).");
         check_address_reserved(epact.to);
 
-        auto& tokendb = context.token_db;
-        
-        property from, to;
-        READ_DB_ASSET(epact.from, evt_sym(), from);
-        READ_DB_ASSET_NO_THROW(epact.to, pevt_sym(), to);
-
-        EVT_ASSERT(from.amount >= epact.number.amount(), balance_exception, "Address does not have enough balance left.");
-
-        transfer_fungible(from, to, epact.number.amount());
-
-        PUT_DB_ASSET(epact.to, pevt_sym(), to);
-        PUT_DB_ASSET(epact.from, evt_sym(), from);
+        transfer_fungible(context, epact.from, epact.to, asset(epact.number.amount(), pevt_sym()));
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -1076,7 +1056,8 @@ EVT_ACTION_IMPL_BEGIN(newsuspend) {
 
     auto nsact = context.act.data_as<newsuspend>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.suspend), nsact.name), action_authorize_exception, "Invalid authorization fields(domain and key).");
+        EVT_ASSERT(context.has_authorized(N128(.suspend), nsact.name), action_authorize_exception,
+            "Invalid authorization fields(domain and key).");
 
         auto now = context.control.pending_block_time();
         EVT_ASSERT(nsact.trx.expiration > now, suspend_expired_tx_exception,
@@ -1112,7 +1093,8 @@ EVT_ACTION_IMPL_BEGIN(aprvsuspend) {
 
     auto& aeact = context.act.data_as<add_clr_t<ACT>>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.suspend), aeact.name), action_authorize_exception, "Invalid authorization fields(domain and key).");
+        EVT_ASSERT(context.has_authorized(N128(.suspend), aeact.name), action_authorize_exception,
+            "Invalid authorization fields(domain and key).");
 
         auto& tokendb = context.token_db;
 
@@ -1171,7 +1153,8 @@ EVT_ACTION_IMPL_BEGIN(execsuspend) {
 
     auto& esact = context.act.data_as<add_clr_t<ACT>>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.suspend), esact.name), action_authorize_exception, "Invalid authorization fields(domain and key).");
+        EVT_ASSERT(context.has_authorized(N128(.suspend), esact.name), action_authorize_exception,
+            "Invalid authorization fields(domain and key).");
 
         auto& tokendb = context.token_db;
 
@@ -1378,16 +1361,7 @@ EVT_ACTION_IMPL_BEGIN(everipay) {
         auto payer = address(*keys.begin());
         EVT_ASSERT(payer != epact.payee, everipay_exception, "Payer and payee shouldn't be the same one");
 
-        property from, to;
-        READ_DB_ASSET(payer, sym, from);
-        READ_DB_ASSET_NO_THROW(epact.payee, sym, to);
-
-        EVT_ASSERT(from.amount >= epact.number.amount(), everipay_exception, "Payer does not have enough balance left.");
-
-        transfer_fungible(from, to, epact.number.amount());
-
-        PUT_DB_ASSET(epact.payee, sym, to);
-        PUT_DB_ASSET(payer, sym, from);
+        transfer_fungible(context, payer, epact.payee, epact.number);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -1426,7 +1400,8 @@ EVT_ACTION_IMPL_BEGIN(prodvote) {
 
     auto& pvact = context.act.data_as<add_clr_t<ACT>>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.prodvote), pvact.key), action_authorize_exception, "Invalid authorization fields(domain and key).");
+        EVT_ASSERT(context.has_authorized(N128(.prodvote), pvact.key), action_authorize_exception,
+            "Invalid authorization fields(domain and key).");
         EVT_ASSERT(pvact.value > 0 && pvact.value < 1'000'000, prodvote_value_exception, "Invalid prodvote value: ${v}", ("v",pvact.value));
 
         auto  conf     = context.control.get_global_properties().configuration;
@@ -1656,17 +1631,9 @@ EVT_ACTION_IMPL_BEGIN(newlock) {
             }
             case asset_type::fungible: {
                 auto& fungible = la.template get<lockft_def>();
-                auto  sym      = fungible.amount.sym();
-
-                property from, to;
-                READ_DB_ASSET(fungible.from, sym, from);
-                READ_DB_ASSET_NO_THROW(laddr, sym, to);
-                
-                EVT_ASSERT(from.amount >= fungible.amount.amount(), lock_assets_exception, "From address donn't have enough balance left.");
-                transfer_fungible(from, to, fungible.amount.amount());
-
-                PUT_DB_ASSET(fungible.from, sym, from);
-                PUT_DB_ASSET(laddr, sym, to);
+                // the transfer below doesn't need to pay for the passive bonus
+                // will pay in the unlock time
+                transfer_fungible(context, fungible.from, laddr, fungible.amount, false /* pay bonus */);
                 break;
             }
             }  // switch
@@ -1731,7 +1698,8 @@ EVT_ACTION_IMPL_BEGIN(tryunlock) {
 
     auto& tuact = context.act.data_as<add_clr_t<ACT>>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.lock), tuact.name), action_authorize_exception, "Invalid authorization fields(domain and key).");
+        EVT_ASSERT(context.has_authorized(N128(.lock), tuact.name), action_authorize_exception,
+            "Invalid authorization fields(domain and key).");
 
         auto& tokendb = context.control.token_db();
 
@@ -1783,17 +1751,8 @@ EVT_ACTION_IMPL_BEGIN(tryunlock) {
 
                 auto& fungible = la.get<lockft_def>();
                 auto& toaddr   = (*pkeys)[0];
-                auto  sym      = fungible.amount.sym();
-
-                property from, to;
-                READ_DB_ASSET(laddr, sym, from);
-                READ_DB_ASSET_NO_THROW(toaddr, sym, to);
                 
-                EVT_ASSERT(from.amount >= fungible.amount.amount(), lock_assets_exception, "From address donn't have enough balance left.");
-                transfer_fungible(from, to, fungible.amount.amount());
-
-                PUT_DB_ASSET(laddr, sym, from);
-                PUT_DB_ASSET(toaddr, sym, to);
+                transfer_fungible(context, laddr, toaddr, fungible.amount);
             }
             }  // switch
         }
@@ -1929,7 +1888,8 @@ EVT_ACTION_IMPL_BEGIN(setpsvbouns) {
     auto& spbact = context.act.data_as<ACT>();
     try {
         auto sym = spbact.sym;
-        EVT_ASSERT(context.has_authorized(N128(.bonus), name128::from_number(sym.id())), action_authorize_exception, "Invalid authorization fields(domain and key).");
+        EVT_ASSERT(context.has_authorized(N128(.bonus), name128::from_number(sym.id())), action_authorize_exception,
+            "Invalid authorization fields(domain and key).");
 
         auto& tokendb = context.control.token_db();
         EVT_ASSERT2(!tokendb.exists_token(token_type::bonus, std::nullopt, get_bonus_db_key(sym.id(), 0)),
@@ -2045,7 +2005,8 @@ EVT_ACTION_IMPL_BEGIN(distpsvbonus) {
 
     auto& spbact = context.act.data_as<ACT>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.bonus), name128::from_number(spbact.sym_id)), action_authorize_exception, "Invalid authorization fields(domain and key).");
+        EVT_ASSERT(context.has_authorized(N128(.bonus), name128::from_number(spbact.sym_id)), action_authorize_exception,
+            "Invalid authorization fields(domain and key).");
 
         auto& tokendb = context.control.token_db();
 
