@@ -527,7 +527,7 @@ struct setpsvbouns {
 };
 
 struct distpsvbonus {
-    symbol_id_type    sym_id;
+    symbol_id_type    sym;
     time_point        deadline;
     optional<address> final_receiver;
 
@@ -596,4 +596,4 @@ FC_REFLECT(evt::chain::contracts::newlock, (name)(proposer)(unlock_time)(deadlin
 FC_REFLECT(evt::chain::contracts::aprvlock, (name)(approver)(data));
 FC_REFLECT(evt::chain::contracts::tryunlock, (name)(executor));
 FC_REFLECT(evt::chain::contracts::setpsvbouns, (sym)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods));
-FC_REFLECT(evt::chain::contracts::distpsvbonus, (sym_id)(deadline)(final_receiver));
+FC_REFLECT(evt::chain::contracts::distpsvbonus, (sym)(deadline)(final_receiver));

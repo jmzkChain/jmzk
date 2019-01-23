@@ -615,12 +615,12 @@ calucate_passive_bonus(const token_database& tokendb,
 }
 
 void
-transfer_fungible(apply_context&  context,
-                  const address&  from,
-                  const address&  to,
-                  const asset&    total,
-                  action_name     act,
-                  bool            pay_bonus = true) {
+transfer_fungible(apply_context& context,
+                  const address& from,
+                  const address& to,
+                  const asset&   total,
+                  action_name    act,
+                  bool           pay_bonus = true) {
     using namespace boost::safe_numerics;
 
     auto& tokendb = context.token_db;
@@ -1963,6 +1963,8 @@ EVT_ACTION_IMPL_BEGIN(setpsvbouns) {
         auto sym = spbact.sym;
         EVT_ASSERT(context.has_authorized(N128(.bonus), name128::from_number(sym.id())), action_authorize_exception,
             "Invalid authorization fields(domain and key).");
+        EVT_ASSERT(sym != evt_sym(), bonus_exception, "Passive bonus cannot be registered in EVT");
+        EVT_ASSERT(sym != pevt_sym(), bonus_exception, "Passive bonus cannot be registered in Pinned EVT");
 
         auto& tokendb = context.control.token_db();
         EVT_ASSERT2(!tokendb.exists_token(token_type::bonus, std::nullopt, get_bonus_db_key(sym.id(), 0)),
@@ -2046,7 +2048,7 @@ struct holder_dist {
     symbol_id_type  sym_id;
     holder_slim_map slim;
     holder_coll_map coll;
-    uint64_t        total;
+    int64_t         total;
 };
 
 void
@@ -2073,6 +2075,7 @@ using holder_dists = small_vector<holder_dist, 4>;
 struct bonusdist {
     uint32_t          created_at;    // utc seconds
     uint32_t          created_index; // action index at that time
+    int64_t           total;         // total amount for bonus
     holder_dists      holders;
     time_point_sec    deadline;
     optional<address> final_receiver;
@@ -2085,13 +2088,13 @@ EVT_ACTION_IMPL_BEGIN(distpsvbonus) {
 
     auto& spbact = context.act.data_as<ACT>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.bonus), name128::from_number(spbact.sym_id)), action_authorize_exception,
+        EVT_ASSERT(context.has_authorized(N128(.bonus), name128::from_number(spbact.sym.id())), action_authorize_exception,
             "Invalid authorization fields(domain and key).");
 
         auto& tokendb = context.control.token_db();
 
         auto pb = passive_bonus();
-        READ_DB_TOKEN(token_type::bonus, std::nullopt,  get_bonus_db_key(spbact.sym_id, 0), pb, unknown_bonus_exception,
+        READ_DB_TOKEN(token_type::bonus, std::nullopt,  get_bonus_db_key(spbact.sym.id(), 0), pb, unknown_bonus_exception,
             "Cannot find passive bonus registered for fungible with sym id: {}.", spbact.sym_id);
 
         if(pb.round > 0) {
@@ -2099,6 +2102,11 @@ EVT_ACTION_IMPL_BEGIN(distpsvbonus) {
             EVT_ASSERT2(context.control.pending_block_time() > pb.deadline, bonus_latest_not_expired,
                 "Latest bonus distribution is not expired. Its deadline is {}", pb.deadline);
         }
+
+        property pbonus;
+        READ_DB_ASSET_NO_THROW(get_bonus_address(spbact.sym.id(), 0), spbact.sym, pbonus);
+        EVT_ASSERT2(pbonus.amount >= pb.dist_threshold.amount(), bonus_unreached_dist_threshold,
+            "Distribution threshold: {} is unreached, current: {}", pb.dist_threshold, asset(pbonus.amount, spbact.sym));
 
         auto bd = bonusdist();
         for(auto& rule : pb.rules) {
