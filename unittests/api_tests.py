@@ -80,7 +80,6 @@ group_json_raw = '''
 }
 '''
 
-
 def pre_action():
     newdomain = AG.new_action(
         'newdomain', name=domain_name, creator=user.pub_key)
@@ -118,7 +117,7 @@ def pre_action():
         'issuefungible', address=base.Address().set_public_key(user.pub_key), number=asset(100), memo='goodluck')
 
     issuefungible2 = AG.new_action(
-        'issuefungible', address=base.Address().set_public_key(user.pub_key), number=base.EvtAsset(100), memo='goodluck')
+        'issuefungible', address=base.Address().set_public_key(user.pub_key), number=base.EvtAsset(1000), memo='goodluck')
 
     e2p = AG.new_action(
         'evt2pevt', _from=base.Address().set_public_key(user.pub_key), to=base.Address().set_public_key(user.pub_key), number=base.EvtAsset(100), memo='goodluck')
@@ -136,34 +135,56 @@ def pre_action():
         1), link=pay_link.to_string())
 
     trx = TG.new_trx()
+    trx.add_action(issuefungible2)
+    trx.add_sign(priv_evt)
+    trx.add_sign(user.priv_key)
+    trx.set_payer(user.pub_key.to_string())
+    resp = api.push_transaction(trx.dumps())
+    print(resp)
+
+    trx = TG.new_trx()
     trx.add_action(newdomain)
     trx.add_sign(user.priv_key)
     trx.add_action(newgroup)
     trx.add_action(newfungible)
-    api.push_transaction(trx.dumps())
+    trx.set_payer(user.pub_key.to_string())
+    resp = api.push_transaction(trx.dumps())
+    print(resp)
 
     trx = TG.new_trx()
     trx.add_action(issuetoken)
     trx.add_action(issuefungible1)
     trx.add_sign(user.priv_key)
-    api.push_transaction(trx.dumps())
+    trx.set_payer(user.pub_key.to_string())
+    resp = api.push_transaction(trx.dumps())
+    print(resp)
 
     trx = TG.new_trx()
     trx.add_action(issuefungible2)
     trx.add_sign(priv_evt)
-    api.push_transaction(trx.dumps())
+    trx.set_payer(user.pub_key.to_string())
+    resp = api.push_transaction(trx.dumps())
+    print(resp)
+    
 
     trx = TG.new_trx()
     trx.add_action(e2p)
     trx.add_sign(user.priv_key)
-    api.push_transaction(trx.dumps())
+    trx.set_payer(user.pub_key.to_string())
+    resp = api.push_transaction(trx.dumps())
+    print(resp)
+   
 
     trx = TG.new_trx()
     trx.add_action(destroytoken)
     trx.add_action(everipass)
     trx.add_action(everipay)
     trx.add_sign(user.priv_key)
-    api.push_transaction(trx.dumps())
+    trx.set_payer(user.pub_key.to_string())
+    resp = api.push_transaction(trx.dumps())
+    print(resp)
+
+
     time.sleep(2)
 
 
@@ -203,6 +224,7 @@ class Test(unittest.TestCase):
         trx = TG.new_trx()
         trx.add_action(everipay)
         trx.add_sign(user.priv_key)
+        trx.set_payer(user.pub_key.to_string())
         api.push_transaction(trx.dumps())
 
         req = {
@@ -232,6 +254,7 @@ class Test(unittest.TestCase):
         trx = TG.new_trx()
         trx.add_action(everipay)
         trx.add_sign(user.priv_key)
+        trx.set_payer(user.pub_key.to_string())
 
         req = {
             'link_id': 'd1680fea21a3c3d8ef555afd8fd8c903'
@@ -315,10 +338,10 @@ class Test(unittest.TestCase):
             'keys': [user.pub_key.to_string()]
         }
         resp = api.get_domains(json.dumps(req)).text
-        self.assertTrue(domain_name in resp, msg=resp)
+        res_dict = json.loads(resp)
+        self.assertEqual(res_dict[0], domain_name, msg=resp)
 
     def test_get_tokens(self):
-
 
         req = {
             'skip': 0,
@@ -326,12 +349,13 @@ class Test(unittest.TestCase):
         }
         req['domain'] = domain_name
         resp = api.get_tokens(json.dumps(req)).text
-        self.assertTrue(token1_name in resp, msg=resp)
-        self.assertTrue(token2_name in resp, msg=resp)
-        self.assertTrue(token3_name in resp, msg=resp)
+        res_dict = json.loads(resp)
+        self.assertEqual(len(res_dict), 3, msg=resp)
+        self.assertEqual(res_dict[0]['name'], token3_name, msg=resp)
+        self.assertEqual(res_dict[0]['domain'], domain_name, msg=resp)
+        self.assertTrue('owner' in res_dict[0].keys())
 
-    def test_get_history_tokens(self):
-
+    def test_get_history_tokens(self):  
 
         req = {
             'keys': [user.pub_key.to_string()]
@@ -339,17 +363,21 @@ class Test(unittest.TestCase):
         req['domain'] = domain_name
         req['name'] = token1_name
         resp = api.get_history_tokens(json.dumps(req)).text
-        self.assertTrue(token1_name in resp, msg=resp)
+        res_dict = json.loads(resp)
+        self.assertEqual(res_dict['cookie'][0], token1_name, msg=resp)
         self.assertFalse(token2_name in resp, msg=resp)
         self.assertFalse(token3_name in resp, msg=resp)
 
         req['domain'] = domain_name
         resp = api.get_history_tokens(json.dumps(req)).text
-        self.assertTrue(token1_name in resp, msg=resp)
+        res_dict = json.loads(resp)
+        self.assertEqual(res_dict['cookie'][0], token1_name, msg=resp)
+
 
         req['name'] = token1_name
         resp = api.get_history_tokens(json.dumps(req)).text
-        self.assertTrue(token1_name in resp, msg=resp)
+        res_dict = json.loads(resp)
+        self.assertEqual(res_dict['cookie'][0], token1_name, msg=resp)
 
     def test_get_groups(self):
         req = {
@@ -357,7 +385,8 @@ class Test(unittest.TestCase):
         }
 
         resp = api.get_groups(json.dumps(req)).text
-        self.assertTrue(group_name in resp, msg=resp)
+        res_dict = json.loads(resp)
+        self.assertEqual(res_dict[0], group_name, msg=resp)
 
     def test_get_fungibles(self):
         req = {
@@ -365,7 +394,8 @@ class Test(unittest.TestCase):
         }
 
         resp = api.get_fungibles(json.dumps(req)).text
-        self.assertTrue(str(sym_id) in resp, msg=resp)
+        res_dict = json.loads(resp)
+        self.assertEqual(res_dict[0], sym_id, msg=resp)
 
     def test_get_assets(self):
         req = {
@@ -373,18 +403,19 @@ class Test(unittest.TestCase):
         }
 
         resp = api.get_assets(json.dumps(req)).text
-        self.assertTrue(str(sym_id) in resp, msg=resp)
-        self.assertTrue(str(2) in resp, msg=resp)
-        self.assertTrue('97' in resp, msg=resp)
-        self.assertTrue('100' in resp, msg=resp)
+        res_dict = json.loads(resp)
+        self.assertEqual(res_dict[0], '896.63370 S#1', msg=resp)
+        self.assertEqual(res_dict[1], '94.57100 S#2', msg=resp)
+        self.assertEqual(res_dict[2], '97.00000 S#3', msg=resp)
 
         req = {
             'address': pub2.to_string()
         }
 
         resp = api.get_assets(json.dumps(req)).text
-        self.assertTrue(str(sym_id) in resp, msg=resp)
-        self.assertTrue('3' in resp, msg=resp)
+        res_dict = json.loads(resp)
+        self.assertTrue(type(res_dict) is list)
+        self.assertEqual(res_dict[0], '3.00000 S#3', msg=resp)
 
     def test_get_actions(self):
         req = {
@@ -395,11 +426,17 @@ class Test(unittest.TestCase):
         req['domain'] = domain_name
 
         resp = api.get_actions(json.dumps(req)).text
-        dic = json.loads(json.loads(resp))
-        self.assertTrue('T' in dic[0]['timestamp'], msg=dic[0]['timestamp'])
-        self.assertTrue(type(iso8601.parse_date(dic[0]['timestamp'])) is datetime.datetime, msg=dic[0]['timestamp'])
+        res_dict = json.loads(resp)
+        self.assertEqual(len(res_dict), 4, msg=resp)
+        self.assertTrue('trx_id' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('name' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('domain' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('key' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('data' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('timestamp' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('T' in res_dict[0]['timestamp'], msg=res_dict[0]['timestamp'])
+        self.assertTrue(type(iso8601.parse_date(res_dict[0]['timestamp'])) is datetime.datetime, msg=res_dict[0]['timestamp'])
         self.assertTrue(token1_name in resp, msg=resp)
-        self.assertTrue('timestamp' in resp, msg=resp)
 
         req = {
             'domain': '.fungible',
@@ -410,6 +447,14 @@ class Test(unittest.TestCase):
         req['domain'] = domain_name
 
         resp = api.get_actions(json.dumps(req)).text
+        res_dict = json.loads(resp)
+        self.assertEqual(len(res_dict), 4, msg=resp)
+        self.assertTrue('trx_id' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('name' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('domain' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('key' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('data' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('timestamp' in res_dict[0].keys(), msg=resp)
         self.assertTrue(token1_name in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
 
@@ -422,6 +467,14 @@ class Test(unittest.TestCase):
         req['domain'] = domain_name
 
         resp = api.get_actions(json.dumps(req)).text
+        res_dict = json.loads(resp)
+        self.assertEqual(len(res_dict), 1, msg=resp)
+        self.assertTrue('trx_id' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('name' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('domain' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('key' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('data' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('timestamp' in res_dict[0].keys(), msg=resp)
         self.assertTrue(token1_name in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
 
@@ -435,6 +488,14 @@ class Test(unittest.TestCase):
         req['domain'] = domain_name
 
         resp = api.get_actions(json.dumps(req)).text
+        res_dict = json.loads(resp)
+        self.assertEqual(len(res_dict), 1, msg=resp)
+        self.assertTrue('trx_id' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('name' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('domain' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('key' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('data' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('timestamp' in res_dict[0].keys(), msg=resp)
         self.assertTrue(token1_name in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
 
@@ -449,6 +510,14 @@ class Test(unittest.TestCase):
         req['domain'] = domain_name
 
         resp = api.get_actions(json.dumps(req)).text
+        res_dict = json.loads(resp)
+        self.assertEqual(len(res_dict), 1, msg=resp)
+        self.assertTrue('trx_id' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('name' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('domain' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('key' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('data' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('timestamp' in res_dict[0].keys(), msg=resp)
         self.assertTrue(token1_name in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
 
@@ -464,6 +533,14 @@ class Test(unittest.TestCase):
         req['domain'] = domain_name
 
         resp = api.get_actions(json.dumps(req)).text
+        res_dict = json.loads(resp)
+        self.assertEqual(len(res_dict), 1, msg=resp)
+        self.assertTrue('trx_id' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('name' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('domain' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('key' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('data' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('timestamp' in res_dict[0].keys(), msg=resp)
         self.assertTrue(token1_name in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
 
@@ -479,6 +556,14 @@ class Test(unittest.TestCase):
         req['domain'] = domain_name
 
         resp = api.get_actions(json.dumps(req)).text
+        res_dict = json.loads(resp)
+        self.assertEqual(len(res_dict), 1, msg=resp)
+        self.assertTrue('trx_id' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('name' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('domain' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('key' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('data' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('timestamp' in res_dict[0].keys(), msg=resp)
         self.assertTrue(token1_name in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
 
@@ -495,6 +580,14 @@ class Test(unittest.TestCase):
         req['key'] = sym_id
 
         resp = api.get_actions(json.dumps(req)).text
+        res_dict = json.loads(resp)
+        self.assertEqual(len(res_dict), 3, msg=resp)
+        self.assertTrue('trx_id' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('name' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('domain' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('key' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('data' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('timestamp' in res_dict[0].keys(), msg=resp)
         self.assertTrue('everipay' in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
 
@@ -509,7 +602,15 @@ class Test(unittest.TestCase):
         req['sym_id'] = sym_id
 
         resp = api.get_fungible_actions(json.dumps(req)).text
-        self.assertTrue('issuefungible' in resp, msg=resp)
+        res_dict = json.loads(resp)
+        self.assertEqual(len(res_dict), 4, msg=resp)
+        self.assertTrue('trx_id' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('name' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('domain' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('key' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('data' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('timestamp' in res_dict[0].keys(), msg=resp)
+        self.assertEqual(res_dict[0]['name'], 'issuefungible', msg=resp)
         self.assertTrue(str(sym_id) in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
 
@@ -522,9 +623,16 @@ class Test(unittest.TestCase):
         req['sym_id'] = sym_id
 
         resp = api.get_fungible_actions(json.dumps(req)).text
-        self.assertTrue('issuefungible' in resp, msg=resp)
+        res_dict = json.loads(resp)
+        self.assertEqual(len(res_dict), 4, msg=resp)
+        self.assertTrue('trx_id' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('name' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('domain' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('key' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('data' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('timestamp' in res_dict[0].keys(), msg=resp)
+        self.assertEqual(res_dict[0]['name'], 'issuefungible', msg=resp)
         self.assertTrue(str(sym_id) in resp, msg=resp)
-        self.assertTrue('timestamp' in resp, msg=resp)
 
         req = {
             'sym_id': 338422621,
@@ -535,9 +643,16 @@ class Test(unittest.TestCase):
         req['sym_id'] = sym_id
 
         resp = api.get_fungible_actions(json.dumps(req)).text
-        self.assertTrue('issuefungible' in resp, msg=resp)
+        res_dict = json.loads(resp)
+        self.assertEqual(len(res_dict), 4, msg=resp)
+        self.assertTrue('trx_id' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('name' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('domain' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('key' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('data' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('timestamp' in res_dict[0].keys(), msg=resp)
+        self.assertEqual(res_dict[0]['name'], 'everipay', msg=resp)
         self.assertTrue(str(sym_id) in resp, msg=resp)
-        self.assertTrue('timestamp' in resp, msg=resp)
 
         req = {
             'sym_id': 338422621,
@@ -549,22 +664,49 @@ class Test(unittest.TestCase):
         req['sym_id'] = sym_id
 
         resp = api.get_fungible_actions(json.dumps(req)).text
+        res_dict = json.loads(resp)
+        self.assertEqual(len(res_dict), 4, msg=resp)
+        self.assertTrue('trx_id' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('name' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('domain' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('key' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('data' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('timestamp' in res_dict[0].keys(), msg=resp)
         self.assertTrue('issuefungible' in resp, msg=resp)
         self.assertTrue(str(sym_id) in resp, msg=resp)
-        self.assertTrue('timestamp' in resp, msg=resp)
 
         req['sym_id'] = 1
         req['address'] = user.pub_key.to_string()
         resp = api.get_fungible_actions(json.dumps(req)).text
+        res_dict = json.loads(resp)
+        self.assertEqual(len(res_dict), 2, msg=resp)
+        self.assertTrue('trx_id' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('name' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('domain' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('key' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('data' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('timestamp' in res_dict[0].keys(), msg=resp)
         self.assertTrue('evt2pevt' in resp, msg=resp)
-        self.assertTrue('timestamp' in resp, msg=resp)
 
     def test_get_history_transaction(self):
+
+        prodvote = AG.new_action(
+        'prodvote', producer='evt', key="global-charge-factor", value=10000)
+
+        trx = TG.new_trx()
+        trx.add_action(prodvote)
+        trx.add_sign(priv_evt)
+        trx.add_sign(user.priv_key)
+        trx.set_payer(user.pub_key.to_string())
+        resp = api.push_transaction(trx.dumps())
+        time.sleep(0.5)
+
         name = fake_name()
         newdomain = AG.new_action('newdomain', name=name, creator=user.pub_key)
 
         trx = TG.new_trx()
         trx.add_action(newdomain)
+        trx.set_payer(user.pub_key.to_string())
         trx.add_sign(user.priv_key)
 
         resp = api.push_transaction(data=trx.dumps()).text
@@ -577,8 +719,14 @@ class Test(unittest.TestCase):
         req['id'] = res_dict['transaction_id']
 
         resp = api.get_history_transaction(json.dumps(req)).text
-        self.assertTrue('newdomain' in resp, msg=resp)
+        res_dict = json.loads(resp)
+        self.assertEqual(res_dict['transaction']['actions'][0]['name'], 'newdomain', msg=resp)
         self.assertTrue(name in resp, msg=resp)
+
+        resp = api.get_transaction_actions(json.dumps(req)).text
+        res_dict = json.loads(resp)
+        self.assertEqual(len(res_dict), 2, msg=res_dict)
+        self.assertEqual(res_dict[1]['name'], 'paycharge', msg=res_dict)
 
     def test_get_history_transactions(self):
         req = {
@@ -590,11 +738,20 @@ class Test(unittest.TestCase):
         }
 
         resp = api.get_history_transactions(json.dumps(req)).text
-        self.assertTrue('[]' == resp, msg=resp)
+        res_dict = json.loads(resp)
+        self.assertTrue([] == res_dict, msg=resp)
 
         req['keys'] = [user.pub_key.to_string()]
         resp = api.get_history_transactions(json.dumps(req)).text
-        self.assertTrue(domain_name in resp, msg=resp)
+        res_dict = json.loads(resp)
+
+        self.assertEqual(len(res_dict), 9, msg=resp)
+        self.assertTrue('id' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('signatures' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('compression' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('packed_trx' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('transaction' in res_dict[0].keys(), msg=resp)
+        self.assertEqual('.fungible', res_dict[0]['transaction']['actions'][0]['domain'], msg=resp)
         self.assertTrue(group_name in resp, msg=resp)
         self.assertTrue(str(sym_id) in resp, msg=resp)
 
@@ -622,7 +779,7 @@ def main(url, start_evtd, evtd_path, public_key, private_key):
     if start_evtd == True:
         evtdout = open('/tmp/evt_api_tests_evtd.log', 'w')
 
-        p = subprocess.Popen([evtd_path, '-e', '--http-validate-host=false', '--charge-free-mode', '--plugin=evt::postgres_plugin',
+        p = subprocess.Popen([evtd_path, '-e', '--http-validate-host=false',  '--plugin=evt::postgres_plugin',
                               '--plugin=evt::history_plugin', '--plugin=evt::history_api_plugin', '--plugin=evt::chain_api_plugin', '--plugin=evt::evt_api_plugin',
                               '--plugin=evt::evt_link_plugin', '--producer-name=evt', '--delete-all-blocks', '--replay-blockchain', '-d', './tmp', '--postgres-uri=postgresql://postgres@localhost:5432/evt'],
                              stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=evtdout, shell=False)

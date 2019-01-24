@@ -924,7 +924,7 @@ def init(ctx):
 @click.option('--net', '-n', default='evt-net', help='Name of the network for the environment')
 @click.option('--http/--no-http', default=False, help='Whether enable http server')
 @click.option('--host', '-h', default='127.0.0.1', help='Host address for evtwd (only works when http is enabled)')
-@click.option('--http-port', '-p', default=8888, help='Expose port for rpc request, set 0 for not expose (only works when http is enabled)')
+@click.option('--http-port', '-p', default=9999, help='Expose port for rpc request, set 0 for not expose (only works when http is enabled)')
 @click.pass_context
 def create(ctx, net, http, host, http_port):
     name = ctx.obj['name']
