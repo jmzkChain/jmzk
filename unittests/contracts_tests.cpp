@@ -90,7 +90,7 @@ public:
         payer       = address(tester::get_public_key(N(payer)));
         poorer      = address(tester::get_public_key(N(poorer)));
 
-        my_tester->add_money(payer, asset(1'000'000'000'000, symbol(5, EVT_SYM_ID)));
+        my_tester->add_money(payer, asset(1'000'000'000'000, evt_sym()));
 
         ti = 0;
     }
@@ -1443,87 +1443,135 @@ TEST_CASE_METHOD(contracts_test, "everipay_test", "[contracts]") {
 
     link.set_header(header);
     link.add_segment(evt_link::segment(evt_link::timestamp, head_ts));
-    link.add_segment(evt_link::segment(evt_link::max_pay_str, "50000000"));
+    link.add_segment(evt_link::segment(evt_link::max_pay, 50'000'000));  // 500.00000 EVT
     link.add_segment(evt_link::segment(evt_link::symbol_id, evt_sym().id()));
     link.add_segment(evt_link::segment(evt_link::link_id, "KIJHNHFMJDUKJUAA"));
 
     auto ep   = everipay();
     ep.link   = link;
     ep.payee  = poorer;
-    ep.number = asset::from_string(string("0.50000 S#1"));
+    ep.number = asset::from_string("0.50000 S#1");
 
     auto sign_link = [&](auto& l) {
         l.clear_signatures();
         l.sign(tester::get_private_key(N(payer)));
     };
 
+    // key of action is incorrect(should be 1 for EVT)
     sign_link(ep.link);
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(2), ep), key_seeds, payer), action_authorize_exception);
 
+    // header is incorrect
     ep.link.set_header(0);
     sign_link(ep.link);
-    CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), (name128)std::to_string(evt_sym().id()), ep), key_seeds, payer), evt_link_version_exception);
+    CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer), evt_link_version_exception);
 
+    // header is incorrect
     ep.link.set_header(evt_link::version1);
     sign_link(ep.link);
-    CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), (name128)std::to_string(evt_sym().id()), ep), key_seeds, payer), evt_link_type_exception);
+    CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer), evt_link_type_exception);
 
+    // header is incorrect, should be everiPay
     ep.link.set_header(evt_link::version1 | evt_link::everiPass);
     sign_link(ep.link);
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer), evt_link_type_exception);
 
+    // timeout
     ep.link.set_header(evt_link::version1 | evt_link::everiPay);
     ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts - 40));
     sign_link(ep.link);
-    CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), (name128)std::to_string(evt_sym().id()), ep), key_seeds, payer), evt_link_expiration_exception);
+    CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer), evt_link_expiration_exception);
 
+    // timeout
     ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts + 40));
     sign_link(ep.link);
-    CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), (name128)std::to_string(evt_sym().id()), ep), key_seeds, payer), evt_link_expiration_exception);
+    CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer), evt_link_expiration_exception);
 
+    // not existed
     CHECK_THROWS_AS(my_tester->control->get_link_obj_for_link_id(ep.link.get_link_id()), evt_link_existed_exception);
 
+    // payee is not valid
     ep.link.add_segment(evt_link::segment(evt_link::link_id, "JKHBJKBJKGJHGJAA"));
     ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts + 5));
     sign_link(ep.link);
     ep.payee.set_generated(".hi", "test", 123);
-    CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), (name128)std::to_string(evt_sym().id()), ep), key_seeds, payer), address_reserved_exception);
+    CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer), address_reserved_exception);
 
+    // payee is not valid
     ep.payee.set_reserved();
-    CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), (name128)std::to_string(evt_sym().id()), ep), key_seeds, payer), address_reserved_exception);
+    CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer), address_reserved_exception);
 
+    // correct
     ep.payee = poorer;
     CHECK_NOTHROW(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer));
 
+    // correct
     ep.link.add_segment(evt_link::segment(evt_link::link_id, "KIJHNHFMJDFFUKJU"));
     ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts - 5));
     sign_link(ep.link);
     CHECK_NOTHROW(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer));
 
+    // link id is duplicate
     ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts));
     ep.link.add_segment(evt_link::segment(evt_link::link_id, "KIJHNHFMJDFFUKJU"));
     sign_link(ep.link);
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer), evt_link_dupe_exception);
 
+    // correct
     ep.link.add_segment(evt_link::segment(evt_link::link_id, "JKHBJKBJKGJHGJKG"));
-    ep.number = asset::from_string(string("5.00000 S#1"));
+    ep.number = asset::from_string("5.00000 S#1");
     sign_link(ep.link);
     CHECK_NOTHROW(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer));
 
-    ep.link.add_segment(evt_link::segment(evt_link::max_pay_str, "5000"));
-    ep.link.add_segment(evt_link::segment(evt_link::link_id, "JKHBJKBJKGJHGJKB"));
+    // exceed max pay: 500.00000 EVT
+    ep.link.add_segment(evt_link::segment(evt_link::link_id, "JKHBJKBJKGJHGJET"));
+    ep.number = asset::from_string("600.00000 S#1");
     sign_link(ep.link);
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer), everipay_exception);
 
+    // cannot use both max_pay and max_pay_str
+    ep.link.add_segment(evt_link::segment(evt_link::max_pay_str, "5000"));
+    ep.link.add_segment(evt_link::segment(evt_link::link_id, "JKHBJKBJKGJHGJKB"));
+    sign_link(ep.link);
+    CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer), evt_link_exception);
+
+    // cannot use max pay string here, should be when max pay is large than UINT_MAX
+    ep.link.remove_segment(evt_link::max_pay);
+    sign_link(ep.link);
+    CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer), evt_link_exception);
+
+    // exceed max_pay_str
+    ep.link.add_segment(evt_link::segment(evt_link::max_pay_str, "20000000000"));
+    ep.number = asset::from_string("400000.00000 S#1");
+    sign_link(ep.link);
+    CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer), everipay_exception);
+
+    // correct
+    ep.number = asset::from_string("1.00000 S#1");
+    sign_link(ep.link);
+    CHECK_NOTHROW(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer));
+
+    // payer and payee cannot be the same one
     ep.payee = payer;
     ep.link.add_segment(evt_link::segment(evt_link::link_id, "JKHBJKBJKGJHGJKA"));
     sign_link(ep.link);
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer), everipay_exception);
 
-    ep.number = asset::from_string(string("500.00000 S#2"));
+    // number and sym id are not match
+    ep.number = asset::from_string("500.00000 S#2");
     ep.link.add_segment(evt_link::segment(evt_link::link_id, "JKHBJKBJKGJHGJKE"));
     sign_link(ep.link);
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer), everipay_exception);
+
+    // test everipay ver1
+    auto ep_v1   = everipay_v1();
+    ep_v1.link   = ep.link;
+    ep_v1.payee  = poorer;
+    ep_v1.number = asset::from_string("0.50000 S#1");
+    ep_v1.memo   = "tttesttt";
+
+    // version not upgrade
+    my_tester->push_action(action(N128(.fungible), N128(1), ep_v1), key_seeds, payer);
 }
 
 TEST_CASE_METHOD(contracts_test, "empty_action_test", "[contracts]") {

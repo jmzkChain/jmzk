@@ -1413,12 +1413,15 @@ EVT_ACTION_IMPL_BEGIN(everipay) {
             "Id of symbols don't match, provided: {}, expected: {}", lsym_id, sym.id());
         EVT_ASSERT(lsym_id != PEVT_SYM_ID, everipay_exception, "Pinned EVT cannot be paid.");
 
-        auto max_pay = uint32_t(0);
+        auto max_pay = int64_t(0);
         if(link.has_segment(evt_link::max_pay)) {
             max_pay = *link.get_segment(evt_link::max_pay).intv;
+            EVT_ASSERT2(!link.has_segment(evt_link::max_pay_str), evt_link_exception, "Cannot use max_pay_str while using max_pay segment");
         }
         else {
             max_pay = std::stoul(*link.get_segment(evt_link::max_pay_str).strv);
+            EVT_ASSERT2(max_pay > std::numeric_limits<uint32_t>::max(), evt_link_exception,
+                "It's not allowd to use max_pay_str when actual number can be interprated using max_pay segment");
         }
         EVT_ASSERT2(epact.number.amount() <= max_pay, everipay_exception,
             "Exceed max allowd paid amount: {:n}, actual: {:n}", max_pay, epact.number.amount());
@@ -1998,10 +2001,11 @@ EVT_ACTION_IMPL_BEGIN(setpsvbouns) {
 
         check_bonus_rules(spbact.rules, spbact.dist_threshold);
         pb.rules = std::move(spbact.rules);
+
         check_passive_methods(context.control.get_execution_context(), spbact.methods);
         pb.methods = std::move(spbact.methods);
+        
         pb.round = 0;
-
         ADD_DB_TOKEN(token_type::bonus, pb);
 
         // add passive bonus slim for quick read

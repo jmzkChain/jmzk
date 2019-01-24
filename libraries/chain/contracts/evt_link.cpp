@@ -350,6 +350,11 @@ evt_link::add_segment(const segment& seg) {
 }
 
 void
+evt_link::remove_segment(uint8_t key) {
+    segments_.erase(key);
+}
+
+void
 evt_link::add_signature(const signature_type& sig) {
     signatures_.emplace(sig);
 }

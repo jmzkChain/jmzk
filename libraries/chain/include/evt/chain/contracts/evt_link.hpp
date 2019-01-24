@@ -63,13 +63,13 @@ public:
     bool has_segment(uint8_t key) const;
 
     const link_id_type& get_link_id() const;
-
     const segments_type& get_segments() const { return segments_; }
     const signatures_type& get_signatures() const { return signatures_; }
 
 public:
     void set_header(uint16_t header) { header_ = header; }
     void add_segment(const segment&);
+    void remove_segment(uint8_t key);
     void add_signature(const signature_type&);
     void clear_signatures() { signatures_.clear(); }
     void sign(const private_key_type&);
