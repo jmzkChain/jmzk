@@ -850,9 +850,12 @@ template<typename T>
 inline T
 unpack(const std::vector<char>& s) {
     try {
-        T                       tmp;
-        datastream<const char*> ds(s.data(), size_t(s.size()));
+        T tmp;
+        auto ds = datastream<const char*>(s.data(), s.size());
         fc::raw::unpack(ds, tmp);
+        if(ds.remaining() > 0) {
+            FC_THROW_EXCEPTION2(raw_unpack_exception, "Binary buffer is not EOF after unpack variable, remaining: {} bytes.", ds.remaining());
+        }
         return tmp;
     }
     FC_RETHROW_EXCEPTIONS(warn, "error unpacking ${type}", ("type", fc::get_typename<T>::name()))
@@ -862,17 +865,13 @@ template<typename T>
 inline void
 unpack(const std::vector<char>& s, T& tmp) {
     try {
-        datastream<const char*> ds(s.data(), size_t(s.size()));
+        auto ds = datastream<const char*>(s.data(), s.size());
         fc::raw::unpack(ds, tmp);
+        if(ds.remaining() > 0) {
+            FC_THROW_EXCEPTION2(raw_unpack_exception, "Binary buffer is not EOF after unpack variable, remaining: {} bytes.", ds.remaining());
+        }
     }
     FC_RETHROW_EXCEPTIONS(warn, "error unpacking ${type}", ("type", fc::get_typename<T>::name()))
-}
-
-template<typename T>
-inline void
-pack(char* d, uint32_t s, const T& v) {
-    datastream<char*> ds(d, s);
-    fc::raw::pack(ds, v);
 }
 
 template<typename T>
@@ -882,6 +881,9 @@ unpack(const char* d, uint32_t s) {
         T v;
         auto ds = datastream<const char*>(d, s);
         fc::raw::unpack(ds, v);
+        if(ds.remaining() > 0) {
+            FC_THROW_EXCEPTION2(raw_unpack_exception, "Binary buffer is not EOF after unpack variable, remaining: {} bytes.", ds.remaining());
+        }
         return v;
     }
     FC_RETHROW_EXCEPTIONS(warn, "error unpacking ${type}", ("type", fc::get_typename<T>::name()))
@@ -893,8 +895,18 @@ unpack(const char* d, uint32_t s, T& v) {
     try {
         auto ds = datastream<const char*>(d, s);
         fc::raw::unpack(ds, v);
+        if(ds.remaining() > 0) {
+            FC_THROW_EXCEPTION2(raw_unpack_exception, "Binary buffer is not EOF after unpack variable, remaining: {} bytes.", ds.remaining());
+        }
     }
     FC_RETHROW_EXCEPTIONS(warn, "error unpacking ${type}", ("type", fc::get_typename<T>::name()))
+}
+
+template<typename T>
+inline void
+pack(char* d, uint32_t s, const T& v) {
+    datastream<char*> ds(d, s);
+    fc::raw::pack(ds, v);
 }
 
 template<typename Stream>

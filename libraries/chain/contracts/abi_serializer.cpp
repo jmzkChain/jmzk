@@ -351,9 +351,13 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
 
 fc::variant
 abi_serializer::_binary_to_variant(const type_name& type, const bytes& binary, impl::binary_to_variant_context& ctx) const {
-    auto h  = ctx.enter_scope();
-    auto ds = fc::datastream(binary.data(), binary.size());
-    return _binary_to_variant(type, ds, ctx);
+    auto h   = ctx.enter_scope();
+    auto ds  = fc::datastream(binary.data(), binary.size());
+    auto var = _binary_to_variant(type, ds, ctx);
+    if(ds.remaining() > 0) {
+        EVT_THROW2(unpack_exception, "Binary buffer is not EOF after unpack variable, remaining: {} bytes.", ds.remaining());
+    }
+    return var;
 }
 
 fc::variant
@@ -554,16 +558,18 @@ abi_traverse_context_with_path::set_array_index_of_path_back(uint32_t i) {
 
 void
 abi_traverse_context_with_path::hint_array_type_if_in_array() {
-    if(path.size() == 0 || !path.back().contains<array_index_path_item>())
+    if(path.size() == 0 || !path.back().contains<array_index_path_item>()) {
         return;
+    }
 
     path.back().get<array_index_path_item>().type_hint = array_type_path_root{};
 }
 
 void
 abi_traverse_context_with_path::hint_struct_type_if_in_array(const map<type_name, struct_def>::const_iterator& itr) {
-    if(path.size() == 0 || !path.back().contains<array_index_path_item>())
+    if(path.size() == 0 || !path.back().contains<array_index_path_item>()) {
         return;
+    }
 
     path.back().get<array_index_path_item>().type_hint = struct_type_path_root{.struct_itr = itr};
 }

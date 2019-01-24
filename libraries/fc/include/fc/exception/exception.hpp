@@ -39,7 +39,8 @@ enum exception_code {
     overflow_code                    = 19,
     underflow_code                   = 20,
     divide_by_zero_code              = 21,
-    unrecoverable_exception_code     = 22  ///< special exception, application should be abored when face this eception
+    unrecoverable_exception_code     = 22,  ///< special exception, application should be abored when face this eception
+    raw_unpack_exception_code        = 23
 };
 
 /**
@@ -309,6 +310,7 @@ FC_DECLARE_EXCEPTION(underflow_exception, underflow_code, "Integer Underflow");
 FC_DECLARE_EXCEPTION(divide_by_zero_exception, divide_by_zero_code, "Integer Divide By Zero");
 
 FC_DECLARE_EXCEPTION(unrecoverable_exception, unrecoverable_exception_code, "Encounter unrecoverable error");
+FC_DECLARE_EXCEPTION(raw_unpack_exception, raw_unpack_exception_code, "Raw unpack failed");
 
 std::string except_str();
 

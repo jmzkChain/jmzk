@@ -1571,7 +1571,7 @@ TEST_CASE_METHOD(contracts_test, "everipay_test", "[contracts]") {
     ep_v1.memo   = "tttesttt";
 
     // version not upgrade
-    my_tester->push_action(action(N128(.fungible), N128(1), ep_v1), key_seeds, payer);
+    CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep_v1), key_seeds, payer), raw_unpack_exception);
 }
 
 TEST_CASE_METHOD(contracts_test, "empty_action_test", "[contracts]") {
