@@ -37,10 +37,11 @@
 #include <fc/variant.hpp>
 
 #include <evt/chain/config.hpp>
+#include <evt/chain/exceptions.hpp>
+#include <evt/chain/execution_context_impl.hpp>
 #include <evt/chain/contracts/types.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
-#include <evt/chain/contracts/evt_contract.hpp>
-#include <evt/chain/exceptions.hpp>
+#include <evt/chain/contracts/evt_contract_abi.hpp>
 #include <evt/chain_plugin/chain_plugin.hpp>
 #include <evt/utilities/key_conversion.hpp>
 
@@ -63,6 +64,7 @@ using namespace boost::filesystem;
 
 FC_DECLARE_EXCEPTION(explained_exception, 9000000, "explained exception, see error log");
 FC_DECLARE_EXCEPTION(localized_exception, 10000000, "an error occured");
+
 #define EVTC_ASSERT(TEST, ...)                                \
     FC_EXPAND_MACRO(                                          \
         FC_MULTILINE_MACRO_BEGIN if(UNLIKELY(!(TEST))) {      \
@@ -305,6 +307,12 @@ call(const std::string& url,
     return call(url, path, fc::variant()); 
 }
 
+void
+set_execution_context(execution_context& exec_ctx) {
+    auto acts = call(get_evt_actions, fc::variant()).as<std::vector<action_ver>>();
+    exec_ctx.set_versions(acts);
+}
+
 template <typename T>
 chain::action
 create_action(const domain_name& domain, const domain_key& key, const T& value) {
@@ -481,7 +489,7 @@ local_port_used() {
 void
 try_local_port(uint32_t duration) {
     using namespace std::chrono;
-    auto start_time = duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch() ).count();
+    auto start_time = duration_cast<std::chrono::milliseconds>(system_clock::now().time_since_epoch()).count();
     while(!local_port_used()) {
         if(duration_cast<std::chrono::milliseconds>(system_clock::now().time_since_epoch()).count() - start_time > duration) {
             std::cerr << "Unable to connect to evtwd, if evtwd is running please kill the process and try again.\n";
@@ -1060,8 +1068,11 @@ struct set_suspend_subcommands {
             auto varsuspend = call(get_suspend_func, fc::mutable_variant_object("name", (proposal_name)name));
             auto suspend = suspend_def();
 
-            auto abi = abi_serializer(evt_contract_abi(), fc::hours(1));
-            abi.from_variant(varsuspend, suspend);
+            auto exec_ctx = evt_execution_context();
+            set_execution_context(exec_ctx);
+
+            auto abi = abi_serializer(evt_contract_abi(), std::chrono::hours(1));
+            abi.from_variant(varsuspend, suspend, exec_ctx);
 
             auto public_keys = call(wallet_url, wallet_public_keys);
             auto get_arg     = fc::mutable_variant_object("name", (proposal_name)name)("available_keys", public_keys);
@@ -1667,6 +1678,7 @@ main(int argc, char** argv) {
         std::cout << localized("Private key: ${key}", ("key", privs)) << std::endl;
         std::cout << localized("Public key: ${key}",  ("key", pubs))  << std::endl;
     });
+
     // Get subcommand
     auto get = app.add_subcommand("get", localized("Retrieve various items and information from the blockchain"));
     get->require_subcommand();
@@ -1674,6 +1686,16 @@ main(int argc, char** argv) {
     // get info
     get->add_subcommand("info", localized("Get current blockchain information"))->callback([] {
         std::cout << fc::json::to_pretty_string(get_info()) << std::endl;
+    });
+
+    // get actions
+    get->add_subcommand("actions", localized("Get current actions"))->callback([] {
+        std::cout << fc::json::to_pretty_string(call(get_evt_actions, fc::variant())) << std::endl;
+    });
+
+    // get abi
+    get->add_subcommand("abi", localized("Get current ABI"))->callback([] {
+        std::cout << fc::json::to_pretty_string(call(get_evt_abi, fc::variant())) << std::endl;
     });
 
     // get block

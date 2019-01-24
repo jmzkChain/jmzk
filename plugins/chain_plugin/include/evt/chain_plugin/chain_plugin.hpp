@@ -84,7 +84,6 @@ public:
     struct abi_json_to_bin_result {
         vector<char> binargs;
     };
-
     abi_json_to_bin_result abi_json_to_bin(const abi_json_to_bin_params& params) const;
 
     struct abi_bin_to_json_params {
@@ -94,14 +93,12 @@ public:
     struct abi_bin_to_json_result {
         fc::variant args;
     };
-
     abi_bin_to_json_result abi_bin_to_json(const abi_bin_to_json_params& params) const;
 
     using trx_json_to_digest_params = fc::variant_object;
     struct trx_json_to_digest_result {
         digest_type digest;
     };
-
     trx_json_to_digest_result trx_json_to_digest(const trx_json_to_digest_params& params) const;
 
     struct get_required_keys_params {
@@ -111,7 +108,6 @@ public:
     struct get_required_keys_result {
         public_keys_type required_keys;
     };
-
     get_required_keys_result get_required_keys(const get_required_keys_params& params) const;
 
     struct get_suspend_required_keys_params {
@@ -121,7 +117,6 @@ public:
     struct get_suspend_required_keys_result {
         public_keys_type required_keys;
     };
-
     get_suspend_required_keys_result get_suspend_required_keys(const get_suspend_required_keys_params& params) const;
 
     struct get_charge_params {
@@ -131,19 +126,16 @@ public:
     struct get_charge_result {
         uint32_t    charge;
     };
-
     get_charge_result get_charge(const get_charge_params& params) const;
 
     struct get_block_params {
         string block_num_or_id;
     };
-
     fc::variant get_block(const get_block_params& params) const;
 
     struct get_block_header_state_params {
         string block_num_or_id;
     };
-
     fc::variant get_block_header_state(const get_block_header_state_params& params) const;
 
     using get_head_block_header_state_params = empty;
@@ -164,6 +156,12 @@ public:
         block_id_type block_id;
     };
     fc::variant get_transaction_ids_for_block(const get_transaction_ids_for_block_params& params) const;
+
+    using get_abi_params = empty;
+    const std::string& get_abi(const get_abi_params&) const;
+
+    using get_actions_params = empty;
+    const std::string& get_actions(const get_actions_params&) const;
 };
 
 class read_write {

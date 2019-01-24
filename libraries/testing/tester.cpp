@@ -4,7 +4,6 @@
 #include <boost/test/unit_test.hpp>
 
 #include <evt/chain/token_database.hpp>
-#include <evt/chain/contracts/evt_contract.hpp>
 
 using namespace evt::chain::contracts;
 
@@ -38,7 +37,7 @@ void
 base_tester::init(bool push_genesis) {
     cfg.blocks_dir            = tempdir.path() / config::default_blocks_dir_name;
     cfg.state_dir             = tempdir.path() / config::default_state_dir_name;
-    cfg.tokendb_dir           = tempdir.path() / config::default_tokendb_dir_name;
+    cfg.db_config.db_path     = tempdir.path() / config::default_token_database_dir_name;
     cfg.contracts_console     = true;
     cfg.loadtest_mode         = false;
     cfg.charge_free_mode      = false;
@@ -102,8 +101,8 @@ base_tester::_produce_block(fc::microseconds skip_time, bool skip_pending_trxs, 
         _start_block(next_time);
     }
 
-    auto             producer = control->head_block_state()->get_scheduled_producer(next_time);
-    private_key_type priv_key;
+    auto producer = control->head_block_state()->get_scheduled_producer(next_time);
+    auto priv_key = private_key_type();
     // Check if signing private key exist in the list
     auto private_key_itr = block_signing_private_keys.find(producer.block_signing_key);
     if(private_key_itr == block_signing_private_keys.end()) {
@@ -278,7 +277,7 @@ base_tester::push_action(const action_name&               acttype,
                          uint32_t                         expiration)
 {
     try {
-        signed_transaction trx;
+        auto trx = signed_transaction();
         trx.actions.emplace_back(get_action(acttype, domain, key, data));
         set_transaction_headers(trx, payer, max_charge, expiration);
         for(const auto& auth : auths) {
@@ -293,15 +292,16 @@ base_tester::push_action(const action_name&               acttype,
 action
 base_tester::get_action(action_name acttype, const domain_name& domain, const domain_key& key, const variant_object& data) const {
     try {
-        auto& abi  = control->get_abi_serializer();
-        auto  type = abi.get_action_type(acttype);
+        auto& abi      = control->get_abi_serializer();
+        auto& exec_ctx = control->get_execution_context();
+        auto  type     = exec_ctx.get_acttype_name(acttype);
         FC_ASSERT(!type.empty(), "unknown action type ${a}", ("a", acttype));
 
         action act;
         act.name   = acttype;
         act.domain = domain;
         act.key    = key;
-        act.data   = abi.variant_to_binary(type, data);
+        act.data   = abi.variant_to_binary(type, data, exec_ctx);
         
         return act;
     }
@@ -383,10 +383,17 @@ base_tester::add_money(const address& addr, const asset& number) {
 
     auto s = tokendb.new_savepoint_session();
 
-    auto as = asset();
-    tokendb.read_asset_no_throw(addr, number.sym(), as);
+    auto str = std::string();
+    auto as  = asset(0, number.sym());
+    
+    if(tokendb.read_asset(addr, number.sym(), str, true)) {
+        extract_db_value(str, as);
+    }
+
     as += number;
-    tokendb.update_asset(addr, as);
+
+    auto dv = make_db_value(as);
+    tokendb.put_asset(addr, as.sym(), dv.as_string_view());
 
     s.accept();
     tokendb.pop_back_savepoint();

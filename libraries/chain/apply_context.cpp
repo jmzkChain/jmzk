@@ -2,12 +2,13 @@
  *  @file
  *  @copyright defined in evt/LICENSE.txt
  */
-#include <algorithm>
 #include <evt/chain/apply_context.hpp>
+
+#include <algorithm>
 #include <evt/chain/controller.hpp>
+#include <evt/chain/execution_context_impl.hpp>
 #include <evt/chain/transaction_context.hpp>
 #include <evt/chain/global_property_object.hpp>
-#include <evt/chain/contracts/types_invoker.hpp>
 #include <evt/chain/contracts/evt_contract.hpp>
 
 namespace evt { namespace chain {
@@ -45,7 +46,10 @@ apply_context::exec_one(action_trace& trace) {
 
     try {
         try {
-            types_invoker<void, apply_action>::invoke(act.name, *this);
+            if(act.index_ == -1) {
+                act.index_ = exec_ctx.index_of(act.name);
+            }
+            exec_ctx.invoke<apply_action, void>(act.index_, *this);
         }
         FC_RETHROW_EXCEPTIONS(warn, "pending console output: ${console}", ("console", fmt::to_string(_pending_console_output)));
     }

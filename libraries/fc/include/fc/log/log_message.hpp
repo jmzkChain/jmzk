@@ -4,19 +4,19 @@
  * @brief Defines types and helper macros necessary for generating log messages.
  */
 #include <memory>
+#include <boost/preprocessor/punctuation/comma_if.hpp>
+#include <boost/preprocessor/variadic/size.hpp>
+#include <fmt/core.h>
+#include <fmt/ostream.h>
 #include <fc/time.hpp>
 #include <fc/variant_object.hpp>
+#include <fc/container/small_vector_fwd.hpp>
 
 namespace fc {
 
-namespace detail {
-class log_context_impl;
-class log_message_impl;
-}  // namespace detail
-
 /**
-  * Named scope for log_level enumeration.
-  */
+ * Named scope for log_level enumeration.
+ */
 class log_level {
 public:
     /**
@@ -49,87 +49,84 @@ void to_variant(log_level e, variant& v);
 void from_variant(const variant& e, log_level& ll);
 
 /**
-    *  @brief provides information about where and when a log message was generated.
-    *  @ingroup AthenaSerializable
-    *
-    *  @see FC_LOG_CONTEXT
-    */
+ *  @brief provides information about where and when a log message was generated.
+ *  @ingroup AthenaSerializable
+ *
+ *  @see FC_LOG_CONTEXT
+ */
 class log_context {
 public:
-    log_context();
-    log_context(log_level   ll,
-                const char* file,
-                uint64_t    line,
-                const char* method);
-    ~log_context();
+    log_context() = default;
+    log_context(log_level ll, const char* file, uint64_t line, const char* method);
+
     explicit log_context(const variant& v);
+
+public:
+    void append_context(const fc::string& c);
+    string  to_string() const;
     variant to_variant() const;
 
-    string     get_file() const;
-    uint64_t   get_line_number() const;
-    string     get_method() const;
-    string     get_thread_name() const;
-    string     get_task_name() const;
-    string     get_host_name() const;
-    time_point get_timestamp() const;
-    log_level  get_log_level() const;
-    string     get_context() const;
-
-    void append_context(const fc::string& c);
-
-    string to_string() const;
-
-private:
-    std::shared_ptr<detail::log_context_impl> my;
+public:
+    log_level  level;
+    string     file;
+    uint64_t   line;
+    string     method;
+    string     thread_name;
+    string     task_name;
+    string     hostname;
+    string     context;
+    time_point timestamp;
 };
 
 void to_variant(const log_context& l, variant& v);
 void from_variant(const variant& l, log_context& c);
 
 /**
-  *  @brief aggregates a message along with the context and associated meta-information.
-  *  @ingroup AthenaSerializable
-  *
-  *  @note log_message has reference semantics, all copies refer to the same log message
-  *  and the message is read-only after construction.
-  *
-  *  When converted to JSON, log_message has the following form:
-  *  @code
-  *  {
-  *     "context" : { ... },
-  *     "format"  : "string with ${keys}",
-  *     "data"    : { "keys" : "values" }
-  *  }
-  *  @endcode
-  *
-  *  @see FC_LOG_MESSAGE
-  */
+ *  @brief aggregates a message along with the context and associated meta-information.
+ *  @ingroup AthenaSerializable
+ *
+ *  @note log_message has reference semantics, all copies refer to the same log message
+ *  and the message is read-only after construction.
+ *
+ *  When converted to JSON, log_message has the following form:
+ *  @code
+ *  {
+ *     "context" : { ... },
+ *     "format"  : "string with ${keys}",
+ *     "data"    : { "keys" : "values" }
+ *  }
+ *  @endcode
+ *
+ *  @see FC_LOG_MESSAGE
+ */
 class log_message {
 public:
-    log_message();
+    log_message() = default;
     /**
-          *  @param ctx - generally provided using the FC_LOG_CONTEXT(LEVEL) macro 
-          */
-    log_message(log_context ctx, std::string format, variant_object args = variant_object());
-    ~log_message();
+     *  @param ctx - generally provided using the FC_LOG_CONTEXT(LEVEL) macro 
+     */
+    log_message(log_context&& ctx, std::string&& format, variant_object&& args)
+        : context(std::move(ctx)), format(std::move(format)), args(std::move(args)) {}
 
+    log_message(log_context&& ctx, std::string&& message)
+        : context(std::move(ctx))
+        , format(std::move(message)) {}
+    
     log_message(const variant& v);
+
     variant to_variant() const;
+    string  get_message() const;
 
-    string get_message() const;
-
-    log_context    get_context() const;
-    string         get_format() const;
-    variant_object get_data() const;
-
-private:
-    std::shared_ptr<detail::log_message_impl> my;
+public:
+    log_context    context;
+    std::string    format;
+    variant_object args;
 };
 
 void to_variant(const log_message& l, variant& v);
 void from_variant(const variant& l, log_message& c);
 
-typedef std::vector<log_message> log_messages;
+typedef fc::small_vector<log_message, 4> log_messages;
 
 }  // namespace fc
 
@@ -159,3 +156,6 @@ FC_REFLECT_TYPENAME(fc::log_message);
  */
 #define FC_LOG_MESSAGE(LOG_LEVEL, FORMAT, ...) \
     fc::log_message(FC_LOG_CONTEXT(LOG_LEVEL), FORMAT, fc::mutable_variant_object() __VA_ARGS__)
+
+#define FC_LOG_MESSAGE2(LOG_LEVEL, FORMAT, ...) \
+    fc::log_message(FC_LOG_CONTEXT(LOG_LEVEL), fmt::format(FORMAT, ##__VA_ARGS__))

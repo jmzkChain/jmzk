@@ -11,6 +11,8 @@
 #include <unordered_set>
 #include <vector>
 
+#include <boost/multiprecision/cpp_int.hpp>
+#include <boost/multiprecision/cpp_dec_float.hpp>
 #include <boost/multi_index_container_fwd.hpp>
 
 #include <fc/smart_ref_fwd.hpp>
@@ -55,6 +57,11 @@ template<typename T, typename... Args>
 void to_variant(const boost::multi_index_container<T, Args...>& s, variant& v);
 template<typename T, typename... Args>
 void from_variant(const variant& v, boost::multi_index_container<T, Args...>& s);
+
+template<typename T>
+void to_variant(const boost::multiprecision::number<T>& n, variant& v);
+template<typename T>
+void from_variant(const variant& v, boost::multiprecision::number<T>& n);
 
 template<typename T>
 void to_variant(const smart_ref<T>& s, variant& v);
@@ -135,9 +142,9 @@ void to_variant(const fc::flat_set<T, Compare, Container>& var, variant& vo);
 template<typename T, typename Compare, typename Container>
 void from_variant(const variant& var, fc::flat_set<T, Compare, Container>& vo);
 
-template<typename T, int N>
+template<typename T, size_t N>
 void to_variant(const fc::small_vector<T, N>& var, variant& vo);
-template<typename T, int N>
+template<typename T, size_t N>
 void from_variant(const variant& var, fc::small_vector<T, N>& vo);
 
 template<typename T>
@@ -692,6 +699,18 @@ from_variant(const variant& v, boost::multi_index_container<T, Args...>& c) {
     c.clear();
     for(const auto& item : vars)
         c.insert(item.as<T>());
+}
+
+template<typename T>
+void
+to_variant(const boost::multiprecision::number<T>& n, variant& v) {
+    v = n.str();
+}
+
+template<typename T>
+void
+from_variant(const variant& v, boost::multiprecision::number<T>& n) {
+    n = boost::multiprecision::number<T>(v.get_string());
 }
 
 variant operator+(const variant& a, const variant& b);

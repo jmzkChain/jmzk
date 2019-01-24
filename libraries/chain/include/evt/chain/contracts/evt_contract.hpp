@@ -4,21 +4,11 @@
  */
 #pragma once
 
-namespace evt { namespace chain {
-class apply_context;
-class version;
-}}  // namespace evt::chain
-
 namespace evt { namespace chain { namespace contracts {
 
-struct abi_def;
-
-template<typename T>
-struct apply_action {
-    static void invoke(apply_context&);
-};
-
-abi_def evt_contract_abi();
-version evt_contract_abi_version();
+template<uint64_t>
+struct apply_action {};
 
 }}}  // namespace evt::chain::contracts
+
+#include "evt_contract_impl.hpp"

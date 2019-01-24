@@ -692,10 +692,12 @@ pg_query::get_transaction_resume(int id, pg_result const* r) {
             continue;
         }
 
+        auto& abi      = chain_.get_abi_serializer();
+        auto& exec_ctx = chain_.get_execution_context();
         for(auto& tx : block->transactions) {
             if(tx.trx.id() == trx_id) {
                 auto var = fc::variant();
-                chain_.get_abi_serializer().to_variant(tx.trx, var);
+                abi.to_variant(tx.trx, var, exec_ctx);
 
                 auto mv = fc::mutable_variant_object(var);
                 mv["block_num"] = block_num;
@@ -762,10 +764,12 @@ pg_query::get_transactions_resume(int id, pg_result const* r) {
             continue;
         }
 
+        auto& abi      = chain_.get_abi_serializer();
+        auto& exec_ctx = chain_.get_execution_context();
         for(auto& tx : block->transactions) {
             if(tx.trx.id() == trx_id) {
                 auto var = fc::variant();
-                chain_.get_abi_serializer().to_variant(tx.trx, var);
+                abi.to_variant(tx.trx, var, exec_ctx);
 
                 auto mv = fc::mutable_variant_object(var);
                 mv["block_num"] = block_num;

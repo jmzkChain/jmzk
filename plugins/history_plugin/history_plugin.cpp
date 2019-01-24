@@ -4,7 +4,7 @@
 #include <fc/variant.hpp>
 #include <fc/variant_object.hpp>
 
-#include <evt/chain/contracts/evt_contract.hpp>
+#include <evt/chain/contracts/evt_contract_abi.hpp>
 #include <evt/history_plugin/evt_pg_query.hpp>
 
 namespace evt {

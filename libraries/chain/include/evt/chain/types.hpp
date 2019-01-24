@@ -16,6 +16,7 @@
 #include <fc/smart_ref_fwd.hpp>
 #include <fc/static_variant.hpp>
 #include <fc/string.hpp>
+#include <fc/variant_wrapper.hpp>
 #include <fc/container/flat.hpp>
 #include <fc/container/small_vector.hpp>
 #include <fc/crypto/private_key.hpp>
@@ -24,6 +25,8 @@
 #include <fc/io/enum_type.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/io/varint.hpp>
+
+#include <boost/multiprecision/cpp_dec_float.hpp> 
 
 #include <evt/chain/name.hpp>
 #include <evt/chain/name128.hpp>
@@ -78,18 +81,20 @@ using fc::path;
 using fc::signed_int;
 using fc::smart_ref;
 using fc::small_vector;
+using fc::small_vector_base;
 using fc::static_variant;
 using fc::time_point;
 using fc::time_point_sec;
 using fc::unsigned_int;
 using fc::variant;
 using fc::variant_object;
+using fc::variant_wrapper;
 using fc::ecc::commitment_type;
 using fc::ecc::range_proof_info;
 using fc::ecc::range_proof_type;
 
 using public_key_type      = fc::crypto::public_key;
-using public_keys_type     = fc::flat_set<public_key_type, std::less<public_key_type>, fc::small_vector<public_key_type, 4>>;
+using public_keys_set      = fc::flat_set<public_key_type, std::less<public_key_type>, fc::small_vector<public_key_type, 4>>;
 using private_key_type     = fc::crypto::private_key;
 using signature_type       = fc::crypto::signature;
 using signatures_type      = fc::small_vector<signature_type, 4>;
@@ -116,6 +121,12 @@ using fungible_name   = name128;
 using symbol_name     = name128;
 using conf_key        = name128;
 using user_id         = public_key_type;
+
+template<int Precision>
+using decimal = boost::multiprecision::number<boost::multiprecision::cpp_dec_float<Precision>>;
+
+using percent_type = decimal<6>;
+using real_type    = decimal<24>;
 
 /**
  * List all object types from all namespaces here so they can
@@ -187,5 +198,5 @@ FC_REFLECT_ENUM(
     evt::chain::object_type,
     (null_object_type)(global_property_object_type)(dynamic_global_property_object_type)
     (block_summary_object_type)(transaction_object_type)(reversible_block_object_type)(evt_link_object_type)
-    (OBJECT_TYPE_COUNT))
-FC_REFLECT(evt::chain::void_t, )
+    (OBJECT_TYPE_COUNT));
+FC_REFLECT(evt::chain::void_t, );

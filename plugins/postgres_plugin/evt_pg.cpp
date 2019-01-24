@@ -597,8 +597,9 @@ pg::add_trx(add_context& actx, const trx_recept_t& trx, const trx_t& strx, int s
 
 int
 pg::add_action(add_context& actx, const act_trace_t& act_trace, const std::string& trx_id, int seq_num) {
-    auto& act  = act_trace.act;
-    auto  data = actx.abi.binary_to_variant(actx.abi.get_action_type(act.name), act.data);
+    auto& act     = act_trace.act;
+    auto  acttype = actx.exec_ctx.get_acttype_name(act.name);
+    auto  data    = actx.abi.binary_to_variant(acttype, act.data, actx.exec_ctx);
 
     fmt::format_to(actx.cctx.actions_copy_,
         fmt("{}\t{:d}\t{}\t{:d}\t{:d}\t{}\t{}\t{}\t{}\tnow\n"),

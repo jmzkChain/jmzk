@@ -21,7 +21,8 @@ namespace evt { namespace chain {
  *
  * This is an implementation detail. The values here are set by committee_members to tune the blockchain parameters.
  */
-class global_property_object : public chainbase::object<global_property_object_type, global_property_object> {
+class global_property_object
+    : public chainbase::object<global_property_object_type, global_property_object> {
     OBJECT_CTOR(global_property_object, (proposed_schedule))
 
     id_type                       id;
@@ -43,11 +44,11 @@ class dynamic_global_property_object
     : public chainbase::object<dynamic_global_property_object_type, dynamic_global_property_object> {
     OBJECT_CTOR(dynamic_global_property_object)
 
-    id_type  id;
-    uint64_t global_action_sequence = 0;
+    id_type              id;
+    uint64_t             global_action_sequence = 0;
 };
 
-using global_property_multi_index = chainbase::shared_multi_index_container<
+using global_property_multi_index = chainbase::shared_multi_index_container< 
     global_property_object,
     indexed_by<ordered_unique<tag<by_id>,
                               BOOST_MULTI_INDEX_MEMBER(global_property_object, global_property_object::id_type, id)>>>;

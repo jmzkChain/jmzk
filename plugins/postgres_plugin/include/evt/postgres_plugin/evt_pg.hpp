@@ -10,6 +10,7 @@
 #include <string_view>
 #include <boost/noncopyable.hpp>
 #include <evt/chain/block_state.hpp>
+#include <evt/chain/execution_context.hpp>
 #include <evt/chain/transaction.hpp>
 #include <evt/chain/contracts/types.hpp>
 
@@ -33,6 +34,7 @@ using namespace evt::chain::contracts;
 using action_t     = chain::action;
 using act_trace_t  = chain::action_trace;
 using abi_t        = chain::contracts::abi_serializer;
+using exec_ctx_t   = chain::execution_context;
 using block_ptr    = chain::block_state_ptr;
 using chain_id_t   = chain::chain_id_type;
 using trx_recept_t = chain::transaction_receipt;
@@ -42,8 +44,8 @@ struct copy_context;
 struct trx_context;
 struct add_context : boost::noncopyable {
 public:
-    add_context(copy_context& cctx, const chain_id_t& chain_id, const abi_t& abi)
-        : cctx(cctx), chain_id(chain_id), abi(abi) {}
+    add_context(copy_context& cctx, const chain_id_t& chain_id, const abi_t& abi, const exec_ctx_t& exec_ctx)
+        : cctx(cctx), chain_id(chain_id), abi(abi), exec_ctx(exec_ctx) {}
 
 public:
     copy_context&     cctx;
@@ -52,6 +54,7 @@ public:
     std::string       ts;
     const chain_id_t& chain_id;
     const abi_t&      abi;
+    const exec_ctx_t& exec_ctx;
 };
 
 class pg : boost::noncopyable {

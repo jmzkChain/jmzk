@@ -4,7 +4,7 @@
  */
 #include "libevt/evt_abi.h"
 #include "evt_impl.hpp"
-#include <evt/chain/contracts/evt_contract.hpp>
+#include <evt/chain/contracts/evt_contract_abi.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
 #include <evt/chain/types.hpp>
 #include <fc/crypto/sha256.hpp>
@@ -44,7 +44,7 @@ extern "C" {
 
 void*
 evt_abi() {
-    auto abi = new abi_serializer(evt::chain::contracts::evt_contract_abi(), fc::hours(1));
+    auto abi = new abi_serializer(evt::chain::contracts::evt_contract_abi(), std::chrono::hours(1));
     return (void*)abi;
 }
 

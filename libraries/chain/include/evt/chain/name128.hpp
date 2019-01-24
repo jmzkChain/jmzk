@@ -8,6 +8,7 @@
 #include <iosfwd>
 #include <string>
 #include <vector>
+#include <fmt/format.h>
 #include <fc/reflect/reflect.hpp>
 #include <fc/io/raw.hpp>
 
@@ -56,8 +57,8 @@ public:
     static name128 from_number(uint64_t v);
 
     explicit operator string() const;
-    operator bool() const { return value; }
-    operator uint128_t() const { return value; }
+    explicit operator bool() const { return value; }
+    explicit operator uint128_t() const { return value; }
 
     string
     to_string() const {
@@ -271,3 +272,18 @@ struct unpacker<name128> {
 }  // namespace raw
 
 }  // namespace fc
+
+namespace fmt {
+
+template <>
+struct formatter<evt::chain::name128> {
+    template <typename ParseContext>
+    constexpr auto parse(ParseContext& ctx) { return ctx.begin(); }
+
+    template <typename FormatContext>
+    auto format(const evt::chain::name128& n, FormatContext &ctx) {
+        return format_to(ctx.begin(), n.to_string());
+    }
+};
+
+}  // namespace fmt

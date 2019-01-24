@@ -1040,7 +1040,8 @@ def detailevtwd(ctx):
 ))
 @click.argument('commands', nargs=-1, type=click.UNPROCESSED)
 @click.option('--evtwd', '-w', default='evtwd', help='Name of evtwd container')
-def evtc(commands, evtwd):
+@click.option('--net', '-n', default='evt-net', help='Name of the network for the environment')
+def evtc(commands, evtwd, net):
     import subprocess
     import sys
 

@@ -10,6 +10,10 @@
 
 namespace evt { namespace chain {
 
+class apply_context;
+class authority_checker;
+class charge_manager;
+
 struct action {
 public:
     action_name name;
@@ -18,7 +22,7 @@ public:
     bytes       data;
 
 public:
-    action() {}
+    action() : index_(-1) {}
 
     // don't copy cache_ when in copy ctor.
     action(const action& lhs)
@@ -26,9 +30,10 @@ public:
         , domain(lhs.domain)
         , key(lhs.key)
         , data(lhs.data)
+        , index_(lhs.index_)
         , cache_() {}
 
-    action(action&& lhs) = default;
+    action(action&& lhs) noexcept = default;
 
     action& operator=(const action& lhs) {
         if(this != &lhs) { // self-assignment check expected
@@ -36,6 +41,7 @@ public:
             domain = lhs.domain;
             key    = lhs.key;
             data   = lhs.data;
+            index_ = lhs.index_;
         }
         return *this;
     }
@@ -46,6 +52,7 @@ public:
             domain = lhs.domain;
             key    = lhs.key;
             data   = lhs.data;
+            index_ = lhs.index_;
             cache_ = std::move(lhs.cache_);
         }
         return *this;
@@ -54,24 +61,30 @@ public:
 public:
     template<typename T>
     action(const domain_name& domain, const domain_key& key, const T& value)
-        : domain(domain)
-        , key(key) {
-        name   = T::get_name();
-        data   = fc::raw::pack(value);
-        cache_ = std::make_any<T>(value);
-    }
+        : name(T::get_action_name())
+        , domain(domain)
+        , key(key)
+        , data(fc::raw::pack(value))
+        , index_(-1)
+        , cache_(std::make_any<T>(value)) {}
 
     action(const action_name name, const domain_name& domain, const domain_key& key, const bytes& data)
         : name(name)
         , domain(domain)
         , key(key)
-        , data(data) {}
+        , data(data)
+        , index_(-1) {}
 
     template<typename T>
     void
     set_data(const T& value) {
         data   = fc::raw::pack(value);
         cache_ = std::make_any<T>(value);
+    }
+
+    void
+    set_index(int index) {
+        index_ = index;
     }
 
     // if T is a reference, will return the reference to the internal cache value
@@ -81,7 +94,7 @@ public:
     data_as() const {
         if(!cache_.has_value()) {
             using raw_type = std::remove_const_t<std::remove_reference_t<T>>;
-            EVT_ASSERT(name == raw_type::get_name(), action_type_exception, "action name is not consistent with action struct");
+            EVT_ASSERT(name == raw_type::get_action_name(), action_type_exception, "action name is not consistent with action struct");
             cache_ = std::make_any<raw_type>(fc::raw::unpack<raw_type>(data));
         }
         // no need to check name here, `any_cast` will throws exception if types don't match
@@ -89,9 +102,15 @@ public:
     }
 
 private:
+    mutable int      index_;
     mutable std::any cache_;
+
+private:
+    friend class apply_context;
+    friend class authority_checker;
+    friend class charge_manager;
 };
 
 }}  // namespace evt::chain
 
-FC_REFLECT(evt::chain::action, (name)(domain)(key)(data))
+FC_REFLECT(evt::chain::action, (name)(domain)(key)(data));

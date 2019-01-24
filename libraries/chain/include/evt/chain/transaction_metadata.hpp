@@ -19,7 +19,7 @@ public:
     transaction_id_type                             signed_id;
     signed_transaction                              trx;
     packed_transaction                              packed_trx;
-    optional<pair<chain_id_type, public_keys_type>> signing_keys;
+    optional<pair<chain_id_type, public_keys_set>>  signing_keys;
     bool                                            accepted = false;
     bool                                            implicit = false;
 
@@ -39,7 +39,7 @@ public:
         signed_id = digest_type::hash(packed_trx);
     }
 
-    const public_keys_type&
+    const public_keys_set&
     recover_keys(const chain_id_type& chain_id) {
         if(!signing_keys.has_value() || signing_keys->first != chain_id) {  // Unlikely for more than one chain_id to be used in one nodeos instance
             signing_keys = std::make_pair(chain_id, trx.get_signature_keys(chain_id));

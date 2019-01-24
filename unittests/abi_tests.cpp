@@ -10,41 +10,50 @@
 #include <fc/log/logger.hpp>
 #include <fc/variant.hpp>
 
+#include <evt/chain/execution_context_impl.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
-#include <evt/chain/contracts/evt_contract.hpp>
+#include <evt/chain/contracts/evt_contract_abi.hpp>
 #include <evt/chain/contracts/types.hpp>
 
 using namespace evt;
 using namespace chain;
 using namespace contracts;
 
+const auto&
+get_evt_abi() {
+    static auto abis = abi_serializer(evt_contract_abi(), std::chrono::hours(1));
+    return abis;
+}
+
+auto&
+get_exec_ctx() {
+    static auto exec_ctx = evt_execution_context();
+    return exec_ctx;
+}
+
 // verify that round trip conversion, via bytes, reproduces the exact same data
 fc::variant
 verify_byte_round_trip_conversion(const abi_serializer& abis, const type_name& type, const fc::variant& var) {
-    auto bytes = abis.variant_to_binary(type, var);
+    auto& exec_ctx = get_exec_ctx();
 
-    auto var2 = abis.binary_to_variant(type, bytes);
+    auto bytes = abis.variant_to_binary(type, var, exec_ctx);
+    auto var2  = abis.binary_to_variant(type, bytes, exec_ctx);
 
-    std::string r = fc::json::to_string(var2);
+    auto r = fc::json::to_string(var2);
 
-    auto bytes2 = abis.variant_to_binary(type, var2);
-
+    auto bytes2 = abis.variant_to_binary(type, var2, exec_ctx);
     CHECK(fc::to_hex(bytes) == fc::to_hex(bytes2));
 
     return var2;
-}
-
-const auto&
-get_evt_abi() {
-    static auto abis = abi_serializer(evt_contract_abi(), fc::hours(1));
-    return abis;
 }
 
 // verify that round trip conversion, via actual class, reproduces the exact same data
 template <typename T>
 fc::variant
 verify_type_round_trip_conversion(const abi_serializer& abis, const type_name& type, const fc::variant& var) {
-    auto bytes = abis.variant_to_binary(type, var);
+    auto& exec_ctx = get_exec_ctx();
+
+    auto bytes = abis.variant_to_binary(type, var, exec_ctx);
 
     T obj;
     fc::from_variant(var, obj);
@@ -52,9 +61,9 @@ verify_type_round_trip_conversion(const abi_serializer& abis, const type_name& t
     fc::variant var2;
     fc::to_variant(obj, var2);
 
-    std::string r = fc::json::to_string(var2);
+    auto r = fc::json::to_string(var2);
 
-    auto bytes2 = abis.variant_to_binary(type, var2);
+    auto bytes2 = abis.variant_to_binary(type, var2, exec_ctx);
 
     CHECK(bytes.size() == bytes2.size());
     CHECK(fc::to_hex(bytes) == fc::to_hex(bytes2));
@@ -81,14 +90,14 @@ TEST_CASE("optional_test", "[abis]") {
     abi.structs.emplace_back(struct_def{
         "optionaltest2", "", {{"a", "optionaltest?"}, {"b", "optionaltest?"}}});
 
-    auto abis = abi_serializer(abi, fc::hours(1));
+    auto abis = abi_serializer(abi, std::chrono::hours(1));
 
     auto json   = R"( { "a": 0 } )";
     auto json2  = R"( {"a": { "a": 0 } } )";
     auto var1   = fc::json::from_string(json);
     auto var2   = fc::json::from_string(json2);
-    auto bytes1 = abis.variant_to_binary("optionaltest", var1);
-    auto bytes2 = abis.variant_to_binary("optionaltest2", var2);
+    auto bytes1 = abis.variant_to_binary("optionaltest", var1, get_exec_ctx());
+    auto bytes2 = abis.variant_to_binary("optionaltest2", var2, get_exec_ctx());
 
     CHECK(var1["a"].is_integer());
     CHECK_THROWS_AS(var1["b"].is_null(), fc::key_not_found_exception);
@@ -118,10 +127,10 @@ TEST_CASE("optional_test", "[abis]") {
     CHECK((var22["a"].is_object() && var22["a"].get_object().size() > 0));
     CHECK_THROWS_AS((var22["b"].is_object() && var22["b"].get_object().size() == 0), fc::key_not_found_exception);
 
-    auto bytes21 = abis.variant_to_binary("optionaltest", var21);
+    auto bytes21 = abis.variant_to_binary("optionaltest", var21, get_exec_ctx());
     CHECK(fc::to_hex(bytes1) == fc::to_hex(bytes21));
 
-    auto bytes22 = abis.variant_to_binary("optionaltest2", var22);
+    auto bytes22 = abis.variant_to_binary("optionaltest2", var22, get_exec_ctx());
     CHECK(fc::to_hex(bytes2) == fc::to_hex(bytes22));
 }
 
@@ -1116,6 +1125,37 @@ TEST_CASE("everipass_abi_test", "[abis]") {
     CHECK(pkeys.size() == 1);
 
     CHECK(pkeys.find(public_key_type(std::string("EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"))) != pkeys.end());
+
+
+    // multiple versions tests
+    auto get_var = [&](auto& var) {
+        auto& exec_ctx = get_exec_ctx();
+        auto& abis     = get_evt_abi();
+
+        auto type  = exec_ctx.get_acttype_name("everipass");
+        auto bytes = abis.variant_to_binary(type, var, exec_ctx);
+        auto var2  = abis.binary_to_variant(type, bytes, exec_ctx);
+
+        return var2;
+    };
+
+    auto mv = mutable_variant_object(var);
+    mv["memo"] = "tttesttt";
+
+    auto var_v1 = variant(mv);
+
+    CHECK(get_exec_ctx().get_current_version("everipass") == 0);
+    CHECK_NOTHROW(get_var(var));
+
+    // additional field in variant don't trigger error
+    CHECK_NOTHROW(get_var(var_v1));
+
+    // upgrade version
+    get_exec_ctx().set_version("everipass", 1);
+
+    CHECK_THROWS_AS(get_var(var), pack_exception);
+    CHECK_NOTHROW(get_var(var_v1));
+    CHECK(get_var(var_v1)["memo"] == "tttesttt");
 }
 
 TEST_CASE("everipay_abi_test", "[abis]") {
@@ -1283,9 +1323,9 @@ TEST_CASE("newlock_abi_test", "[abis]") {
 
     auto act = action();
     act.name = "newlock";
-    act.data = abis.variant_to_binary("newlock", var);
+    act.data = abis.variant_to_binary("newlock", var, get_exec_ctx());
 
-    auto var2 = abis.binary_to_variant("newlock", act.data);
+    auto var2 = abis.binary_to_variant("newlock", act.data, get_exec_ctx());
     CHECK(var2["condition"]["data"]["cond_keys"].size() > 0);
 
     auto nl2 = fc::raw::unpack<newlock>(act.data);

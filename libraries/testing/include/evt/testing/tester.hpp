@@ -5,7 +5,7 @@
 #include <evt/chain/asset.hpp>
 #include <evt/chain/controller.hpp>
 #include <evt/chain/snapshot.hpp>
-#include <evt/chain/contracts/evt_contract.hpp>
+#include <evt/chain/contracts/evt_contract_abi.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
 
 #define REQUIRE_EQUAL_OBJECTS(left, right)                                                                                           \
@@ -243,11 +243,11 @@ public:
     validating_tester() {
         vcfg.blocks_dir            = tempdir.path() / std::string("v_").append(config::default_blocks_dir_name);
         vcfg.state_dir             = tempdir.path() / std::string("v_").append(config::default_state_dir_name);
-        vcfg.tokendb_dir           = tempdir.path() / std::string("v_").append(config::default_tokendb_dir_name);
+        vcfg.db_config.db_path     = tempdir.path() / std::string("v_").append(config::default_token_database_dir_name);
         vcfg.state_size            = 1024 * 1024 * 8;
         vcfg.reversible_cache_size = 1024 * 1024 * 8;
         vcfg.contracts_console     = false;
-
+        
         vcfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
         vcfg.genesis.initial_key       = get_public_key(config::system_account_name, "active");
 

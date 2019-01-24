@@ -12,7 +12,14 @@
         FC_THROW_EXCEPTION(exc_type, FORMAT, __VA_ARGS__); \
     FC_MULTILINE_MACRO_END
 
-#define EVT_THROW(exc_type, FORMAT, ...) throw exc_type(FC_LOG_MESSAGE(error, FORMAT, __VA_ARGS__));
+#define EVT_ASSERT2(expr, exc_type, FORMAT, ...)              \
+    FC_MULTILINE_MACRO_BEGIN                                  \
+    if(!(expr))                                               \
+        FC_THROW_EXCEPTION2(exc_type, FORMAT, ##__VA_ARGS__); \
+    FC_MULTILINE_MACRO_END
+
+#define EVT_THROW(exc_type, FORMAT, ...)  throw exc_type(FC_LOG_MESSAGE(error, FORMAT, __VA_ARGS__));
+#define EVT_THROW2(exc_type, FORMAT, ...) throw exc_type(FC_LOG_MESSAGE2(error, FORMAT, ##__VA_ARGS__));
 
 /**
  * Macro inspired from FC_RETHROW_EXCEPTIONS
@@ -26,10 +33,10 @@
     catch(const fc::unrecoverable_exception&) {                                                             \
         throw;                                                                                              \
     }                                                                                                       \
-    catch(chain_exception & e) {                                                                            \
+    catch(chain_exception& e) {                                                                             \
         FC_RETHROW_EXCEPTION(e, warn, FORMAT, __VA_ARGS__);                                                 \
     }                                                                                                       \
-    catch(fc::exception & e) {                                                                              \
+    catch(fc::exception& e) {                                                                               \
         exception_type new_exception(FC_LOG_MESSAGE(warn, FORMAT, __VA_ARGS__));                            \
         for(const auto& log : e.get_log()) {                                                                \
             new_exception.append_log(log);                                                                  \
@@ -42,6 +49,31 @@
     }                                                                                                       \
     catch(...) {                                                                                            \
         throw fc::unhandled_exception(FC_LOG_MESSAGE(warn, FORMAT, __VA_ARGS__), std::current_exception()); \
+    }
+
+#define EVT_RETHROW_EXCEPTIONS2(exception_type, FORMAT, ...)                                                 \
+    catch(const boost::interprocess::bad_alloc&) {                                                           \
+        throw;                                                                                               \
+    }                                                                                                        \
+    catch(const fc::unrecoverable_exception&) {                                                              \
+        throw;                                                                                               \
+    }                                                                                                        \
+    catch(chain_exception& e) {                                                                              \
+        FC_RETHROW_EXCEPTION2(e, warn, FORMAT, __VA_ARGS__);                                                 \
+    }                                                                                                        \
+    catch(fc::exception& e) {                                                                                \
+        exception_type new_exception(FC_LOG_MESSAGE2(warn, FORMAT, __VA_ARGS__));                            \
+        for(const auto& log : e.get_log()) {                                                                 \
+            new_exception.append_log(log);                                                                   \
+        }                                                                                                    \
+        throw new_exception;                                                                                 \
+    }                                                                                                        \
+    catch(const std::exception& e) {                                                                         \
+        exception_type fce(FC_LOG_MESSAGE2(warn, FORMAT " ({})", ##__VA_ARGS__, e.what()));                  \
+        throw fce;                                                                                           \
+    }                                                                                                        \
+    catch(...) {                                                                                             \
+        throw fc::unhandled_exception(FC_LOG_MESSAGE2(warn, FORMAT, __VA_ARGS__), std::current_exception()); \
     }
 
 /**
@@ -112,7 +144,7 @@ FC_DECLARE_DERIVED_EXCEPTION( too_many_tx_at_once,             transaction_excep
 FC_DECLARE_DERIVED_EXCEPTION( tx_too_big,                      transaction_exception, 3030014, "Transaction is too big" );
 FC_DECLARE_DERIVED_EXCEPTION( unknown_transaction_compression, transaction_exception, 3030015, "Unknown transaction compression" );
 
-FC_DECLARE_DERIVED_EXCEPTION( action_exception,           chain_exception,  3040000, "action validation exception" );
+FC_DECLARE_DERIVED_EXCEPTION( action_exception,           chain_exception,  3040000, "action exception" );
 FC_DECLARE_DERIVED_EXCEPTION( action_authorize_exception, action_exception, 3040001, "invalid action authorization" );
 FC_DECLARE_DERIVED_EXCEPTION( action_args_exception,      action_exception, 3040002, "Invalid arguments for action" );
 FC_DECLARE_DERIVED_EXCEPTION( name_reserved_exception,    action_exception, 3040003, "Name is reserved." );
@@ -194,6 +226,19 @@ FC_DECLARE_DERIVED_EXCEPTION( lock_aprv_data_exception,     lock_exception,   30
 FC_DECLARE_DERIVED_EXCEPTION( lock_duplicate_key_exception, lock_exception,   3040910, "Some keys are already signed this lock assets proposal." );
 FC_DECLARE_DERIVED_EXCEPTION( lock_not_reach_unlock_time,   lock_exception,   3040911, "Unlock time is not reach." );
 FC_DECLARE_DERIVED_EXCEPTION( lock_not_reach_deadline,      lock_exception,   3040912, "Deadline is not reach." );
+
+FC_DECLARE_DERIVED_EXCEPTION( bonus_exception,                action_exception, 3041000, "Bonus exception" );
+FC_DECLARE_DERIVED_EXCEPTION( unknown_bonus_exception,        bonus_exception,  3041001, "Unknown bonus exception" );
+FC_DECLARE_DERIVED_EXCEPTION( bonus_dupe_exception,           bonus_exception,  3041002, "Duplicate bonus exception" );
+FC_DECLARE_DERIVED_EXCEPTION( bonus_asset_exception,          bonus_exception,  3041003, "Duplicate bonus exception" );
+FC_DECLARE_DERIVED_EXCEPTION( bonus_rules_exception,          bonus_exception,  3041004, "Invalid rules for bonus" );
+FC_DECLARE_DERIVED_EXCEPTION( bonus_rules_order_exception,    bonus_exception,  3041005, "Invalid order of rules for bonus" );
+FC_DECLARE_DERIVED_EXCEPTION( bonus_percent_value_exception,  bonus_exception,  3041006, "Invalid percent value" );
+FC_DECLARE_DERIVED_EXCEPTION( bonus_percent_result_exception, bonus_exception,  3041007, "Invalid result after calculating the percent" );
+FC_DECLARE_DERIVED_EXCEPTION( bonus_rules_not_fullfill,       bonus_exception,  3041008, "Rules are not fullfile the provided amount" );
+FC_DECLARE_DERIVED_EXCEPTION( bonus_receiver_exception,       bonus_exception,  3041009, "Invalid receiver for bonus" );
+FC_DECLARE_DERIVED_EXCEPTION( bonus_latest_not_expired,       bonus_exception,  3041010, "Latest bonus distribution is not expired" );
+FC_DECLARE_DERIVED_EXCEPTION( bonus_unreached_dist_threshold, bonus_exception,  3041011, "Distribution threshold is unreached" );
 
 FC_DECLARE_DERIVED_EXCEPTION( producer_exception,                      chain_exception,    3050000, "Producer exception" );
 FC_DECLARE_DERIVED_EXCEPTION( producer_priv_key_not_found,             producer_exception, 3050001, "Producer private key is not available" );
@@ -277,17 +322,17 @@ FC_DECLARE_DERIVED_EXCEPTION( unsupported_key_type_exception,    wallet_exceptio
 FC_DECLARE_DERIVED_EXCEPTION( invalid_lock_timeout_exception,    wallet_exception, 3140011, "Wallet lock timeout is invalid" );
 FC_DECLARE_DERIVED_EXCEPTION( secure_enclave_exception,          wallet_exception, 3140012, "Secure Enclave Exception" );
 
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_exception,            chain_exception,   3150000, "tokendb exception" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_key_already_existed,  tokendb_exception, 3150001, "Key is already existed." );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_key_not_found,        tokendb_exception, 3150002, "Not found specific key." );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_rocksdb_exception,    tokendb_exception, 3150003, "Rocksdb internal error occurred." );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_no_savepoint,         tokendb_exception, 3150004, "No savepoints anymore" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_seq_not_valid,        tokendb_exception, 3150005, "Seq for checkpoint is not valid." );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_db_action_exception,  tokendb_exception, 3150006, "Unknown db action type." );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_dirty_flag_exception, tokendb_exception, 3150007, "Checkspoints log file is in dirty." );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_squash_exception,     tokendb_exception, 3150008, "Cannot perform squash operation now" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_snapshot_exception,   tokendb_exception, 3150009, "Create or restore snapshot failed" );
-FC_DECLARE_DERIVED_EXCEPTION( tokendb_persist_exception,    tokendb_exception, 3150010, "Persist savepoints failed" );
+FC_DECLARE_DERIVED_EXCEPTION( token_database_exception,            chain_exception,          3150000, "token_database exception" );
+FC_DECLARE_DERIVED_EXCEPTION( token_database_dupe_key,             token_database_exception, 3150001, "Duplicate key in token database." );
+FC_DECLARE_DERIVED_EXCEPTION( unknown_token_database_key,          token_database_exception, 3150002, "Unknown key in token database." );
+FC_DECLARE_DERIVED_EXCEPTION( token_database_rocksdb_exception,    token_database_exception, 3150003, "Rocksdb internal error occurred." );
+FC_DECLARE_DERIVED_EXCEPTION( token_database_no_savepoint,         token_database_exception, 3150004, "No savepoints anymore" );
+FC_DECLARE_DERIVED_EXCEPTION( token_database_seq_not_valid,        token_database_exception, 3150005, "Seq for checkpoint is not valid." );
+FC_DECLARE_DERIVED_EXCEPTION( token_database_db_action_exception,  token_database_exception, 3150006, "Unknown db action type." );
+FC_DECLARE_DERIVED_EXCEPTION( token_database_dirty_flag_exception, token_database_exception, 3150007, "Checkspoints log file is in dirty." );
+FC_DECLARE_DERIVED_EXCEPTION( token_database_squash_exception,     token_database_exception, 3150008, "Cannot perform squash operation now" );
+FC_DECLARE_DERIVED_EXCEPTION( token_database_snapshot_exception,   token_database_exception, 3150009, "Create or restore snapshot failed" );
+FC_DECLARE_DERIVED_EXCEPTION( token_database_persist_exception,    token_database_exception, 3150010, "Persist savepoints failed" );
 
 FC_DECLARE_DERIVED_EXCEPTION( guard_exception,            database_exception, 3160101, "Database exception" );
 FC_DECLARE_DERIVED_EXCEPTION( database_guard_exception,   guard_exception,    3160102, "Database usage is at unsafe levels" );
@@ -332,6 +377,7 @@ FC_DECLARE_DERIVED_EXCEPTION( unpack_exception,                     abi_exceptio
 FC_DECLARE_DERIVED_EXCEPTION( pack_exception,                       abi_exception,   3210014, "Pack data exception" );
 FC_DECLARE_DERIVED_EXCEPTION( duplicate_abi_variant_def_exception,  abi_exception,   3210015, "Duplicate variant definition in the ABI" );
 FC_DECLARE_DERIVED_EXCEPTION( unsupported_abi_version_exception,    abi_exception,   3210016, "ABI has an unsupported version" );
+FC_DECLARE_DERIVED_EXCEPTION( unknown_abi_type_exception,           abi_exception,   3210017, "Unknown type in ABI" );
 
 FC_DECLARE_DERIVED_EXCEPTION( snapshot_exception, chain_exception, 3220000, "Snapshot exception" );
 FC_DECLARE_DERIVED_EXCEPTION( snapshot_validation_exception, snapshot_exception, 3220001, "Snapshot Validation Exception" );
@@ -346,5 +392,9 @@ FC_DECLARE_DERIVED_EXCEPTION( postgres_poll_exception,        postgres_plugin_ex
 FC_DECLARE_DERIVED_EXCEPTION( postgres_query_exception,       postgres_plugin_exception, 3230007, "Query from postgres failed" );
 FC_DECLARE_DERIVED_EXCEPTION( postgres_not_enabled_exception, postgres_plugin_exception, 3230008, "Postgres plugin is not enabled" );
 
+FC_DECLARE_DERIVED_EXCEPTION( execution_exception,      chain_exception,     3240000, "Execution exception" );
+FC_DECLARE_DERIVED_EXCEPTION( unknown_action_exception, execution_exception, 3240001, "Unknown action exception" );
+FC_DECLARE_DERIVED_EXCEPTION( action_index_exception,   execution_exception, 3240002, "Invalid action index exception" );
+FC_DECLARE_DERIVED_EXCEPTION( action_version_exception, execution_exception, 3240003, "Invalid action version exception" );
 
 }} // evt::chain

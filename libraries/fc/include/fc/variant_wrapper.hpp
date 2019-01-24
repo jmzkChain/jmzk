@@ -3,7 +3,6 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #pragma once
-#include <boost/core/typeinfo.hpp>
 #include <boost/hana/for_each.hpp>
 #include <boost/hana/range.hpp>
 #include <boost/hana/integral_constant.hpp>
@@ -31,22 +30,28 @@ public:
     template<typename X>
     X&
     get() {
-        return value_.template get<X>();
+        return std::get<X>(value_);
     }
 
     template<typename X>
     const X&
     get() const {
-        return value_.template get<X>();
+        return std::get<X>(value_);
     }
 
     ENUM
     type() const {
-        return (ENUM)value_.which();
+        return (ENUM)value_.index();
+    }
+
+    template<typename Visitor>
+    void
+    visit(Visitor&& visitor) const {
+        std::visit(std::forward<Visitor>(visitor), value_);
     }
 
 public:
-    fc::static_variant<ARGS...> value_;
+    std::variant<ARGS...> value_;
 };
 
 template<typename ENUM, typename... ARGS>
@@ -54,21 +59,15 @@ void
 to_variant(const variant_wrapper<ENUM, ARGS...>& vo, variant& var) {
     using namespace boost;
 
-    FC_ASSERT((int)vo.type() <= (int)ENUM::max_value, "Type index is not valid");
+    FC_ASSERT(vo.type() <= ENUM::max_value, "Invalid type index state");
     auto mo = mutable_variant_object();
     mo["type"] = (int)vo.type();
 
-    auto range = hana::range_c<int, 0, (int)ENUM::max_value + 1>;
-    hana::for_each(range, [&](auto i) {
-        if((int)vo.type() == i()) {
-            using obj_t = typename decltype(vo.value_)::template type_at<i>;
-            auto& obj   = vo.value_.template get<obj_t>();
-            auto  dmo   = fc::variant();
-
-            fc::to_variant(obj, dmo);
-            mo["data"] = dmo;
-        }
-    });
+    std::visit([&mo](auto& obj) {
+        auto var = fc::variant();
+        fc::to_variant(obj, var);
+        mo["data"] = var;
+    }, vo.value_);
 
     var = std::move(mo);
 }
@@ -78,19 +77,19 @@ void
 from_variant(const variant& var, variant_wrapper<ENUM, ARGS...>& vo) {
     using namespace boost;
 
-    auto type = (int)var["type"].as<ENUM>();
-    FC_ASSERT(type <= (int)ENUM::max_value, "Type index is not valid");
+    auto type = var["type"].as<ENUM>();
+    FC_ASSERT(type <= ENUM::max_value, "Invalid type index state");
 
     auto range = hana::range_c<int, 0, (int)ENUM::max_value + 1>;
     hana::for_each(range, [&](auto i) {
-        if(type == i()) {
-            using obj_t = typename decltype(vo.value_)::template type_at<i>;
+        if((int)type == i()) {
+            using obj_t = std::variant_alternative_t<i(), decltype(vo.value_)>;
             auto  obj   = obj_t{};
             auto& vobj  = var.get_object();
             if(vobj.find("data") != vobj.end()) {
                 fc::from_variant(var["data"], obj);
+                vo.value_.template emplace<obj_t>(std::move(obj));
             }
-            vo.value_ = obj;
         }
     });
 }

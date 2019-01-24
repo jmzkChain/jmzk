@@ -3,11 +3,12 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #pragma once
+#include <chrono>
 #include <functional>
 #include <boost/signals2/signal.hpp>
 #include <evt/chain/block_state.hpp>
 #include <evt/chain/genesis_state.hpp>
-#include <evt/chain/trace.hpp>
+#include <evt/chain/token_database.hpp>
 
 namespace chainbase {
 class database;
@@ -16,9 +17,9 @@ class database;
 namespace evt { namespace chain {
 
 class fork_database;
-class token_database;
 class apply_context;
 class charge_manager;
+class execution_context;
 
 struct controller_impl;
 using boost::signals2::signal;
@@ -35,6 +36,7 @@ struct abi_serializer;
 struct evt_link_object;
 }  // namespace contracts
 
+using contracts::abi_serializer;
 using contracts::evt_link_object;
 
 enum class db_read_mode {
@@ -54,7 +56,6 @@ public:
     struct config {
         path     blocks_dir             = chain::config::default_blocks_dir_name;
         path     state_dir              = chain::config::default_state_dir_name;
-        path     tokendb_dir            = chain::config::default_tokendb_dir_name;
         uint64_t state_size             = chain::config::default_state_size;
         uint64_t state_guard_size       = chain::config::default_state_guard_size;
         uint64_t reversible_cache_size  = chain::config::default_reversible_cache_size;
@@ -66,12 +67,14 @@ public:
         bool     charge_free_mode       = false;
         bool     contracts_console      = false;
 
-        fc::microseconds max_serialization_time = fc::milliseconds(chain::config::default_abi_serializer_max_time_ms);
+        std::chrono::microseconds max_serialization_time = std::chrono::milliseconds(chain::config::default_abi_serializer_max_time_ms);
 
         db_read_mode    read_mode             = db_read_mode::SPECULATIVE;
         validation_mode block_validation_mode = validation_mode::FULL;
 
         flat_set<account_name> trusted_producers;
+
+        token_database::config db_config;
 
         genesis_state genesis;
     };
@@ -90,22 +93,22 @@ public:
     void startup(const std::shared_ptr<snapshot_reader>& snapshot = nullptr);
 
     /**
-          * Starts a new pending block session upon which new transactions can
-          * be pushed.
-          */
+     * Starts a new pending block session upon which new transactions can
+     * be pushed.
+     */
     void start_block(block_timestamp_type time = block_timestamp_type(), uint16_t confirm_block_count = 0);
 
     void abort_block();
 
     /**
-          *  These transactions were previously pushed by have since been unapplied, recalling push_transaction
-          *  with the transaction_metadata_ptr will remove them from the source of this data IFF it succeeds.
-          *
-          *  The caller is responsible for calling drop_unapplied_transaction on a failing transaction that
-          *  they never intend to retry
-          *
-          *  @return vector of transactions which have been unapplied
-          */
+     *  These transactions were previously pushed by have since been unapplied, recalling push_transaction
+     *  with the transaction_metadata_ptr will remove them from the source of this data IFF it succeeds.
+     *
+     *  The caller is responsible for calling drop_unapplied_transaction on a failing transaction that
+     *  they never intend to retry
+     *
+     *  @return vector of transactions which have been unapplied
+     */
     vector<transaction_metadata_ptr> get_unapplied_transactions() const;
     void                             drop_unapplied_transaction(const transaction_metadata_ptr& trx);
     void                             drop_all_unapplied_transactions();
@@ -113,27 +116,23 @@ public:
     transaction_trace_ptr push_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline);
     transaction_trace_ptr push_suspend_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline);
 
-    void check_authorization(const public_keys_type& signed_keys, const transaction& trx);
-    void check_authorization(const public_keys_type& signed_keys, const action& act);
+    void check_authorization(const public_keys_set& signed_keys, const transaction& trx);
+    void check_authorization(const public_keys_set& signed_keys, const action& act);
 
     void finalize_block();
     void sign_block(const std::function<signature_type(const digest_type&)>& signer_callback);
     void commit_block();
     void pop_block();
 
-    void push_block(const signed_block_ptr& b, block_status s = block_status::complete);
-
-    /**
-          * Call this method when a producer confirmation is received, this might update
-          * the last bft irreversible block and/or cause a switch of forks
-          */
-    void push_confirmation(const header_confirmation& c);
+    void push_block(const signed_block_ptr& b);
 
     chainbase::database& db() const;
     fork_database& fork_db() const;
     token_database& token_db() const;
 
     charge_manager get_charge_manager() const;
+
+    execution_context& get_execution_context() const;
 
     const global_property_object&         get_global_properties() const;
     const dynamic_global_property_object& get_dynamic_global_properties() const;
@@ -213,13 +212,13 @@ public:
     signal<void(const header_confirmation&)>      accepted_confirmation;
     signal<void(const int&)>                      bad_alloc;
 
-    public_keys_type get_required_keys(const transaction& trx, const public_keys_type& candidate_keys) const;
-    public_keys_type get_suspend_required_keys(const transaction& trx, const public_keys_type& candidate_keys) const;
-    public_keys_type get_suspend_required_keys(const proposal_name& name, const public_keys_type& candidate_keys) const;
+    public_keys_set get_required_keys(const transaction& trx, const public_keys_set& candidate_keys) const;
+    public_keys_set get_suspend_required_keys(const transaction& trx, const public_keys_set& candidate_keys) const;
+    public_keys_set get_suspend_required_keys(const proposal_name& name, const public_keys_set& candidate_keys) const;
 
     uint32_t get_charge(const transaction& trx, size_t signautres_num) const;
 
-    const contracts::abi_serializer& get_abi_serializer() const;
+    const abi_serializer& get_abi_serializer() const;
 
 private:
     std::unique_ptr<controller_impl> my;
@@ -230,7 +229,6 @@ private:
 FC_REFLECT(evt::chain::controller::config,
            (blocks_dir)
            (state_dir)
-           (tokendb_dir)
            (state_size)
            (reversible_cache_size)
            (read_only)
@@ -240,5 +238,6 @@ FC_REFLECT(evt::chain::controller::config,
            (charge_free_mode)
            (contracts_console)
            (trusted_producers)
+           (db_config)
            (genesis)
-           )
+           );

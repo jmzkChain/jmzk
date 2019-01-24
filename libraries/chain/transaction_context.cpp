@@ -3,28 +3,31 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #include <evt/chain/transaction_context.hpp>
+
 #include <evt/chain/apply_context.hpp>
 #include <evt/chain/charge_manager.hpp>
+#include <evt/chain/controller.hpp>
 #include <evt/chain/exceptions.hpp>
 #include <evt/chain/global_property_object.hpp>
 #include <evt/chain/transaction_object.hpp>
 
 namespace evt { namespace chain {
 
-transaction_context::transaction_context(controller&           c,
-                                         transaction_metadata& t,
-                                         fc::time_point        s)
-    : control(c)
+transaction_context::transaction_context(controller&            control,
+                                         evt_execution_context& exec_ctx,
+                                         transaction_metadata&  trx_meta,
+                                         fc::time_point         start)
+    : control(control)
+    , exec_ctx(exec_ctx)
     , undo_session()
     , undo_token_session()
-    , trx(t)
+    , trx(trx_meta)
     , trace(std::make_shared<transaction_trace>())
-    , start(s)
+    , start(start)
     , net_usage(trace->net_usage) {
-
-    if(!c.skip_db_sessions()) {
-        undo_session       = c.db().start_undo_session(true);
-        undo_token_session = c.token_db().new_savepoint_session();
+    if(!control.skip_db_sessions()) {
+        undo_session       = control.db().start_undo_session(true);
+        undo_token_session = control.token_db().new_savepoint_session();
     }
     trace->id = trx.id;
     executed.reserve(trx.total_actions() + 1); // one for paycharge action
@@ -40,6 +43,11 @@ void
 transaction_context::init(uint64_t initial_net_usage) {
     EVT_ASSERT(!is_initialized, transaction_exception, "cannot initialize twice");
     EVT_ASSERT(!trx.trx.actions.empty(), tx_no_action, "There's any actions in this transaction");
+
+    // set index for action
+    for(auto& act : trx.trx.actions) {
+        act.set_index(exec_ctx.index_of(act.name));
+    }
     
     check_time();    // Fail early if deadline has already been exceeded
     if(!control.charge_free_mode()) {
@@ -138,12 +146,23 @@ transaction_context::check_time() const {
 void
 transaction_context::check_charge() {
     auto cm = control.get_charge_manager();
-    charge = cm.calculate(trx.packed_trx);
+    charge = cm.calculate(trx.packed_trx, trx.trx);
     if(charge > trx.trx.max_charge) {
         EVT_THROW(max_charge_exceeded_exception, "max charge exceeded, expected: ${ex}, max provided: ${mp}",
             ("ex",charge)("mp",trx.trx.max_charge));
     }
 }
+
+#define READ_DB_ASSET_NO_THROW(ADDR, SYM, VALUEREF)                        \
+    {                                                                      \
+        auto str = std::string();                                          \
+        if(!tokendb.read_asset(ADDR, SYM, str, true /* no throw */)) {     \
+            VALUEREF = asset(0, SYM);                                      \
+        }                                                                  \
+        else {                                                             \
+            extract_db_value(str, VALUEREF);                               \
+        }                                                                  \
+    }
 
 void
 transaction_context::check_paid() const {
@@ -194,11 +213,12 @@ transaction_context::check_paid() const {
     }  // switch
     
     asset evt, pevt;
-    tokendb.read_asset_no_throw(payer, pevt_sym(), pevt);
+    READ_DB_ASSET_NO_THROW(payer, pevt_sym(), pevt);
     if(pevt.amount() > charge) {
         return;
     }
-    tokendb.read_asset_no_throw(payer, evt_sym(), evt);
+
+    READ_DB_ASSET_NO_THROW(payer, evt_sym(), evt);
     if(pevt.amount() + evt.amount() >= charge) {
         return;
     }
@@ -207,13 +227,13 @@ transaction_context::check_paid() const {
 
 void
 transaction_context::finalize_pay() {
-    auto pcact = paycharge();
+    auto pcact = contracts::paycharge();
 
     pcact.payer  = trx.trx.payer;
     pcact.charge = charge;
 
     auto act   = action();
-    act.name   = paycharge::get_name();
+    act.name   = contracts::paycharge::get_action_name();
     act.data   = fc::raw::pack(pcact);
     act.domain = N128(.charge);
     
@@ -229,6 +249,8 @@ transaction_context::finalize_pay() {
     }  // switch
 
     trace->action_traces.emplace_back();
+
+    act.set_index(exec_ctx.index_of<contracts::paycharge>());
     dispatch_action(trace->action_traces.back(), act);
 }
 
@@ -242,8 +264,7 @@ transaction_context::check_net_usage() const {
 
 void
 transaction_context::dispatch_action(action_trace& trace, const action& act) {
-    apply_context apply(control, *this, act);
-
+    auto apply = apply_context(control, *this, act);
     apply.exec(trace);
 }
 
