@@ -196,7 +196,9 @@ const char* issuetoken_data = R"=====(
         "domain": "domain",
         "names": [
             "t1",
-            "t2"
+            "t2",
+            "t3",
+            "t4"
         ],
         "owner": [
             "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK"
@@ -374,33 +376,33 @@ const char* updsuspend_data = R"=======(
 
 const char* newlock_data = R"=======(
     {
-        "name": "testsuspend",
-        "proposer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
-        "status": "proposed",
-        "unlock_time": "2018-07-04T05:14:12",
-        "deadline": "2018-09-04T05:14:12",
+        "name": "nftlock",
+        "proposer": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+        "unlock_time": "2020-06-09T09:06:27",
+        "deadline": "2020-07-09T09:06:27",
         "assets": [{
             "type": "tokens",
-            "tokens": {
+            "data": {
                 "domain": "cookie",
                 "names": [
-                    "t1",
-                    "t2",
                     "t3"
                 ]
             }
         }],
-        "cond_keys": [
-            "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
-            "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
-        ],
+        "condition": {
+            "type": "cond_keys",
+            "data": {
+                "threshold": 1,
+                "cond_keys": [
+                    "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+                    "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
+                ]
+            }
+        },
         "succeed": [
-            "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
         ],
         "failed": [
             "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
-        ],
-        "signed_keys": [
         ]
     }
     )=======";
@@ -681,31 +683,53 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_fungible_test", "[tokendb]") {
     }
 
 #define ADD_SAVEPOINT \
-    tokendb.new_savepoint_session();
+    tokendb.add_savepoint(tokendb.latest_savepoint_seq()+1);
 #define ROLLBACK \
     tokendb.rollback_to_latest_savepoint();
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_savepoint_test", "[tokendb]") {
     auto& tokendb = my_tester->control->token_db();
+    
     ADD_SAVEPOINT
     
     auto dom_name = get_domain_name(tokendb.latest_savepoint_seq());
-    NEW_DOMAIN(key, dom_name)
+  
+    auto var = fc::json::from_string(newdomain_data);
+    auto dom = var.as<newdomain>();
+    CHECK(!EXISTS_TOKEN(domain, dom_name));
+    dom.creator = key;
+    dom.name = dom_name;
+    dom.issue.authorizers[0].ref.set_account(key);
+    dom.manage.authorizers[0].ref.set_account(key);
+    to_variant(dom, var);
+    PUSH_ACTION(newdomain, dom_name, .create);
+    CHECK(EXISTS_TOKEN(domain, dom_name));
+
     ADD_SAVEPOINT
 
-    ISSUE_TOKEN(key, dom_name)
+    var = fc::json::from_string(issuetoken_data);
+    auto istk = var.as<issuetoken>();
+
+    istk.domain = dom_name;
+    istk.owner[0] = key;
+    to_variant(istk, var);
+    CHECK(!EXISTS_TOKEN2(token, istk.domain, istk.names[0]));
+    CHECK(!EXISTS_TOKEN2(token, istk.domain, istk.names[1]));
+    PUSH_ACTION(issuetoken, dom_name, .issue);
+    CHECK(EXISTS_TOKEN2(token, istk.domain, istk.names[0]));
+    CHECK(EXISTS_TOKEN2(token, istk.domain, istk.names[1]));
     
     ROLLBACK
-
+/*
     CHECK(!EXISTS_TOKEN2(token, dom_name, "t1"));
     CHECK(!EXISTS_TOKEN2(token, dom_name, "t2"));
 
     ROLLBACK
 
-    CHECK(!EXISTS_TOKEN(domain, dom_name));    
+    CHECK(!EXISTS_TOKEN(domain, dom_name));
+*/    
 }
-
-
+/*
 TEST_CASE_METHOD(tokendb_test, "tokendb_newsuspend_test", "[tokendb]") {
     auto var = fc::json::from_string(newsuspend_data);
     auto nsus = var.as<newsuspend>();
@@ -731,21 +755,46 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_newsuspend_test", "[tokendb]") {
     CHECK("test1530681222" == _sus.trx.actions[0].domain);
     CHECK(".create" == _sus.trx.actions[0].key);
 }
-
-TEST_CASE_METHOD(tokendb_test, "tokendb_add_lock_test", "[tokendb]") {
+*/
+TEST_CASE_METHOD(tokendb_test, "tokendb_new_lock_test", "[tokendb]") {
     auto var = fc::json::from_string(newlock_data);
-    auto nlock = var.as<newlock>();
+    auto nl = var.as<newlock>();
     auto& tokendb = my_tester->control->token_db();
+    
 
-    CHECK(!EXISTS_TOKEN(lock, nlock.name));
+    auto now       = fc::time_point::now();
+    nl.unlock_time = now + fc::days(10);
+    nl.deadline    = now + fc::days(20);
 
-    PUSH_ACTION(newlock, ".lock", nlock.name);
-    CHECK(EXISTS_TOKEN(lock, nlock.name));
+    CHECK(nl.assets[0].type() == asset_type::tokens);
+    nl.assets[0].get<locknft_def>().domain = get_domain_name();
+    to_variant(nl, var);
 
-    auto _lock = lock_def();
-    READ_TOKEN(lock, nlock.name, _lock);
-    CHECK(nlock.name == _lock.name);
-    CHECK((std::string)nlock.proposer == (std::string)_lock.proposer);
+    CHECK_THROWS_AS(my_tester->push_action(N(newlock), N128(.lock), N128(nftlock), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
+
+    nl.proposer = tester::get_public_key(N(key));
+    nl.condition.get<lock_condkeys>().cond_keys = {tester::get_public_key(N(key))};
+    to_variant(nl, var);
+
+    CHECK_THROWS_AS(my_tester->push_action(N(newlock), N128(.lock), N128(nftlock), var.get_object(), key_seeds, payer, 5'000'000), lock_address_exception);
+
+    nl.succeed = {public_key_type(std::string("EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"))};
+    to_variant(nl, var);
+
+    CHECK(!EXISTS_TOKEN(lock, nl.name));
+    PUSH_ACTION(newlock, ".lock", nftlock);
+    CHECK(EXISTS_TOKEN(lock, nl.name));
+
+    lock_def lock_;
+    READ_TOKEN(lock, nl.name, lock_);
+    CHECK(lock_.status == lock_status::proposed);
+
+    token_def tk;
+    READ_TOKEN2(token, get_domain_name(), "t3", tk);
+    CHECK(tk.owner.size() == 1);
+    CHECK(tk.owner[0] == address(N(.lock), N128(nlact.name), 0));
+
+    my_tester->produce_blocks();
 }
 
 
