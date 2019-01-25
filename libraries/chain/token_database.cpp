@@ -27,6 +27,7 @@
 
 #include <evt/chain/config.hpp>
 #include <evt/chain/exceptions.hpp>
+#include <evt/chain/dense_hash.hpp>
 
 namespace evt { namespace chain {
 
@@ -120,7 +121,7 @@ struct key_hasher {
     }
 };
 
-using key_unordered_set = std::unordered_set<std::string, key_hasher>;
+using keys_hash_set = google::dense_hash_set<std::string, key_hasher>;
 
 struct flag {
 public:
@@ -782,10 +783,9 @@ token_database_impl::rollback_rt_group(__internal::rt_group* rt) {
     auto snapshot_read_opts_     = read_opts_;
     snapshot_read_opts_.snapshot = (const rocksdb::Snapshot*)rt->rb_snapshot;
 
-    auto key_set = key_unordered_set();
-    key_set.reserve(rt->actions.size());
+    auto key_set = keys_hash_set();
+    auto batch   = rocksdb::WriteBatch();
     
-    auto batch = rocksdb::WriteBatch();
     for(auto it = rt->actions.begin(); it < rt->actions.end(); it++) {
         auto data = GETPOINTER(void, it->data);
 
@@ -892,10 +892,8 @@ token_database_impl::rollback_pd_group(__internal::pd_group* pd) {
         return;
     }
 
-    auto key_set = key_unordered_set();
-    key_set.reserve(pd->actions.size());
-
-    auto batch = rocksdb::WriteBatch();
+    auto key_set = keys_hash_set();
+    auto batch   = rocksdb::WriteBatch();
 
     for(auto it = pd->actions.begin(); it < pd->actions.end(); it++) {
         switch((action_op)it->op) {
@@ -1044,8 +1042,7 @@ token_database_impl::persist_savepoints(std::ostream& os) const {
         case kRuntime: {
             auto rt = GETPOINTER(rt_group, n.group);
 
-            auto key_set = key_unordered_set();
-            key_set.reserve(rt->actions.size());
+            auto key_set = keys_hash_set();
 
             auto snapshot_read_opts_     = read_opts_;
             snapshot_read_opts_.snapshot = (const rocksdb::Snapshot*)rt->rb_snapshot;

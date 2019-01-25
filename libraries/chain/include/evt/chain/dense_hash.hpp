@@ -1,5 +1,6 @@
 #include <type_traits>
 #include <sparsehash/dense_hash_map>
+#include <sparsehash/dense_hash_set>
 #include <fc/io/raw.hpp>
 
 namespace fc { namespace raw {
