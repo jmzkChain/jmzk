@@ -1996,13 +1996,13 @@ EVT_ACTION_IMPL_BEGIN(setpsvbouns) {
         auto pb        = passive_bonus();
         pb.rate        = spbact.rate;
         pb.base_charge = check_n_rtn(spbact.base_charge, sym, bonus_check_type::natural);
-        if(pb.charge_threshold.has_value()) {
-            pb.charge_threshold = check_n_rtn(*spbact.charge_threshold, sym, bonus_check_type::natural);
+        if(spbact.charge_threshold.has_value()) {
+            pb.charge_threshold = check_n_rtn(*spbact.charge_threshold, sym, bonus_check_type::positive);
         }
-        if(pb.minimum_charge.has_value()) {
+        if(spbact.minimum_charge.has_value()) {
             pb.minimum_charge = check_n_rtn(*spbact.minimum_charge, sym, bonus_check_type::natural);
-            if(pb.charge_threshold.has_value()) {
-                EVT_ASSERT2(*pb.minimum_charge < *pb.charge_threshold, bonus_rules_exception,
+            if(spbact.charge_threshold.has_value()) {
+                EVT_ASSERT2(*spbact.minimum_charge < *spbact.charge_threshold, bonus_rules_exception,
                     "Minimum charge should be less than charge threshold");
             }
         }
