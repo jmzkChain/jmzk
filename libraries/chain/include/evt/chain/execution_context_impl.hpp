@@ -198,7 +198,9 @@ using evt_execution_context = execution_context_impl<
                                   contracts::updsched,
                                   contracts::newlock,
                                   contracts::aprvlock,
-                                  contracts::tryunlock
+                                  contracts::tryunlock,
+                                  contracts::setpsvbouns,
+                                  contracts::distpsvbonus
                               >;
 
 }}  // namespace evt::chain

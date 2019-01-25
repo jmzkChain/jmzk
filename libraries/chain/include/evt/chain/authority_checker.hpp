@@ -737,6 +737,24 @@ struct check_authority<N(paycharge)> {
     }
 };
 
+template<>
+struct check_authority<N(setpsvbouns)> {
+    template <typename Type>
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        return checker->satisfied_fungible_permission(get_symbol_id(act.key), act, N(manage));
+    }
+};
+
+template<>
+struct check_authority<N(distpsvbonus)> {
+    template <typename Type>
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        return checker->satisfied_fungible_permission(get_symbol_id(act.key), act, N(manage));
+    }
+};
+
 }  // namespace __internal
 
 }}  // namespace evt::chain

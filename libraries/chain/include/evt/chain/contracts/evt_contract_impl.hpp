@@ -204,6 +204,12 @@ get_db_key<passive_bonus>(const passive_bonus& pb) {
     return get_bonus_db_key(pb.sym_id, 0);
 }
 
+template<>
+name128
+get_db_key<passive_bonus_slim>(const passive_bonus_slim& pbs) {
+    return get_bonus_db_key(pbs.sym_id, 0);
+}
+
 template<typename T>
 std::optional<name128>
 get_db_prefix(const T& v) {
@@ -576,7 +582,7 @@ get_bonus_address(symbol_id_type sym_id, uint32_t bonus_id) {
 }
 
 std::pair<int64_t, int64_t>
-calucate_passive_bonus(const token_database& tokendb,
+calculate_passive_bonus(const token_database& tokendb,
                        symbol_id_type        sym_id,
                        int64_t               amount,
                        action_name           act) {
@@ -587,10 +593,14 @@ calucate_passive_bonus(const token_database& tokendb,
         return std::make_pair(amount, 0l);
     }
 
-    auto bonus = pbs.minimum_charge;
+    auto bonus = pbs.base_charge;
     bonus += (int64_t)boost::multiprecision::ceil(pbs.rate * amount);  // add trx fees
-    bonus  = std::max(pbs.minimum_charge, bonus);    // >= minimum
-    bonus  = std::min(pbs.charge_threshold, bonus);  // <= threshold
+    if(pbs.minimum_charge.has_value()) {
+        bonus = std::max(*pbs.minimum_charge, bonus);    // >= minimum
+    }
+    if(pbs.charge_threshold.has_value()) {
+        bonus = std::min(*pbs.charge_threshold, bonus);  // <= threshold
+    }
 
     auto method = passive_method_type::within_amount;
 
@@ -645,7 +655,7 @@ transfer_fungible(apply_context& context,
     // evt and pevt cannot have passive bonus
     if(sym.id() > PEVT_SYM_ID && pay_bonus) {
         // check if fungible has passive bonus settings
-        std::tie(actual_amount, bonus_amount) = calucate_passive_bonus(tokendb, sym.id(), total.amount(), act);
+        std::tie(actual_amount, bonus_amount) = calculate_passive_bonus(tokendb, sym.id(), total.amount(), act);
     }
 
     EVT_ASSERT2(pfrom.amount >= actual_amount, balance_exception,
@@ -1961,7 +1971,7 @@ check_passive_methods(const execution_context& exec_ctx, const passive_methods& 
 EVT_ACTION_IMPL_BEGIN(setpsvbouns) {
     using namespace __internal;
 
-    auto& spbact = context.act.data_as<ACT>();
+    auto spbact = context.act.data_as<ACT>();
     try {
         auto sym = spbact.sym;
         EVT_ASSERT(context.has_authorized(N128(.bonus), name128::from_number(sym.id())), action_authorize_exception,
@@ -1973,33 +1983,26 @@ EVT_ACTION_IMPL_BEGIN(setpsvbouns) {
         EVT_ASSERT2(!tokendb.exists_token(token_type::bonus, std::nullopt, get_bonus_db_key(sym.id(), 0)),
             bonus_dupe_exception, "It's now allowd to update passive bonus currently.");
 
-        auto check_n_rtn = [sym](auto& asset, auto ctype) -> decltype(asset) {
-            EVT_ASSERT2(asset.sym() == sym, bonus_asset_exception, "Invalid symbol of assets, expected: {}, provided:  {}", sym, asset.sym());
-            switch(ctype) {
-            case bonus_check_type::natural: {
-                EVT_ASSERT2(asset.amount() >= 0, bonus_asset_exception, "Invalid amount of assets, must be natural number. Provided: {}", asset);
-                break;
-            }
-            case bonus_check_type::positive: {
-                EVT_ASSERT2(asset.amount() > 0, bonus_asset_exception, "Invalid amount of assets, must be positive. Provided: {}", asset);
-                break;
-            }
-            default: {
-                break;
-            }
-            }  // switch
-            
-            return asset;
-        };
+        EVT_ASSERT2(spbact.rate > 0 && spbact.rate <= 1, bonus_percent_value_exception,
+            "Rate of passive bonus should be in range (0,1]");
+        EVT_ASSERT2(spbact.rules.size() > 0, bonus_rules_exception, "Rules for passive bonus cannot be empty");
 
-        auto pb             = passive_bonus();
-        pb.rate             = check_n_rtn(spbact.rate, sym, bonus_check_type::positive);
-        pb.base_charge      = check_n_rtn(spbact.base_charge, sym, bonus_check_type::natural);
-        pb.charge_threshold = check_n_rtn(spbact.charge_threshold, sym, bonus_check_type::natural);
-        pb.minimum_charge   = check_n_rtn(spbact.minimum_charge, sym, bonus_check_type::natural);
-        pb.dist_threshold   = check_n_rtn(spbact.dist_threshold, sym, bonus_check_type::positive);
+        auto pb        = passive_bonus();
+        pb.rate        = spbact.rate;
+        pb.base_charge = check_n_rtn(spbact.base_charge, sym, bonus_check_type::natural);
+        if(pb.charge_threshold.has_value()) {
+            pb.charge_threshold = check_n_rtn(*spbact.charge_threshold, sym, bonus_check_type::natural);
+        }
+        if(pb.minimum_charge.has_value()) {
+            pb.minimum_charge = check_n_rtn(*spbact.minimum_charge, sym, bonus_check_type::natural);
+            if(pb.charge_threshold.has_value()) {
+                EVT_ASSERT2(*pb.minimum_charge < *pb.charge_threshold, bonus_rules_exception,
+                    "Minimum charge should be less than charge threshold");
+            }
+        }
+        pb.dist_threshold = check_n_rtn(spbact.dist_threshold, sym, bonus_check_type::positive);
 
-        check_bonus_rules(spbact.rules, spbact.dist_threshold);
+        check_bonus_rules(tokendb, spbact.rules, spbact.dist_threshold);
         pb.rules = std::move(spbact.rules);
 
         check_passive_methods(context.control.get_execution_context(), spbact.methods);
@@ -2009,14 +2012,18 @@ EVT_ACTION_IMPL_BEGIN(setpsvbouns) {
         ADD_DB_TOKEN(token_type::bonus, pb);
 
         // add passive bonus slim for quick read
-        auto pbs             = passive_bonus_slim();
-        pbs.sym_id           = sym.id();
-        pbs.rate             = pb.rate;
-        pbs.base_charge      = pb.base_charge.amount();
-        pbs.charge_threshold = pb.charge_threshold.amount();
-        pbs.minimum_charge   = pb.minimum_charge.amount();
-        pbs.methods          = pb.methods;
+        auto pbs        = passive_bonus_slim();
+        pbs.sym_id      = sym.id();
+        pbs.rate        = pb.rate;
+        pbs.base_charge = pb.base_charge.amount();
+        pbs.methods     = pb.methods;
 
+        if(pb.charge_threshold.has_value()) {
+            pbs.charge_threshold = pb.charge_threshold->amount();
+        }
+        if(pb.minimum_charge.has_value()) {
+            pbs.minimum_charge = pb.minimum_charge->amount();
+        }
         ADD_DB_TOKEN(token_type::bonus_slim, pbs);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
@@ -2090,15 +2097,16 @@ struct bonusdist {
 EVT_ACTION_IMPL_BEGIN(distpsvbonus) {
     using namespace __internal;
 
-    auto& spbact = context.act.data_as<ACT>();
+    auto spbact = context.act.data_as<ACT>();
     try {
         EVT_ASSERT(context.has_authorized(N128(.bonus), name128::from_number(spbact.sym.id())), action_authorize_exception,
             "Invalid authorization fields(domain and key).");
 
         auto& tokendb = context.control.token_db();
 
-        auto pb = passive_bonus();
-        READ_DB_TOKEN(token_type::bonus, std::nullopt,  get_bonus_db_key(spbact.sym.id(), 0), pb, unknown_bonus_exception,
+        auto pb   = passive_bonus();
+        auto dkey = get_bonus_db_key(spbact.sym.id(), 0);
+        READ_DB_TOKEN(token_type::bonus, std::nullopt, dkey, pb, unknown_bonus_exception,
             "Cannot find passive bonus registered for fungible with sym id: {}.", spbact.sym_id);
 
         if(pb.round > 0) {
@@ -2150,7 +2158,7 @@ EVT_ACTION_IMPL_BEGIN(distpsvbonus) {
         bd.final_receiver = spbact.final_receiver;
 
         auto dbv = make_db_value(bd);
-        tokendb.put_token(token_type::bonus_psvdist, action_op::add, std::nullopt, get_bonus_db_key(spbact.sym_id, pb.round), dbv.as_string_view());
+        tokendb.put_token(token_type::bonus_psvdist, action_op::add, std::nullopt, get_bonus_db_key(spbact.sym.id(), pb.round), dbv.as_string_view());
 
         pb.round++;
         pb.deadline = spbact.deadline;

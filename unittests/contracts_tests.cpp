@@ -156,7 +156,6 @@ protected:
 };
 
 TEST_CASE_METHOD(contracts_test, "contract_newdomain_test", "[contracts]") {
-    CHECK(true);
     const char* test_data = R"=====(
         {
           "name" : "domain",
@@ -229,7 +228,6 @@ TEST_CASE_METHOD(contracts_test, "contract_newdomain_test", "[contracts]") {
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_issuetoken_test", "[contracts]") {
-    CHECK(true);
     const char* test_data = R"=====(
     {
       "domain": "domain",
@@ -299,7 +297,6 @@ TEST_CASE_METHOD(contracts_test, "contract_issuetoken_test", "[contracts]") {
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_transfer_test", "[contracts]") {
-    CHECK(true);
     const char* test_data = R"=====(
     {
       "domain": "cookie",
@@ -352,7 +349,6 @@ TEST_CASE_METHOD(contracts_test, "contract_transfer_test", "[contracts]") {
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_destroytoken_test", "[contracts]") {
-    CHECK(true);
     const char* test_data = R"=====(
     {
       "domain": "cookie",
@@ -424,7 +420,6 @@ TEST_CASE_METHOD(contracts_test, "contract_destroytoken_auth_test", "[contracts]
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_newgroup_test", "[contracts]") {
-    CHECK(true);
     const char* test_data = R"=====(
     {
       "name" : "5jxX",
@@ -511,7 +506,6 @@ TEST_CASE_METHOD(contracts_test, "contract_newgroup_test", "[contracts]") {
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_updategroup_test", "[contracts]") {
-    CHECK(true);
     const char* test_data = R"=====(
     {
       "name" : "5jxX",
@@ -589,7 +583,6 @@ TEST_CASE_METHOD(contracts_test, "contract_updategroup_test", "[contracts]") {
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_newfungible_test", "[contracts]") {
-    CHECK(true);
     const char* test_data = R"=====(
     {
       "name": "EVT",
@@ -656,7 +649,6 @@ TEST_CASE_METHOD(contracts_test, "contract_newfungible_test", "[contracts]") {
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_updfungible_test", "[contracts]") {
-    CHECK(true);
     const char* test_data = R"=====(
     {
       "sym_id": "0",
@@ -707,7 +699,6 @@ TEST_CASE_METHOD(contracts_test, "contract_updfungible_test", "[contracts]") {
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_issuefungible_test", "[contracts]") {
-    CHECK(true);
     const char* test_data = R"=====(
     {
       "address": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
@@ -770,7 +761,6 @@ TEST_CASE_METHOD(contracts_test, "contract_issuefungible_test", "[contracts]") {
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_transferft_test", "[contracts]") {
-    CHECK(true);
     const char* test_data = R"=====(
     {
       "from": "EVT6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
@@ -827,7 +817,6 @@ TEST_CASE_METHOD(contracts_test, "contract_transferft_test", "[contracts]") {
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_recycleft_test", "[contracts]") {
-    CHECK(true);
     const char* test_data = R"=======(
     {
         "address": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
@@ -871,7 +860,6 @@ TEST_CASE_METHOD(contracts_test, "contract_recycleft_test", "[contracts]") {
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_destroyft_test", "[contracts]") {
-    CHECK(true);
     const char* test_data = R"=======(
     {
         "address": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
@@ -914,7 +902,6 @@ TEST_CASE_METHOD(contracts_test, "contract_destroyft_test", "[contracts]") {
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_updatedomain_test", "[contracts]") {
-    CHECK(true);
     const char* test_data = R"=====(
     {
       "name" : "domain",
@@ -973,7 +960,6 @@ TEST_CASE_METHOD(contracts_test, "contract_updatedomain_test", "[contracts]") {
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_group_auth_test", "[contracts]") {
-    CHECK(true);
     const char* test_data = R"=====(
     {
         "domain": "domain",
@@ -1010,7 +996,6 @@ TEST_CASE_METHOD(contracts_test, "contract_group_auth_test", "[contracts]") {
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_failsuspend_test", "[contracts]") {
-    CHECK(true);
     const char* test_data = R"=======(
     {
         "name": "testsuspend",
@@ -1142,7 +1127,6 @@ TEST_CASE_METHOD(contracts_test, "contract_failsuspend_test", "[contracts]") {
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_successsuspend_test", "[contracts]") {
-    CHECK(true);
     const char* test_data = R"=======(
     {
         "name": "testsuspend",
@@ -1263,7 +1247,6 @@ TEST_CASE_METHOD(contracts_test, "contract_successsuspend_test", "[contracts]") 
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_charge_test", "[contracts]") {
-    CHECK(true);
     const char* test_data = R"=====(
     {
       "address": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
@@ -1309,7 +1292,6 @@ TEST_CASE_METHOD(contracts_test, "contract_charge_test", "[contracts]") {
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_evt2pevt_test", "[contracts]") {
-    CHECK(true);
     const char* test_data = R"=======(
     {
         "from": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
@@ -1376,34 +1358,42 @@ TEST_CASE_METHOD(contracts_test, "everipass_test", "[contracts]") {
         l.sign(private_key);
     };
 
+    // key of action is not valid
     sign_link(ep.link);
     CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t2), ep), key_seeds, payer), action_authorize_exception);
 
+    // header is not valid
     ep.link.set_header(0);
     sign_link(ep.link);
     CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer), evt_link_version_exception);
 
+    // type is not valid
     ep.link.set_header(evt_link::version1);
     sign_link(ep.link);
     CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer), evt_link_type_exception);
 
+    // shoule be everiPass
     ep.link.set_header(evt_link::version1 | evt_link::everiPay);
     sign_link(ep.link);
     CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer), evt_link_type_exception);
 
+    // timeout
     ep.link.set_header(header);
     ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts - 40));
     sign_link(ep.link);
     CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer), evt_link_expiration_exception);
 
+    // timeout
     ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts + 40));
     sign_link(ep.link);
     CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer), evt_link_expiration_exception);
 
+    // correct
     ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts - 5));
     sign_link(ep.link);
     CHECK_NOTHROW(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer));
 
+    // correct
     ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts + 5));
     sign_link(ep.link);
     CHECK_NOTHROW(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer));
@@ -1413,21 +1403,25 @@ TEST_CASE_METHOD(contracts_test, "everipass_test", "[contracts]") {
     sign_link(ep.link);
     CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t1), ep), key_seeds, payer), everipass_exception);
 
+    // correct
     ep.link.add_segment(evt_link::segment(evt_link::token, "t3"));
     ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts));
     sign_link(ep.link);
     CHECK_NOTHROW(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer));
 
+    // token is not existed
     ep.link.add_segment(evt_link::segment(evt_link::token, "t5"));
     sign_link(ep.link);
     CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t5), ep), key_seeds, payer), unknown_token_exception);
 
+    // destroy token
     header |= evt_link::destroy;
     ep.link.set_header(header);
     ep.link.add_segment(evt_link::segment(evt_link::token, "t3"));
     sign_link(ep.link);
     CHECK_NOTHROW(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer));
 
+    // token is already destroyed
     ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts - 1));
     sign_link(ep.link);
     CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer), token_destroyed_exception);
@@ -1572,10 +1566,16 @@ TEST_CASE_METHOD(contracts_test, "everipay_test", "[contracts]") {
 
     // version not upgrade
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep_v1), key_seeds, payer), raw_unpack_exception);
+
+    // correct
+    my_tester->control->get_execution_context().set_version(N(everipay), 1);
+    CHECK_NOTHROW(my_tester->push_action(action(N128(.fungible), N128(1), ep_v1), key_seeds, payer));
+
+    // restore everiPay version
+    my_tester->control->get_execution_context().set_version(N(everipay), 0);
 }
 
 TEST_CASE_METHOD(contracts_test, "empty_action_test", "[contracts]") {
-    CHECK(true);
     auto trx = signed_transaction();
     my_tester->set_transaction_headers(trx, payer);
 
@@ -1583,7 +1583,6 @@ TEST_CASE_METHOD(contracts_test, "empty_action_test", "[contracts]") {
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_addmeta_test", "[contracts]") {
-    CHECK(true);
     my_tester->add_money(payer, asset(10'000'000, symbol(5, EVT_SYM_ID)));
 
     const char* test_data = R"=====(
@@ -1746,7 +1745,6 @@ TEST_CASE_METHOD(contracts_test, "contract_addmeta_test", "[contracts]") {
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_prodvote_test", "[contracts]") {
-    CHECK(true);
     const char* test_data = R"=======(
     {
         "producer": "evt",
@@ -1810,7 +1808,6 @@ TEST_CASE_METHOD(contracts_test, "contract_prodvote_test", "[contracts]") {
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_updsched_test", "[contracts]") {
-    CHECK(true);
     const char* test_data = R"=======(
     {
         "producers": [{
@@ -1840,7 +1837,6 @@ TEST_CASE_METHOD(contracts_test, "contract_updsched_test", "[contracts]") {
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_newnftlock_test", "[contracts]") {
-    CHECK(true);
     const char* test_data = R"=======(
     {
         "name": "nftlock",
@@ -1915,7 +1911,6 @@ TEST_CASE_METHOD(contracts_test, "contract_newnftlock_test", "[contracts]") {
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_newftlock_test", "[contracts]") {
-    CHECK(true);
     const char* test_data = R"=======(
     {
         "name": "ftlock",
@@ -2005,7 +2000,6 @@ TEST_CASE_METHOD(contracts_test, "contract_newftlock_test", "[contracts]") {
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_aprvlock_test", "[contracts]") {
-    CHECK(true);
     const char* test_data = R"=======(
     {
         "name": "nftlock",
@@ -2042,7 +2036,6 @@ TEST_CASE_METHOD(contracts_test, "contract_aprvlock_test", "[contracts]") {
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_tryunlock_test", "[contracts]") {
-    CHECK(true);
     const char* test_data = R"=======(
     {
         "name": "nftlock",
@@ -2100,4 +2093,24 @@ TEST_CASE_METHOD(contracts_test, "contract_tryunlock_test", "[contracts]") {
     CHECK(ast.amount() == 500000);
 
     my_tester->produce_blocks();
+}
+
+TEST_CASE_METHOD(contracts_test, "passive_bonus_test", "[contracts]") {
+    auto spb = setpsvbouns();
+    spb.sym = evt_sym();
+    spb.rate = 0.15;
+    spb.base_charge = asset(0, evt_sym());
+    spb.dist_threshold = asset(100000, evt_sym());  // 1.00000 EVT
+
+    // key of action is invalid
+    CHECK_THROWS_AS(my_tester->push_action(action(N128(.bonus), N128(2), spb), key_seeds, payer), unsatisfied_authorization);
+
+    // evt cannot be used to set passive bonus
+    CHECK_THROWS_AS(my_tester->push_action(action(N128(.bonus), N128(1), spb), key_seeds, payer), bonus_exception);
+
+    // rate is not valid
+    spb.rate = 0;
+    CHECK_THROWS_AS(my_tester->push_action(action(N128(.bonus), N128(1), spb), key_seeds, payer), bonus_percent_value_exception);
+
+
 }
