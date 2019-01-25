@@ -330,23 +330,14 @@ const char* newsuspend_data = R"=======(
     {
         "name": "testsuspend",
         "proposer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
-        "status": "proposed",
         "trx": {
-            "expiration": "2018-07-04T05:14:12",
+            "expiration": "2021-07-04T05:14:12",
             "ref_block_num": "3432",
             "ref_block_prefix": "291678901",
             "actions": [
-                {
-                    "name": "newdomain",
-                    "domain": "test1530681222",
-                    "key": ".create",
-                    "data": "00000000004010c4a02042710c9f077d0002e07ae3ed523dba04dc9d718d94abcd1bea3da38176f4b775b818200c01a149b1000000008052e74c01000000010100000002e07ae3ed523dba04dc9d718d94abcd1bea3da38176f4b775b818200c01a149b1000000000000000100000000b298e982a40100000001020000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000000000094135c6801000000010100000002e07ae3ed523dba04dc9d718d94abcd1bea3da38176f4b775b818200c01a149b1000000000000000100"
-                }
             ],
             "transaction_extensions": []
-        },
-        "signed_keys": [],
-        "signatures": []
+        }
     }
     )=======";
 
@@ -590,7 +581,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_issuetoken_test", "[tokendb]") {
     CHECK(!EXISTS_TOKEN2(token, istk.domain, istk.names[0]));
     CHECK(!EXISTS_TOKEN2(token, istk.domain, istk.names[1]));
 
-    PUSH_ACTION(issuetoken, get_domain_name(), .issue);
+    PUSH_ACTION(issuetoken, istk.domain, .issue);
 
     CHECK(EXISTS_TOKEN2(token, istk.domain, istk.names[0]));
     CHECK(EXISTS_TOKEN2(token, istk.domain, istk.names[1]));
@@ -660,7 +651,6 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_fungible_test", "[tokendb]") {
         dom.creator = KEY; \
         dom.name = NAME; \
         dom.issue.authorizers[0].ref.set_account(KEY); \
-        std::cout << KEY << std::endl; \
         dom.manage.authorizers[0].ref.set_account(KEY); \
         to_variant(dom, var); \
         PUSH_ACTION(newdomain, NAME, .create); \
@@ -677,7 +667,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_fungible_test", "[tokendb]") {
         to_variant(istk, var); \
         CHECK(!EXISTS_TOKEN2(token, istk.domain, istk.names[0])); \
         CHECK(!EXISTS_TOKEN2(token, istk.domain, istk.names[1])); \
-        PUSH_ACTION(issuetoken, get_domain_name(), .issue); \
+        PUSH_ACTION(issuetoken, DOMAIN, .issue); \
         CHECK(EXISTS_TOKEN2(token, istk.domain, istk.names[0])); \
         CHECK(EXISTS_TOKEN2(token, istk.domain, istk.names[1])); \
     }
@@ -687,6 +677,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_fungible_test", "[tokendb]") {
 #define ROLLBACK \
     tokendb.rollback_to_latest_savepoint();
 
+/*
 TEST_CASE_METHOD(tokendb_test, "tokendb_savepoint_test", "[tokendb]") {
     auto& tokendb = my_tester->control->token_db();
     
@@ -720,24 +711,40 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_savepoint_test", "[tokendb]") {
     CHECK(EXISTS_TOKEN2(token, istk.domain, istk.names[1]));
     
     ROLLBACK
-/*
+
     CHECK(!EXISTS_TOKEN2(token, dom_name, "t1"));
     CHECK(!EXISTS_TOKEN2(token, dom_name, "t2"));
 
     ROLLBACK
 
-    CHECK(!EXISTS_TOKEN(domain, dom_name));
-*/    
+    CHECK(!EXISTS_TOKEN(domain, dom_name));   
 }
-/*
+*/
+
+
 TEST_CASE_METHOD(tokendb_test, "tokendb_newsuspend_test", "[tokendb]") {
-    auto var = fc::json::from_string(newsuspend_data);
-    auto nsus = var.as<newsuspend>();
     auto& tokendb = my_tester->control->token_db();
 
-    CHECK(!EXISTS_TOKEN(suspend, nsus.name));
+    auto var = fc::json::from_string(newsuspend_data);
+    auto nsus = var.as<newsuspend>();
+    nsus.name = get_suspend_name();
+    nsus.trx.payer = tester::get_public_key(N(payer));
+    nsus.proposer = key;
     
-    PUSH_ACTION(newsuspend, ".suspend", nsus.name);
+    auto newdomain_var = fc::json::from_string(newdomain_data);
+    auto newdom = newdomain_var.as<newdomain>();
+    newdom.creator = tester::get_public_key(N(key));
+    newdom.name = get_domain_name();
+    newdom.issue.authorizers[0].ref.set_account(key);
+    newdom.manage.authorizers[0].ref.set_account(key);
+    to_variant(newdom, newdomain_var);
+    
+    nsus.trx.set_reference_block(my_tester->control->fork_db_head_block_id());
+    nsus.trx.actions.push_back(my_tester->get_action(N(newdomain), get_domain_name(), N128(.create), newdomain_var.get_object()));
+    to_variant(nsus, var);
+    
+    //PUSH_ACTION(newsuspend, ".suspend", nsus.name);
+    my_tester->push_action(N(newsuspend), N128(.suspend), get_suspend_name(), var.get_object(), key_seeds, payer);
 
     CHECK(EXISTS_TOKEN(suspend, nsus.name));
 
@@ -746,16 +753,15 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_newsuspend_test", "[tokendb]") {
 
     CHECK(suspend_status::proposed == _sus.status);
     CHECK(nsus.name == _sus.name);
-    CHECK("EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3" == (std::string)_sus.proposer);
-    CHECK("2018-07-04T05:14:12" == _sus.trx.expiration.to_iso_string());
-    CHECK(3432 == _sus.trx.ref_block_num);
-    CHECK(291678901 == _sus.trx.ref_block_prefix);
+    CHECK((std::string)key == (std::string)_sus.proposer);
+    CHECK("2021-07-04T05:14:12" == _sus.trx.expiration.to_iso_string());
+    CHECK(5 == _sus.trx.ref_block_num);
     CHECK(_sus.trx.actions.size() == 1);
     CHECK("newdomain" == _sus.trx.actions[0].name);
-    CHECK("test1530681222" == _sus.trx.actions[0].domain);
+    CHECK(get_domain_name() == _sus.trx.actions[0].domain);
     CHECK(".create" == _sus.trx.actions[0].key);
 }
-*/
+
 TEST_CASE_METHOD(tokendb_test, "tokendb_new_lock_test", "[tokendb]") {
     auto var = fc::json::from_string(newlock_data);
     auto nl = var.as<newlock>();
