@@ -25,7 +25,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newfungible_test", "[contracts]") {
           }
         ]
       },
-      "total_supply":"100.00000 S#3"
+      "total_supply":"1000.00000 S#3"
     }
     )=====";
 
@@ -38,9 +38,9 @@ TEST_CASE_METHOD(contracts_test, "contract_newfungible_test", "[contracts]") {
 
     auto newfg = var.as<newfungible>();
 
-    newfg.name          = get_symbol_name();
-    newfg.sym_name      = get_symbol_name();
-    newfg.total_supply = asset::from_string(string("100.00000 S#3"));
+    newfg.name         = get_symbol_name();
+    newfg.sym_name     = get_symbol_name();
+    newfg.total_supply = asset::from_string(string("1000.00000 S#3"));
     to_variant(newfg, var);
     //new fungible authorization test
     CHECK_THROWS_AS(my_tester->push_action(N(newfungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, fungible_payer), unsatisfied_authorization);
@@ -55,7 +55,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newfungible_test", "[contracts]") {
     newfg.sym_name      = "lala";
     newfg.total_supply = asset::from_string(string("10.00000 S#3"));
     to_variant(newfg, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(newfungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, fungible_payer),fungible_duplicate_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(newfungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, fungible_payer), fungible_duplicate_exception);
 
     newfg.total_supply = asset::from_string(string("0.00000 S#3"));
     to_variant(newfg, var);
@@ -130,13 +130,13 @@ TEST_CASE_METHOD(contracts_test, "contract_issuefungible_test", "[contracts]") {
     auto& tokendb = my_tester->control->token_db();
     CHECK(!EXISTS_ASSET(key, symbol(5, get_sym_id())));
 
-    issfg.number = asset::from_string(string("150.00000 S#") + std::to_string(get_sym_id()));
+    issfg.number = asset::from_string(string("1500.00000 S#") + std::to_string(get_sym_id()));
     to_variant(issfg, var);
 
     //issue rft more than balance exception
     CHECK_THROWS_AS(my_tester->push_action(N(issuefungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer), fungible_supply_exception);
 
-    issfg.number  = asset::from_string(string("50.00000 S#") + std::to_string(get_sym_id()));
+    issfg.number  = asset::from_string(string("500.00000 S#") + std::to_string(get_sym_id()));
     issfg.address = key;
     to_variant(issfg, var);
 
@@ -157,8 +157,8 @@ TEST_CASE_METHOD(contracts_test, "contract_issuefungible_test", "[contracts]") {
     CHECK_THROWS_AS(my_tester->push_action(N(issuefungible), N128(.fungible),(name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer), action_authorize_exception);
 
     asset ast;
-    READ_ASSET(key, symbol(5, get_sym_id()), ast);
-    CHECK(5000000 == ast.amount());
+    READ_DB_ASSET(key, symbol(5, get_sym_id()), ast);
+    CHECK(500'00000 == ast.amount());
 
     issfg.number = asset::from_string(string("15.00000 S#1"));
     to_variant(issfg, var);
@@ -172,7 +172,7 @@ TEST_CASE_METHOD(contracts_test, "contract_issuefungible_test", "[contracts]") {
     trx.sign(fc::crypto::private_key(std::string("5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3")), my_tester->control->get_chain_id());
     my_tester->push_transaction(trx);
 
-    READ_ASSET(issfg.address, symbol(5, 1), ast);
+    READ_DB_ASSET(issfg.address, symbol(5, 1), ast);
     CHECK(1500000 == ast.amount());
 
     my_tester->produce_blocks();
@@ -190,7 +190,7 @@ TEST_CASE_METHOD(contracts_test, "contract_transferft_test", "[contracts]") {
 
     auto var    = fc::json::from_string(test_data);
     auto trft   = var.as<transferft>();
-    trft.number = asset::from_string(string("150.00000 S#") + std::to_string(get_sym_id()));
+    trft.number = asset::from_string(string("1500.00000 S#") + std::to_string(get_sym_id()));
     trft.from   = key;
     trft.to     = address(tester::get_public_key(N(to)));
     to_variant(trft, var);
@@ -223,7 +223,7 @@ TEST_CASE_METHOD(contracts_test, "contract_transferft_test", "[contracts]") {
 
     auto& tokendb = my_tester->control->token_db();
     asset ast;
-    READ_ASSET(address(tester::get_public_key(N(to))), symbol(5, get_sym_id()), ast);
+    READ_DB_ASSET(address(tester::get_public_key(N(to))), symbol(5, get_sym_id()), ast);
     CHECK(3'000'000 == ast.amount());
 
     //from == to test
@@ -262,19 +262,20 @@ TEST_CASE_METHOD(contracts_test, "contract_recycleft_test", "[contracts]") {
     to_variant(rf, var);
 
     address fungible_address = address(N(.fungible), (fungible_name)std::to_string(get_sym_id()), 0);
-    asset ast_from_before;
-    asset ast_to_before;
-    READ_ASSET(rf.address, symbol(5, get_sym_id()), ast_from_before);
-    READ_ASSET_NO_THROW(fungible_address, symbol(5, get_sym_id()), ast_to_before);
+    
+    property ast_from_before;
+    property ast_to_before;
+    READ_DB_ASSET(rf.address, symbol(5, get_sym_id()), ast_from_before);
+    READ_DB_ASSET_NO_THROW(fungible_address, symbol(5, get_sym_id()), ast_to_before);
 
     my_tester->push_action(N(recycleft), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer);
 
-    asset ast_from_after;
-    asset ast_to_after;
-    READ_ASSET(rf.address, symbol(5, get_sym_id()), ast_from_after);
-    READ_ASSET(fungible_address, symbol(5, get_sym_id()), ast_to_after);
-    CHECK(100000 == ast_from_before.amount() - ast_from_after.amount());
-    CHECK(100000 == ast_to_after.amount() - ast_to_before.amount());
+    property ast_from_after;
+    property ast_to_after;
+    READ_DB_ASSET(rf.address, symbol(5, get_sym_id()), ast_from_after);
+    READ_DB_ASSET(fungible_address, symbol(5, get_sym_id()), ast_to_after);
+    CHECK(100000 == ast_from_before.amount - ast_from_after.amount);
+    CHECK(100000 == ast_to_after.amount - ast_to_before.amount);
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_destroyft_test", "[contracts]") {
@@ -304,19 +305,19 @@ TEST_CASE_METHOD(contracts_test, "contract_destroyft_test", "[contracts]") {
     rf.address = key;
     to_variant(rf, var);
 
-    asset ast_from_before;
-    asset ast_to_before;
-    READ_ASSET(rf.address, symbol(5, get_sym_id()), ast_from_before);
-    READ_ASSET_NO_THROW(address(), symbol(5, get_sym_id()), ast_to_before);
+    property ast_from_before;
+    property ast_to_before;
+    READ_DB_ASSET(rf.address, symbol(5, get_sym_id()), ast_from_before);
+    READ_DB_ASSET_NO_THROW(address(), symbol(5, get_sym_id()), ast_to_before);
 
     my_tester->push_action(N(destroyft), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer);
 
-    asset ast_from_after;
-    asset ast_to_after;
-    READ_ASSET(rf.address, symbol(5, get_sym_id()), ast_from_after);
-    READ_ASSET(address(), symbol(5, get_sym_id()), ast_to_after);
-    CHECK(100000 == ast_from_before.amount() - ast_from_after.amount());
-    CHECK(100000 == ast_to_after.amount() - ast_to_before.amount());
+    property ast_from_after;
+    property ast_to_after;
+    READ_DB_ASSET(rf.address, symbol(5, get_sym_id()), ast_from_after);
+    READ_DB_ASSET(address(), symbol(5, get_sym_id()), ast_to_after);
+    CHECK(100000 == ast_from_before.amount - ast_from_after.amount);
+    CHECK(100000 == ast_to_after.amount - ast_to_before.amount);
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_evt2pevt_test", "[contracts]") {
@@ -351,7 +352,7 @@ TEST_CASE_METHOD(contracts_test, "contract_evt2pevt_test", "[contracts]") {
     my_tester->push_action(N(evt2pevt), N128(.fungible), (name128)std::to_string(evt_sym().id()), var.get_object(), key_seeds, payer);
 
     asset ast;
-    READ_ASSET(key, pevt_sym(), ast);
+    READ_DB_ASSET(key, pevt_sym(), ast);
     CHECK(500000 == ast.amount());
 
     auto tf = var.as<transferft>();

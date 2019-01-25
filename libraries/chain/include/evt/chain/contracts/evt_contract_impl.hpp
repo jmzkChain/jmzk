@@ -272,26 +272,26 @@ get_db_prefix<token_def>(const token_def& v) {
         .created_index = context.get_index_of_trx()                           \
     }
 
-#define READ_DB_ASSET(ADDR, SYM, VALUEREF)                                                              \
-    try {                                                                                               \
-        auto str = std::string();                                                                       \
-        tokendb.read_asset(ADDR, SYM, str);                                                             \
-                                                                                                        \
-        extract_db_value(str, VALUEREF);                                                                \
-    }                                                                                                   \
-    catch(token_database_exception&) {                                                                  \
-        EVT_THROW2(balance_exception, "There's no balance left in {} with sym: {}", ADDR, SYM);         \
+#define READ_DB_ASSET(ADDR, SYM, VALUEREF)                                                      \
+    try {                                                                                       \
+        auto str = std::string();                                                               \
+        tokendb.read_asset(ADDR, SYM, str);                                                     \
+                                                                                                \
+        extract_db_value(str, VALUEREF);                                                        \
+    }                                                                                           \
+    catch(token_database_exception&) {                                                          \
+        EVT_THROW2(balance_exception, "There's no balance left in {} with sym: {}", ADDR, SYM); \
     }
 
-#define READ_DB_ASSET_NO_THROW(ADDR, SYM, VALUEREF)                                   \
-    {                                                                                 \
-        auto str = std::string();                                                     \
-        if(!tokendb.read_asset(ADDR, SYM, str, true /* no throw */)) {                \
-            VALUEREF = MAKE_PROPERTY(0);                                              \
-        }                                                                             \
-        else {                                                                        \
-            extract_db_value(str, VALUEREF);                                          \
-        }                                                                             \
+#define READ_DB_ASSET_NO_THROW(ADDR, SYM, VALUEREF)                    \
+    {                                                                  \
+        auto str = std::string();                                      \
+        if(!tokendb.read_asset(ADDR, SYM, str, true /* no throw */)) { \
+            VALUEREF = MAKE_PROPERTY(0);                               \
+        }                                                              \
+        else {                                                         \
+            extract_db_value(str, VALUEREF);                           \
+        }                                                              \
     }
 
 } // namespace __internal
@@ -611,11 +611,12 @@ calculate_passive_bonus(const token_database& tokendb,
 
     switch(method) {
     case passive_method_type::within_amount: {
+        bonus = std::min(amount, bonus);  // make sure amount >= bonus
         return std::make_pair(amount - bonus, bonus);
         break;
     }
     case passive_method_type::outside_amount: {
-        return std::make_pair(amount + bonus, bonus);
+        return std::make_pair(amount, bonus);
         break;
     }
     default: {
@@ -1969,7 +1970,8 @@ void
 check_passive_methods(const execution_context& exec_ctx, const passive_methods& methods) {
     for(auto& it : methods) {
         // check if it's a valid action
-        exec_ctx.index_of(it.first);
+        EVT_ASSERT2(it.first == N(transferft) || it.first == N(everipay), bonus_method_exeption,
+            "Only `transferft` and `everipay` are valid for method options");
     }
 }
 
@@ -1994,6 +1996,7 @@ EVT_ACTION_IMPL_BEGIN(setpsvbouns) {
             "Rate of passive bonus should be in range (0,1]");
 
         auto pb        = passive_bonus();
+        pb.sym_id      = sym.id();
         pb.rate        = spbact.rate;
         pb.base_charge = check_n_rtn(spbact.base_charge, sym, bonus_check_type::natural);
         if(spbact.charge_threshold.has_value()) {

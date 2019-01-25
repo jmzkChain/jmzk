@@ -20,7 +20,7 @@ TEST_CASE_METHOD(contracts_test, "contract_charge_test", "[contracts]") {
 
     asset prodasset_before;
     asset prodasset_after;
-    READ_ASSET(prod, evt_sym(), prodasset_before);
+    READ_DB_ASSET(prod, evt_sym(), prodasset_before);
 
     issfg.number  = asset::from_string(string("5.00000 S#") + std::to_string(get_sym_id()));
     issfg.address = key;
@@ -40,7 +40,7 @@ TEST_CASE_METHOD(contracts_test, "contract_charge_test", "[contracts]") {
 
     my_tester->produce_blocks();
 
-    READ_ASSET(prod, evt_sym(), prodasset_after);
+    READ_DB_ASSET(prod, evt_sym(), prodasset_after);
 
     CHECK(trace->charge == prodasset_after.amount() - prodasset_before.amount());
 }

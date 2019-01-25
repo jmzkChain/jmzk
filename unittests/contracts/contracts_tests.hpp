@@ -37,22 +37,33 @@ extern std::string evt_unittests_dir;
         evt::chain::extract_db_value(str, VALUEREF); \
     }
 
-#define READ_ASSET(ADDR, SYM, VALUEREF) \
-    { \
-        auto str = std::string(); \
-        tokendb.read_asset(ADDR, SYM, str); \
-        evt::chain::extract_db_value(str, VALUEREF); \
+#define MAKE_PROPERTY(AMOUNT) \
+    property {                \
+        .amount = AMOUNT,     \
+        .created_at = 0,      \
+        .created_index = 0    \
     }
 
-#define READ_ASSET_NO_THROW(ADDR, SYM, VALUEREF)                        \
-    {                                                                   \
-        auto str = std::string();                                       \
-        if(!tokendb.read_asset(ADDR, SYM, str, true /* no throw */)) {  \
-            VALUEREF = asset(0, SYM);                                   \
-        }                                                               \
-        else {                                                          \
-            extract_db_value(str, VALUEREF);                            \
-        }                                                               \
+#define READ_DB_ASSET(ADDR, SYM, VALUEREF)                                                      \
+    try {                                                                                       \
+        auto str = std::string();                                                               \
+        tokendb.read_asset(ADDR, SYM, str);                                                     \
+                                                                                                \
+        extract_db_value(str, VALUEREF);                                                        \
+    }                                                                                           \
+    catch(token_database_exception&) {                                                          \
+        EVT_THROW2(balance_exception, "There's no balance left in {} with sym: {}", ADDR, SYM); \
+    }
+
+#define READ_DB_ASSET_NO_THROW(ADDR, SYM, VALUEREF)                    \
+    {                                                                  \
+        auto str = std::string();                                      \
+        if(!tokendb.read_asset(ADDR, SYM, str, true /* no throw */)) { \
+            VALUEREF = MAKE_PROPERTY(0);                               \
+        }                                                              \
+        else {                                                         \
+            extract_db_value(str, VALUEREF);                           \
+        }                                                              \
     }
 
 class contracts_test {

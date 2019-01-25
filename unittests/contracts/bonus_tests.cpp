@@ -24,7 +24,7 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_test", "[contracts]") {
     spb.rate = 1.1;
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.bonus), actkey, spb), keyseeds, payer), bonus_percent_value_exception);
 
-    spb.rate = 0.15;
+    spb.rate = percent_type("0.15");
     // rules is empty
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.bonus), actkey, spb), keyseeds, payer), bonus_rules_exception);
 
@@ -32,7 +32,7 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_test", "[contracts]") {
     // base charge cannot be negative
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.bonus), actkey, spb), keyseeds, payer), bonus_asset_exception);
 
-    spb.base_charge    = asset(0, get_sym());
+    spb.base_charge    = asset(10, get_sym());
     spb.dist_threshold = asset(1'00000, get_sym());  // 1.00000
 
     auto rule1     = dist_fixed_rule();
@@ -138,12 +138,74 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_test", "[contracts]") {
     // minimum charge is large than charge threshold
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.bonus), actkey, spb), keyseeds, payer), bonus_rules_exception);
 
-    spb.charge_threshold = asset(10'00000, get_sym());
+    spb.charge_threshold = asset(20000, get_sym());
     spb.minimum_charge   = asset(1000, get_sym());
+
+    spb.methods.emplace(std::make_pair(name("transferft"), passive_method_type::outside_amount));
+    spb.methods.emplace(std::make_pair(name("transfer"), passive_method_type::outside_amount));
+    // transfer is not valid action
+    CHECK_THROWS_AS(my_tester->push_action(action(N128(.bonus), actkey, spb), keyseeds, payer), bonus_method_exeption);
+
+    spb.methods.erase(name("transfer"));
+    spb.methods.emplace(std::make_pair(name("everipay"), passive_method_type::within_amount));
 
     // fine
     CHECK_NOTHROW(my_tester->push_action(action(N128(.bonus), actkey, spb), keyseeds, payer));
 
+    my_tester->produce_block();
+
     // dupe passive bonus
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.bonus), actkey, spb), keyseeds, payer), bonus_dupe_exception);
+}
+
+TEST_CASE_METHOD(contracts_test, "passive_bonus_fees_test", "[contracts]") {
+    auto& tokendb = my_tester->control->token_db();
+
+    auto tf   = transferft();
+    tf.from   = key;
+    tf.to     = tester::get_public_key(N(to1));
+    tf.number = asset(1000, get_sym());
+
+    auto actkey = name128::from_number(get_sym_id());
+    auto bonus_addr = address(N(.bonus), actkey, 0);
+
+    // fees: 0.15 * 1000 = 15, actual: 1000
+    my_tester->push_action(action(N128(.fungible), actkey, tf), key_seeds, payer);
+
+    {
+        property bonus, to;
+        READ_DB_ASSET(bonus_addr, get_sym(), bonus);
+        READ_DB_ASSET(tf.to, get_sym(), to);
+
+        CHECK(bonus.amount == 1000);
+        CHECK(to.amount == 1000);
+    }
+
+    tf.to = tester::get_public_key(N(to2));
+    tf.number = asset(1'00000, get_sym());
+    // fees: 0.15 * 1'00000 = '15000, actual: '15010
+    my_tester->push_action(action(N128(.fungible), actkey, tf), key_seeds, payer);
+
+    {
+        property bonus, to;
+        READ_DB_ASSET(bonus_addr, get_sym(), bonus);
+        READ_DB_ASSET(tf.to, get_sym(), to);
+
+        CHECK(bonus.amount == 1000 + 15010);
+        CHECK(to.amount == 1'00000);
+    }
+
+    tf.to = tester::get_public_key(N(to3));
+    tf.number = asset(2'00000, get_sym());
+    // fees: 0.15 * 2'00000 = '30000, actual: '20000
+    my_tester->push_action(action(N128(.fungible), actkey, tf), key_seeds, payer);
+
+    {
+        property bonus, to;
+        READ_DB_ASSET(bonus_addr, get_sym(), bonus);
+        READ_DB_ASSET(tf.to, get_sym(), to);
+
+        CHECK(bonus.amount == 1000 + 15010 + 20000);
+        CHECK(to.amount == 2'00000);
+    }
 }

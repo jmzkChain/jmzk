@@ -157,7 +157,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newftlock_test", "[contracts]") {
     CHECK(lock_.status == lock_status::proposed);
 
     asset ast;
-    READ_ASSET(address(N(.lock), N128(nlact.name), 0), nl.assets[0].get<lockft_def>().amount.sym(), ast);
+    READ_DB_ASSET(address(N(.lock), N128(nlact.name), 0), nl.assets[0].get<lockft_def>().amount.sym(), ast);
     CHECK(ast.amount() == 500000);
 
     my_tester->produce_blocks();
@@ -253,7 +253,7 @@ TEST_CASE_METHOD(contracts_test, "contract_tryunlock_test", "[contracts]") {
 
     // failed address
     asset ast;
-    READ_ASSET(address(public_key_type(std::string("EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"))), symbol(5, get_sym_id()), ast);
+    READ_DB_ASSET(address(public_key_type(std::string("EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"))), symbol(5, get_sym_id()), ast);
     CHECK(ast.amount() == 500000);
 
     my_tester->produce_blocks();
