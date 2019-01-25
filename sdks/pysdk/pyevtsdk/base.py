@@ -268,3 +268,7 @@ class EveripassAbi(BaseType):
 class EveripayAbi(BaseType):
     def __init__(self,payee, number, link):
         super().__init__(payee=payee, number=number, link=link)
+
+class ProdvoteAbi(BaseType):
+    def __init__(self, producer, key, value):
+        super().__init__(producer=producer, key=key, value=value)

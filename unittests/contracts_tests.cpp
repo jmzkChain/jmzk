@@ -1588,7 +1588,7 @@ TEST_CASE_METHOD(contracts_test, "contract_addmeta_test", "[contracts]") {
     const char* test_data = R"=====(
     {
       "key": "key",
-      "value": "value",
+      "value": "value'f\"\n\t",
       "creator": "[A] EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
     }
     )=====";
