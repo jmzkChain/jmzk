@@ -210,6 +210,11 @@ enum class dist_receiver_type {
 };
 
 struct dist_stack_receiver {
+public:
+    dist_stack_receiver() = default;
+    dist_stack_receiver(const asset th) : threshold(th) {}
+
+public:
     asset threshold;
 };
 
@@ -527,7 +532,7 @@ struct setpsvbouns {
 };
 
 struct distpsvbonus {
-    symbol_id_type    sym;
+    symbol            sym;
     time_point        deadline;
     optional<address> final_receiver;
 

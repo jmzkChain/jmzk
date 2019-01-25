@@ -626,9 +626,9 @@ unpack(Stream& s, std::tuple<Types...>& value) {
     detail::unpack<Stream, 0, Types...>(s, value);
 }
 
-template<typename Stream, typename K, typename V>
+template<typename Stream, typename K, typename V, typename ... Others>
 inline void
-pack(Stream& s, const std::unordered_map<K, V>& value) {
+pack(Stream& s, const std::unordered_map<K, V, Others...>& value) {
     FC_ASSERT(value.size() <= MAX_NUM_ARRAY_ELEMENTS);
     fc::raw::pack(s, unsigned_int((uint32_t)value.size()));
     auto itr = value.begin();
@@ -639,9 +639,9 @@ pack(Stream& s, const std::unordered_map<K, V>& value) {
     }
 }
 
-template<typename Stream, typename K, typename V>
+template<typename Stream, typename K, typename V, typename ... Others>
 inline void
-unpack(Stream& s, std::unordered_map<K, V>& value) {
+unpack(Stream& s, std::unordered_map<K, V, Others...>& value) {
     unsigned_int size;
     fc::raw::unpack(s, size);
     FC_ASSERT(size.value <= MAX_NUM_ARRAY_ELEMENTS);

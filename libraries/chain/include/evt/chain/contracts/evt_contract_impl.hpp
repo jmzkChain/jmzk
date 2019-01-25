@@ -594,7 +594,7 @@ calculate_passive_bonus(const token_database& tokendb,
     }
 
     auto bonus = pbs.base_charge;
-    bonus += (int64_t)boost::multiprecision::ceil(pbs.rate * amount);  // add trx fees
+    bonus += (int64_t)boost::multiprecision::floor(pbs.rate * amount);  // add trx fees
     if(pbs.minimum_charge.has_value()) {
         bonus = std::max(*pbs.minimum_charge, bonus);    // >= minimum
     }
@@ -1878,7 +1878,9 @@ check_bonus_receiver(const token_database& tokendb, const dist_receiver& receive
     case dist_receiver_type::ftholders: {
         auto& sr     = receiver.get<dist_stack_receiver>();
         auto  sym_id = sr.threshold.symbol_id();
-        EVT_ASSERT2(tokendb.exists_token(token_type::fungible, std::nullopt, name128::from_number(sym_id)),
+
+        check_n_rtn(sr.threshold, sr.threshold.sym(), bonus_check_type::natural);
+        EVT_ASSERT2(tokendb.exists_token(token_type::fungible, std::nullopt, sym_id),
             bonus_receiver_exception, "Provided bonus tokens, which has sym id: {}, used for receiving is not existed", sym_id);
         break;
     }
@@ -1887,6 +1889,11 @@ check_bonus_receiver(const token_database& tokendb, const dist_receiver& receive
     }
     } // switch
 }
+
+auto get_percent_string = [](auto& per) {
+    percent_type p = per * 100;
+    return fmt::format("{} %", p.str(5));
+};
 
 void
 check_bonus_rules(const token_database& tokendb, const dist_rules& rules, asset amount) {
@@ -1920,7 +1927,7 @@ check_bonus_rules(const token_database& tokendb, const dist_rules& rules, asset 
             // check valid precent
             EVT_ASSERT2(pr.percent > 0 && pr.percent <= 1, bonus_percent_value_exception,
                 "Rule #{} is not valid, precent value should be in range (0,1]", index);
-            auto prv = (int64_t)boost::multiprecision::ceil(pr.percent * real_type(amount.amount()));
+            auto prv = (int64_t)boost::multiprecision::floor(pr.percent * real_type(amount.amount()));
             // check large than remain
             EVT_ASSERT2(prv <= remain, bonus_rules_exception,
                 "Rule #{} is not valid, its required amount: {} is large than remainning: {}", index, asset(prv, sym), asset(remain, sym));
@@ -1932,17 +1939,17 @@ check_bonus_rules(const token_database& tokendb, const dist_rules& rules, asset 
         }
         case dist_rule_type::remaining_percent: {
             EVT_ASSERT2(remain > 0, bonus_rules_exception, "There's no bonus left for reamining-percent rule to distribute");
-            auto& pr = rule.get<dist_percent_rule>();
+            auto& pr = rule.get<dist_rpercent_rule>();
             // check receiver
             check_bonus_receiver(tokendb, pr.receiver);
             // check valid precent
             EVT_ASSERT2(pr.percent > 0 && pr.percent <= 1, bonus_percent_value_exception, "Precent value should be in range (0,1]");
-            auto prv = (int64_t)boost::multiprecision::ceil(pr.percent * real_type(remain));
+            auto prv = (int64_t)boost::multiprecision::floor(pr.percent * real_type(remain));
             // check percent result is large than minial unit of asset
             EVT_ASSERT2(prv >= 1, bonus_percent_result_exception,
                 "Rule #{} is not valid, the amount for this rule shoule be as least large than one unit of asset, but it's zero now.", index);
             remain_percent += pr.percent;
-            EVT_ASSERT2(remain_percent <= 1, bonus_percent_value_exception, "Sum of remaining percents is large than 100%, current: {}", remain_percent.str());
+            EVT_ASSERT2(remain_percent <= 1, bonus_percent_value_exception, "Sum of remaining percents is large than 100%, current: {}", get_percent_string(remain_percent));
             break;
         }
         default: {
@@ -1954,7 +1961,7 @@ check_bonus_rules(const token_database& tokendb, const dist_rules& rules, asset 
 
     if(remain > 0) {
         EVT_ASSERT2(remain_percent == 1, bonus_rules_not_fullfill,
-            "Rules are not fullfill amount, total: {}, remains: {}, remains precent fill: {}", amount, asset(remain, sym), remain_percent.str());
+            "Rules are not fullfill amount, total: {}, remains: {}, remains precent fill: {}", amount, asset(remain, sym), get_percent_string(remain_percent));
     }
 }
 
@@ -1985,7 +1992,6 @@ EVT_ACTION_IMPL_BEGIN(setpsvbouns) {
 
         EVT_ASSERT2(spbact.rate > 0 && spbact.rate <= 1, bonus_percent_value_exception,
             "Rate of passive bonus should be in range (0,1]");
-        EVT_ASSERT2(spbact.rules.size() > 0, bonus_rules_exception, "Rules for passive bonus cannot be empty");
 
         auto pb        = passive_bonus();
         pb.rate        = spbact.rate;
@@ -2002,6 +2008,7 @@ EVT_ACTION_IMPL_BEGIN(setpsvbouns) {
         }
         pb.dist_threshold = check_n_rtn(spbact.dist_threshold, sym, bonus_check_type::positive);
 
+        EVT_ASSERT2(spbact.rules.size() > 0, bonus_rules_exception, "Rules for passive bonus cannot be empty");
         check_bonus_rules(tokendb, spbact.rules, spbact.dist_threshold);
         pb.rules = std::move(spbact.rules);
 
@@ -2107,7 +2114,7 @@ EVT_ACTION_IMPL_BEGIN(distpsvbonus) {
         auto pb   = passive_bonus();
         auto dkey = get_bonus_db_key(spbact.sym.id(), 0);
         READ_DB_TOKEN(token_type::bonus, std::nullopt, dkey, pb, unknown_bonus_exception,
-            "Cannot find passive bonus registered for fungible with sym id: {}.", spbact.sym_id);
+            "Cannot find passive bonus registered for fungible with sym id: {}.", spbact.sym.id());
 
         if(pb.round > 0) {
             // already has dist round
