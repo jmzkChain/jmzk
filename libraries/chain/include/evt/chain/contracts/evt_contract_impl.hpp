@@ -655,12 +655,12 @@ transfer_fungible(apply_context& context,
     int64_t actual_amount = total.amount(), bonus_amount = 0;
     // evt and pevt cannot have passive bonus
     if(sym.id() > PEVT_SYM_ID && pay_bonus) {
-        // check if fungible has passive bonus settings
+        // check and calculate if fungible has passive bonus settings
         std::tie(actual_amount, bonus_amount) = calculate_passive_bonus(tokendb, sym.id(), total.amount(), act);
     }
 
     EVT_ASSERT2(pfrom.amount >= actual_amount, balance_exception,
-        "Address: {} does not have enough balance({}) left.", from, asset(actual_amount, sym));
+        "There's not enough balance({}) within address: {}.", asset(actual_amount, sym), from);
 
     auto r1 = checked::subtract<int64_t>(pfrom.amount, actual_amount);
     auto r2 = checked::add<int64_t>(pto.amount, actual_amount);
@@ -2150,10 +2150,11 @@ EVT_ACTION_IMPL_BEGIN(distpsvbonus) {
             }
             case dist_rule_type::percent:
             case dist_rule_type::remaining_percent: {
-                auto& pr = rule.get<dist_percent_rule>();
-                if(pr.receiver.type() == dist_receiver_type::ftholders) {
-                    ftrev = pr.receiver.get<dist_stack_receiver>();
-                }
+                rule.visit([&ftrev](auto& pr) {
+                    if(pr.receiver.type() == dist_receiver_type::ftholders) {
+                        ftrev = pr.receiver.template get<dist_stack_receiver>();
+                    }
+                });
                 break;
             }
             default: {

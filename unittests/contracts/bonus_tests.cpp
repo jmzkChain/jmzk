@@ -1,5 +1,12 @@
 #include "contracts_tests.hpp"
 
+name128
+get_bonus_db_key(uint64_t sym_id, uint64_t bonus_id) {
+    uint128_t v = bonus_id;
+    v |= ((uint128_t)sym_id << 64);
+    return v;
+}
+
 TEST_CASE_METHOD(contracts_test, "passive_bonus_test", "[contracts]") {
     auto spb = setpsvbouns();
     spb.sym = evt_sym();
@@ -160,6 +167,7 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_test", "[contracts]") {
 
 TEST_CASE_METHOD(contracts_test, "passive_bonus_fees_test", "[contracts]") {
     auto& tokendb = my_tester->control->token_db();
+    CHECK(tokendb.exists_token(token_type::bonus, std::nullopt, get_bonus_db_key(get_sym_id(), 0)));
 
     auto tf   = transferft();
     tf.from   = key;
@@ -208,18 +216,16 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_fees_test", "[contracts]") {
         CHECK(bonus.amount == 1000 + 15010 + 20000);
         CHECK(to.amount == 2'00000);
     }
+
+    my_tester->produce_block();
 }
 
 TEST_CASE_METHOD(contracts_test, "passive_bonus_dist_test", "[contracts]") {
-    auto& tokendb    = my_tester->control->token_db();
-    auto  actkey     = name128::from_number(get_sym_id());
-    auto  bonus_addr = address(N(.bonus), actkey, 0);
+    auto& tokendb = my_tester->control->token_db();
+    CHECK(tokendb.exists_token(token_type::bonus, std::nullopt, get_bonus_db_key(get_sym_id(), 0)));
 
-    {
-        property bonus;
-        READ_DB_ASSET(bonus_addr, get_sym(), bonus);
-        CHECK(bonus.amount == 1000 + 15010 + 20000);
-    }
+    auto actkey     = name128::from_number(get_sym_id());
+    auto bonus_addr = address(N(.bonus), actkey, 0);
 
     auto dpb     = distpsvbonus();
     dpb.sym      = evt_sym();
@@ -237,8 +243,8 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_dist_test", "[contracts]") {
         CHECK(bonus.amount == 1000 + 15010 + 20000);
     }
 
-    // total: 2 * 300 = 60
-    for(int i = 0; i < 30; i++) {
+    // total: 0.2 * 300 = 60
+    for(int i = 0; i < 300; i++) {
         auto tf   = transferft();
         tf.from   = key;
         tf.to     = tester::get_public_key(N(to3));
@@ -253,4 +259,8 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_dist_test", "[contracts]") {
         READ_DB_ASSET(bonus_addr, get_sym(), bonus);
         CHECK(bonus.amount == 1000 + 15010 + 20000 + 20000 * 300);
     }
+
+    my_tester->push_action(action(N128(.bonus), actkey, dpb), keyseeds, payer);
+
+    my_tester->produce_block();
 }

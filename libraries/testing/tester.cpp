@@ -35,12 +35,13 @@ base_tester::is_same_chain(base_tester& other) {
 
 void
 base_tester::init(bool push_genesis) {
-    cfg.blocks_dir            = tempdir.path() / config::default_blocks_dir_name;
-    cfg.state_dir             = tempdir.path() / config::default_state_dir_name;
-    cfg.db_config.db_path     = tempdir.path() / config::default_token_database_dir_name;
-    cfg.contracts_console     = true;
-    cfg.loadtest_mode         = false;
-    cfg.charge_free_mode      = false;
+    cfg.blocks_dir             = tempdir.path() / config::default_blocks_dir_name;
+    cfg.state_dir              = tempdir.path() / config::default_state_dir_name;
+    cfg.db_config.db_path      = tempdir.path() / config::default_token_database_dir_name;
+    cfg.contracts_console      = true;
+    cfg.loadtest_mode          = false;
+    cfg.charge_free_mode       = false;
+    cfg.max_serialization_time = std::chrono::hours(1);
 
     cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
     cfg.genesis.initial_key       = get_public_key(config::system_account_name, "active");

@@ -1,5 +1,69 @@
 #include "contracts_tests.hpp"
 
+TEST_CASE_METHOD(contracts_test, "contract_prodvote_test", "[contracts]") {
+    const char* test_data = R"=======(
+    {
+        "producer": "evt",
+        "key": "key",
+        "value": 123456789
+    }
+    )=======";
+
+    auto var  = fc::json::from_string(test_data);
+    auto pv   = var.as<prodvote>();
+    auto& tokendb = my_tester->control->token_db();
+
+    auto vote_sum = flat_map<public_key_type, int64_t>();
+
+    pv.key = N128(network-charge-factor);
+    to_variant(pv, var);
+
+    CHECK_THROWS_AS(my_tester->push_action(N(prodvote), N128(.prodvote), N128(network-charge-factor), var.get_object(), {N(payer)}, payer), unsatisfied_authorization);
+
+    pv.value = 1'000'000;
+    to_variant(pv, var);
+    CHECK_THROWS_AS(my_tester->push_action(N(prodvote), N128(.prodvote), N128(network-charge-factor), var.get_object(), key_seeds, payer), prodvote_value_exception);
+
+    pv.value = 0;
+    to_variant(pv, var);
+    CHECK_THROWS_AS(my_tester->push_action(N(prodvote), N128(.prodvote), N128(network-charge-factor), var.get_object(), key_seeds, payer), prodvote_value_exception);
+
+    pv.value = 1;
+    to_variant(pv, var);
+    my_tester->push_action(N(prodvote), N128(.prodvote), N128(network-charge-factor), var.get_object(), key_seeds, payer);
+
+    READ_TOKEN(prodvote, pv.key, vote_sum);
+    CHECK(vote_sum[tester::get_public_key(pv.producer)] == 1);
+    CHECK(my_tester->control->get_global_properties().configuration.base_network_charge_factor == 1);
+
+    pv.value = 10;
+    to_variant(pv, var);
+    my_tester->push_action(N(prodvote), N128(.prodvote), N128(network-charge-factor), var.get_object(), key_seeds, payer);
+    CHECK(my_tester->control->get_global_properties().configuration.base_network_charge_factor == 10);
+
+    pv.key = N128(storage-charge-factor);
+    to_variant(pv, var);
+    my_tester->push_action(N(prodvote), N128(.prodvote), N128(storage-charge-factor), var.get_object(), key_seeds, payer);
+    CHECK(my_tester->control->get_global_properties().configuration.base_storage_charge_factor == 10);
+
+    pv.key = N128(cpu-charge-factor);
+    to_variant(pv, var);
+    my_tester->push_action(N(prodvote), N128(.prodvote), N128(cpu-charge-factor), var.get_object(), key_seeds, payer);
+    CHECK(my_tester->control->get_global_properties().configuration.base_cpu_charge_factor == 10);
+
+    pv.key = N128(global-charge-factor);
+    pv.value = 100'000;
+    to_variant(pv, var);
+    my_tester->push_action(N(prodvote), N128(.prodvote), N128(global-charge-factor), var.get_object(), key_seeds, payer);
+    CHECK(my_tester->control->get_global_properties().configuration.global_charge_factor == 100'000);
+
+    pv.key = N128(network-fuck-factor);
+    to_variant(pv, var);
+    CHECK_THROWS_AS(my_tester->push_action(N(prodvote), N128(.prodvote), N128(network-fuck-factor), var.get_object(), key_seeds, payer), prodvote_key_exception);
+
+    my_tester->produce_blocks();
+}
+
 TEST_CASE_METHOD(contracts_test, "contract_charge_test", "[contracts]") {
     const char* test_data = R"=====(
     {
@@ -15,20 +79,21 @@ TEST_CASE_METHOD(contracts_test, "contract_charge_test", "[contracts]") {
     auto issfg = var.as<issuefungible>();
 
     auto& tokendb = my_tester->control->token_db();
-    auto  pbs  = my_tester->control->pending_block_state();
-    auto& prod = pbs->get_scheduled_producer(pbs->header.timestamp).block_signing_key;
+    auto  pbs     = my_tester->control->pending_block_state();
+    auto& prod    = pbs->get_scheduled_producer(pbs->header.timestamp).block_signing_key;
 
-    asset prodasset_before;
-    asset prodasset_after;
+    property prodasset_before;
+    property prodasset_after;
     READ_DB_ASSET(prod, evt_sym(), prodasset_before);
 
     issfg.number  = asset::from_string(string("5.00000 S#") + std::to_string(get_sym_id()));
     issfg.address = key;
     to_variant(issfg, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(issuefungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, poorer), charge_exceeded_exception);
 
-    std::vector<account_name> tmp_seeds = {N(key), N(payer)};
-    CHECK_THROWS_AS(my_tester->push_action(N(issuefungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), tmp_seeds, poorer), payer_exception);
+    auto poorer2 = my_tester->get_public_key(N(poorer2));
+    CHECK_THROWS_AS(my_tester->push_action(N(issuefungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), {N(key), N(poorer2)}, poorer2), charge_exceeded_exception);
+
+    CHECK_THROWS_AS(my_tester->push_action(N(issuefungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), {N(key), N(payer)}, poorer2), payer_exception);
 
     CHECK_THROWS_AS(my_tester->push_action(N(issuefungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, address()), payer_exception);
 
@@ -42,7 +107,7 @@ TEST_CASE_METHOD(contracts_test, "contract_charge_test", "[contracts]") {
 
     READ_DB_ASSET(prod, evt_sym(), prodasset_after);
 
-    CHECK(trace->charge == prodasset_after.amount() - prodasset_before.amount());
+    CHECK(trace->charge == prodasset_after.amount - prodasset_before.amount);
 }
 
 TEST_CASE_METHOD(contracts_test, "empty_action_test", "[contracts]") {
@@ -210,69 +275,6 @@ TEST_CASE_METHOD(contracts_test, "contract_addmeta_test", "[contracts]") {
     my_tester->push_action(N(addmeta), N128(gdomain), N128(.meta), var.get_object(), seeds, payer, 5'000'000);
     my_tester->push_action(N(addmeta), N128(.fungible), (name128)std::to_string(get_sym_id() + 1), var.get_object(), seeds, payer, 5'000'000);
     my_tester->push_action(N(addmeta), N128(gdomain), N128(t1), var.get_object(), seeds, payer, 5'000'000);
-
-    my_tester->produce_blocks();
-}
-
-TEST_CASE_METHOD(contracts_test, "contract_prodvote_test", "[contracts]") {
-    const char* test_data = R"=======(
-    {
-        "producer": "evt",
-        "key": "key",
-        "value": 123456789
-    }
-    )=======";
-
-    auto var  = fc::json::from_string(test_data);
-    auto pv   = var.as<prodvote>();
-    auto& tokendb = my_tester->control->token_db();
-
-    auto vote_sum = flat_map<public_key_type, int64_t>();
-
-    pv.key = N128(network-charge-factor);
-    to_variant(pv, var);
-
-    CHECK_THROWS_AS(my_tester->push_action(N(prodvote), N128(.prodvote), N128(network-charge-factor), var.get_object(), {N(payer)}, payer), unsatisfied_authorization);
-
-    pv.value = 1'000'000;
-    to_variant(pv, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(prodvote), N128(.prodvote), N128(network-charge-factor), var.get_object(), key_seeds, payer), prodvote_value_exception);
-
-    pv.value = 0;
-    to_variant(pv, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(prodvote), N128(.prodvote), N128(network-charge-factor), var.get_object(), key_seeds, payer), prodvote_value_exception);
-
-    pv.value = 1;
-    to_variant(pv, var);
-    my_tester->push_action(N(prodvote), N128(.prodvote), N128(network-charge-factor), var.get_object(), key_seeds, payer);
-
-    READ_TOKEN(prodvote, pv.key, vote_sum);
-    CHECK(vote_sum[tester::get_public_key(pv.producer)] == 1);
-    CHECK(my_tester->control->get_global_properties().configuration.base_network_charge_factor == 1);
-
-    pv.value = 10;
-    to_variant(pv, var);
-    my_tester->push_action(N(prodvote), N128(.prodvote), N128(network-charge-factor), var.get_object(), key_seeds, payer);
-    CHECK(my_tester->control->get_global_properties().configuration.base_network_charge_factor == 10);
-
-    pv.key = N128(storage-charge-factor);
-    to_variant(pv, var);
-    my_tester->push_action(N(prodvote), N128(.prodvote), N128(storage-charge-factor), var.get_object(), key_seeds, payer);
-    CHECK(my_tester->control->get_global_properties().configuration.base_storage_charge_factor == 10);
-
-    pv.key = N128(cpu-charge-factor);
-    to_variant(pv, var);
-    my_tester->push_action(N(prodvote), N128(.prodvote), N128(cpu-charge-factor), var.get_object(), key_seeds, payer);
-    CHECK(my_tester->control->get_global_properties().configuration.base_cpu_charge_factor == 10);
-
-    pv.key = N128(global-charge-factor);
-    to_variant(pv, var);
-    my_tester->push_action(N(prodvote), N128(.prodvote), N128(global-charge-factor), var.get_object(), key_seeds, payer);
-    CHECK(my_tester->control->get_global_properties().configuration.global_charge_factor == 10);
-
-    pv.key = N128(network-fuck-factor);
-    to_variant(pv, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(prodvote), N128(.prodvote), N128(network-fuck-factor), var.get_object(), key_seeds, payer), prodvote_key_exception);
 
     my_tester->produce_blocks();
 }

@@ -121,7 +121,7 @@ struct key_hasher {
     }
 };
 
-using keys_hash_set = google::dense_hash_set<std::string, key_hasher>;
+using keys_hash_set = google::dense_hash_set<std::string, key_hasher, std::equal_to<std::string>, std::allocator<std::string>>;
 
 struct flag {
 public:
@@ -169,8 +169,8 @@ public:
 };
 
 struct rt_group {
-    const void*            rb_snapshot;
-    std::vector<rt_action> actions;
+    const void*                rb_snapshot;
+    small_vector<rt_action, 4> actions;
 };
 
 // persistent action
@@ -337,17 +337,17 @@ token_database_impl::open(int load_persistence) {
         table_opts.filter_policy.reset(NewBloomFilterPolicy(10, false));
 
         options.table_factory.reset(NewBlockBasedTableFactory(table_opts));
-        assets_options.prefix_extractor.reset(NewFixedPrefixTransform(kPublicKeySize));
+        assets_options.prefix_extractor.reset(NewFixedPrefixTransform(kSymbolSize));
     }
     else if(config_.profile == storage_profile::memory) {
         auto tokens_table_options = PlainTableOptions();
         auto assets_table_options = PlainTableOptions();
         tokens_table_options.user_key_len = sizeof(name128) + sizeof(name128);
-        assets_table_options.user_key_len = kPublicKeySize + sizeof(symbol);
+        assets_table_options.user_key_len = kPublicKeySize + kSymbolSize;
 
         options.table_factory.reset(NewPlainTableFactory(tokens_table_options));
         assets_options.table_factory.reset(NewPlainTableFactory(assets_table_options));
-        assets_options.prefix_extractor.reset(NewFixedPrefixTransform(kPublicKeySize));
+        assets_options.prefix_extractor.reset(NewFixedPrefixTransform(kSymbolSize));
     }
     else {
         EVT_THROW(token_database_exception, "Unknown token database profile");
@@ -479,9 +479,9 @@ void
 token_database_impl::put_asset(const address& addr, symbol sym, const std::string_view& data) {
     using namespace __internal;
 
-    auto  dbkey = db_asset_key(addr, sym);
-    auto& slice = dbkey.as_slice();
-    auto status = db_->Put(write_opts_, assets_handle_, slice, data);
+    auto  dbkey  = db_asset_key(addr, sym);
+    auto& slice  = dbkey.as_slice();
+    auto  status = db_->Put(write_opts_, assets_handle_, slice, data);
     if(!status.ok()) {
         FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
@@ -542,7 +542,7 @@ token_database_impl::read_asset(const address& addr, const symbol symbol, std::s
             FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
         }
         if(!no_throw) {
-            EVT_THROW(balance_exception, "Cannot find any fungible(S#${id}) balance in address: {addr}", ("id",symbol.id())("addr",addr));
+            EVT_THROW2(unknown_token_database_key, "There's no balance of fungible with sym id: {} in address: {}", symbol.id(), addr);
         }
         return false;
     }
