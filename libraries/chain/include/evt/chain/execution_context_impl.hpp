@@ -202,6 +202,7 @@ using evt_execution_context = execution_context_impl<
                                   contracts::aprvsuspend,
                                   contracts::execsuspend,
                                   contracts::paycharge,
+                                  contracts::paybonus,
                                   contracts::everipass,
                                   contracts::everipass_v1,
                                   contracts::everipay,

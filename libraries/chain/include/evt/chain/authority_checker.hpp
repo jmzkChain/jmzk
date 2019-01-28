@@ -738,6 +738,16 @@ struct check_authority<N(paycharge)> {
 };
 
 template<>
+struct check_authority<N(paybonus)> {
+    template <typename Type>
+    static bool
+    invoke(const action&, authority_checker*) {
+        // not allowed user to use this action
+        return false;
+    }
+};
+
+template<>
 struct check_authority<N(setpsvbouns)> {
     template <typename Type>
     static bool

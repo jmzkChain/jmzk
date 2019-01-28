@@ -650,7 +650,8 @@ transfer_fungible(apply_context& context,
     }
 
     // fast path check
-    EVT_ASSERT2(pfrom.amount >= total.amount(), balance_exception, "Address: {} does not have enough balance({}) left.", from, total);
+    EVT_ASSERT2(pfrom.amount >= total.amount(), balance_exception,
+        "Address: {} does not have enough balance({}) left.", from, total);
 
     int64_t actual_amount = total.amount(), bonus_amount = 0;
     // evt and pevt cannot have passive bonus
@@ -685,6 +686,13 @@ transfer_fungible(apply_context& context,
 
         pbonus.amount += bonus_amount;
         PUT_DB_ASSET(addr, sym, pbonus);
+
+        auto pbact = paybonus {
+            .payer  = from,
+            .amount = asset(bonus_amount, sym)
+        };
+        context.add_generated_action(action(N128(.fungible), name128::from_number(sym.id()), pbact))
+            .set_index(context.exec_ctx.index_of<paybonus>());
     }
 }
 
@@ -1311,6 +1319,14 @@ EVT_ACTION_IMPL_BEGIN(paycharge) {
         PUT_DB_ASSET(prod, evt_sym(), bp);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+}
+EVT_ACTION_IMPL_END()
+
+EVT_ACTION_IMPL_BEGIN(paybonus) {
+    // empty body
+    // will not execute here
+    assert(false);
+    return;
 }
 EVT_ACTION_IMPL_END()
 

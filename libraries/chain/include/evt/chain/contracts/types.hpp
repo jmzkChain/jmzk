@@ -591,6 +591,7 @@ FC_REFLECT(evt::chain::contracts::cancelsuspend, (name));
 FC_REFLECT(evt::chain::contracts::aprvsuspend, (name)(signatures));
 FC_REFLECT(evt::chain::contracts::execsuspend, (name)(executor));
 FC_REFLECT(evt::chain::contracts::paycharge, (payer)(charge));
+FC_REFLECT(evt::chain::contracts::paybonus, (payer)(amount));
 FC_REFLECT(evt::chain::contracts::everipass, (link));
 FC_REFLECT(evt::chain::contracts::everipass_v1, (link)(memo));
 FC_REFLECT(evt::chain::contracts::everipay, (link)(payee)(number));

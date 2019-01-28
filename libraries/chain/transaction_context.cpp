@@ -97,9 +97,17 @@ void
 transaction_context::exec() {
     EVT_ASSERT(is_initialized, transaction_exception, "must first initialize");
 
-    for(const auto& act : trx.trx.actions) {
-        trace->action_traces.emplace_back();
-        dispatch_action(trace->action_traces.back(), act);
+    for(auto& act : trx.trx.actions) {
+        auto& at = trace->action_traces.emplace_back();
+        dispatch_action(at, act);
+
+        if(!at.generated_actions.empty()) {
+            for(auto& gact : at.generated_actions) {
+                auto& gat = trace->action_traces.emplace_back();
+                dispatch_action(gat, gact);
+                assert(gat.generated_actions.empty());
+            }
+        }
     }
 }
 
@@ -248,10 +256,11 @@ transaction_context::finalize_pay() {
     }
     }  // switch
 
-    trace->action_traces.emplace_back();
+    auto& at = trace->action_traces.emplace_back();
 
     act.set_index(exec_ctx.index_of<contracts::paycharge>());
-    dispatch_action(trace->action_traces.back(), act);
+    dispatch_action(at, act);
+    assert(at.generated_actions.empty());
 }
 
 void

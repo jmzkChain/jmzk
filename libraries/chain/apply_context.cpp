@@ -49,6 +49,9 @@ apply_context::exec_one(action_trace& trace) {
             if(act.index_ == -1) {
                 act.index_ = exec_ctx.index_of(act.name);
             }
+            if(act.index_ == exec_ctx.index_of<contracts::paybonus>()) {
+                goto next;
+            }
             exec_ctx.invoke<apply_action, void>(act.index_, *this);
         }
         FC_RETHROW_EXCEPTIONS(warn, "pending console output: ${console}", ("console", fmt::to_string(_pending_console_output)));
@@ -60,7 +63,9 @@ apply_context::exec_one(action_trace& trace) {
         throw;
     }
 
+next:
     trace.receipt = r;
+    trace.generated_actions = std::move(generated_actions);
 
     trx_context.executed.emplace_back(move(r));
 
@@ -74,7 +79,6 @@ apply_context::exec_one(action_trace& trace) {
 void
 apply_context::finalize_trace(action_trace& trace, const std::chrono::steady_clock::time_point& start) {
     trace.console = fmt::to_string(_pending_console_output);
-    reset_console();
     trace.elapsed = fc::microseconds(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start).count());
 }
 
@@ -86,11 +90,6 @@ apply_context::exec(action_trace& trace) {
 bool
 apply_context::has_authorized(const domain_name& domain, const domain_key& key) const {
     return act.domain == domain && act.key == key;
-}
-
-void
-apply_context::reset_console() {
-    _pending_console_output = fmt::memory_buffer();
 }
 
 uint64_t
