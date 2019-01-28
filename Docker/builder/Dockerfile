@@ -46,9 +46,7 @@ RUN wget https://dl.bintray.com/boostorg/release/1.69.0/source/boost_1_69_0.tar.
 RUN wget https://github.com/01org/tbb/archive/2019_U3.tar.gz -O - | tar -xz \
     && cd tbb-2019_U3 \
     && make tbb -j${nproc} \
-    && cd build/*release \
-    && sudo cp *.so* /usr/local/lib \
-    && cd ... \
+    && sudo cp build/*release/*.so* /usr/local/lib \
     && sudo cp -R include/tbb /usr/local/include \
     && cd .. && rm -rf tbb-2019_U3
 
