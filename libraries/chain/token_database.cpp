@@ -663,9 +663,6 @@ token_database_impl::free_savepoint(__internal::savepoint& sp) {
         delete pd;
         break;
     }
-    default: {
-        assert(false);
-    }
     }  // switch
 }
 
@@ -763,10 +760,11 @@ get_sp_key(const rt_action& act) {
         auto data = GETPOINTER(rt_asset_key, act.data);
         return std::string(data->key, sizeof(data->key));
     }
-    default: {
+    case kTokenKeys: {
         assert(false);
     }
     }  // switch
+    return std::string();
 }
 
 }  // namespace __internal
@@ -842,9 +840,6 @@ token_database_impl::rollback_rt_group(__internal::rt_group* rt) {
                 // insert key into key set
                 key_set.emplace(std::move(key));
                 break;
-            }
-            default: {
-                assert(false);
             }
             }  // switch
         };
@@ -936,9 +931,6 @@ token_database_impl::rollback_pd_group(__internal::pd_group* pd) {
             key_set.emplace(it->key);
             break;
         }
-        default: {
-            assert(false);
-        }
         }  // switch
     }
 
@@ -968,9 +960,6 @@ token_database_impl::rollback_to_latest_savepoint() {
         delete pd;
 
         break;
-    }
-    default: {
-        assert(false);
     }
     }  // switch
 
@@ -1128,9 +1117,6 @@ token_database_impl::persist_savepoints(std::ostream& os) const {
                 }  // switch
             }  // for
             break;
-        }
-        default: {
-            assert(false);
         }
         }  // switch
 

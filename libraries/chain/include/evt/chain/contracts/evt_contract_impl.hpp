@@ -613,16 +613,16 @@ calculate_passive_bonus(const token_database& tokendb,
     case passive_method_type::within_amount: {
         bonus = std::min(amount, bonus);  // make sure amount >= bonus
         return std::make_pair(amount - bonus, bonus);
-        break;
     }
     case passive_method_type::outside_amount: {
         return std::make_pair(amount, bonus);
-        break;
     }
     default: {
         assert(false);
     }
     }  // switch
+
+    return std::make_pair(amount, 0l);
 }
 
 void
@@ -1860,9 +1860,6 @@ auto check_n_rtn = [](auto& asset, auto sym, auto ctype) -> decltype(asset) {
         EVT_ASSERT2(asset.amount() > 0, bonus_asset_exception, "Invalid amount of assets, must be positive. Provided: {}", asset);
         break;
     }
-    default: {
-        assert(false);
-    }
     }  // switch
     
     return asset;
@@ -1884,9 +1881,6 @@ check_bonus_receiver(const token_database& tokendb, const dist_receiver& receive
         EVT_ASSERT2(tokendb.exists_token(token_type::fungible, std::nullopt, sym_id),
             bonus_receiver_exception, "Provided bonus tokens, which has sym id: {}, used for receiving is not existed", sym_id);
         break;
-    }
-    default: {
-        assert(false);
     }
     } // switch
 }
@@ -1952,9 +1946,6 @@ check_bonus_rules(const token_database& tokendb, const dist_rules& rules, asset 
             remain_percent += pr.percent;
             EVT_ASSERT2(remain_percent <= 1, bonus_percent_value_exception, "Sum of remaining percents is large than 100%, current: {}", get_percent_string(remain_percent));
             break;
-        }
-        default: {
-            assert(false);
         }
         }  // switch
         index++;
@@ -2156,9 +2147,6 @@ EVT_ACTION_IMPL_BEGIN(distpsvbonus) {
                     }
                 });
                 break;
-            }
-            default: {
-                assert(false);
             }
             }  // switch
 

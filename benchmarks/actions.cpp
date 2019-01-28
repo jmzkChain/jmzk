@@ -7,6 +7,7 @@
 #include <chrono>
 #include <evt/chain/token_database.hpp>
 #include <evt/chain/transaction_context.hpp>
+#include <evt/chain/execution_context_impl.hpp>
 #include <evt/testing/tester.hpp>
 #include <fc/io/json.hpp>
 #include <random>
@@ -34,7 +35,7 @@ create_tester() {
 
     cfg.blocks_dir            = dir / "blocks";
     cfg.state_dir             = dir / "state";
-    cfg.tokendb_dir           = dir / "tokendb";
+    cfg.db_config.db_path     = dir / "tokendb";
     cfg.state_size            = 1024 * 1024 * 8;
     cfg.reversible_cache_size = 1024 * 1024 * 8;
     cfg.contracts_console     = false;
@@ -88,9 +89,15 @@ get_trx_meta(controller& control, const action& act, const std::vector<account_n
     return transaction_metadata(signed_trx);
 }
 
+auto&
+get_exec_ctx() {
+    static auto exec_ctx = evt_execution_context();
+    return exec_ctx;
+}
+
 static transaction_context
 get_trx_ctx(controller& control, transaction_metadata& trx_meta) {
-    return transaction_context(control, trx_meta);
+    return transaction_context(control, get_exec_ctx(), trx_meta);
 }
 
 const char* ndjson = R"=====(
