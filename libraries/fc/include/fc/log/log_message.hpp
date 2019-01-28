@@ -106,12 +106,23 @@ public:
      *  @param ctx - generally provided using the FC_LOG_CONTEXT(LEVEL) macro 
      */
     log_message(log_context&& ctx, std::string&& format, variant_object&& args)
-        : context(std::move(ctx)), format(std::move(format)), args(std::move(args)) {}
+        : context(std::move(ctx))
+        , format(std::move(format))
+        , args(std::move(args)) {}
+
+    log_message(const log_context& ctx, const std::string& format, const variant_object& args)
+        : context(ctx)
+        , format(format)
+        , args(args) {}
 
     log_message(log_context&& ctx, std::string&& message)
         : context(std::move(ctx))
         , format(std::move(message)) {}
     
+    log_message(const log_context& ctx, const std::string& message)
+        : context(ctx)
+        , format(message) {}
+
     log_message(const variant& v);
 
     variant to_variant() const;

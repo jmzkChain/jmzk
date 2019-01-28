@@ -46,19 +46,19 @@ bool print_recognized_errors(const fc::exception& e, const bool verbose_errors) 
       // Get explanation from log, if any
       for (auto &log : e.get_log()) {
          // Check if there's a log to display
-         if (!log.get_format().empty()) {
+         if (!log.format.empty()) {
             // Localize the message as needed
-            explanation += "\n" + localized_with_variant(log.get_format().data(), log.get_data());
-         } else if (log.get_data().size() > 0 && verbose_errors) {
+            explanation += "\n" + localized_with_variant(log.format.data(), log.args);
+         } else if (log.args.size() > 0 && verbose_errors) {
             // Show data-only log only if verbose_errors option is enabled
-            explanation += "\n" + fc::json::to_string(log.get_data());
+            explanation += "\n" + fc::json::to_string(log.args);
          }
          // Check if there's stack trace to be added
-         if (!log.get_context().get_method().empty() && verbose_errors) {
+         if (!log.context.method.empty() && verbose_errors) {
             stack_trace += "\n" +
-                           log.get_context().get_file() +  ":" +
-                           fc::to_string(log.get_context().get_line_number())  + " " +
-                           log.get_context().get_method();
+                           log.context.file +  ":" +
+                           fc::to_string(log.context.line)  + " " +
+                           log.context.method;
          }
       }
       // Append header
