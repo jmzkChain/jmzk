@@ -210,6 +210,11 @@ enum class dist_receiver_type {
 };
 
 struct dist_stack_receiver {
+public:
+    dist_stack_receiver() = default;
+    dist_stack_receiver(const asset th) : threshold(th) {}
+
+public:
     asset threshold;
 };
 
@@ -247,8 +252,8 @@ struct passive_bonus {
     symbol_id_type  sym_id;
     percent_type    rate;
     asset           base_charge;
-    asset           charge_threshold;
-    asset           minimum_charge;
+    optional<asset> charge_threshold;
+    optional<asset> minimum_charge;
     asset           dist_threshold;
     dist_rules      rules;
     passive_methods methods;   // without actions specify here, others will be `within` defaultly
@@ -257,12 +262,12 @@ struct passive_bonus {
 };
 
 struct passive_bonus_slim {
-    symbol_id_type  sym_id;
-    percent_type    rate;
-    int64_t         base_charge;
-    int64_t         charge_threshold;
-    int64_t         minimum_charge;
-    passive_methods methods;
+    symbol_id_type    sym_id;
+    percent_type      rate;
+    int64_t           base_charge;
+    optional<int64_t> charge_threshold;
+    optional<int64_t> minimum_charge;
+    passive_methods   methods;
 };
 
 struct newdomain {
@@ -517,8 +522,8 @@ struct setpsvbouns {
     symbol          sym;
     decimal<6>      rate;
     asset           base_charge;
-    asset           charge_threshold;
-    asset           minimum_charge;
+    optional<asset> charge_threshold;
+    optional<asset> minimum_charge;
     asset           dist_threshold;
     dist_rules      rules;
     passive_methods methods;
@@ -527,7 +532,7 @@ struct setpsvbouns {
 };
 
 struct distpsvbonus {
-    symbol_id_type    sym;
+    symbol            sym;
     time_point        deadline;
     optional<address> final_receiver;
 

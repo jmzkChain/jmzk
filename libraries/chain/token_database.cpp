@@ -27,6 +27,7 @@
 
 #include <evt/chain/config.hpp>
 #include <evt/chain/exceptions.hpp>
+#include <evt/chain/dense_hash.hpp>
 
 namespace evt { namespace chain {
 
@@ -120,7 +121,7 @@ struct key_hasher {
     }
 };
 
-using key_unordered_set = std::unordered_set<std::string, key_hasher>;
+using keys_hash_set = google::dense_hash_set<std::string, key_hasher, std::equal_to<std::string>, std::allocator<std::string>>;
 
 struct flag {
 public:
@@ -168,8 +169,8 @@ public:
 };
 
 struct rt_group {
-    const void*            rb_snapshot;
-    std::vector<rt_action> actions;
+    const void*                rb_snapshot;
+    small_vector<rt_action, 4> actions;
 };
 
 // persistent action
@@ -336,17 +337,17 @@ token_database_impl::open(int load_persistence) {
         table_opts.filter_policy.reset(NewBloomFilterPolicy(10, false));
 
         options.table_factory.reset(NewBlockBasedTableFactory(table_opts));
-        assets_options.prefix_extractor.reset(NewFixedPrefixTransform(kPublicKeySize));
+        assets_options.prefix_extractor.reset(NewFixedPrefixTransform(kSymbolSize));
     }
     else if(config_.profile == storage_profile::memory) {
         auto tokens_table_options = PlainTableOptions();
         auto assets_table_options = PlainTableOptions();
         tokens_table_options.user_key_len = sizeof(name128) + sizeof(name128);
-        assets_table_options.user_key_len = kPublicKeySize + sizeof(symbol);
+        assets_table_options.user_key_len = kPublicKeySize + kSymbolSize;
 
         options.table_factory.reset(NewPlainTableFactory(tokens_table_options));
         assets_options.table_factory.reset(NewPlainTableFactory(assets_table_options));
-        assets_options.prefix_extractor.reset(NewFixedPrefixTransform(kPublicKeySize));
+        assets_options.prefix_extractor.reset(NewFixedPrefixTransform(kSymbolSize));
     }
     else {
         EVT_THROW(token_database_exception, "Unknown token database profile");
@@ -478,9 +479,9 @@ void
 token_database_impl::put_asset(const address& addr, symbol sym, const std::string_view& data) {
     using namespace __internal;
 
-    auto  dbkey = db_asset_key(addr, sym);
-    auto& slice = dbkey.as_slice();
-    auto status = db_->Put(write_opts_, assets_handle_, slice, data);
+    auto  dbkey  = db_asset_key(addr, sym);
+    auto& slice  = dbkey.as_slice();
+    auto  status = db_->Put(write_opts_, assets_handle_, slice, data);
     if(!status.ok()) {
         FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
@@ -541,7 +542,7 @@ token_database_impl::read_asset(const address& addr, const symbol symbol, std::s
             FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
         }
         if(!no_throw) {
-            EVT_THROW(balance_exception, "Cannot find any fungible(S#${id}) balance in address: {addr}", ("id",symbol.id())("addr",addr));
+            EVT_THROW2(unknown_token_database_key, "There's no balance of fungible with sym id: {} in address: {}", symbol.id(), addr);
         }
         return false;
     }
@@ -782,10 +783,10 @@ token_database_impl::rollback_rt_group(__internal::rt_group* rt) {
     auto snapshot_read_opts_     = read_opts_;
     snapshot_read_opts_.snapshot = (const rocksdb::Snapshot*)rt->rb_snapshot;
 
-    auto key_set = key_unordered_set();
-    key_set.reserve(rt->actions.size());
+    auto key_set = keys_hash_set();
+    auto batch   = rocksdb::WriteBatch();
+    key_set.set_empty_key(std::string());
     
-    auto batch = rocksdb::WriteBatch();
     for(auto it = rt->actions.begin(); it < rt->actions.end(); it++) {
         auto data = GETPOINTER(void, it->data);
 
@@ -892,10 +893,9 @@ token_database_impl::rollback_pd_group(__internal::pd_group* pd) {
         return;
     }
 
-    auto key_set = key_unordered_set();
-    key_set.reserve(pd->actions.size());
-
-    auto batch = rocksdb::WriteBatch();
+    auto key_set = keys_hash_set();
+    auto batch   = rocksdb::WriteBatch();
+    key_set.set_empty_key(std::string());
 
     for(auto it = pd->actions.begin(); it < pd->actions.end(); it++) {
         switch((action_op)it->op) {
@@ -1044,8 +1044,8 @@ token_database_impl::persist_savepoints(std::ostream& os) const {
         case kRuntime: {
             auto rt = GETPOINTER(rt_group, n.group);
 
-            auto key_set = key_unordered_set();
-            key_set.reserve(rt->actions.size());
+            auto key_set = keys_hash_set();
+            key_set.set_empty_key(std::string());
 
             auto snapshot_read_opts_     = read_opts_;
             snapshot_read_opts_.snapshot = (const rocksdb::Snapshot*)rt->rb_snapshot;

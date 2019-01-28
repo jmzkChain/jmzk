@@ -70,9 +70,9 @@ fc::variant_object filter_fields(const fc::variant_object& filter, const fc::var
 bool expect_assert_message(const fc::exception& ex, string expected);
 
 /**
-    *  @class tester
-    *  @brief provides utility function to simplify the creation of unit tests
-    */
+ *  @class tester
+ *  @brief provides utility function to simplify the creation of unit tests
+ */
 class base_tester {
 public:
     typedef string action_result;
@@ -122,25 +122,10 @@ public:
                                  uint32_t            max_charge = 1'000'000,
                                  uint32_t            expiration = DEFAULT_EXPIRATION_DELTA) const;
 
-    vector<transaction_trace_ptr>
-    create_accounts(vector<account_name> names) {
-        vector<transaction_trace_ptr> traces;
-        traces.reserve(names.size());
-        for(auto n : names)
-            traces.emplace_back(create_account(n));
-        return traces;
-    }
 
     void push_genesis_block();
 
-    transaction_trace_ptr create_account(account_name name);
-
-    transaction_trace_ptr new_domain(domain_name& name, std::vector<account_name> owners);
-    transaction_trace_ptr issue_tokens(domain_name& name, std::vector<token_name> tokens, std::vector<account_name> owners);
-    transaction_trace_ptr transfer_token(domain_name& name, std::vector<token_name> tokens, std::vector<account_name> to);
-
     void add_money(const address& addr, const asset& number);
-
 
     template <typename KeyType = fc::ecc::private_key_shim>
     static private_key_type

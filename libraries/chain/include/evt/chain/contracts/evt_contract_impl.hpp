@@ -204,6 +204,12 @@ get_db_key<passive_bonus>(const passive_bonus& pb) {
     return get_bonus_db_key(pb.sym_id, 0);
 }
 
+template<>
+name128
+get_db_key<passive_bonus_slim>(const passive_bonus_slim& pbs) {
+    return get_bonus_db_key(pbs.sym_id, 0);
+}
+
 template<typename T>
 std::optional<name128>
 get_db_prefix(const T& v) {
@@ -266,26 +272,26 @@ get_db_prefix<token_def>(const token_def& v) {
         .created_index = context.get_index_of_trx()                           \
     }
 
-#define READ_DB_ASSET(ADDR, SYM, VALUEREF)                                                              \
-    try {                                                                                               \
-        auto str = std::string();                                                                       \
-        tokendb.read_asset(ADDR, SYM, str);                                                             \
-                                                                                                        \
-        extract_db_value(str, VALUEREF);                                                                \
-    }                                                                                                   \
-    catch(token_database_exception&) {                                                                  \
-        EVT_THROW2(balance_exception, "There's no balance left in {} with sym: {}", ADDR, SYM);         \
+#define READ_DB_ASSET(ADDR, SYM, VALUEREF)                                                      \
+    try {                                                                                       \
+        auto str = std::string();                                                               \
+        tokendb.read_asset(ADDR, SYM, str);                                                     \
+                                                                                                \
+        extract_db_value(str, VALUEREF);                                                        \
+    }                                                                                           \
+    catch(token_database_exception&) {                                                          \
+        EVT_THROW2(balance_exception, "There's no balance left in {} with sym: {}", ADDR, SYM); \
     }
 
-#define READ_DB_ASSET_NO_THROW(ADDR, SYM, VALUEREF)                                   \
-    {                                                                                 \
-        auto str = std::string();                                                     \
-        if(!tokendb.read_asset(ADDR, SYM, str, true /* no throw */)) {                \
-            VALUEREF = MAKE_PROPERTY(0);                                              \
-        }                                                                             \
-        else {                                                                        \
-            extract_db_value(str, VALUEREF);                                          \
-        }                                                                             \
+#define READ_DB_ASSET_NO_THROW(ADDR, SYM, VALUEREF)                    \
+    {                                                                  \
+        auto str = std::string();                                      \
+        if(!tokendb.read_asset(ADDR, SYM, str, true /* no throw */)) { \
+            VALUEREF = MAKE_PROPERTY(0);                               \
+        }                                                              \
+        else {                                                         \
+            extract_db_value(str, VALUEREF);                           \
+        }                                                              \
     }
 
 } // namespace __internal
@@ -576,7 +582,7 @@ get_bonus_address(symbol_id_type sym_id, uint32_t bonus_id) {
 }
 
 std::pair<int64_t, int64_t>
-calucate_passive_bonus(const token_database& tokendb,
+calculate_passive_bonus(const token_database& tokendb,
                        symbol_id_type        sym_id,
                        int64_t               amount,
                        action_name           act) {
@@ -587,10 +593,14 @@ calucate_passive_bonus(const token_database& tokendb,
         return std::make_pair(amount, 0l);
     }
 
-    auto bonus = pbs.minimum_charge;
-    bonus += (int64_t)boost::multiprecision::ceil(pbs.rate * amount);  // add trx fees
-    bonus  = std::max(pbs.minimum_charge, bonus);    // >= minimum
-    bonus  = std::min(pbs.charge_threshold, bonus);  // <= threshold
+    auto bonus = pbs.base_charge;
+    bonus += (int64_t)boost::multiprecision::floor(pbs.rate * amount);  // add trx fees
+    if(pbs.minimum_charge.has_value()) {
+        bonus = std::max(*pbs.minimum_charge, bonus);    // >= minimum
+    }
+    if(pbs.charge_threshold.has_value()) {
+        bonus = std::min(*pbs.charge_threshold, bonus);  // <= threshold
+    }
 
     auto method = passive_method_type::within_amount;
 
@@ -601,11 +611,12 @@ calucate_passive_bonus(const token_database& tokendb,
 
     switch(method) {
     case passive_method_type::within_amount: {
+        bonus = std::min(amount, bonus);  // make sure amount >= bonus
         return std::make_pair(amount - bonus, bonus);
         break;
     }
     case passive_method_type::outside_amount: {
-        return std::make_pair(amount + bonus, bonus);
+        return std::make_pair(amount, bonus);
         break;
     }
     default: {
@@ -644,12 +655,12 @@ transfer_fungible(apply_context& context,
     int64_t actual_amount = total.amount(), bonus_amount = 0;
     // evt and pevt cannot have passive bonus
     if(sym.id() > PEVT_SYM_ID && pay_bonus) {
-        // check if fungible has passive bonus settings
-        std::tie(actual_amount, bonus_amount) = calucate_passive_bonus(tokendb, sym.id(), total.amount(), act);
+        // check and calculate if fungible has passive bonus settings
+        std::tie(actual_amount, bonus_amount) = calculate_passive_bonus(tokendb, sym.id(), total.amount(), act);
     }
 
     EVT_ASSERT2(pfrom.amount >= actual_amount, balance_exception,
-        "Address: {} does not have enough balance({}) left.", from, asset(actual_amount, sym));
+        "There's not enough balance({}) within address: {}.", asset(actual_amount, sym), from);
 
     auto r1 = checked::subtract<int64_t>(pfrom.amount, actual_amount);
     auto r2 = checked::add<int64_t>(pto.amount, actual_amount);
@@ -1868,7 +1879,9 @@ check_bonus_receiver(const token_database& tokendb, const dist_receiver& receive
     case dist_receiver_type::ftholders: {
         auto& sr     = receiver.get<dist_stack_receiver>();
         auto  sym_id = sr.threshold.symbol_id();
-        EVT_ASSERT2(tokendb.exists_token(token_type::fungible, std::nullopt, name128::from_number(sym_id)),
+
+        check_n_rtn(sr.threshold, sr.threshold.sym(), bonus_check_type::natural);
+        EVT_ASSERT2(tokendb.exists_token(token_type::fungible, std::nullopt, sym_id),
             bonus_receiver_exception, "Provided bonus tokens, which has sym id: {}, used for receiving is not existed", sym_id);
         break;
     }
@@ -1877,6 +1890,11 @@ check_bonus_receiver(const token_database& tokendb, const dist_receiver& receive
     }
     } // switch
 }
+
+auto get_percent_string = [](auto& per) {
+    percent_type p = per * 100;
+    return fmt::format("{} %", p.str(5));
+};
 
 void
 check_bonus_rules(const token_database& tokendb, const dist_rules& rules, asset amount) {
@@ -1910,7 +1928,7 @@ check_bonus_rules(const token_database& tokendb, const dist_rules& rules, asset 
             // check valid precent
             EVT_ASSERT2(pr.percent > 0 && pr.percent <= 1, bonus_percent_value_exception,
                 "Rule #{} is not valid, precent value should be in range (0,1]", index);
-            auto prv = (int64_t)boost::multiprecision::ceil(pr.percent * real_type(amount.amount()));
+            auto prv = (int64_t)boost::multiprecision::floor(pr.percent * real_type(amount.amount()));
             // check large than remain
             EVT_ASSERT2(prv <= remain, bonus_rules_exception,
                 "Rule #{} is not valid, its required amount: {} is large than remainning: {}", index, asset(prv, sym), asset(remain, sym));
@@ -1922,17 +1940,17 @@ check_bonus_rules(const token_database& tokendb, const dist_rules& rules, asset 
         }
         case dist_rule_type::remaining_percent: {
             EVT_ASSERT2(remain > 0, bonus_rules_exception, "There's no bonus left for reamining-percent rule to distribute");
-            auto& pr = rule.get<dist_percent_rule>();
+            auto& pr = rule.get<dist_rpercent_rule>();
             // check receiver
             check_bonus_receiver(tokendb, pr.receiver);
             // check valid precent
             EVT_ASSERT2(pr.percent > 0 && pr.percent <= 1, bonus_percent_value_exception, "Precent value should be in range (0,1]");
-            auto prv = (int64_t)boost::multiprecision::ceil(pr.percent * real_type(remain));
+            auto prv = (int64_t)boost::multiprecision::floor(pr.percent * real_type(remain));
             // check percent result is large than minial unit of asset
             EVT_ASSERT2(prv >= 1, bonus_percent_result_exception,
                 "Rule #{} is not valid, the amount for this rule shoule be as least large than one unit of asset, but it's zero now.", index);
             remain_percent += pr.percent;
-            EVT_ASSERT2(remain_percent <= 1, bonus_percent_value_exception, "Sum of remaining percents is large than 100%, current: {}", remain_percent.str());
+            EVT_ASSERT2(remain_percent <= 1, bonus_percent_value_exception, "Sum of remaining percents is large than 100%, current: {}", get_percent_string(remain_percent));
             break;
         }
         default: {
@@ -1944,7 +1962,7 @@ check_bonus_rules(const token_database& tokendb, const dist_rules& rules, asset 
 
     if(remain > 0) {
         EVT_ASSERT2(remain_percent == 1, bonus_rules_not_fullfill,
-            "Rules are not fullfill amount, total: {}, remains: {}, remains precent fill: {}", amount, asset(remain, sym), remain_percent.str());
+            "Rules are not fullfill amount, total: {}, remains: {}, remains precent fill: {}", amount, asset(remain, sym), get_percent_string(remain_percent));
     }
 }
 
@@ -1952,7 +1970,8 @@ void
 check_passive_methods(const execution_context& exec_ctx, const passive_methods& methods) {
     for(auto& it : methods) {
         // check if it's a valid action
-        exec_ctx.index_of(it.first);
+        EVT_ASSERT2(it.first == N(transferft) || it.first == N(everipay), bonus_method_exeption,
+            "Only `transferft` and `everipay` are valid for method options");
     }
 }
 
@@ -1961,7 +1980,7 @@ check_passive_methods(const execution_context& exec_ctx, const passive_methods& 
 EVT_ACTION_IMPL_BEGIN(setpsvbouns) {
     using namespace __internal;
 
-    auto& spbact = context.act.data_as<ACT>();
+    auto spbact = context.act.data_as<ACT>();
     try {
         auto sym = spbact.sym;
         EVT_ASSERT(context.has_authorized(N128(.bonus), name128::from_number(sym.id())), action_authorize_exception,
@@ -1973,33 +1992,27 @@ EVT_ACTION_IMPL_BEGIN(setpsvbouns) {
         EVT_ASSERT2(!tokendb.exists_token(token_type::bonus, std::nullopt, get_bonus_db_key(sym.id(), 0)),
             bonus_dupe_exception, "It's now allowd to update passive bonus currently.");
 
-        auto check_n_rtn = [sym](auto& asset, auto ctype) -> decltype(asset) {
-            EVT_ASSERT2(asset.sym() == sym, bonus_asset_exception, "Invalid symbol of assets, expected: {}, provided:  {}", sym, asset.sym());
-            switch(ctype) {
-            case bonus_check_type::natural: {
-                EVT_ASSERT2(asset.amount() >= 0, bonus_asset_exception, "Invalid amount of assets, must be natural number. Provided: {}", asset);
-                break;
-            }
-            case bonus_check_type::positive: {
-                EVT_ASSERT2(asset.amount() > 0, bonus_asset_exception, "Invalid amount of assets, must be positive. Provided: {}", asset);
-                break;
-            }
-            default: {
-                break;
-            }
-            }  // switch
-            
-            return asset;
-        };
+        EVT_ASSERT2(spbact.rate > 0 && spbact.rate <= 1, bonus_percent_value_exception,
+            "Rate of passive bonus should be in range (0,1]");
 
-        auto pb             = passive_bonus();
-        pb.rate             = check_n_rtn(spbact.rate, sym, bonus_check_type::positive);
-        pb.base_charge      = check_n_rtn(spbact.base_charge, sym, bonus_check_type::natural);
-        pb.charge_threshold = check_n_rtn(spbact.charge_threshold, sym, bonus_check_type::natural);
-        pb.minimum_charge   = check_n_rtn(spbact.minimum_charge, sym, bonus_check_type::natural);
-        pb.dist_threshold   = check_n_rtn(spbact.dist_threshold, sym, bonus_check_type::positive);
+        auto pb        = passive_bonus();
+        pb.sym_id      = sym.id();
+        pb.rate        = spbact.rate;
+        pb.base_charge = check_n_rtn(spbact.base_charge, sym, bonus_check_type::natural);
+        if(spbact.charge_threshold.has_value()) {
+            pb.charge_threshold = check_n_rtn(*spbact.charge_threshold, sym, bonus_check_type::positive);
+        }
+        if(spbact.minimum_charge.has_value()) {
+            pb.minimum_charge = check_n_rtn(*spbact.minimum_charge, sym, bonus_check_type::natural);
+            if(spbact.charge_threshold.has_value()) {
+                EVT_ASSERT2(*spbact.minimum_charge < *spbact.charge_threshold, bonus_rules_exception,
+                    "Minimum charge should be less than charge threshold");
+            }
+        }
+        pb.dist_threshold = check_n_rtn(spbact.dist_threshold, sym, bonus_check_type::positive);
 
-        check_bonus_rules(spbact.rules, spbact.dist_threshold);
+        EVT_ASSERT2(spbact.rules.size() > 0, bonus_rules_exception, "Rules for passive bonus cannot be empty");
+        check_bonus_rules(tokendb, spbact.rules, spbact.dist_threshold);
         pb.rules = std::move(spbact.rules);
 
         check_passive_methods(context.control.get_execution_context(), spbact.methods);
@@ -2009,14 +2022,18 @@ EVT_ACTION_IMPL_BEGIN(setpsvbouns) {
         ADD_DB_TOKEN(token_type::bonus, pb);
 
         // add passive bonus slim for quick read
-        auto pbs             = passive_bonus_slim();
-        pbs.sym_id           = sym.id();
-        pbs.rate             = pb.rate;
-        pbs.base_charge      = pb.base_charge.amount();
-        pbs.charge_threshold = pb.charge_threshold.amount();
-        pbs.minimum_charge   = pb.minimum_charge.amount();
-        pbs.methods          = pb.methods;
+        auto pbs        = passive_bonus_slim();
+        pbs.sym_id      = sym.id();
+        pbs.rate        = pb.rate;
+        pbs.base_charge = pb.base_charge.amount();
+        pbs.methods     = pb.methods;
 
+        if(pb.charge_threshold.has_value()) {
+            pbs.charge_threshold = pb.charge_threshold->amount();
+        }
+        if(pb.minimum_charge.has_value()) {
+            pbs.minimum_charge = pb.minimum_charge->amount();
+        }
         ADD_DB_TOKEN(token_type::bonus_slim, pbs);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
@@ -2049,6 +2066,12 @@ using holder_slim_map = google::dense_hash_map<uint32_t, int64_t, no_hasher<uint
 using holder_coll_map = std::unordered_map<std::string, int64_t, pubkey_hasher>;
 
 struct holder_dist {
+public:
+    holder_dist() {
+        slim.set_empty_key(0);
+    }
+
+public:
     symbol_id_type  sym_id;
     holder_slim_map slim;
     holder_coll_map coll;
@@ -2090,16 +2113,17 @@ struct bonusdist {
 EVT_ACTION_IMPL_BEGIN(distpsvbonus) {
     using namespace __internal;
 
-    auto& spbact = context.act.data_as<ACT>();
+    auto spbact = context.act.data_as<ACT>();
     try {
         EVT_ASSERT(context.has_authorized(N128(.bonus), name128::from_number(spbact.sym.id())), action_authorize_exception,
             "Invalid authorization fields(domain and key).");
 
         auto& tokendb = context.control.token_db();
 
-        auto pb = passive_bonus();
-        READ_DB_TOKEN(token_type::bonus, std::nullopt,  get_bonus_db_key(spbact.sym.id(), 0), pb, unknown_bonus_exception,
-            "Cannot find passive bonus registered for fungible with sym id: {}.", spbact.sym_id);
+        auto pb   = passive_bonus();
+        auto dkey = get_bonus_db_key(spbact.sym.id(), 0);
+        READ_DB_TOKEN(token_type::bonus, std::nullopt, dkey, pb, unknown_bonus_exception,
+            "Cannot find passive bonus registered for fungible with sym id: {}.", spbact.sym.id());
 
         if(pb.round > 0) {
             // already has dist round
@@ -2126,10 +2150,11 @@ EVT_ACTION_IMPL_BEGIN(distpsvbonus) {
             }
             case dist_rule_type::percent:
             case dist_rule_type::remaining_percent: {
-                auto& pr = rule.get<dist_percent_rule>();
-                if(pr.receiver.type() == dist_receiver_type::ftholders) {
-                    ftrev = pr.receiver.get<dist_stack_receiver>();
-                }
+                rule.visit([&ftrev](auto& pr) {
+                    if(pr.receiver.type() == dist_receiver_type::ftholders) {
+                        ftrev = pr.receiver.template get<dist_stack_receiver>();
+                    }
+                });
                 break;
             }
             default: {
@@ -2150,7 +2175,7 @@ EVT_ACTION_IMPL_BEGIN(distpsvbonus) {
         bd.final_receiver = spbact.final_receiver;
 
         auto dbv = make_db_value(bd);
-        tokendb.put_token(token_type::bonus_psvdist, action_op::add, std::nullopt, get_bonus_db_key(spbact.sym_id, pb.round), dbv.as_string_view());
+        tokendb.put_token(token_type::bonus_psvdist, action_op::add, std::nullopt, get_bonus_db_key(spbact.sym.id(), pb.round), dbv.as_string_view());
 
         pb.round++;
         pb.deadline = spbact.deadline;

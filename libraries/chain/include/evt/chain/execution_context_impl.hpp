@@ -75,6 +75,18 @@ public:
         return old_ver;
     }
 
+    int
+    set_version_unsafe(name act, int newver) override {
+        auto actindex = index_of(act);
+        auto cver     = curr_vers_[actindex];
+        auto mver     = type_names_[actindex].size() - 1;
+
+        auto old_ver         = cver;
+        curr_vers_[actindex] = newver;
+
+        return old_ver;
+    }
+
     std::string
     get_acttype_name(name act) const override {
         auto index = index_of(act);
@@ -198,7 +210,9 @@ using evt_execution_context = execution_context_impl<
                                   contracts::updsched,
                                   contracts::newlock,
                                   contracts::aprvlock,
-                                  contracts::tryunlock
+                                  contracts::tryunlock,
+                                  contracts::setpsvbouns,
+                                  contracts::distpsvbonus
                               >;
 
 }}  // namespace evt::chain

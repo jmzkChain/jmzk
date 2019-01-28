@@ -23,5 +23,6 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 endif()
 
 add_subdirectory( chain )
+add_subdirectory( catch )
 add_subdirectory( testing)
 add_subdirectory( fmt EXCLUDE_FROM_ALL )
