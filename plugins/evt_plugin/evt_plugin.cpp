@@ -58,7 +58,7 @@ namespace evt_apis {
 #define READ_DB_TOKEN(TYPE, PREFIX, KEY, VALUEREF, EXCEPTION, FORMAT, ...)  \
     try {                                                                   \
         auto str = std::string();                                           \
-        tokendb.read_token(TYPE, PREFIX, KEY, str);                         \
+        db.read_token(TYPE, PREFIX, KEY, str);                              \
                                                                             \
         extract_db_value(str, VALUEREF);                                    \
     }                                                                       \
@@ -66,27 +66,35 @@ namespace evt_apis {
         EVT_THROW2(EXCEPTION, FORMAT, __VA_ARGS__);                         \
     }
 
-#define READ_DB_ASSET(ADDR, SYM, VALUEREF)                                                              \
-    try {                                                                                               \
-        auto str = std::string();                                                                       \
-        tokendb.read_asset(ADDR, SYM, str);                                                             \
-                                                                                                        \
-        extract_db_value(str, VALUEREF);                                                                \
-    }                                                                                                   \
-    catch(token_database_exception&) {                                                                  \
-        EVT_THROW2(balance_exception, "There's no balance left in {} with sym: {}", ADDR, SYM);         \
+#define MAKE_PROPERTY(AMOUNT) \
+    property {                \
+        .amount = AMOUNT,     \
+        .created_at = 0,      \
+        .created_index = 0    \
     }
 
-#define READ_DB_ASSET_NO_THROW(ADDR, SYM, VALUEREF)                        \
-    {                                                                      \
-        auto str = std::string();                                          \
-        if(!tokendb.read_asset(ADDR, SYM, str, true /* no throw */)) {     \
-            VALUEREF = asset(0, SYM);                                      \
-        }                                                                  \
-        else {                                                             \
-            extract_db_value(str, VALUEREF);                               \
-        }                                                                  \
+#define READ_DB_ASSET(ADDR, SYM, VALUEREF)                                                      \
+    try {                                                                                       \
+        auto str = std::string();                                                               \
+        db.read_asset(ADDR, SYM, str);                                                          \
+                                                                                                \
+        extract_db_value(str, VALUEREF);                                                        \
+    }                                                                                           \
+    catch(token_database_exception&) {                                                          \
+        EVT_THROW2(balance_exception, "There's no balance left in {} with sym: {}", ADDR, SYM); \
     }
+
+#define READ_DB_ASSET_NO_THROW(ADDR, SYM, VALUEREF)               \
+    {                                                             \
+        auto str = std::string();                                 \
+        if(!db.read_asset(ADDR, SYM, str, true /* no throw */)) { \
+            VALUEREF = MAKE_PROPERTY(0);                          \
+        }                                                         \
+        else {                                                    \
+            extract_db_value(str, VALUEREF);                      \
+        }                                                         \
+    }
+
 
 fc::variant
 read_only::get_domain(const read_only::get_domain_params& params) {
@@ -173,10 +181,10 @@ read_only::get_fungible(const get_fungible_params& params) {
     auto mvar = fc::mutable_variant_object(var);
     auto addr = address(N(.fungible), name128::from_number(params.id), 0);
 
-    asset as;
+    property as;
     READ_DB_ASSET(addr, fungible.sym, as);
 
-    mvar["current_supply"] = fungible.total_supply - as;
+    mvar["current_supply"] = fungible.total_supply - asset(as.amount, fungible.sym);
     mvar["address"]        = addr;
     return mvar;
 }
@@ -190,11 +198,13 @@ read_only::get_fungible_balance(const get_fungible_balance_params& params) {
         fungible_def fungible;
         READ_DB_TOKEN(token_type::fungible, std::nullopt, *params.sym_id, fungible, unknown_fungible_exception, "Cannot find fungible with sym id: {}", *params.sym_id);
 
-        variant var;
-        asset   as;
+        variant  var;
+        property as;
         READ_DB_ASSET_NO_THROW(params.address, fungible.sym, as);
 
-        fc::to_variant(as, var);
+        auto bal = asset(as.amount, fungible.sym);
+
+        fc::to_variant(bal, var);
         vars.emplace_back(std::move(var));
         return vars;
     }

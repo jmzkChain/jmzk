@@ -35,7 +35,7 @@ using chain::digest_type;
 using chain::name;
 using chain::proposal_name;
 using chain::public_key_type;
-using chain::public_keys_type;
+using chain::public_keys_set;
 using chain::version;
 using chain::contracts::abi_serializer;
 
@@ -103,19 +103,19 @@ public:
 
     struct get_required_keys_params {
         fc::variant      transaction;
-        public_keys_type available_keys;
+        public_keys_set  available_keys;
     };
     struct get_required_keys_result {
-        public_keys_type required_keys;
+        public_keys_set  required_keys;
     };
     get_required_keys_result get_required_keys(const get_required_keys_params& params) const;
 
     struct get_suspend_required_keys_params {
         proposal_name             name;
-        public_keys_type available_keys;
+        public_keys_set  available_keys;
     };
     struct get_suspend_required_keys_result {
-        public_keys_type required_keys;
+        public_keys_set  required_keys;
     };
     get_suspend_required_keys_result get_suspend_required_keys(const get_suspend_required_keys_params& params) const;
 

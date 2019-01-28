@@ -10,15 +10,9 @@
 #include <unordered_map>
 #include <thread>
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
-#define XXH_INLINE_ALL
-#include <xxhash.h>
-#pragma GCC diagnostic pop
-
-
 #include <boost/asio.hpp>
 #include <fc/io/json.hpp>
+#include <fc/crypto/city.hpp>
 
 #include <evt/chain_plugin/chain_plugin.hpp>
 #include <evt/chain/plugin_interface.hpp>
@@ -44,7 +38,7 @@ using steady_timer_ptr = std::shared_ptr<steady_timer>;
 struct evt_link_id_hasher {
     size_t
     operator()(const link_id_type& id) const {
-        return XXH64(&id, sizeof(id), 0);
+        return fc::city_hash_size_t((const char*)&id, sizeof(id));
     }
 };
 
