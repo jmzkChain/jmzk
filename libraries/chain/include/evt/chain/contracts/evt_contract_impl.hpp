@@ -148,7 +148,11 @@ template<uint128_t i>
 constexpr uint128<i> uint128_c{};
 
 auto domain_metas = hana::make_map(
-    hana::make_pair(hana::int_c<(int)reserved_meta_key::disable_destroy>, hana::make_tuple(uint128_c<N128(.disable-destroy)>, hana::type_c<bool>))
+    hana::make_pair(
+        hana::int_c<(int)reserved_meta_key::disable_destroy>,
+        hana::make_tuple(uint128_c<N128(.disable-destroy)>,
+        hana::type_c<bool>)
+    )
 );
 
 template<int KeyType>
@@ -240,9 +244,9 @@ get_db_prefix<token_def>(const token_def& v) {
         tokendb.put_token(TYPE, action_op::put, get_db_prefix(VALUE), get_db_key(VALUE), dv.as_string_view()); \
     }
 
-#define PUT_DB_ASSET(ADDR, SYM, VALUE)                                  \
-    {                                                              \
-        auto dv = make_db_value(VALUE);                            \
+#define PUT_DB_ASSET(ADDR, SYM, VALUE)                     \
+    {                                                      \
+        auto dv = make_db_value(VALUE);                    \
         tokendb.put_asset(ADDR, SYM, dv.as_string_view()); \
     }
 
@@ -288,6 +292,8 @@ get_db_prefix<token_def>(const token_def& v) {
         auto str = std::string();                                      \
         if(!tokendb.read_asset(ADDR, SYM, str, true /* no throw */)) { \
             VALUEREF = MAKE_PROPERTY(0);                               \
+            context.add_new_account(                                   \
+                new_account { .addr = ADDR, .sym_id = SYM.id() });     \
         }                                                              \
         else {                                                         \
             extract_db_value(str, VALUEREF);                           \

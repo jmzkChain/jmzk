@@ -65,8 +65,6 @@ apply_context::exec_one(action_trace& trace) {
 
 next:
     trace.receipt = r;
-    trace.generated_actions = std::move(generated_actions);
-
     trx_context.executed.emplace_back(move(r));
 
     finalize_trace(trace, start);
@@ -78,8 +76,13 @@ next:
 
 void
 apply_context::finalize_trace(action_trace& trace, const std::chrono::steady_clock::time_point& start) {
+    using namespace std::chrono;
+
     trace.console = fmt::to_string(_pending_console_output);
-    trace.elapsed = fc::microseconds(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start).count());
+    trace.elapsed = fc::microseconds(duration_cast<microseconds>(steady_clock::now() - start).count());
+    
+    trace.generated_actions = std::move(_generated_actions);
+    trace.new_accounts      = std::move(_new_accounts);
 }
 
 void

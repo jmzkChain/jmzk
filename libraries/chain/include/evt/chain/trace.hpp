@@ -10,6 +10,11 @@
 
 namespace evt { namespace chain {
 
+struct new_account {
+    address        addr;
+    symbol_id_type sym_id;
+};
+
 struct action_trace {
     action_trace(const action_receipt& r)
         : receipt(r) {}
@@ -27,7 +32,8 @@ struct action_trace {
     std::optional<block_id_type> producer_block_id;
     std::optional<fc::exception> except;
 
-    small_vector<action, 2> generated_actions;
+    small_vector<action, 2>      generated_actions;
+    small_vector<new_account, 2> new_accounts;
 };
 
 struct transaction_trace;
