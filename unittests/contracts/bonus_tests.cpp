@@ -209,3 +209,48 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_fees_test", "[contracts]") {
         CHECK(to.amount == 2'00000);
     }
 }
+
+TEST_CASE_METHOD(contracts_test, "passive_bonus_dist_test", "[contracts]") {
+    auto& tokendb    = my_tester->control->token_db();
+    auto  actkey     = name128::from_number(get_sym_id());
+    auto  bonus_addr = address(N(.bonus), actkey, 0);
+
+    {
+        property bonus;
+        READ_DB_ASSET(bonus_addr, get_sym(), bonus);
+        CHECK(bonus.amount == 1000 + 15010 + 20000);
+    }
+
+    auto dpb     = distpsvbonus();
+    dpb.sym      = evt_sym();
+    dpb.deadline = my_tester->control->head_block_time();
+
+    auto keyseeds = std::vector<name128>{ N(key2), N(payer) };
+    CHECK_THROWS_AS(my_tester->push_action(action(N128(.bonus), actkey, dpb), keyseeds, payer), action_authorize_exception);
+
+    dpb.sym = get_sym();
+    CHECK_THROWS_AS(my_tester->push_action(action(N128(.bonus), actkey, dpb), keyseeds, payer), bonus_unreached_dist_threshold);
+
+    {
+        property bonus;
+        READ_DB_ASSET(bonus_addr, get_sym(), bonus);
+        CHECK(bonus.amount == 1000 + 15010 + 20000);
+    }
+
+    // total: 2 * 300 = 60
+    for(int i = 0; i < 30; i++) {
+        auto tf   = transferft();
+        tf.from   = key;
+        tf.to     = tester::get_public_key(N(to3));
+        tf.number = asset(2'00000, get_sym());
+
+        my_tester->push_action(action(N128(.fungible), actkey, tf), key_seeds, payer);
+        my_tester->produce_block();
+    }
+
+    {
+        property bonus;
+        READ_DB_ASSET(bonus_addr, get_sym(), bonus);
+        CHECK(bonus.amount == 1000 + 15010 + 20000 + 20000 * 300);
+    }
+}

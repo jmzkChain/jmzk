@@ -785,6 +785,7 @@ token_database_impl::rollback_rt_group(__internal::rt_group* rt) {
 
     auto key_set = keys_hash_set();
     auto batch   = rocksdb::WriteBatch();
+    key_set.set_empty_key(std::string());
     
     for(auto it = rt->actions.begin(); it < rt->actions.end(); it++) {
         auto data = GETPOINTER(void, it->data);
@@ -894,6 +895,7 @@ token_database_impl::rollback_pd_group(__internal::pd_group* pd) {
 
     auto key_set = keys_hash_set();
     auto batch   = rocksdb::WriteBatch();
+    key_set.set_empty_key(std::string());
 
     for(auto it = pd->actions.begin(); it < pd->actions.end(); it++) {
         switch((action_op)it->op) {
@@ -1043,6 +1045,7 @@ token_database_impl::persist_savepoints(std::ostream& os) const {
             auto rt = GETPOINTER(rt_group, n.group);
 
             auto key_set = keys_hash_set();
+            key_set.set_empty_key(std::string());
 
             auto snapshot_read_opts_     = read_opts_;
             snapshot_read_opts_.snapshot = (const rocksdb::Snapshot*)rt->rb_snapshot;

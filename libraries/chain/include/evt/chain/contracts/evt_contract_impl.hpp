@@ -2066,6 +2066,12 @@ using holder_slim_map = google::dense_hash_map<uint32_t, int64_t, no_hasher<uint
 using holder_coll_map = std::unordered_map<std::string, int64_t, pubkey_hasher>;
 
 struct holder_dist {
+public:
+    holder_dist() {
+        slim.set_empty_key(0);
+    }
+
+public:
     symbol_id_type  sym_id;
     holder_slim_map slim;
     holder_coll_map coll;
