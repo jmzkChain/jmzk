@@ -605,7 +605,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_issuetoken_test", "[tokendb]") {
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_fungible_test", "[tokendb]") {
     auto& tokendb = my_tester->control->token_db();
-    auto tmp_fungible = fungible_def();
+    //auto tmp_fungible = fungible_def();
 
     CHECK(!EXISTS_TOKEN(fungible, 3));
 
@@ -621,7 +621,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_fungible_test", "[tokendb]") {
 
     
     auto address1 = public_key_type(std::string("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"));
-    CHECK(!EXISTS_ASSET(address1, symbol(5,3)));
+    CHECK(!EXISTS_ASSET(address1, 3));
     
     const char* issuefungible_data = R"=====(
     {
@@ -634,9 +634,9 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_fungible_test", "[tokendb]") {
     auto isfg = var.as<issuefungible>();
     PUSH_ACTION(issuefungible, ".fungible", 3);
 
-    CHECK(EXISTS_ASSET(address1, symbol(5,3)));
+    CHECK(EXISTS_ASSET(address1, 3));
     auto tmp_asset = asset();
-    READ_ASSET(address1, symbol(5,3), tmp_asset);
+    READ_ASSET(address1, 3, tmp_asset);
     CHECK(tmp_asset == asset(100000, symbol(5,3)));
 
     my_tester->produce_blocks();
@@ -678,19 +678,20 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_fungible_test", "[tokendb]") {
     tokendb.rollback_to_latest_savepoint();
 TEST_CASE_METHOD(tokendb_test, "tokendb_savepoint_test0", "[tokendb]") {
     auto& tokendb = my_tester->control->token_db();
+    my_tester->produce_block();
     ADD_SAVEPOINT
     ROLLBACK
+    my_tester->produce_block();
 }
+
 /*
 TEST_CASE_METHOD(tokendb_test, "tokendb_savepoint_test", "[tokendb]") {
     auto& tokendb = my_tester->control->token_db();
     
-    std::cout << tokendb.latest_savepoint_seq() << std::endl;
+    my_tester->produce_block();
     ADD_SAVEPOINT
     
-    std::cout << tokendb.latest_savepoint_seq() << std::endl;
     auto dom_name = get_domain_name(tokendb.latest_savepoint_seq());
-    std::cout << tokendb.latest_savepoint_seq() << std::endl;
   
     auto var = fc::json::from_string(newdomain_data);
     auto dom = var.as<newdomain>();
@@ -703,7 +704,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_savepoint_test", "[tokendb]") {
     PUSH_ACTION(newdomain, dom_name, .create);
     CHECK(EXISTS_TOKEN(domain, dom_name));
 
-    ROLLBACK
+    my_tester->produce_block();
     ADD_SAVEPOINT
 
     var = fc::json::from_string(issuetoken_data);
@@ -722,9 +723,13 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_savepoint_test", "[tokendb]") {
 
     CHECK(!EXISTS_TOKEN2(token, dom_name, "t1"));
     CHECK(!EXISTS_TOKEN2(token, dom_name, "t2"));
+
+    ROLLBACK
+        
     CHECK(!EXISTS_TOKEN(domain, dom_name));   
 }
 */
+
 TEST_CASE_METHOD(tokendb_test, "tokendb_newsuspend_test", "[tokendb]") {
     auto& tokendb = my_tester->control->token_db();
 
@@ -758,7 +763,6 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_newsuspend_test", "[tokendb]") {
     CHECK(nsus.name == _sus.name);
     CHECK((std::string)key == (std::string)_sus.proposer);
     CHECK("2021-07-04T05:14:12" == _sus.trx.expiration.to_iso_string());
-    CHECK(5 == _sus.trx.ref_block_num);
     CHECK(_sus.trx.actions.size() == 1);
     CHECK("newdomain" == _sus.trx.actions[0].name);
     CHECK(get_domain_name() == _sus.trx.actions[0].domain);
@@ -809,10 +813,10 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_updateprodvote_test", "[tokendb]") {
     auto var = fc::json::from_string(test_data);
     auto pv = var.as<prodvote>();
     auto& tokendb = my_tester->control->token_db();
-
-    my_tester->produce_blocks();
-    
+/*
+    my_tester->produce_block();
     ADD_SAVEPOINT
+*/    
     
     auto vote_sum = flat_map<public_key_type, int64_t>();
     
@@ -829,6 +833,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_updateprodvote_test", "[tokendb]") {
     my_tester->produce_blocks();
 }
 
+/*
 TEST_CASE_METHOD(tokendb_test, "tokendb_prodvote_presist_test", "[tokendb]") {
     auto& tokendb = my_tester->control->token_db();
     ROLLBACK
@@ -839,7 +844,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_prodvote_presist_test", "[tokendb]") {
     CHECK(vote_sum[tester::get_public_key(_pd.producer)] == 0);
     vote_sum.clear();
 }
-    
+*/    
     
 
 /* TODO:
