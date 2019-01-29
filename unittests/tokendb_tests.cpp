@@ -398,42 +398,6 @@ const char* newlock_data = R"=======(
     }
     )=======";
 
-const char* updlock_data = R"=======(
-    {
-        "name": "testsuspend",
-        "proposer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
-        "status": "succeed",
-        "unlock_time": "2018-07-04T05:14:12",
-        "deadline": "2018-09-04T05:14:12",
-        "assets": [{
-            "type": "tokens",
-            "tokens": {
-                "domain": "cookie",
-                "names": [
-                    "t1",
-                    "t2",
-                    "t3"
-                ]
-            }
-        }],
-        "cond_keys": [
-            "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
-            "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
-        ],
-        "succeed": [
-            "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
-        ],
-        "failed": [
-            "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
-        ],
-        "signed_keys": [
-            "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
-            "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
-        ]
-    }
-    )=======";
-
-    
 #define EXISTS_TOKEN(TYPE, NAME) \
     tokendb.exists_token(evt::chain::token_type::TYPE, std::nullopt, NAME)
 
@@ -495,9 +459,6 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_newdomain_test", "[tokendb]") {
     domain_def dom_;
     READ_TOKEN(domain, dom.name, dom_);
     CHECK(dom.name == dom_.name);
-    /*    
-    CHECK(dom.create_time.to_iso_string() == dom_.create_time.to_iso_string());
-    */
     CHECK((std::string)key == (std::string)dom_.creator);
 
     CHECK("issue" == dom_.issue.name);
@@ -559,13 +520,6 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_updatedomain_test", "[tokendb]") {
     CHECK(dom_.manage.authorizers[0].ref.is_account_ref());
     CHECK(std::string(key) == (std::string)dom_.manage.authorizers[0].ref.get_account());
     CHECK(1 == dom_.manage.authorizers[0].weight);
-    /*
-    REQUIRE(1 == dom_.metas.size());
-    CHECK(dom.metas[0].key == dom_.metas[0].key);
-    CHECK("value" == dom_.metas[0].value);
-    CHECK(dom_.metas[0].creator.is_account_ref());
-    CHECK(std::string(key) == (std::string)dom_.metas[0].creator.get_account());
-    */
     my_tester->produce_blocks();
 }
 
@@ -605,7 +559,6 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_issuetoken_test", "[tokendb]") {
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_fungible_test", "[tokendb]") {
     auto& tokendb = my_tester->control->token_db();
-    //auto tmp_fungible = fungible_def();
 
     CHECK(!EXISTS_TOKEN(fungible, 3));
 
@@ -642,40 +595,11 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_fungible_test", "[tokendb]") {
     my_tester->produce_blocks();
 }
 
-#define NEW_DOMAIN(KEY, NAME) \
-    { \
-        auto  var = fc::json::from_string(newdomain_data); \
-        auto  dom = var.as<newdomain>(); \
-        auto& tokendb = my_tester->control->token_db(); \
-        CHECK(!EXISTS_TOKEN(domain, NAME)); \
-        dom.creator = KEY; \
-        dom.name = NAME; \
-        dom.issue.authorizers[0].ref.set_account(KEY); \
-        dom.manage.authorizers[0].ref.set_account(KEY); \
-        to_variant(dom, var); \
-        PUSH_ACTION(newdomain, NAME, .create); \
-        CHECK(EXISTS_TOKEN(domain, dom_name)); \
-    }
-
-#define ISSUE_TOKEN(KEY, DOMAIN) \
-    { \
-        auto  var     = fc::json::from_string(issuetoken_data); \
-        auto  istk    = var.as<issuetoken>(); \
-        auto& tokendb = my_tester->control->token_db(); \
-        istk.domain = DOMAIN; \
-        istk.owner[0] = KEY; \
-        to_variant(istk, var); \
-        CHECK(!EXISTS_TOKEN2(token, istk.domain, istk.names[0])); \
-        CHECK(!EXISTS_TOKEN2(token, istk.domain, istk.names[1])); \
-        PUSH_ACTION(issuetoken, DOMAIN, .issue); \
-        CHECK(EXISTS_TOKEN2(token, istk.domain, istk.names[0])); \
-        CHECK(EXISTS_TOKEN2(token, istk.domain, istk.names[1])); \
-    }
-
 #define ADD_SAVEPOINT \
     tokendb.add_savepoint(tokendb.latest_savepoint_seq()+1);
 #define ROLLBACK \
     tokendb.rollback_to_latest_savepoint();
+
 TEST_CASE_METHOD(tokendb_test, "tokendb_savepoint_test0", "[tokendb]") {
     auto& tokendb = my_tester->control->token_db();
     my_tester->produce_block();
@@ -684,7 +608,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_savepoint_test0", "[tokendb]") {
     my_tester->produce_block();
 }
 
-/*
+
 TEST_CASE_METHOD(tokendb_test, "tokendb_savepoint_test", "[tokendb]") {
     auto& tokendb = my_tester->control->token_db();
     
@@ -704,7 +628,6 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_savepoint_test", "[tokendb]") {
     PUSH_ACTION(newdomain, dom_name, .create);
     CHECK(EXISTS_TOKEN(domain, dom_name));
 
-    my_tester->produce_block();
     ADD_SAVEPOINT
 
     var = fc::json::from_string(issuetoken_data);
@@ -728,7 +651,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_savepoint_test", "[tokendb]") {
         
     CHECK(!EXISTS_TOKEN(domain, dom_name));   
 }
-*/
+
 
 TEST_CASE_METHOD(tokendb_test, "tokendb_newsuspend_test", "[tokendb]") {
     auto& tokendb = my_tester->control->token_db();
@@ -751,7 +674,6 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_newsuspend_test", "[tokendb]") {
     nsus.trx.actions.push_back(my_tester->get_action(N(newdomain), get_domain_name(), N128(.create), newdomain_var.get_object()));
     to_variant(nsus, var);
     
-    //PUSH_ACTION(newsuspend, ".suspend", nsus.name);
     my_tester->push_action(N(newsuspend), N128(.suspend), get_suspend_name(), var.get_object(), key_seeds, payer);
 
     CHECK(EXISTS_TOKEN(suspend, nsus.name));
@@ -813,11 +735,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_updateprodvote_test", "[tokendb]") {
     auto var = fc::json::from_string(test_data);
     auto pv = var.as<prodvote>();
     auto& tokendb = my_tester->control->token_db();
-/*
-    my_tester->produce_block();
-    ADD_SAVEPOINT
-*/    
-    
+
     auto vote_sum = flat_map<public_key_type, int64_t>();
     
     pv.key = N128(network-charge-factor);
@@ -833,24 +751,97 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_updateprodvote_test", "[tokendb]") {
     my_tester->produce_blocks();
 }
 
-/*
+
 TEST_CASE_METHOD(tokendb_test, "tokendb_prodvote_presist_test", "[tokendb]") {
+    const char* test_data = R"======(
+        {
+            "producer": "evt",
+            "key": "key",
+            "value": 0
+        }
+        )======";
+    auto var = fc::json::from_string(test_data);
+    auto pv = var.as<prodvote>();
     auto& tokendb = my_tester->control->token_db();
+
+    
+    auto vote_sum = flat_map<public_key_type, int64_t>();
+    
+    pv.key = N128(network-charge-factor);
+    pv.value = 1;
+    to_variant(pv, var);
+    
+    PUSH_ACTION(prodvote, ".prodvote", network-charge-factor);
+    
+    READ_TOKEN(prodvote, pv.key, vote_sum);
+    CHECK(vote_sum[tester::get_public_key(pv.producer)] == 1);
+    vote_sum.clear();
+
+    my_tester->produce_block();
+    ADD_SAVEPOINT
+
+    pv.value = 2;
+    to_variant(pv, var);
+    
+    PUSH_ACTION(prodvote, ".prodvote", network-charge-factor);
+    
+    READ_TOKEN(prodvote, pv.key, vote_sum);
+    CHECK(vote_sum[tester::get_public_key(pv.producer)] == 2);
+    vote_sum.clear();
+    
     ROLLBACK
     
-    prodvote _pd;
-    auto vote_sum = flat_map<public_key_type, int64_t>();
-    READ_TOKEN(prodvote, N128(network-charge-factor), vote_sum);
-    CHECK(vote_sum[tester::get_public_key(_pd.producer)] == 0);
+    READ_TOKEN(prodvote, pv.key, vote_sum);
+    CHECK(vote_sum[tester::get_public_key(pv.producer)] == 1);
     vote_sum.clear();
 }
-*/    
-    
 
-/* TODO:
-TEST_CASE_METHOD(tokendb_test, "tokendb_updateprodvote_test", "[tokendb]")
-TEST_CASE_METHOD(tokendb_test, "tokendb_prodvote_presist_test", "[tokendb]")
-TEST_CASE_METHOD(tokendb_test, "tokendb_lock_presist_test", "[tokendb]")
-TEST_CASE_METHOD(tokendb_test, "tokendb_squash", "[tokendb]")
-TEST_CASE_METHOD(tokendb_test, "tokendb_squash2", "[tokendb]")
-*/
+TEST_CASE_METHOD(tokendb_test, "tokendb_squash", "[tokendb]") {
+    auto& tokendb = my_tester->control->token_db();
+    my_tester->produce_block();
+    auto n = tokendb.savepoints_size();
+    ADD_SAVEPOINT
+    
+    auto var = fc::json::from_string(newdomain_data);
+    auto dom = var.as<newdomain>();
+    dom.name = "squash-test";
+    dom.creator = key;
+    dom.issue.authorizers[0].ref.set_account(key);
+    dom.manage.authorizers[0].ref.set_account(key);
+    to_variant(dom, var);
+    PUSH_ACTION(newdomain, "squash-test", .create);
+    ADD_SAVEPOINT
+    
+    var = fc::json::from_string(issuetoken_data);
+    auto istk = var.as<issuetoken>();
+    istk.domain = "squash-test";
+    istk.owner[0] = key;
+    istk.names.clear();
+    istk.names.push_back("squash-t1");
+    to_variant(istk, var);
+    PUSH_ACTION(issuetoken, "squash-test", .issue);
+    ADD_SAVEPOINT
+        
+    token_def _tk;
+    READ_TOKEN2(token, "squash-test", "squash-t1", _tk);
+    CHECK(istk.names[0] == _tk.name);
+    
+    auto num = tokendb.savepoints_size();
+    
+    ADD_SAVEPOINT
+    ADD_SAVEPOINT
+    tokendb.squash();
+    tokendb.squash();
+    
+    CHECK(tokendb.savepoints_size() == num);
+    
+    READ_TOKEN2(token, "squash-test", "squash-t1", _tk);
+    CHECK(istk.names[0] == _tk.name);
+    CHECK(EXISTS_TOKEN(domain, "squash-test"));
+    
+    tokendb.squash();
+    tokendb.squash();
+    tokendb.squash();
+    
+    CHECK(tokendb.savepoints_size() == n);
+}
