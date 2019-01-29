@@ -385,6 +385,9 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
                     for(auto& act_trace : trace->action_traces) {
                         db_.add_action(actx, act_trace, str_trx_id, act_num);
                         process_action(act_trace.act, tctx);
+                        if(!act_trace.new_ft_holders.empty()) {
+                            db_.add_ft_holders(tctx, act_trace.new_ft_holders);
+                        }
                         act_num++;
                     }
                     break;

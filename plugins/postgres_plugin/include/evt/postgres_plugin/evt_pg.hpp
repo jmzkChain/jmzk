@@ -39,6 +39,7 @@ using block_ptr    = chain::block_state_ptr;
 using chain_id_t   = chain::chain_id_type;
 using trx_recept_t = chain::transaction_receipt;
 using trx_t        = chain::signed_transaction;
+using ft_holders_t = chain::small_vector_base<chain::ft_holder>;
 
 struct copy_context;
 struct trx_context;
@@ -123,6 +124,8 @@ public:
     int upd_fungible(trx_context&, const updfungible&);
 
     int add_meta(trx_context&, const action_t&);
+
+    int add_ft_holders(trx_context&, const ft_holders_t&);
 
 private:
     int block_copy_to(const std::string& table, const std::string& data);

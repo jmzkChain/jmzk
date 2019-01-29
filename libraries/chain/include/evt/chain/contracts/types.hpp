@@ -65,6 +65,7 @@ using percent_type    = evt::chain::percent_type;
 // also records the create time
 struct property {
     int64_t  amount;        // amount for asset
+    symbol   sym;           // symbol
     uint32_t created_at;    // utc seconds
     uint32_t created_index; // action index at that time
 };
@@ -541,7 +542,7 @@ struct distpsvbonus {
 
 }}}  // namespace evt::chain::contracts
 
-FC_REFLECT(evt::chain::contracts::property, (amount)(created_at)(created_index));
+FC_REFLECT(evt::chain::contracts::property, (amount)(sym)(created_at)(created_index));
 FC_REFLECT(evt::chain::contracts::token_def, (domain)(name)(owner)(metas));
 FC_REFLECT(evt::chain::contracts::key_weight, (key)(weight));
 FC_REFLECT(evt::chain::contracts::authorizer_weight, (ref)(weight));

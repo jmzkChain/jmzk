@@ -66,33 +66,34 @@ namespace evt_apis {
         EVT_THROW2(EXCEPTION, FORMAT, __VA_ARGS__);                         \
     }
 
-#define MAKE_PROPERTY(AMOUNT) \
-    property {                \
-        .amount = AMOUNT,     \
-        .created_at = 0,      \
-        .created_index = 0    \
+#define MAKE_PROPERTY(AMOUNT, SYM) \
+    property {                     \
+        .amount = AMOUNT,          \
+        .sym = SYM,                \
+        .created_at = 0,           \
+        .created_index = 0         \
+    }
+   
+#define READ_DB_ASSET(ADDR, SYM, VALUEREF)                                                         \
+    try {                                                                                          \
+        auto str = std::string();                                                                  \
+        db.read_asset(ADDR, SYM.id(), str);                                                        \
+                                                                                                   \
+        extract_db_value(str, VALUEREF);                                                           \
+    }                                                                                              \
+    catch(token_database_exception&) {                                                             \
+        EVT_THROW2(balance_exception, "There's no balance left in {} with sym id: {}", ADDR, SYM); \
     }
 
-#define READ_DB_ASSET(ADDR, SYM, VALUEREF)                                                      \
-    try {                                                                                       \
-        auto str = std::string();                                                               \
-        db.read_asset(ADDR, SYM, str);                                                          \
-                                                                                                \
-        extract_db_value(str, VALUEREF);                                                        \
-    }                                                                                           \
-    catch(token_database_exception&) {                                                          \
-        EVT_THROW2(balance_exception, "There's no balance left in {} with sym: {}", ADDR, SYM); \
-    }
-
-#define READ_DB_ASSET_NO_THROW(ADDR, SYM, VALUEREF)               \
-    {                                                             \
-        auto str = std::string();                                 \
-        if(!db.read_asset(ADDR, SYM, str, true /* no throw */)) { \
-            VALUEREF = MAKE_PROPERTY(0);                          \
-        }                                                         \
-        else {                                                    \
-            extract_db_value(str, VALUEREF);                      \
-        }                                                         \
+#define READ_DB_ASSET_NO_THROW(ADDR, SYM, VALUEREF)                    \
+    {                                                                  \
+        auto str = std::string();                                      \
+        if(!db.read_asset(ADDR, SYM.id(), str, true /* no throw */)) { \
+            VALUEREF = MAKE_PROPERTY(0, SYM);                          \
+        }                                                              \
+        else {                                                         \
+            extract_db_value(str, VALUEREF);                           \
+        }                                                              \
     }
 
 
@@ -181,10 +182,10 @@ read_only::get_fungible(const get_fungible_params& params) {
     auto mvar = fc::mutable_variant_object(var);
     auto addr = address(N(.fungible), name128::from_number(params.id), 0);
 
-    property as;
-    READ_DB_ASSET(addr, fungible.sym, as);
+    property prop;
+    READ_DB_ASSET(addr, fungible.sym, prop);
 
-    mvar["current_supply"] = fungible.total_supply - asset(as.amount, fungible.sym);
+    mvar["current_supply"] = fungible.total_supply - asset(prop.amount, fungible.sym);
     mvar["address"]        = addr;
     return mvar;
 }
@@ -196,19 +197,20 @@ read_only::get_fungible_balance(const get_fungible_balance_params& params) {
     variants vars;
     if(params.sym_id.has_value()) {
         fungible_def fungible;
-        READ_DB_TOKEN(token_type::fungible, std::nullopt, *params.sym_id, fungible, unknown_fungible_exception, "Cannot find fungible with sym id: {}", *params.sym_id);
+        READ_DB_TOKEN(token_type::fungible, std::nullopt, *params.sym_id, fungible,
+            unknown_fungible_exception, "Cannot find fungible with sym id: {}", *params.sym_id);
 
-        variant  var;
-        property as;
-        READ_DB_ASSET_NO_THROW(params.address, fungible.sym, as);
+        property prop;
+        READ_DB_ASSET_NO_THROW(params.address, fungible.sym, prop);
 
-        auto bal = asset(as.amount, fungible.sym);
+        auto as  = asset(prop.amount, prop.sym);
+        auto var = variant();
+        fc::to_variant(as, var);
 
-        fc::to_variant(bal, var);
         vars.emplace_back(std::move(var));
         return vars;
     }
-    EVT_THROW(unsupported_feature, "Read all the assets within one address is not supported in evt_plugin anymore, please refer to the history_plugin");
+    EVT_THROW(unsupported_feature, "Read all the balance of fungibles tokens within one address is not supported in evt_plugin anymore, please refer to the history_plugin");
 }
 
 fc::variant

@@ -384,17 +384,17 @@ base_tester::add_money(const address& addr, const asset& number) {
 
     auto s = tokendb.new_savepoint_session();
 
-    auto str = std::string();
-    auto as  = asset(0, number.sym());
+    auto str  = std::string();
+    auto prop = property();
     
-    if(tokendb.read_asset(addr, number.sym(), str, true)) {
-        extract_db_value(str, as);
+    if(tokendb.read_asset(addr, number.symbol_id(), str, true)) {
+        extract_db_value(str, prop);
     }
 
-    as += number;
+    prop.amount += number.amount();
 
-    auto dv = make_db_value(as);
-    tokendb.put_asset(addr, as.sym(), dv.as_string_view());
+    auto dv = make_db_value(prop);
+    tokendb.put_asset(addr, number.symbol_id(), dv.as_string_view());
 
     s.accept();
     tokendb.pop_back_savepoint();

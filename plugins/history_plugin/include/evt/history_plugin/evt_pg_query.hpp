@@ -72,6 +72,9 @@ public:
     int get_fungible_actions_async(int id, const read_only::get_fungible_actions_params& params);
     int get_fungible_actions_resume(int id, pg_result const*);
 
+    int get_fungibles_balance_async(int id, const read_only::get_fungibles_balance_params& params);
+    int get_fungibles_balance_resume(int id, pg_result const*);
+
     int get_transaction_async(int id, const read_only::get_transaction_params& params);
     int get_transaction_resume(int id, pg_result const*);
 

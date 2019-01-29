@@ -161,11 +161,11 @@ transaction_context::check_charge() {
     }
 }
 
-#define READ_DB_ASSET_NO_THROW(ADDR, SYM, VALUEREF)                        \
+#define READ_DB_ASSET_NO_THROW(ADDR, SYM_ID, VALUEREF)                     \
     {                                                                      \
         auto str = std::string();                                          \
-        if(!tokendb.read_asset(ADDR, SYM, str, true /* no throw */)) {     \
-            VALUEREF = asset(0, SYM);                                      \
+        if(!tokendb.read_asset(ADDR, SYM_ID, str, true /* no throw */)) {  \
+            VALUEREF = property();                                         \
         }                                                                  \
         else {                                                             \
             extract_db_value(str, VALUEREF);                               \
@@ -174,6 +174,8 @@ transaction_context::check_charge() {
 
 void
 transaction_context::check_paid() const {
+    using namespace contracts;
+
     auto& tokendb = control.token_db();
     auto& payer = trx.trx.payer;
 
@@ -220,17 +222,18 @@ transaction_context::check_paid() const {
     }
     }  // switch
     
-    asset evt, pevt;
-    READ_DB_ASSET_NO_THROW(payer, pevt_sym(), pevt);
-    if(pevt.amount() > charge) {
+    property evt, pevt;
+    READ_DB_ASSET_NO_THROW(payer, PEVT_SYM_ID, pevt);
+    if(pevt.amount > charge) {
         return;
     }
 
-    READ_DB_ASSET_NO_THROW(payer, evt_sym(), evt);
-    if(pevt.amount() + evt.amount() >= charge) {
+    READ_DB_ASSET_NO_THROW(payer, EVT_SYM_ID, evt);
+    if(pevt.amount + evt.amount >= charge) {
         return;
     }
-    EVT_THROW(charge_exceeded_exception, "There are only ${e} and ${p} left, but charge is ${c}", ("e",evt)("p",pevt)("c",charge));
+    EVT_THROW(charge_exceeded_exception, "There are only ${e} and ${p} left, but charge is ${c}",
+        ("e",asset(evt.amount, evt_sym()))("p",asset(pevt.amount, pevt_sym()))("c",asset(charge,evt_sym())));
 }
 
 void

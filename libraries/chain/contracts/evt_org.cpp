@@ -17,18 +17,24 @@ initialize_evt_org(token_database& tokendb, const genesis_state& genesis) {
     }
 
     // Add reserved EVT & PEVT fungible tokens
-    if(!tokendb.exists_token(token_type::fungible, std::nullopt, evt_sym().id())) {
-        assert(!tokendb.exists_token(token_type::fungible, std::nullopt, pevt_sym().id()));
+    if(!tokendb.exists_token(token_type::fungible, std::nullopt, EVT_SYM_ID)) {
+        assert(!tokendb.exists_token(token_type::fungible, std::nullopt, PEVT_SYM_ID));
 
         auto v = make_db_value(genesis.evt);
-        tokendb.put_token(token_type::fungible, action_op::add, std::nullopt, evt_sym().id(), v.as_string_view());
+        tokendb.put_token(token_type::fungible, action_op::add, std::nullopt, EVT_SYM_ID, v.as_string_view());
 
         auto v2 = make_db_value(genesis.pevt);
-        tokendb.put_token(token_type::fungible, action_op::add, std::nullopt, pevt_sym().id(), v2.as_string_view());
+        tokendb.put_token(token_type::fungible, action_op::add, std::nullopt, PEVT_SYM_ID, v2.as_string_view());
 
-        auto addr = address(N(.fungible), name128::from_number(evt_sym().id()), 0);
-        auto v3   = make_db_value(genesis.evt.total_supply);
-        tokendb.put_asset(addr, evt_sym(), v3.as_string_view());
+        auto addr = address(N(.fungible), name128::from_number(EVT_SYM_ID), 0);
+        auto prop = property {
+                        .amount = genesis.evt.total_supply.amount(),
+                        .sym = evt_sym(),
+                        .created_at = genesis.initial_timestamp.sec_since_epoch(),
+                        .created_index = 0
+                    };
+        auto v3 = make_db_value(prop);
+        tokendb.put_asset(addr, EVT_SYM_ID, v3.as_string_view());
     }
 }
 

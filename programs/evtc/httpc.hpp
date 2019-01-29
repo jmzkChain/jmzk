@@ -145,6 +145,7 @@ const std::string get_my_groups           = history_func_base + "/get_groups";
 const std::string get_my_fungibles        = history_func_base + "/get_fungibles";
 const std::string get_actions             = history_func_base + "/get_actions";
 const std::string get_fungible_actions    = history_func_base + "/get_fungible_actions";
+const std::string get_fungibles_balance   = history_func_base + "/get_fungibles_balance";
 const std::string get_transaction         = history_func_base + "/get_transaction";
 const std::string get_transactions        = history_func_base + "/get_transactions";
 const std::string get_fungible_ids        = history_func_base + "/get_fungible_ids";

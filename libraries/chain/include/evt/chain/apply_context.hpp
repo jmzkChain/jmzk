@@ -50,9 +50,9 @@ public:
         return _generated_actions.emplace_back(std::move(act));
     }
 
-    new_account&
-    add_new_account(new_account&& nacc) {
-        return _new_accounts.emplace_back(std::move(nacc));
+    ft_holder&
+    add_new_ft_holder(ft_holder&& fth) {
+        return _new_ft_holders.emplace_back(std::move(fth));
     }
 
 public:
@@ -70,9 +70,9 @@ public:
     const action&           act;
 
 private:
-    fmt::memory_buffer           _pending_console_output;
-    small_vector<action, 2>      _generated_actions;
-    small_vector<new_account, 2> _new_accounts;
+    fmt::memory_buffer         _pending_console_output;
+    small_vector<action, 2>    _generated_actions;
+    small_vector<ft_holder, 2> _new_ft_holders;
 };
 
 }}  // namespace evt::chain

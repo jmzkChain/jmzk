@@ -244,10 +244,10 @@ get_db_prefix<token_def>(const token_def& v) {
         tokendb.put_token(TYPE, action_op::put, get_db_prefix(VALUE), get_db_key(VALUE), dv.as_string_view()); \
     }
 
-#define PUT_DB_ASSET(ADDR, SYM, VALUE)                     \
-    {                                                      \
-        auto dv = make_db_value(VALUE);                    \
-        tokendb.put_asset(ADDR, SYM, dv.as_string_view()); \
+#define PUT_DB_ASSET(ADDR, SYM, VALUE)                          \
+    {                                                           \
+        auto dv = make_db_value(VALUE);                         \
+        tokendb.put_asset(ADDR, SYM.id(), dv.as_string_view()); \
     }
 
 #define READ_DB_TOKEN(TYPE, PREFIX, KEY, VALUEREF, EXCEPTION, FORMAT, ...)  \
@@ -269,35 +269,36 @@ get_db_prefix<token_def>(const token_def& v) {
         }                                                                     \
     }
 
-#define MAKE_PROPERTY(AMOUNT)                                                 \
+#define MAKE_PROPERTY(AMOUNT, SYM)                                            \
     property {                                                                \
         .amount = AMOUNT,                                                     \
+        .sym = SYM,                                                           \
         .created_at = context.control.pending_block_time().sec_since_epoch(), \
         .created_index = context.get_index_of_trx()                           \
     }
 
-#define READ_DB_ASSET(ADDR, SYM, VALUEREF)                                                      \
-    try {                                                                                       \
-        auto str = std::string();                                                               \
-        tokendb.read_asset(ADDR, SYM, str);                                                     \
-                                                                                                \
-        extract_db_value(str, VALUEREF);                                                        \
-    }                                                                                           \
-    catch(token_database_exception&) {                                                          \
-        EVT_THROW2(balance_exception, "There's no balance left in {} with sym: {}", ADDR, SYM); \
+#define READ_DB_ASSET(ADDR, SYM, VALUEREF)                                                              \
+    try {                                                                                               \
+        auto str = std::string();                                                                       \
+        tokendb.read_asset(ADDR, SYM.id(), str);                                                        \
+                                                                                                        \
+        extract_db_value(str, VALUEREF);                                                                \
+    }                                                                                                   \
+    catch(token_database_exception&) {                                                                  \
+        EVT_THROW2(balance_exception, "There's no balance left in {} with sym id: {}", ADDR, SYM.id()); \
     }
 
-#define READ_DB_ASSET_NO_THROW(ADDR, SYM, VALUEREF)                    \
-    {                                                                  \
-        auto str = std::string();                                      \
-        if(!tokendb.read_asset(ADDR, SYM, str, true /* no throw */)) { \
-            VALUEREF = MAKE_PROPERTY(0);                               \
-            context.add_new_account(                                   \
-                new_account { .addr = ADDR, .sym_id = SYM.id() });     \
-        }                                                              \
-        else {                                                         \
-            extract_db_value(str, VALUEREF);                           \
-        }                                                              \
+#define READ_DB_ASSET_NO_THROW(ADDR, SYM, VALUEREF)                         \
+    {                                                                       \
+        auto str = std::string();                                           \
+        if(!tokendb.read_asset(ADDR, SYM.id(), str, true /* no throw */)) { \
+            VALUEREF = MAKE_PROPERTY(0, SYM);                               \
+            context.add_new_ft_holder(                                      \
+                ft_holder { .addr = ADDR, .sym_id = SYM.id() });            \
+        }                                                                   \
+        else {                                                              \
+            extract_db_value(str, VALUEREF);                                \
+        }                                                                   \
     }
 
 } // namespace __internal
@@ -753,8 +754,10 @@ EVT_ACTION_IMPL_BEGIN(newfungible) {
         ADD_DB_TOKEN(token_type::fungible, fungible);
 
         auto addr = get_fungible_address(fungible.sym);
-        auto prop = MAKE_PROPERTY(fungible.total_supply.amount());
+        auto prop = MAKE_PROPERTY(fungible.total_supply.amount(), fungible.sym);
         PUT_DB_ASSET(addr, fungible.sym, prop);
+
+        context.add_new_ft_holder(ft_holder { .addr = addr, .sym_id = nfact.sym.id() }); 
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -2094,7 +2097,7 @@ public:
 void
 build_holder_dist(const token_database& tokendb, symbol sym, holder_dist& dist) {
     dist.sym_id = sym.id();
-    tokendb.read_assets_range(sym, 0, [&dist](auto& k, auto&& v) {
+    tokendb.read_assets_range(sym.id(), 0, [&dist](auto& k, auto&& v) {
         property prop;
         extract_db_value(v, prop);
 

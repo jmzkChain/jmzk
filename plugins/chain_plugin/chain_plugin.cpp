@@ -365,7 +365,7 @@ chain_plugin::plugin_initialize(const variables_map& options) {
             }
         }
 
-        if(options.count("tokendb-dir")) {
+        if(options.count("token-db-dir")) {
             auto tod = options.at("token-db-dir").as<bfs::path>();
             if(tod.is_relative()) {
                 my->tokendb_dir = app().data_dir() / tod;
@@ -403,7 +403,7 @@ chain_plugin::plugin_initialize(const variables_map& options) {
         my->chain_config->db_config.db_path = my->tokendb_dir;
         
         if(options.count("token-db-cache-size-mb")) {
-            my->chain_config->db_config.cache_size = options.at("token-db-cache-size-mb").as<uint64_t>();
+            my->chain_config->db_config.cache_size = options.at("token-db-cache-size-mb").as<uint32_t>();
         }
 
         if(options.count("token-db-profile")) {

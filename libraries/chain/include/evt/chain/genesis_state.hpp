@@ -68,4 +68,4 @@ struct genesis_state {
 }}  // namespace evt::chain
 
 FC_REFLECT(evt::chain::genesis_state,
-           (initial_timestamp)(initial_key)(evt_org)(evt)(pevt)(initial_configuration))
+           (initial_timestamp)(initial_key)(evt_org)(evt)(pevt)(initial_configuration));

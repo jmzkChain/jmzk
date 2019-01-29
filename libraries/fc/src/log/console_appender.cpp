@@ -135,7 +135,7 @@ console_appender::log(const log_message& m) {
         }
         }  // switch
     }
-    fmt::format_to(line, "{<5} {} {<9} {<29} {}:{<6} ",
+    fmt::format_to(line, "{:<5} {} {:<9} {:<29}:{:<6} ",
         context.level.to_string(),
         (std::string)time_point::now(),
         context.thread_name,
@@ -152,7 +152,7 @@ console_appender::log(const log_message& m) {
             p++;
         }
 
-        fmt::format_to(line, "{<20}", context.method.substr(p, 20));
+        fmt::format_to(line, "{:<20}", context.method.substr(p, 20));
     }
 
     fmt::format_to(line, "] {}", fc::format_string(m.format, m.args));

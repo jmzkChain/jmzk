@@ -82,7 +82,7 @@ apply_context::finalize_trace(action_trace& trace, const std::chrono::steady_clo
     trace.elapsed = fc::microseconds(duration_cast<microseconds>(steady_clock::now() - start).count());
     
     trace.generated_actions = std::move(_generated_actions);
-    trace.new_accounts      = std::move(_new_accounts);
+    trace.new_ft_holders    = std::move(_new_ft_holders);
 }
 
 void

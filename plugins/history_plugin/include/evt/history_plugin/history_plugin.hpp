@@ -72,6 +72,11 @@ public:
     };
     void get_fungible_actions_async(int id, const get_fungible_actions_params& params);
 
+    struct get_fungibles_balance_params {
+        address addr;
+    };
+    void get_fungibles_balance_async(int id, const get_fungibles_balance_params& params);
+
     struct get_transaction_params {
         transaction_id_type id;
     };
@@ -128,6 +133,7 @@ FC_REFLECT(evt::history_apis::read_only::get_params, (keys));
 FC_REFLECT(evt::history_apis::read_only::get_tokens_params, (keys)(domain));
 FC_REFLECT(evt::history_apis::read_only::get_actions_params, (domain)(key)(dire)(names)(skip)(take));
 FC_REFLECT(evt::history_apis::read_only::get_fungible_actions_params, (sym_id)(dire)(addr)(skip)(take));
+FC_REFLECT(evt::history_apis::read_only::get_fungibles_balance_params, (addr));
 FC_REFLECT(evt::history_apis::read_only::get_transaction_params, (id));
 FC_REFLECT(evt::history_apis::read_only::get_transactions_params, (keys)(dire)(skip)(take));
 FC_REFLECT(evt::history_apis::read_only::get_fungible_ids_params, (skip)(take));

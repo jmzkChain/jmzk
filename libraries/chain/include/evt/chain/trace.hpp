@@ -10,7 +10,7 @@
 
 namespace evt { namespace chain {
 
-struct new_account {
+struct ft_holder {
     address        addr;
     symbol_id_type sym_id;
 };
@@ -32,8 +32,8 @@ struct action_trace {
     std::optional<block_id_type> producer_block_id;
     std::optional<fc::exception> except;
 
-    small_vector<action, 2>      generated_actions;
-    small_vector<new_account, 2> new_accounts;
+    small_vector<action, 2>    generated_actions;
+    small_vector<ft_holder, 2> new_ft_holders;
 };
 
 struct transaction_trace;
@@ -44,7 +44,7 @@ struct transaction_trace {
     std::optional<transaction_receipt_header> receipt;
     fc::microseconds                          elapsed;
     bool                                      is_suspend = false;
-    vector<action_trace>                      action_traces;  ///< disposable
+    small_vector<action_trace, 4>             action_traces;  ///< disposable
 
     uint32_t charge;
     uint64_t net_usage;
@@ -55,5 +55,6 @@ struct transaction_trace {
 
 }}  // namespace evt::chain
 
-FC_REFLECT(evt::chain::action_trace, (receipt)(act)(elapsed)(console)(trx_id)(block_num)(block_time)(producer_block_id)(except)(generated_actions));
+FC_REFLECT(evt::chain::ft_holder, (addr)(sym_id));
+FC_REFLECT(evt::chain::action_trace, (receipt)(act)(elapsed)(console)(trx_id)(block_num)(block_time)(producer_block_id)(except)(generated_actions)(new_ft_holders));
 FC_REFLECT(evt::chain::transaction_trace, (id)(receipt)(elapsed)(is_suspend)(action_traces)(charge)(net_usage)(except));

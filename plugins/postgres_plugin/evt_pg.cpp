@@ -24,8 +24,9 @@ namespace evt {
  * - 1.1.0: add `global_seq` field to `actions` table
  * - 1.2.0: add `trx_id` feild to `metas`, `domains`, `tokens`, `groups` and `fungibles` tables
  *          add `total_supply` field to `fungibles` table
+ * - 1.3.0  add `ft_holders` table
  */
-static auto pg_version = "1.2.0";
+static auto pg_version = "1.3.0";
 
 namespace __internal {
 
@@ -41,7 +42,7 @@ public:
 };
 
 struct __insert_prepare {
-    __insert_prepare(const std::string& name, const std::string sql) {
+    __insert_prepare(const std::string& name, const std::string& sql) {
         auto& stmts = __prepare_register::instance().stmts;
         if(stmts.find(name) != stmts.end()) {
             throw new std::runtime_error(fmt::format("{} is already registered", name));
@@ -52,7 +53,6 @@ struct __insert_prepare {
 
 #define PREPARE_SQL_ONCE(name, sql) \
     __internal::__insert_prepare __##name(#name, sql);
-    
 
 auto create_stats_table = R"sql(CREATE TABLE IF NOT EXISTS public.stats
                                 (
@@ -247,7 +247,19 @@ auto create_fungibles_table = R"sql(CREATE TABLE IF NOT EXISTS public.fungibles
                                         (creator)
                                         TABLESPACE pg_default;)sql";
 
-const char* tables[] = { "stats", "blocks", "transactions", "metas", "actions", "domains", "tokens", "groups", "fungibles" };
+auto create_ft_holders_table = R"sql(CREATE TABLE IF NOT EXISTS public.ft_holders
+                                     (
+                                         address    character(53)             NOT NULL,
+                                         sym_ids    bigint[]                  NOT NULL,
+                                         created_at timestamp with time zone  NOT NULL  DEFAULT now(),
+                                         CONSTRAINT ft_holders_pkey PRIMARY KEY (address)
+                                     )
+                                     WITH (
+                                         OIDS = FALSE
+                                     )
+                                     TABLESPACE pg_default;)sql";
+
+const char* tables[] = { "stats", "blocks", "transactions", "metas", "actions", "domains", "tokens", "groups", "fungibles", "ft_holders" };
 
 template<typename Iterator>
 void
@@ -406,7 +418,8 @@ pg::prepare_tables() {
         create_domains_table,
         create_tokens_table,
         create_groups_table,
-        create_fungibles_table
+        create_fungibles_table,
+        create_ft_holders_table
     };
     for(auto stmt : stmts) {
         auto r = PQexec(conn_, stmt);
@@ -867,25 +880,23 @@ pg::add_fungible(trx_context& tctx, const newfungible& nf) {
     return PG_OK;
 }
 
-PREPARE_SQL_ONCE(uf_plan, "UPDATE fungibles SET(issue, manage) = ($1, $2) WHERE sym_id = $3;");
+PREPARE_SQL_ONCE(ufi_plan, "UPDATE fungibles SET issue  = $1 WHERE sym_id = $2;");
+PREPARE_SQL_ONCE(ufm_plan, "UPDATE fungibles SET manage = $1 WHERE sym_id = $2;");
 
 int
 pg::upd_fungible(trx_context& tctx, const updfungible& uf) {
-
-    std::string i = "issue", m = "manage";
     if(uf.issue.has_value()) {
         fc::variant u;
         fc::to_variant(*uf.issue, u);
-        i = fc::json::to_string(u);
+
+        fmt::format_to(tctx.trx_buf_, fmt("EXECUTE ufi_plan('{}',{});\n"), fc::json::to_string(u), (int64_t)uf.sym_id);
     }
     if(uf.manage.has_value()) {
         fc::variant u;
         fc::to_variant(*uf.manage, u);
-        m = fc::json::to_string(u);
+
+        fmt::format_to(tctx.trx_buf_, fmt("EXECUTE ufm_plan('{}',{});\n"), fc::json::to_string(u), (int64_t)uf.sym_id);
     }
-
-    fmt::format_to(tctx.trx_buf_, fmt("EXECUTE uf_plan('{}','{}',{});\n"), i, m, (int64_t)uf.sym_id);
-
     return PG_OK;
 }
 
@@ -943,6 +954,16 @@ pg::add_meta(trx_context& tctx, const action_t& act) {
         fmt::format_to(tctx.trx_buf_, fmt("EXECUTE amt_plan(lastval(),'{}:{}');\n"), (std::string)act.domain, (std::string)act.key); 
     }
 
+    return PG_OK;
+}
+
+PREPARE_SQL_ONCE(afh_plan, "INSERT INTO ft_holders VALUES($1, $2, now()) ON CONFLICT (address) DO UPDATE SET sym_ids = array_append(ft_holders.sym_ids, excluded.sym_ids[1]);");
+
+int
+pg::add_ft_holders(trx_context& tctx, const ft_holders_t& holders) {
+    for(auto& holder : holders) {
+        fmt::format_to(tctx.trx_buf_, fmt("EXECUTE afh_plan('{}','{{{}}}');"), holder.addr, (int64_t)holder.sym_id);
+    }
     return PG_OK;
 }
 
