@@ -135,12 +135,11 @@ console_appender::log(const log_message& m) {
         }
         }  // switch
     }
-    fmt::format_to(line, "{:<5} {} {:<9} {:<29}:{:<6} ",
+    fmt::format_to(line, "{:<5} {} {:<9} {:<28} ",
         context.level.to_string(),
         (std::string)time_point::now(),
         context.thread_name,
-        context.file.substr(0, 22),
-        context.line);
+        fmt::format("{}:{}", context.file.substr(0, 22), context.line));
 
     // strip all leading scopes...
     if(!context.method.empty()) {
