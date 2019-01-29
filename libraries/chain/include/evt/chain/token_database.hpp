@@ -51,6 +51,10 @@ enum class action_op {
 };
 
 struct db_value {
+private:
+    static const int kInStakeSize = 1024 * 4;
+    using data_variant_t = std::variant<std::array<char, kInStakeSize>, std::string>;
+
 public:
     db_value(const db_value& lhs) : var_(lhs.var_) {
         set_view();
@@ -64,7 +68,7 @@ private:
     template<typename T>
     db_value(const T& v) : var_(std::in_place_index_t<0>()) {
         auto sz = fc::raw::pack_size(v);
-        if(sz <= 1024 * 1024) {
+        if(sz <= kInStakeSize) {
             auto& arr = std::get<0>(var_);
             auto  ds  = fc::datastream<char*>(arr.data(), arr.size());
             fc::raw::pack(ds, v);
@@ -93,8 +97,8 @@ public:
     std::string_view as_string_view() const { return view_; }
 
 private:
-    std::variant<std::array<char, 1024 * 4>, std::string> var_;
-    std::string_view                                      view_;
+    data_variant_t   var_;
+    std::string_view view_;
 
 public:
     template<typename T>
