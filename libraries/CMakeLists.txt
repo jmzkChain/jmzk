@@ -1,5 +1,5 @@
 add_subdirectory( fc )
-add_subdirectory( xxhash )
+add_subdirectory( sparsehash )
 add_subdirectory( chainbase EXCLUDE_FROM_ALL )
 add_subdirectory( utilities )
 add_subdirectory( appbase EXCLUDE_FROM_ALL )
@@ -23,5 +23,6 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 endif()
 
 add_subdirectory( chain )
+add_subdirectory( catch )
 add_subdirectory( testing)
 add_subdirectory( fmt EXCLUDE_FROM_ALL )

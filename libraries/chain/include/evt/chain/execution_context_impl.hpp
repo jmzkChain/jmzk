@@ -33,7 +33,7 @@ public:
         auto act_types = hana::sort.by(hana::ordering([](auto& act) { return hana::int_c<decltype(+act)::type::get_version()>; }), act_types_);
         hana::for_each(act_types, [&](auto& act) {
             auto i = index_of(act);
-            FC_ASSERT(type_names_[i].size() == decltype(+act)::type::get_version());
+            assert(type_names_[i].size() == decltype(+act)::type::get_version());
             type_names_[i].emplace_back(decltype(+act)::type::get_type_name());
         });
 
@@ -63,35 +63,44 @@ public:
 
     int
     set_version(name act, int newver) override {
-        auto fn = [&](auto i) -> int {
-            auto name  = act_names_[i];
-            auto vers  = hana::filter(act_types_,
-                [&](auto& t) { return hana::equal(name, hana::ulong_c<decltype(+t)::type::get_action_name().value>); });
-            auto cver = curr_vers_[i];
-
-            EVT_ASSERT(newver > cver && newver <= (int)hana::length(vers)(), action_version_exception, "New version should be in range (${c},${m}]", ("c",cver)("m",hana::length(vers)()));
-
-            auto old_ver  = curr_vers_[i];
-            curr_vers_[i] = newver;
-
-            return old_ver;
-        };
-
         auto actindex = index_of(act);
-        auto range    = hana::make_range(hana::int_c<0>, hana::length(act_names_));
-        auto old_ver  = 0;
-        hana::for_each(range, [&](auto i) {
-            if(i() == actindex) {
-                old_ver = fn(i);
-            }
-        });
+        auto cver     = curr_vers_[actindex];
+        auto mver     = type_names_[actindex].size() - 1;
+
+        EVT_ASSERT2(newver > cver && newver <= (int)mver, action_version_exception, "New version should be in range ({},{}]", cver, mver);
+
+        auto old_ver         = cver;
+        curr_vers_[actindex] = newver;
+
+        return old_ver;
+    }
+
+    int
+    set_version_unsafe(name act, int newver) override {
+        auto actindex = index_of(act);
+        auto cver     = curr_vers_[actindex];
+        auto mver     = type_names_[actindex].size() - 1;
+
+        auto old_ver         = cver;
+        curr_vers_[actindex] = newver;
 
         return old_ver;
     }
 
     std::string
-    get_acttype_name(int index) const override {
+    get_acttype_name(name act) const override {
+        auto index = index_of(act);
         return type_names_[index][get_curr_ver(index)];
+    }
+
+    int
+    get_current_version(name act) override {
+        return get_curr_ver(index_of(act));
+    }
+
+    int
+    get_max_version(name act) override {
+        return (int)type_names_[index_of(act)].size() - 1;
     }
 
     template <template<uint64_t> typename Invoker, typename RType, typename ... Args>
@@ -162,11 +171,6 @@ private:
         return curr_vers_[index];
     }
 
-    std::string
-    get_acttype_name(int index, int version) const {
-        return type_names_[index][version];
-    }
-
 private:
     static constexpr auto act_types_ = hana::make_tuple(hana::type_c<ACTTYPE>...);
     static constexpr auto act_names_ = hana::sort(hana::unique(hana::transform(act_types_, [](auto& a) { return hana::ulong_c<decltype(+a)::type::get_action_name().value>; })));
@@ -198,13 +202,18 @@ using evt_execution_context = execution_context_impl<
                                   contracts::aprvsuspend,
                                   contracts::execsuspend,
                                   contracts::paycharge,
+                                  contracts::paybonus,
                                   contracts::everipass,
+                                  contracts::everipass_v1,
                                   contracts::everipay,
+                                  contracts::everipay_v1,
                                   contracts::prodvote,
                                   contracts::updsched,
                                   contracts::newlock,
                                   contracts::aprvlock,
-                                  contracts::tryunlock
+                                  contracts::tryunlock,
+                                  contracts::setpsvbouns,
+                                  contracts::distpsvbonus
                               >;
 
 }}  // namespace evt::chain

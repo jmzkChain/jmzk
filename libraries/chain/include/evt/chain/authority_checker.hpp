@@ -55,7 +55,7 @@ class authority_checker {
 private:
     const controller&               control_;
     const evt_execution_context&    exec_ctx_;
-    const public_keys_type&         signing_keys_;
+    const public_keys_set&          signing_keys_;
     const token_database&           token_db_;
     const uint32_t                  max_recursion_depth_;
     boost::dynamic_bitset<uint64_t> used_keys_;
@@ -103,7 +103,7 @@ public:
     template<uint64_t> friend struct __internal::check_authority;
 
 public:
-    authority_checker(const controller& control, const evt_execution_context& exec_ctx, const public_keys_type& signing_keys, uint32_t max_recursion_depth)
+    authority_checker(const controller& control, const evt_execution_context& exec_ctx, const public_keys_set& signing_keys, uint32_t max_recursion_depth)
         : control_(control)
         , exec_ctx_(exec_ctx)
         , signing_keys_(signing_keys)
@@ -303,13 +303,13 @@ public:
     bool
     all_keys_used() const { return used_keys_.all(); }
 
-    public_keys_type
+    public_keys_set
     used_keys() const {
         auto range = utilities::filter_data_by_marker(signing_keys_, used_keys_, true);
         return range;
     }
 
-    public_keys_type
+    public_keys_set
     unused_keys() const {
         auto range = utilities::filter_data_by_marker(signing_keys_, used_keys_, false);
         return range;
@@ -734,6 +734,34 @@ struct check_authority<N(paycharge)> {
     invoke(const action&, authority_checker*) {
         // not allowed user to use this action
         return false;
+    }
+};
+
+template<>
+struct check_authority<N(paybonus)> {
+    template <typename Type>
+    static bool
+    invoke(const action&, authority_checker*) {
+        // not allowed user to use this action
+        return false;
+    }
+};
+
+template<>
+struct check_authority<N(setpsvbouns)> {
+    template <typename Type>
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        return checker->satisfied_fungible_permission(get_symbol_id(act.key), act, N(manage));
+    }
+};
+
+template<>
+struct check_authority<N(distpsvbonus)> {
+    template <typename Type>
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        return checker->satisfied_fungible_permission(get_symbol_id(act.key), act, N(manage));
     }
 };
 

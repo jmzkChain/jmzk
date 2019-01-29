@@ -4,7 +4,10 @@
  * @brief Defines types and helper macros necessary for generating log messages.
  */
 #include <memory>
+#include <boost/preprocessor/punctuation/comma_if.hpp>
+#include <boost/preprocessor/variadic/size.hpp>
 #include <fmt/core.h>
+#include <fmt/ostream.h>
 #include <fc/time.hpp>
 #include <fc/variant_object.hpp>
 #include <fc/container/small_vector_fwd.hpp>
@@ -103,12 +106,23 @@ public:
      *  @param ctx - generally provided using the FC_LOG_CONTEXT(LEVEL) macro 
      */
     log_message(log_context&& ctx, std::string&& format, variant_object&& args)
-        : context(std::move(ctx)), format(std::move(format)), args(std::move(args)) {}
+        : context(std::move(ctx))
+        , format(std::move(format))
+        , args(std::move(args)) {}
+
+    log_message(const log_context& ctx, const std::string& format, const variant_object& args)
+        : context(ctx)
+        , format(format)
+        , args(args) {}
 
     log_message(log_context&& ctx, std::string&& message)
         : context(std::move(ctx))
         , format(std::move(message)) {}
     
+    log_message(const log_context& ctx, const std::string& message)
+        : context(ctx)
+        , format(message) {}
+
     log_message(const variant& v);
 
     variant to_variant() const;
@@ -155,5 +169,4 @@ FC_REFLECT_TYPENAME(fc::log_message);
     fc::log_message(FC_LOG_CONTEXT(LOG_LEVEL), FORMAT, fc::mutable_variant_object() __VA_ARGS__)
 
 #define FC_LOG_MESSAGE2(LOG_LEVEL, FORMAT, ...) \
-    fc::log_message(FC_LOG_CONTEXT(LOG_LEVEL), fmt::format(FORMAT, __VA_ARGS__))
-
+    fc::log_message(FC_LOG_CONTEXT(LOG_LEVEL), fmt::format(FORMAT, ##__VA_ARGS__))

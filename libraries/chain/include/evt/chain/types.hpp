@@ -26,6 +26,8 @@
 #include <fc/io/raw.hpp>
 #include <fc/io/varint.hpp>
 
+#include <boost/multiprecision/cpp_dec_float.hpp> 
+
 #include <evt/chain/name.hpp>
 #include <evt/chain/name128.hpp>
 #include <evt/chain/chain_id_type.hpp>
@@ -92,7 +94,7 @@ using fc::ecc::range_proof_info;
 using fc::ecc::range_proof_type;
 
 using public_key_type      = fc::crypto::public_key;
-using public_keys_type     = fc::flat_set<public_key_type, std::less<public_key_type>, fc::small_vector<public_key_type, 4>>;
+using public_keys_set      = fc::flat_set<public_key_type, std::less<public_key_type>, fc::small_vector<public_key_type, 4>>;
 using private_key_type     = fc::crypto::private_key;
 using signature_type       = fc::crypto::signature;
 using signatures_type      = fc::small_vector<signature_type, 4>;
@@ -119,6 +121,12 @@ using fungible_name   = name128;
 using symbol_name     = name128;
 using conf_key        = name128;
 using user_id         = public_key_type;
+
+template<int Precision>
+using decimal = boost::multiprecision::number<boost::multiprecision::cpp_dec_float<Precision>>;
+
+using percent_type = decimal<6>;
+using real_type    = decimal<24>;
 
 /**
  * List all object types from all namespaces here so they can
@@ -190,5 +198,5 @@ FC_REFLECT_ENUM(
     evt::chain::object_type,
     (null_object_type)(global_property_object_type)(dynamic_global_property_object_type)
     (block_summary_object_type)(transaction_object_type)(reversible_block_object_type)(evt_link_object_type)
-    (OBJECT_TYPE_COUNT))
-FC_REFLECT(evt::chain::void_t, )
+    (OBJECT_TYPE_COUNT));
+FC_REFLECT(evt::chain::void_t, );

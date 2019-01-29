@@ -138,7 +138,8 @@ FIND_PACKAGE(Boost 1.69 REQUIRED COMPONENTS
     unit_test_framework
     context
     locale
-    iostreams)
+    iostreams
+    timer)
 
 if(APPLE)
     # Apple Specific Options Here

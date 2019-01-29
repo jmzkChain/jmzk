@@ -72,6 +72,8 @@ struct name {
     constexpr name() {}
 
     explicit operator string() const;
+    explicit operator bool() const { return value; }
+    explicit operator uint64_t() const { return value; }
 
     string
     to_string() const {
@@ -140,9 +142,6 @@ struct name {
     operator!=(const name& a, const name& b) {
         return a.value != b.value;
     }
-
-    operator bool() const { return value; }
-    operator uint64_t() const { return value; }
 };
 
 inline std::vector<name>

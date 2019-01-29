@@ -306,11 +306,11 @@ do_http_call(const connection_param& cp,
     else {
         auto&& error_info = response_result.as<evt::error_results>().error;
         // Construct fc exception from error
-        const auto& error_details = error_info.details;
+        auto& error_details = error_info.details;
 
         fc::log_messages logs;
         for(auto itr = error_details.begin(); itr != error_details.end(); itr++) {
-            const auto& context = fc::log_context(fc::log_level::error, itr->file.data(), itr->line_number, itr->method.data());
+            auto context = fc::log_context(fc::log_level::error, itr->file.data(), itr->line_number, itr->method.data());
             logs.emplace_back(fc::log_message(context, itr->message));
         }
 

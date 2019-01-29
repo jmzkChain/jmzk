@@ -4,20 +4,14 @@
  */
 #include <evt/chain/token_database.hpp>
 
+#ifndef __cpp_lib_string_view
+#define __cpp_lib_string_view
+#endif
+
 #include <deque>
 #include <fstream>
 #include <string_view>
 #include <unordered_set>
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
-#define XXH_INLINE_ALL
-#include <xxhash.h>
-#pragma GCC diagnostic pop
-
-#ifndef __cpp_lib_string_view
-#define __cpp_lib_string_view
-#endif
 
 #include <rocksdb/db.h>
 #include <rocksdb/cache.h>
@@ -29,9 +23,11 @@
 #include <fc/filesystem.hpp>
 #include <fc/io/datastream.hpp>
 #include <fc/io/raw.hpp>
+#include <fc/crypto/city.hpp>
 
 #include <evt/chain/config.hpp>
 #include <evt/chain/exceptions.hpp>
+#include <evt/chain/dense_hash.hpp>
 
 namespace evt { namespace chain {
 
@@ -50,7 +46,7 @@ namespace __internal {
 #endif
 
 const char*  kAssetsColumnFamilyName = "Assets";
-const size_t kSymbolSize             = sizeof(symbol);
+const size_t kSymbolIdSize           = sizeof(symbol_id_type);
 const size_t kPublicKeySize          = sizeof(fc::ecc::public_key_shim);
 
 struct db_token_key : boost::noncopyable {
@@ -79,10 +75,10 @@ private:
 
 struct db_asset_key : boost::noncopyable {
 public:
-    db_asset_key(const address& addr, symbol symbol)
+    db_asset_key(const address& addr, symbol_id_type sym_id)
         : slice((const char*)this, sizeof(buf)) {
-        memcpy(buf, &symbol, kSymbolSize);
-        addr.to_bytes(buf + kSymbolSize, kPublicKeySize);
+        memcpy(buf, &sym_id, kSymbolIdSize);
+        addr.to_bytes(buf + kSymbolIdSize, kPublicKeySize);
     }
 
     const rocksdb::Slice&
@@ -96,7 +92,7 @@ public:
     }
 
 private:
-    char buf[kSymbolSize + kPublicKeySize];
+    char buf[kSymbolIdSize + kPublicKeySize];
 
     rocksdb::Slice slice;
 };
@@ -110,17 +106,22 @@ name128 action_key_prefixes[] = {
     N128(.lock),
     N128(.fungible),
     N128(.prodvote),
-    N128(.evtlink)
+    N128(.evtlink),
+    N128(.bonus),
+    N128(.bonus-slim),
+    N128(.bonus-psvdist)
 };
+
+static_assert(sizeof(action_key_prefixes) / sizeof(name128) == (int)token_type::max_value + 1);
 
 struct key_hasher {
     size_t
     operator()(const std::string& key) const {
-        return XXH64(key.data(), key.size(), 0);
+        return fc::city_hash_size_t(key.data(), key.size());
     }
 };
 
-using key_unordered_set = std::unordered_set<std::string, key_hasher>;
+using keys_hash_set = google::dense_hash_set<std::string, key_hasher, std::equal_to<std::string>, std::allocator<std::string>>;
 
 struct flag {
 public:
@@ -168,8 +169,8 @@ public:
 };
 
 struct rt_group {
-    const void*            rb_snapshot;
-    std::vector<rt_action> actions;
+    const void*                rb_snapshot;
+    small_vector<rt_action, 4> actions;
 };
 
 // persistent action
@@ -222,7 +223,7 @@ struct rt_token_keys {
 };
 
 struct rt_asset_key {
-    char key[kSymbolSize + kPublicKeySize];
+    char key[kSymbolIdSize + kPublicKeySize];
 };
 
 struct pd_header {
@@ -246,16 +247,16 @@ public:
                     const name128& prefix,
                     token_keys_t&& keys,
                     const small_vector_base<std::string_view>& data);
-    void put_asset(const address& addr, const symbol sym, const std::string_view& data);
+    void put_asset(const address& addr, const symbol_id_type sym_id, const std::string_view& data);
 
     int exists_token(const name128& prefix, const name128& key) const;
-    int exists_asset(const address& addr, const symbol sym) const;
+    int exists_asset(const address& addr, const symbol_id_type sym_id) const;
 
     int read_token(const name128& prefix, const name128& key, std::string& out, bool no_throw = false) const;
-    int read_asset(const address& addr, const symbol sym, std::string& out, bool no_throw = false) const;
+    int read_asset(const address& addr, const symbol_id_type sym_id, std::string& out, bool no_throw = false) const;
 
     int read_tokens_range(const name128& prefix, int skip, const read_value_func& func) const;
-    int read_assets_range(const symbol sym, int skip, const read_value_func& func) const;
+    int read_assets_range(const symbol_id_type sym_id, int skip, const read_value_func& func) const;
 
 public:
     void add_savepoint(int64_t seq);
@@ -336,17 +337,17 @@ token_database_impl::open(int load_persistence) {
         table_opts.filter_policy.reset(NewBloomFilterPolicy(10, false));
 
         options.table_factory.reset(NewBlockBasedTableFactory(table_opts));
-        assets_options.prefix_extractor.reset(NewFixedPrefixTransform(kPublicKeySize));
+        assets_options.prefix_extractor.reset(NewFixedPrefixTransform(kSymbolIdSize));
     }
     else if(config_.profile == storage_profile::memory) {
         auto tokens_table_options = PlainTableOptions();
         auto assets_table_options = PlainTableOptions();
         tokens_table_options.user_key_len = sizeof(name128) + sizeof(name128);
-        assets_table_options.user_key_len = kPublicKeySize + sizeof(symbol);
+        assets_table_options.user_key_len = kPublicKeySize + kSymbolIdSize;
 
         options.table_factory.reset(NewPlainTableFactory(tokens_table_options));
         assets_options.table_factory.reset(NewPlainTableFactory(assets_table_options));
-        assets_options.prefix_extractor.reset(NewFixedPrefixTransform(kPublicKeySize));
+        assets_options.prefix_extractor.reset(NewFixedPrefixTransform(kSymbolIdSize));
     }
     else {
         EVT_THROW(token_database_exception, "Unknown token database profile");
@@ -356,6 +357,7 @@ token_database_impl::open(int load_persistence) {
     read_opts_.prefix_same_as_start = true;
 
     if(!fc::exists(config_.db_path)) {
+        auto t = config_.db_path.to_native_ansi_path();
         // create new database and open
         fc::create_directories(config_.db_path);
 
@@ -475,12 +477,12 @@ token_database_impl::put_tokens(token_type type,
 }
 
 void
-token_database_impl::put_asset(const address& addr, symbol sym, const std::string_view& data) {
+token_database_impl::put_asset(const address& addr, const symbol_id_type sym_id, const std::string_view& data) {
     using namespace __internal;
 
-    auto  dbkey = db_asset_key(addr, sym);
-    auto& slice = dbkey.as_slice();
-    auto status = db_->Put(write_opts_, assets_handle_, slice, data);
+    auto  dbkey  = db_asset_key(addr, sym_id);
+    auto& slice  = dbkey.as_slice();
+    auto  status = db_->Put(write_opts_, assets_handle_, slice, data);
     if(!status.ok()) {
         FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
@@ -502,10 +504,10 @@ token_database_impl::exists_token(const name128& prefix, const name128& key) con
 }
 
 int
-token_database_impl::exists_asset(const address& addr, symbol sym) const {
+token_database_impl::exists_asset(const address& addr, const symbol_id_type sym_id) const {
     using namespace __internal;
 
-    auto dbkey  = db_asset_key(addr, sym);
+    auto dbkey  = db_asset_key(addr, sym_id);
     auto value  = std::string();
     auto status = db_->Get(read_opts_, assets_handle_, dbkey.as_slice(), &value);
     return status.ok();
@@ -530,9 +532,9 @@ token_database_impl::read_token(const name128& prefix, const name128& key, std::
 }
 
 int
-token_database_impl::read_asset(const address& addr, const symbol symbol, std::string& out, bool no_throw) const {
+token_database_impl::read_asset(const address& addr, const symbol_id_type sym_id, std::string& out, bool no_throw) const {
     using namespace __internal;
-    auto key   = db_asset_key(addr, symbol);
+    auto key   = db_asset_key(addr, sym_id);
     auto value = std::string();
 
     auto status = db_->Get(read_opts_, assets_handle_, key.as_slice(), &out);
@@ -541,7 +543,7 @@ token_database_impl::read_asset(const address& addr, const symbol symbol, std::s
             FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
         }
         if(!no_throw) {
-            EVT_THROW(balance_exception, "Cannot find any fungible(S#${id}) balance in address: {addr}", ("id",symbol.id())("addr",addr));
+            EVT_THROW2(unknown_token_database_key, "There's no balance of fungible with sym id: {} in address: {}", sym_id, addr);
         }
         return false;
     }
@@ -580,11 +582,11 @@ token_database_impl::read_tokens_range(const name128& prefix, int skip, const re
 }
 
 int
-token_database_impl::read_assets_range(const symbol sym, int skip, const read_value_func& func) const {
+token_database_impl::read_assets_range(const symbol_id_type sym_id, int skip, const read_value_func& func) const {
     using namespace __internal;
 
     auto it    = db_->NewIterator(read_opts_, assets_handle_);
-    auto key   = rocksdb::Slice((char*)&sym, sizeof(sym));
+    auto key   = rocksdb::Slice((char*)&sym_id, sizeof(sym_id));
     auto count = 0;
     auto i     = 0;
     
@@ -599,7 +601,7 @@ token_database_impl::read_assets_range(const symbol sym, int skip, const read_va
         auto value = it->value().ToString();
         auto key   = it->key();
 
-        key.remove_prefix(sizeof(sym));
+        key.remove_prefix(sizeof(sym_id));
         if(!func(key.ToStringView(), std::move(value))) {
             delete it;
             return count;
@@ -661,9 +663,6 @@ token_database_impl::free_savepoint(__internal::savepoint& sp) {
         auto pd = GETPOINTER(pd_group, n.group);
         delete pd;
         break;
-    }
-    default: {
-        assert(false);
     }
     }  // switch
 }
@@ -762,10 +761,11 @@ get_sp_key(const rt_action& act) {
         auto data = GETPOINTER(rt_asset_key, act.data);
         return std::string(data->key, sizeof(data->key));
     }
-    default: {
+    case kTokenKeys: {
         assert(false);
     }
     }  // switch
+    return std::string();
 }
 
 }  // namespace __internal
@@ -782,10 +782,10 @@ token_database_impl::rollback_rt_group(__internal::rt_group* rt) {
     auto snapshot_read_opts_     = read_opts_;
     snapshot_read_opts_.snapshot = (const rocksdb::Snapshot*)rt->rb_snapshot;
 
-    auto key_set = key_unordered_set();
-    key_set.reserve(rt->actions.size());
+    auto key_set = keys_hash_set();
+    auto batch   = rocksdb::WriteBatch();
+    key_set.set_empty_key(std::string());
     
-    auto batch = rocksdb::WriteBatch();
     for(auto it = rt->actions.begin(); it < rt->actions.end(); it++) {
         auto data = GETPOINTER(void, it->data);
 
@@ -842,9 +842,6 @@ token_database_impl::rollback_rt_group(__internal::rt_group* rt) {
                 key_set.emplace(std::move(key));
                 break;
             }
-            default: {
-                assert(false);
-            }
             }  // switch
         };
 
@@ -892,10 +889,9 @@ token_database_impl::rollback_pd_group(__internal::pd_group* pd) {
         return;
     }
 
-    auto key_set = key_unordered_set();
-    key_set.reserve(pd->actions.size());
-
-    auto batch = rocksdb::WriteBatch();
+    auto key_set = keys_hash_set();
+    auto batch   = rocksdb::WriteBatch();
+    key_set.set_empty_key(std::string());
 
     for(auto it = pd->actions.begin(); it < pd->actions.end(); it++) {
         switch((action_op)it->op) {
@@ -936,9 +932,6 @@ token_database_impl::rollback_pd_group(__internal::pd_group* pd) {
             key_set.emplace(it->key);
             break;
         }
-        default: {
-            assert(false);
-        }
         }  // switch
     }
 
@@ -968,9 +961,6 @@ token_database_impl::rollback_to_latest_savepoint() {
         delete pd;
 
         break;
-    }
-    default: {
-        assert(false);
     }
     }  // switch
 
@@ -1044,8 +1034,8 @@ token_database_impl::persist_savepoints(std::ostream& os) const {
         case kRuntime: {
             auto rt = GETPOINTER(rt_group, n.group);
 
-            auto key_set = key_unordered_set();
-            key_set.reserve(rt->actions.size());
+            auto key_set = keys_hash_set();
+            key_set.set_empty_key(std::string());
 
             auto snapshot_read_opts_     = read_opts_;
             snapshot_read_opts_.snapshot = (const rocksdb::Snapshot*)rt->rb_snapshot;
@@ -1129,9 +1119,6 @@ token_database_impl::persist_savepoints(std::ostream& os) const {
             }  // for
             break;
         }
-        default: {
-            assert(false);
-        }
         }  // switch
 
         pds.emplace_back(std::move(pd));
@@ -1213,8 +1200,8 @@ token_database::put_tokens(token_type type,
 }
 
 void
-token_database::put_asset(const address& addr, const symbol sym, const std::string_view& data) {
-    my_->put_asset(addr, sym, data);
+token_database::put_asset(const address& addr, const symbol_id_type sym_id, const std::string_view& data) {
+    my_->put_asset(addr, sym_id, data);
 }
 
 int
@@ -1228,8 +1215,8 @@ token_database::exists_token(token_type type, const std::optional<name128>& doma
 }
 
 int
-token_database::exists_asset(const address& addr, const symbol sym) const {
-    return my_->exists_asset(addr, sym);
+token_database::exists_asset(const address& addr, const symbol_id_type sym_id) const {
+    return my_->exists_asset(addr, sym_id);
 }
 
 int
@@ -1243,8 +1230,8 @@ token_database::read_token(token_type type, const std::optional<name128>& domain
 }
 
 int
-token_database::read_asset(const address& addr, const symbol sym, std::string& out, bool no_throw) const {
-    return my_->read_asset(addr, sym, out, no_throw);
+token_database::read_asset(const address& addr, const symbol_id_type sym_id, std::string& out, bool no_throw) const {
+    return my_->read_asset(addr, sym_id, out, no_throw);
 }
 
 int
@@ -1258,8 +1245,8 @@ token_database::read_tokens_range(token_type type, const std::optional<name128>&
 }
 
 int
-token_database::read_assets_range(const symbol sym, int skip, const read_value_func& func) const {
-    return my_->read_assets_range(sym, skip, func);
+token_database::read_assets_range(const symbol_id_type sym_id, int skip, const read_value_func& func) const {
+    return my_->read_assets_range(sym_id, skip, func);
 }
 
 token_database::session

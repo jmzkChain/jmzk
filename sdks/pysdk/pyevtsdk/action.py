@@ -122,6 +122,10 @@ class UpdateProducerAction(Action):
     def __init__(self, data):
         super().__init__('updsched', '.prodsched', '.update', data)
 
+class ProdvoteAction(Action):
+    def __init__(self, key, data):
+        super().__init__('prodvote', '.prodvote', key, data)
+
 
 class ActionTypeErrorException(Exception):
     def __init__(self):
@@ -177,6 +181,8 @@ def get_action_from_abi_json(action, abi_json, domain=None, key=None):
         return EveripayAction(domain, key, _bin)
     elif action == 'updsched':
         return UpdateProducerAction(_bin)
+    elif action == 'prodvote':
+        return ProdvoteAction(abi_dict['key'], _bin)
     else:
         raise ActionTypeErrorException
 
@@ -304,6 +310,10 @@ class ActionGenerator:
     def updsched(self, producers):
         abi_json = base.UpdateProducerAction(producers)
         return get_action_from_abi_json('updsched', abi_json.dumps())
+
+    def prodvote(self, producer, key, value):
+        abi_json = base.ProdvoteAbi(producer, key, value)
+        return get_action_from_abi_json('prodvote', abi_json.dumps())
 
     def new_action(self, action, **args):
         func = getattr(self, action)

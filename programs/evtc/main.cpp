@@ -1410,21 +1410,18 @@ struct set_get_fungible_subcommand {
 };
 
 struct set_get_balance_subcommand {
-    string address;
-    string sym;
+    string   address;
+    uint32_t sym_id;
 
     set_get_balance_subcommand(CLI::App* actionRoot) {
         auto gbcmd = actionRoot->add_subcommand("balance", localized("Retrieve fungible balance from an address"));
-        gbcmd->add_option("address", address, localized("Address where assets stored"))->required();
-        gbcmd->add_option("symbol", sym, localized("Specific symbol to be retrieved, leave empty to retrieve all assets"));
+        gbcmd->add_option("address", address, localized("Address to query"))->required();
+        gbcmd->add_option("symbol_id", sym_id, localized("Specific symbol id to retrieve"))->required();
 
         gbcmd->callback([this] {
             FC_ASSERT(!address.empty(), "Address cannot be empty");
 
-            auto arg = fc::mutable_variant_object("address", get_address(address));
-            if(!sym.empty()) {
-                arg["sym"] = symbol::from_string(sym);
-            }
+            auto arg = fc::mutable_variant_object("address", get_address(address))("sym_id",sym_id);
             print_info(call(get_fungible_balance_func, arg));
         });
     }
@@ -1569,6 +1566,14 @@ struct set_get_history_subcommands {
             print_info(call(get_transaction, args));
         });
 
+        auto trxactscmd = hiscmd->add_subcommand("trxactions", localized("Retrieve actions by transaction id"));
+        trxactscmd->add_option("id", trx_id, localized("Id of transaction to be retrieved"))->required();
+
+        trxactscmd->callback([this] {
+            auto args = mutable_variant_object("id", trx_id);
+            print_info(call(get_transaction_actions, args));
+        });
+
         auto funcmd = hiscmd->add_subcommand("fungible", localized("Retrieve fungible actions history"));
         funcmd->add_option("sym_id", sym_id, localized("Symbol Id to be retrieved"))->required();
         funcmd->add_option("address", addr, localized("Address involved in fungible actions"));
@@ -1606,6 +1611,16 @@ struct set_get_history_subcommands {
             }
 
             print_info(call(get_fungible_ids, args));
+        });
+
+        auto fbcmd = hiscmd->add_subcommand("balance", localized("Retrieve all the fungibles' balance for one address"));
+        fbcmd->add_option("address", addr, localized("Address for query"))->required();
+
+        fbcmd->callback([this] {
+            FC_ASSERT(!addr.empty(), "Address cannot be empty");
+
+            auto arg = fc::mutable_variant_object("addr", get_address(addr));
+            print_info(call(get_fungibles_balance, arg));
         });
     }
 };

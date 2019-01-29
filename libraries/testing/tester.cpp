@@ -35,12 +35,13 @@ base_tester::is_same_chain(base_tester& other) {
 
 void
 base_tester::init(bool push_genesis) {
-    cfg.blocks_dir            = tempdir.path() / config::default_blocks_dir_name;
-    cfg.state_dir             = tempdir.path() / config::default_state_dir_name;
-    cfg.db_config.db_path     = tempdir.path() / config::default_token_database_dir_name;
-    cfg.contracts_console     = true;
-    cfg.loadtest_mode         = false;
-    cfg.charge_free_mode      = false;
+    cfg.blocks_dir             = tempdir.path() / config::default_blocks_dir_name;
+    cfg.state_dir              = tempdir.path() / config::default_state_dir_name;
+    cfg.db_config.db_path      = tempdir.path() / config::default_token_database_dir_name;
+    cfg.contracts_console      = true;
+    cfg.loadtest_mode          = false;
+    cfg.charge_free_mode       = false;
+    cfg.max_serialization_time = std::chrono::hours(1);
 
     cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
     cfg.genesis.initial_key       = get_public_key(config::system_account_name, "active");
@@ -294,7 +295,7 @@ base_tester::get_action(action_name acttype, const domain_name& domain, const do
     try {
         auto& abi      = control->get_abi_serializer();
         auto& exec_ctx = control->get_execution_context();
-        auto  type     = exec_ctx.get_acttype_name(exec_ctx.index_of(acttype));
+        auto  type     = exec_ctx.get_acttype_name(acttype);
         FC_ASSERT(!type.empty(), "unknown action type ${a}", ("a", acttype));
 
         action act;
@@ -383,17 +384,17 @@ base_tester::add_money(const address& addr, const asset& number) {
 
     auto s = tokendb.new_savepoint_session();
 
-    auto str = std::string();
-    auto as  = asset(0, number.sym());
+    auto str  = std::string();
+    auto prop = property();
     
-    if(tokendb.read_asset(addr, number.sym(), str, true)) {
-        extract_db_value(str, as);
+    if(tokendb.read_asset(addr, number.symbol_id(), str, true)) {
+        extract_db_value(str, prop);
     }
 
-    as += number;
+    prop.amount += number.amount();
 
-    auto dv = make_db_value(as);
-    tokendb.put_asset(addr, as.sym(), dv.as_string_view());
+    auto dv = make_db_value(prop);
+    tokendb.put_asset(addr, number.symbol_id(), dv.as_string_view());
 
     s.accept();
     tokendb.pop_back_savepoint();

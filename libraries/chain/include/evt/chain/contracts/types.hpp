@@ -4,6 +4,8 @@
  */
 #pragma once
 
+#include <boost/multiprecision/cpp_dec_float.hpp>
+
 #include <evt/chain/address.hpp>
 #include <evt/chain/asset.hpp>
 #include <evt/chain/chain_config.hpp>
@@ -57,6 +59,16 @@ using balance_type    = evt::chain::asset;
 using address_type    = evt::chain::address;
 using address_list    = small_vector<address_type, 4>;
 using conf_key        = evt::chain::conf_key;
+using percent_type    = evt::chain::percent_type;
+
+// represent for property for one symbol in one account
+// also records the create time
+struct property {
+    int64_t  amount;        // amount for asset
+    symbol   sym;           // symbol
+    uint32_t created_at;    // utc seconds
+    uint32_t created_index; // action index at that time
+};
 
 struct token_def {
     token_def() = default;
@@ -137,12 +149,12 @@ struct suspend_def {
     public_key_type                        proposer;
     fc::enum_type<uint8_t, suspend_status> status;
     transaction                            trx;
-    public_keys_type                       signed_keys;
+    public_keys_set                        signed_keys;
     signatures_type                        signatures;
 };
 
 enum class asset_type {
-    tokens = 0, fungible = 1, max_value = 1
+    tokens = 0, fungible, max_value = fungible
 };
 
 enum class lock_status {
@@ -162,12 +174,12 @@ struct lockft_def {
 using lock_asset = variant_wrapper<asset_type, locknft_def, lockft_def>;
 
 enum class lock_type {
-    cond_keys = 0, max_value = 0
+    cond_keys = 0, max_value = cond_keys
 };
 
 struct lock_condkeys {
-    uint16_t                     threshold;
-    std::vector<public_key_type> cond_keys;
+    uint16_t                         threshold;
+    small_vector<public_key_type, 4> cond_keys;
 };
 
 using lock_condition = variant_wrapper<lock_type, lock_condkeys>;
@@ -185,14 +197,79 @@ struct lock_def {
     small_vector<address, 4> succeed;
     small_vector<address, 4> failed;
 
-    public_keys_type signed_keys;
+    public_keys_set signed_keys;
 };
 
 enum class lock_aprv_type {
-    cond_key = 0, max_value = 0
+    cond_key = 0, max_value = cond_key
 };
 
 using lock_aprvdata = variant_wrapper<lock_aprv_type, void_t>;
+
+enum class dist_receiver_type {
+    address = 0, ftholders, max_value = ftholders
+};
+
+struct dist_stack_receiver {
+public:
+    dist_stack_receiver() = default;
+    dist_stack_receiver(const asset th) : threshold(th) {}
+
+public:
+    asset threshold;
+};
+
+using dist_receiver = variant_wrapper<dist_receiver_type, address, dist_stack_receiver>;
+
+enum class dist_rule_type {
+    fixed = 0, percent, remaining_percent, max_value = remaining_percent
+};
+
+struct dist_fixed_rule {
+    dist_receiver receiver;
+    asset         amount;
+};
+
+struct dist_percent_rule {
+    dist_receiver receiver;
+    percent_type  percent;
+};
+
+struct dist_rpercent_rule {
+    dist_receiver receiver;
+    percent_type  percent;
+};
+
+using dist_rule  = variant_wrapper<dist_rule_type, dist_fixed_rule, dist_percent_rule, dist_rpercent_rule>;
+using dist_rules = small_vector<dist_rule, 4>;
+
+enum class passive_method_type {
+    within_amount = 0,
+    outside_amount
+};
+using passive_methods = flat_map<name, passive_method_type, std::less<name>, small_vector<std::pair<name, passive_method_type>, 4>>;
+
+struct passive_bonus {
+    symbol_id_type  sym_id;
+    percent_type    rate;
+    asset           base_charge;
+    optional<asset> charge_threshold;
+    optional<asset> minimum_charge;
+    asset           dist_threshold;
+    dist_rules      rules;
+    passive_methods methods;   // without actions specify here, others will be `within` defaultly
+    uint32_t        round;
+    time_point      deadline;  // deadline for latest round
+};
+
+struct passive_bonus_slim {
+    symbol_id_type    sym_id;
+    percent_type      rate;
+    int64_t           base_charge;
+    optional<int64_t> charge_threshold;
+    optional<int64_t> minimum_charge;
+    passive_methods   methods;
+};
 
 struct newdomain {
     domain_name name;
@@ -361,10 +438,24 @@ struct paycharge {
     EVT_ACTION_VER0(paycharge);
 };
 
+struct paybonus {
+    address payer;
+    asset   amount;
+
+    EVT_ACTION_VER0(paybonus);
+};
+
 struct everipass {
     evt_link link;
 
     EVT_ACTION_VER0(everipass);
+};
+
+struct everipass_v1 {
+    evt_link link;
+    string   memo;
+
+    EVT_ACTION_VER1(everipass, everipass_v1);
 };
 
 struct everipay {
@@ -373,6 +464,15 @@ struct everipay {
     asset    number;
 
     EVT_ACTION_VER0(everipay);
+};
+
+struct everipay_v1 {
+    evt_link link;
+    address  payee;
+    asset    number;
+    string   memo;
+
+    EVT_ACTION_VER1(everipay, everipay_v1);
 };
 
 struct prodvote {
@@ -419,16 +519,40 @@ struct tryunlock {
     EVT_ACTION_VER0(tryunlock);
 };
 
+struct setpsvbouns {
+    symbol          sym;
+    decimal<6>      rate;
+    asset           base_charge;
+    optional<asset> charge_threshold;
+    optional<asset> minimum_charge;
+    asset           dist_threshold;
+    dist_rules      rules;
+    passive_methods methods;
+
+    EVT_ACTION_VER0(setpsvbouns);
+};
+
+struct distpsvbonus {
+    symbol            sym;
+    time_point        deadline;
+    optional<address> final_receiver;
+
+    EVT_ACTION_VER0(distpsvbonus);
+};
+
 }}}  // namespace evt::chain::contracts
 
+FC_REFLECT(evt::chain::contracts::property, (amount)(sym)(created_at)(created_index));
 FC_REFLECT(evt::chain::contracts::token_def, (domain)(name)(owner)(metas));
 FC_REFLECT(evt::chain::contracts::key_weight, (key)(weight));
 FC_REFLECT(evt::chain::contracts::authorizer_weight, (ref)(weight));
 FC_REFLECT(evt::chain::contracts::permission_def, (name)(threshold)(authorizers));
 FC_REFLECT(evt::chain::contracts::domain_def, (name)(creator)(create_time)(issue)(transfer)(manage)(metas));
 FC_REFLECT(evt::chain::contracts::fungible_def, (name)(sym_name)(sym)(creator)(create_time)(issue)(manage)(total_supply)(metas));
+
 FC_REFLECT_ENUM(evt::chain::contracts::suspend_status, (proposed)(executed)(failed)(cancelled));
 FC_REFLECT(evt::chain::contracts::suspend_def, (name)(proposer)(status)(trx)(signed_keys)(signatures));
+
 FC_REFLECT_ENUM(evt::chain::contracts::asset_type, (tokens)(fungible));
 FC_REFLECT_ENUM(evt::chain::contracts::lock_status, (proposed)(succeed)(failed));
 FC_REFLECT(evt::chain::contracts::locknft_def, (domain)(names));
@@ -437,6 +561,16 @@ FC_REFLECT_ENUM(evt::chain::contracts::lock_type, (cond_keys));
 FC_REFLECT(evt::chain::contracts::lock_condkeys, (threshold)(cond_keys));
 FC_REFLECT(evt::chain::contracts::lock_def, (name)(proposer)(status)(unlock_time)(deadline)(assets)(condition)(succeed)(failed)(signed_keys));
 FC_REFLECT_ENUM(evt::chain::contracts::lock_aprv_type, (cond_key));
+
+FC_REFLECT_ENUM(evt::chain::contracts::dist_receiver_type, (address)(ftholders));
+FC_REFLECT(evt::chain::contracts::dist_stack_receiver, (threshold));
+FC_REFLECT_ENUM(evt::chain::contracts::dist_rule_type, (fixed)(percent)(remaining_percent));
+FC_REFLECT(evt::chain::contracts::dist_fixed_rule, (receiver)(amount));
+FC_REFLECT(evt::chain::contracts::dist_percent_rule, (receiver)(percent));
+FC_REFLECT(evt::chain::contracts::dist_rpercent_rule, (receiver)(percent));
+FC_REFLECT_ENUM(evt::chain::contracts::passive_method_type, (within_amount)(outside_amount));
+FC_REFLECT(evt::chain::contracts::passive_bonus, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods)(round));
+FC_REFLECT(evt::chain::contracts::passive_bonus_slim, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(methods));
 
 FC_REFLECT(evt::chain::contracts::newdomain, (name)(creator)(issue)(transfer)(manage));
 FC_REFLECT(evt::chain::contracts::issuetoken, (domain)(names)(owner));
@@ -458,10 +592,15 @@ FC_REFLECT(evt::chain::contracts::cancelsuspend, (name));
 FC_REFLECT(evt::chain::contracts::aprvsuspend, (name)(signatures));
 FC_REFLECT(evt::chain::contracts::execsuspend, (name)(executor));
 FC_REFLECT(evt::chain::contracts::paycharge, (payer)(charge));
+FC_REFLECT(evt::chain::contracts::paybonus, (payer)(amount));
 FC_REFLECT(evt::chain::contracts::everipass, (link));
+FC_REFLECT(evt::chain::contracts::everipass_v1, (link)(memo));
 FC_REFLECT(evt::chain::contracts::everipay, (link)(payee)(number));
+FC_REFLECT(evt::chain::contracts::everipay_v1, (link)(payee)(number)(memo));
 FC_REFLECT(evt::chain::contracts::prodvote, (producer)(key)(value));
 FC_REFLECT(evt::chain::contracts::updsched, (producers));
 FC_REFLECT(evt::chain::contracts::newlock, (name)(proposer)(unlock_time)(deadline)(assets)(condition)(succeed)(failed));
 FC_REFLECT(evt::chain::contracts::aprvlock, (name)(approver)(data));
 FC_REFLECT(evt::chain::contracts::tryunlock, (name)(executor));
+FC_REFLECT(evt::chain::contracts::setpsvbouns, (sym)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods));
+FC_REFLECT(evt::chain::contracts::distpsvbonus, (sym)(deadline)(final_receiver));

@@ -39,7 +39,8 @@ enum exception_code {
     overflow_code                    = 19,
     underflow_code                   = 20,
     divide_by_zero_code              = 21,
-    unrecoverable_exception_code     = 22  ///< special exception, application should be abored when face this eception
+    unrecoverable_exception_code     = 22,  ///< special exception, application should be abored when face this eception
+    raw_unpack_exception_code        = 23
 };
 
 /**
@@ -309,6 +310,7 @@ FC_DECLARE_EXCEPTION(underflow_exception, underflow_code, "Integer Underflow");
 FC_DECLARE_EXCEPTION(divide_by_zero_exception, divide_by_zero_code, "Integer Divide By Zero");
 
 FC_DECLARE_EXCEPTION(unrecoverable_exception, unrecoverable_exception_code, "Encounter unrecoverable error");
+FC_DECLARE_EXCEPTION(raw_unpack_exception, raw_unpack_exception_code, "Raw unpack failed");
 
 std::string except_str();
 
@@ -362,7 +364,7 @@ extern bool enable_record_assert_trip;
     EXCEPTION_TYPE(FC_LOG_MESSAGE(error, FORMAT, __VA_ARGS__))
 
 #define FC_EXCEPTION2(EXCEPTION_TYPE, FORMAT, ...) \
-    EXCEPTION_TYPE(FC_LOG_MESSAGE2(error, FORMAT, __VA_ARGS__))
+    EXCEPTION_TYPE(FC_LOG_MESSAGE2(error, FORMAT, ##__VA_ARGS__))
 
 /**
  *  @def FC_THROW_EXCEPTION( EXCEPTION, FORMAT, ... )
@@ -374,9 +376,9 @@ extern bool enable_record_assert_trip;
     throw EXCEPTION(FC_LOG_MESSAGE(error, FORMAT, __VA_ARGS__)); \
     FC_MULTILINE_MACRO_END
 
-#define FC_THROW_EXCEPTION2(EXCEPTION, FORMAT, ...)               \
-    FC_MULTILINE_MACRO_BEGIN                                      \
-    throw EXCEPTION(FC_LOG_MESSAGE2(error, FORMAT, __VA_ARGS__)); \
+#define FC_THROW_EXCEPTION2(EXCEPTION, FORMAT, ...)                 \
+    FC_MULTILINE_MACRO_BEGIN                                        \
+    throw EXCEPTION(FC_LOG_MESSAGE2(error, FORMAT, ##__VA_ARGS__)); \
     FC_MULTILINE_MACRO_END
 
 /**
@@ -389,10 +391,10 @@ extern bool enable_record_assert_trip;
     throw;                                                         \
     FC_MULTILINE_MACRO_END
 
-#define FC_RETHROW_EXCEPTION2(ER, LOG_LEVEL, FORMAT, ...)           \
-    FC_MULTILINE_MACRO_BEGIN                                        \
-    ER.append_log(FC_LOG_MESSAGE2(LOG_LEVEL, FORMAT, __VA_ARGS__)); \
-    throw;                                                          \
+#define FC_RETHROW_EXCEPTION2(ER, LOG_LEVEL, FORMAT, ...)             \
+    FC_MULTILINE_MACRO_BEGIN                                          \
+    ER.append_log(FC_LOG_MESSAGE2(LOG_LEVEL, FORMAT, ##__VA_ARGS__)); \
+    throw;                                                            \
     FC_MULTILINE_MACRO_END
 
 #define FC_LOG_AND_RETHROW()                                               \
@@ -536,28 +538,28 @@ extern bool enable_record_assert_trip;
             std::current_exception());                                                    \
     }
 
-#define FC_RETHROW_EXCEPTIONS2(LOG_LEVEL, FORMAT, ...)                       \
-    catch(const boost::interprocess::bad_alloc&) {                           \
-        throw;                                                               \
-    }                                                                        \
-    catch(const fc::unrecoverable_exception&) {                              \
-        throw;                                                               \
-    }                                                                        \
-    catch(fc::exception & er) {                                              \
-        FC_RETHROW_EXCEPTION2(er, LOG_LEVEL, FORMAT, __VA_ARGS__);           \
-    }                                                                        \
-    catch(const std::exception& e) {                                         \
-        fc::exception fce(                                                   \
-            FC_LOG_MESSAGE(LOG_LEVEL, "{}: " FORMAT, e.what(), __VA_ARGS__), \
-            fc::std_exception_code,                                          \
-            BOOST_CORE_TYPEID(e).name(),                                     \
-            e.what());                                                       \
-        throw fce;                                                           \
-    }                                                                        \
-    catch(...) {                                                             \
-        throw fc::unhandled_exception(                                       \
-            FC_LOG_MESSAGE(LOG_LEVEL, FORMAT, __VA_ARGS__),                  \
-            std::current_exception());                                       \
+#define FC_RETHROW_EXCEPTIONS2(LOG_LEVEL, FORMAT, ...)                          \
+    catch(const boost::interprocess::bad_alloc&) {                              \
+        throw;                                                                  \
+    }                                                                           \
+    catch(const fc::unrecoverable_exception&) {                                 \
+        throw;                                                                  \
+    }                                                                           \
+    catch(fc::exception & er) {                                                 \
+        FC_RETHROW_EXCEPTION2(er, LOG_LEVEL, FORMAT, ##__VA_ARGS__);            \
+    }                                                                           \
+    catch(const std::exception& e) {                                            \
+        fc::exception fce(                                                      \
+            FC_LOG_MESSAGE2(LOG_LEVEL, "{}: " FORMAT, e.what(), ##__VA_ARGS__), \
+            fc::std_exception_code,                                             \
+            BOOST_CORE_TYPEID(e).name(),                                        \
+            e.what());                                                          \
+        throw fce;                                                              \
+    }                                                                           \
+    catch(...) {                                                                \
+        throw fc::unhandled_exception(                                          \
+            FC_LOG_MESSAGE2(LOG_LEVEL, FORMAT, ##__VA_ARGS__),                  \
+            std::current_exception());                                          \
     }
 
 #define FC_CAPTURE_AND_RETHROW(...)                                                                 \

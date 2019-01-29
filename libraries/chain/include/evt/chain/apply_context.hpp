@@ -31,9 +31,7 @@ public:
         , db(con.db())
         , token_db(con.token_db())
         , trx_context(trx_ctx)
-        , act(action) {
-        reset_console();
-    }
+        , act(action) {}
 
 public:
     void exec(action_trace& trace);
@@ -43,27 +41,38 @@ public:
     uint64_t next_global_sequence();
 
     bool has_authorized(const domain_name& domain, const domain_key& key) const;
+    void finalize_trace(action_trace& trace, const std::chrono::steady_clock::time_point& start);
     
-    void finalize_trace( action_trace& trace, const std::chrono::steady_clock::time_point& start);
+    uint32_t get_index_of_trx() const { return (uint32_t)trx_context.executed.size(); }
+
+    action&
+    add_generated_action(action&& act) {
+        return _generated_actions.emplace_back(std::move(act));
+    }
+
+    ft_holder&
+    add_new_ft_holder(ft_holder&& fth) {
+        return _new_ft_holders.emplace_back(std::move(fth));
+    }
 
 public:
-    void reset_console();
-
     fmt::memory_buffer&
     get_console_buffer() {
         return _pending_console_output;
     }
 
 public:
-    controller&            control;
-    evt_execution_context& exec_ctx;
-    chainbase::database&   db;
-    token_database&        token_db;
-    transaction_context&   trx_context;
-    const action&          act;
+    controller&             control;
+    evt_execution_context&  exec_ctx;
+    chainbase::database&    db;
+    token_database&         token_db;
+    transaction_context&    trx_context;
+    const action&           act;
 
 private:
-    fmt::memory_buffer _pending_console_output;
+    fmt::memory_buffer         _pending_console_output;
+    small_vector<action, 2>    _generated_actions;
+    small_vector<ft_holder, 2> _new_ft_holders;
 };
 
 }}  // namespace evt::chain
