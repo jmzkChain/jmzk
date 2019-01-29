@@ -676,14 +676,21 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_fungible_test", "[tokendb]") {
     tokendb.add_savepoint(tokendb.latest_savepoint_seq()+1);
 #define ROLLBACK \
     tokendb.rollback_to_latest_savepoint();
-
+TEST_CASE_METHOD(tokendb_test, "tokendb_savepoint_test0", "[tokendb]") {
+    auto& tokendb = my_tester->control->token_db();
+    ADD_SAVEPOINT
+    ROLLBACK
+}
 /*
 TEST_CASE_METHOD(tokendb_test, "tokendb_savepoint_test", "[tokendb]") {
     auto& tokendb = my_tester->control->token_db();
     
+    std::cout << tokendb.latest_savepoint_seq() << std::endl;
     ADD_SAVEPOINT
     
+    std::cout << tokendb.latest_savepoint_seq() << std::endl;
     auto dom_name = get_domain_name(tokendb.latest_savepoint_seq());
+    std::cout << tokendb.latest_savepoint_seq() << std::endl;
   
     auto var = fc::json::from_string(newdomain_data);
     auto dom = var.as<newdomain>();
@@ -696,6 +703,7 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_savepoint_test", "[tokendb]") {
     PUSH_ACTION(newdomain, dom_name, .create);
     CHECK(EXISTS_TOKEN(domain, dom_name));
 
+    ROLLBACK
     ADD_SAVEPOINT
 
     var = fc::json::from_string(issuetoken_data);
@@ -714,14 +722,9 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_savepoint_test", "[tokendb]") {
 
     CHECK(!EXISTS_TOKEN2(token, dom_name, "t1"));
     CHECK(!EXISTS_TOKEN2(token, dom_name, "t2"));
-
-    ROLLBACK
-
     CHECK(!EXISTS_TOKEN(domain, dom_name));   
 }
 */
-
-
 TEST_CASE_METHOD(tokendb_test, "tokendb_newsuspend_test", "[tokendb]") {
     auto& tokendb = my_tester->control->token_db();
 
@@ -774,16 +777,8 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_new_lock_test", "[tokendb]") {
 
     CHECK(nl.assets[0].type() == asset_type::tokens);
     nl.assets[0].get<locknft_def>().domain = get_domain_name();
-    to_variant(nl, var);
-
-    CHECK_THROWS_AS(my_tester->push_action(N(newlock), N128(.lock), N128(nftlock), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
-
     nl.proposer = tester::get_public_key(N(key));
     nl.condition.get<lock_condkeys>().cond_keys = {tester::get_public_key(N(key))};
-    to_variant(nl, var);
-
-    CHECK_THROWS_AS(my_tester->push_action(N(newlock), N128(.lock), N128(nftlock), var.get_object(), key_seeds, payer, 5'000'000), lock_address_exception);
-
     nl.succeed = {public_key_type(std::string("EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"))};
     to_variant(nl, var);
 
@@ -803,12 +798,53 @@ TEST_CASE_METHOD(tokendb_test, "tokendb_new_lock_test", "[tokendb]") {
     my_tester->produce_blocks();
 }
 
+TEST_CASE_METHOD(tokendb_test, "tokendb_updateprodvote_test", "[tokendb]") {
+    const char* test_data = R"======(
+        {
+            "producer": "evt",
+            "key": "key",
+            "value": 0
+        }
+        )======";
+    auto var = fc::json::from_string(test_data);
+    auto pv = var.as<prodvote>();
+    auto& tokendb = my_tester->control->token_db();
 
+    my_tester->produce_blocks();
+    
+    ADD_SAVEPOINT
+    
+    auto vote_sum = flat_map<public_key_type, int64_t>();
+    
+    pv.key = N128(network-charge-factor);
+    pv.value = 1;
+    to_variant(pv, var);
+    
+    PUSH_ACTION(prodvote, ".prodvote", network-charge-factor);
+    
+    READ_TOKEN(prodvote, pv.key, vote_sum);
+    CHECK(vote_sum[tester::get_public_key(pv.producer)] == 1);
+    vote_sum.clear();
+
+    my_tester->produce_blocks();
+}
+
+TEST_CASE_METHOD(tokendb_test, "tokendb_prodvote_presist_test", "[tokendb]") {
+    auto& tokendb = my_tester->control->token_db();
+    ROLLBACK
+    
+    prodvote _pd;
+    auto vote_sum = flat_map<public_key_type, int64_t>();
+    READ_TOKEN(prodvote, N128(network-charge-factor), vote_sum);
+    CHECK(vote_sum[tester::get_public_key(_pd.producer)] == 0);
+    vote_sum.clear();
+}
+    
+    
 
 /* TODO:
 TEST_CASE_METHOD(tokendb_test, "tokendb_updateprodvote_test", "[tokendb]")
 TEST_CASE_METHOD(tokendb_test, "tokendb_prodvote_presist_test", "[tokendb]")
-TEST_CASE_METHOD(tokendb_test, "tokendb_update_lock_test", "[tokendb]")
 TEST_CASE_METHOD(tokendb_test, "tokendb_lock_presist_test", "[tokendb]")
 TEST_CASE_METHOD(tokendb_test, "tokendb_squash", "[tokendb]")
 TEST_CASE_METHOD(tokendb_test, "tokendb_squash2", "[tokendb]")
