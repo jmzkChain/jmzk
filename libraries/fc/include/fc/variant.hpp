@@ -192,14 +192,14 @@ template<typename A, typename B>
 void from_variant(const variant& v, std::pair<A, B>& p);
 
 /**
-  * @brief stores null, int64, uint64, double, bool, string, fc::small_vector<variant>,
-  *        and variant_object's.
-  *
-  * variant's allocate everything but strings, arrays, and objects on the
-  * stack and are 'move aware' for values allcoated on the heap.
-  *
-  * Memory usage on 64 bit systems is 16 bytes and 12 bytes on 32 bit systems.
-  */
+ * @brief stores null, int64, uint64, double, bool, string, fc::small_vector<variant>,
+ *        and variant_object's.
+ *
+ * variant's allocate everything but strings, arrays, and objects on the
+ * stack and are 'move aware' for values allcoated on the heap.
+ *
+ * Memory usage on 64 bit systems is 16 bytes and 12 bytes on 32 bit systems.
+ */
 class variant {
 public:
     enum type_id {
@@ -275,12 +275,12 @@ public:
     bool is_array() const;
     bool is_blob() const;
     /**
-         *   int64, uint64, double,bool
-         */
+     *   int64, uint64, double,bool
+     */
     bool is_numeric() const;
     /**
-         *   int64, uint64, bool
-         */
+     *   int64, uint64, bool
+     */
     bool is_integer() const;
 
     int64_t  as_int64() const;
@@ -293,8 +293,8 @@ public:
     blob        as_blob() const;
 
     /** Convert's double, ints, bools, etc to a string
-      * @throw if get_type() == array_type | get_type() == object_type
-      */
+     * @throw if get_type() == array_type | get_type() == object_type
+     */
     string as_string() const;
 
     /// @pre  get_type() == string_type
@@ -320,26 +320,28 @@ public:
     size_t size() const;
 
     /**
-      *  _types that use non-intrusive variant conversion can implement the
-      *  following method to implement conversion from variant to T.
-      *
-      *  <code>
-      *  void from_variant( const Variant& var, T& val )
-      *  </code>
-      *
-      *  The above form is not always convienant, so the this templated
-      *  method is used to enable conversion from Variants to other
-      *  types.
-      */
+     *  _types that use non-intrusive variant conversion can implement the
+     *  following method to implement conversion from variant to T.
+     *
+     *  <code>
+     *  void from_variant( const Variant& var, T& val )
+     *  </code>
+     *
+     *  The above form is not always convienant, so the this templated
+     *  method is used to enable conversion from Variants to other
+     *  types.
+     */
     template<typename T>
-    T as() const {
+    T
+    as() const {
         T tmp;
         from_variant(*this, tmp);
         return tmp;
     }
 
     template<typename T>
-    void as(T& v) const {
+    void
+    as(T& v) const {
         from_variant(*this, v);
     }
 
