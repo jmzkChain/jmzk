@@ -121,9 +121,15 @@ void
 abi_serializer::set_abi(const abi_def& abi) {
     typedefs_.clear();
     structs_.clear();
+    variants_.clear();
 
-    for(const auto& st : abi.structs)
+    for(auto& st : abi.structs) {
         structs_[st.name] = st;
+    }
+
+    for(auto& vt : abi.variants) {
+        variants_[vt.name] = vt;
+    }
 
     for(const auto& td : abi.types) {
         EVT_ASSERT(_is_type(td.type), invalid_type_inside_abi, "invalid type ${type}", ("type", td.type));
@@ -133,6 +139,7 @@ abi_serializer::set_abi(const abi_def& abi) {
 
     EVT_ASSERT(typedefs_.size() == abi.types.size(), duplicate_abi_type_def_exception, "duplicate type definition detected");
     EVT_ASSERT(structs_.size() == abi.structs.size(), duplicate_abi_struct_def_exception, "duplicate struct definition detected");
+    EVT_ASSERT(variants_.size() == abi.variants.size(), duplicate_abi_struct_def_exception, "duplicate struct definition detected");
 
     validate();
 }
@@ -162,7 +169,12 @@ abi_serializer::get_integer_size(const type_name& type) const {
 
 bool
 abi_serializer::is_struct(const type_name& type) const {
-    return structs_.find(resolve_type(type)) != structs_.end();
+    return structs_.find(resolve_type(type)) != structs_.cend();
+}
+
+bool
+abi_serializer::is_variant(const type_name& type) const {
+    return variants_.find(resolve_type(type)) != variants_.cend();   
 }
 
 bool
@@ -196,13 +208,16 @@ abi_serializer::fundamental_type(const type_name& type) const {
 bool
 abi_serializer::_is_type(const type_name& rtype) const {
     auto type = fundamental_type(rtype);
-    if(built_in_types_.find(type) != built_in_types_.end()) {
+    if(built_in_types_.find(type) != built_in_types_.cend()) {
         return true;
     }
-    if(typedefs_.find(type) != typedefs_.end()) {
+    if(typedefs_.find(type) != typedefs_.cend()) {
         return _is_type(typedefs_.find(type)->second);
     }
-    if(structs_.find(type) != structs_.end()) {
+    if(structs_.find(type) != structs_.cend()) {
+        return true;
+    }
+    if(variants_.find(type) != variants_.cend()) {
         return true;
     }
     return false;
@@ -256,6 +271,14 @@ abi_serializer::validate() const {
         }
         FC_CAPTURE_AND_RETHROW((s))
     }
+    for(const auto& v : variants_) {
+        for(const auto& field : v.second.fields) {
+            try {
+                EVT_ASSERT(_is_type(field.type), invalid_type_inside_abi, "${type}", ("type", field.type));
+            }
+            FC_CAPTURE_AND_RETHROW((field))
+        }
+    }
 }
 
 type_name
@@ -265,8 +288,9 @@ abi_serializer::resolve_type(const type_name& type) const {
         for(auto i = typedefs_.size(); i > 0; --i) {  // avoid infinite recursion
             auto& t = itr->second;
             itr     = typedefs_.find(t);
-            if(itr == typedefs_.end())
+            if(itr == typedefs_.end()) {
                 return t;
+            }
         }
     }
     return type;
@@ -278,11 +302,13 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
     auto h     = ctx.enter_scope();
     auto s_itr = structs_.find(type);
     EVT_ASSERT(s_itr != structs_.end(), invalid_type_inside_abi, "Unknown type ${type}", ("type", ctx.maybe_shorten(type)));
+
     ctx.hint_struct_type_if_in_array(s_itr);
     const auto& st = s_itr->second;
     if(st.base != type_name()) {
         _binary_to_variant(resolve_type(st.base), stream, obj, ctx);
     }
+
     for(auto i = 0u; i < st.fields.size(); ++i) {
         const auto& field = st.fields[i];
         if(!stream.remaining()) {
@@ -310,11 +336,13 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
     }
     if(is_array(rtype)) {
         ctx.hint_array_type_if_in_array();
+
         auto size = fc::unsigned_int();
         try {
             fc::raw::unpack(stream, size);
         }
         EVT_RETHROW_EXCEPTIONS(unpack_exception, "Unable to unpack size of array '${p}'", ("p", ctx.get_path_string()))
+
         auto vars = fc::small_vector<fc::variant, 4>();
         auto h1   = ctx.push_to_path(impl::array_index_path_item{});
         for(decltype(size.value) i = 0; i < size; ++i) {
@@ -327,10 +355,9 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
             vars.emplace_back(std::move(v));
         }
         // QUESTION: Why would the assert below ever fail?
-        EVT_ASSERT(vars.size() == size.value,
-                   unpack_exception,
-                   "packed size does not match unpacked array size, packed size ${p} actual size ${a}",
-                   ("p", size)("a", vars.size()));
+        EVT_ASSERT(vars.size() == size.value, unpack_exception,
+                   "packed size does not match unpacked array size, packed size ${p} actual size ${a}", ("p", size)("a", vars.size()));
+        
         return fc::variant(std::move(vars));
     }
     else if(is_optional(rtype)) {
@@ -341,10 +368,28 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
         EVT_RETHROW_EXCEPTIONS(unpack_exception, "Unable to unpack presence flag of optional '${p}'", ("p", ctx.get_path_string()))
         return flag ? _binary_to_variant(ftype, stream, ctx) : fc::variant();
     }
+    else if(is_variant(rtype)) {
+        auto v_itr = variants_.find(rtype);
+        ctx.hint_variant_type_if_in_array(v_itr);
+
+        auto i = fc::unsigned_int();
+        try {
+            fc::raw::unpack(stream, i);
+        }
+        EVT_RETHROW_EXCEPTIONS(unpack_exception, "Unable to unpack index of variant '${p}'", ("p", ctx.get_path_string()));
+        EVT_ASSERT2(i < v_itr->second.fields.size(), unpack_exception, "Index of variant '{}' if not valid", ctx.get_path_string());
+
+        auto vo  = mutable_variant_object();
+        auto h1  = ctx.push_to_path(impl::variant_path_item{.parent_variant_itr = v_itr, .index = i});
+
+        vo["type"] = v_itr->second.fields[i].name;
+        vo["data"] = _binary_to_variant(v_itr->second.fields[i].type, stream, ctx);
+
+        return fc::variant(std::move(vo));
+    }
 
     fc::mutable_variant_object mvo;
     _binary_to_variant(rtype, stream, mvo, ctx);
-    // QUESTION: Is this assert actually desired? It disallows unpacking empty structs_ from datastream.
     EVT_ASSERT(mvo.size() > 0, unpack_exception, "Unable to unpack '${p}' from stream", ("p", ctx.get_path_string()));
     return fc::variant(std::move(mvo));
 }
@@ -380,15 +425,13 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
         auto h     = ctx.enter_scope();
         auto rtype = resolve_type(type);
 
-        auto s_itr = structs_.end();
-
         auto btype = built_in_types_.find(fundamental_type(rtype));
         if(btype != built_in_types_.end()) {
             btype->second.second(var, ds, is_array(rtype), is_optional(rtype));
         }
         else if(is_array(rtype)) {
             ctx.hint_array_type_if_in_array();
-            auto vars = var.get_array();
+            auto& vars = var.get_array();
             fc::raw::pack(ds, (fc::unsigned_int)vars.size());
 
             auto h1 = ctx.push_to_path(impl::array_index_path_item{});
@@ -410,10 +453,36 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
                 _variant_to_binary(fundamental_type(rtype), var, ds, ctx);
             }
         }
-        else if((s_itr = structs_.find(rtype)) != structs_.end()) {
-            ctx.hint_struct_type_if_in_array(s_itr);
-            const auto& st = s_itr->second;
+        else if(is_variant(rtype)) {
+            auto v_itr = variants_.find(rtype);
+            ctx.hint_variant_type_if_in_array(v_itr);
 
+            auto& vt = v_itr->second; 
+            auto& vo = var.get_object();
+            EVT_ASSERT2(vo.contains("type"), pack_exception, "Missing field 'type' in input object while processing variant '{}'", ctx.get_path_string());
+            EVT_ASSERT2(vo.contains("data"), pack_exception, "Missing field 'data' in input object while processing variant '{}'", ctx.get_path_string());
+
+            auto dtype = vo["type"].get_string();
+            auto index = 0u;
+
+            for(auto& field : vt.fields) {
+                if(field.type == dtype) {
+                    break;
+                }
+                index++;
+            }
+            EVT_ASSERT2(index < vt.fields.size(), unpack_exception, "Invalid 'type' value of variant '{}'", ctx.get_path_string());
+
+            fc::raw::pack(ds, (fc::unsigned_int)index);
+
+            auto h1 = ctx.push_to_path(impl::variant_path_item{.parent_variant_itr = v_itr, .index = index});
+            _variant_to_binary(vt.fields[index].type, vo["data"].get_object(), ds, ctx);
+        }
+        else if(is_struct(rtype)) {
+            auto s_itr = structs_.find(rtype);
+            ctx.hint_struct_type_if_in_array(s_itr);
+
+            auto& st = s_itr->second;
             if(var.is_object()) {
                 const auto& vo = var.get_object();
 
@@ -539,7 +608,6 @@ abi_traverse_context_with_path::push_to_path(const path_item& item) {
                    "invariant failure in variant_to_binary_context: path is empty on scope exit");
         path.pop_back();
     };
-
     path.push_back(item);
 
     return {std::move(callback)};
@@ -561,7 +629,6 @@ abi_traverse_context_with_path::hint_array_type_if_in_array() {
     if(path.size() == 0 || !path.back().contains<array_index_path_item>()) {
         return;
     }
-
     path.back().get<array_index_path_item>().type_hint = array_type_path_root{};
 }
 
@@ -570,13 +637,15 @@ abi_traverse_context_with_path::hint_struct_type_if_in_array(const map<type_name
     if(path.size() == 0 || !path.back().contains<array_index_path_item>()) {
         return;
     }
-
     path.back().get<array_index_path_item>().type_hint = struct_type_path_root{.struct_itr = itr};
 }
 
-constexpr size_t
-const_strlen(const char* str) {
-    return (*str == 0) ? 0 : const_strlen(str + 1) + 1;
+void
+abi_traverse_context_with_path::hint_variant_type_if_in_array(const map<type_name, variant_def>::const_iterator& itr) {
+    if(path.size() == 0 || !path.back().contains<array_index_path_item>()) {
+        return;
+    }
+    path.back().get<array_index_path_item>().type_hint = variant_type_path_root{.variant_itr = itr};
 }
 
 void
@@ -588,7 +657,7 @@ output_name(std::ostream& s, const string& str, bool shorten, size_t max_length 
     static_assert(min_num_characters_at_ends <= preferred_num_tail_end_characters,
                   "preferred number of tail end characters cannot be less than the imposed absolute minimum");
 
-    constexpr size_t fill_in_length       = const_strlen(fill_in);
+    constexpr size_t fill_in_length       = __builtin_strlen(fill_in);
     constexpr size_t min_length           = fill_in_length + 2 * min_num_characters_at_ends;
     constexpr size_t preferred_min_length = fill_in_length + 2 * preferred_num_tail_end_characters;
 
@@ -610,25 +679,26 @@ output_name(std::ostream& s, const string& str, bool shorten, size_t max_length 
 }
 
 struct generate_path_string_visitor {
+public:
     using result_type = void;
 
     generate_path_string_visitor(bool shorten_names, bool track_only)
         : shorten_names(shorten_names)
         , track_only(track_only) {}
 
+private:
     std::stringstream s;
     bool              shorten_names = false;
     bool              track_only    = false;
     path_item         last_path_item;
 
+public:
     void
     add_dot() {
         s << ".";
     }
 
-    void
-    operator()(const empty_path_item& item) {
-    }
+    void operator()(const empty_path_item& item) {}
 
     void
     operator()(const array_index_path_item& item) {
@@ -652,6 +722,17 @@ struct generate_path_string_visitor {
     }
 
     void
+    operator()(const variant_path_item& item) {
+        if(track_only) {
+            last_path_item = item;
+            return;
+        }
+
+        const auto& str = item.parent_variant_itr->second.fields.at(item.index).name;
+        output_name(s, str, shorten_names);
+    }
+
+    void
     operator()(const empty_path_root& item) {
     }
 
@@ -665,18 +746,35 @@ struct generate_path_string_visitor {
         const auto& str = item.struct_itr->first;
         output_name(s, str, shorten_names);
     }
+
+    void
+    operator()(const variant_type_path_root& item) {
+        const auto& str = item.variant_itr->first;
+        output_name(s, str, shorten_names);
+    }
+
+    std::string
+    to_string() const {
+        return s.str();
+    }
+
+private:
+    friend struct abi_traverse_context_with_path;
 };
 
 struct path_item_type_visitor {
+public:
     using result_type = void;
 
     path_item_type_visitor(std::stringstream& s, bool shorten_names)
         : s(s)
         , shorten_names(shorten_names) {}
 
+private:
     std::stringstream& s;
     bool               shorten_names = false;
 
+public:
     void
     operator()(const empty_path_item& item) {
     }
@@ -701,6 +799,17 @@ struct path_item_type_visitor {
         const auto& str = item.parent_struct_itr->second.fields.at(item.field_ordinal).type;
         output_name(s, str, shorten_names);
     }
+
+    void
+    operator()(const variant_path_item& item) {
+        const auto& str = item.parent_variant_itr->second.fields.at(item.index).type;
+        output_name(s, str, shorten_names);
+    }
+
+    std::string
+    to_string() const {
+        return s.str();
+    }
 };
 
 string
@@ -708,13 +817,14 @@ abi_traverse_context_with_path::get_path_string() const {
     bool full_path     = !short_path;
     bool shorten_names = short_path;
 
-    generate_path_string_visitor visitor(shorten_names, !full_path);
-    if(full_path)
+    auto visitor = generate_path_string_visitor(shorten_names, !full_path);
+    if(full_path) {
         root_of_path.visit(visitor);
+    }
     for(size_t i = 0, n = path.size(); i < n; ++i) {
-        if(full_path && !path[i].contains<array_index_path_item>())
+        if(full_path && !path[i].contains<array_index_path_item>()) {
             visitor.add_dot();
-
+        }
         path[i].visit(visitor);
     }
 
@@ -723,18 +833,19 @@ abi_traverse_context_with_path::get_path_string() const {
             root_of_path.visit(visitor);
         }
         else {
-            path_item_type_visitor vis2(visitor.s, shorten_names);
+            auto vis2 = path_item_type_visitor(visitor.s, shorten_names);
             visitor.last_path_item.visit(vis2);
         }
     }
 
-    return visitor.s.str();
+    return visitor.to_string();
 }
 
 string
 abi_traverse_context_with_path::maybe_shorten(const string& str) {
-    if(!short_path)
+    if(!short_path) {
         return str;
+    }
 
     std::stringstream s;
     output_name(s, str, true);

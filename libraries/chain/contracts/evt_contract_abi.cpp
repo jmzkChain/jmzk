@@ -20,7 +20,8 @@ evt_contract_abi_version() {
 
 abi_def
 evt_contract_abi() {
-    abi_def evt_abi;
+    auto evt_abi = abi_def();
+
     evt_abi.types.push_back(type_def{"address_list", "address[]"});
     evt_abi.types.push_back(type_def{"user_id", "public_key"});
     evt_abi.types.push_back(type_def{"user_list", "public_key[]"});
@@ -50,19 +51,14 @@ evt_contract_abi() {
 
     // structures def
     evt_abi.structs.emplace_back( struct_def {
+        "void", "", {}
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
         "meta", "", {
             {"key", "meta_key"},
             {"value", "meta_value"},
             {"creator", "user_id"}
-        }
-    });
-
-    evt_abi.structs.emplace_back( struct_def {
-        "token_def", "", {
-            {"domain", "domain_name"},
-            {"name", "token_name"},
-            {"owner", "address_list"},
-            {"metas", "meta_list"}
         }
     });
 
@@ -89,52 +85,78 @@ evt_contract_abi() {
     });
 
     evt_abi.structs.emplace_back( struct_def {
-        "domain_def", "", {
+        "locknft_def", "", {
             {"name", "domain_name"},
-            {"creator", "user_id"},
-            {"create_time", "time_point_sec"},
-            {"issue", "permission_def"},
-            {"transfer", "permission_def"},
-            {"manage", "permission_def"},
-            {"metas", "meta_list"}
+            {"names", "token_name[]"}
         }
     });
 
     evt_abi.structs.emplace_back( struct_def {
-        "fungibal_def", "", {
-            {"sym", "symbol"},
-            {"creator", "user_id"},
-            {"create_time", "time_point_sec"},
-            {"issue", "permission_def"},
-            {"manage", "permission_def"},
-            {"total_supply", "asset"},
-            {"metas", "meta_list"}
+        "lockft_def", "", {
+            {"from", "address"},
+            {"amount", "asset"}
         }
     });
 
     evt_abi.structs.emplace_back( struct_def {
-        "suspend_def", "", {
-            {"name", "proposal_name"},
-            {"proposer", "user_id"},
-            {"status", "suspend_status"},
-            {"trx", "transaction"},
-            {"signed_keys","public_key[]"},
-            {"signatures","signature[]"}
+        "lock_condkeys", "", {
+            {"threshold", "uint16"},
+            {"cond_keys", "public_key[]"}
         }
     });
 
     evt_abi.structs.emplace_back( struct_def {
-        "lock_def", "", {
-            {"name", "proposal_name"},
-            {"proposer", "user_id"},
-            {"status", "suspend_status"},
-            {"unlock_time", "time_point_sec"},
-            {"deadline","time_point_sec"},
-            {"assets","lock_asset[]"},
-            {"condition", "lock_condition"},
-            {"succeed", "address[]"},
-            {"failed", "address[]"},
-            {"signed_keys", "public_key[]"}
+        "dist_stack_receiver", "", {
+            {"threshold", "asset"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "dist_fixed_rule", "", {
+            {"receiver", "dist_receiver"},
+            {"amount", "asset"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "dist_percent_rule", "", {
+            {"receiver", "dist_receiver"},
+            {"percent", "percent_type"}
+        }
+    });
+
+    // variants def
+    evt_abi.variants.emplace_back( variant_def {
+        "asset_type", {
+            {"tokens", "locknft_def"},
+            {"fungible", "lockft_def"}
+        }
+    });
+
+    evt_abi.variants.emplace_back( variant_def {
+        "lock_condition", {
+            {"cond_keys", "lock_condkeys"}
+        }
+    });
+
+    evt_abi.variants.emplace_back( variant_def {
+        "lock_aprvdata", {
+            {"cond_key", "void"}
+        }
+    });
+
+    evt_abi.variants.emplace_back( variant_def {
+        "dist_receiver", {
+            {"address", "address"},
+            {"ftholders", "dist_stack_receiver"}
+        }
+    });
+
+    evt_abi.variants.emplace_back( variant_def {
+        "dist_rule", {
+            {"fixed", "dist_fixed_rule"},
+            {"percent", "dist_percent_rule"},
+            {"remaining_percent", "dist_percent_rule"}
         }
     });
 
@@ -377,6 +399,27 @@ evt_contract_abi() {
         "tryunlock", "", {
            {"name", "proposal_name"},
            {"executor", "user_id"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "setpsvbouns", "", {
+           {"sym", "symbol"},
+           {"rate", "percent_type"},
+           {"base_charge", "asset"},
+           {"charge_threshold", "asset?"},
+           {"minimum_charge", "asset?"},
+           {"dist_threshold", "asset"},
+           {"rules", "dist_rule[]"},
+           {"methods", "passive_methods"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "distpsvbonus", "", {
+           {"sym", "proposal_name"},
+           {"deadline", "time_point"},
+           {"final_receiver", "address?"}
         }
     });
 

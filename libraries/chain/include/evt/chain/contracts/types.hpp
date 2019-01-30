@@ -521,7 +521,7 @@ struct tryunlock {
 
 struct setpsvbouns {
     symbol          sym;
-    decimal<6>      rate;
+    percent_type    rate;
     asset           base_charge;
     optional<asset> charge_threshold;
     optional<asset> minimum_charge;
