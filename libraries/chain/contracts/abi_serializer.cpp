@@ -378,7 +378,7 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
         EVT_RETHROW_EXCEPTIONS(unpack_exception, "Unable to unpack index of variant '${p}'", ("p", ctx.get_path_string()));
 
         auto& vt = v_itr->second;
-        EVT_ASSERT2(i < vt.fields.size(), unpack_exception, "Index of variant '{}' if not valid", ctx.get_path_string());
+        EVT_ASSERT2((uint32_t)i < vt.fields.size(), unpack_exception, "Index of variant '{}' if not valid", ctx.get_path_string());
 
         auto vo = mutable_variant_object();
         auto h1 = ctx.push_to_path(impl::variant_path_item{.parent_variant_itr = v_itr, .index = i});
