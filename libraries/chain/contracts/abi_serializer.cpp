@@ -112,9 +112,6 @@ abi_serializer::configure_built_in_types() {
     built_in_types_.emplace("extensions", pack_unpack<extensions_type>());
     built_in_types_.emplace("evt_link", pack_unpack<evt_link>());
     built_in_types_.emplace("lock_status", pack_unpack<fc::enum_type<uint8_t, lock_status>>());
-    built_in_types_.emplace("lock_asset", pack_unpack<lock_asset>());
-    built_in_types_.emplace("lock_condition", pack_unpack<lock_condition>());
-    built_in_types_.emplace("lock_aprvdata", pack_unpack<lock_aprvdata>());
 }
 
 void
@@ -323,10 +320,11 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
 fc::variant
 abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const char*>& stream,
                                    impl::binary_to_variant_context& ctx) const {
-    auto      h     = ctx.enter_scope();
-    type_name rtype = resolve_type(type);
-    auto      ftype = fundamental_type(rtype);
-    auto      btype = built_in_types_.find(ftype);
+    auto h     = ctx.enter_scope();
+    auto rtype = resolve_type(type);
+    auto ftype = fundamental_type(rtype);
+    auto btype = built_in_types_.find(ftype);
+
     if(btype != built_in_types_.end()) {
         try {
             return btype->second.first(stream, is_array(rtype), is_optional(rtype));
@@ -334,6 +332,7 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
         EVT_RETHROW_EXCEPTIONS(unpack_exception, "Unable to unpack ${class} type '${type}' while processing '${p}'",
                                ("class", is_array(rtype) ? "array of built-in" : is_optional(rtype) ? "optional of built-in" : "built-in")("type", ftype)("p", ctx.get_path_string()))
     }
+
     if(is_array(rtype)) {
         ctx.hint_array_type_if_in_array();
 
@@ -377,18 +376,20 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
             fc::raw::unpack(stream, i);
         }
         EVT_RETHROW_EXCEPTIONS(unpack_exception, "Unable to unpack index of variant '${p}'", ("p", ctx.get_path_string()));
-        EVT_ASSERT2(i < v_itr->second.fields.size(), unpack_exception, "Index of variant '{}' if not valid", ctx.get_path_string());
 
-        auto vo  = mutable_variant_object();
-        auto h1  = ctx.push_to_path(impl::variant_path_item{.parent_variant_itr = v_itr, .index = i});
+        auto& vt = v_itr->second;
+        EVT_ASSERT2(i < vt.fields.size(), unpack_exception, "Index of variant '{}' if not valid", ctx.get_path_string());
 
-        vo["type"] = v_itr->second.fields[i].name;
-        vo["data"] = _binary_to_variant(v_itr->second.fields[i].type, stream, ctx);
+        auto vo = mutable_variant_object();
+        auto h1 = ctx.push_to_path(impl::variant_path_item{.parent_variant_itr = v_itr, .index = i});
+
+        vo["type"] = vt.fields[i].name;
+        vo["data"] = _binary_to_variant(vt.fields[i].type, stream, ctx);
 
         return fc::variant(std::move(vo));
     }
 
-    fc::mutable_variant_object mvo;
+    auto mvo = fc::mutable_variant_object();
     _binary_to_variant(rtype, stream, mvo, ctx);
     EVT_ASSERT(mvo.size() > 0, unpack_exception, "Unable to unpack '${p}' from stream", ("p", ctx.get_path_string()));
     return fc::variant(std::move(mvo));

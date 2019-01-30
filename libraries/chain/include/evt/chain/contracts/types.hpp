@@ -145,12 +145,12 @@ enum class suspend_status {
 struct suspend_def {
     suspend_def() = default;
 
-    proposal_name                          name;
-    public_key_type                        proposer;
-    fc::enum_type<uint8_t, suspend_status> status;
-    transaction                            trx;
-    public_keys_set                        signed_keys;
-    signatures_type                        signatures;
+    proposal_name                      name;
+    public_key_type                    proposer;
+    enum_type<uint8_t, suspend_status> status;
+    transaction                        trx;
+    public_keys_set                    signed_keys;
+    signatures_type                    signatures;
 };
 
 enum class asset_type {
@@ -185,9 +185,9 @@ struct lock_condkeys {
 using lock_condition = variant_wrapper<lock_type, lock_condkeys>;
 
 struct lock_def {
-    proposal_name                       name;
-    user_id                             proposer;
-    fc::enum_type<uint8_t, lock_status> status;
+    proposal_name                   name;
+    user_id                         proposer;
+    enum_type<uint8_t, lock_status> status;
 
     time_point_sec              unlock_time;
     time_point_sec              deadline;
@@ -418,8 +418,8 @@ struct cancelsuspend {
 };
 
 struct aprvsuspend {
-    proposal_name                       name;
-    fc::small_vector<signature_type, 4> signatures;
+    proposal_name                   name;
+    small_vector<signature_type, 4> signatures;
 
     EVT_ACTION_VER0(aprvsuspend);
 };
