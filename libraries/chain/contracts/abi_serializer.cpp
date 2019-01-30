@@ -119,6 +119,7 @@ abi_serializer::set_abi(const abi_def& abi) {
     typedefs_.clear();
     structs_.clear();
     variants_.clear();
+    enums_.clear();
 
     for(auto& st : abi.structs) {
         structs_[st.name] = st;
@@ -126,6 +127,10 @@ abi_serializer::set_abi(const abi_def& abi) {
 
     for(auto& vt : abi.variants) {
         variants_[vt.name] = vt;
+    }
+
+    for(auto& et : abi.enums) {
+        enums_[et.name] = et;
     }
 
     for(const auto& td : abi.types) {
@@ -136,7 +141,8 @@ abi_serializer::set_abi(const abi_def& abi) {
 
     EVT_ASSERT(typedefs_.size() == abi.types.size(), duplicate_abi_type_def_exception, "duplicate type definition detected");
     EVT_ASSERT(structs_.size() == abi.structs.size(), duplicate_abi_struct_def_exception, "duplicate struct definition detected");
-    EVT_ASSERT(variants_.size() == abi.variants.size(), duplicate_abi_struct_def_exception, "duplicate struct definition detected");
+    EVT_ASSERT(variants_.size() == abi.variants.size(), duplicate_abi_variant_def_exception, "duplicate variant definition detected");
+    EVT_ASSERT(enums_.size() == abi.enums.size(), duplicate_abi_enum_def_exception, "duplicate enum definition detected");
 
     validate();
 }
@@ -172,6 +178,11 @@ abi_serializer::is_struct(const type_name& type) const {
 bool
 abi_serializer::is_variant(const type_name& type) const {
     return variants_.find(resolve_type(type)) != variants_.cend();   
+}
+
+bool
+abi_serializer::is_enum(const type_name& type) const {
+    return enums_.find(resolve_type(type)) != enums_.cend();   
 }
 
 bool
@@ -215,6 +226,9 @@ abi_serializer::_is_type(const type_name& rtype) const {
         return true;
     }
     if(variants_.find(type) != variants_.cend()) {
+        return true;
+    }
+    if(enums_.find(type) != enums_.cend()) {
         return true;
     }
     return false;
@@ -266,7 +280,7 @@ abi_serializer::validate() const {
                 FC_CAPTURE_AND_RETHROW((field))
             }
         }
-        FC_CAPTURE_AND_RETHROW((s))
+        FC_CAPTURE_AND_RETHROW((s.second))
     }
     for(const auto& v : variants_) {
         for(const auto& field : v.second.fields) {
@@ -275,6 +289,12 @@ abi_serializer::validate() const {
             }
             FC_CAPTURE_AND_RETHROW((field))
         }
+    }
+    for(const auto& et : enums_) {
+        try {
+            EVT_ASSERT(_is_type(et.second.integer), invalid_type_inside_abi, "${type}", ("type", et.second.integer));
+        }
+        FC_CAPTURE_AND_RETHROW((et.second))
     }
 }
 
@@ -312,7 +332,7 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
             EVT_THROW(unpack_exception, "Stream unexpectedly ended; unable to unpack field '${f}' of struct '${p}'",
                       ("f", ctx.maybe_shorten(field.name))("p", ctx.get_path_string()));
         }
-        auto h1 = ctx.push_to_path(impl::field_path_item{.parent_struct_itr = s_itr, .field_ordinal = i});
+        auto h1 = ctx.push_to_path(impl::field_path_item{.parent_itr = s_itr, .field_ordinal = i});
         obj(field.name, _binary_to_variant(resolve_type(field.type), stream, ctx));
     }
 }
@@ -381,12 +401,23 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
         EVT_ASSERT2((uint32_t)i < vt.fields.size(), unpack_exception, "Index of variant '{}' if not valid", ctx.get_path_string());
 
         auto vo = mutable_variant_object();
-        auto h1 = ctx.push_to_path(impl::variant_path_item{.parent_variant_itr = v_itr, .index = i});
+        auto h1 = ctx.push_to_path(impl::variant_path_item{.parent_itr = v_itr, .index = i});
 
         vo["type"] = vt.fields[i].name;
         vo["data"] = _binary_to_variant(vt.fields[i].type, stream, ctx);
 
         return fc::variant(std::move(vo));
+    }
+    else if(is_enum(rtype)) {
+        auto e_itr = enums_.find(rtype);
+        ctx.hint_enum_type_if_in_array(e_itr);
+
+        auto& et = e_itr->second;
+        auto  ev = _binary_to_variant(et.integer, stream, ctx);
+        // we assume the enum is start at 0 and each item is increased by 1
+        EVT_ASSERT2(ev.as_uint64() < et.fields.size(), unpack_exception, "Value of enum '{}' is not valid", ctx.get_path_string());
+
+        return fc::variant(et.fields[ev.as_uint64()]);
     }
 
     auto mvo = fc::mutable_variant_object();
@@ -476,8 +507,26 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
 
             fc::raw::pack(ds, (fc::unsigned_int)index);
 
-            auto h1 = ctx.push_to_path(impl::variant_path_item{.parent_variant_itr = v_itr, .index = index});
+            auto h1 = ctx.push_to_path(impl::variant_path_item{.parent_itr = v_itr, .index = index});
             _variant_to_binary(vt.fields[index].type, vo["data"].get_object(), ds, ctx);
+        }
+        else if(is_enum(rtype)) {
+            auto e_itr = enums_.find(rtype);
+            ctx.hint_enum_type_if_in_array(e_itr);
+
+            auto& et = e_itr->second;
+            auto& es = var.get_string();
+
+            auto index = 0u;
+            for(auto& field : et.fields) {
+                if(field == es) {
+                    break;
+                }
+                index++;
+            }
+            EVT_ASSERT2(index < et.fields.size(), unpack_exception, "Invalid value of enum '{}'", ctx.get_path_string());
+
+            _variant_to_binary(et.integer, fc::variant(index), ds, ctx);
         }
         else if(is_struct(rtype)) {
             auto s_itr = structs_.find(rtype);
@@ -493,11 +542,11 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
                 for(uint32_t i = 0; i < st.fields.size(); ++i) {
                     const auto& field = st.fields[i];
                     if(vo.contains(string(field.name).c_str())) {
-                        auto h1 = ctx.push_to_path(impl::field_path_item{.parent_struct_itr = s_itr, .field_ordinal = i});
+                        auto h1 = ctx.push_to_path(impl::field_path_item{.parent_itr = s_itr, .field_ordinal = i});
                         _variant_to_binary(field.type, vo[field.name], ds, ctx);
                     }
                     else if(is_optional(field.type)) {
-                        auto h1 = ctx.push_to_path(impl::field_path_item{.parent_struct_itr = s_itr, .field_ordinal = i});
+                        auto h1 = ctx.push_to_path(impl::field_path_item{.parent_itr = s_itr, .field_ordinal = i});
                         _variant_to_binary(field.type, fc::variant(), ds, ctx);
                     }
                     else {
@@ -514,7 +563,7 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
                 for(uint32_t i = 0; i < st.fields.size(); ++i) {
                     const auto& field = st.fields[i];
                     if(va.size() > i) {
-                        auto h1 = ctx.push_to_path(impl::field_path_item{.parent_struct_itr = s_itr, .field_ordinal = i});
+                        auto h1 = ctx.push_to_path(impl::field_path_item{.parent_itr = s_itr, .field_ordinal = i});
                         _variant_to_binary(field.type, va[i], ds, ctx);
                     }
                     else {
@@ -597,7 +646,7 @@ abi_traverse_context_with_path::set_path_root(const type_name& type) {
     else {
         auto itr1 = self.structs_.find(rtype);
         if(itr1 != self.structs_.end()) {
-            root_of_path = struct_type_path_root{.struct_itr = itr1};
+            root_of_path = struct_type_path_root{.itr = itr1};
         }
     }
 }
@@ -638,7 +687,7 @@ abi_traverse_context_with_path::hint_struct_type_if_in_array(const map<type_name
     if(path.size() == 0 || !path.back().contains<array_index_path_item>()) {
         return;
     }
-    path.back().get<array_index_path_item>().type_hint = struct_type_path_root{.struct_itr = itr};
+    path.back().get<array_index_path_item>().type_hint = struct_type_path_root{.itr = itr};
 }
 
 void
@@ -646,7 +695,15 @@ abi_traverse_context_with_path::hint_variant_type_if_in_array(const map<type_nam
     if(path.size() == 0 || !path.back().contains<array_index_path_item>()) {
         return;
     }
-    path.back().get<array_index_path_item>().type_hint = variant_type_path_root{.variant_itr = itr};
+    path.back().get<array_index_path_item>().type_hint = variant_type_path_root{.itr = itr};
+}
+
+void
+abi_traverse_context_with_path::hint_enum_type_if_in_array(const map<type_name, enum_def>::const_iterator& itr) {
+    if(path.size() == 0 || !path.back().contains<array_index_path_item>()) {
+        return;
+    }
+    path.back().get<array_index_path_item>().type_hint = enum_type_path_root{.itr = itr};
 }
 
 void
@@ -718,7 +775,7 @@ public:
             return;
         }
 
-        const auto& str = item.parent_struct_itr->second.fields.at(item.field_ordinal).name;
+        const auto& str = item.parent_itr->second.fields.at(item.field_ordinal).name;
         output_name(s, str, shorten_names);
     }
 
@@ -729,13 +786,12 @@ public:
             return;
         }
 
-        const auto& str = item.parent_variant_itr->second.fields.at(item.index).name;
+        const auto& str = item.parent_itr->second.fields.at(item.index).name;
         output_name(s, str, shorten_names);
     }
 
     void
-    operator()(const empty_path_root& item) {
-    }
+    operator()(const empty_path_root& item) {}
 
     void
     operator()(const array_type_path_root& item) {
@@ -744,13 +800,19 @@ public:
 
     void
     operator()(const struct_type_path_root& item) {
-        const auto& str = item.struct_itr->first;
+        const auto& str = item.itr->first;
         output_name(s, str, shorten_names);
     }
 
     void
     operator()(const variant_type_path_root& item) {
-        const auto& str = item.variant_itr->first;
+        const auto& str = item.itr->first;
+        output_name(s, str, shorten_names);
+    }
+
+    void
+    operator()(const enum_type_path_root& item) {
+        const auto& str = item.itr->first;
         output_name(s, str, shorten_names);
     }
 
@@ -777,14 +839,13 @@ private:
 
 public:
     void
-    operator()(const empty_path_item& item) {
-    }
+    operator()(const empty_path_item& item) {}
 
     void
     operator()(const array_index_path_item& item) {
         const auto& th = item.type_hint;
         if(th.contains<struct_type_path_root>()) {
-            const auto& str = th.get<struct_type_path_root>().struct_itr->first;
+            const auto& str = th.get<struct_type_path_root>().itr->first;
             output_name(s, str, shorten_names);
         }
         else if(th.contains<array_type_path_root>()) {
@@ -797,13 +858,13 @@ public:
 
     void
     operator()(const field_path_item& item) {
-        const auto& str = item.parent_struct_itr->second.fields.at(item.field_ordinal).type;
+        const auto& str = item.parent_itr->second.fields.at(item.field_ordinal).type;
         output_name(s, str, shorten_names);
     }
 
     void
     operator()(const variant_path_item& item) {
-        const auto& str = item.parent_variant_itr->second.fields.at(item.index).type;
+        const auto& str = item.parent_itr->second.fields.at(item.index).type;
         output_name(s, str, shorten_names);
     }
 

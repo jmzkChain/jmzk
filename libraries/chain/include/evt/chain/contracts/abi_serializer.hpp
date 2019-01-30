@@ -40,15 +40,18 @@ struct abi_serializer : boost::noncopyable {
     void set_abi(const abi_def& abi);
 
     type_name resolve_type(const type_name& t) const;
-    bool      is_array(const type_name& type) const;
-    bool      is_optional(const type_name& type) const;
-    bool      is_type(const type_name& type) const;
-    bool      is_builtin_type(const type_name& type) const;
-    bool      is_integer(const type_name& type) const;
-    int       get_integer_size(const type_name& type) const;
-    bool      is_struct(const type_name& type) const;
-    bool      is_variant(const type_name& type) const;
     type_name fundamental_type(const type_name& type) const;
+
+    bool is_array(const type_name& type) const;
+    bool is_optional(const type_name& type) const;
+    bool is_type(const type_name& type) const;
+    bool is_builtin_type(const type_name& type) const;
+    bool is_integer(const type_name& type) const;
+    bool is_struct(const type_name& type) const;
+    bool is_variant(const type_name& type) const;
+    bool is_enum(const type_name& type) const;
+
+    int get_integer_size(const type_name& type) const;
 
     const struct_def& get_struct(const type_name& type) const;
 
@@ -110,6 +113,7 @@ private:
     std::map<type_name, type_name>   typedefs_;
     std::map<type_name, struct_def>  structs_;
     std::map<type_name, variant_def> variants_;
+    std::map<type_name, enum_def>    enums_;
 
     std::map<type_name, pair<unpack_function, pack_function>> built_in_types_;
 
@@ -159,14 +163,18 @@ struct array_type_path_root {
 };
 
 struct struct_type_path_root {
-    map<type_name, struct_def>::const_iterator struct_itr;
+    map<type_name, struct_def>::const_iterator itr;
 };
 
 struct variant_type_path_root {
-    map<type_name, variant_def>::const_iterator variant_itr;
+    map<type_name, variant_def>::const_iterator itr;
 };
 
-using path_root = static_variant<empty_path_root, array_type_path_root, struct_type_path_root, variant_type_path_root>;
+struct enum_type_path_root {
+    map<type_name, enum_def>::const_iterator itr;
+};
+
+using path_root = static_variant<empty_path_root, array_type_path_root, struct_type_path_root, variant_type_path_root, enum_type_path_root>;
 
 struct empty_path_item {};
 
@@ -176,12 +184,12 @@ struct array_index_path_item {
 };
 
 struct field_path_item {
-    map<type_name, struct_def>::const_iterator parent_struct_itr;
+    map<type_name, struct_def>::const_iterator parent_itr;
     uint32_t                                   field_ordinal = 0;
 };
 
 struct variant_path_item {
-    map<type_name, variant_def>::const_iterator parent_variant_itr;
+    map<type_name, variant_def>::const_iterator parent_itr;
     uint32_t                                    index = 0;
 };
 
@@ -211,9 +219,9 @@ struct abi_traverse_context_with_path : public abi_traverse_context {
     void hint_array_type_if_in_array();
     void hint_struct_type_if_in_array(const map<type_name, struct_def>::const_iterator& itr);
     void hint_variant_type_if_in_array(const map<type_name, variant_def>::const_iterator& itr);
+    void hint_enum_type_if_in_array(const map<type_name, enum_def>::const_iterator& itr);
 
     string get_path_string() const;
-
     string maybe_shorten(const string& str);
 
 protected:
