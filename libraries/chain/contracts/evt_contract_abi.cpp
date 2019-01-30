@@ -9,8 +9,8 @@
 
 namespace evt { namespace chain { namespace contracts {
 
-static auto evt_abi_version       = 3;
-static auto evt_abi_minor_version = 4;
+static auto evt_abi_version       = 4;
+static auto evt_abi_minor_version = 0;
 static auto evt_abi_patch_version = 0;
 
 version
