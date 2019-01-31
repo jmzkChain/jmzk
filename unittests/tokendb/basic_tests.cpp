@@ -119,11 +119,13 @@ TEST_CASE_METHOD(tokendb_test, "upd_token_test", "[tokendb]") {
     READ_TOKEN(domain, "dm-tkdb-test", dom);
     CHECK(dom.metas[0].key == "key");
     dom.metas[0].key = "key-tkdb-test";
+    //dom.metas[0].key = "ky";
     
     UPDATE_TOKEN(domain, "dm-tkdb-test", dom);
     
     READ_TOKEN(domain, "dm-tkdb-test", dom);
     CHECK(dom.metas[0].key == "key-tkdb-test");
+    //CHECK(dom.metas[0].key == "ky");
 
     // token_type : token
     CHECK(EXISTS_TOKEN2(token, "dm-tkdb-test", "t1"));

@@ -118,6 +118,28 @@ protected:
     symbol_id_type            sym_id;
 };
 
+#define EXISTS_TOKEN(TYPE, NAME) \
+    tokendb.exists_token(evt::chain::token_type::TYPE, std::nullopt, NAME)
+
+#define EXISTS_TOKEN2(TYPE, DOMAIN, NAME) \
+    tokendb.exists_token(evt::chain::token_type::TYPE, DOMAIN, NAME)
+
+#define EXISTS_ASSET(ADDR, SYMID) \
+    tokendb.exists_asset(ADDR, SYMID)
+
+#define READ_TOKEN(TYPE, NAME, VALUEREF) \
+    { \
+        auto str = std::string(); \
+        tokendb.read_token(evt::chain::token_type::TYPE, std::nullopt, NAME, str); \
+        evt::chain::extract_db_value(str, VALUEREF); \
+    }
+
+#define READ_TOKEN2(TYPE, DOMAIN, NAME, VALUEREF) \
+    { \
+        auto str = std::string(); \
+        tokendb.read_token(evt::chain::token_type::TYPE, DOMAIN, NAME, str); \
+        evt::chain::extract_db_value(str, VALUEREF); \
+    }
 
 #define READ_ASSET(ADDR, SYM, VALUEREF) \
     { \
