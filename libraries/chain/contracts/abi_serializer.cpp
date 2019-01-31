@@ -492,7 +492,7 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
             auto& vt = v_itr->second; 
             auto& vo = var.get_object();
 
-            auto check_field = [&](auto& vo, auto name, auto type) {
+            auto check_field = [&](auto& vo, auto name, std::string type) {
                 EVT_ASSERT2(vo.contains(name), pack_exception,
                     "Missing field '{}' in input object while processing variant '{}'", name, ctx.get_path_string());
                 if(type == "string") {
