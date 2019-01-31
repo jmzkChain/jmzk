@@ -1,10 +1,91 @@
 #include "tokendb_tests.hpp"
 
+const char* domain_data = R"=====(
+    {
+      "name" : "domain",
+      "issue" : {
+        "name" : "issue",
+        "threshold" : 1,
+        "authorizers": [{
+            "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+            "weight": 1
+          }
+        ]
+      },
+     "transfer": {
+        "name": "transfer",
+        "threshold": 1,
+        "authorizers": [{
+            "ref": "[G] .OWNER",
+            "weight": 1
+          }
+        ]
+      },
+      "manage": {
+        "name": "manage",
+        "threshold": 1,
+        "authorizers": [{
+            "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+            "weight": 1
+          }
+        ]
+      },
+      "metas":[{
+      	"key": "key",
+      	"value": "value",
+      	"creator": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK"
+      }]
+    }
+    )=====";
+
+const char* token_data = R"=====(
+    {
+      	"domain": "domain",
+        "name": "t1",
+        "owner": [
+          "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK"
+        ],
+        "metas":[{
+      	"key": "key",
+      	"value": "value",
+      	"creator": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK"
+      }]
+    }
+    )=====";
+
+const char* fungible_data = R"=====(
+    {
+      "name": "EVT",
+      "sym_name": "EVT",
+      "sym": "5,S#3",
+      "creator": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+      "issue" : {
+        "name" : "issue",
+        "threshold" : 1,
+        "authorizers": [{
+            "ref": "[A] EVT6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
+            "weight": 1
+          }
+        ]
+      },
+      "manage": {
+        "name": "manage",
+        "threshold": 1,
+        "authorizers": [{
+            "ref": "[A] EVT6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
+            "weight": 1
+          }
+        ]
+      },
+      "total_supply":"100.00000 S#3"
+    }
+    )=====";
+
 TEST_CASE_METHOD(tokendb_test, "add_token_test", "[tokendb]") {
     auto& tokendb = my_tester->control->token_db();
 
     // token_type : domain(non-token)
-    auto var = fc::json::from_string(upddomain_data);
+    auto var = fc::json::from_string(domain_data);
     auto dom = var.as<domain_def>();
     dom.creator = key;
     dom.name = "dm-tkdb-test";
@@ -16,7 +97,7 @@ TEST_CASE_METHOD(tokendb_test, "add_token_test", "[tokendb]") {
     CHECK(EXISTS_TOKEN(domain, dom.name));
 
     // token_type : token
-    var = fc::json::from_string(updtoken_data);
+    var = fc::json::from_string(token_data);
     auto tk = var.as<token_def>();
     tk.domain = "dm-tkdb-test";
     tk.owner[0] = key;
@@ -62,7 +143,7 @@ TEST_CASE_METHOD(tokendb_test, "put_token_test", "[tokendb]") {
     // * put_token: add a token
     
     // ** token_type : domain(non-token)
-    auto var = fc::json::from_string(upddomain_data);
+    auto var = fc::json::from_string(domain_data);
     auto dom = var.as<domain_def>();
     dom.creator = key;
     dom.name = "dm-tkdb-test1";
@@ -73,7 +154,7 @@ TEST_CASE_METHOD(tokendb_test, "put_token_test", "[tokendb]") {
     CHECK(EXISTS_TOKEN(domain, dom.name));
 
     // ** token_type : token
-    var = fc::json::from_string(updtoken_data);
+    var = fc::json::from_string(token_data);
     auto tk = var.as<token_def>();
     tk.domain = dom.name;
     tk.name = "t2";
@@ -105,7 +186,7 @@ TEST_CASE_METHOD(tokendb_test, "put_token_test", "[tokendb]") {
 TEST_CASE_METHOD(tokendb_test, "put_asset_test", "[tokendb]") {
     auto& tokendb = my_tester->control->token_db();
     // add a new fungible for test
-    auto var = fc::json::from_string(newfungible_data);
+    auto var = fc::json::from_string(fungible_data);
     auto fg = var.as<fungible_def>();
     fg.creator = key;
     fg.issue.authorizers[0].ref.set_account(key);
@@ -120,14 +201,6 @@ TEST_CASE_METHOD(tokendb_test, "put_asset_test", "[tokendb]") {
     CHECK(!EXISTS_ASSET(addr, 3));
     PUT_ASSET(addr, 3, as);
     CHECK(EXISTS_ASSET(addr, 3));
-}
-
-TEST_CASE_METHOD(tokendb_test, "add_tokens_test", "[tokendb]") {
-    CHECK(true);
-}
-
-TEST_CASE_METHOD(tokendb_test, "upd_tokens_test", "[tokendb]") {
-    CHECK(true);
 }
 
 TEST_CASE_METHOD(tokendb_test, "put_tokens_test", "[tokendb]") {

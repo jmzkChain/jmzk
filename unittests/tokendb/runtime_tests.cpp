@@ -103,10 +103,16 @@ TEST_CASE_METHOD(tokendb_test, "put_token_svpt_test", "[tokendb]") {
     
     ROLLBACK;
     CHECK(!EXISTS_TOKEN(domain, "dm-tkdb-test1"));
+
+    my_tester->produce_block();
 }
 
 TEST_CASE_METHOD(tokendb_test, "put_asset_svpt__test", "[tokendb]") {
     auto& tokendb = my_tester->control->token_db();
+    my_tester->produce_block();
+
+    ADD_SAVEPOINT;
+    
     // add a new fungible for test
     auto var = fc::json::from_string(newfungible_data);
     auto fg = var.as<fungible_def>();
@@ -117,22 +123,28 @@ TEST_CASE_METHOD(tokendb_test, "put_asset_svpt__test", "[tokendb]") {
     PUT_TOKEN(fungible, 3, fg);
     CHECK(EXISTS_TOKEN(fungible, 3));
 
+    ADD_SAVEPOINT;
+
     // put asset
     auto addr = public_key_type(std::string("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"));
     auto as = asset::from_string("1.00000 S#3");
     CHECK(!EXISTS_ASSET(addr, 3));
     PUT_ASSET(addr, 3, as);
     CHECK(EXISTS_ASSET(addr, 3));
-}
 
-TEST_CASE_METHOD(tokendb_test, "add_tokens_test", "[tokendb]") {
-    CHECK(true);
-}
+    ROLLBACK;
+    CHECK(!EXISTS_ASSET(addr, 3));
+    
+    ROLLBACK;
+    CHECK(!EXISTS_TOKEN(fungible, 3));
 
-TEST_CASE_METHOD(tokendb_test, "upd_tokens_test", "[tokendb]") {
-    CHECK(true);
+    my_tester->produce_block();
 }
 
 TEST_CASE_METHOD(tokendb_test, "put_tokens_test", "[tokendb]") {
+    CHECK(true);
+}
+
+TEST_CASE_METHOD(tokendb_test, "squansh_test", "[tokendb]") {
     CHECK(true);
 }
