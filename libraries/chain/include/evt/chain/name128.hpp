@@ -246,6 +246,7 @@ struct unpacker<name128> {
     template<typename Stream>
     static void
     unpack(Stream& in, name128& n) {
+        n.value = 0;
         in.read((char*)&n, 4);
 
         auto tag = (int)n.value & 0x03;

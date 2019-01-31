@@ -131,9 +131,8 @@ TEST_CASE_METHOD(contracts_test, "contract_issuetoken_test", "[contracts]") {
     istk.owner[0] = key;
     istk.names = {"r1", "r2", "r3"};
     to_variant(istk, var);
-    std::vector<account_name> v2;
-    v2.push_back(N(other));
-    v2.push_back(N(payer));
+
+    std::vector<name> v2 { "other", "payer" };
     CHECK_THROWS_AS(my_tester->push_action(N(issuetoken), name128(get_domain_name()), N128(.issue), var.get_object(), v2, payer), unsatisfied_authorization);
 
     CHECK(EXISTS_TOKEN2(token, get_domain_name(), "t1"));

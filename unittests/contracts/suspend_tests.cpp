@@ -92,8 +92,9 @@ TEST_CASE_METHOD(contracts_test, "contract_failsuspend_test", "[contracts]") {
     READ_TOKEN(suspend, edact.name, suspend);
     CHECK(suspend.status == suspend_status::proposed);
 
-    auto        sig               = tester::get_private_key(N(suspend_key)).sign(suspend.trx.sig_digest(my_tester->control->get_chain_id()));
-    auto        sig2              = tester::get_private_key(N(key)).sign(suspend.trx.sig_digest(my_tester->control->get_chain_id()));
+    auto sig  = tester::get_private_key(N(suspend_key)).sign(suspend.trx.sig_digest(my_tester->control->get_chain_id()));
+    auto sig2 = tester::get_private_key(N(key)).sign(suspend.trx.sig_digest(my_tester->control->get_chain_id()));
+
     const char* approve_test_data = R"=======(
     {
         "name": "testsuspend",
@@ -118,9 +119,10 @@ TEST_CASE_METHOD(contracts_test, "contract_failsuspend_test", "[contracts]") {
         "name": "testsuspend"
     }
     )=======";
-    auto        cancel_var       = fc::json::from_string(test_data);
-    auto        cdact            = var.as<cancelsuspend>();
-    cdact.name                   = get_suspend_name();
+
+    auto cancel_var = fc::json::from_string(test_data);
+    auto cdact      = var.as<cancelsuspend>();
+    cdact.name      = get_suspend_name();
     to_variant(cdact, cancel_var);
 
     my_tester->push_action(N(cancelsuspend), N128(.suspend), name128(get_suspend_name()), cancel_var.get_object(), key_seeds, payer);
@@ -203,8 +205,8 @@ TEST_CASE_METHOD(contracts_test, "contract_successsuspend_test", "[contracts]") 
 
     my_tester->push_action(N(newsuspend), N128(.suspend), N128(testsuspend), var.get_object(), key_seeds, payer);
 
-    auto&       tokendb = my_tester->control->token_db();
-    suspend_def suspend;
+    auto& tokendb = my_tester->control->token_db();
+    auto  suspend = suspend_def();
     READ_TOKEN(suspend, ndact.name, suspend);
     CHECK(suspend.status == suspend_status::proposed);
 

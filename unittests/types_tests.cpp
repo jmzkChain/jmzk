@@ -248,9 +248,10 @@ TEST_CASE("test_name128", "[types]") {
         CHECK_RAW(r, n);
     };
 
-    CHECK_N128("", 4);
+    CHECK_THROWS_AS(CHECK_N128("", 4), name128_type_exception);
     CHECK_N128("123", 4);
     CHECK_N128("12345", 4);
+    CHECK_N128("other", 4);
     CHECK_N128("123456", 8);
     CHECK_N128("1234567890", 8);
     CHECK_N128("1234567890A", 12);

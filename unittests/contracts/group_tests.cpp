@@ -241,17 +241,17 @@ TEST_CASE_METHOD(contracts_test, "contract_group_auth_test", "[contracts]") {
     istk.owner[0] = key;
     to_variant(istk, var);
 
-    std::vector<account_name> seeds1 = {N(key0), N(key1), N(key2), N(key3), N(payer)};
+    std::vector<name> seeds1 = {N(key0), N(key1), N(key2), N(key3), N(payer)};
     CHECK_THROWS_AS(my_tester->push_action(N(issuetoken), name128(get_domain_name()), N128(.issue), var.get_object(), seeds1, payer), unsatisfied_authorization);
 
     istk.names[0] = "authorizers2";
     to_variant(istk, var);
-    std::vector<account_name> seeds2 = {N(key1), N(key2), N(key3), N(key4), N(payer)};
+    std::vector<name> seeds2 = {N(key1), N(key2), N(key3), N(key4), N(payer)};
     CHECK_THROWS_AS(my_tester->push_action(N(issuetoken), name128(get_domain_name()), N128(.issue), var.get_object(), seeds2, payer), unsatisfied_authorization);
 
     istk.names[0] = "authorizers3";
     to_variant(istk, var);
-    std::vector<account_name> seeds3 = {N(key0), N(key1), N(key2), N(key3), N(key4), N(payer)};
+    std::vector<name> seeds3 = {N(key0), N(key1), N(key2), N(key3), N(key4), N(payer)};
     my_tester->push_action(N(issuetoken), name128(get_domain_name()), N128(.issue), var.get_object(), seeds3, payer);
 
     my_tester->produce_blocks();

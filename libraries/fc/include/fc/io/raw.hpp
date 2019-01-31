@@ -350,30 +350,35 @@ unpack(Stream& s, std::vector<char>& value) {
     unsigned_int size;
     fc::raw::unpack(s, size);
     FC_ASSERT(size.value <= MAX_SIZE_OF_BYTE_ARRAYS);
+
     value.resize(size.value);
-    if(value.size())
+    if(value.size()) {
         s.read(value.data(), value.size());
+    }
 }
 
-// fc::string
+// std::string
 template<typename Stream>
 inline void
-pack(Stream& s, const fc::string& v) {
+pack(Stream& s, const std::string& v) {
     FC_ASSERT(v.size() <= MAX_SIZE_OF_BYTE_ARRAYS);
     fc::raw::pack(s, unsigned_int((uint32_t)v.size()));
-    if(v.size())
-        s.write(v.c_str(), v.size());
+    if(v.size()) {
+        s.write(v.data(), v.size());
+    }
 }
 
 template<typename Stream>
 inline void
-unpack(Stream& s, fc::string& v) {
-    std::vector<char> tmp;
-    fc::raw::unpack(s, tmp);
-    if(tmp.size())
-        v = fc::string(tmp.data(), tmp.data() + tmp.size());
-    else
-        v = fc::string();
+unpack(Stream& s, std::string& v) {
+    auto sz = unsigned_int();
+    fc::raw::unpack(s, sz);
+    FC_ASSERT(sz.value <= MAX_SIZE_OF_BYTE_ARRAYS);
+
+    v.resize((uint32_t)sz);
+    if(v.size()) {
+        s.read(v.data(), v.size());
+    }
 }
 
 // bip::basic_string
@@ -382,8 +387,9 @@ inline void
 pack(Stream& s, const shared_string& v) {
     FC_ASSERT(v.size() <= MAX_SIZE_OF_BYTE_ARRAYS);
     fc::raw::pack(s, unsigned_int((uint32_t)v.size()));
-    if(v.size())
+    if(v.size()) {
         s.write(v.c_str(), v.size());
+    }
 }
 
 template<typename Stream>
@@ -392,6 +398,7 @@ unpack(Stream& s, shared_string& v) {
     std::vector<char> tmp;
     fc::raw::unpack(s, tmp);
     FC_ASSERT(v.size() == 0);
+
     if(tmp.size()) {
         v.append(tmp.begin(), tmp.end());
     }
