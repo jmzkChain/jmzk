@@ -169,7 +169,8 @@ TEST_CASE_METHOD(contracts_test, "contract_aprvlock_test", "[contracts]") {
         "name": "nftlock",
         "approver": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
         "data": {
-            "type": "cond_key"
+            "type": "cond_key",
+            "data": {}
         }
     }
     )=======";

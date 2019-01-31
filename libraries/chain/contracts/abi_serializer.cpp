@@ -4,9 +4,9 @@
  */
 #include <evt/chain/contracts/abi_serializer.hpp>
 
+#include <boost/algorithm/string/predicate.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/io/varint.hpp>
-#include <boost/algorithm/string/predicate.hpp>
 
 #include <evt/chain/chain_config.hpp>
 #include <evt/chain/transaction.hpp>
@@ -111,19 +111,27 @@ abi_serializer::configure_built_in_types() {
     built_in_types_.emplace("producer_schedule", pack_unpack<producer_schedule_type>());
     built_in_types_.emplace("extensions", pack_unpack<extensions_type>());
     built_in_types_.emplace("evt_link", pack_unpack<evt_link>());
-    built_in_types_.emplace("lock_status", pack_unpack<fc::enum_type<uint8_t, lock_status>>());
-    built_in_types_.emplace("lock_asset", pack_unpack<lock_asset>());
-    built_in_types_.emplace("lock_condition", pack_unpack<lock_condition>());
-    built_in_types_.emplace("lock_aprvdata", pack_unpack<lock_aprvdata>());
+    built_in_types_.emplace("percent", pack_unpack<percent_type>());
 }
 
 void
 abi_serializer::set_abi(const abi_def& abi) {
     typedefs_.clear();
     structs_.clear();
+    variants_.clear();
+    enums_.clear();
 
-    for(const auto& st : abi.structs)
+    for(auto& st : abi.structs) {
         structs_[st.name] = st;
+    }
+
+    for(auto& vt : abi.variants) {
+        variants_[vt.name] = vt;
+    }
+
+    for(auto& et : abi.enums) {
+        enums_[et.name] = et;
+    }
 
     for(const auto& td : abi.types) {
         EVT_ASSERT(_is_type(td.type), invalid_type_inside_abi, "invalid type ${type}", ("type", td.type));
@@ -133,6 +141,8 @@ abi_serializer::set_abi(const abi_def& abi) {
 
     EVT_ASSERT(typedefs_.size() == abi.types.size(), duplicate_abi_type_def_exception, "duplicate type definition detected");
     EVT_ASSERT(structs_.size() == abi.structs.size(), duplicate_abi_struct_def_exception, "duplicate struct definition detected");
+    EVT_ASSERT(variants_.size() == abi.variants.size(), duplicate_abi_variant_def_exception, "duplicate variant definition detected");
+    EVT_ASSERT(enums_.size() == abi.enums.size(), duplicate_abi_enum_def_exception, "duplicate enum definition detected");
 
     validate();
 }
@@ -162,7 +172,17 @@ abi_serializer::get_integer_size(const type_name& type) const {
 
 bool
 abi_serializer::is_struct(const type_name& type) const {
-    return structs_.find(resolve_type(type)) != structs_.end();
+    return structs_.find(resolve_type(type)) != structs_.cend();
+}
+
+bool
+abi_serializer::is_variant(const type_name& type) const {
+    return variants_.find(resolve_type(type)) != variants_.cend();   
+}
+
+bool
+abi_serializer::is_enum(const type_name& type) const {
+    return enums_.find(resolve_type(type)) != enums_.cend();   
 }
 
 bool
@@ -196,13 +216,19 @@ abi_serializer::fundamental_type(const type_name& type) const {
 bool
 abi_serializer::_is_type(const type_name& rtype) const {
     auto type = fundamental_type(rtype);
-    if(built_in_types_.find(type) != built_in_types_.end()) {
+    if(built_in_types_.find(type) != built_in_types_.cend()) {
         return true;
     }
-    if(typedefs_.find(type) != typedefs_.end()) {
+    if(typedefs_.find(type) != typedefs_.cend()) {
         return _is_type(typedefs_.find(type)->second);
     }
-    if(structs_.find(type) != structs_.end()) {
+    if(structs_.find(type) != structs_.cend()) {
+        return true;
+    }
+    if(variants_.find(type) != variants_.cend()) {
+        return true;
+    }
+    if(enums_.find(type) != enums_.cend()) {
         return true;
     }
     return false;
@@ -254,7 +280,21 @@ abi_serializer::validate() const {
                 FC_CAPTURE_AND_RETHROW((field))
             }
         }
-        FC_CAPTURE_AND_RETHROW((s))
+        FC_CAPTURE_AND_RETHROW((s.second))
+    }
+    for(const auto& v : variants_) {
+        for(const auto& field : v.second.fields) {
+            try {
+                EVT_ASSERT(_is_type(field.type), invalid_type_inside_abi, "${type}", ("type", field.type));
+            }
+            FC_CAPTURE_AND_RETHROW((field))
+        }
+    }
+    for(const auto& et : enums_) {
+        try {
+            EVT_ASSERT(_is_type(et.second.integer), invalid_type_inside_abi, "${type}", ("type", et.second.integer));
+        }
+        FC_CAPTURE_AND_RETHROW((et.second))
     }
 }
 
@@ -265,8 +305,9 @@ abi_serializer::resolve_type(const type_name& type) const {
         for(auto i = typedefs_.size(); i > 0; --i) {  // avoid infinite recursion
             auto& t = itr->second;
             itr     = typedefs_.find(t);
-            if(itr == typedefs_.end())
+            if(itr == typedefs_.end()) {
                 return t;
+            }
         }
     }
     return type;
@@ -278,18 +319,20 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
     auto h     = ctx.enter_scope();
     auto s_itr = structs_.find(type);
     EVT_ASSERT(s_itr != structs_.end(), invalid_type_inside_abi, "Unknown type ${type}", ("type", ctx.maybe_shorten(type)));
+
     ctx.hint_struct_type_if_in_array(s_itr);
     const auto& st = s_itr->second;
     if(st.base != type_name()) {
         _binary_to_variant(resolve_type(st.base), stream, obj, ctx);
     }
+
     for(auto i = 0u; i < st.fields.size(); ++i) {
         const auto& field = st.fields[i];
         if(!stream.remaining()) {
             EVT_THROW(unpack_exception, "Stream unexpectedly ended; unable to unpack field '${f}' of struct '${p}'",
                       ("f", ctx.maybe_shorten(field.name))("p", ctx.get_path_string()));
         }
-        auto h1 = ctx.push_to_path(impl::field_path_item{.parent_struct_itr = s_itr, .field_ordinal = i});
+        auto h1 = ctx.push_to_path(impl::field_path_item{.parent_itr = s_itr, .field_ordinal = i});
         obj(field.name, _binary_to_variant(resolve_type(field.type), stream, ctx));
     }
 }
@@ -297,10 +340,11 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
 fc::variant
 abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const char*>& stream,
                                    impl::binary_to_variant_context& ctx) const {
-    auto      h     = ctx.enter_scope();
-    type_name rtype = resolve_type(type);
-    auto      ftype = fundamental_type(rtype);
-    auto      btype = built_in_types_.find(ftype);
+    auto h     = ctx.enter_scope();
+    auto rtype = resolve_type(type);
+    auto ftype = fundamental_type(rtype);
+    auto btype = built_in_types_.find(ftype);
+
     if(btype != built_in_types_.end()) {
         try {
             return btype->second.first(stream, is_array(rtype), is_optional(rtype));
@@ -308,13 +352,16 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
         EVT_RETHROW_EXCEPTIONS(unpack_exception, "Unable to unpack ${class} type '${type}' while processing '${p}'",
                                ("class", is_array(rtype) ? "array of built-in" : is_optional(rtype) ? "optional of built-in" : "built-in")("type", ftype)("p", ctx.get_path_string()))
     }
+
     if(is_array(rtype)) {
         ctx.hint_array_type_if_in_array();
+
         auto size = fc::unsigned_int();
         try {
             fc::raw::unpack(stream, size);
         }
         EVT_RETHROW_EXCEPTIONS(unpack_exception, "Unable to unpack size of array '${p}'", ("p", ctx.get_path_string()))
+
         auto vars = fc::small_vector<fc::variant, 4>();
         auto h1   = ctx.push_to_path(impl::array_index_path_item{});
         for(decltype(size.value) i = 0; i < size; ++i) {
@@ -327,10 +374,9 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
             vars.emplace_back(std::move(v));
         }
         // QUESTION: Why would the assert below ever fail?
-        EVT_ASSERT(vars.size() == size.value,
-                   unpack_exception,
-                   "packed size does not match unpacked array size, packed size ${p} actual size ${a}",
-                   ("p", size)("a", vars.size()));
+        EVT_ASSERT(vars.size() == size.value, unpack_exception,
+                   "packed size does not match unpacked array size, packed size ${p} actual size ${a}", ("p", size)("a", vars.size()));
+        
         return fc::variant(std::move(vars));
     }
     else if(is_optional(rtype)) {
@@ -341,11 +387,42 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
         EVT_RETHROW_EXCEPTIONS(unpack_exception, "Unable to unpack presence flag of optional '${p}'", ("p", ctx.get_path_string()))
         return flag ? _binary_to_variant(ftype, stream, ctx) : fc::variant();
     }
+    else if(is_variant(rtype)) {
+        auto v_itr = variants_.find(rtype);
+        ctx.hint_variant_type_if_in_array(v_itr);
 
-    fc::mutable_variant_object mvo;
+        auto i = fc::unsigned_int();
+        try {
+            fc::raw::unpack(stream, i);
+        }
+        EVT_RETHROW_EXCEPTIONS(unpack_exception, "Unable to unpack index of variant '${p}'", ("p", ctx.get_path_string()));
+
+        auto& vt = v_itr->second;
+        EVT_ASSERT2((uint32_t)i < vt.fields.size(), unpack_exception, "Index of variant '{}' if not valid", ctx.get_path_string());
+
+        auto vo = mutable_variant_object();
+        auto h1 = ctx.push_to_path(impl::variant_path_item{.parent_itr = v_itr, .index = i});
+
+        vo["type"] = vt.fields[i].name;
+        vo["data"] = _binary_to_variant(vt.fields[i].type, stream, ctx);
+
+        return fc::variant(std::move(vo));
+    }
+    else if(is_enum(rtype)) {
+        auto e_itr = enums_.find(rtype);
+        ctx.hint_enum_type_if_in_array(e_itr);
+
+        auto& et = e_itr->second;
+        auto  ev = _binary_to_variant(et.integer, stream, ctx);
+        // we assume the enum is start at 0 and each item is increased by 1
+        EVT_ASSERT2(ev.as_uint64() < et.fields.size(), unpack_exception, "Value of enum '{}' is not valid", ctx.get_path_string());
+
+        return fc::variant(et.fields[ev.as_uint64()]);
+    }
+
+    auto mvo = fc::mutable_variant_object();
     _binary_to_variant(rtype, stream, mvo, ctx);
-    // QUESTION: Is this assert actually desired? It disallows unpacking empty structs_ from datastream.
-    EVT_ASSERT(mvo.size() > 0, unpack_exception, "Unable to unpack '${p}' from stream", ("p", ctx.get_path_string()));
+    
     return fc::variant(std::move(mvo));
 }
 
@@ -380,15 +457,13 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
         auto h     = ctx.enter_scope();
         auto rtype = resolve_type(type);
 
-        auto s_itr = structs_.end();
-
         auto btype = built_in_types_.find(fundamental_type(rtype));
         if(btype != built_in_types_.end()) {
             btype->second.second(var, ds, is_array(rtype), is_optional(rtype));
         }
         else if(is_array(rtype)) {
             ctx.hint_array_type_if_in_array();
-            auto vars = var.get_array();
+            auto& vars = var.get_array();
             fc::raw::pack(ds, (fc::unsigned_int)vars.size());
 
             auto h1 = ctx.push_to_path(impl::array_index_path_item{});
@@ -410,10 +485,63 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
                 _variant_to_binary(fundamental_type(rtype), var, ds, ctx);
             }
         }
-        else if((s_itr = structs_.find(rtype)) != structs_.end()) {
-            ctx.hint_struct_type_if_in_array(s_itr);
-            const auto& st = s_itr->second;
+        else if(is_variant(rtype)) {
+            auto v_itr = variants_.find(rtype);
+            ctx.hint_variant_type_if_in_array(v_itr);
 
+            auto& vt = v_itr->second; 
+            auto& vo = var.get_object();
+
+            auto check_field = [&](auto& vo, auto name, auto type) {
+                EVT_ASSERT2(vo.contains(name), pack_exception,
+                    "Missing field '{}' in input object while processing variant '{}'", name, ctx.get_path_string());
+                if(type == "string") {
+                    EVT_ASSERT2(vo[name].is_string(), pack_exception,
+                        "Invalid field '{}' in input object while processing variant '{}', it must be string type", name, ctx.get_path_string()); 
+                }
+            };
+            check_field(vo, "type", "string");
+            check_field(vo, "data", "");  // data can be any type
+
+            auto dtype = vo["type"].get_string();
+            auto index = 0u;
+
+            for(auto& field : vt.fields) {
+                if(field.name == dtype) {
+                    break;
+                }
+                index++;
+            }
+            EVT_ASSERT2(index < vt.fields.size(), pack_exception, "Invalid 'type' value of variant '{}'", ctx.get_path_string());
+
+            fc::raw::pack(ds, (fc::unsigned_int)index);
+
+            auto h1 = ctx.push_to_path(impl::variant_path_item{.parent_itr = v_itr, .index = index});
+            _variant_to_binary(vt.fields[index].type, vo["data"], ds, ctx);
+        }
+        else if(is_enum(rtype)) {
+            auto e_itr = enums_.find(rtype);
+            ctx.hint_enum_type_if_in_array(e_itr);
+
+            auto& et = e_itr->second;
+            auto& es = var.get_string();
+
+            auto index = 0u;
+            for(auto& field : et.fields) {
+                if(field == es) {
+                    break;
+                }
+                index++;
+            }
+            EVT_ASSERT2(index < et.fields.size(), pack_exception, "Invalid value of enum '{}'", ctx.get_path_string());
+
+            _variant_to_binary(et.integer, fc::variant(index), ds, ctx);
+        }
+        else if(is_struct(rtype)) {
+            auto s_itr = structs_.find(rtype);
+            ctx.hint_struct_type_if_in_array(s_itr);
+
+            auto& st = s_itr->second;
             if(var.is_object()) {
                 const auto& vo = var.get_object();
 
@@ -423,11 +551,11 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
                 for(uint32_t i = 0; i < st.fields.size(); ++i) {
                     const auto& field = st.fields[i];
                     if(vo.contains(string(field.name).c_str())) {
-                        auto h1 = ctx.push_to_path(impl::field_path_item{.parent_struct_itr = s_itr, .field_ordinal = i});
+                        auto h1 = ctx.push_to_path(impl::field_path_item{.parent_itr = s_itr, .field_ordinal = i});
                         _variant_to_binary(field.type, vo[field.name], ds, ctx);
                     }
                     else if(is_optional(field.type)) {
-                        auto h1 = ctx.push_to_path(impl::field_path_item{.parent_struct_itr = s_itr, .field_ordinal = i});
+                        auto h1 = ctx.push_to_path(impl::field_path_item{.parent_itr = s_itr, .field_ordinal = i});
                         _variant_to_binary(field.type, fc::variant(), ds, ctx);
                     }
                     else {
@@ -444,7 +572,7 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
                 for(uint32_t i = 0; i < st.fields.size(); ++i) {
                     const auto& field = st.fields[i];
                     if(va.size() > i) {
-                        auto h1 = ctx.push_to_path(impl::field_path_item{.parent_struct_itr = s_itr, .field_ordinal = i});
+                        auto h1 = ctx.push_to_path(impl::field_path_item{.parent_itr = s_itr, .field_ordinal = i});
                         _variant_to_binary(field.type, va[i], ds, ctx);
                     }
                     else {
@@ -527,7 +655,7 @@ abi_traverse_context_with_path::set_path_root(const type_name& type) {
     else {
         auto itr1 = self.structs_.find(rtype);
         if(itr1 != self.structs_.end()) {
-            root_of_path = struct_type_path_root{.struct_itr = itr1};
+            root_of_path = struct_type_path_root{.itr = itr1};
         }
     }
 }
@@ -539,7 +667,6 @@ abi_traverse_context_with_path::push_to_path(const path_item& item) {
                    "invariant failure in variant_to_binary_context: path is empty on scope exit");
         path.pop_back();
     };
-
     path.push_back(item);
 
     return {std::move(callback)};
@@ -561,7 +688,6 @@ abi_traverse_context_with_path::hint_array_type_if_in_array() {
     if(path.size() == 0 || !path.back().contains<array_index_path_item>()) {
         return;
     }
-
     path.back().get<array_index_path_item>().type_hint = array_type_path_root{};
 }
 
@@ -570,13 +696,23 @@ abi_traverse_context_with_path::hint_struct_type_if_in_array(const map<type_name
     if(path.size() == 0 || !path.back().contains<array_index_path_item>()) {
         return;
     }
-
-    path.back().get<array_index_path_item>().type_hint = struct_type_path_root{.struct_itr = itr};
+    path.back().get<array_index_path_item>().type_hint = struct_type_path_root{.itr = itr};
 }
 
-constexpr size_t
-const_strlen(const char* str) {
-    return (*str == 0) ? 0 : const_strlen(str + 1) + 1;
+void
+abi_traverse_context_with_path::hint_variant_type_if_in_array(const map<type_name, variant_def>::const_iterator& itr) {
+    if(path.size() == 0 || !path.back().contains<array_index_path_item>()) {
+        return;
+    }
+    path.back().get<array_index_path_item>().type_hint = variant_type_path_root{.itr = itr};
+}
+
+void
+abi_traverse_context_with_path::hint_enum_type_if_in_array(const map<type_name, enum_def>::const_iterator& itr) {
+    if(path.size() == 0 || !path.back().contains<array_index_path_item>()) {
+        return;
+    }
+    path.back().get<array_index_path_item>().type_hint = enum_type_path_root{.itr = itr};
 }
 
 void
@@ -588,7 +724,7 @@ output_name(std::ostream& s, const string& str, bool shorten, size_t max_length 
     static_assert(min_num_characters_at_ends <= preferred_num_tail_end_characters,
                   "preferred number of tail end characters cannot be less than the imposed absolute minimum");
 
-    constexpr size_t fill_in_length       = const_strlen(fill_in);
+    constexpr size_t fill_in_length       = __builtin_strlen(fill_in);
     constexpr size_t min_length           = fill_in_length + 2 * min_num_characters_at_ends;
     constexpr size_t preferred_min_length = fill_in_length + 2 * preferred_num_tail_end_characters;
 
@@ -610,25 +746,26 @@ output_name(std::ostream& s, const string& str, bool shorten, size_t max_length 
 }
 
 struct generate_path_string_visitor {
+public:
     using result_type = void;
 
     generate_path_string_visitor(bool shorten_names, bool track_only)
         : shorten_names(shorten_names)
         , track_only(track_only) {}
 
+private:
     std::stringstream s;
     bool              shorten_names = false;
     bool              track_only    = false;
     path_item         last_path_item;
 
+public:
     void
     add_dot() {
         s << ".";
     }
 
-    void
-    operator()(const empty_path_item& item) {
-    }
+    void operator()(const empty_path_item& item) {}
 
     void
     operator()(const array_index_path_item& item) {
@@ -647,13 +784,23 @@ struct generate_path_string_visitor {
             return;
         }
 
-        const auto& str = item.parent_struct_itr->second.fields.at(item.field_ordinal).name;
+        const auto& str = item.parent_itr->second.fields.at(item.field_ordinal).name;
         output_name(s, str, shorten_names);
     }
 
     void
-    operator()(const empty_path_root& item) {
+    operator()(const variant_path_item& item) {
+        if(track_only) {
+            last_path_item = item;
+            return;
+        }
+
+        const auto& str = item.parent_itr->second.fields.at(item.index).name;
+        output_name(s, str, shorten_names);
     }
+
+    void
+    operator()(const empty_path_root& item) {}
 
     void
     operator()(const array_type_path_root& item) {
@@ -662,30 +809,52 @@ struct generate_path_string_visitor {
 
     void
     operator()(const struct_type_path_root& item) {
-        const auto& str = item.struct_itr->first;
+        const auto& str = item.itr->first;
         output_name(s, str, shorten_names);
     }
+
+    void
+    operator()(const variant_type_path_root& item) {
+        const auto& str = item.itr->first;
+        output_name(s, str, shorten_names);
+    }
+
+    void
+    operator()(const enum_type_path_root& item) {
+        const auto& str = item.itr->first;
+        output_name(s, str, shorten_names);
+    }
+
+    std::string
+    to_string() const {
+        return s.str();
+    }
+
+private:
+    friend struct abi_traverse_context_with_path;
 };
 
 struct path_item_type_visitor {
+public:
     using result_type = void;
 
     path_item_type_visitor(std::stringstream& s, bool shorten_names)
         : s(s)
         , shorten_names(shorten_names) {}
 
+private:
     std::stringstream& s;
     bool               shorten_names = false;
 
+public:
     void
-    operator()(const empty_path_item& item) {
-    }
+    operator()(const empty_path_item& item) {}
 
     void
     operator()(const array_index_path_item& item) {
         const auto& th = item.type_hint;
         if(th.contains<struct_type_path_root>()) {
-            const auto& str = th.get<struct_type_path_root>().struct_itr->first;
+            const auto& str = th.get<struct_type_path_root>().itr->first;
             output_name(s, str, shorten_names);
         }
         else if(th.contains<array_type_path_root>()) {
@@ -698,8 +867,19 @@ struct path_item_type_visitor {
 
     void
     operator()(const field_path_item& item) {
-        const auto& str = item.parent_struct_itr->second.fields.at(item.field_ordinal).type;
+        const auto& str = item.parent_itr->second.fields.at(item.field_ordinal).type;
         output_name(s, str, shorten_names);
+    }
+
+    void
+    operator()(const variant_path_item& item) {
+        const auto& str = item.parent_itr->second.fields.at(item.index).type;
+        output_name(s, str, shorten_names);
+    }
+
+    std::string
+    to_string() const {
+        return s.str();
     }
 };
 
@@ -708,13 +888,14 @@ abi_traverse_context_with_path::get_path_string() const {
     bool full_path     = !short_path;
     bool shorten_names = short_path;
 
-    generate_path_string_visitor visitor(shorten_names, !full_path);
-    if(full_path)
+    auto visitor = generate_path_string_visitor(shorten_names, !full_path);
+    if(full_path) {
         root_of_path.visit(visitor);
+    }
     for(size_t i = 0, n = path.size(); i < n; ++i) {
-        if(full_path && !path[i].contains<array_index_path_item>())
+        if(full_path && !path[i].contains<array_index_path_item>()) {
             visitor.add_dot();
-
+        }
         path[i].visit(visitor);
     }
 
@@ -723,18 +904,19 @@ abi_traverse_context_with_path::get_path_string() const {
             root_of_path.visit(visitor);
         }
         else {
-            path_item_type_visitor vis2(visitor.s, shorten_names);
+            auto vis2 = path_item_type_visitor(visitor.s, shorten_names);
             visitor.last_path_item.visit(vis2);
         }
     }
 
-    return visitor.s.str();
+    return visitor.to_string();
 }
 
 string
 abi_traverse_context_with_path::maybe_shorten(const string& str) {
-    if(!short_path)
+    if(!short_path) {
         return str;
+    }
 
     std::stringstream s;
     output_name(s, str, true);

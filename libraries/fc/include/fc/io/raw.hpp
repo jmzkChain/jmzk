@@ -32,7 +32,6 @@ namespace fc {
 namespace raw {
 
 namespace bip = boost::interprocess;
-using namespace boost::multiprecision;
 
 using shared_string = bip::basic_string<char, std::char_traits<char>, bip::allocator<char, bip::managed_mapped_file::segment_manager>>;
 
@@ -63,11 +62,6 @@ constexpr bool
 has_custom_function() {
     return has_custom_function_helper<T>(0);
 }
-
-template<typename Stream, typename T>
-void pack(Stream& s, const boost::multiprecision::number<T>& n);
-template<typename Stream, typename T>
-void unpack(Stream& s, boost::multiprecision::number<T>& n);
 
 template<typename Stream, typename Arg0, typename... Args>
 inline void

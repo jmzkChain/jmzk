@@ -1,4 +1,5 @@
 #include "contracts_tests.hpp"
+#include <evt/chain/address.hpp>
 
 name128
 get_bonus_db_key(uint64_t sym_id, uint64_t bonus_id) {
@@ -8,7 +9,7 @@ get_bonus_db_key(uint64_t sym_id, uint64_t bonus_id) {
 }
 
 TEST_CASE_METHOD(contracts_test, "passive_bonus_test", "[contracts]") {
-    auto spb = setpsvbouns();
+    auto spb = setpsvbonus();
     spb.sym = evt_sym();
     spb.rate = 0.15;
     spb.base_charge = asset(0, get_sym());
@@ -148,13 +149,13 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_test", "[contracts]") {
     spb.charge_threshold = asset(20000, get_sym());
     spb.minimum_charge   = asset(1000, get_sym());
 
-    spb.methods.emplace(std::make_pair(name("transferft"), passive_method_type::outside_amount));
-    spb.methods.emplace(std::make_pair(name("transfer"), passive_method_type::outside_amount));
+    spb.methods.emplace_back(passive_method{name("transferft"), passive_method_type::outside_amount});
+    spb.methods.emplace_back(passive_method{name("transfer"), passive_method_type::outside_amount});
     // transfer is not valid action
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.bonus), actkey, spb), keyseeds, payer), bonus_method_exeption);
 
-    spb.methods.erase(name("transfer"));
-    spb.methods.emplace(std::make_pair(name("everipay"), passive_method_type::within_amount));
+    spb.methods.erase(spb.methods.cbegin() + 1);  // transfer
+    spb.methods.emplace_back(passive_method{name("everipay"), passive_method_type::within_amount});
 
     // fine
     CHECK_NOTHROW(my_tester->push_action(action(N128(.bonus), actkey, spb), keyseeds, payer));

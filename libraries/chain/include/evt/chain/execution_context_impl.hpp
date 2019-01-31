@@ -212,7 +212,7 @@ using evt_execution_context = execution_context_impl<
                                   contracts::newlock,
                                   contracts::aprvlock,
                                   contracts::tryunlock,
-                                  contracts::setpsvbouns,
+                                  contracts::setpsvbonus,
                                   contracts::distpsvbonus
                               >;
 

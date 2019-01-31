@@ -296,6 +296,7 @@ FC_DECLARE_DERIVED_EXCEPTION( authorizer_ref_type_exception,     chain_type_exce
 FC_DECLARE_DERIVED_EXCEPTION( address_type_exception,            chain_type_exception, 3120017, "Invalid address" );
 FC_DECLARE_DERIVED_EXCEPTION( name128_type_exception,            chain_type_exception, 3120018, "Invalid name128" );
 FC_DECLARE_DERIVED_EXCEPTION( chain_id_type_exception,           chain_type_exception, 3120019, "Invalid chain id" );
+FC_DECLARE_DERIVED_EXCEPTION( variant_type_exception,            chain_type_exception, 3120019, "Invalid variant" );
 
 FC_DECLARE_DERIVED_EXCEPTION( plugin_exception,                      chain_exception,  3130000, "plugin exception" );
 FC_DECLARE_DERIVED_EXCEPTION( missing_chain_api_plugin_exception,    plugin_exception, 3130001, "Missing Chain API Plugin" );
@@ -369,14 +370,14 @@ FC_DECLARE_DERIVED_EXCEPTION( invalid_type_inside_abi,              abi_exceptio
 FC_DECLARE_DERIVED_EXCEPTION( duplicate_abi_type_def_exception,     abi_exception,   3210005, "Duplicate type definition in the ABI" );
 FC_DECLARE_DERIVED_EXCEPTION( duplicate_abi_struct_def_exception,   abi_exception,   3210006, "Duplicate struct definition in the ABI" );
 FC_DECLARE_DERIVED_EXCEPTION( duplicate_abi_action_def_exception,   abi_exception,   3210007, "Duplicate action definition in the ABI" );
-FC_DECLARE_DERIVED_EXCEPTION( duplicate_abi_table_def_exception,    abi_exception,   3210008, "Duplicate table definition in the ABI" );
-FC_DECLARE_DERIVED_EXCEPTION( duplicate_abi_err_msg_def_exception,  abi_exception,   3210009, "Duplicate error message definition in the ABI" );
-FC_DECLARE_DERIVED_EXCEPTION( abi_serialization_deadline_exception, abi_exception,   3210010, "ABI serialization time has exceeded the deadline" );
-FC_DECLARE_DERIVED_EXCEPTION( abi_recursion_depth_exception,        abi_exception,   3210011, "ABI recursive definition has exceeded the max recursion depth" );
-FC_DECLARE_DERIVED_EXCEPTION( abi_circular_def_exception,           abi_exception,   3210012, "Circular definition is detected in the ABI" );
-FC_DECLARE_DERIVED_EXCEPTION( unpack_exception,                     abi_exception,   3210013, "Unpack data exception" );
-FC_DECLARE_DERIVED_EXCEPTION( pack_exception,                       abi_exception,   3210014, "Pack data exception" );
-FC_DECLARE_DERIVED_EXCEPTION( duplicate_abi_variant_def_exception,  abi_exception,   3210015, "Duplicate variant definition in the ABI" );
+FC_DECLARE_DERIVED_EXCEPTION( duplicate_abi_variant_def_exception,  abi_exception,   3210008, "Duplicate variant definition in the ABI" );
+FC_DECLARE_DERIVED_EXCEPTION( duplicate_abi_enum_def_exception,     abi_exception,   3210009, "Duplicate enum definition in the ABI" );
+FC_DECLARE_DERIVED_EXCEPTION( duplicate_abi_err_msg_def_exception,  abi_exception,   3210010, "Duplicate error message definition in the ABI" );
+FC_DECLARE_DERIVED_EXCEPTION( abi_serialization_deadline_exception, abi_exception,   3210011, "ABI serialization time has exceeded the deadline" );
+FC_DECLARE_DERIVED_EXCEPTION( abi_recursion_depth_exception,        abi_exception,   3210012, "ABI recursive definition has exceeded the max recursion depth" );
+FC_DECLARE_DERIVED_EXCEPTION( abi_circular_def_exception,           abi_exception,   3210013, "Circular definition is detected in the ABI" );
+FC_DECLARE_DERIVED_EXCEPTION( unpack_exception,                     abi_exception,   3210014, "Unpack data exception" );
+FC_DECLARE_DERIVED_EXCEPTION( pack_exception,                       abi_exception,   3210015, "Pack data exception" );
 FC_DECLARE_DERIVED_EXCEPTION( unsupported_abi_version_exception,    abi_exception,   3210016, "ABI has an unsupported version" );
 FC_DECLARE_DERIVED_EXCEPTION( unknown_abi_type_exception,           abi_exception,   3210017, "Unknown type in ABI" );
 

@@ -60,16 +60,56 @@ public:
     }
 };
 
+struct variant_def {
+public:
+    variant_def() = default;
+    variant_def(const type_name& name, const small_vector<field_def, 8>& fields)
+        : name(name)
+        , fields(fields) {}
+
+public:
+    type_name                  name;
+    small_vector<field_def, 8> fields;
+
+    bool
+    operator==(const variant_def& other) const {
+        return std::tie(name, fields) == std::tie(other.name, other.fields);
+    }
+};
+
+struct enum_def {
+public:
+    enum_def() = default;
+    enum_def(const type_name& name, const type_name& integer, const small_vector<field_name, 8>& fields)
+        : name(name)
+        , integer(integer)
+        , fields(fields) {}
+
+public:
+    type_name                   name;
+    type_name                   integer;
+    small_vector<field_name, 8> fields;
+
+    bool
+    operator==(const enum_def& other) const {
+        return std::tie(name, integer, fields) == std::tie(other.name, other.integer, other.fields);
+    }
+};
+
 struct abi_def {
 public:
     abi_def() = default;
-    abi_def(const vector<type_def>& types, const vector<struct_def>& structs)
+    abi_def(const vector<type_def>& types, const vector<struct_def>& structs, const vector<variant_def>& variants, const std::vector<enum_def> enums)
         : types(types)
-        , structs(structs) {}
+        , structs(structs)
+        , variants(variants)
+        , enums(enums) {}
 
 public:
-    vector<type_def>   types;
-    vector<struct_def> structs;
+    vector<type_def>    types;
+    vector<struct_def>  structs;
+    vector<variant_def> variants;
+    vector<enum_def>    enums;
 };
 
 }}}  // namespace evt::chain::contracts
@@ -77,4 +117,6 @@ public:
 FC_REFLECT(evt::chain::contracts::type_def, (new_type_name)(type));
 FC_REFLECT(evt::chain::contracts::field_def, (name)(type));
 FC_REFLECT(evt::chain::contracts::struct_def, (name)(base)(fields));
-FC_REFLECT(evt::chain::contracts::abi_def, (types)(structs));
+FC_REFLECT(evt::chain::contracts::variant_def, (name)(fields));
+FC_REFLECT(evt::chain::contracts::enum_def, (name)(integer)(fields));
+FC_REFLECT(evt::chain::contracts::abi_def, (types)(structs)(variants)(enums));

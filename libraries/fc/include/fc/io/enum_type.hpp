@@ -20,14 +20,18 @@ public:
     operator EnumType() const { return value; }
     operator std::string() const { return fc::reflector<EnumType>::to_string(value); }
 
-    enum_type& operator=(IntType i) {
+    enum_type&
+    operator=(IntType i) {
         value = (EnumType)i;
         return *this;
     }
-    enum_type& operator=(EnumType i) {
+    
+    enum_type&
+    operator=(EnumType i) {
         value = i;
         return *this;
     }
+
     bool operator<(EnumType i) const { return value < i; }
     bool operator>(EnumType i) const { return value > i; }
 

@@ -61,7 +61,7 @@ to_variant(const variant_wrapper<ENUM, ARGS...>& vo, variant& var) {
 
     FC_ASSERT(vo.type() <= ENUM::max_value, "Invalid type index state");
     auto mo = mutable_variant_object();
-    mo["type"] = (int)vo.type();
+    mo["type"] = vo.type();
 
     std::visit([&mo](auto& obj) {
         auto var = fc::variant();
@@ -85,11 +85,9 @@ from_variant(const variant& var, variant_wrapper<ENUM, ARGS...>& vo) {
         if((int)type == i()) {
             using obj_t = std::variant_alternative_t<i(), decltype(vo.value_)>;
             auto  obj   = obj_t{};
-            auto& vobj  = var.get_object();
-            if(vobj.find("data") != vobj.end()) {
-                fc::from_variant(var["data"], obj);
-                vo.value_.template emplace<obj_t>(std::move(obj));
-            }
+
+            fc::from_variant(var["data"], obj);
+            vo.value_.template emplace<obj_t>(std::move(obj));
         }
     });
 }

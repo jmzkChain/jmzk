@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <chainbase/chainbase.hpp>
+#include <boost/multiprecision/cpp_dec_float.hpp>
 
 #include <fc/fixed_string.hpp>
 #include <fc/smart_ref_fwd.hpp>
@@ -25,8 +26,6 @@
 #include <fc/io/enum_type.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/io/varint.hpp>
-
-#include <boost/multiprecision/cpp_dec_float.hpp> 
 
 #include <evt/chain/name.hpp>
 #include <evt/chain/name128.hpp>

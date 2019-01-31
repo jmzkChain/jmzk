@@ -590,9 +590,9 @@ get_bonus_address(symbol_id_type sym_id, uint32_t bonus_id) {
 
 std::pair<int64_t, int64_t>
 calculate_passive_bonus(const token_database& tokendb,
-                       symbol_id_type        sym_id,
-                       int64_t               amount,
-                       action_name           act) {
+                        symbol_id_type        sym_id,
+                        int64_t               amount,
+                        action_name           act) {
     auto pbs = passive_bonus_slim();
     READ_DB_TOKEN_NO_THROW(token_type::bonus_slim, std::nullopt, get_bonus_db_key(sym_id, 0), pbs);
     
@@ -611,9 +611,9 @@ calculate_passive_bonus(const token_database& tokendb,
 
     auto method = passive_method_type::within_amount;
 
-    auto it = pbs.methods.find(act);
+    auto it = std::find_if(pbs.methods.cbegin(), pbs.methods.cend(), [act](auto& m) { return m.action == act; });
     if(it != pbs.methods.cend()) {
-        method = it->second;
+        method = (passive_method_type)it->method;
     }
 
     switch(method) {
@@ -1986,14 +1986,14 @@ void
 check_passive_methods(const execution_context& exec_ctx, const passive_methods& methods) {
     for(auto& it : methods) {
         // check if it's a valid action
-        EVT_ASSERT2(it.first == N(transferft) || it.first == N(everipay), bonus_method_exeption,
+        EVT_ASSERT2(it.action == N(transferft) || it.action == N(everipay), bonus_method_exeption,
             "Only `transferft` and `everipay` are valid for method options");
     }
 }
 
 } // namespace __internal
 
-EVT_ACTION_IMPL_BEGIN(setpsvbouns) {
+EVT_ACTION_IMPL_BEGIN(setpsvbonus) {
     using namespace __internal;
 
     auto spbact = context.act.data_as<ACT>();

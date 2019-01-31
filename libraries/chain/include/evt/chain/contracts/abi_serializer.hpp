@@ -31,23 +31,27 @@ struct variant_to_binary_context;
 }  // namespace impl
 
 /**
-  *  Describes the binary representation message and table contents so that it can
-  *  be converted to and from JSON.
-  */
+ *  Describes the binary representation message and table contents so that it can
+ *  be converted to and from JSON.
+ */
 struct abi_serializer : boost::noncopyable {
     abi_serializer() { configure_built_in_types(); }
     abi_serializer(const abi_def& abi, const std::chrono::microseconds max_serialization_time);
     void set_abi(const abi_def& abi);
 
     type_name resolve_type(const type_name& t) const;
-    bool      is_array(const type_name& type) const;
-    bool      is_optional(const type_name& type) const;
-    bool      is_type(const type_name& type) const;
-    bool      is_builtin_type(const type_name& type) const;
-    bool      is_integer(const type_name& type) const;
-    int       get_integer_size(const type_name& type) const;
-    bool      is_struct(const type_name& type) const;
     type_name fundamental_type(const type_name& type) const;
+
+    bool is_array(const type_name& type) const;
+    bool is_optional(const type_name& type) const;
+    bool is_type(const type_name& type) const;
+    bool is_builtin_type(const type_name& type) const;
+    bool is_integer(const type_name& type) const;
+    bool is_struct(const type_name& type) const;
+    bool is_variant(const type_name& type) const;
+    bool is_enum(const type_name& type) const;
+
+    int get_integer_size(const type_name& type) const;
 
     const struct_def& get_struct(const type_name& type) const;
 
@@ -106,8 +110,10 @@ private:
     void validate() const;
 
 private:
-    std::map<type_name, type_name>  typedefs_;
-    std::map<type_name, struct_def> structs_;
+    std::map<type_name, type_name>   typedefs_;
+    std::map<type_name, struct_def>  structs_;
+    std::map<type_name, variant_def> variants_;
+    std::map<type_name, enum_def>    enums_;
 
     std::map<type_name, pair<unpack_function, pack_function>> built_in_types_;
 
@@ -157,10 +163,18 @@ struct array_type_path_root {
 };
 
 struct struct_type_path_root {
-    map<type_name, struct_def>::const_iterator struct_itr;
+    map<type_name, struct_def>::const_iterator itr;
 };
 
-using path_root = static_variant<empty_path_root, array_type_path_root, struct_type_path_root>;
+struct variant_type_path_root {
+    map<type_name, variant_def>::const_iterator itr;
+};
+
+struct enum_type_path_root {
+    map<type_name, enum_def>::const_iterator itr;
+};
+
+using path_root = static_variant<empty_path_root, array_type_path_root, struct_type_path_root, variant_type_path_root, enum_type_path_root>;
 
 struct empty_path_item {};
 
@@ -170,11 +184,16 @@ struct array_index_path_item {
 };
 
 struct field_path_item {
-    map<type_name, struct_def>::const_iterator parent_struct_itr;
+    map<type_name, struct_def>::const_iterator parent_itr;
     uint32_t                                   field_ordinal = 0;
 };
 
-using path_item = static_variant<empty_path_item, array_index_path_item, field_path_item>;
+struct variant_path_item {
+    map<type_name, variant_def>::const_iterator parent_itr;
+    uint32_t                                    index = 0;
+};
+
+using path_item = static_variant<empty_path_item, array_index_path_item, field_path_item, variant_path_item>;
 
 struct abi_traverse_context_with_path : public abi_traverse_context {
     abi_traverse_context_with_path(const abi_serializer& self, const execution_context& exec_ctx, const type_name& type)
@@ -199,9 +218,10 @@ struct abi_traverse_context_with_path : public abi_traverse_context {
     void set_array_index_of_path_back(uint32_t i);
     void hint_array_type_if_in_array();
     void hint_struct_type_if_in_array(const map<type_name, struct_def>::const_iterator& itr);
+    void hint_variant_type_if_in_array(const map<type_name, variant_def>::const_iterator& itr);
+    void hint_enum_type_if_in_array(const map<type_name, enum_def>::const_iterator& itr);
 
     string get_path_string() const;
-
     string maybe_shorten(const string& str);
 
 protected:
@@ -221,9 +241,9 @@ struct variant_to_binary_context : public abi_traverse_context_with_path {
 };
 
 /**
-  * Determine if a type contains ABI related info, perhaps deeply nested
-  * @tparam T - the type to check
-  */
+ * Determine if a type contains ABI related info, perhaps deeply nested
+ * @tparam T - the type to check
+ */
 template <typename T>
 constexpr bool
 single_type_requires_abi_v() {
@@ -239,9 +259,9 @@ single_type_requires_abi_v() {
 }
 
 /**
-  * Basic constexpr for a type, aliases the basic check directly
-  * @tparam T - the type to check
-  */
+ * Basic constexpr for a type, aliases the basic check directly
+ * @tparam T - the type to check
+ */
 template <typename T>
 struct type_requires_abi {
     static constexpr bool
@@ -251,9 +271,9 @@ struct type_requires_abi {
 };
 
 /**
-  * specialization that catches common container patterns and checks their contained-type
-  * @tparam Container - a templated container type whose first argument is the contained type
-  */
+ * specialization that catches common container patterns and checks their contained-type
+ * @tparam Container - a templated container type whose first argument is the contained type
+ */
 template <template <typename...> class Container, typename T, typename... Args>
 struct type_requires_abi<Container<T, Args...>> {
     static constexpr bool
@@ -269,8 +289,8 @@ type_requires_abi_v() {
 }
 
 /**
-  * convenience aliases for creating overload-guards based on whether the type contains ABI related info
-  */
+ * convenience aliases for creating overload-guards based on whether the type contains ABI related info
+ */
 template <typename T>
 using not_require_abi_t = std::enable_if_t<!type_requires_abi_v<T>(), int>;
 
@@ -279,9 +299,9 @@ using require_abi_t = std::enable_if_t<type_requires_abi_v<T>(), int>;
 
 struct abi_to_variant {
     /**
-      * template which overloads add for types which are not relvant to ABI information
-      * and can be degraded to the normal ::to_variant(...) processing
-      */
+     * template which overloads add for types which are not relvant to ABI information
+     * and can be degraded to the normal ::to_variant(...) processing
+     */
     template <typename M, not_require_abi_t<M> = 1>
     static void
     add(mutable_variant_object& mvo, const char* name, const M& v, abi_traverse_context& ctx) {
@@ -290,16 +310,16 @@ struct abi_to_variant {
     }
 
     /**
-      * template which overloads add for types which contain ABI information in their trees
-      * for these types we create new ABI aware visitors
-      */
+     * template which overloads add for types which contain ABI information in their trees
+     * for these types we create new ABI aware visitors
+     */
     template <typename M, require_abi_t<M> = 1>
     static void add(mutable_variant_object& mvo, const char* name, const M& v, abi_traverse_context& ctx);
 
     /**
-      * template which overloads add for vectors of types which contain ABI information in their trees
-      * for these members we call ::add in order to trigger further processing
-      */
+     * template which overloads add for vectors of types which contain ABI information in their trees
+     * for these members we call ::add in order to trigger further processing
+     */
     template <typename M, require_abi_t<M> = 1>
     static void
     add(mutable_variant_object& mvo, const char* name, const vector<M>& v, abi_traverse_context& ctx) {
@@ -331,9 +351,9 @@ struct abi_to_variant {
     }
 
     /**
-      * template which overloads add for shared_ptr of types which contain ABI information in their trees
-      * for these members we call ::add in order to trigger further processing
-      */
+     * template which overloads add for shared_ptr of types which contain ABI information in their trees
+     * for these members we call ::add in order to trigger further processing
+     */
     template <typename M, require_abi_t<M> = 1>
     static void
     add(mutable_variant_object& mvo, const char* name, const std::shared_ptr<M>& v, abi_traverse_context& ctx) {
@@ -372,10 +392,10 @@ struct abi_to_variant {
     }
 
     /**
-      * overload of to_variant_object for actions
-      * @param act
-      * @return
-      */
+     * overload of to_variant_object for actions
+     * @param act
+     * @return
+     */
     static void
     add(mutable_variant_object& out, const char* name, const action& act, abi_traverse_context& ctx) {
         auto h   = ctx.enter_scope();
@@ -405,10 +425,10 @@ struct abi_to_variant {
     }
 
     /**
-      * overload of to_variant_object for packed_transaction
-      * @param act
-      * @return
-      */
+     * overload of to_variant_object for packed_transaction
+     * @param act
+     * @return
+     */
     static void
     add(mutable_variant_object& out, const char* name, const packed_transaction& ptrx, abi_traverse_context& ctx) {
         auto h   = ctx.enter_scope();
@@ -433,12 +453,12 @@ public:
         , _ctx(_ctx) {}
 
     /**
-      * Visit a single member and add it to the variant object
-      * @tparam Member - the member to visit
-      * @tparam Class - the class we are traversing
-      * @tparam member - pointer to the member
-      * @param name - the name of the member
-      */
+     * Visit a single member and add it to the variant object
+     * @tparam Member - the member to visit
+     * @tparam Class - the class we are traversing
+     * @tparam member - pointer to the member
+     * @param name - the name of the member
+     */
     template <typename Member, class Class, Member(Class::*member)>
     void
     operator()(const char* name) const {
@@ -453,9 +473,9 @@ private:
 
 struct abi_from_variant {
     /**
-      * template which overloads extract for types which are not relvant to ABI information
-      * and can be degraded to the normal ::from_variant(...) processing
-      */
+     * template which overloads extract for types which are not relvant to ABI information
+     * and can be degraded to the normal ::from_variant(...) processing
+     */
     template <typename M, not_require_abi_t<M> = 1>
     static void
     extract(const variant& v, M& o, abi_traverse_context& ctx) {
@@ -464,16 +484,16 @@ struct abi_from_variant {
     }
 
     /**
-      * template which overloads extract for types which contain ABI information in their trees
-      * for these types we create new ABI aware visitors
-      */
+     * template which overloads extract for types which contain ABI information in their trees
+     * for these types we create new ABI aware visitors
+     */
     template <typename M, require_abi_t<M> = 1>
     static void extract(const variant& v, M& o, abi_traverse_context& ctx);
 
     /**
-      * template which overloads extract for vectors of types which contain ABI information in their trees
-      * for these members we call ::extract in order to trigger further processing
-      */
+     * template which overloads extract for vectors of types which contain ABI information in their trees
+     * for these members we call ::extract in order to trigger further processing
+     */
     template <typename M, require_abi_t<M> = 1>
     static void
     extract(const variant& v, vector<M>& o, abi_traverse_context& ctx) {
@@ -503,9 +523,9 @@ struct abi_from_variant {
     }
 
     /**
-      * template which overloads extract for shared_ptr of types which contain ABI information in their trees
-      * for these members we call ::extract in order to trigger further processing
-      */
+     * template which overloads extract for shared_ptr of types which contain ABI information in their trees
+     * for these members we call ::extract in order to trigger further processing
+     */
     template <typename M, require_abi_t<M> = 1>
     static void
     extract(const variant& v, std::shared_ptr<M>& o, abi_traverse_context& ctx) {
@@ -518,10 +538,10 @@ struct abi_from_variant {
     }
 
     /**
-      * Non templated overload that has priority for the action structure
-      * this type has members which must be directly translated by the ABI so it is
-      * exploded and processed explicitly
-      */
+     * Non templated overload that has priority for the action structure
+     * this type has members which must be directly translated by the ABI so it is
+     * exploded and processed explicitly
+     */
     static void
     extract(const variant& v, action& act, abi_traverse_context& ctx) {
         auto        h  = ctx.enter_scope();
@@ -598,12 +618,12 @@ public:
         , _ctx(_ctx) {}
 
     /**
-      * Visit a single member and extract it from the variant object
-      * @tparam Member - the member to visit
-      * @tparam Class - the class we are traversing
-      * @tparam member - pointer to the member
-      * @param name - the name of the member
-      */
+     * Visit a single member and extract it from the variant object
+     * @tparam Member - the member to visit
+     * @tparam Class - the class we are traversing
+     * @tparam member - pointer to the member
+     * @param name - the name of the member
+     */
     template <typename Member, class Class, Member(Class::*member)>
     void
     operator()(const char* name) const {

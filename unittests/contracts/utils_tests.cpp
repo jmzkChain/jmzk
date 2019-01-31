@@ -307,3 +307,4 @@ TEST_CASE_METHOD(contracts_test, "contract_updsched_test", "[contracts]") {
 
     my_tester->produce_blocks();
 }
+

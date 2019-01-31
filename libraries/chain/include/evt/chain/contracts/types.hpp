@@ -145,12 +145,12 @@ enum class suspend_status {
 struct suspend_def {
     suspend_def() = default;
 
-    proposal_name                          name;
-    public_key_type                        proposer;
-    fc::enum_type<uint8_t, suspend_status> status;
-    transaction                            trx;
-    public_keys_set                        signed_keys;
-    signatures_type                        signatures;
+    proposal_name                      name;
+    public_key_type                    proposer;
+    enum_type<uint8_t, suspend_status> status;
+    transaction                        trx;
+    public_keys_set                    signed_keys;
+    signatures_type                    signatures;
 };
 
 enum class asset_type {
@@ -185,9 +185,9 @@ struct lock_condkeys {
 using lock_condition = variant_wrapper<lock_type, lock_condkeys>;
 
 struct lock_def {
-    proposal_name                       name;
-    user_id                             proposer;
-    fc::enum_type<uint8_t, lock_status> status;
+    proposal_name                   name;
+    user_id                         proposer;
+    enum_type<uint8_t, lock_status> status;
 
     time_point_sec              unlock_time;
     time_point_sec              deadline;
@@ -247,7 +247,18 @@ enum class passive_method_type {
     within_amount = 0,
     outside_amount
 };
-using passive_methods = flat_map<name, passive_method_type, std::less<name>, small_vector<std::pair<name, passive_method_type>, 4>>;
+
+struct passive_method {
+public:
+    passive_method() = default;
+    passive_method(name action, passive_method_type method)
+        : action(action), method(method) {}
+
+public:
+    name                                    action;
+    enum_type<uint8_t, passive_method_type> method;
+};
+using passive_methods = small_vector<passive_method, 4>;
 
 struct passive_bonus {
     symbol_id_type  sym_id;
@@ -418,8 +429,8 @@ struct cancelsuspend {
 };
 
 struct aprvsuspend {
-    proposal_name                       name;
-    fc::small_vector<signature_type, 4> signatures;
+    proposal_name                   name;
+    small_vector<signature_type, 4> signatures;
 
     EVT_ACTION_VER0(aprvsuspend);
 };
@@ -519,9 +530,9 @@ struct tryunlock {
     EVT_ACTION_VER0(tryunlock);
 };
 
-struct setpsvbouns {
+struct setpsvbonus {
     symbol          sym;
-    decimal<6>      rate;
+    percent_type    rate;
     asset           base_charge;
     optional<asset> charge_threshold;
     optional<asset> minimum_charge;
@@ -529,7 +540,7 @@ struct setpsvbouns {
     dist_rules      rules;
     passive_methods methods;
 
-    EVT_ACTION_VER0(setpsvbouns);
+    EVT_ACTION_VER0(setpsvbonus);
 };
 
 struct distpsvbonus {
@@ -569,6 +580,7 @@ FC_REFLECT(evt::chain::contracts::dist_fixed_rule, (receiver)(amount));
 FC_REFLECT(evt::chain::contracts::dist_percent_rule, (receiver)(percent));
 FC_REFLECT(evt::chain::contracts::dist_rpercent_rule, (receiver)(percent));
 FC_REFLECT_ENUM(evt::chain::contracts::passive_method_type, (within_amount)(outside_amount));
+FC_REFLECT(evt::chain::contracts::passive_method, (action)(method));
 FC_REFLECT(evt::chain::contracts::passive_bonus, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods)(round));
 FC_REFLECT(evt::chain::contracts::passive_bonus_slim, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(methods));
 
@@ -602,5 +614,5 @@ FC_REFLECT(evt::chain::contracts::updsched, (producers));
 FC_REFLECT(evt::chain::contracts::newlock, (name)(proposer)(unlock_time)(deadline)(assets)(condition)(succeed)(failed));
 FC_REFLECT(evt::chain::contracts::aprvlock, (name)(approver)(data));
 FC_REFLECT(evt::chain::contracts::tryunlock, (name)(executor));
-FC_REFLECT(evt::chain::contracts::setpsvbouns, (sym)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods));
+FC_REFLECT(evt::chain::contracts::setpsvbonus, (sym)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods));
 FC_REFLECT(evt::chain::contracts::distpsvbonus, (sym)(deadline)(final_receiver));

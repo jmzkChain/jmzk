@@ -41,6 +41,9 @@ parse_base58(const std::string& base58str) {
 public_key::public_key(const std::string& base58str)
     : _storage(parse_base58(base58str)) {}
 
+public_key::public_key(const char* base58str)
+    : _storage(parse_base58(base58str)) {}
+
 struct is_valid_visitor : public fc::visitor<bool> {
     template<typename KeyType>
     bool operator()(const KeyType& key) const {

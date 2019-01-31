@@ -9,6 +9,8 @@
 #include <variant>
 #include <vector>
 
+#include <boost/multiprecision/detail/number_base.hpp>
+
 #include <fc/container/deque_fwd.hpp>
 #include <fc/container/flat_fwd.hpp>
 #include <fc/container/small_vector_fwd.hpp>
@@ -227,6 +229,11 @@ template<typename T>
 inline T unpack(const char* d, uint32_t s);
 template<typename T>
 inline void unpack(const char* d, uint32_t s, T& v);
+
+template<typename Stream, typename T>
+void pack(Stream& s, const boost::multiprecision::number<T>& n);
+template<typename Stream, typename T>
+void unpack(Stream& s, boost::multiprecision::number<T>& n);
 
 }  // namespace raw
 }  // namespace fc
