@@ -74,4 +74,4 @@ from_variant(const fc::variant& v, evt::chain::version& version) {
 
 }  // namespace fc
 
-FC_REFLECT(evt::chain::version, (v_))
+FC_REFLECT(evt::chain::version, (v_));

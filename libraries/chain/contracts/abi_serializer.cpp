@@ -4,9 +4,9 @@
  */
 #include <evt/chain/contracts/abi_serializer.hpp>
 
+#include <boost/algorithm/string/predicate.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/io/varint.hpp>
-#include <boost/algorithm/string/predicate.hpp>
 
 #include <evt/chain/chain_config.hpp>
 #include <evt/chain/transaction.hpp>
@@ -111,7 +111,7 @@ abi_serializer::configure_built_in_types() {
     built_in_types_.emplace("producer_schedule", pack_unpack<producer_schedule_type>());
     built_in_types_.emplace("extensions", pack_unpack<extensions_type>());
     built_in_types_.emplace("evt_link", pack_unpack<evt_link>());
-    built_in_types_.emplace("lock_status", pack_unpack<fc::enum_type<uint8_t, lock_status>>());
+    built_in_types_.emplace("percent", pack_unpack<percent_type>());
 }
 
 void
@@ -422,7 +422,7 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
 
     auto mvo = fc::mutable_variant_object();
     _binary_to_variant(rtype, stream, mvo, ctx);
-    EVT_ASSERT(mvo.size() > 0, unpack_exception, "Unable to unpack '${p}' from stream", ("p", ctx.get_path_string()));
+    
     return fc::variant(std::move(mvo));
 }
 
@@ -491,19 +491,32 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
 
             auto& vt = v_itr->second; 
             auto& vo = var.get_object();
-            EVT_ASSERT2(vo.contains("type"), pack_exception, "Missing field 'type' in input object while processing variant '{}'", ctx.get_path_string());
-            EVT_ASSERT2(vo.contains("data"), pack_exception, "Missing field 'data' in input object while processing variant '{}'", ctx.get_path_string());
+
+            auto check_field = [&](auto& vo, auto name, auto type) {
+                EVT_ASSERT2(vo.contains(name), pack_exception,
+                    "Missing field '{}' in input object while processing variant '{}'", name, ctx.get_path_string());
+                if(type == "string") {
+                    EVT_ASSERT2(vo[name].is_string(), pack_exception,
+                        "Invalid field '{}' in input object while processing variant '{}', it must be string type", name, ctx.get_path_string()); 
+                }
+                else if(type == "object") {
+                    EVT_ASSERT2(vo[name].is_object(), pack_exception,
+                        "Invalid field '{}' in input object while processing variant '{}', it must be object type", name, ctx.get_path_string()); 
+                }
+            };
+            check_field(vo, "type", "string");
+            check_field(vo, "data", "object");
 
             auto dtype = vo["type"].get_string();
             auto index = 0u;
 
             for(auto& field : vt.fields) {
-                if(field.type == dtype) {
+                if(field.name == dtype) {
                     break;
                 }
                 index++;
             }
-            EVT_ASSERT2(index < vt.fields.size(), unpack_exception, "Invalid 'type' value of variant '{}'", ctx.get_path_string());
+            EVT_ASSERT2(index < vt.fields.size(), pack_exception, "Invalid 'type' value of variant '{}'", ctx.get_path_string());
 
             fc::raw::pack(ds, (fc::unsigned_int)index);
 
@@ -524,7 +537,7 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
                 }
                 index++;
             }
-            EVT_ASSERT2(index < et.fields.size(), unpack_exception, "Invalid value of enum '{}'", ctx.get_path_string());
+            EVT_ASSERT2(index < et.fields.size(), pack_exception, "Invalid value of enum '{}'", ctx.get_path_string());
 
             _variant_to_binary(et.integer, fc::variant(index), ds, ctx);
         }

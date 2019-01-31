@@ -247,7 +247,18 @@ enum class passive_method_type {
     within_amount = 0,
     outside_amount
 };
-using passive_methods = flat_map<name, passive_method_type, std::less<name>, small_vector<std::pair<name, passive_method_type>, 4>>;
+
+struct passive_method {
+public:
+    passive_method() = default;
+    passive_method(name action, passive_method_type method)
+        : action(action), method(method) {}
+
+public:
+    name                                    action;
+    enum_type<uint8_t, passive_method_type> method;
+};
+using passive_methods = small_vector<passive_method, 4>;
 
 struct passive_bonus {
     symbol_id_type  sym_id;
@@ -569,6 +580,7 @@ FC_REFLECT(evt::chain::contracts::dist_fixed_rule, (receiver)(amount));
 FC_REFLECT(evt::chain::contracts::dist_percent_rule, (receiver)(percent));
 FC_REFLECT(evt::chain::contracts::dist_rpercent_rule, (receiver)(percent));
 FC_REFLECT_ENUM(evt::chain::contracts::passive_method_type, (within_amount)(outside_amount));
+FC_REFLECT(evt::chain::contracts::passive_method, (action)(method));
 FC_REFLECT(evt::chain::contracts::passive_bonus, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods)(round));
 FC_REFLECT(evt::chain::contracts::passive_bonus_slim, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(methods));
 

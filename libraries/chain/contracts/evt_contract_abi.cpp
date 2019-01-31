@@ -49,6 +49,14 @@ evt_contract_abi() {
     evt_abi.types.push_back(type_def{"suspend_status", "uint8"});
     evt_abi.types.push_back(type_def{"conf_key", "name128"});
 
+    // enums def
+    evt_abi.enums.emplace_back( enum_def {
+        "passive_method_type", "uint8", {
+            "within_amount",
+            "outside_amount"
+        }
+    });
+
     // structures def
     evt_abi.structs.emplace_back( struct_def {
         "void", "", {}
@@ -86,7 +94,7 @@ evt_contract_abi() {
 
     evt_abi.structs.emplace_back( struct_def {
         "locknft_def", "", {
-            {"name", "domain_name"},
+            {"domain", "domain_name"},
             {"names", "token_name[]"}
         }
     });
@@ -121,13 +129,20 @@ evt_contract_abi() {
     evt_abi.structs.emplace_back( struct_def {
         "dist_percent_rule", "", {
             {"receiver", "dist_receiver"},
-            {"percent", "percent_type"}
+            {"percent", "percent"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "passive_method", "", {
+            {"action", "name"},
+            {"method", "passive_method_type"}
         }
     });
 
     // variants def
     evt_abi.variants.emplace_back( variant_def {
-        "asset_type", {
+        "lock_asset", {
             {"tokens", "locknft_def"},
             {"fungible", "lockft_def"}
         }
@@ -405,13 +420,13 @@ evt_contract_abi() {
     evt_abi.structs.emplace_back( struct_def {
         "setpsvbouns", "", {
            {"sym", "symbol"},
-           {"rate", "percent_type"},
+           {"rate", "percent"},
            {"base_charge", "asset"},
            {"charge_threshold", "asset?"},
            {"minimum_charge", "asset?"},
            {"dist_threshold", "asset"},
            {"rules", "dist_rule[]"},
-           {"methods", "passive_methods"}
+           {"methods", "passive_method[]"}
         }
     });
 
