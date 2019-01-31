@@ -748,7 +748,7 @@ struct check_authority<N(paybonus)> {
 };
 
 template<>
-struct check_authority<N(setpsvbouns)> {
+struct check_authority<N(setpsvbonus)> {
     template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {

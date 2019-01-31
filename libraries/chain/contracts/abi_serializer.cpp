@@ -499,13 +499,9 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
                     EVT_ASSERT2(vo[name].is_string(), pack_exception,
                         "Invalid field '{}' in input object while processing variant '{}', it must be string type", name, ctx.get_path_string()); 
                 }
-                else if(type == "object") {
-                    EVT_ASSERT2(vo[name].is_object(), pack_exception,
-                        "Invalid field '{}' in input object while processing variant '{}', it must be object type", name, ctx.get_path_string()); 
-                }
             };
             check_field(vo, "type", "string");
-            check_field(vo, "data", "object");
+            check_field(vo, "data", "");  // data can be any type
 
             auto dtype = vo["type"].get_string();
             auto index = 0u;
@@ -521,7 +517,7 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
             fc::raw::pack(ds, (fc::unsigned_int)index);
 
             auto h1 = ctx.push_to_path(impl::variant_path_item{.parent_itr = v_itr, .index = index});
-            _variant_to_binary(vt.fields[index].type, vo["data"].get_object(), ds, ctx);
+            _variant_to_binary(vt.fields[index].type, vo["data"], ds, ctx);
         }
         else if(is_enum(rtype)) {
             auto e_itr = enums_.find(rtype);

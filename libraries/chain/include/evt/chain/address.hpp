@@ -152,6 +152,18 @@ class variant;
 void to_variant(const evt::chain::address& addr, fc::variant& v);
 void from_variant(const fc::variant& v, evt::chain::address& addr);
 
+template<>
+inline void
+to_variant<evt::chain::address>(const evt::chain::address& addr, fc::variant& v) {
+    to_variant(addr, v);
+}
+
+template<>
+inline void
+from_variant<evt::chain::address>(const fc::variant& v, evt::chain::address& addr) {
+    from_variant(v, addr);
+}
+
 }  // namespace fc
 
 namespace fmt {

@@ -530,7 +530,7 @@ struct tryunlock {
     EVT_ACTION_VER0(tryunlock);
 };
 
-struct setpsvbouns {
+struct setpsvbonus {
     symbol          sym;
     percent_type    rate;
     asset           base_charge;
@@ -540,7 +540,7 @@ struct setpsvbouns {
     dist_rules      rules;
     passive_methods methods;
 
-    EVT_ACTION_VER0(setpsvbouns);
+    EVT_ACTION_VER0(setpsvbonus);
 };
 
 struct distpsvbonus {
@@ -614,5 +614,5 @@ FC_REFLECT(evt::chain::contracts::updsched, (producers));
 FC_REFLECT(evt::chain::contracts::newlock, (name)(proposer)(unlock_time)(deadline)(assets)(condition)(succeed)(failed));
 FC_REFLECT(evt::chain::contracts::aprvlock, (name)(approver)(data));
 FC_REFLECT(evt::chain::contracts::tryunlock, (name)(executor));
-FC_REFLECT(evt::chain::contracts::setpsvbouns, (sym)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods));
+FC_REFLECT(evt::chain::contracts::setpsvbonus, (sym)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods));
 FC_REFLECT(evt::chain::contracts::distpsvbonus, (sym)(deadline)(final_receiver));

@@ -418,7 +418,7 @@ evt_contract_abi() {
     });
 
     evt_abi.structs.emplace_back( struct_def {
-        "setpsvbouns", "", {
+        "setpsvbonus", "", {
            {"sym", "symbol"},
            {"rate", "percent"},
            {"base_charge", "asset"},

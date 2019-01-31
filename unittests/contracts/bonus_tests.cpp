@@ -1,4 +1,5 @@
 #include "contracts_tests.hpp"
+#include <evt/chain/address.hpp>
 
 name128
 get_bonus_db_key(uint64_t sym_id, uint64_t bonus_id) {
@@ -8,7 +9,7 @@ get_bonus_db_key(uint64_t sym_id, uint64_t bonus_id) {
 }
 
 TEST_CASE_METHOD(contracts_test, "passive_bonus_test", "[contracts]") {
-    auto spb = setpsvbouns();
+    auto spb = setpsvbonus();
     spb.sym = evt_sym();
     spb.rate = 0.15;
     spb.base_charge = asset(0, get_sym());

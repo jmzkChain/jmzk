@@ -1993,7 +1993,7 @@ check_passive_methods(const execution_context& exec_ctx, const passive_methods& 
 
 } // namespace __internal
 
-EVT_ACTION_IMPL_BEGIN(setpsvbouns) {
+EVT_ACTION_IMPL_BEGIN(setpsvbonus) {
     using namespace __internal;
 
     auto spbact = context.act.data_as<ACT>();
