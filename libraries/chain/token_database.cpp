@@ -889,37 +889,22 @@ token_database_impl::rollback_pd_group(__internal::pd_group* pd) {
         return;
     }
 
-    auto key_set = keys_hash_set();
-    auto batch   = rocksdb::WriteBatch();
-    key_set.set_empty_key(std::string());
-
+    // keyset is not required here,
+    // because it has done during creating persist savepoint
+    auto batch = rocksdb::WriteBatch();
     for(auto it = pd->actions.begin(); it < pd->actions.end(); it++) {
         switch((action_op)it->op) {
         case action_op::add: {
-            assert(key_set.find(it->key) == key_set.cend());
             assert(it->value.empty());
-
             batch.Delete(it->key);
-
-            key_set.emplace(it->key);
             break;
         }
         case action_op::update: {
-            if(key_set.find(it->key) != key_set.cend()) {
-                break;
-            }
-
             assert(!it->value.empty());
             batch.Put(it->key, it->value);
-
-            key_set.emplace(it->key);
             break;
         }
         case action_op::put: {
-            if(key_set.find(it->key) != key_set.cend()) {
-                break;
-            }
-
             // Asset type only has put op
             auto handle = (it->type == (int)token_type::asset) ? assets_handle_ : tokens_handle_;
             if(it->value.empty()) {
@@ -928,8 +913,6 @@ token_database_impl::rollback_pd_group(__internal::pd_group* pd) {
             else {
                 batch.Put(handle, it->key, it->value);
             }
-
-            key_set.emplace(it->key);
             break;
         }
         }  // switch
@@ -1043,7 +1026,7 @@ token_database_impl::persist_savepoints(std::ostream& os) const {
             for(auto& act : rt->actions) {
                 auto data = GETPOINTER(void, act.data);
 
-                auto fn = [&](auto& key, auto type, auto op) {
+                auto fn = [&](const auto& key, auto type, auto op) {
                     auto value = std::string();
 
                     switch(op) {
@@ -1051,7 +1034,7 @@ token_database_impl::persist_savepoints(std::ostream& os) const {
                         assert(key_set.find(key) == key_set.cend());
 
                         // no need to read value
-                        key_set.emplace(std::move(key));
+                        key_set.emplace(key);
                         break;
                     }
                     case action_op::update: {
@@ -1064,7 +1047,7 @@ token_database_impl::persist_savepoints(std::ostream& os) const {
                             FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
                         }
 
-                        key_set.emplace(std::move(key));
+                        key_set.emplace(key);
                         break;
                     }
                     case action_op::put: {
@@ -1080,7 +1063,7 @@ token_database_impl::persist_savepoints(std::ostream& os) const {
                             FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
                         }
 
-                        key_set.emplace(std::move(key));
+                        key_set.emplace(key);
                         break;
                     }
                     }  // switch

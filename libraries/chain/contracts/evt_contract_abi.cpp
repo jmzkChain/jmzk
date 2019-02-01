@@ -339,6 +339,13 @@ evt_contract_abi() {
     });
 
     evt_abi.structs.emplace_back( struct_def {
+        "paybonus", "", {
+           {"payer", "address"},
+           {"amount", "asset"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
         "everipass", "", {
            {"link", "evt_link"}
         }

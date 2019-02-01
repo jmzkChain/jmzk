@@ -96,6 +96,14 @@ namespace evt_apis {
         }                                                              \
     }
 
+// for bonus_id, 0 is always stand for passive bonus
+// otherwise it's active bonus
+name128
+get_bonus_db_key(uint64_t sym_id, uint64_t bonus_id) {
+    uint128_t v = bonus_id;
+    v |= ((uint128_t)sym_id << 64);
+    return v;
+}
 
 fc::variant
 read_only::get_domain(const read_only::get_domain_params& params) {
@@ -211,6 +219,25 @@ read_only::get_fungible_balance(const get_fungible_balance_params& params) {
         return vars;
     }
     EVT_THROW(unsupported_feature, "Read all the balance of fungibles tokens within one address is not supported in evt_plugin anymore, please refer to the history_plugin");
+}
+
+fc::variant
+read_only::get_fungible_psvbonus(const get_fungible_psvbonus_params& params) {
+    const auto& db = db_.token_db();
+
+    auto pb   = passive_bonus();
+    auto dkey = get_bonus_db_key(params.id, 0);
+    READ_DB_TOKEN(token_type::bonus, std::nullopt, dkey, pb, unknown_bonus_exception,
+        "Cannot find passive bonus registered for fungible with sym id: {}.", params.id);
+
+    auto var = variant();
+    fc::to_variant(pb, var);
+
+    auto mvar = fc::mutable_variant_object(var);
+    auto addr = address(N(.bonus), name128::from_number(params.id), 0);
+    mvar["address"] = addr;
+
+    return mvar;
 }
 
 fc::variant
