@@ -88,7 +88,7 @@ TEST_CASE_METHOD(tokendb_test, "add_token_prst_test", "[tokendb]") {
     auto& tokendb = my_tester->control->token_db();
     
     my_tester->produce_block();
-    ADD_SAVEPOINT;
+    ADD_SAVEPOINT();
 
     // token_type : domain(non-token)
     auto var = fc::json::from_string(domain_data_ps);
@@ -100,7 +100,7 @@ TEST_CASE_METHOD(tokendb_test, "add_token_prst_test", "[tokendb]") {
     ADD_TOKEN(domain, dom.name, dom); 
     CHECK(EXISTS_TOKEN(domain, dom.name));
 
-    ADD_SAVEPOINT;
+    ADD_SAVEPOINT();
 
     // token_type : token
     var = fc::json::from_string(token_data_ps);
@@ -110,7 +110,7 @@ TEST_CASE_METHOD(tokendb_test, "add_token_prst_test", "[tokendb]") {
     ADD_TOKEN2(token, dom.name, tk.name, tk);
     CHECK(EXISTS_TOKEN2(token, tk.domain, tk.name));
 
-    ADD_SAVEPOINT;
+    ADD_SAVEPOINT();
 }
 
 TEST_CASE_METHOD(tokendb_test, "add_token_prst_rlbk", "[tokendb]") {
@@ -119,13 +119,13 @@ TEST_CASE_METHOD(tokendb_test, "add_token_prst_rlbk", "[tokendb]") {
     CHECK(EXISTS_TOKEN(domain, "domain-ps-test"));
     CHECK(EXISTS_TOKEN2(token, "domain-ps-test", "ps1"));
     
-    ROLLBACK;
+    ROLLBACK();
     CHECK(!EXISTS_TOKEN2(token, "domain-ps-test", "ps1"));
     
-    ROLLBACK;
+    ROLLBACK();
     CHECK(!EXISTS_TOKEN(domain, "domain-ps-test"));
 
-    ROLLBACK;
+    ROLLBACK();
 }
     
 
@@ -135,7 +135,7 @@ TEST_CASE_METHOD(tokendb_test, "add_token_prst_rlbk", "[tokendb]") {
 TEST_CASE_METHOD(tokendb_test, "put_token_prst_test", "[tokendb]") {
     auto& tokendb = my_tester->control->token_db();
     my_tester->produce_block();
-    ADD_SAVEPOINT;
+    ADD_SAVEPOINT();
     
     // * put_token: add a token
     
@@ -150,7 +150,7 @@ TEST_CASE_METHOD(tokendb_test, "put_token_prst_test", "[tokendb]") {
     PUT_TOKEN(domain, dom.name, dom);
     CHECK(EXISTS_TOKEN(domain, dom.name));
 
-    ADD_SAVEPOINT;
+    ADD_SAVEPOINT();
 
     // ** token_type : token
     var = fc::json::from_string(token_data_ps);
@@ -161,7 +161,7 @@ TEST_CASE_METHOD(tokendb_test, "put_token_prst_test", "[tokendb]") {
     PUT_TOKEN2(token, dom.name, tk.name, tk);
     CHECK(EXISTS_TOKEN2(token, dom.name, tk.name));
 
-    ADD_SAVEPOINT;
+    ADD_SAVEPOINT();
 
     // * put_token: upd a token
      
@@ -174,7 +174,7 @@ TEST_CASE_METHOD(tokendb_test, "put_token_prst_test", "[tokendb]") {
     READ_TOKEN(domain, "dm-tkdb-ps1", _dom);
     CHECK(_dom.metas[0].key == "key-tkdb-ps1");
 
-    ADD_SAVEPOINT;
+    ADD_SAVEPOINT();
 
     // ** token_type : token
     auto _tk = token_def();
@@ -185,7 +185,7 @@ TEST_CASE_METHOD(tokendb_test, "put_token_prst_test", "[tokendb]") {
     READ_TOKEN2(token, "dm-tkdb-ps1", "ps2", _tk);
     CHECK(_tk.metas[0].key == "ps2-meta");
 
-    ADD_SAVEPOINT;
+    ADD_SAVEPOINT();
 }
 
 TEST_CASE_METHOD(tokendb_test, "put_token_prst_rlbk", "[tokendb]") {
@@ -193,21 +193,21 @@ TEST_CASE_METHOD(tokendb_test, "put_token_prst_rlbk", "[tokendb]") {
     auto _dom = domain_def();
     auto _tk = token_def();
 
-    ROLLBACK;
+    ROLLBACK();
     READ_TOKEN2(token, "dm-tkdb-ps1", "ps2", _tk);
     CHECK(std::string(_tk.metas[0].key) == "key");
     
-    ROLLBACK;
-    READ_TOKEN(domain, "dm-tkdb-rt1", _dom);
+    ROLLBACK();
+    READ_TOKEN(domain, "dm-tkdb-ps1", _dom);
     CHECK(std::string(_dom.metas[0].key) == "key");
 
-    ROLLBACK;
+    ROLLBACK();
     CHECK(!EXISTS_TOKEN2(token, "dm-tkdb-ps1", "ps2"));
     
-    ROLLBACK;
+    ROLLBACK();
     CHECK(!EXISTS_TOKEN(domain, "dm-tkdb-ps1"));
 
-    ROLLBACK;
+    ROLLBACK();
 }
 
 /*
@@ -217,7 +217,7 @@ TEST_CASE_METHOD(tokendb_test, "put_asset_prst_test", "[tokendb]") {
     auto& tokendb = my_tester->control->token_db();
     my_tester->produce_block();
 
-    ADD_SAVEPOINT;
+    ADD_SAVEPOINT();
     
     // add a new fungible for test
     auto var = fc::json::from_string(fungible_data_ps);
@@ -229,7 +229,7 @@ TEST_CASE_METHOD(tokendb_test, "put_asset_prst_test", "[tokendb]") {
     PUT_TOKEN(fungible, 4, fg);
     CHECK(EXISTS_TOKEN(fungible, 4));
 
-    ADD_SAVEPOINT;
+    ADD_SAVEPOINT();
 
     // put asset
     auto addr = public_key_type(std::string("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"));
@@ -238,20 +238,20 @@ TEST_CASE_METHOD(tokendb_test, "put_asset_prst_test", "[tokendb]") {
     PUT_ASSET(addr, 4, as);
     CHECK(EXISTS_ASSET(addr, 4));
 
-    ADD_SAVEPOINT;
+    ADD_SAVEPOINT();
 }
 
 TEST_CASE_METHOD(tokendb_test, "put_asset_prst_rlbk", "[tokendb") {
     auto& tokendb = my_tester->control->token_db();
     auto addr = public_key_type(std::string("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"));
 
-    ROLLBACK;
+    ROLLBACK();
     CHECK(!EXISTS_ASSET(addr, 4));
     
-    ROLLBACK;
+    ROLLBACK();
     CHECK(!EXISTS_TOKEN(fungible, 4));
 
-    ROLLBACK;
+    ROLLBACK();
 }
 
 /*
@@ -260,8 +260,7 @@ TEST_CASE_METHOD(tokendb_test, "put_asset_prst_rlbk", "[tokendb") {
 TEST_CASE_METHOD(tokendb_test, "squash_prst_test", "[tokendb]") {
     auto& tokendb = my_tester->control->token_db();
     my_tester->produce_block();
-    
-    ADD_SAVEPOINT;
+    ADD_SAVEPOINT();
     
     auto var = fc::json::from_string(domain_data_ps);
     auto dom = var.as<domain_def>();
@@ -270,7 +269,7 @@ TEST_CASE_METHOD(tokendb_test, "squash_prst_test", "[tokendb]") {
     PUT_TOKEN(domain, dom.name, dom);
     CHECK(EXISTS_TOKEN(domain, dom.name));
 
-    ADD_SAVEPOINT;
+    ADD_SAVEPOINT();
     
     var = fc::json::from_string(token_data_ps);
     auto tk = var.as<token_def>();
@@ -280,16 +279,30 @@ TEST_CASE_METHOD(tokendb_test, "squash_prst_test", "[tokendb]") {
     PUT_TOKEN2(token, dom.name, tk.name, tk);
     CHECK(EXISTS_TOKEN2(token, dom.name, tk.name));
     
-    ADD_SAVEPOINT;
+    ADD_SAVEPOINT();
     
     auto n = tokendb.savepoints_size();
     
-    ADD_SAVEPOINT;
-    ADD_SAVEPOINT;
+    ADD_SAVEPOINT();
+    ADD_SAVEPOINT();
     tokendb.squash();
     tokendb.squash();
     CHECK(tokendb.savepoints_size() == n);
     
+    CHECK(EXISTS_TOKEN2(token, "domain-prst-sq", "ps-sq"));
+    CHECK(EXISTS_TOKEN(domain, "domain-prst-sq"));
+
+    tokendb.squash();
+
+    CHECK(EXISTS_TOKEN2(token, "domain-prst-sq", "ps-sq"));
+    CHECK(EXISTS_TOKEN(domain, "domain-prst-sq"));
+    
+    tokendb.squash();
+
+    CHECK(EXISTS_TOKEN2(token, "domain-prst-sq", "ps-sq"));
+    CHECK(EXISTS_TOKEN(domain, "domain-prst-sq"));
+
+    ADD_SAVEPOINT();
 }
 
 TEST_CASE_METHOD(tokendb_test, "squash_prst_rlbk", "[tokendb]") {
@@ -298,18 +311,8 @@ TEST_CASE_METHOD(tokendb_test, "squash_prst_rlbk", "[tokendb]") {
     CHECK(EXISTS_TOKEN2(token, "domain-prst-sq", "ps-sq"));
     CHECK(EXISTS_TOKEN(domain, "domain-prst-sq"));
 
-    tokendb.squash();
-
-    CHECK(EXISTS_TOKEN2(token, "domain-prst-sq", "ps-sq"));
-    CHECK(EXISTS_TOKEN(domain, "domain-prst-sq"));
-    
-    tokendb.squash();
-
-    CHECK(EXISTS_TOKEN2(token, "domain-prst-sq", "ps-sq"));
-    CHECK(EXISTS_TOKEN(domain, "domain-prst-sq"));
-
     //Only one savepoint left now.
-    ROLLBACK;
+    ROLLBACK();
     
     CHECK(!EXISTS_TOKEN2(token, "domain-prst-sq", "ps-sq"));
     CHECK(!EXISTS_TOKEN(domain, "domain-prst-sq"));

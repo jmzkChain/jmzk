@@ -201,8 +201,8 @@ protected:
         tokendb.put_asset(ADDR, SYMID, dbvalue.as_string_view()); \
     }
 
-#define ADD_SAVEPOINT \
+#define ADD_SAVEPOINT() \
     tokendb.add_savepoint(tokendb.latest_savepoint_seq()+1)
 
-#define ROLLBACK \
+#define ROLLBACK() \
     tokendb.rollback_to_latest_savepoint()
