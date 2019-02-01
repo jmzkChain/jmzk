@@ -45,7 +45,6 @@ evt_contract_abi() {
     evt_abi.types.push_back(type_def{"group_def", "group"});
     evt_abi.types.push_back(type_def{"meta_key", "name128"});
     evt_abi.types.push_back(type_def{"meta_value", "string"});
-    evt_abi.types.push_back(type_def{"meta_list", "meta[]"});
     evt_abi.types.push_back(type_def{"suspend_status", "uint8"});
     evt_abi.types.push_back(type_def{"conf_key", "name128"});
 
@@ -60,14 +59,6 @@ evt_contract_abi() {
     // structures def
     evt_abi.structs.emplace_back( struct_def {
         "void", "", {}
-    });
-
-    evt_abi.structs.emplace_back( struct_def {
-        "meta", "", {
-            {"key", "meta_key"},
-            {"value", "meta_value"},
-            {"creator", "user_id"}
-        }
     });
 
     evt_abi.structs.emplace_back( struct_def {
