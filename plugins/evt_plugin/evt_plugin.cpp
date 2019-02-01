@@ -233,7 +233,11 @@ read_only::get_fungible_psvbonus(const get_fungible_psvbonus_params& params) {
     auto var = variant();
     fc::to_variant(pb, var);
 
-    return var;
+    auto mvar = fc::mutable_variant_object(var);
+    auto addr = address(N(.bonus), name128::from_number(params.id), 0);
+    mvar["address"] = addr;
+
+    return mvar;
 }
 
 fc::variant
