@@ -1330,6 +1330,44 @@ struct set_producer_subcommands {
     }
 };
 
+struct set_action_subcommand {
+    string name;
+    string domain;
+    string key;
+    string data;
+
+    set_action_subcommand(CLI::App* actionRoot) {
+        auto pacmd = actionRoot->add_subcommand("push", localized("Push a raw action to the chain"));
+        pacmd->add_option("name", name, localized("Name of action to push"))->required();
+        pacmd->add_option("domain", domain, localized("Domain of action to push"))->required();
+        pacmd->add_option("key", key, localized("Key of action to push"))->required();
+        pacmd->add_option("data", data, localized("Data of action to push, can be either json file or string"))->required();
+
+        add_standard_transaction_options(pacmd);
+
+        pacmd->callback([this] {
+            auto vardata = fc::variant();
+            if(fc::is_regular_file(data)) {
+                vardata = fc::json::from_file(data);
+            }
+            else {
+                vardata = fc::json::from_string(data);
+            }
+
+            auto exec_ctx = evt_execution_context();
+            set_execution_context(exec_ctx);
+
+            auto type = exec_ctx.get_acttype_name((action_name)name);
+
+            auto abi = abi_serializer(evt_contract_abi(), std::chrono::hours(1));
+            auto rawdata = abi.variant_to_binary(type, vardata, exec_ctx);
+
+            auto act = action((action_name)name, (domain_name)domain, (domain_key)key, rawdata);
+            send_actions({act});
+        });
+    }
+};
+
 struct set_get_domain_subcommand {
     string name;
 
@@ -1396,6 +1434,7 @@ struct set_get_group_subcommand {
 
 struct set_get_fungible_subcommand {
     symbol_id_type id;
+    string         address;
 
     set_get_fungible_subcommand(CLI::App* actionRoot) {
         auto gfcmd = actionRoot->add_subcommand("fungible", localized("Retrieve a fungible asset information"));
@@ -1406,23 +1445,24 @@ struct set_get_fungible_subcommand {
             auto arg = fc::mutable_variant_object("id", id);
             print_info(call(get_fungible_func, arg));
         });
-    }
-};
 
-struct set_get_balance_subcommand {
-    string   address;
-    uint32_t sym_id;
-
-    set_get_balance_subcommand(CLI::App* actionRoot) {
         auto gbcmd = actionRoot->add_subcommand("balance", localized("Retrieve fungible balance from an address"));
         gbcmd->add_option("address", address, localized("Address to query"))->required();
-        gbcmd->add_option("symbol_id", sym_id, localized("Specific symbol id to retrieve"))->required();
+        gbcmd->add_option("symbol_id", id, localized("Specific symbol id to retrieve"))->required();
 
         gbcmd->callback([this] {
             FC_ASSERT(!address.empty(), "Address cannot be empty");
 
-            auto arg = fc::mutable_variant_object("address", get_address(address))("sym_id",sym_id);
+            auto arg = fc::mutable_variant_object("address", get_address(address))("sym_id",id);
             print_info(call(get_fungible_balance_func, arg));
+        });
+
+        auto gfpsb = actionRoot->add_subcommand("psvbonus", localized("Retrieve passive bonus registered to one fungible"));
+        gfpsb->add_option("id", id, localized("Specific symbol id to retrieve"))->required();
+
+        gfpsb->callback([this] {
+            auto arg = fc::mutable_variant_object("id", id);
+            print_info(call(get_fungible_psvbonus_func, arg));
         });
     }
 };
@@ -1718,7 +1758,6 @@ main(int argc, char** argv) {
     set_get_token_subcommand    get_token(get);
     set_get_group_subcommand    get_group(get);
     set_get_fungible_subcommand get_fungible(get);
-    set_get_balance_subcommand  get_balance(get);
     set_get_my_subcommands      get_my(get);
     set_get_history_subcommands get_history(get); 
     set_get_suspend_subcommand  get_suspend(get);
@@ -1823,6 +1862,12 @@ main(int argc, char** argv) {
     producer->require_subcommand();
 
     auto set_producer = set_producer_subcommands(producer);
+
+    // action
+    auto action = app.add_subcommand("action", localized("Raw operations for actions"));
+    action->require_subcommand();
+
+    auto set_action = set_action_subcommand(action);
 
     // Wallet subcommand
     auto wallet = app.add_subcommand("wallet", localized("Interact with local wallet"));
