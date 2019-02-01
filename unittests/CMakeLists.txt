@@ -4,6 +4,7 @@ add_executable(evt_unittests
     #tokendb_tests.cpp
     tokendb/basic_tests.cpp
     tokendb/runtime_tests.cpp
+    tokendb/persist_tests.cpp
     #types_tests.cpp
     # snapshot_tests.cpp
     #execution_tests.cpp
