@@ -44,7 +44,7 @@ base_tester::init(bool push_genesis) {
     cfg.max_serialization_time = std::chrono::hours(1);
 
     cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
-    cfg.genesis.initial_key       = get_public_key(config::system_account_name, "active");
+    cfg.genesis.initial_key       = get_public_key("evt");
 
     open(nullptr);
 
@@ -108,7 +108,7 @@ base_tester::_produce_block(fc::microseconds skip_time, bool skip_pending_trxs, 
     auto private_key_itr = block_signing_private_keys.find(producer.block_signing_key);
     if(private_key_itr == block_signing_private_keys.end()) {
         // If it's not found, default to active k1 key
-        priv_key = get_private_key(producer.producer_name);
+        priv_key = get_private_key((std::string)producer.producer_name);
     }
     else {
         priv_key = private_key_itr->second;
@@ -252,7 +252,7 @@ base_tester::push_transaction(signed_transaction& trx,
 }
 
 transaction_trace_ptr
-base_tester::push_action(action&& act, std::vector<account_name>& auths, const address& payer, uint32_t max_charge) {
+base_tester::push_action(action&& act, std::vector<name>& auths, const address& payer, uint32_t max_charge) {
     try {
         signed_transaction trx;
         trx.actions.emplace_back(std::move(act));
@@ -268,14 +268,14 @@ base_tester::push_action(action&& act, std::vector<account_name>& auths, const a
 }
 
 transaction_trace_ptr
-base_tester::push_action(const action_name&               acttype,
-                         const domain_name&               domain,
-                         const domain_key&                key,
-                         const variant_object&            data,
-                         const std::vector<account_name>& auths,
-                         const address&                   payer,
-                         uint32_t                         max_charge,
-                         uint32_t                         expiration)
+base_tester::push_action(const action_name&       acttype,
+                         const domain_name&       domain,
+                         const domain_key&        key,
+                         const variant_object&    data,
+                         const std::vector<name>& auths,
+                         const address&           payer,
+                         uint32_t                 max_charge,
+                         uint32_t                 expiration)
 {
     try {
         auto trx = signed_transaction();

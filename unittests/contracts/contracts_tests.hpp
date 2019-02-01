@@ -162,12 +162,12 @@ protected:
     }
 
 protected:
-    public_key_type           key;
-    private_key_type          private_key;
-    address                   payer;
-    address                   poorer;
-    std::vector<account_name> key_seeds;
-    std::unique_ptr<tester>   my_tester;
-    int                       ti;
-    symbol_id_type            sym_id;
+    public_key_type         key;
+    private_key_type        private_key;
+    address                 payer;
+    address                 poorer;
+    std::vector<name>       key_seeds;
+    std::unique_ptr<tester> my_tester;
+    int                     ti;
+    symbol_id_type          sym_id;
 };

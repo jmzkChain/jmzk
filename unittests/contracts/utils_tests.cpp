@@ -33,7 +33,7 @@ TEST_CASE_METHOD(contracts_test, "contract_prodvote_test", "[contracts]") {
     my_tester->push_action(N(prodvote), N128(.prodvote), N128(network-charge-factor), var.get_object(), key_seeds, payer);
 
     READ_TOKEN(prodvote, pv.key, vote_sum);
-    CHECK(vote_sum[tester::get_public_key(pv.producer)] == 1);
+    CHECK(vote_sum[tester::get_public_key((std::string)pv.producer)] == 1);
     CHECK(my_tester->control->get_global_properties().configuration.base_network_charge_factor == 1);
 
     pv.value = 10;
@@ -166,7 +166,7 @@ TEST_CASE_METHOD(contracts_test, "contract_addmeta_test", "[contracts]") {
     to_variant(admt, var);
     CHECK_THROWS_AS(my_tester->push_action(N(addmeta), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), {N(key2), N(payer)}, payer, 5'000'000), meta_key_exception);
 
-    std::vector<account_name> seeds = {N(key0), N(key1), N(key2), N(key3), N(key4), N(payer)};
+    std::vector<name> seeds = {N(key0), N(key1), N(key2), N(key3), N(key4), N(payer)};
 
     const char* domain_data = R"=====(
         {

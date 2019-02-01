@@ -16,7 +16,7 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_test", "[contracts]") {
     spb.dist_threshold = asset(1'00000, get_sym());  // 1.00000
 
     auto actkey = name128::from_number(get_sym_id());
-    auto keyseeds = std::vector<name128>{ N(key2), N(payer) };
+    auto keyseeds = std::vector<name>{ N(key2), N(payer) };
 
     // key of action is invalid
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.bonus), actkey, spb), keyseeds, payer), action_authorize_exception);
@@ -232,7 +232,7 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_dist_test", "[contracts]") {
     dpb.sym      = evt_sym();
     dpb.deadline = my_tester->control->head_block_time();
 
-    auto keyseeds = std::vector<name128>{ N(key2), N(payer) };
+    auto keyseeds = std::vector<name>{ N(key2), N(payer) };
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.bonus), actkey, dpb), keyseeds, payer), action_authorize_exception);
 
     dpb.sym = get_sym();
