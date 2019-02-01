@@ -186,7 +186,7 @@ TEST_CASE_METHOD(tokendb_test, "put_token_svpt_test", "[tokendb]") {
     my_tester->produce_block();
 }
 
-TEST_CASE_METHOD(tokendb_test, "put_asset_svpt__test", "[tokendb]") {
+TEST_CASE_METHOD(tokendb_test, "put_asset_svpt_test", "[tokendb]") {
     auto& tokendb = my_tester->control->token_db();
     my_tester->produce_block();
 
@@ -225,5 +225,45 @@ TEST_CASE_METHOD(tokendb_test, "put_tokens_svpt_test", "[tokendb]") {
 }
 
 TEST_CASE_METHOD(tokendb_test, "squansh_test", "[tokendb]") {
-    CHECK(true);
+    auto& tokendb = my_tester->control->token_db();
+    my_tester->produce_block();
+    
+    ADD_SAVEPOINT;
+    
+    auto var = fc::json::from_string(domain_data_rt);
+    auto dom = var.as<domain_def>();
+    dom.name = "domain-sq";
+    CHECK(!EXISTS_TOKEN(domain, dom.name));
+    PUT_TOKEN(domain, dom.name, dom);
+    CHECK(EXISTS_TOKEN(domain, dom.name));
+
+    ADD_SAVEPOINT;
+    
+    var = fc::json::from_string(token_data_rt);
+    auto tk = var.as<token_def>();
+    tk.domain = dom.name;
+    tk.name = "tk-sq";
+    CHECK(!EXISTS_TOKEN2(token, dom.name, tk.name));
+    PUT_TOKEN2(token, dom.name, tk.name, tk);
+    CHECK(EXISTS_TOKEN2(token, dom.name, tk.name));
+    
+    ADD_SAVEPOINT;
+    
+    auto n = tokendb.savepoints_size();
+    
+    ADD_SAVEPOINT;
+    ADD_SAVEPOINT;
+    tokendb.squash();
+    tokendb.squash();
+    
+    CHECK(tokendb.savepoints_size() == n);
+    
+    CHECK(EXISTS_TOKEN2(token, dom.name, tk.name));
+    CHECK(EXISTS_TOKEN(domain, dom.name));
+
+    tokendb.squash();
+    tokendb.squash();
+    tokendb.squash();
+
+    my_tester->produce_block();
 }
