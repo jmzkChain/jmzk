@@ -206,5 +206,32 @@ TEST_CASE_METHOD(tokendb_test, "put_asset_test", "[tokendb]") {
 }
 
 TEST_CASE_METHOD(tokendb_test, "put_tokens_test", "[tokendb]") {
-    CHECK(true);
+    auto& tokendb = my_tester->control->token_db();
+    
+    CHECK(EXISTS_TOKEN(domain, "dm-tkdb-test"));
+    
+    auto var = fc::json::from_string(token_data);
+    auto tk1 = var.as<token_def>();
+    auto tk2 = tk1;
+    tk1.domain = tk2.domain = "dm-tkdb-test";
+    tk1.name = "basic-1";
+    tk2.name = "basic-2";
+
+    auto tkeys = evt::chain::token_keys_t();
+    tkeys.push_back(tk1.name);
+    tkeys.push_back(tk2.name);
+    
+    auto data = small_vector<std::string_view, 4>();
+    data.push_back(evt::chain::make_db_value(tk1).as_string_view());
+    data.push_back(evt::chain::make_db_value(tk2).as_string_view());
+
+    tokendb.put_tokens(
+            evt::chain::token_type::token,
+            evt::chain::action_op::put,
+            "dm-tkdb-test",
+            std::move(tkeys),
+            data);
+    
+    CHECK(EXISTS_TOKEN2(token, "dm-tkdb-test", "basic-1"));
+    CHECK(EXISTS_TOKEN2(token, "dm-tkdb-test", "basic-2"));
 }
