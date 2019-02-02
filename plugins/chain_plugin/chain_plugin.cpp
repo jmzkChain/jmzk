@@ -1051,7 +1051,9 @@ std::vector<string>
 get_enabled_plugins() {
     auto plugins = std::vector<string>();
     for(auto& it : app().get_plugins()) {
-        plugins.emplace_back(it.first);
+        if(it.second->get_state() == appbase::abstract_plugin::started) {
+            plugins.emplace_back(it.first);
+        }
     }
     return plugins;
 }
