@@ -132,6 +132,62 @@ TEST_CASE_METHOD(tokendb_test, "put_token_prst_rlbk", "[tokendb]") {
     ROLLBACK();
 }
 
+/* 
+ * Persist test: put tokens
+ */
+TEST_CASE_METHOD(tokendb_test, "put_tokens_prst_test", "[tokendb]") {
+    auto& tokendb = my_tester->control->token_db();
+    my_tester->produce_block();
+    ADD_SAVEPOINT();
+
+    auto var = fc::json::from_string(domain_data);
+    auto dom = var.as<domain_def>();
+    dom.name = "domain-ps-test";
+    PUT_TOKEN(domain, dom.name, dom);
+    CHECK(EXISTS_TOKEN(domain, dom.name));
+
+    var = fc::json::from_string(token_data);
+    auto tk1 = var.as<token_def>();
+    auto tk2 = tk1;
+    tk1.domain = tk2.domain = "domain-ps-test";
+    tk1.name = "ps-1";
+    tk2.name = "ps-2";
+
+    auto tkeys = evt::chain::token_keys_t();
+    tkeys.push_back(tk1.name);
+    tkeys.push_back(tk2.name);
+
+    auto data = small_vector<std::string_view, 4>();
+    data.push_back(evt::chain::make_db_value(tk1).as_string_view());
+    data.push_back(evt::chain::make_db_value(tk2).as_string_view());
+
+    tokendb.put_tokens(
+            evt::chain::token_type::token,
+            evt::chain::action_op::put,
+            "domain-ps-test",
+            std::move(tkeys),
+            data);
+
+    CHECK(EXISTS_TOKEN2(token, "domain-ps-test", "ps-1"));
+    CHECK(EXISTS_TOKEN2(token, "domain-ps-test", "ps-2"));
+
+    ADD_SAVEPOINT();
+}
+
+TEST_CASE_METHOD(tokendb_test, "put_tokens_prst_rlbk", "[tokendb]") {
+    auto& tokendb = my_tester->control->token_db();
+
+    CHECK(EXISTS_TOKEN2(token, "domain-ps-test", "ps-1"));
+    CHECK(EXISTS_TOKEN2(token, "domain-ps-test", "ps-2"));
+
+    ROLLBACK();
+
+    CHECK(!EXISTS_TOKEN2(token, "domain-ps-test", "ps-1"));
+    CHECK(!EXISTS_TOKEN2(token, "domain-ps-test", "ps-2"));
+
+    ROLLBACK();
+}
+
 /*
  * Persist Tests: put asset
  */
@@ -239,7 +295,4 @@ TEST_CASE_METHOD(tokendb_test, "squash_prst_rlbk", "[tokendb]") {
     CHECK(!EXISTS_TOKEN2(token, "domain-prst-sq", "ps-sq"));
     CHECK(!EXISTS_TOKEN(domain, "domain-prst-sq"));
 }
-    
-TEST_CASE_METHOD(tokendb_test, "put_tokens_prst_test", "[tokendb]") {
-    CHECK(true);
-}
+

@@ -143,7 +143,49 @@ TEST_CASE_METHOD(tokendb_test, "put_asset_svpt_test", "[tokendb]") {
 }
 
 TEST_CASE_METHOD(tokendb_test, "put_tokens_svpt_test", "[tokendb]") {
-    CHECK(true);
+    auto& tokendb = my_tester->control->token_db();
+    my_tester->produce_block();
+    ADD_SAVEPOINT();
+
+    auto var = fc::json::from_string(domain_data);
+    auto dom = var.as<domain_def>();
+    dom.creator = key;
+    dom.name = "domain-rt-test";
+    dom.issue.authorizers[0].ref.set_account(key);
+    dom.manage.authorizers[0].ref.set_account(key);
+    CHECK(!EXISTS_TOKEN(domain, dom.name));
+    PUT_TOKEN(domain, dom.name, dom);
+    CHECK(EXISTS_TOKEN(domain, dom.name));
+
+    var = fc::json::from_string(token_data);
+    auto tk1 = var.as<token_def>();
+    auto tk2 = tk1;
+    tk1.domain = tk2.domain = "domain-rt-test";
+    tk1.name = "runtime-1";
+    tk2.name = "runtime-2";
+
+    auto tkeys = evt::chain::token_keys_t();
+    tkeys.push_back(tk1.name);
+    tkeys.push_back(tk2.name);
+
+    auto data = small_vector<std::string_view, 4>();
+    data.push_back(evt::chain::make_db_value(tk1).as_string_view());
+    data.push_back(evt::chain::make_db_value(tk2).as_string_view());
+
+    tokendb.put_tokens(
+            evt::chain::token_type::token,
+            evt::chain::action_op::put,
+            "domain-rt-test",
+            std::move(tkeys),
+            data);
+
+    CHECK(EXISTS_TOKEN2(token, "domain-rt-test", "runtime-1"));
+    CHECK(EXISTS_TOKEN2(token, "domain-rt-test", "runtime-2"));
+
+    ROLLBACK();
+    
+    CHECK(!EXISTS_TOKEN2(token, "domain-rt-test", "runtime-1"));
+    CHECK(!EXISTS_TOKEN2(token, "domain-rt-test", "runtime-2"));
 }
 
 TEST_CASE_METHOD(tokendb_test, "squansh_test", "[tokendb]") {
