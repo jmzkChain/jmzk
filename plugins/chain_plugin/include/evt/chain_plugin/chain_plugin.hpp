@@ -30,6 +30,7 @@ using boost::container::flat_set;
 using chain::account_name;
 using chain::bytes;
 using chain::block_id_type;
+using chain::chain_id_type;
 using chain::controller;
 using chain::digest_type;
 using chain::name;
@@ -60,16 +61,17 @@ public:
     using get_info_params = empty;
 
     struct get_info_results {
-        string               server_version;
-        chain::chain_id_type chain_id;
-        version              evt_api_version;
-        uint32_t             head_block_num              = 0;
-        uint32_t             last_irreversible_block_num = 0;
-        chain::block_id_type last_irreversible_block_id;
-        chain::block_id_type head_block_id;
-        fc::time_point_sec   head_block_time;
-        account_name         head_block_producer;
-        optional<string>     server_version_string;
+        string             server_version;
+        chain_id_type      chain_id;
+        version            evt_api_version;
+        uint32_t           head_block_num              = 0;
+        uint32_t           last_irreversible_block_num = 0;
+        block_id_type      last_irreversible_block_id;
+        block_id_type      head_block_id;
+        fc::time_point_sec head_block_time;
+        account_name       head_block_producer;
+        vector<string>     enabled_plugins;
+        optional<string>   server_version_string;
     };
     get_info_results get_info(const get_info_params&) const;
 
@@ -243,7 +245,7 @@ private:
 FC_REFLECT(evt::chain_apis::empty, );
 FC_REFLECT(evt::chain_apis::read_only::get_info_results,
           (server_version)(chain_id)(evt_api_version)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)
-          (head_block_id)(head_block_time)(head_block_producer)(server_version_string));
+          (head_block_id)(head_block_time)(head_block_producer)(enabled_plugins)(server_version_string));
 FC_REFLECT(evt::chain_apis::read_only::get_block_params, (block_num_or_id));
 FC_REFLECT(evt::chain_apis::read_only::get_block_header_state_params, (block_num_or_id));
 FC_REFLECT(evt::chain_apis::read_only::get_transaction_params, (block_num)(id));

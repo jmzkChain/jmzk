@@ -1047,15 +1047,27 @@ chain_plugin::handle_db_exhaustion() {
 
 namespace chain_apis {
 
+std::vector<string>
+get_enabled_plugins() {
+    auto plugins = std::vector<string>();
+    for(auto& it : app().get_plugins()) {
+        plugins.emplace_back(it.first);
+    }
+    return plugins;
+}
+
 read_only::get_info_results
 read_only::get_info(const read_only::get_info_params&) const {
     auto itoh = [](uint32_t n, size_t hlen = sizeof(uint32_t) << 1) {
         static const char* digits = "0123456789abcdef";
-        std::string        r(hlen, '0');
-        for(size_t i = 0, j = (hlen - 1) * 4; i < hlen; ++i, j -= 4)
+        
+        auto r = std::string(hlen, '0');
+        for(size_t i = 0, j = (hlen - 1) * 4; i < hlen; ++i, j -= 4) {
             r[i] = digits[(n >> j) & 0x0f];
+        }
         return r;
     };
+
     return {
         itoh(static_cast<uint32_t>(app().version())),
         db.get_chain_id(),
@@ -1066,6 +1078,7 @@ read_only::get_info(const read_only::get_info_params&) const {
         db.fork_db_head_block_id(),
         db.fork_db_head_block_time(),
         db.fork_db_head_block_producer(),
+        get_enabled_plugins(),
         app().version_string()
     };
 }
