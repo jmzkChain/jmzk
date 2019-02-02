@@ -1,86 +1,5 @@
 #include "tokendb_tests.hpp"
 
-const char* domain_data_rt = R"=====(
-    {
-      "name" : "domain-rt-test",
-      "issue" : {
-        "name" : "issue",
-        "threshold" : 1,
-        "authorizers": [{
-            "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
-            "weight": 1
-          }
-        ]
-      },
-     "transfer": {
-        "name": "transfer",
-        "threshold": 1,
-        "authorizers": [{
-            "ref": "[G] .OWNER",
-            "weight": 1
-          }
-        ]
-      },
-      "manage": {
-        "name": "manage",
-        "threshold": 1,
-        "authorizers": [{
-            "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
-            "weight": 1
-          }
-        ]
-      },
-      "metas":[{
-      	"key": "key",
-      	"value": "value",
-      	"creator": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK"
-      }]
-    }
-    )=====";
-
-const char* token_data_rt = R"=====(
-    {
-      	"domain": "domain-rt-test",
-        "name": "rt1",
-        "owner": [
-          "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK"
-        ],
-        "metas":[{
-      	"key": "key",
-      	"value": "value",
-      	"creator": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK"
-      }]
-    }
-    )=====";
-
-const char* fungible_data_rt = R"=====(
-    {
-      "name": "ERT",
-      "sym_name": "ERT",
-      "sym": "5,S#4",
-      "creator": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
-      "issue" : {
-        "name" : "issue",
-        "threshold" : 1,
-        "authorizers": [{
-            "ref": "[A] EVT6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
-            "weight": 1
-          }
-        ]
-      },
-      "manage": {
-        "name": "manage",
-        "threshold": 1,
-        "authorizers": [{
-            "ref": "[A] EVT6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
-            "weight": 1
-          }
-        ]
-      },
-      "total_supply":"100.00000 S#3"
-    }
-    )=====";
-
 TEST_CASE_METHOD(tokendb_test, "add_token_svpt_test", "[tokendb]") {
     auto& tokendb = my_tester->control->token_db();
     
@@ -88,9 +7,10 @@ TEST_CASE_METHOD(tokendb_test, "add_token_svpt_test", "[tokendb]") {
     ADD_SAVEPOINT();
 
     // token_type : domain(non-token)
-    auto var = fc::json::from_string(domain_data_rt);
+    auto var = fc::json::from_string(domain_data);
     auto dom = var.as<domain_def>();
     dom.creator = key;
+    dom.name = "domain-rt-test";
     dom.issue.authorizers[0].ref.set_account(key);
     dom.manage.authorizers[0].ref.set_account(key);
     CHECK(!EXISTS_TOKEN(domain, dom.name));
@@ -100,9 +20,11 @@ TEST_CASE_METHOD(tokendb_test, "add_token_svpt_test", "[tokendb]") {
     ADD_SAVEPOINT();
 
     // token_type : token
-    var = fc::json::from_string(token_data_rt);
+    var = fc::json::from_string(token_data);
     auto tk = var.as<token_def>();
     tk.owner[0] = key;
+    tk.domain = dom.name;
+    tk.name = "rt1";
     CHECK(!EXISTS_TOKEN2(token, tk.domain, tk.name));
     ADD_TOKEN2(token, dom.name, tk.name, tk);
     CHECK(EXISTS_TOKEN2(token, tk.domain, tk.name));
@@ -124,7 +46,7 @@ TEST_CASE_METHOD(tokendb_test, "put_token_svpt_test", "[tokendb]") {
     // * put_token: add a token
     
     // ** token_type : domain(non-token)
-    auto var = fc::json::from_string(domain_data_rt);
+    auto var = fc::json::from_string(domain_data);
     auto dom = var.as<domain_def>();
     dom.creator = key;
     dom.name = "dm-tkdb-rt1";
@@ -137,7 +59,7 @@ TEST_CASE_METHOD(tokendb_test, "put_token_svpt_test", "[tokendb]") {
     ADD_SAVEPOINT();
 
     // ** token_type : token
-    var = fc::json::from_string(token_data_rt);
+    var = fc::json::from_string(token_data);
     auto tk = var.as<token_def>();
     tk.domain = dom.name;
     tk.name = "rt2";
@@ -193,7 +115,7 @@ TEST_CASE_METHOD(tokendb_test, "put_asset_svpt_test", "[tokendb]") {
     ADD_SAVEPOINT();
     
     // add a new fungible for test
-    auto var = fc::json::from_string(fungible_data_rt);
+    auto var = fc::json::from_string(fungible_data);
     auto fg = var.as<fungible_def>();
     fg.creator = key;
     fg.issue.authorizers[0].ref.set_account(key);
@@ -230,7 +152,7 @@ TEST_CASE_METHOD(tokendb_test, "squansh_test", "[tokendb]") {
     
     ADD_SAVEPOINT();
     
-    auto var = fc::json::from_string(domain_data_rt);
+    auto var = fc::json::from_string(domain_data);
     auto dom = var.as<domain_def>();
     dom.name = "domain-sq";
     CHECK(!EXISTS_TOKEN(domain, dom.name));
@@ -239,7 +161,7 @@ TEST_CASE_METHOD(tokendb_test, "squansh_test", "[tokendb]") {
 
     ADD_SAVEPOINT();
     
-    var = fc::json::from_string(token_data_rt);
+    var = fc::json::from_string(token_data);
     auto tk = var.as<token_def>();
     tk.domain = dom.name;
     tk.name = "tk-sq";

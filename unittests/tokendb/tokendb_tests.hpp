@@ -206,3 +206,8 @@ protected:
 
 #define ROLLBACK() \
     tokendb.rollback_to_latest_savepoint()
+
+extern const char* domain_data;
+extern const char* token_data;
+extern const char* fungible_data;
+
