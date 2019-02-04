@@ -2,15 +2,15 @@
  *  @file
  *  @copyright defined in evt/LICENSE.txt
  */
-#include <evt/chain/contracts/evt_contract.hpp>
+#include <evt/chain/contracts/evt_contract_abi.hpp>
 #include <evt/chain/contracts/types.hpp>
 #include <evt/chain/contracts/abi_types.hpp>
 #include <evt/chain/version.hpp>
 
 namespace evt { namespace chain { namespace contracts {
 
-static auto evt_abi_version       = 3;
-static auto evt_abi_minor_version = 4;
+static auto evt_abi_version       = 4;
+static auto evt_abi_minor_version = 0;
 static auto evt_abi_patch_version = 0;
 
 version
@@ -20,78 +20,45 @@ evt_contract_abi_version() {
 
 abi_def
 evt_contract_abi() {
-    abi_def evt_abi;
-    evt_abi.types.push_back( type_def{"address_list","address[]"} );
-    evt_abi.types.push_back( type_def{"user_id","public_key"} );
-    evt_abi.types.push_back( type_def{"user_list","public_key[]"} );
-    evt_abi.types.push_back( type_def{"group_key","public_key"} );
-    evt_abi.types.push_back( type_def{"weight_type","uint16"} );
-    evt_abi.types.push_back( type_def{"fields","field_def[]"} );
-    evt_abi.types.push_back( type_def{"type_name","string"} );
-    evt_abi.types.push_back( type_def{"field_name","string"} );
-    evt_abi.types.push_back( type_def{"permission_name","name"} );
-    evt_abi.types.push_back( type_def{"action_name","name"} );
-    evt_abi.types.push_back( type_def{"domain_name","name128"} );
-    evt_abi.types.push_back( type_def{"domain_key","name128"} );
-    evt_abi.types.push_back( type_def{"group_name","name128"} );
-    evt_abi.types.push_back( type_def{"token_name","name128"} );
-    evt_abi.types.push_back( type_def{"account_name","name128"} );
-    evt_abi.types.push_back( type_def{"proposal_name","name128"} );
-    evt_abi.types.push_back( type_def{"fungible_name","name128"} );
-    evt_abi.types.push_back( type_def{"symbol_name","name128"} );
-    evt_abi.types.push_back( type_def{"symbol_id_type","uint32"} );
-    evt_abi.types.push_back( type_def{"balance_type","asset"} );
-    evt_abi.types.push_back( type_def{"group_def","group"} );
-    evt_abi.types.push_back( type_def{"meta_key","name128"} );
-    evt_abi.types.push_back( type_def{"meta_value","string"} );
-    evt_abi.types.push_back( type_def{"meta_list","meta[]"} );
-    evt_abi.types.push_back( type_def{"suspend_status","uint8"} );
-    evt_abi.types.push_back( type_def{"conf_key","name128"} );
+    auto evt_abi = abi_def();
 
-    evt_abi.actions.push_back( action_def{name("newdomain"), "newdomain"} );
-    evt_abi.actions.push_back( action_def{name("issuetoken"), "issuetoken"} );
-    evt_abi.actions.push_back( action_def{name("transfer"), "transfer"} );
-    evt_abi.actions.push_back( action_def{name("destroytoken"), "destroytoken"} );
-    evt_abi.actions.push_back( action_def{name("newgroup"), "newgroup"} );
-    evt_abi.actions.push_back( action_def{name("updategroup"), "updategroup"} );
-    evt_abi.actions.push_back( action_def{name("updatedomain"), "updatedomain"} );
-    evt_abi.actions.push_back( action_def{name("newfungible"), "newfungible"} );
-    evt_abi.actions.push_back( action_def{name("updfungible"), "updfungible"} );
-    evt_abi.actions.push_back( action_def{name("issuefungible"), "issuefungible"} );
-    evt_abi.actions.push_back( action_def{name("transferft"), "transferft"} );
-    evt_abi.actions.push_back( action_def{name("recycleft"), "recycleft"} );
-    evt_abi.actions.push_back( action_def{name("destroyft"), "destroyft"} );
-    evt_abi.actions.push_back( action_def{name("evt2pevt"), "evt2pevt"} );
-    evt_abi.actions.push_back( action_def{name("addmeta"), "addmeta"} );
-    evt_abi.actions.push_back( action_def{name("newsuspend"), "newsuspend"} );
-    evt_abi.actions.push_back( action_def{name("cancelsuspend"), "cancelsuspend"} );
-    evt_abi.actions.push_back( action_def{name("aprvsuspend"), "aprvsuspend"} );
-    evt_abi.actions.push_back( action_def{name("execsuspend"), "execsuspend"} );
-    evt_abi.actions.push_back( action_def{name("paycharge"), "paycharge"} );
-    evt_abi.actions.push_back( action_def{name("everipass"), "everipass"} );
-    evt_abi.actions.push_back( action_def{name("everipay"), "everipay"} );
-    evt_abi.actions.push_back( action_def{name("prodvote"), "prodvote"} );
-    evt_abi.actions.push_back( action_def{name("updsched"), "updsched"} );
-    evt_abi.actions.push_back( action_def{name("newlock"), "newlock"} );
-    evt_abi.actions.push_back( action_def{name("aprvlock"), "aprvlock"} );
-    evt_abi.actions.push_back( action_def{name("tryunlock"), "tryunlock"} );
+    evt_abi.types.push_back(type_def{"address_list", "address[]"});
+    evt_abi.types.push_back(type_def{"user_id", "public_key"});
+    evt_abi.types.push_back(type_def{"user_list", "public_key[]"});
+    evt_abi.types.push_back(type_def{"group_key", "public_key"});
+    evt_abi.types.push_back(type_def{"weight_type", "uint16"});
+    evt_abi.types.push_back(type_def{"fields", "field_def[]"});
+    evt_abi.types.push_back(type_def{"type_name", "string"});
+    evt_abi.types.push_back(type_def{"field_name", "string"});
+    evt_abi.types.push_back(type_def{"permission_name", "name"});
+    evt_abi.types.push_back(type_def{"action_name", "name"});
+    evt_abi.types.push_back(type_def{"domain_name", "name128"});
+    evt_abi.types.push_back(type_def{"domain_key", "name128"});
+    evt_abi.types.push_back(type_def{"group_name", "name128"});
+    evt_abi.types.push_back(type_def{"token_name", "name128"});
+    evt_abi.types.push_back(type_def{"account_name", "name128"});
+    evt_abi.types.push_back(type_def{"proposal_name", "name128"});
+    evt_abi.types.push_back(type_def{"fungible_name", "name128"});
+    evt_abi.types.push_back(type_def{"symbol_name", "name128"});
+    evt_abi.types.push_back(type_def{"symbol_id_type", "uint32"});
+    evt_abi.types.push_back(type_def{"balance_type", "asset"});
+    evt_abi.types.push_back(type_def{"group_def", "group"});
+    evt_abi.types.push_back(type_def{"meta_key", "name128"});
+    evt_abi.types.push_back(type_def{"meta_value", "string"});
+    evt_abi.types.push_back(type_def{"suspend_status", "uint8"});
+    evt_abi.types.push_back(type_def{"conf_key", "name128"});
 
-    // structures def
-    evt_abi.structs.emplace_back( struct_def {
-        "meta", "", {
-            {"key", "meta_key"},
-            {"value", "meta_value"},
-            {"creator", "user_id"}
+    // enums def
+    evt_abi.enums.emplace_back( enum_def {
+        "passive_method_type", "uint8", {
+            "within_amount",
+            "outside_amount"
         }
     });
 
+    // structures def
     evt_abi.structs.emplace_back( struct_def {
-        "token_def", "", {
-            {"domain", "domain_name"},
-            {"name", "token_name"},
-            {"owner", "address_list"},
-            {"metas", "meta_list"}
-        }
+        "void", "", {}
     });
 
     evt_abi.structs.emplace_back( struct_def {
@@ -117,52 +84,85 @@ evt_contract_abi() {
     });
 
     evt_abi.structs.emplace_back( struct_def {
-        "domain_def", "", {
-            {"name", "domain_name"},
-            {"creator", "user_id"},
-            {"create_time", "time_point_sec"},
-            {"issue", "permission_def"},
-            {"transfer", "permission_def"},
-            {"manage", "permission_def"},
-            {"metas", "meta_list"}
+        "locknft_def", "", {
+            {"domain", "domain_name"},
+            {"names", "token_name[]"}
         }
     });
 
     evt_abi.structs.emplace_back( struct_def {
-        "fungibal_def", "", {
-            {"sym", "symbol"},
-            {"creator", "user_id"},
-            {"create_time", "time_point_sec"},
-            {"issue", "permission_def"},
-            {"manage", "permission_def"},
-            {"total_supply", "asset"},
-            {"metas", "meta_list"}
+        "lockft_def", "", {
+            {"from", "address"},
+            {"amount", "asset"}
         }
     });
 
     evt_abi.structs.emplace_back( struct_def {
-        "suspend_def", "", {
-            {"name", "proposal_name"},
-            {"proposer", "user_id"},
-            {"status", "suspend_status"},
-            {"trx", "transaction"},
-            {"signed_keys","public_key[]"},
-            {"signatures","signature[]"}
+        "lock_condkeys", "", {
+            {"threshold", "uint16"},
+            {"cond_keys", "public_key[]"}
         }
     });
 
     evt_abi.structs.emplace_back( struct_def {
-        "lock_def", "", {
-            {"name", "proposal_name"},
-            {"proposer", "user_id"},
-            {"status", "suspend_status"},
-            {"unlock_time", "time_point_sec"},
-            {"deadline","time_point_sec"},
-            {"assets","lock_asset[]"},
-            {"condition", "lock_condition"},
-            {"succeed", "address[]"},
-            {"failed", "address[]"},
-            {"signed_keys", "public_key[]"}
+        "dist_stack_receiver", "", {
+            {"threshold", "asset"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "dist_fixed_rule", "", {
+            {"receiver", "dist_receiver"},
+            {"amount", "asset"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "dist_percent_rule", "", {
+            {"receiver", "dist_receiver"},
+            {"percent", "percent"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "passive_method", "", {
+            {"action", "name"},
+            {"method", "passive_method_type"}
+        }
+    });
+
+    // variants def
+    evt_abi.variants.emplace_back( variant_def {
+        "lock_asset", {
+            {"tokens", "locknft_def"},
+            {"fungible", "lockft_def"}
+        }
+    });
+
+    evt_abi.variants.emplace_back( variant_def {
+        "lock_condition", {
+            {"cond_keys", "lock_condkeys"}
+        }
+    });
+
+    evt_abi.variants.emplace_back( variant_def {
+        "lock_aprvdata", {
+            {"cond_key", "void"}
+        }
+    });
+
+    evt_abi.variants.emplace_back( variant_def {
+        "dist_receiver", {
+            {"address", "address"},
+            {"ftholders", "dist_stack_receiver"}
+        }
+    });
+
+    evt_abi.variants.emplace_back( variant_def {
+        "dist_rule", {
+            {"fixed", "dist_fixed_rule"},
+            {"percent", "dist_percent_rule"},
+            {"remaining_percent", "dist_percent_rule"}
         }
     });
 
@@ -330,8 +330,22 @@ evt_contract_abi() {
     });
 
     evt_abi.structs.emplace_back( struct_def {
+        "paybonus", "", {
+           {"payer", "address"},
+           {"amount", "asset"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
         "everipass", "", {
            {"link", "evt_link"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "everipass_v1", "", {
+           {"link", "evt_link"},
+           {"memo", "string"}
         }
     });
 
@@ -340,6 +354,15 @@ evt_contract_abi() {
            {"link", "evt_link"},
            {"payee", "address"},
            {"number", "asset"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "everipay_v1", "", {
+           {"link", "evt_link"},
+           {"payee", "address"},
+           {"number", "asset"},
+           {"memo", "string"}
         }
     });
 
@@ -389,6 +412,27 @@ evt_contract_abi() {
         "tryunlock", "", {
            {"name", "proposal_name"},
            {"executor", "user_id"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "setpsvbonus", "", {
+           {"sym", "symbol"},
+           {"rate", "percent"},
+           {"base_charge", "asset"},
+           {"charge_threshold", "asset?"},
+           {"minimum_charge", "asset?"},
+           {"dist_threshold", "asset"},
+           {"rules", "dist_rule[]"},
+           {"methods", "passive_method[]"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "distpsvbonus", "", {
+           {"sym", "proposal_name"},
+           {"deadline", "time_point"},
+           {"final_receiver", "address?"}
         }
     });
 

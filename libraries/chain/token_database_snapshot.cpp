@@ -4,6 +4,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <rocksdb/utilities/backupable_db.h>
 #include <fmt/format.h>
+#include <evt/chain/config.hpp>
 
 namespace evt { namespace chain {
 
@@ -489,10 +490,9 @@ token_database_snapshot::add_to_snapshot(snapshot_writer_ptr writer, const token
         auto s = BackupEngine::Open(Env::Default(), BackupableDBOptions(kBackupPath, &env), &backup_engine);
         EVT_ASSERT(s.ok(), snapshot_exception, "Cannot open snapshot for token database, reason: ${d}", ("d",s.getState()));
 
-        s = db.db_->Flush(rocksdb::FlushOptions());
-        EVT_ASSERT(s.ok(), tokendb_exception, "Flush rocksdb failed, reason: ${d}", ("d",s.getState()));
+        db.flush();
 
-        s = backup_engine->CreateNewBackup(db.db_, true);
+        s = backup_engine->CreateNewBackup(db.internal_db(), true);
         EVT_ASSERT(s.ok(), snapshot_exception, "Backup to snapshot for token database failed, reason: ${d}", ("d",s.getState()));
 
         delete backup_engine;
@@ -504,20 +504,20 @@ token_database_snapshot::add_to_snapshot(snapshot_writer_ptr writer, const token
             try {
                 db.persist_savepoints(ss);
             }
-            EVT_CAPTURE_AND_RETHROW(tokendb_persist_exception);
+            EVT_CAPTURE_AND_RETHROW(token_database_persist_exception);
 
             auto   buf  = ss.str();
             size_t sz   = buf.size();
             int    type = kRaw;
 
-            writer->write_section(config::tokendb_persisit_filename, [&](auto& rw) {
+            writer->write_section(config::token_database_persisit_filename, [&](auto& rw) {
                 rw.add_row("type", (char*)&type, sizeof(type));
                 rw.add_row("size", (char*)&sz, sizeof(sz));
                 rw.add_row("raw",  buf.data(), buf.size());
             });
         }
     }
-    EVT_CAPTURE_AND_RETHROW(tokendb_snapshot_exception);
+    EVT_CAPTURE_AND_RETHROW(token_database_snapshot_exception);
 }
 
 void
@@ -533,21 +533,16 @@ token_database_snapshot::read_from_snapshot(snapshot_reader_ptr reader, token_da
         EVT_ASSERT(s.ok(), snapshot_exception, "Cannot open snapshot for token database, reason: ${d}", ("d",s.getState()));
 
         db.close(false);
-        db.open(false);
 
-        auto a = db.exists_domain("test-domain-2");
-
-        db.close(false);
-
-        s = backup_engine->RestoreDBFromLatestBackup(db.db_path_, kBackupPath);
+        s = backup_engine->RestoreDBFromLatestBackup(db.get_db_path().to_native_ansi_path(), kBackupPath);
         EVT_ASSERT(s.ok(), snapshot_exception, "Restore from snapshot for token database failed, reason: ${d}", ("d",s.getState()));
 
         delete backup_engine;
 
-        if(reader->has_section(config::tokendb_persisit_filename)) {
+        if(reader->has_section(config::token_database_persisit_filename)) {
             auto data = std::string();
 
-            reader->read_section(config::tokendb_persisit_filename, [&data](auto& rr) {
+            reader->read_section(config::token_database_persisit_filename, [&data](auto& rr) {
                 auto tmp = std::string();
                 auto type = int();
                 auto sz = size_t();
@@ -570,7 +565,7 @@ token_database_snapshot::read_from_snapshot(snapshot_reader_ptr reader, token_da
 
         db.open(false);
     }
-    EVT_CAPTURE_AND_RETHROW(tokendb_snapshot_exception);
+    EVT_CAPTURE_AND_RETHROW(token_database_snapshot_exception);
 }
 
 }}  // namespace evt::chain

@@ -1,0 +1,18 @@
+flags = []
+if(build_type == "debug") {
+    flags += ["-O0", "-g"]
+}
+else if(build_type == "release") {
+    flags += ["-O3", "-DNDEBUG"]
+}
+
+config("root") {
+    cflags_cc = [
+        "-std=c++17",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-Wno-unused-parameter"
+    ] + flags
+}
+

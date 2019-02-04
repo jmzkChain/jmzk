@@ -2,7 +2,7 @@ version: 0.2
 
 env:
   parameter-store:
-    BEARCHAT_CHANNEL: "bearchat-codebuild-channel"
+    BUILD_JOBS: "docker-build-jobs"
 
 phases:
   pre_build:
@@ -17,15 +17,11 @@ phases:
       - export CCACHE_NODIRECT
       - cmake ../ -G"Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=/usr/local/bin/cc -DCMAKE_CXX_COMPILER=/usr/local/bin/c++ -DSecp256k1_ROOT_DIR=/usr/local -DENABLE_BENCHMARKS=ON -DENABLE_MONGODB_SUPPORT=ON -DENABLE_POSTGRES_SUPPORT=ON -DENABLE_BIND_LIBRARIES=ON
       - echo Building...
-      - ninja -j$(nproc) all
+      - ninja all -j $BUILD_JOBS
   post_build:
     commands:
       - echo Runing tests
       - ctest --verbose
-    finally:
-      - echo Posting build results
-      - URL="https://${AWS_REGION}.console.aws.amazon.com/codebuild/home?region=${AWS_REGION}#/builds/${CODEBUILD_BUILD_ID}/view/new"
-      - curl "${BEARCHAT_CHANNEL}" -H "Content-Type:application/json" -d "{\"text\":\"latest EVT built finished\",\"markdown\":true,\"channel\":\"evt-awscodebuild\",\"attachments\":[{\"text\":\"$URL\",\"url\":\"$URL\"}]}"
 artifacts:
   files:
     - 'build/bind/libevt/libevt.so'

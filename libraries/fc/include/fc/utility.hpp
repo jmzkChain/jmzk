@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <new>
 #include <vector>
+#include <fc/container/small_vector_fwd.hpp>
 
 #ifdef _MSC_VER
 #pragma warning(disable: 4482) // nonstandard extension used enum Name::Val, standard in C++11
@@ -61,6 +62,17 @@ namespace fc {
 
   template<typename T>
   void move_append(std::vector<T> &dest, std::vector<T>&& src ) {
+    if (src.empty()) {
+      return;
+    } else if (dest.empty()) {
+      dest = std::move(src);
+    } else {
+      dest.insert(std::end(dest), std::make_move_iterator(std::begin(src)), std::make_move_iterator(std::end(src)));
+    }
+  }
+
+  template<typename T>
+  void move_append(small_vector_base<T> &dest, small_vector_base<T>&& src ) {
     if (src.empty()) {
       return;
     } else if (dest.empty()) {

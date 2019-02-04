@@ -9,13 +9,20 @@
 
 using namespace evt;
 using namespace chain;
+using namespace contracts;
 
 extern std::string evt_unittests_dir;
 
 string tokendb_ss;
 
+auto get_db_config() = []{
+    auto c = token_database::config();
+    c.db_path = evt_unittests_dir + "/snapshot_tests";
+    return c;
+};
+
 TEST_CASE("tokendb_setup", "[snapshot]") {
-    auto db = token_database(evt_unittests_dir + "/snapshot_tests");
+    auto db = token_database(get_db_config());
     db.open();
 
     // add savepoint #1
@@ -38,7 +45,7 @@ TEST_CASE("tokendb_setup", "[snapshot]") {
 }
 
 TEST_CASE("tokendb_save", "[snapshot]") {
-    auto db = token_database(evt_unittests_dir + "/snapshot_tests");
+    auto db = token_database(get_db_config());
     db.open();
 
     // should have two savepoints #1 & #2
@@ -63,9 +70,7 @@ TEST_CASE("tokendb_save", "[snapshot]") {
 }
 
 TEST_CASE("tokendb_load", "[snapshot]") {
-    auto db_folder = evt_unittests_dir + "/snapshot_tests";
-
-    auto db = token_database(db_folder);
+    auto db = token_database(get_db_config());
     db.open();
 
     // still have two savepoints #1, #2, #3

@@ -4,7 +4,7 @@
 #include <fc/variant.hpp>
 #include <fc/variant_object.hpp>
 
-#include <evt/chain/contracts/evt_contract.hpp>
+#include <evt/chain/contracts/evt_contract_abi.hpp>
 #include <evt/history_plugin/evt_pg_query.hpp>
 
 namespace evt {
@@ -96,6 +96,13 @@ read_only::get_fungible_actions_async(int id, const get_fungible_actions_params&
     EVT_ASSERT(plugin_.my_, chain::postgres_not_enabled_exception, "Postgres plugin is not enabled.");
 
     plugin_.my_->pg_query_.get_fungible_actions_async(id, params);
+}
+
+void
+read_only::get_fungibles_balance_async(int id, const get_fungibles_balance_params& params) {
+    EVT_ASSERT(plugin_.my_, chain::postgres_not_enabled_exception, "Postgres plugin is not enabled.");
+
+    plugin_.my_->pg_query_.get_fungibles_balance_async(id, params);
 }
 
 void

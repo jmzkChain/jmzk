@@ -60,6 +60,7 @@ evt_api_plugin::plugin_startup() {
                                              EVT_RO_CALL(get_tokens, 200),
                                              EVT_RO_CALL(get_fungible, 200),
                                              EVT_RO_CALL(get_fungible_balance, 200),
+                                             EVT_RO_CALL(get_fungible_psvbonus, 200),
                                              EVT_RO_CALL(get_suspend, 200),
                                              EVT_RO_CALL(get_lock, 200),
                                          });

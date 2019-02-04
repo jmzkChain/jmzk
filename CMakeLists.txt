@@ -29,9 +29,9 @@ set(CMAKE_CXX_STANDARD    17)
 set(CMAKE_CXX_EXTENSIONS  ON)
 set(CXX_STANDARD_REQUIRED ON)
 
-set(VERSION_MAJOR 2)
-set(VERSION_MINOR 3)
-set(VERSION_PATCH 3)
+set(VERSION_MAJOR 3)
+set(VERSION_MINOR 0)
+set(VERSION_PATCH 0)
 
 set(CLI_CLIENT_EXECUTABLE_NAME evtc)
 set(GUI_CLIENT_EXECUTABLE_NAME evt)
@@ -138,7 +138,8 @@ FIND_PACKAGE(Boost 1.69 REQUIRED COMPONENTS
     unit_test_framework
     context
     locale
-    iostreams)
+    iostreams
+    timer)
 
 if(APPLE)
     # Apple Specific Options Here
@@ -161,6 +162,10 @@ endif()
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-builtin-memcmp")
+endif()
+
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-backtrace-limit=0")
 endif()
 
 if(ENABLE_COLOR_OUTPUT)

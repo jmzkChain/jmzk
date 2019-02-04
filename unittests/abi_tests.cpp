@@ -10,41 +10,50 @@
 #include <fc/log/logger.hpp>
 #include <fc/variant.hpp>
 
+#include <evt/chain/execution_context_impl.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
-#include <evt/chain/contracts/evt_contract.hpp>
+#include <evt/chain/contracts/evt_contract_abi.hpp>
 #include <evt/chain/contracts/types.hpp>
 
 using namespace evt;
 using namespace chain;
 using namespace contracts;
 
+const auto&
+get_evt_abi() {
+    static auto abis = abi_serializer(evt_contract_abi(), std::chrono::hours(1));
+    return abis;
+}
+
+auto&
+get_exec_ctx() {
+    static auto exec_ctx = evt_execution_context();
+    return exec_ctx;
+}
+
 // verify that round trip conversion, via bytes, reproduces the exact same data
 fc::variant
 verify_byte_round_trip_conversion(const abi_serializer& abis, const type_name& type, const fc::variant& var) {
-    auto bytes = abis.variant_to_binary(type, var);
+    auto& exec_ctx = get_exec_ctx();
 
-    auto var2 = abis.binary_to_variant(type, bytes);
+    auto bytes = abis.variant_to_binary(type, var, exec_ctx);
+    auto var2  = abis.binary_to_variant(type, bytes, exec_ctx);
 
-    std::string r = fc::json::to_string(var2);
+    auto r = fc::json::to_string(var2);
 
-    auto bytes2 = abis.variant_to_binary(type, var2);
-
+    auto bytes2 = abis.variant_to_binary(type, var2, exec_ctx);
     CHECK(fc::to_hex(bytes) == fc::to_hex(bytes2));
 
     return var2;
-}
-
-const auto&
-get_evt_abi() {
-    static auto abis = abi_serializer(evt_contract_abi(), fc::hours(1));
-    return abis;
 }
 
 // verify that round trip conversion, via actual class, reproduces the exact same data
 template <typename T>
 fc::variant
 verify_type_round_trip_conversion(const abi_serializer& abis, const type_name& type, const fc::variant& var) {
-    auto bytes = abis.variant_to_binary(type, var);
+    auto& exec_ctx = get_exec_ctx();
+
+    auto bytes = abis.variant_to_binary(type, var, exec_ctx);
 
     T obj;
     fc::from_variant(var, obj);
@@ -52,9 +61,9 @@ verify_type_round_trip_conversion(const abi_serializer& abis, const type_name& t
     fc::variant var2;
     fc::to_variant(obj, var2);
 
-    std::string r = fc::json::to_string(var2);
+    auto r = fc::json::to_string(var2);
 
-    auto bytes2 = abis.variant_to_binary(type, var2);
+    auto bytes2 = abis.variant_to_binary(type, var2, exec_ctx);
 
     CHECK(bytes.size() == bytes2.size());
     CHECK(fc::to_hex(bytes) == fc::to_hex(bytes2));
@@ -81,14 +90,14 @@ TEST_CASE("optional_test", "[abis]") {
     abi.structs.emplace_back(struct_def{
         "optionaltest2", "", {{"a", "optionaltest?"}, {"b", "optionaltest?"}}});
 
-    auto abis = abi_serializer(abi, fc::hours(1));
+    auto abis = abi_serializer(abi, std::chrono::hours(1));
 
     auto json   = R"( { "a": 0 } )";
     auto json2  = R"( {"a": { "a": 0 } } )";
     auto var1   = fc::json::from_string(json);
     auto var2   = fc::json::from_string(json2);
-    auto bytes1 = abis.variant_to_binary("optionaltest", var1);
-    auto bytes2 = abis.variant_to_binary("optionaltest2", var2);
+    auto bytes1 = abis.variant_to_binary("optionaltest", var1, get_exec_ctx());
+    auto bytes2 = abis.variant_to_binary("optionaltest2", var2, get_exec_ctx());
 
     CHECK(var1["a"].is_integer());
     CHECK_THROWS_AS(var1["b"].is_null(), fc::key_not_found_exception);
@@ -118,18 +127,17 @@ TEST_CASE("optional_test", "[abis]") {
     CHECK((var22["a"].is_object() && var22["a"].get_object().size() > 0));
     CHECK_THROWS_AS((var22["b"].is_object() && var22["b"].get_object().size() == 0), fc::key_not_found_exception);
 
-    auto bytes21 = abis.variant_to_binary("optionaltest", var21);
+    auto bytes21 = abis.variant_to_binary("optionaltest", var21, get_exec_ctx());
     CHECK(fc::to_hex(bytes1) == fc::to_hex(bytes21));
 
-    auto bytes22 = abis.variant_to_binary("optionaltest2", var22);
+    auto bytes22 = abis.variant_to_binary("optionaltest2", var22, get_exec_ctx());
     CHECK(fc::to_hex(bytes2) == fc::to_hex(bytes22));
 }
 
 TEST_CASE("newdomain_test", "[abis]") {
     auto& abis = get_evt_abi();
 
-    CHECK(true);
-    const char* test_data = R"=====(
+    auto test_data = R"=====(
     {
       "name" : "cookie",
       "creator" : "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
@@ -219,8 +227,7 @@ TEST_CASE("newdomain_test", "[abis]") {
 TEST_CASE("updatedomain_test", "[abis]") {
     auto& abis = get_evt_abi();
 
-    CHECK(true);
-    const char* test_data = R"=====(
+    auto test_data = R"=====(
     {
       "name" : "cookie",
       "issue" : {
@@ -266,8 +273,7 @@ TEST_CASE("updatedomain_test", "[abis]") {
 TEST_CASE("issuetoken_test", "[abis]") {
     auto& abis = get_evt_abi();
 
-    CHECK(true);
-    const char* test_data = R"=====(
+    auto test_data = R"=====(
     {
       "domain": "cookie",
         "names": [
@@ -313,8 +319,7 @@ TEST_CASE("issuetoken_test", "[abis]") {
 TEST_CASE("transfer_test", "[abis]") {
     auto& abis = get_evt_abi();
 
-    CHECK(true);
-    const char* test_data = R"=====(
+    auto test_data = R"=====(
     {
       "domain": "cookie",
       "name": "t1",
@@ -351,8 +356,7 @@ TEST_CASE("transfer_test", "[abis]") {
 TEST_CASE("destroytoken_test", "[abis]") {
     auto& abis = get_evt_abi();
 
-    CHECK(true);
-    const char* test_data = R"=====(
+    auto test_data = R"=====(
     {
       "domain": "cookie",
       "name": "t1"
@@ -377,8 +381,7 @@ TEST_CASE("destroytoken_test", "[abis]") {
 TEST_CASE("newgroup_test", "[abis]") {
     auto& abis = get_evt_abi();
 
-    CHECK(true);
-    const char* test_data = R"=====(
+    auto test_data = R"=====(
     {
       "name" : "5jxX",
       "group" : {
@@ -542,8 +545,7 @@ TEST_CASE("newgroup_test", "[abis]") {
 TEST_CASE("updategroup_test", "[abis]") {
     auto& abis = get_evt_abi();
 
-    CHECK(true);
-    const char* test_data = R"=====(
+    auto test_data = R"=====(
     {
       "name" : "5jxX",
       "group" : {
@@ -707,7 +709,7 @@ TEST_CASE("updategroup_test", "[abis]") {
 TEST_CASE("newfungible_test", "[abis]") {
     auto& abis = get_evt_abi();
 
-    const char* test_data = R"=====(
+    auto test_data = R"=====(
     {
       "name": "EVT",
       "sym_name": "EVT",
@@ -792,7 +794,7 @@ TEST_CASE("newfungible_test", "[abis]") {
 TEST_CASE("updfungible_test", "[abis]") {
     auto& abis = get_evt_abi();
 
-    const char* test_data = R"=====(
+    auto test_data = R"=====(
     {
       "sym_id": 123456,
       "issue" : {
@@ -838,7 +840,7 @@ TEST_CASE("updfungible_test", "[abis]") {
 TEST_CASE("issuefungible_test", "[abis]") {
     auto& abis = get_evt_abi();
 
-    const char* test_data = R"=====(
+    auto test_data = R"=====(
     {
       "address": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
       "number" : "12.00000 S#1",
@@ -873,7 +875,7 @@ TEST_CASE("issuefungible_test", "[abis]") {
 TEST_CASE("transferft_test", "[abis]") {
     auto& abis = get_evt_abi();
 
-    const char* test_data = R"=====(
+    auto test_data = R"=====(
     {
       "from": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
       "to": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
@@ -911,8 +913,7 @@ TEST_CASE("transferft_test", "[abis]") {
 TEST_CASE("addmeta_test", "[abis]") {
     auto& abis = get_evt_abi();
 
-    CHECK(true);
-    const char* test_data = R"=====(
+    auto test_data = R"=====(
     {
       "key": "key",
       "value": "value",
@@ -942,8 +943,7 @@ TEST_CASE("addmeta_test", "[abis]") {
 
 TEST_CASE("newsuspend_test", "[abis]") {
     auto& abis = get_evt_abi();
-    CHECK(true);
-    const char* test_data = R"=======(
+    auto test_data = R"=======(
     {
         "name": "testsuspend",
         "proposer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
@@ -985,8 +985,7 @@ TEST_CASE("newsuspend_test", "[abis]") {
 
 TEST_CASE("cancelsuspend_test", "[abis]") {
     auto& abis = get_evt_abi();
-    CHECK(true);
-    const char* test_data = R"=======(
+    auto test_data = R"=======(
     {
         "name": "testsuspend"
     }
@@ -1003,8 +1002,7 @@ TEST_CASE("cancelsuspend_test", "[abis]") {
 
 TEST_CASE("aprvsuspend_test", "[abis]") {
     auto& abis = get_evt_abi();
-    CHECK(true);
-    const char* test_data = R"=======(
+    auto test_data = R"=======(
     {
         "name": "test1530718665",
         "signatures": [
@@ -1026,8 +1024,7 @@ TEST_CASE("aprvsuspend_test", "[abis]") {
 
 TEST_CASE("execsuspend_test", "[abis]") {
     auto& abis = get_evt_abi();
-    CHECK(true);
-    const char* test_data = R"=======(
+    auto test_data = R"=======(
     {
         "name": "test1530718626",
         "executor": "EVT548LviBDF6EcknKnKUMeaPUrZN2uhfCB1XrwHsURZngakYq9Vx"
@@ -1047,8 +1044,7 @@ TEST_CASE("execsuspend_test", "[abis]") {
 
 TEST_CASE("evt2pevt_test", "[abis]") {
     auto& abis = get_evt_abi();
-    CHECK(true);
-    const char* test_data = R"=======(
+    auto test_data = R"=======(
     {
         "from": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
         "to": "EVT548LviBDF6EcknKnKUMeaPUrZN2uhfCB1XrwHsURZngakYq9Vx",
@@ -1069,8 +1065,8 @@ TEST_CASE("evt2pevt_test", "[abis]") {
 }
 
 TEST_CASE("everipass_abi_test", "[abis]") {
-    auto&       abis      = get_evt_abi();
-    const char* test_data = R"=======(
+    auto& abis = get_evt_abi();
+    auto test_data = R"=======(
     {
         "link": "03XBY4E/KTS:PNHVA3JP9QG258F08JHYOYR5SLJGN0EA-C3J6S:2G:T1SX7WA14KH9ETLZ97TUX9R9JJA6+06$E/_PYNX-/152P4CTC:WKXLK$/7G-K:89+::2K4C-KZ2**HI-P8CYJ**XGFO1K5:$E*SOY8MFYWMNHP*BHX2U8$$FTFI81YDP1HT"
     }
@@ -1116,11 +1112,42 @@ TEST_CASE("everipass_abi_test", "[abis]") {
     CHECK(pkeys.size() == 1);
 
     CHECK(pkeys.find(public_key_type(std::string("EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"))) != pkeys.end());
+
+
+    // multiple versions tests
+    auto get_var = [&](auto& var) {
+        auto& exec_ctx = get_exec_ctx();
+        auto& abis = get_evt_abi();
+
+        auto type  = exec_ctx.get_acttype_name("everipass");
+        auto bytes = abis.variant_to_binary(type, var, exec_ctx);
+        auto var2  = abis.binary_to_variant(type, bytes, exec_ctx);
+
+        return var2;
+    };
+
+    auto mv = mutable_variant_object(var);
+    mv["memo"] = "tttesttt";
+
+    auto var_v1 = variant(mv);
+
+    CHECK(get_exec_ctx().get_current_version("everipass") == 0);
+    CHECK_NOTHROW(get_var(var));
+
+    // additional field in variant don't trigger error
+    CHECK_NOTHROW(get_var(var_v1));
+
+    // upgrade version
+    get_exec_ctx().set_version("everipass", 1);
+
+    CHECK_THROWS_AS(get_var(var), pack_exception);
+    CHECK_NOTHROW(get_var(var_v1));
+    CHECK(get_var(var_v1)["memo"] == "tttesttt");
 }
 
 TEST_CASE("everipay_abi_test", "[abis]") {
-    auto&       abis      = get_evt_abi();
-    const char* test_data = R"=======(
+    auto& abis = get_evt_abi();
+    auto test_data = R"=======(
     {
         "link": "0UKDRJZA4Z9IR9TK4Q7BJP0SV-/$$XDADD03/37BOI3FPJ9C3_QUQ4A1GS9VJX-3MIKFBYFYHLZODIRRUAFEGFS6+*ZKN40BOMIY6/2CJGC04:VZFB8H3FZ91/TW*-8M02/GKDLUFE80HC8*LI",
         "payee": "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC",
@@ -1172,8 +1199,8 @@ TEST_CASE("everipay_abi_test", "[abis]") {
 }
 
 TEST_CASE("prodvote_abi_test", "[abis]") {
-    auto&       abis      = get_evt_abi();
-    const char* test_data = R"=======(
+    auto& abis = get_evt_abi();
+    auto test_data = R"=======(
     {
         "producer": "producer",
         "key": "key",
@@ -1193,8 +1220,8 @@ TEST_CASE("prodvote_abi_test", "[abis]") {
 }
 
 TEST_CASE("updsched_abi_test", "[abis]") {
-    auto&       abis      = get_evt_abi();
-    const char* test_data = R"=======(
+    auto& abis = get_evt_abi();
+    auto test_data = R"=======(
     {
         "producers": [{
             "producer_name": "producer",
@@ -1214,8 +1241,8 @@ TEST_CASE("updsched_abi_test", "[abis]") {
 }
 
 TEST_CASE("newlock_abi_test", "[abis]") {
-    auto&       abis      = get_evt_abi();
-    const char* test_data = R"=======(
+    auto& abis = get_evt_abi();
+    auto test_data = R"=======(
     {
         "name": "lock",
         "proposer": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
@@ -1283,16 +1310,16 @@ TEST_CASE("newlock_abi_test", "[abis]") {
 
     auto act = action();
     act.name = "newlock";
-    act.data = abis.variant_to_binary("newlock", var);
+    act.data = abis.variant_to_binary("newlock", var, get_exec_ctx());
 
-    auto var2 = abis.binary_to_variant("newlock", act.data);
+    auto var2 = abis.binary_to_variant("newlock", act.data, get_exec_ctx());
     CHECK(var2["condition"]["data"]["cond_keys"].size() > 0);
 
     auto nl2 = fc::raw::unpack<newlock>(act.data);
     CHECK(nl2.condition.type() == lock_type::cond_keys);
     CHECK(nl2.condition.get<lock_condkeys>().cond_keys.size() > 0);
 
-    const char* test_data2 = R"=======(
+    auto test_data2 = R"=======(
     {
         "name": "lock",
         "proposer": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
@@ -1330,7 +1357,7 @@ TEST_CASE("newlock_abi_test", "[abis]") {
     var = fc::json::from_string(test_data2);
     CHECK_THROWS_AS(var.as<newlock>(), key_not_found_exception);
 
-    const char* test_data3 = R"=======(
+    auto test_data3 = R"=======(
     {
         "name": "lock",
         "proposer": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
@@ -1371,8 +1398,8 @@ TEST_CASE("newlock_abi_test", "[abis]") {
 }
 
 TEST_CASE("aprvlock_abi_test", "[abis]") {
-    auto&       abis      = get_evt_abi();
-    const char* test_data = R"=======(
+    auto& abis = get_evt_abi();
+    auto test_data = R"=======(
     {
         "name": "lock",
         "approver": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
@@ -1395,8 +1422,8 @@ TEST_CASE("aprvlock_abi_test", "[abis]") {
 }
 
 TEST_CASE("tryunlock_abi_test", "[abis]") {
-    auto&       abis      = get_evt_abi();
-    const char* test_data = R"=======(
+    auto& abis = get_evt_abi();
+    auto test_data = R"=======(
     {
         "name": "lock",
         "executor": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
@@ -1414,8 +1441,8 @@ TEST_CASE("tryunlock_abi_test", "[abis]") {
 }
 
 TEST_CASE("recycleft_abi_test", "[abis]") {
-    auto&       abis      = get_evt_abi();
-    const char* test_data = R"=======(
+    auto& abis = get_evt_abi();
+    auto test_data = R"=======(
     {
         "address": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
         "number": "5.00000 S#1",
@@ -1432,3 +1459,101 @@ TEST_CASE("recycleft_abi_test", "[abis]") {
     verify_byte_round_trip_conversion(abis, "recycleft", var);
     verify_type_round_trip_conversion<recycleft>(abis, "recycleft", var);
 }
+
+TEST_CASE("setpsvbonus_abi_test", "[abis]") {
+    auto& abis = get_evt_abi();
+    auto  test_data = R"=====(
+    {
+        "sym": "5,S#3",
+        "rate": "0.15",
+        "base_charge": "0.00010 S#3",
+        "charge_threshold": "0.20000 S#3",
+        "minimum_charge": "0.01000 S#3",
+        "dist_threshold": "50.00000 S#3",
+        "rules": [
+            {
+                "type": "fixed",
+                "data": {
+                    "receiver": {
+                        "type": "address",
+                        "data": "EVT6U1bm7RexvukTvLgSfHJAhufjQ1i7x8uRfQ3qdG8TbnitKQya1"
+                    },
+                    "amount": "10.00000 S#3"
+                }
+            },
+            {
+                "type": "percent",
+                "data": {
+                    "receiver": {
+                        "type": "ftholders",
+                        "data": {
+                            "threshold": "1.00000 S#1"
+                        }
+                    },
+                    "percent": "0.3"
+                }
+            },
+            {
+                "type": "remaining_percent",
+                "data": {
+                    "receiver": {
+                        "type": "address",
+                        "data": "EVT5ChPfrwcAJrWzQbsCgGFvzdQGzMhFadxEpr6sKTL2ru12HH6K8"
+                    },
+                    "percent": "0.99"
+                }
+            }
+        ],
+        "methods": [
+            {
+                "action": "transferft",
+                "method": "outside_amount"
+            },
+            {
+                "action": "everipay",
+                "method": "within_amount"
+            }
+        ]
+    }
+    )=====";
+
+    auto var = fc::json::from_string(test_data);
+    auto psb = var.as<setpsvbonus>();
+
+    CHECK(psb.sym == symbol(5, 3));
+    CHECK(psb.rate.str() == "0.15");
+    CHECK(psb.base_charge == asset(10, symbol(5,3)));
+    CHECK(*psb.charge_threshold == asset(20000, symbol(5,3)));
+    CHECK(*psb.minimum_charge == asset(1000, symbol(5,3)));
+    CHECK(psb.dist_threshold == asset(50'00000, symbol(5,3)));
+
+    CHECK(psb.rules.size() == 3);
+
+    CHECK(psb.rules[0].type() == dist_rule_type::fixed);
+    auto& r1 = psb.rules[0].get<dist_fixed_rule>();
+    CHECK(r1.receiver.type() == dist_receiver_type::address);
+    CHECK(r1.receiver.get<address>() == address(public_key_type("EVT6U1bm7RexvukTvLgSfHJAhufjQ1i7x8uRfQ3qdG8TbnitKQya1")));
+    CHECK(r1.amount == asset(10'00000, symbol(5,3)));
+
+    CHECK(psb.rules[1].type() == dist_rule_type::percent);
+    auto& r2 = psb.rules[1].get<dist_percent_rule>();
+    CHECK(r2.receiver.type() == dist_receiver_type::ftholders);
+    CHECK(r2.receiver.get<dist_stack_receiver>().threshold == asset(1'00000,evt_sym()));
+    CHECK(r2.percent.str() == "0.3");
+
+    CHECK(psb.rules[2].type() == dist_rule_type::remaining_percent);
+    auto& r3 = psb.rules[2].get<dist_rpercent_rule>();
+    CHECK(r3.receiver.type() == dist_receiver_type::address);
+    CHECK(r3.receiver.get<address>() == address(public_key_type("EVT5ChPfrwcAJrWzQbsCgGFvzdQGzMhFadxEpr6sKTL2ru12HH6K8")));
+    CHECK(r3.percent.str() == "0.99");
+
+    CHECK(psb.methods.size() == 2);
+    CHECK(psb.methods[0].action == N(transferft));
+    CHECK(psb.methods[0].method == passive_method_type::outside_amount);
+    CHECK(psb.methods[1].action == N(everipay));
+    CHECK(psb.methods[1].method == passive_method_type::within_amount);
+
+    verify_byte_round_trip_conversion(abis, "setpsvbonus", var);
+    verify_type_round_trip_conversion<setpsvbonus>(abis, "setpsvbonus", var);
+}
+

@@ -168,8 +168,8 @@ struct error_results {
                     if (details.size() >= details_limit) break;
                     // Append error
                     error_detail detail = {
-                        itr->get_message(), itr->get_context().get_file(),
-                        itr->get_context().get_line_number(), itr->get_context().get_method()
+                        itr->get_message(), itr->context.file,
+                        itr->context.line, itr->context.method
                     };
                     details.emplace_back(detail);
                 }

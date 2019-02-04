@@ -7,6 +7,7 @@
 #include <chrono>
 #include <evt/chain/token_database.hpp>
 #include <evt/chain/transaction_context.hpp>
+#include <evt/chain/execution_context_impl.hpp>
 #include <evt/testing/tester.hpp>
 #include <fc/io/json.hpp>
 #include <random>
@@ -34,7 +35,7 @@ create_tester() {
 
     cfg.blocks_dir            = dir / "blocks";
     cfg.state_dir             = dir / "state";
-    cfg.tokendb_dir           = dir / "tokendb";
+    cfg.db_config.db_path     = dir / "tokendb";
     cfg.state_size            = 1024 * 1024 * 8;
     cfg.reversible_cache_size = 1024 * 1024 * 8;
     cfg.contracts_console     = false;
@@ -75,8 +76,23 @@ get_nonce_name(const char* prefix) {
     return name128(n);
 }
 
+static public_key_type
+get_nonce_key(const char* prefix) {
+    static auto dre = std::default_random_engine(std::chrono::system_clock::now().time_since_epoch().count());
+
+    auto n    = std::string(prefix);
+    auto dist = std::uniform_int_distribution<int>(0, 25);
+
+    n.reserve(n.size() + 10);
+    for(int i = 0; i < 10; i++) {
+        n.push_back('a' + dist(dre));
+    }
+
+    return evt::testing::tester::get_public_key(name(n));
+}
+
 static transaction_metadata
-get_trx_meta(controller& control, const action& act, const std::vector<account_name>& auths) {
+get_trx_meta(controller& control, const action& act, const std::vector<name>& auths) {
     auto signed_trx = signed_transaction();
     signed_trx.actions.emplace_back(act);
 
@@ -88,9 +104,15 @@ get_trx_meta(controller& control, const action& act, const std::vector<account_n
     return transaction_metadata(signed_trx);
 }
 
+auto&
+get_exec_ctx() {
+    static auto exec_ctx = evt_execution_context();
+    return exec_ctx;
+}
+
 static transaction_context
 get_trx_ctx(controller& control, transaction_metadata& trx_meta) {
-    return transaction_context(control, trx_meta);
+    return transaction_context(control, get_exec_ctx(), trx_meta);
 }
 
 const char* ndjson = R"=====(
@@ -203,7 +225,7 @@ BM_Action_newdomain(benchmark::State& state) {
     auto var    = fc::json::from_string(ndjson);
     auto nd     = var.as<newdomain>();
     nd.creator  = evt::testing::tester::get_public_key("evt");
-    auto auths  = std::vector<account_name>{N128(evt)};
+    auto auths  = std::vector<name>{N(evt)};
 
     for(auto _ : state) {
         state.PauseTiming();
@@ -234,7 +256,7 @@ BM_Action_updatedomain(benchmark::State& state) {
     nd.issue.authorizers[0].ref.set_account(nd.creator);
 
     auto ndact = action(nd.name, N128(.create), nd);
-    auto auths = std::vector<account_name>{N128(evt)};
+    auto auths = std::vector<name>{N(evt)};
 
     auto ud     = updatedomain();
     ud.name     = nd.name;
@@ -275,7 +297,7 @@ BM_Action_issuetoken(benchmark::State& state) {
     nd.issue.authorizers[0].ref.set_account(nd.creator);
 
     auto ndact = action(nd.name, N128(.create), nd);
-    auto auths = std::vector<account_name>{N128(evt)};
+    auto auths = std::vector<name>{N(evt)};
 
     tester->push_action(std::move(ndact), auths, address());
 
@@ -320,7 +342,7 @@ BM_Action_transfer(benchmark::State& state) {
     nd.issue.authorizers[0].ref.set_account(nd.creator);
 
     auto ndact = action(nd.name, N128(.create), nd);
-    auto auths = std::vector<account_name>{N128(evt)};
+    auto auths = std::vector<name>{N(evt)};
 
     tester->push_action(std::move(ndact), auths, address());
 
@@ -372,7 +394,7 @@ BM_Action_destroytoken(benchmark::State& state) {
     nd.issue.authorizers[0].ref.set_account(nd.creator);
 
     auto ndact = action(nd.name, N128(.create), nd);
-    auto auths = std::vector<account_name>{N128(evt)};
+    auto auths = std::vector<name>{N(evt)};
 
     tester->push_action(std::move(ndact), auths, address());
 
@@ -415,7 +437,7 @@ BM_Action_newgroup(benchmark::State& state) {
     auto var      = fc::json::from_string(ngjson);
     auto ng       = var.as<newgroup>();
     ng.group.key_ = evt::testing::tester::get_public_key("evt");
-    auto auths    = std::vector<account_name>{N128(evt)};
+    auto auths    = std::vector<name>{N(evt)};
 
     for(auto _ : state) {
         state.PauseTiming();
@@ -446,7 +468,7 @@ BM_Action_updategroup(benchmark::State& state) {
     ng.name        = get_nonce_name("group");
     ng.group.name_ = ng.name;
     auto ngact     = action(N128(.group), ng.name, ng);
-    auto auths     = std::vector<account_name>{N128(evt)};
+    auto auths     = std::vector<name>{N(evt)};
 
     auto ug = updategroup();
 
@@ -480,7 +502,7 @@ BM_Action_newfungible(benchmark::State& state) {
     auto var    = fc::json::from_string(nfjson);
     auto nf     = var.as<newfungible>();
     nf.creator  = evt::testing::tester::get_public_key("evt");
-    auto auths  = std::vector<account_name>{N128(evt)};
+    auto auths  = std::vector<name>{N(evt)};
     for(auto _ : state) {
         state.PauseTiming();
 
@@ -514,7 +536,7 @@ BM_Action_updfungible(benchmark::State& state) {
     nf.sym          = symbol::from_string(string("5,S#") + get_nonce_sym());
     nf.total_supply = asset::from_string(string("100.00000 S#") + std::to_string(nf.sym.id()));
     auto nfact      = action(N128(.fungible), (name128)std::to_string(nf.sym.id()), nf);
-    auto auths      = std::vector<account_name>{N128(evt)};
+    auto auths      = std::vector<name>{N(evt)};
     tester->push_action(std::move(nfact), auths, address());
 
     auto uf   = updfungible();
@@ -555,7 +577,7 @@ BM_Action_issuefungible(benchmark::State& state) {
     nf.sym          = symbol::from_string(string("5,S#") + get_nonce_sym());
     nf.total_supply = asset::from_string(string("100.00000 S#") + std::to_string(nf.sym.id()));
     auto nfact      = action(N128(.fungible), (name128)std::to_string(nf.sym.id()), nf);
-    auto auths      = std::vector<account_name>{N128(evt)};
+    auto auths      = std::vector<name>{N(evt)};
 
     tester->push_action(std::move(nfact), auths, address());
 
@@ -565,7 +587,7 @@ BM_Action_issuefungible(benchmark::State& state) {
     for(auto _ : state) {
         state.PauseTiming();
 
-        isf.address = evt::testing::tester::get_public_key(get_nonce_name(""));
+        isf.address = get_nonce_key("");
 
         auto isfact   = action(N128(.fungible), (name128)std::to_string(nf.sym.id()), isf);
         auto trx_meta = get_trx_meta(*tester->control, isfact, auths);
@@ -594,7 +616,7 @@ BM_Action_transferft(benchmark::State& state) {
     nf.sym          = symbol::from_string(string("5,S#") + get_nonce_sym());
     nf.total_supply = asset::from_string(string("100.00000 S#") + std::to_string(nf.sym.id()));
     auto nfact      = action(N128(.fungible), (name128)std::to_string(nf.sym.id()), nf);
-    auto auths      = std::vector<account_name>{N128(evt)};
+    auto auths      = std::vector<name>{N(evt)};
 
     tester->push_action(std::move(nfact), auths, address());
 
@@ -612,7 +634,7 @@ BM_Action_transferft(benchmark::State& state) {
     for(auto _ : state) {
         state.PauseTiming();
 
-        tf.to = evt::testing::tester::get_public_key(get_nonce_name(""));
+        tf.to = get_nonce_key("");
 
         auto tfact    = action(N128(.fungible), (name128)std::to_string(nf.sym.id()), tf);
         auto trx_meta = get_trx_meta(*tester->control, tfact, auths);
@@ -633,7 +655,7 @@ static void
 BM_Action_evt2pevt(benchmark::State& state) {
     auto tester = create_tester();
 
-    auto auths = std::vector<account_name>{N128(evt)};
+    auto auths = std::vector<name>{N(evt)};
     tester->add_money(address(evt::testing::tester::get_public_key(N(evt))), asset(10000000, evt_sym()));
 
     auto e2p   = evt2pevt();
@@ -643,7 +665,7 @@ BM_Action_evt2pevt(benchmark::State& state) {
     for(auto _ : state) {
         state.PauseTiming();
 
-        e2p.to = evt::testing::tester::get_public_key(get_nonce_name(""));
+        e2p.to = get_nonce_key("");
 
         auto e2pact   = action(N128(.fungible), std::to_string(evt_sym().id()), e2p);
         auto trx_meta = get_trx_meta(*tester->control, e2pact, auths);
@@ -668,7 +690,7 @@ BM_Action_fungible_addmeta(benchmark::State& state) {
     nf.creator  = evt::testing::tester::get_public_key("evt");
     nf.issue.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
     nf.manage.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
-    auto auths      = std::vector<account_name>{N128(evt)};
+    auto auths      = std::vector<name>{N(evt)};
 
     auto am    = addmeta();
     am.creator = evt::testing::tester::get_public_key("evt");
@@ -704,7 +726,7 @@ BM_Action_group_addmeta(benchmark::State& state) {
     auto var       = fc::json::from_string(ngjson);
     auto ng        = var.as<newgroup>();
     ng.group.key_  = evt::testing::tester::get_public_key("evt");
-    auto auths     = std::vector<account_name>{N128(evt)};
+    auto auths     = std::vector<name>{N(evt)};
 
     auto am    = addmeta();
     am.creator = evt::testing::tester::get_public_key("evt");
@@ -741,7 +763,7 @@ BM_Action_domain_addmeta(benchmark::State& state) {
     auto nd     = var.as<newdomain>();
     nd.creator  = evt::testing::tester::get_public_key("evt");
     nd.manage.authorizers[0].ref.set_account(nd.creator);
-    auto auths = std::vector<account_name>{N128(evt)};
+    auto auths = std::vector<name>{N(evt)};
 
     auto am    = addmeta();
     am.creator = evt::testing::tester::get_public_key("evt");
@@ -778,7 +800,7 @@ BM_Action_token_addmeta(benchmark::State& state) {
     auto nd     = var.as<newdomain>();
     nd.creator  = evt::testing::tester::get_public_key("evt");
     nd.issue.authorizers[0].ref.set_account(nd.creator);
-    auto auths = std::vector<account_name>{N128(evt)};
+    auto auths = std::vector<name>{N(evt)};
     nd.name    = get_nonce_name("domain");
     auto ndact = action(nd.name, N128(.create), nd);
 
@@ -843,7 +865,7 @@ BM_Action_newsuspend(benchmark::State& state) {
     auto ns     = var.as<newsuspend>();
     ns.proposer = evt::testing::tester::get_public_key("evt");
 
-    auto auths = std::vector<account_name>{N128(evt)};
+    auto auths = std::vector<name>{N(evt)};
 
     for(auto _ : state) {
         state.PauseTiming();
@@ -901,7 +923,7 @@ BM_Action_newsuspend_serialiazition(benchmark::State& state) {
     auto ns     = var.as<newsuspend>();
     ns.proposer = evt::testing::tester::get_public_key("evt");
 
-    auto auths = std::vector<account_name>{N128(evt)};
+    auto auths = std::vector<name>{N(evt)};
 
     for(auto _ : state) {
         state.PauseTiming();
@@ -969,7 +991,7 @@ BM_Action_cancelsuspend(benchmark::State& state) {
             ns.trx.actions.push_back(action(newdom.name, N128(.create), newdom));
         }
         auto nsact = action(N128(.suspend), ns.name, ns);
-        auto auths = std::vector<account_name>{N128(evt)};
+        auto auths = std::vector<name>{N(evt)};
 
         tester->push_action(std::move(nsact), auths, address());
 
@@ -1019,7 +1041,7 @@ BM_Action_aprvsuspend(benchmark::State& state) {
         state.PauseTiming();
 
         ns.name    = get_nonce_name("suspend");
-        auto auths = std::vector<account_name>{N128(evt)};
+        auto auths = std::vector<name>{N(evt)};
 
         auto newdomain_var = fc::json::from_string(ndjson);
         auto newdom        = newdomain_var.as<newdomain>();
@@ -1085,7 +1107,7 @@ BM_Action_execsuspend(benchmark::State& state) {
         state.PauseTiming();
 
         ns.name    = get_nonce_name("suspend");
-        auto auths = std::vector<account_name>{N128(evt)};
+        auto auths = std::vector<name>{N(evt)};
 
         auto newdomain_var = fc::json::from_string(ndjson);
         auto newdom        = newdomain_var.as<newdomain>();

@@ -1,18 +1,24 @@
 #include <fc/log/console_appender.hpp>
-#include <fc/log/log_message.hpp>
-#include <fc/string.hpp>
-#include <fc/variant.hpp>
-#include <fc/reflect/variant.hpp>
+
+#include <iomanip>
+#include <mutex>
+#include <sstream>
+
 #ifndef WIN32
 #include <unistd.h>
 #endif
 #include <boost/thread/mutex.hpp>
+
+#include <fmt/format.h>
+
+#include <fc/exception/exception.hpp>
+#include <fc/log/log_message.hpp>
+#include <fc/string.hpp>
+#include <fc/variant.hpp>
+#include <fc/reflect/variant.hpp>
+
 #define COLOR_CONSOLE 1
 #include "console_defines.h"
-#include <fc/exception/exception.hpp>
-#include <iomanip>
-#include <mutex>
-#include <sstream>
 
 namespace fc {
 
@@ -36,6 +42,7 @@ console_appender::console_appender(const config& cfg)
     : my(new impl) {
     configure(cfg);
 }
+
 console_appender::console_appender()
     : my(new impl) {}
 
@@ -103,71 +110,62 @@ fixed_size(size_t s, const string& str) {
 
 void
 console_appender::log(const log_message& m) {
-    //fc::string message = fc::format_string( m.get_format(), m.get_data() );
-    //fc::variant lmsg(m);
-
     FILE* out = stream::std_error ? stderr : stdout;
 
-    //fc::string fmt_str = fc::format_string( cfg.format, mutable_variant_object(m.get_context())( "message", message)  );
+    auto& context = m.context;
+    auto  line    = fmt::memory_buffer();
 
-    const log_context context   = m.get_context();
-    std::string       file_line = context.get_file().substr(0, 22);
-    file_line += ':';
-    file_line += fixed_size(6, fc::to_string(context.get_line_number()));
-
-    std::string line;
-    line.reserve(256);
     if(my->use_syslog_header) {
-        switch(m.get_context().get_log_level()) {
-        case log_level::error:
-            line += "<3>";
-            break;
-        case log_level::warn:
-            line += "<4>";
-            break;
-        case log_level::info:
-            line += "<6>";
-            break;
-        case log_level::debug:
-            line += "<7>";
+        switch(context.level) {
+        case log_level::error: {
+            fmt::format_to(line, "<3>");
             break;
         }
+        case log_level::warn: {
+            fmt::format_to(line, "<4>");
+            break;
+        }
+        case log_level::info: {
+            fmt::format_to(line, "<6>");
+            break;
+        }
+        case log_level::debug: {
+            fmt::format_to(line, "<7>");
+            break;
+        }
+        }  // switch
     }
-    line += fixed_size(5, context.get_log_level().to_string());
-    line += ' ';
-    // use now() instead of context.get_timestamp() because log_message construction can include user provided long running calls
-    line += string(time_point::now());
-    line += ' ';
-    line += fixed_size(9, context.get_thread_name());
-    line += ' ';
-    line += fixed_size(29, file_line);
-    line += ' ';
+    fmt::format_to(line, "{:<5} {} {:<9} {:<28} ",
+        context.level.to_string(),
+        (std::string)time_point::now(),
+        context.thread_name,
+        fmt::format("{}:{}", context.file.substr(0, 22), context.line));
 
-    auto me = context.get_method();
     // strip all leading scopes...
-    if(me.size()) {
-        uint32_t p = 0;
-        for(uint32_t i = 0; i < me.size(); ++i) {
-            if(me[i] == ':')
-                p = i;
+    if(!context.method.empty()) {
+        auto p = context.method.find_last_of(':');
+        if(p == std::string::npos) {
+            p = 0;
+        }
+        else {
+            p++;
         }
 
-        if(me[p] == ':')
-            ++p;
-        line += fixed_size(20, context.get_method().substr(p, 20));
-        line += ' ';
+        fmt::format_to(line, "{:<20}", context.method.substr(p, 20));
     }
-    line += "] ";
-    line += fc::format_string(m.get_format(), m.get_data());
 
-    std::unique_lock<boost::mutex> lock(my->log_mutex);
+    fmt::format_to(line, "] {}", fc::format_string(m.format, m.args));
+    
+    {
+        std::unique_lock<boost::mutex> lock(my->log_mutex);
 
-    print(line, my->lc[context.get_log_level()]);
+        print(fmt::to_string(line), my->lc[context.level]);
+        fprintf(out, "\n");
 
-    fprintf(out, "\n");
-
-    if(my->cfg.flush)
-        fflush(out);
+        if(my->cfg.flush) {
+            fflush(out);
+        }
+    }
 }
 
 void

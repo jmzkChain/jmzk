@@ -29,6 +29,7 @@ public:
 
     // serialize to/from string
     explicit public_key(const string& base58str);
+    explicit public_key(const char* base58str);
     explicit operator string() const;
 
 private:

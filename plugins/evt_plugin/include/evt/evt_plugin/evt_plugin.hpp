@@ -70,6 +70,11 @@ public:
     };
     fc::variant get_fungible_balance(const get_fungible_balance_params& params);
 
+    struct get_fungible_psvbonus_params {
+        symbol_id_type id;
+    };
+    fc::variant get_fungible_psvbonus(const get_fungible_psvbonus_params& params);
+
     struct get_suspend_params {
         proposal_name name;
     };
@@ -114,4 +119,5 @@ FC_REFLECT(evt::evt_apis::read_only::get_token_params, (domain)(name));
 FC_REFLECT(evt::evt_apis::read_only::get_tokens_params, (domain)(skip)(take));
 FC_REFLECT(evt::evt_apis::read_only::get_fungible_params, (id));
 FC_REFLECT(evt::evt_apis::read_only::get_fungible_balance_params, (address)(sym_id));
+FC_REFLECT(evt::evt_apis::read_only::get_fungible_psvbonus_params, (id));
 FC_REFLECT(evt::evt_apis::read_only::get_suspend_params, (name));

@@ -39,9 +39,16 @@ RUN git clone --depth 1 --single-branch --branch master https://github.com/faceb
 RUN wget https://dl.bintray.com/boostorg/release/1.69.0/source/boost_1_69_0.tar.gz -O - | tar -xz \
     && cd boost_1_69_0 \
     && ./bootstrap.sh --prefix=/usr/local --with-toolset=gcc \
-    && ./b2 -d0 -j$(nproc) --with-thread --with-date_time --with-system --with-filesystem --with-program_options \
+    && ./b2 -d0 -j$(nproc) --with-thread --with-date_time --with-system --with-filesystem --with-program_options --with-timer \
        --with-serialization --with-chrono --with-test --with-context --with-locale --with-coroutine --with-iostreams toolset=gcc link=shared install \
     && cd .. && rm -rf boost_1_69_0
+
+RUN wget https://github.com/01org/tbb/archive/2019_U3.tar.gz -O - | tar -xz \
+    && cd tbb-2019_U3 \
+    && make tbb -j${nproc} \
+    && sudo cp build/*release/*.so* /usr/local/lib \
+    && sudo cp -R include/tbb /usr/local/include \
+    && cd .. && rm -rf tbb-2019_U3
 
 RUN git clone --depth 1 git://github.com/cryptonomex/secp256k1-zkp \
     && cd secp256k1-zkp \

@@ -102,9 +102,14 @@ trafficgen_plugin_impl::pre_nft_setup(const block_id_type& id) {
     using namespace evt::chain::contracts;
 
     auto& tdb = db_.token_db();
-    if(tdb.exists_domain("tttesttt")) {
+    if(tdb.exists_token(token_type::domain, std::nullopt, "tttesttt")) {
         auto d = domain_def();
-        tdb.read_domain("tttesttt", d);
+        auto s = std::string();
+        tdb.read_token(token_type::domain, std::nullopt, "tttesttt", s);
+
+        auto ds = fc::datastream<const char*>(s.data(), s.size());
+        fc::raw::unpack(ds, d);
+
         if(d.creator != from_addr_) {
             ilog("Test domain created by another address: ${a} but provided is: ${p}", ("a",d.creator)("b",from_addr_));
             return 0;

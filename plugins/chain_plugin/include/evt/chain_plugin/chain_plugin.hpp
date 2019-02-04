@@ -30,12 +30,13 @@ using boost::container::flat_set;
 using chain::account_name;
 using chain::bytes;
 using chain::block_id_type;
+using chain::chain_id_type;
 using chain::controller;
 using chain::digest_type;
 using chain::name;
 using chain::proposal_name;
 using chain::public_key_type;
-using chain::public_keys_type;
+using chain::public_keys_set;
 using chain::version;
 using chain::contracts::abi_serializer;
 
@@ -60,16 +61,17 @@ public:
     using get_info_params = empty;
 
     struct get_info_results {
-        string               server_version;
-        chain::chain_id_type chain_id;
-        version              evt_api_version;
-        uint32_t             head_block_num              = 0;
-        uint32_t             last_irreversible_block_num = 0;
-        chain::block_id_type last_irreversible_block_id;
-        chain::block_id_type head_block_id;
-        fc::time_point_sec   head_block_time;
-        account_name         head_block_producer;
-        optional<string>     server_version_string;
+        string             server_version;
+        chain_id_type      chain_id;
+        version            evt_api_version;
+        uint32_t           head_block_num              = 0;
+        uint32_t           last_irreversible_block_num = 0;
+        block_id_type      last_irreversible_block_id;
+        block_id_type      head_block_id;
+        fc::time_point_sec head_block_time;
+        account_name       head_block_producer;
+        vector<string>     enabled_plugins;
+        optional<string>   server_version_string;
     };
     get_info_results get_info(const get_info_params&) const;
 
@@ -84,7 +86,6 @@ public:
     struct abi_json_to_bin_result {
         vector<char> binargs;
     };
-
     abi_json_to_bin_result abi_json_to_bin(const abi_json_to_bin_params& params) const;
 
     struct abi_bin_to_json_params {
@@ -94,34 +95,30 @@ public:
     struct abi_bin_to_json_result {
         fc::variant args;
     };
-
     abi_bin_to_json_result abi_bin_to_json(const abi_bin_to_json_params& params) const;
 
     using trx_json_to_digest_params = fc::variant_object;
     struct trx_json_to_digest_result {
         digest_type digest;
     };
-
     trx_json_to_digest_result trx_json_to_digest(const trx_json_to_digest_params& params) const;
 
     struct get_required_keys_params {
         fc::variant      transaction;
-        public_keys_type available_keys;
+        public_keys_set  available_keys;
     };
     struct get_required_keys_result {
-        public_keys_type required_keys;
+        public_keys_set  required_keys;
     };
-
     get_required_keys_result get_required_keys(const get_required_keys_params& params) const;
 
     struct get_suspend_required_keys_params {
         proposal_name             name;
-        public_keys_type available_keys;
+        public_keys_set  available_keys;
     };
     struct get_suspend_required_keys_result {
-        public_keys_type required_keys;
+        public_keys_set  required_keys;
     };
-
     get_suspend_required_keys_result get_suspend_required_keys(const get_suspend_required_keys_params& params) const;
 
     struct get_charge_params {
@@ -131,19 +128,16 @@ public:
     struct get_charge_result {
         uint32_t    charge;
     };
-
     get_charge_result get_charge(const get_charge_params& params) const;
 
     struct get_block_params {
         string block_num_or_id;
     };
-
     fc::variant get_block(const get_block_params& params) const;
 
     struct get_block_header_state_params {
         string block_num_or_id;
     };
-
     fc::variant get_block_header_state(const get_block_header_state_params& params) const;
 
     using get_head_block_header_state_params = empty;
@@ -164,6 +158,12 @@ public:
         block_id_type block_id;
     };
     fc::variant get_transaction_ids_for_block(const get_transaction_ids_for_block_params& params) const;
+
+    using get_abi_params = empty;
+    const std::string& get_abi(const get_abi_params&) const;
+
+    using get_actions_params = empty;
+    const std::string& get_actions(const get_actions_params&) const;
 };
 
 class read_write {
@@ -245,7 +245,7 @@ private:
 FC_REFLECT(evt::chain_apis::empty, );
 FC_REFLECT(evt::chain_apis::read_only::get_info_results,
           (server_version)(chain_id)(evt_api_version)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)
-          (head_block_id)(head_block_time)(head_block_producer)(server_version_string));
+          (head_block_id)(head_block_time)(head_block_producer)(enabled_plugins)(server_version_string));
 FC_REFLECT(evt::chain_apis::read_only::get_block_params, (block_num_or_id));
 FC_REFLECT(evt::chain_apis::read_only::get_block_header_state_params, (block_num_or_id));
 FC_REFLECT(evt::chain_apis::read_only::get_transaction_params, (block_num)(id));

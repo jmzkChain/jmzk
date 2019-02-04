@@ -15,10 +15,10 @@ template<typename Stream, typename T, typename Compare, typename Container>
 void pack(Stream& s, const flat_set<T, Compare, Container>& value);
 template<typename Stream, typename T, typename Compare, typename Container>
 void unpack(Stream& s, flat_set<T, Compare, Container>& value);
-template<typename Stream, typename K, typename... V>
-void pack(Stream& s, const flat_map<K, V...>& value);
-template<typename Stream, typename K, typename... V>
-void unpack(Stream& s, flat_map<K, V...>& value);
+template<typename Stream, typename K, typename V, typename ... Others>
+void pack(Stream& s, const flat_map<K, V, Others...>& value);
+template<typename Stream, typename K, typename V, typename ... Others>
+void unpack(Stream& s, flat_map<K, V, Others...>& value);
 
 template<typename Stream, typename T, typename A>
 void pack(Stream& s, const bip::vector<T, A>& value);

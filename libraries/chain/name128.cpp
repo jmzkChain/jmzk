@@ -14,6 +14,7 @@ name128::set(const char* str) {
     const auto len = strnlen(str, 22);
     EVT_ASSERT(len <= 21, name128_type_exception, "Name128 is longer than 21 characters (${name}) ",
                ("name", string(str)));
+    EVT_ASSERT(len > 0, name128_type_exception, "Name128 cannot be empty");
     value = string_to_name128(str);
     EVT_ASSERT(to_string() == string(str), name128_type_exception,
                "Name128 not properly normalized (name: ${name}, normalized: ${normalized}) ",
@@ -36,14 +37,35 @@ name128::operator string() const {
 
     auto str = string(21, '.');
     
-    auto tmp = value;
-    tmp >>= 2;
-    for(auto i = 0u; i <= 20; ++i, tmp >>= 6) {
+    auto stop = 0u;
+    auto tmp  = value >> 2;
+    auto tag  = (int)value & 0x03;
+
+    switch(tag) {
+    case i32: {
+        stop = 5;
+        break;
+    }
+    case i64: {
+        stop = 10;
+        break;
+    }
+    case i96: {
+        stop = 15;
+        break;
+    }
+    case i128: {
+        stop = 21;
+        break;
+    }
+    }  // switch
+
+    for(auto i = 0u; i < stop; ++i, tmp >>= 6) {
         auto c = charmap[tmp & 0x3f];
         str[i] = c;
     }
 
-    str.erase(str.find_last_not_of('.') + 1);
+    str.erase(str.find_last_not_of('.', stop) + 1);
     return str;
 }
 

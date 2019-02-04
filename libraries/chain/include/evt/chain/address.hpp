@@ -5,6 +5,7 @@
 #pragma once
 
 #include <tuple>
+#include <fmt/format.h>
 #include <fc/reflect/reflect.hpp>
 #include <fc/variant.hpp>
 #include <evt/chain/types.hpp>
@@ -35,7 +36,7 @@ public:
         : storage_(std::make_tuple(prefix, nonce, key)) {}
 
     address(const address&) = default;
-    address(address&&) = default;
+    address(address&&) noexcept = default;
 
     address(const char* str) { *this = address::from_string(str); }
     address(const string& str) { *this = address::from_string(str); }
@@ -151,6 +152,33 @@ class variant;
 void to_variant(const evt::chain::address& addr, fc::variant& v);
 void from_variant(const fc::variant& v, evt::chain::address& addr);
 
+template<>
+inline void
+to_variant<evt::chain::address>(const evt::chain::address& addr, fc::variant& v) {
+    to_variant(addr, v);
+}
+
+template<>
+inline void
+from_variant<evt::chain::address>(const fc::variant& v, evt::chain::address& addr) {
+    from_variant(v, addr);
+}
+
 }  // namespace fc
+
+namespace fmt {
+
+template <>
+struct formatter<evt::chain::address> {
+    template <typename ParseContext>
+    constexpr auto parse(ParseContext& ctx) { return ctx.begin(); }
+
+    template <typename FormatContext>
+    auto format(const evt::chain::address& addr, FormatContext &ctx) {
+        return format_to(ctx.begin(), addr.to_string());
+    }
+};
+
+}  // namespace fmt
 
 FC_REFLECT(evt::chain::address, (storage_))

@@ -14,6 +14,7 @@ void
 name::set(const char* str) {
     const auto len = strnlen(str, 14);
     EVT_ASSERT(len <= 13, name_type_exception, "Name is longer than 13 characters (${name}) ", ("name", string(str)));
+    EVT_ASSERT(len > 0, name_type_exception, "Name cannot be empty");
     value = string_to_name(str);
     EVT_ASSERT(to_string() == string(str), name_type_exception,
                "Name not properly normalized (name: ${name}, normalized: ${normalized}) ",

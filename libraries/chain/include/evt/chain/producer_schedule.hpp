@@ -53,8 +53,9 @@ struct shared_producer_schedule_type {
         version = a.version;
         producers.clear();
         producers.reserve(a.producers.size());
-        for(const auto& p : a.producers)
+        for(const auto& p : a.producers) {
             producers.push_back(p);
+        }
         return *this;
     }
 
@@ -62,8 +63,9 @@ struct shared_producer_schedule_type {
         producer_schedule_type result;
         result.version = version;
         result.producers.reserve(producers.size());
-        for(const auto& p : producers)
+        for(const auto& p : producers) {
             result.producers.push_back(p);
+        }
         return result;
     }
 
@@ -79,15 +81,20 @@ struct shared_producer_schedule_type {
 
 inline bool
 operator==(const producer_schedule_type& a, const producer_schedule_type& b) {
-    if(a.version != b.version)
+    if(a.version != b.version) {
         return false;
-    if(a.producers.size() != b.producers.size())
+    }
+    if(a.producers.size() != b.producers.size()) {
         return false;
-    for(uint32_t i = 0; i < a.producers.size(); ++i)
-        if(a.producers[i] != b.producers[i])
+    }
+    for(uint32_t i = 0; i < a.producers.size(); ++i) {
+        if(a.producers[i] != b.producers[i]) {
             return false;
+        }
+    }
     return true;
 }
+
 inline bool
 operator!=(const producer_schedule_type& a, const producer_schedule_type& b) {
     return !(a == b);

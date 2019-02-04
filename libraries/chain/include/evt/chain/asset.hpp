@@ -3,6 +3,7 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #pragma once
+#include <fmt/format.h>
 #include <evt/chain/exceptions.hpp>
 #include <evt/chain/types.hpp>
 
@@ -101,7 +102,7 @@ public:
     bool is_amount_within_range() const { return -max_amount <= amount_ && amount_ <= max_amount; }
     bool is_valid() const { return is_amount_within_range() && sym_.valid(); }
 
-    double to_real() const { return static_cast<double>(amount_) / std::pow(10, precision()); }
+    real_type to_real() const { return real_type(amount_) / boost::multiprecision::pow(real_type(10), precision()); }
 
     uint32_t symbol_id() const { return sym_.id(); };
     uint8_t  precision() const { return sym_.precision(); };
@@ -210,6 +211,32 @@ from_variant(const fc::variant& var, evt::chain::asset& vo) {
 }
 
 }  // namespace fc
+
+namespace fmt {
+
+template <>
+struct formatter<evt::chain::symbol> {
+    template <typename ParseContext>
+    constexpr auto parse(ParseContext& ctx) { return ctx.begin(); }
+
+    template <typename FormatContext>
+    auto format(const evt::chain::symbol& s, FormatContext &ctx) {
+        return format_to(ctx.begin(), s.to_string());
+    }
+};
+
+template <>
+struct formatter<evt::chain::asset> {
+    template <typename ParseContext>
+    constexpr auto parse(ParseContext& ctx) { return ctx.begin(); }
+
+    template <typename FormatContext>
+    auto format(const evt::chain::asset& a, FormatContext &ctx) {
+        return format_to(ctx.begin(), a.to_string());
+    }
+};
+
+}  // namespace fmt
 
 FC_REFLECT(evt::chain::symbol, (value_));
 FC_REFLECT(evt::chain::asset, (amount_)(sym_));

@@ -154,7 +154,7 @@ block_header_state::set_new_producers(producer_schedule_type pending) {
    *  If the header specifies new_producers then apply them accordingly.
    */
 block_header_state
-block_header_state::next(const signed_block_header& h, bool trust) const {
+block_header_state::next(const signed_block_header& h, bool skip_validate_signee) const {
     EVT_ASSERT(h.timestamp != block_timestamp_type(), block_validate_exception, "", ("h", h));
     EVT_ASSERT(h.header_extensions.size() == 0, block_validate_exception, "no supported extensions");
 
@@ -189,9 +189,8 @@ block_header_state::next(const signed_block_header& h, bool trust) const {
     result.id                        = result.header.id();
 
     // ASSUMPTION FROM controller_impl::apply_block = all untrusted blocks will have their signatures pre-validated here
-    if(!trust) {
-        EVT_ASSERT(result.block_signing_key == result.signee(), wrong_signing_key, "block not signed by expected key",
-                  ("result.block_signing_key", result.block_signing_key)("signee", result.signee()));
+    if(!skip_validate_signee) {
+        result.verify_signee(result.signee());
     }
 
     return result;
@@ -249,6 +248,11 @@ block_header_state::sign(const std::function<signature_type(const digest_type&)>
 public_key_type
 block_header_state::signee() const {
     return fc::crypto::public_key(header.producer_signature, sig_digest(), true);
+}
+
+void
+block_header_state::verify_signee(const public_key_type& signee) const {
+    EVT_ASSERT(block_signing_key == signee, wrong_signing_key, "block not signed by expected key", ("block_signing_key", block_signing_key)("signee", signee));
 }
 
 void

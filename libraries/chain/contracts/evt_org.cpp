@@ -9,23 +9,32 @@
 namespace evt { namespace chain { namespace contracts {
 
 void
-initialize_evt_org(token_database& token_db, const genesis_state& genesis) {
+initialize_evt_org(token_database& tokendb, const genesis_state& genesis) {
     // Add reserved everiToken foundation group
-    if(!token_db.exists_group(".everiToken")) {
-        token_db.add_group(genesis.evt_org);
+    if(!tokendb.exists_token(token_type::group, std::nullopt, N128(.everiToken))) {
+        auto v = make_db_value(genesis.evt_org);
+        tokendb.put_token(token_type::group, action_op::add, std::nullopt, N128(.everiToken), v.as_string_view());
     }
 
-    // Add reserved EVT fungible tokens
-    if(!token_db.exists_fungible(evt_sym())) {
-        token_db.add_fungible(genesis.evt);
+    // Add reserved EVT & PEVT fungible tokens
+    if(!tokendb.exists_token(token_type::fungible, std::nullopt, EVT_SYM_ID)) {
+        assert(!tokendb.exists_token(token_type::fungible, std::nullopt, PEVT_SYM_ID));
 
-        auto addr = address(N(.fungible), (name128)std::to_string(evt_sym().id()), 0);
-        token_db.update_asset(addr, genesis.evt.total_supply);
-    }
+        auto v = make_db_value(genesis.evt);
+        tokendb.put_token(token_type::fungible, action_op::add, std::nullopt, EVT_SYM_ID, v.as_string_view());
 
-    // Add reserved Pined EVT fungible tokens
-    if(!token_db.exists_fungible(pevt_sym())) {
-        token_db.add_fungible(genesis.pevt);
+        auto v2 = make_db_value(genesis.pevt);
+        tokendb.put_token(token_type::fungible, action_op::add, std::nullopt, PEVT_SYM_ID, v2.as_string_view());
+
+        auto addr = address(N(.fungible), name128::from_number(EVT_SYM_ID), 0);
+        auto prop = property {
+                        .amount = genesis.evt.total_supply.amount(),
+                        .sym = evt_sym(),
+                        .created_at = genesis.initial_timestamp.sec_since_epoch(),
+                        .created_index = 0
+                    };
+        auto v3 = make_db_value(prop);
+        tokendb.put_asset(addr, EVT_SYM_ID, v3.as_string_view());
     }
 }
 

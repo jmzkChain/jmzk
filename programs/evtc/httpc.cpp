@@ -147,7 +147,7 @@ resolve_url(const http_context& context, const parsed_url& url) {
     auto ec       = boost::system::error_code();
     auto  result  = resolver.resolve(url.server, url.port, ec);
     if(ec) {
-        FC_THROW("Error resolving \"${server}:${url}\" : ${m}", ("server", url.server)("port", url.port)("m", ec.message()));
+        FC_THROW("Error resolving \"${server}:${port}\" : ${m}", ("server", url.server)("port", url.port)("m", ec.message()));
     }
 
     // non error results are guaranteed to return a non-empty range
@@ -306,11 +306,11 @@ do_http_call(const connection_param& cp,
     else {
         auto&& error_info = response_result.as<evt::error_results>().error;
         // Construct fc exception from error
-        const auto& error_details = error_info.details;
+        auto& error_details = error_info.details;
 
         fc::log_messages logs;
         for(auto itr = error_details.begin(); itr != error_details.end(); itr++) {
-            const auto& context = fc::log_context(fc::log_level::error, itr->file.data(), itr->line_number, itr->method.data());
+            auto context = fc::log_context(fc::log_level::error, itr->file.data(), itr->line_number, itr->method.data());
             logs.emplace_back(fc::log_message(context, itr->message));
         }
 

@@ -208,6 +208,7 @@ class static_variant {
     friend struct impl::copy_construct;
     template<typename StaticVariant>
     friend struct impl::move_construct;
+
 public:
     template<typename X>
     struct tag
@@ -218,6 +219,7 @@ public:
        );
        static const int value = impl::position<X, Types...>::pos;
     };
+
     static_variant()
     {
        _tag = 0;
@@ -229,6 +231,7 @@ public:
     {
        cpy.visit( impl::copy_construct<static_variant>(*this) );
     }
+
     static_variant( const static_variant& cpy )
     {
        cpy.visit( impl::copy_construct<static_variant>(*this) );
@@ -238,7 +241,7 @@ public:
     : static_variant( const_cast<const static_variant&>(cpy) )
     {}
 
-    static_variant( static_variant&& mv )
+    static_variant( static_variant&& mv ) noexcept
     {
        mv.visit( impl::move_construct<static_variant>(*this) );
     }
@@ -267,6 +270,7 @@ public:
         init(v);
         return *this;
     }
+
     static_variant& operator=( const static_variant& v )
     {
        if( this == &v ) return *this;
@@ -274,6 +278,7 @@ public:
        v.visit( impl::copy_construct<static_variant>(*this) );
        return *this;
     }
+
     static_variant& operator=( static_variant&& v )
     {
        if( this == &v ) return *this;
@@ -281,10 +286,12 @@ public:
        v.visit( impl::move_construct<static_variant>(*this) );
        return *this;
     }
+
     friend bool operator == ( const static_variant& a, const static_variant& b )
     {
        return a.which() == b.which();
     }
+
     friend bool operator < ( const static_variant& a, const static_variant& b )
     {
        return a.which() < b.which();
@@ -305,6 +312,7 @@ public:
            // );
         }
     }
+
     template<typename X>
     const X& get() const {
         static_assert(
@@ -318,6 +326,7 @@ public:
             FC_THROW_EXCEPTION( fc::assert_exception, "static_variant does not contain a value of type ${t}", ("t",fc::get_typename<X>::name()) );
         }
     }
+    
     template<typename visitor>
     typename visitor::result_type visit(visitor& v) {
         return impl::storage_ops<0, Types...>::apply(_tag, storage, v);
