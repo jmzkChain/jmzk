@@ -229,5 +229,10 @@ TEST_CASE_METHOD(tokendb_test, "squansh_test", "[tokendb]") {
     tokendb.squash();
     tokendb.squash();
 
+    ROLLBACK();
+    
+    CHECK(!EXISTS_TOKEN2(token, dom.name, tk.name));
+    CHECK(!EXISTS_TOKEN(domain, dom.name));
+
     my_tester->produce_block();
 }
