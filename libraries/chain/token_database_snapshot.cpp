@@ -47,8 +47,8 @@ add_reserved_tokens(snapshot_writer_ptr          writer,
                     domains.emplace_back(*(name128*)key.data());
                 }
                 else if(i == (int)token_type::fungible) {
-                    auto n = *(name128*)key.data();
-                    symbol_ids.emplace_back((symbol_id_type)n.value);
+                    auto n = *(uint128_t*)key.data();
+                    symbol_ids.emplace_back((symbol_id_type)n);
                 }
 
                 return true;
@@ -99,7 +99,7 @@ read_reserved_tokens(snapshot_reader_ptr          reader,
 
         reader->read_section(section_names[i], [&](auto& r) {
             while(!r.eof()) {
-                auto k = name128();
+                auto k = uint128_t(0);
                 auto v = std::string();
 
                 r.read_row((char*)&k, sizeof(k));
@@ -111,7 +111,7 @@ read_reserved_tokens(snapshot_reader_ptr          reader,
                     domains.emplace_back(k);
                 }
                 else if(i == (int)token_type::fungible) {
-                    symbol_ids.emplace_back((symbol_id_type)k.value);
+                    symbol_ids.emplace_back((symbol_id_type)k);
                 }
             }
         });

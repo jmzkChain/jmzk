@@ -77,9 +77,9 @@ public:
 
         auto cfg = controller::config();
 
-        cfg.blocks_dir            = basedir + "blocks";
-        cfg.state_dir             = basedir + "state";
-        cfg.db_config.db_path     = basedir + "tokendb";
+        cfg.blocks_dir            = basedir + "/blocks";
+        cfg.state_dir             = basedir + "/state";
+        cfg.db_config.db_path     = basedir + "/tokendb";
         cfg.contracts_console     = true;
         cfg.charge_free_mode      = false;
         cfg.loadtest_mode         = false;
