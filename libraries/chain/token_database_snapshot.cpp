@@ -43,12 +43,13 @@ add_reserved_tokens(snapshot_writer_ptr          writer,
                 w.add_row(key.data(), key.size());
                 w.add_row(v);
 
+                auto n = *(name128*)key.data();
                 if(i == (int)token_type::domain) {
-                    domains.emplace_back(*(name128*)key.data());
+                    domains.push_back(n);
                 }
                 else if(i == (int)token_type::fungible) {
-                    auto n = *(uint128_t*)key.data();
-                    symbol_ids.emplace_back((symbol_id_type)n);
+                    
+                    symbol_ids.push_back((symbol_id_type)n.value);
                 }
 
                 return true;
