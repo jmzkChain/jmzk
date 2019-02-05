@@ -321,13 +321,13 @@ class Test(unittest.TestCase):
         url = 'http://127.0.0.1:8888/v1/evt_link/get_trx_id_for_link_id'
 
         tasks = []
-        for i in range(10240):
+        for i in range(1024):
             pay_link.set_link_id_rand()
             req['link_id'] = pay_link.get_link_id().hex()
             tasks.append(grequests.post(url, data=json.dumps(req)))
 
         i = 0
-        for resp in grequests.imap(tasks, size=50):
+        for resp in grequests.imap(tasks, size=128):
             self.assertEqual(resp.status_code, 500, msg=resp.content)
             i += 1
             if i % 100 == 0:
