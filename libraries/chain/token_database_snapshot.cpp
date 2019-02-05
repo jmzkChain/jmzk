@@ -48,7 +48,6 @@ add_reserved_tokens(snapshot_writer_ptr          writer,
                     domains.push_back(n);
                 }
                 else if(i == (int)token_type::fungible) {
-                    
                     symbol_ids.push_back((symbol_id_type)n.value);
                 }
 

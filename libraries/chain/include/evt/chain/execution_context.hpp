@@ -19,6 +19,8 @@ struct action_ver {
 
 class execution_context : boost::noncopyable {
 public:
+    virtual ~execution_context() {}
+
     virtual int index_of(name act) const = 0;
     virtual std::string get_acttype_name(name act) const = 0;
     virtual int set_version(name act, int ver) = 0;
