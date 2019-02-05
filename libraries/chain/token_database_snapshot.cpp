@@ -43,7 +43,12 @@ add_reserved_tokens(snapshot_writer_ptr          writer,
                 w.add_row(key.data(), key.size());
                 w.add_row(v);
 
-                auto n = *(name128*)key.data();
+                // we should use memcpy here
+                // it's UB when interpret char* as name128*
+                // because it may not be aligened
+                auto n = name128();
+                memcpy(&n, key.data(), sizeof(name128));
+
                 if(i == (int)token_type::domain) {
                     domains.push_back(n);
                 }
