@@ -13,12 +13,12 @@ void
 name128::set(const char* str) {
     const auto len = strnlen(str, 22);
     EVT_ASSERT(len <= 21, name128_type_exception, "Name128 is longer than 21 characters (${name}) ",
-               ("name", string(str)));
+               ("name", std::string(str)));
     EVT_ASSERT(len > 0, name128_type_exception, "Name128 cannot be empty");
     value = string_to_name128(str);
-    EVT_ASSERT(to_string() == string(str), name128_type_exception,
+    EVT_ASSERT(to_string() == std::string(str), name128_type_exception,
                "Name128 not properly normalized (name: ${name}, normalized: ${normalized}) ",
-               ("name", string(str))("normalized", to_string()));
+               ("name", std::string(str))("normalized", to_string()));
 }
 
 void
@@ -32,10 +32,10 @@ name128::set(const std::string& str) {
                ("name", str)("normalized", to_string()));
 }
 
-name128::operator string() const {
+name128::operator std::string() const {
     static const char* charmap = ".-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-    auto str = string(21, '.');
+    auto str = std::string(21, '.');
     
     auto stop = 0u;
     auto tmp  = value >> 2;

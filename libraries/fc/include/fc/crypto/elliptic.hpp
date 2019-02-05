@@ -29,15 +29,15 @@ typedef fc::sha256                    blinded_hash;
 typedef fc::sha256                    blind_signature;
 
 /**
-     *  @class public_key
-     *  @brief contains only the public point of an elliptic curve key.
-     */
+ *  @class public_key
+ *  @brief contains only the public point of an elliptic curve key.
+ */
 class public_key {
 public:
     public_key();
     public_key(const public_key& k);
     ~public_key();
-    //           bool verify( const fc::sha256& digest, const signature& sig );
+
     public_key_data       serialize() const;
     public_key_point_data serialize_ecc_point() const;
 
@@ -53,7 +53,7 @@ public:
     /** Computes new pubkey = generator * offset + old pubkey ?! */
     //           public_key mult( const fc::sha256& offset )const;
     /** Computes new pubkey = regenerate(offset).pubkey + old pubkey
-            *                      = offset * G + 1 * old pubkey ?! */
+     *                      = offset * G + 1 * old pubkey ?! */
     public_key add(const fc::sha256& offset) const;
 
     public_key(public_key&& pk);
@@ -82,9 +82,9 @@ private:
 };
 
 /**
-     *  @class private_key
-     *  @brief an elliptic curve private key.
-     */
+ *  @class private_key
+ *  @brief an elliptic curve private key.
+ */
 class private_key {
 public:
     private_key();
@@ -101,10 +101,10 @@ public:
     private_key child(const fc::sha256& offset) const;
 
     /**
-            *  This method of generation enables creating a new private key in a deterministic manner relative to
-            *  an initial seed.   A public_key created from the seed can be multiplied by the offset to calculate
-            *  the new public key without having to know the private key.
-            */
+     *  This method of generation enables creating a new private key in a deterministic manner relative to
+     *  an initial seed.   A public_key created from the seed can be multiplied by the offset to calculate
+     *  the new public key without having to know the private key.
+     */
     static private_key generate_from_seed(const fc::sha256& seed, const fc::sha256& offset = fc::sha256());
 
     private_key_secret get_secret() const;  // get the private key secret
@@ -112,23 +112,23 @@ public:
     operator private_key_secret() const { return get_secret(); }
 
     /**
-            *  Given a public key, calculatse a 512 bit shared secret between that
-            *  key and this private key.
-            */
+     *  Given a public key, calculatse a 512 bit shared secret between that
+     *  key and this private key.
+     */
     fc::sha512 get_shared_secret(const public_key& pub) const;
 
-    //           signature         sign( const fc::sha256& digest )const;
     compact_signature sign_compact(const fc::sha256& digest, bool require_canonical = true) const;
-    //           bool              verify( const fc::sha256& digest, const signature& sig );
 
     public_key get_public_key() const;
 
     inline friend bool operator==(const private_key& a, const private_key& b) {
         return a.get_secret() == b.get_secret();
     }
+
     inline friend bool operator!=(const private_key& a, const private_key& b) {
         return a.get_secret() != b.get_secret();
     }
+    
     inline friend bool operator<(const private_key& a, const private_key& b) {
         return a.get_secret() < b.get_secret();
     }
@@ -150,6 +150,7 @@ struct range_proof_info {
 
 commitment_type   blind(const blind_factor_type& blind, uint64_t value);
 blind_factor_type blind_sum(const std::vector<blind_factor_type>& blinds, uint32_t non_neg);
+
 /**  verifies taht commnits + neg_commits + excess == 0 */
 bool verify_sum(const std::vector<commitment_type>& commits, const std::vector<commitment_type>& neg_commits, int64_t excess);
 bool verify_range(uint64_t& min_val, uint64_t& max_val, const commitment_type& commit, const range_proof_type& proof);
@@ -162,19 +163,20 @@ range_proof_type range_proof_sign(uint64_t                 min_value,
                                   uint8_t                  min_bits,
                                   uint64_t                 actual_value);
 
-bool             verify_range_proof_rewind(blind_factor_type&       blind_out,
-                                           uint64_t&                value_out,
-                                           string&                  message_out,
-                                           const blind_factor_type& nonce,
-                                           uint64_t&                min_val,
-                                           uint64_t&                max_val,
-                                           commitment_type          commit,
-                                           const range_proof_type&  proof);
+bool verify_range_proof_rewind(blind_factor_type&       blind_out,
+                               uint64_t&                value_out,
+                               string&                  message_out,
+                               const blind_factor_type& nonce,
+                               uint64_t&                min_val,
+                               uint64_t&                max_val,
+                               commitment_type          commit,
+                               const range_proof_type&  proof);
+
 range_proof_info range_get_info(const range_proof_type& proof);
 
 /**
-       * Shims
-       */
+ * Shims
+ */
 struct public_key_shim : public crypto::shim<public_key_data> {
     using crypto::shim<public_key_data>::shim;
 
@@ -251,7 +253,6 @@ pack(Stream& s, const fc::ecc::private_key& pk) {
 }
 
 }  // namespace raw
-
 }  // namespace fc
 
 #include <fc/reflect/reflect.hpp>

@@ -208,14 +208,14 @@ struct controller_impl {
     }
 
     /**
-    *  Plugins / observers listening to signals emited (such as accepted_transaction) might trigger
-    *  errors and throw exceptions. Unless those exceptions are caught it could impact consensus and/or
-    *  cause a node to fork.
-    *
-    *  If it is ever desirable to let a signal handler bubble an exception out of this method
-    *  a full audit of its uses needs to be undertaken.
-    *
-    */
+     *  Plugins / observers listening to signals emited (such as accepted_transaction) might trigger
+     *  errors and throw exceptions. Unless those exceptions are caught it could impact consensus and/or
+     *  cause a node to fork.
+     *
+     *  If it is ever desirable to let a signal handler bubble an exception out of this method
+     *  a full audit of its uses needs to be undertaken.
+     *
+     */
     template <typename Signal, typename Arg>
     void
     emit(const Signal& s, Arg&& a) {
@@ -713,9 +713,9 @@ struct controller_impl {
     } /// push_scheduled_transaction
 
     /**
-    *  This is the entry point for new transactions to the block state. It will check authorization
-    *  and insert a transaction receipt into the pending block.
-    */
+     *  This is the entry point for new transactions to the block state. It will check authorization
+     *  and insert a transaction receipt into the pending block.
+     */
     transaction_trace_ptr
     push_transaction(const transaction_metadata_ptr& trx,
                      fc::time_point                  deadline) {
@@ -938,8 +938,6 @@ struct controller_impl {
         }
         FC_CAPTURE_AND_RETHROW()
     }  /// apply_block
-
-
 
     void
     push_block(const signed_block_ptr& b) {

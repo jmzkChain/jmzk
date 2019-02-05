@@ -982,8 +982,8 @@ pg::backup(const std::shared_ptr<chain::snapshot_writer>& snapshot) const {
             int   cr;
             char* buf;
             while((cr = PQgetCopyData(conn_, &buf, 0)) > 0)  {
-                writer.add_row("size", (char*)&cr, sizeof(cr));
-                writer.add_row("raw", buf, cr);
+                writer.add_row((char*)&cr, sizeof(cr));  // size
+                writer.add_row(buf, cr);  // data
                 PQfreemem(buf);
             }
             if(cr == -2) {
@@ -1019,10 +1019,9 @@ pg::restore(const std::shared_ptr<chain::snapshot_reader>& snapshot) {
             auto buf = std::string();
             while(!reader.eof()) {
                 int sz = 0;
-                reader.read_row(buf, sizeof(sz));
-                sz = *(int*)buf.data();
-
-                reader.read_row(buf, sz);
+                reader.read_row((char*)&sz, sizeof(sz));
+                buf.resize(sz);
+                reader.read_row(buf.data(), sz);
 
                 auto nr = PQputCopyData(conn_, buf.data(), sz);
                 EVT_ASSERT(nr == 1, chain::postgres_exec_exception, "Put data into COPY stream failed, detail: ${s}", ("s",PQerrorMessage(conn_)));

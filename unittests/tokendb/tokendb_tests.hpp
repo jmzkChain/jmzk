@@ -36,9 +36,9 @@ public:
         }
 
         auto cfg = controller::config();
-        cfg.blocks_dir            = basedir + "blocks";
-        cfg.state_dir             = basedir + "state";
-        cfg.db_config.db_path     = basedir + "tokendb";
+        cfg.blocks_dir            = basedir + "/blocks";
+        cfg.state_dir             = basedir + "/state";
+        cfg.db_config.db_path     = basedir + "/tokendb";
         cfg.contracts_console     = true;
         cfg.charge_free_mode      = false;
         cfg.loadtest_mode         = false;
@@ -50,72 +50,13 @@ public:
 
         my_tester->block_signing_private_keys.insert(std::make_pair(cfg.genesis.initial_key, privkey));
 
-        key_seeds.push_back(N(key));
-        key_seeds.push_back("evt");
-        key_seeds.push_back("evt2");
-        key_seeds.push_back(N(payer));
-        key_seeds.push_back(N(poorer));
-
-        key         = tester::get_public_key(N(key));
-        private_key = tester::get_private_key(N(key));
-        payer       = address(tester::get_public_key(N(payer)));
-        poorer      = address(tester::get_public_key(N(poorer)));
-
-        my_tester->add_money(payer, asset(1'000'000'000'000, symbol(5, EVT_SYM_ID)));
-
-        ti = 0;
+        key = tester::get_public_key(N(key));
     }
     ~tokendb_test() {}
 
 protected:
-    std::string
-    get_domain_name(int seq = 0) {
-        static auto base_time = time(0);
-
-        auto name = std::string("domain");
-        name.append(std::to_string(base_time + seq));
-        return name;
-    }
-
-    const char*
-    get_group_name() {
-        static std::string group_name = "group" + boost::lexical_cast<std::string>(time(0));
-        return group_name.c_str();
-    }
-
-    const char*
-    get_suspend_name() {
-        static std::string suspend_name = "suspend" + boost::lexical_cast<std::string>(time(0));
-        return suspend_name.c_str();
-    }
-
-    const char*
-    get_symbol_name() {
-        static std::string symbol_name;
-        if(symbol_name.empty()) {
-            srand((unsigned)time(0));
-            for(int i = 0; i < 5; i++)
-                symbol_name += rand() % 26 + 'A';
-        }
-        return symbol_name.c_str();
-    }
-    
-    symbol_id_type
-    get_sym_id() {
-        auto sym_id = 3;
-
-        return sym_id;
-    }
-
-protected:
     public_key_type           key;
-    private_key_type          private_key;
-    address                   payer;
-    address                   poorer;
-    std::vector<account_name> key_seeds;
     std::unique_ptr<tester>   my_tester;
-    int                       ti;
-    symbol_id_type            sym_id;
 };
 
 #define EXISTS_TOKEN(TYPE, NAME) \

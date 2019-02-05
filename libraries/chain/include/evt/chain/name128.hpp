@@ -13,7 +13,7 @@
 #include <fc/io/raw.hpp>
 
 namespace evt { namespace chain {
-using std::string;
+
 using uint128_t = __uint128_t;
 
 struct name128 {
@@ -46,38 +46,39 @@ public:
     }
 
     constexpr name128() = default;
-    constexpr name128(uint128_t v) : value(v) {}
+    constexpr name128(const name128&) = default;
+    constexpr name128(const uint128_t& v) : value(v) {}
 
     name128(const char* str) { set(str); }
-    name128(const string& str) { set(str); }
+    name128(const std::string& str) { set(str); }
 
     void set(const char* str);
-    void set(const string& str);
+    void set(const std::string& str);
 
     static name128 from_number(uint64_t v);
 
-    explicit operator string() const;
+    explicit operator std::string() const;
     explicit operator bool() const { return value; }
     explicit operator uint128_t() const { return value; }
 
-    string
+    std::string
     to_string() const {
-        return string(*this);
+        return std::string(*this);
     }
 
     friend std::ostream&
     operator<<(std::ostream& out, const name128& n) {
-        return out << string(n);
+        return out << std::string(n);
     }
 
     name128&
-    operator=(uint128_t v) {
+    operator=(const uint128_t& v) {
         value = v;
         return *this;
     }
 
     name128&
-    operator=(const string& n) {
+    operator=(const std::string& n) {
         value = name128(n).value;
         return *this;
     }
