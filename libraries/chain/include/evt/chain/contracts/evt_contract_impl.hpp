@@ -1430,7 +1430,7 @@ EVT_ACTION_IMPL_BEGIN(everipay) {
             }
         }
 
-        auto& link_id = link.get_link_id();
+        auto link_id = link.get_link_id();
         EVT_ASSERT(!tokendb.exists_token(token_type::evtlink, std::nullopt, link_id), evt_link_dupe_exception,
             "Duplicate EVT-Link ${id}", ("id", fc::to_hex((char*)&link_id, sizeof(link_id))));
 

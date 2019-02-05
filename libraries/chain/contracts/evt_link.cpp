@@ -185,11 +185,14 @@ evt_link::has_segment(uint8_t key) const {
     return segments_.find(key) != segments_.end();
 }
 
-const link_id_type&
+link_id_type
 evt_link::get_link_id() const {
     auto& seg = get_segment(link_id);
     EVT_ASSERT(seg.strv && seg.strv->size() == sizeof(link_id_type), evt_link_id_exception, "Not valid link id in this EVT-Link");
-    return *(link_id_type*)seg.strv->data();
+
+    auto id = link_id_type();
+    memcpy(&id, seg.strv->data(), sizeof(id));
+    return id;
 }
 
 namespace __internal {
