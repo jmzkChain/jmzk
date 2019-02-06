@@ -1,18 +1,29 @@
+declare_args() {
+  build_type = "debug"
+}
+
 flags = []
 if(build_type == "debug") {
-    flags += ["-O0", "-g"]
+  flags += ["-O0", "-g"]
 }
 else if(build_type == "release") {
-    flags += ["-O3", "-DNDEBUG"]
+  flags += ["-O3", "-DNDEBUG"]
+}
+
+if (current_toolchain == "gcc") {
+  flags += ["-Wno-uninitialized"]
+}
+else if(current_toolchain == "clang") {
+  flags += ["-Wno-maybe-uninitialized"]
 }
 
 config("root") {
-    cflags_cc = [
-        "-std=c++17",
-        "-Wall",
-        "-Wextra",
-        "-Werror",
-        "-Wno-unused-parameter"
-    ] + flags
+  cflags_cc = [
+    "-std=c++17",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    "-Wno-unused-parameter"
+  ] + flags
 }
 
