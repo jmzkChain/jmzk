@@ -18,9 +18,11 @@ struct recovery_visitor : fc::visitor<public_key::storage_type> {
     bool          _check_canonical;
 };
 
+public_key::public_key(const ecc::public_key_shim& ecc_key)
+    : _storage(ecc_key) {}
+
 public_key::public_key(const signature& c, const sha256& digest, bool check_canonical)
-    : _storage(c._storage.visit(recovery_visitor(digest, check_canonical))) {
-}
+    : _storage(c._storage.visit(recovery_visitor(digest, check_canonical))) {}
 
 static public_key::storage_type
 parse_base58(const std::string& base58str) {

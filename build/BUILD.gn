@@ -1,0 +1,14 @@
+config("compiler_defaults") {
+  if (current_os == "linux") {
+    cflags = [
+      "-pthread",
+    ]
+  }
+}
+
+config("executable_ldconfig") {
+  ldflags = [
+    "-Wl,-rpath=\$ORIGIN/",
+    "-Wl,-rpath-link=",
+  ]
+}

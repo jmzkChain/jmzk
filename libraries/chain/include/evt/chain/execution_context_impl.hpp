@@ -42,6 +42,8 @@ public:
         });
     }
 
+    ~execution_context_impl() override {}
+
 public:
     int
     index_of(name act) const override {

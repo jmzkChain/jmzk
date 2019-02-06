@@ -220,9 +220,6 @@ private:
 
 private:
     std::unique_ptr<class token_database_impl> my_;
-
-private:
-    friend class token_database_snapshot;
 };
 
 }}  // namespace evt::chain

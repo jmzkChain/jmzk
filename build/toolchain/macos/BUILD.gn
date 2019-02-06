@@ -1,0 +1,5 @@
+import("//build/config/toolchain/gcc.gni")
+
+clang_toolchain("clang") {
+    shlib_extension = ".dylib"
+}

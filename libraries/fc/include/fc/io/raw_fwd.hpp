@@ -16,8 +16,8 @@
 #include <fc/container/small_vector_fwd.hpp>
 #include <fc/io/varint.hpp>
 
-#define MAX_NUM_ARRAY_ELEMENTS (1024 * 1024)
-#define MAX_SIZE_OF_BYTE_ARRAYS (20 * 1024 * 1024)
+#define MAX_NUM_ARRAY_ELEMENTS  (1024 * 1024)
+#define MAX_SIZE_OF_BYTE_ARRAYS (128 * 1024 * 1024)
 
 namespace google {
 

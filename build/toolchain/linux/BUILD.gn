@@ -1,0 +1,12 @@
+import("//build/config/toolchain/gcc.gni")
+
+gcc_toolchain("gcc") {
+    cc = "gcc"
+    cxx = "g++"
+    ar = "ar"
+    ld = "g++"
+}
+
+clang_toolchain("clang") {
+    
+}

@@ -179,20 +179,26 @@ unpack(Stream& s, fc::microseconds& usec) {
 template<typename Stream, typename T, size_t N>
 inline void
 pack(Stream& s, T (&v)[N]) {
+    static_assert(N <= MAX_NUM_ARRAY_ELEMENTS, "number of elements in array is too large");
+
     fc::raw::pack(s, unsigned_int((uint32_t)N));
-    for(uint64_t i = 0; i < N; ++i)
+    for(uint64_t i = 0; i < N; ++i) {
         fc::raw::pack(s, v[i]);
+    }
 }
 
 template<typename Stream, typename T, size_t N>
 inline void
 unpack(Stream& s, T (&v)[N]) {
+    static_assert(N <= MAX_NUM_ARRAY_ELEMENTS, "number of elements in array is too large");
+
     try {
         unsigned_int size;
         fc::raw::unpack(s, size);
         FC_ASSERT(size.value == N);
-        for(uint64_t i = 0; i < N; ++i)
+        for(uint64_t i = 0; i < N; ++i) {
             fc::raw::unpack(s, v[i]);
+        }
     }
     FC_RETHROW_EXCEPTIONS(warn, "${type} (&v)[${length}]", ("type", fc::get_typename<T>::name())("length", N))
 }
@@ -340,8 +346,9 @@ inline void
 pack(Stream& s, const std::vector<char>& value) {
     FC_ASSERT(value.size() <= MAX_SIZE_OF_BYTE_ARRAYS);
     fc::raw::pack(s, unsigned_int((uint32_t)value.size()));
-    if(value.size())
+    if(value.size()) {
         s.write(&value.front(), (uint32_t)value.size());
+    }
 }
 
 template<typename Stream>
