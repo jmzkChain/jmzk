@@ -500,6 +500,7 @@ struct if_class<fc::false_type> {
     static inline void pack(Stream& s, const T& v) {
         s.write((char*)&v, sizeof(v));
     }
+    
     template<typename Stream, typename T>
     static inline void unpack(Stream& s, T& v) {
         s.read((char*)&v, sizeof(v));

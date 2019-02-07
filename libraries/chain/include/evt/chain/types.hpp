@@ -141,7 +141,6 @@ enum object_type {
     block_summary_object_type,
     transaction_object_type,
     reversible_block_object_type,
-    evt_link_object_type,
     OBJECT_TYPE_COUNT  ///< Sentry value which contains the number of different object types
 };
 
@@ -172,30 +171,9 @@ typedef fc::small_vector<std::pair<uint16_t, vector<char>>, 2> extensions_type;
 
 }}  // namespace evt::chain
 
-namespace std {
-
-inline std::ostream&
-operator<<(std::ostream& o, const __uint128_t v) {
-    const uint64_t P10_UINT64 = 10000000000000000000ULL; /* 19 zeroes */
-
-    if(v > std::numeric_limits<uint64_t>::max()) {
-        __uint128_t leading  = v / P10_UINT64;
-        uint64_t    trailing = v % P10_UINT64;
-        o << leading;
-        o << trailing;
-    }
-    else {
-        uint64_t u64 = v;
-        o << u64;
-    }
-    return o;
-}
-
-}  // namespace std
-
 FC_REFLECT_ENUM(
     evt::chain::object_type,
     (null_object_type)(global_property_object_type)(dynamic_global_property_object_type)
-    (block_summary_object_type)(transaction_object_type)(reversible_block_object_type)(evt_link_object_type)
+    (block_summary_object_type)(transaction_object_type)(reversible_block_object_type)
     (OBJECT_TYPE_COUNT));
 FC_REFLECT(evt::chain::void_t, );
