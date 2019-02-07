@@ -760,15 +760,16 @@ def getsnapshot(ctx, snapshot):
     name = ctx.obj['name']
     volume_name = '{}-snapshots-volume'.format(name)
 
-    entry = 'fetch --name={} --file=/data/{}'.format(snapshot, snapshot[8:])
+    sid = snapshot[8:]
+    entry = 'fetch --name={} --file=/data/{}'.format(snapshot, sid)
 
     container = client.containers.run('everitoken/snapshot:latest', entry, detach=True,
                                       volumes={volume_name: {'bind': '/data', 'mode': 'rw'}})
     container.wait()
     logs = container.logs().decode('utf-8')
 
-    click.echo(logs)
-
+    click.echo(logs, nl=False)
+    click.echo('Create evtd with this snapshot via \'--snapshot=/opt/evt/snapshots/{}\''.format(sid))
 
 @evtd.command()
 @click.argument('arguments', nargs=-1)

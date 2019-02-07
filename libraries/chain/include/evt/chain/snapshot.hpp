@@ -14,8 +14,9 @@ namespace evt { namespace chain {
 /**
  * History:
  * Version 1: initial version with string identified sections and rows
+ * Version 2: Token database upgrades to binary format
  */
-static const uint32_t current_snapshot_version = 1;
+static const uint32_t current_snapshot_version = 2;
 
 namespace detail {
 template <typename T>
