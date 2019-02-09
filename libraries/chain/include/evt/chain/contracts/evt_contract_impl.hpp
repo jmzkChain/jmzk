@@ -250,10 +250,10 @@ get_db_prefix<token_def>(const token_def& v) {
         tokendb.put_token(TYPE, action_op::put, get_db_prefix(VALUE), get_db_key(VALUE), dv.as_string_view()); \
     }
 
-#define PUT_DB_ASSET(ADDR, SYM, VALUE)                          \
-    {                                                           \
-        auto dv = make_db_value(VALUE);                         \
-        tokendb.put_asset(ADDR, SYM.id(), dv.as_string_view()); \
+#define PUT_DB_ASSET(ADDR, VALUE)                                     \
+    {                                                                 \
+        auto dv = make_db_value(VALUE);                               \
+        tokendb.put_asset(ADDR, VALUE.sym.id(), dv.as_string_view()); \
     }
 
 #define READ_DB_TOKEN(TYPE, PREFIX, KEY, VALUEREF, EXCEPTION, FORMAT, ...)  \
@@ -301,6 +301,17 @@ get_db_prefix<token_def>(const token_def& v) {
             VALUEREF = MAKE_PROPERTY(0, SYM);                               \
             context.add_new_ft_holder(                                      \
                 ft_holder { .addr = ADDR, .sym_id = SYM.id() });            \
+        }                                                                   \
+        else {                                                              \
+            extract_db_value(str, VALUEREF);                                \
+        }                                                                   \
+    }
+
+#define READ_DB_ASSET_NO_THROW_NO_NEW(ADDR, SYM, VALUEREF)                  \
+    {                                                                       \
+        auto str = std::string();                                           \
+        if(!tokendb.read_asset(ADDR, SYM.id(), str, true /* no throw */)) { \
+            VALUEREF = MAKE_PROPERTY(0, SYM);                               \
         }                                                                   \
         else {                                                              \
             extract_db_value(str, VALUEREF);                                \
@@ -686,8 +697,8 @@ transfer_fungible(apply_context& context,
     pfrom.amount -= actual_amount;
     pto.amount   += receive_amount;
 
-    PUT_DB_ASSET(to, sym, pto);
-    PUT_DB_ASSET(from, sym, pfrom);
+    PUT_DB_ASSET(to, pto);
+    PUT_DB_ASSET(from, pfrom);
 
     // update bonus if needed
     if(bonus_amount > 0) {
@@ -700,7 +711,7 @@ transfer_fungible(apply_context& context,
         EVT_ASSERT2(!r.exception(), math_overflow_exception, "Opeartions resulted in overflows.");
 
         pbonus.amount += bonus_amount;
-        PUT_DB_ASSET(addr, sym, pbonus);
+        PUT_DB_ASSET(addr, pbonus);
 
         auto pbact = paybonus {
             .payer  = from,
@@ -763,7 +774,7 @@ EVT_ACTION_IMPL_BEGIN(newfungible) {
 
         auto addr = get_fungible_address(fungible.sym);
         auto prop = MAKE_PROPERTY(fungible.total_supply.amount(), fungible.sym);
-        PUT_DB_ASSET(addr, fungible.sym, prop);
+        PUT_DB_ASSET(addr, prop);
 
         context.add_new_ft_holder(ft_holder { .addr = addr, .sym_id = nfact.sym.id() }); 
     }
@@ -1308,22 +1319,22 @@ EVT_ACTION_IMPL_BEGIN(paycharge) {
         auto& tokendb = context.token_db;
 
         property evt, pevt;
-        READ_DB_ASSET_NO_THROW(pcact.payer, pevt_sym(), pevt);
+        READ_DB_ASSET_NO_THROW_NO_NEW(pcact.payer, pevt_sym(), pevt);
         auto paid = std::min((int64_t)pcact.charge, pevt.amount);
         if(paid > 0) {
             pevt.amount -= paid;
-            PUT_DB_ASSET(pcact.payer, pevt_sym(), pevt);
+            PUT_DB_ASSET(pcact.payer, pevt);
         }
 
         if(paid < pcact.charge) {
-            READ_DB_ASSET_NO_THROW(pcact.payer, evt_sym(), evt);
+            READ_DB_ASSET_NO_THROW_NO_NEW(pcact.payer, evt_sym(), evt);
             auto remain = pcact.charge - paid;
             if(evt.amount < (int64_t)remain) {
                 EVT_THROW2(charge_exceeded_exception,"There are only {} and {} left, but charge is {}",
                     asset(evt.amount, evt_sym()), asset(pevt.amount, pevt_sym()), asset(pcact.charge, evt_sym()));
             }
             evt.amount -= remain;
-            PUT_DB_ASSET(pcact.payer, evt_sym(), evt);
+            PUT_DB_ASSET(pcact.payer, evt);
         }
 
         auto  pbs  = context.control.pending_block_state();
@@ -1333,7 +1344,7 @@ EVT_ACTION_IMPL_BEGIN(paycharge) {
         READ_DB_ASSET_NO_THROW(prod, evt_sym(), bp);
         // give charge to producer
         bp.amount += pcact.charge;
-        PUT_DB_ASSET(prod, evt_sym(), bp);
+        PUT_DB_ASSET(prod, bp);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
