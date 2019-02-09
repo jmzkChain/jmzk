@@ -132,7 +132,13 @@ check_address_reserved(const address& addr) {
         return;
     }
     case address::generated_t: {
-        EVT_ASSERT(!addr.get_prefix().reserved(), address_reserved_exception, "Address is reserved and cannot be used here");
+        auto p = addr.get_prefix();
+        if(p.reserved()) {
+            if(p == N(.domain) || p == N(.fungible)) {
+                return;
+            }
+        }
+        EVT_THROW(address_reserved_exception, "Address is reserved and cannot be used here");
     }
     }  // switch
 }
