@@ -619,7 +619,7 @@ calculate_passive_bonus(const token_database& tokendb,
     switch(method) {
     case passive_method_type::within_amount: {
         bonus = std::min(amount, bonus);  // make sure amount >= bonus
-        return std::make_pair(amount - bonus, bonus);
+        return std::make_pair(amount, bonus);
     }
     case passive_method_type::outside_amount: {
         return std::make_pair(amount, bonus);
