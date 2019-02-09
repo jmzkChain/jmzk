@@ -11,8 +11,15 @@
 namespace evt { namespace chain {
 
 struct ft_holder {
+public:
     address        addr;
     symbol_id_type sym_id;
+
+public:
+    friend bool
+    operator==(const ft_holder& lhs, const ft_holder& rhs) {
+        return std::tie(lhs.addr, lhs.sym_id) == std::tie(rhs.addr, rhs.sym_id);
+    }
 };
 
 struct action_trace {
