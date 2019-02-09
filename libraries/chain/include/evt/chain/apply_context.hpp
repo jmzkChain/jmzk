@@ -51,8 +51,13 @@ public:
     }
 
     ft_holder&
-    add_new_ft_holder(ft_holder&& fth) {
-        return _new_ft_holders.emplace_back(std::move(fth));
+    add_new_ft_holder(ft_holder&& nfth) {
+        for(auto& fth : _new_ft_holders) {
+            if(fth == nfth) {
+                return fth;
+            }
+        }
+        return _new_ft_holders.emplace_back(std::move(nfth));
     }
 
 public:
