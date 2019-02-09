@@ -47,7 +47,7 @@ private:
 
 public:
     pg_query(boost::asio::io_context& io_serv, controller& chain)
-        : conn_(nullptr), io_serv_(io_serv), chain_(chain), socket_(io_serv) {}
+        : conn_(nullptr), sending_(false), io_serv_(io_serv), chain_(chain), socket_(io_serv) {}
 
 public:
     int connect(const std::string& conn);
@@ -97,6 +97,7 @@ private:
 private:
     pg_conn* conn_;
 
+    bool                         sending_;
     std::queue<task>             tasks_;
     boost::asio::io_context&     io_serv_;
     chain::controller&           chain_;

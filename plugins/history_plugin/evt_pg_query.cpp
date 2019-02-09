@@ -151,10 +151,9 @@ pg_query::begin_poll_read() {
 
 int
 pg_query::queue(int id, int task, std::string&& stmt) {
-    auto if_send = tasks_.empty();
     tasks_.emplace(id, task, std::move(stmt));
     
-    if(if_send) {
+    if(!sending_) {
         send_once();
     }
     return PG_OK;
@@ -169,6 +168,7 @@ pg_query::send_once() {
 
     auto r = PQsendQuery(conn_, t.stmt.c_str());
     if(r == 1) {
+        sending_ = true;
         return PG_OK;
     }
 
@@ -267,6 +267,9 @@ pg_query::poll_read() {
     if(!tasks_.empty()) {
         // send next one
         send_once();
+    }
+    else {
+        sending_ = false;
     }
     return PG_OK;
 }
