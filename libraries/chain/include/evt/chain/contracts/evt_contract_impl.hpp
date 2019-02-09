@@ -588,6 +588,7 @@ get_bonus_address(symbol_id_type sym_id, uint32_t bonus_id) {
     return address(N(.bonus), name128::from_number(sym_id), bonus_id);
 }
 
+// from, bonus
 std::pair<int64_t, int64_t>
 calculate_passive_bonus(const token_database& tokendb,
                         symbol_id_type        sym_id,
@@ -622,7 +623,7 @@ calculate_passive_bonus(const token_database& tokendb,
         return std::make_pair(amount, bonus);
     }
     case passive_method_type::outside_amount: {
-        return std::make_pair(amount, bonus);
+        return std::make_pair(amount + bonus, bonus);
     }
     default: {
         assert(false);
@@ -660,23 +661,24 @@ transfer_fungible(apply_context& context,
     EVT_ASSERT2(pfrom.amount >= total.amount(), balance_exception,
         "Address: {} does not have enough balance({}) left.", from, total);
 
-    int64_t actual_amount = total.amount(), bonus_amount = 0;
+    int64_t actual_amount = total.amount(), receive_amount = total.amount(), bonus_amount = 0;
     // evt and pevt cannot have passive bonus
     if(sym.id() > PEVT_SYM_ID && pay_bonus) {
         // check and calculate if fungible has passive bonus settings
         std::tie(actual_amount, bonus_amount) = calculate_passive_bonus(tokendb, sym.id(), total.amount(), act);
+        receive_amount = actual_amount - bonus_amount;
     }
 
     EVT_ASSERT2(pfrom.amount >= actual_amount, balance_exception,
         "There's not enough balance({}) within address: {}.", asset(actual_amount, sym), from);
 
     auto r1 = checked::subtract<int64_t>(pfrom.amount, actual_amount);
-    auto r2 = checked::add<int64_t>(pto.amount, actual_amount);
+    auto r2 = checked::add<int64_t>(pto.amount, receive_amount);
     EVT_ASSERT(!r1.exception() && !r2.exception(), math_overflow_exception, "Opeartions resulted in overflows.");
     
     // update payee and payer
     pfrom.amount -= actual_amount;
-    pto.amount   += actual_amount;
+    pto.amount   += receive_amount;
 
     PUT_DB_ASSET(to, sym, pto);
     PUT_DB_ASSET(from, sym, pfrom);

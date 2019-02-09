@@ -178,16 +178,25 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_fees_test", "[contracts]") {
     auto actkey = name128::from_number(get_sym_id());
     auto bonus_addr = address(N(.bonus), actkey, 0);
 
+    property orig_from;
+    {
+        READ_DB_ASSET(key, get_sym(), orig_from);
+    }
+
     // fees: 0.15 * 1000 = 15, actual: 1000
     my_tester->push_action(action(N128(.fungible), actkey, tf), key_seeds, payer);
 
     {
-        property bonus, to;
+        property bonus, to, from;
         READ_DB_ASSET(bonus_addr, get_sym(), bonus);
         READ_DB_ASSET(tf.to, get_sym(), to);
+        READ_DB_ASSET(key, get_sym(), from);
 
         CHECK(bonus.amount == 1000);
         CHECK(to.amount == 1000);
+        CHECK(orig_from.amount - from.amount == 2000);
+
+        orig_from = from;
     }
 
     tf.to = tester::get_public_key(N(to2));
@@ -196,12 +205,16 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_fees_test", "[contracts]") {
     my_tester->push_action(action(N128(.fungible), actkey, tf), key_seeds, payer);
 
     {
-        property bonus, to;
+        property bonus, to, from;
         READ_DB_ASSET(bonus_addr, get_sym(), bonus);
         READ_DB_ASSET(tf.to, get_sym(), to);
+        READ_DB_ASSET(key, get_sym(), from);
 
         CHECK(bonus.amount == 1000 + 15010);
         CHECK(to.amount == 1'00000);
+        CHECK(orig_from.amount - from.amount == 1'15010);
+
+        orig_from = from;
     }
 
     tf.to = tester::get_public_key(N(to3));
@@ -210,12 +223,57 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_fees_test", "[contracts]") {
     my_tester->push_action(action(N128(.fungible), actkey, tf), key_seeds, payer);
 
     {
-        property bonus, to;
+        property bonus, to, from;
         READ_DB_ASSET(bonus_addr, get_sym(), bonus);
         READ_DB_ASSET(tf.to, get_sym(), to);
+        READ_DB_ASSET(key, get_sym(), from);
 
         CHECK(bonus.amount == 1000 + 15010 + 20000);
         CHECK(to.amount == 2'00000);
+        CHECK(orig_from.amount - from.amount == 2'20000);
+
+        orig_from = from;
+    }
+
+    auto link   = evt_link();
+    auto header = 0;
+    header |= evt_link::version1;
+    header |= evt_link::everiPay;
+
+    auto head_ts = my_tester->control->head_block_time().sec_since_epoch();
+
+    link.set_header(header);
+    link.add_segment(evt_link::segment(evt_link::timestamp, head_ts));
+    link.add_segment(evt_link::segment(evt_link::max_pay, 500'00000));
+    link.add_segment(evt_link::segment(evt_link::symbol_id, get_sym_id()));
+    link.add_segment(evt_link::segment(evt_link::link_id, "KIJHNHFMJDUKJUAA"));
+
+    auto sign_link = [&](auto& l, auto key) {
+        l.clear_signatures();
+        l.sign(key);
+    };
+
+    my_tester->add_money(tester::get_public_key(N(to4)), asset(10'00000, evt_sym()));
+    sign_link(link, tester::get_private_key(N(key)));
+
+    auto ep   = everipay();
+    ep.link   = link;
+    ep.payee  = tester::get_public_key(N(to4));
+    ep.number = asset(1'00000, get_sym());
+    // fees: 0.15 * 1'00000 = '15000, actual: '15010
+    my_tester->push_action(action(N128(.fungible), actkey, ep), key_seeds, payer);
+
+    {
+        property bonus, to, from;
+        READ_DB_ASSET(bonus_addr, get_sym(), bonus);
+        READ_DB_ASSET(ep.payee, get_sym(), to);
+        READ_DB_ASSET(key, get_sym(), from);
+
+        CHECK(bonus.amount == 1000 + 15010 + 20000 + 15010);
+        CHECK(to.amount == 1'00000 - 15010);
+        CHECK(orig_from.amount - from.amount == 1'00000);
+
+        orig_from = from;
     }
 
     my_tester->produce_block();
@@ -241,7 +299,7 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_dist_test", "[contracts]") {
     {
         property bonus;
         READ_DB_ASSET(bonus_addr, get_sym(), bonus);
-        CHECK(bonus.amount == 1000 + 15010 + 20000);
+        CHECK(bonus.amount == 1000 + 15010 + 20000 + 15010);
     }
 
     // total: 0.2 * 300 = 60
@@ -258,7 +316,7 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_dist_test", "[contracts]") {
     {
         property bonus;
         READ_DB_ASSET(bonus_addr, get_sym(), bonus);
-        CHECK(bonus.amount == 1000 + 15010 + 20000 + 20000 * 300);
+        CHECK(bonus.amount == 1000 + 15010 + 20000 + 15010 + 20000 * 300);
     }
 
     my_tester->push_action(action(N128(.bonus), actkey, dpb), keyseeds, payer);
