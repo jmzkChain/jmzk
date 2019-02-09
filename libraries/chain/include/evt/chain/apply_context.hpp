@@ -52,6 +52,11 @@ public:
 
     ft_holder&
     add_new_ft_holder(ft_holder&& fth) {
+        for(auto& fh : _new_ft_holders) {
+            if(fh.sym_id == fth.sym_id) {
+                return fh;
+            }
+        }
         return _new_ft_holders.emplace_back(std::move(fth));
     }
 
