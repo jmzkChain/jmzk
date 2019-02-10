@@ -582,7 +582,7 @@ auto gfa_plan0 = R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
                        WHERE
                            domain = '.fungible'
                            AND key = $1
-                           AND name = ANY('{{"issuefungible","transferft","recycleft","evt2pevt","everipay","paycharge"}}')
+                           AND name = ANY('{{"issuefungible","transferft","recycleft","evt2pevt","everipay","paybonus"}}')
                        ORDER BY actions.created_at {0}, actions.seq_num {0}
                        LIMIT $2 OFFSET $3
                        )sql";
@@ -594,7 +594,7 @@ auto gfa_plan1 = R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
                        WHERE
                            domain = '.fungible'
                            AND key = $1
-                           AND name = ANY('{{"issuefungible","transferft","recycleft","evt2pevt","everipay","paycharge","paybonus"}}')
+                           AND name = ANY('{{"issuefungible","transferft","recycleft","evt2pevt","everipay","paybonus"}}')
                            AND (
                                data->>'address' = $2 OR
                                data->>'from' = $2 OR
