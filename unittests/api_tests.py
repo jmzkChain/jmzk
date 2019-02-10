@@ -159,12 +159,12 @@ def pre_action():
     resp = api.push_transaction(trx.dumps())
     print(resp)
 
-    trx = TG.new_trx()
-    trx.add_action(issuefungible2)
-    trx.add_sign(priv_evt)
-    trx.set_payer(user.pub_key.to_string())
-    resp = api.push_transaction(trx.dumps())
-    print(resp)
+    # trx = TG.new_trx()
+    # trx.add_action(issuefungible2)
+    # trx.add_sign(priv_evt)
+    # trx.set_payer(user.pub_key.to_string())
+    # resp = api.push_transaction(trx.dumps())
+    # print(resp.content)
     
 
     trx = TG.new_trx()
@@ -298,7 +298,7 @@ class Test(unittest.TestCase):
             req['link_id'] = pay_link.get_link_id().hex()
             tasks.append(grequests.post(url, data=json.dumps(req)))
 
-        for resp in grequests.imap(tasks, size=2000):
+        for resp in grequests.imap(tasks, size=1000):
             self.assertEqual(resp.status_code, 500, msg=resp.content)
 
     def test_evt_link_for_trx_id4(self):
@@ -399,22 +399,45 @@ class Test(unittest.TestCase):
 
     def test_get_assets(self):
         req = {
-            'address': user.pub_key.to_string()
+            'address': user.pub_key.to_string(),
+            'sym_id': 1
         }
 
         resp = api.get_assets(json.dumps(req)).text
         res_dict = json.loads(resp)
+        self.assertEqual(len(res_dict), 1, msg=resp)
         self.assertEqual(res_dict[0], '896.63370 S#1', msg=resp)
-        self.assertEqual(res_dict[1], '94.57100 S#2', msg=resp)
-        self.assertEqual(res_dict[2], '97.00000 S#3', msg=resp)
 
         req = {
-            'address': pub2.to_string()
+            'address': pub2.to_string(),
+            'sym_id': 3
         }
 
         resp = api.get_assets(json.dumps(req)).text
         res_dict = json.loads(resp)
         self.assertTrue(type(res_dict) is list)
+        self.assertEqual(len(res_dict), 1, msg=resp)
+        self.assertEqual(res_dict[0], '3.00000 S#3', msg=resp)
+
+    def test_get_history_assets(self):
+        req = {
+            'addr': user.pub_key.to_string(),
+        }
+
+        resp = api.get_history_assets(json.dumps(req)).text
+        res_dict = json.loads(resp)
+
+        self.assertEqual(len(res_dict), 3, msg=resp)
+        self.assertEqual(res_dict[0], '896.63370 S#1', msg=resp)
+
+        req = {
+            'addr': pub2.to_string(),
+        }
+
+        resp = api.get_history_assets(json.dumps(req)).text
+        res_dict = json.loads(resp)
+        self.assertTrue(type(res_dict) is list)
+        self.assertEqual(len(res_dict), 1, msg=resp)
         self.assertEqual(res_dict[0], '3.00000 S#3', msg=resp)
 
     def test_get_actions(self):
@@ -689,7 +712,6 @@ class Test(unittest.TestCase):
         self.assertTrue('evt2pevt' in resp, msg=resp)
 
     def test_get_history_transaction(self):
-
         prodvote = AG.new_action(
         'prodvote', producer='evt', key="global-charge-factor", value=10000)
 
