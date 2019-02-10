@@ -183,20 +183,22 @@ pg_query::send_once() {
     tasks_.pop();
     if(!tasks_.empty()) {
         // send next one
-        send_once();
+        return send_once();
     }
-    return PG_OK;
+    return PG_FAIL;
 }
 
 int
 pg_query::poll_read() {
     using namespace __internal;
 
+    bool busy = false;
     while(1) {
         auto r = PQconsumeInput(conn_);
         EVT_ASSERT(r, chain::postgres_poll_exception, "Poll messages from postgres failed, detail: ${d}", ("d",PQerrorMessage(conn_)));
 
         if(PQisBusy(conn_)) {
+            busy = true;
             break;
         }
 
@@ -264,9 +266,12 @@ pg_query::poll_read() {
     }
 
     socket_.async_wait(boost::asio::ip::tcp::socket::wait_type::wait_read, std::bind(&pg_query::poll_read, this));
-    if(!tasks_.empty()) {
+    if(!busy && !tasks_.empty()) {
         // send next one
-        send_once();
+        if(send_once() == PG_FAIL) {
+            // no send
+            sending_ = false;
+        }
     }
     else {
         sending_ = false;
@@ -589,7 +594,7 @@ auto gfa_plan1 = R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
                        WHERE
                            domain = '.fungible'
                            AND key = $1
-                           AND name = ANY('{{"issuefungible","transferft","recycleft","evt2pevt","everipay","paycharge"}}')
+                           AND name = ANY('{{"issuefungible","transferft","recycleft","evt2pevt","everipay","paycharge","paybonus"}}')
                            AND (
                                data->>'address' = $2 OR
                                data->>'from' = $2 OR

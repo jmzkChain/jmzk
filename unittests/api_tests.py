@@ -614,6 +614,26 @@ class Test(unittest.TestCase):
         self.assertTrue('everipay' in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
 
+    def test_batch_get_actions(self):
+        req = {
+            'domain': '.fungible',
+            'skip': 0,
+            'take': 10
+        }
+
+        url = 'http://127.0.0.1:8888/v1/history/get_actions'
+
+        tasks = []
+        for i in range(10240):
+            tasks.append(grequests.post(url, data=json.dumps(req)))
+
+        i = 0
+        for resp in grequests.imap(tasks, size=1023):
+            self.assertEqual(resp.status_code, 200, msg=resp.content)
+            i += 1
+            if i % 100 == 0:
+                print('Received {} responses'.format(i))
+
     def test_get_fungible_actions(self):
         req = {
             'sym_id': 338422621,
