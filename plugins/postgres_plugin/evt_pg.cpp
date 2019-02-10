@@ -961,10 +961,7 @@ PREPARE_SQL_ONCE(afh_plan, "INSERT INTO ft_holders VALUES($1, $2, now()) ON CONF
 
 int
 pg::add_ft_holders(trx_context& tctx, const ft_holders_t& holders) {
-    auto unique_holders = chain::small_vector<chain::ft_holder, 2>();
-
-    std::unique_copy(holders.begin(), holders.end(), std::back_inserter(unique_holders));
-    for(auto& holder : unique_holders) {
+    for(auto& holder : holders) {
         fmt::format_to(tctx.trx_buf_, fmt("EXECUTE afh_plan('{}','{{{}}}');"), holder.addr, (int64_t)holder.sym_id);
     }
     return PG_OK;
