@@ -287,7 +287,8 @@ format_array_to(fmt::memory_buffer& buf, Iterator begin, Iterator end) {
     if(begin != end) {
         auto it = begin;
         for(; it != end - 1; it++) {
-            fmt::format_to(buf, fmt("\"{}\","), (std::string)*it);
+            auto str = (std::string)*it;
+            fmt::format_to(buf, fmt("\"{}\","), str);
         }
         fmt::format_to(buf, fmt("\"{}\""), (std::string)*it);
     }
