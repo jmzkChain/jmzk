@@ -220,7 +220,7 @@ auto create_tokens_table = R"sql(CREATE TABLE IF NOT EXISTS public.tokens
                                  TABLESPACE pg_default;
                                  CREATE INDEX IF NOT EXISTS tokens_owner_index
                                      ON public.tokens USING gin
-                                     (owner)
+                                     (owner array_ops)
                                      TABLESPACE pg_default;)sql";
 
 auto create_groups_table = R"sql(CREATE TABLE IF NOT EXISTS public.groups
