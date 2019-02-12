@@ -25,8 +25,9 @@ namespace evt {
  * - 1.2.0: add `trx_id` feild to `metas`, `domains`, `tokens`, `groups` and `fungibles` tables
  *          add `total_supply` field to `fungibles` table
  * - 1.3.0  add `ft_holders` table
+ * - 1.3.1  add serveral indexes for better query performance
  */
-static auto pg_version = "1.3.0";
+static auto pg_version = "1.3.1";
 
 namespace __internal {
 
