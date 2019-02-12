@@ -83,12 +83,13 @@ private:
 
 public:
     uint32_t
-    calculate(const packed_transaction& ptrx, const transaction& trx, size_t sig_num = 0) const {
+    calculate(const packed_transaction& ptrx, size_t sig_num = 0) const {
         using namespace __internal;
         
+        auto& trx = ptrx.get_transaction();
         EVT_ASSERT(!trx.actions.empty(), tx_no_action, "There's not any actions in this transaction");
 
-        sig_num = std::max(sig_num, ptrx.signatures.size());
+        sig_num = std::max(sig_num, ptrx.get_signatures().size());
 
         uint32_t ts = 0, s = 0;
         ts += network(ptrx, sig_num) * config_.base_network_charge_factor;

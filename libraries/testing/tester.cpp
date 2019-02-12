@@ -74,7 +74,7 @@ base_tester::open(const snapshot_reader_ptr& snapshot) {
     control->accepted_block.connect([this](const block_state_ptr& block_state) {
         FC_ASSERT(block_state->block);
         for(const auto& receipt : block_state->block->transactions) {
-            chain_transactions[receipt.trx.id()] = receipt;
+            chain_transactions[receipt.trx.id()] = transaction_receipt(receipt.trx);
         }
     });
 }
@@ -117,7 +117,7 @@ base_tester::_produce_block(fc::microseconds skip_time, bool skip_pending_trxs, 
     if(!skip_pending_trxs) {
         auto unapplied_trxs = control->get_unapplied_transactions();
         for(const auto& trx : unapplied_trxs) {
-            auto trace = control->push_transaction(trx, fc::time_point::maximum());
+            auto trace = control->push_transaction(trx.second, fc::time_point::maximum());
             if(trace->except) {
                 trace->except->dynamic_rethrow_exception();
             }
@@ -212,7 +212,7 @@ base_tester::push_transaction(packed_transaction& trx,
         if(!control->pending_block_state()) {
             _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
         }
-        auto r = control->push_transaction(std::make_shared<transaction_metadata>(trx), deadline);
+        auto r = control->push_transaction(std::make_shared<transaction_metadata>(std::make_shared<packed_transaction>(trx)), deadline);
 
         if(r->except_ptr) {
             std::rethrow_exception(r->except_ptr);

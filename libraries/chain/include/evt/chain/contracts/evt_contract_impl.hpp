@@ -1456,7 +1456,7 @@ EVT_ACTION_IMPL_BEGIN(everipay) {
         auto link_obj = evt_link_object {
             .link_id   = link_id,
             .block_num = context.control.pending_block_state()->block->block_num(),
-            .trx_id    = context.trx_context.trx.id
+            .trx_id    = context.trx_context.trx_meta->id
         };
         ADD_DB_TOKEN(token_type::evtlink, link_obj);
 
@@ -1688,7 +1688,7 @@ EVT_ACTION_IMPL_BEGIN(newlock) {
         EVT_ASSERT(nlact.assets.size() > 0, lock_assets_exception, "Assets for lock should not be empty");
 
         auto has_fungible = false;
-        auto keys         = context.trx_context.trx.recover_keys(context.control.get_chain_id());
+        auto keys         = context.trx_context.trx_meta->recover_keys(context.control.get_chain_id());
         for(auto& la : nlact.assets) {
             switch(la.type()) {
             case asset_type::tokens: {

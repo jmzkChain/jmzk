@@ -38,7 +38,7 @@ apply_context::exec_one(action_trace& trace) {
     r.act_digest      = digest_type::hash(act);
     r.global_sequence = next_global_sequence();
 
-    trace.trx_id            = trx_context.trx.id;
+    trace.trx_id            = trx_context.trx_meta->id;
     trace.block_num         = control.pending_block_state()->block_num;
     trace.block_time        = control.pending_block_time();
     trace.producer_block_id = control.pending_producer_block_id();

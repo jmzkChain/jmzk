@@ -13,15 +13,16 @@
 
 namespace evt { namespace chain {
 
-transaction_context::transaction_context(controller&            control,
-                                         evt_execution_context& exec_ctx,
-                                         transaction_metadata&  trx_meta,
-                                         fc::time_point         start)
+transaction_context::transaction_context(controller&                    control,
+                                         evt_execution_context&         exec_ctx,
+                                         const transaction_metadata_ptr trx_meta,
+                                         fc::time_point                 start)
     : control(control)
     , exec_ctx(exec_ctx)
     , undo_session()
     , undo_token_session()
-    , trx(trx_meta)
+    , trx_meta(trx_meta)
+    , trx(trx_meta->packed_trx->get_signed_transaction())
     , trace(std::make_shared<transaction_trace>())
     , start(start)
     , net_usage(trace->net_usage) {
@@ -29,11 +30,13 @@ transaction_context::transaction_context(controller&            control,
         undo_session       = control.db().start_undo_session(true);
         undo_token_session = control.token_db().new_savepoint_session();
     }
-    trace->id = trx.id;
-    executed.reserve(trx.total_actions() + 1); // one for paycharge action
+    trace->id = trx_meta->id;
 
-    if(!trx.trx.transaction_extensions.empty()) {
-        for(auto& ext : trx.trx.transaction_extensions) {
+    EVT_ASSERT(!trx.actions.empty(), tx_no_action, "There's any actions in this transaction");
+    executed.reserve(trx.actions.size() + 1); // one for paycharge action
+
+    if(!trx.transaction_extensions.empty()) {
+        for(auto& ext : trx.transaction_extensions) {
             FC_ASSERT(std::get<0>(ext) <= (uint16_t)transaction_ext::max_value, "we don't support this extensions yet");            
         }
     }
@@ -42,10 +45,9 @@ transaction_context::transaction_context(controller&            control,
 void
 transaction_context::init(uint64_t initial_net_usage) {
     EVT_ASSERT(!is_initialized, transaction_exception, "cannot initialize twice");
-    EVT_ASSERT(!trx.trx.actions.empty(), tx_no_action, "There's any actions in this transaction");
-
+    
     // set index for action
-    for(auto& act : trx.trx.actions) {
+    for(auto& act : trx.actions) {
         act.set_index(exec_ctx.index_of(act.name));
     }
     
@@ -72,18 +74,15 @@ transaction_context::init_for_implicit_trx() {
 
 void
 transaction_context::init_for_input_trx(bool skip_recording) {
-    auto& t  = trx.trx;
     is_input = true;
     if(!control.loadtest_mode() || !control.skip_trx_checks()) {
-        control.validate_expiration(t);
-        control.validate_tapos(t);
+        control.validate_expiration(trx);
+        control.validate_tapos(trx);
     }
 
-    auto& ptrx = trx.packed_trx;
-    init(ptrx.get_unprunable_size() + ptrx.get_prunable_size());
-
+    init(trx_meta->packed_trx->get_unprunable_size() + trx_meta->packed_trx->get_prunable_size());
     if(!skip_recording) {
-        record_transaction(trx.id, t.expiration);  /// checks for dupes
+        record_transaction(trace->id, trx.expiration);  /// checks for dupes
     }
 }
 
@@ -97,7 +96,7 @@ void
 transaction_context::exec() {
     EVT_ASSERT(is_initialized, transaction_exception, "must first initialize");
 
-    for(auto& act : trx.trx.actions) {
+    for(auto& act : trx.actions) {
         auto& at = trace->action_traces.emplace_back();
         dispatch_action(at, act);
 
@@ -154,10 +153,10 @@ transaction_context::check_time() const {
 void
 transaction_context::check_charge() {
     auto cm = control.get_charge_manager();
-    charge = cm.calculate(trx.packed_trx, trx.trx);
-    if(charge > trx.trx.max_charge) {
+    charge = cm.calculate(*trx_meta->packed_trx);
+    if(charge > trx.max_charge) {
         EVT_THROW(max_charge_exceeded_exception, "max charge exceeded, expected: ${ex}, max provided: ${mp}",
-            ("ex",charge)("mp",trx.trx.max_charge));
+            ("ex",charge)("mp",trx.max_charge));
     }
 }
 
@@ -177,7 +176,7 @@ transaction_context::check_paid() const {
     using namespace contracts;
 
     auto& tokendb = control.token_db();
-    auto& payer = trx.trx.payer;
+    auto& payer = trx.payer;
 
     switch(payer.type()) {
     case address::reserved_t: {
@@ -189,7 +188,7 @@ transaction_context::check_paid() const {
             // no need to check signature here, have checked in contract
             break;
         }
-        auto& keys = trx.recover_keys(control.get_chain_id());
+        auto& keys = trx_meta->recover_keys(control.get_chain_id());
         if(keys.find(payer.get_public_key()) == keys.end()) {
             EVT_THROW(payer_exception, "Payer: ${p} needs to sign this transaction.", ("p",payer));
         }
@@ -201,14 +200,14 @@ transaction_context::check_paid() const {
 
         switch(prefix.value) {
         case N(.domain): {
-            for(auto& act : trx.trx.actions) {
+            for(auto& act : trx.actions) {
                 EVT_ASSERT(act.domain == key, payer_exception, "Only actions in '${d}' domain can be paid by the payer", ("d",act.domain));
             }
             break;
         }
         case N(.fungible): {
             EVT_ASSERT(key != N128(EVT_SYM_ID) && key != N128(PEVT_SYM_ID), payer_exception, "EVT or PEVT is not allowed to use this payer");
-            for(auto& act : trx.trx.actions) {
+            for(auto& act : trx.actions) {
                 EVT_ASSERT(act.domain == N128(.fungible) && act.key == key, payer_exception, "Only actions with S#${d} fungible can be paid by the payer", ("d",act.key));
             }
             break;
@@ -240,7 +239,7 @@ void
 transaction_context::finalize_pay() {
     auto pcact = contracts::paycharge();
 
-    pcact.payer  = trx.trx.payer;
+    pcact.payer  = trx.payer;
     pcact.charge = charge;
 
     auto act   = action();

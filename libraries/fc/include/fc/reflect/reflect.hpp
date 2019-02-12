@@ -45,15 +45,15 @@ struct reflector {
  *     };
  *    @endcode
  *
- *  If reflection requires a verification (what a constructor might normally assert) then
- *  derive your Visitor from reflector_verifier_visitor and implement a reflector_verify()
+ *  If reflection requires an init (what a constructor might normally do) then
+ *  derive your Visitor from reflector_init_visitor and implement a reflector_init()
  *  on your reflected type.
  *
  *    @code
  *     template<typename Class>
- *     struct functor : reflector_verifier_visitor<Class>  {
+ *     struct functor : reflector_init_visitor<Class>  {
  *        functor(Class& _c)
- *        : fc::reflector_verifier_visitor<Class>(_c) {}
+ *        : fc::reflector_init_visitor<Class>(_c) {}
  *
  *        template<typename Member, class Class, Member (Class::*member)>
  *        void operator()( const char* name )const;
@@ -82,28 +82,28 @@ void throw_bad_enum_cast(int64_t i, const char* e);
 void throw_bad_enum_cast(const char* k, const char* e);
 
 template<typename Class>
-struct reflector_verifier_visitor {
-    explicit reflector_verifier_visitor(Class& c)
+struct reflector_init_visitor {
+    explicit reflector_init_visitor(Class& c)
         : obj(c) {}
 
-    void reflector_verify() {
-        reflect_verify(obj);
+    void reflector_init() {
+        reflect_init(obj);
     }
 
 private:
-    // int matches 0 if reflector_verify exists SFINAE
+    // int matches 0 if reflector_init exists SFINAE
     template<class T>
-    auto verify_imp(const T& t, int) -> decltype(t.reflector_verify(), void()) {
-        t.reflector_verify();
+    auto init_imp(const T& t, int) -> decltype(t.reflector_init(), void()) {
+        t.reflector_init();
     }
 
-    // if no reflector_verify method exists (SFINAE), 0 matches long
+    // if no reflector_init method exists (SFINAE), 0 matches long
     template<class T>
-    auto verify_imp(const T& t, long) -> decltype(t, void()) {}
+    auto init_imp(const T& t, long) -> decltype(t, void()) {}
 
     template<typename T>
-    auto reflect_verify(const T& t) -> decltype(verify_imp(t, 0), void()) {
-        verify_imp(t, 0);
+    auto reflect_init(const T& t) -> decltype(init_imp(t, 0), void()) {
+        init_imp(t, 0);
     }
 
 protected:
@@ -142,14 +142,7 @@ protected:
     static inline void visit(const Visitor& v) {                   \
         BOOST_PP_SEQ_FOR_EACH(FC_REFLECT_VISIT_BASE, v, INHERITS)  \
         BOOST_PP_SEQ_FOR_EACH(FC_REFLECT_VISIT_MEMBER, v, MEMBERS) \
-        verify(v);                                                 \
-    }
-
-#define FC_REFLECT_DERIVED_IMPL_EXT(TYPE, INHERITS, MEMBERS)       \
-    template<typename Visitor>                                     \
-    void fc::reflector<TYPE>::visit(const Visitor& v) {            \
-        BOOST_PP_SEQ_FOR_EACH(FC_REFLECT_VISIT_BASE, v, INHERITS)  \
-        BOOST_PP_SEQ_FOR_EACH(FC_REFLECT_VISIT_MEMBER, v, MEMBERS) \
+        init(v);                                                 \
     }
 
 #endif  // DOXYGEN
@@ -245,35 +238,6 @@ protected:
  *  @param INHERITS - a sequence of base class names (basea)(baseb)(basec)
  *  @param MEMBERS - a sequence of member names.  (field1)(field2)(field3)
  */
-#define FC_REFLECT_DERIVED(TYPE, INHERITS, MEMBERS)                                                                  \
-    namespace fc {                                                                                                   \
-    template<>                                                                                                       \
-    struct get_typename<TYPE> {                                                                                      \
-        static const char* name() { return BOOST_PP_STRINGIZE(TYPE); }                                               \
-    };                                                                                                               \
-    template<>                                                                                                       \
-    struct reflector<TYPE> {                                                                                         \
-        typedef TYPE           type;                                                                                 \
-        typedef fc::true_type  is_defined;                                                                           \
-        typedef fc::false_type is_enum;                                                                              \
-        template<typename Visitor>                                                                                   \
-        static auto verify_imp(const Visitor& v, int) -> decltype(v.reflector_verify(), void()) {                    \
-            v.reflector_verify();                                                                                    \
-        }                                                                                                            \
-        template<typename Visitor>                                                                                   \
-        static auto verify_imp(const Visitor& v, long) -> decltype(v, void()) {}                                     \
-        template<typename Visitor>                                                                                   \
-        static auto verify(const Visitor& v) -> decltype(verify_imp(v, 0), void()) {                                 \
-            verify_imp(v, 0);                                                                                        \
-        }                                                                                                            \
-        enum member_count_enum {                                                                                     \
-            local_member_count = 0 BOOST_PP_SEQ_FOR_EACH(FC_REFLECT_MEMBER_COUNT, +, MEMBERS),                       \
-            total_member_count = local_member_count BOOST_PP_SEQ_FOR_EACH(FC_REFLECT_BASE_MEMBER_COUNT, +, INHERITS) \
-        };                                                                                                           \
-        FC_REFLECT_DERIVED_IMPL_INLINE(TYPE, INHERITS, MEMBERS)                                                      \
-    };                                                                                                               \
-    }
-
 #define FC_REFLECT_DERIVED_TEMPLATE(TEMPLATE_ARGS, TYPE, INHERITS, MEMBERS)                                          \
     namespace fc {                                                                                                   \
     template<BOOST_PP_SEQ_ENUM(TEMPLATE_ARGS)>                                                                       \
@@ -286,14 +250,14 @@ protected:
         typedef fc::true_type  is_defined;                                                                           \
         typedef fc::false_type is_enum;                                                                              \
         template<typename Visitor>                                                                                   \
-        static auto verify_imp(const Visitor& v, int) -> decltype(v.reflector_verify(), void()) {                    \
-            v.reflector_verify();                                                                                    \
+        static auto init_imp(const Visitor& v, int) -> decltype(v.reflector_init(), void()) {                        \
+            v.reflector_init();                                                                                      \
         }                                                                                                            \
         template<typename Visitor>                                                                                   \
-        static auto verify_imp(const Visitor& v, long) -> decltype(v, void()) {}                                     \
+        static auto init_imp(const Visitor& v, long) -> decltype(v, void()) {}                                       \
         template<typename Visitor>                                                                                   \
-        static auto verify(const Visitor& v) -> decltype(verify_imp(v, 0), void()) {                                 \
-            verify_imp(v, 0);                                                                                        \
+        static auto init(const Visitor& v) -> decltype(init_imp(v, 0), void()) {                                     \
+            init_imp(v, 0);                                                                                          \
         }                                                                                                            \
         enum member_count_enum {                                                                                     \
             local_member_count = 0 BOOST_PP_SEQ_FOR_EACH(FC_REFLECT_MEMBER_COUNT, +, MEMBERS),                       \
@@ -302,6 +266,9 @@ protected:
         FC_REFLECT_DERIVED_IMPL_INLINE(TYPE, INHERITS, MEMBERS)                                                      \
     };                                                                                                               \
     }
+
+#define FC_REFLECT_DERIVED( TYPE, INHERITS, MEMBERS ) \
+    FC_REFLECT_DERIVED_TEMPLATE( (), TYPE, INHERITS, MEMBERS )
 
 //BOOST_PP_SEQ_SIZE(MEMBERS),
 
@@ -329,28 +296,3 @@ protected:
         static const char* name() { return BOOST_PP_STRINGIZE(TYPE); } \
     };                                                                 \
     }
-
-#define FC_REFLECT_FWD(TYPE)                                                                                         \
-    namespace fc {                                                                                                   \
-    template<>                                                                                                       \
-    struct get_typename<TYPE> {                                                                                      \
-        static const char* name() { return BOOST_PP_STRINGIZE(TYPE); }                                               \
-    };                                                                                                               \
-    template<>                                                                                                       \
-    struct reflector<TYPE> {                                                                                         \
-        typedef TYPE          type;                                                                                  \
-        typedef fc::true_type is_defined;                                                                            \
-        enum member_count_enum {                                                                                     \
-            local_member_count = BOOST_PP_SEQ_SIZE(MEMBERS),                                                         \
-            total_member_count = local_member_count BOOST_PP_SEQ_FOR_EACH(FC_REFLECT_BASE_MEMBER_COUNT, +, INHERITS) \
-        };                                                                                                           \
-        template<typename Visitor>                                                                                   \
-        static void visit(const Visitor& v);                                                                         \
-    };                                                                                                               \
-    }
-
-#define FC_REFLECT_DERIVED_IMPL(TYPE, MEMBERS) \
-    FC_REFLECT_IMPL_DERIVED_EXT(TYPE, BOOST_PP_SEQ_NIL, MEMBERS)
-
-#define FC_REFLECT_IMPL(TYPE, MEMBERS) \
-    FC_REFLECT_DERIVED_IMPL_EXT(TYPE, BOOST_PP_SEQ_NIL, MEMBERS)

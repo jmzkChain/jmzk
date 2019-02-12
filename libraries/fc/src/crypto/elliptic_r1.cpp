@@ -8,14 +8,13 @@
 #include <fc/log/logger.hpp>
 
 namespace fc {
-namespace crypto { namespace r1 {
-namespace detail {
+namespace crypto { namespace r1 { namespace detail {
+
 class public_key_impl {
 public:
     public_key_impl()
         : _key(nullptr) {
-        static int init = init_openssl();
-        (void)init;
+        init_openssl();
     }
 
     ~public_key_impl() {
@@ -28,6 +27,7 @@ public:
     }
     EC_KEY* _key;
 };
+
 class private_key_impl {
 public:
     private_key_impl()
@@ -46,6 +46,7 @@ public:
     EC_KEY* _key;
 };
 }  // namespace detail
+
 static void*
 ecies_key_derivation(const void* input, size_t ilen, void* output, size_t* olen) {
     if(*olen < SHA512_DIGEST_LENGTH) {
@@ -321,10 +322,12 @@ public_key::mult(const fc::sha256& digest) {
 
     return rtn;
 }
+
 bool
 public_key::valid() const {
     return my->_key != nullptr;
 }
+
 public_key
 public_key::add(const fc::sha256& digest) const {
     try {
@@ -522,8 +525,10 @@ public_key::serialize_ecc_point() const {
 
 public_key::public_key() {
 }
+
 public_key::~public_key() {
 }
+
 public_key::public_key(const public_key_point_data& dat) {
     const char* front = &dat[0];
     if(*front == 0) {
@@ -535,6 +540,7 @@ public_key::public_key(const public_key_point_data& dat) {
         }
     }
 }
+
 public_key::public_key(const public_key_data& dat) {
     const char* front = &dat[0];
     if(*front == 0) {
@@ -628,15 +634,19 @@ private_key::operator=(private_key&& pk) {
     pk.my->_key = nullptr;
     return *this;
 }
+
 public_key::public_key(const public_key& pk)
     : my(pk.my) {
 }
+
 public_key::public_key(public_key&& pk)
     : my(fc::move(pk.my)) {
 }
+
 private_key::private_key(const private_key& pk)
     : my(pk.my) {
 }
+
 private_key::private_key(private_key&& pk)
     : my(fc::move(pk.my)) {
 }
@@ -650,6 +660,7 @@ public_key::operator=(public_key&& pk) {
     pk.my->_key = nullptr;
     return *this;
 }
+
 public_key&
 public_key::operator=(const public_key& pk) {
     if(my->_key) {
@@ -658,6 +669,7 @@ public_key::operator=(const public_key& pk) {
     my->_key = EC_KEY_dup(pk.my->_key);
     return *this;
 }
+
 private_key&
 private_key::operator=(const private_key& pk) {
     if(my->_key) {
@@ -666,12 +678,14 @@ private_key::operator=(const private_key& pk) {
     my->_key = EC_KEY_dup(pk.my->_key);
     return *this;
 }
-}
-}  // namespace crypto::r1
+
+}}  // namespace crypto::r1::detail
+
 void
 to_variant(const crypto::r1::private_key& var, variant& vo) {
     vo = var.get_secret();
 }
+
 void
 from_variant(const variant& var, crypto::r1::private_key& vo) {
     fc::sha256 sec;
@@ -683,6 +697,7 @@ void
 to_variant(const crypto::r1::public_key& var, variant& vo) {
     vo = var.serialize();
 }
+
 void
 from_variant(const variant& var, crypto::r1::public_key& vo) {
     crypto::r1::public_key_data dat;

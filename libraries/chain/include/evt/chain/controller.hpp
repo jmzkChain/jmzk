@@ -5,6 +5,7 @@
 #pragma once
 #include <chrono>
 #include <functional>
+#include <map>
 #include <boost/signals2/signal.hpp>
 #include <evt/chain/block_state.hpp>
 #include <evt/chain/genesis_state.hpp>
@@ -15,6 +16,8 @@ class database;
 }
 
 namespace evt { namespace chain {
+
+using unapplied_transactions_type = map<transaction_id_type, transaction_metadata_ptr>;
 
 class fork_database;
 class apply_context;
@@ -86,7 +89,7 @@ public:
         incomplete   = 3, ///< this is an incomplete block (either being produced by a producer or speculatively produced by a node)
     };
 
-    controller(const config& cfg);
+    explicit controller(const config& cfg);
     ~controller();
 
     void add_indices();
@@ -107,11 +110,9 @@ public:
      *  The caller is responsible for calling drop_unapplied_transaction on a failing transaction that
      *  they never intend to retry
      *
-     *  @return vector of transactions which have been unapplied
+     *  @return map of transactions which have been unapplied
      */
-    vector<transaction_metadata_ptr> get_unapplied_transactions() const;
-    void                             drop_unapplied_transaction(const transaction_metadata_ptr& trx);
-    void                             drop_all_unapplied_transactions();
+    unapplied_transactions_type& get_unapplied_transactions() const;
 
     transaction_trace_ptr push_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline);
     transaction_trace_ptr push_suspend_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline);
@@ -215,7 +216,7 @@ public:
     public_keys_set get_suspend_required_keys(const transaction& trx, const public_keys_set& candidate_keys) const;
     public_keys_set get_suspend_required_keys(const proposal_name& name, const public_keys_set& candidate_keys) const;
 
-    uint32_t get_charge(const transaction& trx, size_t signautres_num) const;
+    uint32_t get_charge(transaction&& trx, size_t signautres_num) const;
 
     const abi_serializer& get_abi_serializer() const;
 

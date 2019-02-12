@@ -83,7 +83,7 @@ public:
     }
 
     void
-    set_index(int index) {
+    set_index(int index) const {
         index_ = index;
     }
 

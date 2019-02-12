@@ -153,11 +153,11 @@ struct controller_impl {
     abi_serializer           system_api;
 
     /**
-    *  Transactions that were undone by pop_block or abort_block, transactions
-    *  are removed from this list if they are re-applied in other blocks. Producers
-    *  can query this list when scheduling new transactions into blocks.
-    */
-    map<digest_type, transaction_metadata_ptr> unapplied_transactions;
+     *  Transactions that were undone by pop_block or abort_block, transactions
+     *  are removed from this list if they are re-applied in other blocks. Producers
+     *  can query this list when scheduling new transactions into blocks.
+     */
+    unapplied_transactions_type unapplied_transactions;
 
     void
     pop_block() {
@@ -662,7 +662,7 @@ struct controller_impl {
             });
             in_trx_requiring_checks = true;
 
-            auto trx_context     = transaction_context(self, exec_ctx, *trx);
+            auto trx_context     = transaction_context(self, exec_ctx, trx);
             trx_context.deadline = deadline;
 
             auto trace = trx_context.trace;
@@ -673,7 +673,7 @@ struct controller_impl {
 
                 auto restore = make_block_restore_point();
 
-                trace->receipt = push_receipt(trx->packed_trx,
+                trace->receipt = push_receipt(*trx->packed_trx,
                                               transaction_receipt::executed,
                                               transaction_receipt::suspend);
 
@@ -696,12 +696,12 @@ struct controller_impl {
             trace->elapsed = fc::time_point::now() - trx_context.start;
 
             if(failure_is_subjective(*trace->except)) {
-                trace->receipt = push_receipt(trx->packed_trx,
+                trace->receipt = push_receipt(*trx->packed_trx,
                                               transaction_receipt::soft_fail,
                                               transaction_receipt::suspend);
             }
             else {
-                trace->receipt = push_receipt(trx->packed_trx,
+                trace->receipt = push_receipt(*trx->packed_trx,
                                               transaction_receipt::hard_fail,
                                               transaction_receipt::suspend);
             }
@@ -723,7 +723,9 @@ struct controller_impl {
 
         transaction_trace_ptr trace;
         try {
-            auto trx_context     = transaction_context(self, exec_ctx, *trx);
+            auto& trn         = trx->packed_trx->get_signed_transaction();
+            auto  trx_context = transaction_context(self, exec_ctx, trx);
+
             trx_context.deadline = deadline;
             trace                = trx_context.trace;
 
@@ -732,13 +734,13 @@ struct controller_impl {
                     trx_context.init_for_implicit_trx();
                 }
                 else {
-                    bool skip_recording = replay_head_time && (time_point(trx->trx.expiration) <= *replay_head_time);
+                    bool skip_recording = replay_head_time && (time_point(trn.expiration) <= *replay_head_time);
                     trx_context.init_for_input_trx(skip_recording);
                 }
 
                 if(!self.skip_auth_check() && !trx->implicit) {
                     const auto& keys = trx->recover_keys(chain_id);
-                    check_authorization(keys, trx->trx);
+                    check_authorization(keys, trn);
                 }
 
                 trx_context.exec();
@@ -747,7 +749,7 @@ struct controller_impl {
                 auto restore = make_block_restore_point();
 
                 if(!trx->implicit) {
-                    trace->receipt = push_receipt(trx->packed_trx,
+                    trace->receipt = push_receipt(*trx->packed_trx,
                                                   transaction_receipt::executed,
                                                   transaction_receipt::input);
                     pending->_pending_block_state->trxs.emplace_back(trx);
@@ -874,7 +876,7 @@ struct controller_impl {
                     auto trace = transaction_trace_ptr();
                     if(receipt.type == transaction_receipt::input) {
                         auto& pt    = receipt.trx;
-                        auto  mtrx  = std::make_shared<transaction_metadata>(pt);
+                        auto  mtrx  = std::make_shared<transaction_metadata>(std::make_shared<packed_transaction>(pt));
                         
                         trace = push_transaction(mtrx, fc::time_point::maximum());
                     }
@@ -1615,29 +1617,13 @@ controller::get_abi_serializer() const {
     return my->system_api;
 }
 
-vector<transaction_metadata_ptr>
+unapplied_transactions_type&
 controller::get_unapplied_transactions() const {
-    vector<transaction_metadata_ptr> result;
-    if(my->read_mode == db_read_mode::SPECULATIVE) {
-        result.reserve(my->unapplied_transactions.size());
-        for(const auto& entry: my->unapplied_transactions) {
-            result.emplace_back(entry.second);
-        }
+    if(my->read_mode != db_read_mode::SPECULATIVE) {
+        EVT_ASSERT(my->unapplied_transactions.empty(), transaction_exception,
+            "not empty unapplied_transactions in non-speculative mode"); //should never happen
     }
-    else {
-        EVT_ASSERT(my->unapplied_transactions.empty(), transaction_exception, "not empty unapplied_transactions in non-speculative mode"); //should never happen
-    }
-    return result;
-}
-
-void
-controller::drop_unapplied_transaction(const transaction_metadata_ptr& trx) {
-    my->unapplied_transactions.erase(trx->signed_id);
-}
-
-void
-controller::drop_all_unapplied_transactions() {
-   my->unapplied_transactions.clear();
+    return my->unapplied_transactions;
 }
 
 bool
@@ -1749,10 +1735,10 @@ controller::get_suspend_required_keys(const proposal_name& name, const public_ke
 }
 
 uint32_t
-controller::get_charge(const transaction& trx, size_t signautres_num) const {   
-    auto packed_trx = packed_transaction(trx);
-    auto charge     = get_charge_manager();
-    return charge.calculate(packed_trx, trx, signautres_num);
+controller::get_charge(transaction&& trx, size_t signautres_num) const {   
+    auto ptrx   = packed_transaction(std::move(trx),  {});
+    auto charge = get_charge_manager();
+    return charge.calculate(ptrx, signautres_num);
 }
 
 }}  // namespace evt::chain

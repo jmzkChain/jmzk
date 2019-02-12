@@ -1371,7 +1371,7 @@ read_only::get_charge(const get_charge_params& params) const {
     EVT_RETHROW_EXCEPTIONS(chain::transaction_type_exception, "Invalid transaction");
 
     auto result   = get_charge_result();
-    result.charge = db.get_charge(trx, params.sigs_num);
+    result.charge = db.get_charge(std::move(trx), params.sigs_num);
 
     return result;
 }
