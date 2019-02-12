@@ -119,6 +119,17 @@ auto create_trxs_table = R"sql(CREATE TABLE IF NOT EXISTS public.transactions
                                CREATE INDEX IF NOT EXISTS transactions_block_num_index
                                    ON public.transactions USING btree
                                    (block_num)
+                                   TABLESPACE pg_default;
+                               CREATE INDEX IF NOT EXISTS transactions_payer_index
+                                   ON transactions USING btree
+                                   (payer)
+                                   TABLESPACE pg_default;
+                               CREATE INDEX IF NOT EXISTS transactions_timestamp_index
+                                   ON transactions USING btree
+                                   (timestamp)
+                                   TABLESPACE pg_default;
+                               CREATE INDEX IF NOT EXISTS transactions_keys_index
+                                   ON public.transactions USING GIN (keys array_ops)
                                    TABLESPACE pg_default;)sql";
 
 auto create_actions_table = R"sql(CREATE TABLE IF NOT EXISTS public.actions
@@ -142,9 +153,17 @@ auto create_actions_table = R"sql(CREATE TABLE IF NOT EXISTS public.actions
                                       ON public.actions USING btree
                                       (trx_id)
                                       TABLESPACE pg_default;
+                                  CREATE INDEX IF NOT EXISTS actions_global_seq_index
+                                      ON public.actions USING btree
+                                      (global_seq)
+                                      TABLESPACE pg_default;
                                   CREATE INDEX IF NOT EXISTS actions_data_index
                                       ON public.actions USING gin
                                       (data jsonb_path_ops)
+                                      TABLESPACE pg_default;
+                                  CREATE INDEX IF NOT EXISTS actions_filter_index
+                                      ON public.actions USING btree
+                                      (domain, key, name)
                                       TABLESPACE pg_default;)sql";
 
 auto create_metas_table = R"sql(CREATE SEQUENCE IF NOT EXISTS metas_id_seq;

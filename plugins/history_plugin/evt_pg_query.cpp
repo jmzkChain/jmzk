@@ -428,7 +428,7 @@ auto ga_plan0 = R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
                       FROM actions
                       JOIN blocks ON actions.block_id = blocks.block_id
                       WHERE domain = $1
-                      ORDER BY actions.created_at {0}, actions.seq_num {0}
+                      ORDER BY actions.global_seq {0}
                       LIMIT $2 OFFSET $3
                       )sql";
 
@@ -437,7 +437,7 @@ auto ga_plan1 = R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
                       FROM actions
                       JOIN blocks ON actions.block_id = blocks.block_id
                       WHERE domain = $1 AND key = $2
-                      ORDER BY actions.created_at {0}, actions.seq_num {0}
+                      ORDER BY actions.global_seq {0}
                       LIMIT $3 OFFSET $4
                       )sql";
 
@@ -446,7 +446,7 @@ auto ga_plan2 = R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
                       FROM actions
                       JOIN blocks ON actions.block_id = blocks.block_id
                       WHERE domain = $1 AND name = ANY($2)
-                      ORDER BY actions.created_at {0}, actions.seq_num {0}
+                      ORDER BY actions.global_seq {0}
                       LIMIT $3 OFFSET $4
                       )sql";
 
@@ -455,7 +455,7 @@ auto ga_plan3 = R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
                       FROM actions
                       JOIN blocks ON actions.block_id = blocks.block_id
                       WHERE domain = $1 AND key = $2 AND name = ANY($3)
-                      ORDER BY actions.created_at {0}, actions.seq_num {0}
+                      ORDER BY actions.global_seq {0}
                       LIMIT $4 OFFSET $5
                       )sql";
 
@@ -795,8 +795,8 @@ pg_query::get_transaction_resume(int id, pg_result const* r) {
     EVT_THROW(chain::unknown_transaction_exception, "Cannot find transaction: ${t}", ("t", trx_id));
 }
 
-PREPARE_SQL_ONCE(gtrxs_plan0, "SELECT block_num, trx_id FROM transactions WHERE keys && $1 ORDER BY timestamp DESC LIMIT $2 OFFSET $3;")
-PREPARE_SQL_ONCE(gtrxs_plan1, "SELECT block_num, trx_id FROM transactions WHERE keys && $1 ORDER BY timestamp ASC  LIMIT $2 OFFSET $3;")
+PREPARE_SQL_ONCE(gtrxs_plan0, "SELECT block_num, trx_id FROM transactions WHERE keys && $1 OR payer = ANY($1) ORDER BY timestamp DESC LIMIT $2 OFFSET $3;")
+PREPARE_SQL_ONCE(gtrxs_plan1, "SELECT block_num, trx_id FROM transactions WHERE keys && $1 OR payer = ANY($1) ORDER BY timestamp ASC  LIMIT $2 OFFSET $3;")
 
 int
 pg_query::get_transactions_async(int id, const read_only::get_transactions_params& params) {
