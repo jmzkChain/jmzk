@@ -43,6 +43,7 @@ using ft_holders_t = chain::small_vector_base<chain::ft_holder>;
 
 struct copy_context;
 struct trx_context;
+
 struct add_context : boost::noncopyable {
 public:
     add_context(copy_context& cctx, const chain_id_t& chain_id, const abi_t& abi, const exec_ctx_t& exec_ctx)
