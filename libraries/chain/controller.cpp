@@ -1600,14 +1600,14 @@ controller::get_validation_mode() const {
     return my->conf.block_validation_mode;
 }
 
+const chain_id_type&
+controller::get_chain_id() const {
+    return my->chain_id;
+}
+
 const genesis_state&
 controller::get_genesis_state() const {
     return my->conf.genesis;
-}
-
-chain_id_type
-controller::get_chain_id() const {
-    return my->chain_id;
 }
 
 const abi_serializer&

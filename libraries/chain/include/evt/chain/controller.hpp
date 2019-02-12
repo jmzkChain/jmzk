@@ -196,11 +196,10 @@ public:
     bool charge_free_mode() const;
     bool contracts_console() const;
 
-    chain_id_type get_chain_id() const;
-
     db_read_mode    get_read_mode() const;
     validation_mode get_validation_mode() const;
 
+    const chain_id_type& get_chain_id() const;
     const genesis_state& get_genesis_state() const;
 
     signal<void(const signed_block_ptr&)>         pre_accepted_block;

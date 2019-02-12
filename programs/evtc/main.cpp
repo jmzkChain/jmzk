@@ -1624,7 +1624,7 @@ struct set_get_history_subcommands {
             auto args = mutable_variant_object();
             args["sym_id"] = sym_id;
             if(!addr.empty()) {
-                args["addr"] = addr;
+                args["addr"] = get_address(addr);
             }
 
             if(skip > 0) {

@@ -342,7 +342,6 @@ class Test(unittest.TestCase):
         self.assertEqual(res_dict[0], domain_name, msg=resp)
 
     def test_get_tokens(self):
-
         req = {
             'skip': 0,
             'take': 10
@@ -356,7 +355,6 @@ class Test(unittest.TestCase):
         self.assertTrue('owner' in res_dict[0].keys())
 
     def test_get_history_tokens(self):  
-
         req = {
             'keys': [user.pub_key.to_string()]
         }
@@ -786,6 +784,8 @@ class Test(unittest.TestCase):
         req['keys'] = [user.pub_key.to_string()]
         resp = api.get_history_transactions(json.dumps(req)).text
         res_dict = json.loads(resp)
+
+        print(user.pub_key.to_string())
 
         self.assertEqual(len(res_dict), 9, msg=resp)
         self.assertTrue('id' in res_dict[0].keys(), msg=resp)
