@@ -445,7 +445,7 @@ public:
         if(itr != _transaction_status.end()) {
             if(!itr->known_by_peer()) {
                 _transaction_status.modify(itr, [&](auto& stat) {
-                    stat.expired = std::min<fc::time_point>(fc::time_point::now() + fc::seconds(5), t->trx.expiration);
+                    stat.expired = std::min<fc::time_point>(fc::time_point::now() + fc::seconds(5), t->packed_trx->expiration());
                 });
             }
             return;
@@ -560,11 +560,10 @@ public:
         purge_transaction_cache();
 
         /** purge all transactions from cache, I will send them as part of a block
-            * in the future unless peer tells me they already have block.
-            */
+         * in the future unless peer tells me they already have block.
+         */
         for(const auto& receipt : s->block->transactions) {
-            // TODO: Need to clarify delay transaction? 
-            const auto& tid = receipt.trx.get_uncached_id();
+            const auto& tid = receipt.trx.id();
             auto itr = _transaction_status.find(tid);
             if(itr != _transaction_status.end()) {
                 _transaction_status.erase(itr);
@@ -818,7 +817,7 @@ public:
             if(start == idx.end() || start->known_by_peer())
                 return false;
 
-            auto ptrx_ptr = std::make_shared<packed_transaction>(start->trx->packed_trx);
+            auto ptrx_ptr = start->trx->packed_trx;
 
             idx.modify(start, [&](auto& stat) {
                 stat.mark_known_by_peer();
@@ -1084,8 +1083,7 @@ public:
     void
     mark_block_transactions_known_by_peer(const signed_block_ptr& b) {
         for(const auto& receipt : b->transactions) {
-            // TODO: Need to clarify delay transaction? 
-            const auto& id = receipt.trx.get_uncached_id();
+            const auto& id = receipt.trx.id();
             mark_transaction_known_by_peer(id);
         }
     }
@@ -1645,13 +1643,13 @@ session::on(const packed_transaction_ptr& p) {
     if(p->expiration() < fc::time_point::now())
         return;
 
-    // get id via get_uncached_id() as packed_transaction.id() mutates internal transaction state
-    const auto& id = p->get_uncached_id();
-
-    if(mark_transaction_known_by_peer(id))
+    const auto& id = p->id();
+    if(mark_transaction_known_by_peer(id)) {
         return;
+    }
 
-    app().get_channel<incoming::channels::transaction>().publish(p);
+    auto ptr = std::make_shared<transaction_metadata>(p);
+    app().get_channel<incoming::channels::transaction>().publish(ptr);
 }
 
 }  // namespace evt

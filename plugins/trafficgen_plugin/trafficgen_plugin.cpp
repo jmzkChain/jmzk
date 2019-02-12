@@ -29,6 +29,7 @@ using evt::chain::block_id_type;
 using evt::chain::block_state_ptr;
 using evt::chain::packed_transaction_ptr;
 using evt::chain::private_key_type;
+using evt::chain::transaction_metadata;
 
 class trafficgen_plugin_impl : public std::enable_shared_from_this<trafficgen_plugin_impl> {
 public:
@@ -89,7 +90,7 @@ trafficgen_plugin_impl::push_trx(const action& act, const block_id_type& id) {
     trx.sign(from_priv_, db_.get_chain_id());
 
     auto ptrx = std::make_shared<packed_transaction>(trx);
-    app().get_method<chain::plugin_interface::incoming::methods::transaction_async>()(ptrx, true, [](const auto& result) -> void {
+    app().get_method<chain::plugin_interface::incoming::methods::transaction_async>()(std::make_shared<transaction_metadata>(ptrx), true, [](const auto& result) -> void {
         if(result.template contains<fc::exception_ptr>()) {
             wlog("Push init trx failed e: ${e}", ("e",*result.template get<fc::exception_ptr>()));
         }
@@ -267,7 +268,7 @@ void
 trafficgen_plugin_impl::push_once(int index) {
     try {
         auto ptrx = packed_trxs_[index];
-        app().get_method<chain::plugin_interface::incoming::methods::transaction_async>()(ptrx, true, [index](const auto& result) -> void {
+        app().get_method<chain::plugin_interface::incoming::methods::transaction_async>()(std::make_shared<transaction_metadata>(ptrx), true, [index](const auto& result) -> void {
             if(result.template contains<fc::exception_ptr>()) {
                 wlog("Push failed at index: ${i}, e: ${e}", ("i",index)("e",*result.template get<fc::exception_ptr>()));
             }

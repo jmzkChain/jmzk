@@ -777,7 +777,12 @@ chain_plugin::accept_block(const signed_block_ptr& block) {
 
 void
 chain_plugin::accept_transaction(const chain::packed_transaction& trx, next_function<chain::transaction_trace_ptr> next) {
-    my->incoming_transaction_async_method(std::make_shared<packed_transaction>(trx), false, std::forward<decltype(next)>(next));
+    my->incoming_transaction_async_method(std::make_shared<transaction_metadata>(std::make_shared<packed_transaction>(trx)), false, std::forward<decltype(next)>(next));
+}
+
+void
+chain_plugin::accept_transaction(const chain::transaction_metadata_ptr& trx, next_function<chain::transaction_trace_ptr> next) {
+    my->incoming_transaction_async_method(trx, false, std::forward<decltype(next)>(next));
 }
 
 bool
@@ -931,7 +936,7 @@ chain_plugin::import_reversible_blocks(const fc::path& reversible_dir,
 
             new_reversible.create<reversible_block_object>([&](auto& ubo) {
                 ubo.blocknum = num;
-                ubo.set_block(std::make_shared<signed_block>(tmp));
+                ubo.set_block(std::make_shared<signed_block>(std::move(tmp)));
             });
             end = num;
         }
@@ -1191,9 +1196,9 @@ read_only::get_trx_id_for_link_id(const get_trx_id_for_link_id_params& params) c
 }
 
 void
-read_write::push_block(const read_write::push_block_params& params, next_function<read_write::push_block_results> next) {
+read_write::push_block(read_write::push_block_params&& params, next_function<read_write::push_block_results> next) {
     try {
-        app().get_method<incoming::methods::block_sync>()(std::make_shared<signed_block>(params));
+        app().get_method<incoming::methods::block_sync>()(std::make_shared<signed_block>(std::move(params)));
         next(read_write::push_block_results{});
     }
     catch(boost::interprocess::bad_alloc&) {
@@ -1210,12 +1215,14 @@ read_write::push_transaction(const read_write::push_transaction_params& params, 
     try {
         auto  ptrx     = std::make_shared<packed_transaction>();
         auto& exec_ctx = db.get_execution_context();
+        auto  trx_meta = transaction_metadata_ptr();
         try {
             db.get_abi_serializer().from_variant(params, *ptrx, exec_ctx);
+            trx_meta = std::make_shared<transaction_metadata>(ptrx);
         }
         EVT_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-        app().get_method<incoming::methods::transaction_async>()(ptrx, true, [this, next, &exec_ctx](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+        app().get_method<incoming::methods::transaction_async>()(trx_meta, true, [this, next, &exec_ctx](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
             if(result.contains<fc::exception_ptr>()) {
                 next(result.get<fc::exception_ptr>());
             }
@@ -1226,7 +1233,7 @@ read_write::push_transaction(const read_write::push_transaction_params& params, 
                     auto pretty_output = fc::variant();
                     db.get_abi_serializer().to_variant(*trx_trace_ptr, pretty_output, exec_ctx);
 
-                    auto id = trx_trace_ptr->id;
+                    auto& id = trx_trace_ptr->id;
                     next(read_write::push_transaction_results{id, pretty_output});
                 }
                 CATCH_AND_CALL(next);

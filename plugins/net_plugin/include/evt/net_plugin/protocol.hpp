@@ -168,21 +168,21 @@ using net_message = static_variant<handshake_message,
                                    notice_message,
                                    request_message,
                                    sync_request_message,
-                                   signed_block,
-                                   packed_transaction>;
+                                   signed_block,         // which = 7
+                                   packed_transaction>;  // which = 8
 
 }  // namespace evt
 
-FC_REFLECT(evt::select_ids<fc::sha256>, (mode)(pending)(ids))
+FC_REFLECT(evt::select_ids<fc::sha256>, (mode)(pending)(ids));
 FC_REFLECT(evt::chain_size_message,
-           (last_irreversible_block_num)(last_irreversible_block_id)(head_num)(head_id))
+           (last_irreversible_block_num)(last_irreversible_block_id)(head_num)(head_id));
 FC_REFLECT(evt::handshake_message,
-           (network_version)(chain_id)(node_id)(key)(time)(token)(sig)(p2p_address)(last_irreversible_block_num)(last_irreversible_block_id)(head_num)(head_id)(os)(agent)(generation))
-FC_REFLECT(evt::go_away_message, (reason)(node_id))
-FC_REFLECT(evt::time_message, (org)(rec)(xmt)(dst))
-FC_REFLECT(evt::notice_message, (known_trx)(known_blocks))
-FC_REFLECT(evt::request_message, (req_trx)(req_blocks))
-FC_REFLECT(evt::sync_request_message, (start_block)(end_block))
+           (network_version)(chain_id)(node_id)(key)(time)(token)(sig)(p2p_address)(last_irreversible_block_num)(last_irreversible_block_id)(head_num)(head_id)(os)(agent)(generation));
+FC_REFLECT(evt::go_away_message, (reason)(node_id));
+FC_REFLECT(evt::time_message, (org)(rec)(xmt)(dst));
+FC_REFLECT(evt::notice_message, (known_trx)(known_blocks));
+FC_REFLECT(evt::request_message, (req_trx)(req_blocks));
+FC_REFLECT(evt::sync_request_message, (start_block)(end_block));
 
 /**
  *
