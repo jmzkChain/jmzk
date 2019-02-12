@@ -733,7 +733,7 @@ class Test(unittest.TestCase):
 
     def test_get_history_transaction(self):
         prodvote = AG.new_action(
-        'prodvote', producer='evt', key="global-charge-factor", value=10000)
+        'prodvote', producer='evt', key="global-charge-factor", value=1000000)
 
         trx = TG.new_trx()
         trx.add_action(prodvote)
@@ -805,6 +805,18 @@ class Test(unittest.TestCase):
 
         resp = api.get_fungible_ids(json.dumps(req)).text
         self.assertTrue(str(sym_id) in resp, msg=resp)
+
+    def test_bonus(self):
+        setpsvbonus = AG.new_action(
+        'setpsvbonus', sym=sym_id, rate=0.15, base_charge='10 S#3', dist_threshold='10000 S#3')
+
+        trx = TG.new_trx()
+        trx.add_action(setpsvbonus)
+        trx.add_sign(priv_evt)
+        trx.add_sign(user.priv_key)
+        trx.set_payer(user.pub_key.to_string())
+        resp = api.push_transaction(trx.dumps())
+        time.sleep(0.5)
 
 
 @click.command()
