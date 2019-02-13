@@ -93,16 +93,16 @@ struct reflector_init_visitor {
 private:
     // int matches 0 if reflector_init exists SFINAE
     template<class T>
-    auto init_imp(const T& t, int) -> decltype(t.reflector_init(), void()) {
+    auto init_imp(T& t, int) -> decltype(t.reflector_init(), void()) {
         t.reflector_init();
     }
 
     // if no reflector_init method exists (SFINAE), 0 matches long
     template<class T>
-    auto init_imp(const T& t, long) -> decltype(t, void()) {}
+    auto init_imp(T& t, long) -> decltype(t, void()) {}
 
     template<typename T>
-    auto reflect_init(const T& t) -> decltype(init_imp(t, 0), void()) {
+    auto reflect_init(T& t) -> decltype(init_imp(t, 0), void()) {
         init_imp(t, 0);
     }
 
@@ -267,8 +267,8 @@ protected:
     };                                                                                                               \
     }
 
-#define FC_REFLECT_DERIVED( TYPE, INHERITS, MEMBERS ) \
-    FC_REFLECT_DERIVED_TEMPLATE( (), TYPE, INHERITS, MEMBERS )
+#define FC_REFLECT_DERIVED(TYPE, INHERITS, MEMBERS) \
+    FC_REFLECT_DERIVED_TEMPLATE((), TYPE, INHERITS, MEMBERS)
 
 //BOOST_PP_SEQ_SIZE(MEMBERS),
 
