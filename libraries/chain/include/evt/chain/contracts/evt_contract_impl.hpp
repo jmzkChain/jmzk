@@ -1475,8 +1475,6 @@ EVT_ACTION_IMPL_BEGIN(everipay) {
         }
         else {
             max_pay = std::stoul(*link.get_segment(evt_link::max_pay_str).strv);
-            EVT_ASSERT2(max_pay > std::numeric_limits<uint32_t>::max(), evt_link_exception,
-                "It's not allowd to use max_pay_str when actual number can be interprated using max_pay segment");
         }
         EVT_ASSERT2(epact.number.amount() <= max_pay, everipay_exception,
             "Exceed max allowd paid amount: {:n}, actual: {:n}", max_pay, epact.number.amount());
