@@ -129,7 +129,16 @@ fork_database::set(block_state_ptr s) {
 }
 
 block_state_ptr
-fork_database::add(block_state_ptr n) {
+fork_database::add(const block_state_ptr& n, bool skip_validate_previous) {
+    EVT_ASSERT(n, fork_database_exception, "attempt to add null block state");
+    EVT_ASSERT(my->head, fork_db_block_not_found, "no head block set");
+
+    if(!skip_validate_previous) {
+        auto prior = my->index.find(n->block->previous);
+        EVT_ASSERT(prior != my->index.end(), unlinkable_block_exception,
+            "unlinkable block", ("id", n->block->id())("previous", n->block->previous));
+    }
+
     auto inserted = my->index.insert(n);
     EVT_ASSERT(inserted.second, fork_database_exception, "duplicate block added?");
 
@@ -146,7 +155,7 @@ fork_database::add(block_state_ptr n) {
 }
 
 block_state_ptr
-fork_database::add(signed_block_ptr b, bool trust) {
+fork_database::add(signed_block_ptr b, bool skip_validate_signee) {
     EVT_ASSERT(b, fork_database_exception, "attempt to add null block");
     EVT_ASSERT(my->head, fork_database_exception, "no head block set");
 
@@ -157,9 +166,9 @@ fork_database::add(signed_block_ptr b, bool trust) {
     auto prior = by_id_idx.find(b->previous);
     EVT_ASSERT(prior != by_id_idx.end(), unlinkable_block_exception, "unlinkable block", ("id", b->id())("previous", b->previous));
 
-    auto result = std::make_shared<block_state>(**prior, move(b), trust);
+    auto result = std::make_shared<block_state>(**prior, move(b), skip_validate_signee);
     EVT_ASSERT(result, fork_database_exception , "fail to add new block state");
-    return add(result);
+    return add(result, true);
 }
 
 const block_state_ptr&

@@ -1,0 +1,16 @@
+declare_args() {
+    build_type = "debug"
+    enable_lto = false
+    enable_color = true
+    enable_full_build = true
+}
+
+declare_args() {
+    enable_mongo = false
+    enable_postgres = false
+    enable_bind_libraries = false
+    enable_benchmarks = false
+    enable_testing = true
+    enable_mainnet_build = false
+    enable_breakpad = false
+}

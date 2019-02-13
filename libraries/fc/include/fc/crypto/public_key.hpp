@@ -7,11 +7,10 @@
 #include <fc/static_variant.hpp>
 
 namespace fc { namespace crypto {
+
 namespace config {
 constexpr const char* public_key_evt_prefix = "EVT";
-constexpr const char* public_key_prefix[]   = {
-    "K1",
-    "R1"};
+constexpr const char* public_key_prefix[]   = { "K1", "R1" };
 };  // namespace config
 
 class public_key {
@@ -21,14 +20,17 @@ public:
     public_key()                  = default;
     public_key(public_key&&)      = default;
     public_key(const public_key&) = default;
-    public_key& operator=(const public_key&) = default;
-
+    
+    public_key(const ecc::public_key_shim& ecc_key);
     public_key(const signature& c, const sha256& digest, bool check_canonical = true);
+
+    public_key& operator=(const public_key&) = default;
 
     bool valid() const;
 
     // serialize to/from string
     explicit public_key(const string& base58str);
+    explicit public_key(const char* base58str);
     explicit operator string() const;
 
 private:
@@ -38,9 +40,11 @@ private:
         : _storage(forward<storage_type>(other_storage)) {}
 
     friend std::ostream& operator<<(std::ostream& s, const public_key& k);
-    friend bool          operator==(const public_key& p1, const public_key& p2);
-    friend bool          operator!=(const public_key& p1, const public_key& p2);
-    friend bool          operator<(const public_key& p1, const public_key& p2);
+
+    friend bool operator==(const public_key& p1, const public_key& p2);
+    friend bool operator!=(const public_key& p1, const public_key& p2);
+    friend bool operator<(const public_key& p1, const public_key& p2);
+    
     friend struct reflector<public_key>;
     friend class private_key;
 };  // public_key
@@ -49,7 +53,6 @@ private:
 
 namespace fc {
 void to_variant(const crypto::public_key& var, variant& vo);
-
 void from_variant(const variant& var, crypto::public_key& vo);
 }  // namespace fc
 

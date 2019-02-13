@@ -303,7 +303,7 @@ public:
 
     int
     next_session_id() const {
-        static int session_count = 0;
+        static std::atomic<int> session_count{0};
         return ++session_count;
     }
 
@@ -445,7 +445,7 @@ public:
         if(itr != _transaction_status.end()) {
             if(!itr->known_by_peer()) {
                 _transaction_status.modify(itr, [&](auto& stat) {
-                    stat.expired = std::min<fc::time_point>(fc::time_point::now() + fc::seconds(5), t->trx.expiration);
+                    stat.expired = std::min<fc::time_point>(fc::time_point::now() + fc::seconds(5), t->packed_trx->expiration());
                 });
             }
             return;
@@ -560,11 +560,10 @@ public:
         purge_transaction_cache();
 
         /** purge all transactions from cache, I will send them as part of a block
-            * in the future unless peer tells me they already have block.
-            */
+         * in the future unless peer tells me they already have block.
+         */
         for(const auto& receipt : s->block->transactions) {
-            // TODO: Need to clarify delay transaction? 
-            const auto& tid = receipt.trx.get_uncached_id();
+            const auto& tid = receipt.trx.id();
             auto itr = _transaction_status.find(tid);
             if(itr != _transaction_status.end()) {
                 _transaction_status.erase(itr);
@@ -818,7 +817,7 @@ public:
             if(start == idx.end() || start->known_by_peer())
                 return false;
 
-            auto ptrx_ptr = std::make_shared<packed_transaction>(start->trx->packed_trx);
+            auto ptrx_ptr = start->trx->packed_trx;
 
             idx.modify(start, [&](auto& stat) {
                 stat.mark_known_by_peer();
@@ -843,7 +842,7 @@ public:
 
         /// if something changed, the next block doesn't link to the last
         /// block we sent, local chain must have switched forks
-        if(nextblock->previous != _last_sent_block_id) {
+        if(nextblock->previous != _last_sent_block_id && _last_sent_block_id != block_id_type()) {
             if(!is_known_by_peer(nextblock->previous)) {
                 _last_sent_block_id  = _local_lib_id;
                 _last_sent_block_num = _local_lib;
@@ -1084,8 +1083,7 @@ public:
     void
     mark_block_transactions_known_by_peer(const signed_block_ptr& b) {
         for(const auto& receipt : b->transactions) {
-            // TODO: Need to clarify delay transaction? 
-            const auto& id = receipt.trx.get_uncached_id();
+            const auto& id = receipt.trx.id();
             mark_transaction_known_by_peer(id);
         }
     }
@@ -1112,26 +1110,7 @@ public:
         return false;
     }
 
-    void
-    on(const packed_transaction_ptr& p) {
-        peer_ilog(this, "received packed_transaction_ptr");
-        if(!p) {
-            peer_elog(this, "bad packed_transaction_ptr : null pointer");
-            EVT_THROW(transaction_exception, "bad transaction");
-        }
-
-        // ilog( "recv trx ${n}", ("n", id) );
-        if(p->expiration() < fc::time_point::now())
-            return;
-
-        // get id via get_uncached_id() as packed_transaction.id() mutates internal transaction state
-        const auto& id = p->get_uncached_id();
-
-        if(mark_transaction_known_by_peer(id))
-            return;
-
-        app().get_channel<incoming::channels::transaction>().publish(p);
-    }
+    void on(const packed_transaction_ptr& p);
 
     void
     on_write(boost::system::error_code ec, std::size_t bytes_transferred) {
@@ -1489,6 +1468,13 @@ bnet_plugin::plugin_startup() {
         my->on_bad_block(b);
     });
 
+    if(app().get_plugin<chain_plugin>().chain().get_read_mode() == chain::db_read_mode::READ_ONLY) {
+        if(my->_request_trx) {
+            my->_request_trx = false;
+            ilog("forced bnet-no-trx to true since in read-only mode");
+        }
+    }
+
     const auto address = boost::asio::ip::make_address(my->_bnet_endpoint_address);
     my->_ioc.reset(new boost::asio::io_context{my->_num_threads});
 
@@ -1643,6 +1629,27 @@ session::on(const hello& hi, fc::datastream<const char*>& ds) {
     }
 
     check_for_redundant_connection();
+}
+
+void
+session::on(const packed_transaction_ptr& p) {
+    peer_ilog(this, "received packed_transaction_ptr");
+    if(!p) {
+        peer_elog(this, "bad packed_transaction_ptr : null pointer");
+        EVT_THROW(transaction_exception, "bad transaction");
+    }
+
+    // ilog( "recv trx ${n}", ("n", id) );
+    if(p->expiration() < fc::time_point::now())
+        return;
+
+    const auto& id = p->id();
+    if(mark_transaction_known_by_peer(id)) {
+        return;
+    }
+
+    auto ptr = std::make_shared<transaction_metadata>(p);
+    app().get_channel<incoming::channels::transaction>().publish(ptr);
 }
 
 }  // namespace evt

@@ -43,7 +43,7 @@ struct chain_id_type : public fc::sha256 {
         return ds;
     }
 
-    void reflector_verify() const;
+    void reflector_init() const;
 
 private:
     chain_id_type() = default;

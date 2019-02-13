@@ -9,87 +9,107 @@
 
 using namespace evt;
 using namespace chain;
+using namespace contracts;
 
 extern std::string evt_unittests_dir;
 
-string tokendb_ss;
+string token_db_snapshot_;
 
-TEST_CASE("tokendb_setup", "[snapshot]") {
-    auto db = token_database(evt_unittests_dir + "/snapshot_tests");
-    db.open();
+#define EXISTS_TOKEN(TYPE, NAME) \
+    tokendb.exists_token(evt::chain::token_type::TYPE, std::nullopt, NAME)
 
-    // add savepoint #1
-    db.add_savepoint(1);
+#define EXISTS_TOKEN2(TYPE, DOMAIN, NAME) \
+    tokendb.exists_token(evt::chain::token_type::TYPE, DOMAIN, NAME)
 
-    auto d = domain_def();
-    d.name = "test-domain";
-    db.add_domain(d);
+#define EXISTS_ASSET(ADDR, SYM_ID) \
+    tokendb.exists_asset(ADDR, SYM_ID)
 
-    // add savepoint #2
-    db.add_savepoint(2);
-
-    auto it   = issuetoken();
-    it.domain = d.name;
-    it.owner.emplace_back(address());
-    for(int i = 0; i < 10; i++) {
-        it.names.emplace_back(std::to_string(i));
+#define READ_TOKEN(TYPE, NAME, VALUEREF) \
+    { \
+        auto str = std::string(); \
+        tokendb.read_token(evt::chain::token_type::TYPE, std::nullopt, NAME, str); \
+        evt::chain::extract_db_value(str, VALUEREF); \
     }
-    db.issue_tokens(it);
+
+#define READ_TOKEN2(TYPE, DOMAIN, NAME, VALUEREF) \
+    { \
+        auto str = std::string(); \
+        tokendb.read_token(evt::chain::token_type::TYPE, DOMAIN, NAME, str); \
+        evt::chain::extract_db_value(str, VALUEREF); \
+    }
+
+#define READ_DB_ASSET(ADDR, SYM_ID, VALUEREF)                                                           \
+    try {                                                                                               \
+        auto str = std::string();                                                                       \
+        tokendb.read_asset(ADDR, SYM_ID, str);                                                          \
+                                                                                                        \
+        extract_db_value(str, VALUEREF);                                                                \
+    }                                                                                                   \
+    catch(token_database_exception&) {                                                                  \
+        EVT_THROW2(balance_exception, "There's no balance left in {} with sym id: {}", ADDR, SYM_ID);   \
+    }
+
+#define PUT_DB_TOKEN(TYPE, PREFIX, KEY, VALUE)                                                             \
+    {                                                                                                      \
+        auto dv = make_db_value(VALUE);                                                                    \
+        tokendb.put_token(evt::chain::token_type::TYPE, action_op::put, PREFIX, KEY, dv.as_string_view()); \
+    }
+
+auto get_db_config = []{
+    auto c       = token_database::config();
+    auto basedir = evt_unittests_dir + "/tokendb_tests";
+    c.db_path    = basedir + "/tokendb";
+    return c;
+};
+
+TEST_CASE("snapshot_pretest", "[snapshot]") {
+    auto tokendb = token_database(get_db_config());
+    tokendb.open();
+
+    CHECK(EXISTS_TOKEN(domain, "dm-tkdb-test"));
+    CHECK(EXISTS_TOKEN2(token, "dm-tkdb-test", "basic-1"));
+    CHECK(EXISTS_TOKEN2(token, "dm-tkdb-test", "basic-2"));
+
+    auto addr = public_key_type(std::string("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"));
+    CHECK(EXISTS_ASSET(addr, 3));
 }
 
-TEST_CASE("tokendb_save", "[snapshot]") {
-    auto db = token_database(evt_unittests_dir + "/snapshot_tests");
-    db.open();
+TEST_CASE("snapshot_save_test", "[snapshot]") {
+    auto tokendb = token_database(get_db_config());
+    tokendb.open();
 
-    // should have two savepoints #1 & #2
-    REQUIRE(db.savepoints_size() == 2);
-    REQUIRE(db.exists_domain("test-domain"));
-
-    // add savepoint #3
-    db.add_savepoint(3);
-
-    auto d = domain_def();
-    d.name = "test-domain-2";
-    db.add_domain(d);
-
-    // add token db to snapshot with savepoints (#1, #2 -> persist sp) (#3 -> runtime sp)
     auto ss = std::stringstream();
     auto writer = std::make_shared<ostream_snapshot_writer>(ss);
     
-    token_database_snapshot::add_to_snapshot(writer, db);
-    tokendb_ss = ss.str();
-
-    CHECK(db.exists_domain("test-domain-2"));
-}
-
-TEST_CASE("tokendb_load", "[snapshot]") {
-    auto db_folder = evt_unittests_dir + "/snapshot_tests";
-
-    auto db = token_database(db_folder);
-    db.open();
-
-    // still have two savepoints #1, #2, #3
-    REQUIRE(db.savepoints_size() == 3);
-
-    // add savepoint #4
-    db.add_savepoint(4);
+    tokendb.add_savepoint(tokendb.latest_savepoint_seq() + 1);
 
     auto d = domain_def();
-    d.name = "test-domain-3";
-    db.add_domain(d);
+    d.name = "snapshot-domain";
+
+    PUT_DB_TOKEN(domain, std::nullopt, d.name, d);
+
+    token_database_snapshot::add_to_snapshot(writer, tokendb);
+    token_db_snapshot_ = ss.str();
+}
+
+TEST_CASE("snapshot_load_test", "[snapshot]") {
+    auto tokendb = token_database(get_db_config());
+    tokendb.open();
+
+    REQUIRE(tokendb.savepoints_size() > 0);
 
     // restore tokendb from snapshot
-    auto ss = std::stringstream(tokendb_ss);
+    auto ss = std::stringstream(token_db_snapshot_);
     auto reader = std::make_shared<istream_snapshot_reader>(ss);
 
-    token_database_snapshot::read_from_snapshot(reader, db);
+    token_database_snapshot::read_from_snapshot(reader, tokendb);
 
-    REQUIRE(db.savepoints_size() == 3);
+    REQUIRE(tokendb.savepoints_size() == 0);
+    CHECK(EXISTS_TOKEN(domain, "dm-tkdb-test"));
+    CHECK(EXISTS_TOKEN2(token, "dm-tkdb-test", "basic-1"));
+    CHECK(EXISTS_TOKEN2(token, "dm-tkdb-test", "basic-2"));
 
-    CHECK(db.exists_domain("test-domain"));
-    for(int i = 0; i < 10; i++) {
-        CHECK(db.exists_token("test-domain", std::to_string(i)));
-    }
-    CHECK(db.exists_domain("test-domain-2"));
-    CHECK(!db.exists_domain("test-domain-3"));
+    auto addr = public_key_type(std::string("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"));
+    CHECK(EXISTS_ASSET(addr, 3));
+    CHECK(EXISTS_TOKEN(domain, "snapshot-domain"));
 }

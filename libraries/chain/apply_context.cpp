@@ -2,12 +2,13 @@
  *  @file
  *  @copyright defined in evt/LICENSE.txt
  */
-#include <algorithm>
 #include <evt/chain/apply_context.hpp>
+
+#include <algorithm>
 #include <evt/chain/controller.hpp>
+#include <evt/chain/execution_context_impl.hpp>
 #include <evt/chain/transaction_context.hpp>
 #include <evt/chain/global_property_object.hpp>
-#include <evt/chain/contracts/types_invoker.hpp>
 #include <evt/chain/contracts/evt_contract.hpp>
 
 namespace evt { namespace chain {
@@ -37,7 +38,7 @@ apply_context::exec_one(action_trace& trace) {
     r.act_digest      = digest_type::hash(act);
     r.global_sequence = next_global_sequence();
 
-    trace.trx_id            = trx_context.trx.id;
+    trace.trx_id            = trx_context.trx_meta->id;
     trace.block_num         = control.pending_block_state()->block_num;
     trace.block_time        = control.pending_block_time();
     trace.producer_block_id = control.pending_producer_block_id();
@@ -45,7 +46,13 @@ apply_context::exec_one(action_trace& trace) {
 
     try {
         try {
-            types_invoker<void, apply_action>::invoke(act.name, *this);
+            if(act.index_ == -1) {
+                act.index_ = exec_ctx.index_of(act.name);
+            }
+            if(act.index_ == exec_ctx.index_of<contracts::paybonus>()) {
+                goto next;
+            }
+            exec_ctx.invoke<apply_action, void>(act.index_, *this);
         }
         FC_RETHROW_EXCEPTIONS(warn, "pending console output: ${console}", ("console", fmt::to_string(_pending_console_output)));
     }
@@ -56,8 +63,8 @@ apply_context::exec_one(action_trace& trace) {
         throw;
     }
 
+next:
     trace.receipt = r;
-
     trx_context.executed.emplace_back(move(r));
 
     finalize_trace(trace, start);
@@ -69,9 +76,13 @@ apply_context::exec_one(action_trace& trace) {
 
 void
 apply_context::finalize_trace(action_trace& trace, const std::chrono::steady_clock::time_point& start) {
+    using namespace std::chrono;
+
     trace.console = fmt::to_string(_pending_console_output);
-    reset_console();
-    trace.elapsed = fc::microseconds(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start).count());
+    trace.elapsed = fc::microseconds(duration_cast<microseconds>(steady_clock::now() - start).count());
+    
+    trace.generated_actions = std::move(_generated_actions);
+    trace.new_ft_holders    = std::move(_new_ft_holders);
 }
 
 void
@@ -82,11 +93,6 @@ apply_context::exec(action_trace& trace) {
 bool
 apply_context::has_authorized(const domain_name& domain, const domain_key& key) const {
     return act.domain == domain && act.key == key;
-}
-
-void
-apply_context::reset_console() {
-    _pending_console_output = fmt::memory_buffer();
 }
 
 uint64_t

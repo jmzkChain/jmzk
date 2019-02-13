@@ -96,20 +96,22 @@ variant::variant(const char* str) {
 
 // TODO: do a proper conversion to utf8
 variant::variant(wchar_t* str) {
-    size_t                    len = wcslen(str);
-    boost::scoped_array<char> buffer(new char[len]);
-    for(unsigned i = 0; i < len; ++i)
+    auto len    = wcslen(str);
+    auto buffer = boost::scoped_array<char>(new char[len]);
+    for(unsigned i = 0; i < len; ++i) {
         buffer[i] = (char)str[i];
+    }
     *reinterpret_cast<string**>(this) = new string(buffer.get(), len);
     set_variant_type(this, string_type);
 }
 
 // TODO: do a proper conversion to utf8
 variant::variant(const wchar_t* str) {
-    size_t                    len = wcslen(str);
-    boost::scoped_array<char> buffer(new char[len]);
-    for(unsigned i = 0; i < len; ++i)
+    auto len    = wcslen(str);
+    auto buffer = boost::scoped_array<char>(new char[len]);
+    for(unsigned i = 0; i < len; ++i) {
         buffer[i] = (char)str[i];
+    }
     *reinterpret_cast<string**>(this) = new string(buffer.get(), len);
     set_variant_type(this, string_type);
 }
@@ -154,6 +156,9 @@ variant::clear() {
     case string_type:
         delete *reinterpret_cast<string**>(this);
         break;
+    case blob_type:
+        delete *reinterpret_cast<blob**>(this);
+        break;
     default:
         break;
     }
@@ -173,6 +178,11 @@ variant::variant(const variant& v) {
     case string_type:
         *reinterpret_cast<string**>(this) = new string(**reinterpret_cast<const const_string_ptr*>(&v));
         set_variant_type(this, string_type);
+        return;
+    case blob_type:
+        *reinterpret_cast<blob**>(this)  =
+        new blob(**reinterpret_cast<const const_blob_ptr*>(&v));
+        set_variant_type(this, blob_type);
         return;
     default:
         memcpy(this, &v, sizeof(v));
@@ -214,7 +224,9 @@ variant::operator=(const variant& v) {
     case string_type:
         *reinterpret_cast<string**>(this) = new string((**reinterpret_cast<const const_string_ptr*>(&v)));
         break;
-
+    case blob_type:
+        *reinterpret_cast<blob**>(this) = new blob((**reinterpret_cast<const const_blob_ptr*>(&v)));
+        break;
     default:
         memcpy(this, &v, sizeof(v));
     }
@@ -731,6 +743,11 @@ from_variant(const variant& var, std::vector<char>& vo) {
 
 string
 format_string(const string& format, const variant_object& args) {
+    // add fast path for format version 2 (aka. using fmt library)
+    if(args.size() == 0) {
+        return format;
+    }
+
     std::stringstream ss;
     size_t            prev = 0;
     auto              next = format.find('$');

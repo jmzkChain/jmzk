@@ -8,6 +8,7 @@
 #include <iosfwd>
 #include <string>
 #include <vector>
+#include <fmt/format.h>
 #include <fc/reflect/reflect.hpp>
 
 namespace evt { namespace chain {
@@ -71,6 +72,8 @@ struct name {
     constexpr name() {}
 
     explicit operator string() const;
+    explicit operator bool() const { return value; }
+    explicit operator uint64_t() const { return value; }
 
     string
     to_string() const {
@@ -139,9 +142,6 @@ struct name {
     operator!=(const name& a, const name& b) {
         return a.value != b.value;
     }
-
-    operator bool() const { return value; }
-    operator uint64_t() const { return value; }
 };
 
 inline std::vector<name>
@@ -173,5 +173,20 @@ void to_variant(const evt::chain::name& name, fc::variant& v);
 void from_variant(const fc::variant& v, evt::chain::name& name);
 
 }  // namespace fc
+
+namespace fmt {
+
+template <>
+struct formatter<evt::chain::name> {
+    template <typename ParseContext>
+    constexpr auto parse(ParseContext& ctx) { return ctx.begin(); }
+
+    template <typename FormatContext>
+    auto format(const evt::chain::name& n, FormatContext &ctx) {
+        return format_to(ctx.begin(), n.to_string());
+    }
+};
+
+}  // namespace fmt
 
 FC_REFLECT(evt::chain::name, (value));

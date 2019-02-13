@@ -92,12 +92,12 @@ gelf_appender::log(const log_message& message) {
     if(!my->gelf_endpoint.has_value())
         return;
 
-    log_context context = message.get_context();
+    auto& context = message.context;
 
     mutable_variant_object gelf_message;
     gelf_message["version"]       = "1.1";
     gelf_message["host"]          = my->cfg.host;
-    gelf_message["short_message"] = format_string(message.get_format(), message.get_data());
+    gelf_message["short_message"] = format_string(message.format, message.args);
 
     // use now() instead of context.get_timestamp() because log_message construction can include user provided long running calls
     const auto time_ns            = time_point::now().time_since_epoch().count();
@@ -107,7 +107,7 @@ gelf_appender::log(const log_message& message) {
     static uint64_t gelf_log_counter;
     gelf_message["_log_id"] = fc::to_string(++gelf_log_counter);
 
-    switch(context.get_log_level()) {
+    switch(context.level) {
     case log_level::debug:
         gelf_message["level"] = 7;  // debug
         break;
@@ -127,14 +127,16 @@ gelf_appender::log(const log_message& message) {
         break;
     }
 
-    if(!context.get_context().empty())
-        gelf_message["context"] = context.get_context();
-    gelf_message["_line"]        = context.get_line_number();
-    gelf_message["_file"]        = context.get_file();
-    gelf_message["_method_name"] = context.get_method();
-    gelf_message["_thread_name"] = context.get_thread_name();
-    if(!context.get_task_name().empty())
-        gelf_message["_task_name"] = context.get_task_name();
+    if(!context.context.empty()) {
+        gelf_message["context"] = context.context;
+    }
+    gelf_message["_line"]        = context.line;
+    gelf_message["_file"]        = context.file;
+    gelf_message["_method_name"] = context.method;
+    gelf_message["_thread_name"] = context.thread_name;
+    if(!context.task_name.empty()) {
+        gelf_message["_task_name"] = context.task_name;
+    }
 
     string gelf_message_as_string = json::to_string(gelf_message, json::legacy_generator);  // GELF 1.1 specifies unstringified numbers
     //unsigned uncompressed_size = gelf_message_as_string.size();

@@ -28,7 +28,7 @@ struct transaction_receipt_header {
     };
 
     transaction_receipt_header() : status(hard_fail), type(input) {}
-    transaction_receipt_header(status_enum s, type_enum t = input) : status(s), type(t) {}
+    explicit transaction_receipt_header(status_enum s, type_enum t = input) : status(s), type(t) {}
 
     friend inline bool
     operator ==(const transaction_receipt_header& lhs, const transaction_receipt_header& rhs) {
@@ -41,7 +41,7 @@ struct transaction_receipt_header {
 
 struct transaction_receipt : public transaction_receipt_header {
     transaction_receipt(): transaction_receipt_header() {}
-    transaction_receipt(packed_transaction ptrx) : transaction_receipt_header(executed), trx(ptrx) {}
+    explicit transaction_receipt(const packed_transaction& ptrx) : transaction_receipt_header(executed), trx(ptrx) {}
 
     packed_transaction trx;
 
@@ -56,10 +56,15 @@ struct transaction_receipt : public transaction_receipt_header {
 };
 
 struct signed_block : public signed_block_header {
-    using signed_block_header::signed_block_header;
+public:
     signed_block() = default;
-    signed_block(const signed_block_header& h) : signed_block_header(h) {}
+    signed_block(const signed_block&) = delete;
+    signed_block(signed_block&&) = default;
+    signed_block& operator=(const signed_block&) = delete;
 
+    explicit signed_block(const signed_block_header& h) : signed_block_header(h) {}
+
+public:
     small_vector<transaction_receipt, 4> transactions;  /// new or generated transactions
     extensions_type                      block_extensions;
 };

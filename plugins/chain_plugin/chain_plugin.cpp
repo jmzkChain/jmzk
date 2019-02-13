@@ -20,7 +20,7 @@
 #include <evt/chain/types.hpp>
 #include <evt/chain/genesis_state.hpp>
 #include <evt/chain/snapshot.hpp>
-#include <evt/chain/contracts/evt_contract.hpp>
+#include <evt/chain/contracts/evt_contract_abi.hpp>
 #include <evt/chain/contracts/evt_link.hpp>
 #include <evt/chain/contracts/evt_link_object.hpp>
 
@@ -110,6 +110,43 @@ validate(boost::any&                     v,
     }
     else if(s == "light") {
         v = boost::any(evt::chain::validation_mode::LIGHT);
+    }
+    else {
+        throw validation_error(validation_error::invalid_option_value);
+    }
+}
+
+std::ostream&
+operator<<(std::ostream& osm, evt::chain::storage_profile m) {
+    if(m == evt::chain::storage_profile::disk) {
+        osm << "disk";
+    }
+    else if(m == evt::chain::storage_profile::memory) {
+        osm << "memory";
+    }
+
+    return osm;
+}
+
+void
+validate(boost::any&                     v,
+         const std::vector<std::string>& values,
+         evt::chain::storage_profile* /* target_type */,
+         int) {
+    using namespace boost::program_options;
+
+    // Make sure no previous assignment to 'v' was made.
+    validators::check_first_occurrence(v);
+
+    // Extract the first string from 'values'. If there is more than
+    // one string, it's an error, and exception will be thrown.
+    std::string const& s = validators::get_single_string(values);
+
+    if(s == "disk") {
+        v = boost::any(evt::chain::storage_profile::disk);
+    }
+    else if(s == "memory") {
+        v = boost::any(evt::chain::storage_profile::memory);
     }
     else {
         throw validation_error(validation_error::invalid_option_value);
@@ -210,7 +247,13 @@ void
 chain_plugin::set_program_options(options_description& cli, options_description& cfg) {
     cfg.add_options()
         ("blocks-dir", bpo::value<bfs::path>()->default_value("blocks"), "the location of the blocks directory (absolute path or relative to application data dir)")
-        ("tokendb-dir", bpo::value<bfs::path>()->default_value("tokendb"), "the location of the token database directory (absolute path or relative to application data dir)")
+        ("token-db-dir", bpo::value<bfs::path>()->default_value("tokendb"), "the location of the token database directory (absolute path or relative to application data dir)")
+        ("token-db-cache-size-mb", bpo::value<uint32_t>()->default_value(256), "the cache size of token database in MBytes")
+        ("token-db-profile", boost::program_options::value<evt::chain::storage_profile>()->default_value(evt::chain::storage_profile::disk),
+            "Token database profile (\"disk\", or \"memory\").\n"
+            "In \"disk\" profile database is optimized for the standard storage devices.\n"
+            "In \"memory\" mode database is optimized for the usage in ultra-low latency devices like memory\n"
+        )
         ("checkpoint", bpo::value<vector<string>>()->composing(), "Pairs of [BLOCK_NUM,BLOCK_ID] that should be enforced as checkpoints.")
         ("abi-serializer-max-time-ms", bpo::value<uint32_t>()->default_value(config::default_abi_serializer_max_time_ms), "Override default maximum ABI serialization time allowed in ms")
         ("chain-state-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_state_size / (1024 * 1024)), "Maximum size (in MiB) of the chain state database")
@@ -314,18 +357,22 @@ chain_plugin::plugin_initialize(const variables_map& options) {
 
         if(options.count("blocks-dir")) {
             auto bld = options.at("blocks-dir").as<bfs::path>();
-            if(bld.is_relative())
+            if(bld.is_relative()) {
                 my->blocks_dir = app().data_dir() / bld;
-            else
+            }
+            else {
                 my->blocks_dir = bld;
+            }
         }
 
-        if(options.count("tokendb-dir")) {
-            auto tod = options.at("tokendb-dir").as<bfs::path>();
-            if(tod.is_relative())
+        if(options.count("token-db-dir")) {
+            auto tod = options.at("token-db-dir").as<bfs::path>();
+            if(tod.is_relative()) {
                 my->tokendb_dir = app().data_dir() / tod;
-            else
+            }
+            else {
                 my->tokendb_dir = tod;
+            }
         }
 
         if(options.count("checkpoint")) {
@@ -346,13 +393,22 @@ chain_plugin::plugin_initialize(const variables_map& options) {
         }
 
         if(options.count("abi-serializer-max-time-ms")) {
-            my->chain_config->max_serialization_time = fc::milliseconds(options.at("abi-serializer-max-time-ms").as<uint32_t>());
+            my->chain_config->max_serialization_time = std::chrono::milliseconds(options.at("abi-serializer-max-time-ms").as<uint32_t>());
         }
 
-        my->chain_config->blocks_dir  = my->blocks_dir;
-        my->chain_config->tokendb_dir = my->tokendb_dir;
-        my->chain_config->state_dir   = app().data_dir() / config::default_state_dir_name;
-        my->chain_config->read_only   = my->readonly;
+        my->chain_config->blocks_dir = my->blocks_dir;
+        my->chain_config->state_dir  = app().data_dir() / config::default_state_dir_name;
+        my->chain_config->read_only  = my->readonly;
+
+        my->chain_config->db_config.db_path = my->tokendb_dir;
+        
+        if(options.count("token-db-cache-size-mb")) {
+            my->chain_config->db_config.cache_size = options.at("token-db-cache-size-mb").as<uint32_t>();
+        }
+
+        if(options.count("token-db-profile")) {
+            my->chain_config->db_config.profile = options.at("token-db-profile").as<storage_profile>();
+        }
 
         if(options.count("chain-state-db-size-mb"))
             my->chain_config->state_size = options.at("chain-state-db-size-mb").as<uint64_t>() * 1024 * 1024;
@@ -427,7 +483,7 @@ chain_plugin::plugin_initialize(const variables_map& options) {
         else if(options.at("hard-replay-blockchain").as<bool>()) {
             ilog("Hard replay requested: deleting state database");
             clear_directory_contents(my->chain_config->state_dir);
-            fc::remove_all(my->chain_config->tokendb_dir);
+            fc::remove_all(my->tokendb_dir);
             auto backup_dir = block_log::repair_log(my->blocks_dir, options.at("truncate-at-block").as<uint32_t>());
             if(fc::exists(backup_dir / config::reversible_blocks_dir_name) || options.at("fix-reversible-blocks").as<bool>()) {
                 // Do not try to recover reversible blocks if the directory does not exist, unless the option was explicitly provided.
@@ -450,7 +506,7 @@ chain_plugin::plugin_initialize(const variables_map& options) {
             if(options.at("truncate-at-block").as<uint32_t>() > 0)
                 wlog("The --truncate-at-block option does not work for a regular replay of the blockchain.");
             clear_directory_contents(my->chain_config->state_dir);
-            fc::remove_all(my->chain_config->tokendb_dir);
+            fc::remove_all(my->tokendb_dir);
             if(options.at("fix-reversible-blocks").as<bool>()) {
                 if(!recover_reversible_blocks(my->chain_config->blocks_dir / config::reversible_blocks_dir_name,
                                               my->chain_config->reversible_cache_size)) {
@@ -519,7 +575,17 @@ chain_plugin::plugin_initialize(const variables_map& options) {
             }
         }
         else {
+            auto genesis_file                = bfs::path();
+            bool genesis_timestamp_specified = false;
+            auto existing_genesis            = std::optional<genesis_state>();
+
+            if(fc::exists(my->blocks_dir / "blocks.log" )) {
+                my->chain_config->genesis = block_log::extract_genesis_state( my->blocks_dir );
+                existing_genesis = my->chain_config->genesis;
+            }
+
             if(options.count("genesis-json")) {
+                genesis_file = options.at( "genesis-json" ).as<bfs::path>();
                 EVT_ASSERT(!fc::exists(my->blocks_dir / "blocks.log"),
                            plugin_config_exception,
                            "Genesis state can only be set on a fresh blockchain.");
@@ -535,32 +601,39 @@ chain_plugin::plugin_initialize(const variables_map& options) {
                            ("genesis", genesis_file.generic_string()));
 
                 my->chain_config->genesis = fc::json::from_file(genesis_file).as<genesis_state>();
-
-                ilog("Using genesis state provided in '${genesis}'", ("genesis", genesis_file.generic_string()));
-
-                if(options.count("genesis-timestamp")) {
-                    my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp(
-                        options.at("genesis-timestamp").as<string>());
-                }
-
-                wlog("Starting up fresh blockchain with provided genesis state.");
             }
-            else if(options.count("genesis-timestamp")) {
-                EVT_ASSERT(!fc::exists(my->blocks_dir / "blocks.log"),
-                           plugin_config_exception,
-                           "Genesis state can only be set on a fresh blockchain.");
 
+            if(options.count("genesis-timestamp")) {
                 my->chain_config->genesis.initial_timestamp = calculate_genesis_timestamp(
                     options.at("genesis-timestamp").as<string>());
-
-                wlog("Starting up fresh blockchain with default genesis state but with adjusted genesis timestamp.");
+                genesis_timestamp_specified = true;
             }
-            else if(fc::is_regular_file(my->blocks_dir / "blocks.log")) {
-                my->chain_config->genesis = block_log::extract_genesis_state(my->blocks_dir);
+
+            if(!existing_genesis) {
+                if(!genesis_file.empty()) {
+                    if(genesis_timestamp_specified) {
+                        ilog("Using genesis state provided in '${genesis}' but with adjusted genesis timestamp",
+                            ("genesis", genesis_file.generic_string()));
+                    }
+                    else {
+                        ilog("Using genesis state provided in '${genesis}'", ("genesis", genesis_file.generic_string()));
+                    }
+                    wlog("Starting up fresh blockchain with provided genesis state.");
+                }
+                else if(genesis_timestamp_specified) {
+                    wlog("Starting up fresh blockchain with default genesis state but with adjusted genesis timestamp.");
+                }
+                else {
+                    wlog("Starting up fresh blockchain with default genesis state.");
+                }
             }
             else {
-                wlog("Starting up fresh blockchain with default genesis state.");
+                EVT_ASSERT(my->chain_config->genesis == *existing_genesis, plugin_config_exception,
+                           "Genesis state provided via command line arguments does not match the existing genesis state in blocks.log. "
+                           "It is not necessary to provide genesis state arguments when a blocks.log file already exists."
+                           );
             }
+
         }
 
         if(options.count("read-mode")) {
@@ -704,7 +777,12 @@ chain_plugin::accept_block(const signed_block_ptr& block) {
 
 void
 chain_plugin::accept_transaction(const chain::packed_transaction& trx, next_function<chain::transaction_trace_ptr> next) {
-    my->incoming_transaction_async_method(std::make_shared<packed_transaction>(trx), false, std::forward<decltype(next)>(next));
+    my->incoming_transaction_async_method(std::make_shared<transaction_metadata>(std::make_shared<packed_transaction>(trx)), false, std::forward<decltype(next)>(next));
+}
+
+void
+chain_plugin::accept_transaction(const chain::transaction_metadata_ptr& trx, next_function<chain::transaction_trace_ptr> next) {
+    my->incoming_transaction_async_method(trx, false, std::forward<decltype(next)>(next));
 }
 
 bool
@@ -858,7 +936,7 @@ chain_plugin::import_reversible_blocks(const fc::path& reversible_dir,
 
             new_reversible.create<reversible_block_object>([&](auto& ubo) {
                 ubo.blocknum = num;
-                ubo.set_block(std::make_shared<signed_block>(tmp));
+                ubo.set_block(std::make_shared<signed_block>(std::move(tmp)));
             });
             end = num;
         }
@@ -974,15 +1052,29 @@ chain_plugin::handle_db_exhaustion() {
 
 namespace chain_apis {
 
+std::vector<string>
+get_enabled_plugins() {
+    auto plugins = std::vector<string>();
+    for(auto& it : app().get_plugins()) {
+        if(it.second->get_state() == appbase::abstract_plugin::started) {
+            plugins.emplace_back(it.first);
+        }
+    }
+    return plugins;
+}
+
 read_only::get_info_results
 read_only::get_info(const read_only::get_info_params&) const {
     auto itoh = [](uint32_t n, size_t hlen = sizeof(uint32_t) << 1) {
         static const char* digits = "0123456789abcdef";
-        std::string        r(hlen, '0');
-        for(size_t i = 0, j = (hlen - 1) * 4; i < hlen; ++i, j -= 4)
+        
+        auto r = std::string(hlen, '0');
+        for(size_t i = 0, j = (hlen - 1) * 4; i < hlen; ++i, j -= 4) {
             r[i] = digits[(n >> j) & 0x0f];
+        }
         return r;
     };
+
     return {
         itoh(static_cast<uint32_t>(app().version())),
         db.get_chain_id(),
@@ -993,13 +1085,14 @@ read_only::get_info(const read_only::get_info_params&) const {
         db.fork_db_head_block_id(),
         db.fork_db_head_block_time(),
         db.fork_db_head_block_producer(),
+        get_enabled_plugins(),
         app().version_string()
     };
 }
 
 fc::variant
 read_only::get_block(const read_only::get_block_params& params) const {
-    signed_block_ptr block;
+    auto block = signed_block_ptr();
     EVT_ASSERT(!params.block_num_or_id.empty() && params.block_num_or_id.size() <= 64, chain::block_id_type_exception, "Invalid Block number or ID, must be greater than 0 and less than 64 characters");
     try {
         block = db.fetch_block_by_id(fc::variant(params.block_num_or_id).as<block_id_type>());
@@ -1011,8 +1104,8 @@ read_only::get_block(const read_only::get_block_params& params) const {
 
     EVT_ASSERT(block, unknown_block_exception, "Could not find block: ${block}", ("block", params.block_num_or_id));
 
-    fc::variant pretty_output;
-    db.get_abi_serializer().to_variant(*block, pretty_output);
+    auto pretty_output = fc::variant();
+    db.get_abi_serializer().to_variant(*block, pretty_output, db.get_execution_context());
 
     uint32_t ref_block_prefix = block->id()._hash[1];
 
@@ -1024,6 +1117,7 @@ read_only::get_block_header_state(const get_block_header_state_params& params) c
     block_state_ptr    b;
     optional<uint64_t> block_num;
     std::exception_ptr e;
+
     try {
         block_num = fc::to_uint64(params.block_num_or_id);
     }
@@ -1072,7 +1166,7 @@ read_only::get_transaction(const get_transaction_params& params) {
     for(auto& tx : block->transactions) {
         if(tx.trx.id() == params.id) {
             auto var = fc::variant();
-            db.get_abi_serializer().to_variant(tx.trx, var);
+            db.get_abi_serializer().to_variant(tx.trx, var, db.get_execution_context());
 
             auto mv = fc::mutable_variant_object(var);
             mv["block_num"] = block_num;
@@ -1090,7 +1184,10 @@ read_only::get_trx_id_for_link_id(const get_trx_id_for_link_id_params& params) c
         EVT_THROW(evt_link_id_exception, "EVT-Link id is not in proper length");
     }
 
-    auto obj        = db.get_link_obj_for_link_id(*(link_id_type*)(&params.link_id[0]));
+    auto link_id = link_id_type();
+    memcpy(&link_id, params.link_id.data(), sizeof(link_id));
+
+    auto obj        = db.get_link_obj_for_link_id(link_id);
     auto vo         = fc::mutable_variant_object();
     vo["block_num"] = obj.block_num;
     vo["trx_id"]    = obj.trx_id;
@@ -1099,9 +1196,9 @@ read_only::get_trx_id_for_link_id(const get_trx_id_for_link_id_params& params) c
 }
 
 void
-read_write::push_block(const read_write::push_block_params& params, next_function<read_write::push_block_results> next) {
+read_write::push_block(read_write::push_block_params&& params, next_function<read_write::push_block_results> next) {
     try {
-        app().get_method<incoming::methods::block_sync>()(std::make_shared<signed_block>(params));
+        app().get_method<incoming::methods::block_sync>()(std::make_shared<signed_block>(std::move(params)));
         next(read_write::push_block_results{});
     }
     catch(boost::interprocess::bad_alloc&) {
@@ -1116,13 +1213,16 @@ read_write::push_block(const read_write::push_block_params& params, next_functio
 void
 read_write::push_transaction(const read_write::push_transaction_params& params, next_function<read_write::push_transaction_results> next) {
     try {
-        auto pretty_input = std::make_shared<packed_transaction>();
+        auto  ptrx     = std::make_shared<packed_transaction>();
+        auto& exec_ctx = db.get_execution_context();
+        auto  trx_meta = transaction_metadata_ptr();
         try {
-            db.get_abi_serializer().from_variant(params, *pretty_input);
+            db.get_abi_serializer().from_variant(params, *ptrx, exec_ctx);
+            trx_meta = std::make_shared<transaction_metadata>(ptrx);
         }
         EVT_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
-        app().get_method<incoming::methods::transaction_async>()(pretty_input, true, [this, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
+        app().get_method<incoming::methods::transaction_async>()(trx_meta, true, [this, next, &exec_ctx](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
             if(result.contains<fc::exception_ptr>()) {
                 next(result.get<fc::exception_ptr>());
             }
@@ -1130,10 +1230,10 @@ read_write::push_transaction(const read_write::push_transaction_params& params, 
                 auto trx_trace_ptr = result.get<transaction_trace_ptr>();
 
                 try {
-                    fc::variant pretty_output;
-                    db.get_abi_serializer().to_variant(*trx_trace_ptr, pretty_output);
+                    auto pretty_output = fc::variant();
+                    db.get_abi_serializer().to_variant(*trx_trace_ptr, pretty_output, exec_ctx);
 
-                    chain::transaction_id_type id = trx_trace_ptr->id;
+                    auto& id = trx_trace_ptr->id;
                     next(read_write::push_transaction_results{id, pretty_output});
                 }
                 CATCH_AND_CALL(next);
@@ -1150,7 +1250,7 @@ read_write::push_transaction(const read_write::push_transaction_params& params, 
 }
 
 static void
-push_recurse(read_write* rw, int index, const std::shared_ptr<read_write::push_transactions_params>& params,const std::shared_ptr<read_write::push_transactions_results>& results, const next_function<read_write::push_transactions_results>& next) {
+push_recurse(read_write* rw, int index, const std::shared_ptr<read_write::push_transactions_params>& params, const std::shared_ptr<read_write::push_transactions_results>& results, const next_function<read_write::push_transactions_results>& next) {
     auto wrapped_next = [=](const fc::static_variant<fc::exception_ptr, read_write::push_transaction_results>& result) {
         if(result.contains<fc::exception_ptr>()) {
             const auto& e = result.get<fc::exception_ptr>();
@@ -1188,7 +1288,7 @@ read_write::push_transactions(const read_write::push_transactions_params& params
 
 static variant
 action_abi_to_variant(const abi_serializer& abi, contracts::type_name action_type) {
-    variant v;
+    auto v = fc::variant();
     if(abi.is_struct(action_type)) {
         to_variant(abi.get_struct(action_type), v);
     }
@@ -1197,13 +1297,14 @@ action_abi_to_variant(const abi_serializer& abi, contracts::type_name action_typ
 
 read_only::abi_json_to_bin_result
 read_only::abi_json_to_bin(const read_only::abi_json_to_bin_params& params) const try {
-    auto& abi = db.get_abi_serializer();
+    auto& abi      = db.get_abi_serializer();
+    auto& exec_ctx = db.get_execution_context();
 
     auto result      = abi_json_to_bin_result();
-    auto action_type = abi.get_action_type(params.action);
-    EVT_ASSERT(!action_type.empty(), action_exception, "Unknown action ${action}", ("action", params.action));
+    auto action_type = exec_ctx.get_acttype_name(params.action);
+
     try {
-        result.binargs = abi.variant_to_binary(action_type, params.args, shorten_abi_errors);
+        result.binargs = abi.variant_to_binary(action_type, params.args, exec_ctx, shorten_abi_errors);
     }
     EVT_RETHROW_EXCEPTIONS(chain::action_args_exception,
                            "'${args}' is invalid args for action '${action}'. expected '${proto}'",
@@ -1214,10 +1315,13 @@ FC_CAPTURE_AND_RETHROW((params.action)(params.args))
 
 read_only::abi_bin_to_json_result
 read_only::abi_bin_to_json(const read_only::abi_bin_to_json_params& params) const {
-    auto& abi = db.get_abi_serializer();
+    auto& abi      = db.get_abi_serializer();
+    auto& exec_ctx = db.get_execution_context();
 
-    auto result = abi_bin_to_json_result();
-    result.args = abi.binary_to_variant(abi.get_action_type(params.action), params.binargs, shorten_abi_errors);
+    auto result      = abi_bin_to_json_result();
+    auto action_type = exec_ctx.get_acttype_name(params.action);
+
+    result.args = abi.binary_to_variant(action_type, params.binargs, exec_ctx, shorten_abi_errors);
     return result;
 }
 
@@ -1227,7 +1331,7 @@ read_only::trx_json_to_digest(const trx_json_to_digest_params& params) const {
     try {
         auto trx = std::make_shared<transaction>();
         try {
-            db.get_abi_serializer().from_variant(params, *trx);
+            db.get_abi_serializer().from_variant(params, *trx, db.get_execution_context());
         }
         EVT_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid transaction")
         result.digest = trx->sig_digest(db.get_chain_id());
@@ -1248,7 +1352,7 @@ read_only::get_required_keys_result
 read_only::get_required_keys(const get_required_keys_params& params) const {
     auto trx = transaction();
     try {
-        db.get_abi_serializer().from_variant(params.transaction, trx);
+        db.get_abi_serializer().from_variant(params.transaction, trx, db.get_execution_context());
     }
     EVT_RETHROW_EXCEPTIONS(chain::transaction_type_exception, "Invalid transaction");
 
@@ -1269,19 +1373,19 @@ read_only::get_charge_result
 read_only::get_charge(const get_charge_params& params) const {
     auto trx = transaction();
     try {
-        db.get_abi_serializer().from_variant(params.transaction, trx);
+        db.get_abi_serializer().from_variant(params.transaction, trx, db.get_execution_context());
     }
     EVT_RETHROW_EXCEPTIONS(chain::transaction_type_exception, "Invalid transaction");
 
     auto result   = get_charge_result();
-    result.charge = db.get_charge(trx, params.sigs_num);
+    result.charge = db.get_charge(std::move(trx), params.sigs_num);
 
     return result;
 }
 
 fc::variant
 read_only::get_transaction_ids_for_block(const get_transaction_ids_for_block_params& params) const {
-    signed_block_ptr block;
+    auto block = signed_block_ptr();
     try {
         block = db.fetch_block_by_id(params.block_id);
     }
@@ -1295,6 +1399,54 @@ read_only::get_transaction_ids_for_block(const get_transaction_ids_for_block_par
     }
 
     return arr;
+}
+
+const std::string&
+read_only::get_abi(const get_abi_params&) const {
+    static std::string _abi_json;
+    
+    if(_abi_json.empty()) {
+        auto abi = evt::chain::contracts::evt_contract_abi();
+        auto ver = evt::chain::contracts::evt_contract_abi_version();
+
+        auto var = fc::variant();
+        fc::to_variant(abi, var);
+
+        auto varobj = fc::mutable_variant_object(var);
+        varobj["version"] = ver;
+
+        _abi_json = fc::json::to_string(varobj);
+    }
+
+    return _abi_json;
+}
+
+const std::string&
+read_only::get_actions(const get_actions_params&) const {
+    static std::string             _actions_json;
+    static std::vector<action_ver> _actions;
+
+    auto acts = db.get_execution_context().get_current_actions();
+    if(_actions.empty()) {
+        _actions      = std::move(acts);
+        _actions_json = fc::json::to_string(_actions);
+
+        return _actions_json;
+    }
+    else {
+        FC_ASSERT(_actions.size() == acts.size());
+        
+        for(auto i = 0u; i < acts.size(); i++) {
+            if(acts[i].ver != _actions[i].ver) {
+                _actions      = std::move(acts);
+                _actions_json = fc::json::to_string(_actions);
+
+                break;
+            }
+        }
+
+        return _actions_json;
+    }
 }
 
 }  // namespace chain_apis

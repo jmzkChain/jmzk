@@ -15,13 +15,14 @@
 #include <evt/chain/block_log.hpp>
 #include <evt/chain/charge_manager.hpp>
 #include <evt/chain/chain_snapshot.hpp>
+#include <evt/chain/execution_context_impl.hpp>
 #include <evt/chain/fork_database.hpp>
 #include <evt/chain/snapshot.hpp>
 #include <evt/chain/token_database.hpp>
 #include <evt/chain/token_database_snapshot.hpp>
 #include <evt/chain/transaction_context.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
-#include <evt/chain/contracts/evt_contract.hpp>
+#include <evt/chain/contracts/evt_contract_abi.hpp>
 #include <evt/chain/contracts/evt_org.hpp>
 
 #include <evt/chain/block_summary_object.hpp>
@@ -117,11 +118,11 @@ struct pending_state {
     pending_state(pending_state&& ps)
         : _db_session(move(ps._db_session)) {}
 
-    maybe_session            _db_session;
-    block_state_ptr          _pending_block_state;
-    vector<action_receipt>   _actions;
-    controller::block_status _block_status = controller::block_status::incomplete;
-    optional<block_id_type>  _producer_block_id;
+    maybe_session                   _db_session;
+    block_state_ptr                 _pending_block_state;
+    small_vector<action_receipt, 4> _actions;
+    controller::block_status        _block_status = controller::block_status::incomplete;
+    optional<block_id_type>         _producer_block_id;
 
     void
     push() {
@@ -140,6 +141,8 @@ struct controller_impl {
     token_database           token_db;
     controller::config       conf;
     chain_id_type            chain_id;
+    evt_execution_context    exec_ctx;
+
 
     bool                     replaying = false;
     optional<fc::time_point> replay_head_time;
@@ -150,11 +153,11 @@ struct controller_impl {
     abi_serializer           system_api;
 
     /**
-    *  Transactions that were undone by pop_block or abort_block, transactions
-    *  are removed from this list if they are re-applied in other blocks. Producers
-    *  can query this list when scheduling new transactions into blocks.
-    */
-    map<digest_type, transaction_metadata_ptr> unapplied_transactions;
+     *  Transactions that were undone by pop_block or abort_block, transactions
+     *  are removed from this list if they are re-applied in other blocks. Producers
+     *  can query this list when scheduling new transactions into blocks.
+     */
+    unapplied_transactions_type unapplied_transactions;
 
     void
     pop_block() {
@@ -186,9 +189,10 @@ struct controller_impl {
              cfg.reversible_cache_size)
         , blog(cfg.blocks_dir)
         , fork_db(cfg.state_dir)
-        , token_db(cfg.tokendb_dir)
+        , token_db(cfg.db_config)
         , conf(cfg)
         , chain_id(cfg.genesis.compute_chain_id())
+        , exec_ctx()
         , read_mode(cfg.read_mode)
         , system_api(contracts::evt_contract_abi(), cfg.max_serialization_time) {
 
@@ -204,14 +208,14 @@ struct controller_impl {
     }
 
     /**
-    *  Plugins / observers listening to signals emited (such as accepted_transaction) might trigger
-    *  errors and throw exceptions. Unless those exceptions are caught it could impact consensus and/or
-    *  cause a node to fork.
-    *
-    *  If it is ever desirable to let a signal handler bubble an exception out of this method
-    *  a full audit of its uses needs to be undertaken.
-    *
-    */
+     *  Plugins / observers listening to signals emited (such as accepted_transaction) might trigger
+     *  errors and throw exceptions. Unless those exceptions are caught it could impact consensus and/or
+     *  cause a node to fork.
+     *
+     *  If it is ever desirable to let a signal handler bubble an exception out of this method
+     *  a full audit of its uses needs to be undertaken.
+     *
+     */
     template <typename Signal, typename Arg>
     void
     emit(const Signal& s, Arg&& a) {
@@ -301,21 +305,23 @@ struct controller_impl {
 
     void
     replay() {
-        auto blog_head      = blog.read_head();
-        auto blog_head_time = blog_head->timestamp.to_time_point();
-        replaying           = true;
-        replay_head_time    = blog_head_time;
-        ilog("existing block log, attempting to replay ${n} blocks", ("n", fmt::format("{:n}", blog_head->block_num())));
+        auto blog_head       = blog.read_head();
+        auto blog_head_time  = blog_head->timestamp.to_time_point();
+        replaying            = true;
+        replay_head_time     = blog_head_time;
+        auto start_block_num = head->block_num + 1;
+        ilog("existing block log, attempting to replay from ${s} to ${n} blocks",
+            ("s", fmt::format("{:n}", start_block_num))("n", fmt::format("{:n}", blog_head->block_num())));
 
         auto start = fc::time_point::now();
         while(auto next = blog.read_block_by_num(head->block_num + 1)) {
-            self.push_block(next, controller::block_status::irreversible);
+            replay_push_block(next, controller::block_status::irreversible);
             if(next->block_num() % 100 == 0) {
                 std::cerr << std::setw(10) << fmt::format("{:n}", next->block_num()) << " of " << fmt::format("{:n}", blog_head->block_num()) << "\r";
             }
         }
         std::cerr << "\n";
-        ilog("${n} blocks replayed", ("n", fmt::format("{:n}", head->block_num)));
+        ilog("${n} blocks replayed", ("n", fmt::format("{:n}", head->block_num - start_block_num)));
 
         // if the irreverible log is played without undo sessions enabled, we need to sync the
         // revision ordinal to the appropriate expected value here.
@@ -325,15 +331,15 @@ struct controller_impl {
         int rev = 0;
         while(auto obj = reversible_blocks.find<reversible_block_object, by_num>(head->block_num + 1)) {
             ++rev;
-            self.push_block(obj->get_block(), controller::block_status::validated);
+            replay_push_block(obj->get_block(), controller::block_status::validated);
         }
 
         ilog("${n} reversible blocks replayed", ("n", fmt::format("{:n}", rev)));
         auto end = fc::time_point::now();
         ilog("replayed ${n} blocks in ${duration} seconds, ${mspb} ms/block",
-            ("n", fmt::format("{:n}", head->block_num))
+            ("n", fmt::format("{:n}", head->block_num - start_block_num))
             ("duration", fmt::format("{:n}", (end - start).count() / 1000000))
-            ("mspb", fmt::format("{:.3f}", ((end - start).count() / 1000.0) / head->block_num))
+            ("mspb", fmt::format("{:.3f}", ((end - start).count() / 1000.0) / (head->block_num - start_block_num)))
             );
         replaying = false;
         replay_head_time.reset();
@@ -343,6 +349,8 @@ struct controller_impl {
     void
     init(const snapshot_reader_ptr& snapshot) {
         token_db.open();
+
+        bool report_integrity_hash = !!snapshot;
         if(snapshot) {
             EVT_ASSERT(!head, fork_database_exception, "");
             snapshot->validate();
@@ -361,16 +369,19 @@ struct controller_impl {
                            "Block log is provided with snapshot but does not contain the head block from the snapshot");
             }
         }
-        else if(!head) {
-            initialize_fork_db();  // set head to genesis state
-            initialize_token_db();
+        else {
+            if(!head) {
+                initialize_fork_db();  // set head to genesis state
+                initialize_token_db();
+            }
 
             auto end = blog.read_head();
-            if(end && end->block_num() > 1) {
-                replay();
-            }
-            else if(!end) {
+            if(!end) {
                 blog.reset(conf.genesis, head->block);
+            }
+            else if(end->block_num() > head->block_num) {
+                replay();
+                report_integrity_hash = true;
             }
         }
 
@@ -395,9 +406,9 @@ struct controller_impl {
             wlog("warning: database revision (${db}) is greater than head block number (${head}), "
                  "attempting to undo pending changes",
                  ("db", db.revision())("head", head->block_num));
-            EVT_ASSERT(token_db.savepoints_size() > 0, tokendb_exception,
+            EVT_ASSERT(token_db.savepoints_size() > 0, token_database_exception,
                 "token database is inconsistent with fork database: don't have any savepoints to pop");
-            EVT_ASSERT(token_db.latest_savepoint_seq() == db.revision(), tokendb_exception,
+            EVT_ASSERT(token_db.latest_savepoint_seq() == db.revision(), token_database_exception,
                 "token database(${seq}) is inconsistent with fork database(${db})",
                 ("seq",token_db.latest_savepoint_seq())("db",db.revision()));
         }
@@ -406,7 +417,7 @@ struct controller_impl {
             token_db.rollback_to_latest_savepoint();
         }
 
-        if(snapshot) {
+        if(report_integrity_hash) {
             const auto hash = calculate_integrity_hash();
             ilog("database initialized with hash: ${hash}", ("hash", hash));
         }
@@ -486,8 +497,8 @@ struct controller_impl {
 
     sha256
     calculate_integrity_hash() const {
-        sha256::encoder enc;
-        auto            hash_writer = std::make_shared<integrity_hash_snapshot_writer>(enc);
+        auto enc = sha256::encoder();
+        auto hash_writer = std::make_shared<integrity_hash_snapshot_writer>(enc);
         add_to_snapshot(hash_writer);
         hash_writer->finalize();
 
@@ -542,39 +553,6 @@ struct controller_impl {
 
     void
     initialize_token_db() {
-        if(!token_db.exists_domain(".domain")) {
-            auto dd = domain_def();
-            dd.name = ".domain";
-            dd.creator = conf.genesis.initial_key;
-            dd.create_time = conf.genesis.initial_timestamp;
-            auto r = token_db.add_domain(dd);
-            FC_ASSERT(r == 0, "Add `.domain` domain failed");
-        }
-        if(!token_db.exists_domain(".group")) {
-            auto gd = domain_def();
-            gd.name = ".group";
-            gd.creator = conf.genesis.initial_key;
-            gd.create_time = conf.genesis.initial_timestamp;
-            auto r = token_db.add_domain(gd);
-            FC_ASSERT(r == 0, "Add `.group` domain failed");
-        }
-        if(!token_db.exists_domain(".suspend")) {
-            auto dd = domain_def();
-            dd.name = ".suspend";
-            dd.creator = conf.genesis.initial_key;
-            dd.create_time = conf.genesis.initial_timestamp;
-            auto r = token_db.add_domain(dd);
-            FC_ASSERT(r == 0, "Add `.suspend` domain failed");
-        }
-        if(!token_db.exists_domain(".fungible")) {
-            auto dd = domain_def();
-            dd.name = ".fungible";
-            dd.creator = conf.genesis.initial_key;
-            dd.create_time = conf.genesis.initial_timestamp;
-            auto r = token_db.add_domain(dd);
-            FC_ASSERT(r == 0, "Add `.fungible` domain failed");
-        }
-
         initialize_evt_org(token_db, conf.genesis);
     }
 
@@ -590,7 +568,7 @@ struct controller_impl {
         try {
             if(add_to_fork_db) {
                 pending->_pending_block_state->validated = true;
-                auto new_bsp = fork_db.add(pending->_pending_block_state);
+                auto new_bsp = fork_db.add(pending->_pending_block_state, true);
                 emit(self.accepted_block_header, pending->_pending_block_state);
                 head = fork_db.head();
                 EVT_ASSERT(new_bsp == head, fork_database_exception, "committed block did not become the new head in fork database");
@@ -636,8 +614,8 @@ struct controller_impl {
     }
 
     /**
-    *  Adds the transaction receipt to the pending block and returns it.
-    */
+     *  Adds the transaction receipt to the pending block and returns it.
+     */
     template <typename T>
     const transaction_receipt&
     push_receipt(const T& trx, transaction_receipt_header::status_enum status, transaction_receipt_header::type_enum type) {
@@ -655,10 +633,10 @@ struct controller_impl {
     }
 
     void
-    check_authorization(const public_keys_type& signed_keys, const transaction& trx) {
+    check_authorization(const public_keys_set& signed_keys, const transaction& trx) {
         auto& conf = db.get<global_property_object>().configuration;
 
-        auto checker = authority_checker(self, signed_keys, token_db, conf.max_authority_depth);
+        auto checker = authority_checker(self, exec_ctx, signed_keys, conf.max_authority_depth);
         for(const auto& act : trx.actions) {
             EVT_ASSERT(checker.satisfied(act), unsatisfied_authorization,
                        "${name} action in domain: ${domain} with key: ${key} authorized failed",
@@ -667,10 +645,10 @@ struct controller_impl {
     }
 
     void
-    check_authorization(const public_keys_type& signed_keys, const action& act) {
+    check_authorization(const public_keys_set& signed_keys, const action& act) {
         auto& conf = db.get<global_property_object>().configuration;
 
-        auto checker = authority_checker(self, signed_keys, token_db, conf.max_authority_depth);
+        auto checker = authority_checker(self, exec_ctx, signed_keys, conf.max_authority_depth);
         EVT_ASSERT(checker.satisfied(act), unsatisfied_authorization,
                    "${name} action in domain: ${domain} with key: ${key} authorized failed",
                    ("domain", act.domain)("key", act.key)("name", act.name));
@@ -684,7 +662,7 @@ struct controller_impl {
             });
             in_trx_requiring_checks = true;
 
-            transaction_context trx_context(self, *trx);
+            auto trx_context     = transaction_context(self, exec_ctx, trx);
             trx_context.deadline = deadline;
 
             auto trace = trx_context.trace;
@@ -695,7 +673,7 @@ struct controller_impl {
 
                 auto restore = make_block_restore_point();
 
-                trace->receipt = push_receipt(trx->packed_trx,
+                trace->receipt = push_receipt(*trx->packed_trx,
                                               transaction_receipt::executed,
                                               transaction_receipt::suspend);
 
@@ -718,12 +696,12 @@ struct controller_impl {
             trace->elapsed = fc::time_point::now() - trx_context.start;
 
             if(failure_is_subjective(*trace->except)) {
-                trace->receipt = push_receipt(trx->packed_trx,
+                trace->receipt = push_receipt(*trx->packed_trx,
                                               transaction_receipt::soft_fail,
                                               transaction_receipt::suspend);
             }
             else {
-                trace->receipt = push_receipt(trx->packed_trx,
+                trace->receipt = push_receipt(*trx->packed_trx,
                                               transaction_receipt::hard_fail,
                                               transaction_receipt::suspend);
             }
@@ -735,9 +713,9 @@ struct controller_impl {
     } /// push_scheduled_transaction
 
     /**
-    *  This is the entry point for new transactions to the block state. It will check authorization
-    *  and insert a transaction receipt into the pending block.
-    */
+     *  This is the entry point for new transactions to the block state. It will check authorization
+     *  and insert a transaction receipt into the pending block.
+     */
     transaction_trace_ptr
     push_transaction(const transaction_metadata_ptr& trx,
                      fc::time_point                  deadline) {
@@ -745,7 +723,9 @@ struct controller_impl {
 
         transaction_trace_ptr trace;
         try {
-            transaction_context trx_context(self, *trx);
+            auto& trn         = trx->packed_trx->get_signed_transaction();
+            auto  trx_context = transaction_context(self, exec_ctx, trx);
+
             trx_context.deadline = deadline;
             trace                = trx_context.trace;
 
@@ -754,13 +734,13 @@ struct controller_impl {
                     trx_context.init_for_implicit_trx();
                 }
                 else {
-                    bool skip_recording = replay_head_time && (time_point(trx->trx.expiration) <= *replay_head_time);
+                    bool skip_recording = replay_head_time && (time_point(trn.expiration) <= *replay_head_time);
                     trx_context.init_for_input_trx(skip_recording);
                 }
 
                 if(!self.skip_auth_check() && !trx->implicit) {
                     const auto& keys = trx->recover_keys(chain_id);
-                    check_authorization(keys, trx->trx);
+                    check_authorization(keys, trn);
                 }
 
                 trx_context.exec();
@@ -769,7 +749,7 @@ struct controller_impl {
                 auto restore = make_block_restore_point();
 
                 if(!trx->implicit) {
-                    trace->receipt = push_receipt(trx->packed_trx,
+                    trace->receipt = push_receipt(*trx->packed_trx,
                                                   transaction_receipt::executed,
                                                   transaction_receipt::input);
                     pending->_pending_block_state->trxs.emplace_back(trx);
@@ -896,7 +876,7 @@ struct controller_impl {
                     auto trace = transaction_trace_ptr();
                     if(receipt.type == transaction_receipt::input) {
                         auto& pt    = receipt.trx;
-                        auto  mtrx  = std::make_shared<transaction_metadata>(pt);
+                        auto  mtrx  = std::make_shared<transaction_metadata>(std::make_shared<packed_transaction>(pt));
                         
                         trace = push_transaction(mtrx, fc::time_point::maximum());
                     }
@@ -962,22 +942,48 @@ struct controller_impl {
     }  /// apply_block
 
     void
-    push_block(const signed_block_ptr& b, controller::block_status s) {
+    push_block(const signed_block_ptr& b) {
+        auto s = controller::block_status::complete;
         EVT_ASSERT(!pending.has_value(), block_validate_exception, "it is not valid to push a block when there is a pending block");
 
         auto reset_prod_light_validation = fc::make_scoped_exit([old_value=trusted_producer_light_validation, this]() {
             trusted_producer_light_validation = old_value;
         });
+
         try {
             EVT_ASSERT(b, block_validate_exception, "trying to push empty block");
             EVT_ASSERT(s != controller::block_status::incomplete, block_validate_exception, "invalid block status for a completed block");
             emit(self.pre_accepted_block, b);
 
-            bool trust = !conf.force_all_checks && (s == controller::block_status::irreversible || s == controller::block_status::validated);
-            auto new_header_state = fork_db.add(b, trust);
+            auto new_header_state = fork_db.add(b, false);
+
             if(conf.trusted_producers.count(b->producer)) {
                 trusted_producer_light_validation = true;
             };
+            emit(self.accepted_block_header, new_header_state);
+
+            if(read_mode != db_read_mode::IRREVERSIBLE) {
+                maybe_switch_forks(s);
+            }
+        }
+        FC_LOG_AND_RETHROW()
+    }
+
+    void
+    replay_push_block(const signed_block_ptr& b, controller::block_status s) {
+        self.validate_db_available_size();
+        self.validate_reversible_available_size();
+
+        EVT_ASSERT(!pending.has_value(), block_validate_exception, "it is not valid to push a block when there is a pending block");
+
+        try {
+            EVT_ASSERT(b, block_validate_exception, "trying to push empty block");
+            EVT_ASSERT(s != controller::block_status::incomplete, block_validate_exception, "invalid block status for a completed block");
+            emit(self.pre_accepted_block, b);
+
+            const bool skip_validate_signee = !conf.force_all_checks;
+            auto new_header_state = fork_db.add(b, skip_validate_signee);
+
             emit(self.accepted_block_header, new_header_state);
 
             if(read_mode != db_read_mode::IRREVERSIBLE) {
@@ -990,16 +996,6 @@ struct controller_impl {
             }
         }
         FC_LOG_AND_RETHROW()
-    }
-
-    void
-    push_confirmation(const header_confirmation& c) {
-        EVT_ASSERT(!pending.has_value(), block_validate_exception, "it is not valid to push a confirmation when there is a pending block");
-        fork_db.add(c);
-        emit(self.accepted_confirmation, c);
-        if(read_mode != db_read_mode::IRREVERSIBLE) {
-            maybe_switch_forks();
-        }
     }
 
     void
@@ -1191,7 +1187,12 @@ controller::token_db() const {
 
 charge_manager
 controller::get_charge_manager() const {
-    return charge_manager(*this);
+    return charge_manager(*this, my->exec_ctx);
+}
+
+execution_context&
+controller::get_execution_context() const {
+    return my->exec_ctx;
 }
 
 void
@@ -1224,16 +1225,10 @@ controller::abort_block() {
 }
 
 void
-controller::push_block(const signed_block_ptr& b, block_status s) {
+controller::push_block(const signed_block_ptr& b) {
     validate_db_available_size();
     validate_reversible_available_size();
-    my->push_block(b, s);
-}
-
-void
-controller::push_confirmation(const header_confirmation& c) {
-    validate_db_available_size();
-    my->push_confirmation(c);
+    my->push_block(b);
 }
 
 transaction_trace_ptr
@@ -1251,12 +1246,12 @@ controller::push_suspend_transaction(const transaction_metadata_ptr& trx, fc::ti
 }
 
 void
-controller::check_authorization(const public_keys_type& signed_keys, const transaction& trx) {
+controller::check_authorization(const public_keys_set& signed_keys, const transaction& trx) {
     return my->check_authorization(signed_keys, trx);
 }
 
 void
-controller::check_authorization(const public_keys_type& signed_keys, const action& act) {
+controller::check_authorization(const public_keys_set& signed_keys, const action& act) {
     return my->check_authorization(signed_keys, act);
 }
 
@@ -1417,7 +1412,16 @@ controller::get_block_id_for_num(uint32_t block_num) const {
 evt_link_object
 controller::get_link_obj_for_link_id(const link_id_type& link_id) const {
     evt_link_object link_obj;
-    my->token_db.read_evt_link(link_id, link_obj);
+
+    auto str = std::string();
+    try {
+        my->token_db.read_token(token_type::evtlink, std::nullopt, link_id, str);
+    }
+    catch(token_database_exception&) {
+        EVT_THROW2(evt_link_existed_exception, "Cannot find EvtLink with id: {}", fc::to_hex((char*)&link_id, sizeof(link_id)));
+    }
+
+    extract_db_value(str, link_obj);
     return link_obj;
 }
 
@@ -1504,24 +1508,26 @@ controller::set_chain_config(const chain_config& config) {
 
 const producer_schedule_type&
 controller::active_producers() const {
-    if(!(my->pending.has_value()))
+    if(!(my->pending.has_value())) {
         return my->head->active_schedule;
+    }
     return my->pending->_pending_block_state->active_schedule;
 }
 
 const producer_schedule_type&
 controller::pending_producers() const {
-    if(!(my->pending.has_value()))
+    if(!(my->pending.has_value())) {
         return my->head->pending_schedule;
+    }
     return my->pending->_pending_block_state->pending_schedule;
 }
 
 optional<producer_schedule_type>
 controller::proposed_producers() const {
     const auto& gpo = get_global_properties();
-    if(!gpo.proposed_schedule_block_num.has_value())
+    if(!gpo.proposed_schedule_block_num.has_value()) {
         return optional<producer_schedule_type>();
-
+    }
     return gpo.proposed_schedule;
 }
 
@@ -1596,14 +1602,14 @@ controller::get_validation_mode() const {
     return my->conf.block_validation_mode;
 }
 
+const chain_id_type&
+controller::get_chain_id() const {
+    return my->chain_id;
+}
+
 const genesis_state&
 controller::get_genesis_state() const {
     return my->conf.genesis;
-}
-
-chain_id_type
-controller::get_chain_id() const {
-    return my->chain_id;
 }
 
 const abi_serializer&
@@ -1611,29 +1617,13 @@ controller::get_abi_serializer() const {
     return my->system_api;
 }
 
-vector<transaction_metadata_ptr>
+unapplied_transactions_type&
 controller::get_unapplied_transactions() const {
-    vector<transaction_metadata_ptr> result;
-    if(my->read_mode == db_read_mode::SPECULATIVE) {
-        result.reserve(my->unapplied_transactions.size());
-        for(const auto& entry: my->unapplied_transactions) {
-            result.emplace_back(entry.second);
-        }
+    if(my->read_mode != db_read_mode::SPECULATIVE) {
+        EVT_ASSERT(my->unapplied_transactions.empty(), transaction_exception,
+            "not empty unapplied_transactions in non-speculative mode"); //should never happen
     }
-    else {
-        EVT_ASSERT(my->unapplied_transactions.empty(), transaction_exception, "not empty unapplied_transactions in non-speculative mode"); //should never happen
-    }
-    return result;
-}
-
-void
-controller::drop_unapplied_transaction(const transaction_metadata_ptr& trx) {
-    my->unapplied_transactions.erase(trx->signed_id);
-}
-
-void
-controller::drop_all_unapplied_transactions() {
-   my->unapplied_transactions.clear();
+    return my->unapplied_transactions;
 }
 
 bool
@@ -1694,10 +1684,10 @@ controller::is_known_unexpired_transaction(const transaction_id_type& id) const 
     return db().find<transaction_object, by_trx_id>(id);
 }
 
-public_keys_type
-controller::get_required_keys(const transaction& trx, const public_keys_type& candidate_keys) const {
+public_keys_set
+controller::get_required_keys(const transaction& trx, const public_keys_set& candidate_keys) const {
     const static uint32_t max_authority_depth = my->conf.genesis.initial_configuration.max_authority_depth;
-    auto checker = authority_checker(*this, candidate_keys, my->token_db, max_authority_depth);
+    auto checker = authority_checker(*this, my->exec_ctx, candidate_keys, max_authority_depth);
 
     for(const auto& act : trx.actions) {
         EVT_ASSERT(checker.satisfied(act), unsatisfied_authorization,
@@ -1712,10 +1702,10 @@ controller::get_required_keys(const transaction& trx, const public_keys_type& ca
     return keys;
 }
 
-public_keys_type
-controller::get_suspend_required_keys(const transaction& trx, const public_keys_type& candidate_keys) const {
+public_keys_set
+controller::get_suspend_required_keys(const transaction& trx, const public_keys_set& candidate_keys) const {
     const static uint32_t max_authority_depth = my->conf.genesis.initial_configuration.max_authority_depth;
-    auto checker = authority_checker(*this, candidate_keys, my->token_db, max_authority_depth);
+    auto checker = authority_checker(*this, my->exec_ctx, candidate_keys, max_authority_depth);
 
     for(const auto& act : trx.actions) {
         checker.satisfied(act);
@@ -1728,19 +1718,27 @@ controller::get_suspend_required_keys(const transaction& trx, const public_keys_
     return keys;
 }
 
-public_keys_type
-controller::get_suspend_required_keys(const proposal_name& name, const public_keys_type& candidate_keys) const {
+public_keys_set
+controller::get_suspend_required_keys(const proposal_name& name, const public_keys_set& candidate_keys) const {
     suspend_def suspend;
-    my->token_db.read_suspend(name, suspend);
-    
+
+    auto str = std::string();
+    try {
+        my->token_db.read_token(token_type::suspend, std::nullopt, name, str);
+    }
+    catch(token_database_exception&) {
+        EVT_THROW2(unknown_lock_exception, "Cannot find suspend proposal: {}", name);
+    }
+
+    extract_db_value(str, suspend);
     return get_suspend_required_keys(suspend.trx, candidate_keys);
 }
 
 uint32_t
-controller::get_charge(const transaction& trx, size_t signautres_num) const {   
-    auto packed_trx = packed_transaction(trx);
-    auto charge     = get_charge_manager();
-    return charge.calculate(packed_trx, signautres_num);
+controller::get_charge(transaction&& trx, size_t signautres_num) const {   
+    auto ptrx   = packed_transaction(std::move(trx),  {});
+    auto charge = get_charge_manager();
+    return charge.calculate(ptrx, signautres_num);
 }
 
 }}  // namespace evt::chain

@@ -10,15 +10,9 @@
 #include <unordered_map>
 #include <thread>
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
-#define XXH_INLINE_ALL
-#include <xxhash.h>
-#pragma GCC diagnostic pop
-
-
 #include <boost/asio.hpp>
 #include <fc/io/json.hpp>
+#include <fc/crypto/city.hpp>
 
 #include <evt/chain_plugin/chain_plugin.hpp>
 #include <evt/chain/plugin_interface.hpp>
@@ -44,7 +38,7 @@ using steady_timer_ptr = std::shared_ptr<steady_timer>;
 struct evt_link_id_hasher {
     size_t
     operator()(const link_id_type& id) const {
-        return XXH64(&id, sizeof(id), 0);
+        return fc::city_hash_size_t((const char*)&id, sizeof(id));
     }
 };
 
@@ -87,7 +81,7 @@ evt_link_plugin_impl::applied_block(const block_state_ptr& bs) {
     }
 
     for(auto& trx : bs->trxs) {
-        for(auto& act : trx->trx.actions) {
+        for(auto& act : trx->packed_trx->get_transaction().actions) {
             if(act.name != N(everipay)) {
                 continue;
             }
@@ -232,15 +226,18 @@ evt_link_plugin::plugin_startup() {
 
     app().get_plugin<http_plugin>().add_deferred_handler("/v1/evt_link/get_trx_id_for_link_id", [&](auto, auto body, auto id) {
         try {
-            auto var  = fc::json::from_string(body);
-            auto data = bytes();
-            fc::from_variant(var["link_id"], data);
+            auto var = fc::json::from_string(body);
+            auto b   = bytes();
+            fc::from_variant(var["link_id"], b);
 
-            if(data.size() != sizeof(link_id_type)) {
+            if(b.size() != sizeof(link_id_type)) {
                 EVT_THROW(chain::evt_link_id_exception, "EVT-Link id is not in proper length");
             }
 
-            my_->get_trx_id_for_link_id(*(link_id_type*)&data[0], id);
+            auto link_id = link_id_type();
+            memcpy(&link_id, b.data(), sizeof(link_id_type));
+
+            my_->get_trx_id_for_link_id(link_id, id);
         }
         catch(...) {
             http_plugin::handle_exception("evt_link", "get_trx_id_for_link_id", body, [id](auto code, auto body) {

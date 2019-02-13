@@ -29,8 +29,8 @@ doxygen
 *.pyc
 *.pyo
 
-build/*
 build-debug/*
+build-release/*
 
 tn_data_*
 .vscode

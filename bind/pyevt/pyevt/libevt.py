@@ -1,4 +1,5 @@
 import os
+import sys
 
 from cffi import FFI
 
@@ -112,11 +113,18 @@ def init_evt_lib():
             int evt_link_sign(evt_link_t*, evt_private_key_t*);
             """)
 
+    if sys.platform == 'linux':
+        ext = '.so'
+    elif sys.platform == 'darwin':
+        ext = '.dylib'
+    else:
+        raise Exception('Not supported platform: {}'.format(sys.platform))
+
     if 'LIBEVT_PATH' in os.environ:
         LibEVT.lib = LibEVT.ffi.dlopen(
-            os.environ['LIBEVT_PATH'] + '/libevt.so')
+            os.environ['LIBEVT_PATH'] + '/libevt' + ext)
     else:
-        LibEVT.lib = LibEVT.ffi.dlopen('libevt.so')
+        LibEVT.lib = LibEVT.ffi.dlopen('libevt' + ext)
 
     LibEVT.abi = LibEVT.lib.evt_abi()
 

@@ -10,9 +10,9 @@ namespace evt { namespace chain {
 
 struct chain_snapshot_header {
     /**
-    * Version history
-    *   1: initial version
-    */
+     * Version history
+     *   1: initial version
+     */
 
     static constexpr uint32_t minimum_compatible_version = 1;
     static constexpr uint32_t current_version            = 1;

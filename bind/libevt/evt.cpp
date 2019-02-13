@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <evt/chain/version.hpp>
-#include <evt/chain/contracts/evt_contract.hpp>
+#include <evt/chain/contracts/evt_contract_abi.hpp>
 
 extern "C" {
 

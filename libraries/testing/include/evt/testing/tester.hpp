@@ -5,7 +5,7 @@
 #include <evt/chain/asset.hpp>
 #include <evt/chain/controller.hpp>
 #include <evt/chain/snapshot.hpp>
-#include <evt/chain/contracts/evt_contract.hpp>
+#include <evt/chain/contracts/evt_contract_abi.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
 
 #define REQUIRE_EQUAL_OBJECTS(left, right)                                                                                           \
@@ -70,9 +70,9 @@ fc::variant_object filter_fields(const fc::variant_object& filter, const fc::var
 bool expect_assert_message(const fc::exception& ex, string expected);
 
 /**
-    *  @class tester
-    *  @brief provides utility function to simplify the creation of unit tests
-    */
+ *  @class tester
+ *  @brief provides utility function to simplify the creation of unit tests
+ */
 class base_tester {
 public:
     typedef string action_result;
@@ -104,16 +104,16 @@ public:
     transaction_trace_ptr push_transaction(packed_transaction& trx, fc::time_point deadline = fc::time_point::maximum());
     transaction_trace_ptr push_transaction(signed_transaction& trx, fc::time_point deadline = fc::time_point::maximum());
 
-    transaction_trace_ptr push_action(action&& act, std::vector<account_name>& auths, const address& payer, uint32_t max_charge = 1'000'000);
+    transaction_trace_ptr push_action(action&& act, std::vector<name>& auths, const address& payer, uint32_t max_charge = 1'000'000);
 
-    transaction_trace_ptr push_action(const action_name&               acttype,
-                                      const domain_name&               domain,
-                                      const domain_key&                key,
-                                      const variant_object&            data,
-                                      const std::vector<account_name>& auths,
-                                      const address&                   payer,
-                                      uint32_t                         max_charge = 1'000'000,
-                                      uint32_t                         expiration = DEFAULT_EXPIRATION_DELTA);
+    transaction_trace_ptr push_action(const action_name&       acttype,
+                                      const domain_name&       domain,
+                                      const domain_key&        key,
+                                      const variant_object&    data,
+                                      const std::vector<name>& auths,
+                                      const address&           payer,
+                                      uint32_t                 max_charge = 1'000'000,
+                                      uint32_t                 expiration = DEFAULT_EXPIRATION_DELTA);
 
     action get_action(action_name acttype, const domain_name& domain, const domain_key& key, const variant_object& data) const;
 
@@ -122,35 +122,20 @@ public:
                                  uint32_t            max_charge = 1'000'000,
                                  uint32_t            expiration = DEFAULT_EXPIRATION_DELTA) const;
 
-    vector<transaction_trace_ptr>
-    create_accounts(vector<account_name> names) {
-        vector<transaction_trace_ptr> traces;
-        traces.reserve(names.size());
-        for(auto n : names)
-            traces.emplace_back(create_account(n));
-        return traces;
-    }
 
     void push_genesis_block();
 
-    transaction_trace_ptr create_account(account_name name);
-
-    transaction_trace_ptr new_domain(domain_name& name, std::vector<account_name> owners);
-    transaction_trace_ptr issue_tokens(domain_name& name, std::vector<token_name> tokens, std::vector<account_name> owners);
-    transaction_trace_ptr transfer_token(domain_name& name, std::vector<token_name> tokens, std::vector<account_name> to);
-
     void add_money(const address& addr, const asset& number);
-
 
     template <typename KeyType = fc::ecc::private_key_shim>
     static private_key_type
-    get_private_key(name128 keyname, name128 salt = "") {
+    get_private_key(name keyname, name salt = "none") {
         return private_key_type::regenerate<KeyType>(fc::sha256::hash(string(keyname) + string(salt)));
     }
 
     template <typename KeyType = fc::ecc::private_key_shim>
     static public_key_type
-    get_public_key(name128 keyname, name128 salt = "") {
+    get_public_key(name keyname, name salt = "none") {
         return get_private_key<KeyType>(keyname, salt).get_public_key();
     }
 
@@ -243,13 +228,13 @@ public:
     validating_tester() {
         vcfg.blocks_dir            = tempdir.path() / std::string("v_").append(config::default_blocks_dir_name);
         vcfg.state_dir             = tempdir.path() / std::string("v_").append(config::default_state_dir_name);
-        vcfg.tokendb_dir           = tempdir.path() / std::string("v_").append(config::default_tokendb_dir_name);
+        vcfg.db_config.db_path     = tempdir.path() / std::string("v_").append(config::default_token_database_dir_name);
         vcfg.state_size            = 1024 * 1024 * 8;
         vcfg.reversible_cache_size = 1024 * 1024 * 8;
         vcfg.contracts_console     = false;
-
+        
         vcfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
-        vcfg.genesis.initial_key       = get_public_key(config::system_account_name, "active");
+        vcfg.genesis.initial_key       = get_public_key("evt");
 
         validating_node = std::make_unique<controller>(vcfg);
         validating_node->add_indices();

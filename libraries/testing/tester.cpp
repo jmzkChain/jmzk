@@ -4,7 +4,6 @@
 #include <boost/test/unit_test.hpp>
 
 #include <evt/chain/token_database.hpp>
-#include <evt/chain/contracts/evt_contract.hpp>
 
 using namespace evt::chain::contracts;
 
@@ -36,15 +35,16 @@ base_tester::is_same_chain(base_tester& other) {
 
 void
 base_tester::init(bool push_genesis) {
-    cfg.blocks_dir            = tempdir.path() / config::default_blocks_dir_name;
-    cfg.state_dir             = tempdir.path() / config::default_state_dir_name;
-    cfg.tokendb_dir           = tempdir.path() / config::default_tokendb_dir_name;
-    cfg.contracts_console     = true;
-    cfg.loadtest_mode         = false;
-    cfg.charge_free_mode      = false;
+    cfg.blocks_dir             = tempdir.path() / config::default_blocks_dir_name;
+    cfg.state_dir              = tempdir.path() / config::default_state_dir_name;
+    cfg.db_config.db_path      = tempdir.path() / config::default_token_database_dir_name;
+    cfg.contracts_console      = true;
+    cfg.loadtest_mode          = false;
+    cfg.charge_free_mode       = false;
+    cfg.max_serialization_time = std::chrono::hours(1);
 
     cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
-    cfg.genesis.initial_key       = get_public_key(config::system_account_name, "active");
+    cfg.genesis.initial_key       = get_public_key("evt");
 
     open(nullptr);
 
@@ -74,7 +74,7 @@ base_tester::open(const snapshot_reader_ptr& snapshot) {
     control->accepted_block.connect([this](const block_state_ptr& block_state) {
         FC_ASSERT(block_state->block);
         for(const auto& receipt : block_state->block->transactions) {
-            chain_transactions[receipt.trx.id()] = receipt;
+            chain_transactions[receipt.trx.id()] = transaction_receipt(receipt.trx);
         }
     });
 }
@@ -102,13 +102,13 @@ base_tester::_produce_block(fc::microseconds skip_time, bool skip_pending_trxs, 
         _start_block(next_time);
     }
 
-    auto             producer = control->head_block_state()->get_scheduled_producer(next_time);
-    private_key_type priv_key;
+    auto producer = control->head_block_state()->get_scheduled_producer(next_time);
+    auto priv_key = private_key_type();
     // Check if signing private key exist in the list
     auto private_key_itr = block_signing_private_keys.find(producer.block_signing_key);
     if(private_key_itr == block_signing_private_keys.end()) {
         // If it's not found, default to active k1 key
-        priv_key = get_private_key(producer.producer_name);
+        priv_key = get_private_key((std::string)producer.producer_name);
     }
     else {
         priv_key = private_key_itr->second;
@@ -117,7 +117,7 @@ base_tester::_produce_block(fc::microseconds skip_time, bool skip_pending_trxs, 
     if(!skip_pending_trxs) {
         auto unapplied_trxs = control->get_unapplied_transactions();
         for(const auto& trx : unapplied_trxs) {
-            auto trace = control->push_transaction(trx, fc::time_point::maximum());
+            auto trace = control->push_transaction(trx.second, fc::time_point::maximum());
             if(trace->except) {
                 trace->except->dynamic_rethrow_exception();
             }
@@ -212,7 +212,7 @@ base_tester::push_transaction(packed_transaction& trx,
         if(!control->pending_block_state()) {
             _start_block(control->head_block_time() + fc::microseconds(config::block_interval_us));
         }
-        auto r = control->push_transaction(std::make_shared<transaction_metadata>(trx), deadline);
+        auto r = control->push_transaction(std::make_shared<transaction_metadata>(std::make_shared<packed_transaction>(trx)), deadline);
 
         if(r->except_ptr) {
             std::rethrow_exception(r->except_ptr);
@@ -252,7 +252,7 @@ base_tester::push_transaction(signed_transaction& trx,
 }
 
 transaction_trace_ptr
-base_tester::push_action(action&& act, std::vector<account_name>& auths, const address& payer, uint32_t max_charge) {
+base_tester::push_action(action&& act, std::vector<name>& auths, const address& payer, uint32_t max_charge) {
     try {
         signed_transaction trx;
         trx.actions.emplace_back(std::move(act));
@@ -268,17 +268,17 @@ base_tester::push_action(action&& act, std::vector<account_name>& auths, const a
 }
 
 transaction_trace_ptr
-base_tester::push_action(const action_name&               acttype,
-                         const domain_name&               domain,
-                         const domain_key&                key,
-                         const variant_object&            data,
-                         const std::vector<account_name>& auths,
-                         const address&                   payer,
-                         uint32_t                         max_charge,
-                         uint32_t                         expiration)
+base_tester::push_action(const action_name&       acttype,
+                         const domain_name&       domain,
+                         const domain_key&        key,
+                         const variant_object&    data,
+                         const std::vector<name>& auths,
+                         const address&           payer,
+                         uint32_t                 max_charge,
+                         uint32_t                 expiration)
 {
     try {
-        signed_transaction trx;
+        auto trx = signed_transaction();
         trx.actions.emplace_back(get_action(acttype, domain, key, data));
         set_transaction_headers(trx, payer, max_charge, expiration);
         for(const auto& auth : auths) {
@@ -293,15 +293,16 @@ base_tester::push_action(const action_name&               acttype,
 action
 base_tester::get_action(action_name acttype, const domain_name& domain, const domain_key& key, const variant_object& data) const {
     try {
-        auto& abi  = control->get_abi_serializer();
-        auto  type = abi.get_action_type(acttype);
+        auto& abi      = control->get_abi_serializer();
+        auto& exec_ctx = control->get_execution_context();
+        auto  type     = exec_ctx.get_acttype_name(acttype);
         FC_ASSERT(!type.empty(), "unknown action type ${a}", ("a", acttype));
 
         action act;
         act.name   = acttype;
         act.domain = domain;
         act.key    = key;
-        act.data   = abi.variant_to_binary(type, data);
+        act.data   = abi.variant_to_binary(type, data, exec_ctx);
         
         return act;
     }
@@ -383,10 +384,17 @@ base_tester::add_money(const address& addr, const asset& number) {
 
     auto s = tokendb.new_savepoint_session();
 
-    auto as = asset();
-    tokendb.read_asset_no_throw(addr, number.sym(), as);
-    as += number;
-    tokendb.update_asset(addr, as);
+    auto str  = std::string();
+    auto prop = property();
+    
+    if(tokendb.read_asset(addr, number.symbol_id(), str, true)) {
+        extract_db_value(str, prop);
+    }
+
+    prop.amount += number.amount();
+
+    auto dv = make_db_value(prop);
+    tokendb.put_asset(addr, number.symbol_id(), dv.as_string_view());
 
     s.accept();
     tokendb.pop_back_savepoint();

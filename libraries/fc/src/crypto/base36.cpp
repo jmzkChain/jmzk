@@ -1,6 +1,5 @@
 #include <memory>
 #include <fc/crypto/bigint.hpp>
-#include <fc/io/sstream.hpp>
 #include <fc/log/logger.hpp>
 
 namespace fc {

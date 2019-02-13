@@ -24,8 +24,10 @@ namespace evt {
  * - 1.1.0: add `global_seq` field to `actions` table
  * - 1.2.0: add `trx_id` feild to `metas`, `domains`, `tokens`, `groups` and `fungibles` tables
  *          add `total_supply` field to `fungibles` table
+ * - 1.3.0  add `ft_holders` table
+ * - 1.3.1  add serveral indexes for better query performance
  */
-static auto pg_version = "1.2.0";
+static auto pg_version = "1.3.1";
 
 namespace __internal {
 
@@ -41,7 +43,7 @@ public:
 };
 
 struct __insert_prepare {
-    __insert_prepare(const std::string& name, const std::string sql) {
+    __insert_prepare(const std::string& name, const std::string& sql) {
         auto& stmts = __prepare_register::instance().stmts;
         if(stmts.find(name) != stmts.end()) {
             throw new std::runtime_error(fmt::format("{} is already registered", name));
@@ -52,7 +54,6 @@ struct __insert_prepare {
 
 #define PREPARE_SQL_ONCE(name, sql) \
     __internal::__insert_prepare __##name(#name, sql);
-    
 
 auto create_stats_table = R"sql(CREATE TABLE IF NOT EXISTS public.stats
                                 (
@@ -119,6 +120,17 @@ auto create_trxs_table = R"sql(CREATE TABLE IF NOT EXISTS public.transactions
                                CREATE INDEX IF NOT EXISTS transactions_block_num_index
                                    ON public.transactions USING btree
                                    (block_num)
+                                   TABLESPACE pg_default;
+                               CREATE INDEX IF NOT EXISTS transactions_payer_index
+                                   ON transactions USING btree
+                                   (payer)
+                                   TABLESPACE pg_default;
+                               CREATE INDEX IF NOT EXISTS transactions_timestamp_index
+                                   ON transactions USING btree
+                                   (timestamp)
+                                   TABLESPACE pg_default;
+                               CREATE INDEX IF NOT EXISTS transactions_keys_index
+                                   ON public.transactions USING GIN (keys array_ops)
                                    TABLESPACE pg_default;)sql";
 
 auto create_actions_table = R"sql(CREATE TABLE IF NOT EXISTS public.actions
@@ -142,9 +154,17 @@ auto create_actions_table = R"sql(CREATE TABLE IF NOT EXISTS public.actions
                                       ON public.actions USING btree
                                       (trx_id)
                                       TABLESPACE pg_default;
+                                  CREATE INDEX IF NOT EXISTS actions_global_seq_index
+                                      ON public.actions USING btree
+                                      (global_seq)
+                                      TABLESPACE pg_default;
                                   CREATE INDEX IF NOT EXISTS actions_data_index
                                       ON public.actions USING gin
                                       (data jsonb_path_ops)
+                                      TABLESPACE pg_default;
+                                  CREATE INDEX IF NOT EXISTS actions_filter_index
+                                      ON public.actions USING btree
+                                      (domain, key, name)
                                       TABLESPACE pg_default;)sql";
 
 auto create_metas_table = R"sql(CREATE SEQUENCE IF NOT EXISTS metas_id_seq;
@@ -201,7 +221,7 @@ auto create_tokens_table = R"sql(CREATE TABLE IF NOT EXISTS public.tokens
                                  TABLESPACE pg_default;
                                  CREATE INDEX IF NOT EXISTS tokens_owner_index
                                      ON public.tokens USING gin
-                                     (owner)
+                                     (owner array_ops)
                                      TABLESPACE pg_default;)sql";
 
 auto create_groups_table = R"sql(CREATE TABLE IF NOT EXISTS public.groups
@@ -247,7 +267,19 @@ auto create_fungibles_table = R"sql(CREATE TABLE IF NOT EXISTS public.fungibles
                                         (creator)
                                         TABLESPACE pg_default;)sql";
 
-const char* tables[] = { "stats", "blocks", "transactions", "metas", "actions", "domains", "tokens", "groups", "fungibles" };
+auto create_ft_holders_table = R"sql(CREATE TABLE IF NOT EXISTS public.ft_holders
+                                     (
+                                         address    character(53)             NOT NULL,
+                                         sym_ids    bigint[]                  NOT NULL,
+                                         created_at timestamp with time zone  NOT NULL  DEFAULT now(),
+                                         CONSTRAINT ft_holders_pkey PRIMARY KEY (address)
+                                     )
+                                     WITH (
+                                         OIDS = FALSE
+                                     )
+                                     TABLESPACE pg_default;)sql";
+
+const char* tables[] = { "stats", "blocks", "transactions", "metas", "actions", "domains", "tokens", "groups", "fungibles", "ft_holders" };
 
 template<typename Iterator>
 void
@@ -256,7 +288,8 @@ format_array_to(fmt::memory_buffer& buf, Iterator begin, Iterator end) {
     if(begin != end) {
         auto it = begin;
         for(; it != end - 1; it++) {
-            fmt::format_to(buf, fmt("\"{}\","), (std::string)*it);
+            auto str = (std::string)*it;
+            fmt::format_to(buf, fmt("\"{}\","), str);
         }
         fmt::format_to(buf, fmt("\"{}\""), (std::string)*it);
     }
@@ -406,7 +439,8 @@ pg::prepare_tables() {
         create_domains_table,
         create_tokens_table,
         create_groups_table,
-        create_fungibles_table
+        create_fungibles_table,
+        create_ft_holders_table
     };
     for(auto stmt : stmts) {
         auto r = PQexec(conn_, stmt);
@@ -597,8 +631,9 @@ pg::add_trx(add_context& actx, const trx_recept_t& trx, const trx_t& strx, int s
 
 int
 pg::add_action(add_context& actx, const act_trace_t& act_trace, const std::string& trx_id, int seq_num) {
-    auto& act  = act_trace.act;
-    auto  data = actx.abi.binary_to_variant(actx.abi.get_action_type(act.name), act.data);
+    auto& act     = act_trace.act;
+    auto  acttype = actx.exec_ctx.get_acttype_name(act.name);
+    auto  data    = actx.abi.binary_to_variant(acttype, act.data, actx.exec_ctx);
 
     fmt::format_to(actx.cctx.actions_copy_,
         fmt("{}\t{:d}\t{}\t{:d}\t{:d}\t{}\t{}\t{}\t{}\tnow\n"),
@@ -866,25 +901,23 @@ pg::add_fungible(trx_context& tctx, const newfungible& nf) {
     return PG_OK;
 }
 
-PREPARE_SQL_ONCE(uf_plan, "UPDATE fungibles SET(issue, manage) = ($1, $2) WHERE sym_id = $3;");
+PREPARE_SQL_ONCE(ufi_plan, "UPDATE fungibles SET issue  = $1 WHERE sym_id = $2;");
+PREPARE_SQL_ONCE(ufm_plan, "UPDATE fungibles SET manage = $1 WHERE sym_id = $2;");
 
 int
 pg::upd_fungible(trx_context& tctx, const updfungible& uf) {
-
-    std::string i = "issue", m = "manage";
     if(uf.issue.has_value()) {
         fc::variant u;
         fc::to_variant(*uf.issue, u);
-        i = fc::json::to_string(u);
+
+        fmt::format_to(tctx.trx_buf_, fmt("EXECUTE ufi_plan('{}',{});\n"), fc::json::to_string(u), (int64_t)uf.sym_id);
     }
     if(uf.manage.has_value()) {
         fc::variant u;
         fc::to_variant(*uf.manage, u);
-        m = fc::json::to_string(u);
+
+        fmt::format_to(tctx.trx_buf_, fmt("EXECUTE ufm_plan('{}',{});\n"), fc::json::to_string(u), (int64_t)uf.sym_id);
     }
-
-    fmt::format_to(tctx.trx_buf_, fmt("EXECUTE uf_plan('{}','{}',{});\n"), i, m, (int64_t)uf.sym_id);
-
     return PG_OK;
 }
 
@@ -945,6 +978,16 @@ pg::add_meta(trx_context& tctx, const action_t& act) {
     return PG_OK;
 }
 
+PREPARE_SQL_ONCE(afh_plan, "INSERT INTO ft_holders VALUES($1, $2, now()) ON CONFLICT (address) DO UPDATE SET sym_ids = array_append(ft_holders.sym_ids, excluded.sym_ids[1]);");
+
+int
+pg::add_ft_holders(trx_context& tctx, const ft_holders_t& holders) {
+    for(auto& holder : holders) {
+        fmt::format_to(tctx.trx_buf_, fmt("EXECUTE afh_plan('{}','{{{}}}');"), holder.addr, (int64_t)holder.sym_id);
+    }
+    return PG_OK;
+}
+
 int
 pg::backup(const std::shared_ptr<chain::snapshot_writer>& snapshot) const {
     using namespace __internal;
@@ -960,8 +1003,8 @@ pg::backup(const std::shared_ptr<chain::snapshot_writer>& snapshot) const {
             int   cr;
             char* buf;
             while((cr = PQgetCopyData(conn_, &buf, 0)) > 0)  {
-                writer.add_row("size", (char*)&cr, sizeof(cr));
-                writer.add_row("raw", buf, cr);
+                writer.add_row((char*)&cr, sizeof(cr));  // size
+                writer.add_row(buf, cr);  // data
                 PQfreemem(buf);
             }
             if(cr == -2) {
@@ -997,10 +1040,9 @@ pg::restore(const std::shared_ptr<chain::snapshot_reader>& snapshot) {
             auto buf = std::string();
             while(!reader.eof()) {
                 int sz = 0;
-                reader.read_row(buf, sizeof(sz));
-                sz = *(int*)buf.data();
-
-                reader.read_row(buf, sz);
+                reader.read_row((char*)&sz, sizeof(sz));
+                buf.resize(sz);
+                reader.read_row(buf.data(), sz);
 
                 auto nr = PQputCopyData(conn_, buf.data(), sz);
                 EVT_ASSERT(nr == 1, chain::postgres_exec_exception, "Put data into COPY stream failed, detail: ${s}", ("s",PQerrorMessage(conn_)));

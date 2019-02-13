@@ -1,10 +1,11 @@
 #include <catch/catch.hpp>
 
 #include <evt/chain/address.hpp>
+#include <evt/chain/types.hpp>
+#include <evt/chain/token_database.hpp>
 #include <evt/chain/contracts/authorizer_ref.hpp>
 #include <evt/chain/contracts/evt_link.hpp>
 #include <evt/chain/contracts/types.hpp>
-#include <evt/chain/types.hpp>
 
 using namespace evt::chain;
 using namespace evt::chain::contracts;
@@ -247,9 +248,10 @@ TEST_CASE("test_name128", "[types]") {
         CHECK_RAW(r, n);
     };
 
-    CHECK_N128("", 4);
+    CHECK_THROWS_AS(CHECK_N128("", 4), name128_type_exception);
     CHECK_N128("123", 4);
     CHECK_N128("12345", 4);
+    CHECK_N128("other", 4);
     CHECK_N128("123456", 8);
     CHECK_N128("1234567890", 8);
     CHECK_N128("1234567890A", 12);
@@ -365,4 +367,18 @@ TEST_CASE("test_asset", "[types]") {
     CHECK_THROWS_AS(asset::from_string("0.1 S#a"), asset_type_exception);
     CHECK_THROWS_AS(asset::from_string("0.1 S1"), asset_type_exception);
     CHECK_THROWS_AS(asset::from_string("0.100a S#1"), asset_type_exception);
+}
+
+TEST_CASE("test_make_db_value", "[types]") {
+    auto CHECK_MAKE = [](auto sz) {
+        auto str = std::string();
+        str.resize(sz);
+        CHECK_NOTHROW(make_db_value(str));
+    };
+
+    for(auto i = 1; i < 16; i++) {
+        CHECK_MAKE(i * 512);
+        CHECK_MAKE(i * 512 + 1);
+        CHECK_MAKE(i * 512 - 1);
+    }
 }

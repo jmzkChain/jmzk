@@ -1,10 +1,12 @@
 #include <fc/log/logger.hpp>
-#include <fc/log/log_message.hpp>
-#include <fc/log/appender.hpp>
-#include <fc/filesystem.hpp>
+
 #include <unordered_map>
 #include <string>
+
+#include <fc/log/log_message.hpp>
+#include <fc/log/appender.hpp>
 #include <fc/log/logger_config.hpp>
+#include <fc/filesystem.hpp>
 
 namespace fc {
 
@@ -21,7 +23,7 @@ public:
     bool       _additivity;
     log_level  _level;
 
-    std::vector<appender::ptr> _appenders;
+    appender_vec _appenders;
 };
 
 logger::logger()
@@ -48,15 +50,18 @@ logger::operator=(const logger& l) {
     my = l.my;
     return *this;
 }
+
 logger&
 logger::operator=(logger&& l) {
     fc_swap(my, l.my);
     return *this;
 }
+
 bool
 operator==(const logger& l, std::nullptr_t) {
     return !(bool)l.my;
 }
+
 bool
 operator!=(const logger& l, std::nullptr_t) {
     return (bool)l.my;
@@ -69,19 +74,22 @@ logger::is_enabled(log_level e) const {
 
 void
 logger::log(log_message m) {
-    m.get_context().append_context(my->_name);
+    m.context.append_context(my->_name);
 
-    for(auto itr = my->_appenders.begin(); itr != my->_appenders.end(); ++itr)
+    for(auto itr = my->_appenders.begin(); itr != my->_appenders.end(); ++itr) {
         (*itr)->log(m);
+    }
 
     if(my->_additivity && my->_parent != nullptr) {
         my->_parent.log(m);
     }
 }
+
 void
 logger::set_name(const fc::string& n) {
     my->_name = n;
 }
+
 const fc::string&
 logger::name() const {
     return my->_name;
@@ -107,6 +115,7 @@ logger
 logger::get_parent() const {
     return my->_parent;
 }
+
 logger&
 logger::set_parent(const logger& p) {
     my->_parent = p;
@@ -117,6 +126,7 @@ log_level
 logger::get_log_level() const {
     return my->_level;
 }
+
 logger&
 logger::set_log_level(log_level ll) {
     my->_level = ll;
@@ -128,7 +138,7 @@ logger::add_appender(const std::shared_ptr<appender>& a) {
     my->_appenders.push_back(a);
 }
 
-std::vector<std::shared_ptr<appender>>
+const appender_vec&
 logger::get_appenders() const {
     return my->_appenders;
 }

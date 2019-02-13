@@ -4,17 +4,21 @@
  */
 #include "libevt/evt_abi.h"
 #include "evt_impl.hpp"
-#include <evt/chain/contracts/evt_contract.hpp>
-#include <evt/chain/contracts/abi_serializer.hpp>
-#include <evt/chain/types.hpp>
+
 #include <fc/crypto/sha256.hpp>
 #include <fc/bitutil.hpp>
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
 
+#include <evt/chain/execution_context_impl.hpp>
+#include <evt/chain/contracts/evt_contract_abi.hpp>
+#include <evt/chain/contracts/abi_serializer.hpp>
+#include <evt/chain/types.hpp>
+
 using fc::sha256;
 using evt::chain::bytes;
 using evt::chain::chain_id_type;
+using evt::chain::evt_execution_context;
 using evt::chain::transaction;
 using evt::chain::contracts::abi_serializer;
 using evt::chain::contracts::abi_def;
@@ -40,17 +44,25 @@ extract_data<bytes>(evt_data_t* data, bytes& val) {
     return EVT_OK; 
 } 
 
+struct abi_context {
+    std::unique_ptr<abi_serializer>        abi;
+    std::unique_ptr<evt_execution_context> exec_ctx;
+};
+
 extern "C" {
 
 void*
 evt_abi() {
-    auto abi = new abi_serializer(evt::chain::contracts::evt_contract_abi(), fc::hours(1));
-    return (void*)abi;
+    auto abic      = new abi_context();
+    abic->abi      = std::make_unique<abi_serializer>(evt::chain::contracts::evt_contract_abi(), std::chrono::hours(1));
+    abic->exec_ctx = std::make_unique<evt_execution_context>();
+
+    return (void*)abic;
 }
 
 void
 evt_free_abi(void* abi) {
-    delete (abi_serializer*)abi;
+    delete (abi_context*)abi;
 }
 
 int
@@ -67,8 +79,8 @@ evt_abi_json_to_bin(void* evt_abi, const char* action, const char* json, evt_bin
     if(bin == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
-    auto& abi = *(abi_serializer*)evt_abi;
-    auto  var = fc::variant();
+    auto& abic = *(abi_context*)evt_abi;
+    auto  var  = fc::variant();
     try {
         var = fc::json::from_string(json);
         if(!var.is_object()) {
@@ -77,12 +89,12 @@ evt_abi_json_to_bin(void* evt_abi, const char* action, const char* json, evt_bin
     }
     CATCH_AND_RETURN(EVT_INVALID_JSON)
 
-    auto type = abi.get_action_type(action);
+    auto type = abic.exec_ctx->get_acttype_name(action);
     if(type.empty()) {
         return EVT_INVALID_ACTION;
     }
     try {
-        auto b = abi.variant_to_binary(type, var);
+        auto b = abic.abi->variant_to_binary(type, var, *abic.exec_ctx);
         if(b.empty()) {
             return EVT_INVALID_JSON;
         }
@@ -108,8 +120,8 @@ evt_abi_bin_to_json(void* evt_abi, const char* action, evt_bin_t* bin, char** js
     if(json == nullptr) {
         return EVT_INVALID_ARGUMENT;
     }
-    auto& abi  = *(abi_serializer*)evt_abi;
-    auto  type = abi.get_action_type(action);
+    auto& abic = *(abi_context*)evt_abi;
+    auto  type = abic.exec_ctx->get_acttype_name(action);
     if(type.empty()) {
         return EVT_INVALID_ACTION;
     }
@@ -118,7 +130,7 @@ evt_abi_bin_to_json(void* evt_abi, const char* action, evt_bin_t* bin, char** js
         if(extract_data(bin, b) != EVT_OK) {
             return EVT_INVALID_BINARY;
         }
-        auto var = abi.binary_to_variant(type, b);
+        auto var = abic.abi->binary_to_variant(type, b, *abic.exec_ctx);
         auto str = fc::json::to_string(var);
         *json = strdup(str);
     }
@@ -143,11 +155,11 @@ evt_trx_json_to_digest(void* evt_abi, const char* json,  evt_chain_id_t* chain_i
         return EVT_INVALID_HASH;
     }
 
-    auto& abi = *(abi_serializer*)evt_abi;
-    auto  trx = transaction();
+    auto& abic = *(abi_context*)evt_abi;
+    auto  trx  = transaction();
     try {
         auto var = fc::json::from_string(json);
-        abi.from_variant(var, trx);
+        abic.abi->from_variant(var, trx, *abic.exec_ctx);
 
         auto d  = trx.sig_digest(chain_id_type(idhash));
         *digest = get_evt_data(d);

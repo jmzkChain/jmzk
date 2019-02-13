@@ -125,8 +125,8 @@ public:
 
     size_t http_conn_index  = 0;
     size_t https_conn_index = 0;
-    size_t http_conn_size   = 0;
-    size_t https_conn_size  = 0;
+    size_t http_conn_count  = 0;
+    size_t https_conn_count = 0;
 
     websocket_server_type server;
 
@@ -246,37 +246,38 @@ public:
     template <typename T>
     deferred_id
     alloc_deferred_id(typename websocketpp::server<T>::connection_ptr con) {
-        if(http_conn_size + https_conn_size >= max_deferred_connection_size) {
-            EVT_THROW(chain::exceed_deferred_request, "Exceed max allowed deferred connections, max: ${m}",
-                ("m",max_deferred_connection_size));
+        if(http_conn_count + https_conn_count >= max_deferred_connection_size) {
+            EVT_THROW2(chain::exceed_deferred_request, "Exceed max allowed deferred connections, max: {}", max_deferred_connection_size);
         }
 
         if constexpr (std::is_same_v<T, http_config>) {
             // http
-            FC_ASSERT(http_conns.size() == max_deferred_connection_size);
+            assert(http_conns.size() == max_deferred_connection_size);
             for(auto i = http_conn_index; i < http_conn_index + max_deferred_connection_size; i++) {
                 auto j = i % max_deferred_connection_size;
                 if(http_conns[j] == nullptr) {
-                    http_conns[j] = con;
+                    http_conns[j]   = con;
                     http_conn_index = j + 1; // next slot
+                    http_conn_count++;
                     return j;
                 }
             }
         }
         if constexpr (std::is_same_v<T, https_config>) {
             // https
-            FC_ASSERT(https_conns.size() == max_deferred_connection_size);
+            assert(https_conns.size() == max_deferred_connection_size);
             for(auto i = https_conn_index; i < https_conn_index + max_deferred_connection_size; i++) {
                 auto j = i % max_deferred_connection_size;
                 if(https_conns[j] == nullptr) {
-                    https_conns[j] = con;
+                    https_conns[j]   = con;
                     https_conn_index = j + 1; // next slot
+                    https_conn_count++;
                     return j | (1 << 31);
                 }
             }
         }
-        EVT_THROW(chain::alloc_deferred_fail, "Alloc deferred id failed, http index: ${i}, https index: ${j}",
-            ("i",http_conn_index)("j",https_conn_index));
+        EVT_THROW2(chain::alloc_deferred_fail,
+            "Alloc deferred id failed, http index: {}, https index: {}", http_conn_index, https_conn_index);
     }
 
     template<class T>
@@ -345,13 +346,15 @@ public:
             }
 
             if constexpr (!std::is_same_v<T, local_config>) {
+                // deferred connection
                 auto deferred_handler_it = url_deferred_handlers.find(resource);
                 if(deferred_handler_it != url_deferred_handlers.end()) {
                     auto id = alloc_deferred_id<T>(con); 
 
                     con->defer_http_response();
-                    con->set_close_handler([&](auto c) {
-                        visit_connection(id, [](auto&) { return false; });
+                    con->set_close_handler([this, id](auto c) {
+                        // clear resources
+                        this->visit_connection(id, [](auto&) { return false; });
                     });
                     deferred_handler_it->second(resource, body, id);
 
@@ -359,6 +362,7 @@ public:
                 }
             }
             else {
+                // local unix socket connection
                 auto handler_itr = url_local_handlers.find(resource);
                 if(handler_itr != url_local_handlers.end()) {
                     con->defer_http_response();
@@ -396,6 +400,7 @@ public:
 
             if(!vistor(con)) {
                 http_conns[id] = nullptr;
+                http_conn_count--;
             }
         }
         else {
@@ -407,6 +412,7 @@ public:
 
             if(!vistor(con)) {
                 https_conns[index] = nullptr;
+                https_conn_count--;
             }
         }
     }
@@ -495,7 +501,7 @@ http_plugin::set_program_options(options_description&, options_description& cfg)
                 ilog("configured http with Access-Control-Allow-Credentials: true");
             })->default_value(false), "Specify if Access-Control-Allow-Credentials: true should be returned on each request.")
         ("max-body-size", bpo::value<uint32_t>()->default_value(1024*1024), "The maximum body size in bytes allowed for incoming RPC requests")
-        ("max-deferred-connection-size", bpo::value<uint32_t>()->default_value(8), "The maximum size allowed for deferred connections")
+        ("max-deferred-connection-size", bpo::value<uint32_t>()->default_value(10240), "The maximum size allowed for deferred connections")
         ("verbose-http-errors", bpo::bool_switch()->default_value(false), "Append the error log to HTTP responses")
         ("http-validate-host", boost::program_options::value<bool>()->default_value(true), "If set to false, then any incoming \"Host\" header is considered valid")
         ("http-alias", bpo::value<std::vector<string>>()->composing(),
@@ -597,7 +603,7 @@ http_plugin::plugin_startup() {
         try {
             my->http_conns.resize(my->max_deferred_connection_size);
             my->http_conn_index = 0;
-            my->http_conn_size  = 0;
+            my->http_conn_count = 0;
 
             my->create_server_for_endpoint(*my->listen_endpoint, my->server);
 
@@ -648,7 +654,7 @@ http_plugin::plugin_startup() {
         try {
             my->https_conns.resize(my->max_deferred_connection_size);
             my->https_conn_index = 0;
-            my->https_conn_size  = 0;
+            my->https_conn_count = 0;
 
             my->create_server_for_endpoint(*my->https_listen_endpoint, my->https_server);
             my->https_server.set_tls_init_handler([this](websocketpp::connection_hdl hdl) -> ssl_context_ptr {
@@ -728,6 +734,10 @@ http_plugin::handle_exception(const char* api_name, const char* call_name, const
     try {
         try {
             throw;
+        }
+        catch(chain::unknown_block_exception& e) {
+            error_results results{400, "Unknown Block", error_results::error_info(e, verbose_http_errors)};
+            cb(400, fc::json::to_string(results));
         }
         catch(chain::unsatisfied_authorization& e) {
             error_results results{401, "UnAuthorized", error_results::error_info(e, verbose_http_errors)};

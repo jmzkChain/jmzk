@@ -5,14 +5,15 @@
 #pragma once
 #include <math.h>
 #include <tuple>
-#include <evt/chain/transaction.hpp>
+
 #include <evt/chain/action.hpp>
 #include <evt/chain/config.hpp>
 #include <evt/chain/chain_config.hpp>
 #include <evt/chain/controller.hpp>
+#include <evt/chain/execution_context_impl.hpp>
 #include <evt/chain/global_property_object.hpp>
+#include <evt/chain/transaction.hpp>
 #include <evt/chain/contracts/types.hpp>
-#include <evt/chain/contracts/types_invoker.hpp>
 
 namespace evt { namespace chain {
 
@@ -37,16 +38,15 @@ struct base_act_charge {
     }
 };
 
-template<typename T>
+template<uint64_t N, typename T>
 struct act_charge : public base_act_charge {};
 
-template<typename T>
+template<uint64_t N>
 struct get_act_charge {
+    template<typename T>
     static act_charge_result
     invoke(const action& act, const chain_config& config) {
-        FC_ASSERT(act.name == T::get_name());
-
-        using charge = act_charge<T>;
+        using charge = act_charge<N, T>;
         uint32_t s = 0;
 
         s += charge::storage(act) * config.base_storage_charge_factor;
@@ -60,18 +60,18 @@ struct get_act_charge {
 
 class charge_manager {
 public:
-    charge_manager(const controller& control)
+    charge_manager(const controller& control, const evt_execution_context& exec_ctx)
         : control_(control)
-        , config_(control.get_global_properties().configuration) {}
+        , config_(control.get_global_properties().configuration)
+        , exec_ctx_(exec_ctx) {}
 
 private:
     uint32_t
     network(const packed_transaction& ptrx, size_t sig_num) const {
         uint32_t s = 0;
 
-        s += ptrx.packed_trx.size();
+        s += ptrx.get_unprunable_size();
         s += sig_num * sizeof(signature_type);
-        s += config::fixed_net_overhead_of_packed_trx;
 
         return s;
     }
@@ -85,18 +85,22 @@ public:
     uint32_t
     calculate(const packed_transaction& ptrx, size_t sig_num = 0) const {
         using namespace __internal;
-        EVT_ASSERT(!ptrx.get_transaction().actions.empty(), tx_no_action, "There's not any actions in this transaction");
+        
+        auto& trx = ptrx.get_transaction();
+        EVT_ASSERT(!trx.actions.empty(), tx_no_action, "There's not any actions in this transaction");
 
-        sig_num = std::max(sig_num, ptrx.signatures.size());
+        sig_num = std::max(sig_num, ptrx.get_signatures().size());
 
         uint32_t ts = 0, s = 0;
         ts += network(ptrx, sig_num) * config_.base_network_charge_factor;
         ts += cpu(ptrx, sig_num) * config_.base_cpu_charge_factor;
 
-        const auto& trx = ptrx.get_transaction();
-        auto        pts = ts / trx.actions.size();
+        auto pts = ts / trx.actions.size();
         for(auto& act : trx.actions) {
-            auto as = types_invoker<act_charge_result, get_act_charge>::invoke(act.name, act, config_);
+            if(act.index_ == -1) {
+                act.index_ = exec_ctx_.index_of(act.name);
+            }
+            auto as = exec_ctx_.invoke<get_act_charge, act_charge_result>(act.index_, act, config_);
             s += (std::get<0>(as) + pts) * std::get<1>(as);  // std::get<1>(as): extra factor per action
         }
 
@@ -115,19 +119,20 @@ public:
     }
 
 private:
-    const controller&   control_;
-    const chain_config& config_;
+    const controller&            control_;
+    const chain_config&          config_;
+    const evt_execution_context& exec_ctx_;
 };
 
 namespace __internal {
 
 using namespace contracts;
 
-template<>
-struct act_charge<issuetoken> : public base_act_charge {
+template<typename T>
+struct act_charge<N(issuetoken), T> : public base_act_charge {
     static uint32_t
     cpu(const action& act) {
-        auto& itact = act.data_as<const issuetoken&>();
+        auto& itact = act.data_as<add_clr_t<T>>();
         if(itact.names.empty()) {
             return 15;
         }
@@ -135,8 +140,8 @@ struct act_charge<issuetoken> : public base_act_charge {
     }
 };
 
-template<>
-struct act_charge<addmeta> : public base_act_charge {
+template<typename T>
+struct act_charge<N(addmeta), T> : public base_act_charge {
     static uint32_t
     cpu(const action& act) {
         return 600;
@@ -148,11 +153,11 @@ struct act_charge<addmeta> : public base_act_charge {
     }
 };
 
-template<>
-struct act_charge<issuefungible> : public base_act_charge {
+template<typename T>
+struct act_charge<N(issuefungible), T> : public base_act_charge {
     static uint32_t
     extra_factor(const action& act) {
-        auto& ifact = act.data_as<const issuefungible&>();
+        auto& ifact = act.data_as<add_clr_t<T>>();
         auto sym = ifact.number.sym();
         // set charge to zero when issuing EVT
         if(sym == evt_sym()) {

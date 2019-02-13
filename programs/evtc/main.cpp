@@ -11,16 +11,15 @@
 #include <vector>
 
 #include <pwd.h>
+#include <unistd.h>
 
 #pragma push_macro("N")
 #undef N
 
-#include <boost/asio.hpp>
-#include <boost/format.hpp>
+#include <boost/asio/local/stream_protocol.hpp>
 #include <boost/dll/runtime_symbol_info.hpp>
 #include <boost/filesystem.hpp>
-#include <boost/process.hpp>
-#include <boost/process/spawn.hpp>
+// #include <boost/process.hpp>
 #include <boost/range/algorithm/find_if.hpp>
 #include <boost/range/algorithm/sort.hpp>
 #include <boost/range/algorithm/copy.hpp>
@@ -38,10 +37,11 @@
 #include <fc/variant.hpp>
 
 #include <evt/chain/config.hpp>
+#include <evt/chain/exceptions.hpp>
+#include <evt/chain/execution_context_impl.hpp>
 #include <evt/chain/contracts/types.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
-#include <evt/chain/contracts/evt_contract.hpp>
-#include <evt/chain/exceptions.hpp>
+#include <evt/chain/contracts/evt_contract_abi.hpp>
 #include <evt/chain_plugin/chain_plugin.hpp>
 #include <evt/utilities/key_conversion.hpp>
 
@@ -64,6 +64,7 @@ using namespace boost::filesystem;
 
 FC_DECLARE_EXCEPTION(explained_exception, 9000000, "explained exception, see error log");
 FC_DECLARE_EXCEPTION(localized_exception, 10000000, "an error occured");
+
 #define EVTC_ASSERT(TEST, ...)                                \
     FC_EXPAND_MACRO(                                          \
         FC_MULTILINE_MACRO_BEGIN if(UNLIKELY(!(TEST))) {      \
@@ -306,6 +307,12 @@ call(const std::string& url,
     return call(url, path, fc::variant()); 
 }
 
+void
+set_execution_context(execution_context& exec_ctx) {
+    auto acts = call(get_evt_actions, fc::variant()).as<std::vector<action_ver>>();
+    exec_ctx.set_versions(acts);
+}
+
 template <typename T>
 chain::action
 create_action(const domain_name& domain, const domain_key& key, const T& value) {
@@ -482,7 +489,7 @@ local_port_used() {
 void
 try_local_port(uint32_t duration) {
     using namespace std::chrono;
-    auto start_time = duration_cast<std::chrono::milliseconds>( system_clock::now().time_since_epoch() ).count();
+    auto start_time = duration_cast<std::chrono::milliseconds>(system_clock::now().time_since_epoch()).count();
     while(!local_port_used()) {
         if(duration_cast<std::chrono::milliseconds>(system_clock::now().time_since_epoch()).count() - start_time > duration) {
             std::cerr << "Unable to connect to evtwd, if evtwd is running please kill the process and try again.\n";
@@ -520,36 +527,67 @@ next:
         return;
     }
 
-    boost::filesystem::path binPath = boost::dll::program_location();
-    binPath.remove_filename();
+    auto bin_path = boost::dll::program_location();
+    bin_path.remove_filename();
     // This extra check is necessary when running evtc like this: ./evtc ...
-    if(binPath.filename_is_dot()) {
-        binPath.remove_filename();
+    if(bin_path.filename_is_dot()) {
+        bin_path.remove_filename();
     }
-    binPath.append("evtwd"); // if evtc and evtwd are in the same installation directory
-    if(!boost::filesystem::exists(binPath)) {
-        binPath.remove_filename().remove_filename().append("evtwd").append("evtwd");
+    bin_path.append("evtwd"); // if evtc and evtwd are in the same installation directory
+    if(!boost::filesystem::exists(bin_path)) {
+        bin_path.remove_filename().remove_filename().append("evtwd").append("evtwd");
     }
 
-    if(boost::filesystem::exists(binPath)) {
-        namespace bp = boost::process;
-        binPath = boost::filesystem::canonical(binPath);
+    if(boost::filesystem::exists(bin_path)) {
+        bin_path = boost::filesystem::canonical(bin_path);
 
-        vector<std::string> pargs;
+        auto pargs = vector<std::string>();
         pargs.push_back("--unix-socket-path");
         pargs.push_back(fc::path(determine_home_directory() / "evt-wallet/evtwd.sock").to_native_ansi_path());
 
-        ::boost::process::child evtwd(binPath, pargs,
-                                      bp::std_in.close(),
-                                      bp::std_out > bp::null,
-                                      bp::std_err > bp::null);
-        if(evtwd.running()) {
-            std::cerr << binPath << " launched" << std::endl;
-            evtwd.detach();
-            try_local_port(2000);
+        // namespace bp = boost::process;
+        // ::boost::process::child evtwd(binPath, pargs,
+        //                               bp::std_in.close(),
+        //                               bp::std_out > bp::null,
+        //                               bp::std_err > bp::null);
+        // if(evtwd.running()) {
+        //     std::cerr << binPath << " launched" << std::endl;
+        //     evtwd.detach();
+        //     try_local_port(2000);
+        // }
+        // else {
+        //     std::cerr << "No wallet service listening on " << wallet_url << ". Failed to launch " << binPath << std::endl;
+        // }
+
+        auto argv = vector<char*>();
+        argv.emplace_back((char*)bin_path.c_str());
+        for(auto& parg : pargs) {
+            argv.emplace_back((char*)parg.c_str());
+        }
+        argv.emplace_back(nullptr);
+
+        auto pid = 0;
+        if((pid = fork()) == 0) {
+            // child
+            if(setsid() < 0) {
+                exit(-1);
+            }
+
+            close(STDIN_FILENO);
+            close(STDOUT_FILENO);
+            close(STDERR_FILENO);
+
+            auto r = execv(bin_path.c_str(), argv.data());
+            if(r == -1) {
+                exit(-1);
+            }
+        }
+        else if(pid < 0) {
+            std::cerr << "Cannot fork to start evtwd" << std::endl;
         }
         else {
-            std::cerr << "No wallet service listening on " << wallet_url << ". Failed to launch " << binPath << std::endl;
+            std::cerr << bin_path << " launched" << std::endl;
+            try_local_port(2000);
         }
     }
     else {
@@ -1030,8 +1068,11 @@ struct set_suspend_subcommands {
             auto varsuspend = call(get_suspend_func, fc::mutable_variant_object("name", (proposal_name)name));
             auto suspend = suspend_def();
 
-            auto abi = abi_serializer(evt_contract_abi(), fc::hours(1));
-            abi.from_variant(varsuspend, suspend);
+            auto exec_ctx = evt_execution_context();
+            set_execution_context(exec_ctx);
+
+            auto abi = abi_serializer(evt_contract_abi(), std::chrono::hours(1));
+            abi.from_variant(varsuspend, suspend, exec_ctx);
 
             auto public_keys = call(wallet_url, wallet_public_keys);
             auto get_arg     = fc::mutable_variant_object("name", (proposal_name)name)("available_keys", public_keys);
@@ -1289,6 +1330,44 @@ struct set_producer_subcommands {
     }
 };
 
+struct set_action_subcommand {
+    string name;
+    string domain;
+    string key;
+    string data;
+
+    set_action_subcommand(CLI::App* actionRoot) {
+        auto pacmd = actionRoot->add_subcommand("push", localized("Push a raw action to the chain"));
+        pacmd->add_option("name", name, localized("Name of action to push"))->required();
+        pacmd->add_option("domain", domain, localized("Domain of action to push"))->required();
+        pacmd->add_option("key", key, localized("Key of action to push"))->required();
+        pacmd->add_option("data", data, localized("Data of action to push, can be either json file or string"))->required();
+
+        add_standard_transaction_options(pacmd);
+
+        pacmd->callback([this] {
+            auto vardata = fc::variant();
+            if(fc::is_regular_file(data)) {
+                vardata = fc::json::from_file(data);
+            }
+            else {
+                vardata = fc::json::from_string(data);
+            }
+
+            auto exec_ctx = evt_execution_context();
+            set_execution_context(exec_ctx);
+
+            auto type = exec_ctx.get_acttype_name((action_name)name);
+
+            auto abi = abi_serializer(evt_contract_abi(), std::chrono::hours(1));
+            auto rawdata = abi.variant_to_binary(type, vardata, exec_ctx);
+
+            auto act = action((action_name)name, (domain_name)domain, (domain_key)key, rawdata);
+            send_actions({act});
+        });
+    }
+};
+
 struct set_get_domain_subcommand {
     string name;
 
@@ -1355,6 +1434,7 @@ struct set_get_group_subcommand {
 
 struct set_get_fungible_subcommand {
     symbol_id_type id;
+    string         address;
 
     set_get_fungible_subcommand(CLI::App* actionRoot) {
         auto gfcmd = actionRoot->add_subcommand("fungible", localized("Retrieve a fungible asset information"));
@@ -1365,26 +1445,24 @@ struct set_get_fungible_subcommand {
             auto arg = fc::mutable_variant_object("id", id);
             print_info(call(get_fungible_func, arg));
         });
-    }
-};
 
-struct set_get_balance_subcommand {
-    string address;
-    string sym;
-
-    set_get_balance_subcommand(CLI::App* actionRoot) {
         auto gbcmd = actionRoot->add_subcommand("balance", localized("Retrieve fungible balance from an address"));
-        gbcmd->add_option("address", address, localized("Address where assets stored"))->required();
-        gbcmd->add_option("symbol", sym, localized("Specific symbol to be retrieved, leave empty to retrieve all assets"));
+        gbcmd->add_option("address", address, localized("Address to query"))->required();
+        gbcmd->add_option("symbol_id", id, localized("Specific symbol id to retrieve"))->required();
 
         gbcmd->callback([this] {
             FC_ASSERT(!address.empty(), "Address cannot be empty");
 
-            auto arg = fc::mutable_variant_object("address", get_address(address));
-            if(!sym.empty()) {
-                arg["sym"] = symbol::from_string(sym);
-            }
+            auto arg = fc::mutable_variant_object("address", get_address(address))("sym_id",id);
             print_info(call(get_fungible_balance_func, arg));
+        });
+
+        auto gfpsb = actionRoot->add_subcommand("psvbonus", localized("Retrieve passive bonus registered to one fungible"));
+        gfpsb->add_option("id", id, localized("Specific symbol id to retrieve"))->required();
+
+        gfpsb->callback([this] {
+            auto arg = fc::mutable_variant_object("id", id);
+            print_info(call(get_fungible_psvbonus_func, arg));
         });
     }
 };
@@ -1528,6 +1606,14 @@ struct set_get_history_subcommands {
             print_info(call(get_transaction, args));
         });
 
+        auto trxactscmd = hiscmd->add_subcommand("trxactions", localized("Retrieve actions by transaction id"));
+        trxactscmd->add_option("id", trx_id, localized("Id of transaction to be retrieved"))->required();
+
+        trxactscmd->callback([this] {
+            auto args = mutable_variant_object("id", trx_id);
+            print_info(call(get_transaction_actions, args));
+        });
+
         auto funcmd = hiscmd->add_subcommand("fungible", localized("Retrieve fungible actions history"));
         funcmd->add_option("sym_id", sym_id, localized("Symbol Id to be retrieved"))->required();
         funcmd->add_option("address", addr, localized("Address involved in fungible actions"));
@@ -1538,7 +1624,7 @@ struct set_get_history_subcommands {
             auto args = mutable_variant_object();
             args["sym_id"] = sym_id;
             if(!addr.empty()) {
-                args["addr"] = addr;
+                args["addr"] = get_address(addr);
             }
 
             if(skip > 0) {
@@ -1565,6 +1651,16 @@ struct set_get_history_subcommands {
             }
 
             print_info(call(get_fungible_ids, args));
+        });
+
+        auto fbcmd = hiscmd->add_subcommand("balance", localized("Retrieve all the fungibles' balance for one address"));
+        fbcmd->add_option("address", addr, localized("Address for query"))->required();
+
+        fbcmd->callback([this] {
+            FC_ASSERT(!addr.empty(), "Address cannot be empty");
+
+            auto arg = fc::mutable_variant_object("addr", get_address(addr));
+            print_info(call(get_fungibles_balance, arg));
         });
     }
 };
@@ -1629,6 +1725,7 @@ main(int argc, char** argv) {
         std::cout << localized("Private key: ${key}", ("key", privs)) << std::endl;
         std::cout << localized("Public key: ${key}",  ("key", pubs))  << std::endl;
     });
+
     // Get subcommand
     auto get = app.add_subcommand("get", localized("Retrieve various items and information from the blockchain"));
     get->require_subcommand();
@@ -1636,6 +1733,16 @@ main(int argc, char** argv) {
     // get info
     get->add_subcommand("info", localized("Get current blockchain information"))->callback([] {
         std::cout << fc::json::to_pretty_string(get_info()) << std::endl;
+    });
+
+    // get actions
+    get->add_subcommand("actions", localized("Get current actions"))->callback([] {
+        std::cout << fc::json::to_pretty_string(call(get_evt_actions, fc::variant())) << std::endl;
+    });
+
+    // get abi
+    get->add_subcommand("abi", localized("Get current ABI"))->callback([] {
+        std::cout << fc::json::to_pretty_string(call(get_evt_abi, fc::variant())) << std::endl;
     });
 
     // get block
@@ -1651,7 +1758,6 @@ main(int argc, char** argv) {
     set_get_token_subcommand    get_token(get);
     set_get_group_subcommand    get_group(get);
     set_get_fungible_subcommand get_fungible(get);
-    set_get_balance_subcommand  get_balance(get);
     set_get_my_subcommands      get_my(get);
     set_get_history_subcommands get_history(get); 
     set_get_suspend_subcommand  get_suspend(get);
@@ -1756,6 +1862,12 @@ main(int argc, char** argv) {
     producer->require_subcommand();
 
     auto set_producer = set_producer_subcommands(producer);
+
+    // action
+    auto action = app.add_subcommand("action", localized("Raw operations for actions"));
+    action->require_subcommand();
+
+    auto set_action = set_action_subcommand(action);
 
     // Wallet subcommand
     auto wallet = app.add_subcommand("wallet", localized("Interact with local wallet"));

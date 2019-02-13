@@ -12,10 +12,11 @@
 
 namespace evt { namespace chain {
 /**
-    * History:
-    * Version 1: initial version with string identified sections and rows
-    */
-static const uint32_t current_snapshot_version = 1;
+ * History:
+ * Version 1: initial version with string identified sections and rows
+ * Version 2: Token database upgrades to binary format
+ */
+static const uint32_t current_snapshot_version = 2;
 
 namespace detail {
 template <typename T>
@@ -35,16 +36,21 @@ struct snapshot_row_traits {
     to_snapshot_row(const value_type& value, const chainbase::database&) {
         return value;
     };
+
+    static const snapshot_type&
+    to_snapshot_row(const value_type& value) {
+        return value;
+    };
 };
 
 /**
-       * Due to a pattern in our code of overloading `operator << ( std::ostream&, ... )` to provide
-       * human-readable string forms of data, we cannot directly use ostream as those operators will
-       * be used instead of the expected operators.  In otherwords:
-       * fc::raw::pack(fc::datastream...)
-       * will end up calling _very_ different operators than
-       * fc::raw::pack(std::ostream...)
-       */
+ * Due to a pattern in our code of overloading `operator << ( std::ostream&, ... )` to provide
+ * human-readable string forms of data, we cannot directly use ostream as those operators will
+ * be used instead of the expected operators.  In otherwords:
+ * fc::raw::pack(fc::datastream...)
+ * will end up calling _very_ different operators than
+ * fc::raw::pack(std::ostream...)
+ */
 struct ostream_wrapper {
     explicit ostream_wrapper(std::ostream& s)
         : inner(s) {
@@ -173,8 +179,14 @@ public:
             _writer.write_row(detail::make_row_writer(detail::snapshot_row_traits<T>::to_snapshot_row(row, db)));
         }
 
+        template <typename T>
         void
-        add_row(const std::string& name, const char* data, size_t sz) {
+        add_row(const T& row) {
+            _writer.write_row(detail::make_row_writer(detail::snapshot_row_traits<T>::to_snapshot_row(row)));
+        }
+
+        void
+        add_row(const char* data, size_t sz) {
             _writer.write_row(detail::snapshot_row_raw_writer(data, sz));
         }
 
@@ -277,14 +289,13 @@ struct snapshot_row_reader : abstract_snapshot_row_reader {
 };
 
 struct snapshot_row_raw_reader : abstract_snapshot_row_reader {
-    snapshot_row_raw_reader(std::string& out, size_t sz)
+    snapshot_row_raw_reader(char* out, size_t sz)
         : out_(out), sz_(sz) {}
 
     void
     provide(std::istream& in) const override {
         FC_ASSERT(!in.eof());
-        out_.resize(sz_);
-        in.read((char*)out_.data(), sz_);
+        in.read(out_, sz_);
         FC_ASSERT(in.gcount() == std::streamsize(sz_));
     }
 
@@ -293,7 +304,7 @@ struct snapshot_row_raw_reader : abstract_snapshot_row_reader {
         auto s = var.as_string();
         FC_ASSERT(s.size() == sz_);
 
-        out_.assign(s.c_str());
+        memcpy(out_, s.c_str(), sz_);
     }
 
     std::string
@@ -301,8 +312,8 @@ struct snapshot_row_raw_reader : abstract_snapshot_row_reader {
         return "raw";
     }
 
-    std::string& out_;
-    size_t       sz_;
+    char*  out_;
+    size_t sz_;
 };
 
 template <typename T>
@@ -341,7 +352,7 @@ public:
         }
 
         auto
-        read_row(std::string& out, size_t sz) {
+        read_row(char* out, size_t sz) {
             auto reader = detail::snapshot_row_raw_reader(out, sz);
             return _reader.read_row(reader);
         }

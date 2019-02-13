@@ -48,17 +48,17 @@ transaction::sig_digest(const chain_id_type& chain_id) const {
     return enc.result();
 }
 
-public_keys_type
+public_keys_set
 transaction::get_signature_keys(const signatures_base_type& signatures, const chain_id_type& chain_id,
                                 bool allow_duplicate_keys) const {
     if(signatures.empty()) {
-        return public_keys_type();
+        return public_keys_set();
     }
 
     try {
         auto digest = sig_digest(chain_id);
 
-        auto recovered_pub_keys = public_keys_type();
+        auto recovered_pub_keys = public_keys_set();
         for(auto& sig : signatures) {
             auto successful_insertion                   = false;
             std::tie(std::ignore, successful_insertion) = recovered_pub_keys.emplace(sig, digest);
@@ -84,9 +84,19 @@ signed_transaction::sign(const private_key_type& key, const chain_id_type& chain
     return key.sign(sig_digest(chain_id));
 }
 
-public_keys_type
+public_keys_set
 signed_transaction::get_signature_keys(const chain_id_type& chain_id, bool allow_duplicate_keys) const {
     return transaction::get_signature_keys(signatures, chain_id, allow_duplicate_keys);
+}
+
+void
+packed_transaction::reflector_init() {
+   // called after construction, but always on the same thread and before packed_transaction passed to any other threads
+   static_assert(&fc::reflector_init_visitor<packed_transaction>::reflector_init, "FC with reflector_init required");
+   static_assert(fc::raw::has_feature_reflector_init_on_unpacked_reflected_types,
+                 "FC unpack needs to call reflector_init otherwise unpacked_trx will not be initialized");
+   EVT_ASSERT(unpacked_trx.expiration == time_point_sec(), tx_decompression_error, "packed_transaction already unpacked");
+   local_unpack_transaction();
 }
 
 uint32_t
@@ -186,14 +196,16 @@ zlib_compress_transaction(const transaction& t) {
     return out;
 }
 
-bytes
-packed_transaction::get_raw_transaction() const {
+void
+packed_transaction::local_unpack_transaction() {
     try {
         switch(compression) {
         case none:
-            return packed_trx;
+            unpacked_trx = signed_transaction(unpack_transaction(packed_trx), signatures);
+            break;
         case zlib:
-            return zlib_decompress(packed_trx);
+            unpacked_trx = signed_transaction(zlib_decompress_transaction(packed_trx), signatures);
+            break;
         default:
             EVT_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
         }
@@ -201,80 +213,21 @@ packed_transaction::get_raw_transaction() const {
     FC_CAPTURE_AND_RETHROW((compression)(packed_trx))
 }
 
-time_point_sec
-packed_transaction::expiration() const {
-    local_unpack();
-    return unpacked_trx->expiration;
-}
-
-transaction_id_type
-packed_transaction::id() const {
-    local_unpack();
-    return get_transaction().id();
-}
-
-transaction_id_type
-packed_transaction::get_uncached_id() const {
-    const auto raw = get_raw_transaction();
-    return fc::raw::unpack<transaction>(raw).id();
-}
-
 void
-packed_transaction::local_unpack() const {
-    if(!unpacked_trx) {
-        try {
-            switch(compression) {
-            case none:
-                unpacked_trx = unpack_transaction(packed_trx);
-                break;
-            case zlib:
-                unpacked_trx = zlib_decompress_transaction(packed_trx);
-                break;
-            default:
-                EVT_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
-            }
-        }
-        FC_CAPTURE_AND_RETHROW((compression)(packed_trx))
-    }
-}
-
-transaction
-packed_transaction::get_transaction() const {
-    local_unpack();
-    return transaction(*unpacked_trx);
-}
-
-signed_transaction
-packed_transaction::get_signed_transaction() const {
+packed_transaction::local_pack_transaction() {
     try {
         switch(compression) {
         case none:
-            return signed_transaction(get_transaction(), signatures);
-        case zlib:
-            return signed_transaction(get_transaction(), signatures);
-        default:
-            EVT_THROW(unknown_transaction_compression,"Unknown transaction compression algorithm");
-        }
-    }
-    FC_CAPTURE_AND_RETHROW((compression)(packed_trx))
-}
-
-void
-packed_transaction::set_transaction(const transaction& t, packed_transaction::compression_type _compression) {
-    try {
-        switch(_compression) {
-        case none:
-            packed_trx = pack_transaction(t);
+            packed_trx = pack_transaction(unpacked_trx);
             break;
         case zlib:
-            packed_trx = zlib_compress_transaction(t);
+            packed_trx = zlib_compress_transaction(unpacked_trx);
             break;
         default:
-            EVT_THROW(unknown_transaction_compression,"Unknown transaction compression algorithm");
+            EVT_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
         }
     }
-    FC_CAPTURE_AND_RETHROW((_compression)(t))
-    compression = _compression;
+    FC_CAPTURE_AND_RETHROW((compression))
 }
 
 }}  // namespace evt::chain

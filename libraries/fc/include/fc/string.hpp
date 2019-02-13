@@ -5,6 +5,7 @@
 #include <fc/fwd.hpp>
 
 namespace fc {
+
 typedef std::string string;
 
 int64_t     to_int64(const fc::string&);
@@ -36,7 +37,9 @@ to_string(size_t s) {
 #endif
 
 typedef std::optional<fc::string> ostring;
+
 class variant_object;
+
 fc::string format_string(const fc::string&, const variant_object&);
 fc::string trim(const fc::string&);
 fc::string to_lower(const fc::string&);

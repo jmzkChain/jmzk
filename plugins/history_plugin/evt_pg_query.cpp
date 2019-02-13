@@ -10,9 +10,11 @@
 #include <fmt/format.h>
 #include <libpq-fe.h>
 #include <boost/lexical_cast.hpp>
+#include <boost/algorithm/string.hpp>
 #include <fc/io/json.hpp>
 #include <evt/chain/block_header.hpp>
 #include <evt/chain/exceptions.hpp>
+#include <evt/chain/token_database.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
 #include <evt/http_plugin/http_plugin.hpp>
 
@@ -61,9 +63,11 @@ enum task_type {
     kGetFungibles,
     kGetActions,
     kGetFungibleActions,
+    kGetFungiblesBalance,
     kGetTransaction,
     kGetTransactions,
-    kGetFungibleIds
+    kGetFungibleIds,
+    kGetTransactionActions
 };
 
 const char* call_names[] = {
@@ -73,9 +77,11 @@ const char* call_names[] = {
     "get_fungibles",
     "get_actions",
     "get_fungible_actions",
+    "get_fungibles_balance",
     "get_transaction",
     "get_transactions",
-    "get_fungible_ids"
+    "get_fungible_ids",
+    "get_transaction_actions"
 };
 
 template<typename T>
@@ -144,20 +150,55 @@ pg_query::begin_poll_read() {
 }
 
 int
-pg_query::queue(int id, int task) {
-    tasks_.emplace(id, task);
+pg_query::queue(int id, int task, std::string&& stmt) {
+    tasks_.emplace(id, task, std::move(stmt));
+    
+    if(!sending_) {
+        send_once();
+    }
     return PG_OK;
+}
+
+int
+pg_query::send_once() {
+    using namespace __internal;
+
+    assert(!tasks_.empty());
+    auto& t = tasks_.front();
+
+    auto r = PQsendQuery(conn_, t.stmt.c_str());
+    if(r == 1) {
+        sending_ = true;
+        return PG_OK;
+    }
+
+    try {
+        EVT_THROW2(chain::postgres_send_exception,
+            "Send '{}' query command failed, detail: {}", call_names[t.id], PQerrorMessage(conn_));
+    }
+    catch(...) {
+        app().get_plugin<http_plugin>().handle_async_exception(t.id, "history", call_names[t.id], "");
+    }
+
+    tasks_.pop();
+    if(!tasks_.empty()) {
+        // send next one
+        return send_once();
+    }
+    return PG_FAIL;
 }
 
 int
 pg_query::poll_read() {
     using namespace __internal;
 
+    bool busy = false;
     while(1) {
         auto r = PQconsumeInput(conn_);
         EVT_ASSERT(r, chain::postgres_poll_exception, "Poll messages from postgres failed, detail: ${d}", ("d",PQerrorMessage(conn_)));
 
         if(PQisBusy(conn_)) {
+            busy = true;
             break;
         }
 
@@ -195,6 +236,10 @@ pg_query::poll_read() {
                 get_fungible_actions_resume(t.id, re);
                 break;
             }
+            case kGetFungiblesBalance: {
+                get_fungibles_balance_resume(t.id, re);
+                break;
+            }
             case kGetTransaction: {
                 get_transaction_resume(t.id, re);
                 break;
@@ -207,6 +252,10 @@ pg_query::poll_read() {
                 get_fungible_ids_resume(t.id, re);
                 break;
             }
+            case kGetTransactionActions: {
+                get_transaction_actions_resume(t.id, re);
+                break;
+            }
             };  // switch
         }
         catch(...) {
@@ -217,6 +266,16 @@ pg_query::poll_read() {
     }
 
     socket_.async_wait(boost::asio::ip::tcp::socket::wait_type::wait_read, std::bind(&pg_query::poll_read, this));
+    if(!busy && !tasks_.empty()) {
+        // send next one
+        if(send_once() == PG_FAIL) {
+            // no send
+            sending_ = false;
+        }
+    }
+    else {
+        sending_ = false;
+    }
     return PG_OK;
 }
 
@@ -238,10 +297,7 @@ pg_query::get_tokens_async(int id, const read_only::get_tokens_params& params) {
         stmt = fmt::format(fmt("EXECUTE gt_plan2 ('{}');"), fmt::to_string(pkeys_buf));
     }
 
-    auto r = PQsendQuery(conn_, stmt.c_str());
-    EVT_ASSERT(r == 1, chain::postgres_send_exception, "Send get tokens command failed, detail: ${d}", ("d",PQerrorMessage(conn_)));
-
-    return queue(id, kGetTokens);
+    return queue(id, kGetTokens, std::move(stmt));
 }
 
 int
@@ -279,11 +335,7 @@ pg_query::get_domains_async(int id, const read_only::get_params& params) {
     format_array_to(pkeys_buf, std::begin(params.keys), std::end(params.keys));
 
     auto stmt = fmt::format(fmt("EXECUTE gd_plan ('{}')"), fmt::to_string(pkeys_buf));
-
-    auto r = PQsendQuery(conn_, stmt.c_str());
-    EVT_ASSERT(r == 1, chain::postgres_send_exception, "Send get domains command failed, detail: ${d}", ("d",PQerrorMessage(conn_)));
-
-    return queue(id, kGetDomains);
+    return queue(id, kGetDomains, std::move(stmt));
 }
 
 int
@@ -316,11 +368,7 @@ pg_query::get_groups_async(int id, const read_only::get_params& params) {
     format_array_to(pkeys_buf, std::begin(params.keys), std::end(params.keys));
 
     auto stmt = fmt::format(fmt("EXECUTE gg_plan ('{}')"), fmt::to_string(pkeys_buf));
-
-    auto r = PQsendQuery(conn_, stmt.c_str());
-    EVT_ASSERT(r == 1, chain::postgres_send_exception, "Send get groups command failed, detail: ${d}", ("d",PQerrorMessage(conn_)));
-
-    return queue(id, kGetGroups);
+    return queue(id, kGetGroups, std::move(stmt));
 }
 
 int
@@ -353,11 +401,7 @@ pg_query::get_fungibles_async(int id, const read_only::get_params& params) {
     format_array_to(pkeys_buf, std::begin(params.keys), std::end(params.keys));
 
     auto stmt = fmt::format(fmt("EXECUTE gf_plan ('{}')"), fmt::to_string(pkeys_buf));
-
-    auto r = PQsendQuery(conn_, stmt.c_str());
-    EVT_ASSERT(r == 1, chain::postgres_send_exception, "Send get fungibles command failed, detail: ${d}", ("d",PQerrorMessage(conn_)));
-
-    return queue(id, kGetFungibles);
+    return queue(id, kGetFungibles, std::move(stmt));
 }
 
 int
@@ -384,7 +428,7 @@ auto ga_plan0 = R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
                       FROM actions
                       JOIN blocks ON actions.block_id = blocks.block_id
                       WHERE domain = $1
-                      ORDER BY actions.created_at {0}, actions.seq_num {0}
+                      ORDER BY actions.global_seq {0}
                       LIMIT $2 OFFSET $3
                       )sql";
 
@@ -393,7 +437,7 @@ auto ga_plan1 = R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
                       FROM actions
                       JOIN blocks ON actions.block_id = blocks.block_id
                       WHERE domain = $1 AND key = $2
-                      ORDER BY actions.created_at {0}, actions.seq_num {0}
+                      ORDER BY actions.global_seq {0}
                       LIMIT $3 OFFSET $4
                       )sql";
 
@@ -402,7 +446,7 @@ auto ga_plan2 = R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
                       FROM actions
                       JOIN blocks ON actions.block_id = blocks.block_id
                       WHERE domain = $1 AND name = ANY($2)
-                      ORDER BY actions.created_at {0}, actions.seq_num {0}
+                      ORDER BY actions.global_seq {0}
                       LIMIT $3 OFFSET $4
                       )sql";
 
@@ -411,7 +455,7 @@ auto ga_plan3 = R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
                       FROM actions
                       JOIN blocks ON actions.block_id = blocks.block_id
                       WHERE domain = $1 AND key = $2 AND name = ANY($3)
-                      ORDER BY actions.created_at {0}, actions.seq_num {0}
+                      ORDER BY actions.global_seq {0}
                       LIMIT $4 OFFSET $5
                       )sql";
 
@@ -497,10 +541,7 @@ pg_query::get_actions_async(int id, const read_only::get_actions_params& params)
     }
     };  // switch
 
-    auto r = PQsendQuery(conn_, stmt.c_str());
-    EVT_ASSERT(r == 1, chain::postgres_send_exception, "Send get actions command failed, detail: ${d}", ("d",PQerrorMessage(conn_)));
-
-    return queue(id, kGetActions);
+    return queue(id, kGetActions, std::move(stmt));
 }
 
 int
@@ -541,7 +582,7 @@ auto gfa_plan0 = R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
                        WHERE
                            domain = '.fungible'
                            AND key = $1
-                           AND name = ANY('{{"issuefungible","transferft","recycleft","evt2pevt","everipay","paycharge"}}')
+                           AND name = ANY('{{"issuefungible","transferft","recycleft","evt2pevt","everipay","paybonus"}}')
                        ORDER BY actions.created_at {0}, actions.seq_num {0}
                        LIMIT $2 OFFSET $3
                        )sql";
@@ -553,7 +594,7 @@ auto gfa_plan1 = R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
                        WHERE
                            domain = '.fungible'
                            AND key = $1
-                           AND name = ANY('{{"issuefungible","transferft","recycleft","evt2pevt","everipay","paycharge"}}')
+                           AND name = ANY('{{"issuefungible","transferft","recycleft","evt2pevt","everipay","paybonus"}}')
                            AND (
                                data->>'address' = $2 OR
                                data->>'from' = $2 OR
@@ -613,10 +654,7 @@ pg_query::get_fungible_actions_async(int id, const read_only::get_fungible_actio
     }
     };  // switch
 
-    auto r = PQsendQuery(conn_, stmt.c_str());
-    EVT_ASSERT(r == 1, chain::postgres_send_exception, "Send get fungible actions command failed, detail: ${d}", ("d",PQerrorMessage(conn_)));
-
-    return queue(id, kGetFungibleActions);
+    return queue(id, kGetFungibleActions, std::move(stmt));
 }
 
 int
@@ -652,6 +690,63 @@ pg_query::get_fungible_actions_resume(int id, pg_result const* r) {
     return response_ok(id, fmt::to_string(builder));
 }
 
+PREPARE_SQL_ONCE(gfb_plan, "SELECT address, sym_ids FROM ft_holders WHERE address = $1;");
+
+int
+pg_query::get_fungibles_balance_async(int id, const read_only::get_fungibles_balance_params& params) {
+    using namespace __internal;
+
+    auto stmt = fmt::format(fmt("EXECUTE gfb_plan('{}');"), (std::string)params.addr);
+    return queue(id, kGetFungiblesBalance, std::move(stmt));
+}
+
+#define READ_DB_ASSET(ADDR, SYM_ID, VALUEREF)                                                         \
+    try {                                                                                             \
+        auto str = std::string();                                                                     \
+        tokendb.read_asset(ADDR, SYM_ID, str);                                                        \
+                                                                                                      \
+        extract_db_value(str, VALUEREF);                                                              \
+    }                                                                                                 \
+    catch(token_database_exception&) {                                                                \
+        EVT_THROW2(balance_exception, "There's no balance left in {} with sym id: {}", ADDR, SYM_ID); \
+    }
+
+int
+pg_query::get_fungibles_balance_resume(int id, pg_result const* r) {
+    using namespace __internal;
+    using namespace boost::algorithm;
+    using namespace chain;
+
+    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get transaction failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+
+    auto n = PQntuples(r);
+    if(n == 0) {
+        return response_ok(id, std::string("[]")); // return empty
+    }
+
+    auto  addr    = PQgetvalue(r, 0, 0);
+    auto  arr     = PQgetvalue(r, 0, 1);
+    auto  len     = strlen(arr);
+    auto  vars    = variants();
+    auto& tokendb = chain_.token_db();
+
+    auto it = split_iterator(arr + 1, arr + len - 1, first_finder(","));
+    for(; !it.eof(); it++) {
+        auto sym_id = boost::lexical_cast<uint32_t>(it->begin(), it->size());
+
+        property prop;
+        READ_DB_ASSET(addr, sym_id, prop);
+
+        auto as  = asset(prop.amount, prop.sym);
+        auto var = fc::variant();
+        fc::to_variant(as, var);
+
+        vars.emplace_back(std::move(var));
+    }
+
+    return response_ok(id, vars);
+}
+
 PREPARE_SQL_ONCE(gtrx_plan, "SELECT block_num, trx_id FROM transactions WHERE trx_id = $1;");
 
 int
@@ -659,11 +754,7 @@ pg_query::get_transaction_async(int id, const read_only::get_transaction_params&
     using namespace __internal;
 
     auto stmt = fmt::format(fmt("EXECUTE gtrx_plan('{}');"), (std::string)params.id);
-
-    auto r = PQsendQuery(conn_, stmt.c_str());
-    EVT_ASSERT(r == 1, chain::postgres_send_exception, "Send get transaction command failed, detail: ${d}", ("d",PQerrorMessage(conn_)));
-
-    return queue(id, kGetTransaction);
+    return queue(id, kGetTransaction, std::move(stmt));
 }
 
 int
@@ -686,10 +777,12 @@ pg_query::get_transaction_resume(int id, pg_result const* r) {
             continue;
         }
 
+        auto& abi      = chain_.get_abi_serializer();
+        auto& exec_ctx = chain_.get_execution_context();
         for(auto& tx : block->transactions) {
             if(tx.trx.id() == trx_id) {
                 auto var = fc::variant();
-                chain_.get_abi_serializer().to_variant(tx.trx, var);
+                abi.to_variant(tx.trx, var, exec_ctx);
 
                 auto mv = fc::mutable_variant_object(var);
                 mv["block_num"] = block_num;
@@ -702,8 +795,8 @@ pg_query::get_transaction_resume(int id, pg_result const* r) {
     EVT_THROW(chain::unknown_transaction_exception, "Cannot find transaction: ${t}", ("t", trx_id));
 }
 
-PREPARE_SQL_ONCE(gtrxs_plan0, "SELECT block_num, trx_id FROM transactions WHERE keys && $1 ORDER BY timestamp DESC LIMIT $2 OFFSET $3;")
-PREPARE_SQL_ONCE(gtrxs_plan1, "SELECT block_num, trx_id FROM transactions WHERE keys && $1 ORDER BY timestamp ASC  LIMIT $2 OFFSET $3;")
+PREPARE_SQL_ONCE(gtrxs_plan0, "SELECT block_num, trx_id FROM transactions WHERE keys && $1 OR payer = ANY($1) ORDER BY timestamp DESC LIMIT $2 OFFSET $3;")
+PREPARE_SQL_ONCE(gtrxs_plan1, "SELECT block_num, trx_id FROM transactions WHERE keys && $1 OR payer = ANY($1) ORDER BY timestamp ASC  LIMIT $2 OFFSET $3;")
 
 int
 pg_query::get_transactions_async(int id, const read_only::get_transactions_params& params) {
@@ -729,10 +822,7 @@ pg_query::get_transactions_async(int id, const read_only::get_transactions_param
         stmt = fmt::format(fmt("EXECUTE gtrxs_plan1('{}',{},{});"), fmt::to_string(keys_buf), t, s);
     }
 
-    auto r = PQsendQuery(conn_, stmt.c_str());
-    EVT_ASSERT(r == 1, chain::postgres_send_exception, "Send get transactions command failed, detail: ${d}", ("d",PQerrorMessage(conn_)));
-
-    return queue(id, kGetTransactions);
+    return queue(id, kGetTransactions, std::move(stmt));
 }
 
 int
@@ -756,10 +846,12 @@ pg_query::get_transactions_resume(int id, pg_result const* r) {
             continue;
         }
 
+        auto& abi      = chain_.get_abi_serializer();
+        auto& exec_ctx = chain_.get_execution_context();
         for(auto& tx : block->transactions) {
             if(tx.trx.id() == trx_id) {
                 auto var = fc::variant();
-                chain_.get_abi_serializer().to_variant(tx.trx, var);
+                abi.to_variant(tx.trx, var, exec_ctx);
 
                 auto mv = fc::mutable_variant_object(var);
                 mv["block_num"] = block_num;
@@ -789,11 +881,7 @@ pg_query::get_fungible_ids_async(int id, const read_only::get_fungible_ids_param
     }
 
     auto stmt = fmt::format(fmt("EXECUTE gfi_plan({},{});"), t, s);
-
-    auto r = PQsendQuery(conn_, stmt.c_str());
-    EVT_ASSERT(r == 1, chain::postgres_send_exception, "Send get transactions command failed, detail: ${d}", ("d",PQerrorMessage(conn_)));
-
-    return queue(id, kGetFungibleIds);
+    return queue(id, kGetFungibleIds, std::move(stmt));
 }
 
 int
@@ -818,6 +906,54 @@ pg_query::get_fungible_ids_resume(int id, pg_result const* r) {
     fmt::format_to(buf, "]");
 
     return response_ok(id, fmt::to_string(buf));
+}
+
+PREPARE_SQL_ONCE(gta_plan, R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
+                                 FROM actions
+                                 JOIN blocks ON actions.block_id = blocks.block_id
+                                 WHERE trx_id = $1
+                                 ORDER BY actions.seq_num ASC
+                                 )sql");
+
+int
+pg_query::get_transaction_actions_async(int id, const read_only::get_transaction_actions_params& params) {
+    using namespace __internal;
+
+    auto stmt = fmt::format(fmt("EXECUTE gta_plan('{}');"), (std::string)params.id);
+    return queue(id, kGetTransactionActions, std::move(stmt));
+}
+
+int
+pg_query::get_transaction_actions_resume(int id, pg_result const* r) {
+    using namespace __internal;
+
+    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get transaction actions failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+
+    auto n = PQntuples(r);
+    if(n == 0) {
+        EVT_THROW(chain::unknown_transaction_exception, "Cannot find transaction");
+    }
+
+    auto builder = fmt::memory_buffer();
+
+    fmt::format_to(builder, "[");
+    for(int i = 0; i < n; i++) {
+        fmt::format_to(builder,
+            fmt(R"({{"trx_id":"{}","name":"{}","domain":"{}","key":"{}","data":{},"timestamp":"{}"}})"),
+            PQgetvalue(r, i, 0),
+            PQgetvalue(r, i, 1),
+            PQgetvalue(r, i, 2),
+            PQgetvalue(r, i, 3),
+            PQgetvalue(r, i, 4),
+            fix_pg_timestamp(PQgetvalue(r, i, 5))
+            );
+        if(i < n - 1) {
+            fmt::format_to(builder, ",");
+        }
+    }
+    fmt::format_to(builder, "]");
+
+    return response_ok(id, fmt::to_string(builder));
 }
 
 }  // namepsace evt

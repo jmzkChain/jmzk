@@ -16,7 +16,7 @@ class Transaction:
         self.actions = []
         self.transaction_extensions = []
 
-        self.max_charge = '10000'
+        self.max_charge = '999999999'
         self.payer = str(base.Address())
 
         self.priv_keys = []

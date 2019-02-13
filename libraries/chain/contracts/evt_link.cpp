@@ -185,11 +185,14 @@ evt_link::has_segment(uint8_t key) const {
     return segments_.find(key) != segments_.end();
 }
 
-const link_id_type&
+link_id_type
 evt_link::get_link_id() const {
     auto& seg = get_segment(link_id);
     EVT_ASSERT(seg.strv && seg.strv->size() == sizeof(link_id_type), evt_link_id_exception, "Not valid link id in this EVT-Link");
-    return *(link_id_type*)seg.strv->data();
+
+    auto id = link_id_type();
+    memcpy(&id, seg.strv->data(), sizeof(id));
+    return id;
 }
 
 namespace __internal {
@@ -328,10 +331,10 @@ evt_link::to_string(int prefix) const {
     return str;
 }
 
-public_keys_type
+public_keys_set
 evt_link::restore_keys() const {
     auto hash = digest();
-    auto keys = public_keys_type();
+    auto keys = public_keys_set();
 
     keys.reserve(signatures_.size());
     for(auto& sig : signatures_) {
@@ -347,6 +350,11 @@ evt_link::add_segment(const segment& seg) {
         // existed, replace old one
         it.first->second = seg;
     }
+}
+
+void
+evt_link::remove_segment(uint8_t key) {
+    segments_.erase(key);
 }
 
 void
