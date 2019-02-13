@@ -32,7 +32,6 @@ transaction_context::transaction_context(controller&                    control,
     }
     trace->id = trx_meta->id;
 
-    EVT_ASSERT(!trx.actions.empty(), tx_no_action, "There's any actions in this transaction");
     executed.reserve(trx.actions.size() + 1); // one for paycharge action
 
     if(!trx.transaction_extensions.empty()) {
@@ -45,6 +44,7 @@ transaction_context::transaction_context(controller&                    control,
 void
 transaction_context::init(uint64_t initial_net_usage) {
     EVT_ASSERT(!is_initialized, transaction_exception, "cannot initialize twice");
+    EVT_ASSERT(!trx.actions.empty(), tx_no_action, "There isn't any actions in this transaction");
     
     // set index for action
     for(auto& act : trx.actions) {
