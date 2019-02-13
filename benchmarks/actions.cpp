@@ -91,7 +91,7 @@ get_nonce_key(const char* prefix) {
     return evt::testing::tester::get_public_key(name(n));
 }
 
-static transaction_metadata
+static transaction_metadata_ptr
 get_trx_meta(controller& control, const action& act, const std::vector<name>& auths) {
     auto signed_trx = signed_transaction();
     signed_trx.actions.emplace_back(act);
@@ -101,7 +101,7 @@ get_trx_meta(controller& control, const action& act, const std::vector<name>& au
         signed_trx.sign(privkey, control.get_chain_id());
     }
 
-    return transaction_metadata(signed_trx);
+    return std::make_shared<transaction_metadata>(signed_trx);
 }
 
 auto&
@@ -111,7 +111,7 @@ get_exec_ctx() {
 }
 
 static transaction_context
-get_trx_ctx(controller& control, transaction_metadata& trx_meta) {
+get_trx_ctx(controller& control, transaction_metadata_ptr trx_meta) {
     return transaction_context(control, get_exec_ctx(), trx_meta);
 }
 
