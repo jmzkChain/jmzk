@@ -121,10 +121,6 @@ auto create_trxs_table = R"sql(CREATE TABLE IF NOT EXISTS public.transactions
                                    ON public.transactions USING btree
                                    (block_num)
                                    TABLESPACE pg_default;
-                               CREATE INDEX IF NOT EXISTS transactions_payer_index
-                                   ON transactions USING btree
-                                   (payer)
-                                   TABLESPACE pg_default;
                                CREATE INDEX IF NOT EXISTS transactions_timestamp_index
                                    ON transactions USING btree
                                    (timestamp)
