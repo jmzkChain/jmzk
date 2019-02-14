@@ -2209,7 +2209,7 @@ EVT_ACTION_IMPL_BEGIN(distpsvbonus) {
 
         pb.round++;
         pb.deadline = spbact.deadline;
-        PUT_DB_TOKEN(token_type::bonus, pb);
+        UPD_DB_TOKEN(token_type::bonus, pb);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
