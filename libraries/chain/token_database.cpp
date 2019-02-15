@@ -333,7 +333,7 @@ token_database_impl::open(int load_persistence) {
         table_opts.index_type     = BlockBasedTableOptions::kHashSearch;
         table_opts.checksum       = kxxHash64;
         table_opts.format_version = 4;
-        table_opts.block_cache    = NewClockCache(config_.cache_size * 1024 * 1024);
+        table_opts.block_cache    = NewLRUCache(config_.cache_size * 1024 * 1024);
         table_opts.filter_policy.reset(NewBloomFilterPolicy(10, false));
 
         options.table_factory.reset(NewBlockBasedTableFactory(table_opts));
