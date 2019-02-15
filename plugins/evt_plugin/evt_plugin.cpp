@@ -191,7 +191,7 @@ read_only::get_fungible(const get_fungible_params& params) {
     auto addr = address(N(.fungible), name128::from_number(params.id), 0);
 
     property prop;
-    READ_DB_ASSET(addr, fungible.sym, prop);
+    READ_DB_ASSET_NO_THROW(addr, fungible.sym, prop);
 
     mvar["current_supply"] = fungible.total_supply - asset(prop.amount, fungible.sym);
     mvar["address"]        = addr;
