@@ -795,8 +795,8 @@ pg_query::get_transaction_resume(int id, pg_result const* r) {
     EVT_THROW(chain::unknown_transaction_exception, "Cannot find transaction: ${t}", ("t", trx_id));
 }
 
-PREPARE_SQL_ONCE(gtrxs_plan0, "SELECT block_num, trx_id FROM transactions WHERE keys && $1 OR payer = ANY($1) ORDER BY timestamp DESC LIMIT $2 OFFSET $3;")
-PREPARE_SQL_ONCE(gtrxs_plan1, "SELECT block_num, trx_id FROM transactions WHERE keys && $1 OR payer = ANY($1) ORDER BY timestamp ASC  LIMIT $2 OFFSET $3;")
+PREPARE_SQL_ONCE(gtrxs_plan0, "SELECT block_num, trx_id FROM transactions WHERE keys && $1 ORDER BY timestamp DESC LIMIT $2 OFFSET $3;")
+PREPARE_SQL_ONCE(gtrxs_plan1, "SELECT block_num, trx_id FROM transactions WHERE keys && $1 ORDER BY timestamp ASC  LIMIT $2 OFFSET $3;")
 
 int
 pg_query::get_transactions_async(int id, const read_only::get_transactions_params& params) {

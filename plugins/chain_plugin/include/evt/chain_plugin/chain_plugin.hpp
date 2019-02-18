@@ -176,7 +176,7 @@ public:
 
     using push_block_params  = chain::signed_block;
     using push_block_results = empty;
-    void push_block(const push_block_params& params, chain::plugin_interface::next_function<push_block_results> next);
+    void push_block(push_block_params&& params, chain::plugin_interface::next_function<push_block_results> next);
 
     using push_transaction_params = fc::variant_object;
     struct push_transaction_results {
@@ -211,6 +211,7 @@ public:
 
     void accept_block(const chain::signed_block_ptr& block );
     void accept_transaction(const chain::packed_transaction& trx, chain::plugin_interface::next_function<chain::transaction_trace_ptr> next);
+    void accept_transaction(const chain::transaction_metadata_ptr& trx, chain::plugin_interface::next_function<chain::transaction_trace_ptr> next);
 
     bool block_is_on_preferred_chain(const chain::block_id_type& block_id);
 

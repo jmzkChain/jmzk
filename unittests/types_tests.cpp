@@ -382,3 +382,23 @@ TEST_CASE("test_make_db_value", "[types]") {
         CHECK_MAKE(i * 512 - 1);
     }
 }
+
+TEST_CASE("test_reflector_init", "[types]") {
+    auto strx = signed_transaction();
+    strx.max_charge = 1000;
+
+    auto act = action(".test", ".test", ".test", bytes());
+    strx.actions.emplace_back(act);
+
+    auto hash = fc::sha256::hash(std::string("test"));
+    strx.sign(private_key_type(std::string("5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3")), *(chain_id_type*)&hash);
+
+    auto ptrx = packed_transaction(strx);
+
+    auto b     = fc::raw::pack(ptrx);
+    auto ptrx2 = fc::raw::unpack<packed_transaction>(b);
+
+    auto& trx2 = ptrx2.get_signed_transaction();
+    CHECK(trx2.max_charge == 1000);
+    CHECK(trx2.actions.size() == 1);
+}

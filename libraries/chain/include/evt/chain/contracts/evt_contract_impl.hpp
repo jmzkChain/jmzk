@@ -1456,7 +1456,7 @@ EVT_ACTION_IMPL_BEGIN(everipay) {
         auto link_obj = evt_link_object {
             .link_id   = link_id,
             .block_num = context.control.pending_block_state()->block->block_num(),
-            .trx_id    = context.trx_context.trx.id
+            .trx_id    = context.trx_context.trx_meta->id
         };
         ADD_DB_TOKEN(token_type::evtlink, link_obj);
 
@@ -1475,8 +1475,6 @@ EVT_ACTION_IMPL_BEGIN(everipay) {
         }
         else {
             max_pay = std::stoul(*link.get_segment(evt_link::max_pay_str).strv);
-            EVT_ASSERT2(max_pay > std::numeric_limits<uint32_t>::max(), evt_link_exception,
-                "It's not allowd to use max_pay_str when actual number can be interprated using max_pay segment");
         }
         EVT_ASSERT2(epact.number.amount() <= max_pay, everipay_exception,
             "Exceed max allowd paid amount: {:n}, actual: {:n}", max_pay, epact.number.amount());
@@ -1688,7 +1686,7 @@ EVT_ACTION_IMPL_BEGIN(newlock) {
         EVT_ASSERT(nlact.assets.size() > 0, lock_assets_exception, "Assets for lock should not be empty");
 
         auto has_fungible = false;
-        auto keys         = context.trx_context.trx.recover_keys(context.control.get_chain_id());
+        auto keys         = context.trx_context.trx_meta->recover_keys(context.control.get_chain_id());
         for(auto& la : nlact.assets) {
             switch(la.type()) {
             case asset_type::tokens: {
@@ -2211,7 +2209,7 @@ EVT_ACTION_IMPL_BEGIN(distpsvbonus) {
 
         pb.round++;
         pb.deadline = spbact.deadline;
-        PUT_DB_TOKEN(token_type::bonus, pb);
+        UPD_DB_TOKEN(token_type::bonus, pb);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }

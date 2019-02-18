@@ -11,16 +11,17 @@ namespace evt { namespace chain {
 
 class controller;
 class transaction_metadata;
+using transaction_metadata_ptr = std::shared_ptr<transaction_metadata>;
 
 class transaction_context {
 private:
     void init(uint64_t initial_net_usage);
 
 public:
-    transaction_context(controller&            control,
-                        evt_execution_context& exec_ctx,
-                        transaction_metadata&  trx_meta,
-                        fc::time_point         start = fc::time_point::now());
+    transaction_context(controller&                    control,
+                        evt_execution_context&         exec_ctx,
+                        const transaction_metadata_ptr trx_meta,
+                        fc::time_point                 start = fc::time_point::now());
 
     void init_for_implicit_trx();
     void init_for_input_trx(bool skip_recording);
@@ -54,7 +55,9 @@ public:
     optional<chainbase::database::session> undo_session;
     optional<token_database::session>      undo_token_session;
 
-    transaction_metadata& trx;
+    const transaction_metadata_ptr trx_meta;
+    const signed_transaction&      trx;
+
     transaction_trace_ptr trace;
     fc::time_point        start;
 

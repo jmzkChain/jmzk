@@ -435,9 +435,9 @@ struct abi_to_variant {
         auto mvo = mutable_variant_object();
         auto trx = ptrx.get_transaction();
         mvo("id", trx.id());
-        mvo("signatures", ptrx.signatures);
-        mvo("compression", ptrx.compression);
-        mvo("packed_trx", ptrx.packed_trx);
+        mvo("signatures", ptrx.get_signatures());
+        mvo("compression", ptrx.get_compression());
+        mvo("packed_trx", ptrx.get_packed_transaction());
         add(mvo, "transaction", trx, ctx);
 
         out(name, std::move(mvo));
@@ -592,28 +592,36 @@ struct abi_from_variant {
         const auto& vo = v.get_object();
         EVT_ASSERT(vo.contains("signatures"), packed_transaction_type_exception, "Missing signatures");
         EVT_ASSERT(vo.contains("compression"), packed_transaction_type_exception, "Missing compression");
-        from_variant(vo["signatures"], ptrx.signatures);
-        from_variant(vo["compression"], ptrx.compression);
 
-        // TODO: Make this nicer eventually. But for now, if it works... good enough.
+        auto signatures  = signatures_type();
+        auto compression = packed_transaction::compression_type();
+
+        from_variant(vo["signatures"], signatures);
+        from_variant(vo["compression"], compression);
+
         if(vo.contains("packed_trx") && vo["packed_trx"].is_string() && !vo["packed_trx"].as_string().empty()) {
-            from_variant(vo["packed_trx"], ptrx.packed_trx);
-            auto trx = ptrx.get_transaction();  // Validates transaction data provided.
+            auto packed_trx = bytes();
+            from_variant(vo["packed_trx"], packed_trx);
+
+            ptrx = packed_transaction(std::move(packed_trx), std::move(signatures), compression);
         }
         else {
             EVT_ASSERT(vo.contains("transaction"), packed_transaction_type_exception, "Missing transaction");
-            transaction trx;
+            
+            auto trx = signed_transaction();
             extract(vo["transaction"], trx, ctx);
-            ptrx.set_transaction(trx, ptrx.compression);
+            trx.signatures = std::move(signatures);
+
+            ptrx = packed_transaction(std::move(trx), compression);
         }
     }
 };
 
 template <typename T>
-class abi_from_variant_visitor : reflector_verifier_visitor<T> {
+class abi_from_variant_visitor : reflector_init_visitor<T> {
 public:
     abi_from_variant_visitor(const variant_object& _vo, T& v, abi_traverse_context& _ctx)
-        : reflector_verifier_visitor<T>(v)
+        : reflector_init_visitor<T>(v)
         , _vo(_vo)
         , _ctx(_ctx) {}
 

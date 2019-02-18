@@ -41,6 +41,7 @@ struct transaction_header {
     get_ref_blocknum(block_num_type head_blocknum) const {
         return ((head_blocknum / 0xffff) * 0xffff) + head_blocknum % 0xffff;
     }
+
     void set_reference_block(const block_id_type& reference_block);
     bool verify_reference_block(const block_id_type& reference_block) const;
     void validate() const;
@@ -91,47 +92,72 @@ struct signed_transaction : public transaction {
 };
 
 struct packed_transaction {
+public:
     enum compression_type {
         none = 0,
         zlib = 1,
     };
 
+public:
     packed_transaction() = default;
-
-    explicit packed_transaction(const transaction& t, compression_type _compression = none) {
-        set_transaction(t, _compression);
-    }
+    packed_transaction(packed_transaction&&) = default;
+    explicit packed_transaction(const packed_transaction&) = default;
+    packed_transaction& operator=(const packed_transaction&) = delete;
+    packed_transaction& operator=(packed_transaction&&) = default;
 
     explicit packed_transaction(const signed_transaction& t, compression_type _compression = none)
-        : signatures(t.signatures) {
-        set_transaction(t, _compression);
+        : signatures(t.signatures), compression(_compression), unpacked_trx(t) {
+        local_pack_transaction();
     }
 
     explicit packed_transaction(signed_transaction&& t, compression_type _compression = none)
-        : signatures(std::move(t.signatures)) {
-        set_transaction(t, _compression);
+        : signatures(std::move(t.signatures)), compression(_compression), unpacked_trx(std::move(t)) {
+        local_pack_transaction();
     }
 
+    // used by abi_serializer
+    packed_transaction(bytes&& packed_txn, signatures_type&& sigs, compression_type _compression = none)
+        : signatures(std::move(sigs)), compression(_compression), packed_trx(std::move(packed_txn)) {
+        local_unpack_transaction();
+    }
+
+    packed_transaction(transaction&& t, signatures_type&& sigs, compression_type _compression = none)
+        : signatures(std::move(sigs)), compression(_compression), unpacked_trx(std::move(t), signatures) {
+        local_pack_transaction();
+    }
+
+public:
     uint32_t get_unprunable_size() const;
     uint32_t get_prunable_size() const;
 
     digest_type packed_digest() const;
 
+    transaction_id_type id() const { return unpacked_trx.id(); }
+    bytes               get_raw_transaction() const;
+
+    time_point_sec            expiration() const { return unpacked_trx.expiration; }
+    const transaction&        get_transaction() const { return unpacked_trx; }
+    const signed_transaction& get_signed_transaction() const { return unpacked_trx; }
+    const signatures_type&    get_signatures() const { return signatures; }
+    const auto&               get_compression() const { return compression; }
+    const bytes&              get_packed_transaction() const { return packed_trx; }
+
+private:
     signatures_type                          signatures;
     fc::enum_type<uint8_t, compression_type> compression;
     bytes                                    packed_trx;
 
-    time_point_sec      expiration() const;
-    transaction_id_type id() const;
-    transaction_id_type get_uncached_id() const; // thread safe
-    bytes               get_raw_transaction() const; // thread safe
-    transaction         get_transaction() const;
-    signed_transaction  get_signed_transaction() const;
-    void                set_transaction(const transaction& t, compression_type _compression = none);
+private:
+    void local_unpack_transaction();
+    void local_pack_transaction();
+
+    friend struct fc::reflector<packed_transaction>;
+    friend struct fc::reflector_init_visitor<packed_transaction>;
+    void reflector_init();
 
 private:
-    mutable optional<transaction> unpacked_trx;  // <-- intermediate buffer used to retrieve values
-    void                          local_unpack() const;
+    // cache unpacked trx, for thread safety do not modify after construction
+    signed_transaction unpacked_trx;
 };
 
 using packed_transaction_ptr = std::shared_ptr<packed_transaction>;

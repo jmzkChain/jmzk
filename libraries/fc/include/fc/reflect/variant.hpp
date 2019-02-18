@@ -39,10 +39,10 @@ private:
 };
 
 template<typename T>
-class from_variant_visitor : reflector_verifier_visitor<T> {
+class from_variant_visitor : reflector_init_visitor<T> {
 public:
     from_variant_visitor(const variant_object& _vo, T& v)
-        : reflector_verifier_visitor<T>(v)
+        : reflector_init_visitor<T>(v)
         , vo(_vo) {}
 
     template<typename Member, class Class, Member(Class::*member)>

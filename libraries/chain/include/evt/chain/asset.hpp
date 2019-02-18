@@ -61,7 +61,7 @@ private:
     friend struct fc::reflector<symbol>;
 
     void
-    reflector_verify() const {
+    reflector_init() const {
         EVT_ASSERT(valid(), symbol_type_exception, "invalid symbol");
     }
 };
@@ -176,7 +176,7 @@ public:
     friend struct fc::reflector<asset>;
 
     void
-    reflector_verify() const {
+    reflector_init() const {
         EVT_ASSERT(is_amount_within_range(), asset_type_exception, "magnitude of asset amount must be less than 2^62");
         EVT_ASSERT(sym_.valid(), asset_type_exception, "invalid symbol");
     }

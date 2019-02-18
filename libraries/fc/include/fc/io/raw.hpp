@@ -228,7 +228,7 @@ unpack(Stream& s, std::shared_ptr<T>& v) {
 template<typename Stream>
 inline void
 pack(Stream& s, const signed_int& v) {
-    uint32_t val = (v.value << 1) ^ (v.value >> 31);
+    uint32_t val = (v.value<<1) ^ (v.value>>31); //apply zigzag encoding
     do {
         uint8_t b = uint8_t(val) & 0x7f;
         val >>= 7;
@@ -260,9 +260,7 @@ unpack(Stream& s, signed_int& vi) {
         v |= uint32_t(uint8_t(b) & 0x7f) << by;
         by += 7;
     } while(uint8_t(b) & 0x80);
-    vi.value = ((v >> 1) ^ (v >> 31)) + (v & 0x01);
-    vi.value = v & 0x01 ? vi.value : -vi.value;
-    vi.value = -vi.value;
+    vi.value = (v>>1) ^ (~(v&1)+1ull); //reverse zigzag encoding
 }
 
 template<typename Stream>
@@ -446,9 +444,9 @@ private:
 };
 
 template<typename Stream, typename Class>
-struct unpack_object_visitor : fc::reflector_verifier_visitor<Class> {
+struct unpack_object_visitor : fc::reflector_init_visitor<Class> {
     unpack_object_visitor(Class& _c, Stream& _s)
-        : fc::reflector_verifier_visitor<Class>(_c)
+        : fc::reflector_init_visitor<Class>(_c)
         , s(_s) {}
 
     template<typename T, typename C, T(C::*p)>
@@ -513,6 +511,7 @@ struct if_enum {
     static inline void pack(Stream& s, const T& v) {
         fc::reflector<T>::visit(pack_object_visitor<Stream, T>(v, s));
     }
+    
     template<typename Stream, typename T>
     static inline void unpack(Stream& s, T& v) {
         fc::reflector<T>::visit(unpack_object_visitor<Stream, T>(v, s));
@@ -525,6 +524,7 @@ struct if_enum<fc::true_type> {
     static inline void pack(Stream& s, const T& v) {
         fc::raw::pack(s, (int64_t)v);
     }
+
     template<typename Stream, typename T>
     static inline void unpack(Stream& s, T& v) {
         int64_t temp;
@@ -539,6 +539,7 @@ struct if_reflected {
     static inline void pack(Stream& s, const T& v) {
         if_class<typename fc::is_class<T>::type>::pack(s, v);
     }
+
     template<typename Stream, typename T>
     static inline void unpack(Stream& s, T& v) {
         if_class<typename fc::is_class<T>::type>::unpack(s, v);
@@ -551,13 +552,20 @@ struct if_reflected<fc::true_type> {
     static inline void pack(Stream& s, const T& v) {
         if_enum<typename fc::reflector<T>::is_enum>::pack(s, v);
     }
+
     template<typename Stream, typename T>
     static inline void unpack(Stream& s, T& v) {
         if_enum<typename fc::reflector<T>::is_enum>::unpack(s, v);
+        // has_feature_reflector_init_on_unpacked_reflected_types defined below to indicate reflector_init called
+        auto visitor = reflector_init_visitor<T>(v);
+        visitor.reflector_init();
     }
 };
 
 }  // namespace detail
+
+// allow users to verify version of fc calls reflector_init on unpacked reflected types
+constexpr bool has_feature_reflector_init_on_unpacked_reflected_types = true;
 
 template<typename Stream, typename T>
 inline void

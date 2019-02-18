@@ -81,7 +81,7 @@ evt_link_plugin_impl::applied_block(const block_state_ptr& bs) {
     }
 
     for(auto& trx : bs->trxs) {
-        for(auto& act : trx->trx.actions) {
+        for(auto& act : trx->packed_trx->get_transaction().actions) {
             if(act.name != N(everipay)) {
                 continue;
             }
