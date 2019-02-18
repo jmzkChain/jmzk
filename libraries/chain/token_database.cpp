@@ -1295,16 +1295,6 @@ token_database::load_savepoints(std::istream& is) {
     my_->load_savepoints(is);
 }
 
-rocksdb::DB*
-token_database::internal_db() const {
-    return my_->db_;
-}
-
-fc::path
-token_database::get_db_path() const {
-    return my_->get_db_path();
-}
-
 }}  // namespace evt::chain
 
 FC_REFLECT(evt::chain::__internal::pd_header, (dirty_flag));

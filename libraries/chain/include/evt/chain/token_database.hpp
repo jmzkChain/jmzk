@@ -96,6 +96,7 @@ private:
 
 public:
     std::string_view as_string_view() const { return view_; }
+    size_t size() const { return view_.size(); }
 
 private:
     data_variant_t   var_;
@@ -214,9 +215,6 @@ private:
     void flush() const;
     void persist_savepoints(std::ostream&) const;
     void load_savepoints(std::istream&);
-
-    rocksdb::DB* internal_db() const;
-    fc::path     get_db_path() const;
 
 private:
     std::unique_ptr<class token_database_impl> my_;
