@@ -22,12 +22,12 @@ private:
     struct cache_key {
     public:
         cache_key(token_type type, const std::optional<name128>& domain, const name128& key) {
-            auto ds = fc::datastream<char*>(buf_);
+            auto ds = fc::datastream<char*>((char*)buf_, sizeof(buf_));
             fc::raw::pack(ds, (int)type);
             fc::raw::pack(ds, domain);
             fc::raw::pack(ds, key);
 
-            slice_ = rocksdb::Slice(buf_, ds.tell());
+            slice_ = rocksdb::Slice(buf_, ds.tellp());
         }
 
     public:
@@ -49,19 +49,20 @@ private:
         T                            data;
     };
 
+    template<typename T>
     struct cache_entry_deleter {
     public:
-        cache_entry_deleter(token_database_cache& self, void* handle)
+        cache_entry_deleter(token_database_cache& self, rocksdb::Cache::Handle* handle)
             : self_(self), handle_(handle) {}
 
     void
-    operator()(cache_entry* ptr) {
+    operator()(T* ptr) {
         self_.cache_->Release(handle_);
     }
 
     private:
-        token_database_cache& self_;
-        void*                 handle_;
+        token_database_cache&   self_;
+        rocksdb::Cache::Handle* handle_;
     };
 
 public:
@@ -71,10 +72,10 @@ public:
         auto k = cache_key(type, domain, key);
         auto h = cache_->Lookup(k.as_slice());
         if(h != nullptr) {
-            auto entry = (cache_entry*)cache_->Value(h);
+            auto entry = (cache_entry<T>*)cache_->Value(h);
             EVT_ASSERT2(entry->ti == boost::typeindex::type_id<T>(), token_database_cache_exception,
                 "Types are not matched between cache({}) and query({})", entry->ti.pretty_name(), boost::typeindex::type_id<T>().pretty_name());
-            return std::shared_ptr<T>(&entry.data, cache_entry_deleter(*this, h));
+            return std::shared_ptr<T>(&entry->data, cache_entry_deleter<T>(*this, h));
         }
 
         auto str = std::string();
@@ -83,13 +84,14 @@ public:
             return nullptr;
         }
 
-        auto entry = new cache_entry();
-        extract_db_value(str, entry.data);
+        auto entry = new cache_entry<T>();
+        extract_db_value(str, entry->data);
 
-        auto s = cache_->Insert(k.as_slice(), (void*)entry, str.size(), [](auto& ck, auto cv) { delete (T*)cv; }, &h);
-        FC_ASSERT(s == rocksdb::Status::Ok());
+        auto s = cache_->Insert(k.as_slice(), (void*)entry, str.size(),
+            [](auto& ck, auto cv) { delete (cache_entry<T>*)cv; }, &h);
+        FC_ASSERT(s == rocksdb::Status::OK());
 
-        return std::shared_ptr<T>(&entry.data, cache_entry_deleter(*this, h));
+        return std::shared_ptr<T>(&entry->data, cache_entry_deleter<T>(*this, h));
     }
 
     template<typename T>
@@ -98,16 +100,18 @@ public:
         auto k = cache_key(type, domain, key);
         FC_ASSERT(!cache_->Lookup(k.as_slice()));
 
-        auto v     = make_db_value(data);
+        auto v = make_db_value(data);
+        db_.put_token(type, op, domain, key, v.as_string_view());
+        
         auto entry = new cache_entry<T>(std::forward<T>(data));
-
-        auto s = cache_->Insert(k.as_slice(), (void*)entry, v.size(), [](auto& ck, auto cv) { delete (T*)cv; }, &h);
-        FC_ASSERT(s == rocksdb::Status::Ok());
+        auto s = cache_->Insert(k.as_slice(), (void*)entry, v.size(),
+            [](auto& ck, auto cv) { delete (cache_entry<T>*)cv; }, nullptr /* handle */);
+        FC_ASSERT(s == rocksdb::Status::OK());
     }
 
 private:
-    token_database&        db_;
-    std::shared_ptr<Cache> cache_;
+    token_database&                 db_;
+    std::shared_ptr<rocksdb::Cache> cache_;
 };
 
 }}  // namespace evt::chain
