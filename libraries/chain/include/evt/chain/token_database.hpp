@@ -18,6 +18,7 @@
 
 namespace rocksdb {
 class DB;
+class Slice;
 }  // namespace rocksdb
 
 namespace evt { namespace chain {
@@ -217,12 +218,15 @@ private:
     void persist_savepoints(std::ostream&) const;
     void load_savepoints(std::istream&);
 
-private:
-    boost::signals2::signal<void(token_type type, const std::optional<name128>& domain, const name128& key)> rollback_token_value;
-    boost::signals2::signal<void(token_type type, const std::optional<name128>& domain, const name128& key)> remove_token_value;
+private:  // for cache usage
+    std::string get_db_key(token_type type, const std::optional<name128>& domain, const name128& key);
+    boost::signals2::signal<void(const rocksdb::Slice&)> rollback_token_value;
+    boost::signals2::signal<void(const rocksdb::Slice&)> remove_token_value;
 
 private:
     std::unique_ptr<class token_database_impl> my_;
+    friend class token_database_cache;
+    friend class token_database_impl;
 };
 
 }}  // namespace evt::chain
