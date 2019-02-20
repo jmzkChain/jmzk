@@ -49,4 +49,18 @@ TEST_CASE_METHOD(tokendb_test, "cache_test", "[tokendb]") {
 
         s.accept();
     }
+
+    SECTION("rollback_test") {
+        auto s = tokendb.new_savepoint_session();
+
+        auto var = fc::json::from_string(domain_data);
+        auto dom = var.as<domain_def>();
+
+        cache.put_token(token_type::domain, action_op::put, std::nullopt, "dm-tkdb-cache-2", dom);
+        CHECK(EXISTS_TOKEN(domain, "dm-tkdb-cache-2"));
+
+        s.undo();
+
+        CHECK(cache.lookup_token<domain_def>(token_type::domain, std::nullopt, "dm-tkdb-cache-2") == nullptr);
+    }
 }

@@ -81,6 +81,22 @@ public:
         return std::shared_ptr<T>(&entry->data, cache_entry_deleter<T>(*this, h));
     }
 
+    template<typename T>
+    std::shared_ptr<T>
+    lookup_token(token_type type, const std::optional<name128>& domain, const name128& key, bool no_throw = false) {
+        static_assert(std::is_class_v<T>, "T should be a class type");
+
+        auto k = db_.get_db_key(type, domain, key);
+        auto h = cache_->Lookup(k);
+        if(h != nullptr) {
+            auto entry = (cache_entry<T>*)cache_->Value(h);
+            EVT_ASSERT2(entry->ti == boost::typeindex::type_id<T>(), token_database_cache_exception,
+                "Types are not matched between cache({}) and query({})", entry->ti.pretty_name(), boost::typeindex::type_id<T>().pretty_name());
+            return std::shared_ptr<T>(&entry->data, cache_entry_deleter<T>(*this, h));
+        }
+        return nullptr;
+    }
+
     template<typename T, typename U = std::decay_t<T>>
     void
     put_token(token_type type, action_op op, const std::optional<name128>& domain, const name128& key, T&& data) {
