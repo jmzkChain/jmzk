@@ -283,6 +283,9 @@ get_db_prefix<token_def>(const token_def& v) {
         .created_index = context.get_index_of_trx()                           \
     }
 
+#define CHECK_SYM(VALUEREF, PROVIDED) \
+    EVT_ASSERT2(VALUEREF.sym == PROVIDED, symbol_type_exception, "Provided symbol({}) is not correct, should be: {}", PROVIDED, VALUEREF.sym);
+
 #define READ_DB_ASSET(ADDR, SYM, VALUEREF)                                                              \
     try {                                                                                               \
         auto str = std::string();                                                                       \
@@ -292,7 +295,8 @@ get_db_prefix<token_def>(const token_def& v) {
     }                                                                                                   \
     catch(token_database_exception&) {                                                                  \
         EVT_THROW2(balance_exception, "There's no balance left in {} with sym id: {}", ADDR, SYM.id()); \
-    }
+    }                                                                                                   \
+    CHECK_SYM(VALUEREF, SYM);
 
 #define READ_DB_ASSET_NO_THROW(ADDR, SYM, VALUEREF)                         \
     {                                                                       \
@@ -304,6 +308,7 @@ get_db_prefix<token_def>(const token_def& v) {
         }                                                                   \
         else {                                                              \
             extract_db_value(str, VALUEREF);                                \
+            CHECK_SYM(VALUEREF, SYM);                                       \
         }                                                                   \
     }
 
@@ -315,6 +320,7 @@ get_db_prefix<token_def>(const token_def& v) {
         }                                                                   \
         else {                                                              \
             extract_db_value(str, VALUEREF);                                \
+            CHECK_SYM(VALUEREF, SYM);                                       \
         }                                                                   \
     }
 
@@ -800,7 +806,7 @@ EVT_ACTION_IMPL_BEGIN(updfungible) {
         if(ufact.issue.has_value()) {
             EVT_ASSERT(ufact.issue->name == "issue", permission_type_exception,
                 "Name ${name} does not match with the name of issue permission.", ("name",ufact.issue->name));
-            EVT_ASSERT(ufact.issue->threshold > 0 && validate(*ufact.issue), permission_type_exception,
+            EVT_ASSERT(ufact.issue->threshold >= 0 && validate(*ufact.issue), permission_type_exception,
                 "Issue permission is not valid, which may be caused by invalid threshold, duplicated keys.");
             pchecker(*ufact.issue, false);
 
@@ -2209,7 +2215,7 @@ EVT_ACTION_IMPL_BEGIN(distpsvbonus) {
 
         pb.round++;
         pb.deadline = spbact.deadline;
-        PUT_DB_TOKEN(token_type::bonus, pb);
+        UPD_DB_TOKEN(token_type::bonus, pb);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }

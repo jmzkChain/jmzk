@@ -841,7 +841,7 @@ struct set_fungible_subcommands {
         nfcmd->add_option("symbol-name", sym_name, localized("The name of symbol"))->required();
         nfcmd->add_option("symbol", sym, localized("The symbol of the new fungible asset"))->required();
         nfcmd->add_option("creator", creator, localized("The public key of the creator"))->required();
-        nfcmd->add_option("total-supply", total_supply, localized("Total supply of this fungible asset, 0 means unlimited"))->required();
+        nfcmd->add_option("total-supply", total_supply, localized("Total supply of this fungible asset"))->required();
         nfcmd->add_option("issue", issue, localized("JSON string or filename defining ISSUE permission"), true);
         nfcmd->add_option("manage", manage, localized("JSON string or filename defining MANAGE permission"), true);
 
@@ -864,7 +864,7 @@ struct set_fungible_subcommands {
         });
 
         auto ufcmd = actionRoot->add_subcommand("update", localized("Update existing domain"));
-        ufcmd->add_option("symbol", sym, localized("The symbol of the updating fungible asset"))->required();
+        ufcmd->add_option("symbol-id", sym_id, localized("The symbol id of the updating fungible asset"))->required();
         ufcmd->add_option("-i,--issue", issue, localized("JSON string or filename defining ISSUE permission"), true);
         ufcmd->add_option("-m,--manage", manage, localized("JSON string or filename defining MANAGE permission"), true);
 
