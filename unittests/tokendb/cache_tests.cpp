@@ -31,6 +31,8 @@ TEST_CASE_METHOD(tokendb_test, "cache_test", "[tokendb]") {
 
         CHECK_THROWS_AS(cache.read_token<domain_def>(token_type::domain, std::nullopt, "dm-tkdb-test123"), unknown_token_database_key);
         CHECK(cache.read_token<domain_def>(token_type::domain, std::nullopt, "dm-tkdb-test123", true) == nullptr);
+
+        CHECK_THROWS_AS(cache.read_token<token_def>(token_type::domain, std::nullopt, "dm-tkdb-test"), token_database_cache_exception);
     }
 
     SECTION("write_test") {

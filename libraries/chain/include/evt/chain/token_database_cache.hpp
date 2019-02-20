@@ -42,7 +42,9 @@ private:
     struct cache_entry {
     public:
         cache_entry() : ti(boost::typeindex::type_id<T>()) {}
-        cache_entry(T&& d) : ti(boost::typeindex::type_id<T>()), data(std::forward<T>(d)) {}
+
+        template<typename U>
+        cache_entry(U&& d) : ti(boost::typeindex::type_id<T>()), data(std::forward<U>(d)) {}
 
     public:
         boost::typeindex::type_index ti;
@@ -69,6 +71,8 @@ public:
     template<typename T>
     std::shared_ptr<T>
     read_token(token_type type, const std::optional<name128>& domain, const name128& key, bool no_throw = false) {
+        static_assert(std::is_class_v<T>, "T should be a class type");
+
         auto k = cache_key(type, domain, key);
         auto h = cache_->Lookup(k.as_slice());
         if(h != nullptr) {
@@ -94,20 +98,36 @@ public:
         return std::shared_ptr<T>(&entry->data, cache_entry_deleter<T>(*this, h));
     }
 
-    template<typename T>
+    template<typename T, typename U = std::decay_t<T>>
     void
     put_token(token_type type, action_op op, const std::optional<name128>& domain, const name128& key, T&& data) {
+        static_assert(std::is_class_v<U>, "Underlying of T should be a class type");
+
         auto k = cache_key(type, domain, key);
         FC_ASSERT(!cache_->Lookup(k.as_slice()));
 
         auto v = make_db_value(data);
         db_.put_token(type, op, domain, key, v.as_string_view());
         
-        auto entry = new cache_entry<T>(std::forward<T>(data));
+        auto entry = new cache_entry<U>(std::forward<T>(data));
         auto s = cache_->Insert(k.as_slice(), (void*)entry, v.size(),
-            [](auto& ck, auto cv) { delete (cache_entry<T>*)cv; }, nullptr /* handle */);
+            [](auto& ck, auto cv) { delete (cache_entry<U>*)cv; }, nullptr /* handle */);
         FC_ASSERT(s == rocksdb::Status::OK());
     }
+
+private:
+    void
+    watch_db() {
+        db_.rollback_token_value.connect([](auto type, auto& domain, auto& key) {
+            auto k = cache_key(type, domain, key);
+            cache_->Erase(k.as_string_view());
+        });
+        db_.remove_token_value.connect([](auto type, auto& domain, auto& key) {
+            auto k = cache_key(type, domain, key);
+            cache_->Erase(k.as_string_view());
+        });
+    }
+
 
 private:
     token_database&                 db_;

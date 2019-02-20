@@ -8,6 +8,7 @@
 #include <optional>
 #include <string_view>
 #include <boost/noncopyable.hpp>
+#include <boost/signals2/signal.hpp>
 #include <fc/reflect/reflect.hpp>
 #include <fc/filesystem.hpp>
 #include <evt/chain/types.hpp>
@@ -215,6 +216,10 @@ private:
     void flush() const;
     void persist_savepoints(std::ostream&) const;
     void load_savepoints(std::istream&);
+
+private:
+    boost::signals2::signal<void(token_type type, const std::optional<name128>& domain, const name128& key)> rollback_token_value;
+    boost::signals2::signal<void(token_type type, const std::optional<name128>& domain, const name128& key)> remove_token_value;
 
 private:
     std::unique_ptr<class token_database_impl> my_;
