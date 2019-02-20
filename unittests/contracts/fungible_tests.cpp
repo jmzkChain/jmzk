@@ -148,7 +148,12 @@ TEST_CASE_METHOD(contracts_test, "contract_issuefungible_test", "[contracts]") {
     to_variant(issfg, var);
     CHECK_THROWS_AS(my_tester->push_action(N(issuefungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer), address_reserved_exception);
 
+    issfg.number  = asset::from_string(string("5000.000000 S#") + std::to_string(get_sym_id()));
     issfg.address = key;
+    to_variant(issfg, var);
+    CHECK_THROWS_AS(my_tester->push_action(N(issuefungible), N128(.fungible),(name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer), symbol_type_exception);
+
+    issfg.number  = asset::from_string(string("5000.00000 S#") + std::to_string(get_sym_id()));
     to_variant(issfg, var); 
     my_tester->push_action(N(issuefungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer);
 
@@ -207,9 +212,14 @@ TEST_CASE_METHOD(contracts_test, "contract_transferft_test", "[contracts]") {
     CHECK_THROWS_AS(my_tester->push_action(N(transferft), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer), address_reserved_exception);
 
     trft.to     = address(tester::get_public_key(N(to)));
-    trft.number = asset::from_string(string("15.00000 S#") + std::to_string(get_sym_id()));
+    trft.number = asset::from_string(string("15.000000 S#") + std::to_string(get_sym_id()));
     to_variant(trft, var);
     key_seeds.push_back(N(to));
+    CHECK_THROWS_AS(my_tester->push_action(N(transferft), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer), symbol_type_exception);
+
+
+    trft.number = asset::from_string(string("15.00000 S#") + std::to_string(get_sym_id()));
+    to_variant(trft, var);
     my_tester->push_action(N(transferft), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer);
 
     auto payer2 = address(N(fungible), name128::from_number(get_sym_id()), 0);
@@ -347,7 +357,12 @@ TEST_CASE_METHOD(contracts_test, "contract_evt2pevt_test", "[contracts]") {
     to_variant(e2p, var);
     CHECK_THROWS_AS(my_tester->push_action(N(evt2pevt), N128(.fungible), (name128)std::to_string(evt_sym().id()), var.get_object(), key_seeds, payer), address_reserved_exception);
 
+    e2p.number = asset::from_string(string("5.000000 S#1"));
     e2p.to = key;
+    to_variant(e2p, var);
+    CHECK_THROWS_AS(my_tester->push_action(N(evt2pevt), N128(.fungible), (name128)std::to_string(evt_sym().id()), var.get_object(), key_seeds, payer), fungible_symbol_exception);
+
+    e2p.number = asset::from_string(string("5.00000 S#1"));
     to_variant(e2p, var);
     my_tester->push_action(N(evt2pevt), N128(.fungible), (name128)std::to_string(evt_sym().id()), var.get_object(), key_seeds, payer);
 
