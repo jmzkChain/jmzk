@@ -12,7 +12,7 @@ TEST_CASE_METHOD(contracts_test, "everipass_test", "[contracts]") {
     link.set_header(header);
     link.add_segment(evt_link::segment(evt_link::timestamp, head_ts));
     link.add_segment(evt_link::segment(evt_link::domain, get_domain_name()));
-    link.add_segment(evt_link::segment(evt_link::token, "t3"));
+    link.add_segment(evt_link::segment(evt_link::token, "t5"));
 
     auto ep = everipass();
     ep.link = link;
@@ -29,38 +29,38 @@ TEST_CASE_METHOD(contracts_test, "everipass_test", "[contracts]") {
     // header is not valid
     ep.link.set_header(0);
     sign_link(ep.link);
-    CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer), evt_link_version_exception);
+    CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t5), ep), key_seeds, payer), evt_link_version_exception);
 
     // type is not valid
     ep.link.set_header(evt_link::version1);
     sign_link(ep.link);
-    CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer), evt_link_type_exception);
+    CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t5), ep), key_seeds, payer), evt_link_type_exception);
 
     // shoule be everiPass
     ep.link.set_header(evt_link::version1 | evt_link::everiPay);
     sign_link(ep.link);
-    CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer), evt_link_type_exception);
+    CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t5), ep), key_seeds, payer), evt_link_type_exception);
 
     // timeout
     ep.link.set_header(header);
     ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts - 40));
     sign_link(ep.link);
-    CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer), evt_link_expiration_exception);
+    CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t5), ep), key_seeds, payer), evt_link_expiration_exception);
 
     // timeout
     ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts + 40));
     sign_link(ep.link);
-    CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer), evt_link_expiration_exception);
+    CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t5), ep), key_seeds, payer), evt_link_expiration_exception);
 
     // correct
     ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts - 5));
     sign_link(ep.link);
-    CHECK_NOTHROW(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer));
+    CHECK_NOTHROW(my_tester->push_action(action(get_domain_name(), N128(t5), ep), key_seeds, payer));
 
     // correct
     ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts + 5));
     sign_link(ep.link);
-    CHECK_NOTHROW(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer));
+    CHECK_NOTHROW(my_tester->push_action(action(get_domain_name(), N128(t5), ep), key_seeds, payer));
 
     // because t1 has two owners, here we only provide one
     ep.link.add_segment(evt_link::segment(evt_link::token, "t1"));
@@ -68,27 +68,27 @@ TEST_CASE_METHOD(contracts_test, "everipass_test", "[contracts]") {
     CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t1), ep), key_seeds, payer), everipass_exception);
 
     // correct
-    ep.link.add_segment(evt_link::segment(evt_link::token, "t3"));
+    ep.link.add_segment(evt_link::segment(evt_link::token, "t5"));
     ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts));
     sign_link(ep.link);
-    CHECK_NOTHROW(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer));
+    CHECK_NOTHROW(my_tester->push_action(action(get_domain_name(), N128(t5), ep), key_seeds, payer));
 
     // token is not existed
-    ep.link.add_segment(evt_link::segment(evt_link::token, "t5"));
+    ep.link.add_segment(evt_link::segment(evt_link::token, "t6"));
     sign_link(ep.link);
-    CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t5), ep), key_seeds, payer), unknown_token_exception);
+    CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t6), ep), key_seeds, payer), unknown_token_exception);
 
     // destroy token
     header |= evt_link::destroy;
     ep.link.set_header(header);
-    ep.link.add_segment(evt_link::segment(evt_link::token, "t3"));
+    ep.link.add_segment(evt_link::segment(evt_link::token, "t5"));
     sign_link(ep.link);
-    CHECK_NOTHROW(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer));
+    CHECK_NOTHROW(my_tester->push_action(action(get_domain_name(), N128(t5), ep), key_seeds, payer));
 
     // token is already destroyed
     ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts - 1));
     sign_link(ep.link);
-    CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t3), ep), key_seeds, payer), token_destroyed_exception);
+    CHECK_THROWS_AS(my_tester->push_action(action(get_domain_name(), N128(t5), ep), key_seeds, payer), token_destroyed_exception);
 }
 
 TEST_CASE_METHOD(contracts_test, "everipay_test", "[contracts]") {
@@ -103,7 +103,7 @@ TEST_CASE_METHOD(contracts_test, "everipay_test", "[contracts]") {
     link.add_segment(evt_link::segment(evt_link::timestamp, head_ts));
     link.add_segment(evt_link::segment(evt_link::max_pay, 50'000'000));  // 500.00000 EVT
     link.add_segment(evt_link::segment(evt_link::symbol_id, evt_sym().id()));
-    link.add_segment(evt_link::segment(evt_link::link_id, "KIJHNHFMJDUKJUAA"));
+    link.add_segment(evt_link::segment(evt_link::link_id, "KIJHNHFMJDUKJUAB"));
 
     auto ep   = everipay();
     ep.link   = link;
@@ -177,6 +177,10 @@ TEST_CASE_METHOD(contracts_test, "everipay_test", "[contracts]") {
 
     // correct
     ep.link.add_segment(evt_link::segment(evt_link::link_id, "JKHBJKBJKGJHGJKG"));
+    ep.number = asset::from_string("5.000000 S#1");
+    sign_link(ep.link);
+    CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer), symbol_type_exception);
+
     ep.number = asset::from_string("5.00000 S#1");
     sign_link(ep.link);
     CHECK_NOTHROW(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer));

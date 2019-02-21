@@ -18,6 +18,7 @@ add_executable(evt_unittests
     contracts/lock_tests.cpp
     contracts/bonus_tests.cpp
     contracts/utils_tests.cpp
+    contracts/evtlink_tests.cpp
     )
 
 target_link_libraries(evt_unittests

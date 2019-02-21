@@ -79,6 +79,60 @@ group_json_raw = '''
    }
 }
 '''
+bonus_json_raw = '''
+{
+    "sym": "5,S#3",
+    "rate": "0.01",
+    "base_charge": "0.00000 S#3",
+    "charge_threshold": "1.00000 S#3",
+    "minimum_charge": "0.01000 S#3",
+    "dist_threshold": "50.00000 S#3",
+    "rules": [
+        {
+            "type": "fixed",
+            "data": {
+                "receiver": {
+                    "type": "address",
+                    "data": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+                },
+                "amount": "10.00000 S#3"
+            }
+        },
+        {
+            "type": "percent",
+            "data": {
+                "receiver": {
+                    "type": "ftholders",
+                    "data": {
+                        "threshold": "1.00000 S#1"
+                    }
+                },
+                "percent": "0.3"
+            }
+        },
+        {
+            "type": "remaining_percent",
+            "data": {
+                "receiver": {
+                    "type": "address",
+                    "data": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+                },
+                "percent": "1"
+            }
+        }
+    ],
+    "methods": [
+        {
+            "action": "transferft",
+            "method": "outside_amount"
+        },
+        {
+            "action": "everipay",
+            "method": "within_amount"
+        }
+    ]
+}
+'''
 
 def pre_action():
     newdomain = AG.new_action(
@@ -134,6 +188,9 @@ def pre_action():
     everipay = AG.new_action('everipay', payee=pub2, number=asset(
         1), link=pay_link.to_string())
 
+    bonus_json = json.loads(bonus_json_raw)
+    setpsvbonus = AG.new_action_from_json('setpsvbonus', json.dumps(bonus_json))
+
     trx = TG.new_trx()
     trx.add_action(issuefungible2)
     trx.add_sign(priv_evt)
@@ -159,14 +216,6 @@ def pre_action():
     resp = api.push_transaction(trx.dumps())
     print(resp)
 
-    # trx = TG.new_trx()
-    # trx.add_action(issuefungible2)
-    # trx.add_sign(priv_evt)
-    # trx.set_payer(user.pub_key.to_string())
-    # resp = api.push_transaction(trx.dumps())
-    # print(resp.content)
-    
-
     trx = TG.new_trx()
     trx.add_action(e2p)
     trx.add_sign(user.priv_key)
@@ -179,6 +228,14 @@ def pre_action():
     trx.add_action(destroytoken)
     trx.add_action(everipass)
     trx.add_action(everipay)
+    trx.add_sign(user.priv_key)
+    trx.set_payer(user.pub_key.to_string())
+    resp = api.push_transaction(trx.dumps())
+    print(resp)
+
+    trx = TG.new_trx()
+    trx.add_action(setpsvbonus)
+    trx.add_sign(priv_evt)
     trx.add_sign(user.priv_key)
     trx.set_payer(user.pub_key.to_string())
     resp = api.push_transaction(trx.dumps())
@@ -415,7 +472,7 @@ class Test(unittest.TestCase):
         res_dict = json.loads(resp)
         self.assertTrue(type(res_dict) is list)
         self.assertEqual(len(res_dict), 1, msg=resp)
-        self.assertEqual(res_dict[0], '3.00000 S#3', msg=resp)
+        self.assertEqual(res_dict[0], '2.98000 S#3', msg=resp)
 
     def test_get_history_assets(self):
         req = {
@@ -436,7 +493,7 @@ class Test(unittest.TestCase):
         res_dict = json.loads(resp)
         self.assertTrue(type(res_dict) is list)
         self.assertEqual(len(res_dict), 1, msg=resp)
-        self.assertEqual(res_dict[0], '3.00000 S#3', msg=resp)
+        self.assertEqual(res_dict[0], '2.98000 S#3', msg=resp)
 
     def test_get_actions(self):
         req = {
@@ -644,7 +701,7 @@ class Test(unittest.TestCase):
 
         resp = api.get_fungible_actions(json.dumps(req)).text
         res_dict = json.loads(resp)
-        self.assertEqual(len(res_dict), 4, msg=resp)
+        self.assertEqual(len(res_dict), 6, msg=resp)
         self.assertTrue('trx_id' in res_dict[0].keys(), msg=resp)
         self.assertTrue('name' in res_dict[0].keys(), msg=resp)
         self.assertTrue('domain' in res_dict[0].keys(), msg=resp)
@@ -654,6 +711,7 @@ class Test(unittest.TestCase):
         self.assertEqual(res_dict[0]['name'], 'issuefungible', msg=resp)
         self.assertTrue(str(sym_id) in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
+        self.assertTrue('paybonus' in resp, msg=resp)
 
         req = {
             'sym_id': 338422621,
@@ -665,7 +723,7 @@ class Test(unittest.TestCase):
 
         resp = api.get_fungible_actions(json.dumps(req)).text
         res_dict = json.loads(resp)
-        self.assertEqual(len(res_dict), 4, msg=resp)
+        self.assertEqual(len(res_dict), 6, msg=resp)
         self.assertTrue('trx_id' in res_dict[0].keys(), msg=resp)
         self.assertTrue('name' in res_dict[0].keys(), msg=resp)
         self.assertTrue('domain' in res_dict[0].keys(), msg=resp)
@@ -685,14 +743,14 @@ class Test(unittest.TestCase):
 
         resp = api.get_fungible_actions(json.dumps(req)).text
         res_dict = json.loads(resp)
-        self.assertEqual(len(res_dict), 4, msg=resp)
+        self.assertEqual(len(res_dict), 6, msg=resp)
         self.assertTrue('trx_id' in res_dict[0].keys(), msg=resp)
         self.assertTrue('name' in res_dict[0].keys(), msg=resp)
         self.assertTrue('domain' in res_dict[0].keys(), msg=resp)
         self.assertTrue('key' in res_dict[0].keys(), msg=resp)
         self.assertTrue('data' in res_dict[0].keys(), msg=resp)
         self.assertTrue('timestamp' in res_dict[0].keys(), msg=resp)
-        self.assertEqual(res_dict[0]['name'], 'everipay', msg=resp)
+        self.assertEqual(res_dict[1]['name'], 'everipay', msg=resp)
         self.assertTrue(str(sym_id) in resp, msg=resp)
 
         req = {
@@ -706,7 +764,7 @@ class Test(unittest.TestCase):
 
         resp = api.get_fungible_actions(json.dumps(req)).text
         res_dict = json.loads(resp)
-        self.assertEqual(len(res_dict), 4, msg=resp)
+        self.assertEqual(len(res_dict), 6, msg=resp)
         self.assertTrue('trx_id' in res_dict[0].keys(), msg=resp)
         self.assertTrue('name' in res_dict[0].keys(), msg=resp)
         self.assertTrue('domain' in res_dict[0].keys(), msg=resp)
@@ -785,9 +843,7 @@ class Test(unittest.TestCase):
         resp = api.get_history_transactions(json.dumps(req)).text
         res_dict = json.loads(resp)
 
-        print(user.pub_key.to_string())
-
-        self.assertEqual(len(res_dict), 9, msg=resp)
+        self.assertEqual(len(res_dict), 10, msg=resp)
         self.assertTrue('id' in res_dict[0].keys(), msg=resp)
         self.assertTrue('signatures' in res_dict[0].keys(), msg=resp)
         self.assertTrue('compression' in res_dict[0].keys(), msg=resp)
@@ -805,6 +861,9 @@ class Test(unittest.TestCase):
 
         resp = api.get_fungible_ids(json.dumps(req)).text
         self.assertTrue(str(sym_id) in resp, msg=resp)
+
+    # def test_bonus(self):
+        
 
 
 @click.command()

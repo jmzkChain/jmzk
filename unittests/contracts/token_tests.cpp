@@ -80,7 +80,8 @@ TEST_CASE_METHOD(contracts_test, "contract_issuetoken_test", "[contracts]") {
           "t1",
           "t2",
           "t3",
-          "t4"
+          "t4",
+          "t5"
         ],
         "owner": [
           "EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2"
