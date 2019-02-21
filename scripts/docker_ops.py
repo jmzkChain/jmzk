@@ -204,17 +204,22 @@ def init(ctx):
 @click.option('--port', '-p', default=5432, help='Expose port for postgres')
 @click.option('--host', '-h', default='127.0.0.1', help='Host address for postgres')
 @click.option('--password', '-x', default='', help='Password for \'postgres\' user, leave empty to diable password(anyone can login)')
+@click.option('--data-volume', '-d', default=None, help='Set one host path for data folder in postgres instead using volume')
 @click.pass_context
-def create(ctx, net, port, host, password):
+def create(ctx, net, port, host, password, data_volume):
     name = ctx.obj['name']
+    image = 'bitnami/postgresql:11.1.0'
     volume_name = '{}-data-volume'.format(name)
     volume2_name = '{}-config-volume'.format(name)
-    image = 'bitnami/postgresql:11.1.0'
+
+    if data_volume is not None:
+        volume_name = data_volume
 
     try:
         client.images.get(image)
         client.networks.get(net)
-        client.volumes.get(volume_name)
+        if data_volume is None:
+            client.volumes.get(volume_name)
         client.volumes.get(volume2_name)
     except docker.errors.ImageNotFound:
         click.echo(
@@ -578,10 +583,13 @@ def init(ctx):
 
 @evtd.command('export', help='Export reversible blocks to one backup file')
 @click.option('--file', '-f', default='rev-{}.logs'.format(datetime.now().strftime('%Y-%m-%d')), help='Backup file name of reversible blocks')
+@click.option('--data-volume', '-d', default=None, help='Set one host path for data folder in evtd instead using volume')
 @click.pass_context
-def exportrb(ctx, file):
+def exportrb(ctx, file, data_volume):
     name = ctx.obj['name']
     volume_name = '{}-data-volume'.format(name)
+    if data_volume is not None:
+        volume_name = data_volume
 
     try:
         container = client.containers.get(name)
@@ -594,7 +602,8 @@ def exportrb(ctx, file):
         return
 
     try:
-        client.volumes.get(volume_name)
+        if data_volume is None:
+            client.volumes.get(volume_name)
     except docker.errors.NotFound:
         click.echo('{} volume is not existed'.format(green(volume_name)))
         return
@@ -618,10 +627,13 @@ def exportrb(ctx, file):
 
 @evtd.command('import', help='Import reversible blocks from backup file')
 @click.option('--file', '-f', default='rev-{}.logs'.format(datetime.now().strftime('%Y-%m-%d')), help='Backup file name of reversible blocks')
+@click.option('--data-volume', '-d', default=None, help='Set one host path for data folder in evtd instead using volume')
 @click.pass_context
-def importrb(ctx, file):
+def importrb(ctx, file, data_volume):
     name = ctx.obj['name']
     volume_name = '{}-data-volume'.format(name)
+    if data_volume is not None:
+        volume_name = data_volume
 
     try:
         container = client.containers.get(name)
@@ -634,7 +646,8 @@ def importrb(ctx, file):
         return
 
     try:
-        client.volumes.get(volume_name)
+        if data_volume is None:
+            client.volumes.get(volume_name)
     except docker.errors.NotFound:
         click.echo('{} volume is not existed'.format(green(volume_name)))
         return
@@ -781,11 +794,14 @@ def getsnapshot(ctx, snapshot):
 @click.option('--postgres-name', '-g', default='pg', help='Container name or host address of postgres')
 @click.option('--postgres-db', default=None, help='Name of database in postgres, if set, postgres and history plugins will be enabled')
 @click.option('--postgres-pass', default='', help='Password for postgres')
+@click.option('--data-volume', '-d', default=None, help='Set one host path for data folder in evtd instead using volume')
 @click.pass_context
-def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_db, postgres_pass, type, arguments):
+def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_db, postgres_pass, data_volume, type, arguments):
     name = ctx.obj['name']
     volume_name = '{}-data-volume'.format(name)
     volume2_name = '{}-snapshots-volume'.format(name)
+    if data_volume is not None:
+        volume_name = data_volume
 
     if type == 'testnet':
         image = 'everitoken/evt:latest'
@@ -795,7 +811,8 @@ def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_db, post
     try:
         client.images.get(image)
         client.networks.get(net)
-        client.volumes.get(volume_name)
+        if data_volume is None:
+            client.volumes.get(volume_name)
         client.volumes.get(volume2_name)
     except docker.errors.ImageNotFound:
         click.echo(
