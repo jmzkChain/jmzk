@@ -284,7 +284,7 @@ get_db_prefix<token_def>(const token_def& v) {
     }
 
 #define CHECK_SYM(VALUEREF, PROVIDED) \
-    EVT_ASSERT2(VALUEREF.sym == PROVIDED, symbol_type_exception, "Provided symbol({}) is not correct, should be: {}", PROVIDED, VALUEREF.sym);
+    EVT_ASSERT2(VALUEREF.sym == PROVIDED, asset_symbol_exception, "Provided symbol({}) is invalid, expected: {}", PROVIDED, VALUEREF.sym);
 
 #define READ_DB_ASSET(ADDR, SYM, VALUEREF)                                                              \
     try {                                                                                               \
@@ -868,7 +868,7 @@ EVT_ACTION_IMPL_BEGIN(transferft) {
         EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(sym.id())), action_authorize_exception,
             "Invalid authorization fields(domain and key).");
         EVT_ASSERT(tfact.from != tfact.to, fungible_address_exception, "From and to are the same address");
-        EVT_ASSERT(sym != pevt_sym(), fungible_symbol_exception, "Pinned EVT cannot be transfered");
+        EVT_ASSERT(sym != pevt_sym(), asset_symbol_exception, "Pinned EVT cannot be transfered");
         check_address_reserved(tfact.to);
 
         transfer_fungible(context, tfact.from, tfact.to, tfact.number, N(transferft));
@@ -886,7 +886,7 @@ EVT_ACTION_IMPL_BEGIN(recycleft) {
         auto sym = rfact.number.sym();
         EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(sym.id())), action_authorize_exception,
             "Invalid authorization fields(domain and key).");
-        EVT_ASSERT(sym != pevt_sym(), fungible_symbol_exception, "Pinned EVT cannot be recycled");
+        EVT_ASSERT(sym != pevt_sym(), asset_symbol_exception, "Pinned EVT cannot be recycled");
 
         auto addr = get_fungible_address(sym);
         transfer_fungible(context, rfact.address, addr, rfact.number, N(recycleft), false /* pay bonus */);
@@ -919,7 +919,7 @@ EVT_ACTION_IMPL_BEGIN(evt2pevt) {
     auto& epact = context.act.data_as<add_clr_t<ACT>>();
 
     try {
-        EVT_ASSERT(epact.number.sym() == evt_sym(), fungible_symbol_exception, "Only EVT tokens can be converted to Pinned EVT tokens");
+        EVT_ASSERT(epact.number.sym() == evt_sym(), asset_symbol_exception, "Only EVT tokens can be converted to Pinned EVT tokens");
         EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(evt_sym().id())), action_authorize_exception,
             "Invalid authorization fields(domain and key).");
         check_address_reserved(epact.to);

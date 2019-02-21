@@ -175,12 +175,13 @@ TEST_CASE_METHOD(contracts_test, "everipay_test", "[contracts]") {
     sign_link(ep.link);
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer), evt_link_dupe_exception);
 
-    // correct
+    // symbol is not correct, should be '5,S#1'
     ep.link.add_segment(evt_link::segment(evt_link::link_id, "JKHBJKBJKGJHGJKG"));
     ep.number = asset::from_string("5.000000 S#1");
     sign_link(ep.link);
-    CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer), symbol_type_exception);
+    CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer), asset_symbol_exception);
 
+    // correct
     ep.number = asset::from_string("5.00000 S#1");
     sign_link(ep.link);
     CHECK_NOTHROW(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer));

@@ -149,6 +149,7 @@ FC_DECLARE_DERIVED_EXCEPTION( action_authorize_exception, action_exception, 3040
 FC_DECLARE_DERIVED_EXCEPTION( action_args_exception,      action_exception, 3040002, "Invalid arguments for action" );
 FC_DECLARE_DERIVED_EXCEPTION( name_reserved_exception,    action_exception, 3040003, "Name is reserved." );
 FC_DECLARE_DERIVED_EXCEPTION( address_reserved_exception, action_exception, 3040004, "Address is reserved." );
+FC_DECLARE_DERIVED_EXCEPTION( asset_symbol_exception,     action_exception, 3040005, "Invalid symbol of asset" );
 
 FC_DECLARE_DERIVED_EXCEPTION( domain_exception,           action_exception, 3040100, "Domain exception" );
 FC_DECLARE_DERIVED_EXCEPTION( unknown_domain_exception,   domain_exception, 3040101, "Domain does not exist." );
