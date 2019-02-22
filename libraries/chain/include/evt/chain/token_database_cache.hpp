@@ -101,14 +101,27 @@ public:
     void
     put_token(token_type type, action_op op, const std::optional<name128>& domain, const name128& key, T&& data) {
         static_assert(std::is_class_v<U>, "Underlying of T should be a class type");
+        using entry_t = cache_entry<U>;
 
         auto k = db_.get_db_key(type, domain, key);
-        FC_ASSERT(!cache_->Lookup(k));
+        auto h = cache_->Lookup(k);
+        if(h != nullptr) {
+            auto entry = (entry_t*)cache_->Value(h);
+            EVT_ASSERT2(entry->ti == boost::typeindex::type_id<T>(), token_database_cache_exception,
+                "Types are not matched between cache({}) and query({})", entry->ti.pretty_name(), boost::typeindex::type_id<T>().pretty_name());
+            EVT_ASSERT2(&entry->data == &data, token_database_cache_exception,
+                "Provided updated data object should be the same as original one in cache");
+        }
 
         auto v = make_db_value(data);
         db_.put_token(type, op, domain, key, v.as_string_view());
         
-        auto entry = new cache_entry<U>(std::forward<T>(data));
+        if(h != nullptr) {
+            // if there's already cache item, no need to insert new one
+            return;
+        }
+
+        auto entry = new entry_t(std::forward<T>(data));
         auto s = cache_->Insert(k, (void*)entry, v.size(),
             [](auto& ck, auto cv) { delete (cache_entry<U>*)cv; }, nullptr /* handle */);
         FC_ASSERT(s == rocksdb::Status::OK());

@@ -57,10 +57,34 @@ TEST_CASE_METHOD(tokendb_test, "cache_test", "[tokendb]") {
         auto dom = var.as<domain_def>();
 
         cache.put_token(token_type::domain, action_op::put, std::nullopt, "dm-tkdb-cache-2", dom);
+        CHECK(cache.lookup_token<domain_def>(token_type::domain, std::nullopt, "dm-tkdb-cache-2") != nullptr);
         CHECK(EXISTS_TOKEN(domain, "dm-tkdb-cache-2"));
 
-        s.undo();
+        {
+            auto s2 = tokendb.new_savepoint_session();
 
+            // update dom2
+            auto dom2 = cache.lookup_token<domain_def>(token_type::domain, std::nullopt, "dm-tkdb-cache-2");
+            CHECK(dom2 != nullptr);
+            dom2->creator = public_key_type();
+
+            // dom3 is not the same instance as dom2, cannot put again
+            auto dom3 = var.as<domain_def>();
+            CHECK_THROWS_AS(cache.put_token(token_type::domain, action_op::put, std::nullopt, "dm-tkdb-cache-2", dom3), token_database_cache_exception);
+        
+            // correct, can update dom2
+            cache.put_token(token_type::domain, action_op::put, std::nullopt, "dm-tkdb-cache-2", *dom2);
+            CHECK(cache.lookup_token<domain_def>(token_type::domain, std::nullopt, "dm-tkdb-cache-2")->creator == public_key_type());
+        }
+        // has rollback, cannot read cache
         CHECK(cache.lookup_token<domain_def>(token_type::domain, std::nullopt, "dm-tkdb-cache-2") == nullptr);
+
+        // can read token from internal db with new value
+        CHECK(cache.read_token<domain_def>(token_type::domain, std::nullopt, "dm-tkdb-cache-2") != nullptr);
+        
+        // undo the insert operation, cannot read in both cache and internal db
+        s.undo();
+        CHECK(cache.lookup_token<domain_def>(token_type::domain, std::nullopt, "dm-tkdb-cache-2") == nullptr);
+        CHECK_THROWS_AS(cache.read_token<domain_def>(token_type::domain, std::nullopt, "dm-tkdb-cache-2") == nullptr, unknown_token_database_key);
     }
 }
