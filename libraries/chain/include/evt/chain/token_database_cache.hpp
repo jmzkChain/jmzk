@@ -34,25 +34,29 @@ private:
         T                            data;
     };
 
+public:
     template<typename T>
-    struct cache_entry_deleter {
+    struct cache_deleter {
     public:
-        cache_entry_deleter(token_database_cache& self, rocksdb::Cache::Handle* handle)
+        cache_deleter()
+            : self_(nullptr), handle_(nullptr) {}
+        cache_deleter(token_database_cache* self, rocksdb::Cache::Handle* handle)
             : self_(self), handle_(handle) {}
 
     void
     operator()(T* ptr) {
-        self_.cache_->Release(handle_);
+        assert(handle_);
+        self_->cache_->Release(handle_);
     }
 
     private:
-        token_database_cache&   self_;
+        token_database_cache*   self_;
         rocksdb::Cache::Handle* handle_;
     };
 
 public:
     template<typename T>
-    std::shared_ptr<T>
+    std::unique_ptr<T, cache_deleter<T>>
     read_token(token_type type, const std::optional<name128>& domain, const name128& key, bool no_throw = false) {
         static_assert(std::is_class_v<T>, "T should be a class type");
 
@@ -62,7 +66,7 @@ public:
             auto entry = (cache_entry<T>*)cache_->Value(h);
             EVT_ASSERT2(entry->ti == boost::typeindex::type_id<T>(), token_database_cache_exception,
                 "Types are not matched between cache({}) and query({})", entry->ti.pretty_name(), boost::typeindex::type_id<T>().pretty_name());
-            return std::shared_ptr<T>(&entry->data, cache_entry_deleter<T>(*this, h));
+            return std::unique_ptr<T, cache_deleter<T>>(&entry->data, cache_deleter<T>(this, h));
         }
 
         auto str = std::string();
@@ -78,11 +82,11 @@ public:
             [](auto& ck, auto cv) { delete (cache_entry<T>*)cv; }, &h);
         FC_ASSERT(s == rocksdb::Status::OK());
 
-        return std::shared_ptr<T>(&entry->data, cache_entry_deleter<T>(*this, h));
+        return std::unique_ptr<T, cache_deleter<T>>(&entry->data, cache_deleter<T>(this, h));
     }
 
     template<typename T>
-    std::shared_ptr<T>
+    std::unique_ptr<T, cache_deleter<T>>
     lookup_token(token_type type, const std::optional<name128>& domain, const name128& key, bool no_throw = false) {
         static_assert(std::is_class_v<T>, "T should be a class type");
 
@@ -92,7 +96,7 @@ public:
             auto entry = (cache_entry<T>*)cache_->Value(h);
             EVT_ASSERT2(entry->ti == boost::typeindex::type_id<T>(), token_database_cache_exception,
                 "Types are not matched between cache({}) and query({})", entry->ti.pretty_name(), boost::typeindex::type_id<T>().pretty_name());
-            return std::shared_ptr<T>(&entry->data, cache_entry_deleter<T>(*this, h));
+            return std::unique_ptr<T, cache_deleter<T>>(&entry->data, cache_deleter<T>(this, h));
         }
         return nullptr;
     }
@@ -141,6 +145,11 @@ private:
 private:
     token_database&                 db_;
     std::shared_ptr<rocksdb::Cache> cache_;
+};
+
+template<typename T>
+auto make_empty_cache_ptr = [] {
+    return std::unique_ptr<T, token_database_cache::cache_deleter<T>>(nullptr);
 };
 
 }}  // namespace evt::chain

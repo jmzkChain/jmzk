@@ -127,9 +127,11 @@ using token_keys_t = small_vector<name128, 4>;
 class token_database : boost::noncopyable {
 public:
     struct config {
-        storage_profile profile    = storage_profile::disk;
-        uint32_t        cache_size = 256; // MBytes
-        fc::path        db_path    = ::evt::chain::config::default_token_database_dir_name;
+        storage_profile profile           = storage_profile::disk;
+        uint32_t        block_cache_size  = 256 * 1024 * 1024; // 256M
+        uint32_t        object_cache_size = 256 * 1024 * 1024; // 256M
+        fc::path        db_path           = ::evt::chain::config::default_token_database_dir_name;
+        bool            enable_stats      = true;
     };
 
     class session {
@@ -213,6 +215,9 @@ public:
 
     size_t savepoints_size() const;
 
+public:
+    std::string stats() const;
+
 private:
     void flush() const;
     void persist_savepoints(std::ostream&) const;
@@ -231,4 +236,4 @@ private:
 
 }}  // namespace evt::chain
 
-FC_REFLECT(evt::chain::token_database::config, (profile)(cache_size)(db_path));
+FC_REFLECT(evt::chain::token_database::config, (profile)(block_cache_size)(object_cache_size)(db_path));

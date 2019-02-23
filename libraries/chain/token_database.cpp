@@ -18,6 +18,7 @@
 #include <rocksdb/options.h>
 #include <rocksdb/filter_policy.h>
 #include <rocksdb/slice_transform.h>
+#include <rocksdb/statistics.h>
 #include <rocksdb/table.h>
 
 #include <fc/filesystem.hpp>
@@ -326,6 +327,10 @@ token_database_impl::open(int load_persistence) {
     options.allow_concurrent_memtable_write = false;
     options.prefix_extractor.reset(NewFixedPrefixTransform(sizeof(name128)));
     options.memtable_factory.reset(NewHashSkipListRepFactory());
+    if(config_.enable_stats) {
+        options.statistics = rocksdb::CreateDBStatistics();
+        options.statistics->stats_level_ = StatsLevel::kExceptTimeForMutex;
+    }
 
     auto assets_options = ColumnFamilyOptions(options);
 
@@ -335,7 +340,7 @@ token_database_impl::open(int load_persistence) {
         table_opts.index_type     = BlockBasedTableOptions::kHashSearch;
         table_opts.checksum       = kxxHash64;
         table_opts.format_version = 4;
-        table_opts.block_cache    = NewLRUCache(config_.cache_size * 1024 * 1024);
+        table_opts.block_cache    = NewLRUCache(config_.block_cache_size);
         table_opts.filter_policy.reset(NewBloomFilterPolicy(10, false));
 
         options.table_factory.reset(NewBlockBasedTableFactory(table_opts));
@@ -1290,6 +1295,15 @@ token_database::squash() {
 int64_t
 token_database::latest_savepoint_seq() const {
     return my_->latest_savepoint_seq();
+}
+
+std::string
+token_database::stats() const {
+    auto s = std::string();
+    if(my_->db_->GetProperty(rocksdb::DB::Properties::kStats, &s)) {
+        return s;
+    }
+    return "NA";
 }
 
 void
