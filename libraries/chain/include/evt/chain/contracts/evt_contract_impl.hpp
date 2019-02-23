@@ -263,10 +263,10 @@ get_db_prefix<token_def>(const token_def& v) {
         EVT_THROW2(EXCEPTION, FORMAT, __VA_ARGS__);                         \
     }
     
-#define READ_DB_TOKEN_NO_THROW(TYPE, PREFIX, KEY, VPTR)                                           \
-    {                                                                                             \
-        using vtype = typename decltype(VPTR)::element_type;                                      \
-        VPTR = tokendb_cache.template read_token<vtype>(TYPE, PREFIX, KEY, false /* no throw */); \
+#define READ_DB_TOKEN_NO_THROW(TYPE, PREFIX, KEY, VPTR)                                          \
+    {                                                                                            \
+        using vtype = typename decltype(VPTR)::element_type;                                     \
+        VPTR = tokendb_cache.template read_token<vtype>(TYPE, PREFIX, KEY, true /* no throw */); \
     }
 
 #define MAKE_PROPERTY(AMOUNT, SYM)                                            \
@@ -1557,16 +1557,20 @@ EVT_ACTION_IMPL_BEGIN(prodvote) {
         READ_DB_TOKEN_NO_THROW(token_type::prodvote, std::nullopt, pvact.key, map);
 
         if(map == nullptr) {
-            map.reset(new flat_map<public_key_type, int64_t>());
-        }
+            auto newmap = flat_map<public_key_type, int64_t>();
+            newmap.emplace(*pkey, pvact.value);
 
-        auto it = map->emplace(*pkey, pvact.value);
-        if(it.second == false) {
-            // existed
-            it.first->second = pvact.value;
+            map = tokendb_cache.put_token<std::add_rvalue_reference_t<decltype(newmap)>, true>(
+                token_type::prodvote, action_op::put, std::nullopt, pvact.key, std::move(newmap));
         }
-
-        tokendb_cache.put_token(token_type::prodvote, action_op::put, std::nullopt, pvact.key, *map);
+        else {
+            auto it = map->emplace(*pkey, pvact.value);
+            if(it.second == false) {
+                // existed
+                it.first->second = pvact.value;
+            }
+            tokendb_cache.put_token(token_type::prodvote, action_op::put, std::nullopt, pvact.key, *map);
+        }
 
         auto is_prod = [&](auto& pk) {
             for(auto& p : sche.producers) {

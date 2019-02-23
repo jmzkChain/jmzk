@@ -101,9 +101,9 @@ public:
         return nullptr;
     }
 
-    template<typename T, typename U = std::decay_t<T>>
-    void
-    put_token(token_type type, action_op op, const std::optional<name128>& domain, const name128& key, T&& data) {
+    template<typename T, bool RtnPTR = false, typename U = std::decay_t<T>>
+    std::conditional_t<RtnPTR, std::unique_ptr<U, cache_deleter<U>>, void>
+    put_token(token_type type, action_op op, const std::optional<name128>& domain, const name128& key, T&& data)  {
         static_assert(std::is_class_v<U>, "Underlying of T should be a class type");
         using entry_t = cache_entry<U>;
 
@@ -122,13 +122,26 @@ public:
         
         if(h != nullptr) {
             // if there's already cache item, no need to insert new one
-            return;
+            if constexpr(!RtnPTR) {
+                return;
+            }
+            else {
+                return nullptr;
+            }
         }
 
         auto entry = new entry_t(std::forward<T>(data));
-        auto s = cache_->Insert(k, (void*)entry, v.size(),
-            [](auto& ck, auto cv) { delete (cache_entry<U>*)cv; }, nullptr /* handle */);
-        FC_ASSERT(s == rocksdb::Status::OK());
+        if constexpr(!RtnPTR) {
+            auto s = cache_->Insert(k, (void*)entry, v.size(),
+                [](auto& ck, auto cv) { delete (cache_entry<U>*)cv; }, nullptr /* handle */);
+            FC_ASSERT(s == rocksdb::Status::OK());
+        }
+        else {
+            auto s = cache_->Insert(k, (void*)entry, v.size(),
+                [](auto& ck, auto cv) { delete (cache_entry<U>*)cv; }, &h);
+            FC_ASSERT(s == rocksdb::Status::OK());
+            return std::unique_ptr<U, cache_deleter<U>>(&entry->data, cache_deleter<U>(this, h));
+        }
     }
 
 private:
