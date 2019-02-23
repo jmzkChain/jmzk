@@ -254,19 +254,19 @@ get_db_prefix<token_def>(const token_def& v) {
         tokendb.put_asset(ADDR, VALUE.sym.id(), dv.as_string_view()); \
     }
 
-#define READ_DB_TOKEN(TYPE, PREFIX, KEY, VPTR, EXCEPTION, FORMAT, ...)  \
-    try {                                                               \
-        using vtype = typename decltype(VPTR)::element_type;            \
-        VPTR = tokendb_cache.read_token<vtype>(TYPE, PREFIX, KEY);      \
-    }                                                                   \
-    catch(token_database_exception&) {                                  \
-        EVT_THROW2(EXCEPTION, FORMAT, __VA_ARGS__);                     \
+#define READ_DB_TOKEN(TYPE, PREFIX, KEY, VPTR, EXCEPTION, FORMAT, ...)      \
+    try {                                                                   \
+        using vtype = typename decltype(VPTR)::element_type;                \
+        VPTR = tokendb_cache.template read_token<vtype>(TYPE, PREFIX, KEY); \
+    }                                                                       \
+    catch(token_database_exception&) {                                      \
+        EVT_THROW2(EXCEPTION, FORMAT, __VA_ARGS__);                         \
     }
     
-#define READ_DB_TOKEN_NO_THROW(TYPE, PREFIX, KEY, VPTR)                                  \
-    {                                                                                    \
-        using vtype = typename decltype(VPTR)::element_type;                             \
-        VPTR = tokendb_cache.read_token<vtype>(TYPE, PREFIX, KEY, false /* no throw */); \
+#define READ_DB_TOKEN_NO_THROW(TYPE, PREFIX, KEY, VPTR)                                           \
+    {                                                                                             \
+        using vtype = typename decltype(VPTR)::element_type;                                      \
+        VPTR = tokendb_cache.template read_token<vtype>(TYPE, PREFIX, KEY, false /* no throw */); \
     }
 
 #define MAKE_PROPERTY(AMOUNT, SYM)                                            \
