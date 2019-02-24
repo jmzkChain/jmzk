@@ -23,6 +23,7 @@ class fork_database;
 class apply_context;
 class charge_manager;
 class execution_context;
+class token_database_cache;
 
 struct controller_impl;
 using boost::signals2::signal;
@@ -130,6 +131,7 @@ public:
     chainbase::database& db() const;
     fork_database& fork_db() const;
     token_database& token_db() const;
+    token_database_cache& token_db_cache() const;
 
     charge_manager get_charge_manager() const;
 

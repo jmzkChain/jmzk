@@ -336,6 +336,7 @@ FC_DECLARE_DERIVED_EXCEPTION( token_database_dirty_flag_exception, token_databas
 FC_DECLARE_DERIVED_EXCEPTION( token_database_squash_exception,     token_database_exception, 3150008, "Cannot perform squash operation now" );
 FC_DECLARE_DERIVED_EXCEPTION( token_database_snapshot_exception,   token_database_exception, 3150009, "Create or restore snapshot failed" );
 FC_DECLARE_DERIVED_EXCEPTION( token_database_persist_exception,    token_database_exception, 3150010, "Persist savepoints failed" );
+FC_DECLARE_DERIVED_EXCEPTION( token_database_cache_exception,      token_database_exception, 3150010, "Invalid cache entry" );
 
 FC_DECLARE_DERIVED_EXCEPTION( guard_exception,            database_exception, 3160101, "Database exception" );
 FC_DECLARE_DERIVED_EXCEPTION( database_guard_exception,   guard_exception,    3160102, "Database usage is at unsafe levels" );
