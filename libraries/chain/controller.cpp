@@ -19,6 +19,7 @@
 #include <evt/chain/fork_database.hpp>
 #include <evt/chain/snapshot.hpp>
 #include <evt/chain/token_database.hpp>
+#include <evt/chain/token_database_cache.hpp>
 #include <evt/chain/token_database_snapshot.hpp>
 #include <evt/chain/transaction_context.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
@@ -139,6 +140,7 @@ struct controller_impl {
     block_state_ptr          head;
     fork_database            fork_db;
     token_database           token_db;
+    token_database_cache     token_db_cache;
     controller::config       conf;
     chain_id_type            chain_id;
     evt_execution_context    exec_ctx;
@@ -190,6 +192,7 @@ struct controller_impl {
         , blog(cfg.blocks_dir)
         , fork_db(cfg.state_dir)
         , token_db(cfg.db_config)
+        , token_db_cache(token_db, cfg.db_config.object_cache_size)
         , conf(cfg)
         , chain_id(cfg.genesis.compute_chain_id())
         , exec_ctx()
@@ -1183,6 +1186,11 @@ controller::fork_db() const {
 token_database&
 controller::token_db() const {
     return my->token_db;
+}
+
+token_database_cache&
+controller::token_db_cache() const {
+    return my->token_db_cache;
 }
 
 charge_manager

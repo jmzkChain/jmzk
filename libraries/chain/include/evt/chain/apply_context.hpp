@@ -30,6 +30,7 @@ public:
         , exec_ctx(trx_ctx.exec_ctx)
         , db(con.db())
         , token_db(con.token_db())
+        , token_db_cache(con.token_db_cache())
         , trx_context(trx_ctx)
         , act(action) {}
 
@@ -66,6 +67,7 @@ public:
     evt_execution_context&  exec_ctx;
     chainbase::database&    db;
     token_database&         token_db;
+    token_database_cache&   token_db_cache;
     transaction_context&    trx_context;
     const action&           act;
 
