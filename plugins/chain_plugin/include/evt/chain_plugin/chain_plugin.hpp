@@ -164,6 +164,9 @@ public:
 
     using get_actions_params = empty;
     const std::string& get_actions(const get_actions_params&) const;
+
+    using get_db_info_params = empty;
+    std::string get_db_info(const get_db_info_params&) const;
 };
 
 class read_write {

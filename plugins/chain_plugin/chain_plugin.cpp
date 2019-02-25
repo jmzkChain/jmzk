@@ -1449,5 +1449,10 @@ read_only::get_actions(const get_actions_params&) const {
     }
 }
 
+std::string
+read_only::get_db_info(const get_db_info_params&) const {
+    return db.token_db().stats();
+}
+
 }  // namespace chain_apis
 }  // namespace evt
