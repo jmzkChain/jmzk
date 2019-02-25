@@ -264,6 +264,7 @@ def create(ctx, net, port, host, password, data_volume):
         me = 'md5'
         click.echo('{}: Password is set only if it\'s the first time creating postgres, otherwise it will reuse old password. Please use {} command.'.format(
             green('NOTICE'), green('postgres updpass')))
+        return
     else:
         me = 'trust'
 
