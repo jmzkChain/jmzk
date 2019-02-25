@@ -24,5 +24,6 @@ RUN sed -i -e "s/#include_dir = 'conf.d'/include_dir = 'conf.d'/" $PGDATA/postgr
 COPY conf.d $PGDATA/conf.d/
 
 RUN mkdir -p /docker-entrypoint-initdb.d
-COPY ./initdb-auth.sh /docker-entrypoint-initdb.d/00-auth.sh
-COPY ./initdb-pg_pathman.sh /docker-entrypoint-initdb.d/01-pg_pathman.sh
+COPY initdb.d /docker-entrypoint-initdb.d/
+
+COPY docker-entrypoint.sh /usr/local/bin/
