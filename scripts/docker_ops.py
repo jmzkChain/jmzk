@@ -171,16 +171,15 @@ def init(ctx):
     name = ctx.obj['name']
 
     try:
-        client.images.get('bitnami/postgresql:11.1.0')
+        client.images.get('everitoken/postgres:latest')
         click.echo('{} is already existed, no need to fetch again'.format(
-            green('bitnami/postgresql:11.1.10')))
+            green('everitoken/postgres:latest')))
     except docker.errors.ImageNotFound:
         click.echo('Pulling latest postgres image...')
-        client.images.pull('bitnami/postgresql', '11.1.0')
+        client.images.pull('everitoken/postgres', 'latest')
         click.echo('Pulled latest postgres image')
 
     volume_name = '{}-data-volume'.format(name)
-    volume2_name = '{}-config-volume'.format(name)
 
     try:
         client.volumes.get(volume_name)
@@ -189,14 +188,6 @@ def init(ctx):
     except docker.errors.NotFound:
         client.volumes.create(volume_name)
         click.echo('{} volume is created'.format(green(volume_name)))
-
-    try:
-        client.volumes.get(volume2_name)
-        click.echo('{} volume is already existed, no need to create one'.
-                   format(green(volume2_name)))
-    except docker.errors.NotFound:
-        client.volumes.create(volume2_name)
-        click.echo('{} volume is created'.format(green(volume2_name)))
 
 
 @postgres.command()
@@ -208,9 +199,8 @@ def init(ctx):
 @click.pass_context
 def create(ctx, net, port, host, password, data_volume):
     name = ctx.obj['name']
-    image = 'bitnami/postgresql:11.1.0'
+    image = 'everitoken/postgres:latest'
     volume_name = '{}-data-volume'.format(name)
-    volume2_name = '{}-config-volume'.format(name)
 
     if data_volume is not None:
         volume_name = data_volume
@@ -220,7 +210,6 @@ def create(ctx, net, port, host, password, data_volume):
         client.networks.get(net)
         if data_volume is None:
             client.volumes.get(volume_name)
-        client.volumes.get(volume2_name)
     except docker.errors.ImageNotFound:
         click.echo(
             'Some necessary elements are not found, please run `postgres init` first')
@@ -248,38 +237,26 @@ def create(ctx, net, port, host, password, data_volume):
     if not create:
         return
 
+    if len(passwor) > 0:
+        auth = 'md5'
+    else:
+        auth = 'trust'
+
     client.containers.create(image, None, name=name, detach=True, network=net,
                              ports={'5432/tcp': (host, port)},
                              volumes={
                                  volume_name: {
-                                     'bind': '/bitnami', 'mode': 'rw'},
-                                 volume2_name: {
-                                     'bind': '/opt/bitnami/postgresql/conf', 'mode': 'rw'
+                                     'bind': '/var/lib/postgresql/data', 'mode': 'rw'
                                  }
                              },
-                             )
+                             environment={
+                                 AUTH: auth
+                             })
     click.echo('{} container is created'.format(green(name)))
 
     if len(password) > 0:
-        me = 'md5'
         click.echo('{}: Password is set only if it\'s the first time creating postgres, otherwise it will reuse old password. Please use {} command.'.format(
             green('NOTICE'), green('postgres updpass')))
-        return
-    else:
-        me = 'trust'
-
-    conf = """# TYPE  DATABASE        USER            ADDRESS                 METHOD
-              local   all             all                                     trust
-              host    all             all             127.0.0.1/32            trust
-              host    all             all             ::1/128                 trust
-              host    all             all             0.0.0.0/0               {}""".format(me)
-
-    click.echo('Writting default {}'.format(green('pg_hba.conf')))
-    cmd = '/bin/bash -c "echo -e \'{}\' | cat > /opt/bitnami/postgresql/conf/pg_hba.conf"'.format(
-        conf)
-    r = client.containers.run(image, cmd, auto_remove=True, volumes={volume2_name: {
-        'bind': '/opt/bitnami/postgresql/conf', 'mode': 'rw'
-    }})
 
 
 @postgres.command()
@@ -307,7 +284,7 @@ def createdb(ctx, dbname):
             '{} database is already created, skip creation'.format(green(name)))
         return
 
-    cmd2 = "psql -U postgres -c 'CREATE DATABASE {}'".format(dbname)
+    cmd2 = "psql -U postgres -c 'CREATE DATABASE {}; CREATE EXTENSION IF NOT EXISTS pg_pathman;'".format(dbname)
     c2, logs2 = container.exec_run(cmd2)
 
     if 'CREATE DATABASE' in logs2.decode('utf-8'):
