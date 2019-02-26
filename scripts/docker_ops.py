@@ -191,6 +191,62 @@ def init(ctx):
 
 
 @postgres.command()
+@click.option('--data-volume', '-d', default=None, help='Set one host path for data folder in postgres instead using volume')
+@click.pass_context
+def upgrade(ctx, data_volume):
+    name = ctx.obj['name']
+    image = 'everitoken/postgres:latest'
+    volume_name = '{}-data-volume'.format(name)
+    volume2_name = '{}-config-volume'.format(name)
+
+    try:
+        client.images.get(image)
+        if data_volume is None:
+            client.volumes.get(volume_name)
+        client.volumes.get(volume2_name)
+    except docker.errors.ImageNotFound:
+        click.echo(
+            'Some necessary elements are not found, please run `postgres init` first')
+        return
+    except docker.errors.NotFound:
+        click.echo(
+            'Some necessary elements are not found, please run `postgres init` first')
+        return
+
+    try:
+        cmd = "bash -c 'if [ -s '/data/postgresql/data/PG_VERSION' ]; then shopt -s dotglob nullglob && mv -v /data/postgresql/data/* /data/; fi'"
+        logs = client.containers.run(image, cmd, auto_remove=True, volumes={volume_name: {'bind': '/data', 'mode': 'rw'}}, stream=True)
+    except docker.errors.ContainerError:
+        click.echo('Upgrade postgres failed')
+        return
+
+    count = 0
+    for line in logs:
+        click.echo(line, nl=False)
+        count += 1
+
+    try:
+        cmd = "bash -c 'if [ -s '/config/pg_hba.conf' ]; then cp -v /config/pg_hba.conf /var/lib/postgresql/data; fi'"
+        logs = client.containers.run(image, cmd, auto_remove=True,
+            volumes={
+                volume_name: {'bind': '/data', 'mode': 'rw'},
+                volume2_name: {'bind': '/config', 'mode': 'rw'}
+            }, stream=True)
+    except docker.errors.ContainerError:
+        click.echo('Upgrade postgres failed')
+        return
+
+    for line in logs:
+        click.echo(line, nl=False)
+        count += 1
+
+    if count > 0:
+        click.echo('Upgraded postgres')
+    else:
+        click.echo("It's no need to upgrade postgres now")
+
+
+@postgres.command()
 @click.option('--net', '-n', default='evt-net', help='Name of the network for the environment')
 @click.option('--port', '-p', default=5432, help='Expose port for postgres')
 @click.option('--host', '-h', default='127.0.0.1', help='Host address for postgres')
@@ -237,7 +293,7 @@ def create(ctx, net, port, host, password, data_volume):
     if not create:
         return
 
-    if len(passwor) > 0:
+    if len(password) > 0:
         auth = 'md5'
     else:
         auth = 'trust'
@@ -250,7 +306,8 @@ def create(ctx, net, port, host, password, data_volume):
                                  }
                              },
                              environment={
-                                 AUTH: auth
+                                 'AUTH': auth,
+                                 'POSTGRES_PASSWORD': password
                              })
     click.echo('{} container is created'.format(green(name)))
 
@@ -281,10 +338,10 @@ def createdb(ctx, dbname):
 
     if 't\n' in logs1.decode('utf-8'):
         click.echo(
-            '{} database is already created, skip creation'.format(green(name)))
+            '{} database is already created, skip creation'.format(green(dbname)))
         return
 
-    cmd2 = "psql -U postgres -c 'CREATE DATABASE {}; CREATE EXTENSION IF NOT EXISTS pg_pathman;'".format(dbname)
+    cmd2 = "psql -U postgres -c 'CREATE DATABASE {};'".format(dbname)
     c2, logs2 = container.exec_run(cmd2)
 
     if 'CREATE DATABASE' in logs2.decode('utf-8'):
@@ -316,7 +373,7 @@ def updpass(ctx, new_password):
 
 
 @postgres.command()
-@click.option('--all', '-a', default=False, help='Clear both container and volume, otherwise only clear container')
+@click.option('--all/--no-all', '-a', default=False, help='Clear both container and volume, otherwise only clear container')
 @click.pass_context
 def clear(ctx, all):
     name = ctx.obj['name']
@@ -452,7 +509,7 @@ def create(ctx, net, port, host):
 
 
 @mongo.command()
-@click.option('--all', '-a', default=False, help='Clear both container and volume, otherwise only clear container')
+@click.option('--all/--no-all', '-a', default=False, help='Clear both container and volume, otherwise only clear container')
 @click.pass_context
 def clear(ctx, all):
     name = ctx.obj['name']
@@ -647,7 +704,7 @@ def importrb(ctx, file, data_volume):
 
 
 @evtd.command()
-@click.option('--all', '-a', default=False, help='Clear both container and volume, otherwise only clear container')
+@click.option('--all/--no-all', '-a', default=False, help='Clear both container and volume, otherwise only clear container')
 @click.pass_context
 def clear(ctx, all):
     name = ctx.obj['name']

@@ -14,8 +14,10 @@ RUN set -x \
 
 ENV POSTGRES_USERNAME="postgres"
 ENV POSTGRES_INITDB_ARGS="-D /var/lib/postgresql/data"
+ENV POSTGRES_DATA="/var/lib/postgresql/data"
+# PGDATA is used for locating postgresql.conf file and
+# real data folder is configured in it
 ENV PGDATA="/var/lib/postgresql/config"
-ENV PGCONFIG="/var/lib/postgresql/config"
 ENV AUTH="trust"
 
 RUN mkdir -p $PGDATA
@@ -27,3 +29,5 @@ RUN mkdir -p /docker-entrypoint-initdb.d
 COPY initdb.d /docker-entrypoint-initdb.d/
 
 COPY docker-entrypoint.sh /usr/local/bin/
+
+VOLUME /var/lib/postgresql/data
