@@ -1,5 +1,13 @@
 #include "contracts_tests.hpp"
 
+auto CHECK_EQUAL = [](auto& lhs, auto& rhs) {
+    auto b1 = fc::raw::pack(lhs);
+    auto b2 = fc::raw::pack(rhs);
+
+    CHECK(b1.size() == b2.size());
+    CHECK(memcmp(b1.data(), b2.data(), b1.size()) == 0);
+};
+
 TEST_CASE_METHOD(contracts_test, "contract_failsuspend_test", "[contracts]") {
     const char* test_data = R"=======(
     {
@@ -88,6 +96,7 @@ TEST_CASE_METHOD(contracts_test, "contract_failsuspend_test", "[contracts]") {
     CHECK_THROWS_AS(my_tester->push_action(N(execsuspend), N128(.suspend), name128(get_suspend_name()), execute_tvar.get_object(), {N(key), N(payer)}, payer), suspend_executor_exception);
 
     auto&       tokendb = my_tester->control->token_db();
+    auto  cache = token_database_cache(tokendb, 1024 * 1024);
     suspend_def suspend;
     READ_TOKEN(suspend, edact.name, suspend);
     CHECK(suspend.status == suspend_status::proposed);
@@ -131,6 +140,10 @@ TEST_CASE_METHOD(contracts_test, "contract_failsuspend_test", "[contracts]") {
     CHECK(suspend.status == suspend_status::cancelled);
 
     my_tester->produce_blocks();
+
+    auto suspend2 = cache.read_token<suspend_def>(token_type::token, N128(.suspend), name128(get_suspend_name()));
+    CHECK(suspend2 != nullptr);
+    CHECK_EQUAL(suspend, *suspend2);
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_successsuspend_test", "[contracts]") {
@@ -206,6 +219,7 @@ TEST_CASE_METHOD(contracts_test, "contract_successsuspend_test", "[contracts]") 
     my_tester->push_action(N(newsuspend), N128(.suspend), N128(testsuspend), var.get_object(), key_seeds, payer);
 
     auto& tokendb = my_tester->control->token_db();
+    auto  cache = token_database_cache(tokendb, 1024 * 1024);
     auto  suspend = suspend_def();
     READ_TOKEN(suspend, ndact.name, suspend);
     CHECK(suspend.status == suspend_status::proposed);
@@ -251,4 +265,9 @@ TEST_CASE_METHOD(contracts_test, "contract_successsuspend_test", "[contracts]") 
     CHECK(suspend.status == suspend_status::executed);
 
     my_tester->produce_blocks();
+
+    READ_TOKEN(suspend, adact.name, suspend);
+    auto suspend2 = cache.read_token<suspend_def>(token_type::token, N128(.suspend), adact.name);
+    CHECK(suspend2 != nullptr);
+    CHECK_EQUAL(suspend, *suspend2);
 }

@@ -4,6 +4,7 @@
 #include <evt/chain/global_property_object.hpp>
 #include <evt/chain/contracts/evt_link_object.hpp>
 #include <evt/testing/tester.hpp>
+#include <evt/chain/token_database_cache.hpp>
 
 using namespace evt;
 using namespace chain;
