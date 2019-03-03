@@ -41,7 +41,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newfungible_test", "[contracts]") {
     auto fungible_payer = address(N(.domain), ".fungible", 0);
     my_tester->add_money(fungible_payer, asset(10'000'000, symbol(5, EVT_SYM_ID)));
     auto& tokendb = my_tester->control->token_db();
-    auto  cache = token_database_cache(tokendb, 1024 * 1024);
+    auto& cache = my_tester->control->token_db_cache();
 
     CHECK(!EXISTS_TOKEN(fungible, 3));
 
@@ -109,7 +109,7 @@ TEST_CASE_METHOD(contracts_test, "contract_updfungible_test", "[contracts]") {
     auto  var     = fc::json::from_string(test_data);
     auto  updfg   = var.as<updfungible>();
     auto& tokendb = my_tester->control->token_db();
-    auto  cache = token_database_cache(tokendb, 1024 * 1024);
+    auto& cache = my_tester->control->token_db_cache();
 
     fungible_def fg;
     READ_TOKEN(fungible, get_sym_id(), fg);

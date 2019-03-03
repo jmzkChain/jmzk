@@ -46,7 +46,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newdomain_test", "[contracts]") {
     auto  var     = fc::json::from_string(test_data);
     auto  newdom  = var.as<newdomain>();
     auto& tokendb = my_tester->control->token_db();
-    auto  cache = token_database_cache(tokendb, 1024 * 1024);
+    auto& cache = my_tester->control->token_db_cache();
 
     CHECK(!EXISTS_TOKEN(domain, get_domain_name()));
 
@@ -107,7 +107,7 @@ TEST_CASE_METHOD(contracts_test, "contract_issuetoken_test", "[contracts]") {
     auto  var     = fc::json::from_string(test_data);
     auto  istk    = var.as<issuetoken>();
     auto& tokendb = my_tester->control->token_db();
-    auto  cache = token_database_cache(tokendb, 1024 * 1024);
+    auto& cache = my_tester->control->token_db_cache();
 
     CHECK(!EXISTS_TOKEN2(token, get_domain_name(), "t1"));
 
@@ -176,7 +176,7 @@ TEST_CASE_METHOD(contracts_test, "contract_transfer_test", "[contracts]") {
     }
     )=====";
     auto&       tokendb   = my_tester->control->token_db();
-    auto  cache = token_database_cache(tokendb, 1024 * 1024);
+    auto& cache = my_tester->control->token_db_cache();
     token_def   tk;
     READ_TOKEN2(token, get_domain_name(), "t1", tk);
     CHECK(1 == tk.owner.size());
@@ -232,7 +232,7 @@ TEST_CASE_METHOD(contracts_test, "contract_destroytoken_test", "[contracts]") {
     auto  var     = fc::json::from_string(test_data);
     auto  destk   = var.as<destroytoken>();
     auto& tokendb = my_tester->control->token_db();
-    auto  cache = token_database_cache(tokendb, 1024 * 1024);
+    auto& cache = my_tester->control->token_db_cache();
 
     CHECK(EXISTS_TOKEN2(token, get_domain_name(), "t2"));
 
