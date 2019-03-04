@@ -440,9 +440,14 @@ postgres_plugin_impl::init(bool init_db) {
     }));
 
     if(init_db) {
+        db_.init_pathman();
+
         db_.prepare_tables();
         db_.prepare_stmts();
         db_.prepare_stats();
+
+        db_.create_partitions("public.blocks", 1000, 10);
+        db_.create_partitions("public.transactions", 1000, 10);
 
         // HACK: Add EVT and PEVT manually
         auto gs = chain::genesis_state();

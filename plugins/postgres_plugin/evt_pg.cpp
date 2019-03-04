@@ -82,7 +82,7 @@ auto create_blocks_table = R"sql(CREATE TABLE IF NOT EXISTS public.blocks
                                      CONSTRAINT      blocks_pkey PRIMARY KEY (block_id)
                                  )
                                  WITH (
-                                     OIDS = FALSE
+                                     OIDS = TRUE
                                  )
                                  TABLESPACE pg_default;
  
@@ -114,7 +114,7 @@ auto create_trxs_table = R"sql(CREATE TABLE IF NOT EXISTS public.transactions
                                    CONSTRAINT    transactions_pkey PRIMARY KEY (trx_id)
                                )
                                WITH (
-                                   OIDS = FALSE
+                                   OIDS = TRUE
                                )
                                TABLESPACE pg_default;
                                CREATE INDEX IF NOT EXISTS transactions_block_num_index
@@ -314,6 +314,42 @@ pg::close() {
 }
 
 int
+pg::init_pathman() {
+    auto sql = R"sql(CREATE EXTENSION IF NOT EXISTS pg_pathman;)sql";
+    auto stmt = fmt::format(sql);
+    auto r = PQexec(conn_, stmt.c_str());
+    EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgres_exec_exception, "Init extension pg_pathman failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    PQclear(r);
+    return PG_OK;
+}
+
+int
+pg::create_partitions(const std::string& table, uint interval, uint part_nums) {
+    auto sql = R"sql(SELECT create_range_partitions(
+                    '{}'::regclass,
+                    'block_num',
+                    1,
+                    {},
+                    {}, 
+                    false);)sql";
+    auto stmt = fmt::format(sql, table, interval, part_nums);
+    auto r = PQexec(conn_, stmt.c_str());
+    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_exec_exception, "Create partitions failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    PQclear(r);
+    return PG_OK;
+}
+
+int
+pg::drop_partitions(const std::string& table) {
+    auto sql = R"sql(SELECT drop_partitions('{}'::regclass);)sql";
+    auto stmt = fmt::format(sql, table, table);
+    auto r = PQexec(conn_, stmt.c_str());
+    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_exec_exception, "Drop partitions failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    PQclear(r);
+    return PG_OK;
+}
+
+int
 pg::create_db(const std::string& db) {
     auto sql = R"sql(CREATE DATABASE {}
                      WITH
@@ -382,7 +418,7 @@ pg::is_table_empty(const std::string& table) {
 
 int
 pg::drop_table(const std::string& table) {
-    auto sql = "DROP TABLE IF EXISTS {};";
+    auto sql = "DROP TABLE IF EXISTS {} CASCADE;";
     auto stmt = fmt::format(sql, table);
 
     auto r = PQexec(conn_, stmt.c_str());
