@@ -82,7 +82,7 @@ auto create_blocks_table = R"sql(CREATE TABLE IF NOT EXISTS public.blocks
                                      CONSTRAINT      blocks_pkey PRIMARY KEY (block_id)
                                  )
                                  WITH (
-                                     OIDS = TRUE
+                                     OIDS = FALSE
                                  )
                                  TABLESPACE pg_default;
  
@@ -114,7 +114,7 @@ auto create_trxs_table = R"sql(CREATE TABLE IF NOT EXISTS public.transactions
                                    CONSTRAINT    transactions_pkey PRIMARY KEY (trx_id)
                                )
                                WITH (
-                                   OIDS = TRUE
+                                   OIDS = FALSE
                                )
                                TABLESPACE pg_default;
                                CREATE INDEX IF NOT EXISTS transactions_block_num_index
