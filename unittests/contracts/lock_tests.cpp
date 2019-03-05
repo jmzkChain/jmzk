@@ -1,5 +1,13 @@
 #include "contracts_tests.hpp"
 
+auto CHECK_EQUAL = [](auto& lhs, auto& rhs) {
+    auto b1 = fc::raw::pack(lhs);
+    auto b2 = fc::raw::pack(rhs);
+
+    CHECK(b1.size() == b2.size());
+    CHECK(memcmp(b1.data(), b2.data(), b1.size()) == 0);
+};
+
 TEST_CASE_METHOD(contracts_test, "contract_newnftlock_test", "[contracts]") {
     const char* test_data = R"=======(
     {
@@ -37,6 +45,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newnftlock_test", "[contracts]") {
     auto  var     = fc::json::from_string(test_data);
     auto  nl      = var.as<newlock>();
     auto& tokendb = my_tester->control->token_db();
+    auto  cache = token_database_cache(tokendb, 1024 * 1024);
     CHECK(!EXISTS_TOKEN(lock, nl.name));
 
     auto now       = fc::time_point::now();
@@ -72,6 +81,11 @@ TEST_CASE_METHOD(contracts_test, "contract_newnftlock_test", "[contracts]") {
     CHECK(tk.owner[0] == address(N(.lock), N128(nlact.name), 0));
 
     my_tester->produce_blocks();
+
+    READ_TOKEN2(token, N128(.lock), N128(nftlock), lock_);
+    auto lock2_ = cache.read_token<lock_def>(token_type::token, N128(.lock), N128(nftlock));
+    CHECK(lock2_ != nullptr);
+    CHECK_EQUAL(lock_, *lock2_);
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_newftlock_test", "[contracts]") {
@@ -109,6 +123,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newftlock_test", "[contracts]") {
     auto  var     = fc::json::from_string(test_data);
     auto  nl      = var.as<newlock>();
     auto& tokendb = my_tester->control->token_db();
+    auto  cache = token_database_cache(tokendb, 1024 * 1024);
     CHECK(!EXISTS_TOKEN(lock, nl.name));
 
     auto now       = fc::time_point::now();
@@ -161,6 +176,11 @@ TEST_CASE_METHOD(contracts_test, "contract_newftlock_test", "[contracts]") {
     CHECK(ast.amount() == 500000);
 
     my_tester->produce_blocks();
+
+    READ_TOKEN2(token, N128(.lock), N128(ftlock), lock_);
+    auto lock2_ = cache.read_token<lock_def>(token_type::token, N128(.lock), N128(ftlock));
+    CHECK(lock2_ != nullptr);
+    CHECK_EQUAL(lock_, *lock2_);
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_aprvlock_test", "[contracts]") {
@@ -178,6 +198,7 @@ TEST_CASE_METHOD(contracts_test, "contract_aprvlock_test", "[contracts]") {
     auto  var     = fc::json::from_string(test_data);
     auto  al      = var.as<aprvlock>();
     auto& tokendb = my_tester->control->token_db();
+    auto  cache = token_database_cache(tokendb, 1024 * 1024);
 
     lock_def lock_;
     READ_TOKEN(lock, al.name, lock_);
@@ -198,6 +219,11 @@ TEST_CASE_METHOD(contracts_test, "contract_aprvlock_test", "[contracts]") {
     CHECK(lock_.signed_keys.size() == 1);
 
     my_tester->produce_blocks();
+
+    READ_TOKEN2(token, N128(.lock), N128(nftlock), lock_);
+    auto lock2_ = cache.read_token<lock_def>(token_type::token, N128(.lock), N128(nftlock));
+    CHECK(lock2_ != nullptr);
+    CHECK_EQUAL(lock_, *lock2_);
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_tryunlock_test", "[contracts]") {
@@ -211,6 +237,7 @@ TEST_CASE_METHOD(contracts_test, "contract_tryunlock_test", "[contracts]") {
     auto  var     = fc::json::from_string(test_data);
     auto  tul     = var.as<tryunlock>();
     auto& tokendb = my_tester->control->token_db();
+    auto  cache = token_database_cache(tokendb, 1024 * 1024);
 
     CHECK_THROWS_AS(my_tester->push_action(N(tryunlock), N128(.lock), N128(nftlock), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
 
@@ -258,4 +285,9 @@ TEST_CASE_METHOD(contracts_test, "contract_tryunlock_test", "[contracts]") {
     CHECK(ast.amount() == 500000);
 
     my_tester->produce_blocks();
+
+    READ_TOKEN2(token, N128(.lock), N128(nftlock), lock_);
+    auto lock2_ = cache.read_token<lock_def>(token_type::token, N128(.lock), N128(nftlock));
+    CHECK(lock2_ != nullptr);
+    CHECK_EQUAL(lock_, *lock2_);
 }

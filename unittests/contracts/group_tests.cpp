@@ -1,5 +1,13 @@
 #include "contracts_tests.hpp"
 
+auto CHECK_EQUAL = [](auto& lhs, auto& rhs) {
+    auto b1 = fc::raw::pack(lhs);
+    auto b2 = fc::raw::pack(rhs);
+
+    CHECK(b1.size() == b2.size());
+    CHECK(memcmp(b1.data(), b2.data(), b1.size()) == 0);
+};
+
 TEST_CASE_METHOD(contracts_test, "contract_newgroup_test", "[contracts]") {
     const char* test_data = R"=====(
     {
@@ -45,6 +53,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newgroup_test", "[contracts]") {
     auto  var         = fc::json::from_string(test_data);
     auto  group_payer = address(N(.domain), ".group", 0);
     auto& tokendb     = my_tester->control->token_db();
+    auto  cache = token_database_cache(tokendb, 1024 * 1024);
 
     CHECK(!EXISTS_TOKEN(group, get_group_name()));
     my_tester->add_money(group_payer, asset(10'000'000, symbol(5, EVT_SYM_ID)));
@@ -84,6 +93,12 @@ TEST_CASE_METHOD(contracts_test, "contract_newgroup_test", "[contracts]") {
     CHECK(EXISTS_TOKEN(group, get_group_name()));
 
     my_tester->produce_blocks();
+
+    auto group = group_def();
+    READ_TOKEN2(token, N128(.group), name128(get_group_name()), group);
+    auto group2 = cache.read_token<group_def>(token_type::token, N128(.group), name128(get_group_name()));
+    CHECK(group2 != nullptr);
+    CHECK_EQUAL(group, *group2);
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_updategroup_test", "[contracts]") {
@@ -131,6 +146,7 @@ TEST_CASE_METHOD(contracts_test, "contract_updategroup_test", "[contracts]") {
     auto  var     = fc::json::from_string(test_data);
     auto  upgrp   = var.as<updategroup>();
     auto& tokendb = my_tester->control->token_db();
+    auto  cache = token_database_cache(tokendb, 1024 * 1024);
 
     CHECK(EXISTS_TOKEN(group, get_group_name()));
     group gp;
@@ -161,6 +177,12 @@ TEST_CASE_METHOD(contracts_test, "contract_updategroup_test", "[contracts]") {
     CHECK(5 == gp.root().threshold);
 
     my_tester->produce_blocks();
+
+    auto group = group_def();
+    READ_TOKEN2(token, N128(.group), name128(get_group_name()), group);
+    auto group2 = cache.read_token<group_def>(token_type::token, N128(.group), name128(get_group_name()));
+    CHECK(group2 != nullptr);
+    CHECK_EQUAL(group, *group2);
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_updatedomain_test", "[contracts]") {

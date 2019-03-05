@@ -8,6 +8,14 @@ get_bonus_db_key(uint64_t sym_id, uint64_t bonus_id) {
     return v;
 }
 
+auto CHECK_EQUAL = [](auto& lhs, auto& rhs) {
+    auto b1 = fc::raw::pack(lhs);
+    auto b2 = fc::raw::pack(rhs);
+
+    CHECK(b1.size() == b2.size());
+    CHECK(memcmp(b1.data(), b2.data(), b1.size()) == 0);
+};
+
 TEST_CASE_METHOD(contracts_test, "passive_bonus_test", "[contracts]") {
     auto spb = setpsvbonus();
     spb.sym = evt_sym();
@@ -164,10 +172,29 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_test", "[contracts]") {
 
     // dupe passive bonus
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.bonus), actkey, spb), keyseeds, payer), bonus_dupe_exception);
+
+    auto& tokendb = my_tester->control->token_db();
+    auto  cache = token_database_cache(tokendb, 1024 * 1024);
+
+    auto pb = passive_bonus();
+    READ_TOKEN2(token, N128(.bonus), get_bonus_db_key(get_sym_id(), 0), pb);
+    auto pb2  = cache.read_token<passive_bonus>(token_type::token, N128(.bonus), get_bonus_db_key(get_sym_id(), 0));
+    CHECK(pb2 != nullptr);
+    CHECK(pb.sym_id == pb2->sym_id);
+    CHECK(pb.rate == pb2->rate);
+    CHECK(pb.base_charge == pb2->base_charge);
+    CHECK(*(pb.charge_threshold) == *(pb2->charge_threshold));
+    CHECK(*(pb.minimum_charge) == *(pb2->minimum_charge));
+    CHECK(pb.dist_threshold == pb2->dist_threshold);
+    CHECK(pb.rules.size() == pb2->rules.size());
+    CHECK(pb.methods.size() == pb2->methods.size());
+    CHECK(pb.round == pb2->round);
+    CHECK(pb.deadline == pb2->deadline);
 }
 
 TEST_CASE_METHOD(contracts_test, "passive_bonus_fees_test", "[contracts]") {
     auto& tokendb = my_tester->control->token_db();
+    auto  cache = token_database_cache(tokendb, 1024 * 1024);
     CHECK(tokendb.exists_token(token_type::bonus, std::nullopt, get_bonus_db_key(get_sym_id(), 0)));
 
     auto tf   = transferft();
@@ -277,10 +304,26 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_fees_test", "[contracts]") {
     }
 
     my_tester->produce_block();
+
+    auto pb = passive_bonus();
+    READ_TOKEN2(token, N128(.bonus), get_bonus_db_key(get_sym_id(), 0), pb);
+    auto pb2  = cache.read_token<passive_bonus>(token_type::token, N128(.bonus), get_bonus_db_key(get_sym_id(), 0));
+    CHECK(pb2 != nullptr);
+    CHECK(pb.sym_id == pb2->sym_id);
+    CHECK(pb.rate == pb2->rate);
+    CHECK(pb.base_charge == pb2->base_charge);
+    CHECK(*(pb.charge_threshold) == *(pb2->charge_threshold));
+    CHECK(*(pb.minimum_charge) == *(pb2->minimum_charge));
+    CHECK(pb.dist_threshold == pb2->dist_threshold);
+    CHECK(pb.rules.size() == pb2->rules.size());
+    CHECK(pb.methods.size() == pb2->methods.size());
+    CHECK(pb.round == pb2->round);
+    CHECK(pb.deadline == pb2->deadline);
 }
 
 TEST_CASE_METHOD(contracts_test, "passive_bonus_dist_test", "[contracts]") {
     auto& tokendb = my_tester->control->token_db();
+    auto  cache = token_database_cache(tokendb, 1024 * 1024);
     CHECK(tokendb.exists_token(token_type::bonus, std::nullopt, get_bonus_db_key(get_sym_id(), 0)));
 
     auto actkey     = name128::from_number(get_sym_id());
@@ -322,4 +365,19 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_dist_test", "[contracts]") {
     my_tester->push_action(action(N128(.bonus), actkey, dpb), keyseeds, payer);
 
     my_tester->produce_block();
+
+    auto pb = passive_bonus();
+    READ_TOKEN2(token, N128(.bonus), get_bonus_db_key(get_sym_id(), 0), pb);
+    auto pb2  = cache.read_token<passive_bonus>(token_type::token, N128(.bonus), get_bonus_db_key(get_sym_id(), 0));
+    CHECK(pb2 != nullptr);
+    CHECK(pb.sym_id == pb2->sym_id);
+    CHECK(pb.rate == pb2->rate);
+    CHECK(pb.base_charge == pb2->base_charge);
+    CHECK(*(pb.charge_threshold) == *(pb2->charge_threshold));
+    CHECK(*(pb.minimum_charge) == *(pb2->minimum_charge));
+    CHECK(pb.dist_threshold == pb2->dist_threshold);
+    CHECK(pb.rules.size() == pb2->rules.size());
+    CHECK(pb.methods.size() == pb2->methods.size());
+    CHECK(pb.round == pb2->round);
+    CHECK(pb.deadline == pb2->deadline);
 }

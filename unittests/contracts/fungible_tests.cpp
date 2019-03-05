@@ -1,5 +1,13 @@
 #include "contracts_tests.hpp"
 
+auto CHECK_EQUAL = [](auto& lhs, auto& rhs) {
+    auto b1 = fc::raw::pack(lhs);
+    auto b2 = fc::raw::pack(rhs);
+
+    CHECK(b1.size() == b2.size());
+    CHECK(memcmp(b1.data(), b2.data(), b1.size()) == 0);
+};
+
 TEST_CASE_METHOD(contracts_test, "contract_newfungible_test", "[contracts]") {
     const char* test_data = R"=====(
     {
@@ -33,6 +41,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newfungible_test", "[contracts]") {
     auto fungible_payer = address(N(.domain), ".fungible", 0);
     my_tester->add_money(fungible_payer, asset(10'000'000, symbol(5, EVT_SYM_ID)));
     auto& tokendb = my_tester->control->token_db();
+    auto  cache = token_database_cache(tokendb, 1024 * 1024);
 
     CHECK(!EXISTS_TOKEN(fungible, 3));
 
@@ -64,6 +73,12 @@ TEST_CASE_METHOD(contracts_test, "contract_newfungible_test", "[contracts]") {
     CHECK(EXISTS_TOKEN(fungible, get_sym_id()));
 
     my_tester->produce_blocks();
+
+    auto ft  = fungible_def();
+    READ_TOKEN2(token, N128(.fungible), get_sym_id(), ft);
+    auto ft2  = cache.read_token<fungible_def>(token_type::token, N128(.fungible), get_sym_id());
+    CHECK(ft2 != nullptr);
+    CHECK_EQUAL(ft, *ft2);
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_updfungible_test", "[contracts]") {
@@ -94,6 +109,7 @@ TEST_CASE_METHOD(contracts_test, "contract_updfungible_test", "[contracts]") {
     auto  var     = fc::json::from_string(test_data);
     auto  updfg   = var.as<updfungible>();
     auto& tokendb = my_tester->control->token_db();
+    auto  cache = token_database_cache(tokendb, 1024 * 1024);
 
     fungible_def fg;
     READ_TOKEN(fungible, get_sym_id(), fg);
@@ -114,6 +130,12 @@ TEST_CASE_METHOD(contracts_test, "contract_updfungible_test", "[contracts]") {
     CHECK(2 == fg.issue.authorizers[0].weight);
 
     my_tester->produce_blocks();
+
+    auto ft  = fungible_def();
+    READ_TOKEN2(token, N128(.fungible), get_sym_id(), ft);
+    auto ft2  = cache.read_token<fungible_def>(token_type::token, N128(.fungible), get_sym_id());
+    CHECK(ft2 != nullptr);
+    CHECK_EQUAL(ft, *ft2);
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_issuefungible_test", "[contracts]") {
