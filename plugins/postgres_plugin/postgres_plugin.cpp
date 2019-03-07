@@ -87,7 +87,7 @@ public:
 
     bool     configured_          = false;
     uint32_t last_sync_block_num_ = 0;
-    uint32_t limit_ = 0;
+    uint32_t part_limit_ = 0, part_num_ = 0;
 
     size_t processed_  = 0;
     size_t queue_size_ = 0;
@@ -447,9 +447,9 @@ postgres_plugin_impl::init(bool init_db) {
         db_.prepare_stmts();
         db_.prepare_stats();
         
-        if(limit_ != 0) {
-            db_.create_partitions("public.blocks", limit_, 10);
-            db_.create_partitions("public.transactions", limit_, 10);
+        if(part_limit_ != 0) {
+            db_.create_partitions("public.blocks", part_limit_, part_num_);
+            db_.create_partitions("public.transactions", part_limit_, part_num_);
         }
 
         // HACK: Add EVT and PEVT manually
@@ -531,6 +531,7 @@ postgres_plugin::set_program_options(options_description& cli, options_descripti
             "PostgreSQL connection string, see: https://www.postgresql.org/docs/11/libpq-connect.html#LIBPQ-CONNSTRING for more detail.")
         ("clear-postgres", bpo::bool_switch()->default_value(false), "clear postgres database, use --delete-all-blocks option will force set this option")
         ("postgres-partition-limit", bpo::value<uint>()->default_value(30000000), "The partition limit")
+        ("postgres-partition-num", bpo::value<uint>()->default_value(10), "The number of partitions")
         ;
 }
 
@@ -557,10 +558,14 @@ postgres_plugin::plugin_initialize(const variables_map& options) {
         }
 
         if(options.count("postgres-partition-limit")) {
-            my_->limit_ = options.at("postgres-partition-limit").as<uint>();
-            if(my_->limit_ == 0) {
+            my_->part_limit_ = options.at("postgres-partition-limit").as<uint>();
+            if(my_->part_limit_ == 0) {
                 ilog("Partitions will not be created");
             }
+        }
+
+        if(options.count("postgres-partition-num")) {
+            my_->part_num_ = options.at("postgres-partition-num").as<uint>();
         }
 
         if(options.count("postgres-queue-size")) {
