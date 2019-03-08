@@ -576,9 +576,9 @@ pg_query::get_actions_resume(int id, pg_result const* r) {
     return response_ok(id, fmt::to_string(builder));
 }
 
-auto gfa_plan0 = R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
+auto gfa_plan0 = R"sql(SELECT trx_id, name, domain, key, data, transactions.timestamp
                        FROM actions
-                       JOIN blocks ON actions.block_id = blocks.block_id
+                       JOIN transactions ON actions.trx_id = transactions.trx_id
                        WHERE
                            domain = '.fungible'
                            AND key = $1
@@ -588,9 +588,9 @@ auto gfa_plan0 = R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
                        )sql";
 
 // with address filter
-auto gfa_plan1 = R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
+auto gfa_plan1 = R"sql(SELECT trx_id, name, domain, key, data, transactions.timestamp
                        FROM actions
-                       JOIN blocks ON actions.block_id = blocks.block_id
+                       JOIN transactions ON actions.trx_id = transactions.trx_id
                        WHERE
                            domain = '.fungible'
                            AND key = $1
