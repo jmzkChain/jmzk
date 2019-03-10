@@ -53,7 +53,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newgroup_test", "[contracts]") {
     auto  var         = fc::json::from_string(test_data);
     auto  group_payer = address(N(.domain), ".group", 0);
     auto& tokendb     = my_tester->control->token_db();
-    auto  cache = token_database_cache(tokendb, 1024 * 1024);
+    auto& cache = my_tester->control->token_db_cache();
 
     CHECK(!EXISTS_TOKEN(group, get_group_name()));
     my_tester->add_money(group_payer, asset(10'000'000, symbol(5, EVT_SYM_ID)));
@@ -146,7 +146,7 @@ TEST_CASE_METHOD(contracts_test, "contract_updategroup_test", "[contracts]") {
     auto  var     = fc::json::from_string(test_data);
     auto  upgrp   = var.as<updategroup>();
     auto& tokendb = my_tester->control->token_db();
-    auto  cache = token_database_cache(tokendb, 1024 * 1024);
+    auto& cache = my_tester->control->token_db_cache();
 
     CHECK(EXISTS_TOKEN(group, get_group_name()));
     group gp;

@@ -45,7 +45,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newnftlock_test", "[contracts]") {
     auto  var     = fc::json::from_string(test_data);
     auto  nl      = var.as<newlock>();
     auto& tokendb = my_tester->control->token_db();
-    auto  cache = token_database_cache(tokendb, 1024 * 1024);
+    auto& cache = my_tester->control->token_db_cache();
     CHECK(!EXISTS_TOKEN(lock, nl.name));
 
     auto now       = fc::time_point::now();
@@ -123,7 +123,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newftlock_test", "[contracts]") {
     auto  var     = fc::json::from_string(test_data);
     auto  nl      = var.as<newlock>();
     auto& tokendb = my_tester->control->token_db();
-    auto  cache = token_database_cache(tokendb, 1024 * 1024);
+    auto& cache = my_tester->control->token_db_cache();
     CHECK(!EXISTS_TOKEN(lock, nl.name));
 
     auto now       = fc::time_point::now();
@@ -198,7 +198,7 @@ TEST_CASE_METHOD(contracts_test, "contract_aprvlock_test", "[contracts]") {
     auto  var     = fc::json::from_string(test_data);
     auto  al      = var.as<aprvlock>();
     auto& tokendb = my_tester->control->token_db();
-    auto  cache = token_database_cache(tokendb, 1024 * 1024);
+    auto& cache = my_tester->control->token_db_cache();
 
     lock_def lock_;
     READ_TOKEN(lock, al.name, lock_);
@@ -237,7 +237,7 @@ TEST_CASE_METHOD(contracts_test, "contract_tryunlock_test", "[contracts]") {
     auto  var     = fc::json::from_string(test_data);
     auto  tul     = var.as<tryunlock>();
     auto& tokendb = my_tester->control->token_db();
-    auto  cache = token_database_cache(tokendb, 1024 * 1024);
+    auto& cache = my_tester->control->token_db_cache();
 
     CHECK_THROWS_AS(my_tester->push_action(N(tryunlock), N128(.lock), N128(nftlock), var.get_object(), key_seeds, payer, 5'000'000), unsatisfied_authorization);
 
