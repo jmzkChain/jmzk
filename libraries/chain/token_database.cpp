@@ -362,7 +362,7 @@ token_database_impl::open(int load_persistence) {
 
     read_opts_.total_order_seek     = false;
     read_opts_.prefix_same_as_start = true;
-    read_opts_.trailing             = true;
+    read_opts_.tailing              = true;
 
     if(!fc::exists(config_.db_path)) {
         auto t = config_.db_path.to_native_ansi_path();

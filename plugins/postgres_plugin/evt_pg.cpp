@@ -752,28 +752,33 @@ pg::add_domain(trx_context& tctx, const newdomain& nd) {
     return PG_OK;
 }
 
-PREPARE_SQL_ONCE(ud_plan, "UPDATE domains SET(issue, transfer, manage) = ($1, $2, $3) WHERE name = $4;");
+PREPARE_SQL_ONCE(udi_plan, "UPDATE domains SET issue    = $1 WHERE name = $2;");
+PREPARE_SQL_ONCE(udt_plan, "UPDATE domains SET transfer = $1 WHERE name = $2;");
+PREPARE_SQL_ONCE(udm_plan, "UPDATE domains SET manage   = $1 WHERE name = $2;");
 
 int
 pg::upd_domain(trx_context& tctx, const updatedomain& ud) {
-    std::string i = "issue", t = "transfer", m = "manage";
     if(ud.issue.has_value()) {
         fc::variant u;
         fc::to_variant(*ud.issue, u);
-        i = fc::json::to_string(u);
+        auto i = fc::json::to_string(u);
+
+        fmt::format_to(tctx.trx_buf_, fmt("EXECUTE udi_plan('{}','{}');\n"), i, (std::string)ud.name);
     }
     if(ud.transfer.has_value()) {
         fc::variant u;
         fc::to_variant(*ud.transfer, u);
-        t = fc::json::to_string(u);
+        auto t = fc::json::to_string(u);
+
+        fmt::format_to(tctx.trx_buf_, fmt("EXECUTE udt_plan('{}','{}');\n"), t, (std::string)ud.name);
     }
     if(ud.manage.has_value()) {
         fc::variant u;
         fc::to_variant(*ud.manage, u);
-        m = fc::json::to_string(u);
-    }
+        auto m = fc::json::to_string(u);
 
-    fmt::format_to(tctx.trx_buf_, fmt("EXECUTE ud_plan('{}','{}','{}', '{}');\n"), i, t, m, (std::string)ud.name);
+        fmt::format_to(tctx.trx_buf_, fmt("EXECUTE udm_plan('{}','{}');\n"), m, (std::string)ud.name);
+    }
 
     return PG_OK;
 }

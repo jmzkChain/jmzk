@@ -424,36 +424,36 @@ pg_query::get_fungibles_resume(int id, pg_result const* r) {
     return response_ok(id, results);
 }
 
-auto ga_plan0 = R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
+auto ga_plan0 = R"sql(SELECT actions.trx_id, name, domain, key, data, transactions.timestamp
                       FROM actions
-                      JOIN blocks ON actions.block_id = blocks.block_id
+                      JOIN transactions ON actions.block_id = transactions.block_id
                       WHERE domain = $1
                       ORDER BY actions.global_seq {0}
                       LIMIT $2 OFFSET $3
                       )sql";
 
 // with key filter
-auto ga_plan1 = R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
+auto ga_plan1 = R"sql(SELECT actions.trx_id, name, domain, key, data, transactions.timestamp
                       FROM actions
-                      JOIN blocks ON actions.block_id = blocks.block_id
+                      JOIN transactions ON actions.block_id = transactions.block_id
                       WHERE domain = $1 AND key = $2
                       ORDER BY actions.global_seq {0}
                       LIMIT $3 OFFSET $4
                       )sql";
 
 // with name filter
-auto ga_plan2 = R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
+auto ga_plan2 = R"sql(SELECT actions.trx_id, name, domain, key, data, transactions.timestamp
                       FROM actions
-                      JOIN blocks ON actions.block_id = blocks.block_id
+                      JOIN transactions ON actions.block_id = transactions.block_id
                       WHERE domain = $1 AND name = ANY($2)
                       ORDER BY actions.global_seq {0}
                       LIMIT $3 OFFSET $4
                       )sql";
 
 // with key and name filter
-auto ga_plan3 = R"sql(SELECT trx_id, name, domain, key, data, blocks.timestamp
+auto ga_plan3 = R"sql(SELECT actions.trx_id, name, domain, key, data, transactions.timestamp
                       FROM actions
-                      JOIN blocks ON actions.block_id = blocks.block_id
+                      JOIN transactions ON actions.block_id = transactions.block_id
                       WHERE domain = $1 AND key = $2 AND name = ANY($3)
                       ORDER BY actions.global_seq {0}
                       LIMIT $4 OFFSET $5
@@ -576,7 +576,7 @@ pg_query::get_actions_resume(int id, pg_result const* r) {
     return response_ok(id, fmt::to_string(builder));
 }
 
-auto gfa_plan0 = R"sql(SELECT trx_id, name, domain, key, data, transactions.timestamp
+auto gfa_plan0 = R"sql(SELECT actions.trx_id, name, domain, key, data, transactions.timestamp
                        FROM actions
                        JOIN transactions ON actions.trx_id = transactions.trx_id
                        WHERE
@@ -588,7 +588,7 @@ auto gfa_plan0 = R"sql(SELECT trx_id, name, domain, key, data, transactions.time
                        )sql";
 
 // with address filter
-auto gfa_plan1 = R"sql(SELECT trx_id, name, domain, key, data, transactions.timestamp
+auto gfa_plan1 = R"sql(SELECT actions.trx_id, name, domain, key, data, transactions.timestamp
                        FROM actions
                        JOIN transactions ON actions.trx_id = transactions.trx_id
                        WHERE
