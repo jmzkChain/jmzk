@@ -68,6 +68,11 @@ public:
     int close();
 
 public:
+    int init_pathman();
+    int create_partitions(const std::string& table, uint interval, uint part_nums);
+    int drop_partitions(const std::string& table);
+
+public:
     int create_db(const std::string& db);
     int drop_db(const std::string& db);
     int exists_db(const std::string& db);

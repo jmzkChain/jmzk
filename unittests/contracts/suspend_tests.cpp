@@ -96,7 +96,7 @@ TEST_CASE_METHOD(contracts_test, "contract_failsuspend_test", "[contracts]") {
     CHECK_THROWS_AS(my_tester->push_action(N(execsuspend), N128(.suspend), name128(get_suspend_name()), execute_tvar.get_object(), {N(key), N(payer)}, payer), suspend_executor_exception);
 
     auto&       tokendb = my_tester->control->token_db();
-    auto  cache = token_database_cache(tokendb, 1024 * 1024);
+    auto& cache = my_tester->control->token_db_cache();
     suspend_def suspend;
     READ_TOKEN(suspend, edact.name, suspend);
     CHECK(suspend.status == suspend_status::proposed);
@@ -219,7 +219,7 @@ TEST_CASE_METHOD(contracts_test, "contract_successsuspend_test", "[contracts]") 
     my_tester->push_action(N(newsuspend), N128(.suspend), N128(testsuspend), var.get_object(), key_seeds, payer);
 
     auto& tokendb = my_tester->control->token_db();
-    auto  cache = token_database_cache(tokendb, 1024 * 1024);
+    auto& cache = my_tester->control->token_db_cache();
     auto  suspend = suspend_def();
     READ_TOKEN(suspend, ndact.name, suspend);
     CHECK(suspend.status == suspend_status::proposed);

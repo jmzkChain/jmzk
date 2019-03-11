@@ -174,7 +174,7 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_test", "[contracts]") {
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.bonus), actkey, spb), keyseeds, payer), bonus_dupe_exception);
 
     auto& tokendb = my_tester->control->token_db();
-    auto  cache = token_database_cache(tokendb, 1024 * 1024);
+    auto& cache = my_tester->control->token_db_cache();
 
     auto pb = passive_bonus();
     READ_TOKEN2(token, N128(.bonus), get_bonus_db_key(get_sym_id(), 0), pb);
@@ -194,7 +194,7 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_test", "[contracts]") {
 
 TEST_CASE_METHOD(contracts_test, "passive_bonus_fees_test", "[contracts]") {
     auto& tokendb = my_tester->control->token_db();
-    auto  cache = token_database_cache(tokendb, 1024 * 1024);
+    auto& cache = my_tester->control->token_db_cache();
     CHECK(tokendb.exists_token(token_type::bonus, std::nullopt, get_bonus_db_key(get_sym_id(), 0)));
 
     auto tf   = transferft();
@@ -323,7 +323,7 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_fees_test", "[contracts]") {
 
 TEST_CASE_METHOD(contracts_test, "passive_bonus_dist_test", "[contracts]") {
     auto& tokendb = my_tester->control->token_db();
-    auto  cache = token_database_cache(tokendb, 1024 * 1024);
+    auto cache = my_tester->control->token_db_cache();
     CHECK(tokendb.exists_token(token_type::bonus, std::nullopt, get_bonus_db_key(get_sym_id(), 0)));
 
     auto actkey     = name128::from_number(get_sym_id());
@@ -380,4 +380,5 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_dist_test", "[contracts]") {
     CHECK(pb.methods.size() == pb2->methods.size());
     CHECK(pb.round == pb2->round);
     CHECK(pb.deadline == pb2->deadline);
+    std::cout<<std::string(pb.deadline)<<" timestamp "<<std::string(pb2->deadline)<<std::endl;
 }
