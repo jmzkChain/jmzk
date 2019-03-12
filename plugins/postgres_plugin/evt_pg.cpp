@@ -907,8 +907,8 @@ pg::upd_group(trx_context& tctx, const updategroup& ug) {
 
     fmt::format_to(tctx.trx_buf_,
         fmt("EXECUTE ug_plan('{}','{}');"),
-        (std::string)ug.name,
-        fc::json::to_string(u["root"])
+        fc::json::to_string(u["root"]),
+        (std::string)ug.name
         );
 
     return PG_OK;
