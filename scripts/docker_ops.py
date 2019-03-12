@@ -226,7 +226,7 @@ def upgrade(ctx, data_volume):
         count += 1
 
     try:
-        cmd = "bash -c 'if [ -s '/config/pg_hba.conf' ]; then cp -v /config/pg_hba.conf /var/lib/postgresql/data; fi'"
+        cmd = "bash -c 'if [ -s '/config/pg_hba.conf' ]; then cp -v /config/pg_hba.conf /data; fi'"
         logs = client.containers.run(image, cmd, auto_remove=True,
             volumes={
                 volume_name: {'bind': '/data', 'mode': 'rw'},
