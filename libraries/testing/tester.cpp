@@ -386,6 +386,7 @@ base_tester::add_money(const address& addr, const asset& number) {
 
     auto str  = std::string();
     auto prop = property();
+    prop.sym  = number.sym();
     
     if(tokendb.read_asset(addr, number.symbol_id(), str, true)) {
         extract_db_value(str, prop);

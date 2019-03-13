@@ -1,5 +1,13 @@
 #include "contracts_tests.hpp"
 
+auto CHECK_EQUAL = [](auto& lhs, auto& rhs) {
+    auto b1 = fc::raw::pack(lhs);
+    auto b2 = fc::raw::pack(rhs);
+
+    CHECK(b1.size() == b2.size());
+    CHECK(memcmp(b1.data(), b2.data(), b1.size()) == 0);
+};
+
 TEST_CASE_METHOD(contracts_test, "contract_newfungible_test", "[contracts]") {
     const char* test_data = R"=====(
     {
@@ -33,6 +41,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newfungible_test", "[contracts]") {
     auto fungible_payer = address(N(.domain), ".fungible", 0);
     my_tester->add_money(fungible_payer, asset(10'000'000, symbol(5, EVT_SYM_ID)));
     auto& tokendb = my_tester->control->token_db();
+    auto& cache = my_tester->control->token_db_cache();
 
     CHECK(!EXISTS_TOKEN(fungible, 3));
 
@@ -64,6 +73,12 @@ TEST_CASE_METHOD(contracts_test, "contract_newfungible_test", "[contracts]") {
     CHECK(EXISTS_TOKEN(fungible, get_sym_id()));
 
     my_tester->produce_blocks();
+
+    auto ft  = fungible_def();
+    READ_TOKEN2(token, N128(.fungible), get_sym_id(), ft);
+    auto ft2  = cache.read_token<fungible_def>(token_type::token, N128(.fungible), get_sym_id());
+    CHECK(ft2 != nullptr);
+    CHECK_EQUAL(ft, *ft2);
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_updfungible_test", "[contracts]") {
@@ -94,6 +109,7 @@ TEST_CASE_METHOD(contracts_test, "contract_updfungible_test", "[contracts]") {
     auto  var     = fc::json::from_string(test_data);
     auto  updfg   = var.as<updfungible>();
     auto& tokendb = my_tester->control->token_db();
+    auto& cache = my_tester->control->token_db_cache();
 
     fungible_def fg;
     READ_TOKEN(fungible, get_sym_id(), fg);
@@ -114,6 +130,12 @@ TEST_CASE_METHOD(contracts_test, "contract_updfungible_test", "[contracts]") {
     CHECK(2 == fg.issue.authorizers[0].weight);
 
     my_tester->produce_blocks();
+
+    auto ft  = fungible_def();
+    READ_TOKEN2(token, N128(.fungible), get_sym_id(), ft);
+    auto ft2  = cache.read_token<fungible_def>(token_type::token, N128(.fungible), get_sym_id());
+    CHECK(ft2 != nullptr);
+    CHECK_EQUAL(ft, *ft2);
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_issuefungible_test", "[contracts]") {
@@ -148,7 +170,12 @@ TEST_CASE_METHOD(contracts_test, "contract_issuefungible_test", "[contracts]") {
     to_variant(issfg, var);
     CHECK_THROWS_AS(my_tester->push_action(N(issuefungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer), address_reserved_exception);
 
+    issfg.number  = asset::from_string(string("5000.000000 S#") + std::to_string(get_sym_id()));
     issfg.address = key;
+    to_variant(issfg, var);
+    CHECK_THROWS_AS(my_tester->push_action(N(issuefungible), N128(.fungible),(name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer), asset_symbol_exception);
+
+    issfg.number  = asset::from_string(string("5000.00000 S#") + std::to_string(get_sym_id()));
     to_variant(issfg, var); 
     my_tester->push_action(N(issuefungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer);
 
@@ -207,9 +234,14 @@ TEST_CASE_METHOD(contracts_test, "contract_transferft_test", "[contracts]") {
     CHECK_THROWS_AS(my_tester->push_action(N(transferft), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer), address_reserved_exception);
 
     trft.to     = address(tester::get_public_key(N(to)));
-    trft.number = asset::from_string(string("15.00000 S#") + std::to_string(get_sym_id()));
+    trft.number = asset::from_string(string("15.000000 S#") + std::to_string(get_sym_id()));
     to_variant(trft, var);
     key_seeds.push_back(N(to));
+    CHECK_THROWS_AS(my_tester->push_action(N(transferft), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer), asset_symbol_exception);
+
+
+    trft.number = asset::from_string(string("15.00000 S#") + std::to_string(get_sym_id()));
+    to_variant(trft, var);
     my_tester->push_action(N(transferft), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer);
 
     auto payer2 = address(N(fungible), name128::from_number(get_sym_id()), 0);
@@ -336,7 +368,7 @@ TEST_CASE_METHOD(contracts_test, "contract_evt2pevt_test", "[contracts]") {
 
     e2p.from = payer;
     to_variant(e2p, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(evt2pevt), N128(.fungible), (name128)std::to_string(evt_sym().id()), var.get_object(), key_seeds, payer), fungible_symbol_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(evt2pevt), N128(.fungible), (name128)std::to_string(evt_sym().id()), var.get_object(), key_seeds, payer), asset_symbol_exception);
 
     e2p.number = asset::from_string(string("5.00000 S#1"));
     e2p.to.set_reserved();
@@ -347,7 +379,12 @@ TEST_CASE_METHOD(contracts_test, "contract_evt2pevt_test", "[contracts]") {
     to_variant(e2p, var);
     CHECK_THROWS_AS(my_tester->push_action(N(evt2pevt), N128(.fungible), (name128)std::to_string(evt_sym().id()), var.get_object(), key_seeds, payer), address_reserved_exception);
 
+    e2p.number = asset::from_string(string("5.000000 S#1"));
     e2p.to = key;
+    to_variant(e2p, var);
+    CHECK_THROWS_AS(my_tester->push_action(N(evt2pevt), N128(.fungible), (name128)std::to_string(evt_sym().id()), var.get_object(), key_seeds, payer), asset_symbol_exception);
+
+    e2p.number = asset::from_string(string("5.00000 S#1"));
     to_variant(e2p, var);
     my_tester->push_action(N(evt2pevt), N128(.fungible), (name128)std::to_string(evt_sym().id()), var.get_object(), key_seeds, payer);
 
@@ -361,7 +398,7 @@ TEST_CASE_METHOD(contracts_test, "contract_evt2pevt_test", "[contracts]") {
     tf.number = asset(50, symbol(5,2));
 
     to_variant(tf, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(transferft), N128(.fungible), (name128)std::to_string(pevt_sym().id()), var.get_object(), key_seeds, payer), fungible_symbol_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(transferft), N128(.fungible), (name128)std::to_string(pevt_sym().id()), var.get_object(), key_seeds, payer), asset_symbol_exception);
 
     my_tester->produce_blocks();
 }

@@ -277,10 +277,11 @@ template <typename T>
 fc::variant
 call(const std::string& url,
      const std::string& path,
-     const T&           v) {
+     const T&           v,
+     bool               raw_response = false) {
     try {
         evt::client::http::connection_param *cp = new evt::client::http::connection_param(context, parse_url(url) + path,
-            no_verify ? false : true, headers);
+            no_verify ? false : true, headers, raw_response);
 
         return evt::client::http::do_http_call(*cp, fc::variant(v), print_request, print_response);
     }
@@ -296,15 +297,17 @@ call(const std::string& url,
 template <typename T>
 fc::variant
 call(const std::string& path,
-     const T&           v) {
-    return call(url, path, fc::variant(v));
+     const T&           v,
+     bool               raw_response = false) {
+    return call(url, path, fc::variant(v), raw_response);
 }
 
 template<>
 fc::variant
 call(const std::string& url,
-     const std::string& path) {
-    return call(url, path, fc::variant()); 
+     const std::string& path,
+     bool               raw_response) {
+    return call(url, path, fc::variant(), raw_response); 
 }
 
 void
@@ -1733,6 +1736,11 @@ main(int argc, char** argv) {
     // get info
     get->add_subcommand("info", localized("Get current blockchain information"))->callback([] {
         std::cout << fc::json::to_pretty_string(get_info()) << std::endl;
+    });
+
+    // get db info
+    get->add_subcommand("dbinfo", localized("Get current underlying token database statistics"))->callback([] {
+        std::cout << call(get_db_info_func, fc::variant(), true).get_string() << std::endl;
     });
 
     // get actions

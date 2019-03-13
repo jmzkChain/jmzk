@@ -1,5 +1,13 @@
 #include "contracts_tests.hpp"
 
+auto CHECK_EQUAL = [](auto& lhs, auto& rhs) {
+    auto b1 = fc::raw::pack(lhs);
+    auto b2 = fc::raw::pack(rhs);
+
+    CHECK(b1.size() == b2.size());
+    CHECK(memcmp(b1.data(), b2.data(), b1.size()) == 0);
+};
+
 TEST_CASE_METHOD(contracts_test, "contract_newdomain_test", "[contracts]") {
     const char* test_data = R"=====(
         {
@@ -38,6 +46,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newdomain_test", "[contracts]") {
     auto  var     = fc::json::from_string(test_data);
     auto  newdom  = var.as<newdomain>();
     auto& tokendb = my_tester->control->token_db();
+    auto& cache = my_tester->control->token_db_cache();
 
     CHECK(!EXISTS_TOKEN(domain, get_domain_name()));
 
@@ -70,6 +79,12 @@ TEST_CASE_METHOD(contracts_test, "contract_newdomain_test", "[contracts]") {
     my_tester->push_action(action(newdom.name, N128(.create), newdom), key_seeds, payer);
 
     my_tester->produce_blocks();
+
+    auto dom = domain_def();
+    READ_TOKEN(domain, get_domain_name(), dom);
+    auto dom2 = cache.read_token<domain_def>(token_type::domain, std::nullopt, get_domain_name());
+    CHECK(dom2 != nullptr);
+    CHECK_EQUAL(dom, *dom2);
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_issuetoken_test", "[contracts]") {
@@ -80,7 +95,8 @@ TEST_CASE_METHOD(contracts_test, "contract_issuetoken_test", "[contracts]") {
           "t1",
           "t2",
           "t3",
-          "t4"
+          "t4",
+          "t5"
         ],
         "owner": [
           "EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2"
@@ -91,6 +107,7 @@ TEST_CASE_METHOD(contracts_test, "contract_issuetoken_test", "[contracts]") {
     auto  var     = fc::json::from_string(test_data);
     auto  istk    = var.as<issuetoken>();
     auto& tokendb = my_tester->control->token_db();
+    auto& cache = my_tester->control->token_db_cache();
 
     CHECK(!EXISTS_TOKEN2(token, get_domain_name(), "t1"));
 
@@ -138,6 +155,12 @@ TEST_CASE_METHOD(contracts_test, "contract_issuetoken_test", "[contracts]") {
     CHECK(EXISTS_TOKEN2(token, get_domain_name(), "t1"));
 
     my_tester->produce_blocks();
+
+    auto tk  = token_def();
+    READ_TOKEN2(token, get_domain_name(), "t1", tk);
+    auto tk2  = cache.read_token<token_def>(token_type::token, get_domain_name(), "t1");
+    CHECK(tk2 != nullptr);
+    CHECK_EQUAL(tk, *tk2);
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_transfer_test", "[contracts]") {
@@ -153,6 +176,7 @@ TEST_CASE_METHOD(contracts_test, "contract_transfer_test", "[contracts]") {
     }
     )=====";
     auto&       tokendb   = my_tester->control->token_db();
+    auto& cache = my_tester->control->token_db_cache();
     token_def   tk;
     READ_TOKEN2(token, get_domain_name(), "t1", tk);
     CHECK(1 == tk.owner.size());
@@ -190,6 +214,11 @@ TEST_CASE_METHOD(contracts_test, "contract_transfer_test", "[contracts]") {
     CHECK_THROWS_AS(my_tester->push_action(N(transfer), name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer), unsatisfied_authorization);
 
     my_tester->produce_blocks();
+
+    READ_TOKEN2(token, get_domain_name(), "t1", tk);
+    auto tk2  = cache.read_token<token_def>(token_type::token, get_domain_name(), "t1");
+    CHECK(tk2 != nullptr);
+    CHECK_EQUAL(tk, *tk2);
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_destroytoken_test", "[contracts]") {
@@ -203,6 +232,7 @@ TEST_CASE_METHOD(contracts_test, "contract_destroytoken_test", "[contracts]") {
     auto  var     = fc::json::from_string(test_data);
     auto  destk   = var.as<destroytoken>();
     auto& tokendb = my_tester->control->token_db();
+    auto& cache = my_tester->control->token_db_cache();
 
     CHECK(EXISTS_TOKEN2(token, get_domain_name(), "t2"));
 
@@ -224,6 +254,11 @@ TEST_CASE_METHOD(contracts_test, "contract_destroytoken_test", "[contracts]") {
     CHECK(address() == tk.owner[0]);
 
     my_tester->produce_blocks();
+
+    READ_TOKEN2(token, get_domain_name(), "t2", tk);
+    auto tk2  = cache.read_token<token_def>(token_type::token, get_domain_name(), "t2");
+    CHECK(tk2 != nullptr);
+    CHECK_EQUAL(tk, *tk2);
 }
 
 TEST_CASE_METHOD(contracts_test, "contract_destroytoken_auth_test", "[contracts]") {

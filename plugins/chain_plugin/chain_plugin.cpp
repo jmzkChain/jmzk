@@ -248,7 +248,7 @@ chain_plugin::set_program_options(options_description& cli, options_description&
     cfg.add_options()
         ("blocks-dir", bpo::value<bfs::path>()->default_value("blocks"), "the location of the blocks directory (absolute path or relative to application data dir)")
         ("token-db-dir", bpo::value<bfs::path>()->default_value("tokendb"), "the location of the token database directory (absolute path or relative to application data dir)")
-        ("token-db-cache-size-mb", bpo::value<uint32_t>()->default_value(256), "the cache size of token database in MBytes")
+        ("token-db-cache-size-mb", bpo::value<uint32_t>()->default_value(512), "the cache size of token database in MBytes")
         ("token-db-profile", boost::program_options::value<evt::chain::storage_profile>()->default_value(evt::chain::storage_profile::disk),
             "Token database profile (\"disk\", or \"memory\").\n"
             "In \"disk\" profile database is optimized for the standard storage devices.\n"
@@ -403,24 +403,31 @@ chain_plugin::plugin_initialize(const variables_map& options) {
         my->chain_config->db_config.db_path = my->tokendb_dir;
         
         if(options.count("token-db-cache-size-mb")) {
-            my->chain_config->db_config.cache_size = options.at("token-db-cache-size-mb").as<uint32_t>();
+            // simply alloc block cache and object cache 50% and 50%.
+            auto sz = options.at("token-db-cache-size-mb").as<uint32_t>() / 2 * 1024 * 1024;
+            my->chain_config->db_config.block_cache_size = sz;
+            my->chain_config->db_config.object_cache_size = sz;
         }
 
         if(options.count("token-db-profile")) {
             my->chain_config->db_config.profile = options.at("token-db-profile").as<storage_profile>();
         }
 
-        if(options.count("chain-state-db-size-mb"))
+        if(options.count("chain-state-db-size-mb")) {
             my->chain_config->state_size = options.at("chain-state-db-size-mb").as<uint64_t>() * 1024 * 1024;
+        }
 
-        if(options.count("chain-state-db-guard-size-mb"))
+        if(options.count("chain-state-db-guard-size-mb")) {
             my->chain_config->state_guard_size = options.at("chain-state-db-guard-size-mb").as<uint64_t>() * 1024 * 1024;
+        }
 
-        if(options.count("reversible-blocks-db-size-mb"))
+        if(options.count("reversible-blocks-db-size-mb")) {
             my->chain_config->reversible_cache_size = options.at("reversible-blocks-db-size-mb").as<uint64_t>() * 1024 * 1024;
+        }
 
-        if(options.count("reversible-blocks-db-guard-size-mb"))
+        if(options.count("reversible-blocks-db-guard-size-mb")) {
             my->chain_config->reversible_guard_size = options.at("reversible-blocks-db-guard-size-mb").as<uint64_t>() * 1024 * 1024;
+        }
 
         my->chain_config->force_all_checks    = options.at("force-all-checks").as<bool>();
         my->chain_config->disable_replay_opts = options.at("disable-replay-opts").as<bool>();
@@ -1447,6 +1454,11 @@ read_only::get_actions(const get_actions_params&) const {
 
         return _actions_json;
     }
+}
+
+std::string
+read_only::get_db_info(const get_db_info_params&) const {
+    return db.token_db().stats();
 }
 
 }  // namespace chain_apis

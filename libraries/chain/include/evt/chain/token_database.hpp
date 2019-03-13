@@ -8,6 +8,7 @@
 #include <optional>
 #include <string_view>
 #include <boost/noncopyable.hpp>
+#include <boost/signals2/signal.hpp>
 #include <fc/reflect/reflect.hpp>
 #include <fc/filesystem.hpp>
 #include <evt/chain/types.hpp>
@@ -17,6 +18,7 @@
 
 namespace rocksdb {
 class DB;
+class Slice;
 }  // namespace rocksdb
 
 namespace evt { namespace chain {
@@ -96,6 +98,7 @@ private:
 
 public:
     std::string_view as_string_view() const { return view_; }
+    size_t size() const { return view_.size(); }
 
 private:
     data_variant_t   var_;
@@ -124,9 +127,11 @@ using token_keys_t = small_vector<name128, 4>;
 class token_database : boost::noncopyable {
 public:
     struct config {
-        storage_profile profile    = storage_profile::disk;
-        uint32_t        cache_size = 256; // MBytes
-        fc::path        db_path    = ::evt::chain::config::default_token_database_dir_name;
+        storage_profile profile           = storage_profile::disk;
+        uint32_t        block_cache_size  = 256 * 1024 * 1024; // 256M
+        uint32_t        object_cache_size = 256 * 1024 * 1024; // 256M
+        fc::path        db_path           = ::evt::chain::config::default_token_database_dir_name;
+        bool            enable_stats      = true;
     };
 
     class session {
@@ -210,18 +215,25 @@ public:
 
     size_t savepoints_size() const;
 
+public:
+    std::string stats() const;
+
 private:
     void flush() const;
     void persist_savepoints(std::ostream&) const;
     void load_savepoints(std::istream&);
 
-    rocksdb::DB* internal_db() const;
-    fc::path     get_db_path() const;
+private:  // for cache usage
+    std::string get_db_key(token_type type, const std::optional<name128>& domain, const name128& key);
+    boost::signals2::signal<void(const rocksdb::Slice&)> rollback_token_value;
+    boost::signals2::signal<void(const rocksdb::Slice&)> remove_token_value;
 
 private:
     std::unique_ptr<class token_database_impl> my_;
+    friend class token_database_cache;
+    friend class token_database_impl;
 };
 
 }}  // namespace evt::chain
 
-FC_REFLECT(evt::chain::token_database::config, (profile)(cache_size)(db_path));
+FC_REFLECT(evt::chain::token_database::config, (profile)(block_cache_size)(object_cache_size)(db_path));

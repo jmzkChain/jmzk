@@ -314,6 +314,42 @@ pg::close() {
 }
 
 int
+pg::init_pathman() {
+    auto sql = R"sql(CREATE EXTENSION IF NOT EXISTS pg_pathman;)sql";
+    auto stmt = fmt::format(sql);
+    auto r = PQexec(conn_, stmt.c_str());
+    EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgres_exec_exception, "Init extension pg_pathman failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    PQclear(r);
+    return PG_OK;
+}
+
+int
+pg::create_partitions(const std::string& table, uint interval, uint part_nums) {
+    auto sql = R"sql(SELECT create_range_partitions(
+                    '{}'::regclass,
+                    'block_num',
+                    1,
+                    {},
+                    {}, 
+                    false);)sql";
+    auto stmt = fmt::format(sql, table, interval, part_nums);
+    auto r = PQexec(conn_, stmt.c_str());
+    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_exec_exception, "Create partitions failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    PQclear(r);
+    return PG_OK;
+}
+
+int
+pg::drop_partitions(const std::string& table) {
+    auto sql = R"sql(SELECT drop_partitions('{}'::regclass);)sql";
+    auto stmt = fmt::format(sql, table, table);
+    auto r = PQexec(conn_, stmt.c_str());
+    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_exec_exception, "Drop partitions failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    PQclear(r);
+    return PG_OK;
+}
+
+int
 pg::create_db(const std::string& db) {
     auto sql = R"sql(CREATE DATABASE {}
                      WITH
@@ -382,7 +418,7 @@ pg::is_table_empty(const std::string& table) {
 
 int
 pg::drop_table(const std::string& table) {
-    auto sql = "DROP TABLE IF EXISTS {};";
+    auto sql = "DROP TABLE IF EXISTS {} CASCADE;";
     auto stmt = fmt::format(sql, table);
 
     auto r = PQexec(conn_, stmt.c_str());
@@ -752,28 +788,33 @@ pg::add_domain(trx_context& tctx, const newdomain& nd) {
     return PG_OK;
 }
 
-PREPARE_SQL_ONCE(ud_plan, "UPDATE domains SET(issue, transfer, manage) = ($1, $2, $3) WHERE name = $4;");
+PREPARE_SQL_ONCE(udi_plan, "UPDATE domains SET issue    = $1 WHERE name = $2;");
+PREPARE_SQL_ONCE(udt_plan, "UPDATE domains SET transfer = $1 WHERE name = $2;");
+PREPARE_SQL_ONCE(udm_plan, "UPDATE domains SET manage   = $1 WHERE name = $2;");
 
 int
 pg::upd_domain(trx_context& tctx, const updatedomain& ud) {
-    std::string i = "issue", t = "transfer", m = "manage";
     if(ud.issue.has_value()) {
         fc::variant u;
         fc::to_variant(*ud.issue, u);
-        i = fc::json::to_string(u);
+        auto i = fc::json::to_string(u);
+
+        fmt::format_to(tctx.trx_buf_, fmt("EXECUTE udi_plan('{}','{}');\n"), i, (std::string)ud.name);
     }
     if(ud.transfer.has_value()) {
         fc::variant u;
         fc::to_variant(*ud.transfer, u);
-        t = fc::json::to_string(u);
+        auto t = fc::json::to_string(u);
+
+        fmt::format_to(tctx.trx_buf_, fmt("EXECUTE udt_plan('{}','{}');\n"), t, (std::string)ud.name);
     }
     if(ud.manage.has_value()) {
         fc::variant u;
         fc::to_variant(*ud.manage, u);
-        m = fc::json::to_string(u);
-    }
+        auto m = fc::json::to_string(u);
 
-    fmt::format_to(tctx.trx_buf_, fmt("EXECUTE ud_plan('{}','{}','{}', '{}');\n"), i, t, m, (std::string)ud.name);
+        fmt::format_to(tctx.trx_buf_, fmt("EXECUTE udm_plan('{}','{}');\n"), m, (std::string)ud.name);
+    }
 
     return PG_OK;
 }
@@ -866,8 +907,8 @@ pg::upd_group(trx_context& tctx, const updategroup& ug) {
 
     fmt::format_to(tctx.trx_buf_,
         fmt("EXECUTE ug_plan('{}','{}');"),
-        (std::string)ug.name,
-        fc::json::to_string(u["root"])
+        fc::json::to_string(u["root"]),
+        (std::string)ug.name
         );
 
     return PG_OK;

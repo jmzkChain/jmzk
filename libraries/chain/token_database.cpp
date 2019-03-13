@@ -18,6 +18,7 @@
 #include <rocksdb/options.h>
 #include <rocksdb/filter_policy.h>
 #include <rocksdb/slice_transform.h>
+#include <rocksdb/statistics.h>
 #include <rocksdb/table.h>
 
 #include <fc/filesystem.hpp>
@@ -234,7 +235,7 @@ struct pd_header {
 
 class token_database_impl {
 public:
-    token_database_impl(const token_database::config& config);
+    token_database_impl(token_database& self, const token_database::config& config);
 
 public:
     void open(int load_persistence = true);
@@ -287,6 +288,7 @@ public:
     std::string get_db_path() const { return config_.db_path.to_native_ansi_path(); }
 
 public:
+    token_database&        self_;
     token_database::config config_;
 
     rocksdb::DB*          db_;
@@ -299,8 +301,9 @@ public:
     std::deque<__internal::savepoint> savepoints_;
 };
 
-token_database_impl::token_database_impl(const token_database::config& config)
-    : config_(config)
+token_database_impl::token_database_impl(token_database& self, const token_database::config& config)
+    : self_(self)
+    , config_(config)
     , db_(nullptr)
     , read_opts_()
     , write_opts_()
@@ -324,6 +327,10 @@ token_database_impl::open(int load_persistence) {
     options.allow_concurrent_memtable_write = false;
     options.prefix_extractor.reset(NewFixedPrefixTransform(sizeof(name128)));
     options.memtable_factory.reset(NewHashSkipListRepFactory());
+    if(config_.enable_stats) {
+        options.statistics = rocksdb::CreateDBStatistics();
+        options.statistics->stats_level_ = StatsLevel::kExceptTimeForMutex;
+    }
 
     auto assets_options = ColumnFamilyOptions(options);
 
@@ -333,7 +340,7 @@ token_database_impl::open(int load_persistence) {
         table_opts.index_type     = BlockBasedTableOptions::kHashSearch;
         table_opts.checksum       = kxxHash64;
         table_opts.format_version = 4;
-        table_opts.block_cache    = NewLRUCache(config_.cache_size * 1024 * 1024);
+        table_opts.block_cache    = NewLRUCache(config_.block_cache_size);
         table_opts.filter_policy.reset(NewBloomFilterPolicy(10, false));
 
         options.table_factory.reset(NewBlockBasedTableFactory(table_opts));
@@ -355,6 +362,7 @@ token_database_impl::open(int load_persistence) {
 
     read_opts_.total_order_seek     = false;
     read_opts_.prefix_same_as_start = true;
+    read_opts_.tailing              = true;
 
     if(!fc::exists(config_.db_path)) {
         auto t = config_.db_path.to_native_ansi_path();
@@ -795,6 +803,7 @@ token_database_impl::rollback_rt_group(__internal::rt_group* rt) {
                 assert(key_set.find(key) == key_set.cend());
 
                 batch.Delete(key);
+                self_.remove_token_value(key);
             
                 // insert key into key set
                 key_set.emplace(std::move(key));
@@ -811,6 +820,7 @@ token_database_impl::rollback_rt_group(__internal::rt_group* rt) {
                     FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
                 }
                 batch.Put(key, old_value);
+                self_.rollback_token_value(key);
 
                 // insert key into key set
                 key_set.emplace(std::move(key));
@@ -833,9 +843,15 @@ token_database_impl::rollback_rt_group(__internal::rt_group* rt) {
                         FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
                     }
                     batch.Delete(handle, key);
+                    if(handle == tokens_handle_) {
+                        self_.remove_token_value(key);
+                    }
                 }
                 else {
                     batch.Put(handle, key, old_value);
+                    if(handle == tokens_handle_) {
+                        self_.rollback_token_value(key);
+                    }
                 }
 
                 // insert key into key set
@@ -891,6 +907,8 @@ token_database_impl::rollback_pd_group(__internal::pd_group* pd) {
 
     // keyset is not required here,
     // because it has done during creating persist savepoint
+    // cache rollback is also no need here
+    // because cache cannot have persist value objects
     auto batch = rocksdb::WriteBatch();
     for(auto it = pd->actions.begin(); it < pd->actions.end(); it++) {
         switch((action_op)it->op) {
@@ -1142,7 +1160,7 @@ token_database_impl::flush() const {
 }
 
 token_database::token_database(const config& config)
-    : my_(std::make_unique<token_database_impl>(config)) {}
+    : my_(std::make_unique<token_database_impl>(*this, config)) {}
 
 token_database::~token_database() {
     my_->close();
@@ -1208,7 +1226,7 @@ token_database::read_token(token_type type, const std::optional<name128>& domain
 
     assert(type != token_type::asset);
     assert((type == token_type::token) != (!domain.has_value()));
-    auto& prefix = domain.has_value() ? *domain : action_key_prefixes[(int)type];    
+    auto& prefix = domain.has_value() ? *domain : action_key_prefixes[(int)type];
     return my_->read_token(prefix, key, out, no_throw);
 }
 
@@ -1280,6 +1298,15 @@ token_database::latest_savepoint_seq() const {
     return my_->latest_savepoint_seq();
 }
 
+std::string
+token_database::stats() const {
+    auto s = std::string();
+    if(my_->db_->GetProperty(rocksdb::DB::Properties::kStats, &s)) {
+        return s;
+    }
+    return "NA";
+}
+
 void
 token_database::flush() const {
     my_->flush();
@@ -1295,14 +1322,13 @@ token_database::load_savepoints(std::istream& is) {
     my_->load_savepoints(is);
 }
 
-rocksdb::DB*
-token_database::internal_db() const {
-    return my_->db_;
-}
+std::string
+token_database::get_db_key(token_type type, const std::optional<name128>& domain, const name128& key) {
+    using namespace __internal;
 
-fc::path
-token_database::get_db_path() const {
-    return my_->get_db_path();
+    auto& prefix = domain.has_value() ? *domain : action_key_prefixes[(int)type];
+    auto  dkey   = db_token_key(prefix, key);
+    return dkey.as_string();
 }
 
 }}  // namespace evt::chain

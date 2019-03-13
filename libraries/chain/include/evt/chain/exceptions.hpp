@@ -149,6 +149,7 @@ FC_DECLARE_DERIVED_EXCEPTION( action_authorize_exception, action_exception, 3040
 FC_DECLARE_DERIVED_EXCEPTION( action_args_exception,      action_exception, 3040002, "Invalid arguments for action" );
 FC_DECLARE_DERIVED_EXCEPTION( name_reserved_exception,    action_exception, 3040003, "Name is reserved." );
 FC_DECLARE_DERIVED_EXCEPTION( address_reserved_exception, action_exception, 3040004, "Address is reserved." );
+FC_DECLARE_DERIVED_EXCEPTION( asset_symbol_exception,     action_exception, 3040005, "Invalid symbol of asset" );
 
 FC_DECLARE_DERIVED_EXCEPTION( domain_exception,           action_exception, 3040100, "Domain exception" );
 FC_DECLARE_DERIVED_EXCEPTION( unknown_domain_exception,   domain_exception, 3040101, "Domain does not exist." );
@@ -335,6 +336,7 @@ FC_DECLARE_DERIVED_EXCEPTION( token_database_dirty_flag_exception, token_databas
 FC_DECLARE_DERIVED_EXCEPTION( token_database_squash_exception,     token_database_exception, 3150008, "Cannot perform squash operation now" );
 FC_DECLARE_DERIVED_EXCEPTION( token_database_snapshot_exception,   token_database_exception, 3150009, "Create or restore snapshot failed" );
 FC_DECLARE_DERIVED_EXCEPTION( token_database_persist_exception,    token_database_exception, 3150010, "Persist savepoints failed" );
+FC_DECLARE_DERIVED_EXCEPTION( token_database_cache_exception,      token_database_exception, 3150010, "Invalid cache entry" );
 
 FC_DECLARE_DERIVED_EXCEPTION( guard_exception,            database_exception, 3160101, "Database exception" );
 FC_DECLARE_DERIVED_EXCEPTION( database_guard_exception,   guard_exception,    3160102, "Database usage is at unsafe levels" );

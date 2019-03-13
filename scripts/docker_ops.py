@@ -171,16 +171,15 @@ def init(ctx):
     name = ctx.obj['name']
 
     try:
-        client.images.get('bitnami/postgresql:11.1.0')
+        client.images.get('everitoken/postgres:latest')
         click.echo('{} is already existed, no need to fetch again'.format(
-            green('bitnami/postgresql:11.1.10')))
+            green('everitoken/postgres:latest')))
     except docker.errors.ImageNotFound:
         click.echo('Pulling latest postgres image...')
-        client.images.pull('bitnami/postgresql', '11.1.0')
+        client.images.pull('everitoken/postgres', 'latest')
         click.echo('Pulled latest postgres image')
 
     volume_name = '{}-data-volume'.format(name)
-    volume2_name = '{}-config-volume'.format(name)
 
     try:
         client.volumes.get(volume_name)
@@ -190,13 +189,61 @@ def init(ctx):
         client.volumes.create(volume_name)
         click.echo('{} volume is created'.format(green(volume_name)))
 
+
+@postgres.command()
+@click.option('--data-volume', '-d', default=None, help='Set one host path for data folder in postgres instead using volume')
+@click.pass_context
+def upgrade(ctx, data_volume):
+    name = ctx.obj['name']
+    image = 'everitoken/postgres:latest'
+    volume_name = '{}-data-volume'.format(name)
+    volume2_name = '{}-config-volume'.format(name)
+
     try:
+        client.images.get(image)
+        if data_volume is None:
+            client.volumes.get(volume_name)
         client.volumes.get(volume2_name)
-        click.echo('{} volume is already existed, no need to create one'.
-                   format(green(volume2_name)))
+    except docker.errors.ImageNotFound:
+        click.echo(
+            'Some necessary elements are not found, please run `postgres init` first')
+        return
     except docker.errors.NotFound:
-        client.volumes.create(volume2_name)
-        click.echo('{} volume is created'.format(green(volume2_name)))
+        click.echo(
+            'Some necessary elements are not found, please run `postgres init` first')
+        return
+
+    try:
+        cmd = "bash -c 'if [ -s '/data/postgresql/data/PG_VERSION' ]; then shopt -s dotglob nullglob && mv -v /data/postgresql/data/* /data/; fi'"
+        logs = client.containers.run(image, cmd, auto_remove=True, volumes={volume_name: {'bind': '/data', 'mode': 'rw'}}, stream=True)
+    except docker.errors.ContainerError:
+        click.echo('Upgrade postgres failed')
+        return
+
+    count = 0
+    for line in logs:
+        click.echo(line, nl=False)
+        count += 1
+
+    try:
+        cmd = "bash -c 'if [ -s '/config/pg_hba.conf' ]; then cp -v /config/pg_hba.conf /data; fi'"
+        logs = client.containers.run(image, cmd, auto_remove=True,
+            volumes={
+                volume_name: {'bind': '/data', 'mode': 'rw'},
+                volume2_name: {'bind': '/config', 'mode': 'rw'}
+            }, stream=True)
+    except docker.errors.ContainerError:
+        click.echo('Upgrade postgres failed')
+        return
+
+    for line in logs:
+        click.echo(line, nl=False)
+        count += 1
+
+    if count > 0:
+        click.echo('Upgraded postgres')
+    else:
+        click.echo("It's no need to upgrade postgres now")
 
 
 @postgres.command()
@@ -204,18 +251,21 @@ def init(ctx):
 @click.option('--port', '-p', default=5432, help='Expose port for postgres')
 @click.option('--host', '-h', default='127.0.0.1', help='Host address for postgres')
 @click.option('--password', '-x', default='', help='Password for \'postgres\' user, leave empty to diable password(anyone can login)')
+@click.option('--data-volume', '-d', default=None, help='Set one host path for data folder in postgres instead using volume')
 @click.pass_context
-def create(ctx, net, port, host, password):
+def create(ctx, net, port, host, password, data_volume):
     name = ctx.obj['name']
+    image = 'everitoken/postgres:latest'
     volume_name = '{}-data-volume'.format(name)
-    volume2_name = '{}-config-volume'.format(name)
-    image = 'bitnami/postgresql:11.1.0'
+
+    if data_volume is not None:
+        volume_name = data_volume
 
     try:
         client.images.get(image)
         client.networks.get(net)
-        client.volumes.get(volume_name)
-        client.volumes.get(volume2_name)
+        if data_volume is None:
+            client.volumes.get(volume_name)
     except docker.errors.ImageNotFound:
         click.echo(
             'Some necessary elements are not found, please run `postgres init` first')
@@ -243,37 +293,27 @@ def create(ctx, net, port, host, password):
     if not create:
         return
 
+    if len(password) > 0:
+        auth = 'md5'
+    else:
+        auth = 'trust'
+
     client.containers.create(image, None, name=name, detach=True, network=net,
                              ports={'5432/tcp': (host, port)},
                              volumes={
                                  volume_name: {
-                                     'bind': '/bitnami', 'mode': 'rw'},
-                                 volume2_name: {
-                                     'bind': '/opt/bitnami/postgresql/conf', 'mode': 'rw'
+                                     'bind': '/var/lib/postgresql/data', 'mode': 'rw'
                                  }
                              },
-                             )
+                             environment={
+                                 'AUTH': auth,
+                                 'POSTGRES_PASSWORD': password
+                             })
     click.echo('{} container is created'.format(green(name)))
 
     if len(password) > 0:
-        me = 'md5'
         click.echo('{}: Password is set only if it\'s the first time creating postgres, otherwise it will reuse old password. Please use {} command.'.format(
             green('NOTICE'), green('postgres updpass')))
-    else:
-        me = 'trust'
-
-    conf = """# TYPE  DATABASE        USER            ADDRESS                 METHOD
-              local   all             all                                     trust
-              host    all             all             127.0.0.1/32            trust
-              host    all             all             ::1/128                 trust
-              host    all             all             0.0.0.0/0               {}""".format(me)
-
-    click.echo('Writting default {}'.format(green('pg_hba.conf')))
-    cmd = '/bin/bash -c "echo -e \'{}\' | cat > /opt/bitnami/postgresql/conf/pg_hba.conf"'.format(
-        conf)
-    r = client.containers.run(image, cmd, auto_remove=True, volumes={volume2_name: {
-        'bind': '/opt/bitnami/postgresql/conf', 'mode': 'rw'
-    }})
 
 
 @postgres.command()
@@ -298,10 +338,10 @@ def createdb(ctx, dbname):
 
     if 't\n' in logs1.decode('utf-8'):
         click.echo(
-            '{} database is already created, skip creation'.format(green(name)))
+            '{} database is already created, skip creation'.format(green(dbname)))
         return
 
-    cmd2 = "psql -U postgres -c 'CREATE DATABASE {}'".format(dbname)
+    cmd2 = "psql -U postgres -c 'CREATE DATABASE {};'".format(dbname)
     c2, logs2 = container.exec_run(cmd2)
 
     if 'CREATE DATABASE' in logs2.decode('utf-8'):
@@ -333,7 +373,7 @@ def updpass(ctx, new_password):
 
 
 @postgres.command()
-@click.option('--all', '-a', default=False, help='Clear both container and volume, otherwise only clear container')
+@click.option('--all/--no-all', '-a', default=False, help='Clear both container and volume, otherwise only clear container')
 @click.pass_context
 def clear(ctx, all):
     name = ctx.obj['name']
@@ -469,7 +509,7 @@ def create(ctx, net, port, host):
 
 
 @mongo.command()
-@click.option('--all', '-a', default=False, help='Clear both container and volume, otherwise only clear container')
+@click.option('--all/--no-all', '-a', default=False, help='Clear both container and volume, otherwise only clear container')
 @click.pass_context
 def clear(ctx, all):
     name = ctx.obj['name']
@@ -578,10 +618,13 @@ def init(ctx):
 
 @evtd.command('export', help='Export reversible blocks to one backup file')
 @click.option('--file', '-f', default='rev-{}.logs'.format(datetime.now().strftime('%Y-%m-%d')), help='Backup file name of reversible blocks')
+@click.option('--data-volume', '-d', default=None, help='Set one host path for data folder in evtd instead using volume')
 @click.pass_context
-def exportrb(ctx, file):
+def exportrb(ctx, file, data_volume):
     name = ctx.obj['name']
     volume_name = '{}-data-volume'.format(name)
+    if data_volume is not None:
+        volume_name = data_volume
 
     try:
         container = client.containers.get(name)
@@ -594,7 +637,8 @@ def exportrb(ctx, file):
         return
 
     try:
-        client.volumes.get(volume_name)
+        if data_volume is None:
+            client.volumes.get(volume_name)
     except docker.errors.NotFound:
         click.echo('{} volume is not existed'.format(green(volume_name)))
         return
@@ -618,10 +662,13 @@ def exportrb(ctx, file):
 
 @evtd.command('import', help='Import reversible blocks from backup file')
 @click.option('--file', '-f', default='rev-{}.logs'.format(datetime.now().strftime('%Y-%m-%d')), help='Backup file name of reversible blocks')
+@click.option('--data-volume', '-d', default=None, help='Set one host path for data folder in evtd instead using volume')
 @click.pass_context
-def importrb(ctx, file):
+def importrb(ctx, file, data_volume):
     name = ctx.obj['name']
     volume_name = '{}-data-volume'.format(name)
+    if data_volume is not None:
+        volume_name = data_volume
 
     try:
         container = client.containers.get(name)
@@ -634,7 +681,8 @@ def importrb(ctx, file):
         return
 
     try:
-        client.volumes.get(volume_name)
+        if data_volume is None:
+            client.volumes.get(volume_name)
     except docker.errors.NotFound:
         click.echo('{} volume is not existed'.format(green(volume_name)))
         return
@@ -656,7 +704,7 @@ def importrb(ctx, file):
 
 
 @evtd.command()
-@click.option('--all', '-a', default=False, help='Clear both container and volume, otherwise only clear container')
+@click.option('--all/--no-all', '-a', default=False, help='Clear both container and volume, otherwise only clear container')
 @click.pass_context
 def clear(ctx, all):
     name = ctx.obj['name']
@@ -781,11 +829,14 @@ def getsnapshot(ctx, snapshot):
 @click.option('--postgres-name', '-g', default='pg', help='Container name or host address of postgres')
 @click.option('--postgres-db', default=None, help='Name of database in postgres, if set, postgres and history plugins will be enabled')
 @click.option('--postgres-pass', default='', help='Password for postgres')
+@click.option('--data-volume', '-d', default=None, help='Set one host path for data folder in evtd instead using volume')
 @click.pass_context
-def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_db, postgres_pass, type, arguments):
+def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_db, postgres_pass, data_volume, type, arguments):
     name = ctx.obj['name']
     volume_name = '{}-data-volume'.format(name)
     volume2_name = '{}-snapshots-volume'.format(name)
+    if data_volume is not None:
+        volume_name = data_volume
 
     if type == 'testnet':
         image = 'everitoken/evt:latest'
@@ -795,7 +846,8 @@ def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_db, post
     try:
         client.images.get(image)
         client.networks.get(net)
-        client.volumes.get(volume_name)
+        if data_volume is None:
+            client.volumes.get(volume_name)
         client.volumes.get(volume2_name)
     except docker.errors.ImageNotFound:
         click.echo(

@@ -260,14 +260,30 @@ do_http_call(const connection_param& cp,
         e.append_log(FC_LOG_MESSAGE(info, "Please verify this url is valid: ${url}", ("url", url.scheme + "://" + url.server + ":" + url.port + url.path)));
         e.append_log(FC_LOG_MESSAGE(info, "If the condition persists, please contact the RPC server administrator for ${server}!", ("server", url.server)));
         throw;
-   }
+    }
 
-    const auto response_result = fc::json::from_string(re);
+    auto response_result = fc::variant();
+    if(!cp.raw_response) {
+        response_result = fc::json::from_string(re);
+    }
+    else {
+        response_result = fc::variant(re);
+    }
+
     if(print_response) {
-        std::cerr << "RESPONSE:" << std::endl
-                  << "---------------------" << std::endl
-                  << fc::json::to_pretty_string(response_result) << std::endl
-                  << "---------------------" << std::endl;
+        if(!cp.raw_response) {
+            std::cerr << "RESPONSE:" << std::endl
+                      << "---------------------" << std::endl
+                      << fc::json::to_pretty_string(response_result) << std::endl
+                      << "---------------------" << std::endl;
+        }
+        else {
+            std::cerr << "RESPONSE:" << std::endl
+                      << "---------------------" << std::endl
+                      << re << std::endl
+                      << "---------------------" << std::endl;
+        }
+
     }
     if(status_code == 200 || status_code == 201 || status_code == 202) {
         return response_result;

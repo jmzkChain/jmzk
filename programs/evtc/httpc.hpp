@@ -66,24 +66,29 @@ struct connection_param {
     resolved_url         url;
     bool                 verify_cert;
     std::vector<string>& headers;
+    bool                 raw_response;
 
     connection_param(const http_context&  context,
                      const resolved_url&  url,
                      bool                 verify,
-                     std::vector<string>& h)
+                     std::vector<string>& h,
+                     bool                 raw_response = false)
         : context(context)
         , url(url)
-        , headers(h) {
+        , headers(h)
+        , raw_response(raw_response) {
         verify_cert = verify;
     }
 
     connection_param(const http_context&  context,
                      const parsed_url&    url,
                      bool                 verify,
-                     std::vector<string>& h)
+                     std::vector<string>& h,
+                     bool                 raw_response = false)
         : context(context)
         , url(resolve_url(context, url))
-        , headers(h) {
+        , headers(h)
+        , raw_response(raw_response) {
         verify_cert = verify;
     }
 };
@@ -96,6 +101,7 @@ fc::variant do_http_call(
 
 const std::string chain_func_base             = "/v1/chain";
 const std::string get_info_func               = chain_func_base + "/get_info";
+const std::string get_db_info_func            = chain_func_base + "/get_db_info";
 const std::string push_txn_func               = chain_func_base + "/push_transaction";
 const std::string push_txns_func              = chain_func_base + "/push_transactions";
 const std::string json_to_bin_func            = chain_func_base + "/abi_json_to_bin";

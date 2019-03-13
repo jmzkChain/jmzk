@@ -126,6 +126,10 @@ class ProdvoteAction(Action):
     def __init__(self, key, data):
         super().__init__('prodvote', '.prodvote', key, data)
 
+class SetpsvbonusAction(Action):
+    def __init__(self, key, data):
+        super().__init__('setpsvbonus', '.bonus', key, data)
+
 
 class ActionTypeErrorException(Exception):
     def __init__(self):
@@ -183,6 +187,8 @@ def get_action_from_abi_json(action, abi_json, domain=None, key=None):
         return UpdateProducerAction(_bin)
     elif action == 'prodvote':
         return ProdvoteAction(abi_dict['key'], _bin)
+    elif action == 'setpsvbonus':
+        return SetpsvbonusAction(abi_dict['sym'].split('#')[1], _bin)
     else:
         raise ActionTypeErrorException
 

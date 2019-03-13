@@ -5,30 +5,25 @@
 #pragma once
 #include <appbase/application.hpp>
 #include <evt/chain_plugin/chain_plugin.hpp>
-
-#include <evt/chain/asset.hpp>
-#include <evt/chain/block.hpp>
-#include <evt/chain/contracts/abi_serializer.hpp>
-#include <evt/chain/contracts/types.hpp>
-#include <evt/chain/controller.hpp>
-#include <evt/chain/transaction.hpp>
 #include <evt/chain/types.hpp>
+#include <evt/chain/contracts/types.hpp>
 
 namespace fc {
 class variant;
-}
+}  // namespace fc
 
 namespace evt {
 
-using namespace appbase;
-using namespace evt::chain;
-using namespace evt::chain::contracts;
-using evt::chain_plugin;
-using evt::contracts::abi_serializer;
+namespace chain {
+class controller;
+}  // namespace chain
 
 class evt_plugin;
 
 namespace evt_apis {
+
+using namespace evt::chain;
+using namespace evt::chain::contracts;
 
 class read_only {
 public:
