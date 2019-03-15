@@ -211,7 +211,6 @@ public:
     signal<void(const block_state_ptr&)>          irreversible_block;
     signal<void(const transaction_metadata_ptr&)> accepted_transaction;
     signal<void(const transaction_trace_ptr&)>    applied_transaction;
-    signal<void(const header_confirmation&)>      accepted_confirmation;
     signal<void(const int&)>                      bad_alloc;
 
     public_keys_set get_required_keys(const transaction& trx, const public_keys_set& candidate_keys) const;

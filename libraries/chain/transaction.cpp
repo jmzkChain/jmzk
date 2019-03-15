@@ -92,7 +92,6 @@ signed_transaction::get_signature_keys(const chain_id_type& chain_id, bool allow
 void
 packed_transaction::reflector_init() {
    // called after construction, but always on the same thread and before packed_transaction passed to any other threads
-   static_assert(&fc::reflector_init_visitor<packed_transaction>::reflector_init, "FC with reflector_init required");
    static_assert(fc::raw::has_feature_reflector_init_on_unpacked_reflected_types,
                  "FC unpack needs to call reflector_init otherwise unpacked_trx will not be initialized");
    EVT_ASSERT(unpacked_trx.expiration == time_point_sec(), tx_decompression_error, "packed_transaction already unpacked");
@@ -157,7 +156,7 @@ zlib_decompress(const bytes& data) {
         auto decomp = bio::filtering_ostream();
 
         decomp.push(bio::zlib_decompressor());
-        decomp.push(read_limiter<1 * 1024 * 1024>());  // limit to 10 megs decompressed for zip bomb protections
+        decomp.push(read_limiter<1 * 1024 * 1024>());  // limit to 1 meg decompressed for zip bomb protections
         decomp.push(bio::back_inserter(out));
         bio::write(decomp, data.data(), data.size());
         bio::close(decomp);

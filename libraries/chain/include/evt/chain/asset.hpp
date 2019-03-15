@@ -12,7 +12,7 @@ namespace evt { namespace chain {
 #define EVT_SYM_ID  1
 #define PEVT_SYM_ID 2
 
-class symbol {
+class symbol : public fc::reflect_init {
 private:
     static constexpr uint8_t max_precision = 18;
 
@@ -57,7 +57,7 @@ public:
 private:
     uint64_t value_;
 
-private:
+public:
     friend struct fc::reflector<symbol>;
 
     void
@@ -84,7 +84,7 @@ asset::from_string takes a string of the form "10.0000 CUR" and constructs an as
 with amount = 10 and symbol(4,"CUR")
 
 */
-struct asset {
+struct asset : public fc::reflect_init {
 public:
     static constexpr int64_t max_amount = (1LL << 62) - 1;
 

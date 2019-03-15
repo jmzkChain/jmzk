@@ -91,7 +91,7 @@ struct signed_transaction : public transaction {
                                              bool                 allow_duplicate_keys = false) const;
 };
 
-struct packed_transaction {
+struct packed_transaction : fc::reflect_init {
 public:
     enum compression_type {
         none = 0,
@@ -153,6 +153,7 @@ private:
 
     friend struct fc::reflector<packed_transaction>;
     friend struct fc::reflector_init_visitor<packed_transaction>;
+    friend struct fc::has_reflector_init<packed_transaction>;
     void reflector_init();
 
 private:
@@ -169,4 +170,5 @@ FC_REFLECT_ENUM(evt::chain::transaction_ext, (suspend_name));
 FC_REFLECT_DERIVED(evt::chain::transaction, (evt::chain::transaction_header), (actions)(payer)(transaction_extensions));
 FC_REFLECT_DERIVED(evt::chain::signed_transaction, (evt::chain::transaction), (signatures));
 FC_REFLECT_ENUM(evt::chain::packed_transaction::compression_type, (none)(zlib));
+// @ignore unpacked_trx
 FC_REFLECT(evt::chain::packed_transaction, (signatures)(compression)(packed_trx));
