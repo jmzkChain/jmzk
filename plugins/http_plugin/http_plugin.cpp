@@ -898,6 +898,14 @@ http_plugin::get_supported_apis() const {
             result.apis.emplace_back(handler.first);
         }
     }
+    for(const auto& handler : my->url_deferred_handlers) {
+        result.apis.emplace_back(handler.first);
+    }
+    for(const auto& handler : my->url_local_handlers) {
+        result.apis.emplace_back(handler.first);
+    }
+
+    std::sort(result.apis.begin(), result.apis.end());
     return result;
 }
 
