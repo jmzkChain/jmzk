@@ -1255,6 +1255,7 @@ struct set_producer_subcommands {
     string  confkey;
     int64_t confvalue;
     bool    postgres;
+    string  prodsjson;
 
     vector<string> prodkeys;
 
@@ -1277,16 +1278,24 @@ struct set_producer_subcommands {
         });
 
         auto uscmd = actionRoot->add_subcommand("updsched", localized("Update producer scheduler"));
-        uscmd->add_option("prodkeys", prodkeys, localized("Producer name and keys: ${name}:${key}"))->required();
+        uscmd->add_option("--json,-j", prodsjson, localized("Json file of producers"));
+        uscmd->add_option("prodkeys", prodkeys, localized("Producer name and keys: ${name}:${key}"));
 
         add_standard_transaction_options(uscmd);
 
         uscmd->callback([this] {
             auto usact = updsched();
-            for(auto& prodkey : prodkeys) {
-                usact.producers.emplace_back(parse_prodkey(prodkey));
+            if(!prodsjson.empty()) {
+                auto var = json_from_file_or_string(prodsjson);
+                from_variant(var, usact.producers);
             }
-
+            else {
+                FC_ASSERT(prodkeys.size() > 0);
+                for(auto& prodkey : prodkeys) {
+                    usact.producers.emplace_back(parse_prodkey(prodkey));
+                }
+            }
+            
             auto act = create_action(N128(.prodsched), N128(.update), usact);
             send_actions({act});
         });
