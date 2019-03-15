@@ -45,24 +45,6 @@ class Receiver(BaseType):
     def value(self):
         return '%d,S#%d' % (self.precision, self.id)
 
-class DistfiruleRef(BaseType):
-    def __init__(self, receiver, amount):
-        self.receiver  = receiver
-        self.amount = amount
-        
-
-class DistruleRef(BaseType):
-    def __init__(self, _type, _data):
-        self.data = _data
-        self.type = _type
-
-
-class DistmethodRef(BaseType):
-    def __init__(self, action, method):
-        self.action = action
-        self.method = method
-
-
 class Address:
     def __init__(self, from_string=None):
         if from_string == None:
