@@ -127,6 +127,11 @@ public:
 
     variant to_variant() const;
     string  get_message() const;
+    /**
+     * A faster version of get_message which does limited formatting and excludes large variants
+     * @return formatted message according to format and variant args
+     */
+    string get_limited_message() const;
 
 public:
     log_context    context;

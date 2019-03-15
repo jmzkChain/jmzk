@@ -13,6 +13,8 @@
 namespace fc {
   template <uint32_t buffer_len>
   class mb_datastream;
+  template <uint32_t buffer_len>
+  class mb_peek_datastream;
 
   /**
    *  @brief abstraction for a message buffer that spans a chain of physical buffers
@@ -101,8 +103,9 @@ namespace fc {
       // this seems to be related to some sort of memory overrun possibly. By forcing an exit here, an
       // external watchdog can be used to restart the process and avoid hanging.
       if( buffers.size() != sanity_check || buffers.size() > 1000000) {
-        elog ("read_ind = ${r1}, ${r2} write_ind = ${w1}, ${w2}, buff.size = ${bs}, sanity = ${s}",
-              ("r1",read_ind.first)("r2",read_ind.second)("w1",write_ind.first)("w2",write_ind.second)("bs",buffers.size())("s",sanity_check));
+         elog( "read_ind = ${r1}, ${r2} write_ind = ${w1}, ${w2}, buff.size = ${bs}, sanity = ${s}",
+               ( "r1", read_ind.first )( "r2", read_ind.second )( "w1", write_ind.first )( "w2", write_ind.second )
+               ( "bs", buffers.size() )( "s", sanity_check ) );
         elog("Buffer manager overwrite detected. Terminating to allow external restart");
         exit(1);
       }
@@ -128,7 +131,7 @@ namespace fc {
      *  Returns the current number of bytes remaining to be read from a given index
      *  Logically, this is the different between where the given index is and the write pointers.
      */
-    uint32_t bytes_to_read_from_index(index_t ind) const {
+    uint32_t bytes_to_read_from_index(const index_t& ind) const {
       return (write_ind.first - ind.first) * buffer_len + write_ind.second - ind.second;
     }
 
@@ -207,7 +210,8 @@ namespace fc {
      */
     bool read(void* s, uint32_t size) {
       if (bytes_to_read() < size) {
-        FC_THROW_EXCEPTION(out_of_range_exception, "tried to read ${r} but only ${s} left", ("r", size)("s", bytes_to_read()));
+        FC_THROW_EXCEPTION( out_of_range_exception, "tried to read ${r} but only ${s} left",
+                            ("r", size)( "s", bytes_to_read() ) );
       }
       if (read_ind.second + size <= buffer_len) {
         memcpy(s, read_ptr(), size);
@@ -225,9 +229,10 @@ namespace fc {
      *  Reads size bytes from the buffer chain starting at the supplied index.
      *  The supplied index is advanced, but the read pointer is unaffected.
      */
-    bool peek(void* s, uint32_t size, index_t& index) {
+    bool peek(void* s, uint32_t size, index_t& index) const {
       if (bytes_to_read_from_index(index) < size) {
-        FC_THROW_EXCEPTION(out_of_range_exception, "tried to peek ${r} but only ${s} left", ("r", size)("s",bytes_to_read_from_index(index)));
+        FC_THROW_EXCEPTION( out_of_range_exception, "tried to peek ${r} but only ${s} left",
+                            ("r", size)( "s", bytes_to_read_from_index( index ) ) );
       }
       if (index.second + size <= buffer_len) {
         memcpy(s, get_ptr(index), size);
@@ -241,11 +246,26 @@ namespace fc {
       return true;
     }
 
-    /*
+     /*
+      *  Advances the supplied index along the buffer chain the specified
+      *  number of bytes.
+      */
+     static void advance_index(index_t& index, uint32_t bytes) {
+        index.first += (bytes + index.second) / buffer_len;
+        index.second = (bytes + index.second) % buffer_len;
+     }
+
+     /*
      *  Creates an mb_datastream object that can be used with the
      *  fc library's unpack functionality.
      */
     mb_datastream<buffer_len> create_datastream();
+
+    /*
+     *  Creates an mb_peek_datastream object that can be used with the
+     *  fc library's unpack functionality.
+     */
+    mb_peek_datastream<buffer_len> create_peek_datastream();
 
   private:
     static boost::object_pool<std::array<char, buffer_len> >& pool() {
@@ -254,18 +274,9 @@ namespace fc {
     }
 
     /*
-     *  Advances the supplied index along the buffer chain the specified
-     *  number of bytes.
-     */
-    static void advance_index(index_t& index, uint32_t bytes) {
-      index.first += (bytes + index.second) / buffer_len;
-      index.second = (bytes + index.second) % buffer_len;
-    }
-
-    /*
      *  Returns the character pointer associated with the supplied index.
      */
-    char* get_ptr(index_t index) {
+    char* get_ptr(const index_t& index) const {
       return &buffers[index.first]->at(index.second);
     }
 
@@ -281,11 +292,10 @@ namespace fc {
    *
    *  This class supports unpack functionality but not pack.
    */
-  // Stream adapter for use with the fc unpack functionality
   template <uint32_t buffer_len>
   class mb_datastream {
      public:
-        mb_datastream( message_buffer<buffer_len>& m ) : mb(m) {}
+        explicit mb_datastream( message_buffer<buffer_len>& m ) : mb(m) {}
 
         inline void skip( size_t s ) { mb.advance_read_ptr(s); }
         inline bool read( char* d, size_t s ) {
@@ -306,6 +316,41 @@ namespace fc {
   template <uint32_t buffer_len>
   inline mb_datastream<buffer_len> message_buffer<buffer_len>::create_datastream() {
     return mb_datastream<buffer_len>(*this);
+  }
+
+  /*
+   *  @brief peek datastream adapter that adapts message_buffer for use with fc unpack
+   *
+   *  This class supports unpack functionality but not pack.
+   */
+  template <uint32_t buffer_len>
+  class mb_peek_datastream {
+  public:
+     explicit mb_peek_datastream( const message_buffer<buffer_len>& m )
+     : mb( m ), index( m.read_index() ) {}
+
+     inline void skip( size_t s ) { message_buffer<buffer_len>::advance_index( index, s ); }
+
+     inline bool read( char* d, size_t s ) {
+        if( mb.bytes_to_read_from_index(index) >= s ) {
+           mb.peek( d, s, index );
+           return true;
+        }
+        fc::detail::throw_datastream_range_error( "peek",
+              mb.bytes_to_read_from_index(index), s - mb.bytes_to_read_from_index(index) );
+     }
+
+     inline bool get( unsigned char& c ) { return mb.peek( &c, 1, index ); }
+     inline bool get( char& c ) { return mb.peek( &c, 1, index ); }
+
+  private:
+     const message_buffer<buffer_len>& mb;
+     typename message_buffer<buffer_len>::index_t index{0,0};
+  };
+
+  template <uint32_t buffer_len>
+  inline mb_peek_datastream<buffer_len> message_buffer<buffer_len>::create_peek_datastream() {
+     return mb_peek_datastream<buffer_len>( *this );
   }
 
 } // namespace fc
