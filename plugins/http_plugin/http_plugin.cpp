@@ -101,6 +101,7 @@ using websocket_server_local_type = websocketpp::server<local_config>;
 using http_connection_ptr_type    = websocketpp::server<http_config>::connection_ptr;
 using https_connection_ptr_type   = websocketpp::server<https_config>::connection_ptr;
 using ssl_context_ptr             = websocketpp::lib::shared_ptr<websocketpp::lib::asio::ssl::context>;
+using io_work_t                   = boost::asio::executor_work_guard<boost::asio::io_context::executor_type>;
 
 static bool verbose_http_errors = false;
 
@@ -129,6 +130,12 @@ public:
     size_t https_conn_count = 0;
 
     websocket_server_type server;
+
+    optional<std::thread>                    server_thread;
+    std::shared_ptr<boost::asio::io_context> server_ioc;
+    optional<io_work_t>                      server_ioc_work;
+    std::atomic<int64_t>                     bytes_in_flight{0};
+    int64_t                                  max_bytes_in_flight = 0;
 
     optional<tcp::endpoint> https_listen_endpoint;
     string                  https_cert_chain;
@@ -326,21 +333,45 @@ public:
 
             con->append_header("Content-Type", "application/json");
 
+            if(bytes_in_flight > max_bytes_in_flight) {
+                dlog2("503 - too many bytes in flight: {:n}", bytes_in_flight.load());
+                error_results results{websocketpp::http::status_code::too_many_requests, "Busy", error_results::error_info()};
+                con->set_body(fc::json::to_string(results));
+                con->set_status(websocketpp::http::status_code::too_many_requests);
+                return;
+            }
+
             auto body     = con->get_request_body();
             auto resource = con->get_uri()->get_resource();
 
             {
                 auto handler_itr = url_handlers.find(resource);
-                if(handler_itr != url_handlers.end()) {
+                if(handler_itr != url_handlers.cend()) {
                     con->defer_http_response();
-                    handler_itr->second(resource, body, [this, con](auto code, auto&& body) {
-                        con->set_status(websocketpp::http::status_code::value(code));
-                        if(!http_no_response) {
-                            con->set_body(std::move(body));
-                        }
-                        con->send_http_response();
-                    });
-
+                    bytes_in_flight += body.size();
+                    app().post(appbase::priority::low,
+                        [this, ioc = this->server_ioc, handler_itr, resource{std::move(resource)}, body{std::move(body)}, con] {
+                            try {
+                                this->bytes_in_flight -= body.size();
+                                handler_itr->second(resource, body,
+                                    [this, ioc{std::move(ioc)}, con](auto code, auto response_body) {
+                                        this->bytes_in_flight += response_body.size();
+                                        boost::asio::post(*ioc, [this, response_body{std::move(response_body)}, con, code]() {
+                                            size_t body_size = response_body.size();
+                                            if(!this->http_no_response) {
+                                                con->set_body(std::move(response_body));
+                                            }
+                                            con->set_status(websocketpp::http::status_code::value(code));
+                                            con->send_http_response();
+                                            this->bytes_in_flight -= body_size;
+                                        });
+                                    });
+                            }
+                            catch(...) {
+                                handle_exception<T>(con);
+                                con->send_http_response();
+                            }
+                        });
                     return;
                 }
             }
@@ -354,10 +385,21 @@ public:
                     con->defer_http_response();
                     con->set_close_handler([this, id](auto c) {
                         // clear resources
-                        this->visit_connection(id, [](auto&) { return false; });
+                        this->visit_connection(id, [](auto) { return false; });
                     });
-                    deferred_handler_it->second(resource, body, id);
 
+                    bytes_in_flight += body.size();
+                    app().post(appbase::priority::low,
+                        [this, deferred_handler_it, resource{std::move(resource)}, body{std::move(body)}, con, id]() {
+                            try {
+                                this->bytes_in_flight -= body.size();
+                                deferred_handler_it->second(resource, body, id);
+                            }
+                            catch(...) {
+                                handle_exception<T>(con);
+                                con->send_http_response();
+                            }
+                         });
                     return;
                 }
             }
@@ -420,16 +462,22 @@ public:
     void
     set_deferred_response(deferred_id id, int code, string body) {
         try {
-            visit_connection(id, [&](auto& con) {
+            visit_connection(id, [this, code, body{std::move(body)}](auto con) {
                 try {
-                    con->set_status(websocketpp::http::status_code::value(code));
-                    if(!http_no_response) {
-                        con->set_body(std::move(body));
-                    }
-                    con->send_http_response();
+                    this->bytes_in_flight += body.size();
+                    boost::asio::post(*server_ioc, [this, code, body{std::move(body)}, con] {
+                        size_t body_size = body.size();
+                        if(!this->http_no_response) {
+                            con->set_body(std::move(body));
+                        }
+                        con->set_status(websocketpp::http::status_code::value(code));
+                        con->send_http_response();
+                        this->bytes_in_flight -= body_size;
+                    });
                 }
                 catch(...) {
                     handle_exception<typename std::decay_t<decltype(*con)>::config_type>(con);
+                    con->send_http_response();
                 }
                 return false;  // return false to indicate release connection
             });
@@ -501,6 +549,8 @@ http_plugin::set_program_options(options_description&, options_description& cfg)
                 ilog("configured http with Access-Control-Allow-Credentials: true");
             })->default_value(false), "Specify if Access-Control-Allow-Credentials: true should be returned on each request.")
         ("max-body-size", bpo::value<uint32_t>()->default_value(1024*1024), "The maximum body size in bytes allowed for incoming RPC requests")
+        ("http-max-bytes-in-flight-mb", bpo::value<uint32_t>()->default_value(100),
+             "Maximum size in megabytes http_plugin should use for processing http requests. 503 error response when exceeded." )
         ("max-deferred-connection-size", bpo::value<uint32_t>()->default_value(10240), "The maximum size allowed for deferred connections")
         ("verbose-http-errors", bpo::bool_switch()->default_value(false), "Append the error log to HTTP responses")
         ("http-validate-host", boost::program_options::value<bool>()->default_value(true), "If set to false, then any incoming \"Host\" header is considered valid")
@@ -586,6 +636,7 @@ http_plugin::plugin_initialize(const variables_map& options) {
         }
 
         my->max_body_size                = options.at("max-body-size").as<uint32_t>();
+        my->max_bytes_in_flight          = options.at("http-max-bytes-in-flight-mb").as<uint32_t>() * 1024 * 1024;
         my->max_deferred_connection_size = options.at("max-deferred-connection-size").as<uint32_t>();
         my->http_no_response             = options.at("http-no-response").as<bool>();
         verbose_http_errors              = options.at("verbose-http-errors").as<bool>();
@@ -599,6 +650,12 @@ http_plugin::plugin_initialize(const variables_map& options) {
 
 void
 http_plugin::plugin_startup() {
+    my->server_ioc = std::make_shared<boost::asio::io_context>();
+    my->server_ioc_work.emplace(boost::asio::make_work_guard(*my->server_ioc));
+    my->server_thread.emplace([ioc = my->server_ioc] {
+        ioc->run();
+    });
+
     if(my->listen_endpoint.has_value()) {
         try {
             my->http_conns.resize(my->max_deferred_connection_size);
@@ -628,7 +685,7 @@ http_plugin::plugin_startup() {
     if(my->unix_endpoint.has_value()) {
         try {
             my->unix_server.clear_access_channels(websocketpp::log::alevel::all);
-            my->unix_server.init_asio(&app().get_io_service());
+            my->unix_server.init_asio(&(*my->server_ioc));
             my->unix_server.set_max_http_body_size(my->max_body_size);
             my->unix_server.listen(*my->unix_endpoint);
             my->unix_server.set_http_handler([&](connection_hdl hdl) {
@@ -678,6 +735,20 @@ http_plugin::plugin_startup() {
             throw;
         }
     }
+
+    add_api({{
+        std::string("/v1/node/get_supported_apis"),
+        [&](string, string body, url_response_callback cb) mutable {
+            try {
+                if(body.empty()) body = "{}";
+                auto result = (*this).get_supported_apis();
+                cb(200, fc::json::to_string(result));
+            }
+            catch (...) {
+                handle_exception("node", "get_supported_apis", body, cb);
+            }
+        }
+    }});
 }
 
 void
@@ -691,6 +762,16 @@ http_plugin::plugin_shutdown() {
     if(my->https_server.is_listening()) {
         my->https_server.stop_listening();
     }
+    if(my->server_ioc_work.has_value()) {
+        my->server_ioc_work->reset();
+    }
+    if(my->server_ioc) {
+        my->server_ioc->stop();
+    }
+    if(my->server_thread.has_value()) {
+        my->server_thread->join();
+        my->server_thread.reset();
+    }
 }
 
 void
@@ -701,17 +782,15 @@ http_plugin::add_handler(const string& url, const url_handler& handler, bool loc
     else {
         ilog("add local only api url: ${c}", ("c", url));
     }
-    boost::asio::post(app().get_io_service(), [=]() {
-        if(!local_only) {
-            my->url_handlers.insert(std::make_pair(url, handler));
+    if(!local_only) {
+        my->url_handlers.insert(std::make_pair(url, handler));
+    }
+    else {
+        if(!my->unix_endpoint) {
+            wlog("Unix server is not enabled, ${u} API cannot be used", ("u",url));
         }
-        else {
-            if(!my->unix_endpoint) {
-                wlog("Unix server is not enabled, ${u} API cannot be used", ("u",url));
-            }
-            my->url_local_handlers.insert(std::make_pair(url, handler));
-        }
-    });
+        my->url_local_handlers.insert(std::make_pair(url, handler));
+    }
 }
 
 void
@@ -808,6 +887,18 @@ http_plugin::is_secure() const {
 bool
 http_plugin::verbose_errors() const {
     return verbose_http_errors;
+}
+
+http_plugin::get_supported_apis_result
+http_plugin::get_supported_apis() const {
+    get_supported_apis_result result;
+
+    for(const auto& handler : my->url_handlers) {
+        if(handler.first != "/v1/node/get_supported_apis") {
+            result.apis.emplace_back(handler.first);
+        }
+    }
+    return result;
 }
 
 }  // namespace evt

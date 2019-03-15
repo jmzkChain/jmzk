@@ -4,6 +4,7 @@
  */
 #include <fc/crypto/sha256.hpp>
 #include <boost/algorithm/string.hpp>
+#include <appbase/application.hpp>
 #include <evt/chain/exceptions.hpp>
 #include <evt/wallet_plugin/wallet_manager.hpp>
 #include <evt/wallet_plugin/wallet.hpp>
@@ -313,9 +314,26 @@ wallet_manager::sign_digest(const chain::digest_type& digest, const public_key_t
 void
 wallet_manager::own_and_use_wallet(const string& name, std::unique_ptr<wallet_api>&& wallet) {
     if(wallets.find(name) != wallets.end()) {
-        FC_THROW("tried to use wallet name the already existed");
+        EVT_THROW(wallet_exception, "Tried to use wallet name that already exists.");
     }
     wallets.emplace(name, std::move(wallet));
+}
+
+void
+wallet_manager::start_lock_watch(std::shared_ptr<boost::asio::deadline_timer> t) {
+    t->async_wait([t, this](const boost::system::error_code& /*ec*/) {
+        namespace bfs = boost::filesystem;
+        boost::system::error_code ec;
+        auto rc = bfs::status(lock_path, ec);
+        if(ec != boost::system::error_code()) {
+            if(rc.type() == bfs::file_not_found) {
+                appbase::app().quit();
+                EVT_THROW(wallet_exception, "Lock file removed while evtwd still running. Terminating...");
+            }
+        }
+        t->expires_from_now(boost::posix_time::seconds(1));
+        start_lock_watch(t);
+    });
 }
 
 void
@@ -332,6 +350,8 @@ wallet_manager::initialize_lock() {
         wallet_dir_lock.reset();
         EVT_THROW(wallet_exception, "Failed to lock access to wallet directory; is another evtwd running?");
     }
+    auto timer = std::make_shared<boost::asio::deadline_timer>(appbase::app().get_io_service(), boost::posix_time::seconds(1));
+    start_lock_watch(timer);
 }
 
 }}  // namespace evt::wallet
