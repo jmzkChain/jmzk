@@ -71,9 +71,12 @@ set(CXX_FLAGS_RELEASE
 string(REPLACE ";" " " CMAKE_CXX_FLAGS_RELEASE "${CXX_FLAGS_RELEASE}")
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-uninitialized")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-uninitialized -ftemplate-backtrace-limit=0")
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-maybe-uninitialized")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-maybe-uninitialized -fno-builtin-memcmp")
+    if(ENABLE_FULL_STATIC_BUILD)
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc")
+    endif()
 endif()
 
 if(USE_PCH)
@@ -140,33 +143,6 @@ FIND_PACKAGE(Boost 1.69 REQUIRED COMPONENTS
     locale
     iostreams
     timer)
-
-if(APPLE)
-    # Apple Specific Options Here
-    message( STATUS "Configuring EVT on OS X" )
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-deprecated-declarations")
-else()
-    # Linux Specific Options Here
-    message(STATUS "Configuring EVT on Linux")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -no-pie")
-    if(ENABLE_FULL_STATIC_BUILD)
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc")
-    endif()
-
-    if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-        if(CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL 4.0.0 OR CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 4.0.0)
-            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-invalid-partial-specialization")
-        endif()
-    endif()
-endif()
-
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-builtin-memcmp")
-endif()
-
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-backtrace-limit=0")
-endif()
 
 if(ENABLE_COLOR_OUTPUT)
     if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
