@@ -10,18 +10,23 @@ find_path(LLVM_INCLUDE_DIR
   HINTS /usr/include/llvm-7
   HINTS /usr/include/llvm-8
   HINTS /usr/local/include/llvm-7
-  HINTS /usr/local/include/llvm-8)
+  HINTS /usr/local/include/llvm-8
+  HINTS /usr/local/include
+  )
 
 find_path(LLVM_C_INCLUDE_DIR
-  NAMES llvm-c/DebugInfo.h
+  NAMES llvm-c/Core.h
   HINTS ${LLVM_C_ROOT_DIR}
   HINTS /usr/include/llvm-c-7
   HINTS /usr/include/llvm-c-8
   HINTS /usr/local/include/llvm-c-7
-  HINTS /usr/local/include/llvm-c-8)
+  HINTS /usr/local/include/llvm-c-8
+  HINTS /usr/local/include
+  )
 
 find_library(LLVM_LIBRARIES
   NAMES lib/libLLVM.so
+  NAMES lib/libLLVM.dylib
   HINTS /usr/lib/llvm-7
   HINTS /usr/lib/llvm-8)
 
