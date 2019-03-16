@@ -735,7 +735,7 @@ pg_query::get_fungibles_balance_resume(int id, pg_result const* r) {
         auto sym_id = boost::lexical_cast<uint32_t>(it->begin(), it->size());
 
         property prop;
-        READ_DB_ASSET(addr, sym_id, prop);
+        READ_DB_ASSET(address(addr), sym_id, prop);
 
         auto as  = asset(prop.amount, prop.sym);
         auto var = fc::variant();

@@ -21,6 +21,9 @@
 #include <rocksdb/statistics.h>
 #include <rocksdb/table.h>
 
+#include <llvm/ADT/StringSet.h>
+#include <llvm/ADT/StringMap.h>
+
 #include <fc/filesystem.hpp>
 #include <fc/io/datastream.hpp>
 #include <fc/io/raw.hpp>
@@ -28,7 +31,6 @@
 
 #include <evt/chain/config.hpp>
 #include <evt/chain/exceptions.hpp>
-#include <evt/chain/dense_hash.hpp>
 
 namespace evt { namespace chain {
 
@@ -115,14 +117,7 @@ name128 action_key_prefixes[] = {
 
 static_assert(sizeof(action_key_prefixes) / sizeof(name128) == (int)token_type::max_value + 1);
 
-struct key_hasher {
-    size_t
-    operator()(const std::string& key) const {
-        return fc::city_hash_size_t(key.data(), key.size());
-    }
-};
-
-using keys_hash_set = google::dense_hash_set<std::string, key_hasher, std::equal_to<std::string>, std::allocator<std::string>>;
+using keys_hash_set = llvm::StringSet<llvm::MallocAllocator>;
 
 struct flag {
 public:
@@ -232,6 +227,11 @@ struct pd_header {
 };
 
 }  // namespace __internal
+
+class memory_cache_layer {
+
+
+};
 
 class token_database_impl {
 public:
@@ -792,7 +792,6 @@ token_database_impl::rollback_rt_group(__internal::rt_group* rt) {
 
     auto key_set = keys_hash_set();
     auto batch   = rocksdb::WriteBatch();
-    key_set.set_empty_key(std::string());
     
     for(auto it = rt->actions.begin(); it < rt->actions.end(); it++) {
         auto data = GETPOINTER(void, it->data);
@@ -800,18 +799,18 @@ token_database_impl::rollback_rt_group(__internal::rt_group* rt) {
         auto fn = [&](auto& key, auto type, auto op) {
             switch(op) {
             case action_op::add: {
-                assert(key_set.find(key) == key_set.cend());
+                assert(key_set.find(key) == key_set.end());
 
                 batch.Delete(key);
                 self_.remove_token_value(key);
             
                 // insert key into key set
-                key_set.emplace(std::move(key));
+                key_set.insert(key);
                 break;
             }
             case action_op::update: {
                 // only update operation need to check if key is already processed
-                if(key_set.find(key) != key_set.cend()) {
+                if(key_set.find(key) != key_set.end()) {
                     break;
                 }
                 auto old_value = std::string();
@@ -823,12 +822,12 @@ token_database_impl::rollback_rt_group(__internal::rt_group* rt) {
                 self_.rollback_token_value(key);
 
                 // insert key into key set
-                key_set.emplace(std::move(key));
+                key_set.insert(key);
                 break;
             }
             case action_op::put: {
                 // only update operation need to check if key is already processed
-                if(key_set.find(key) != key_set.cend()) {
+                if(key_set.find(key) != key_set.end()) {
                     break;
                 }
 
@@ -855,7 +854,7 @@ token_database_impl::rollback_rt_group(__internal::rt_group* rt) {
                 }
 
                 // insert key into key set
-                key_set.emplace(std::move(key));
+                key_set.insert(key);
                 break;
             }
             }  // switch
@@ -1036,7 +1035,6 @@ token_database_impl::persist_savepoints(std::ostream& os) const {
             auto rt = GETPOINTER(rt_group, n.group);
 
             auto key_set = keys_hash_set();
-            key_set.set_empty_key(std::string());
 
             auto snapshot_read_opts_     = read_opts_;
             snapshot_read_opts_.snapshot = (const rocksdb::Snapshot*)rt->rb_snapshot;
@@ -1049,14 +1047,14 @@ token_database_impl::persist_savepoints(std::ostream& os) const {
 
                     switch(op) {
                     case action_op::add: {
-                        assert(key_set.find(key) == key_set.cend());
+                        assert(key_set.find(key) == key_set.end());
 
                         // no need to read value
-                        key_set.emplace(key);
+                        key_set.insert(key);
                         break;
                     }
                     case action_op::update: {
-                        if(key_set.find(key) != key_set.cend()) {
+                        if(key_set.find(key) != key_set.end()) {
                             break;
                         }
 
@@ -1065,11 +1063,11 @@ token_database_impl::persist_savepoints(std::ostream& os) const {
                             FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
                         }
 
-                        key_set.emplace(key);
+                        key_set.insert(key);
                         break;
                     }
                     case action_op::put: {
-                        if(key_set.find(key) != key_set.cend()) {
+                        if(key_set.find(key) != key_set.end()) {
                             break;
                         }
 
@@ -1081,7 +1079,7 @@ token_database_impl::persist_savepoints(std::ostream& os) const {
                             FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
                         }
 
-                        key_set.emplace(key);
+                        key_set.insert(key);
                         break;
                     }
                     }  // switch

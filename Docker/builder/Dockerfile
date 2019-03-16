@@ -1,6 +1,6 @@
 FROM debian:buster-slim
 
-LABEL author="Harry <harrywong@live.com>" maintainer="Harry <harrywong@live.com>" version="1.4.0" \
+LABEL author="Harry <harrywong@live.com>" maintainer="Harry <harrywong@live.com>" version="1.5.0" \
   description="This is a base image for building everitoken/evt"
 
 RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
@@ -8,7 +8,7 @@ RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
     && apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y sudo wget curl net-tools ccache ninja-build ca-certificates \
        unzip gnupg git make libtool autoconf automake m4 openssl libssl1.1 libssl-dev libgmp-dev zlib1g-dev \
-       libreadline-dev gcc-8 g++-8
+       libreadline-dev gcc-8 g++-8 llvm-7 llvm-7-dev
 
 RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 999
 RUN update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 999
