@@ -14,7 +14,7 @@
 
 namespace evt { namespace chain {
 
-class address {
+class address : public fc::reflect_init {
 public:
     enum addr_type { reserved_t = 0, public_key_t, generated_t };
 
@@ -27,19 +27,25 @@ private:
 
 public:
     address()
-        : storage_(reserved_type()) {}
+        : storage_(reserved_type()) {
+        init_cache();
+    }
 
     address(const public_key_type& pkey)
-        : storage_(pkey) {}
+        : storage_(pkey) {
+        init_cache();
+    }
 
     address(name prefix, const name128& key, uint32_t nonce)
-        : storage_(std::make_tuple(prefix, nonce, key)) {}
+        : storage_(std::make_tuple(prefix, nonce, key)) {
+        init_cache();
+    }
 
     address(const address&) = default;
     address(address&&) noexcept = default;
 
-    address(const char* str) { *this = address::from_string(str); }
-    address(const string& str) { *this = address::from_string(str); }
+    explicit address(const char* str) { *this = address::from_string(str); }
+    explicit address(const string& str) { *this = address::from_string(str); }
 
 public:
     int type() const { return storage_.which(); }
@@ -47,22 +53,6 @@ public:
     bool is_reserved() const { return type() == reserved_t; }
     bool is_public_key() const { return type() == public_key_t; }
     bool is_generated() const { return type() == generated_t; }
-
-public:
-    void
-    set_reserved() {
-        storage_ = reserved_type();
-    }
-
-    void
-    set_public_key(const public_key_type& pkey) {
-        storage_ = pkey;
-    }
-
-    void
-    set_generated(name prefix, const name128& key, uint32_t nonce) {
-        storage_ = std::make_tuple(prefix, nonce, key);
-    }
     
 public:
     const public_key_type&
@@ -86,7 +76,7 @@ public:
     }
 
 public:
-    size_t get_bytes_size() const;
+    constexpr size_t get_bytes_size() const { return sizeof(fc::ecc::public_key_shim); }
     void to_bytes(char* buf, size_t sz) const;
 
     std::string to_string() const;
@@ -101,13 +91,23 @@ public:
 public:
     address&
     operator=(const address& addr) {
+        if(this == &addr) {
+            return *this;
+        }
+
         storage_ = addr.storage_;
+        cache_   = addr.cache_;
         return *this;
     }
 
     address&
     operator=(address&& addr) {
+        if(this == &addr) {
+            return *this;
+        }
+
         storage_ = std::move(addr.storage_);
+        cache_   = std::move(addr.cache_);
         return *this;
     }
 
@@ -137,8 +137,18 @@ public:
         return s;
     }
 
+public:
+    void
+    reflector_init() const {
+        init_cache();
+    }
+
+private:
+    void init_cache() const;
+
 private:
     storage_type storage_;
+    mutable std::array<char, sizeof(fc::ecc::public_key_shim)> cache_;
 
 private:
     friend struct fc::reflector<address>;
