@@ -72,12 +72,12 @@ static void add_macos_root_cas(boost::asio::ssl::context& ctx) {
          //double check that these manually trusted ones are actually CAs
          if(trust_root) {
             CFErrorRef errRef = nullptr;
-            CFDataRef subjectName = SecCertificateCopyNormalizedSubjectContent(cert, &errRef);
+            CFDataRef subjectName = SecCertificateCopyNormalizedSubjectSequence(cert);
             if(errRef != nullptr) {
                CFRelease(errRef);
                continue;
             }
-            CFDataRef issuerName = SecCertificateCopyNormalizedIssuerContent(cert, &errRef);
+            CFDataRef issuerName = SecCertificateCopyNormalizedIssuerSequence(cert);
             if(errRef != nullptr) {
                CFRelease(subjectName);
                CFRelease(errRef);
@@ -91,7 +91,7 @@ static void add_macos_root_cas(boost::asio::ssl::context& ctx) {
          }
 
          CFDataRef certAsPEM;
-         err = SecKeychainItemExport(cert, kSecFormatX509Cert, kSecItemPemArmour, nullptr, &certAsPEM);
+         err = SecItemExport(cert, kSecFormatX509Cert, kSecItemPemArmour, nullptr, &certAsPEM);
          if(err != noErr)
             continue;
          if(certAsPEM) {
