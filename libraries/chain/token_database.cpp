@@ -27,7 +27,7 @@
 #include <fc/filesystem.hpp>
 #include <fc/io/datastream.hpp>
 #include <fc/io/raw.hpp>
-#include <fc/crypto/city.hpp>
+#include <fc/container/ring_vector.hpp>
 
 #include <evt/chain/config.hpp>
 #include <evt/chain/exceptions.hpp>
@@ -51,6 +51,7 @@ namespace __internal {
 const char*  kAssetsColumnFamilyName = "Assets";
 const size_t kSymbolIdSize           = sizeof(symbol_id_type);
 const size_t kPublicKeySize          = sizeof(fc::ecc::public_key_shim);
+const size_t kDefaultRingSize        = (4 / 3 * 24 + 1) * 12;
 
 struct db_token_key : boost::noncopyable {
 public:
@@ -121,6 +122,7 @@ using keys_hash_set = llvm::StringSet<llvm::MallocAllocator>;
 
 struct flag {
 public:
+    flag() = default;
     flag(uint8_t type, uint8_t exts) : type(type), exts(exts) {}
 
 public:
@@ -185,6 +187,7 @@ struct pd_group {
 
 struct sp_node {
 public:
+    sp_node() = default;
     sp_node(uint8_t type) : f(type, 0) {}
 
 public:
@@ -196,6 +199,7 @@ public:
 
 struct savepoint {
 public:
+    savepoint() = default;
     savepoint(int64_t seq, uint8_t type)
         : seq(seq), node(type) {}
 
@@ -298,7 +302,7 @@ public:
     rocksdb::ColumnFamilyHandle* tokens_handle_;
     rocksdb::ColumnFamilyHandle* assets_handle_;
 
-    std::deque<__internal::savepoint> savepoints_;
+    fc::ring_vector<__internal::savepoint> savepoints_;
 };
 
 token_database_impl::token_database_impl(token_database& self, const token_database::config& config)
@@ -309,7 +313,7 @@ token_database_impl::token_database_impl(token_database& self, const token_datab
     , write_opts_()
     , tokens_handle_(nullptr)
     , assets_handle_(nullptr)
-    , savepoints_() {}
+    , savepoints_(__internal::kDefaultRingSize) {}
 
 void
 token_database_impl::open(int load_persistence) {
@@ -632,7 +636,7 @@ token_database_impl::add_savepoint(int64_t seq) {
         }
     }
 
-    savepoints_.emplace_back(savepoint(seq, kRuntime));
+    savepoints_.push_back(savepoint(seq, kRuntime));
     auto rt = new rt_group { .rb_snapshot = (const void*)db_->GetSnapshot(), .actions = {} }; 
     SETPOINTER(void, savepoints_.back().node.group, rt);
 }
@@ -677,10 +681,10 @@ token_database_impl::free_savepoint(__internal::savepoint& sp) {
 
 void
 token_database_impl::free_all_savepoints() {
-    for(auto& sp : savepoints_) {
-        free_savepoint(sp);
+    while(!savepoints_.empty()) {
+        free_savepoint(savepoints_.front());
+        savepoints_.pop_front();
     }
-    savepoints_.clear();
 }
 
 void
@@ -1018,7 +1022,9 @@ token_database_impl::persist_savepoints(std::ostream& os) const {
 
     auto pds = std::vector<pd_group>();
 
-    for(auto& sp : savepoints_) {
+    for(auto i = 0u; i < savepoints_.size(); i++) {
+        auto& sp = savepoints_[i];
+
         auto pd = pd_group();
         pd.seq  = sp.seq;
 
@@ -1142,7 +1148,7 @@ token_database_impl::load_savepoints(std::istream& is) {
     fc::raw::unpack(is, pds);
 
     for(auto& pd : pds) {
-        savepoints_.emplace_back(savepoint(pd.seq, kPersist));
+        savepoints_.push_back(savepoint(pd.seq, kPersist));
 
         auto ppd = new pd_group(pd);
         SETPOINTER(void, savepoints_.back().node.group, ppd);

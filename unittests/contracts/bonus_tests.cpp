@@ -380,5 +380,4 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_dist_test", "[contracts]") {
     CHECK(pb.methods.size() == pb2->methods.size());
     CHECK(pb.round == pb2->round);
     CHECK(pb.deadline == pb2->deadline);
-    std::cout<<std::string(pb.deadline)<<" timestamp "<<std::string(pb2->deadline)<<std::endl;
 }
