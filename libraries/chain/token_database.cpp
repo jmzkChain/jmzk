@@ -232,12 +232,29 @@ struct pd_header {
 
 }  // namespace __internal
 
-class memory_cache_layer {
+class memory_cache_layer : boost::noncopyable {
+private:
+    struct data_op {
+        int64_t                   seq;
+        decltype(data_)::iterator it;
+        std::string               pv;
+    };
 
+    struct data_ops {
 
+    };
+
+public:
+    void put(const rocksdb::Slice& key, const rocksdb::Slice& value);
+    int read(const rocksdb:::Slice& key, std::string& value);
+    int exists(const rocksdb::Slice& key);
+
+private:
+    llvm::StringMap<std::string>          data_;
+    fc::ring_vector<std::vector<data_op>> ops_;
 };
 
-class token_database_impl {
+class token_database_impl : boost::noncopyable {
 public:
     token_database_impl(token_database& self, const token_database::config& config);
 
