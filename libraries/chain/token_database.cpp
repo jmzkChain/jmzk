@@ -234,25 +234,113 @@ struct pd_header {
 
 class memory_cache_layer : boost::noncopyable {
 private:
+    using data_map_t = llvm::StringMap<std::string>;
+
     struct data_op {
-        int64_t                   seq;
-        decltype(data_)::iterator it;
-        std::string               pv;
+        data_map_t::iterator it;
+        std::string          pv;
     };
 
     struct data_ops {
-
+        int64_t              seq;
+        std::vector<data_op> vec;
     };
 
 public:
-    void put(const rocksdb::Slice& key, const rocksdb::Slice& value);
-    int read(const rocksdb:::Slice& key, std::string& value);
-    int exists(const rocksdb::Slice& key);
+    void put(const std::string_view& key, const std::string_view& value);
+    void put(token_database::memory_handler, const std::string_view& value);
+    int read(const std::string_view& key, std::string& value);
+    std::pair<token_database::memory_handler, bool> readh(const std::string_view& key, std::string& value);
+    int exists(const std::string_view& key);
+
+public:
+    void add_savepoint(int64_t seq);
+    void rollback_to_latest_savepoint();
+    void squash();
 
 private:
-    llvm::StringMap<std::string>          data_;
-    fc::ring_vector<std::vector<data_op>> ops_;
+    data_map_t                data_;
+    fc::ring_vector<data_ops> ops_;
 };
+
+void
+memory_cache_layer::put(const std::string_view& key, const std::string_view& value) {
+    assert(!ops_.empty());
+
+    auto it = data_.try_emplace(llvm::StringRef(key.data(), key.size()), std::string(value.data(), value.size()));
+    if(!it.second) {
+        auto pv = std::move(it.first->second);
+        it.first->second = std::string(value.data(), value.size());
+        ops_.back().vec.emplace_back(data_op { .it = it.first, .pv = std::move(pv) });
+        return;
+    }
+    ops_.back().vec.emplace_back(data_op { .it = it.first, .pv = std::string() });
+}
+
+void
+memory_cache_layer::put(token_database::memory_handler h, const std::string_view& value) {
+    assert(!ops_.empty());
+
+    auto pv = std::move(h->second);
+    h->second = std::string(value.data(), value.size());
+
+    ops_.back().vec.emplace_back(data_op { .it = h, .pv = std::move(pv) });
+}
+
+int
+memory_cache_layer::read(const std::string_view& key, std::string& value) {
+    auto it = data_.find(llvm::StringRef(key.data(), key.size()));
+    if(it == data_.end()) {
+        return 0;
+    }
+    value = it->second;
+    return 1;
+}
+
+std::pair<token_database::memory_handler, bool>
+memory_cache_layer::readh(const std::string_view& key, std::string& value) {
+    auto it = data_.find(llvm::StringRef(key.data(), key.size()));
+    if(it == data_.end()) {
+        return std::make_pair(it, false);
+    }
+    value = it->second;
+    return std::make_pair(it, true);
+}
+
+int
+memory_cache_layer::exists(const std::string_view& key) {
+    return data_.find(llvm::StringRef(key.data(), key.size())) != data_.end();
+}
+
+void
+memory_cache_layer::add_savepoint(int64_t seq) {
+    ops_.push_back(data_ops{ .seq = seq, .vec = {} });
+}
+
+void
+memory_cache_layer::rollback_to_latest_savepoint() {
+    auto& ops = ops_.back();
+    for(auto& op : ops.vec) {
+        if(op.pv.empty()) {
+            // for insert op, remove it
+            data_.erase(op.it);
+        }
+        else {
+            if(op.it->getKeyLength() == 0) {
+                // key has been removed already
+                // no need to restore value
+                continue;
+            }
+            // restore old value
+            op.it->second = std::move(op.pv);
+        }
+    }
+}
+
+void
+memory_cache_layer::squash() {
+    ops_.pop_back();
+}
 
 class token_database_impl : boost::noncopyable {
 public:

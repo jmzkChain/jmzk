@@ -50,7 +50,7 @@ public:
 
     void
     clear() {
-        for(auto i = 0; i < size(); i++) {
+        for(ssize_t i = 0u; i < size(); i++) {
             buf_[(head_ + i) % capacity_].~T();
         }
 
@@ -82,7 +82,7 @@ public:
         return buf_[head_];
     }
 
-    size_t
+    ssize_t
         size() const {
         auto length = tail_ - head_;
         if(length < 0) {
