@@ -9,7 +9,6 @@
 #include <string_view>
 #include <boost/noncopyable.hpp>
 #include <boost/signals2/signal.hpp>
-#include <llvm/ADT/StringMap.h>
 #include <fc/reflect/reflect.hpp>
 #include <fc/filesystem.hpp>
 #include <evt/chain/types.hpp>
@@ -127,8 +126,6 @@ using token_keys_t = small_vector<name128, 4>;
 
 class token_database : boost::noncopyable {
 public:
-    using memory_handler = llvm::StringMapIterator<std::string>;
-
     struct config {
         storage_profile profile           = storage_profile::disk;
         uint32_t        block_cache_size  = 256 * 1024 * 1024; // 256M
