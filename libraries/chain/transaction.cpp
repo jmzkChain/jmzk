@@ -91,11 +91,14 @@ signed_transaction::get_signature_keys(const chain_id_type& chain_id, bool allow
 
 void
 packed_transaction::reflector_init() {
-   // called after construction, but always on the same thread and before packed_transaction passed to any other threads
-   static_assert(fc::raw::has_feature_reflector_init_on_unpacked_reflected_types,
+    // called after construction, but always on the same thread and before packed_transaction passed to any other threads
+    static_assert(fc::raw::has_feature_reflector_init_on_unpacked_reflected_types,
                  "FC unpack needs to call reflector_init otherwise unpacked_trx will not be initialized");
-   EVT_ASSERT(unpacked_trx.expiration == time_point_sec(), tx_decompression_error, "packed_transaction already unpacked");
-   local_unpack_transaction();
+    if(unpacked_trx.expiration != time_point_sec()) {
+        printf("boom!\n");
+    }
+    EVT_ASSERT(unpacked_trx.expiration == time_point_sec(), tx_decompression_error, "packed_transaction already unpacked");
+    local_unpack_transaction();
 }
 
 uint32_t

@@ -357,7 +357,6 @@ block_log::construct_index() {
 
     my->block_stream.seekg(-sizeof(uint64_t), std::ios::end);
     my->block_stream.read((char*)&end_pos, sizeof(end_pos));
-    signed_block tmp;
 
     uint64_t pos = 0;
     if(my->version == 1) {
@@ -378,7 +377,9 @@ block_log::construct_index() {
     }
 
     while(pos < end_pos) {
+        signed_block tmp;
         fc::raw::unpack(my->block_stream, tmp);
+        
         my->block_stream.read((char*)&pos, sizeof(pos));
         if(tmp.block_num() % 1000 == 0) {
             ilog2_("Block log index reconstructed for block {:n}", tmp.block_num());
