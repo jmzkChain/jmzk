@@ -1346,7 +1346,7 @@ EVT_ACTION_IMPL_BEGIN(paycharge) {
         auto& prod = pbs->get_scheduled_producer(pbs->header.timestamp).block_signing_key;
 
         property bp;
-        READ_DB_ASSET_NO_THROW(prod, evt_sym(), bp);
+        READ_DB_ASSET_NO_THROW(address(prod), evt_sym(), bp);
         // give charge to producer
         bp.amount += pcact.charge;
         PUT_DB_ASSET(prod, bp);

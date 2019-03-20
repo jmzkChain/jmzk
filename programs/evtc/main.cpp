@@ -1762,6 +1762,11 @@ main(int argc, char** argv) {
         std::cout << fc::json::to_pretty_string(call(get_evt_abi, fc::variant())) << std::endl;
     });
 
+    // get apis
+    get->add_subcommand("apis", localized("Get all available APIs for current node"))->callback([] {
+        std::cout << fc::json::to_pretty_string(call(get_node_apis, fc::variant())) << std::endl;
+    });
+
     // get block
     string blockArg;
     auto   getBlock = get->add_subcommand("block", localized("Retrieve a full block from the blockchain"));

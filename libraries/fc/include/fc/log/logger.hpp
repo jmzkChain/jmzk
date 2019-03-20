@@ -11,15 +11,15 @@ class appender;
 using appender_vec = fc::small_vector<std::shared_ptr<appender>, 4>;
 
 /**
-  *
-  *
-  @code
-    void my_class::func() 
-    {
-       fc_dlog( my_class_logger, "Format four: ${arg}  five: ${five}", ("arg",4)("five",5) );
-    }
-  @endcode
-  */
+ *
+ *
+ @code
+   void my_class::func() 
+   {
+      fc_dlog( my_class_logger, "Format four: ${arg}  five: ${five}", ("arg",4)("five",5) );
+   }
+ @endcode
+ */
 class logger {
 public:
     static logger get(const fc::string& name = "default");
@@ -107,6 +107,12 @@ private:
         (fc::logger::get(DEFAULT_LOGGER)).log(FC_LOG_MESSAGE(debug, FORMAT, __VA_ARGS__)); \
     FC_MULTILINE_MACRO_END
 
+#define dlog2(FORMAT, ...)                                                                  \
+    FC_MULTILINE_MACRO_BEGIN                                                                \
+    if((fc::logger::get(DEFAULT_LOGGER)).is_enabled(fc::log_level::debug))                  \
+        (fc::logger::get(DEFAULT_LOGGER)).log(FC_LOG_MESSAGE2(debug, FORMAT, __VA_ARGS__)); \
+    FC_MULTILINE_MACRO_END
+
 /**
   * Sends the log message to a special 'user' log stream designed for messages that
   * the end user may like to see.
@@ -121,6 +127,12 @@ private:
     FC_MULTILINE_MACRO_BEGIN                                                              \
     if((fc::logger::get(DEFAULT_LOGGER)).is_enabled(fc::log_level::info))                 \
         (fc::logger::get(DEFAULT_LOGGER)).log(FC_LOG_MESSAGE(info, FORMAT, __VA_ARGS__)); \
+    FC_MULTILINE_MACRO_END
+
+#define ilog2_(FORMAT, ...)                                                                \
+    FC_MULTILINE_MACRO_BEGIN                                                               \
+    if((fc::logger::get(DEFAULT_LOGGER)).is_enabled(fc::log_level::info))                  \
+        (fc::logger::get(DEFAULT_LOGGER)).log(FC_LOG_MESSAGE2(info, FORMAT, __VA_ARGS__)); \
     FC_MULTILINE_MACRO_END
 
 #define wlog(FORMAT, ...)                                                                 \
@@ -177,6 +189,10 @@ private:
 #define wlog(...) FC_MULTILINE_MACRO_BEGIN FC_MULTILINE_MACRO_END
 #undef ilog
 #define ilog(...) FC_MULTILINE_MACRO_BEGIN FC_MULTILINE_MACRO_END
+#undef ilog2_
+#define ilog2_(...) FC_MULTILINE_MACRO_BEGIN FC_MULTILINE_MACRO_END
 #undef dlog
 #define dlog(...) FC_MULTILINE_MACRO_BEGIN FC_MULTILINE_MACRO_END
+#undef dlog2
+#define dlog2(...) FC_MULTILINE_MACRO_BEGIN FC_MULTILINE_MACRO_END
 #endif

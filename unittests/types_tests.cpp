@@ -28,7 +28,7 @@ TEST_CASE("test_address", "[types]") {
     auto keystr = std::string("EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3");
     auto pkey   = public_key_type(keystr);
 
-    addr.set_public_key(pkey);
+    addr = address(pkey);
     CHECK(addr.is_public_key());
     auto var2 = fc::variant();
     fc::to_variant(addr, var2);
@@ -42,7 +42,7 @@ TEST_CASE("test_address", "[types]") {
 
     CHECK(addr == addr3);
 
-    addr.set_generated("xxxxxxxxxxxx", "xxxxxxxxxxxxxxxxxxxxx", 1234);
+    addr = address("xxxxxxxxxxxx", "xxxxxxxxxxxxxxxxxxxxx", 1234);
     CHECK(addr.is_generated());
     auto var3 = fc::variant();
     fc::to_variant(addr, var3);

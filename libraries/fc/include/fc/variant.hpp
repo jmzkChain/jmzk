@@ -408,6 +408,7 @@ from_variant(const variant& var, std::optional<T>& vo) {
 template<typename T>
 void
 to_variant(const std::unordered_set<T>& var, variant& vo) {
+    if(var.size() > MAX_NUM_ARRAY_ELEMENTS) throw std::range_error("too large");
     variants vars(var.size());
     size_t   i = 0;
     for(auto itr = var.begin(); itr != var.end(); ++itr, ++i)
@@ -419,6 +420,7 @@ template<typename T>
 void
 from_variant(const variant& var, std::unordered_set<T>& vo) {
     const variants& vars = var.get_array();
+    if(vars.size() > MAX_NUM_ARRAY_ELEMENTS) throw std::range_error("too large");
     vo.clear();
     vo.reserve(vars.size());
     for(auto itr = vars.begin(); itr != vars.end(); ++itr)
@@ -428,6 +430,7 @@ from_variant(const variant& var, std::unordered_set<T>& vo) {
 template<typename K, typename T>
 void
 to_variant(const std::unordered_map<K, T>& var, variant& vo) {
+    if(var.size() > MAX_NUM_ARRAY_ELEMENTS) throw std::range_error("too large");
     variants vars(var.size());
     size_t   i = 0;
     for(auto itr = var.begin(); itr != var.end(); ++itr, ++i)
@@ -439,6 +442,7 @@ template<typename K, typename T>
 void
 from_variant(const variant& var, std::unordered_map<K, T>& vo) {
     const variants& vars = var.get_array();
+    if(vars.size() > MAX_NUM_ARRAY_ELEMENTS) throw std::range_error("too large");
     vo.clear();
     for(auto itr = vars.begin(); itr != vars.end(); ++itr)
         vo.insert(itr->as<std::pair<K, T>>());
@@ -447,6 +451,7 @@ from_variant(const variant& var, std::unordered_map<K, T>& vo) {
 template<typename K, typename T>
 void
 to_variant(const std::map<K, T>& var, variant& vo) {
+    if(var.size() > MAX_NUM_ARRAY_ELEMENTS) throw std::range_error("too large");
     variants vars(var.size());
     size_t   i = 0;
     for(auto itr = var.begin(); itr != var.end(); ++itr, ++i)
@@ -458,6 +463,7 @@ template<typename K, typename T>
 void
 from_variant(const variant& var, std::map<K, T>& vo) {
     const variants& vars = var.get_array();
+    if(vars.size() > MAX_NUM_ARRAY_ELEMENTS) throw std::range_error("too large");
     vo.clear();
     for(auto itr = vars.begin(); itr != vars.end(); ++itr)
         vo.insert(itr->as<std::pair<K, T>>());
@@ -466,6 +472,7 @@ from_variant(const variant& var, std::map<K, T>& vo) {
 template<typename K, typename T>
 void
 to_variant(const std::multimap<K, T>& var, variant& vo) {
+    if(var.size() > MAX_NUM_ARRAY_ELEMENTS) throw std::range_error("too large");
     variants vars(var.size());
     size_t   i = 0;
     for(auto itr = var.begin(); itr != var.end(); ++itr, ++i)
@@ -477,6 +484,7 @@ template<typename K, typename T>
 void
 from_variant(const variant& var, std::multimap<K, T>& vo) {
     const variants& vars = var.get_array();
+    if(var.size() > MAX_NUM_ARRAY_ELEMENTS) throw std::range_error("too large");
     vo.clear();
     for(auto itr = vars.begin(); itr != vars.end(); ++itr)
         vo.insert(itr->as<std::pair<K, T>>());
@@ -485,6 +493,7 @@ from_variant(const variant& var, std::multimap<K, T>& vo) {
 template<typename T>
 void
 to_variant(const std::set<T>& var, variant& vo) {
+    if(var.size() > MAX_NUM_ARRAY_ELEMENTS) throw std::range_error("too large");
     variants vars(var.size());
     size_t   i = 0;
     for(auto itr = var.begin(); itr != var.end(); ++itr, ++i)
@@ -496,6 +505,7 @@ template<typename T>
 void
 from_variant(const variant& var, std::set<T>& vo) {
     const variants& vars = var.get_array();
+    if(vars.size() > MAX_NUM_ARRAY_ELEMENTS) throw std::range_error("too large");
     vo.clear();
     //vo.reserve( vars.size() );
     for(auto itr = vars.begin(); itr != vars.end(); ++itr)
@@ -507,6 +517,7 @@ template<typename T>
 void
 from_variant(const variant& var, std::deque<T>& tmp) {
     const variants& vars = var.get_array();
+    if(vars.size() > MAX_NUM_ARRAY_ELEMENTS) throw std::range_error("too large");
     tmp.clear();
     for(auto itr = vars.begin(); itr != vars.end(); ++itr)
         tmp.push_back(itr->as<T>());
@@ -516,6 +527,7 @@ from_variant(const variant& var, std::deque<T>& tmp) {
 template<typename T>
 void
 to_variant(const std::deque<T>& t, variant& v) {
+    if(t.size() > MAX_NUM_ARRAY_ELEMENTS) throw std::range_error("too large");
     variants vars(t.size());
     for(size_t i = 0; i < t.size(); ++i)
         vars[i] = variant(t[i]);
@@ -527,6 +539,7 @@ template<typename T>
 void
 from_variant(const variant& var, std::vector<T>& tmp) {
     const variants& vars = var.get_array();
+    if(vars.size() > MAX_NUM_ARRAY_ELEMENTS) throw std::range_error("too large");
     tmp.clear();
     tmp.reserve(vars.size());
     for(auto itr = vars.begin(); itr != vars.end(); ++itr)
@@ -537,6 +550,7 @@ from_variant(const variant& var, std::vector<T>& tmp) {
 template<typename T>
 void
 to_variant(const std::vector<T>& t, variant& v) {
+    if(t.size() > MAX_NUM_ARRAY_ELEMENTS) throw std::range_error("too large");
     variants vars(t.size());
     for(size_t i = 0; i < t.size(); ++i)
         vars[i] = variant(t[i]);
@@ -548,6 +562,7 @@ template<typename T, std::size_t S>
 auto
 from_variant(const variant& var, std::array<T, S>& t) -> std::enable_if_t<!std::is_trivially_copyable_v<T>> {
     const variants& vars = var.get_array();
+    if(vars.size() > MAX_NUM_ARRAY_ELEMENTS) throw std::range_error("too large");
     for(std::size_t i = 0; i < S; ++i) {
         t[i] = vars.at(i).as<T>();
     }
@@ -597,10 +612,12 @@ template<typename A, typename B>
 void
 from_variant(const variant& v, std::pair<A, B>& p) {
     const variants& vars = v.get_array();
-    if(vars.size() > 0)
-        p.first = vars[0].as<A>();
-    if(vars.size() > 1)
-        p.second = vars[1].as<B>();
+    if(vars.size() > 0) {
+        vars[0].as<A>(p.first);
+    }
+    if(vars.size() > 1) {
+        vars[1].as<B>(p.second);
+    }
 }
 
 template<typename T>

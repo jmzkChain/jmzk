@@ -36,36 +36,10 @@ public:
 
 }  // namespace __internal
 
-size_t
-address::get_bytes_size() const {
-    return sizeof(fc::ecc::public_key_shim);
-}
-
 void
 address::to_bytes(char* buf, size_t sz) const {
-    using namespace __internal;
-
     assert(sz == get_bytes_size());
-
-    switch(this->type()) {
-    case reserved_t: {
-        memset(buf, 0, sz);
-        break;
-    }
-    case public_key_t: {
-        memcpy(buf, &this->get_public_key(), sizeof(public_key_type::storage_type::type_at<0>));
-        break;
-    }
-    case generated_t: {
-        memset(buf, 0, sz);
-
-        auto ds = fc::datastream<char*>(buf, sz);
-        fc::raw::pack(ds, get_prefix());
-        fc::raw::pack(ds, get_key());
-        fc::raw::pack(ds, get_nonce());
-        break;
-    }
-    }  // switch
+    memcpy(buf, cache_.data(), cache_.size());
 }
 
 std::string
@@ -113,13 +87,11 @@ address::from_string(const std::string& str) {
     address addr;
     // fast path
     if(str[3] != '0') {
-        addr.set_public_key((public_key_type)str);
-        return addr;
+        return address((public_key_type)str);
     }
 
     if(str == reserved_key) {
-        addr.set_reserved();
-        return addr;
+        return address();
     }
 
     auto gen = gen_wrapper();
@@ -127,9 +99,30 @@ address::from_string(const std::string& str) {
     fc::from_base58(hash, (char*)&gen, sizeof(gen));
 
     EVT_ASSERT(gen.checksum == gen.calculate_checksum(), address_type_exception, "Checksum doesn't match");
+    return address(gen.prefix, gen.key, gen.nonce);
+}
 
-    addr.set_generated(gen.prefix, gen.key, gen.nonce);
-    return addr;
+void
+address::init_cache() const {  
+    switch(this->type()) {
+    case reserved_t: {
+        memset(cache_.data(), 0, get_bytes_size());
+        break;
+    }
+    case public_key_t: {
+        memcpy(cache_.data(), &this->get_public_key(), sizeof(public_key_type::storage_type::type_at<0>));
+        break;
+    }
+    case generated_t: {
+        memset(cache_.data(), 0, get_bytes_size());
+
+        auto ds = fc::datastream<char*>(cache_.data(), get_bytes_size());
+        fc::raw::pack(ds, get_prefix());
+        fc::raw::pack(ds, get_key());
+        fc::raw::pack(ds, get_nonce());
+        break;
+    }
+    }  // switch
 }
 
 }}  // namespace evt::chain

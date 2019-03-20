@@ -133,8 +133,15 @@ struct abi_traverse_context {
         : self(self)
         , exec_ctx(exec_ctx)
         , max_serialization_time(self.max_serialization_time_)
-        , deadline(std::chrono::steady_clock::now() + max_serialization_time)
-        , recursion_depth(0) {}
+        , deadline(std::chrono::steady_clock::now())   // init to now, updated below
+        , recursion_depth(0) {
+        if(max_serialization_time > std::chrono::steady_clock::time_point::max() - deadline) {
+            deadline = std::chrono::steady_clock::time_point::max();
+        }
+        else {
+            deadline += max_serialization_time;
+        }
+    }
 
     abi_traverse_context(const abi_serializer& self, const execution_context& exec_ctx, std::chrono::steady_clock::time_point deadline)
         : self(self)
@@ -618,7 +625,7 @@ struct abi_from_variant {
 };
 
 template <typename T>
-class abi_from_variant_visitor : reflector_init_visitor<T> {
+class abi_from_variant_visitor : public reflector_init_visitor<T> {
 public:
     abi_from_variant_visitor(const variant_object& _vo, T& v, abi_traverse_context& _ctx)
         : reflector_init_visitor<T>(v)

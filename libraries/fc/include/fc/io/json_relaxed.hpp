@@ -397,7 +397,7 @@ parseInt(const std::string& token, size_t start) {
         char    c  = token[i];
         uint8_t vc = ctbl[c];
         if(vc == 0xFF)
-            FC_THROW_EXCEPTION(parse_error_exception, "illegal character {c} in integer of base {b}", ("c", c)("b", base));
+            FC_THROW_EXCEPTION(parse_error_exception, "illegal character ${c} in integer of base ${b}", ("c", c)("b", base));
         if(val > maxb4mul)
             FC_THROW_EXCEPTION(parse_error_exception, "integer literal overflow");
         val *= base;
@@ -485,7 +485,7 @@ parseNumberOrStr(const std::string& token) {
             default:
                 // since this is a lookahead, other cases will be treated later
                 if(strict)
-                    FC_THROW_EXCEPTION(parse_error_exception, "expected '.'|'e'|'E' parsing number, got '{c}'",
+                    FC_THROW_EXCEPTION(parse_error_exception, "expected '.'|'e'|'E' parsing number, got '${c}'",
                                        ("c", c));
             }
             break;
@@ -557,10 +557,10 @@ parseNumberOrStr(const std::string& token) {
         case '+':
         case '/':
             if(strict)
-                FC_THROW_EXCEPTION(parse_error_exception, "illegal character '{c}' parsing number", ("c", c));
+                FC_THROW_EXCEPTION(parse_error_exception, "illegal character '${c}' parsing number", ("c", c));
             return fc::variant(token);
         default:
-            FC_THROW_EXCEPTION(parse_error_exception, "illegal character '{c}' in token", ("c", c));
+            FC_THROW_EXCEPTION(parse_error_exception, "illegal character '${c}' in token", ("c", c));
         }
         size_t start = i - 1;
 
@@ -673,7 +673,7 @@ parseNumberOrStr(const std::string& token) {
                             FC_THROW_EXCEPTION(parse_error_exception, "expected digit after '.'");
                         return fc::variant(token);
                     default:
-                        FC_THROW_EXCEPTION(parse_error_exception, "illegal character '{c}' in token", ("c", c)("i", int(c)));
+                        FC_THROW_EXCEPTION(parse_error_exception, "illegal character '${c}' in token", ("c", c)("i", int(c)));
                     }
                 }
                 else {
@@ -766,10 +766,10 @@ parseNumberOrStr(const std::string& token) {
                 case '.':
                 case '/':
                     if(strict)
-                        FC_THROW_EXCEPTION(parse_error_exception, "illegal character '{c}' in number", ("c", c));
+                        FC_THROW_EXCEPTION(parse_error_exception, "illegal character '${c}' in number", ("c", c));
                     return fc::variant(token);
                 default:
-                    FC_THROW_EXCEPTION(parse_error_exception, "illegal character '{c}' in token", ("c", c));
+                    FC_THROW_EXCEPTION(parse_error_exception, "illegal character '${c}' in token", ("c", c));
                 }
                 while(true) {
                     if(i == n)
@@ -845,7 +845,7 @@ parseNumberOrStr(const std::string& token) {
                     case '+':
                     case '/':
                         if(strict)
-                            FC_THROW_EXCEPTION(parse_error_exception, "illegal character '{c}' in number", ("c", c));
+                            FC_THROW_EXCEPTION(parse_error_exception, "illegal character '${c}' in number", ("c", c));
                         return fc::variant(token);
                     }
                 }
@@ -905,10 +905,10 @@ parseNumberOrStr(const std::string& token) {
             case '+':
             case '/':
                 if(strict)
-                    FC_THROW_EXCEPTION(parse_error_exception, "illegal character '{c}' parsing number", ("c", c));
+                    FC_THROW_EXCEPTION(parse_error_exception, "illegal character '${c}' parsing number", ("c", c));
                 return fc::variant(token);
             default:
-                FC_THROW_EXCEPTION(parse_error_exception, "illegal character '{c}' in number", ("c", c));
+                FC_THROW_EXCEPTION(parse_error_exception, "illegal character '${c}' in number", ("c", c));
             }
         }
     }
@@ -1128,7 +1128,7 @@ variant_from_stream(T& in, uint32_t max_depth) {
         case EOF:
             FC_THROW_EXCEPTION(eof_exception, "unexpected end of file");
         default:
-            FC_THROW_EXCEPTION(parse_error_exception, "Unexpected char '${c}' in \"${s}\"",
+            FC_THROW_EXCEPTION(parse_error_exception, "Unexpected char '$${c}' in \"${s}\"",
                                ("c", c)("s", stringFromToken(in)));
         }
     }

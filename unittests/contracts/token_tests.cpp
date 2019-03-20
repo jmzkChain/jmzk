@@ -140,7 +140,7 @@ TEST_CASE_METHOD(contracts_test, "contract_issuetoken_test", "[contracts]") {
     to_variant(istk, var);
     CHECK_THROWS_AS(my_tester->push_action(N(issuetoken), name128(get_domain_name()), N128(.issue), var.get_object(), key_seeds, payer), address_reserved_exception);
 
-    istk.owner[0].set_generated(".abc", "test", 0);
+    istk.owner[0] = address(".abc", "test", 0);
     to_variant(istk, var);
     CHECK_THROWS_AS(my_tester->push_action(N(issuetoken), name128(get_domain_name()), N128(.issue), var.get_object(), key_seeds, payer), address_reserved_exception);
 
@@ -196,7 +196,7 @@ TEST_CASE_METHOD(contracts_test, "contract_transfer_test", "[contracts]") {
     to_variant(trf, var);
     CHECK_THROWS_AS(my_tester->push_action(N(transfer), name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer), address_reserved_exception);
 
-    trf.to[0].set_generated(".abc", "test", 0);
+    trf.to[0] = address(".abc", "test", 0);
     to_variant(trf, var);
     CHECK_THROWS_AS(my_tester->push_action(N(transfer), name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer), address_reserved_exception);
 

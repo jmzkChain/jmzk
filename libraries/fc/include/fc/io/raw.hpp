@@ -444,7 +444,7 @@ private:
 };
 
 template<typename Stream, typename Class>
-struct unpack_object_visitor : fc::reflector_init_visitor<Class> {
+struct unpack_object_visitor : public fc::reflector_init_visitor<Class> {
     unpack_object_visitor(Class& _c, Stream& _s)
         : fc::reflector_init_visitor<Class>(_c)
         , s(_s) {}
@@ -556,9 +556,6 @@ struct if_reflected<fc::true_type> {
     template<typename Stream, typename T>
     static inline void unpack(Stream& s, T& v) {
         if_enum<typename fc::reflector<T>::is_enum>::unpack(s, v);
-        // has_feature_reflector_init_on_unpacked_reflected_types defined below to indicate reflector_init called
-        auto visitor = reflector_init_visitor<T>(v);
-        visitor.reflector_init();
     }
 };
 

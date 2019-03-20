@@ -192,26 +192,25 @@ public:
             active_producers.insert(p.producer_name);
         }
 
-        std::set_intersection(_producers.begin(), _producers.end(),
-                              active_producers.begin(), active_producers.end(),
+        std::set_intersection(_producers.begin(), _producers.end(), active_producers.begin(), active_producers.end(),
                               boost::make_function_output_iterator([&](const chain::account_name& producer) {
-                                  if(producer != bsp->header.producer) {
-                                      auto itr = std::find_if(active_producer_to_signing_key.begin(), active_producer_to_signing_key.end(),
-                                                              [&](const producer_key& k) { return k.producer_name == producer; });
-                                      if(itr != active_producer_to_signing_key.end()) {
-                                          auto private_key_itr = _signature_providers.find(itr->block_signing_key);
-                                          if(private_key_itr != _signature_providers.end()) {
-                                              auto d                  = bsp->sig_digest();
-                                              auto sig                = private_key_itr->second(d);
-                                              _last_signed_block_time = bsp->header.timestamp;
-                                              _last_signed_block_num  = bsp->block_num;
-
-                                              //                  ilog( "${n} confirmed", ("n",name(producer)) );
-                                              _self->confirmed_block({bsp->id, d, producer, sig});
-                                          }
-                                      }
-                                  }
-                              }));
+            if(producer != bsp->header.producer) {
+                auto itr = std::find_if(active_producer_to_signing_key.begin(), active_producer_to_signing_key.end(),
+                    [&](const producer_key& k) { return k.producer_name == producer; });
+                if(itr != active_producer_to_signing_key.end()) {
+                    auto private_key_itr = _signature_providers.find(itr->block_signing_key);
+                    if(private_key_itr != _signature_providers.end()) {
+                        auto d                  = bsp->sig_digest();
+                        auto sig                = private_key_itr->second(d);
+                        _last_signed_block_time = bsp->header.timestamp;
+                        _last_signed_block_num  = bsp->block_num;
+          
+                          //                  ilog( "${n} confirmed", ("n",name(producer)) );
+                          _self->confirmed_block({bsp->id, d, producer, sig});
+                    }
+                }
+            }
+        }));
 
 
         // since the watermark has to be set before a block is created, we are looking into the future to
@@ -336,7 +335,7 @@ public:
         }
 
         if(except) {
-            app().get_channel<channels::rejected_block>().publish(block);
+            app().get_channel<channels::rejected_block>().publish(priority::medium, block);
             return;
         }
 
@@ -379,7 +378,7 @@ public:
         auto send_response = [this, &trx, &chain, &next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& response) {
             next(response);
             if(response.contains<fc::exception_ptr>()) {
-                _transaction_ack_channel.publish(std::pair<fc::exception_ptr, transaction_metadata_ptr>(response.get<fc::exception_ptr>(), trx));
+                _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(response.get<fc::exception_ptr>(), trx));
                 if(_pending_block_mode == pending_block_mode::producing) {
                     fc_dlog(_trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is REJECTING tx: ${txid} : ${why} ",
                             ("block_num", chain.head_block_num() + 1)("prod", chain.pending_block_state()->header.producer)("txid", trx->id)("why", response.get<fc::exception_ptr>()->what()));
@@ -390,7 +389,7 @@ public:
                 }
             }
             else {
-                _transaction_ack_channel.publish(std::pair<fc::exception_ptr, transaction_metadata_ptr>(nullptr, trx));
+                _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(nullptr, trx));
                 if(_pending_block_mode == pending_block_mode::producing) {
                     fc_dlog(_trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is ACCEPTING tx: ${txid}",
                             ("block_num", chain.head_block_num() + 1)("prod", chain.pending_block_state()->header.producer)("txid", trx->id));
@@ -544,7 +543,7 @@ producer_plugin::set_program_options(
             "   <provider-type> \tis KEY, or EVTWD\n\n"
             "   KEY:<data>      \tis a string form of a valid EVT private key which maps to the provided public key\n\n"
             "   EVTWD:<data>    \tis the URL where evtwd is available and the approptiate wallet(s) are unlocked")
-         ("evtwd-provider-timeout", boost::program_options::value<int32_t>()->default_value(5), "Limits the maximum time (in milliseconds) that is allowd for sending blocks to a evtwd provider for signing")
+         ("evtwd-provider-timeout", boost::program_options::value<int32_t>()->default_value(5), "Limits the maximum time (in milliseconds) that is allowed for sending blocks to a evtwd provider for signing")
          ("produce-time-offset-us", boost::program_options::value<int32_t>()->default_value(0),
             "offset of non last block producing time in microseconds. Negative number results in blocks to go out sooner, and positive number results in blocks to go out later")
          ("last-block-time-offset-us", boost::program_options::value<int32_t>()->default_value(0),
@@ -722,9 +721,7 @@ producer_plugin::plugin_initialize(const boost::program_options::variables_map& 
 void
 producer_plugin::plugin_startup() {
     try {
-        if(fc::get_logger_map().find(logger_name) != fc::get_logger_map().end()) {
-            _log = fc::get_logger_map()[logger_name];
-        }
+        handle_sighup(); // sets loggers
 
         ilog("producer plugin:  plugin_startup() begin");
 
@@ -777,6 +774,17 @@ producer_plugin::plugin_shutdown() {
 
     my->_accepted_block_connection.reset();
     my->_irreversible_block_connection.reset();
+}
+
+void
+producer_plugin::handle_sighup() {
+    auto& logger_map = fc::get_logger_map();
+    if(logger_map.find(logger_name) != logger_map.end()) {
+        _log = logger_map[logger_name];
+    }
+    if(logger_map.find(trx_trace_logger_name) != logger_map.end()) {
+        _trx_trace_log = logger_map[trx_trace_logger_name];
+    }
 }
 
 void
@@ -1009,6 +1017,8 @@ producer_plugin_impl::start_block() {
     if(chain.get_read_mode() == chain::db_read_mode::READ_ONLY) {
         return start_block_result::waiting;
     }
+
+    fc_dlog(_log, "Starting block at ${time}", ("time", fc::time_point::now()));
 
     const auto& hbs = chain.head_block_state();
 
@@ -1257,7 +1267,7 @@ producer_plugin_impl::start_block() {
             else {
                 // attempt to apply any pending incoming transactions
                 if(!_pending_incoming_transactions.empty()) {
-                    fc_dlog(_log, "Processing ${n} pending transactions");
+                    fc_dlog(_log, "Processing ${n} pending transactions", ("n", _pending_incoming_transactions.size()));
                     while(orig_pending_txn_size && _pending_incoming_transactions.size()) {
                         if (preprocess_deadline <= fc::time_point::now()) return start_block_result::exhausted;
                         auto e = _pending_incoming_transactions.front();
@@ -1295,12 +1305,13 @@ producer_plugin_impl::schedule_production_loop() {
         _timer.expires_from_now(boost::posix_time::microseconds(config::block_interval_us / 10));
 
         // we failed to start a block, so try again later?
-        _timer.async_wait([weak_this, cid = ++_timer_corelation_id](const boost::system::error_code& ec) {
+        _timer.async_wait(app().get_priority_queue().wrap(priority::high,
+            [weak_this, cid = ++_timer_corelation_id](const boost::system::error_code& ec) {
             auto self = weak_this.lock();
             if(self && ec != boost::asio::error::operation_aborted && cid == self->_timer_corelation_id) {
                 self->schedule_production_loop();
             }
-        });
+        }));
     }
     else if(result == start_block_result::waiting) {
         if(!_producers.empty() && !production_disabled_by_policy()) {
@@ -1337,7 +1348,8 @@ producer_plugin_impl::schedule_production_loop() {
             }
         }
 
-        _timer.async_wait([&chain, weak_this, cid = ++_timer_corelation_id](const boost::system::error_code& ec) {
+        _timer.async_wait(app().get_priority_queue().wrap(priority::high,
+            [&chain, weak_this, cid = ++_timer_corelation_id](const boost::system::error_code& ec) {
             auto self = weak_this.lock();
             if(self && ec != boost::asio::error::operation_aborted && cid == self->_timer_corelation_id) {
                 // pending_block_state expected, but can't assert inside async_wait
@@ -1345,7 +1357,7 @@ producer_plugin_impl::schedule_production_loop() {
                 auto res       = self->maybe_produce_block();
                 fc_dlog(_log, "Producing Block #${num} returned: ${res}", ("num", block_num)("res", res));
             }
-        });
+        }));
     }
     else if(_pending_block_mode == pending_block_mode::speculating && !_producers.empty() && !production_disabled_by_policy()) {
         fc_dlog(_log, "Specualtive Block Created; Scheduling Speculative/Production Change");
@@ -1380,12 +1392,12 @@ producer_plugin_impl::schedule_delayed_production_loop(const std::weak_ptr<produ
         fc_dlog(_log, "Scheduling Speculative/Production Change at ${time}", ("time", wake_up_time));
         static const boost::posix_time::ptime epoch(boost::gregorian::date(1970, 1, 1));
         _timer.expires_at(epoch + boost::posix_time::microseconds(wake_up_time->time_since_epoch().count()));
-        _timer.async_wait([weak_this, cid = ++_timer_corelation_id](const boost::system::error_code& ec) {
+        _timer.async_wait(app().get_priority_queue().wrap(priority::high, [weak_this, cid = ++_timer_corelation_id](const boost::system::error_code& ec) {
             auto self = weak_this.lock();
             if(self && ec != boost::asio::error::operation_aborted && cid == self->_timer_corelation_id) {
                 self->schedule_production_loop();
             }
-        });
+        }));
     }
     else {
         fc_dlog(_log, "Not Scheduling Speculative/Production, no local producers had valid wake up times");

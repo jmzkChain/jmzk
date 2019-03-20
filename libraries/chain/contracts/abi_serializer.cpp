@@ -46,13 +46,19 @@ pack_unpack() {
         },
         [](const fc::variant& var, fc::datastream<char*>& ds, bool is_array, bool is_optional) {
             if(is_array) {
-                fc::raw::pack(ds, var.as<fc::small_vector<T, 4>>());
+                auto arr = fc::small_vector<T, 4>();
+                fc::from_variant(var, arr);
+                fc::raw::pack(ds, arr);
             }
             else if(is_optional) {
-                fc::raw::pack(ds, var.as<optional<T>>());
+                auto opt = optional<T>();
+                fc::from_variant(var, opt);
+                fc::raw::pack(ds, opt);
             }
             else {
-                fc::raw::pack(ds, var.as<T>());
+                auto obj = T();
+                fc::from_variant(var, obj);
+                fc::raw::pack(ds, obj);
             }
         });
 }

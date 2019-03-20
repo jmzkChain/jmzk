@@ -3,6 +3,7 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #pragma once
+#include <boost/asio/deadline_timer.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/interprocess/sync/file_lock.hpp>
 #include <chrono>
@@ -151,6 +152,7 @@ private:
     
     std::unique_ptr<boost::interprocess::file_lock> wallet_dir_lock;
 
+    void start_lock_watch(std::shared_ptr<boost::asio::deadline_timer> t);
     void initialize_lock();
 };
 

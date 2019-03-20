@@ -138,6 +138,10 @@ def pre_action():
     newdomain = AG.new_action(
         'newdomain', name=domain_name, creator=user.pub_key)
 
+    auth_A = base.AuthorizerWeight(base.AuthorizerRef('A', evt_pub), 1)
+    updatedomain = AG.new_action('updatedomain', name=domain_name,
+        manage=base.PermissionDef('manage', 1, [auth_A]))
+
     issuetoken = AG.new_action('issuetoken', domain=domain_name, names=[
                                token1_name, token2_name, token3_name], owner=[base.Address().set_public_key(user.pub_key)])
 
@@ -160,6 +164,9 @@ def pre_action():
     group_json['group']['name'] = group_name
     group_json['group']['key'] = str(user.pub_key)
     newgroup = AG.new_action_from_json('newgroup', json.dumps(group_json))
+
+    group_json['group']['root']['threshold'] = 5
+    updategroup = AG.new_action_from_json('updategroup', json.dumps(group_json))
 
     symbol = base.Symbol(
         sym_name=sym_name, sym_id=sym_id, precision=sym_prec)
@@ -191,6 +198,30 @@ def pre_action():
     bonus_json = json.loads(bonus_json_raw)
     setpsvbonus = AG.new_action_from_json('setpsvbonus', json.dumps(bonus_json))
 
+    addmeta = AG.new_action(
+        'addmeta', meta_key='sdf', meta_value='sdfsadf', creator=base.AuthorizerRef('A', user.pub_key), domain=domain_name, key=token1_name)
+
+    trx = TG.new_trx()
+    trx.add_action(issuefungible2)
+    trx.add_sign(priv_evt)
+    trx.add_sign(user.priv_key)
+    # trx.set_payer(user.pub_key.to_string())
+
+    newsuspend = AG.new_action(
+        'newsuspend', name='suspend', proposer=user.pub_key, trx=trx)
+
+    newsuspend2 = AG.new_action(
+        'newsuspend', name='suspend2', proposer=user.pub_key, trx=trx)
+
+    cancelsuspend = AG.new_action(
+        'cancelsuspend', name='suspend2')
+
+    aprvsuspend = AG.new_action(
+        'aprvsuspend', name='suspend', signatures=json.loads(trx.dumps())['signatures'])
+
+    execsuspend = AG.new_action(
+        'execsuspend', name='suspend', executor=user.pub_key)
+
     trx = TG.new_trx()
     trx.add_action(issuefungible2)
     trx.add_sign(priv_evt)
@@ -201,6 +232,8 @@ def pre_action():
 
     trx = TG.new_trx()
     trx.add_action(newdomain)
+    trx.add_action(newsuspend)
+    trx.add_action(newsuspend2)
     trx.add_sign(user.priv_key)
     trx.add_action(newgroup)
     trx.add_action(newfungible)
@@ -209,6 +242,10 @@ def pre_action():
     print(resp)
 
     trx = TG.new_trx()
+    trx.add_action(updatedomain)
+    trx.add_action(cancelsuspend)
+    trx.add_action(aprvsuspend)
+    trx.add_action(updategroup)
     trx.add_action(issuetoken)
     trx.add_action(issuefungible1)
     trx.add_sign(user.priv_key)
@@ -218,6 +255,8 @@ def pre_action():
 
     trx = TG.new_trx()
     trx.add_action(e2p)
+    trx.add_action(addmeta)
+    trx.add_action(execsuspend)
     trx.add_sign(user.priv_key)
     trx.set_payer(user.pub_key.to_string())
     resp = api.push_transaction(trx.dumps())
@@ -396,6 +435,7 @@ class Test(unittest.TestCase):
         }
         resp = api.get_domains(json.dumps(req)).text
         res_dict = json.loads(resp)
+        self.assertEqual(len(res_dict), 1, msg=resp)
         self.assertEqual(res_dict[0], domain_name, msg=resp)
 
     def test_get_tokens(self):
@@ -461,7 +501,6 @@ class Test(unittest.TestCase):
         resp = api.get_assets(json.dumps(req)).text
         res_dict = json.loads(resp)
         self.assertEqual(len(res_dict), 1, msg=resp)
-        self.assertEqual(res_dict[0], '896.63370 S#1', msg=resp)
 
         req = {
             'address': pub2.to_string(),
@@ -483,7 +522,6 @@ class Test(unittest.TestCase):
         res_dict = json.loads(resp)
 
         self.assertEqual(len(res_dict), 3, msg=resp)
-        self.assertEqual(res_dict[0], '896.63370 S#1', msg=resp)
 
         req = {
             'addr': pub2.to_string(),
@@ -505,7 +543,7 @@ class Test(unittest.TestCase):
 
         resp = api.get_actions(json.dumps(req)).text
         res_dict = json.loads(resp)
-        self.assertEqual(len(res_dict), 4, msg=resp)
+        self.assertEqual(len(res_dict), 6, msg=resp)
         self.assertTrue('trx_id' in res_dict[0].keys(), msg=resp)
         self.assertTrue('name' in res_dict[0].keys(), msg=resp)
         self.assertTrue('domain' in res_dict[0].keys(), msg=resp)
@@ -526,7 +564,7 @@ class Test(unittest.TestCase):
 
         resp = api.get_actions(json.dumps(req)).text
         res_dict = json.loads(resp)
-        self.assertEqual(len(res_dict), 4, msg=resp)
+        self.assertEqual(len(res_dict), 6, msg=resp)
         self.assertTrue('trx_id' in res_dict[0].keys(), msg=resp)
         self.assertTrue('name' in res_dict[0].keys(), msg=resp)
         self.assertTrue('domain' in res_dict[0].keys(), msg=resp)
@@ -669,6 +707,25 @@ class Test(unittest.TestCase):
         self.assertTrue('everipay' in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
 
+        req = {
+            'domain': '.suspend',
+            'dire': 'asc',
+            'skip': 0,
+            'take': 10
+        }
+
+        resp = api.get_actions(json.dumps(req)).text
+        res_dict = json.loads(resp)
+        self.assertEqual(len(res_dict), 5, msg=resp)
+        self.assertTrue('trx_id' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('name' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('domain' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('key' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('data' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('timestamp' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('newsuspend' in resp, msg=resp)
+        self.assertTrue('timestamp' in resp, msg=resp)
+
     def test_batch_get_actions(self):
         req = {
             'domain': '.fungible',
@@ -708,7 +765,6 @@ class Test(unittest.TestCase):
         self.assertTrue('key' in res_dict[0].keys(), msg=resp)
         self.assertTrue('data' in res_dict[0].keys(), msg=resp)
         self.assertTrue('timestamp' in res_dict[0].keys(), msg=resp)
-        self.assertEqual(res_dict[0]['name'], 'issuefungible', msg=resp)
         self.assertTrue(str(sym_id) in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
         self.assertTrue('paybonus' in resp, msg=resp)
@@ -730,7 +786,6 @@ class Test(unittest.TestCase):
         self.assertTrue('key' in res_dict[0].keys(), msg=resp)
         self.assertTrue('data' in res_dict[0].keys(), msg=resp)
         self.assertTrue('timestamp' in res_dict[0].keys(), msg=resp)
-        self.assertEqual(res_dict[0]['name'], 'issuefungible', msg=resp)
         self.assertTrue(str(sym_id) in resp, msg=resp)
 
         req = {
@@ -778,7 +833,7 @@ class Test(unittest.TestCase):
         req['address'] = user.pub_key.to_string()
         resp = api.get_fungible_actions(json.dumps(req)).text
         res_dict = json.loads(resp)
-        self.assertEqual(len(res_dict), 2, msg=resp)
+        self.assertEqual(len(res_dict), 3, msg=resp)
         self.assertTrue('trx_id' in res_dict[0].keys(), msg=resp)
         self.assertTrue('name' in res_dict[0].keys(), msg=resp)
         self.assertTrue('domain' in res_dict[0].keys(), msg=resp)

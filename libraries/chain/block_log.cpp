@@ -357,7 +357,6 @@ block_log::construct_index() {
 
     my->block_stream.seekg(-sizeof(uint64_t), std::ios::end);
     my->block_stream.read((char*)&end_pos, sizeof(end_pos));
-    signed_block tmp;
 
     uint64_t pos = 0;
     if(my->version == 1) {
@@ -378,8 +377,13 @@ block_log::construct_index() {
     }
 
     while(pos < end_pos) {
+        signed_block tmp;
         fc::raw::unpack(my->block_stream, tmp);
+        
         my->block_stream.read((char*)&pos, sizeof(pos));
+        if(tmp.block_num() % 1000 == 0) {
+            ilog2_("Block log index reconstructed for block {:n}", tmp.block_num());
+        }
         my->index_stream.write((char*)&pos, sizeof(pos));
     }
 }  // construct_index
@@ -502,9 +506,13 @@ block_log::repair_log(const fc::path& data_dir, uint32_t truncate_at_block) {
         new_block_stream.write(data.data(), data.size());
         new_block_stream.write(reinterpret_cast<char*>(&pos), sizeof(pos));
         block_num = tmp.block_num();
-        pos       = new_block_stream.tellp();
-        if(block_num == truncate_at_block)
+        if(block_num % 1000 == 0) {
+            ilog2_("Recovered block {:n}", block_num);
+        }
+        pos = new_block_stream.tellp();
+        if(block_num == truncate_at_block) {
             break;
+        }
     }
 
     if(bad_block.has_value()) {

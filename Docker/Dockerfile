@@ -39,6 +39,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive && apt-get install -y opens
 COPY --from=builder /usr/local/lib/* /usr/local/lib/
 COPY --from=builder /tmp/build/bin /opt/evt/bin
 COPY --from=builder /etc/evt-version /etc
+COPY --from=builder /evt/LICENSE.txt /opt/evt/
 
 COPY config.ini /
 COPY evtd.sh  /opt/evt/bin/evtd.sh

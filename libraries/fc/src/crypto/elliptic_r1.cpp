@@ -22,9 +22,11 @@ public:
             EC_KEY_free(_key);
         }
     }
+
     public_key_impl(const public_key_impl& cpy) {
         _key = cpy._key ? EC_KEY_dup(cpy._key) : nullptr;
     }
+
     EC_KEY* _key;
 };
 
@@ -32,17 +34,19 @@ class private_key_impl {
 public:
     private_key_impl()
         : _key(nullptr) {
-        static int init = init_openssl();
-        (void)init;
+        init_openssl();
     }
+
     ~private_key_impl() {
         if(_key != nullptr) {
             EC_KEY_free(_key);
         }
     }
+
     private_key_impl(const private_key_impl& cpy) {
         _key = cpy._key ? EC_KEY_dup(cpy._key) : nullptr;
     }
+    
     EC_KEY* _key;
 };
 }  // namespace detail

@@ -152,11 +152,11 @@ TEST_CASE_METHOD(contracts_test, "everipay_test", "[contracts]") {
     ep.link.add_segment(evt_link::segment(evt_link::link_id, "JKHBJKBJKGJHGJAA"));
     ep.link.add_segment(evt_link::segment(evt_link::timestamp, head_ts + 5));
     sign_link(ep.link);
-    ep.payee.set_generated(".hi", "test", 123);
+    ep.payee = address(".hi", "test", 123);
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer), address_reserved_exception);
 
     // payee is not valid
-    ep.payee.set_reserved();
+    ep.payee = address();
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer), address_reserved_exception);
 
     // correct

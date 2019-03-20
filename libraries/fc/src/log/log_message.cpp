@@ -174,4 +174,10 @@ log_message::get_message() const {
     return format_string(format, args);
 }
 
+string
+log_message::get_limited_message() const {
+    const bool minimize = true;
+    return format_string(format, args, minimize);
+}
+
 }  // namespace fc
