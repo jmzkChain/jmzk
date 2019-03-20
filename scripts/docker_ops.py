@@ -121,6 +121,7 @@ def snapshots(prefix):
     container.wait()
     logs = container.logs().decode('utf-8')
 
+    container.remove()
     click.echo(logs)
 
 
@@ -794,7 +795,7 @@ def snapshot(ctx, postgres, upload, aws_key, aws_secret):
         pathlib.Path(obj['snapshot_name']).name, obj['head_block_id'], obj['head_block_num'], obj['head_block_time'], pg, aws_key, aws_secret)
 
     container = client.containers.run('everitoken/snapshot:latest', entry, detach=True,
-                                      volumes={volume_name: {'bind': '/data', 'mode': 'rw'}})
+                                      volumes={volume_name: {'bind': '/data', 'mode': 'rw'}}, auto_remove=True)
     container.wait()
     logs = container.logs().decode('utf-8')
 
@@ -816,8 +817,10 @@ def getsnapshot(ctx, snapshot):
     container.wait()
     logs = container.logs().decode('utf-8')
 
+    container.remove()
     click.echo(logs, nl=False)
     click.echo('Create evtd with this snapshot via \'--snapshot=/opt/evt/snapshots/{}\''.format(sid))
+
 
 @evtd.command()
 @click.argument('arguments', nargs=-1)
