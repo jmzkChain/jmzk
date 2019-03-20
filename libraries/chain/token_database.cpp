@@ -65,6 +65,11 @@ public:
         return slice;
     }
 
+    std::string_view
+    as_string_view() const {
+        return std::string_view((const char*)this, sizeof(buf));
+    }
+
     std::string
     as_string() const {
         return std::string((const char*)this, 16 + 16);
@@ -88,6 +93,11 @@ public:
     const rocksdb::Slice&
     as_slice() const {
         return slice;
+    }
+
+    std::string_view
+    as_string_view() const {
+        return std::string_view((const char*)this, sizeof(buf));
     }
 
     std::string
@@ -433,6 +443,8 @@ public:
     rocksdb::ColumnFamilyHandle* tokens_handle_;
     rocksdb::ColumnFamilyHandle* assets_handle_;
 
+    write_cache_layer write_cache_;
+
     fc::ring_vector<__internal::savepoint> savepoints_;
 };
 
@@ -623,17 +635,8 @@ void
 token_database_impl::put_asset(const address& addr, const symbol_id_type sym_id, const std::string_view& data) {
     using namespace __internal;
 
-    auto  dbkey  = db_asset_key(addr, sym_id);
-    auto& slice  = dbkey.as_slice();
-    auto  status = db_->Put(write_opts_, assets_handle_, slice, data);
-    if(!status.ok()) {
-        FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
-    }
-    if(should_record()) {
-        auto act = (rt_asset_key*)malloc(sizeof(rt_asset_key));
-        memcpy(act->key, slice.data(), slice.size());
-        record((int)token_type::asset, (int)action_op::put, (int)kAssetKey, act);
-    }
+    auto dbkey = db_asset_key(addr, sym_id);
+    write_cache_.put(dbkey.as_string_view(), data);
 }
 
 int
@@ -652,6 +655,10 @@ token_database_impl::exists_asset(const address& addr, const symbol_id_type sym_
 
     auto dbkey  = db_asset_key(addr, sym_id);
     auto value  = std::string();
+
+    if(write_cache_.exists(dbkey.as_string_view())) {
+        return true;
+    }
     auto status = db_->Get(read_opts_, assets_handle_, dbkey.as_slice(), &value);
     return status.ok();
 }
@@ -679,6 +686,10 @@ token_database_impl::read_asset(const address& addr, const symbol_id_type sym_id
     using namespace __internal;
     auto key   = db_asset_key(addr, sym_id);
     auto value = std::string();
+
+    if(write_cache_.read(dbkey.as_string_view(), value)) {
+        return true;
+    }
 
     auto status = db_->Get(read_opts_, assets_handle_, key.as_slice(), &out);
     if(!status.ok()) {
