@@ -1097,8 +1097,10 @@ read_only::get_block(const read_only::get_block_params& params) const {
     auto block = signed_block_ptr();
     EVT_ASSERT(!params.block_num_or_id.empty() && params.block_num_or_id.size() <= 64, chain::block_id_type_exception, "Invalid Block number or ID, must be greater than 0 and less than 64 characters");
     try {
-        block = db.fetch_block_by_id(fc::variant(params.block_num_or_id).as<block_id_type>());
-        if(!block) {
+        if(params.block_num_or_id.size() == 64) {
+            block = db.fetch_block_by_id(fc::variant(params.block_num_or_id).as<block_id_type>());
+        }
+        else {
             block = db.fetch_block_by_number(fc::to_uint64(params.block_num_or_id));
         }
     }
