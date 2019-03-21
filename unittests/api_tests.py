@@ -134,6 +134,37 @@ bonus_json_raw = '''
 }
 '''
 
+lock_json_raw = '''
+{
+        "name": "ftlock",
+        "proposer": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+        "unlock_time": "2020-06-09T09:06:27",
+        "deadline": "2020-07-09T09:06:27",
+        "assets": [{
+            "type": "fungible",
+            "data": {
+                "from": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+                "amount": "5.00000 S#3"
+            }
+        }],
+        "condition": {
+            "type": "cond_keys",
+            "data": {
+                "threshold": 1,
+                "cond_keys": [
+                    "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+                    "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
+                ]
+            }
+        },
+        "succeed": [
+        ],
+        "failed": [
+            "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
+        ]
+    }
+'''
+
 def pre_action():
     newdomain = AG.new_action(
         'newdomain', name=domain_name, creator=user.pub_key)
@@ -222,6 +253,14 @@ def pre_action():
     execsuspend = AG.new_action(
         'execsuspend', name='suspend', executor=user.pub_key)
 
+    lock_json = json.loads(lock_json_raw)
+    lock_json['proposer'] = str(user.pub_key)
+    lock_json['assets'][0]['data']['from'] = str(user.pub_key)
+    lock_json['condition']['data']['cond_keys'] = [str(user.pub_key)]
+    lock_json['succeed'] = [str(user.pub_key)]
+    lock_json['failed'] = [str(user.pub_key)]
+    newlock = AG.new_action_from_json('newlock', json.dumps(lock_json))
+
     trx = TG.new_trx()
     trx.add_action(issuefungible2)
     trx.add_sign(priv_evt)
@@ -280,6 +319,12 @@ def pre_action():
     resp = api.push_transaction(trx.dumps())
     print(resp)
 
+    trx = TG.new_trx()
+    trx.add_action(newlock)
+    trx.add_sign(user.priv_key)
+    trx.set_payer(user.pub_key.to_string())
+    resp = api.push_transaction(trx.dumps())
+    print(resp)
 
     time.sleep(2)
 
@@ -726,6 +771,25 @@ class Test(unittest.TestCase):
         self.assertTrue('newsuspend' in resp, msg=resp)
         self.assertTrue('timestamp' in resp, msg=resp)
 
+        req = {
+            'domain': '.lock',
+            'dire': 'asc',
+            'skip': 0,
+            'take': 10
+        }
+
+        resp = api.get_actions(json.dumps(req)).text
+        res_dict = json.loads(resp)
+        self.assertEqual(len(res_dict), 1, msg=resp)
+        self.assertTrue('trx_id' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('name' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('domain' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('key' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('data' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('timestamp' in res_dict[0].keys(), msg=resp)
+        self.assertTrue('newlock' in resp, msg=resp)
+        self.assertTrue('timestamp' in resp, msg=resp)
+
     def test_batch_get_actions(self):
         req = {
             'domain': '.fungible',
@@ -917,7 +981,14 @@ class Test(unittest.TestCase):
         resp = api.get_fungible_ids(json.dumps(req)).text
         self.assertTrue(str(sym_id) in resp, msg=resp)
 
-    # def test_bonus(self):
+    def test_block(self):
+        req = {
+            'block_num_or_id': '5',
+        }
+
+        resp = api.get_block(json.dumps(req)).text
+        res_dict = json.loads(resp)
+        self.assertEqual(res_dict['block_num'], 5, msg=resp)
         
 
 
