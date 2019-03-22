@@ -268,6 +268,10 @@ private:
     };
 
 public:
+    void bind_created_event(const decltype(created_event)& e) { created_event = e; }
+    void bind_removed_event(const decltype(removed_event)& e) { removed_event = e; }
+
+public:
     void put(const std::string_view& key, const std::string_view& value);
     void put(data_map_t::iterator, const std::string_view& value);
     int read(const std::string_view& key, std::string& value);
@@ -283,6 +287,9 @@ public:
 private:
     data_map_t                data_;
     fc::ring_vector<data_ops> ops_;
+
+    std::function<void(const llvm::StringRef&, std::string&&)> created_event;
+    std::function<void(const llvm::StringRef&)>                removed_event;
 };
 
 void
@@ -298,6 +305,7 @@ write_cache_layer::put(const std::string_view& key, const std::string_view& valu
         return;
     }
     ops_.back().vec.emplace_back(data_op { .it = it.first, .pv = std::string() });
+    created_event(key, value);
 }
 
 void
@@ -347,6 +355,7 @@ write_cache_layer::rollback_to_latest_savepoint() {
     for(auto it = ops.vec.rbegin(); it != ops.vec.rend(); it--) {
         auto& op = *it;
         if(op.it->second.used_count == 0) {
+            removed_event(op.it->key);
             data_.erase(op.it);
         }
         else {
@@ -443,7 +452,7 @@ public:
     rocksdb::ColumnFamilyHandle* tokens_handle_;
     rocksdb::ColumnFamilyHandle* assets_handle_;
 
-    write_cache_layer write_cache_;
+    write_cache_layer assets_write_cache_;
 
     fc::ring_vector<__internal::savepoint> savepoints_;
 };
