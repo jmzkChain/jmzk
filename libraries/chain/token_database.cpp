@@ -51,7 +51,7 @@ namespace __internal {
 const char*  kAssetsColumnFamilyName = "Assets";
 const size_t kSymbolIdSize           = sizeof(symbol_id_type);
 const size_t kPublicKeySize          = sizeof(fc::ecc::public_key_shim);
-const size_t kDefaultRingSize        = (4 / 3 * 24 + 1) * 12;
+const size_t kDefaultSavePointsSize  = (4 / 3 * 24 + 1) * 12;
 
 struct db_token_key : boost::noncopyable {
 public:
@@ -67,7 +67,7 @@ public:
 
     std::string_view
     as_string_view() const {
-        return std::string_view((const char*)this, sizeof(buf));
+        return std::string_view((const char*)this, 16 + 16);
     }
 
     std::string
@@ -268,28 +268,27 @@ private:
     };
 
 public:
-    void bind_created_event(const decltype(created_event)& e) { created_event = e; }
-    void bind_removed_event(const decltype(removed_event)& e) { removed_event = e; }
+    write_cache_layer() : ops_(__internal::kDefaultSavePointsSize) {}
 
 public:
     void put(const std::string_view& key, const std::string_view& value);
     void put(data_map_t::iterator, const std::string_view& value);
-    int read(const std::string_view& key, std::string& value);
-    std::pair<data_map_t::iterator, bool> readh(const std::string_view& key, std::string& value);
-    int exists(const std::string_view& key);
+    int read(const std::string_view& key, std::string& value) const;
+    int exists(const std::string_view& key) const;
 
 public:
     void add_savepoint(int64_t seq);
     void rollback_to_latest_savepoint();
     void squash();
     void pop_front(std::function<void(const llvm::StringRef&, std::string&&)> persist_func);
+    void pop_back();
 
 private:
     data_map_t                data_;
     fc::ring_vector<data_ops> ops_;
 
-    std::function<void(const llvm::StringRef&, std::string&&)> created_event;
-    std::function<void(const llvm::StringRef&)>                removed_event;
+private:
+    friend class token_database_impl;
 };
 
 void
@@ -305,7 +304,6 @@ write_cache_layer::put(const std::string_view& key, const std::string_view& valu
         return;
     }
     ops_.back().vec.emplace_back(data_op { .it = it.first, .pv = std::string() });
-    created_event(key, value);
 }
 
 void
@@ -320,7 +318,7 @@ write_cache_layer::put(write_cache_layer::data_map_t::iterator h, const std::str
 }
 
 int
-write_cache_layer::read(const std::string_view& key, std::string& value) {
+write_cache_layer::read(const std::string_view& key, std::string& value) const {
     auto it = data_.find(llvm::StringRef(key.data(), key.size()));
     if(it == data_.end()) {
         return 0;
@@ -329,18 +327,8 @@ write_cache_layer::read(const std::string_view& key, std::string& value) {
     return 1;
 }
 
-std::pair<write_cache_layer::data_map_t::iterator, bool>
-write_cache_layer::readh(const std::string_view& key, std::string& value) {
-    auto it = data_.find(llvm::StringRef(key.data(), key.size()));
-    if(it == data_.end()) {
-        return std::make_pair(it, false);
-    }
-    value = it->second.value;
-    return std::make_pair(it, true);
-}
-
 int
-write_cache_layer::exists(const std::string_view& key) {
+write_cache_layer::exists(const std::string_view& key) const {
     return data_.find(llvm::StringRef(key.data(), key.size())) != data_.end();
 }
 
@@ -355,7 +343,6 @@ write_cache_layer::rollback_to_latest_savepoint() {
     for(auto it = ops.vec.rbegin(); it != ops.vec.rend(); it--) {
         auto& op = *it;
         if(op.it->second.used_count == 0) {
-            removed_event(op.it->key);
             data_.erase(op.it);
         }
         else {
@@ -363,6 +350,7 @@ write_cache_layer::rollback_to_latest_savepoint() {
             op.it->second.value = std::move(op.pv);
         }
     }
+    ops_.pop_back();
 }
 
 void
@@ -385,6 +373,11 @@ write_cache_layer::pop_front(std::function<void(const llvm::StringRef&, std::str
     }
 
     ops_.pop_front();
+}
+
+void
+write_cache_layer::pop_back() {
+    ops_.pop_back();
 }
 
 class token_database_impl : boost::noncopyable {
@@ -465,7 +458,7 @@ token_database_impl::token_database_impl(token_database& self, const token_datab
     , write_opts_()
     , tokens_handle_(nullptr)
     , assets_handle_(nullptr)
-    , savepoints_(__internal::kDefaultRingSize) {}
+    , savepoints_(__internal::kDefaultSavePointsSize) {}
 
 void
 token_database_impl::open(int load_persistence) {
@@ -563,25 +556,18 @@ token_database_impl::open(int load_persistence) {
 
 void
 token_database_impl::close(int persist) {
-    if(db_ != nullptr) {
-        if(persist) {
-            persist_savepoints();
-        }
-        if(!savepoints_.empty()) {
-            free_all_savepoints();
-        }
-        if(tokens_handle_ != nullptr) {
-            delete tokens_handle_;
-            tokens_handle_ = nullptr;
-        }
-        if(assets_handle_ != nullptr) {
-            delete assets_handle_;
-            assets_handle_ = nullptr;
-        }
+    assert(db_);
 
-        delete db_;
-        db_ = nullptr;
+    if(persist) {
+        persist_savepoints();
     }
+    if(!savepoints_.empty()) {
+        free_all_savepoints();
+    }
+    
+    delete tokens_handle_;
+    delete assets_handle_;
+    delete db_;
 }
 
 void
@@ -645,7 +631,16 @@ token_database_impl::put_asset(const address& addr, const symbol_id_type sym_id,
     using namespace __internal;
 
     auto dbkey = db_asset_key(addr, sym_id);
-    write_cache_.put(dbkey.as_string_view(), data);
+    if(should_record()) {
+        assets_write_cache_.put(dbkey.as_string_view(), data);
+        return;
+    }
+    else {
+        auto status = db_->Put(write_opts_, assets_handle_, dbkey.as_slice(), data);
+        if(!status.ok()) {
+            FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+        }
+    }
 }
 
 int
@@ -665,7 +660,7 @@ token_database_impl::exists_asset(const address& addr, const symbol_id_type sym_
     auto dbkey  = db_asset_key(addr, sym_id);
     auto value  = std::string();
 
-    if(write_cache_.exists(dbkey.as_string_view())) {
+    if(assets_write_cache_.exists(dbkey.as_string_view())) {
         return true;
     }
     auto status = db_->Get(read_opts_, assets_handle_, dbkey.as_slice(), &value);
@@ -696,7 +691,7 @@ token_database_impl::read_asset(const address& addr, const symbol_id_type sym_id
     auto key   = db_asset_key(addr, sym_id);
     auto value = std::string();
 
-    if(write_cache_.read(dbkey.as_string_view(), value)) {
+    if(assets_write_cache_.read(key.as_string_view(), value)) {
         return true;
     }
 
@@ -748,6 +743,17 @@ int
 token_database_impl::read_assets_range(const symbol_id_type sym_id, int skip, const read_value_func& func) const {
     using namespace __internal;
 
+    // create snapshot first
+    auto ss = db_->GetSnapshot();
+    
+    // write new values from cache into db
+    for(auto& it : assets_write_cache_.data_) {
+        auto k = rocksdb::Slice(it.first().data(), it.first().size());
+        auto v = rocksdb::Slice(it.second.value.data(), it.second.value.size());
+        db_->Put(write_opts_, assets_handle_, k, v);
+    }
+
+    // scan values
     auto it    = db_->NewIterator(read_opts_, assets_handle_);
     auto key   = rocksdb::Slice((char*)&sym_id, sizeof(sym_id));
     auto count = 0;
@@ -772,6 +778,32 @@ token_database_impl::read_assets_range(const symbol_id_type sym_id, int skip, co
         it->Next();
     }
     delete it;
+
+    // restore values
+    auto snapshot_read_opts_     = read_opts_;
+    snapshot_read_opts_.snapshot = ss;
+
+    auto batch = rocksdb::WriteBatch();
+    for(auto& it : assets_write_cache_.data_) {
+        auto v = std::string();
+        auto k = rocksdb::Slice(it.first().data(), it.first().size());
+        auto s = db_->Get(snapshot_read_opts_, assets_handle_, k, &v);
+        if(s.ok()) {
+            // put value back
+            batch.Put(assets_handle_, k, v);
+        }
+        else if(s.code() == rocksdb::Status::kNotFound) {
+            // remove value
+            batch.Delete(assets_handle_, k);
+        }
+        else {
+            FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", s.getState()));
+        }
+    }
+    auto sync_write_opts = write_opts_;
+    sync_write_opts.sync = true;
+    db_->Write(sync_write_opts, &batch);
+
     return count;
 }
 
@@ -790,6 +822,8 @@ token_database_impl::add_savepoint(int64_t seq) {
     savepoints_.push_back(savepoint(seq, kRuntime));
     auto rt = new rt_group { .rb_snapshot = (const void*)db_->GetSnapshot(), .actions = {} }; 
     SETPOINTER(void, savepoints_.back().node.group, rt);
+
+    assets_write_cache_.add_savepoint(seq);
 }
 
 void
@@ -844,6 +878,16 @@ token_database_impl::pop_savepoints(int64_t until) {
         auto it = std::move(savepoints_.front());
         savepoints_.pop_front();
         free_savepoint(it);
+
+        // pop write cache and persist into underlying db
+        assert(assets_write_cache_.ops_.front().seq == it.seq);
+        auto batch = rocksdb::WriteBatch();
+        assets_write_cache_.pop_front([&](auto& k, auto&& v) {
+            batch.Put(assets_handle_, rocksdb::Slice(k.data(), k.size()), v);
+        });
+        auto sync_write_opts = write_opts_;
+        sync_write_opts.sync = true;
+        db_->Write(sync_write_opts, &batch);
     }
 }
 
@@ -854,6 +898,8 @@ token_database_impl::pop_back_savepoint() {
     auto it = std::move(savepoints_.back());
     savepoints_.pop_back();
     free_savepoint(it);
+
+    assets_write_cache_.pop_back();
 }
 
 void
@@ -877,6 +923,8 @@ token_database_impl::squash() {
     // just release rt1's snapshot
     db_->ReleaseSnapshot((const rocksdb::Snapshot*)rt1->rb_snapshot);
     delete rt1;
+
+    assets_write_cache_.squash();
 }
 
 int64_t
@@ -1100,7 +1148,8 @@ token_database_impl::rollback_to_latest_savepoint() {
     using namespace __internal;
     EVT_ASSERT(!savepoints_.empty(), token_database_no_savepoint, "There's no savepoints anymore");
 
-    auto n = savepoints_.back().node;
+    auto seq = savepoints_.back().seq;
+    auto n   = savepoints_.back().node;
 
     switch(n.f.type) {
     case kRuntime: {
@@ -1120,6 +1169,9 @@ token_database_impl::rollback_to_latest_savepoint() {
     }  // switch
 
     savepoints_.pop_back();
+
+    assert(seq == assets_write_cache_.ops_.back().seq);
+    assets_write_cache_.rollback_to_latest_savepoint();
 }
 
 void
