@@ -258,8 +258,13 @@ private:
     using data_map_t = llvm::StringMap<cache_entry>;
 
     struct data_op {
-        data_map_t::iterator it;
-        std::string          pv;
+    public:
+        data_op(data_map_t::iterator& it, std::string&& pv)
+            : it(&(*it)), pv(std::move(pv)) {}
+
+    public:
+        data_map_t::value_type* it;
+        std::string             pv;
     };
 
     struct data_ops {
@@ -272,7 +277,6 @@ public:
 
 public:
     void put(const std::string_view& key, const std::string_view& value);
-    void put(data_map_t::iterator, const std::string_view& value);
     int read(const std::string_view& key, std::string& value) const;
     int exists(const std::string_view& key) const;
 
@@ -282,6 +286,10 @@ public:
     void squash();
     void pop_front(std::function<void(const llvm::StringRef&, std::string&&)> persist_func);
     void pop_back();
+
+    void clear();
+    void persist_savepoints(std::ostream& os) const;
+    void load_savepoints(std::istream& is);
 
 private:
     data_map_t                data_;
@@ -295,26 +303,15 @@ void
 write_cache_layer::put(const std::string_view& key, const std::string_view& value) {
     assert(!ops_.empty());
 
-    auto it = data_.try_emplace(llvm::StringRef(key.data(), key.size()), 1, std::string(value.data(), value.size()));
-    if(!it.second) {
-        auto pv = std::move(it.first->second.value);
-        it.first->second.used_count += 1;
-        it.first->second.value       = std::string(value.data(), value.size());
-        ops_.back().vec.emplace_back(data_op { .it = it.first, .pv = std::move(pv) });
+    auto pair = data_.try_emplace(llvm::StringRef(key.data(), key.size()), 1, std::string(value.data(), value.size()));
+    if(!pair.second) {
+        auto pv = std::move(pair.first->second.value);
+        pair.first->second.used_count += 1;
+        pair.first->second.value       = std::string(value.data(), value.size());
+        ops_.back().vec.emplace_back(data_op(pair.first, std::move(pv)));
         return;
     }
-    ops_.back().vec.emplace_back(data_op { .it = it.first, .pv = std::string() });
-}
-
-void
-write_cache_layer::put(write_cache_layer::data_map_t::iterator h, const std::string_view& value) {
-    assert(!ops_.empty());
-
-    auto pv = std::move(h->second.value);
-    h->second.used_count += 1;
-    h->second.value       = std::string(value.data(), value.size());
-
-    ops_.back().vec.emplace_back(data_op { .it = h, .pv = std::move(pv) });
+    ops_.back().vec.emplace_back(data_op(pair.first, std::string()));
 }
 
 int
@@ -340,10 +337,10 @@ write_cache_layer::add_savepoint(int64_t seq) {
 void
 write_cache_layer::rollback_to_latest_savepoint() {
     auto& ops = ops_.back();
-    for(auto it = ops.vec.rbegin(); it != ops.vec.rend(); it--) {
+    for(auto it = ops.vec.rbegin(); it != ops.vec.rend(); it++) {
         auto& op = *it;
-        if(op.it->second.used_count == 0) {
-            data_.erase(op.it);
+        if(--op.it->second.used_count == 0) {
+            data_.erase(op.it->first());
         }
         else {
             assert(!op.it->second.value.empty());
@@ -367,8 +364,8 @@ void
 write_cache_layer::pop_front(std::function<void(const llvm::StringRef&, std::string&&)> persist_func) {
     for(auto& op : ops_.front().vec) {
         if(--op.it->second.used_count == 0) {
-            persist_func(op.it->getKey(), std::move(op.it->second.value));
-            data_.erase(op.it);
+            persist_func(op.it->first(), std::move(op.it->second.value));
+            data_.erase(op.it->first());
         }
     }
 
@@ -378,6 +375,62 @@ write_cache_layer::pop_front(std::function<void(const llvm::StringRef&, std::str
 void
 write_cache_layer::pop_back() {
     ops_.pop_back();
+}
+
+namespace __internal {
+
+struct wc_entry {
+    std::string k;
+    std::string v;
+};
+
+struct wc_entry_pack {
+    int64_t               seq;
+    std::vector<wc_entry> vec;
+};
+
+}  // namespace __internal
+
+void
+write_cache_layer::clear() {
+    data_.clear();
+    ops_.clear();
+}
+
+void
+write_cache_layer::persist_savepoints(std::ostream& os) const {
+    using namespace __internal;
+
+    auto pack = std::vector<wc_entry_pack>();
+    pack.resize(ops_.size());
+    for(auto i = 0; i < ops_.size(); i++) {
+        auto& ops = ops_[i];
+        
+        auto& epack = pack[i];
+        epack.seq   = ops.seq;
+        for(auto& op : ops.vec) {
+            epack.vec.emplace_back(wc_entry {
+                .k  = op.it->first().str(),
+                .v  = op.it->second.value
+            });
+        }
+    }
+    fc::raw::pack(os, pack);
+}
+
+void
+write_cache_layer::load_savepoints(std::istream& is) {
+    using namespace __internal;
+
+    auto pack = std::vector<wc_entry_pack>();
+    fc::raw::unpack(is, pack);
+
+    for(auto& ops : pack) {
+        this->add_savepoint(ops.seq);
+        for(auto& op : ops.vec) {
+            this->put(op.k, op.v);
+        }
+    }
 }
 
 class token_database_impl : boost::noncopyable {
@@ -556,18 +609,20 @@ token_database_impl::open(int load_persistence) {
 
 void
 token_database_impl::close(int persist) {
-    assert(db_);
+    if(db_) {
+        if(persist) {
+            persist_savepoints();
+        }
+        if(!savepoints_.empty()) {
+            free_all_savepoints();
+        }
+        
+        delete tokens_handle_;
+        delete assets_handle_;
+        delete db_;
 
-    if(persist) {
-        persist_savepoints();
+        db_ = nullptr;
     }
-    if(!savepoints_.empty()) {
-        free_all_savepoints();
-    }
-    
-    delete tokens_handle_;
-    delete assets_handle_;
-    delete db_;
 }
 
 void
@@ -1176,6 +1231,8 @@ token_database_impl::rollback_to_latest_savepoint() {
 
 void
 token_database_impl::persist_savepoints() const {
+    using namespace __internal;
+
     try {
         auto filename = config_.db_path / config::token_database_persisit_filename;
         if(fc::exists(filename)) {
@@ -1185,8 +1242,21 @@ token_database_impl::persist_savepoints() const {
         fs.exceptions(std::fstream::failbit | std::fstream::badbit);
         fs.open(filename.to_native_ansi_path(), (std::ios::out | std::ios::binary));
 
-        persist_savepoints(fs);
+        auto h = pd_header {
+            .dirty_flag = 1
+        };
+        // set dirty first
+        fc::raw::pack(fs, h);
 
+        persist_savepoints(fs);
+        assets_write_cache_.persist_savepoints(fs);
+
+        // clear dirty
+        fs.seekp(0);
+        h.dirty_flag = 0;
+        fc::raw::pack(fs, h);
+
+        // flush and close
         fs.flush();
         fs.close();
     }
@@ -1207,21 +1277,19 @@ token_database_impl::load_savepoints() {
 
     // delete old savepoints if existed (from snapshot)
     savepoints_.clear();
+    assets_write_cache_.clear();
 
+    // load
     load_savepoints(fs);
+    assets_write_cache_.load_savepoints(fs);
 
+    // close
     fs.close();
 }
 
 void
 token_database_impl::persist_savepoints(std::ostream& os) const {
     using namespace __internal;
-
-    auto h = pd_header {
-        .dirty_flag = 1
-    };
-    // set dirty first
-    fc::raw::pack(os, h);
 
     auto pds = std::vector<pd_group>();
 
@@ -1333,10 +1401,6 @@ token_database_impl::persist_savepoints(std::ostream& os) const {
     }  // for
 
     fc::raw::pack(os, pds);
-    os.seekp(0);
-
-    h.dirty_flag = 0;
-    fc::raw::pack(os, h);
 }
 
 void
@@ -1543,3 +1607,5 @@ token_database::get_db_key(token_type type, const std::optional<name128>& domain
 FC_REFLECT(evt::chain::__internal::pd_header, (dirty_flag));
 FC_REFLECT(evt::chain::__internal::pd_action, (op)(type)(key)(value));
 FC_REFLECT(evt::chain::__internal::pd_group,  (seq)(actions));
+FC_REFLECT(evt::chain::__internal::wc_entry, (k)(v));
+FC_REFLECT(evt::chain::__internal::wc_entry_pack, (seq)(vec));
