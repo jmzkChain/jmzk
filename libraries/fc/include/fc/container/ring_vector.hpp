@@ -32,7 +32,6 @@ public:
     pop_front() {
         assert(head_ != tail_);
 
-        front().~T();
         if(++head_ >= capacity_) {
             head_ = 0;
         }
@@ -42,7 +41,6 @@ public:
     pop_back() {
         assert(head_ != tail_);
 
-        back().~T();
         if(--tail_ < 0) {
             tail_ = capacity_ - 1;
         }
@@ -50,10 +48,6 @@ public:
 
     void
     clear() {
-        for(ssize_t i = 0u; i < size(); i++) {
-            buf_[(head_ + i) % capacity_].~T();
-        }
-
         head_ = 0;
         tail_ = 0;
     }
