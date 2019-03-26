@@ -1,6 +1,6 @@
 #include "contracts_tests.hpp"
 
-TEST_CASE_METHOD(contracts_test, "contract_prodvote_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "prodvote_test", "[contracts]") {
     const char* test_data = R"=======(
     {
         "producer": "evt",
@@ -64,7 +64,7 @@ TEST_CASE_METHOD(contracts_test, "contract_prodvote_test", "[contracts]") {
     my_tester->produce_blocks();
 }
 
-TEST_CASE_METHOD(contracts_test, "contract_charge_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "charge_test", "[contracts]") {
     const char* test_data = R"=====(
     {
       "address": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
@@ -117,7 +117,7 @@ TEST_CASE_METHOD(contracts_test, "empty_action_test", "[contracts]") {
     CHECK_THROWS_AS(my_tester->push_transaction(trx), tx_no_action);
 }
 
-TEST_CASE_METHOD(contracts_test, "contract_addmeta_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "addmeta_test", "[contracts]") {
     my_tester->add_money(payer, asset(10'000'000, symbol(5, EVT_SYM_ID)));
 
     const char* test_data = R"=====(
@@ -279,7 +279,7 @@ TEST_CASE_METHOD(contracts_test, "contract_addmeta_test", "[contracts]") {
     my_tester->produce_blocks();
 }
 
-TEST_CASE_METHOD(contracts_test, "contract_updsched_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "updsched_test", "[contracts]") {
     const char* test_data = R"=======(
     {
         "producers": [{

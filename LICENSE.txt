@@ -7,6 +7,8 @@ Other Dependencies:
 This work uses some codes from:
 EOSIO(https://github.com/EOSIO/eos)
 RocksDB(https://github.com/facebook/rocksdb)
+Boost Library(https://www.boost.org/)
+LLVM Project(https://llvm.org/)
 WebSocket++(https://github.com/zaphoyd/websocketpp)
 AppBase(https://github.com/EOSIO/appbase)
 ChainBase(https://github.com/EOSIO/chainbase)
@@ -14,8 +16,9 @@ FastCompile(https://github.com/EOSIO/fc)
 RapidJSON(https://github.com/Tencent/rapidjson)
 SafeInt(https://github.com/dcleblanc/SafeInt)
 Catch(https://github.com/catchorg/Catch2)
-libcuckoo(https://github.com/efficient/libcuckoo)
 sparesehash-c11(https://github.com/sparsehash/sparsehash-c11)
+libcuckoo(https://github.com/efficient/libcuckoo)
+{fmt}(http://fmtlib.net/latest/index.html)
 
 1.EOSIO
 
@@ -25,50 +28,53 @@ MIT License, Copyright (c) 2018, Respective Authors all rights reserved.
 
 Apache License Version 2.0, Facebook, Inc all rights reserved.
 
-3. WebSocket++
+3. Boost 
+
+Boost Software License 1.0
+
+4. LLVM Project
+
+Apache License v2.0 with LLVM Exceptions
+
+5. WebSocket++
 
 The 3-Clause BSD License, Copyright (c) 2014, Peter Thorson. All rights reserved.
 
-4. AppBase
+6. AppBase
 
 MIT License, Copyright (c) 2018, Respective Authors all rights reserved.
 
-5. ChainBase
+7. ChainBase
 
 MIT License, Copyright (c) 2018, Respective Authors all rights reserved.
 
-6. FastCompile
+8. FastCompile
 
 MIT License, Copyright (c) 2018, Respective Authors all rights reserved.
 
-7. RapidJSON
+9. RapidJSON
 
 MIT License, Copyright (C) 2015 THL A29 Limited, a Tencent company, and Milo Yip. All rights reserved.
 
-8. SafeInt
+10. SafeInt
 
 MIT License, Copyright (c) 2018 Microsoft all rights reserved.
 
-9. Catch
+11. Catch
 
 Boost Software License 1.0, Respective Authors all rights reserved.
 
-10. sparesehash-c11
+12. sparesehash-c11
 
 BSD 3-Clause "New" or "Revised" License
 
-11. libcuckoo
+13. libcuckoo
 
 Apache License Version 2.0, Copyright (C) 2013, Carnegie Mellon University and Intel Corporation. All rights reserved.
 
-12. {fmt}
+14. {fmt}
 
 BSD 2-Clause "Simplified" License
-
-13. Boost Library
-
-Boost Software License 1.0, Respective Authors all rights reserved.
-
 
 Terms of the MIT License:
 -----------------------------------------------------------------------------
@@ -294,6 +300,35 @@ Terms of the Apache License Version 2.0:
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+
+
+---- LLVM Exceptions to the Apache 2.0 License ----
+
+As an exception, if, as a result of your compiling your source code, portions
+of this Software are embedded into an Object form of such source code, you
+may redistribute such embedded portions in such Object form without complying
+with the conditions of Sections 4(a), 4(b) and 4(d) of the License.
+
+In addition, if you combine or link compiled forms of this Software with
+software that is licensed under the GPLv2 ("Combined Software") and if a
+court of competent jurisdiction determines that the patent provision (Section
+3), the indemnity provision (Section 9) or other Section of the License
+conflicts with the conditions of the GPLv2, you may retroactively and
+prospectively choose to deem waived or otherwise exclude such Section(s) of
+the License, but only in their entirety and only with respect to the Combined
+Software.
+
+==============================================================================
+Software from third parties included in the LLVM Project:
+==============================================================================
+The LLVM Project contains third party software which is under different license
+terms. All such code will be identified clearly using at least one of two
+mechanisms:
+1) It will be in a separate directory tree with its own `LICENSE.txt` or
+   `LICENSE` file at the top containing the specific license and restrictions
+   which apply to that software, or
+2) It will contain specific license and restriction terms at the top of every
+   file.
 
 
 Terms of the Boost Software License - Version 1.0:

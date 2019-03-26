@@ -743,10 +743,9 @@ token_database_impl::read_token(const name128& prefix, const name128& key, std::
 int
 token_database_impl::read_asset(const address& addr, const symbol_id_type sym_id, std::string& out, bool no_throw) const {
     using namespace __internal;
-    auto key   = db_asset_key(addr, sym_id);
-    auto value = std::string();
 
-    if(assets_write_cache_.read(key.as_string_view(), value)) {
+    auto key = db_asset_key(addr, sym_id);
+    if(assets_write_cache_.read(key.as_string_view(), out)) {
         return true;
     }
 
@@ -1203,8 +1202,8 @@ token_database_impl::rollback_to_latest_savepoint() {
     using namespace __internal;
     EVT_ASSERT(!savepoints_.empty(), token_database_no_savepoint, "There's no savepoints anymore");
 
-    auto seq = savepoints_.back().seq;
-    auto n   = savepoints_.back().node;
+    auto  seq = savepoints_.back().seq;
+    auto& n   = savepoints_.back().node;
 
     switch(n.f.type) {
     case kRuntime: {
