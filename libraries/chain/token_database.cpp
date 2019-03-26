@@ -531,7 +531,11 @@ token_database_impl::open(int load_persistence) {
     options.memtable_factory.reset(NewHashSkipListRepFactory());
     if(config_.enable_stats) {
         options.statistics = rocksdb::CreateDBStatistics();
+#if ROCKSDB_MAJOR >= 6
+        options.statistics->set_stats_level(StatsLevel::kExceptTimeForMutex);
+#else
         options.statistics->stats_level_ = StatsLevel::kExceptTimeForMutex;
+#endif
     }
 
     auto assets_options = ColumnFamilyOptions(options);
