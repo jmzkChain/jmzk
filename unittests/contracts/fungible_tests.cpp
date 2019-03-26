@@ -8,7 +8,7 @@ auto CHECK_EQUAL = [](auto& lhs, auto& rhs) {
     CHECK(memcmp(b1.data(), b2.data(), b1.size()) == 0);
 };
 
-TEST_CASE_METHOD(contracts_test, "contract_newfungible_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "newfungible_test", "[contracts]") {
     const char* test_data = R"=====(
     {
       "name": "EVT",
@@ -81,7 +81,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newfungible_test", "[contracts]") {
     CHECK_EQUAL(ft, *ft2);
 }
 
-TEST_CASE_METHOD(contracts_test, "contract_updfungible_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "updfungible_test", "[contracts]") {
     const char* test_data = R"=====(
     {
       "sym_id": "0",
@@ -138,7 +138,7 @@ TEST_CASE_METHOD(contracts_test, "contract_updfungible_test", "[contracts]") {
     CHECK_EQUAL(ft, *ft2);
 }
 
-TEST_CASE_METHOD(contracts_test, "contract_issuefungible_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "issuefungible_test", "[contracts]") {
     const char* test_data = R"=====(
     {
       "address": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
@@ -205,7 +205,7 @@ TEST_CASE_METHOD(contracts_test, "contract_issuefungible_test", "[contracts]") {
     my_tester->produce_blocks();
 }
 
-TEST_CASE_METHOD(contracts_test, "contract_transferft_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "transferft_test", "[contracts]") {
     const char* test_data = R"=====(
     {
       "from": "EVT6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
@@ -266,7 +266,7 @@ TEST_CASE_METHOD(contracts_test, "contract_transferft_test", "[contracts]") {
     my_tester->produce_blocks();
 }
 
-TEST_CASE_METHOD(contracts_test, "contract_recycleft_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "recycleft_test", "[contracts]") {
     const char* test_data = R"=======(
     {
         "address": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
@@ -310,7 +310,7 @@ TEST_CASE_METHOD(contracts_test, "contract_recycleft_test", "[contracts]") {
     CHECK(100000 == ast_to_after.amount - ast_to_before.amount);
 }
 
-TEST_CASE_METHOD(contracts_test, "contract_destroyft_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "destroyft_test", "[contracts]") {
     const char* test_data = R"=======(
     {
         "address": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
@@ -352,7 +352,7 @@ TEST_CASE_METHOD(contracts_test, "contract_destroyft_test", "[contracts]") {
     CHECK(100000 == ast_to_after.amount - ast_to_before.amount);
 }
 
-TEST_CASE_METHOD(contracts_test, "contract_evt2pevt_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "evt2pevt_test", "[contracts]") {
     const char* test_data = R"=======(
     {
         "from": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",

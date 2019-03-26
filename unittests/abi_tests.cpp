@@ -83,7 +83,7 @@ struct optionaltest2 {
 };
 FC_REFLECT(optionaltest2, (a)(b));
 
-TEST_CASE("optional_test", "[abis]") {
+TEST_CASE("optional_abi_test", "[abis]") {
     auto abi = abi_def();
     abi.structs.emplace_back(struct_def{
         "optionaltest", "", {{"a", "int32?"}, {"b", "int32?"}}});
@@ -134,7 +134,7 @@ TEST_CASE("optional_test", "[abis]") {
     CHECK(fc::to_hex(bytes2) == fc::to_hex(bytes22));
 }
 
-TEST_CASE("newdomain_test", "[abis]") {
+TEST_CASE("newdomain_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
 
     auto test_data = R"=====(
@@ -224,7 +224,7 @@ TEST_CASE("newdomain_test", "[abis]") {
     verify_type_round_trip_conversion<newdomain>(abis, "newdomain", var);
 }
 
-TEST_CASE("updatedomain_test", "[abis]") {
+TEST_CASE("updatedomain_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
 
     auto test_data = R"=====(
@@ -270,7 +270,7 @@ TEST_CASE("updatedomain_test", "[abis]") {
     verify_type_round_trip_conversion<updatedomain>(abis, "updatedomain", var);
 }
 
-TEST_CASE("issuetoken_test", "[abis]") {
+TEST_CASE("issuetoken_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
 
     auto test_data = R"=====(
@@ -316,7 +316,7 @@ TEST_CASE("issuetoken_test", "[abis]") {
     verify_type_round_trip_conversion<issuetoken>(abis, "issuetoken", var);
 }
 
-TEST_CASE("transfer_test", "[abis]") {
+TEST_CASE("transfer_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
 
     auto test_data = R"=====(
@@ -353,7 +353,7 @@ TEST_CASE("transfer_test", "[abis]") {
     verify_type_round_trip_conversion<transfer>(abis, "transfer", var);
 }
 
-TEST_CASE("destroytoken_test", "[abis]") {
+TEST_CASE("destroytoken_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
 
     auto test_data = R"=====(
@@ -378,7 +378,7 @@ TEST_CASE("destroytoken_test", "[abis]") {
     verify_type_round_trip_conversion<transfer>(abis, "destroytoken", var);
 }
 
-TEST_CASE("newgroup_test", "[abis]") {
+TEST_CASE("newgroup_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
 
     auto test_data = R"=====(
@@ -542,7 +542,7 @@ TEST_CASE("newgroup_test", "[abis]") {
     verify_type_round_trip_conversion<newgroup>(abis, "newgroup", var);
 }
 
-TEST_CASE("updategroup_test", "[abis]") {
+TEST_CASE("updategroup_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
 
     auto test_data = R"=====(
@@ -706,7 +706,7 @@ TEST_CASE("updategroup_test", "[abis]") {
     verify_type_round_trip_conversion<updategroup>(abis, "updategroup", var);
 }
 
-TEST_CASE("newfungible_test", "[abis]") {
+TEST_CASE("newfungible_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
 
     auto test_data = R"=====(
@@ -791,7 +791,7 @@ TEST_CASE("newfungible_test", "[abis]") {
     verify_type_round_trip_conversion<newfungible>(abis, "newfungible", var);
 }
 
-TEST_CASE("updfungible_test", "[abis]") {
+TEST_CASE("updfungible_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
 
     auto test_data = R"=====(
@@ -837,7 +837,7 @@ TEST_CASE("updfungible_test", "[abis]") {
     verify_type_round_trip_conversion<updfungible>(abis, "updfungible", var);
 }
 
-TEST_CASE("issuefungible_test", "[abis]") {
+TEST_CASE("issuefungible_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
 
     auto test_data = R"=====(
@@ -872,7 +872,7 @@ TEST_CASE("issuefungible_test", "[abis]") {
     verify_type_round_trip_conversion<issuefungible>(abis, "issuefungible", var);
 }
 
-TEST_CASE("transferft_test", "[abis]") {
+TEST_CASE("transferft_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
 
     auto test_data = R"=====(
@@ -910,7 +910,7 @@ TEST_CASE("transferft_test", "[abis]") {
     verify_type_round_trip_conversion<transferft>(abis, "transferft", var);
 }
 
-TEST_CASE("addmeta_test", "[abis]") {
+TEST_CASE("addmeta_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
 
     auto test_data = R"=====(
@@ -941,7 +941,7 @@ TEST_CASE("addmeta_test", "[abis]") {
     verify_type_round_trip_conversion<addmeta>(abis, "addmeta", var);
 }
 
-TEST_CASE("newsuspend_test", "[abis]") {
+TEST_CASE("newsuspend_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
     auto test_data = R"=======(
     {
@@ -983,7 +983,7 @@ TEST_CASE("newsuspend_test", "[abis]") {
     verify_type_round_trip_conversion<newsuspend>(abis, "newsuspend", var);
 }
 
-TEST_CASE("cancelsuspend_test", "[abis]") {
+TEST_CASE("cancelsuspend_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
     auto test_data = R"=======(
     {
@@ -1000,7 +1000,7 @@ TEST_CASE("cancelsuspend_test", "[abis]") {
     verify_type_round_trip_conversion<cancelsuspend>(abis, "cancelsuspend", var);
 }
 
-TEST_CASE("aprvsuspend_test", "[abis]") {
+TEST_CASE("aprvsuspend_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
     auto test_data = R"=======(
     {
@@ -1022,7 +1022,7 @@ TEST_CASE("aprvsuspend_test", "[abis]") {
     verify_type_round_trip_conversion<aprvsuspend>(abis, "aprvsuspend", var);
 }
 
-TEST_CASE("execsuspend_test", "[abis]") {
+TEST_CASE("execsuspend_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
     auto test_data = R"=======(
     {
@@ -1042,7 +1042,7 @@ TEST_CASE("execsuspend_test", "[abis]") {
     verify_type_round_trip_conversion<execsuspend>(abis, "execsuspend", var);
 }
 
-TEST_CASE("evt2pevt_test", "[abis]") {
+TEST_CASE("evt2pevt_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
     auto test_data = R"=======(
     {

@@ -8,7 +8,7 @@ auto CHECK_EQUAL = [](auto& lhs, auto& rhs) {
     CHECK(memcmp(b1.data(), b2.data(), b1.size()) == 0);
 };
 
-TEST_CASE_METHOD(contracts_test, "contract_newdomain_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "newdomain_test", "[contracts]") {
     const char* test_data = R"=====(
         {
           "name" : "domain",
@@ -87,7 +87,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newdomain_test", "[contracts]") {
     CHECK_EQUAL(dom, *dom2);
 }
 
-TEST_CASE_METHOD(contracts_test, "contract_issuetoken_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "issuetoken_test", "[contracts]") {
     const char* test_data = R"=====(
     {
       "domain": "domain",
@@ -163,7 +163,7 @@ TEST_CASE_METHOD(contracts_test, "contract_issuetoken_test", "[contracts]") {
     CHECK_EQUAL(tk, *tk2);
 }
 
-TEST_CASE_METHOD(contracts_test, "contract_transfer_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "transfer_test", "[contracts]") {
     const char* test_data = R"=====(
     {
       "domain": "cookie",
@@ -221,7 +221,7 @@ TEST_CASE_METHOD(contracts_test, "contract_transfer_test", "[contracts]") {
     CHECK_EQUAL(tk, *tk2);
 }
 
-TEST_CASE_METHOD(contracts_test, "contract_destroytoken_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "destroytoken_test", "[contracts]") {
     const char* test_data = R"=====(
     {
       "domain": "cookie",
@@ -261,7 +261,7 @@ TEST_CASE_METHOD(contracts_test, "contract_destroytoken_test", "[contracts]") {
     CHECK_EQUAL(tk, *tk2);
 }
 
-TEST_CASE_METHOD(contracts_test, "contract_destroytoken_auth_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "destroytoken_auth_test", "[contracts]") {
     auto am    = addmeta();
     am.key     = N128(.invalid-key);
     am.value   = "invalid-value";
