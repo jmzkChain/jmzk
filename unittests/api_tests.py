@@ -982,6 +982,37 @@ class Test(unittest.TestCase):
         self.assertTrue(str(sym_id) in resp, msg=resp)
 
     def test_block(self):
+        symbol = base.Symbol(
+            sym_name=sym_name, sym_id=sym_id, precision=sym_prec)
+        asset = base.new_asset(symbol)
+        pay_link = evt_link.EvtLink()
+        pay_link.set_timestamp(int(time.time()))
+        pay_link.set_max_pay(999999999)
+        pay_link.set_header(evt_link.HeaderType.version1.value |
+                            evt_link.HeaderType.everiPay.value)
+        pay_link.set_symbol_id(sym_id)
+        pay_link.set_link_id_rand()
+        pay_link.sign(user.priv_key)
+
+        everipay = AG.new_action('everipay', payee=pub2, number=asset(
+            1), link=pay_link.to_string())
+
+        req = {
+            'link_id': 'ddc101c51318d51733d682e80b8ea2bc'
+        }
+        req['link_id'] = pay_link.get_link_id().hex()
+        for i in range(10000):
+            pay_link.set_link_id_rand()
+            everipay = AG.new_action('everipay', payee=pub2, number=asset(
+                1), link=pay_link.to_string())
+            trx = TG.new_trx()
+            trx.add_action(everipay)
+            trx.add_sign(user.priv_key)
+            trx.set_payer(user.pub_key.to_string())
+            api.push_transaction(trx.dumps())
+            time.sleep(0.1)
+
+
         req = {
             'block_num_or_id': '5',
         }
@@ -989,7 +1020,20 @@ class Test(unittest.TestCase):
         resp = api.get_block(json.dumps(req)).text
         res_dict = json.loads(resp)
         self.assertEqual(res_dict['block_num'], 5, msg=resp)
-        
+
+        url = 'http://127.0.0.1:8888/v1/chain/get_block'
+
+        tasks = []
+        for i in range(10240):
+            req['block_num_or_id'] = random.randint(1, 100)
+            tasks.append(grequests.post(url, data=json.dumps(req)))
+
+        i = 0
+        for resp in grequests.imap(tasks, size=128):
+            self.assertEqual(resp.status_code, 200, msg=resp.content)
+            i += 1
+            if i % 100 == 0:
+                print('Received {} responses'.format(i))
 
 
 @click.command()
