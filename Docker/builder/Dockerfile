@@ -43,7 +43,7 @@ RUN wget https://dl.bintray.com/boostorg/release/1.69.0/source/boost_1_69_0.tar.
        --with-serialization --with-chrono --with-test --with-context --with-locale --with-coroutine --with-iostreams toolset=gcc link=shared install \
     && cd .. && rm -rf boost_1_69_0
 
-RUN wget https://github.com/01org/tbb/archive/2019_U3.tar.gz -O - | tar -xz \
+RUN wget https://github.com/01org/tbb/archive/2019_U5.tar.gz -O - | tar -xz \
     && cd tbb-2019_U3 \
     && make tbb -j${nproc} \
     && sudo cp build/*release/*.so* /usr/local/lib \
