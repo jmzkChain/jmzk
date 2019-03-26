@@ -86,11 +86,6 @@ void pack(Stream& s, const variant_wrapper<ENUM, ARGS...>& vw);
 template<typename Stream, typename ENUM, typename... ARGS>
 void unpack(Stream& s, variant_wrapper<ENUM, ARGS...>& vw);
 
-template<typename Stream, typename T, typename Compare, typename Container>
-inline void pack(Stream& s, const flat_set<T, Compare, Container>& value);
-template<typename Stream, typename T, typename Compare, typename Container>
-inline void unpack(Stream& s, flat_set<T, Compare, Container>& value);
-
 template<typename Stream, typename T>
 inline void pack(Stream& s, const std::deque<T>& value);
 template<typename Stream, typename T>
@@ -105,11 +100,6 @@ template<typename Stream, typename K, typename V>
 inline void pack(Stream& s, const std::map<K, V>& value);
 template<typename Stream, typename K, typename V>
 inline void unpack(Stream& s, std::map<K, V>& value);
-
-template<typename Stream, typename K, typename V, typename ... Others>
-inline void pack(Stream& s, const flat_map<K, V, Others...>& value);
-template<typename Stream, typename K, typename V, typename ... Others>
-inline void unpack(Stream& s, flat_map<K, V, Others...>& value);
 
 template<typename Stream, typename K, typename V, typename ... Others>
 inline void pack(Stream& s, const google::dense_hash_map<K, V, Others...>& value);
@@ -190,11 +180,6 @@ template<typename Stream, typename T>
 inline void pack(Stream& s, const std::vector<T>& v);
 template<typename Stream, typename T>
 inline void unpack(Stream& s, std::vector<T>& v);
-
-template<typename Stream, typename T, std::size_t N>
-inline void pack(Stream& s, const small_vector<T, N>& v);
-template<typename Stream, typename T, std::size_t N>
-inline void unpack(Stream& s, small_vector<T, N>& v);
 
 template<typename Stream>
 inline void pack(Stream& s, const signed_int& v);

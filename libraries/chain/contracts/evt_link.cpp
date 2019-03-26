@@ -383,6 +383,7 @@ to_variant(const evt::chain::contracts::evt_link& link, fc::variant& v) {
     auto vo   = fc::mutable_variant_object();
     auto segs = fc::variants();
     auto sigs = fc::variants();
+    auto keys = fc::variants();
     
     for(auto& it : link.get_segments()) {
         auto  sego = fc::mutable_variant_object();
@@ -405,10 +406,15 @@ to_variant(const evt::chain::contracts::evt_link& link, fc::variant& v) {
         sigs.emplace_back((std::string)sig);
     }
 
+    for(auto& key : link.restore_keys()) {
+        keys.emplace_back((std::string)key);
+    }
+
+
     vo["header"]     = link.get_header();
-    vo["segments"]   = segs;
-    vo["signatures"] = sigs;
-    vo["keys"]       = link.restore_keys();
+    vo["segments"]   = std::move(segs);
+    vo["signatures"] = std::move(sigs);
+    vo["keys"]       = std::move(keys);
 
     v = std::move(vo);
 }

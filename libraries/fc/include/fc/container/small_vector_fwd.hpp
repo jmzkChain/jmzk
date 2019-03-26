@@ -14,5 +14,4 @@ template<typename Stream, typename T, std::size_t N>
 inline void unpack(Stream& s, small_vector<T, N>& v);
 
 }  // namespace raw
-
 }  // namespace fc

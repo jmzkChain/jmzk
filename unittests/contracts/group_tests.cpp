@@ -8,7 +8,7 @@ auto CHECK_EQUAL = [](auto& lhs, auto& rhs) {
     CHECK(memcmp(b1.data(), b2.data(), b1.size()) == 0);
 };
 
-TEST_CASE_METHOD(contracts_test, "contract_newgroup_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "newgroup_test", "[contracts]") {
     const char* test_data = R"=====(
     {
       "name" : "5jxX",
@@ -101,7 +101,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newgroup_test", "[contracts]") {
     CHECK_EQUAL(group, *group2);
 }
 
-TEST_CASE_METHOD(contracts_test, "contract_updategroup_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "updategroup_test", "[contracts]") {
     const char* test_data = R"=====(
     {
       "name" : "5jxX",
@@ -185,7 +185,7 @@ TEST_CASE_METHOD(contracts_test, "contract_updategroup_test", "[contracts]") {
     CHECK_EQUAL(group, *group2);
 }
 
-TEST_CASE_METHOD(contracts_test, "contract_updatedomain_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "updatedomain_test", "[contracts]") {
     const char* test_data = R"=====(
     {
       "name" : "domain",
@@ -243,7 +243,7 @@ TEST_CASE_METHOD(contracts_test, "contract_updatedomain_test", "[contracts]") {
     my_tester->produce_blocks();
 }
 
-TEST_CASE_METHOD(contracts_test, "contract_group_auth_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "group_auth_test", "[contracts]") {
     const char* test_data = R"=====(
     {
         "domain": "domain",

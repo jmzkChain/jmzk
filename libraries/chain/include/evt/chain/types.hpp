@@ -20,6 +20,7 @@
 #include <fc/variant_wrapper.hpp>
 #include <fc/container/flat.hpp>
 #include <fc/container/small_vector.hpp>
+#include <fc/interprocess/container.hpp>
 #include <fc/crypto/private_key.hpp>
 #include <fc/crypto/ripemd160.hpp>
 #include <fc/crypto/sha224.hpp>

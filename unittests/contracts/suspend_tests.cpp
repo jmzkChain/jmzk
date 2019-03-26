@@ -8,7 +8,7 @@ auto CHECK_EQUAL = [](auto& lhs, auto& rhs) {
     CHECK(memcmp(b1.data(), b2.data(), b1.size()) == 0);
 };
 
-TEST_CASE_METHOD(contracts_test, "contract_failsuspend_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "failsuspend_test", "[contracts]") {
     const char* test_data = R"=======(
     {
         "name": "testsuspend",
@@ -146,7 +146,7 @@ TEST_CASE_METHOD(contracts_test, "contract_failsuspend_test", "[contracts]") {
     CHECK_EQUAL(suspend, *suspend2);
 }
 
-TEST_CASE_METHOD(contracts_test, "contract_successsuspend_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "successsuspend_test", "[contracts]") {
     const char* test_data = R"=======(
     {
         "name": "testsuspend",

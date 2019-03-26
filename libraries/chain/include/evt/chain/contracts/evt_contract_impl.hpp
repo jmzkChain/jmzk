@@ -1225,7 +1225,7 @@ EVT_ACTION_IMPL_BEGIN(aprvsuspend) {
         auto signed_keys = suspend->trx.get_signature_keys(aeact.signatures, context.control.get_chain_id());
         auto required_keys = context.control.get_suspend_required_keys(suspend->trx, signed_keys);
         EVT_ASSERT(signed_keys == required_keys, suspend_not_required_keys_exception,
-            "Provided keys are not required in this suspend transaction, provided keys: ${keys}", ("keys",signed_keys));
+            "Provided keys are not required in this suspend transaction");
        
         for(auto it = signed_keys.cbegin(); it != signed_keys.cend(); it++) {
             EVT_ASSERT(suspend->signed_keys.find(*it) == suspend->signed_keys.end(), suspend_duplicate_key_exception,
