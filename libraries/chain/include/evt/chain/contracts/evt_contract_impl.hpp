@@ -2175,7 +2175,7 @@ EVT_ACTION_IMPL_BEGIN(distpsvbonus) {
 
         auto pb = make_empty_cache_ptr<passive_bonus>();
         READ_DB_TOKEN(token_type::psvbonus, std::nullopt, get_psvbonus_db_key(spbact.sym.id(), kPsvBonus), pb, unknown_bonus_exception,
-            "Cannot find passive bonus registered for fungible with sym id: {}.", spbact.sym.id());
+            "Cannot find passive bonus registered for fungible token with sym id: {}.", spbact.sym.id());
 
         property pbonus;
         READ_DB_ASSET_NO_THROW(get_psvbonus_address(spbact.sym.id(), 0), spbact.sym, pbonus);
