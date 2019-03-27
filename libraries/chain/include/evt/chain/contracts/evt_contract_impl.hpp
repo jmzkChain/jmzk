@@ -176,15 +176,6 @@ auto get_metavalue = [](const auto& obj, auto k) {
     return optional<std::string>();
 };
 
-// for bonus_id, 0 is always stand for passive bonus
-// otherwise it's active bonus
-name128
-get_bonus_db_key(uint64_t sym_id, uint64_t bonus_id) {
-    uint128_t v = bonus_id;
-    v |= ((uint128_t)sym_id << 64);
-    return v;
-}
-
 template<typename T>
 name128
 get_db_key(const T& v) {
@@ -209,16 +200,25 @@ get_db_key<evt_link_object>(const evt_link_object& v) {
     return v.link_id;
 }
 
+enum psvbonus_type { kPsvBonus = 0, kPsvBonusSlim };
+
+name128
+get_psvbonus_db_key(symbol_id_type id, uint64_t nonce) {
+    uint128_t v = nonce;
+    v |= ((uint128_t)id << 64);
+    return v;
+}
+
 template<>
 name128
 get_db_key<passive_bonus>(const passive_bonus& pb) {
-    return get_bonus_db_key(pb.sym_id, 0);
+    return get_psvbonus_db_key(pb.sym_id, kPsvBonus);
 }
 
 template<>
 name128
 get_db_key<passive_bonus_slim>(const passive_bonus_slim& pbs) {
-    return get_bonus_db_key(pbs.sym_id, 0);
+    return get_psvbonus_db_key(pbs.sym_id, kPsvBonusSlim);
 }
 
 template<typename T>
@@ -605,9 +605,11 @@ get_fungible_address(symbol sym) {
     return address(N(.fungible), name128::from_number(sym.id()), 0);
 }
 
+// for round  0: collect address
+// for round >0: distrubute address
 address
-get_bonus_address(symbol_id_type sym_id, uint32_t bonus_id) {
-    return address(N(.bonus), name128::from_number(sym_id), bonus_id);
+get_psvbonus_address(symbol_id_type sym_id, uint32_t round) {
+    return address(N(.psvbonus), name128::from_number(sym_id), round);
 }
 
 // from, bonus
@@ -617,7 +619,7 @@ calculate_passive_bonus(token_database_cache& tokendb_cache,
                         int64_t               amount,
                         action_name           act) {
     auto pbs = make_empty_cache_ptr<passive_bonus_slim>();
-    READ_DB_TOKEN_NO_THROW(token_type::bonus_slim, std::nullopt, get_bonus_db_key(sym_id, 0), pbs);
+    READ_DB_TOKEN_NO_THROW(token_type::psvbonus, std::nullopt, get_psvbonus_db_key(sym_id, kPsvBonusSlim), pbs);
     
     if(pbs == nullptr) {
         return std::make_pair(amount, 0l);
@@ -707,7 +709,7 @@ transfer_fungible(apply_context& context,
 
     // update bonus if needed
     if(bonus_amount > 0) {
-        auto addr = get_bonus_address(sym.id(), 0);
+        auto addr = get_psvbonus_address(sym.id(), 0);
 
         property pbonus;
         READ_DB_ASSET_NO_THROW(addr, sym, pbonus);
@@ -2033,7 +2035,7 @@ EVT_ACTION_IMPL_BEGIN(setpsvbonus) {
         EVT_ASSERT(sym != pevt_sym(), bonus_exception, "Passive bonus cannot be registered in Pinned EVT");
 
         DECLARE_TOKEN_DB()
-        EVT_ASSERT2(!tokendb.exists_token(token_type::bonus, std::nullopt, get_bonus_db_key(sym.id(), 0)),
+        EVT_ASSERT2(!tokendb.exists_token(token_type::psvbonus, std::nullopt, get_psvbonus_db_key(sym.id(), kPsvBonus)),
             bonus_dupe_exception, "It's now allowd to update passive bonus currently.");
 
         EVT_ASSERT2(spbact.rate > 0 && spbact.rate <= 1, bonus_percent_value_exception,
@@ -2063,7 +2065,7 @@ EVT_ACTION_IMPL_BEGIN(setpsvbonus) {
         pb.methods = std::move(spbact.methods);
         
         pb.round = 0;
-        ADD_DB_TOKEN(token_type::bonus, pb);
+        ADD_DB_TOKEN(token_type::psvbonus, pb);
 
         // add passive bonus slim for quick read
         auto pbs        = passive_bonus_slim();
@@ -2078,7 +2080,7 @@ EVT_ACTION_IMPL_BEGIN(setpsvbonus) {
         if(pb.minimum_charge.has_value()) {
             pbs.minimum_charge = pb.minimum_charge->amount();
         }
-        ADD_DB_TOKEN(token_type::bonus_slim, pbs);
+        ADD_DB_TOKEN(token_type::psvbonus, pbs);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -2152,6 +2154,13 @@ struct bonusdist {
     optional<address> final_receiver;
 };
 
+name128
+get_psvbonus_dist_db_key(uint64_t sym_id, uint64_t round) {
+    uint128_t v = round;
+    v |= ((uint128_t)sym_id << 64);
+    return v;
+}
+
 }  // namespace __internal
 
 EVT_ACTION_IMPL_BEGIN(distpsvbonus) {
@@ -2164,19 +2173,12 @@ EVT_ACTION_IMPL_BEGIN(distpsvbonus) {
 
         DECLARE_TOKEN_DB()
 
-        auto dkey = get_bonus_db_key(spbact.sym.id(), 0);
-        auto pb   = make_empty_cache_ptr<passive_bonus>();
-        READ_DB_TOKEN(token_type::bonus, std::nullopt, dkey, pb, unknown_bonus_exception,
+        auto pb = make_empty_cache_ptr<passive_bonus>();
+        READ_DB_TOKEN(token_type::psvbonus, std::nullopt, get_psvbonus_db_key(spbact.sym.id(), kPsvBonus), pb, unknown_bonus_exception,
             "Cannot find passive bonus registered for fungible with sym id: {}.", spbact.sym.id());
 
-        if(pb->round > 0) {
-            // already has dist round
-            EVT_ASSERT2(context.control.pending_block_time() > pb->deadline, bonus_latest_not_expired,
-                "Latest bonus distribution is not expired. Its deadline is {}", pb->deadline);
-        }
-
         property pbonus;
-        READ_DB_ASSET_NO_THROW(get_bonus_address(spbact.sym.id(), 0), spbact.sym, pbonus);
+        READ_DB_ASSET_NO_THROW(get_psvbonus_address(spbact.sym.id(), 0), spbact.sym, pbonus);
         EVT_ASSERT2(pbonus.amount >= pb->dist_threshold.amount(), bonus_unreached_dist_threshold,
             "Distribution threshold: {} is unreached, current: {}", pb->dist_threshold, asset(pbonus.amount, spbact.sym));
 
@@ -2215,12 +2217,15 @@ EVT_ACTION_IMPL_BEGIN(distpsvbonus) {
         bd.deadline       = spbact.deadline;
         bd.final_receiver = spbact.final_receiver;
 
-        auto dbv = make_db_value(bd);
-        tokendb_cache.put_token(token_type::bonus_psvdist, action_op::add, std::nullopt, get_bonus_db_key(spbact.sym.id(), pb->round), dbv);
-
         pb->round++;
         pb->deadline = spbact.deadline;
-        UPD_DB_TOKEN(token_type::bonus, *pb);
+        UPD_DB_TOKEN(token_type::psvbonus, *pb);
+
+        auto dbv = make_db_value(bd);
+        tokendb_cache.put_token(token_type::psvbonus_dist, action_op::add, std::nullopt, get_psvbonus_db_key(spbact.sym.id(), pb->round), dbv);
+
+        // transfer all the FTs from cllected address to distribute address of current round
+        transfer_fungible(context, get_psvbonus_address(spbact.sym.id(), 0), get_psvbonus_address(spbact.sym.id(), pb->round), asset(pbonus.amount, pbonus.sym), N(distpsvbonus), false /* pay bonus */);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }

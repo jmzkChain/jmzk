@@ -1,10 +1,12 @@
 #include "contracts_tests.hpp"
 #include <evt/chain/address.hpp>
 
+enum psvbonus_type { kPsvBonus = 0, kPsvBonusSlim };
+
 name128
-get_bonus_db_key(uint64_t sym_id, uint64_t bonus_id) {
-    uint128_t v = bonus_id;
-    v |= ((uint128_t)sym_id << 64);
+get_psvbonus_db_key(symbol_id_type id, uint64_t nonce) {
+    uint128_t v = nonce;
+    v |= ((uint128_t)id << 64);
     return v;
 }
 
@@ -23,7 +25,7 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_test", "[contracts]") {
     spb.base_charge = asset(0, get_sym());
     spb.dist_threshold = asset(1'00000, get_sym());  // 1.00000
 
-    auto actkey = name128::from_number(get_sym_id());
+    auto actkey   = name128::from_number(get_sym_id());
     auto keyseeds = std::vector<name>{ N(key2), N(payer) };
 
     // key of action is invalid
@@ -128,7 +130,7 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_test", "[contracts]") {
     // cannot declare fixed rule after percent rule
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.bonus), actkey, spb), keyseeds, payer), bonus_rules_order_exception);
 
-    auto rule5 = dist_rpercent_rule();
+    auto rule5     = dist_rpercent_rule();
     rule5.receiver = dist_stack_receiver(asset(0, get_sym()));
     rule5.percent  = percent_type("0.6");
     spb.rules[4]   = rule5;
@@ -177,8 +179,9 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_test", "[contracts]") {
     auto& cache = my_tester->control->token_db_cache();
 
     auto pb = passive_bonus();
-    READ_TOKEN2(token, N128(.bonus), get_bonus_db_key(get_sym_id(), 0), pb);
-    auto pb2  = cache.read_token<passive_bonus>(token_type::token, N128(.bonus), get_bonus_db_key(get_sym_id(), 0));
+    READ_TOKEN2(token, N128(.psvbonus), get_psvbonus_db_key(get_sym_id(), kPsvBonus), pb);
+
+    auto pb2 = cache.read_token<passive_bonus>(token_type::token, N128(.psvbonus), get_psvbonus_db_key(get_sym_id(), kPsvBonus));
     CHECK(pb2 != nullptr);
     CHECK(pb.sym_id == pb2->sym_id);
     CHECK(pb.rate == pb2->rate);
@@ -195,7 +198,7 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_test", "[contracts]") {
 TEST_CASE_METHOD(contracts_test, "passive_bonus_fees_test", "[contracts]") {
     auto& tokendb = my_tester->control->token_db();
     auto& cache = my_tester->control->token_db_cache();
-    CHECK(tokendb.exists_token(token_type::bonus, std::nullopt, get_bonus_db_key(get_sym_id(), 0)));
+    CHECK(tokendb.exists_token(token_type::psvbonus, std::nullopt, get_psvbonus_db_key(get_sym_id(), kPsvBonus)));
 
     auto tf   = transferft();
     tf.from   = key;
@@ -203,7 +206,7 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_fees_test", "[contracts]") {
     tf.number = asset(1000, get_sym());
 
     auto actkey = name128::from_number(get_sym_id());
-    auto bonus_addr = address(N(.bonus), actkey, 0);
+    auto bonus_addr = address(N(.psvbonus), actkey, 0);
 
     property orig_from;
     {
@@ -306,8 +309,9 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_fees_test", "[contracts]") {
     my_tester->produce_block();
 
     auto pb = passive_bonus();
-    READ_TOKEN2(token, N128(.bonus), get_bonus_db_key(get_sym_id(), 0), pb);
-    auto pb2  = cache.read_token<passive_bonus>(token_type::token, N128(.bonus), get_bonus_db_key(get_sym_id(), 0));
+    READ_TOKEN2(token, N128(.psvbonus), get_psvbonus_db_key(get_sym_id(), kPsvBonus), pb);
+
+    auto pb2 = cache.read_token<passive_bonus>(token_type::token, N128(.psvbonus), get_psvbonus_db_key(get_sym_id(), kPsvBonus));
     CHECK(pb2 != nullptr);
     CHECK(pb.sym_id == pb2->sym_id);
     CHECK(pb.rate == pb2->rate);
@@ -324,10 +328,10 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_fees_test", "[contracts]") {
 TEST_CASE_METHOD(contracts_test, "passive_bonus_dist_test", "[contracts]") {
     auto& tokendb = my_tester->control->token_db();
     auto cache = my_tester->control->token_db_cache();
-    CHECK(tokendb.exists_token(token_type::bonus, std::nullopt, get_bonus_db_key(get_sym_id(), 0)));
+    CHECK(tokendb.exists_token(token_type::psvbonus, std::nullopt, get_psvbonus_db_key(get_sym_id(), kPsvBonus)));
 
     auto actkey     = name128::from_number(get_sym_id());
-    auto bonus_addr = address(N(.bonus), actkey, 0);
+    auto bonus_addr = address(N(.psvbonus), actkey, 0);
 
     auto dpb     = distpsvbonus();
     dpb.sym      = evt_sym();
@@ -364,11 +368,26 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_dist_test", "[contracts]") {
 
     my_tester->push_action(action(N128(.bonus), actkey, dpb), keyseeds, payer);
 
+    {
+        property bonus;
+        READ_DB_ASSET(bonus_addr, get_sym(), bonus);
+        CHECK(bonus.amount == 0);
+    }
+
+    {
+        property bonus;
+        READ_DB_ASSET(address(N(.psvbonus), actkey, 1), get_sym(), bonus);
+        CHECK(bonus.amount == 1000 + 15010 + 20000 + 15010 + 20000 * 300);
+    }
+
+    CHECK(tokendb.exists_token(token_type::psvbonus_dist, std::nullopt, get_psvbonus_db_key(get_sym_id(), 1)));
+
     my_tester->produce_block();
 
     auto pb = passive_bonus();
-    READ_TOKEN2(token, N128(.bonus), get_bonus_db_key(get_sym_id(), 0), pb);
-    auto pb2  = cache.read_token<passive_bonus>(token_type::token, N128(.bonus), get_bonus_db_key(get_sym_id(), 0));
+    READ_TOKEN2(token, N128(.psvbonus), get_psvbonus_db_key(get_sym_id(), kPsvBonus), pb);
+
+    auto pb2 = cache.read_token<passive_bonus>(token_type::token, N128(.psvbonus), get_psvbonus_db_key(get_sym_id(), kPsvBonus));
     CHECK(pb2 != nullptr);
     CHECK(pb.sym_id == pb2->sym_id);
     CHECK(pb.rate == pb2->rate);
