@@ -102,12 +102,12 @@ namespace evt_apis {
     auto& tokendb = db_.token_db();            \
     auto& tokendb_cache = db_.token_db_cache();
 
-// for bonus_id, 0 is always stand for passive bonus
-// otherwise it's active bonus
+enum psvbonus_type { kPsvBonus = 0, kPsvBonusSlim };
+
 name128
-get_bonus_db_key(uint64_t sym_id, uint64_t bonus_id) {
-    uint128_t v = bonus_id;
-    v |= ((uint128_t)sym_id << 64);
+get_psvbonus_db_key(symbol_id_type id, uint64_t nonce) {
+    uint128_t v = nonce;
+    v |= ((uint128_t)id << 64);
     return v;
 }
 
@@ -232,15 +232,15 @@ read_only::get_fungible_psvbonus(const get_fungible_psvbonus_params& params) {
     DECLARE_TOKEN_DB();
 
     auto pb   = make_empty_cache_ptr<passive_bonus>();
-    auto dkey = get_bonus_db_key(params.id, 0);
-    READ_DB_TOKEN(token_type::bonus, std::nullopt, dkey, pb, unknown_bonus_exception,
-        "Cannot find passive bonus registered for fungible with sym id: {}.", params.id);
+    auto dkey = get_psvbonus_db_key(params.id, kPsvBonus);
+    READ_DB_TOKEN(token_type::psvbonus, std::nullopt, dkey, pb, unknown_bonus_exception,
+        "Cannot find passive bonus registered for fungible token with sym id: {}.", params.id);
 
     auto var = variant();
     fc::to_variant(*pb, var);
 
     auto mvar = fc::mutable_variant_object(var);
-    auto addr = address(N(.bonus), name128::from_number(params.id), 0);
+    auto addr = address(N(.psvbonus), name128::from_number(params.id), 0);
     mvar["address"] = addr;
 
     return mvar;

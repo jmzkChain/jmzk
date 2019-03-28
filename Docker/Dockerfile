@@ -34,7 +34,7 @@ RUN python3 /evt/scripts/symbol_ops.py upload -f /tmp/build/symbols -k $awskey -
 
 FROM debian:buster-slim
 
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive && apt-get install -y openssl libssl1.1 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive && apt-get install -y openssl libssl1.1 libllvm7 && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /usr/local/lib/* /usr/local/lib/
 COPY --from=builder /tmp/build/bin /opt/evt/bin

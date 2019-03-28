@@ -146,6 +146,7 @@ public:
     struct get_transaction_params {
         optional<uint32_t>         block_num;
         chain::transaction_id_type id;
+        optional<bool>             raw;
     };
     fc::variant get_transaction(const get_transaction_params& params);
 

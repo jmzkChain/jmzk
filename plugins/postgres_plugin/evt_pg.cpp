@@ -292,6 +292,29 @@ format_array_to(fmt::memory_buffer& buf, Iterator begin, Iterator end) {
     fmt::format_to(buf, fmt("}}\t"));
 }
 
+template<bool COPY = false>
+std::string
+escape_string(const std::string& str) {
+    auto estr = std::string();
+    estr.reserve(str.size() + 8);
+    for(auto c : str) {
+        if(c == '\'') {
+            estr.push_back('\'');
+            estr.push_back('\'');
+            continue;
+        }
+        if constexpr(COPY == true) {
+            if(c == '\\') {
+                estr.push_back('\\');
+                estr.push_back('\\');
+                continue;
+            }
+        }
+        estr.push_back(c);
+    }
+    return estr;
+}
+
 }  // namespace __internal
 
 int
@@ -663,6 +686,8 @@ pg::add_trx(add_context& actx, const trx_recept_t& trx, const trx_t& strx, int s
 
 int
 pg::add_action(add_context& actx, const act_trace_t& act_trace, const std::string& trx_id, int seq_num) {
+    using namespace __internal;
+
     auto& act     = act_trace.act;
     auto  acttype = actx.exec_ctx.get_acttype_name(act.name);
     auto  data    = actx.abi.binary_to_variant(acttype, act.data, actx.exec_ctx);
@@ -677,7 +702,7 @@ pg::add_action(add_context& actx, const act_trace_t& act_trace, const std::strin
         act.name.to_string(),
         act.domain.to_string(),
         act.key.to_string(),
-        fc::json::to_string(data)
+        escape_string<true>(fc::json::to_string(data))
         );
 
     return PG_OK;
@@ -957,30 +982,6 @@ pg::upd_fungible(trx_context& tctx, const updfungible& uf) {
     }
     return PG_OK;
 }
-
-namespace __internal {
-
-std::string
-escape_string(const std::string& text) {
-    auto estr = std::string();
-    estr.reserve(text.size() + 8);
-    for(auto c : text) {
-        if(c == '\'') {
-            estr.push_back('\'');
-            estr.push_back('\'');
-            continue;
-        }
-        if(c == '\"') {
-            estr.push_back('\"');
-            estr.push_back('\"');
-            continue;
-        }
-        estr.push_back(c);
-    }
-    return estr;
-}
-
-}  // namespace __internal
 
 PREPARE_SQL_ONCE(am_plan,  "INSERT INTO metas VALUES(DEFAULT, $1, $2, $3, $4, now());");
 PREPARE_SQL_ONCE(amd_plan, "UPDATE domains SET metas = array_append(metas, $1) WHERE name = $2;");
