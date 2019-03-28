@@ -200,7 +200,7 @@ public:
     template<typename T>
     void register_exception() {
         static exception_builder<T> builder;
-        auto                        itr = _registered_exceptions.find(T::code_value);
+        auto itr = _registered_exceptions.find(T::code_value);
         assert(itr == _registered_exceptions.end());
         (void)itr;  // in release builds this hides warnings
         _registered_exceptions[T::code_value] = &builder;
