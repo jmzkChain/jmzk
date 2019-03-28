@@ -2,7 +2,6 @@
  *  @file
  *  @copyright defined in evt/LICENSE.txt
  */
-
 #include <evt/chain/asset.hpp>
 
 // This fixes the issue in safe_numerics in boost 1.69

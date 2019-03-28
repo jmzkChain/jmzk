@@ -6,6 +6,7 @@ file(GLOB HEADERS "include/evt/chain/*.hpp" "include/evt/chain/contracts/*.hpp")
 add_library( evt_chain
              address.cpp
              asset.cpp
+             percent_slim.cpp
              merkle.cpp
              name.cpp
              name128.cpp

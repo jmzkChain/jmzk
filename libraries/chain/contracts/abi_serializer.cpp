@@ -11,6 +11,7 @@
 #include <evt/chain/chain_config.hpp>
 #include <evt/chain/transaction.hpp>
 #include <evt/chain/asset.hpp>
+#include <evt/chain/percent_slim.hpp>
 #include <evt/chain/exceptions.hpp>
 #include <evt/chain/execution_context.hpp>
 
@@ -83,6 +84,8 @@ abi_serializer::configure_built_in_types() {
     built_in_types_.emplace("address", pack_unpack<address>());
     built_in_types_.emplace("symbol", pack_unpack<symbol>());
     built_in_types_.emplace("asset", pack_unpack<asset>());
+    built_in_types_.emplace("percent", pack_unpack<percent_type>());
+    built_in_types_.emplace("percent_slim", pack_unpack<percent_slim>());
 
     built_in_types_.emplace("bytes", pack_unpack<bytes>());
     built_in_types_.emplace("string", pack_unpack<string>());
@@ -117,7 +120,7 @@ abi_serializer::configure_built_in_types() {
     built_in_types_.emplace("producer_schedule", pack_unpack<producer_schedule_type>());
     built_in_types_.emplace("extensions", pack_unpack<extensions_type>());
     built_in_types_.emplace("evt_link", pack_unpack<evt_link>());
-    built_in_types_.emplace("percent", pack_unpack<percent_type>());
+    
 }
 
 void
