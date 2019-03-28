@@ -8,6 +8,7 @@
 
 #include <evt/chain/address.hpp>
 #include <evt/chain/asset.hpp>
+#include <evt/chain/percent_slim.hpp>
 #include <evt/chain/chain_config.hpp>
 #include <evt/chain/config.hpp>
 #include <evt/chain/types.hpp>

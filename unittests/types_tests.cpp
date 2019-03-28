@@ -369,6 +369,50 @@ TEST_CASE("test_asset", "[types]") {
     CHECK_THROWS_AS(asset::from_string("0.100a S#1"), asset_type_exception);
 }
 
+TEST_CASE("test_percent_slim", "[types]") {
+    auto CHECK_PERCENT_SLIM = [&](auto amount, auto str) {
+        auto a = percent_slim(amount);
+        CHECK((std::string)a == str);
+        CHECK(a.to_string() == str);
+
+        auto a2 = percent_slim::from_string(str);
+        INFO(a.value());
+        INFO(a2.value());
+        CHECK(a == a2);
+    };
+
+    auto CHECK_PARSE = [&](auto str, auto amount) {
+        auto a = percent_slim::from_string(str);
+        CHECK(a.value() == amount);
+    };
+
+    auto sym = symbol(5, 1);
+    CHECK_PERCENT_SLIM(0, "0");
+    CHECK_PERCENT_SLIM(1, "0.00001");
+    CHECK_PERCENT_SLIM(10, "0.0001");
+    CHECK_PERCENT_SLIM(100, "0.001");
+    CHECK_PERCENT_SLIM(1000, "0.01");
+    CHECK_PERCENT_SLIM(10000, "0.1");
+    CHECK_PERCENT_SLIM(100000, "1");
+
+    CHECK_PARSE("0.00001", 1);
+    CHECK_PARSE("0.0001", 10);
+    CHECK_PARSE("0.0199", 1990);
+    CHECK_PARSE("0.199", 19900);
+    CHECK_PARSE("0.012", 1200);
+    CHECK_PARSE("0.0123", 1230);
+    CHECK_PARSE("0", 0);
+    CHECK_PARSE("1", 100000);
+
+    CHECK_THROWS_AS(percent_slim::from_string("111.00"), asset_type_exception);
+    CHECK_THROWS_AS(percent_slim::from_string("111"), asset_type_exception);
+    CHECK_THROWS_AS(percent_slim::from_string("1.1"), asset_type_exception);
+    CHECK_THROWS_AS(percent_slim::from_string("0.000001"), asset_type_exception);
+    CHECK_THROWS_AS(percent_slim::from_string("1.00001"), asset_type_exception);
+    CHECK_THROWS_AS(percent_slim::from_string("0.100a"), asset_type_exception);
+}
+
+
 TEST_CASE("test_make_db_value", "[types]") {
     auto CHECK_MAKE = [](auto sz) {
         auto str = std::string();
