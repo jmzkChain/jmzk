@@ -1788,13 +1788,15 @@ main(int argc, char** argv) {
     // get transaction
     string   trx_id;
     uint32_t block_num;
+    bool     raw = false;
 
     auto get_trx = get->add_subcommand("transaction", localized("Retrieve a transaction by its id and block num"));
     get_trx->add_option("id", trx_id, localized("Id of transaction to be retrieved"))->required();
     get_trx->add_option("block_num", block_num, localized("Block num of transaction to be retrieved"))->required();
+    get_trx->add_option("raw", raw, localized("Return actions in raw format"));
 
     get_trx->callback([&] {
-        auto args = mutable_variant_object("id", trx_id)("block_num", block_num);
+        auto args = mutable_variant_object("id", trx_id)("block_num", block_num)("raw", raw);
         print_info(call(get_transaction_func, args));
     });
 

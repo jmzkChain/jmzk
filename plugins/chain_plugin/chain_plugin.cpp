@@ -1171,7 +1171,12 @@ read_only::get_transaction(const get_transaction_params& params) {
     for(auto& tx : block->transactions) {
         if(tx.trx.id() == params.id) {
             auto var = fc::variant();
-            db.get_abi_serializer().to_variant(tx.trx, var, db.get_execution_context());
+            if(params.raw.has_value() && *params.raw) {
+                fc::to_variant(tx.trx, var);
+            }
+            else {
+                db.get_abi_serializer().to_variant(tx.trx, var, db.get_execution_context());
+            }
 
             auto mv = fc::mutable_variant_object(var);
             mv["block_num"] = block_num;
