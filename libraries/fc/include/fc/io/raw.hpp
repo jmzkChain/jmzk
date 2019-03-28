@@ -1016,7 +1016,7 @@ void
 unpack(Stream& s, boost::multiprecision::number<T>& n) {
     auto str = std::string();
     fc::raw::unpack(s, str);
-    n = decltype(n)(str);
+    n = boost::multiprecision::number<T>{str};
 }
 
 }}  // namespace fc::raw

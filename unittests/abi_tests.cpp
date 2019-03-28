@@ -44,8 +44,6 @@ verify_byte_round_trip_conversion(const abi_serializer& abis, const type_name& t
     auto bytes2 = abis.variant_to_binary(type, var2, exec_ctx);
     CHECK(fc::to_hex(bytes) == fc::to_hex(bytes2));
 
-    printf("%s\n%s\n", fc::to_hex(bytes).c_str(), fc::to_hex(bytes2).c_str());
-
     return var2;
 }
 
