@@ -351,8 +351,8 @@ public:
                     bytes_in_flight += body.size();
                     app().post(appbase::priority::low,
                         [this, ioc = this->server_ioc, handler_itr, resource{std::move(resource)}, body{std::move(body)}, con] {
+                            this->bytes_in_flight -= body.size();
                             try {
-                                this->bytes_in_flight -= body.size();
                                 handler_itr->second(resource, body,
                                     [this, ioc{std::move(ioc)}, con](auto code, auto response_body) {
                                         this->bytes_in_flight += response_body.size();
@@ -391,8 +391,8 @@ public:
                     bytes_in_flight += body.size();
                     app().post(appbase::priority::low,
                         [this, deferred_handler_it, resource{std::move(resource)}, body{std::move(body)}, con, id]() {
+                            this->bytes_in_flight -= body.size();
                             try {
-                                this->bytes_in_flight -= body.size();
                                 deferred_handler_it->second(resource, body, id);
                             }
                             catch(...) {
@@ -462,24 +462,19 @@ public:
     void
     set_deferred_response(deferred_id id, int code, string body) {
         try {
-            visit_connection(id, [this, code, body{std::move(body)}](auto con) {
-                try {
-                    this->bytes_in_flight += body.size();
-                    boost::asio::post(*server_ioc, [this, code, body{std::move(body)}, con] {
-                        size_t body_size = body.size();
-                        if(!this->http_no_response) {
-                            con->set_body(std::move(body));
-                        }
-                        con->set_status(websocketpp::http::status_code::value(code));
-                        con->send_http_response();
-                        this->bytes_in_flight -= body_size;
-                    });
-                }
-                catch(...) {
-                    handle_exception<typename std::decay_t<decltype(*con)>::config_type>(con);
+            this->bytes_in_flight += body.size();
+            boost::asio::post(*server_ioc, [this, id, code, body{std::move(body)}] {
+                visit_connection(id, [this, code, body{std::move(body)}](auto con) {
+                    auto body_size = body.size();
+                    if(!this->http_no_response) {
+                        con->set_body(std::move(body));
+                    }
+                    con->set_status(websocketpp::http::status_code::value(code));
                     con->send_http_response();
-                }
-                return false;  // return false to indicate release connection
+                    this->bytes_in_flight -= body_size;
+
+                    return false;  // return false to indicate release connection
+                });
             });
         }
         FC_LOG_AND_DROP((id));

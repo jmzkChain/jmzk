@@ -1007,16 +1007,19 @@ unpack(Stream& s, variant_wrapper<ENUM, ARGS...>& vw) {
 template<typename Stream, typename T>
 void
 pack(Stream& s, const boost::multiprecision::number<T>& n) {
-    auto str = n.str();
-    fc::raw::pack(s, str);
+    // work around, don't use raw number anymore
+    auto b  = n.str();
+    auto n2 = boost::multiprecision::number<T>();
+    memset((char*)&n2, 0, sizeof(n2));
+    n2 = boost::multiprecision::number<T>(b);
+
+    s.write((const char*)&n2, sizeof(n2));
 }
 
 template<typename Stream, typename T>
 void
 unpack(Stream& s, boost::multiprecision::number<T>& n) {
-    auto str = std::string();
-    fc::raw::unpack(s, str);
-    n = boost::multiprecision::number<T>{str};
+    s.read((char*)&n, sizeof(n));
 }
 
 }}  // namespace fc::raw

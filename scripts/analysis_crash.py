@@ -11,7 +11,7 @@ from botocore.handlers import disable_signing
 @click.command()
 @click.argument('filename', type=click.Path(exists=True))
 @click.option('--type', '-t', default='testnet')
-@click.option('--temp', '-t', default='/tmp/evt-symbols')
+@click.option('--temp', '-f', default='/tmp/evt-symbols')
 @click.option('--output', '-o', default='.')
 def analysis(filename, type, temp, output):
     r = subprocess.run(['minidump_stackwalk', filename],

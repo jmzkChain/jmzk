@@ -714,6 +714,7 @@ to_variant(const boost::multiprecision::number<T>& n, variant& v) {
 template<typename T>
 void
 from_variant(const variant& v, boost::multiprecision::number<T>& n) {
+    memset((char*)&n, 0, sizeof(n));
     n = boost::multiprecision::number<T>(v.get_string());
 }
 

@@ -383,10 +383,9 @@ TEST_CASE("test_percent_slim", "[types]") {
 
     auto CHECK_PARSE = [&](auto str, auto amount) {
         auto a = percent_slim::from_string(str);
-        CHECK(a.value() == amount);
+        CHECK(a.value() == (uint32_t)amount);
     };
 
-    auto sym = symbol(5, 1);
     CHECK_PERCENT_SLIM(0, "0");
     CHECK_PERCENT_SLIM(1, "0.00001");
     CHECK_PERCENT_SLIM(10, "0.0001");
