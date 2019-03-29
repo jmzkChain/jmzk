@@ -43,6 +43,7 @@ add_library( evt_chain
 add_library( evt_chain_lite SHARED
              address.cpp
              asset.cpp
+             percent_slim.cpp
              name.cpp
              name128.cpp
              transaction.cpp
