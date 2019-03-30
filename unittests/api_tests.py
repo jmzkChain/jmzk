@@ -1024,13 +1024,20 @@ class Test(unittest.TestCase):
         url = 'http://127.0.0.1:8888/v1/chain/get_block'
 
         tasks = []
-        for i in range(10240):
+        for i in range(1024):
             req['block_num_or_id'] = random.randint(1, 100)
             tasks.append(grequests.post(url, data=json.dumps(req)))
 
         i = 0
         for resp in grequests.imap(tasks, size=128):
             self.assertEqual(resp.status_code, 200, msg=resp.content)
+            res_dict = json.loads(resp.text)
+            req = {
+            'id': 'f0c789933e2b381e88281e8d8e750b561a4d447725fb0eb621f07f219fe2f738'
+            }
+            for trx in res_dict['transactions']:
+                req['id'] = trx['trx']['id']
+                resp = api.get_history_transaction(json.dumps(req)).text
             i += 1
             if i % 100 == 0:
                 print('Received {} responses'.format(i))
