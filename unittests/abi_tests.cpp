@@ -1126,6 +1126,7 @@ TEST_CASE("everipass_abi_test", "[abis]") {
         return var2;
     };
 
+    // test version 2
     auto mv = mutable_variant_object(var);
     mv["memo"] = "tttesttt";
 
@@ -1196,6 +1197,37 @@ TEST_CASE("everipay_abi_test", "[abis]") {
 
     INFO(*pkeys.cbegin());
     CHECK(pkeys.find(public_key_type(std::string("EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"))) != pkeys.end());
+
+    // multiple versions tests
+    auto get_var = [&](auto& var) {
+        auto& exec_ctx = get_exec_ctx();
+        auto& abis = get_evt_abi();
+
+        auto type  = exec_ctx.get_acttype_name("everipay");
+        auto bytes = abis.variant_to_binary(type, var, exec_ctx);
+        auto var2  = abis.binary_to_variant(type, bytes, exec_ctx);
+
+        return var2;
+    };
+
+    // test version 2
+    auto mv = mutable_variant_object(var);
+    mv["memo"] = "tttesttt";
+
+    auto var_v2 = variant(mv);
+
+    CHECK(get_exec_ctx().get_current_version("everipay") == 1);
+    CHECK_NOTHROW(get_var(var));
+
+    // additional field in variant don't trigger error
+    CHECK_NOTHROW(get_var(var_v2));
+
+    // upgrade version
+    get_exec_ctx().set_version("everipay", 2);
+
+    CHECK_THROWS_AS(get_var(var), pack_exception);
+    CHECK_NOTHROW(get_var(var_v2));
+    CHECK(get_var(var_v2)["memo"] == "tttesttt");
 }
 
 TEST_CASE("prodvote_abi_test", "[abis]") {
@@ -1460,64 +1492,65 @@ TEST_CASE("recycleft_abi_test", "[abis]") {
     verify_type_round_trip_conversion<recycleft>(abis, "recycleft", var);
 }
 
+auto setpsvbonus_test_data = R"=====(
+{
+    "sym": "5,S#3",
+    "rate": "0.15",
+    "base_charge": "0.00010 S#3",
+    "charge_threshold": "0.20000 S#3",
+    "minimum_charge": "0.01000 S#3",
+    "dist_threshold": "50.00000 S#3",
+    "rules": [
+        {
+            "type": "fixed",
+            "data": {
+                "receiver": {
+                    "type": "address",
+                    "data": "EVT6U1bm7RexvukTvLgSfHJAhufjQ1i7x8uRfQ3qdG8TbnitKQya1"
+                },
+                "amount": "10.00000 S#3"
+            }
+        },
+        {
+            "type": "percent",
+            "data": {
+                "receiver": {
+                    "type": "ftholders",
+                    "data": {
+                        "threshold": "1.00000 S#1"
+                    }
+                },
+                "percent": "0.3"
+            }
+        },
+        {
+            "type": "remaining_percent",
+            "data": {
+                "receiver": {
+                    "type": "address",
+                    "data": "EVT5ChPfrwcAJrWzQbsCgGFvzdQGzMhFadxEpr6sKTL2ru12HH6K8"
+                },
+                "percent": "0.99"
+            }
+        }
+    ],
+    "methods": [
+        {
+            "action": "transferft",
+            "method": "outside_amount"
+        },
+        {
+            "action": "everipay",
+            "method": "within_amount"
+        }
+    ]
+}
+)=====";
+
 TEST_CASE("setpsvbonus_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
-    auto  test_data = R"=====(
-    {
-        "sym": "5,S#3",
-        "rate": "0.15",
-        "base_charge": "0.00010 S#3",
-        "charge_threshold": "0.20000 S#3",
-        "minimum_charge": "0.01000 S#3",
-        "dist_threshold": "50.00000 S#3",
-        "rules": [
-            {
-                "type": "fixed",
-                "data": {
-                    "receiver": {
-                        "type": "address",
-                        "data": "EVT6U1bm7RexvukTvLgSfHJAhufjQ1i7x8uRfQ3qdG8TbnitKQya1"
-                    },
-                    "amount": "10.00000 S#3"
-                }
-            },
-            {
-                "type": "percent",
-                "data": {
-                    "receiver": {
-                        "type": "ftholders",
-                        "data": {
-                            "threshold": "1.00000 S#1"
-                        }
-                    },
-                    "percent": "0.3"
-                }
-            },
-            {
-                "type": "remaining_percent",
-                "data": {
-                    "receiver": {
-                        "type": "address",
-                        "data": "EVT5ChPfrwcAJrWzQbsCgGFvzdQGzMhFadxEpr6sKTL2ru12HH6K8"
-                    },
-                    "percent": "0.99"
-                }
-            }
-        ],
-        "methods": [
-            {
-                "action": "transferft",
-                "method": "outside_amount"
-            },
-            {
-                "action": "everipay",
-                "method": "within_amount"
-            }
-        ]
-    }
-    )=====";
 
-    auto var = fc::json::from_string(test_data);
+    auto var = fc::json::from_string(setpsvbonus_test_data);
     auto psb = var.as<setpsvbonus>();
 
     CHECK(psb.sym == symbol(5, 3));
@@ -1557,3 +1590,49 @@ TEST_CASE("setpsvbonus_abi_test", "[abis]") {
     verify_type_round_trip_conversion<setpsvbonus>(abis, "setpsvbonus", var);
 }
 
+TEST_CASE("setpsvbonus_v2_abi_test", "[abis]") {
+    auto& abis = get_evt_abi();
+
+    auto var = fc::json::from_string(setpsvbonus_test_data);
+    auto psb = var.as<setpsvbonus_v2>();
+
+    CHECK(psb.sym == symbol(5, 3));
+    CHECK(psb.rate.value().str() == "0.15");
+    CHECK(psb.rate.to_string() == "0.15");
+    CHECK(psb.base_charge == asset(10, symbol(5,3)));
+    CHECK(*psb.charge_threshold == asset(20000, symbol(5,3)));
+    CHECK(*psb.minimum_charge == asset(1000, symbol(5,3)));
+    CHECK(psb.dist_threshold == asset(50'00000, symbol(5,3)));
+
+    CHECK(psb.rules.size() == 3);
+
+    CHECK(psb.rules[0].type() == dist_rule_type::fixed);
+    auto& r1 = psb.rules[0].get<dist_fixed_rule>();
+    CHECK(r1.receiver.type() == dist_receiver_type::address);
+    CHECK(r1.receiver.get<address>() == address(public_key_type("EVT6U1bm7RexvukTvLgSfHJAhufjQ1i7x8uRfQ3qdG8TbnitKQya1")));
+    CHECK(r1.amount == asset(10'00000, symbol(5,3)));
+
+    CHECK(psb.rules[1].type() == dist_rule_type::percent);
+    auto& r2 = psb.rules[1].get<dist_percent_rule_v2>();
+    CHECK(r2.receiver.type() == dist_receiver_type::ftholders);
+    CHECK(r2.receiver.get<dist_stack_receiver>().threshold == asset(1'00000,evt_sym()));
+    CHECK(r2.percent.value().str() == "0.3");
+    CHECK(r2.percent.to_string() == "0.3");
+
+    CHECK(psb.rules[2].type() == dist_rule_type::remaining_percent);
+    auto& r3 = psb.rules[2].get<dist_rpercent_rule_v2>();
+    CHECK(r3.receiver.type() == dist_receiver_type::address);
+    CHECK(r3.receiver.get<address>() == address(public_key_type("EVT5ChPfrwcAJrWzQbsCgGFvzdQGzMhFadxEpr6sKTL2ru12HH6K8")));
+    CHECK(r3.percent.value().str() == "0.99");
+    CHECK(r3.percent.to_string() == "0.99");
+
+    CHECK(psb.methods.size() == 2);
+    CHECK(psb.methods[0].action == N(transferft));
+    CHECK(psb.methods[0].method == passive_method_type::outside_amount);
+    CHECK(psb.methods[1].action == N(everipay));
+    CHECK(psb.methods[1].method == passive_method_type::within_amount);
+
+    get_exec_ctx().set_version("setpsvbonus", 2);
+    verify_byte_round_trip_conversion(abis, "setpsvbonus", var);
+    verify_type_round_trip_conversion<setpsvbonus>(abis, "setpsvbonus", var);
+}

@@ -193,6 +193,8 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_test", "[contracts]") {
     CHECK(pb.methods.size() == pb2->methods.size());
     CHECK(pb.round == pb2->round);
     CHECK(pb.deadline == pb2->deadline);
+
+    CHECK(pb.rate.value() == evt::chain::percent_type("0.15"));
 }
 
 TEST_CASE_METHOD(contracts_test, "passive_bonus_fees_test", "[contracts]") {
