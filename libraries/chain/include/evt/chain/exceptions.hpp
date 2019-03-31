@@ -298,6 +298,7 @@ FC_DECLARE_DERIVED_EXCEPTION( address_type_exception,            chain_type_exce
 FC_DECLARE_DERIVED_EXCEPTION( name128_type_exception,            chain_type_exception, 3120018, "Invalid name128" );
 FC_DECLARE_DERIVED_EXCEPTION( chain_id_type_exception,           chain_type_exception, 3120019, "Invalid chain id" );
 FC_DECLARE_DERIVED_EXCEPTION( variant_type_exception,            chain_type_exception, 3120019, "Invalid variant" );
+FC_DECLARE_DERIVED_EXCEPTION( percent_type_exception,            chain_type_exception, 3120020, "Invalid percent value" );
 
 FC_DECLARE_DERIVED_EXCEPTION( plugin_exception,                      chain_exception,  3130000, "plugin exception" );
 FC_DECLARE_DERIVED_EXCEPTION( missing_chain_api_plugin_exception,    plugin_exception, 3130001, "Missing Chain API Plugin" );

@@ -11,20 +11,27 @@ namespace evt { namespace chain {
 
 class percent_slim : public fc::reflect_init {
 public:
-    static constexpr uint32_t max_amount    = 100'000;
-    static constexpr uint32_t max_precision = 5;
+    static constexpr uint32_t kMaxAmount = 100'000u;
+    static constexpr uint32_t kPrecision  = 5;
 
 public:
     percent_slim() = default;
+    percent_slim(const percent_slim&) = default;
 
-    percent_slim(uint32_t v)
+    explicit percent_slim(uint32_t v)
         : v_(v) {
-        EVT_ASSERT(is_amount_within_range(), asset_type_exception, "magnitude of percent_slim value must be less than 10^5");
+        EVT_ASSERT(is_amount_within_range(), percent_type_exception, "magnitude of percent_slim value must be less than 10^5");
+    }
+
+    percent_slim(const percent_type& p) {
+        v_ = (uint32_t)(p * 100'000u);
     }
 
 public:
-    bool is_amount_within_range() const { return v_.value <= max_amount; }
-    uint32_t value() const { return v_.value; }
+    bool is_amount_within_range() const { return v_.value <= kMaxAmount; }
+    percent_type value() const { return percent_type(v_.value) / 100'000u; }
+    uint32_t raw_value() const { return v_.value; }
+    explicit operator percent_type() const { return value(); }
 
 public:
     static percent_slim from_string(const string& from);
@@ -52,7 +59,7 @@ public:
 
     void
     reflector_init() const {
-        EVT_ASSERT(is_amount_within_range(), asset_type_exception, "magnitude of percent_slim amount must be less than 10^5");
+        EVT_ASSERT(is_amount_within_range(), percent_type_exception, "magnitude of percent_slim amount must be less than 10^5");
     }    
 
 private:

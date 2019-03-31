@@ -17,14 +17,14 @@ percent_slim::to_string() const {
     }
 
     auto str = fc::to_string(v_.value);
-    if(max_precision >= str.size()) {
-        auto zeros = max_precision - str.size();
+    if(kPrecision >= str.size()) {
+        auto zeros = kPrecision - str.size();
         str.insert(0, "0.");
         str.insert(2, zeros, '0');
         str.erase(str.find_last_not_of('0') + 1);
     }
     else {
-        assert(v_.value == max_amount);
+        assert(v_.value == kMaxAmount);
         return "1";
     }
 
@@ -34,6 +34,7 @@ percent_slim::to_string() const {
 percent_slim
 percent_slim::from_string(const string& from) {
     using namespace boost::safe_numerics;
+    static uint32_t _pows[] = { 100'000, 10'000, 1'000, 100, 10, 1 };
 
     try {
         string s = fc::trim(from);
@@ -41,16 +42,16 @@ percent_slim::from_string(const string& from) {
         // Ensure that if decimal point is used (.), decimal fraction is specified
         auto dot_pos = s.find('.');
         if(dot_pos != string::npos) {
-            EVT_ASSERT((dot_pos != s.size() - 1), asset_type_exception,
+            EVT_ASSERT((dot_pos != s.size() - 1), percent_type_exception,
                        "Missing decimal fraction after decimal point");
         }
 
         // Parse precision
-        auto precision = 0u;
+        auto p = 0u;
         if(dot_pos != string::npos) {
-            precision = s.size() - dot_pos - 1;
-            EVT_ASSERT2(precision <= max_precision, asset_type_exception,
-                "Exceed max precision: {}", max_precision);
+            p = s.size() - dot_pos - 1;
+            EVT_ASSERT2(p <= kPrecision, percent_type_exception,
+                "Exceed percent's precision: {}", kPrecision);
         }
 
         // Parse amount
@@ -59,11 +60,11 @@ percent_slim::from_string(const string& from) {
             s.erase(dot_pos, 1);
         }
         amount  = fc::to_int64(s);
-        amount *= (uint32_t)pow(10, (5 - precision));
+        amount *= _pows[p];
 
         return percent_slim((uint32_t)amount);
     }
-    EVT_CAPTURE_AND_RETHROW(asset_type_exception, (from));
+    EVT_CAPTURE_AND_RETHROW(percent_type_exception, (from));
 }
 
 }}  // namespace evt::chain
