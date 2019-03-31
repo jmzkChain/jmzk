@@ -244,6 +244,19 @@ struct dist_rpercent_rule {
 using dist_rule  = variant_wrapper<dist_rule_type, dist_fixed_rule, dist_percent_rule, dist_rpercent_rule>;
 using dist_rules = small_vector<dist_rule, 4>;
 
+struct dist_percent_rule_v2 {
+    dist_receiver receiver;
+    percent_slim  percent;
+};
+
+struct dist_rpercent_rule_v2 {
+    dist_receiver receiver;
+    percent_slim  percent;
+};
+
+using dist_rule_v2  = variant_wrapper<dist_rule_type, dist_fixed_rule, dist_percent_rule_v2, dist_rpercent_rule_v2>;
+using dist_rules_v2 = small_vector<dist_rule_v2, 4>;
+
 enum class passive_method_type {
     within_amount = 0,
     outside_amount
@@ -263,12 +276,12 @@ using passive_methods = small_vector<passive_method, 4>;
 
 struct passive_bonus {
     symbol_id_type  sym_id;
-    percent_type    rate;
+    percent_slim    rate;
     asset           base_charge;
     optional<asset> charge_threshold;
     optional<asset> minimum_charge;
     asset           dist_threshold;
-    dist_rules      rules;
+    dist_rules_v2   rules;
     passive_methods methods;   // without actions specify here, others will be `within` defaultly
     uint32_t        round;
     time_point      deadline;  // deadline for latest round
@@ -276,7 +289,7 @@ struct passive_bonus {
 
 struct passive_bonus_slim {
     symbol_id_type    sym_id;
-    percent_type      rate;
+    percent_slim      rate;
     int64_t           base_charge;
     optional<int64_t> charge_threshold;
     optional<int64_t> minimum_charge;
@@ -541,7 +554,20 @@ struct setpsvbonus {
     dist_rules      rules;
     passive_methods methods;
 
-    EVT_ACTION_VER0(setpsvbonus);
+    EVT_ACTION_VER1(setpsvbonus);
+};
+
+struct setpsvbonus_v2 {
+    symbol          sym;
+    percent_slim    rate;
+    asset           base_charge;
+    optional<asset> charge_threshold;
+    optional<asset> minimum_charge;
+    asset           dist_threshold;
+    dist_rules_v2   rules;
+    passive_methods methods;
+
+    EVT_ACTION_VER2(setpsvbonus, setpsvbonus_v2);
 };
 
 struct distpsvbonus {
@@ -549,7 +575,7 @@ struct distpsvbonus {
     time_point        deadline;
     optional<address> final_receiver;
 
-    EVT_ACTION_VER0(distpsvbonus);
+    EVT_ACTION_VER1(distpsvbonus);
 };
 
 }}}  // namespace evt::chain::contracts
@@ -580,6 +606,8 @@ FC_REFLECT_ENUM(evt::chain::contracts::dist_rule_type, (fixed)(percent)(remainin
 FC_REFLECT(evt::chain::contracts::dist_fixed_rule, (receiver)(amount));
 FC_REFLECT(evt::chain::contracts::dist_percent_rule, (receiver)(percent));
 FC_REFLECT(evt::chain::contracts::dist_rpercent_rule, (receiver)(percent));
+FC_REFLECT(evt::chain::contracts::dist_percent_rule_v2, (receiver)(percent));
+FC_REFLECT(evt::chain::contracts::dist_rpercent_rule_v2, (receiver)(percent));
 FC_REFLECT_ENUM(evt::chain::contracts::passive_method_type, (within_amount)(outside_amount));
 FC_REFLECT(evt::chain::contracts::passive_method, (action)(method));
 FC_REFLECT(evt::chain::contracts::passive_bonus, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods)(round)(deadline));
@@ -607,13 +635,14 @@ FC_REFLECT(evt::chain::contracts::execsuspend, (name)(executor));
 FC_REFLECT(evt::chain::contracts::paycharge, (payer)(charge));
 FC_REFLECT(evt::chain::contracts::paybonus, (payer)(amount));
 FC_REFLECT(evt::chain::contracts::everipass, (link));
-FC_REFLECT(evt::chain::contracts::everipass_v1, (link)(memo));
+FC_REFLECT(evt::chain::contracts::everipass_v2, (link)(memo));
 FC_REFLECT(evt::chain::contracts::everipay, (link)(payee)(number));
-FC_REFLECT(evt::chain::contracts::everipay_v1, (link)(payee)(number)(memo));
+FC_REFLECT(evt::chain::contracts::everipay_v2, (link)(payee)(number)(memo));
 FC_REFLECT(evt::chain::contracts::prodvote, (producer)(key)(value));
 FC_REFLECT(evt::chain::contracts::updsched, (producers));
 FC_REFLECT(evt::chain::contracts::newlock, (name)(proposer)(unlock_time)(deadline)(assets)(condition)(succeed)(failed));
 FC_REFLECT(evt::chain::contracts::aprvlock, (name)(approver)(data));
 FC_REFLECT(evt::chain::contracts::tryunlock, (name)(executor));
 FC_REFLECT(evt::chain::contracts::setpsvbonus, (sym)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods));
+FC_REFLECT(evt::chain::contracts::setpsvbonus_v2, (sym)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods));
 FC_REFLECT(evt::chain::contracts::distpsvbonus, (sym)(deadline)(final_receiver));

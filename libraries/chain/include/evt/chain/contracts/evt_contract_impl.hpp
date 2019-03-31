@@ -45,6 +45,8 @@ namespace evt { namespace chain { namespace contracts {
 
 #define EVT_ACTION_IMPL_END() };
 
+#define EVT_ACTION_VER() ACT::get_version()
+
 namespace __internal {
 
 inline bool 
@@ -626,7 +628,7 @@ calculate_passive_bonus(token_database_cache& tokendb_cache,
     }
 
     auto bonus = pbs->base_charge;
-    bonus += (int64_t)boost::multiprecision::floor(pbs->rate * amount);  // add trx fees
+    bonus += (int64_t)boost::multiprecision::floor(pbs->rate.value() * amount);  // add trx fees
     if(pbs->minimum_charge.has_value()) {
         bonus = std::max(*pbs->minimum_charge, bonus);    // >= minimum
     }
@@ -1945,8 +1947,9 @@ auto get_percent_string = [](auto& per) {
     return fmt::format("{} %", p.str(5));
 };
 
+template<typename T>
 void
-check_bonus_rules(const token_database& tokendb, const dist_rules& rules, asset amount) {
+check_bonus_rules(const token_database& tokendb, const T& rules, asset amount) {
     auto sym            = amount.sym();
     auto remain         = amount.amount();
     auto remain_percent = percent_type(0);
@@ -1957,7 +1960,7 @@ check_bonus_rules(const token_database& tokendb, const dist_rules& rules, asset 
         case dist_rule_type::fixed: {
             EVT_ASSERT2(remain_percent == 0, bonus_rules_order_exception,
                 "Rule #{} is not valid, fix rule should be defined in front of remain-percent rules", index);
-            auto& fr  = rule.get<dist_fixed_rule>();
+            auto& fr  = rule.template get<dist_rule_type::fixed>();
             // check receiver
             check_bonus_receiver(tokendb, fr.receiver);
             // check sym and > 0
@@ -1971,13 +1974,15 @@ check_bonus_rules(const token_database& tokendb, const dist_rules& rules, asset 
         case dist_rule_type::percent: {
             EVT_ASSERT2(remain_percent == 0, bonus_rules_order_exception,
                 "Rule #{} is not valid, percent rule should be defined in front of remain-percent rules", index);
-            auto& pr = rule.get<dist_percent_rule>();
+            auto& pr = rule.template get<dist_rule_type::percent>();
             // check receiver
             check_bonus_receiver(tokendb, pr.receiver);
+
+            auto p = (percent_type)pr.percent;
             // check valid precent
-            EVT_ASSERT2(pr.percent > 0 && pr.percent <= 1, bonus_percent_value_exception,
+            EVT_ASSERT2(p > 0 && p <= 1, bonus_percent_value_exception,
                 "Rule #{} is not valid, precent value should be in range (0,1]", index);
-            auto prv = (int64_t)boost::multiprecision::floor(pr.percent * real_type(amount.amount()));
+            auto prv = (int64_t)boost::multiprecision::floor(p * real_type(amount.amount()));
             // check large than remain
             EVT_ASSERT2(prv <= remain, bonus_rules_exception,
                 "Rule #{} is not valid, its required amount: {} is large than remainning: {}", index, asset(prv, sym), asset(remain, sym));
@@ -1989,16 +1994,18 @@ check_bonus_rules(const token_database& tokendb, const dist_rules& rules, asset 
         }
         case dist_rule_type::remaining_percent: {
             EVT_ASSERT2(remain > 0, bonus_rules_exception, "There's no bonus left for reamining-percent rule to distribute");
-            auto& pr = rule.get<dist_rpercent_rule>();
+            auto& pr = rule.template get<dist_rule_type::remaining_percent>();
             // check receiver
             check_bonus_receiver(tokendb, pr.receiver);
+
+            auto p = (percent_type)pr.percent;
             // check valid precent
-            EVT_ASSERT2(pr.percent > 0 && pr.percent <= 1, bonus_percent_value_exception, "Precent value should be in range (0,1]");
-            auto prv = (int64_t)boost::multiprecision::floor(pr.percent * real_type(remain));
+            EVT_ASSERT2(p > 0 && p <= 1, bonus_percent_value_exception, "Precent value should be in range (0,1]");
+            auto prv = (int64_t)boost::multiprecision::floor(p * real_type(remain));
             // check percent result is large than minial unit of asset
             EVT_ASSERT2(prv >= 1, bonus_percent_result_exception,
                 "Rule #{} is not valid, the amount for this rule shoule be as least large than one unit of asset, but it's zero now.", index);
-            remain_percent += pr.percent;
+            remain_percent += p;
             EVT_ASSERT2(remain_percent <= 1, bonus_percent_value_exception, "Sum of remaining percents is large than 100%, current: {}", get_percent_string(remain_percent));
             break;
         }
@@ -2021,6 +2028,40 @@ check_passive_methods(const execution_context& exec_ctx, const passive_methods& 
     }
 }
 
+dist_rules_v2
+to_rules_v2(const dist_rules& rules_v1) {
+    auto rules = dist_rules_v2();
+    rules.reserve(rules_v1.size());
+
+    for(auto& rule : rules_v1) {
+        switch(rule.type()) {
+        case dist_rule_type::fixed: {
+            auto& fr  = rule.get<dist_fixed_rule>();
+            rules.emplace_back(fr);
+            break;
+        }
+        case dist_rule_type::percent: {
+            auto& pr = rule.get<dist_percent_rule>();
+            rules.emplace_back(dist_percent_rule_v2 {
+                .receiver = pr.receiver,
+                .percent  = percent_slim(pr.percent)
+            });
+            break;
+        }
+        case dist_rule_type::remaining_percent: {
+            auto& pr = rule.get<dist_rpercent_rule>();
+            rules.emplace_back(dist_rpercent_rule_v2 {
+                .receiver = pr.receiver,
+                .percent  = percent_slim(pr.percent)
+            });
+            break;
+        }
+        }  // swtich
+    }
+
+    return rules;
+}
+
 } // namespace __internal
 
 EVT_ACTION_IMPL_BEGIN(setpsvbonus) {
@@ -2038,12 +2079,14 @@ EVT_ACTION_IMPL_BEGIN(setpsvbonus) {
         EVT_ASSERT2(!tokendb.exists_token(token_type::psvbonus, std::nullopt, get_psvbonus_db_key(sym.id(), kPsvBonus)),
             bonus_dupe_exception, "It's now allowd to update passive bonus currently.");
 
-        EVT_ASSERT2(spbact.rate > 0 && spbact.rate <= 1, bonus_percent_value_exception,
+        auto rate = (percent_type)spbact.rate;
+        EVT_ASSERT2(rate > 0 && rate <= 1, bonus_percent_value_exception,
             "Rate of passive bonus should be in range (0,1]");
 
-        auto pb        = passive_bonus();
-        pb.sym_id      = sym.id();
-        pb.rate        = spbact.rate;
+        auto pb   = passive_bonus();
+        pb.sym_id = sym.id();
+        pb.rate   = percent_slim(spbact.rate);
+        
         pb.base_charge = check_n_rtn(spbact.base_charge, sym, bonus_check_type::natural);
         if(spbact.charge_threshold.has_value()) {
             pb.charge_threshold = check_n_rtn(*spbact.charge_threshold, sym, bonus_check_type::positive);
@@ -2059,7 +2102,13 @@ EVT_ACTION_IMPL_BEGIN(setpsvbonus) {
 
         EVT_ASSERT2(spbact.rules.size() > 0, bonus_rules_exception, "Rules for passive bonus cannot be empty");
         check_bonus_rules(tokendb, spbact.rules, spbact.dist_threshold);
-        pb.rules = std::move(spbact.rules);
+
+        if constexpr (EVT_ACTION_VER() == 1) {
+            pb.rules = to_rules_v2(spbact.rules);
+        }
+        else {
+            pb.rules = std::move(spbact.rules);
+        }
 
         check_passive_methods(context.control.get_execution_context(), spbact.methods);
         pb.methods = std::move(spbact.methods);
@@ -2070,7 +2119,7 @@ EVT_ACTION_IMPL_BEGIN(setpsvbonus) {
         // add passive bonus slim for quick read
         auto pbs        = passive_bonus_slim();
         pbs.sym_id      = sym.id();
-        pbs.rate        = pb.rate;
+        pbs.rate        = percent_slim(pb.rate);
         pbs.base_charge = pb.base_charge.amount();
         pbs.methods     = pb.methods;
 
