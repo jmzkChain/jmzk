@@ -33,8 +33,9 @@ public:
         auto act_types = hana::sort.by(hana::ordering([](auto& act) { return hana::int_c<decltype(+act)::type::get_version()>; }), act_types_);
         hana::for_each(act_types, [&](auto& act) {
             auto i = index_of(act);
-            assert(type_names_[i].size() == decltype(+act)::type::get_version());
             type_names_[i].emplace_back(decltype(+act)::type::get_type_name());
+            assert(type_names_[i].size() == decltype(+act)::type::get_version());
+            curr_vers_[i] = 1;  // ver starts from 1
         });
 
         act_names_arr_ = hana::unpack(act_names_, [](auto ...i) {
@@ -67,7 +68,7 @@ public:
     set_version(name act, int newver) override {
         auto actindex = index_of(act);
         auto cver     = curr_vers_[actindex];
-        auto mver     = type_names_[actindex].size() - 1;
+        auto mver     = type_names_[actindex].size();
 
         EVT_ASSERT2(newver > cver && newver <= (int)mver, action_version_exception, "New version should be in range ({},{}]", cver, mver);
 
@@ -92,7 +93,7 @@ public:
     std::string
     get_acttype_name(name act) const override {
         auto index = index_of(act);
-        return type_names_[index][get_curr_ver(index)];
+        return type_names_[index][get_curr_ver(index) - 1];
     }
 
     int
@@ -102,7 +103,7 @@ public:
 
     int
     get_max_version(name act) override {
-        return (int)type_names_[index_of(act)].size() - 1;
+        return (int)type_names_[index_of(act)].size();
     }
 
     template <template<uint64_t> typename Invoker, typename RType, typename ... Args>
@@ -206,15 +207,16 @@ using evt_execution_context = execution_context_impl<
                                   contracts::paycharge,
                                   contracts::paybonus,
                                   contracts::everipass,
-                                  contracts::everipass_v1,
+                                  contracts::everipass_v2,
                                   contracts::everipay,
-                                  contracts::everipay_v1,
+                                  contracts::everipay_v2,
                                   contracts::prodvote,
                                   contracts::updsched,
                                   contracts::newlock,
                                   contracts::aprvlock,
                                   contracts::tryunlock,
                                   contracts::setpsvbonus,
+                                  contracts::setpsvbonus_v2,
                                   contracts::distpsvbonus
                               >;
 

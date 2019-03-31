@@ -40,9 +40,9 @@ namespace evt { namespace chain { namespace contracts {
         return version;                              \
     }
 
-#define EVT_ACTION_VER0(actname)              EVT_ACTION(actname, 0, actname)
-#define EVT_ACTION_VER1(actname, acttypename) EVT_ACTION(actname, 1, acttypename)
+#define EVT_ACTION_VER1(actname)              EVT_ACTION(actname, 1, actname)
 #define EVT_ACTION_VER2(actname, acttypename) EVT_ACTION(actname, 2, acttypename)
+#define EVT_ACTION_VER3(actname, acttypename) EVT_ACTION(actname, 3, acttypename)
 
 using domain_name     = evt::chain::domain_name;
 using domian_key      = evt::chain::domain_key;
@@ -61,6 +61,7 @@ using address_type    = evt::chain::address;
 using address_list    = small_vector<address_type, 4>;
 using conf_key        = evt::chain::conf_key;
 using percent_type    = evt::chain::percent_type;
+using percent_slim    = evt::chain::percent_slim;
 
 // represent for property for one symbol in one account
 // also records the create time
@@ -304,7 +305,7 @@ struct newdomain {
     permission_def transfer;
     permission_def manage;
 
-    EVT_ACTION_VER0(newdomain);
+    EVT_ACTION_VER1(newdomain);
 };
 
 struct issuetoken {
@@ -312,7 +313,7 @@ struct issuetoken {
     small_vector<token_name, 4> names;
     address_list                owner;
 
-    EVT_ACTION_VER0(issuetoken);
+    EVT_ACTION_VER1(issuetoken);
 };
 
 struct transfer {
@@ -321,28 +322,28 @@ struct transfer {
     address_list to;
     string       memo;
 
-    EVT_ACTION_VER0(transfer);
+    EVT_ACTION_VER1(transfer);
 };
 
 struct destroytoken {
     domain_name domain;
     token_name  name;
 
-    EVT_ACTION_VER0(destroytoken);
+    EVT_ACTION_VER1(destroytoken);
 };
 
 struct newgroup {
     group_name name;
     group_def  group;
 
-    EVT_ACTION_VER0(newgroup);
+    EVT_ACTION_VER1(newgroup);
 };
 
 struct updategroup {
     group_name name;
     group_def  group;
 
-    EVT_ACTION_VER0(updategroup);
+    EVT_ACTION_VER1(updategroup);
 };
 
 struct updatedomain {
@@ -352,7 +353,7 @@ struct updatedomain {
     optional<permission_def> transfer;
     optional<permission_def> manage;
 
-    EVT_ACTION_VER0(updatedomain);
+    EVT_ACTION_VER1(updatedomain);
 };
 
 struct newfungible {
@@ -366,7 +367,7 @@ struct newfungible {
 
     asset total_supply;
 
-    EVT_ACTION_VER0(newfungible);
+    EVT_ACTION_VER1(newfungible);
 };
 
 struct updfungible {
@@ -375,7 +376,7 @@ struct updfungible {
     optional<permission_def> issue;
     optional<permission_def> manage;
 
-    EVT_ACTION_VER0(updfungible);
+    EVT_ACTION_VER1(updfungible);
 };
 
 struct issuefungible {
@@ -383,7 +384,7 @@ struct issuefungible {
     asset        number;
     string       memo;
 
-    EVT_ACTION_VER0(issuefungible);
+    EVT_ACTION_VER1(issuefungible);
 };
 
 struct transferft {
@@ -392,7 +393,7 @@ struct transferft {
     asset        number;
     string       memo;
 
-    EVT_ACTION_VER0(transferft);
+    EVT_ACTION_VER1(transferft);
 };
 
 struct recycleft {
@@ -400,7 +401,7 @@ struct recycleft {
     asset        number;
     string       memo;
 
-    EVT_ACTION_VER0(recycleft);
+    EVT_ACTION_VER1(recycleft);
 };
 
 struct destroyft {
@@ -408,7 +409,7 @@ struct destroyft {
     asset        number;
     string       memo;
 
-    EVT_ACTION_VER0(destroyft);
+    EVT_ACTION_VER1(destroyft);
 };
 
 struct evt2pevt {
@@ -417,7 +418,7 @@ struct evt2pevt {
     asset        number;
     string       memo;
 
-    EVT_ACTION_VER0(evt2pevt);
+    EVT_ACTION_VER1(evt2pevt);
 };
 
 struct addmeta {
@@ -425,7 +426,7 @@ struct addmeta {
     meta_value     value;
     authorizer_ref creator;
 
-    EVT_ACTION_VER0(addmeta);
+    EVT_ACTION_VER1(addmeta);
 };
 
 struct newsuspend {
@@ -433,54 +434,54 @@ struct newsuspend {
     user_id       proposer;
     transaction   trx;
 
-    EVT_ACTION_VER0(newsuspend);
+    EVT_ACTION_VER1(newsuspend);
 };
 
 struct cancelsuspend {
     proposal_name name;
 
-    EVT_ACTION_VER0(cancelsuspend);
+    EVT_ACTION_VER1(cancelsuspend);
 };
 
 struct aprvsuspend {
     proposal_name                   name;
     small_vector<signature_type, 4> signatures;
 
-    EVT_ACTION_VER0(aprvsuspend);
+    EVT_ACTION_VER1(aprvsuspend);
 };
 
 struct execsuspend {
     proposal_name name;
     user_id       executor;
 
-    EVT_ACTION_VER0(execsuspend);
+    EVT_ACTION_VER1(execsuspend);
 };
 
 struct paycharge {
     address  payer;
     uint32_t charge;
 
-    EVT_ACTION_VER0(paycharge);
+    EVT_ACTION_VER1(paycharge);
 };
 
 struct paybonus {
     address payer;
     asset   amount;
 
-    EVT_ACTION_VER0(paybonus);
+    EVT_ACTION_VER1(paybonus);
 };
 
 struct everipass {
     evt_link link;
 
-    EVT_ACTION_VER0(everipass);
+    EVT_ACTION_VER1(everipass);
 };
 
-struct everipass_v1 {
+struct everipass_v2 {
     evt_link link;
     string   memo;
 
-    EVT_ACTION_VER1(everipass, everipass_v1);
+    EVT_ACTION_VER2(everipass, everipass_v2);
 };
 
 struct everipay {
@@ -488,16 +489,16 @@ struct everipay {
     address  payee;
     asset    number;
 
-    EVT_ACTION_VER0(everipay);
+    EVT_ACTION_VER1(everipay);
 };
 
-struct everipay_v1 {
+struct everipay_v2 {
     evt_link link;
     address  payee;
     asset    number;
     string   memo;
 
-    EVT_ACTION_VER1(everipay, everipay_v1);
+    EVT_ACTION_VER2(everipay, everipay_v2);
 };
 
 struct prodvote {
@@ -505,13 +506,13 @@ struct prodvote {
     conf_key     key;
     int64_t      value;
 
-    EVT_ACTION_VER0(prodvote);
+    EVT_ACTION_VER1(prodvote);
 };
 
 struct updsched {
     vector<producer_key> producers;
 
-    EVT_ACTION_VER0(updsched);
+    EVT_ACTION_VER1(updsched);
 };
 
 struct newlock {
@@ -526,7 +527,7 @@ struct newlock {
     small_vector<address, 4> succeed;
     small_vector<address, 4> failed;
 
-    EVT_ACTION_VER0(newlock);
+    EVT_ACTION_VER1(newlock);
 };
 
 struct aprvlock {
@@ -534,14 +535,14 @@ struct aprvlock {
     user_id       approver;
     lock_aprvdata data;
 
-    EVT_ACTION_VER0(aprvlock);
+    EVT_ACTION_VER1(aprvlock);
 };
 
 struct tryunlock {
     proposal_name name;
     user_id       executor;
 
-    EVT_ACTION_VER0(tryunlock);
+    EVT_ACTION_VER1(tryunlock);
 };
 
 struct setpsvbonus {

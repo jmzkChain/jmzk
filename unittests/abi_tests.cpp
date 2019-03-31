@@ -1129,20 +1129,20 @@ TEST_CASE("everipass_abi_test", "[abis]") {
     auto mv = mutable_variant_object(var);
     mv["memo"] = "tttesttt";
 
-    auto var_v1 = variant(mv);
+    auto var_v2 = variant(mv);
 
-    CHECK(get_exec_ctx().get_current_version("everipass") == 0);
+    CHECK(get_exec_ctx().get_current_version("everipass") == 1);
     CHECK_NOTHROW(get_var(var));
 
     // additional field in variant don't trigger error
-    CHECK_NOTHROW(get_var(var_v1));
+    CHECK_NOTHROW(get_var(var_v2));
 
     // upgrade version
-    get_exec_ctx().set_version("everipass", 1);
+    get_exec_ctx().set_version("everipass", 2);
 
     CHECK_THROWS_AS(get_var(var), pack_exception);
-    CHECK_NOTHROW(get_var(var_v1));
-    CHECK(get_var(var_v1)["memo"] == "tttesttt");
+    CHECK_NOTHROW(get_var(var_v2));
+    CHECK(get_var(var_v2)["memo"] == "tttesttt");
 }
 
 TEST_CASE("everipay_abi_test", "[abis]") {

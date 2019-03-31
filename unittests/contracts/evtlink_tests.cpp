@@ -227,18 +227,18 @@ TEST_CASE_METHOD(contracts_test, "everipay_test", "[contracts]") {
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer), everipay_exception);
 
     // test everipay ver1
-    auto ep_v1   = everipay_v1();
-    ep_v1.link   = ep.link;
-    ep_v1.payee  = poorer;
-    ep_v1.number = asset::from_string("0.50000 S#1");
-    ep_v1.memo   = "tttesttt";
+    auto ep_v2   = everipay_v2();
+    ep_v2.link   = ep.link;
+    ep_v2.payee  = poorer;
+    ep_v2.number = asset::from_string("0.50000 S#1");
+    ep_v2.memo   = "tttesttt";
 
     // version not upgrade
-    CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep_v1), key_seeds, payer), raw_unpack_exception);
+    CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep_v2), key_seeds, payer), raw_unpack_exception);
 
     // correct
-    my_tester->control->get_execution_context().set_version(N(everipay), 1);
-    CHECK_NOTHROW(my_tester->push_action(action(N128(.fungible), N128(1), ep_v1), key_seeds, payer));
+    my_tester->control->get_execution_context().set_version(N(everipay), 2);
+    CHECK_NOTHROW(my_tester->push_action(action(N128(.fungible), N128(1), ep_v2), key_seeds, payer));
 
     // restore everiPay version
     my_tester->control->get_execution_context().set_version_unsafe(N(everipay), 0);

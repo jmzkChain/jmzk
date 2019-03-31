@@ -14,11 +14,11 @@
 using namespace evt::chain;
 
 struct test {
-    EVT_ACTION_VER0(test);
+    EVT_ACTION_VER1(test);
 };
 
 struct test2 {
-    EVT_ACTION_VER1(test, test2);
+    EVT_ACTION_VER2(test, test2);
 };
 
 using execution_context_test = execution_context_impl<
@@ -52,7 +52,7 @@ struct tinvoke {
     template <typename Type>
     static std::string invoke(int ver) {
         CHECK(hana::type_c<Type> != hana::type_c<contracts::newdomain>);
-        CHECK(ver == 0);
+        CHECK(ver == 1);
         return Type::get_type_name();
     }
 };
@@ -62,7 +62,7 @@ struct tinvoke<N(newdomain)> {
     template <typename Type>
     static std::string invoke(int ver) {
         CHECK(hana::type_c<Type> == hana::type_c<contracts::newdomain>);
-        CHECK(ver == 0);
+        CHECK(ver == 1);
         return Type::get_type_name();
     }
 };
@@ -71,11 +71,11 @@ template<>
 struct tinvoke<N(test)> {
     template <typename Type>
     static std::string invoke(int ver) {
-        CHECK(((ver == 0) || (ver == 1)));
-        if(ver == 0) {
+        CHECK(((ver == 1) || (ver == 2)));
+        if(ver == 1) {
             CHECK(hana::type_c<Type> == hana::type_c<test>);
         }
-        else if(ver == 1) {
+        else if(ver == 2) {
             CHECK(hana::type_c<Type> == hana::type_c<test2>);
         }
         return Type::get_type_name();
@@ -87,11 +87,11 @@ TEST_CASE_METHOD(execution_tests, "test_invoke", "[execution]") {
     auto iit = ctx_.index_of(N(issuetoken));
     auto ite = ctx_.index_of(N(test));
 
-    CHECK(ctx_.invoke<tinvoke, std::string, int>(ind, 0) == "newdomain");
-    CHECK(ctx_.invoke<tinvoke, std::string, int>(iit, 0) == "issuetoken");
+    CHECK(ctx_.invoke<tinvoke, std::string, int>(ind, 1) == "newdomain");
+    CHECK(ctx_.invoke<tinvoke, std::string, int>(iit, 1) == "issuetoken");
 
-    CHECK(ctx_.invoke<tinvoke, std::string, int>(ite, 0) == "test");
+    CHECK(ctx_.invoke<tinvoke, std::string, int>(ite, 1) == "test");
     // update version of `test` to 1
-    CHECK(ctx_.set_version("test", 1) == 0);
-    CHECK(ctx_.invoke<tinvoke, std::string, int>(ite, 1) == "test2");
+    CHECK(ctx_.set_version("test", 2) == 1);
+    CHECK(ctx_.invoke<tinvoke, std::string, int>(ite, 2) == "test2");
 }
