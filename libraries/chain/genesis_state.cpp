@@ -83,7 +83,6 @@ get_evt_sym(const genesis_state& genesis) {
     evt.manage   = manage;
 
     evt.total_supply = asset(100'000'000'000'000L, evt.sym);
-
     return evt;
 }
 
@@ -114,7 +113,6 @@ get_pevt_sym(const genesis_state& genesis) {
     pevt.manage   = manage;
 
     pevt.total_supply = asset(0, pevt.sym);
-
     return pevt;
 }
 

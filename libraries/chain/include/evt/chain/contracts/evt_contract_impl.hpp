@@ -9,12 +9,6 @@
 
 #include <boost/noncopyable.hpp>
 #include <boost/algorithm/string.hpp>
-#include <boost/hana/at.hpp>
-#include <boost/hana/at_key.hpp>
-#include <boost/hana/integral_constant.hpp>
-#include <boost/hana/map.hpp>
-#include <boost/hana/pair.hpp>
-#include <boost/hana/tuple.hpp>
 
 // This fixes the issue in safe_numerics in boost 1.69
 #include <evt/chain/workaround/boost/safe_numerics/exception.hpp>
@@ -34,6 +28,7 @@
 #include <evt/chain/contracts/types.hpp>
 #include <evt/chain/contracts/evt_link.hpp>
 #include <evt/chain/contracts/evt_link_object.hpp>
+#include <evt/chain/contracts/evt_contract_metas.hpp>
 
 namespace evt { namespace chain { namespace contracts {
 
@@ -145,38 +140,6 @@ check_address_reserved(const address& addr) {
     }
     }  // switch
 }
-
-enum class reserved_meta_key {
-    disable_destroy = 0
-};
-
-template<uint128_t i>
-using uint128 = hana::integral_constant<uint128_t, i>;
-
-template<uint128_t i>
-constexpr uint128<i> uint128_c{};
-
-auto domain_metas = hana::make_map(
-    hana::make_pair(
-        hana::int_c<(int)reserved_meta_key::disable_destroy>,
-        hana::make_tuple(uint128_c<N128(.disable-destroy)>,
-        hana::type_c<bool>)
-    )
-);
-
-template<int KeyType>
-constexpr auto get_metakey = [](auto& metas) {
-    return hana::at(hana::at_key(metas, hana::int_c<KeyType>), hana::int_c<0>);
-};
-
-auto get_metavalue = [](const auto& obj, auto k) {
-    for(const auto& p : obj.metas) {
-        if(p.key.value == k) {
-            return optional<std::string>{ p.value };
-        }
-    }
-    return optional<std::string>();
-};
 
 template<typename T>
 name128
@@ -483,7 +446,7 @@ EVT_ACTION_IMPL_BEGIN(destroytoken) {
         READ_DB_TOKEN(token_type::domain, std::nullopt, dtact.domain, domain, unknown_domain_exception,
             "Cannot find domain: {}", dtact.domain);       
 
-        auto dd = get_metavalue(*domain, get_metakey<(int)reserved_meta_key::disable_destroy>(domain_metas));
+        auto dd = get_metavalue(*domain, get_metakey<reserved_meta_key::disable_destroy>(domain_metas));
         if(dd.has_value() && *dd == "true") {
             EVT_THROW(token_cannot_destroy_exception, "Token in this domain: ${d} cannot be destroyed", ("d",dtact.domain));
         }
@@ -575,6 +538,11 @@ EVT_ACTION_IMPL_BEGIN(updatedomain) {
             domain->issue = std::move(*udact.issue);
         }
         if(udact.transfer.has_value()) {
+            auto dt = get_metavalue(*domain, get_metakey<reserved_meta_key::disable_set_transfer>(domain_metas));
+            if(dt.has_value() && *dt == "true") {
+                EVT_THROW(domain_cannot_update_exception, "Transfer permission of this domain cannot be updated");
+            }
+
             EVT_ASSERT(udact.transfer->name == "transfer", permission_type_exception,
                 "Name ${name} does not match with the name of transfer permission.", ("name",udact.transfer->name));
             EVT_ASSERT(validate(*udact.transfer), permission_type_exception,
@@ -740,9 +708,9 @@ EVT_ACTION_IMPL_BEGIN(newfungible) {
     try {
         EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(nfact.sym.id())), action_authorize_exception,
             "Invalid authorization fields(domain and key).");
-        EVT_ASSERT(!nfact.name.empty(), fungible_name_exception, "Fungible name cannot be empty");
-        EVT_ASSERT(!nfact.sym_name.empty(), fungible_symbol_exception, "Fungible symbol name cannot be empty");
-        EVT_ASSERT(nfact.sym.id() > 0, fungible_symbol_exception, "Fungible symbol id should be larger than zero");
+        EVT_ASSERT(!nfact.name.empty(), fungible_name_exception, "FT name cannot be empty");
+        EVT_ASSERT(!nfact.sym_name.empty(), fungible_symbol_exception, "FT symbol name cannot be empty");
+        EVT_ASSERT(nfact.sym.id() > 0, fungible_symbol_exception, "FT symbol id should be larger than zero");
         EVT_ASSERT(nfact.total_supply.sym() == nfact.sym, fungible_symbol_exception, "Symbols in `total_supply` and `sym` are not match.");
         EVT_ASSERT(nfact.total_supply.amount() > 0, fungible_supply_exception, "Supply cannot be zero");
         EVT_ASSERT(nfact.total_supply.amount() <= asset::max_amount, fungible_supply_exception, "Supply exceeds the maximum allowed.");
@@ -750,7 +718,7 @@ EVT_ACTION_IMPL_BEGIN(newfungible) {
         DECLARE_TOKEN_DB()
 
         EVT_ASSERT(!tokendb.exists_token(token_type::fungible, std::nullopt, nfact.sym.id()), fungible_duplicate_exception,
-            "Fungible with symbol id: ${s} is already existed", ("s",nfact.sym.id()));
+            "FT with symbol id: ${s} is already existed", ("s",nfact.sym.id()));
 
         EVT_ASSERT(nfact.issue.name == "issue", permission_type_exception,
             "Name ${name} does not match with the name of issue permission.", ("name",nfact.issue.name));
@@ -796,6 +764,7 @@ EVT_ACTION_IMPL_BEGIN(newfungible) {
                 .threshold   = 1,
                 .authorizers = { authorizer_weight(authorizer_ref(), 1) }
             };
+            fungible.metas.emplace_back(get_metakey<reserved_meta_key::disable_set_transfer>(fungible_metas), "true", authorizer_ref(nfact.creator));
         }
         fungible.total_supply = nfact.total_supply;
 
@@ -823,7 +792,7 @@ EVT_ACTION_IMPL_BEGIN(updfungible) {
 
         auto fungible = make_empty_cache_ptr<fungible_def>();
         READ_DB_TOKEN(token_type::fungible, std::nullopt, ufact.sym_id, fungible, unknown_fungible_exception,
-            "Cannot find fungible with sym id: {}", ufact.sym_id);
+            "Cannot find FT with sym id: {}", ufact.sym_id);
 
         auto pchecker = make_permission_checker(tokendb);
         if(ufact.issue.has_value()) {
@@ -837,6 +806,11 @@ EVT_ACTION_IMPL_BEGIN(updfungible) {
         }
         if constexpr(EVT_ACTION_VER() > 1) {
             if(ufact.transfer.has_value()) {
+                auto dt = get_metavalue(*fungible, get_metakey<reserved_meta_key::disable_set_transfer>(fungible_metas));
+                if(dt.has_value() && *dt == "true") {
+                    EVT_THROW(fungible_cannot_update_exception, "Transfer permission of this FT cannot be updated");
+                }
+
                 EVT_ASSERT(ufact.transfer->name == "transfer", permission_type_exception,
                     "Name ${name} does not match with the name of transfer permission.", ("name",ufact.transfer->name));
                 EVT_ASSERT(validate(*ufact.transfer), permission_type_exception,
@@ -876,7 +850,7 @@ EVT_ACTION_IMPL_BEGIN(issuefungible) {
 
         DECLARE_TOKEN_DB()
         EVT_ASSERT(tokendb.exists_token(token_type::fungible, std::nullopt, sym.id()), fungible_duplicate_exception,
-            "{sym} fungible tokens doesn't exist", ("sym",sym));
+            "{sym} FT doesn't exist", ("sym",sym));
 
         auto addr = get_fungible_address(sym);
         EVT_ASSERT(addr != ifact.address, fungible_address_exception, "From and to are the same address");
@@ -1088,7 +1062,6 @@ auto check_meta_key_reserved = [](const auto& key) {
 
 EVT_ACTION_IMPL_BEGIN(addmeta) {
     using namespace __internal;
-    using namespace hana;
 
     const auto& act   = context.act;
     auto&       amact = context.act.data_as<add_clr_t<ACT>>();
@@ -1114,7 +1087,9 @@ EVT_ACTION_IMPL_BEGIN(addmeta) {
             UPD_DB_TOKEN(token_type::group, *gp);
         }
         else if(act.domain == N128(.fungible)) {  // fungible
-            check_meta_key_reserved(amact.key);
+            if(amact.key.reserved()) {
+                EVT_ASSERT(check_reserved_meta(amact, fungible_metas), meta_key_exception, "Meta-key is reserved and cannot be used");
+            }
 
             auto fungible = make_empty_cache_ptr<fungible_def>();
             READ_DB_TOKEN(token_type::fungible, std::nullopt, (symbol_id_type)std::stoul((std::string)act.key), fungible,
@@ -1139,21 +1114,7 @@ EVT_ACTION_IMPL_BEGIN(addmeta) {
         }
         else if(act.key == N128(.meta)) {  // domain
             if(amact.key.reserved()) {
-                bool pass = false;
-                hana::for_each(hana::values(domain_metas), [&](const auto& m) {
-                    if(amact.key.value == hana::at(m, int_c<0>)) {
-                        if(hana::at(m, int_c<1>) == hana::type_c<bool>) {
-                            if(amact.value == "true" || amact.value == "false") {
-                                pass = true;
-                            }
-                            else {
-                                EVT_THROW(meta_value_exception, "Meta-Value is not valid for `bool` type");
-                            }
-                        }
-                    }
-                });
-
-                EVT_ASSERT(pass, meta_key_exception, "Meta-key is reserved and cannot be used");
+                EVT_ASSERT(check_reserved_meta(amact, domain_metas), meta_key_exception, "Meta-key is reserved and cannot be used");
             }
 
             auto domain = make_empty_cache_ptr<domain_def>();
