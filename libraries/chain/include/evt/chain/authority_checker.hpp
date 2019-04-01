@@ -94,7 +94,7 @@ public:
 
     public:
         uint32_t total_weight() const { return total_weight_; }
-        void add_weight(uint32_t weight) { total_weight_ += weight; }
+        uint32_t add_weight(uint32_t weight) { total_weight_ += weight; return total_weight_; }
 
     private:
         authority_checker* checker_;
@@ -255,13 +255,30 @@ private:
                 break;
             }
             case authorizer_ref::owner_t: {
+                auto visitor = weight_tally_visitor(this);
+                auto visit = [this, &visitor](auto& addr) {
+                    switch(addr.type()) {
+                    case address_type::public_key_t: {
+                        return visitor(addr.get_public_key(), 1);
+                    }
+                    case address_type::generated_t: {
+                        if(addr.get_prefix() == N(.group)) {
+                            if(this->satisfied_group(addr.get_key())) {
+                                return visitor.add_weight(1);
+                            }
+                        }
+                        break;
+                    }
+                    }  // switch
+                    return visitor.total_weight();
+                };
+
                 if constexpr(Token == kNFT) {
                     get_nft_owners(action.domain, action.key, [&](const auto& owners) {
-                        auto vistor = weight_tally_visitor(this);
                         for(const auto& o : owners) {
-                            vistor(o, 1);
+                            visit(o);
                         }
-                        if(vistor.total_weight() == owners.size()) {
+                        if(visitor.total_weight() == owners.size()) {
                             ref_result = true;
                         }
                     });
@@ -269,13 +286,11 @@ private:
                 else {
                     assert(Token == kFT);
                     get_ft_owner(action, [&](const auto& owner) {
-                        auto vistor = weight_tally_visitor(this);
-                        if(vistor(owner, 1) == 1) {
+                        if(visit(owner) == 1) {
                             ref_result = true;
                         }
                     });
                 }
-
                 break;
             }
             case authorizer_ref::group_t: {
