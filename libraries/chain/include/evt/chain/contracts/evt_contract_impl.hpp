@@ -355,7 +355,7 @@ EVT_ACTION_IMPL_BEGIN(newdomain) {
 
         auto pchecker = make_permission_checker(tokendb);
         pchecker(ndact.issue, false);
-        pchecker(ndact.transfer, true);
+        pchecker(ndact.transfer, true /* allowed_owner */);
         pchecker(ndact.manage, false);
 
         auto domain        = domain_def();
@@ -568,7 +568,7 @@ EVT_ACTION_IMPL_BEGIN(updatedomain) {
         if(udact.issue.has_value()) {
             EVT_ASSERT(udact.issue->name == "issue", permission_type_exception,
                 "Name ${name} does not match with the name of issue permission.", ("name",udact.issue->name));
-            EVT_ASSERT(udact.issue->threshold > 0 && validate(*udact.issue), permission_type_exception,
+            EVT_ASSERT(validate(*udact.issue), permission_type_exception,
                 "Issue permission is not valid, which may be caused by invalid threshold, duplicated keys.");
             pchecker(*udact.issue, false);
 
@@ -579,7 +579,7 @@ EVT_ACTION_IMPL_BEGIN(updatedomain) {
                 "Name ${name} does not match with the name of transfer permission.", ("name",udact.transfer->name));
             EVT_ASSERT(validate(*udact.transfer), permission_type_exception,
                 "Transfer permission is not valid, which may be caused by duplicated keys.");
-            pchecker(*udact.transfer, true);
+            pchecker(*udact.transfer, true /* allowed_owner */);
 
             domain->transfer = std::move(*udact.transfer);
         }
@@ -761,22 +761,42 @@ EVT_ACTION_IMPL_BEGIN(newfungible) {
             "Name ${name} does not match with the name of manage permission.", ("name",nfact.manage.name));
         EVT_ASSERT(validate(nfact.manage), permission_type_exception,
             "Manage permission is not valid, which may be caused by duplicated keys.");
+        if constexpr(EVT_ACTION_VER() > 1) {
+            EVT_ASSERT(nfact.transfer.name == "transfer", permission_type_exception,
+                "Name ${name} does not match with the name of transfer permission.", ("name",nfact.transfer.name));
+            EVT_ASSERT(validate(nfact.transfer), permission_type_exception,
+                "Transfer permission is not valid, which may be caused by duplicated keys.");
+        }
 
         auto pchecker = make_permission_checker(tokendb);
         pchecker(nfact.issue, false);
         pchecker(nfact.manage, false);
+        if constexpr(EVT_ACTION_VER() > 1) {
+            pchecker(nfact.transfer, true /* allowed_owner */);
+        }
 
         auto fungible = fungible_def();
         
-        fungible.name         = nfact.name;
-        fungible.sym_name     = nfact.sym_name;
-        fungible.sym          = nfact.sym;
-        fungible.creator      = nfact.creator;
+        fungible.name        = nfact.name;
+        fungible.sym_name    = nfact.sym_name;
+        fungible.sym         = nfact.sym;
+        fungible.creator     = nfact.creator;
         // NOTICE: we should use pending_block_time() below
         // but for historical mistakes, we use head_block_time()
-        fungible.create_time  = context.control.head_block_time();
-        fungible.issue        = std::move(nfact.issue);
-        fungible.manage       = std::move(nfact.manage);
+        fungible.create_time = context.control.head_block_time();
+        fungible.issue       = std::move(nfact.issue);
+        fungible.manage      = std::move(nfact.manage);
+        if constexpr(EVT_ACTION_VER() > 1) {
+            fungible.transfer = std::move(nfact.transfer);
+        }
+        else {
+            // set with default transfer(owner only)
+            fungible.transfer = permission_def {
+                .name        = N(transfer),
+                .threshold   = 1,
+                .authorizers = { authorizer_weight(authorizer_ref(), 1) }
+            };
+        }
         fungible.total_supply = nfact.total_supply;
 
         ADD_DB_TOKEN(token_type::fungible, fungible);
@@ -809,11 +829,22 @@ EVT_ACTION_IMPL_BEGIN(updfungible) {
         if(ufact.issue.has_value()) {
             EVT_ASSERT(ufact.issue->name == "issue", permission_type_exception,
                 "Name ${name} does not match with the name of issue permission.", ("name",ufact.issue->name));
-            EVT_ASSERT(ufact.issue->threshold >= 0 && validate(*ufact.issue), permission_type_exception,
-                "Issue permission is not valid, which may be caused by invalid threshold, duplicated keys.");
+            EVT_ASSERT(validate(*ufact.issue), permission_type_exception,
+                "Issue permission is not valid, which may be caused by duplicated keys.");
             pchecker(*ufact.issue, false);
 
             fungible->issue = std::move(*ufact.issue);
+        }
+        if constexpr(EVT_ACTION_VER() > 1) {
+            if(ufact.transfer.has_value()) {
+                EVT_ASSERT(ufact.transfer->name == "transfer", permission_type_exception,
+                    "Name ${name} does not match with the name of transfer permission.", ("name",ufact.transfer->name));
+                EVT_ASSERT(validate(*ufact.transfer), permission_type_exception,
+                    "Transfer permission is not valid, which may be caused by duplicated keys.");
+                pchecker(*ufact.transfer, true /* allowed_owner */);
+
+                fungible->transfer = std::move(*ufact.transfer);
+            }
         }
         if(ufact.manage.has_value()) {
             // manage permission's threshold can be 0 which means no one can update permission later.

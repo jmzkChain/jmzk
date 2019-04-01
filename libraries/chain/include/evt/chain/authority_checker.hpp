@@ -13,7 +13,7 @@
 #include <evt/chain/controller.hpp>
 #include <evt/chain/config.hpp>
 #include <evt/chain/execution_context_impl.hpp>
-#include <evt/chain/token_database.hpp>
+#include <evt/chain/token_database_cache.hpp>
 #include <evt/chain/types.hpp>
 #include <evt/chain/producer_schedule.hpp>
 #include <evt/chain/contracts/types.hpp>
@@ -27,18 +27,19 @@ class authority_checker;
 
 namespace __internal {
 
+enum permission_type { kIssue = 0, kTransfer, kManage };
+enum toke_type { kNFT = 0, kFT };
+
 template<uint64_t>
 struct check_authority {};
 
-#define READ_DB_TOKEN(TYPE, PREFIX, KEY, VALUEREF, EXCEPTION, FORMAT, ...)  \
-    try {                                                                   \
-        auto str = std::string();                                           \
-        token_db_.read_token(TYPE, PREFIX, KEY, str);                       \
-                                                                            \
-        extract_db_value(str, VALUEREF);                                    \
-    }                                                                       \
-    catch(token_database_exception&) {                                      \
-        EVT_THROW2(EXCEPTION, FORMAT, __VA_ARGS__);                         \
+#define READ_DB_TOKEN(TYPE, PREFIX, KEY, VPTR, EXCEPTION, FORMAT, ...)  \
+    try {                                                               \
+        using vtype = typename decltype(VPTR)::element_type;            \
+        VPTR = token_db_.template read_token<vtype>(TYPE, PREFIX, KEY); \
+    }                                                                   \
+    catch(token_database_exception&) {                                  \
+        EVT_THROW2(EXCEPTION, FORMAT, __VA_ARGS__);                     \
     }
 
 }  // namespace __internal
@@ -53,11 +54,12 @@ struct check_authority {};
  */
 class authority_checker {
 private:
-    const controller&               control_;
-    const evt_execution_context&    exec_ctx_;
-    const public_keys_set&          signing_keys_;
-    const token_database&           token_db_;
-    const uint32_t                  max_recursion_depth_;
+    const controller&            control_;
+    const evt_execution_context& exec_ctx_;
+    const public_keys_set&       signing_keys_;
+    const uint32_t               max_recursion_depth_;
+
+    token_database_cache&           token_db_;
     boost::dynamic_bitset<uint64_t> used_keys_;
 
 public:
@@ -107,62 +109,80 @@ public:
         : control_(control)
         , exec_ctx_(exec_ctx)
         , signing_keys_(signing_keys)
-        , token_db_(control.token_db())
         , max_recursion_depth_(max_recursion_depth)
+        , token_db_(control.token_db_cache())
         , used_keys_(signing_keys.size(), false) {}
 
 private:
+    template<int Permission>
     void
-    get_domain_permission(const domain_name& domain_name, const permission_name name, std::function<void(const permission_def&)>&& cb) {
-        domain_def domain;
+    get_domain_permission(const domain_name& domain_name, std::function<void(const permission_def&)>&& cb) {
+        using namespace __internal;
+
+        auto domain = make_empty_cache_ptr<domain_def>();
         READ_DB_TOKEN(token_type::domain, std::nullopt, domain_name, domain, unknown_domain_exception, "Cannot find domain: {}", domain_name);
 
-        if(name == N(issue)) {
-            cb(domain.issue);
+        if constexpr(Permission == kIssue) {
+            cb(domain->issue);
         }
-        else if(name == N(transfer)) {
-            cb(domain.transfer);
+        else if constexpr(Permission == kTransfer) {
+            cb(domain->transfer);
         }
-        else if(name == N(manage)) {
-            cb(domain.manage);
+        else if constexpr(Permission == kManage) {
+            cb(domain->manage);
         }
     }
 
+    template<int Permission>
     void
-    get_fungible_permission(const symbol_id_type sym_id, const permission_name name, std::function<void(const permission_def&)>&& cb) {
-        fungible_def fungible;
+    get_fungible_permission(const symbol_id_type sym_id, std::function<void(const permission_def&)>&& cb) {
+        using namespace __internal;
+
+        auto fungible = make_empty_cache_ptr<fungible_def>();
         READ_DB_TOKEN(token_type::fungible, std::nullopt, sym_id, fungible, unknown_fungible_exception, "Cannot find fungible with symbol id: {}", sym_id);
 
-        if(name == N(issue)) {
-            cb(fungible.issue);
+        if constexpr(Permission == kIssue) {
+            cb(fungible->issue);
         }
-        else if(name == N(manage)) {
-            cb(fungible.manage);
+        else if constexpr(Permission == kTransfer) {
+            cb(fungible->transfer);
+        }
+        else if constexpr(Permission == kManage) {
+            cb(fungible->manage);
         }
     }
 
     void
     get_group(const group_name& name, std::function<void(const group_def&)>&& cb) {
-        group_def group;
+        auto group = make_empty_cache_ptr<group_def>();
         READ_DB_TOKEN(token_type::group, std::nullopt, name, group, unknown_group_exception, "Cannot find group: {}", name);
 
-        cb(group);
+        cb(*group);
     }
 
     void
-    get_owner(const domain_name& domain, const name128& name, std::function<void(const address_list&)>&& cb) {
-        token_def token;
+    get_nft_owners(const domain_name& domain, const name128& name, std::function<void(const address_list&)>&& cb) {
+        auto token = make_empty_cache_ptr<token_def>();
         READ_DB_TOKEN(token_type::token, domain, name, token, unknown_token_exception, "Cannot find token: {} in {}", name, domain);
 
-        cb(token.owner);
+        cb(token->owner);
+    }
+
+    void
+    get_ft_owner(const action& act, std::function<void(const address_type&)>&& cb) {
+        auto ds   = fc::datastream<char*>((char*)act.data.data(), act.data.size());
+        auto addr = address_type();
+        fc::raw::unpack(ds, addr);
+
+        cb(addr);
     }
 
     void
     get_suspend(const proposal_name& proposal, std::function<void(const suspend_def&)>&& cb) {
-        suspend_def suspend;
+        auto suspend = make_empty_cache_ptr<suspend_def>();
         READ_DB_TOKEN(token_type::suspend, std::nullopt, proposal, suspend, unknown_suspend_exception, "Cannot find suspend proposal: {}", proposal);
 
-        cb(suspend);
+        cb(*suspend);
     }
 
     void
@@ -215,8 +235,11 @@ private:
         return result;
     }
 
+    template<int Token>
     bool
     satisfied_permission(const permission_def& permission, const action& action) {
+        using namespace __internal;
+
         uint32_t total_weight = 0;
         for(const auto& aw : permission.authorizers) {
             auto& ref        = aw.ref;
@@ -232,15 +255,27 @@ private:
                 break;
             }
             case authorizer_ref::owner_t: {
-                get_owner(action.domain, action.key, [&](const auto& owner) {
-                    auto vistor = weight_tally_visitor(this);
-                    for(const auto& o : owner) {
-                        vistor(o, 1);
-                    }
-                    if(vistor.total_weight() == owner.size()) {
-                        ref_result = true;
-                    }
-                });
+                if constexpr(Token == kNFT) {
+                    get_nft_owners(action.domain, action.key, [&](const auto& owners) {
+                        auto vistor = weight_tally_visitor(this);
+                        for(const auto& o : owners) {
+                            vistor(o, 1);
+                        }
+                        if(vistor.total_weight() == owners.size()) {
+                            ref_result = true;
+                        }
+                    });
+                }
+                else {
+                    assert(Token == kFT);
+                    get_ft_owner(action, [&](const auto& owner) {
+                        auto vistor = weight_tally_visitor(this);
+                        if(vistor(owner, 1) == 1) {
+                            ref_result = true;
+                        }
+                    });
+                }
+
                 break;
             }
             case authorizer_ref::group_t: {
@@ -260,20 +295,26 @@ private:
         return false;
     }
 
+    template<int Permission>
     bool
-    satisfied_domain_permission(const action& action, const permission_name& name) {
+    satisfied_domain_permission(const action& action) {
+        using namespace __internal;
+
         bool result = false;
-        get_domain_permission(action.domain, name, [&](const auto& permission) {
-            result = satisfied_permission(permission, action);
+        get_domain_permission<Permission>(action.domain, [&](const auto& permission) {
+            result = satisfied_permission<kNFT>(permission, action);
         });
         return result;
     }
 
+    template<int Permission>
     bool
-    satisfied_fungible_permission(const symbol_id_type sym_id, const action& action, const permission_name& name) {
+    satisfied_fungible_permission(const symbol_id_type sym_id, const action& action) {
+        using namespace __internal;
+
         bool result = false;
-        get_fungible_permission(sym_id, name, [&](const auto& permission) {
-            result = satisfied_permission(permission, action);
+        get_fungible_permission<Permission>(sym_id, [&](const auto& permission) {
+            result = satisfied_permission<kFT>(permission, action);
         });
         return result;
     }
@@ -347,7 +388,7 @@ struct check_authority<N(issuetoken)> {
     template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
-        return checker->satisfied_domain_permission(act, N(issue));
+        return checker->satisfied_domain_permission<kIssue>(act);
     }
 };
 
@@ -356,7 +397,7 @@ struct check_authority<N(transfer)> {
     template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
-        return checker->satisfied_domain_permission(act, N(transfer));
+        return checker->satisfied_domain_permission<kTransfer>(act);
     }
 };
 
@@ -365,7 +406,7 @@ struct check_authority<N(destroytoken)> {
     template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
-        return checker->satisfied_domain_permission(act, N(transfer));
+        return checker->satisfied_domain_permission<kTransfer>(act);
     }
 };
 
@@ -413,7 +454,7 @@ struct check_authority<N(updatedomain)> {
     template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
-        return checker->satisfied_domain_permission(act, N(manage));
+        return checker->satisfied_domain_permission<kManage>(act);
     }
 };
 
@@ -445,7 +486,7 @@ struct check_authority<N(issuefungible)> {
     template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
-        return checker->satisfied_fungible_permission(get_symbol_id(act.key), act, N(issue));
+        return checker->satisfied_fungible_permission<kIssue>(get_symbol_id(act.key), act);
     }
 };
 
@@ -454,7 +495,7 @@ struct check_authority<N(updfungible)> {
     template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
-        return checker->satisfied_fungible_permission(get_symbol_id(act.key), act, N(manage));
+        return checker->satisfied_fungible_permission<kManage>(get_symbol_id(act.key), act);
     }
 };
 
@@ -463,15 +504,7 @@ struct check_authority<N(transferft)> {
     template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
-        try {
-            auto& tf    = act.data_as<add_clr_t<Type>>();
-            auto vistor = authority_checker::weight_tally_visitor(checker);
-            if(vistor(tf.from, 1) == 1) {
-                return true;
-            }
-        }
-        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transation data is not valid, data cannot cast to `transferft` type");
-        return false;
+        return checker->satisfied_fungible_permission<kTransfer>(get_symbol_id(act.key), act);
     }
 };
 
@@ -480,15 +513,7 @@ struct check_authority<N(recycleft)> {
     template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
-        try {
-            auto& rf    = act.data_as<add_clr_t<Type>>();
-            auto vistor = authority_checker::weight_tally_visitor(checker);
-            if(vistor(rf.address, 1) == 1) {
-                return true;
-            }
-        }
-        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transation data is not valid, data cannot cast to `recycleft` type");
-        return false;
+        return checker->satisfied_fungible_permission<kTransfer>(get_symbol_id(act.key), act);
     }
 };
 
@@ -497,15 +522,7 @@ struct check_authority<N(destroyft)> {
     template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
-        try {
-            auto& rf    = act.data_as<add_clr_t<Type>>();
-            auto vistor = authority_checker::weight_tally_visitor(checker);
-            if(vistor(rf.address, 1) == 1) {
-                return true;
-            }
-        }
-        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transation data is not valid, data cannot cast to `destroyft` type");
-        return false;
+        return checker->satisfied_fungible_permission<kTransfer>(get_symbol_id(act.key), act);
     }
 };
 
@@ -515,15 +532,7 @@ struct check_authority<N(evt2pevt)> {
     template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
-        try {
-            auto& ep    = act.data_as<add_clr_t<Type>>();
-            auto vistor = authority_checker::weight_tally_visitor(checker);
-            if(vistor(ep.from, 1) == 1) {
-                return true;
-            }
-        }
-        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transation data is not valid, data cannot cast to `transferft` type");
-        return false;
+        return checker->satisfied_fungible_permission<kTransfer>(get_symbol_id(act.key), act);
     }
 };
 
@@ -752,7 +761,7 @@ struct check_authority<N(setpsvbonus)> {
     template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
-        return checker->satisfied_fungible_permission(get_symbol_id(act.key), act, N(manage));
+        return checker->satisfied_fungible_permission<kManage>(get_symbol_id(act.key), act);
     }
 };
 
@@ -761,7 +770,7 @@ struct check_authority<N(distpsvbonus)> {
     template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
-        return checker->satisfied_fungible_permission(get_symbol_id(act.key), act, N(manage));
+        return checker->satisfied_fungible_permission<kManage>(get_symbol_id(act.key), act);
     }
 };
 

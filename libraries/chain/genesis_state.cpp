@@ -69,12 +69,18 @@ get_evt_sym(const genesis_state& genesis) {
     issue.threshold = 1;
     issue.authorizers.emplace_back(authorizer_weight(authorizer_ref(group_name(N128(.everiToken))), 1));
 
+    auto transfer = permission_def();
+    transfer.name = N(transfer);
+    transfer.threshold = 1;
+    transfer.authorizers.emplace_back(authorizer_weight(authorizer_ref(), 1));
+
     auto manage = permission_def();
     manage.name = N(manage);
     manage.threshold = 0;
 
-    evt.issue  = issue;
-    evt.manage = manage;
+    evt.issue    = issue;
+    evt.transfer = transfer;
+    evt.manage   = manage;
 
     evt.total_supply = asset(100'000'000'000'000L, evt.sym);
 
@@ -94,12 +100,18 @@ get_pevt_sym(const genesis_state& genesis) {
     issue.name = N(issue);
     issue.threshold = 0;
 
+    auto transfer = permission_def();
+    transfer.name = N(transfer);
+    transfer.threshold = 1;
+    transfer.authorizers.emplace_back(authorizer_weight(authorizer_ref(), 1));
+
     auto manage = permission_def();
     manage.name = N(manage);
     manage.threshold = 0;
 
-    pevt.issue  = issue;
-    pevt.manage = manage;
+    pevt.issue    = issue;
+    pevt.transfer = transfer;
+    pevt.manage   = manage;
 
     pevt.total_supply = asset(0, pevt.sym);
 
