@@ -132,7 +132,7 @@ check_address_reserved(const address& addr) {
     case address::generated_t: {
         auto p = addr.get_prefix();
         if(p.reserved()) {
-            if(p == N(.domain) || p == N(.fungible)) {
+            if(p == N(.domain) || p == N(.fungible) || p == N(.group)) {
                 return;
             }
         }

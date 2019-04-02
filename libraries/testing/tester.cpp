@@ -252,7 +252,7 @@ base_tester::push_transaction(signed_transaction& trx,
 }
 
 transaction_trace_ptr
-base_tester::push_action(action&& act, std::vector<name>& auths, const address& payer, uint32_t max_charge) {
+base_tester::push_action(action&& act, const std::vector<name>& auths, const address& payer, uint32_t max_charge) {
     try {
         signed_transaction trx;
         trx.actions.emplace_back(std::move(act));

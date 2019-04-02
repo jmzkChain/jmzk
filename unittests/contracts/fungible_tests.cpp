@@ -402,3 +402,63 @@ TEST_CASE_METHOD(contracts_test, "evt2pevt_test", "[contracts]") {
 
     my_tester->produce_blocks();
 }
+
+TEST_CASE_METHOD(contracts_test, "group_addr_test", "[contracts]") {
+    // create a new group
+    auto test_group = fmt::format(R"=====(
+    {{
+      "name" : "ajxtest",
+      "group" : {{
+        "name": "ajxtest",
+        "key": "{}",
+        "root": {{
+          "threshold": 6,
+          "weight": 0,
+          "nodes": [{{
+              "key": "{}",
+              "weight": 2
+            }},{{
+              "key": "{}",
+              "weight": 3
+            }},{{
+              "key": "{}",
+              "weight": 2
+            }}
+          ]
+        }}
+      }}
+    }}
+    )=====",
+    (std::string)tester::get_public_key("gkey"),
+    (std::string)tester::get_public_key("gkey1"),
+    (std::string)tester::get_public_key("gkey2"),
+    (std::string)tester::get_public_key("gkey3"));
+
+    auto gvar = fc::json::from_string(test_group);
+    my_tester->push_action(N(newgroup), N128(.group), "ajxtest", gvar.get_object(), { N(gkey), N(payer) }, payer);
+
+    // get group addresses
+    auto addr1 = address(".group", "ajxtest", 0);
+    auto addr2 = address(".group", "ajxtest", 123);
+
+    auto tf   = transferft();
+    tf.from   = payer;
+    tf.to     = addr1;
+    tf.number = asset(1000, evt_sym());
+    tf.memo   = "hello";
+
+    // transfer to group address
+    CHECK_NOTHROW(my_tester->push_action(action(".fungible", "1", tf), key_seeds, payer));
+
+    // cannot transfer FT without group authorized
+    tf.from = addr1;
+    tf.to   = poorer;
+    CHECK_THROWS_AS(my_tester->push_action(action(".fungible", "1", tf), key_seeds, payer), unsatisfied_authorization);
+
+    // transfer with group authorized, not enough authorizers
+    CHECK_THROWS_AS(my_tester->push_action(action(".fungible", "1", tf), { N(gkey), N(payer) }, payer), unsatisfied_authorization);
+    CHECK_THROWS_AS(my_tester->push_action(action(".fungible", "1", tf), { N(gkey1), N(gkey2), N(payer) }, payer), unsatisfied_authorization);
+
+    // enough authorizers
+    CHECK_NOTHROW(my_tester->push_action(action(".fungible", "1", tf), { N(gkey1), N(gkey2), N(gkey3), N(payer) }, payer));
+}

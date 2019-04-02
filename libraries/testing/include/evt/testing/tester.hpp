@@ -104,7 +104,7 @@ public:
     transaction_trace_ptr push_transaction(packed_transaction& trx, fc::time_point deadline = fc::time_point::maximum());
     transaction_trace_ptr push_transaction(signed_transaction& trx, fc::time_point deadline = fc::time_point::maximum());
 
-    transaction_trace_ptr push_action(action&& act, std::vector<name>& auths, const address& payer, uint32_t max_charge = 1'000'000);
+    transaction_trace_ptr push_action(action&& act, const std::vector<name>& auths, const address& payer, uint32_t max_charge = 1'000'000);
 
     transaction_trace_ptr push_action(const action_name&       acttype,
                                       const domain_name&       domain,
