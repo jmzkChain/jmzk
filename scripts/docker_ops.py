@@ -96,7 +96,10 @@ def detail(name):
 
     volumes = []
     for v in ct['Mounts']:
-        volumes.append('{}->{}'.format(v['Name'], v['Destination']))
+        if 'Name' in v:
+            volumes.append('{}->{}'.format(v['Name'], v['Destination']))
+        else:
+            volumes.append('{}->{}'.format(v['Source'], v['Destination']))
 
     click.echo('      id: {}'.format(green(ct['Id'])))
     click.echo('   image: {}'.format(green(ct['Image'])))
