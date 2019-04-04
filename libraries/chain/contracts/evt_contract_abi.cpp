@@ -252,9 +252,31 @@ evt_contract_abi() {
     });
 
     evt_abi.structs.emplace_back( struct_def {
+        "newfungible_v2", "", {
+            {"name", "fungible_name"},
+            {"sym_name", "symbol_name"},
+            {"sym", "symbol"},
+            {"creator", "user_id"},
+            {"issue", "permission_def"},
+            {"transfer", "permission_def"},
+            {"manage", "permission_def"},
+            {"total_supply", "asset"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
         "updfungible", "", {
             {"sym_id", "symbol_id_type"},
             {"issue", "permission_def?"},
+            {"manage", "permission_def?"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "updfungible_v2", "", {
+            {"sym_id", "symbol_id_type"},
+            {"issue", "permission_def?"},
+            {"transfer", "permission_def?"},
             {"manage", "permission_def?"}
         }
     });

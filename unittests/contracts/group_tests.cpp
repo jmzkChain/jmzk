@@ -232,6 +232,7 @@ TEST_CASE_METHOD(contracts_test, "updatedomain_test", "[contracts]") {
 
     updom.name = get_domain_name();
     updom.issue->authorizers[0].ref.set_group(get_group_name());
+    updom.transfer->authorizers[0].ref.set_account(key);
     updom.manage->authorizers[0].ref.set_account(key);
     to_variant(updom, var);
 
@@ -239,6 +240,18 @@ TEST_CASE_METHOD(contracts_test, "updatedomain_test", "[contracts]") {
 
     READ_TOKEN(domain, get_domain_name(), dom);
     CHECK(2 == dom.issue.authorizers[0].weight);
+
+    // add `.disable-set-transfer` with 'true' to domain-1
+    auto am    = addmeta();
+    am.key     = N128(.disable-set-transfer);
+    am.value   = "true";
+    am.creator = key; 
+
+    my_tester->push_action(action(get_domain_name(1), N128(.meta), am), key_seeds, payer, 5'000'000);
+
+    updom.name = get_domain_name(1);
+    to_variant(updom, var);
+    CHECK_THROWS_AS(my_tester->push_action(N(updatedomain), name128(get_domain_name(1)), N128(.update), var.get_object(), key_seeds, payer), domain_cannot_update_exception);
 
     my_tester->produce_blocks();
 }
