@@ -81,6 +81,90 @@ TEST_CASE_METHOD(contracts_test, "newfungible_test", "[contracts]") {
     CHECK_EQUAL(ft, *ft2);
 }
 
+TEST_CASE_METHOD(contracts_test, "newfungible_v2_test", "[contracts]") {
+    const char* test_data = R"=====(
+    {
+      "name": "EVT",
+      "sym_name": "EVT",
+      "sym": "5,S#5",
+      "creator": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+      "issue" : {
+        "name" : "issue",
+        "threshold" : 1,
+        "authorizers": [{
+            "ref": "[A] EVT6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
+            "weight": 1
+          }
+        ]
+      },
+      "transfer": {
+        "name": "transfer",
+        "threshold": 1,
+        "authorizers": [{
+            "ref": "[G] .OWNER",
+            "weight": 1
+          }
+        ]
+      },
+      "manage": {
+        "name": "manage",
+        "threshold": 1,
+        "authorizers": [{
+            "ref": "[A] EVT6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
+            "weight": 1
+          }
+        ]
+      },
+      "total_supply":"10000.00000 S#5"
+    }
+    )=====";
+
+    auto var            = fc::json::from_string(test_data);
+    auto fungible_payer = address(N(.domain), ".fungible", 0);
+    my_tester->add_money(fungible_payer, asset(10'000'000, symbol(get_sym_id(2), EVT_SYM_ID)));
+    auto& tokendb = my_tester->control->token_db();
+    auto& cache = my_tester->control->token_db_cache();
+
+    CHECK(!EXISTS_TOKEN(fungible, get_sym_id(2)));
+
+    my_tester->control->get_execution_context().set_version(N(newfungible), 2);
+
+    auto newfg = var.as<newfungible_v2>();
+
+    newfg.name         = get_symbol_name();
+    newfg.sym_name     = get_symbol_name();
+    newfg.total_supply = asset::from_string(string("10000.00000 S#5"));
+    to_variant(newfg, var);
+    //new fungible authorization test
+    CHECK_THROWS_AS(my_tester->push_action(N(newfungible), N128(.fungible), (name128)std::to_string(get_sym_id(2)), var.get_object(), key_seeds, fungible_payer), unsatisfied_authorization);
+
+    newfg.creator = key;
+    newfg.issue.authorizers[0].ref.set_account(key);
+    newfg.manage.authorizers[0].ref.set_account(key);
+    to_variant(newfg, var);
+    my_tester->push_action(N(newfungible), N128(.fungible), (name128)std::to_string(get_sym_id(2)), var.get_object(), key_seeds, fungible_payer);
+
+    newfg.name          = "lala";
+    newfg.sym_name      = "lala";
+    newfg.total_supply = asset::from_string(string("10.00000 S#5"));
+    to_variant(newfg, var);
+    CHECK_THROWS_AS(my_tester->push_action(N(newfungible), N128(.fungible), (name128)std::to_string(get_sym_id(2)), var.get_object(), key_seeds, fungible_payer), fungible_duplicate_exception);
+
+    newfg.total_supply = asset::from_string(string("0.00000 S#5"));
+    to_variant(newfg, var);
+    CHECK_THROWS_AS(my_tester->push_action(N(newfungible), N128(.fungible), (name128)std::to_string(get_sym_id(2)), var.get_object(), key_seeds, fungible_payer), fungible_supply_exception);
+
+    CHECK(EXISTS_TOKEN(fungible, get_sym_id(2)));
+
+    my_tester->produce_blocks();
+
+    auto ft  = fungible_def();
+    READ_TOKEN2(token, N128(.fungible), get_sym_id(2), ft);
+    auto ft2  = cache.read_token<fungible_def>(token_type::token, N128(.fungible), get_sym_id(2));
+    CHECK(ft2 != nullptr);
+    CHECK_EQUAL(ft, *ft2);
+}
+
 TEST_CASE_METHOD(contracts_test, "updfungible_test", "[contracts]") {
     const char* test_data = R"=====(
     {
@@ -107,7 +191,7 @@ TEST_CASE_METHOD(contracts_test, "updfungible_test", "[contracts]") {
     )=====";
 
     auto  var     = fc::json::from_string(test_data);
-    auto  updfg   = var.as<updfungible>();
+    auto  updfg   = var.as<updfungible_v2>();
     auto& tokendb = my_tester->control->token_db();
     auto& cache = my_tester->control->token_db_cache();
 
@@ -136,6 +220,72 @@ TEST_CASE_METHOD(contracts_test, "updfungible_test", "[contracts]") {
     auto ft2  = cache.read_token<fungible_def>(token_type::token, N128(.fungible), get_sym_id());
     CHECK(ft2 != nullptr);
     CHECK_EQUAL(ft, *ft2);
+}
+
+TEST_CASE_METHOD(contracts_test, "updfungible_v2_test", "[contracts]") {
+    const char* test_data = R"=====(
+    {
+      "sym_id": "0",
+      "issue" : {
+        "name" : "issue",
+        "threshold" : 1,
+        "authorizers": [{
+            "ref": "[A] EVT6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
+            "weight": 2
+          }
+        ]
+      },
+      "transfer": {
+        "name": "transfer",
+        "threshold": 1,
+        "authorizers": [{
+            "ref": "[G] .OWNER",
+            "weight": 1
+          }
+        ]
+      },
+      "manage": {
+        "name": "manage",
+        "threshold": 1,
+        "authorizers": [{
+            "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+            "weight": 1
+          }
+        ]
+      }
+    }
+    )=====";
+
+    auto  var     = fc::json::from_string(test_data);
+    auto  updfg   = var.as<updfungible_v2>();
+    auto& tokendb = my_tester->control->token_db();
+    auto& cache = my_tester->control->token_db_cache();
+
+    fungible_def fg;
+    READ_TOKEN(fungible, get_sym_id(2), fg);
+    CHECK(1 == fg.issue.authorizers[0].weight);
+
+    my_tester->control->get_execution_context().set_version(N(updfungible), 2);
+
+    //action_authorize_exception test
+    auto strkey = (std::string)key;
+    CHECK_THROWS_AS(my_tester->push_action(N(updfungible), N128(.fungible), name128::from_number(get_sym_id(2)), var.get_object(), key_seeds, payer), action_authorize_exception);
+
+    updfg.sym_id = get_sym_id(2);
+    updfg.issue->authorizers[0].ref.set_account(key);
+    updfg.transfer->authorizers[0].ref.set_account(key);
+    updfg.manage->authorizers[0].ref.set_account(tester::get_public_key(N(key2)));
+    to_variant(updfg, var);
+
+    // add `.disable-set-transfer` with 'true' to fungible 5
+    auto am    = addmeta();
+    am.key     = N128(.disable-set-transfer);
+    am.value   = "true";
+    am.creator = key; 
+
+    my_tester->push_action(action(N128(.fungible), (name128)std::to_string(get_sym_id(2)), am), key_seeds, payer, 5'000'000);
+
+    CHECK_THROWS_AS(my_tester->push_action(N(updfungible), N128(.fungible), name128::from_number(get_sym_id(2)), var.get_object(), key_seeds, payer), fungible_cannot_update_exception);
 }
 
 TEST_CASE_METHOD(contracts_test, "issuefungible_test", "[contracts]") {
