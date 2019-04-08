@@ -193,7 +193,7 @@ TEST_CASE_METHOD(contracts_test, "updfungible_test", "[contracts]") {
     auto  var     = fc::json::from_string(test_data);
     auto  updfg   = var.as<updfungible_v2>();
     auto& tokendb = my_tester->control->token_db();
-    auto& cache = my_tester->control->token_db_cache();
+    auto& cache   = my_tester->control->token_db_cache();
 
     fungible_def fg;
     READ_TOKEN(fungible, get_sym_id(), fg);
@@ -259,7 +259,7 @@ TEST_CASE_METHOD(contracts_test, "updfungible_v2_test", "[contracts]") {
     auto  var     = fc::json::from_string(test_data);
     auto  updfg   = var.as<updfungible_v2>();
     auto& tokendb = my_tester->control->token_db();
-    auto& cache = my_tester->control->token_db_cache();
+    auto& cache   = my_tester->control->token_db_cache();
 
     fungible_def fg;
     READ_TOKEN(fungible, get_sym_id(2), fg);
@@ -542,9 +542,9 @@ TEST_CASE_METHOD(contracts_test, "evt2pevt_test", "[contracts]") {
     READ_DB_ASSET(key, pevt_sym(), ast);
     CHECK(500000 == ast.amount());
 
-    auto tf = var.as<transferft>();
-    tf.from = key;
-    tf.to   = payer;
+    auto tf   = var.as<transferft>();
+    tf.from   = key;
+    tf.to     = payer;
     tf.number = asset(50, symbol(5,2));
 
     to_variant(tf, var);
