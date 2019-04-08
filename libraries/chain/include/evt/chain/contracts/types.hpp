@@ -133,6 +133,7 @@ struct fungible_def {
     time_point_sec create_time;
 
     permission_def issue;
+    permission_def transfer;
     permission_def manage;
 
     asset total_supply;
@@ -370,6 +371,21 @@ struct newfungible {
     EVT_ACTION_VER1(newfungible);
 };
 
+struct newfungible_v2 {
+    fungible_name name;
+    symbol_name   sym_name;
+    symbol        sym;
+    user_id       creator;
+
+    permission_def issue;
+    permission_def transfer;
+    permission_def manage;
+
+    asset total_supply;
+
+    EVT_ACTION_VER2(newfungible, newfungible_v2);
+};
+
 struct updfungible {
     symbol_id_type sym_id;
 
@@ -377,6 +393,16 @@ struct updfungible {
     optional<permission_def> manage;
 
     EVT_ACTION_VER1(updfungible);
+};
+
+struct updfungible_v2 {
+    symbol_id_type sym_id;
+
+    optional<permission_def> issue;
+    optional<permission_def> transfer;
+    optional<permission_def> manage;
+
+    EVT_ACTION_VER2(updfungible, updfungible_v2);
 };
 
 struct issuefungible {
@@ -587,7 +613,7 @@ FC_REFLECT(evt::chain::contracts::key_weight, (key)(weight));
 FC_REFLECT(evt::chain::contracts::authorizer_weight, (ref)(weight));
 FC_REFLECT(evt::chain::contracts::permission_def, (name)(threshold)(authorizers));
 FC_REFLECT(evt::chain::contracts::domain_def, (name)(creator)(create_time)(issue)(transfer)(manage)(metas));
-FC_REFLECT(evt::chain::contracts::fungible_def, (name)(sym_name)(sym)(creator)(create_time)(issue)(manage)(total_supply)(metas));
+FC_REFLECT(evt::chain::contracts::fungible_def, (name)(sym_name)(sym)(creator)(create_time)(issue)(transfer)(manage)(total_supply)(metas));
 
 FC_REFLECT_ENUM(evt::chain::contracts::suspend_status, (proposed)(executed)(failed)(cancelled));
 FC_REFLECT(evt::chain::contracts::suspend_def, (name)(proposer)(status)(trx)(signed_keys)(signatures));
@@ -622,7 +648,9 @@ FC_REFLECT(evt::chain::contracts::newgroup, (name)(group));
 FC_REFLECT(evt::chain::contracts::updategroup, (name)(group));
 FC_REFLECT(evt::chain::contracts::updatedomain, (name)(issue)(transfer)(manage));
 FC_REFLECT(evt::chain::contracts::newfungible, (name)(sym_name)(sym)(creator)(issue)(manage)(total_supply));
+FC_REFLECT(evt::chain::contracts::newfungible_v2, (name)(sym_name)(sym)(creator)(issue)(transfer)(manage)(total_supply));
 FC_REFLECT(evt::chain::contracts::updfungible, (sym_id)(issue)(manage));
+FC_REFLECT(evt::chain::contracts::updfungible_v2, (sym_id)(issue)(transfer)(manage));
 FC_REFLECT(evt::chain::contracts::issuefungible, (address)(number)(memo));
 FC_REFLECT(evt::chain::contracts::transferft, (from)(to)(number)(memo));
 FC_REFLECT(evt::chain::contracts::recycleft, (address)(number)(memo));

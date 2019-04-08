@@ -146,8 +146,8 @@ protected:
     }
     
     symbol_id_type
-    get_sym_id() {
-        auto sym_id = 3;
+    get_sym_id(int seq = 0) {
+        auto sym_id = 3 + seq;
 
         return sym_id;
     }

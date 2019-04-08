@@ -151,10 +151,11 @@ FC_DECLARE_DERIVED_EXCEPTION( name_reserved_exception,    action_exception, 3040
 FC_DECLARE_DERIVED_EXCEPTION( address_reserved_exception, action_exception, 3040004, "Address is reserved." );
 FC_DECLARE_DERIVED_EXCEPTION( asset_symbol_exception,     action_exception, 3040005, "Invalid symbol of asset" );
 
-FC_DECLARE_DERIVED_EXCEPTION( domain_exception,           action_exception, 3040100, "Domain exception" );
-FC_DECLARE_DERIVED_EXCEPTION( unknown_domain_exception,   domain_exception, 3040101, "Domain does not exist." );
-FC_DECLARE_DERIVED_EXCEPTION( domain_duplicate_exception, domain_exception, 3040102, "Domain already exists." );
-FC_DECLARE_DERIVED_EXCEPTION( domain_name_exception,      domain_exception, 3040103, "Invalid domain name" );
+FC_DECLARE_DERIVED_EXCEPTION( domain_exception,               action_exception, 3040100, "Domain exception" );
+FC_DECLARE_DERIVED_EXCEPTION( unknown_domain_exception,       domain_exception, 3040101, "Domain does not exist." );
+FC_DECLARE_DERIVED_EXCEPTION( domain_duplicate_exception,     domain_exception, 3040102, "Domain already exists." );
+FC_DECLARE_DERIVED_EXCEPTION( domain_name_exception,          domain_exception, 3040103, "Invalid domain name" );
+FC_DECLARE_DERIVED_EXCEPTION( domain_cannot_update_exception, domain_exception, 3040104, "Some parts of this domain cannot be updated due to some limitations" );
 
 FC_DECLARE_DERIVED_EXCEPTION( token_exception,                action_exception, 3040200, "Token exception" );
 FC_DECLARE_DERIVED_EXCEPTION( unknown_token_exception,        token_exception,  3040201, "Token does not exist." );
@@ -171,15 +172,16 @@ FC_DECLARE_DERIVED_EXCEPTION( group_duplicate_exception, group_exception,  30403
 FC_DECLARE_DERIVED_EXCEPTION( group_name_exception,      group_exception,  3040303, "Invalid group name" );
 FC_DECLARE_DERIVED_EXCEPTION( group_key_exception,       group_exception,  3040304, "Group key is reserved to update this group." );
 
-FC_DECLARE_DERIVED_EXCEPTION( fungible_exception,           action_exception,   3040400, "Fungible exception" );
-FC_DECLARE_DERIVED_EXCEPTION( unknown_fungible_exception,   fungible_exception, 3040401, "Fungible asset does not exist." );
-FC_DECLARE_DERIVED_EXCEPTION( fungible_duplicate_exception, fungible_exception, 3040402, "Fungible asset already exists." );
-FC_DECLARE_DERIVED_EXCEPTION( fungible_name_exception,      fungible_exception, 3040403, "Invalid fungible asset name" );
-FC_DECLARE_DERIVED_EXCEPTION( fungible_symbol_exception,    fungible_exception, 3040404, "Invalid fungible asset symbol" );
-FC_DECLARE_DERIVED_EXCEPTION( fungible_supply_exception,    fungible_exception, 3040405, "Invalid fungible supply" );
-FC_DECLARE_DERIVED_EXCEPTION( fungible_address_exception,   fungible_exception, 3040406, "Invalid address" );
-FC_DECLARE_DERIVED_EXCEPTION( math_overflow_exception,      fungible_exception, 3040407, "Operations resulted in overflow." );
-FC_DECLARE_DERIVED_EXCEPTION( balance_exception,            fungible_exception, 3040408, "Not enough balance left." );
+FC_DECLARE_DERIVED_EXCEPTION( fungible_exception,               action_exception,   3040400, "FT exception" );
+FC_DECLARE_DERIVED_EXCEPTION( unknown_fungible_exception,       fungible_exception, 3040401, "FT does not exist." );
+FC_DECLARE_DERIVED_EXCEPTION( fungible_duplicate_exception,     fungible_exception, 3040402, "FT already exists." );
+FC_DECLARE_DERIVED_EXCEPTION( fungible_name_exception,          fungible_exception, 3040403, "Invalid FT asset name" );
+FC_DECLARE_DERIVED_EXCEPTION( fungible_symbol_exception,        fungible_exception, 3040404, "Invalid FT asset symbol" );
+FC_DECLARE_DERIVED_EXCEPTION( fungible_supply_exception,        fungible_exception, 3040405, "Invalid FT supply" );
+FC_DECLARE_DERIVED_EXCEPTION( fungible_address_exception,       fungible_exception, 3040406, "Invalid address" );
+FC_DECLARE_DERIVED_EXCEPTION( math_overflow_exception,          fungible_exception, 3040407, "Operations resulted in overflow." );
+FC_DECLARE_DERIVED_EXCEPTION( balance_exception,                fungible_exception, 3040408, "Not enough balance left." );
+FC_DECLARE_DERIVED_EXCEPTION( fungible_cannot_update_exception, fungible_exception, 3040409, "Some parts of this FT cannot be updated due to some limitations" );
 
 FC_DECLARE_DERIVED_EXCEPTION( suspend_exception,                   action_exception,  3040500, "Suspend exception" );
 FC_DECLARE_DERIVED_EXCEPTION( unknown_suspend_exception,           suspend_exception, 3040501, "Suspend transaction does not exist." );
