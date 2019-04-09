@@ -144,8 +144,8 @@ TEST_CASE_METHOD(contracts_test, "newfungible_v2_test", "[contracts]") {
     to_variant(newfg, var);
     my_tester->push_action(N(newfungible), N128(.fungible), (name128)std::to_string(get_sym_id(2)), var.get_object(), key_seeds, fungible_payer);
 
-    newfg.name          = "lala";
-    newfg.sym_name      = "lala";
+    newfg.name         = "lala";
+    newfg.sym_name     = "lala";
     newfg.total_supply = asset::from_string(string("10.00000 S#5"));
     to_variant(newfg, var);
     CHECK_THROWS_AS(my_tester->push_action(N(newfungible), N128(.fungible), (name128)std::to_string(get_sym_id(2)), var.get_object(), key_seeds, fungible_payer), fungible_duplicate_exception);

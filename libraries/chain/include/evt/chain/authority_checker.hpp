@@ -33,13 +33,13 @@ enum toke_type { kNFT = 0, kFT };
 template<uint64_t>
 struct check_authority {};
 
-#define READ_DB_TOKEN(TYPE, PREFIX, KEY, VPTR, EXCEPTION, FORMAT, ...)  \
-    try {                                                               \
-        using vtype = typename decltype(VPTR)::element_type;            \
-        VPTR = token_db_.template read_token<vtype>(TYPE, PREFIX, KEY); \
-    }                                                                   \
-    catch(token_database_exception&) {                                  \
-        EVT_THROW2(EXCEPTION, FORMAT, __VA_ARGS__);                     \
+#define READ_DB_TOKEN(TYPE, PREFIX, KEY, VPTR, EXCEPTION, FORMAT, ...)       \
+    try {                                                                    \
+        using vtype = typename decltype(VPTR)::element_type;                 \
+        VPTR = tokendb_cache_.template read_token<vtype>(TYPE, PREFIX, KEY); \
+    }                                                                        \
+    catch(token_database_exception&) {                                       \
+        EVT_THROW2(EXCEPTION, FORMAT, __VA_ARGS__);                          \
     }
 
 }  // namespace __internal
@@ -59,7 +59,7 @@ private:
     const public_keys_set&       signing_keys_;
     const uint32_t               max_recursion_depth_;
 
-    token_database_cache&           token_db_;
+    token_database_cache&           tokendb_cache_;
     boost::dynamic_bitset<uint64_t> used_keys_;
 
 public:
@@ -110,7 +110,7 @@ public:
         , exec_ctx_(exec_ctx)
         , signing_keys_(signing_keys)
         , max_recursion_depth_(max_recursion_depth)
-        , token_db_(control.token_db_cache())
+        , tokendb_cache_(control.token_db_cache())
         , used_keys_(signing_keys.size(), false) {}
 
 private:
