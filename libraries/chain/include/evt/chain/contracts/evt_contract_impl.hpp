@@ -2062,8 +2062,16 @@ EVT_ACTION_IMPL_BEGIN(setpsvbonus) {
     auto spbact = context.act.data_as<ACT>();
     try {
         auto sym = spbact.sym;
-        EVT_ASSERT(context.has_authorized(N128(.bonus), name128::from_number(sym.id())), action_authorize_exception,
-            "Invalid authorization fields(domain and key).");
+
+        if constexpr (EVT_ACTION_VER() == 1) {
+            EVT_ASSERT(context.has_authorized(N128(.bonus), name128::from_number(sym.id())), action_authorize_exception,
+                "Invalid authorization fields in action(domain and key).");
+        }
+        else {
+            EVT_ASSERT(context.has_authorized(N128(.psvbonus), name128::from_number(sym.id())), action_authorize_exception,
+                "Invalid authorization fields in action(domain and key).");
+        }
+
         EVT_ASSERT(sym != evt_sym(), bonus_exception, "Passive bonus cannot be registered in EVT");
         EVT_ASSERT(sym != pevt_sym(), bonus_exception, "Passive bonus cannot be registered in Pinned EVT");
 
