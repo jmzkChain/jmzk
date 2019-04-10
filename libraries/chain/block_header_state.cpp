@@ -37,10 +37,10 @@ block_header_state::calc_dpos_last_irreversible() const {
 }
 
 /**
-   *  Generate a template block header state for a given block time, it will not
-   *  contain a transaction mroot, action mroot, or new_producers as those components
-   *  are derived from chain state.
-   */
+ *  Generate a template block header state for a given block time, it will not
+ *  contain a transaction mroot, action mroot, or new_producers as those components
+ *  are derived from chain state.
+ */
 block_header_state
 block_header_state::generate_next(block_timestamp_type when) const {
     block_header_state result;
@@ -146,13 +146,13 @@ block_header_state::set_new_producers(producer_schedule_type pending) {
 }
 
 /**
-   *  Transitions the current header state into the next header state given the supplied signed block header.
-   *
-   *  Given a signed block header, generate the expected template based upon the header time,
-   *  then validate that the provided header matches the template.
-   *
-   *  If the header specifies new_producers then apply them accordingly.
-   */
+ *  Transitions the current header state into the next header state given the supplied signed block header.
+ *
+ *  Given a signed block header, generate the expected template based upon the header time,
+ *  then validate that the provided header matches the template.
+ *
+ *  If the header specifies new_producers then apply them accordingly.
+ */
 block_header_state
 block_header_state::next(const signed_block_header& h, bool skip_validate_signee) const {
     EVT_ASSERT(h.timestamp != block_timestamp_type(), block_validate_exception, "", ("h", h));

@@ -1050,7 +1050,7 @@ struct controller_impl {
                     // pop all blocks from the bad fork
                     // ritr base is a forward itr to the last block successfully applied
                     auto applied_itr = ritr.base();
-                    for( auto itr = applied_itr; itr != branches.first.end(); ++itr ) {
+                    for(auto itr = applied_itr; itr != branches.first.end(); ++itr) {
                         fork_db.mark_in_current_chain(*itr, false);
                         pop_block();
                     }
