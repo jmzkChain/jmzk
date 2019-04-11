@@ -2015,7 +2015,7 @@ void
 check_passive_methods(const execution_context& exec_ctx, const passive_methods& methods) {
     for(auto& it : methods) {
         // check if it's a valid action
-        EVT_ASSERT2(it.action == N(transferft) || it.action == N(everipay), bonus_method_exeption,
+        EVT_ASSERT2(it.action == N(transferft) || it.action == N(everipay), bonus_method_exception,
             "Only `transferft` and `everipay` are valid for method options");
     }
 }
@@ -2061,21 +2061,32 @@ EVT_ACTION_IMPL_BEGIN(setpsvbonus) {
 
     auto spbact = context.act.data_as<ACT>();
     try {
-        auto sym = spbact.sym;
-
+        auto sym_id = 0u;
         if constexpr (EVT_ACTION_VER() == 1) {
-            EVT_ASSERT(context.has_authorized(N128(.bonus), name128::from_number(sym.id())), action_authorize_exception,
+            sym_id = spbact.sym.id();
+            EVT_ASSERT(context.has_authorized(N128(.bonus), name128::from_number(sym_id)), action_authorize_exception,
                 "Invalid authorization fields in action(domain and key).");
         }
         else {
-            EVT_ASSERT(context.has_authorized(N128(.psvbonus), name128::from_number(sym.id())), action_authorize_exception,
+            sym_id = spbact.sym_id;
+            EVT_ASSERT(context.has_authorized(N128(.psvbonus), name128::from_number(spbact.sym_id)), action_authorize_exception,
                 "Invalid authorization fields in action(domain and key).");
         }
 
-        EVT_ASSERT(sym != evt_sym(), bonus_exception, "Passive bonus cannot be registered in EVT");
-        EVT_ASSERT(sym != pevt_sym(), bonus_exception, "Passive bonus cannot be registered in Pinned EVT");
-
         DECLARE_TOKEN_DB()
+
+        auto fungible = make_empty_cache_ptr<fungible_def>();
+        READ_DB_TOKEN(token_type::fungible, std::nullopt, sym_id, fungible, unknown_fungible_exception,
+            "Cannot find FT with sym id: {}", sym_id);
+
+        if constexpr (EVT_ACTION_VER() == 1) {
+            EVT_ASSERT2(fungible->sym == spbact.sym, bonus_symbol_exception, "Symbol provided is not the same as FT");
+        }
+        auto sym = fungible->sym;
+
+        EVT_ASSERT(sym != evt_sym(), bonus_symbol_exception, "Passive bonus cannot be registered in EVT");
+        EVT_ASSERT(sym != pevt_sym(), bonus_symbol_exception, "Passive bonus cannot be registered in Pinned EVT");
+
         EVT_ASSERT2(!tokendb.exists_token(token_type::psvbonus, std::nullopt, get_psvbonus_db_key(sym.id(), kPsvBonus)),
             bonus_dupe_exception, "It's now allowd to update passive bonus currently.");
 
@@ -2217,19 +2228,21 @@ EVT_ACTION_IMPL_BEGIN(distpsvbonus) {
 
     auto spbact = context.act.data_as<ACT>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.psvbonus), name128::from_number(spbact.sym.id())), action_authorize_exception,
+        EVT_ASSERT(context.has_authorized(N128(.psvbonus), name128::from_number(spbact.sym_id)), action_authorize_exception,
             "Invalid authorization fields in action(domain and key).");
 
         DECLARE_TOKEN_DB()
 
         auto pb = make_empty_cache_ptr<passive_bonus>();
-        READ_DB_TOKEN(token_type::psvbonus, std::nullopt, get_psvbonus_db_key(spbact.sym.id(), kPsvBonus), pb, unknown_bonus_exception,
-            "Cannot find passive bonus registered for fungible token with sym id: {}.", spbact.sym.id());
+        READ_DB_TOKEN(token_type::psvbonus, std::nullopt, get_psvbonus_db_key(spbact.sym_id, kPsvBonus), pb, unknown_bonus_exception,
+            "Cannot find passive bonus registered for fungible token with sym id: {}.", spbact.sym_id);
+
+        auto sym = pb->dist_threshold.sym();
 
         property pbonus;
-        READ_DB_ASSET_NO_THROW(get_psvbonus_address(spbact.sym.id(), 0), spbact.sym, pbonus);
+        READ_DB_ASSET_NO_THROW(get_psvbonus_address(spbact.sym_id, 0), sym, pbonus);
         EVT_ASSERT2(pbonus.amount >= pb->dist_threshold.amount(), bonus_unreached_dist_threshold,
-            "Distribution threshold: {} is unreached, current: {}", pb->dist_threshold, asset(pbonus.amount, spbact.sym));
+            "Distribution threshold: {} is unreached, current: {}", pb->dist_threshold, asset(pbonus.amount, sym));
 
         auto bd = bonusdist();
         for(auto& rule : pb->rules) {
@@ -2271,10 +2284,10 @@ EVT_ACTION_IMPL_BEGIN(distpsvbonus) {
         UPD_DB_TOKEN(token_type::psvbonus, *pb);
 
         auto dbv = make_db_value(bd);
-        tokendb_cache.put_token(token_type::psvbonus_dist, action_op::add, std::nullopt, get_psvbonus_db_key(spbact.sym.id(), pb->round), dbv);
+        tokendb_cache.put_token(token_type::psvbonus_dist, action_op::add, std::nullopt, get_psvbonus_db_key(spbact.sym_id, pb->round), dbv);
 
         // transfer all the FTs from cllected address to distribute address of current round
-        transfer_fungible(context, get_psvbonus_address(spbact.sym.id(), 0), get_psvbonus_address(spbact.sym.id(), pb->round), asset(pbonus.amount, pbonus.sym), N(distpsvbonus), false /* pay bonus */);
+        transfer_fungible(context, get_psvbonus_address(spbact.sym_id, 0), get_psvbonus_address(spbact.sym_id, pb->round), asset(pbonus.amount, pbonus.sym), N(distpsvbonus), false /* pay bonus */);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
