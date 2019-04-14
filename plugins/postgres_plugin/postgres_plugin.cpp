@@ -497,6 +497,7 @@ postgres_plugin_impl::init(bool init_db) {
             nf.sym          = f.sym;
             nf.creator      = f.creator;
             nf.issue        = std::move(f.issue);
+            nf.transfer     = std::move(f.transfer);
             nf.manage       = std::move(f.manage);
             nf.total_supply = f.total_supply;
 
