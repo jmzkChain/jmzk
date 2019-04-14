@@ -487,32 +487,12 @@ postgres_plugin_impl::init(bool init_db) {
         }
 
         // HACK: Add EVT and PEVT manually
-        auto gs = chain::genesis_state();
-
-        auto get_nfact = [](auto& f) {
-            auto nf = newfungible();
-
-            nf.name         = f.name;
-            nf.sym_name     = f.sym_name;
-            nf.sym          = f.sym;
-            nf.creator      = f.creator;
-            nf.issue        = std::move(f.issue);
-            nf.transfer     = std::move(f.transfer);
-            nf.manage       = std::move(f.manage);
-            nf.total_supply = f.total_supply;
-
-            auto nfact = action(N128(.fungible), (name128)std::to_string(nf.sym.id()), nf);
-            return nfact;
-        };
-
-        auto ng  = newgroup();
-        ng.name  = N128(.everiToken);
-        ng.group = gs.evt_org;
-
         auto tctx = db_.new_trx_context();
-        process_action(get_nfact(gs.evt), tctx);
-        process_action(get_nfact(gs.pevt), tctx);
-        process_action(action(N128(.group), N128(.everiToken), ng), tctx);
+
+        auto gs = chain::genesis_state();
+        db_.add_fungible(tctx, gs.evt);
+        db_.add_fungible(tctx, gs.pevt);
+        db_.add_group(tctx, gs.evt_org);
 
         tctx.commit();
     }
