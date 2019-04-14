@@ -492,7 +492,11 @@ postgres_plugin_impl::init(bool init_db) {
         auto gs = chain::genesis_state();
         db_.add_fungible(tctx, gs.evt);
         db_.add_fungible(tctx, gs.pevt);
-        db_.add_group(tctx, gs.evt_org);
+
+        auto ng  = newgroup();
+        ng.name  = N128(.everiToken);
+        ng.group = gs.evt_org;
+        db_.add_group(tctx, ng);
 
         tctx.commit();
     }
