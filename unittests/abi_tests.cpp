@@ -713,7 +713,7 @@ TEST_CASE("newfungible_abi_test", "[abis]") {
     {
       "name": "EVT",
       "sym_name": "EVT",
-      "sym": "5,S#1",
+      "sym": "5,S#15555244665",
       "creator": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
       "issue" : {
         "name" : "issue",
@@ -738,10 +738,73 @@ TEST_CASE("newfungible_abi_test", "[abis]") {
     )=====";
 
     auto var   = fc::json::from_string(test_data);
+    CHECK_THROWS(var.as<newfungible>());
+
+    test_data = R"=====(
+    {
+      "name": "EVT",
+      "sym_name": "EVT",
+      "sym": "5,S#-1",
+      "creator": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+      "issue" : {
+        "name" : "issue",
+        "threshold" : 1,
+        "authorizers": [{
+            "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+            "weight": 1
+          }
+        ]
+      },
+      "manage": {
+        "name": "manage",
+        "threshold": 1,
+        "authorizers": [{
+            "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+            "weight": 1
+          }
+        ]
+      },
+      "total_supply":"12.00000 S#0"
+    }
+    )=====";
+
+    var   = fc::json::from_string(test_data);
+    CHECK_THROWS(var.as<newfungible>());
+
+    test_data = R"=====(
+    {
+      "name": "EVT",
+      "sym_name": "EVT",
+      "sym": "5,S#1",
+      "creator": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+      "issue" : {
+        "name" : "issue",
+        "threshold" : 1,
+        "authorizers": [{
+            "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+            "weight": 1
+          }
+        ]
+      },
+      "manage": {
+        "name": "manage",
+        "threshold": 1,
+        "authorizers": [{
+            "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+            "weight": 1
+          }
+        ]
+      },
+      "total_supply":"12.00000 S#0"
+    }
+    )=====";
+
+    var   = fc::json::from_string(test_data);
     auto newfg = var.as<newfungible>();
 
     CHECK("EVT" == newfg.name);
     CHECK("EVT" == newfg.sym_name);
+    CHECK("5,S#1" == newfg.sym.to_string());
     CHECK("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)newfg.creator);
 
     CHECK("issue" == newfg.issue.name);
