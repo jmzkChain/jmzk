@@ -78,12 +78,13 @@ public:
 
         auto cfg = controller::config();
 
-        cfg.blocks_dir            = basedir + "/blocks";
-        cfg.state_dir             = basedir + "/state";
-        cfg.db_config.db_path     = basedir + "/tokendb";
-        cfg.contracts_console     = true;
-        cfg.charge_free_mode      = false;
-        cfg.loadtest_mode         = false;
+        cfg.blocks_dir             = basedir + "/blocks";
+        cfg.state_dir              = basedir + "/state";
+        cfg.db_config.db_path      = basedir + "/tokendb";
+        cfg.contracts_console      = true;
+        cfg.charge_free_mode       = false;
+        cfg.loadtest_mode          = false;
+        cfg.max_serialization_time = std::chrono::hours(1);
 
         cfg.genesis.initial_timestamp = fc::time_point::now();
         cfg.genesis.initial_key       = tester::get_public_key("evt");

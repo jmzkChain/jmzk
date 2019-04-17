@@ -24,6 +24,8 @@ symbol::from_string(const string& from) {
 
         auto p  = std::stoul(s.substr(0, c));
         auto id = std::stoul(s.substr(c + 3));
+        EVT_ASSERT(p <= max_precision, symbol_type_exception, "Exceed max precision");
+        EVT_ASSERT(id <= std::numeric_limits<uint32_t>::max(), symbol_type_exception, "Exceed max symbol id allowed");
 
         return symbol(p, id);
     }
