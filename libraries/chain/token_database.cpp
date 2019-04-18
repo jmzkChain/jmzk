@@ -584,6 +584,8 @@ token_database_impl::open(int load_persistence) {
             EVT_THROW(token_database_rocksdb_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
         }
 
+        tokens_handle_ = db_->DefaultColumnFamily();
+
         if(load_persistence) {
             load_savepoints();
         }

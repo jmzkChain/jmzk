@@ -1195,7 +1195,7 @@ EVT_ACTION_IMPL_BEGIN(newsuspend) {
         suspend.status   = suspend_status::proposed;
         suspend.trx      = std::move(nsact.trx);
 
-        PUT_DB_TOKEN(token_type::suspend, suspend);
+        ADD_DB_TOKEN(token_type::suspend, suspend);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
