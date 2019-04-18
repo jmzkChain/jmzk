@@ -569,22 +569,27 @@ token_database_impl::open(int load_persistence) {
     read_opts_.prefix_same_as_start = true;
     read_opts_.tailing              = true;
 
+    auto columns = std::vector<ColumnFamilyDescriptor>();
+    auto handles = std::vector<ColumnFamilyHandle*>();
+    columns.emplace_back(kDefaultColumnFamilyName, options);
+
     if(!fc::exists(config_.db_path)) {
         auto t = config_.db_path.to_native_ansi_path();
         // create new database and open
         fc::create_directories(config_.db_path);
-
-        auto status = DB::Open(options, config_.db_path.to_native_ansi_path(), &db_);
+        
+        auto status  = DB::Open(options, config_.db_path.to_native_ansi_path(), columns, &handles, &db_);
         if(!status.ok()) {
             EVT_THROW(token_database_rocksdb_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
         }
+
+        assert(handles.size() == 1);
+        tokens_handle_ = handles[0];
 
         status = db_->CreateColumnFamily(assets_options, kAssetsColumnFamilyName, &assets_handle_);
         if(!status.ok()) {
             EVT_THROW(token_database_rocksdb_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
         }
-
-        tokens_handle_ = db_->DefaultColumnFamily();
 
         if(load_persistence) {
             load_savepoints();
@@ -592,11 +597,7 @@ token_database_impl::open(int load_persistence) {
         return;
     }
 
-    auto columns = std::vector<ColumnFamilyDescriptor>();
-    columns.emplace_back(kDefaultColumnFamilyName, options);
     columns.emplace_back(kAssetsColumnFamilyName, assets_options);
-
-    auto handles = std::vector<ColumnFamilyHandle*>();
 
     auto status = DB::Open(options, config_.db_path.to_native_ansi_path(), columns, &handles, &db_);
     if(!status.ok()) {
