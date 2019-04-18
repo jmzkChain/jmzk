@@ -122,6 +122,25 @@ struct domain_def {
     meta_list metas;
 };
 
+// Remaining for the usage in genesis state
+struct fungible_def_genesis {
+    fungible_def_genesis() = default;
+
+    fungible_name  name;
+    symbol_name    sym_name;
+    symbol         sym;
+    
+    user_id        creator;
+    time_point_sec create_time;
+
+    permission_def issue;
+    permission_def manage;
+
+    asset total_supply;
+    
+    meta_list metas;
+};
+
 struct fungible_def {
     fungible_def() = default;
 
@@ -619,6 +638,7 @@ FC_REFLECT(evt::chain::contracts::key_weight, (key)(weight));
 FC_REFLECT(evt::chain::contracts::authorizer_weight, (ref)(weight));
 FC_REFLECT(evt::chain::contracts::permission_def, (name)(threshold)(authorizers));
 FC_REFLECT(evt::chain::contracts::domain_def, (name)(creator)(create_time)(issue)(transfer)(manage)(metas));
+FC_REFLECT(evt::chain::contracts::fungible_def_genesis, (name)(sym_name)(sym)(creator)(create_time)(issue)(manage)(total_supply)(metas));
 FC_REFLECT(evt::chain::contracts::fungible_def, (name)(sym_name)(sym)(creator)(create_time)(issue)(transfer)(manage)(total_supply)(metas));
 
 FC_REFLECT_ENUM(evt::chain::contracts::suspend_status, (proposed)(executed)(failed)(cancelled));

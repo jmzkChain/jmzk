@@ -15,6 +15,7 @@
 namespace evt { namespace chain {
 
 using contracts::group_def;
+using contracts::fungible_def_genesis;
 using contracts::fungible_def;
 
 struct genesis_state {
@@ -42,16 +43,20 @@ struct genesis_state {
     time_point      initial_timestamp;
     public_key_type initial_key;
 
-    group_def       evt_org;
-    fungible_def    evt;
-    fungible_def    pevt;
+    group_def            evt_org;
+    fungible_def_genesis evt;
+    fungible_def_genesis pevt;
 
     /**
-    * Get the chain_id corresponding to this genesis state.
-    *
-    * This is the SHA256 serialization of the genesis_state.
-    */
+     * Get the chain_id corresponding to this genesis state.
+     *
+     * This is the SHA256 serialization of the genesis_state.
+     */
     chain_id_type compute_chain_id() const;
+
+    // Get EVT & PEVT FTs
+    fungible_def get_evt_ft() const;
+    fungible_def get_pevt_ft() const;
 
     friend inline bool
     operator==(const genesis_state& lhs, const genesis_state& rhs) {

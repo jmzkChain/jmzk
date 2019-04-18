@@ -490,8 +490,8 @@ postgres_plugin_impl::init(bool init_db) {
         auto tctx = db_.new_trx_context();
 
         auto gs = chain::genesis_state();
-        db_.add_fungible(tctx, gs.evt);
-        db_.add_fungible(tctx, gs.pevt);
+        db_.add_fungible(tctx, gs.get_evt_ft());
+        db_.add_fungible(tctx, gs.get_pevt_ft());
 
         auto ng  = newgroup();
         ng.name  = N128(.everiToken);

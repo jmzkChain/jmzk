@@ -509,8 +509,8 @@ struct controller_impl {
     }
 
     /**
-    *  Sets fork database head to the genesis state.
-    */
+     *  Sets fork database head to the genesis state.
+     */
     void
     initialize_fork_db() {
         wlog(" Initializing new blockchain with genesis state");
