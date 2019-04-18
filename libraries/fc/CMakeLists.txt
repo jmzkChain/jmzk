@@ -2,116 +2,115 @@
 #INCLUDE(GetPrerequisites)
 #INCLUDE(VersionMacros)
 
-SET( DEFAULT_HEADER_INSTALL_DIR usr/include/${target} )
-SET( DEFAULT_LIBRARY_INSTALL_DIR usr/lib )
-SET( DEFAULT_EXECUTABLE_INSTALL_DIR usr/bin )
-SET( CMAKE_DEBUG_POSTFIX _debug )
-SET( BUILD_SHARED_LIBS NO )
-SET( ECC_IMPL secp256k1 CACHE STRING "secp256k1 or openssl or mixed" )
+set(DEFAULT_HEADER_INSTALL_DIR usr/include/${target})
+set(DEFAULT_LIBRARY_INSTALL_DIR usr/lib)
+set(DEFAULT_EXECUTABLE_INSTALL_DIR usr/bin)
+set(CMAKE_DEBUG_POSTFIX _debug)
+set(BUILD_SHARED_LIBS NO)
+set(ECC_IMPL secp256k1 CACHE STRING "secp256k1 or openssl or mixed")
 
 set(platformBitness 32)
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-  set(platformBitness 64)
+    set(platformBitness 64)
 endif()
 
-SET (ORIGINAL_LIB_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
+set(ORIGINAL_LIB_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES})
 
 find_package(Secp256k1 REQUIRED)
 find_package(GMP REQUIRED)
 
-IF( ECC_IMPL STREQUAL openssl )
-  SET( ECC_REST src/crypto/elliptic_impl_pub.cpp )
-ELSE( ECC_IMPL STREQUAL openssl )
-  SET( ECC_LIB ${Secp256k1_LIBRARY} ${GMP_LIBRARIES} )
-  SET( ECC_SHARED_LIB ${Secp256k1_SHARED_LIBRARY} ${GMP_SHARED_LIBRARIES} )
-  IF( ECC_IMPL STREQUAL mixed )
-    SET( ECC_REST src/crypto/elliptic_impl_priv.cpp src/crypto/elliptic_impl_pub.cpp )
-  ELSE( ECC_IMPL STREQUAL mixed )
-    SET( ECC_REST src/crypto/elliptic_impl_priv.cpp )
-  ENDIF( ECC_IMPL STREQUAL mixed )
-ENDIF( ECC_IMPL STREQUAL openssl )
+if(ECC_IMPL STREQUAL openssl)
+    set(ECC_REST src/crypto/elliptic_impl_pub.cpp)
+else(ECC_IMPL STREQUAL openssl)
+    set(ECC_LIB ${Secp256k1_LIBRARY} ${GMP_LIBRARIES})
+    set(ECC_SHARED_LIB ${Secp256k1_SHARED_LIBRARY} ${GMP_SHARED_LIBRARIES})
+    if(ECC_IMPL STREQUAL mixed)
+        set(ECC_REST src/crypto/elliptic_impl_priv.cpp src/crypto/elliptic_impl_pub.cpp)
+    else(ECC_IMPL STREQUAL mixed)
+        set(ECC_REST src/crypto/elliptic_impl_priv.cpp)
+    endif(ECC_IMPL STREQUAL mixed)
+endif(ECC_IMPL STREQUAL openssl)
 
-MESSAGE(STATUS "Configuring fc to build on Unix/Apple")
+message(STATUS "Configuring fc to build on Unix/Apple")
 
-SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a;.so")
+set(CMAKE_FIND_LIBRARY_SUFFIXES ".a;.so")
 
-IF(NOT APPLE)
- # Linux or other unix
- SET(rt_library rt )
- SET(pthread_library pthread)
-ENDIF(NOT APPLE)
+if(NOT APPLE)
+    # Linux or other unix
+    set(rt_library rt)
+    set(pthread_library pthread)
+endif(NOT APPLE)
 
-IF(NOT "$ENV{OPENSSL_ROOT_DIR}" STREQUAL "")
-  set(OPENSSL_ROOT_DIR $ENV{OPENSSL_ROOT_DIR} )
-  set(OPENSSL_INCLUDE_DIR ${OPENSSL_ROOT_DIR}/include)
-  message(STATUS "Setting up OpenSSL root and include vars to ${OPENSSL_ROOT_DIR}, ${OPENSSL_INCLUDE_DIR}")
-ENDIF()
+if(NOT "$ENV{OPENSSL_ROOT_DIR}" STREQUAL "")
+    set(OPENSSL_ROOT_DIR $ENV{OPENSSL_ROOT_DIR})
+    set(OPENSSL_INCLUDE_DIR ${OPENSSL_ROOT_DIR}/include)
+    message(STATUS "Setting up OpenSSL root and include vars to ${OPENSSL_ROOT_DIR}, ${OPENSSL_INCLUDE_DIR}")
+endif()
 
 find_package(OpenSSL REQUIRED)
 
-set( CMAKE_FIND_LIBRARY_SUFFIXES ${ORIGINAL_LIB_SUFFIXES} )
+set(CMAKE_FIND_LIBRARY_SUFFIXES ${ORIGINAL_LIB_SUFFIXES})
 
-set( fc_sources
-     src/uint128.cpp
-     src/real128.cpp
-     src/variant.cpp
-     src/exception.cpp
-     src/variant_object.cpp
-     src/string.cpp
-     src/time.cpp
-     src/utf8.cpp
-     src/io/datastream.cpp
-     src/io/json.cpp
-     src/io/varint.cpp
-     src/io/fstream.cpp
-     src/io/console.cpp
-     src/filesystem.cpp
-     src/interprocess/file_mapping.cpp
-     src/interprocess/mmap_struct.cpp
-     src/log/log_message.cpp
-     src/log/logger.cpp
-     src/log/appender.cpp
-     src/log/console_appender.cpp
-     src/log/gelf_appender.cpp
-     src/log/logger_config.cpp
-     src/crypto/_digest_common.cpp
-     src/crypto/openssl.cpp
-     src/crypto/aes.cpp
-     src/crypto/crc.cpp
-     src/crypto/city.cpp
-#     src/crypto/base32.cpp
-     src/crypto/base36.cpp
-     src/crypto/base58.cpp
-     src/crypto/base64.cpp
-     src/crypto/bigint.cpp
-     src/crypto/hex.cpp
-     src/crypto/sha1.cpp
-     src/crypto/ripemd160.cpp
-     src/crypto/sha256.cpp
-     src/crypto/sha224.cpp
-     src/crypto/sha512.cpp
-     src/crypto/dh.cpp
-     src/crypto/blowfish.cpp
-     src/crypto/elliptic_common.cpp
-     ${ECC_REST}
-     src/crypto/elliptic_${ECC_IMPL}.cpp
-     src/crypto/elliptic_r1.cpp
-     src/crypto/rand.cpp
-     src/crypto/public_key.cpp
-     src/crypto/private_key.cpp
-     src/crypto/signature.cpp
-     src/network/ip.cpp
-     src/network/platform_root_ca.cpp
-     src/network/resolve.cpp
-     src/network/udp_socket.cpp
-     src/network/url.cpp
-     src/network/http/http_client.cpp
-     src/compress/smaz.cpp
-     src/compress/zlib.cpp
-     src/compress/miniz.c
-     )
+set(fc_sources
+    src/uint128.cpp
+    src/real128.cpp
+    src/variant.cpp
+    src/exception.cpp
+    src/variant_object.cpp
+    src/string.cpp
+    src/time.cpp
+    src/utf8.cpp
+    src/io/datastream.cpp
+    src/io/json.cpp
+    src/io/varint.cpp
+    src/io/fstream.cpp
+    src/io/console.cpp
+    src/filesystem.cpp
+    src/interprocess/file_mapping.cpp
+    src/interprocess/mmap_struct.cpp
+    src/log/log_message.cpp
+    src/log/logger.cpp
+    src/log/appender.cpp
+    src/log/console_appender.cpp
+    src/log/gelf_appender.cpp
+    src/log/logger_config.cpp
+    src/crypto/_digest_common.cpp
+    src/crypto/openssl.cpp
+    src/crypto/aes.cpp
+    src/crypto/crc.cpp
+    src/crypto/city.cpp
+    src/crypto/base36.cpp
+    src/crypto/base58.cpp
+    src/crypto/base64.cpp
+    src/crypto/bigint.cpp
+    src/crypto/hex.cpp
+    src/crypto/sha1.cpp
+    src/crypto/ripemd160.cpp
+    src/crypto/sha256.cpp
+    src/crypto/sha224.cpp
+    src/crypto/sha512.cpp
+    src/crypto/dh.cpp
+    src/crypto/blowfish.cpp
+    src/crypto/elliptic_common.cpp
+    ${ECC_REST}
+    src/crypto/elliptic_${ECC_IMPL}.cpp
+    src/crypto/elliptic_r1.cpp
+    src/crypto/rand.cpp
+    src/crypto/public_key.cpp
+    src/crypto/private_key.cpp
+    src/crypto/signature.cpp
+    src/network/ip.cpp
+    src/network/platform_root_ca.cpp
+    src/network/resolve.cpp
+    src/network/udp_socket.cpp
+    src/network/url.cpp
+    src/network/http/http_client.cpp
+    src/compress/smaz.cpp
+    src/compress/zlib.cpp
+    src/compress/miniz.c
+)
 
-set( fc_lite_sources
+set(fc_lite_sources
     src/variant.cpp
     src/exception.cpp
     src/variant_object.cpp
@@ -145,92 +144,111 @@ set( fc_lite_sources
     src/crypto/public_key.cpp
     src/crypto/private_key.cpp
     src/crypto/signature.cpp
-    )
-
-file( GLOB_RECURSE fc_headers ${CMAKE_CURRENT_SOURCE_DIR} *.hpp *.h )
-
-set( sources
-  ${fc_sources}
 )
 
-set( lite_sources
-  ${fc_lite_sources}
+set(sources
+    ${fc_sources}
 )
 
-#configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/git_revision.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/git_revision.cpp" @ONLY)
-#list(APPEND sources "${CMAKE_CURRENT_BINARY_DIR}/git_revision.cpp")
-list(APPEND sources ${fc_headers})
-list(APPEND lite_sources ${fc_lite_sources})
+set(lite_sources
+    ${fc_lite_sources}
+)
 
-setup_library( fc SOURCES ${sources} LIBRARY_TYPE STATIC DONT_INSTALL_LIBRARY )
-setup_library( fc_lite SOURCES ${lite_sources} LIBRARY_TYPE SHARED DONT_INSTALL_LIBRARY )
+setup_library(fc SOURCES ${sources} LIBRARY_TYPE STATIC DONT_INSTALL_LIBRARY)
+setup_library(fc_lite SOURCES ${lite_sources} LIBRARY_TYPE SHARED DONT_INSTALL_LIBRARY)
   
-IF(APPLE)
-  # As of 10.10 yosemite, the OpenSSL static libraries shipped with os x have a dependency
-  # on zlib, so any time you link in openssl you also need to link zlib.  .  We really want to detect whether openssl was configured with the --no-zlib
-  # option or not when it was built, but that's difficult to do in practice, so we
-  # just always try to link it in on mac.
-  find_package( ZLIB REQUIRED )
-ELSE(APPLE)
-  find_package( ZLIB )
-ENDIF(APPLE)
+if(APPLE)
+    # As of 10.10 yosemite, the OpenSSL static libraries shipped with os x have a dependency
+    # on zlib, so any time you link in openssl you also need to link zlib.  .  We really want to detect whether openssl was configured with the --no-zlib
+    # option or not when it was built, but that's difficult to do in practice, so we
+    # just always try to link it in on mac.
+    find_package(ZLIB REQUIRED)
+else(APPLE)
+    find_package(ZLIB)
+endif(APPLE)
 
-if( ZLIB_FOUND )
-  MESSAGE( STATUS "zlib found" )
-  add_definitions( -DHAS_ZLIB )
+if(ZLIB_FOUND)
+    message(STATUS "zlib found")
+    add_definitions(-DHAS_ZLIB)
 else()
-  MESSAGE( STATUS "zlib not found" )
-  set( ZLIB_LIBRARIES "" )
-endif( ZLIB_FOUND )
+    message(STATUS "zlib not found")
+    set(ZLIB_LIBRARIES "")
+endif(ZLIB_FOUND)
 
 # This will become unnecessary once we update to websocketpp which fixes upstream issue #395
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWEBSOCKETPP_STRICT_MASKING")
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBOOST_ASIO_HAS_STD_CHRONO")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DWEBSOCKETPP_STRICT_MASKING")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBOOST_ASIO_HAS_STD_CHRONO")
 
-target_include_directories(fc
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
+target_include_directories(fc PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${Boost_INCLUDE_DIR}
     ${OPENSSL_INCLUDE_DIR}
     ${Secp256k1_INCLUDE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/websocketpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../rapidjson/include
-  )
-
-target_include_directories(fc_lite
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${Boost_INCLUDE_DIR}
-    ${OPENSSL_INCLUDE_DIR}
-    ${Secp256k1_INCLUDE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/websocketpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../rapidjson/include
-  )
-
-IF(NOT WIN32)
-  set(LINK_USR_LOCAL_LIB -L/usr/local/lib)
-ENDIF()
-
-IF(APPLE)
-  find_library(security_framework Security)
-  find_library(corefoundation_framework CoreFoundation)
-ENDIF()
-
-target_link_libraries( fc PUBLIC fmt-header-only ${LINK_USR_LOCAL_LIB} ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} ${ZLIB_LIBRARIES} ${PLATFORM_SPECIFIC_LIBS} ${RPCRT4} ${CMAKE_DL_LIBS} ${rt_library} ${readline_libraries} ${ECC_LIB} ${security_framework} ${corefoundation_framework} )
-target_link_libraries( fc_lite PUBLIC fmt-header-only ${LINK_USR_LOCAL_LIB} ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} ${ZLIB_LIBRARIES} ${PLATFORM_SPECIFIC_LIBS} ${RPCRT4} ${CMAKE_DL_LIBS} ${rt_library} ${ECC_SHARED_LIB} )
-set_target_properties( fc_lite PROPERTIES COMPILE_DEFINITIONS "FCLITE" )
-
-install( TARGETS fc_lite
-   RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} OPTIONAL
-   LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} OPTIONAL
-   ARCHIVE DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} OPTIONAL
 )
 
-SET(OPENSSL_CONF_TARGET )
-IF(DEFINED CMAKE_RUNTIME_OUTPUT_DIRECTORY)
-  SET (OPENSSL_CONF_TARGET ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-ELSE()
-  SET (OPENSSL_CONF_TARGET ${CMAKE_CURRENT_BINARY_DIR})
-ENDIF()
+target_include_directories(fc_lite PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${Boost_INCLUDE_DIR}
+    ${OPENSSL_INCLUDE_DIR}
+    ${Secp256k1_INCLUDE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/websocketpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../rapidjson/include
+)
+
+if(NOT WIN32)
+    set(LINK_USR_LOCAL_LIB -L/usr/local/lib)
+endif()
+
+if(APPLE)
+    find_library(security_framework Security)
+    find_library(corefoundation_framework CoreFoundation)
+endif()
+
+target_link_libraries(fc PUBLIC 
+    fmt-header-only
+    ${LINK_USR_LOCAL_LIB}
+    ${Boost_LIBRARIES}
+    ${OPENSSL_LIBRARIES}
+    ${ZLIB_LIBRARIES}
+    ${PLATFORM_SPECifIC_LIBS}
+    ${RPCRT4}
+    ${CMAKE_DL_LIBS}
+    ${rt_library}
+    ${readline_libraries}
+    ${ECC_LIB}
+    ${security_framework}
+    ${corefoundation_framework}
+)
+
+target_link_libraries(fc_lite PUBLIC
+    fmt-header-only
+    ${LINK_USR_LOCAL_LIB}
+    ${Boost_LIBRARIES}
+    ${OPENSSL_LIBRARIES}
+    ${ZLIB_LIBRARIES}
+    ${PLATFORM_SPECifIC_LIBS}
+    ${RPCRT4}
+    ${CMAKE_DL_LIBS}
+    ${rt_library}
+    ${ECC_SHARED_LIB}
+)
+
+set_target_properties(fc_lite PROPERTIES COMPILE_DEFINITIONS "FCLITE")
+
+install(TARGETS fc_lite
+    RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} OPTIONAL
+    LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} OPTIONAL
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} OPTIONAL)
+
+set(OPENSSL_CONF_TARGET)
+if(DEFINED CMAKE_RUNTIME_OUTPUT_DIRECTORY)
+    set(OPENSSL_CONF_TARGET ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+else()
+    set(OPENSSL_CONF_TARGET ${CMAKE_CURRENT_BINARY_DIR})
+endif()
 
 if(ENABLE_TESTING)
-    add_subdirectory( test )
+    add_subdirectory(test)
 endif()

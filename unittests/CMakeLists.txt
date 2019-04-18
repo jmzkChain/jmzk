@@ -22,8 +22,8 @@ add_executable(evt_unittests
     contracts/evtlink_tests.cpp
     )
 
-target_link_libraries(evt_unittests
-        PRIVATE appbase evt_chain evt_testing fc catch ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} ${Intl_LIBRARIES})
+target_link_libraries(evt_unittests PRIVATE
+    appbase evt_chain evt_testing fc catch ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} ${Intl_LIBRARIES})
 
 add_test(NAME evt_unittests
          COMMAND unittests/evt_unittests

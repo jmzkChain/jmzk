@@ -33,8 +33,9 @@ public:
         auto act_types = hana::sort.by(hana::ordering([](auto& act) { return hana::int_c<decltype(+act)::type::get_version()>; }), act_types_);
         hana::for_each(act_types, [&](auto& act) {
             auto i = index_of(act);
-            assert(type_names_[i].size() == decltype(+act)::type::get_version());
             type_names_[i].emplace_back(decltype(+act)::type::get_type_name());
+            assert(type_names_[i].size() == decltype(+act)::type::get_version());
+            curr_vers_[i] = 1;  // ver starts from 1
         });
 
         act_names_arr_ = hana::unpack(act_names_, [](auto ...i) {
@@ -67,7 +68,7 @@ public:
     set_version(name act, int newver) override {
         auto actindex = index_of(act);
         auto cver     = curr_vers_[actindex];
-        auto mver     = type_names_[actindex].size() - 1;
+        auto mver     = type_names_[actindex].size();
 
         EVT_ASSERT2(newver > cver && newver <= (int)mver, action_version_exception, "New version should be in range ({},{}]", cver, mver);
 
@@ -92,17 +93,17 @@ public:
     std::string
     get_acttype_name(name act) const override {
         auto index = index_of(act);
-        return type_names_[index][get_curr_ver(index)];
+        return type_names_[index][get_curr_ver(index) - 1];
     }
 
     int
-    get_current_version(name act) override {
+    get_current_version(name act) const override {
         return get_curr_ver(index_of(act));
     }
 
     int
-    get_max_version(name act) override {
-        return (int)type_names_[index_of(act)].size() - 1;
+    get_max_version(name act) const override {
+        return (int)type_names_[index_of(act)].size();
     }
 
     template <template<uint64_t> typename Invoker, typename RType, typename ... Args>
@@ -151,6 +152,27 @@ public:
         }
     }
 
+    template <typename T, typename Func>
+    void
+    invoke_action(const action& act, Func&& func) const {
+        auto i = hana::index_if(act_names_, hana::equal.to(hana::ulong_c<T::get_action_name().value>));
+        static_assert(i != hana::nothing, "T is not valid action type");
+
+        auto name  = act_names_[i.value()];
+        auto vers  = hana::filter(act_types_,
+            [&](auto& t) { return hana::equal(name, hana::ulong_c<decltype(+t)::type::get_action_name().value>); });
+        auto cver = curr_vers_[i.value()];
+
+        static_assert(hana::length(vers)() > hana::size_c<0>(), "empty version actions!");
+
+        hana::for_each(vers, [&, cver](auto v) {
+            using ty = typename decltype(+v)::type;
+            if(ty::get_version() == cver) {
+                func(act.data_as<const ty&>());
+            }
+        });
+    }
+
     std::vector<action_ver>
     get_current_actions() const override {
         auto acts = std::vector<action_ver>();
@@ -192,7 +214,9 @@ using evt_execution_context = execution_context_impl<
                                   contracts::newgroup,
                                   contracts::updategroup,
                                   contracts::newfungible,
+                                  contracts::newfungible_v2,
                                   contracts::updfungible,
+                                  contracts::updfungible_v2,
                                   contracts::issuefungible,
                                   contracts::transferft,
                                   contracts::recycleft,
@@ -206,15 +230,16 @@ using evt_execution_context = execution_context_impl<
                                   contracts::paycharge,
                                   contracts::paybonus,
                                   contracts::everipass,
-                                  contracts::everipass_v1,
+                                  contracts::everipass_v2,
                                   contracts::everipay,
-                                  contracts::everipay_v1,
+                                  contracts::everipay_v2,
                                   contracts::prodvote,
                                   contracts::updsched,
                                   contracts::newlock,
                                   contracts::aprvlock,
                                   contracts::tryunlock,
                                   contracts::setpsvbonus,
+                                  contracts::setpsvbonus_v2,
                                   contracts::distpsvbonus
                               >;
 

@@ -5,6 +5,8 @@
 #include <fc/log/logger.hpp>
 #include <fc/exception/exception.hpp>
 
+#include <llvm/ADT/StringMap.h>
+
 std::string evt_unittests_dir = "tmp/evt_unittests";
 
 CATCH_TRANSLATE_EXCEPTION(fc::exception& e) {

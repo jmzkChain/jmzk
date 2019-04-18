@@ -7,26 +7,24 @@ if(NOT EVT_GIT_REVISION_DESCRIPTION)
     set(EVT_GIT_REVISION_DESCRIPTION "unknown")
 endif(NOT EVT_GIT_REVISION_DESCRIPTION)
 
-file(GLOB HEADERS "include/evt/utilities/*.hpp")
-
 set(sources
-   key_conversion.cpp
-   string_escape.cpp
-   tempdir.cpp
-   words.cpp
-   ${HEADERS})
+    key_conversion.cpp
+    string_escape.cpp
+    tempdir.cpp
+    words.cpp
+)
 
 #configure_file("${CMAKE_CURRENT_SOURCE_DIR}/git_revision.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/git_revision.cpp" @ONLY)
 #list(APPEND sources "${CMAKE_CURRENT_BINARY_DIR}/git_revision.cpp")
 
-add_library( evt_utilities
-             ${sources}
-             ${HEADERS} )
-target_link_libraries( evt_utilities fc )
-target_include_directories( evt_utilities
-                            PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
-                                   "${CMAKE_CURRENT_SOURCE_DIR}/../safeint" )
+add_library(evt_utilities
+    ${sources}
+)
+target_link_libraries(evt_utilities fc)
+target_include_directories(evt_utilities PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+)
 if (USE_PCH)
-  set_target_properties(evt_utilities PROPERTIES COTIRE_ADD_UNITY_BUILD FALSE)
-  cotire(evt_utilities)
+    set_target_properties(evt_utilities PROPERTIES COTIRE_ADD_UNITY_BUILD FALSE)
+    cotire(evt_utilities)
 endif(USE_PCH)

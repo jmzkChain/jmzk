@@ -10,6 +10,7 @@ namespace evt { namespace chain {
 
 namespace __internal {
 
+// TODO: Replace with values provided by token database class directly
 const char* section_names[] = {
     ".asset",
     ".domain",
@@ -20,9 +21,8 @@ const char* section_names[] = {
     ".fungible",
     ".prodvote",
     ".evtlink",
-    ".bonus",
-    ".bonus-slim",
-    ".bonus-psvdist"
+    ".psvbonus",
+    ".psvbonus-dist"
 };
 
 void

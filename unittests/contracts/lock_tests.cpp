@@ -8,7 +8,7 @@ auto CHECK_EQUAL = [](auto& lhs, auto& rhs) {
     CHECK(memcmp(b1.data(), b2.data(), b1.size()) == 0);
 };
 
-TEST_CASE_METHOD(contracts_test, "contract_newnftlock_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "newnftlock_test", "[contracts]") {
     const char* test_data = R"=======(
     {
         "name": "nftlock",
@@ -88,7 +88,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newnftlock_test", "[contracts]") {
     CHECK_EQUAL(lock_, *lock2_);
 }
 
-TEST_CASE_METHOD(contracts_test, "contract_newftlock_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "newftlock_test", "[contracts]") {
     const char* test_data = R"=======(
     {
         "name": "ftlock",
@@ -183,7 +183,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newftlock_test", "[contracts]") {
     CHECK_EQUAL(lock_, *lock2_);
 }
 
-TEST_CASE_METHOD(contracts_test, "contract_aprvlock_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "aprvlock_test", "[contracts]") {
     const char* test_data = R"=======(
     {
         "name": "nftlock",
@@ -226,7 +226,7 @@ TEST_CASE_METHOD(contracts_test, "contract_aprvlock_test", "[contracts]") {
     CHECK_EQUAL(lock_, *lock2_);
 }
 
-TEST_CASE_METHOD(contracts_test, "contract_tryunlock_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "tryunlock_test", "[contracts]") {
     const char* test_data = R"=======(
     {
         "name": "nftlock",

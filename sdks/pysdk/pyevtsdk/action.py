@@ -130,6 +130,9 @@ class SetpsvbonusAction(Action):
     def __init__(self, key, data):
         super().__init__('setpsvbonus', '.bonus', key, data)
 
+class NewlockAction(Action):
+    def __init__(self, key, data):
+        super().__init__('newlock', '.lock', key, data)
 
 class ActionTypeErrorException(Exception):
     def __init__(self):
@@ -189,6 +192,8 @@ def get_action_from_abi_json(action, abi_json, domain=None, key=None):
         return ProdvoteAction(abi_dict['key'], _bin)
     elif action == 'setpsvbonus':
         return SetpsvbonusAction(abi_dict['sym'].split('#')[1], _bin)
+    elif action == 'newlock':
+        return NewlockAction(abi_dict['name'], _bin)
     else:
         raise ActionTypeErrorException
 
@@ -320,6 +325,10 @@ class ActionGenerator:
     def prodvote(self, producer, key, value):
         abi_json = base.ProdvoteAbi(producer, key, value)
         return get_action_from_abi_json('prodvote', abi_json.dumps())
+
+    # def newlock(self, producer, key, value):
+    #     abi_json = base.ProdvoteAbi(producer, key, value)
+    #     return get_action_from_abi_json('prodvote', abi_json.dumps())
 
     def new_action(self, action, **args):
         func = getattr(self, action)

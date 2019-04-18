@@ -40,10 +40,9 @@ enum class token_type {
     fungible,
     prodvote,
     evtlink,
-    bonus,
-    bonus_slim,
-    bonus_psvdist,
-    max_value = bonus_psvdist
+    psvbonus,
+    psvbonus_dist,
+    max_value = psvbonus_dist
 };
 
 enum class action_op {

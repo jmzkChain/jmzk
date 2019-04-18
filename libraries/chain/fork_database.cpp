@@ -80,8 +80,9 @@ fork_database::fork_database(const fc::path& data_dir)
 
 void
 fork_database::close() {
-    if(my->index.size() == 0)
+    if(my->index.size() == 0) {
         return;
+    }
 
     auto fork_db_dat = my->datadir / config::forkdb_filename;
     std::ofstream out(fork_db_dat.generic_string().c_str(), std::ios::out | std::ios::binary | std::ofstream::trunc);
@@ -182,9 +183,9 @@ fork_database::head() const {
  */
 pair<branch_type, branch_type>
 fork_database::fetch_branch_from(const block_id_type& first, const block_id_type& second) const {
-    pair<branch_type, branch_type> result;
-    auto                           first_branch  = get_block(first);
-    auto                           second_branch = get_block(second);
+    auto result        = pair<branch_type, branch_type>();
+    auto first_branch  = get_block(first);
+    auto second_branch = get_block(second);
 
     while(first_branch->block_num > second_branch->block_num) {
         result.first.push_back(first_branch);

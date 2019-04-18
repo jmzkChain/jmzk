@@ -1095,10 +1095,13 @@ read_only::get_info(const read_only::get_info_params&) const {
 fc::variant
 read_only::get_block(const read_only::get_block_params& params) const {
     auto block = signed_block_ptr();
-    EVT_ASSERT(!params.block_num_or_id.empty() && params.block_num_or_id.size() <= 64, chain::block_id_type_exception, "Invalid Block number or ID, must be greater than 0 and less than 64 characters");
+    EVT_ASSERT(!params.block_num_or_id.empty() && params.block_num_or_id.size() <= 64,
+        chain::block_id_type_exception, "Invalid Block number or ID, must be greater than 0 and less than 64 characters");
     try {
-        block = db.fetch_block_by_id(fc::variant(params.block_num_or_id).as<block_id_type>());
-        if(!block) {
+        if(params.block_num_or_id.size() == 64) {
+            block = db.fetch_block_by_id(fc::variant(params.block_num_or_id).as<block_id_type>());
+        }
+        else {
             block = db.fetch_block_by_number(fc::to_uint64(params.block_num_or_id));
         }
     }
@@ -1168,7 +1171,12 @@ read_only::get_transaction(const get_transaction_params& params) {
     for(auto& tx : block->transactions) {
         if(tx.trx.id() == params.id) {
             auto var = fc::variant();
-            db.get_abi_serializer().to_variant(tx.trx, var, db.get_execution_context());
+            if(params.raw.has_value() && *params.raw) {
+                fc::to_variant(tx.trx, var);
+            }
+            else {
+                db.get_abi_serializer().to_variant(tx.trx, var, db.get_execution_context());
+            }
 
             auto mv = fc::mutable_variant_object(var);
             mv["block_num"] = block_num;

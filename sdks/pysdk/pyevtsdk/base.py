@@ -278,3 +278,4 @@ class EveripayAbi(BaseType):
 class ProdvoteAbi(BaseType):
     def __init__(self, producer, key, value):
         super().__init__(producer=producer, key=key, value=value)
+

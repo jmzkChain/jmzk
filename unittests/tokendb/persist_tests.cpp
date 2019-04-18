@@ -219,9 +219,9 @@ TEST_CASE_METHOD(tokendb_test, "put_asset_prst_test", "[tokendb]") {
     ADD_SAVEPOINT();
 }
 
-TEST_CASE_METHOD(tokendb_test, "put_asset_prst_rlbk", "[tokendb") {
+TEST_CASE_METHOD(tokendb_test, "put_asset_prst_rlbk", "[tokendb]") {
     auto& tokendb = my_tester->control->token_db();
-    auto addr = public_key_type(std::string("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"));
+    auto  addr = public_key_type(std::string("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"));
 
     ROLLBACK();
     CHECK(!EXISTS_ASSET(addr, 4));

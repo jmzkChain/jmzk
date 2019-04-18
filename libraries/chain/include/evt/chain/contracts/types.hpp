@@ -8,6 +8,7 @@
 
 #include <evt/chain/address.hpp>
 #include <evt/chain/asset.hpp>
+#include <evt/chain/percent_slim.hpp>
 #include <evt/chain/chain_config.hpp>
 #include <evt/chain/config.hpp>
 #include <evt/chain/types.hpp>
@@ -39,9 +40,9 @@ namespace evt { namespace chain { namespace contracts {
         return version;                              \
     }
 
-#define EVT_ACTION_VER0(actname)              EVT_ACTION(actname, 0, actname)
-#define EVT_ACTION_VER1(actname, acttypename) EVT_ACTION(actname, 1, acttypename)
+#define EVT_ACTION_VER1(actname)              EVT_ACTION(actname, 1, actname)
 #define EVT_ACTION_VER2(actname, acttypename) EVT_ACTION(actname, 2, acttypename)
+#define EVT_ACTION_VER3(actname, acttypename) EVT_ACTION(actname, 3, acttypename)
 
 using domain_name     = evt::chain::domain_name;
 using domian_key      = evt::chain::domain_key;
@@ -60,6 +61,7 @@ using address_type    = evt::chain::address;
 using address_list    = small_vector<address_type, 4>;
 using conf_key        = evt::chain::conf_key;
 using percent_type    = evt::chain::percent_type;
+using percent_slim    = evt::chain::percent_slim;
 
 // represent for property for one symbol in one account
 // also records the create time
@@ -120,6 +122,25 @@ struct domain_def {
     meta_list metas;
 };
 
+// Remaining for the usage in genesis state
+struct fungible_def_genesis {
+    fungible_def_genesis() = default;
+
+    fungible_name  name;
+    symbol_name    sym_name;
+    symbol         sym;
+    
+    user_id        creator;
+    time_point_sec create_time;
+
+    permission_def issue;
+    permission_def manage;
+
+    asset total_supply;
+    
+    meta_list metas;
+};
+
 struct fungible_def {
     fungible_def() = default;
 
@@ -131,6 +152,7 @@ struct fungible_def {
     time_point_sec create_time;
 
     permission_def issue;
+    permission_def transfer;
     permission_def manage;
 
     asset total_supply;
@@ -243,6 +265,19 @@ struct dist_rpercent_rule {
 using dist_rule  = variant_wrapper<dist_rule_type, dist_fixed_rule, dist_percent_rule, dist_rpercent_rule>;
 using dist_rules = small_vector<dist_rule, 4>;
 
+struct dist_percent_rule_v2 {
+    dist_receiver receiver;
+    percent_slim  percent;
+};
+
+struct dist_rpercent_rule_v2 {
+    dist_receiver receiver;
+    percent_slim  percent;
+};
+
+using dist_rule_v2  = variant_wrapper<dist_rule_type, dist_fixed_rule, dist_percent_rule_v2, dist_rpercent_rule_v2>;
+using dist_rules_v2 = small_vector<dist_rule_v2, 4>;
+
 enum class passive_method_type {
     within_amount = 0,
     outside_amount
@@ -262,12 +297,12 @@ using passive_methods = small_vector<passive_method, 4>;
 
 struct passive_bonus {
     symbol_id_type  sym_id;
-    percent_type    rate;
+    percent_slim    rate;
     asset           base_charge;
     optional<asset> charge_threshold;
     optional<asset> minimum_charge;
     asset           dist_threshold;
-    dist_rules      rules;
+    dist_rules_v2   rules;
     passive_methods methods;   // without actions specify here, others will be `within` defaultly
     uint32_t        round;
     time_point      deadline;  // deadline for latest round
@@ -275,7 +310,7 @@ struct passive_bonus {
 
 struct passive_bonus_slim {
     symbol_id_type    sym_id;
-    percent_type      rate;
+    percent_slim      rate;
     int64_t           base_charge;
     optional<int64_t> charge_threshold;
     optional<int64_t> minimum_charge;
@@ -290,7 +325,7 @@ struct newdomain {
     permission_def transfer;
     permission_def manage;
 
-    EVT_ACTION_VER0(newdomain);
+    EVT_ACTION_VER1(newdomain);
 };
 
 struct issuetoken {
@@ -298,7 +333,7 @@ struct issuetoken {
     small_vector<token_name, 4> names;
     address_list                owner;
 
-    EVT_ACTION_VER0(issuetoken);
+    EVT_ACTION_VER1(issuetoken);
 };
 
 struct transfer {
@@ -307,28 +342,28 @@ struct transfer {
     address_list to;
     string       memo;
 
-    EVT_ACTION_VER0(transfer);
+    EVT_ACTION_VER1(transfer);
 };
 
 struct destroytoken {
     domain_name domain;
     token_name  name;
 
-    EVT_ACTION_VER0(destroytoken);
+    EVT_ACTION_VER1(destroytoken);
 };
 
 struct newgroup {
     group_name name;
     group_def  group;
 
-    EVT_ACTION_VER0(newgroup);
+    EVT_ACTION_VER1(newgroup);
 };
 
 struct updategroup {
     group_name name;
     group_def  group;
 
-    EVT_ACTION_VER0(updategroup);
+    EVT_ACTION_VER1(updategroup);
 };
 
 struct updatedomain {
@@ -338,7 +373,7 @@ struct updatedomain {
     optional<permission_def> transfer;
     optional<permission_def> manage;
 
-    EVT_ACTION_VER0(updatedomain);
+    EVT_ACTION_VER1(updatedomain);
 };
 
 struct newfungible {
@@ -352,7 +387,22 @@ struct newfungible {
 
     asset total_supply;
 
-    EVT_ACTION_VER0(newfungible);
+    EVT_ACTION_VER1(newfungible);
+};
+
+struct newfungible_v2 {
+    fungible_name name;
+    symbol_name   sym_name;
+    symbol        sym;
+    user_id       creator;
+
+    permission_def issue;
+    permission_def transfer;
+    permission_def manage;
+
+    asset total_supply;
+
+    EVT_ACTION_VER2(newfungible, newfungible_v2);
 };
 
 struct updfungible {
@@ -361,7 +411,17 @@ struct updfungible {
     optional<permission_def> issue;
     optional<permission_def> manage;
 
-    EVT_ACTION_VER0(updfungible);
+    EVT_ACTION_VER1(updfungible);
+};
+
+struct updfungible_v2 {
+    symbol_id_type sym_id;
+
+    optional<permission_def> issue;
+    optional<permission_def> transfer;
+    optional<permission_def> manage;
+
+    EVT_ACTION_VER2(updfungible, updfungible_v2);
 };
 
 struct issuefungible {
@@ -369,7 +429,7 @@ struct issuefungible {
     asset        number;
     string       memo;
 
-    EVT_ACTION_VER0(issuefungible);
+    EVT_ACTION_VER1(issuefungible);
 };
 
 struct transferft {
@@ -378,7 +438,7 @@ struct transferft {
     asset        number;
     string       memo;
 
-    EVT_ACTION_VER0(transferft);
+    EVT_ACTION_VER1(transferft);
 };
 
 struct recycleft {
@@ -386,7 +446,7 @@ struct recycleft {
     asset        number;
     string       memo;
 
-    EVT_ACTION_VER0(recycleft);
+    EVT_ACTION_VER1(recycleft);
 };
 
 struct destroyft {
@@ -394,7 +454,7 @@ struct destroyft {
     asset        number;
     string       memo;
 
-    EVT_ACTION_VER0(destroyft);
+    EVT_ACTION_VER1(destroyft);
 };
 
 struct evt2pevt {
@@ -403,7 +463,7 @@ struct evt2pevt {
     asset        number;
     string       memo;
 
-    EVT_ACTION_VER0(evt2pevt);
+    EVT_ACTION_VER1(evt2pevt);
 };
 
 struct addmeta {
@@ -411,7 +471,7 @@ struct addmeta {
     meta_value     value;
     authorizer_ref creator;
 
-    EVT_ACTION_VER0(addmeta);
+    EVT_ACTION_VER1(addmeta);
 };
 
 struct newsuspend {
@@ -419,54 +479,54 @@ struct newsuspend {
     user_id       proposer;
     transaction   trx;
 
-    EVT_ACTION_VER0(newsuspend);
+    EVT_ACTION_VER1(newsuspend);
 };
 
 struct cancelsuspend {
     proposal_name name;
 
-    EVT_ACTION_VER0(cancelsuspend);
+    EVT_ACTION_VER1(cancelsuspend);
 };
 
 struct aprvsuspend {
     proposal_name                   name;
     small_vector<signature_type, 4> signatures;
 
-    EVT_ACTION_VER0(aprvsuspend);
+    EVT_ACTION_VER1(aprvsuspend);
 };
 
 struct execsuspend {
     proposal_name name;
     user_id       executor;
 
-    EVT_ACTION_VER0(execsuspend);
+    EVT_ACTION_VER1(execsuspend);
 };
 
 struct paycharge {
     address  payer;
     uint32_t charge;
 
-    EVT_ACTION_VER0(paycharge);
+    EVT_ACTION_VER1(paycharge);
 };
 
 struct paybonus {
     address payer;
     asset   amount;
 
-    EVT_ACTION_VER0(paybonus);
+    EVT_ACTION_VER1(paybonus);
 };
 
 struct everipass {
     evt_link link;
 
-    EVT_ACTION_VER0(everipass);
+    EVT_ACTION_VER1(everipass);
 };
 
-struct everipass_v1 {
+struct everipass_v2 {
     evt_link link;
     string   memo;
 
-    EVT_ACTION_VER1(everipass, everipass_v1);
+    EVT_ACTION_VER2(everipass, everipass_v2);
 };
 
 struct everipay {
@@ -474,16 +534,16 @@ struct everipay {
     address  payee;
     asset    number;
 
-    EVT_ACTION_VER0(everipay);
+    EVT_ACTION_VER1(everipay);
 };
 
-struct everipay_v1 {
+struct everipay_v2 {
     evt_link link;
     address  payee;
     asset    number;
     string   memo;
 
-    EVT_ACTION_VER1(everipay, everipay_v1);
+    EVT_ACTION_VER2(everipay, everipay_v2);
 };
 
 struct prodvote {
@@ -491,13 +551,13 @@ struct prodvote {
     conf_key     key;
     int64_t      value;
 
-    EVT_ACTION_VER0(prodvote);
+    EVT_ACTION_VER1(prodvote);
 };
 
 struct updsched {
     vector<producer_key> producers;
 
-    EVT_ACTION_VER0(updsched);
+    EVT_ACTION_VER1(updsched);
 };
 
 struct newlock {
@@ -512,7 +572,7 @@ struct newlock {
     small_vector<address, 4> succeed;
     small_vector<address, 4> failed;
 
-    EVT_ACTION_VER0(newlock);
+    EVT_ACTION_VER1(newlock);
 };
 
 struct aprvlock {
@@ -520,14 +580,14 @@ struct aprvlock {
     user_id       approver;
     lock_aprvdata data;
 
-    EVT_ACTION_VER0(aprvlock);
+    EVT_ACTION_VER1(aprvlock);
 };
 
 struct tryunlock {
     proposal_name name;
     user_id       executor;
 
-    EVT_ACTION_VER0(tryunlock);
+    EVT_ACTION_VER1(tryunlock);
 };
 
 struct setpsvbonus {
@@ -540,15 +600,34 @@ struct setpsvbonus {
     dist_rules      rules;
     passive_methods methods;
 
-    EVT_ACTION_VER0(setpsvbonus);
+    EVT_ACTION_VER1(setpsvbonus);
+};
+
+struct setpsvbonus_v2 {
+    symbol_id_type  sym_id;
+    percent_slim    rate;
+    asset           base_charge;
+    optional<asset> charge_threshold;
+    optional<asset> minimum_charge;
+    asset           dist_threshold;
+    dist_rules_v2   rules;
+    passive_methods methods;
+
+    EVT_ACTION_VER2(setpsvbonus, setpsvbonus_v2);
 };
 
 struct distpsvbonus {
-    symbol            sym;
+    symbol_id_type    sym_id;
     time_point        deadline;
     optional<address> final_receiver;
 
-    EVT_ACTION_VER0(distpsvbonus);
+    EVT_ACTION_VER1(distpsvbonus);
+};
+
+struct recvpsvbonus {
+    symbol_id_type                   sym_id;
+    small_vector<public_key_type, 2> receivers;
+    uint32_t                         rule_index;
 };
 
 }}}  // namespace evt::chain::contracts
@@ -559,7 +638,8 @@ FC_REFLECT(evt::chain::contracts::key_weight, (key)(weight));
 FC_REFLECT(evt::chain::contracts::authorizer_weight, (ref)(weight));
 FC_REFLECT(evt::chain::contracts::permission_def, (name)(threshold)(authorizers));
 FC_REFLECT(evt::chain::contracts::domain_def, (name)(creator)(create_time)(issue)(transfer)(manage)(metas));
-FC_REFLECT(evt::chain::contracts::fungible_def, (name)(sym_name)(sym)(creator)(create_time)(issue)(manage)(total_supply)(metas));
+FC_REFLECT(evt::chain::contracts::fungible_def_genesis, (name)(sym_name)(sym)(creator)(create_time)(issue)(manage)(total_supply)(metas));
+FC_REFLECT(evt::chain::contracts::fungible_def, (name)(sym_name)(sym)(creator)(create_time)(issue)(transfer)(manage)(total_supply)(metas));
 
 FC_REFLECT_ENUM(evt::chain::contracts::suspend_status, (proposed)(executed)(failed)(cancelled));
 FC_REFLECT(evt::chain::contracts::suspend_def, (name)(proposer)(status)(trx)(signed_keys)(signatures));
@@ -579,6 +659,8 @@ FC_REFLECT_ENUM(evt::chain::contracts::dist_rule_type, (fixed)(percent)(remainin
 FC_REFLECT(evt::chain::contracts::dist_fixed_rule, (receiver)(amount));
 FC_REFLECT(evt::chain::contracts::dist_percent_rule, (receiver)(percent));
 FC_REFLECT(evt::chain::contracts::dist_rpercent_rule, (receiver)(percent));
+FC_REFLECT(evt::chain::contracts::dist_percent_rule_v2, (receiver)(percent));
+FC_REFLECT(evt::chain::contracts::dist_rpercent_rule_v2, (receiver)(percent));
 FC_REFLECT_ENUM(evt::chain::contracts::passive_method_type, (within_amount)(outside_amount));
 FC_REFLECT(evt::chain::contracts::passive_method, (action)(method));
 FC_REFLECT(evt::chain::contracts::passive_bonus, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods)(round)(deadline));
@@ -592,7 +674,9 @@ FC_REFLECT(evt::chain::contracts::newgroup, (name)(group));
 FC_REFLECT(evt::chain::contracts::updategroup, (name)(group));
 FC_REFLECT(evt::chain::contracts::updatedomain, (name)(issue)(transfer)(manage));
 FC_REFLECT(evt::chain::contracts::newfungible, (name)(sym_name)(sym)(creator)(issue)(manage)(total_supply));
+FC_REFLECT(evt::chain::contracts::newfungible_v2, (name)(sym_name)(sym)(creator)(issue)(transfer)(manage)(total_supply));
 FC_REFLECT(evt::chain::contracts::updfungible, (sym_id)(issue)(manage));
+FC_REFLECT(evt::chain::contracts::updfungible_v2, (sym_id)(issue)(transfer)(manage));
 FC_REFLECT(evt::chain::contracts::issuefungible, (address)(number)(memo));
 FC_REFLECT(evt::chain::contracts::transferft, (from)(to)(number)(memo));
 FC_REFLECT(evt::chain::contracts::recycleft, (address)(number)(memo));
@@ -606,13 +690,14 @@ FC_REFLECT(evt::chain::contracts::execsuspend, (name)(executor));
 FC_REFLECT(evt::chain::contracts::paycharge, (payer)(charge));
 FC_REFLECT(evt::chain::contracts::paybonus, (payer)(amount));
 FC_REFLECT(evt::chain::contracts::everipass, (link));
-FC_REFLECT(evt::chain::contracts::everipass_v1, (link)(memo));
+FC_REFLECT(evt::chain::contracts::everipass_v2, (link)(memo));
 FC_REFLECT(evt::chain::contracts::everipay, (link)(payee)(number));
-FC_REFLECT(evt::chain::contracts::everipay_v1, (link)(payee)(number)(memo));
+FC_REFLECT(evt::chain::contracts::everipay_v2, (link)(payee)(number)(memo));
 FC_REFLECT(evt::chain::contracts::prodvote, (producer)(key)(value));
 FC_REFLECT(evt::chain::contracts::updsched, (producers));
 FC_REFLECT(evt::chain::contracts::newlock, (name)(proposer)(unlock_time)(deadline)(assets)(condition)(succeed)(failed));
 FC_REFLECT(evt::chain::contracts::aprvlock, (name)(approver)(data));
 FC_REFLECT(evt::chain::contracts::tryunlock, (name)(executor));
 FC_REFLECT(evt::chain::contracts::setpsvbonus, (sym)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods));
-FC_REFLECT(evt::chain::contracts::distpsvbonus, (sym)(deadline)(final_receiver));
+FC_REFLECT(evt::chain::contracts::setpsvbonus_v2, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods));
+FC_REFLECT(evt::chain::contracts::distpsvbonus, (sym_id)(deadline)(final_receiver));

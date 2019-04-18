@@ -30,7 +30,10 @@ public:
     uint8_t  precision() const { return (uint8_t)(value_ >> 32); }
     uint32_t id() const { return (uint32_t)value_; }
 
-    bool valid() const { return precision() <= max_precision; }
+    bool
+    valid() const {
+        return value_ == symbol(precision(), id()).value_;
+    }
 
 public:
     static symbol from_string(const string& from);

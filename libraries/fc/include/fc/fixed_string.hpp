@@ -1,10 +1,7 @@
 #pragma once
 #include <fc/io/raw_fwd.hpp>
 
-
 namespace fc {
-
-
    /**
     *  This class is designed to offer in-place memory allocation of a string up to Length equal to
     *  sizeof(Storage).

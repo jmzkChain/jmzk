@@ -17,8 +17,8 @@
 
 #include <fc/smart_ref_fwd.hpp>
 #include <fc/string.hpp>
-#include <fc/container/deque_fwd.hpp>
 #include <fc/container/flat_fwd.hpp>
+#include <fc/container/deque_fwd.hpp>
 #include <fc/container/small_vector_fwd.hpp>
 
 namespace fc {
@@ -113,11 +113,6 @@ void to_variant(const std::unordered_map<K, T>& var, variant& vo);
 template<typename K, typename T>
 void from_variant(const variant& var, std::unordered_map<K, T>& vo);
 
-template<typename K, typename... T>
-void to_variant(const fc::flat_map<K, T...>& var, variant& vo);
-template<typename K, typename... T>
-void from_variant(const variant& var, fc::flat_map<K, T...>& vo);
-
 template<typename K, typename T>
 void to_variant(const std::map<K, T>& var, variant& vo);
 template<typename K, typename T>
@@ -136,16 +131,6 @@ template<typename T>
 void to_variant(const std::deque<T>& var, variant& vo);
 template<typename T>
 void from_variant(const variant& var, std::deque<T>& vo);
-
-template<typename T, typename Compare, typename Container>
-void to_variant(const fc::flat_set<T, Compare, Container>& var, variant& vo);
-template<typename T, typename Compare, typename Container>
-void from_variant(const variant& var, fc::flat_set<T, Compare, Container>& vo);
-
-template<typename T, size_t N>
-void to_variant(const fc::small_vector<T, N>& var, variant& vo);
-template<typename T, size_t N>
-void from_variant(const variant& var, fc::small_vector<T, N>& vo);
 
 template<typename T>
 void to_variant(const std::set<T>& var, variant& vo);
@@ -729,6 +714,7 @@ to_variant(const boost::multiprecision::number<T>& n, variant& v) {
 template<typename T>
 void
 from_variant(const variant& v, boost::multiprecision::number<T>& n) {
+    memset((char*)&n, 0, sizeof(n));
     n = boost::multiprecision::number<T>(v.get_string());
 }
 

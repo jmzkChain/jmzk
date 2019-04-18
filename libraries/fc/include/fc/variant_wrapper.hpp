@@ -39,6 +39,18 @@ public:
         return std::get<X>(value_);
     }
 
+    template<ENUM I>
+    auto&
+    get() {
+        return std::get<(size_t)I>(value_);
+    }
+
+    template<ENUM I>
+    const auto&
+    get() const {
+        return std::get<(size_t)I>(value_);
+    }
+
     ENUM
     type() const {
         return (ENUM)value_.index();

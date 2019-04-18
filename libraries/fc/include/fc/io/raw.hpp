@@ -1007,14 +1007,18 @@ unpack(Stream& s, variant_wrapper<ENUM, ARGS...>& vw) {
 template<typename Stream, typename T>
 void
 pack(Stream& s, const boost::multiprecision::number<T>& n) {
-    // static_assert(sizeof(n) == (std::numeric_limits<boost::multiprecision::number<T>>::digits + 1) / 8, "unexpected padding");
-    s.write((const char*)&n, sizeof(n));
+    // work around, don't use raw number anymore
+    auto b  = n.str();
+    auto n2 = boost::multiprecision::number<T>();
+    memset((char*)&n2, 0, sizeof(n2));
+    n2 = boost::multiprecision::number<T>(b);
+
+    s.write((const char*)&n2, sizeof(n2));
 }
 
 template<typename Stream, typename T>
 void
 unpack(Stream& s, boost::multiprecision::number<T>& n) {
-    // static_assert(sizeof(n) == (std::numeric_limits<boost::multiprecision::number<T>>::digits + 1) / 8, "unexpected padding");
     s.read((char*)&n, sizeof(n));
 }
 

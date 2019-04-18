@@ -125,6 +125,13 @@ evt_contract_abi() {
     });
 
     evt_abi.structs.emplace_back( struct_def {
+        "dist_percent_rule_v2", "", {
+            {"receiver", "dist_receiver"},
+            {"percent", "percent_slim"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
         "passive_method", "", {
             {"action", "name"},
             {"method", "passive_method_type"}
@@ -163,6 +170,14 @@ evt_contract_abi() {
             {"fixed", "dist_fixed_rule"},
             {"percent", "dist_percent_rule"},
             {"remaining_percent", "dist_percent_rule"}
+        }
+    });
+
+    evt_abi.variants.emplace_back( variant_def {
+        "dist_rule_v2", {
+            {"fixed", "dist_fixed_rule"},
+            {"percent", "dist_percent_rule_v2"},
+            {"remaining_percent", "dist_percent_rule_v2"}
         }
     });
 
@@ -237,9 +252,31 @@ evt_contract_abi() {
     });
 
     evt_abi.structs.emplace_back( struct_def {
+        "newfungible_v2", "", {
+            {"name", "fungible_name"},
+            {"sym_name", "symbol_name"},
+            {"sym", "symbol"},
+            {"creator", "user_id"},
+            {"issue", "permission_def"},
+            {"transfer", "permission_def"},
+            {"manage", "permission_def"},
+            {"total_supply", "asset"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
         "updfungible", "", {
             {"sym_id", "symbol_id_type"},
             {"issue", "permission_def?"},
+            {"manage", "permission_def?"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "updfungible_v2", "", {
+            {"sym_id", "symbol_id_type"},
+            {"issue", "permission_def?"},
+            {"transfer", "permission_def?"},
             {"manage", "permission_def?"}
         }
     });
@@ -343,7 +380,7 @@ evt_contract_abi() {
     });
 
     evt_abi.structs.emplace_back( struct_def {
-        "everipass_v1", "", {
+        "everipass_v2", "", {
            {"link", "evt_link"},
            {"memo", "string"}
         }
@@ -358,7 +395,7 @@ evt_contract_abi() {
     });
 
     evt_abi.structs.emplace_back( struct_def {
-        "everipay_v1", "", {
+        "everipay_v2", "", {
            {"link", "evt_link"},
            {"payee", "address"},
            {"number", "asset"},
@@ -429,8 +466,21 @@ evt_contract_abi() {
     });
 
     evt_abi.structs.emplace_back( struct_def {
+        "setpsvbonus_v2", "", {
+           {"sym_id", "symbol_id_type"},
+           {"rate", "percent_slim"},
+           {"base_charge", "asset"},
+           {"charge_threshold", "asset?"},
+           {"minimum_charge", "asset?"},
+           {"dist_threshold", "asset"},
+           {"rules", "dist_rule_v2[]"},
+           {"methods", "passive_method[]"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
         "distpsvbonus", "", {
-           {"sym", "proposal_name"},
+           {"sym_id", "symbol_id_type"},
            {"deadline", "time_point"},
            {"final_receiver", "address?"}
         }

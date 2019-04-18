@@ -1,6 +1,6 @@
 FROM debian:buster-slim
 
-LABEL author="Harry <harrywong@live.com>" maintainer="Harry <harrywong@live.com>" version="1.4.0" \
+LABEL author="Harry <harrywong@live.com>" maintainer="Harry <harrywong@live.com>" version="1.5.0" \
   description="This is a base image for building everitoken/evt"
 
 RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
@@ -8,7 +8,7 @@ RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
     && apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y sudo wget curl net-tools ccache ninja-build ca-certificates \
        unzip gnupg git make libtool autoconf automake m4 openssl libssl1.1 libssl-dev libgmp-dev zlib1g-dev \
-       libreadline-dev gcc-8 g++-8
+       libreadline-dev gcc-8 g++-8 llvm-7 llvm-7-dev
 
 RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 999
 RUN update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 999
@@ -43,12 +43,12 @@ RUN wget https://dl.bintray.com/boostorg/release/1.69.0/source/boost_1_69_0.tar.
        --with-serialization --with-chrono --with-test --with-context --with-locale --with-coroutine --with-iostreams toolset=gcc link=shared install \
     && cd .. && rm -rf boost_1_69_0
 
-RUN wget https://github.com/01org/tbb/archive/2019_U3.tar.gz -O - | tar -xz \
-    && cd tbb-2019_U3 \
+RUN wget https://github.com/01org/tbb/archive/2019_U5.tar.gz -O - | tar -xz \
+    && cd tbb-2019_U5 \
     && make tbb -j${nproc} \
     && sudo cp build/*release/*.so* /usr/local/lib \
     && sudo cp -R include/tbb /usr/local/include \
-    && cd .. && rm -rf tbb-2019_U3
+    && cd .. && rm -rf tbb-2019_U5
 
 RUN git clone --depth 1 git://github.com/cryptonomex/secp256k1-zkp \
     && cd secp256k1-zkp \

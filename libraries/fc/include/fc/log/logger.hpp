@@ -107,10 +107,10 @@ private:
         (fc::logger::get(DEFAULT_LOGGER)).log(FC_LOG_MESSAGE(debug, FORMAT, __VA_ARGS__)); \
     FC_MULTILINE_MACRO_END
 
-#define dlog2(FORMAT, ...)                                                                  \
-    FC_MULTILINE_MACRO_BEGIN                                                                \
-    if((fc::logger::get(DEFAULT_LOGGER)).is_enabled(fc::log_level::debug))                  \
-        (fc::logger::get(DEFAULT_LOGGER)).log(FC_LOG_MESSAGE2(debug, FORMAT, __VA_ARGS__)); \
+#define dlog2(FORMAT, ...)                                                                    \
+    FC_MULTILINE_MACRO_BEGIN                                                                  \
+    if((fc::logger::get(DEFAULT_LOGGER)).is_enabled(fc::log_level::debug))                    \
+        (fc::logger::get(DEFAULT_LOGGER)).log(FC_LOG_MESSAGE2(debug, FORMAT, ##__VA_ARGS__)); \
     FC_MULTILINE_MACRO_END
 
 /**
@@ -129,10 +129,10 @@ private:
         (fc::logger::get(DEFAULT_LOGGER)).log(FC_LOG_MESSAGE(info, FORMAT, __VA_ARGS__)); \
     FC_MULTILINE_MACRO_END
 
-#define ilog2_(FORMAT, ...)                                                                \
-    FC_MULTILINE_MACRO_BEGIN                                                               \
-    if((fc::logger::get(DEFAULT_LOGGER)).is_enabled(fc::log_level::info))                  \
-        (fc::logger::get(DEFAULT_LOGGER)).log(FC_LOG_MESSAGE2(info, FORMAT, __VA_ARGS__)); \
+#define ilog2_(FORMAT, ...)                                                                  \
+    FC_MULTILINE_MACRO_BEGIN                                                                 \
+    if((fc::logger::get(DEFAULT_LOGGER)).is_enabled(fc::log_level::info))                    \
+        (fc::logger::get(DEFAULT_LOGGER)).log(FC_LOG_MESSAGE2(info, FORMAT, ##__VA_ARGS__)); \
     FC_MULTILINE_MACRO_END
 
 #define wlog(FORMAT, ...)                                                                 \

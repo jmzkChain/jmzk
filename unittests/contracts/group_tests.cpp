@@ -8,7 +8,7 @@ auto CHECK_EQUAL = [](auto& lhs, auto& rhs) {
     CHECK(memcmp(b1.data(), b2.data(), b1.size()) == 0);
 };
 
-TEST_CASE_METHOD(contracts_test, "contract_newgroup_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "newgroup_test", "[contracts]") {
     const char* test_data = R"=====(
     {
       "name" : "5jxX",
@@ -53,7 +53,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newgroup_test", "[contracts]") {
     auto  var         = fc::json::from_string(test_data);
     auto  group_payer = address(N(.domain), ".group", 0);
     auto& tokendb     = my_tester->control->token_db();
-    auto& cache = my_tester->control->token_db_cache();
+    auto& cache       = my_tester->control->token_db_cache();
 
     CHECK(!EXISTS_TOKEN(group, get_group_name()));
     my_tester->add_money(group_payer, asset(10'000'000, symbol(5, EVT_SYM_ID)));
@@ -101,7 +101,7 @@ TEST_CASE_METHOD(contracts_test, "contract_newgroup_test", "[contracts]") {
     CHECK_EQUAL(group, *group2);
 }
 
-TEST_CASE_METHOD(contracts_test, "contract_updategroup_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "updategroup_test", "[contracts]") {
     const char* test_data = R"=====(
     {
       "name" : "5jxX",
@@ -146,7 +146,7 @@ TEST_CASE_METHOD(contracts_test, "contract_updategroup_test", "[contracts]") {
     auto  var     = fc::json::from_string(test_data);
     auto  upgrp   = var.as<updategroup>();
     auto& tokendb = my_tester->control->token_db();
-    auto& cache = my_tester->control->token_db_cache();
+    auto& cache   = my_tester->control->token_db_cache();
 
     CHECK(EXISTS_TOKEN(group, get_group_name()));
     group gp;
@@ -185,7 +185,7 @@ TEST_CASE_METHOD(contracts_test, "contract_updategroup_test", "[contracts]") {
     CHECK_EQUAL(group, *group2);
 }
 
-TEST_CASE_METHOD(contracts_test, "contract_updatedomain_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "updatedomain_test", "[contracts]") {
     const char* test_data = R"=====(
     {
       "name" : "domain",
@@ -232,6 +232,7 @@ TEST_CASE_METHOD(contracts_test, "contract_updatedomain_test", "[contracts]") {
 
     updom.name = get_domain_name();
     updom.issue->authorizers[0].ref.set_group(get_group_name());
+    updom.transfer->authorizers[0].ref.set_account(key);
     updom.manage->authorizers[0].ref.set_account(key);
     to_variant(updom, var);
 
@@ -240,10 +241,22 @@ TEST_CASE_METHOD(contracts_test, "contract_updatedomain_test", "[contracts]") {
     READ_TOKEN(domain, get_domain_name(), dom);
     CHECK(2 == dom.issue.authorizers[0].weight);
 
+    // add `.disable-set-transfer` with 'true' to domain-1
+    auto am    = addmeta();
+    am.key     = N128(.disable-set-transfer);
+    am.value   = "true";
+    am.creator = key; 
+
+    my_tester->push_action(action(get_domain_name(1), N128(.meta), am), key_seeds, payer, 5'000'000);
+
+    updom.name = get_domain_name(1);
+    to_variant(updom, var);
+    CHECK_THROWS_AS(my_tester->push_action(N(updatedomain), name128(get_domain_name(1)), N128(.update), var.get_object(), key_seeds, payer), domain_cannot_update_exception);
+
     my_tester->produce_blocks();
 }
 
-TEST_CASE_METHOD(contracts_test, "contract_group_auth_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "group_auth_test", "[contracts]") {
     const char* test_data = R"=====(
     {
         "domain": "domain",
