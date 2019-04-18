@@ -548,7 +548,7 @@ TEST_CASE_METHOD(contracts_test, "evt2pevt_test", "[contracts]") {
     tf.number = asset(50, symbol(5,2));
 
     to_variant(tf, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(transferft), N128(.fungible), (name128)std::to_string(pevt_sym().id()), var.get_object(), key_seeds, payer), asset_symbol_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(transferft), N128(.fungible), (name128)std::to_string(pevt_sym().id()), var.get_object(), key_seeds, payer), unsatisfied_authorization);
 
     my_tester->produce_blocks();
 }
