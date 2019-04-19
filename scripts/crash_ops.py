@@ -1,6 +1,10 @@
+#!/usr/bin/env python3
+
 import os
+import pathlib
 import re
 import subprocess
+import time
 
 import boto3
 import click
@@ -8,12 +12,55 @@ from botocore.exceptions import ClientError
 from botocore.handlers import disable_signing
 
 
-@click.command()
+def green(text):
+    return click.style(text, fg='green')
+
+
+@click.group('cli')
+def cli():
+    pass
+
+
+@cli.command()
+@click.argument('name', type=click.Path(exists=True))
+@click.option('--bucket', '-b', default='evt-crashes')
+@click.option('--aws-key', '-k', required=True)
+@click.option('--aws-secret', '-s', required=True)
+def upload(name, bucket, aws_key, aws_secret):
+    session = boto3.Session(aws_access_key_id=aws_key,
+                            aws_secret_access_key=aws_secret)
+    s3 = session.resource('s3')
+
+    t = time.monotonic()
+    key = pathlib.Path(name).parts[-1]
+    click.echo('Uploading: {} to {} bucket'.format(
+        click.style(key, fg='red'), click.style(bucket, fg='green')))
+    s3.Object(bucket, key).put(Body=open(key, 'rb'), StorageClass='STANDARD_IA')
+    t2 = time.monotonic()
+
+    click.echo('Uploaded crash minidump file, took {} ms'.format(
+               click.style(str(round((t2-t) * 1000)), fg='green')))
+
+
+@cli.command()
 @click.argument('filename', type=click.Path(exists=True))
 @click.option('--type', '-t', default='testnet')
 @click.option('--temp', '-f', default='/tmp/evt-symbols')
 @click.option('--output', '-o', default='.')
-def analysis(filename, type, temp, output):
+@click.option('--bucket', '-b', default='evt-crashes')
+@click.option('--aws-key', '-k', required=True)
+@click.option('--aws-secret', '-s', required=True)
+def analysis(filename, type, temp, output, bucket, aws_key, aws_secret):
+    if bucket is not None:
+        click.echo('Downloading from S3 bucket...')
+
+        session = boto3.Session(aws_access_key_id=aws_key,
+                                aws_secret_access_key=aws_secret)
+        s3 = session.resource('s3')
+        s3.Bucket(bucket).download_file(filename, '/tmp/' + filename)
+
+        filename = '/tmp/' + filename
+
     r = subprocess.run(['minidump_stackwalk', filename],
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if r.returncode != 0:
@@ -81,4 +128,4 @@ def analysis(filename, type, temp, output):
 
 
 if __name__ == '__main__':
-    analysis()
+    cli()
