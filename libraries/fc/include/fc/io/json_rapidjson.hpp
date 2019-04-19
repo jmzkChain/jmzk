@@ -30,7 +30,7 @@ void to_stream(T& out, const variant& v);
 template<typename T>
 void to_stream_pretty(T& out, const variant& v);
 
-namespace __internal {
+namespace internal {
 
 class VariantHandler : public BaseReaderHandler<UTF8<>, VariantHandler> {
 public:
@@ -202,12 +202,12 @@ private:
     uint32_t           max_depth_;
 };
 
-}  // namespace __internal
+}  // namespace internal
 
 template<typename T, bool strict>
 variant
 variant_from_stream(T& in, uint32_t max_depth) {
-    using namespace __internal;
+    using namespace internal;
 
     variant var;
 
@@ -224,7 +224,7 @@ variant_from_stream(T& in, uint32_t max_depth) {
     return var;
 }
 
-namespace __internal {
+namespace internal {
 
 template<typename W>
 void
@@ -288,12 +288,12 @@ serialize(W& writer, const variant& v) {
     }  // switch
 }
 
-}  // namespace __internal
+}  // namespace internal
 
 template<typename T>
 void
 to_stream(T& out, const variant& v) {
-    using namespace __internal;
+    using namespace internal;
 
     BasicOStreamWrapper<T> ss(out);
 
@@ -304,7 +304,7 @@ to_stream(T& out, const variant& v) {
 template<typename T>
 void
 to_stream_pretty(T& out, const variant& v) {
-    using namespace __internal;
+    using namespace internal;
 
     BasicOStreamWrapper<T> ss(out);
 

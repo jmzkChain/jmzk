@@ -30,22 +30,22 @@ namespace evt {
  */
 static auto pg_version = "1.4.0";
 
-namespace __internal {
+namespace internal {
 
-struct __prepare_register {
+struct prepare_register {
 public:
     std::map<std::string, std::string> stmts;
 
 public:
-    static __prepare_register& instance() {
-        static __prepare_register i;
+    static prepare_register& instance() {
+        static prepare_register i;
         return i;
     }
 };
 
-struct __insert_prepare {
-    __insert_prepare(const std::string& name, const std::string& sql) {
-        auto& stmts = __prepare_register::instance().stmts;
+struct insert_prepare {
+    insert_prepare(const std::string& name, const std::string& sql) {
+        auto& stmts = prepare_register::instance().stmts;
         if(stmts.find(name) != stmts.end()) {
             throw new std::runtime_error(fmt::format("{} is already registered", name));
         }
@@ -54,7 +54,7 @@ struct __insert_prepare {
 };
 
 #define PREPARE_SQL_ONCE(name, sql) \
-    __internal::__insert_prepare __##name(#name, sql);
+    internal::insert_prepare ipsql_##name(#name, sql);
 
 auto create_stats_table = R"sql(CREATE TABLE IF NOT EXISTS public.stats
                                 (
@@ -317,7 +317,7 @@ escape_string(const std::string& str) {
     return estr;
 }
 
-}  // namespace __internal
+}  // namespace internal
 
 int
 pg::connect(const std::string& conn) {
@@ -467,7 +467,7 @@ pg::drop_sequence(const std::string& seq) {
 
 int
 pg::drop_all_tables() {
-    using namespace __internal;
+    using namespace internal;
 
     for(auto t : tables) {
         drop_table(t);
@@ -485,7 +485,7 @@ pg::drop_all_sequences() {
 
 int
 pg::prepare_tables() {
-    using namespace __internal;
+    using namespace internal;
 
     const char* stmts[] = {
         create_stats_table,
@@ -514,7 +514,7 @@ pg::prepare_stmts() {
     if(prepared_stmts_) {
         return PG_OK;
     }
-    for(auto it : __internal::__prepare_register::instance().stmts) {
+    for(auto it : internal::prepare_register::instance().stmts) {
         auto r = PQprepare(conn_, it.first.c_str(), it.second.c_str(), 0, NULL);
         EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgres_exec_exception,
             "Prepare sql failed, sql: ${s}, detail: ${d}", ("s",it.second)("d",PQerrorMessage(conn_)));
@@ -635,7 +635,7 @@ pg::add_block(add_context& actx, const block_ptr block) {
 
 int
 pg::add_trx(add_context& actx, const trx_recept_t& trx, const trx_t& strx, int seq_num, int elapsed, int charge) {
-    using namespace __internal;
+    using namespace internal;
 
     auto& cctx = actx.cctx;
     fmt::format_to(cctx.trxs_copy_,
@@ -688,7 +688,7 @@ pg::add_trx(add_context& actx, const trx_recept_t& trx, const trx_t& strx, int s
 
 int
 pg::add_action(add_context& actx, const act_trace_t& act_trace, const std::string& trx_id, int seq_num) {
-    using namespace __internal;
+    using namespace internal;
 
     auto& act     = act_trace.act;
     auto  acttype = actx.exec_ctx.get_acttype_name(act.name);
@@ -879,7 +879,7 @@ PREPARE_SQL_ONCE(tf_plan, "UPDATE tokens SET owner = $1 WHERE id = $2;");
 
 int
 pg::upd_token(trx_context& tctx, const transfer& tf) {
-    using namespace __internal;
+    using namespace internal;
 
     auto owners_buf = fmt::memory_buffer();
     format_array_to(owners_buf, std::begin(tf.to), std::end(tf.to));
@@ -1020,7 +1020,7 @@ PREPARE_SQL_ONCE(amf_plan, "UPDATE fungibles SET metas = array_append(metas, $1)
 
 int
 pg::add_meta(trx_context& tctx, const action_t& act) {
-    using namespace __internal;
+    using namespace internal;
 
     auto& am = act.data_as<const addmeta&>();
 
@@ -1057,7 +1057,7 @@ pg::add_ft_holders(trx_context& tctx, const ft_holders_t& holders) {
 
 int
 pg::backup(const std::shared_ptr<chain::snapshot_writer>& snapshot) const {
-    using namespace __internal;
+    using namespace internal;
 
     for(auto t : tables) {
         snapshot->write_section(fmt::format("pg-{}", t), [this, t](auto& writer) {
@@ -1091,7 +1091,7 @@ pg::backup(const std::shared_ptr<chain::snapshot_writer>& snapshot) const {
 
 int
 pg::restore(const std::shared_ptr<chain::snapshot_reader>& snapshot) {
-    using namespace __internal;
+    using namespace internal;
 
     prepare_tables();
     prepare_stmts();

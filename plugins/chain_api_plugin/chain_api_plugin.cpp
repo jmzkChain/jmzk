@@ -35,7 +35,7 @@ struct async_result_visitor : public fc::visitor<std::string> {
     }
 };
 
-namespace __internal {
+namespace internal {
 
 template<typename T>
 std::string
@@ -49,13 +49,13 @@ get_json<std::string>(const std::string& value) {
     return value;
 }
 
-}  // namespace __internal
+}  // namespace internal
 
 #define CALL(api_name, api_handle, api_namespace, call_name, http_response_code)                                             \
     {                                                                                                                        \
         std::string("/v1/" #api_name "/" #call_name),                                                                        \
             [api_handle](string, string body, url_response_callback cb) mutable {                                            \
-                using namespace __internal;                                                                                  \
+                using namespace internal;                                                                                  \
                 try {                                                                                                        \
                     if(body.empty()) {                                                                                       \
                         body = "{}";                                                                                         \

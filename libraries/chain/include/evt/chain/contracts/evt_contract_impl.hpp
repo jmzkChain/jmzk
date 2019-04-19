@@ -42,7 +42,7 @@ namespace evt { namespace chain { namespace contracts {
 
 #define EVT_ACTION_VER() ACT::get_version()
 
-namespace __internal {
+namespace internal {
 
 inline bool 
 validate(const permission_def& permission) {
@@ -287,10 +287,10 @@ get_db_prefix<token_def>(const token_def& v) {
     auto& tokendb = context.token_db;            \
     auto& tokendb_cache = context.token_db_cache;
 
-} // namespace __internal
+} // namespace internal
 
 EVT_ACTION_IMPL_BEGIN(newdomain) {
-    using namespace __internal;
+    using namespace internal;
 
     auto ndact = context.act.data_as<ACT>();
     try {
@@ -338,7 +338,7 @@ EVT_ACTION_IMPL_BEGIN(newdomain) {
 EVT_ACTION_IMPL_END()
 
 EVT_ACTION_IMPL_BEGIN(issuetoken) {
-    using namespace __internal;
+    using namespace internal;
 
     auto itact = context.act.data_as<ACT>();
     try {
@@ -382,7 +382,7 @@ EVT_ACTION_IMPL_BEGIN(issuetoken) {
 }
 EVT_ACTION_IMPL_END()
 
-namespace __internal {
+namespace internal {
 
 bool
 check_token_destroy(const token_def& token) {
@@ -401,10 +401,10 @@ check_token_locked(const token_def& token) {
     return addr.is_generated() && addr.get_prefix() == N(lock);
 }
 
-}  // namespace __internal
+}  // namespace internal
 
 EVT_ACTION_IMPL_BEGIN(transfer) {
-    using namespace __internal;
+    using namespace internal;
 
     auto ttact = context.act.data_as<ACT>();
     try {
@@ -433,7 +433,7 @@ EVT_ACTION_IMPL_BEGIN(transfer) {
 EVT_ACTION_IMPL_END()
 
 EVT_ACTION_IMPL_BEGIN(destroytoken) {
-    using namespace __internal;
+    using namespace internal;
 
     auto dtact = context.act.data_as<ACT>();
     try {
@@ -467,7 +467,7 @@ EVT_ACTION_IMPL_BEGIN(destroytoken) {
 EVT_ACTION_IMPL_END()
 
 EVT_ACTION_IMPL_BEGIN(newgroup) {
-    using namespace __internal;
+    using namespace internal;
 
     auto ngact = context.act.data_as<ACT>();
     try {
@@ -491,7 +491,7 @@ EVT_ACTION_IMPL_BEGIN(newgroup) {
 EVT_ACTION_IMPL_END()
 
 EVT_ACTION_IMPL_BEGIN(updategroup) {
-    using namespace __internal;
+    using namespace internal;
 
     auto ugact = context.act.data_as<ACT>();
     try {
@@ -515,7 +515,7 @@ EVT_ACTION_IMPL_BEGIN(updategroup) {
 EVT_ACTION_IMPL_END()
 
 EVT_ACTION_IMPL_BEGIN(updatedomain) {
-    using namespace __internal;
+    using namespace internal;
 
     auto udact = context.act.data_as<ACT>();
     try {
@@ -568,7 +568,7 @@ EVT_ACTION_IMPL_BEGIN(updatedomain) {
 }
 EVT_ACTION_IMPL_END()
 
-namespace __internal {
+namespace internal {
 
 address
 get_fungible_address(symbol sym) {
@@ -699,10 +699,10 @@ transfer_fungible(apply_context& context,
     }
 }
 
-}  // namespace __internal
+}  // namespace internal
 
 EVT_ACTION_IMPL_BEGIN(newfungible) {
-    using namespace __internal;
+    using namespace internal;
 
     auto nfact = context.act.data_as<ACT>();
     try {
@@ -781,7 +781,7 @@ EVT_ACTION_IMPL_BEGIN(newfungible) {
 EVT_ACTION_IMPL_END()
 
 EVT_ACTION_IMPL_BEGIN(updfungible) {
-    using namespace __internal;
+    using namespace internal;
 
     auto ufact = context.act.data_as<ACT>();
     try {
@@ -838,7 +838,7 @@ EVT_ACTION_IMPL_BEGIN(updfungible) {
 EVT_ACTION_IMPL_END()
 
 EVT_ACTION_IMPL_BEGIN(issuefungible) {
-    using namespace __internal;
+    using namespace internal;
 
     auto& ifact = context.act.data_as<add_clr_t<ACT>>();
 
@@ -867,7 +867,7 @@ EVT_ACTION_IMPL_BEGIN(issuefungible) {
 EVT_ACTION_IMPL_END()
 
 EVT_ACTION_IMPL_BEGIN(transferft) {
-    using namespace __internal;
+    using namespace internal;
 
     auto& tfact = context.act.data_as<add_clr_t<ACT>>();
 
@@ -886,7 +886,7 @@ EVT_ACTION_IMPL_BEGIN(transferft) {
 EVT_ACTION_IMPL_END()
 
 EVT_ACTION_IMPL_BEGIN(recycleft) {
-    using namespace __internal;
+    using namespace internal;
 
     auto& rfact = context.act.data_as<add_clr_t<ACT>>();
 
@@ -904,7 +904,7 @@ EVT_ACTION_IMPL_BEGIN(recycleft) {
 EVT_ACTION_IMPL_END()
 
 EVT_ACTION_IMPL_BEGIN(destroyft) {
-    using namespace __internal;
+    using namespace internal;
 
     auto& dfact = context.act.data_as<add_clr_t<ACT>>();
 
@@ -922,7 +922,7 @@ EVT_ACTION_IMPL_BEGIN(destroyft) {
 EVT_ACTION_IMPL_END()
 
 EVT_ACTION_IMPL_BEGIN(evt2pevt) {
-    using namespace __internal;
+    using namespace internal;
 
     auto& epact = context.act.data_as<add_clr_t<ACT>>();
 
@@ -938,7 +938,7 @@ EVT_ACTION_IMPL_BEGIN(evt2pevt) {
 }
 EVT_ACTION_IMPL_END()
 
-namespace __internal {
+namespace internal {
 
 bool
 check_involved_node(const group_def& group, const group::node& node, const public_key_type& key) {
@@ -1058,10 +1058,10 @@ auto check_meta_key_reserved = [](const auto& key) {
     EVT_ASSERT(!key.reserved(), meta_key_exception, "Meta-key is reserved and cannot be used");
 };
 
-}  // namespace __internal
+}  // namespace internal
 
 EVT_ACTION_IMPL_BEGIN(addmeta) {
-    using namespace __internal;
+    using namespace internal;
 
     const auto& act   = context.act;
     auto&       amact = context.act.data_as<add_clr_t<ACT>>();
@@ -1165,7 +1165,7 @@ EVT_ACTION_IMPL_BEGIN(addmeta) {
 EVT_ACTION_IMPL_END()
 
 EVT_ACTION_IMPL_BEGIN(newsuspend) {
-    using namespace __internal;
+    using namespace internal;
 
     auto nsact = context.act.data_as<newsuspend>();
     try {
@@ -1202,7 +1202,7 @@ EVT_ACTION_IMPL_BEGIN(newsuspend) {
 EVT_ACTION_IMPL_END()
 
 EVT_ACTION_IMPL_BEGIN(aprvsuspend) {
-    using namespace __internal;
+    using namespace internal;
 
     auto& aeact = context.act.data_as<add_clr_t<ACT>>();
     try {
@@ -1238,7 +1238,7 @@ EVT_ACTION_IMPL_BEGIN(aprvsuspend) {
 EVT_ACTION_IMPL_END()
 
 EVT_ACTION_IMPL_BEGIN(cancelsuspend) {
-    using namespace __internal;
+    using namespace internal;
 
     auto& csact = context.act.data_as<add_clr_t<ACT>>();
     try {
@@ -1262,7 +1262,7 @@ EVT_ACTION_IMPL_BEGIN(cancelsuspend) {
 EVT_ACTION_IMPL_END()
 
 EVT_ACTION_IMPL_BEGIN(execsuspend) {
-    using namespace __internal;
+    using namespace internal;
 
     auto& esact = context.act.data_as<add_clr_t<ACT>>();
     try {
@@ -1313,7 +1313,7 @@ EVT_ACTION_IMPL_BEGIN(execsuspend) {
 EVT_ACTION_IMPL_END()
 
 EVT_ACTION_IMPL_BEGIN(paycharge) {
-    using namespace __internal;
+    using namespace internal;
     
     auto& pcact = context.act.data_as<add_clr_t<ACT>>();
     try {
@@ -1360,7 +1360,7 @@ EVT_ACTION_IMPL_BEGIN(paybonus) {
 EVT_ACTION_IMPL_END()
 
 EVT_ACTION_IMPL_BEGIN(everipass) {
-    using namespace __internal;
+    using namespace internal;
 
     auto& epact = context.act.data_as<add_clr_t<ACT>>();
     try {
@@ -1419,7 +1419,7 @@ EVT_ACTION_IMPL_BEGIN(everipass) {
 EVT_ACTION_IMPL_END()
 
 EVT_ACTION_IMPL_BEGIN(everipay) {
-    using namespace __internal;
+    using namespace internal;
 
     auto& epact = context.act.data_as<add_clr_t<ACT>>();
     try {
@@ -1487,7 +1487,7 @@ EVT_ACTION_IMPL_BEGIN(everipay) {
 }
 EVT_ACTION_IMPL_END()
 
-namespace __internal {
+namespace internal {
 
 auto update_chain_config = [](auto& conf, auto key, auto v) {
     switch(key.value) {
@@ -1513,10 +1513,10 @@ auto update_chain_config = [](auto& conf, auto key, auto v) {
     } // switch
 };
 
-}  // namespace __internal
+}  // namespace internal
 
 EVT_ACTION_IMPL_BEGIN(prodvote) {
-    using namespace __internal;
+    using namespace internal;
 
     auto& pvact = context.act.data_as<add_clr_t<ACT>>();
     try {
@@ -1656,7 +1656,7 @@ EVT_ACTION_IMPL_BEGIN(updsched) {
 EVT_ACTION_IMPL_END()
 
 EVT_ACTION_IMPL_BEGIN(newlock) {
-    using namespace __internal;
+    using namespace internal;
 
     auto nlact = context.act.data_as<ACT>();
     try {
@@ -1786,7 +1786,7 @@ EVT_ACTION_IMPL_BEGIN(newlock) {
 EVT_ACTION_IMPL_END()
 
 EVT_ACTION_IMPL_BEGIN(aprvlock) {
-    using namespace __internal;
+    using namespace internal;
 
     auto& alact = context.act.data_as<add_clr_t<ACT>>();
     try {
@@ -1822,7 +1822,7 @@ EVT_ACTION_IMPL_BEGIN(aprvlock) {
 EVT_ACTION_IMPL_END()
 
 EVT_ACTION_IMPL_BEGIN(tryunlock) {
-    using namespace __internal;
+    using namespace internal;
 
     auto& tuact = context.act.data_as<add_clr_t<ACT>>();
     try {
@@ -1891,7 +1891,7 @@ EVT_ACTION_IMPL_BEGIN(tryunlock) {
 }
 EVT_ACTION_IMPL_END()
 
-namespace __internal {
+namespace internal {
 
 enum class bonus_check_type {
     natural = 0,
@@ -2054,10 +2054,10 @@ to_rules_v2(const dist_rules& rules_v1) {
     return rules;
 }
 
-} // namespace __internal
+} // namespace internal
 
 EVT_ACTION_IMPL_BEGIN(setpsvbonus) {
-    using namespace __internal;
+    using namespace internal;
 
     auto spbact = context.act.data_as<ACT>();
     try {
@@ -2146,7 +2146,7 @@ EVT_ACTION_IMPL_BEGIN(setpsvbonus) {
 }
 EVT_ACTION_IMPL_END()
 
-namespace __internal {
+namespace internal {
 
 struct pubkey_hasher {
     size_t
@@ -2221,10 +2221,10 @@ get_psvbonus_dist_db_key(uint64_t sym_id, uint64_t round) {
     return v;
 }
 
-}  // namespace __internal
+}  // namespace internal
 
 EVT_ACTION_IMPL_BEGIN(distpsvbonus) {
-    using namespace __internal;
+    using namespace internal;
 
     auto spbact = context.act.data_as<ACT>();
     try {
@@ -2295,5 +2295,5 @@ EVT_ACTION_IMPL_END()
 
 }}} // namespace evt::chain::contracts
 
-FC_REFLECT(evt::chain::contracts::__internal::holder_dist, (sym_id)(slim)(coll)(total));
-FC_REFLECT(evt::chain::contracts::__internal::bonusdist, (created_at)(created_index)(holders)(deadline)(final_receiver));
+FC_REFLECT(evt::chain::contracts::internal::holder_dist, (sym_id)(slim)(coll)(total));
+FC_REFLECT(evt::chain::contracts::internal::bonusdist, (created_at)(created_index)(holders)(deadline)(final_receiver));

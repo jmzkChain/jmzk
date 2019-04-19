@@ -8,7 +8,7 @@
 
 namespace evt { namespace chain {
 
-namespace __internal {
+namespace internal {
 
 // TODO: Replace with values provided by token database class directly
 const char* section_names[] = {
@@ -159,11 +159,11 @@ read_assets(snapshot_reader_ptr reader, token_database& db, const std::vector<sy
     }
 }
 
-}  // namespace __internal
+}  // namespace internal
 
 void
 token_database_snapshot::add_to_snapshot(snapshot_writer_ptr writer, const token_database& db) {
-    using namespace __internal;
+    using namespace internal;
 
     try {
         auto domains    = std::vector<domain_name>();
@@ -178,7 +178,7 @@ token_database_snapshot::add_to_snapshot(snapshot_writer_ptr writer, const token
 
 void
 token_database_snapshot::read_from_snapshot(snapshot_reader_ptr reader, token_database& db) {
-    using namespace __internal;
+    using namespace internal;
 
     try {
         // clear all the savepoints

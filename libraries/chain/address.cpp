@@ -12,7 +12,7 @@ namespace evt { namespace chain {
 
 const std::string reserved_key = "EVT00000000000000000000000000000000000000000000000000";
 
-namespace __internal {
+namespace internal {
 
 struct gen_wrapper {
 public:
@@ -34,7 +34,7 @@ public:
     }
 } __attribute__((packed));
 
-}  // namespace __internal
+}  // namespace internal
 
 void
 address::to_bytes(char* buf, size_t sz) const {
@@ -44,7 +44,7 @@ address::to_bytes(char* buf, size_t sz) const {
 
 std::string
 address::to_string() const {
-    using namespace __internal;
+    using namespace internal;
 
     switch(type()) {
     case reserved_t: {
@@ -81,7 +81,7 @@ address::to_string() const {
 
 address
 address::from_string(const std::string& str) {
-    using namespace __internal;
+    using namespace internal;
     EVT_ASSERT(str.size() == 53, address_type_exception, "Address is not valid");
 
     address addr;

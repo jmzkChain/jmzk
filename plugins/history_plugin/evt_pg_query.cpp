@@ -20,27 +20,27 @@
 
 namespace evt {
 
-namespace __internal {
+namespace internal {
 
-struct __prepare_register {
+struct prepare_register {
 public:
     std::map<std::string, std::string> stmts;
 
 public:
-    static __prepare_register& instance() {
-        static __prepare_register i;
+    static prepare_register& instance() {
+        static prepare_register i;
         return i;
     }
 };
 
-struct __insert_prepare {
-    __insert_prepare(const std::string& name, const std::string sql) {
-        __prepare_register::instance().stmts[name] = sql;
+struct insert_prepare {
+    insert_prepare(const std::string& name, const std::string sql) {
+        prepare_register::instance().stmts[name] = sql;
     }
 };
 
 #define PREPARE_SQL_ONCE(name, sql) \
-    __internal::__insert_prepare __##name(#name, sql);
+    internal::insert_prepare ipsql_##name(#name, sql);
 
 template<typename Iterator>
 void
@@ -110,7 +110,7 @@ fix_pg_timestamp(char* str) {
     return str;
 }
 
-}  // namespace __internal
+}  // namespace internal
 
 int
 pg_query::connect(const std::string& conn) {
@@ -134,7 +134,7 @@ pg_query::close() {
 
 int
 pg_query::prepare_stmts() {
-    for(auto it : __internal::__prepare_register::instance().stmts) {
+    for(auto it : internal::prepare_register::instance().stmts) {
         auto r = PQprepare(conn_, it.first.c_str(), it.second.c_str(), 0, NULL);
         EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgres_exec_exception,
             "Prepare sql failed, sql: ${s}, detail: ${d}", ("s",it.second)("d",PQerrorMessage(conn_)));
@@ -161,7 +161,7 @@ pg_query::queue(int id, int task, std::string&& stmt) {
 
 int
 pg_query::send_once() {
-    using namespace __internal;
+    using namespace internal;
 
     assert(!tasks_.empty());
     auto& t = tasks_.front();
@@ -190,7 +190,7 @@ pg_query::send_once() {
 
 int
 pg_query::poll_read() {
-    using namespace __internal;
+    using namespace internal;
 
     bool busy = false;
     while(1) {
@@ -284,7 +284,7 @@ PREPARE_SQL_ONCE(gt_plan2, "SELECT domain, name FROM tokens WHERE $1 @> owner");
 
 int
 pg_query::get_tokens_async(int id, const read_only::get_tokens_params& params) {
-    using namespace __internal;
+    using namespace internal;
 
     auto pkeys_buf = fmt::memory_buffer();
     format_array_to(pkeys_buf, std::begin(params.keys), std::end(params.keys));
@@ -302,7 +302,7 @@ pg_query::get_tokens_async(int id, const read_only::get_tokens_params& params) {
 
 int
 pg_query::get_tokens_resume(int id, pg_result const* r) {
-    using namespace __internal;
+    using namespace internal;
 
     EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get tokens failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
@@ -329,7 +329,7 @@ PREPARE_SQL_ONCE(gd_plan, "SELECT name FROM domains WHERE creator = ANY($1);");
 
 int
 pg_query::get_domains_async(int id, const read_only::get_params& params) {
-    using namespace __internal;
+    using namespace internal;
 
     auto pkeys_buf = fmt::memory_buffer();
     format_array_to(pkeys_buf, std::begin(params.keys), std::end(params.keys));
@@ -340,7 +340,7 @@ pg_query::get_domains_async(int id, const read_only::get_params& params) {
 
 int
 pg_query::get_domains_resume(int id, pg_result const* r) {
-    using namespace __internal;
+    using namespace internal;
 
     EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get domains failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
@@ -362,7 +362,7 @@ PREPARE_SQL_ONCE(gg_plan, "SELECT name FROM groups WHERE key = ANY($1);");
 
 int
 pg_query::get_groups_async(int id, const read_only::get_params& params) {
-    using namespace __internal;
+    using namespace internal;
 
     auto pkeys_buf = fmt::memory_buffer();
     format_array_to(pkeys_buf, std::begin(params.keys), std::end(params.keys));
@@ -373,7 +373,7 @@ pg_query::get_groups_async(int id, const read_only::get_params& params) {
 
 int
 pg_query::get_groups_resume(int id, pg_result const* r) {
-    using namespace __internal;
+    using namespace internal;
 
     EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get groups failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
@@ -395,7 +395,7 @@ PREPARE_SQL_ONCE(gf_plan, "SELECT sym_id FROM fungibles WHERE creator = ANY($1);
 
 int
 pg_query::get_fungibles_async(int id, const read_only::get_params& params) {
-    using namespace __internal;
+    using namespace internal;
 
     auto pkeys_buf = fmt::memory_buffer();
     format_array_to(pkeys_buf, std::begin(params.keys), std::end(params.keys));
@@ -406,7 +406,7 @@ pg_query::get_fungibles_async(int id, const read_only::get_params& params) {
 
 int
 pg_query::get_fungibles_resume(int id, pg_result const* r) {
-    using namespace __internal;
+    using namespace internal;
 
     EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get fungibles failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
@@ -470,7 +470,7 @@ PREPARE_SQL_ONCE(ga_plan32, fmt::format(ga_plan3, "ASC"));
 
 int
 pg_query::get_actions_async(int id, const read_only::get_actions_params& params) {
-    using namespace __internal;
+    using namespace internal;
 
     int s = 0, t = 10;
     if(params.skip.has_value()) {
@@ -546,7 +546,7 @@ pg_query::get_actions_async(int id, const read_only::get_actions_params& params)
 
 int
 pg_query::get_actions_resume(int id, pg_result const* r) {
-    using namespace __internal;
+    using namespace internal;
 
     EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get actions failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
     auto n = PQntuples(r);
@@ -614,7 +614,7 @@ PREPARE_SQL_ONCE(gfa_plan12, fmt::format(gfa_plan1, "ASC"));
 
 int
 pg_query::get_fungible_actions_async(int id, const read_only::get_fungible_actions_params& params) {
-    using namespace __internal;
+    using namespace internal;
 
     int s = 0, t = 10;
     if(params.skip.has_value()) {
@@ -659,7 +659,7 @@ pg_query::get_fungible_actions_async(int id, const read_only::get_fungible_actio
 
 int
 pg_query::get_fungible_actions_resume(int id, pg_result const* r) {
-    using namespace __internal;
+    using namespace internal;
 
     EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get fungible actions failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
@@ -694,7 +694,7 @@ PREPARE_SQL_ONCE(gfb_plan, "SELECT address, sym_ids FROM ft_holders WHERE addres
 
 int
 pg_query::get_fungibles_balance_async(int id, const read_only::get_fungibles_balance_params& params) {
-    using namespace __internal;
+    using namespace internal;
 
     auto stmt = fmt::format(fmt("EXECUTE gfb_plan('{}');"), (std::string)params.addr);
     return queue(id, kGetFungiblesBalance, std::move(stmt));
@@ -713,7 +713,7 @@ pg_query::get_fungibles_balance_async(int id, const read_only::get_fungibles_bal
 
 int
 pg_query::get_fungibles_balance_resume(int id, pg_result const* r) {
-    using namespace __internal;
+    using namespace internal;
     using namespace boost::algorithm;
     using namespace chain;
 
@@ -751,7 +751,7 @@ PREPARE_SQL_ONCE(gtrx_plan, "SELECT block_num, trx_id FROM transactions WHERE tr
 
 int
 pg_query::get_transaction_async(int id, const read_only::get_transaction_params& params) {
-    using namespace __internal;
+    using namespace internal;
 
     auto stmt = fmt::format(fmt("EXECUTE gtrx_plan('{}');"), (std::string)params.id);
     return queue(id, kGetTransaction, std::move(stmt));
@@ -759,7 +759,7 @@ pg_query::get_transaction_async(int id, const read_only::get_transaction_params&
 
 int
 pg_query::get_transaction_resume(int id, pg_result const* r) {
-    using namespace __internal;
+    using namespace internal;
 
     EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get transaction failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
@@ -800,7 +800,7 @@ PREPARE_SQL_ONCE(gtrxs_plan1, "SELECT block_num, trx_id FROM transactions WHERE 
 
 int
 pg_query::get_transactions_async(int id, const read_only::get_transactions_params& params) {
-    using namespace __internal;
+    using namespace internal;
 
     int s = 0, t = 10;
     if(params.skip.has_value()) {
@@ -827,7 +827,7 @@ pg_query::get_transactions_async(int id, const read_only::get_transactions_param
 
 int
 pg_query::get_transactions_resume(int id, pg_result const* r) {
-    using namespace __internal;
+    using namespace internal;
 
     EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get transaction failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
@@ -869,7 +869,7 @@ PREPARE_SQL_ONCE(gfi_plan, "SELECT sym_id FROM fungibles ORDER BY sym_id ASC LIM
 
 int
 pg_query::get_fungible_ids_async(int id, const read_only::get_fungible_ids_params& params) {
-    using namespace __internal;
+    using namespace internal;
 
     int s = 0, t = 100;
     if(params.skip.has_value()) {
@@ -886,7 +886,7 @@ pg_query::get_fungible_ids_async(int id, const read_only::get_fungible_ids_param
 
 int
 pg_query::get_fungible_ids_resume(int id, pg_result const* r) {
-    using namespace __internal;
+    using namespace internal;
 
     EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get fungible ids failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
@@ -917,7 +917,7 @@ PREPARE_SQL_ONCE(gta_plan, R"sql(SELECT actions.trx_id, name, domain, key, data,
 
 int
 pg_query::get_transaction_actions_async(int id, const read_only::get_transaction_actions_params& params) {
-    using namespace __internal;
+    using namespace internal;
 
     auto stmt = fmt::format(fmt("EXECUTE gta_plan('{}');"), (std::string)params.id);
     return queue(id, kGetTransactionActions, std::move(stmt));
@@ -925,7 +925,7 @@ pg_query::get_transaction_actions_async(int id, const read_only::get_transaction
 
 int
 pg_query::get_transaction_actions_resume(int id, pg_result const* r) {
-    using namespace __internal;
+    using namespace internal;
 
     EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get transaction actions failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
