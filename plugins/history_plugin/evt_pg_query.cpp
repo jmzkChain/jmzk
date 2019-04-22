@@ -174,10 +174,10 @@ pg_query::send_once() {
 
     try {
         EVT_THROW2(chain::postgres_send_exception,
-            "Send '{}' query command failed, detail: {}", call_names[t.id], PQerrorMessage(conn_));
+            "Send '{}' query command failed, detail: {}", call_names[t.type], PQerrorMessage(conn_));
     }
     catch(...) {
-        app().get_plugin<http_plugin>().handle_async_exception(t.id, "history", call_names[t.id], "");
+        app().get_plugin<http_plugin>().handle_async_exception(t.id, "history", call_names[t.type], "");
     }
 
     tasks_.pop();
@@ -259,7 +259,7 @@ pg_query::poll_read() {
             };  // switch
         }
         catch(...) {
-            app().get_plugin<http_plugin>().handle_async_exception(t.id, "history", call_names[t.id], "");
+            app().get_plugin<http_plugin>().handle_async_exception(t.id, "history", call_names[t.type], "");
         }
 
         PQclear(re);
