@@ -34,7 +34,7 @@
 
 namespace evt { namespace chain {
 
-namespace __internal {
+namespace internal {
 
 // Use only lower 48-bit address for some pointers.
 /*
@@ -239,7 +239,7 @@ struct pd_header {
     int dirty_flag;
 };
 
-}  // namespace __internal
+}  // namespace internal
 
 class write_cache_layer : boost::noncopyable {
 private:
@@ -272,7 +272,7 @@ private:
     };
 
 public:
-    write_cache_layer() : ops_(__internal::kDefaultSavePointsSize) {}
+    write_cache_layer() : ops_(internal::kDefaultSavePointsSize) {}
 
 public:
     void put(const std::string_view& key, const std::string_view& value);
@@ -376,7 +376,7 @@ write_cache_layer::pop_back() {
     ops_.pop_back();
 }
 
-namespace __internal {
+namespace internal {
 
 struct wc_entry {
     std::string k;
@@ -388,7 +388,7 @@ struct wc_entry_pack {
     std::vector<wc_entry> vec;
 };
 
-}  // namespace __internal
+}  // namespace internal
 
 void
 write_cache_layer::clear() {
@@ -398,7 +398,7 @@ write_cache_layer::clear() {
 
 void
 write_cache_layer::persist_savepoints(std::ostream& os) const {
-    using namespace __internal;
+    using namespace internal;
 
     auto pack = std::vector<wc_entry_pack>();
     pack.resize(ops_.size());
@@ -419,7 +419,7 @@ write_cache_layer::persist_savepoints(std::ostream& os) const {
 
 void
 write_cache_layer::load_savepoints(std::istream& is) {
-    using namespace __internal;
+    using namespace internal;
 
     auto pack = std::vector<wc_entry_pack>();
     fc::raw::unpack(is, pack);
@@ -469,13 +469,13 @@ public:
     int64_t new_savepoint_session_seq() const;
     size_t  savepoints_size() const { return savepoints_.size(); }
 
-    void rollback_rt_group(__internal::rt_group*);
-    void rollback_pd_group(__internal::pd_group*);
+    void rollback_rt_group(internal::rt_group*);
+    void rollback_pd_group(internal::pd_group*);
 
     int should_record() { return !savepoints_.empty(); }
 
     void record(uint8_t action_type, uint8_t op, uint8_t data_type, void* data);
-    void free_savepoint(__internal::savepoint&);
+    void free_savepoint(internal::savepoint&);
     void free_all_savepoints();
 
     void persist_savepoints() const;
@@ -499,7 +499,7 @@ public:
 
     write_cache_layer assets_write_cache_;
 
-    fc::ring_vector<__internal::savepoint> savepoints_;
+    fc::ring_vector<internal::savepoint> savepoints_;
 };
 
 token_database_impl::token_database_impl(token_database& self, const token_database::config& config)
@@ -510,12 +510,12 @@ token_database_impl::token_database_impl(token_database& self, const token_datab
     , write_opts_()
     , tokens_handle_(nullptr)
     , assets_handle_(nullptr)
-    , savepoints_(__internal::kDefaultSavePointsSize) {}
+    , savepoints_(internal::kDefaultSavePointsSize) {}
 
 void
 token_database_impl::open(int load_persistence) {
     using namespace rocksdb;
-    using namespace __internal;
+    using namespace internal;
 
     EVT_ASSERT(db_ == nullptr, token_database_exception, "Token database is already opened");
 
@@ -633,7 +633,7 @@ token_database_impl::close(int persist) {
 
 void
 token_database_impl::put_token(token_type type, action_op op, const name128& prefix, const name128& key, const std::string_view& data) {
-    using namespace __internal;
+    using namespace internal;
 
     auto dbkey  = db_token_key(prefix, key);
     auto status = db_->Put(write_opts_, dbkey.as_slice(), data);
@@ -668,7 +668,7 @@ token_database_impl::put_tokens(token_type type,
                                 const name128& prefix,
                                 token_keys_t&& keys,
                                 const small_vector_base<std::string_view>& data){
-    using namespace __internal;
+    using namespace internal;
     assert(keys.size() == data.size());
 
     for(auto i = 0u; i < keys.size(); i++) {
@@ -689,7 +689,7 @@ token_database_impl::put_tokens(token_type type,
 
 void
 token_database_impl::put_asset(const address& addr, const symbol_id_type sym_id, const std::string_view& data) {
-    using namespace __internal;
+    using namespace internal;
 
     auto dbkey = db_asset_key(addr, sym_id);
     if(should_record()) {
@@ -706,7 +706,7 @@ token_database_impl::put_asset(const address& addr, const symbol_id_type sym_id,
 
 int
 token_database_impl::exists_token(const name128& prefix, const name128& key) const {
-    using namespace __internal;
+    using namespace internal;
 
     auto dbkey  = db_token_key(prefix, key);
     auto value  = std::string();
@@ -716,7 +716,7 @@ token_database_impl::exists_token(const name128& prefix, const name128& key) con
 
 int
 token_database_impl::exists_asset(const address& addr, const symbol_id_type sym_id) const {
-    using namespace __internal;
+    using namespace internal;
 
     auto dbkey  = db_asset_key(addr, sym_id);
     auto value  = std::string();
@@ -730,7 +730,7 @@ token_database_impl::exists_asset(const address& addr, const symbol_id_type sym_
 
 int
 token_database_impl::read_token(const name128& prefix, const name128& key, std::string& out, bool no_throw) const {
-    using namespace __internal;
+    using namespace internal;
 
     auto dbkey  = db_token_key(prefix, key);
     auto status = db_->Get(read_opts_, dbkey.as_slice(), &out);
@@ -748,7 +748,7 @@ token_database_impl::read_token(const name128& prefix, const name128& key, std::
 
 int
 token_database_impl::read_asset(const address& addr, const symbol_id_type sym_id, std::string& out, bool no_throw) const {
-    using namespace __internal;
+    using namespace internal;
 
     auto key = db_asset_key(addr, sym_id);
     if(assets_write_cache_.read(key.as_string_view(), out)) {
@@ -770,7 +770,7 @@ token_database_impl::read_asset(const address& addr, const symbol_id_type sym_id
 
 int
 token_database_impl::read_tokens_range(const name128& prefix, int skip, const read_value_func& func) const {
-    using namespace __internal;
+    using namespace internal;
 
     auto it    = db_->NewIterator(read_opts_);
     auto key   = rocksdb::Slice((char*)&prefix, sizeof(prefix));
@@ -801,7 +801,7 @@ token_database_impl::read_tokens_range(const name128& prefix, int skip, const re
 
 int
 token_database_impl::read_assets_range(const symbol_id_type sym_id, int skip, const read_value_func& func) const {
-    using namespace __internal;
+    using namespace internal;
 
     // create snapshot first
     auto ss = db_->GetSnapshot();
@@ -869,7 +869,7 @@ token_database_impl::read_assets_range(const symbol_id_type sym_id, int skip, co
 
 void
 token_database_impl::add_savepoint(int64_t seq) {
-    using namespace __internal;
+    using namespace internal;
 
     if(!savepoints_.empty()) {
         auto& b = savepoints_.back();
@@ -887,8 +887,8 @@ token_database_impl::add_savepoint(int64_t seq) {
 }
 
 void
-token_database_impl::free_savepoint(__internal::savepoint& sp) {
-    using namespace __internal;
+token_database_impl::free_savepoint(internal::savepoint& sp) {
+    using namespace internal;
 
     auto n = sp.node;
 
@@ -964,7 +964,7 @@ token_database_impl::pop_back_savepoint() {
 
 void
 token_database_impl::squash() {
-    using namespace __internal;
+    using namespace internal;
     EVT_ASSERT(savepoints_.size() >= 2, token_database_squash_exception, "Squash needs at least two savepoints.");
     
     auto n = savepoints_.back().node;
@@ -1004,7 +1004,7 @@ token_database_impl::new_savepoint_session_seq() const {
 
 void
 token_database_impl::record(uint8_t action_type, uint8_t op, uint8_t data_type, void* data) {
-    using namespace __internal;
+    using namespace internal;
 
     if(!should_record()) {
         return;
@@ -1015,7 +1015,7 @@ token_database_impl::record(uint8_t action_type, uint8_t op, uint8_t data_type, 
     GETPOINTER(rt_group, n.group)->actions.emplace_back(rt_action(action_type, op, data_type, data));
 }
 
-namespace __internal {
+namespace internal {
 
 std::string
 get_sp_key(const rt_action& act) {
@@ -1039,11 +1039,11 @@ get_sp_key(const rt_action& act) {
     return std::string();
 }
 
-}  // namespace __internal
+}  // namespace internal
 
 void
-token_database_impl::rollback_rt_group(__internal::rt_group* rt) {
-    using namespace __internal;
+token_database_impl::rollback_rt_group(internal::rt_group* rt) {
+    using namespace internal;
 
     if(rt->actions.empty()) {
         db_->ReleaseSnapshot((const rocksdb::Snapshot*)rt->rb_snapshot);
@@ -1160,8 +1160,8 @@ token_database_impl::rollback_rt_group(__internal::rt_group* rt) {
 }
 
 void
-token_database_impl::rollback_pd_group(__internal::pd_group* pd) {
-    using namespace __internal;
+token_database_impl::rollback_pd_group(internal::pd_group* pd) {
+    using namespace internal;
 
     if(pd->actions.empty()) {
         return;
@@ -1205,7 +1205,7 @@ token_database_impl::rollback_pd_group(__internal::pd_group* pd) {
 
 void
 token_database_impl::rollback_to_latest_savepoint() {
-    using namespace __internal;
+    using namespace internal;
     EVT_ASSERT(!savepoints_.empty(), token_database_no_savepoint, "There's no savepoints anymore");
 
     auto  seq = savepoints_.back().seq;
@@ -1236,7 +1236,7 @@ token_database_impl::rollback_to_latest_savepoint() {
 
 void
 token_database_impl::persist_savepoints() const {
-    using namespace __internal;
+    using namespace internal;
 
     try {
         auto filename = config_.db_path / config::token_database_persisit_filename;
@@ -1294,7 +1294,7 @@ token_database_impl::load_savepoints() {
 
 void
 token_database_impl::persist_savepoints(std::ostream& os) const {
-    using namespace __internal;
+    using namespace internal;
 
     auto pds = std::vector<pd_group>();
 
@@ -1410,7 +1410,7 @@ token_database_impl::persist_savepoints(std::ostream& os) const {
 
 void
 token_database_impl::load_savepoints(std::istream& is) {
-    using namespace __internal;
+    using namespace internal;
 
     auto h = pd_header();
     fc::raw::unpack(is, h);
@@ -1454,7 +1454,7 @@ token_database::close(int persist) {
 
 void
 token_database::put_token(token_type type, action_op op, const std::optional<name128>& domain, const name128& key, const std::string_view& data) {
-    using namespace __internal;
+    using namespace internal;
 
     assert(type != token_type::asset);
     assert((type == token_type::token) != (!domain.has_value()));
@@ -1468,7 +1468,7 @@ token_database::put_tokens(token_type type,
                            const std::optional<name128>& domain,
                            token_keys_t&& keys,
                            const small_vector_base<std::string_view>& data) {
-    using namespace __internal;
+    using namespace internal;
 
     assert(type != token_type::asset);
     assert((type == token_type::token) != (!domain.has_value()));
@@ -1483,7 +1483,7 @@ token_database::put_asset(const address& addr, const symbol_id_type sym_id, cons
 
 int
 token_database::exists_token(token_type type, const std::optional<name128>& domain, const name128& key) const {
-    using namespace __internal;
+    using namespace internal;
 
     assert(type != token_type::asset);
     assert((type == token_type::token) != (!domain.has_value()));
@@ -1498,7 +1498,7 @@ token_database::exists_asset(const address& addr, const symbol_id_type sym_id) c
 
 int
 token_database::read_token(token_type type, const std::optional<name128>& domain, const name128& key, std::string& out, bool no_throw) const {
-    using namespace __internal;
+    using namespace internal;
 
     assert(type != token_type::asset);
     assert((type == token_type::token) != (!domain.has_value()));
@@ -1513,7 +1513,7 @@ token_database::read_asset(const address& addr, const symbol_id_type sym_id, std
 
 int
 token_database::read_tokens_range(token_type type, const std::optional<name128>& domain, int skip, const read_value_func& func) const {
-    using namespace __internal;
+    using namespace internal;
 
     assert(type != token_type::asset);
     assert((type == token_type::token) != (!domain.has_value()));
@@ -1600,7 +1600,7 @@ token_database::load_savepoints(std::istream& is) {
 
 std::string
 token_database::get_db_key(token_type type, const std::optional<name128>& domain, const name128& key) {
-    using namespace __internal;
+    using namespace internal;
 
     auto& prefix = domain.has_value() ? *domain : action_key_prefixes[(int)type];
     auto  dkey   = db_token_key(prefix, key);
@@ -1609,8 +1609,8 @@ token_database::get_db_key(token_type type, const std::optional<name128>& domain
 
 }}  // namespace evt::chain
 
-FC_REFLECT(evt::chain::__internal::pd_header, (dirty_flag));
-FC_REFLECT(evt::chain::__internal::pd_action, (op)(type)(key)(value));
-FC_REFLECT(evt::chain::__internal::pd_group,  (seq)(actions));
-FC_REFLECT(evt::chain::__internal::wc_entry, (k)(v));
-FC_REFLECT(evt::chain::__internal::wc_entry_pack, (seq)(vec));
+FC_REFLECT(evt::chain::internal::pd_header, (dirty_flag));
+FC_REFLECT(evt::chain::internal::pd_action, (op)(type)(key)(value));
+FC_REFLECT(evt::chain::internal::pd_group,  (seq)(actions));
+FC_REFLECT(evt::chain::internal::wc_entry, (k)(v));
+FC_REFLECT(evt::chain::internal::wc_entry_pack, (seq)(vec));

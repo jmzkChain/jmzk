@@ -248,7 +248,7 @@ mongo_db_plugin_impl::consume_queues() {
     }
 }
 
-namespace __internal {
+namespace internal {
 
 void
 add_data(bsoncxx::builder::basic::document& act_doc,
@@ -306,7 +306,7 @@ verify_no_blocks(mongocxx::collection& blocks) {
     }
 }
 
-}  // namespace __internal
+}  // namespace internal
 
 void
 mongo_db_plugin_impl::process_irreversible_block(const signed_block& block, std::deque<transaction_trace_ptr>& traces, write_context& write_ctx) {
@@ -357,7 +357,7 @@ mongo_db_plugin_impl::process_transaction(const transaction_trace& trace, write_
 
 void
 mongo_db_plugin_impl::_process_block(const signed_block& block, std::deque<transaction_trace_ptr>& traces, write_context& write_ctx) {
-    using namespace evt::__internal;
+    using namespace evt::internal;
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
     using namespace mongocxx::model;
@@ -488,7 +488,7 @@ mongo_db_plugin_impl::_process_block(const signed_block& block, std::deque<trans
 
 void
 mongo_db_plugin_impl::_process_irreversible_block(const signed_block& block, write_context& write_ctx) {
-    using namespace evt::__internal;
+    using namespace evt::internal;
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
     using namespace bsoncxx::builder::stream;
@@ -519,7 +519,7 @@ mongo_db_plugin_impl::add_trx_trace(bsoncxx::builder::basic::document& trx_doc,
                                     const chain::transaction&          trx,
                                     std::deque<transaction_trace_ptr>& traces,
                                     std::function<void(action&)>&&     on_paycharge_act) {
-    using namespace evt::__internal;
+    using namespace evt::internal;
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
     using namespace mongocxx::model;
@@ -553,7 +553,7 @@ mongo_db_plugin_impl::add_trx_trace(bsoncxx::builder::basic::document& trx_doc,
 
 void
 mongo_db_plugin_impl::add_trx_ext(bsoncxx::builder::basic::document& trx_doc, const chain::transaction& trx) {
-    using namespace evt::__internal;
+    using namespace evt::internal;
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
     using namespace mongocxx::model;

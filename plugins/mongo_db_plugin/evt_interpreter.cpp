@@ -84,7 +84,7 @@ interpreter_impl::process_trx(const transaction& trx, write_context& write_ctx) 
     }
 }
 
-namespace __internal {
+namespace internal {
 
 auto
 find_domain(const std::string& name) {
@@ -126,7 +126,7 @@ find_fungible(const symbol_id_type sym_id) {
     return find;
 }
 
-}  // namespace __internal
+}  // namespace internal
 
 void
 interpreter_impl::process_newdomain(const newdomain& nd, write_context& write_ctx) {
@@ -159,7 +159,7 @@ interpreter_impl::process_newdomain(const newdomain& nd, write_context& write_ct
 
 void
 interpreter_impl::process_updatedomain(const updatedomain& ud, write_context& write_ctx) {
-    using namespace __internal;
+    using namespace internal;
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
     using namespace mongocxx::model;
@@ -230,7 +230,7 @@ interpreter_impl::process_issuetoken(const issuetoken& it, write_context& write_
 
 void
 interpreter_impl::process_transfer(const transfer& tt, write_context& write_ctx) {
-    using namespace __internal;
+    using namespace internal;
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
     using namespace bsoncxx::builder::stream;
@@ -258,7 +258,7 @@ interpreter_impl::process_transfer(const transfer& tt, write_context& write_ctx)
 
 void
 interpreter_impl::process_destroytoken(const destroytoken& dt, write_context& write_ctx) {
-    using namespace __internal;
+    using namespace internal;
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
     using namespace bsoncxx::builder::stream;
@@ -308,7 +308,7 @@ interpreter_impl::process_newgroup(const newgroup& ng, write_context& write_ctx)
 
 void
 interpreter_impl::process_updategroup(const updategroup& ug, write_context& write_ctx) {
-    using namespace __internal;
+    using namespace internal;
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
     using namespace bsoncxx::builder::stream;
@@ -364,7 +364,7 @@ interpreter_impl::process_newfungible(const newfungible& nf, write_context& writ
 
 void
 interpreter_impl::process_updfungible(const updfungible& uf, write_context& write_ctx) {
-    using namespace __internal;
+    using namespace internal;
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
     using namespace mongocxx::model;
@@ -415,7 +415,7 @@ interpreter_impl::process_everipass(const everipass& ep, write_context& write_ct
 
 void
 interpreter_impl::process_addmeta(const chain::action& act, write_context& write_ctx) {
-    using namespace __internal;
+    using namespace internal;
     using namespace bsoncxx::types;
     using namespace bsoncxx::builder;
     using namespace mongocxx::model;
@@ -448,7 +448,7 @@ interpreter_impl::process_addmeta(const chain::action& act, write_context& write
     }
 }
 
-namespace __internal {
+namespace internal {
 
 std::string
 get_bson_string_value(const bsoncxx::document::view& view, const std::string& key) {
@@ -456,7 +456,7 @@ get_bson_string_value(const bsoncxx::document::view& view, const std::string& ke
     return std::string(v.data(), v.size());
 }
 
-}  // namespace __internal
+}  // namespace internal
 
 void
 interpreter_impl::process_issuefungible(const issuefungible& ifact, write_context& write_ctx) {

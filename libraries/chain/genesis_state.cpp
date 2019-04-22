@@ -8,7 +8,7 @@
 
 namespace evt { namespace chain {
 
-namespace __internal {
+namespace internal {
 
 using namespace contracts;
 
@@ -126,10 +126,10 @@ auto upgrade_ft = [](auto& ftg, bool can_transfer) {
     return ft;
 };
 
-}  // namespace __internal
+}  // namespace internal
 
 genesis_state::genesis_state() {
-    using namespace __internal;
+    using namespace internal;
 
     initial_timestamp = fc::time_point::from_iso_string("2018-05-31T12:00:00");
     initial_key       = fc::variant(evt_root_key).as<public_key_type>();
@@ -148,13 +148,13 @@ genesis_state::compute_chain_id() const {
 
 fungible_def
 genesis_state::get_evt_ft() const {
-    using namespace __internal;
+    using namespace internal;
     return upgrade_ft(evt, true);
 }
 
 fungible_def
 genesis_state::get_pevt_ft() const {
-    using namespace __internal;
+    using namespace internal;
     return upgrade_ft(pevt, false);
 }
 

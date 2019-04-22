@@ -19,7 +19,7 @@ namespace evt { namespace chain {
 
 using act_charge_result = std::tuple<uint32_t, uint32_t>;
 
-namespace __internal {
+namespace internal {
 
 struct base_act_charge {
     static uint32_t
@@ -56,7 +56,7 @@ struct get_act_charge {
     }
 };
 
-}  // namespace __internal
+}  // namespace internal
 
 class charge_manager {
 public:
@@ -84,7 +84,7 @@ private:
 public:
     uint32_t
     calculate(const packed_transaction& ptrx, size_t sig_num = 0) const {
-        using namespace __internal;
+        using namespace internal;
         
         auto& trx = ptrx.get_transaction();
         EVT_ASSERT(!trx.actions.empty(), tx_no_action, "There's not any actions in this transaction");
@@ -124,7 +124,7 @@ private:
     const evt_execution_context& exec_ctx_;
 };
 
-namespace __internal {
+namespace internal {
 
 using namespace contracts;
 
@@ -167,6 +167,6 @@ struct act_charge<N(issuefungible), T> : public base_act_charge {
     }
 };
 
-}  // namespace __internal
+}  // namespace internal
 
 }}  // namespace evt::chain

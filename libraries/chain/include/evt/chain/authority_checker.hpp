@@ -25,7 +25,7 @@ using namespace contracts;
 
 class authority_checker;
 
-namespace __internal {
+namespace internal {
 
 enum permission_type { kIssue = 0, kTransfer, kManage };
 enum toke_type { kNFT = 0, kFT };
@@ -42,7 +42,7 @@ struct check_authority {};
         EVT_THROW2(EXCEPTION, FORMAT, __VA_ARGS__);                          \
     }
 
-}  // namespace __internal
+}  // namespace internal
 
 /**
  * @brief This class determines whether a set of signing keys are sufficient to satisfy an authority or not
@@ -102,7 +102,7 @@ public:
     };
 
 public:
-    template<uint64_t> friend struct __internal::check_authority;
+    template<uint64_t> friend struct internal::check_authority;
 
 public:
     authority_checker(const controller& control, const evt_execution_context& exec_ctx, const public_keys_set& signing_keys, uint32_t max_recursion_depth)
@@ -117,7 +117,7 @@ private:
     template<int Permission>
     void
     get_domain_permission(const domain_name& domain_name, std::function<void(const permission_def&)>&& cb) {
-        using namespace __internal;
+        using namespace internal;
 
         auto domain = make_empty_cache_ptr<domain_def>();
         READ_DB_TOKEN(token_type::domain, std::nullopt, domain_name, domain, unknown_domain_exception, "Cannot find domain: {}", domain_name);
@@ -136,7 +136,7 @@ private:
     template<int Permission>
     void
     get_fungible_permission(const symbol_id_type sym_id, std::function<void(const permission_def&)>&& cb) {
-        using namespace __internal;
+        using namespace internal;
 
         auto fungible = make_empty_cache_ptr<fungible_def>();
         READ_DB_TOKEN(token_type::fungible, std::nullopt, sym_id, fungible, unknown_fungible_exception, "Cannot find fungible with symbol id: {}", sym_id);
@@ -238,7 +238,7 @@ private:
     template<int Token>
     bool
     satisfied_permission(const permission_def& permission, const action& action) {
-        using namespace __internal;
+        using namespace internal;
 
         uint32_t total_weight = 0;
         for(const auto& aw : permission.authorizers) {
@@ -313,7 +313,7 @@ private:
     template<int Permission>
     bool
     satisfied_domain_permission(const action& action) {
-        using namespace __internal;
+        using namespace internal;
 
         bool result = false;
         get_domain_permission<Permission>(action.domain, [&](const auto& permission) {
@@ -325,7 +325,7 @@ private:
     template<int Permission>
     bool
     satisfied_fungible_permission(const symbol_id_type sym_id, const action& action) {
-        using namespace __internal;
+        using namespace internal;
 
         bool result = false;
         get_fungible_permission<Permission>(sym_id, [&](const auto& permission) {
@@ -337,7 +337,7 @@ private:
 public:
     bool
     satisfied(const action& act) {
-        using namespace __internal;
+        using namespace internal;
 
         // Save the current used keys; if we do not satisfy this authority, the newly used keys aren't actually used
         auto KeyReverter = fc::make_scoped_exit([this, keys = used_keys_]() mutable {
@@ -377,7 +377,7 @@ public:
     }
 };  /// authority_checker
 
-namespace __internal {
+namespace internal {
 
 using namespace contracts;
 
@@ -789,6 +789,6 @@ struct check_authority<N(distpsvbonus)> {
     }
 };
 
-}  // namespace __internal
+}  // namespace internal
 
 }}  // namespace evt::chain

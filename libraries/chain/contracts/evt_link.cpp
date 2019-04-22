@@ -24,7 +24,7 @@ using bigint_sigs = number<cpp_int_backend<1560, 1560, unsigned_magnitude, check
 
 namespace evt { namespace chain { namespace contracts {
 
-namespace __internal {
+namespace internal {
 
 const char* ALPHABETS  = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ$+-/:*";
 const int   MAX_BYTES  = 240;  // 195 / ((42 ^ 2) / 2048)
@@ -137,11 +137,11 @@ parse_signatures(const bytes& b) {
     return sigs;
 }
 
-}  // namespace __internal
+}  // namespace internal
 
 evt_link
 evt_link::parse_from_evtli(const std::string& str) {
-    using namespace __internal;
+    using namespace internal;
 
     EVT_ASSERT(str.size() < 400, evt_link_exception, "Link is too long, max length allowed: 400");
     EVT_ASSERT(str.size() > 20, evt_link_exception, "Link is too short");
@@ -195,7 +195,7 @@ evt_link::get_link_id() const {
     return id;
 }
 
-namespace __internal {
+namespace internal {
 
 template<typename Stream>
 void
@@ -289,11 +289,11 @@ encode(const bytes& b, size_t sz, std::string& str) {
     std::reverse(str.begin() + i, str.end());
 }
 
-}  // namespace __internal
+}  // namespace internal
 
 fc::sha256
 evt_link::digest() const {
-    using namespace __internal;
+    using namespace internal;
 
     auto enc = fc::sha256::encoder();
     write_segments_bytes(*this, enc);
@@ -302,7 +302,7 @@ evt_link::digest() const {
 
 std::string
 evt_link::to_string(int prefix) const {
-    using namespace __internal;
+    using namespace internal;
 
     auto temp = bytes(MAX_BYTES);
     auto ds   = fc::datastream<char*>(temp.data(), temp.size());

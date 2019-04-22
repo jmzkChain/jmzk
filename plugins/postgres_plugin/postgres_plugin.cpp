@@ -110,7 +110,7 @@ public:
     std::optional<boost::signals2::scoped_connection> applied_transaction_connection_;
 };
 
-namespace __internal {
+namespace internal {
 
 template <typename Q, typename V>
 inline void
@@ -142,16 +142,16 @@ queuet(Q& tqueue, V&& v, spinlock& lock, condition_variable_any& cv) {
     cv.notify_one();
 }
 
-}  // namespace __internal
+}  // namespace internal
 
 void
 postgres_plugin_impl::applied_irreversible_block(const block_state_ptr& bsp) {
-    evt::__internal::queueb(block_state_queue_, std::make_tuple(bsp, true), lock_, cond_, queue_size_);
+    evt::internal::queueb(block_state_queue_, std::make_tuple(bsp, true), lock_, cond_, queue_size_);
 }
 
 void
 postgres_plugin_impl::applied_block(const block_state_ptr& bsp) {
-    evt::__internal::queueb(block_state_queue_, std::make_tuple(bsp, false), lock_, cond_, queue_size_);
+    evt::internal::queueb(block_state_queue_, std::make_tuple(bsp, false), lock_, cond_, queue_size_);
 }
 
 void
@@ -160,12 +160,12 @@ postgres_plugin_impl::applied_transaction(const transaction_trace_ptr& ttp) {
         ttp->receipt->status != transaction_receipt_header::soft_fail)) {
         return;
     }
-    evt::__internal::queuet(transaction_trace_queue_, ttp, lock_, cond_);
+    evt::internal::queuet(transaction_trace_queue_, ttp, lock_, cond_);
 }
 
 void
 postgres_plugin_impl::consume_queues() {
-    using namespace evt::__internal;
+    using namespace evt::internal;
 
     try {
         while(true) {
@@ -364,7 +364,7 @@ postgres_plugin_impl::process_action(const action& act, trx_context& tctx) {
 
 void
 postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<transaction_trace_ptr>& traces, copy_context& cctx, trx_context& tctx) {
-    using namespace evt::__internal;
+    using namespace evt::internal;
 
     auto id = block->id.str();
     if(block->block_num <= last_sync_block_num_) {
