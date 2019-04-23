@@ -133,8 +133,8 @@ struct select_ids {
     id_list_modes mode;
     uint32_t      pending;
     vector<T>     ids;
-    bool
-    empty() const { return (mode == none || ids.empty()); }
+
+    bool empty() const { return (mode == none || ids.empty()); }
 };
 
 using ordered_txn_ids = select_ids<transaction_id_type>;

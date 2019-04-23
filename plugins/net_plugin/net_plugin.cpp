@@ -996,7 +996,7 @@ connection::do_queue_write(int priority) {
                         fc_elog(logger, "Error sending to peer ${p}: ${i}", ("p", pname)("i", ec.message()));
                     }
                     else {
-                        fc_ilog(logger, "connection closure detected on write to ${p}", ("p", pname));
+                        fc_wlog(logger, "connection closure detected on write to ${p}", ("p", pname));
                     }
                     my_impl->close(conn);
                     return;
@@ -1102,6 +1102,7 @@ create_send_buffer(uint32_t which, const T& v) {
 
     auto send_buffer = std::make_shared<vector<char>>(buffer_size);
     fc::datastream<char*> ds(send_buffer->data(), buffer_size);
+    ds.write(header, header_size);
     fc::raw::pack(ds, unsigned_int(which));
     fc::raw::pack(ds, v);
 
@@ -1649,8 +1650,8 @@ dispatch_manager::bcast_block(const block_state_ptr& bs) {
     }
     received_blocks.erase(range.first, range.second);
 
-    uint32_t         bnum    = bs->block_num;
-    peer_block_state pbstate = {bs->id, bnum};
+    auto bnum    = bs->block_num;
+    auto pbstate = peer_block_state{bs->id, bnum};
 
     std::shared_ptr<std::vector<char>> send_buffer;
     for(auto& cp : my_impl->connections) {
@@ -1949,8 +1950,7 @@ net_plugin_impl::start_session(const connection_ptr& con) {
     boost::system::error_code      ec;
     con->socket->set_option(nodelay, ec);
     if(ec) {
-        fc_elog(logger, "connection failed to ${peer}: ${error}",
-             ("peer", con->peer_name())("error", ec.message()));
+        fc_elog(logger, "connection failed to ${peer}: ${error}", ("peer", con->peer_name())("error", ec.message()));
         con->connecting = false;
         close(con);
         return false;
@@ -2860,8 +2860,7 @@ net_plugin_impl::authenticate_peer(const handshake_message& msg) const {
     if(msg.sig != chain::signature_type() && msg.token != sha256()) {
         sha256 hash = fc::sha256::hash(msg.time);
         if(hash != msg.token) {
-            fc_elog(logger, "Peer ${peer} sent a handshake with an invalid token.",
-                 ("peer", msg.p2p_address));
+            fc_elog(logger, "Peer ${peer} sent a handshake with an invalid token.", ("peer", msg.p2p_address));
             return false;
         }
         chain::public_key_type peer_key;
@@ -2869,13 +2868,11 @@ net_plugin_impl::authenticate_peer(const handshake_message& msg) const {
             peer_key = crypto::public_key(msg.sig, msg.token, true);
         }
         catch(fc::exception& /*e*/) {
-            fc_elog(logger, "Peer ${peer} sent a handshake with an unrecoverable key.",
-                 ("peer", msg.p2p_address));
+            fc_elog(logger, "Peer ${peer} sent a handshake with an unrecoverable key.", ("peer", msg.p2p_address));
             return false;
         }
         if((allowed_connections & (Producers | Specified)) && peer_key != msg.key) {
-            fc_elog(logger, "Peer ${peer} sent a handshake with an unauthenticated key.",
-                 ("peer", msg.p2p_address));
+            fc_elog(logger, "Peer ${peer} sent a handshake with an unauthenticated key.", ("peer", msg.p2p_address));
             return false;
         }
     }
@@ -3126,7 +3123,7 @@ net_plugin::plugin_startup() {
             my->acceptor->bind(my->listen_endpoint);
         }
         catch(const std::exception& e) {
-            fc_ilog(logger, "net_plugin::plugin_startup failed to bind to port ${port}",
+            fc_elog(logger, "net_plugin::plugin_startup failed to bind to port ${port}",
                  ("port", my->listen_endpoint.port()));
             throw e;
         }
