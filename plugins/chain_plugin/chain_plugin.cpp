@@ -1343,8 +1343,10 @@ read_only::trx_json_to_digest(const trx_json_to_digest_params& params) const {
         try {
             db.get_abi_serializer().from_variant(params, *trx, db.get_execution_context());
         }
-        EVT_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid transaction")
+        EVT_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid transaction");
+
         result.digest = trx->sig_digest(db.get_chain_id());
+        result.id     = trx->id();
     }
     catch(boost::interprocess::bad_alloc&) {
         chain_plugin::handle_db_exhaustion();
