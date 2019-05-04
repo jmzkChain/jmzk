@@ -424,6 +424,9 @@ struct controller_impl {
             const auto hash = calculate_integrity_hash();
             ilog("database initialized with hash: ${hash}", ("hash", hash));
         }
+
+        // add workaround to evt & pevt in evt-3.3.2
+        update_evt_org(token_db, conf.genesis);
     }
 
     void
