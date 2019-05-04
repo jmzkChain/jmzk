@@ -38,4 +38,15 @@ initialize_evt_org(token_database& tokendb, const genesis_state& genesis) {
     }
 }
 
+void
+update_evt_org(token_database& tokendb, const genesis_state& genesis) {
+    auto s = tokendb.new_savepoint_session();
+
+    auto v = make_db_value(genesis.get_evt_ft());
+    tokendb.put_token(token_type::fungible, action_op::update, std::nullopt, EVT_SYM_ID, v.as_string_view());
+
+    auto v2 = make_db_value(genesis.get_pevt_ft());
+    tokendb.put_token(token_type::fungible, action_op::update, std::nullopt, PEVT_SYM_ID, v2.as_string_view());
+}
+
 }}}  // namespace evt::chain::contracts

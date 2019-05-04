@@ -37,6 +37,7 @@ using chain::name;
 using chain::proposal_name;
 using chain::public_key_type;
 using chain::public_keys_set;
+using chain::transaction_id_type;
 using chain::version;
 using chain::contracts::abi_serializer;
 
@@ -99,7 +100,8 @@ public:
 
     using trx_json_to_digest_params = fc::variant_object;
     struct trx_json_to_digest_result {
-        digest_type digest;
+        digest_type         digest;
+        transaction_id_type id;
     };
     trx_json_to_digest_result trx_json_to_digest(const trx_json_to_digest_params& params) const;
 
@@ -144,9 +146,9 @@ public:
     fc::variant get_head_block_header_state(const get_head_block_header_state_params& params) const;
 
     struct get_transaction_params {
-        optional<uint32_t>         block_num;
-        chain::transaction_id_type id;
-        optional<bool>             raw;
+        optional<uint32_t>  block_num;
+        transaction_id_type id;
+        optional<bool>      raw;
     };
     fc::variant get_transaction(const get_transaction_params& params);
 
@@ -184,8 +186,8 @@ public:
 
     using push_transaction_params = fc::variant_object;
     struct push_transaction_results {
-        chain::transaction_id_type transaction_id;
-        fc::variant                processed;
+        transaction_id_type transaction_id;
+        fc::variant         processed;
     };
     void push_transaction(const push_transaction_params& params, chain::plugin_interface::next_function<push_transaction_results> next);
 
@@ -260,7 +262,7 @@ FC_REFLECT(evt::chain_apis::read_only::abi_json_to_bin_params, (action)(args));
 FC_REFLECT(evt::chain_apis::read_only::abi_json_to_bin_result, (binargs));
 FC_REFLECT(evt::chain_apis::read_only::abi_bin_to_json_params, (action)(binargs));
 FC_REFLECT(evt::chain_apis::read_only::abi_bin_to_json_result, (args));
-FC_REFLECT(evt::chain_apis::read_only::trx_json_to_digest_result, (digest));
+FC_REFLECT(evt::chain_apis::read_only::trx_json_to_digest_result, (digest)(id));
 FC_REFLECT(evt::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys));
 FC_REFLECT(evt::chain_apis::read_only::get_required_keys_result, (required_keys));
 FC_REFLECT(evt::chain_apis::read_only::get_suspend_required_keys_params, (name)(available_keys));

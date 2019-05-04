@@ -70,8 +70,8 @@ get_evt_sym(const genesis_state& genesis) {
     manage.name = N(manage);
     manage.threshold = 0;
 
-    evt.issue    = issue;
-    evt.manage   = manage;
+    evt.issue  = issue;
+    evt.manage = manage;
 
     evt.total_supply = asset(100'000'000'000'000L, evt.sym);
     return evt;
@@ -94,8 +94,8 @@ get_pevt_sym(const genesis_state& genesis) {
     manage.name = N(manage);
     manage.threshold = 0;
 
-    pevt.issue    = issue;
-    pevt.manage   = manage;
+    pevt.issue  = issue;
+    pevt.manage = manage;
 
     pevt.total_supply = asset(0, pevt.sym);
     return pevt;
@@ -112,16 +112,17 @@ auto upgrade_ft = [](auto& ftg, bool can_transfer) {
         transfer.threshold = 0;
     }
 
-    auto ft        = fungible_def();
-    ft.name        = ftg.name;
-    ft.sym_name    = ftg.sym_name;
-    ft.sym         = ftg.sym;
-    ft.creator     = ftg.creator;
-    ft.create_time = ftg.create_time;
-    ft.issue       = ftg.issue;
-    ft.transfer    = transfer;
-    ft.manage      = ftg.manage;
-    ft.metas       = ftg.metas;
+    auto ft         = fungible_def();
+    ft.name         = ftg.name;
+    ft.sym_name     = ftg.sym_name;
+    ft.sym          = ftg.sym;
+    ft.creator      = ftg.creator;
+    ft.create_time  = ftg.create_time;
+    ft.issue        = ftg.issue;
+    ft.transfer     = transfer;
+    ft.manage       = ftg.manage;
+    ft.total_supply = ftg.total_supply;
+    ft.metas        = ftg.metas;
 
     return ft;
 };
