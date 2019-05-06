@@ -69,7 +69,7 @@ public:
 
 public:
     int init_pathman();
-    int create_partitions(const std::string& table, uint interval, uint part_nums);
+    int create_partitions(const std::string& table, const std::string& relation, uint interval, uint part_nums);
     int drop_partitions(const std::string& table);
 
 public:

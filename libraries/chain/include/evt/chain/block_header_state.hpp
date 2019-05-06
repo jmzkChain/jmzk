@@ -55,10 +55,7 @@ struct block_header_state {
 
     const producer_key& get_scheduled_producer(block_timestamp_type t) const;
 
-    const block_id_type&
-    prev() const {
-        return header.previous;
-    }
+    const block_id_type& prev() const { return header.previous; }
 
     digest_type     sig_digest() const;
     void            sign(const std::function<signature_type(const digest_type&)>& signer);

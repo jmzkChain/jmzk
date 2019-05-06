@@ -482,8 +482,9 @@ postgres_plugin_impl::init(bool init_db) {
         db_.prepare_stats();
         
         if(part_limit_ != 0) {
-            db_.create_partitions("public.blocks", part_limit_, part_num_);
-            db_.create_partitions("public.transactions", part_limit_, part_num_);
+            db_.create_partitions("public.blocks", "block_num", part_limit_, part_num_);
+            db_.create_partitions("public.transactions", "block_num", part_limit_, part_num_);
+            db_.create_partitions("public.actions", "block_num", part_limit_, part_num_);
         }
 
         // HACK: Add EVT and PEVT manually
