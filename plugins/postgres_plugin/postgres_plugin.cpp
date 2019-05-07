@@ -9,6 +9,7 @@
 #include <optional>
 #include <tuple>
 #include <thread>
+#include <mutex>
 
 #if __has_include(<condition>)
 #include <condition>
@@ -100,10 +101,14 @@ public:
     std::deque<inblock_ptr>           block_state_queue_;
     std::deque<transaction_trace_ptr> transaction_trace_queue_;
 
-    spinlock                    lock_;
-    condition_variable_any      cond_;
-    std::thread                 consume_thread_;
-    std::atomic_bool            done_ = false;
+    spinlock               lock_;
+    condition_variable_any cond_;
+
+    bool                   consuming_ = false;
+    condition_variable_any ss_cond_;
+
+    std::thread      consume_thread_;
+    std::atomic_bool done_ = false;
 
     std::optional<boost::signals2::scoped_connection> accepted_block_connection_;
     std::optional<boost::signals2::scoped_connection> irreversible_block_connection_;
@@ -171,12 +176,15 @@ postgres_plugin_impl::consume_queues() {
         while(true) {
             lock_.lock();
             while(block_state_queue_.empty() && !done_) {
+                consuming_ = false;
+                ss_cond_.notify_all();
                 cond_.wait(lock_);
             }
 
             auto bqueue = std::move(block_state_queue_);
             auto traces = std::move(transaction_trace_queue_);
 
+            consuming_ = true;
             lock_.unlock();
 
             const int BlockPtr       = 0;
@@ -540,6 +548,12 @@ postgres_plugin::read_from_snapshot(const std::shared_ptr<chain::snapshot_reader
 
 void
 postgres_plugin::write_snapshot(const std::shared_ptr<chain::snapshot_writer>& snapshot) const {
+    my_->lock_.lock();
+    while(my_->consuming_) {
+        my_->ss_cond_.wait(my_->lock_);
+    }
+    my_->lock_.unlock();
+
     my_->db_.backup(snapshot);
 }
 
