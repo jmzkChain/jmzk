@@ -1081,10 +1081,10 @@ pg::backup(const std::shared_ptr<chain::snapshot_writer>& snapshot) const {
         snapshot->write_section(fmt::format("pg-{}", t.name), [this, &t](auto& writer) {
             auto stmt = std::string();
             if(!t.partitioned) {
-                stmt = fmt::format("COPY {} TO STDOUT;", t.name);
+                stmt = fmt::format("COPY {} TO STDOUT WITH BINARY;", t.name);
             }
             else {
-                stmt = fmt::format("COPY (SELECT * from {}) TO STDOUT;", t.name);
+                stmt = fmt::format("COPY (SELECT * from {}) TO STDOUT WITH BINARY;", t.name);
             }
             
 
@@ -1124,7 +1124,7 @@ pg::restore(const std::shared_ptr<chain::snapshot_reader>& snapshot) {
     for(auto t : tables) {
         dlog("Restoring ${t} table", ("t",t.name));
         snapshot->read_section(fmt::format("pg-{}", t.name), [this, &t](auto& reader) {
-            auto stmt = fmt::format("COPY {} FROM STDIN;", t.name);
+            auto stmt = fmt::format("COPY {} FROM STDIN WITH BINARY;", t.name);
 
             auto r = PQexec(conn_, stmt.c_str());
             EVT_ASSERT(PQresultStatus(r) == PGRES_COPY_IN, chain::postgres_exec_exception, "Not expected COPY response, detail: ${s}", ("s",PQerrorMessage(conn_)));
