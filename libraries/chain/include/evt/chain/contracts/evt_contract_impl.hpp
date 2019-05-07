@@ -1448,25 +1448,27 @@ EVT_ACTION_IMPL_BEGIN(everipay) {
             }
         }
 
-        auto link_id = link.get_link_id();
-        EVT_ASSERT(!tokendb.exists_token(token_type::evtlink, std::nullopt, link_id), evt_link_dupe_exception,
-            "Duplicate EVT-Link ${id}", ("id", fc::to_hex((char*)&link_id, sizeof(link_id))));
-
-        auto link_obj = evt_link_object {
-            .link_id   = link_id,
-            .block_num = context.control.pending_block_state()->block->block_num(),
-            .trx_id    = context.trx_context.trx_meta->id
-        };
-        ADD_DB_TOKEN(token_type::evtlink, link_obj);
-
-        auto keys = link.restore_keys();
-        EVT_ASSERT(keys.size() == 1, everipay_exception, "There're more than one signature on everiPay link, which is invalid");
-        
+        // check symbol
         auto sym = epact.number.sym();
         EVT_ASSERT2(lsym_id == sym.id(), everipay_exception,
             "Id of symbols don't match, provided: {}, expected: {}", lsym_id, sym.id());
         EVT_ASSERT(lsym_id != PEVT_SYM_ID, everipay_exception, "Pinned EVT cannot be paid.");
 
+        // check fixed amount
+        auto fixed_amount = int64_t(0);
+        if(link.has_segment(evt_link::fixed_amount)) {
+            fixed_amount = *link.get_segment(evt_link::fixed_amount).intv;
+            EVT_ASSERT2(!link.has_segment(evt_link::fixed_amount_str), evt_link_exception, "Cannot use fixed_amount_str while using fixed_amount segment");
+        }
+        else if(link.has_segment(evt_link::fixed_amount_str)) {
+            fixed_amount = std::stoul(*link.get_segment(evt_link::fixed_amount_str).strv);
+        }
+
+        if(fixed_amount > 0) {
+            EVT_ASSERT2(epact.number.amount() == fixed_amount, everipay_exception, "Paid amount should be fixed at: {:n}, actual: {:n}", fixed_amount, epact.number.amount());
+        }
+
+        // check max pay
         auto max_pay = int64_t(0);
         if(link.has_segment(evt_link::max_pay)) {
             max_pay = *link.get_segment(evt_link::max_pay).intv;
@@ -1478,9 +1480,27 @@ EVT_ACTION_IMPL_BEGIN(everipay) {
         EVT_ASSERT2(epact.number.amount() <= max_pay, everipay_exception,
             "Exceed max allowd paid amount: {:n}, actual: {:n}", max_pay, epact.number.amount());
 
+        // check link id
+        auto link_id = link.get_link_id();
+        EVT_ASSERT(!tokendb.exists_token(token_type::evtlink, std::nullopt, link_id), evt_link_dupe_exception,
+            "Duplicate EVT-Link ${id}", ("id", fc::to_hex((char*)&link_id, sizeof(link_id))));
+
+        auto link_obj = evt_link_object {
+            .link_id   = link_id,
+            .block_num = context.control.pending_block_state()->block->block_num(),
+            .trx_id    = context.trx_context.trx_meta->id
+        };
+        ADD_DB_TOKEN(token_type::evtlink, link_obj);
+
+        // check signature
+        auto keys = link.restore_keys();
+        EVT_ASSERT(keys.size() == 1, everipay_exception, "There're more than one signature on everiPay link, which is invalid");
+        
+        // check payee
         auto payer = address(*keys.begin());
         EVT_ASSERT(payer != epact.payee, everipay_exception, "Payer and payee shouldn't be the same one");
 
+        // do transfer
         transfer_fungible(context, payer, epact.payee, epact.number, N(everipay));
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);

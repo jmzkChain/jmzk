@@ -31,14 +31,16 @@ public:
 
 public:
     enum type_id {
-        timestamp   = 42,
-        max_pay     = 43,
-        symbol_id   = 44,
-        domain      = 91,
-        token       = 92,
-        max_pay_str = 94,
-        address     = 95,
-        link_id     = 156
+        timestamp        = 42,
+        max_pay          = 43,
+        symbol_id        = 44,
+        fixed_amount     = 46,
+        domain           = 91,
+        token            = 92,
+        max_pay_str      = 94,
+        address          = 95,
+        fixed_amount_str = 97,
+        link_id          = 156
     };
 
     enum flag {
