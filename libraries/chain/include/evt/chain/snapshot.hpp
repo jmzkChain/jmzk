@@ -17,7 +17,7 @@ namespace evt { namespace chain {
  * History:
  * Version 1: initial version with string identified sections and rows
  * Version 2: Token database upgrades to binary format
- * Version 3: Postgres upgrades to binary format and use Zstd stream
+ * Version 3: Postgres upgrades to binary format and use zlib compress stream
  */
 static const uint32_t current_snapshot_version = 3;
 

@@ -1,7 +1,7 @@
 #include <evt/chain/snapshot.hpp>
 
 #include <boost/algorithm/string/predicate.hpp>
-#include <boost/iostreams/filter/zstd.hpp>
+#include <boost/iostreams/filter/zlib.hpp>
 
 #include <fc/scoped_exit.hpp>
 #include <evt/chain/exceptions.hpp>
@@ -184,7 +184,7 @@ ostream_snapshot_writer::write_start_section(const std::string& section_name) {
     // setup row stream
     assert(!row_stream.has_value());
     row_stream.emplace();
-    row_stream->push(io::zstd_compressor());
+    row_stream->push(io::zlib_compressor());
     row_stream->push(snapshot.inner);
 }
 
@@ -330,7 +330,7 @@ istream_snapshot_reader::set_section(const string& section_name) {
             // setup row stream
             assert(!row_stream.has_value());
             row_stream.emplace();
-            row_stream->push(io::zstd_decompressor());
+            row_stream->push(io::zlib_decompressor());
             row_stream->push(snapshot);
 
             return;
