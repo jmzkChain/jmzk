@@ -277,7 +277,24 @@ auto create_ft_holders_table = R"sql(CREATE TABLE IF NOT EXISTS public.ft_holder
                                      )
                                      TABLESPACE pg_default;)sql";
 
-const char* tables[] = { "stats", "blocks", "transactions", "metas", "actions", "domains", "tokens", "groups", "fungibles", "ft_holders" };
+
+struct table {
+    std::string name;
+    bool        partitioned;
+};
+
+table tables[] = {
+    { "stats",        false },
+    { "blocks",       true  },
+    { "transactions", true  },
+    { "metas",        false },
+    { "actions",      true  },
+    { "domains",      false },
+    { "tokens",       false },
+    { "groups",       false },
+    { "fungibles",    false },
+    { "ft_holders",   false }
+};
 
 template<typename Iterator>
 void
@@ -343,21 +360,21 @@ pg::init_pathman() {
     auto sql = R"sql(CREATE EXTENSION IF NOT EXISTS pg_pathman;)sql";
     auto stmt = fmt::format(sql);
     auto r = PQexec(conn_, stmt.c_str());
-    EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgres_exec_exception, "Init extension pg_pathman failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgres_exec_exception, "Setup extension pg_pathman failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
     PQclear(r);
     return PG_OK;
 }
 
 int
-pg::create_partitions(const std::string& table, uint interval, uint part_nums) {
+pg::create_partitions(const std::string& table, const std::string& relation, uint interval, uint part_nums) {
     auto sql = R"sql(SELECT create_range_partitions(
                     '{}'::regclass,
-                    'block_num',
+                    '{}',
                     1,
                     {},
                     {}, 
                     false);)sql";
-    auto stmt = fmt::format(sql, table, interval, part_nums);
+    auto stmt = fmt::format(sql, table, relation, interval, part_nums);
     auto r = PQexec(conn_, stmt.c_str());
     EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_exec_exception, "Create partitions failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
     PQclear(r);
@@ -470,7 +487,7 @@ pg::drop_all_tables() {
     using namespace internal;
 
     for(auto t : tables) {
-        drop_table(t);
+        drop_table(t.name);
     }
 
     return PG_OK;
@@ -1060,8 +1077,16 @@ pg::backup(const std::shared_ptr<chain::snapshot_writer>& snapshot) const {
     using namespace internal;
 
     for(auto t : tables) {
-        snapshot->write_section(fmt::format("pg-{}", t), [this, t](auto& writer) {
-            auto stmt = fmt::format("COPY {} TO STDOUT;", t);
+        dlog("Backuping ${t} table", ("t",t.name));
+        snapshot->write_section(fmt::format("pg-{}", t.name), [this, &t](auto& writer) {
+            auto stmt = std::string();
+            if(!t.partitioned) {
+                stmt = fmt::format("COPY {} TO STDOUT WITH BINARY;", t.name);
+            }
+            else {
+                stmt = fmt::format("COPY (SELECT * from {}) TO STDOUT WITH BINARY;", t.name);
+            }
+            
 
             auto r = PQexec(conn_, stmt.c_str());
             EVT_ASSERT(PQresultStatus(r) == PGRES_COPY_OUT, chain::postgres_exec_exception, "Not expected COPY response, detail: ${s}", ("s",PQerrorMessage(conn_)));
@@ -1083,7 +1108,7 @@ pg::backup(const std::shared_ptr<chain::snapshot_writer>& snapshot) const {
             EVT_ASSERT(PQresultStatus(r2) == PGRES_COMMAND_OK, chain::postgres_exec_exception, "Execute COPY command failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
             PQclear(r2);
         });
-        dlog("Written ${t} table", ("t",t));
+        dlog("Backuping ${t} table - OK", ("t",t.name));
     }
 
     return PG_OK;
@@ -1097,8 +1122,9 @@ pg::restore(const std::shared_ptr<chain::snapshot_reader>& snapshot) {
     prepare_stmts();
 
     for(auto t : tables) {
-        snapshot->read_section(fmt::format("pg-{}", t), [this, t](auto& reader) {
-            auto stmt = fmt::format("COPY {} FROM STDIN;", t);
+        dlog("Restoring ${t} table", ("t",t.name));
+        snapshot->read_section(fmt::format("pg-{}", t.name), [this, &t](auto& reader) {
+            auto stmt = fmt::format("COPY {} FROM STDIN WITH BINARY;", t.name);
 
             auto r = PQexec(conn_, stmt.c_str());
             EVT_ASSERT(PQresultStatus(r) == PGRES_COPY_IN, chain::postgres_exec_exception, "Not expected COPY response, detail: ${s}", ("s",PQerrorMessage(conn_)));
@@ -1122,6 +1148,7 @@ pg::restore(const std::shared_ptr<chain::snapshot_reader>& snapshot) {
             EVT_ASSERT(PQresultStatus(r2) == PGRES_COMMAND_OK, chain::postgres_exec_exception, "Execute COPY command failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
             PQclear(r2);
         });
+        dlog("Restoring ${t} table - OK", ("t",t.name));
     }
 
     return PG_OK;

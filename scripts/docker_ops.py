@@ -34,7 +34,7 @@ def start(name):
         container.start()
         click.echo('{} container is started'.format(green(name)))
     except docker.errors.NotFound:
-        click.echo('{} container is not existed'.format(green(name)))
+        click.echo('{} container does not exist'.format(green(name)))
 
 
 @cli.command()
@@ -51,7 +51,7 @@ def stop(name):
         click.echo('{} container is stopped'.format(green(name)))
     except docker.errors.NotFound:
         click.echo(
-            '{} container is not existed, please start first'.format(green(name)))
+            '{} container does not exist, please start it first'.format(green(name)))
 
 
 @cli.command()
@@ -69,7 +69,7 @@ def logs(name, tail, stream):
             click.echo(s.decode('utf-8'))
     except docker.errors.NotFound:
         click.echo(
-            '{} container is not existed, please start first'.format(green(name)))
+            '{} container does not exist, please start it first'.format(green(name)))
 
 
 @cli.command()
@@ -143,7 +143,7 @@ def init(ctx):
     try:
         client.networks.get(name)
         click.echo(
-            'Network: {} network is already existed, no need to create one'.format(green(name)))
+            'Network: {} network already exists, no need to create one'.format(green(name)))
     except docker.errors.NotFound:
         client.networks.create(name)
         click.echo('Network: {} network is created'.format(green(name)))
@@ -158,7 +158,7 @@ def clean(ctx):
         net.remove()
         click.echo('Network: {} network is deleted'.format(green(name)))
     except docker.errors.NotFound:
-        click.echo('Network: {} network is not existed'.format(green(name)))
+        click.echo('Network: {} network does not exist'.format(green(name)))
 
 
 @cli.group('postgres')
@@ -176,7 +176,7 @@ def init(ctx):
 
     try:
         client.images.get('everitoken/postgres:latest')
-        click.echo('{} is already existed, no need to fetch again'.format(
+        click.echo('{} already exists, no need to fetch it again'.format(
             green('everitoken/postgres:latest')))
     except docker.errors.ImageNotFound:
         click.echo('Pulling latest postgres image...')
@@ -187,7 +187,7 @@ def init(ctx):
 
     try:
         client.volumes.get(volume_name)
-        click.echo('{} volume is already existed, no need to create one'.
+        click.echo('{} volume already exists, no need to create one'.
                    format(green(volume_name)))
     except docker.errors.NotFound:
         client.volumes.create(volume_name)
@@ -195,7 +195,7 @@ def init(ctx):
 
 
 @postgres.command()
-@click.option('--data-volume', '-d', default=None, help='Set one host path for data folder in postgres instead using volume')
+@click.option('--data-volume', '-d', default=None, help='Set one host path for the data folder in postgres instead using volume')
 @click.pass_context
 def upgrade(ctx, data_volume):
     name = ctx.obj['name']
@@ -254,7 +254,7 @@ def upgrade(ctx, data_volume):
 @click.option('--net', '-n', default='evt-net', help='Name of the network for the environment')
 @click.option('--port', '-p', default=5432, help='Expose port for postgres')
 @click.option('--host', '-h', default='127.0.0.1', help='Host address for postgres')
-@click.option('--password', '-x', default='', help='Password for \'postgres\' user, leave empty to diable password(anyone can login)')
+@click.option('--password', '-x', default='', help='Password for \'postgres\' user, leave empty to disable password (anyone can login)')
 @click.option('--data-volume', '-d', default=None, help='Set one host path for data folder in postgres instead using volume')
 @click.pass_context
 def create(ctx, net, port, host, password, data_volume):
@@ -284,12 +284,12 @@ def create(ctx, net, port, host, password, data_volume):
         container = client.containers.get(name)
         if container.status != 'running':
             click.echo(
-                '{} container is existed but not running, try to remove old container and start a new one'.format(green(name)))
+                '{} container exists but not running, try to remove the old container and start a new one'.format(green(name)))
             container.remove()
             create = True
         else:
             click.echo(
-                '{} container is already existed and running, cannot restart, run `postgres stop` first'.format(green(name)))
+                '{} container already exists and is running, cannot restart, run `postgres stop` first'.format(green(name)))
             return
     except docker.errors.NotFound:
         create = True
@@ -333,7 +333,7 @@ def createdb(ctx, dbname):
                 '{} container is not running, cannot create database'.format(green(name)))
             return
     except docker.errors.NotFound:
-        click.echo('{} container is not existed'.format(green(name)))
+        click.echo('{} container does not exist'.format(green(name)))
         return
 
     cmd1 = 'psql -U postgres -c "SELECT EXISTS(SELECT datname FROM pg_catalog.pg_database WHERE datname=\'{}\');"'.format(
@@ -362,10 +362,10 @@ def updpass(ctx, new_password):
         container = client.containers.get(name)
         if container.status != 'running':
             click.echo(
-                '{} container is not running, cannot create database'.format(green(name)))
+                '{} container is not running, failed to create database'.format(green(name)))
             return
     except docker.errors.NotFound:
-        click.echo('{} container is not existed'.format(green(name)))
+        click.echo('{} container does not exist'.format(green(name)))
         return
 
     cmd = 'psql -U postgres -c "ALTER USER postgres WITH PASSWORD \'{}\';"'.format(
@@ -387,13 +387,13 @@ def clear(ctx, all):
         container = client.containers.get(name)
         if container.status == 'running':
             click.echo(
-                '{} container is still running, cannot clean'.format(green(name)))
+                '{} container is still running, failed to clean'.format(green(name)))
             return
 
         container.remove()
         click.echo('{} container is removed'.format(green(name)))
     except docker.errors.NotFound:
-        click.echo('{} container is not existed'.format(green(name)))
+        click.echo('{} container does not exist'.format(green(name)))
 
     if not all:
         return
@@ -403,7 +403,7 @@ def clear(ctx, all):
         volume.remove()
         click.echo('{} volume is removed'.format(green(volume_name)))
     except docker.errors.NotFound:
-        click.echo('{} volume is not existed'.format(green(volume_name)))
+        click.echo('{} volume does not exist'.format(green(volume_name)))
 
 
 @postgres.command('start')
@@ -447,7 +447,7 @@ def init(ctx):
 
     try:
         client.images.get('mongo:latest')
-        click.echo('{} is already existed, no need to fetch again'.format(
+        click.echo('{} already exists, no need to fetch again'.format(
             green('mongo:latest')))
     except docker.errors.ImageNotFound:
         click.echo('pulling latest mongo image...')
@@ -457,7 +457,7 @@ def init(ctx):
     volume_name = '{}-data-volume'.format(name)
     try:
         client.volumes.get(volume_name)
-        click.echo('{} volume is already existed, no need to create one'.
+        click.echo('{} volume already exists, no need to create one'.
                    format(green(volume_name)))
     except docker.errors.NotFound:
         client.volumes.create(volume_name)
@@ -491,12 +491,12 @@ def create(ctx, net, port, host):
         container = client.containers.get(name)
         if container.status != 'running':
             click.echo(
-                '{} container is existed but not running, try to remove old container and start a new one'.format(green(name)))
+                '{} container exists but not running, try to remove the old container and start a new one'.format(green(name)))
             container.remove()
             create = True
         else:
             click.echo(
-                '{} container is already existed and running, cannot restart, run `mongo stop` first'.format(green(name)))
+                '{} container already exists and is running, failed to restart, run `mongo stop` first'.format(green(name)))
             return
     except docker.errors.NotFound:
         create = True
@@ -523,13 +523,13 @@ def clear(ctx, all):
         container = client.containers.get(name)
         if container.status == 'running':
             click.echo(
-                '{} container is still running, cannot clean'.format(green(name)))
+                '{} container is still running, failed to clean'.format(green(name)))
             return
 
         container.remove()
         click.echo('{} container is removed'.format(green(name)))
     except docker.errors.NotFound:
-        click.echo('{} container is not existed'.format(green(name)))
+        click.echo('{} container does not exist'.format(green(name)))
 
     if not all:
         return
@@ -539,7 +539,7 @@ def clear(ctx, all):
         volume.remove()
         click.echo('{} volume is removed'.format(green(volume_name)))
     except docker.errors.NotFound:
-        click.echo('{} volume is not existed'.format(green(volume_name)))
+        click.echo('{} volume does not exist'.format(green(volume_name)))
 
 
 @mongo.command('start')
@@ -605,7 +605,7 @@ def init(ctx):
     volume2_name = '{}-snapshots-volume'.format(name)
     try:
         client.volumes.get(volume_name)
-        click.echo('{} volume is already existed, no need to create one'.
+        click.echo('{} volume already exists, no need to create one'.
                    format(green(volume_name)))
     except docker.errors.NotFound:
         client.volumes.create(volume_name)
@@ -613,7 +613,7 @@ def init(ctx):
 
     try:
         client.volumes.get(volume2_name)
-        click.echo('{} volume is already existed, no need to create one'.
+        click.echo('{} volume already exists, no need to create one'.
                    format(green(volume2_name)))
     except docker.errors.NotFound:
         client.volumes.create(volume2_name)
@@ -634,17 +634,17 @@ def exportrb(ctx, file, data_volume):
         container = client.containers.get(name)
         if container.status == 'running':
             click.echo(
-                '{} container is still running, cannot export reversible blocks'.format(green(name)))
+                '{} container is still running, failed to export reversible blocks'.format(green(name)))
             return
     except docker.errors.NotFound:
-        click.echo('{} container is not existed'.format(green(name)))
+        click.echo('{} container does not exist'.format(green(name)))
         return
 
     try:
         if data_volume is None:
             client.volumes.get(volume_name)
     except docker.errors.NotFound:
-        click.echo('{} volume is not existed'.format(green(volume_name)))
+        click.echo('{} volume does not exist'.format(green(volume_name)))
         return
 
     image = container.image
@@ -681,14 +681,14 @@ def importrb(ctx, file, data_volume):
                 '{} container is still running, cannot import reversible blocks'.format(green(name)))
             return
     except docker.errors.NotFound:
-        click.echo('{} container is not existed'.format(green(name)))
+        click.echo('{} container does not exist'.format(green(name)))
         return
 
     try:
         if data_volume is None:
             client.volumes.get(volume_name)
     except docker.errors.NotFound:
-        click.echo('{} volume is not existed'.format(green(volume_name)))
+        click.echo('{} volume does not exist'.format(green(volume_name)))
         return
 
     image = container.image
@@ -719,13 +719,13 @@ def clear(ctx, all):
         container = client.containers.get(name)
         if container.status == 'running':
             click.echo(
-                '{} container is still running, cannot clean'.format(green(name)))
+                '{} container is still running, failed to clean'.format(green(name)))
             return
 
         container.remove()
         click.echo('{} container is removed'.format(green(name)))
     except docker.errors.NotFound:
-        click.echo('{} container is not existed'.format(green(name)))
+        click.echo('{} container does not exist'.format(green(name)))
 
     if not all:
         return
@@ -735,18 +735,18 @@ def clear(ctx, all):
         volume.remove()
         click.echo('{} volume is removed'.format(green(volume_name)))
     except docker.errors.NotFound:
-        click.echo('{} volume is not existed'.format(green(volume_name)))
+        click.echo('{} volume does not exist'.format(green(volume_name)))
 
     try:
         volume = client.volumes.get(volume2_name)
         volume.remove()
         click.echo('{} volume is removed'.format(green(volume2_name)))
     except docker.errors.NotFound:
-        click.echo('{} volume is not existed'.format(green(volume2_name)))
+        click.echo('{} volume does not exist'.format(green(volume2_name)))
 
 
 @evtd.command()
-@click.option('--postgres/--no-postgres', '-p', default=False, help='Whether export postgres data into snapshot(postgres plugin should be enabled)')
+@click.option('--postgres/--no-postgres', '-p', default=False, help='Whether export postgres data into snapshot (postgres plugin should be enabled)')
 @click.option('--upload/--no-upload', '-u', default=False, help='Whether upload to S3')
 @click.option('--aws-key', '-k', default='')
 @click.option('--aws-secret', '-s', default='')
@@ -759,10 +759,10 @@ def snapshot(ctx, postgres, upload, aws_key, aws_secret):
         container = client.containers.get(name)
         if container.status != 'running':
             click.echo(
-                '{} container is not running, cannot create snapshot'.format(green(name)))
+                '{} container is not running, failed to create snapshot'.format(green(name)))
             return
     except docker.errors.NotFound:
-        click.echo('{} container is not existed'.format(green(name)))
+        click.echo('{} container does not exist'.format(green(name)))
         return
 
     if postgres:
@@ -869,12 +869,12 @@ def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_db, post
         container = client.containers.get(name)
         if container.status != 'running':
             click.echo(
-                '{} container is existed but not running, try to remove old container and start a new one'.format(green(name)))
+                '{} container exists but not running, try to remove the old container and start a new one'.format(green(name)))
             container.remove()
             create = True
         else:
             click.echo(
-                '{} container is already existed and running, cannot restart, run `evtd stop` first'.format(green(name)))
+                '{} container already exists and is running, cannot restart, run `evtd stop` first'.format(green(name)))
             return
     except docker.errors.NotFound:
         create = True
@@ -891,7 +891,7 @@ def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_db, post
                     green(postgres_name)))
                 return
         except docker.errors.NotFound:
-            click.echo('{} container is not existed, please run `mongo create` first'.format(
+            click.echo('{} container does not exist, please run `mongo create` first'.format(
                 green(postgres_name)))
             return
 
@@ -972,7 +972,7 @@ def init(ctx):
     volume_name = '{}-data-volume'.format(name)
     try:
         client.volumes.get(volume_name)
-        click.echo('{} volume is already existed, no need to create one'.
+        click.echo('{} volume already exists, no need to create one'.
                    format(green(volume_name)))
     except docker.errors.NotFound:
         client.volumes.create(volume_name)
@@ -981,7 +981,7 @@ def init(ctx):
 
 @evtwd.command()
 @click.option('--net', '-n', default='evt-net', help='Name of the network for the environment')
-@click.option('--http/--no-http', default=False, help='Whether enable http server')
+@click.option('--http/--no-http', default=False, help='Whether to enable http server')
 @click.option('--host', '-h', default='127.0.0.1', help='Host address for evtwd (only works when http is enabled)')
 @click.option('--http-port', '-p', default=9999, help='Expose port for rpc request, set 0 for not expose (only works when http is enabled)')
 @click.pass_context
@@ -1006,12 +1006,12 @@ def create(ctx, net, http, host, http_port):
         container = client.containers.get(name)
         if container.status != 'running':
             click.echo(
-                '{} container is existed but not running, try to remove old container and start a new one'.format(green(name)))
+                '{} container exists but not running, try to remove old container and start a new one'.format(green(name)))
             container.remove()
             create = True
         else:
             click.echo(
-                '{} container is already existed and running, cannot restart, run `evtwd stop` first'.format(green(name)))
+                '{} container already exists and running, cannot restart, run `evtwd stop` first'.format(green(name)))
             return
     except docker.errors.NotFound:
         create = True
@@ -1048,13 +1048,13 @@ def clear(ctx, all):
         container = client.containers.get(name)
         if container.status == 'running':
             click.echo(
-                '{} container is still running, cannot clean'.format(green(name)))
+                '{} container is still running, failed to clean'.format(green(name)))
             return
 
         container.remove()
         click.echo('{} container is removed'.format(green(name)))
     except docker.errors.NotFound:
-        click.echo('{} container is not existed'.format(green(name)))
+        click.echo('{} container does not exist'.format(green(name)))
 
     if not all:
         return
@@ -1064,7 +1064,7 @@ def clear(ctx, all):
         volume.remove(force=True)
         click.echo('{} volume is removed'.format(green(volume_name)))
     except docker.errors.NotFound:
-        click.echo('{} volume is not existed'.format(green(volume_name)))
+        click.echo('{} volume does not exist'.format(green(volume_name)))
 
 
 @evtwd.command('start')

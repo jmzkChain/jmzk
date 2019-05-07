@@ -36,6 +36,7 @@ public:
         chain::block_id_type head_block_id;
         fc::time_point       head_block_time;
         std::string          snapshot_name;
+        size_t               snapshot_size;
         bool                 postgres;
     };
 
@@ -76,5 +77,5 @@ private:
 
 FC_REFLECT(evt::producer_plugin::runtime_options, (max_transaction_time)(max_irreversible_block_age)(produce_time_offset_us)(last_block_time_offset_us));
 FC_REFLECT(evt::producer_plugin::integrity_hash_information, (head_block_num)(head_block_id)(head_block_time)(integrity_hash));
-FC_REFLECT(evt::producer_plugin::snapshot_information, (head_block_num)(head_block_id)(head_block_time)(snapshot_name)(postgres));
+FC_REFLECT(evt::producer_plugin::snapshot_information, (head_block_num)(head_block_id)(head_block_time)(snapshot_name)(snapshot_size)(postgres));
 FC_REFLECT(evt::producer_plugin::create_snapshot_options, (postgres));

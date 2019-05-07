@@ -4,19 +4,22 @@
  */
 #pragma once
 
+#include <ostream>
+#include <optional>
 #include <evt/chain/database_utils.hpp>
 #include <evt/chain/exceptions.hpp>
 #include <fc/variant_object.hpp>
 #include <boost/core/demangle.hpp>
-#include <ostream>
+#include <boost/iostreams/filtering_stream.hpp>
 
 namespace evt { namespace chain {
 /**
  * History:
  * Version 1: initial version with string identified sections and rows
  * Version 2: Token database upgrades to binary format
+ * Version 3: Postgres upgrades to binary format and use zlib compress stream
  */
-static const uint32_t current_snapshot_version = 2;
+static const uint32_t current_snapshot_version = 3;
 
 namespace detail {
 template <typename T>
@@ -471,7 +474,9 @@ public:
     static const uint32_t magic_number = 0x30510550;
 
 private:
-    detail::ostream_wrapper snapshot;
+    detail::ostream_wrapper                            snapshot;
+    std::optional<boost::iostreams::filtering_ostream> row_stream;
+
     std::streampos          header_pos;
     std::streampos          section_pos;
     uint64_t                row_count;
@@ -503,7 +508,9 @@ private:
     void build_section_indexes() override;
     bool validate_section() const;
 
-    std::istream&              snapshot;
+    std::istream&                                      snapshot;
+    std::optional<boost::iostreams::filtering_istream> row_stream;
+
     std::streampos             header_pos;
     uint64_t                   num_rows;
     uint64_t                   cur_row;

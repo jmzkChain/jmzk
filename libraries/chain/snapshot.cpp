@@ -1,6 +1,8 @@
 #include <evt/chain/snapshot.hpp>
 
 #include <boost/algorithm/string/predicate.hpp>
+#include <boost/iostreams/filter/zlib.hpp>
+
 #include <fc/scoped_exit.hpp>
 #include <evt/chain/exceptions.hpp>
 
@@ -161,6 +163,8 @@ ostream_snapshot_writer::ostream_snapshot_writer(std::ostream& snapshot)
 
 void
 ostream_snapshot_writer::write_start_section(const std::string& section_name) {
+    namespace io = boost::iostreams;
+
     EVT_ASSERT(section_pos == std::streampos(-1), snapshot_exception, "Attempting to write a new section without closing the previous section");
     section_pos = snapshot.tellp();
     row_count   = 0;
@@ -176,16 +180,21 @@ ostream_snapshot_writer::write_start_section(const std::string& section_name) {
     // write the section name (null terminated)
     snapshot.write(section_name.data(), section_name.size());
     snapshot.put('\0');
+
+    // setup row stream
+    assert(!row_stream.has_value());
+    row_stream.emplace();
+    row_stream->push(io::zlib_compressor());
+    row_stream->push(snapshot.inner);
 }
 
 void
 ostream_snapshot_writer::write_row(const detail::abstract_snapshot_row_writer& row_writer) {
-    auto restore = snapshot.tellp();
     try {
-        row_writer.write(snapshot);
+        auto wrapper = detail::ostream_wrapper(*row_stream);
+        row_writer.write(wrapper);
     }
     catch(...) {
-        snapshot.seekp(restore);
         throw;
     }
     row_count++;
@@ -193,10 +202,17 @@ ostream_snapshot_writer::write_row(const detail::abstract_snapshot_row_writer& r
 
 void
 ostream_snapshot_writer::write_end_section() {
+    namespace io = boost::iostreams;
+
+    // flush row stream
+    assert(row_stream.has_value());
+    io::flush(*row_stream);
+    io::close(*row_stream);
+    row_stream.reset();
+
+    // seek to section pos
     auto restore = snapshot.tellp();
-
     uint64_t section_size = restore - section_pos - sizeof(uint64_t);
-
     snapshot.seekp(section_pos);
 
     // write a the section size
@@ -204,9 +220,9 @@ ostream_snapshot_writer::write_end_section() {
 
     // write the row count
     snapshot.write((char*)&row_count, sizeof(row_count));
-
     snapshot.seekp(restore);
 
+    // clear state
     section_pos = std::streampos(-1);
     row_count   = 0;
 }
@@ -298,11 +314,24 @@ istream_snapshot_reader::has_section(const string& section_name) {
 
 void
 istream_snapshot_reader::set_section(const string& section_name) {
+    namespace io = boost::iostreams;
+
+    if(row_stream.has_value()) {
+        io::close(*row_stream);
+        row_stream.reset();
+    }
+
     for(auto& si : section_indexes) {
         if(si.name == section_name) {
             snapshot.seekg(si.pos);
             cur_row  = 0;
             num_rows = si.row_count;
+
+            // setup row stream
+            assert(!row_stream.has_value());
+            row_stream.emplace();
+            row_stream->push(io::zlib_decompressor());
+            row_stream->push(snapshot);
 
             return;
         }
@@ -324,7 +353,7 @@ istream_snapshot_reader::get_section_size(const string& section_name) {
 
 bool
 istream_snapshot_reader::read_row(detail::abstract_snapshot_row_reader& row_reader) {
-    row_reader.provide(snapshot);
+    row_reader.provide(*row_stream);
     return ++cur_row < num_rows;
 }
 

@@ -408,14 +408,25 @@ public:
                 auto handler_itr = url_local_handlers.find(resource);
                 if(handler_itr != url_local_handlers.end()) {
                     con->defer_http_response();
-                    handler_itr->second(resource, body, [this, con](auto code, auto&& body) {
-                        con->set_status(websocketpp::http::status_code::value(code));
-                        if(!http_no_response) {
-                            con->set_body(std::move(body));
-                        }
-                        con->send_http_response();
-                    });
-
+                    app().post(appbase::priority::low,
+                        [this, ioc = this->server_ioc, handler_itr, resource{std::move(resource)}, body{std::move(body)}, con] {
+                            try {
+                                handler_itr->second(resource, body,
+                                    [this, ioc{std::move(ioc)}, con](auto code, auto response_body) {
+                                        boost::asio::post(*ioc, [this, response_body{std::move(response_body)}, con, code]() {
+                                            if(!this->http_no_response) {
+                                                con->set_body(std::move(response_body));
+                                            }
+                                            con->set_status(websocketpp::http::status_code::value(code));
+                                            con->send_http_response();
+                                        });
+                                    });
+                            }
+                            catch(...) {
+                                handle_exception<T>(con);
+                                con->send_http_response();
+                            }
+                        });
                     return;
                 }
             }

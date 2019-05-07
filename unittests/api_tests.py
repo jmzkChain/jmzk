@@ -166,6 +166,9 @@ lock_json_raw = '''
 '''
 
 def pre_action():
+    prodvote = AG.new_action(
+        'prodvote', producer='evt', key="action-everipay", value=2)
+
     newdomain = AG.new_action(
         'newdomain', name=domain_name, creator=user.pub_key)
 
@@ -270,12 +273,14 @@ def pre_action():
     print(resp)
 
     trx = TG.new_trx()
+    # trx.add_action(prodvote)
     trx.add_action(newdomain)
     trx.add_action(newsuspend)
     trx.add_action(newsuspend2)
-    trx.add_sign(user.priv_key)
     trx.add_action(newgroup)
     trx.add_action(newfungible)
+    trx.add_sign(user.priv_key)
+    trx.add_sign(priv_evt)
     trx.set_payer(user.pub_key.to_string())
     resp = api.push_transaction(trx.dumps())
     print(resp)
@@ -536,6 +541,23 @@ class Test(unittest.TestCase):
         resp = api.get_fungibles(json.dumps(req)).text
         res_dict = json.loads(resp)
         self.assertEqual(res_dict[0], sym_id, msg=resp)
+
+    def test_get_fungible(self):
+        req = {
+        'id': sym_id
+        }
+
+        resp = api.get_fungible(json.dumps(req)).text
+        res_dict = json.loads(resp)
+        self.assertEqual(res_dict['sym'], '5,S#3', msg=resp)
+
+        req = {
+        'id': 1
+        }
+
+        resp = api.get_fungible(json.dumps(req)).text
+        res_dict = json.loads(resp)
+        self.assertEqual(res_dict['sym'], '5,S#1', msg=resp)
 
     def test_get_assets(self):
         req = {
@@ -1019,6 +1041,7 @@ class Test(unittest.TestCase):
 
         resp = api.get_block(json.dumps(req)).text
         res_dict = json.loads(resp)
+        self.assertTrue('block_num' in res_dict.keys(), msg=resp)
         self.assertEqual(res_dict['block_num'], 5, msg=resp)
 
         url = 'http://127.0.0.1:8888/v1/chain/get_block'

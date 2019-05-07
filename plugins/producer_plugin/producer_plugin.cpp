@@ -916,10 +916,12 @@ producer_plugin::create_snapshot(const create_snapshot_options& options) const {
     }
 
     writer->finalize();
+
+    auto sz = (size_t)snap_out.tellp(); 
     snap_out.flush();
     snap_out.close();
 
-    return {chain.head_block_num(), head_id, chain.head_block_time(), snapshot_path, postgres};
+    return {chain.head_block_num(), head_id, chain.head_block_time(), snapshot_path, sz, postgres};
 }
 
 optional<fc::time_point>
