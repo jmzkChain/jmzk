@@ -120,7 +120,7 @@ def snapshots(prefix):
     else:
         entry = 'list'
 
-    container = client.containers.run('everitoken/snapshot:latest', entry, detach=True)
+    container = client.containers.run('everitoken/snapshot:latest', entry, detach=True, auto_remove=True)
     container.wait()
     logs = container.logs().decode('utf-8')
 
@@ -779,6 +779,10 @@ def snapshot(ctx, postgres, upload, aws_key, aws_secret):
     it = pat.finditer(result.decode('utf-8'))
     for m in it:
         obj[m.group(1)] = m.group(2)
+
+    if len(obj) == 0:
+        click.echo('Take snapshot failed, please make sure producer_api_plugin is enabled.')
+        return
 
     click.echo(json.dumps(obj, indent=2))
 
