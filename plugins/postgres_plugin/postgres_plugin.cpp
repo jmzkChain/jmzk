@@ -549,7 +549,7 @@ postgres_plugin::read_from_snapshot(const std::shared_ptr<chain::snapshot_reader
 void
 postgres_plugin::write_snapshot(const std::shared_ptr<chain::snapshot_writer>& snapshot) const {
     my_->lock_.lock();
-    while(my_->consuming_) {
+    while(my_->consuming_ || !my_->block_state_queue_.empty()) {
         my_->ss_cond_.wait(my_->lock_);
     }
     my_->lock_.unlock();
