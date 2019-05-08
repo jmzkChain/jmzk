@@ -174,7 +174,7 @@ pg_query::send_once() {
 
     try {
         EVT_THROW2(chain::postgres_send_exception,
-            "Send '{}' query command failed, detail: {}", call_names[t.type], PQerrorMessage(conn_));
+            "Send '{}' query command failed, try agian later, detail: {}", call_names[t.type], PQerrorMessage(conn_));
     }
     catch(...) {
         app().get_plugin<http_plugin>().handle_async_exception(t.id, "history", call_names[t.type], "");
@@ -266,14 +266,20 @@ pg_query::poll_read() {
     }
 
     socket_.async_wait(boost::asio::ip::tcp::socket::wait_type::wait_read, std::bind(&pg_query::poll_read, this));
-    if(!busy && !tasks_.empty()) {
+    if(busy) {
+        // still needs wait next data part
+        return PG_OK;
+    }
+    if(!tasks_.empty()) {
         // send next one
         if(send_once() == PG_FAIL) {
             // no send
+            FC_ASSERT(tasks_.empty(), "Tasks should be empty");
             sending_ = false;
         }
+        // keep sending state
     }
-    else {
+    else {  // tasks is empty
         sending_ = false;
     }
     return PG_OK;
