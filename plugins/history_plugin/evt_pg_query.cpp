@@ -179,6 +179,12 @@ pg_query::send_once() {
     catch(...) {
         app().get_plugin<http_plugin>().handle_async_exception(t.id, "history", call_names[t.type], "");
     }
+
+    tasks_.pop();
+    if(!tasks_.empty()) {
+        // send next one
+        return send_once();
+    }
     return PG_FAIL;
 }
 
@@ -257,7 +263,6 @@ pg_query::poll_read() {
         }
 
         PQclear(re);
-        break;
     }
 
     socket_.async_wait(boost::asio::ip::tcp::socket::wait_type::wait_read, std::bind(&pg_query::poll_read, this));
@@ -269,6 +274,7 @@ pg_query::poll_read() {
         // send next one
         if(send_once() == PG_FAIL) {
             // no send
+            FC_ASSERT(tasks_.empty(), "Tasks should be empty");
             sending_ = false;
         }
         // keep sending state
