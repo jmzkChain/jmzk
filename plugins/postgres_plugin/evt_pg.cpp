@@ -638,7 +638,7 @@ pg::commit_trx_context(trx_context& tctx) {
 int
 pg::add_block(add_context& actx, const block_ptr block) {
     fmt::format_to(actx.cctx.blocks_copy_,
-        fmt("{}\t{:d}\t{}\t{}\t{}\t{:d}\t{}\tf\tnow\n"),
+        fmt("{}\t{:d}\t{}\t{}\t{}\t{:d}\t{}\tt\tnow\n"),
         actx.block_id,
         actx.block_num,
         block->header.previous.str(),
@@ -656,7 +656,7 @@ pg::add_trx(add_context& actx, const trx_recept_t& trx, const trx_t& strx, int s
 
     auto& cctx = actx.cctx;
     fmt::format_to(cctx.trxs_copy_,
-        fmt("{}\t{:d}\t{}\t{}\t{:d}\t{}\t{}\t{:d}\t{}\tf\t{}\t{}\t"),
+        fmt("{}\t{:d}\t{}\t{}\t{:d}\t{}\t{}\t{:d}\t{}\tt\t{}\t{}\t"),
         strx.id().str(),
         seq_num,
         actx.block_id,
@@ -764,11 +764,13 @@ pg::exists_block(const std::string& block_id) const {
     return PG_OK;
 }
 
-PREPARE_SQL_ONCE(sbi_plan, "UPDATE blocks SET pending = false WHERE block_id = $1");
+PREPARE_SQL_ONCE(sbi_plan, "UPDATE blocks SET pending = false WHERE block_num = $1");
+PREPARE_SQL_ONCE(sti_plan, "UPDATE transactions SET pending = false WHERE block_num = $1")
 
 int
-pg::set_block_irreversible(trx_context& tctx, const std::string& block_id) {
-    fmt::format_to(tctx.trx_buf_, fmt("EXECUTE sbi_plan('{}');\n"), block_id);
+pg::set_block_irreversible(trx_context& tctx, const block_id_t& block_id) {
+    auto num = chain::block_header::num_from_id(block_id);
+    fmt::format_to(tctx.trx_buf_, fmt("EXECUTE sbi_plan({0});\nEXECUTE sti_plan({0});\n"), num);
     return PG_OK;
 }
 
