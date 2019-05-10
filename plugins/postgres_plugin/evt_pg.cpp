@@ -443,6 +443,28 @@ pg::exists_db(const std::string& db) {
 }
 
 int
+pg::exists_table(const std::string& table) {
+    auto sql = R"sql(SELECT EXISTS(
+                         SELECT *
+                         FROM information_schema.tables WHERE table_name = '{}'
+                     );)sql";
+    auto stmt = fmt::format(sql, table);
+
+    auto r = PQexec(conn_, stmt.c_str());
+    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_exec_exception, "Check if table existed failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+
+    auto v = PQgetvalue(r, 0, 0);
+    if(strcmp(v, "t") == 0) {
+        PQclear(r);
+        return PG_OK;
+    }
+    else {
+        PQclear(r);
+        return PG_FAIL;
+    }
+}
+
+int
 pg::is_table_empty(const std::string& table) {
     auto stmt = fmt::format("SELECT block_id FROM {} LIMIT 1;", table);
 

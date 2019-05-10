@@ -612,7 +612,7 @@ postgres_plugin::plugin_initialize(const variables_map& options) {
         my_->db_.connect(uri);
         my_->connstr_ = uri;
 
-        if(delete_state) {
+        if(!my_->db_.exists_table("blocks") || delete_state) {
             my_->wipe_database();
         }
 

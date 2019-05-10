@@ -77,6 +77,7 @@ public:
     int create_db(const std::string& db);
     int drop_db(const std::string& db);
     int exists_db(const std::string& db);
+    int exists_table(const std::string& table);
     int is_table_empty(const std::string& table);
     int drop_table(const std::string& table);
     int drop_sequence(const std::string& seq);
