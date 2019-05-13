@@ -172,11 +172,10 @@ auto create_metas_table = R"sql(CREATE SEQUENCE IF NOT EXISTS metas_id_seq;
                                     value      text                      NOT NULL,
                                     creator    character varying(57)     NOT NULL,
                                     trx_id     character(64)             NOT NULL,
-                                    created_at timestamp with time zone  NOT NULL  DEFAULT now(),
-                                    CONSTRAINT metas_pkey PRIMARY KEY (id)
+                                    created_at timestamp with time zone  NOT NULL  DEFAULT now()
                                 )
                                 WITH (
-                                    OIDS = FALSE
+                                    OIDS = TRUE
                                 )
                                 TABLESPACE pg_default;)sql";
 
@@ -443,6 +442,28 @@ pg::exists_db(const std::string& db) {
 }
 
 int
+pg::exists_table(const std::string& table) {
+    auto sql = R"sql(SELECT EXISTS(
+                         SELECT *
+                         FROM information_schema.tables WHERE table_name = '{}'
+                     );)sql";
+    auto stmt = fmt::format(sql, table);
+
+    auto r = PQexec(conn_, stmt.c_str());
+    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_exec_exception, "Check if table existed failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+
+    auto v = PQgetvalue(r, 0, 0);
+    if(strcmp(v, "t") == 0) {
+        PQclear(r);
+        return PG_OK;
+    }
+    else {
+        PQclear(r);
+        return PG_FAIL;
+    }
+}
+
+int
 pg::is_table_empty(const std::string& table) {
     auto stmt = fmt::format("SELECT block_id FROM {} LIMIT 1;", table);
 
@@ -638,7 +659,7 @@ pg::commit_trx_context(trx_context& tctx) {
 int
 pg::add_block(add_context& actx, const block_ptr block) {
     fmt::format_to(actx.cctx.blocks_copy_,
-        fmt("{}\t{:d}\t{}\t{}\t{}\t{:d}\t{}\tf\tnow\n"),
+        fmt("{}\t{:d}\t{}\t{}\t{}\t{:d}\t{}\tt\tnow\n"),
         actx.block_id,
         actx.block_num,
         block->header.previous.str(),
@@ -656,7 +677,7 @@ pg::add_trx(add_context& actx, const trx_recept_t& trx, const trx_t& strx, int s
 
     auto& cctx = actx.cctx;
     fmt::format_to(cctx.trxs_copy_,
-        fmt("{}\t{:d}\t{}\t{}\t{:d}\t{}\t{}\t{:d}\t{}\tf\t{}\t{}\t"),
+        fmt("{}\t{:d}\t{}\t{}\t{:d}\t{}\t{}\t{:d}\t{}\tt\t{}\t{}\t"),
         strx.id().str(),
         seq_num,
         actx.block_id,
@@ -764,11 +785,13 @@ pg::exists_block(const std::string& block_id) const {
     return PG_OK;
 }
 
-PREPARE_SQL_ONCE(sbi_plan, "UPDATE blocks SET pending = false WHERE block_id = $1");
+PREPARE_SQL_ONCE(sbi_plan, "UPDATE blocks SET pending = false WHERE block_num = $1");
+PREPARE_SQL_ONCE(sti_plan, "UPDATE transactions SET pending = false WHERE block_num = $1")
 
 int
-pg::set_block_irreversible(trx_context& tctx, const std::string& block_id) {
-    fmt::format_to(tctx.trx_buf_, fmt("EXECUTE sbi_plan('{}');\n"), block_id);
+pg::set_block_irreversible(trx_context& tctx, const block_id_t& block_id) {
+    auto num = chain::block_header::num_from_id(block_id);
+    fmt::format_to(tctx.trx_buf_, fmt("EXECUTE sbi_plan({0});\nEXECUTE sti_plan({0});\n"), num);
     return PG_OK;
 }
 

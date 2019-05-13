@@ -268,7 +268,7 @@ postgres_plugin_impl::process_irreversible_block(const block_state_ptr block, st
             // add it manually
             _process_block(block, traces, cctx, tctx);
         }
-        db_.set_block_irreversible(tctx, block->id.str());
+        db_.set_block_irreversible(tctx, block->id);
     }
     catch(fc::exception& e) {
         elog("Exception while processing irreversible block ${e}", ("e", e.to_string()));
@@ -612,7 +612,7 @@ postgres_plugin::plugin_initialize(const variables_map& options) {
         my_->db_.connect(uri);
         my_->connstr_ = uri;
 
-        if(delete_state) {
+        if(!my_->db_.exists_table("blocks") || delete_state) {
             my_->wipe_database();
         }
 

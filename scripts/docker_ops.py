@@ -115,6 +115,13 @@ def detail(name):
 @cli.command()
 @click.option('--prefix', '-p', help='Prefix of snapshots to list')
 def snapshots(prefix):
+    try:
+        client.images.get('everitoken/snapshot:latest')
+    except docker.errors.ImageNotFound:
+        click.echo('Pulling latest snapshot image...')
+        client.images.pull('everitoken/snapshot', 'latest')
+        click.echo('Pulled latest snapshot image')
+
     if prefix is not None:
         entry = 'list -p {}'.format(prefix)
     else:
@@ -753,7 +760,15 @@ def clear(ctx, all):
 @click.pass_context
 def snapshot(ctx, postgres, upload, aws_key, aws_secret):
     name = ctx.obj['name']
+    image = 'everitoken/snapshot:latest'
     volume_name = '{}-snapshots-volume'.format(name)
+
+    try:
+        client.images.get(image)
+    except docker.errors.ImageNotFound:
+        click.echo('Pulling latest snapshot image...')
+        client.images.pull('everitoken/snapshot', 'latest')
+        click.echo('Pulled latest snapshot image')
 
     try:
         container = client.containers.get(name)
@@ -780,6 +795,10 @@ def snapshot(ctx, postgres, upload, aws_key, aws_secret):
     for m in it:
         obj[m.group(1)] = m.group(2)
 
+    if len(obj) == 0:
+        click.echo('Take snapshot failed, please make sure producer_api_plugin is enabled.')
+        return
+
     click.echo(json.dumps(obj, indent=2))
 
     if not upload:
@@ -797,12 +816,13 @@ def snapshot(ctx, postgres, upload, aws_key, aws_secret):
     entry = "upload --file=/data/{} --block-id='{}' --block-num={} --block-time='{}' {} --aws-key={} --aws-secret={}".format(
         pathlib.Path(obj['snapshot_name']).name, obj['head_block_id'], obj['head_block_num'], obj['head_block_time'], pg, aws_key, aws_secret)
 
-    container = client.containers.run('everitoken/snapshot:latest', entry, detach=True,
-                                      volumes={volume_name: {'bind': '/data', 'mode': 'rw'}}, auto_remove=True)
+    container = client.containers.run(image, entry, detach=True,
+                                      volumes={volume_name: {'bind': '/data', 'mode': 'rw'}},)
     container.wait()
     logs = container.logs().decode('utf-8')
 
     click.echo(logs)
+    container.remove()
 
 
 @evtd.command()
@@ -810,7 +830,15 @@ def snapshot(ctx, postgres, upload, aws_key, aws_secret):
 @click.pass_context
 def getsnapshot(ctx, snapshot):
     name = ctx.obj['name']
+    image = 'everitoken/snapshot:latest'
     volume_name = '{}-snapshots-volume'.format(name)
+
+    try:
+        client.images.get(image)
+    except docker.errors.ImageNotFound:
+        click.echo('Pulling latest snapshot image...')
+        client.images.pull('everitoken/snapshot', 'latest')
+        click.echo('Pulled latest snapshot image')
 
     sid = snapshot[8:]
     entry = 'fetch --name={} --file=/data/{}'.format(snapshot, sid)

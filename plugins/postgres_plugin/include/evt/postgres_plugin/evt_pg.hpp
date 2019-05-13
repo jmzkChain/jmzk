@@ -36,6 +36,7 @@ using act_trace_t  = chain::action_trace;
 using abi_t        = chain::contracts::abi_serializer;
 using exec_ctx_t   = chain::execution_context;
 using block_ptr    = chain::block_state_ptr;
+using block_id_t   = chain::block_id_type;
 using chain_id_t   = chain::chain_id_type;
 using trx_recept_t = chain::transaction_receipt;
 using trx_t        = chain::signed_transaction;
@@ -76,6 +77,7 @@ public:
     int create_db(const std::string& db);
     int drop_db(const std::string& db);
     int exists_db(const std::string& db);
+    int exists_table(const std::string& table);
     int is_table_empty(const std::string& table);
     int drop_table(const std::string& table);
     int drop_sequence(const std::string& seq);
@@ -109,7 +111,7 @@ public:
     static int add_action(add_context&, const act_trace_t&, const std::string& trx_id, int seq_num);
     
     int get_latest_block_id(std::string& block_id) const;
-    int set_block_irreversible(trx_context&, const std::string& block_id);
+    int set_block_irreversible(trx_context&, const block_id_t& block_id);
     int exists_block(const std::string& block_id) const;
 
     int add_stat(trx_context&, const std::string& key, const std::string& value);

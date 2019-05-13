@@ -1653,7 +1653,7 @@ EVT_ACTION_IMPL_BEGIN(prodvote) {
                 }
             }
             for(auto& it : map) {
-                if(it.second >= limit) {
+                if(it.second >= limit && exec_ctx.get_current_version(act) < it.first) {
                     exec_ctx.set_version(act, it.first);
                     break;
                 }

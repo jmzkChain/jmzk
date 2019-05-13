@@ -107,13 +107,15 @@ def list(prefix, bucket):
 
     objs = s3.Bucket(bucket).objects.filter(Prefix=prefix)
 
-    click.echo('{:<90} {:>12} {:<10} {:<25}'.format('name', 'number', 'postgres', 'time'))
+    click.echo('{:<90} {:>12} {:>10} {:>15} {:>25}'.format('name', 'number', 'postgres', 'size', 'time'))
     for obj in objs:
         if len(obj.key) == 8:
             continue
 
         name = obj.key
         metas = s3.Object(bucket, name).metadata
+        size = s3.Object(bucket, name).content_length
+        size_str = '{:.3f} MB'.format(size / (1024 * 1024))
         num = int(metas['block_num'])
         time = metas['block_time']
         if 'postgres' in metas:
@@ -121,7 +123,7 @@ def list(prefix, bucket):
         else:
             pg = 'NA'
 
-        click.echo('{:<90} {:>12n} {:<10} {:<25}'.format(name, num, pg, time))
+        click.echo('{:<90} {:>12n} {:>10} {:>15} {:>25}'.format(name, num, pg, size_str, time))
 
 
 if __name__ == '__main__':
