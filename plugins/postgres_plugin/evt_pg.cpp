@@ -175,7 +175,7 @@ auto create_metas_table = R"sql(CREATE SEQUENCE IF NOT EXISTS metas_id_seq;
                                     created_at timestamp with time zone  NOT NULL  DEFAULT now()
                                 )
                                 WITH (
-                                    OIDS = TRUE
+                                    OIDS = FALSE
                                 )
                                 TABLESPACE pg_default;)sql";
 
