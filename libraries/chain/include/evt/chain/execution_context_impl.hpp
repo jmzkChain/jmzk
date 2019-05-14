@@ -106,10 +106,9 @@ public:
 
     int
     set_version(name act, int newver) override {
-        auto  index = index_of(act);
-        auto& conf  = chain_.get_global_properties();
-        auto  cver  = conf.action_vers[index].ver;
-        auto  mver  = type_names_[index].size();
+        auto index = index_of(act);
+        auto cver  = get_curr_ver(index);
+        auto mver  = type_names_[index].size();
 
         EVT_ASSERT2(newver > cver && newver <= (int)mver, action_version_exception, "New version should be in range ({},{}]", cver, mver);
 
@@ -121,10 +120,8 @@ public:
 
     int
     set_version_unsafe(name act, int newver) override {
-        auto  index = index_of(act);
-        auto& conf  = chain_.get_global_properties();
-        auto  cver  = conf.action_vers[index].ver;
-        auto  mver  = type_names_[index].size() - 1;
+        auto index = index_of(act);
+        auto cver  = get_curr_ver(index);
 
         auto old_ver = cver;
         chain_.set_action_version(act, newver);

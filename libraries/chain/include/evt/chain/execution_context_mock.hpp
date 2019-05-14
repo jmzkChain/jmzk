@@ -83,7 +83,6 @@ public:
     set_version_unsafe(name act, int newver) override {
         auto actindex = index_of(act);
         auto cver     = curr_vers_[actindex];
-        auto mver     = type_names_[actindex].size() - 1;
 
         auto old_ver         = cver;
         curr_vers_[actindex] = newver;
