@@ -38,6 +38,7 @@
 
 #include <evt/chain/config.hpp>
 #include <evt/chain/exceptions.hpp>
+#include <evt/chain/execution_context_mock.hpp>
 #include <evt/chain/contracts/types.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
 #include <evt/chain/contracts/evt_contract_abi.hpp>
@@ -49,7 +50,6 @@
 #include "help_text.hpp"
 #include "httpc.hpp"
 #include "localize.hpp"
-#include "execution_context_mock.hpp"
 
 using namespace std;
 using namespace evt;

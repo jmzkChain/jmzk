@@ -10,7 +10,7 @@
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
 
-#include <evt/chain/execution_context_impl.hpp>
+#include <evt/chain/execution_context_mock.hpp>
 #include <evt/chain/contracts/evt_contract_abi.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
 #include <evt/chain/types.hpp>
@@ -18,7 +18,7 @@
 using fc::sha256;
 using evt::chain::bytes;
 using evt::chain::chain_id_type;
-using evt::chain::evt_execution_context;
+using evt::chain::evt_execution_context_mock;
 using evt::chain::transaction;
 using evt::chain::contracts::abi_serializer;
 using evt::chain::contracts::abi_def;
@@ -45,8 +45,8 @@ extract_data<bytes>(evt_data_t* data, bytes& val) {
 } 
 
 struct abi_context {
-    std::unique_ptr<abi_serializer>        abi;
-    std::unique_ptr<evt_execution_context> exec_ctx;
+    std::unique_ptr<abi_serializer>             abi;
+    std::unique_ptr<evt_execution_context_mock> exec_ctx;
 };
 
 extern "C" {
@@ -55,7 +55,7 @@ void*
 evt_abi() {
     auto abic      = new abi_context();
     abic->abi      = std::make_unique<abi_serializer>(evt::chain::contracts::evt_contract_abi(), std::chrono::hours(1));
-    abic->exec_ctx = std::make_unique<evt_execution_context>();
+    abic->exec_ctx = std::make_unique<evt_execution_context_mock>();
 
     return (void*)abic;
 }
