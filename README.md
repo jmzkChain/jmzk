@@ -37,3 +37,7 @@ everiToken currently supports the following operating systems:
 
 ## Getting Started
 Please refer to [Developer Portal](https://www.everitoken.io/developers).
+
+## For production
+
+The blockchain API is not for Internet but for localhost. Our API do not provide rate limiter, security check, SSL and so on. We suggested anyone who wantto run a node to use a reverse proxy server like nginx to serve all the requests.
