@@ -16,6 +16,7 @@
 #include <evt/chain/execution_context.hpp>
 #include <evt/chain/exceptions.hpp>
 #include <evt/chain/types.hpp>
+#include <evt/chain/global_property_object.hpp>
 #include <evt/chain/contracts/types.hpp>
 
 namespace hana = boost::hana;
@@ -31,9 +32,7 @@ public:
             return hana::index_if(act_names_, hana::equal.to(hana::ulong_c<decltype(+act)::type::get_action_name().value>)).value();
         };
 
-        auto  act_types = hana::sort.by(hana::ordering([](auto& act) { return hana::int_c<decltype(+act)::type::get_version()>; }), act_types_);
-        auto& conf = chain.get_dynamic_global_properties();
-    
+        auto act_types = hana::sort.by(hana::ordering([](auto& act) { return hana::int_c<decltype(+act)::type::get_version()>; }), act_types_);
         hana::for_each(act_types, [&](auto& act) {
             auto i = index_of(act);
             type_names_[i].emplace_back(decltype(+act)::type::get_type_name());
@@ -43,24 +42,29 @@ public:
         act_names_arr_ = hana::unpack(act_names_, [](auto ...i) {
             return std::array<uint64_t, sizeof...(i)>{{i...}};
         });
+    }
 
+    ~execution_context_impl() override {}
+
+    void
+    initialize() override {
+        auto& conf = chain_.get_global_properties();
         if(conf.action_vers.empty()) {
             auto avs = std::vector<action_ver>();
             for(auto i = 0u; i < act_names_arr_.size(); i++) {
                 avs.emplace_back(action_ver {
                     .act  = name(act_names_arr_[i]),
-                    .ver  = 1,  // set version to 1
-                    .type = type_names_[i][0]
+                    .ver  = 1  // set version to 1
                 });
             }
-            chain.set_action_versions(avs);
+            chain_.set_action_versions(avs);
         }
         else if(conf.action_vers.size() != act_names_arr_.size()) {
             // added new actions
             FC_ASSERT(conf.action_vers.size() < act_names_arr_.size());
             auto tmp = std::map<name, int>();  // map name to ver
             for(auto& av : conf.action_vers) {
-                tmp[av.name] = av.ver;
+                tmp[av.act] = av.ver;
             }
 
             auto avs = std::vector<action_ver>();
@@ -74,15 +78,12 @@ public:
                 }
                 avs.emplace_back(action_ver {
                     .act  = name(act_names_arr_[i]),
-                    .ver  = ver,
-                    .type = type_names_[i][ver - 1]
+                    .ver  = ver
                 });
             }
-            chain.set_action_versions(avs);
+            chain_.set_action_versions(avs);
         }
     }
-
-    ~execution_context_impl() override {}
 
 public:
     int
@@ -106,7 +107,7 @@ public:
     int
     set_version(name act, int newver) override {
         auto  index = index_of(act);
-        auto& conf  = chain.get_dynamic_global_properties();
+        auto& conf  = chain_.get_global_properties();
         auto  cver  = conf.action_vers[index].ver;
         auto  mver  = type_names_[index].size();
 
@@ -121,7 +122,7 @@ public:
     int
     set_version_unsafe(name act, int newver) override {
         auto  index = index_of(act);
-        auto& conf  = chain.get_dynamic_global_properties();
+        auto& conf  = chain_.get_global_properties();
         auto  cver  = conf.action_vers[index].ver;
         auto  mver  = type_names_[index].size() - 1;
 
@@ -219,12 +220,12 @@ public:
         auto acts = std::vector<action_ver_type>();
         acts.reserve(act_names_arr_.size());
         
-        auto& conf = chain.get_dynamic_global_properties();
+        auto& conf = chain_.get_global_properties();
         for(auto& av : conf.action_vers) {
             acts.push_back(action_ver_type {
-                .name = av.name,
-                .version = av.version,
-                .type = get_acttype_name(av.name)
+                .act  = av.act,
+                .ver  = av.ver,
+                .type = get_acttype_name(av.act)
             });
         }
         return acts;
@@ -233,7 +234,7 @@ public:
 private:
     int
     get_curr_ver(int index) const {
-        auto& conf = chain.get_dynamic_global_properties();
+        auto& conf = chain_.get_global_properties();
         return conf.action_vers[index].ver;
     }
 

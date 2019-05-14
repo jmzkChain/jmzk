@@ -163,6 +163,10 @@ TEST_CASE_METHOD(contracts_test, "newfungible_v2_test", "[contracts]") {
     auto ft2  = cache.read_token<fungible_def>(token_type::token, N128(.fungible), get_sym_id(2));
     CHECK(ft2 != nullptr);
     CHECK_EQUAL(ft, *ft2);
+
+    // restore back
+    my_tester->control->get_execution_context().set_version_unsafe(N(newfungible), 1);
+    my_tester->produce_blocks();
 }
 
 TEST_CASE_METHOD(contracts_test, "updfungible_test", "[contracts]") {
@@ -286,6 +290,10 @@ TEST_CASE_METHOD(contracts_test, "updfungible_v2_test", "[contracts]") {
     my_tester->push_action(action(N128(.fungible), (name128)std::to_string(get_sym_id(2)), am), key_seeds, payer, 5'000'000);
 
     CHECK_THROWS_AS(my_tester->push_action(N(updfungible), N128(.fungible), name128::from_number(get_sym_id(2)), var.get_object(), key_seeds, payer), fungible_cannot_update_exception);
+
+    // restore back
+    my_tester->control->get_execution_context().set_version_unsafe(N(updfungible), 1);
+    my_tester->produce_blocks();
 }
 
 TEST_CASE_METHOD(contracts_test, "issuefungible_test", "[contracts]") {

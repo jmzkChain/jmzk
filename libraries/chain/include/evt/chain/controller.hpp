@@ -10,6 +10,7 @@
 #include <evt/chain/block_state.hpp>
 #include <evt/chain/genesis_state.hpp>
 #include <evt/chain/token_database.hpp>
+#include <evt/chain/execution_context.hpp>
 
 namespace chainbase {
 class database;

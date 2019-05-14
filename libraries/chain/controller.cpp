@@ -359,6 +359,7 @@ struct controller_impl {
             snapshot->validate();
 
             read_from_snapshot(snapshot);
+            initialize_execution_context();  // new actions maybe add
 
             auto end = blog.read_head();
             if(!end) {
@@ -377,6 +378,7 @@ struct controller_impl {
                 initialize_fork_db();  // set head to genesis state
                 initialize_token_db();
             }
+            initialize_execution_context();
 
             auto end = blog.read_head();
             if(!end) {
@@ -536,6 +538,11 @@ struct controller_impl {
         db.set_revision(head->block_num);
 
         initialize_database();
+    }
+
+    void
+    initialize_execution_context() {
+        exec_ctx.initialize();
     }
 
     void
@@ -1547,9 +1554,10 @@ void
 controller::set_action_version(name action, int version) {
     const auto& gpo = get_global_properties();
     my->db.modify(gpo, [&](auto& gp) {
-        gp.action_vers.clear();
-        for(auto& av : vers) {
-            gp.action_vers.push_back(av);
+        for(auto& av : gp.action_vers) {
+            if(av.act == action) {
+                av.ver = version;
+            }
         }
     }); 
 }

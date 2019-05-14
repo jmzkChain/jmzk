@@ -25,6 +25,7 @@ struct action_ver_type {
 
 class execution_context : boost::noncopyable {
 public:
+    virtual void initialize() = 0;
     virtual ~execution_context() {}
 
     virtual int index_of(name act) const = 0;

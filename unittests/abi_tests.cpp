@@ -14,62 +14,92 @@
 #include <evt/chain/contracts/abi_serializer.hpp>
 #include <evt/chain/contracts/evt_contract_abi.hpp>
 #include <evt/chain/contracts/types.hpp>
+#include <evt/testing/tester.hpp>
 
 using namespace evt;
 using namespace chain;
 using namespace contracts;
+using namespace testing;
 
-const auto&
-get_evt_abi() {
-    static auto abis = abi_serializer(evt_contract_abi(), std::chrono::hours(1));
-    return abis;
-}
+extern std::string evt_unittests_dir;
 
-auto&
-get_exec_ctx() {
-    static auto exec_ctx = evt_execution_context();
-    return exec_ctx;
-}
+class abi_test {
+public:
+    abi_test() {
+        auto basedir = evt_unittests_dir + "/abi_tests";
+        if(!fc::exists(basedir)) {
+            fc::create_directories(basedir);
+        }
 
-// verify that round trip conversion, via bytes, reproduces the exact same data
-fc::variant
-verify_byte_round_trip_conversion(const abi_serializer& abis, const type_name& type, const fc::variant& var) {
-    auto& exec_ctx = get_exec_ctx();
+        auto cfg = controller::config();
 
-    auto bytes = abis.variant_to_binary(type, var, exec_ctx);
-    auto var2  = abis.binary_to_variant(type, bytes, exec_ctx);
+        cfg.blocks_dir             = basedir + "/blocks";
+        cfg.state_dir              = basedir + "/state";
+        cfg.db_config.db_path      = basedir + "/tokendb";
+        cfg.contracts_console      = true;
+        cfg.charge_free_mode       = false;
+        cfg.loadtest_mode          = false;
+        cfg.max_serialization_time = std::chrono::hours(1);
 
-    auto r = fc::json::to_string(var2);
+        cfg.genesis.initial_timestamp = fc::time_point::now();
+        cfg.genesis.initial_key       = tester::get_public_key("evt");
+        auto privkey                  = tester::get_private_key("evt");
+        my_tester.reset(new tester(cfg));
 
-    auto bytes2 = abis.variant_to_binary(type, var2, exec_ctx);
-    CHECK(fc::to_hex(bytes) == fc::to_hex(bytes2));
+        my_tester->block_signing_private_keys.insert(std::make_pair(cfg.genesis.initial_key, privkey));
+    }
 
-    return var2;
-}
+    ~abi_test() {
+        my_tester->close();
+    }
 
-// verify that round trip conversion, via actual class, reproduces the exact same data
-template <typename T>
-fc::variant
-verify_type_round_trip_conversion(const abi_serializer& abis, const type_name& type, const fc::variant& var) {
-    auto& exec_ctx = get_exec_ctx();
+protected:
+    auto& get_exec_ctx() { return my_tester->control->get_execution_context(); }
+    auto& get_evt_abi() { return my_tester->control->get_abi_serializer(); }
 
-    auto bytes = abis.variant_to_binary(type, var, exec_ctx);
+    // verify that round trip conversion, via bytes, reproduces the exact same data
+    fc::variant
+    verify_byte_round_trip_conversion(const abi_serializer& abis, const type_name& type, const fc::variant& var) {
+        auto& exec_ctx = get_exec_ctx();
 
-    T obj;
-    fc::from_variant(var, obj);
+        auto bytes = abis.variant_to_binary(type, var, exec_ctx);
+        auto var2  = abis.binary_to_variant(type, bytes, exec_ctx);
 
-    fc::variant var2;
-    fc::to_variant(obj, var2);
+        auto r = fc::json::to_string(var2);
 
-    auto r = fc::json::to_string(var2);
+        auto bytes2 = abis.variant_to_binary(type, var2, exec_ctx);
+        CHECK(fc::to_hex(bytes) == fc::to_hex(bytes2));
 
-    auto bytes2 = abis.variant_to_binary(type, var2, exec_ctx);
+        return var2;
+    }
 
-    CHECK(bytes.size() == bytes2.size());
-    CHECK(fc::to_hex(bytes) == fc::to_hex(bytes2));
+    // verify that round trip conversion, via actual class, reproduces the exact same data
+    template <typename T>
+    fc::variant
+    verify_type_round_trip_conversion(const abi_serializer& abis, const type_name& type, const fc::variant& var) {
+        auto& exec_ctx = get_exec_ctx();
 
-    return var2;
-}
+        auto bytes = abis.variant_to_binary(type, var, exec_ctx);
+
+        T obj;
+        fc::from_variant(var, obj);
+
+        fc::variant var2;
+        fc::to_variant(obj, var2);
+
+        auto r = fc::json::to_string(var2);
+
+        auto bytes2 = abis.variant_to_binary(type, var2, exec_ctx);
+
+        CHECK(bytes.size() == bytes2.size());
+        CHECK(fc::to_hex(bytes) == fc::to_hex(bytes2));
+
+        return var2;
+    }
+
+protected:
+    std::unique_ptr<tester> my_tester;
+};
 
 struct optionaltest {
     std::optional<int> a;
@@ -83,7 +113,7 @@ struct optionaltest2 {
 };
 FC_REFLECT(optionaltest2, (a)(b));
 
-TEST_CASE("optional_abi_test", "[abis]") {
+TEST_CASE_METHOD(abi_test, "optional_abi_test", "[abis]") {
     auto abi = abi_def();
     abi.structs.emplace_back(struct_def{
         "optionaltest", "", {{"a", "int32?"}, {"b", "int32?"}}});
@@ -134,7 +164,7 @@ TEST_CASE("optional_abi_test", "[abis]") {
     CHECK(fc::to_hex(bytes2) == fc::to_hex(bytes22));
 }
 
-TEST_CASE("newdomain_abi_test", "[abis]") {
+TEST_CASE_METHOD(abi_test, "newdomain_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
 
     auto test_data = R"=====(
@@ -224,7 +254,7 @@ TEST_CASE("newdomain_abi_test", "[abis]") {
     verify_type_round_trip_conversion<newdomain>(abis, "newdomain", var);
 }
 
-TEST_CASE("updatedomain_abi_test", "[abis]") {
+TEST_CASE_METHOD(abi_test, "updatedomain_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
 
     auto test_data = R"=====(
@@ -270,7 +300,7 @@ TEST_CASE("updatedomain_abi_test", "[abis]") {
     verify_type_round_trip_conversion<updatedomain>(abis, "updatedomain", var);
 }
 
-TEST_CASE("issuetoken_abi_test", "[abis]") {
+TEST_CASE_METHOD(abi_test, "issuetoken_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
 
     auto test_data = R"=====(
@@ -316,7 +346,7 @@ TEST_CASE("issuetoken_abi_test", "[abis]") {
     verify_type_round_trip_conversion<issuetoken>(abis, "issuetoken", var);
 }
 
-TEST_CASE("transfer_abi_test", "[abis]") {
+TEST_CASE_METHOD(abi_test, "transfer_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
 
     auto test_data = R"=====(
@@ -353,7 +383,7 @@ TEST_CASE("transfer_abi_test", "[abis]") {
     verify_type_round_trip_conversion<transfer>(abis, "transfer", var);
 }
 
-TEST_CASE("destroytoken_abi_test", "[abis]") {
+TEST_CASE_METHOD(abi_test, "destroytoken_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
 
     auto test_data = R"=====(
@@ -378,7 +408,7 @@ TEST_CASE("destroytoken_abi_test", "[abis]") {
     verify_type_round_trip_conversion<transfer>(abis, "destroytoken", var);
 }
 
-TEST_CASE("newgroup_abi_test", "[abis]") {
+TEST_CASE_METHOD(abi_test, "newgroup_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
 
     auto test_data = R"=====(
@@ -542,7 +572,7 @@ TEST_CASE("newgroup_abi_test", "[abis]") {
     verify_type_round_trip_conversion<newgroup>(abis, "newgroup", var);
 }
 
-TEST_CASE("updategroup_abi_test", "[abis]") {
+TEST_CASE_METHOD(abi_test, "updategroup_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
 
     auto test_data = R"=====(
@@ -706,7 +736,7 @@ TEST_CASE("updategroup_abi_test", "[abis]") {
     verify_type_round_trip_conversion<updategroup>(abis, "updategroup", var);
 }
 
-TEST_CASE("newfungible_abi_test", "[abis]") {
+TEST_CASE_METHOD(abi_test, "newfungible_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
 
     auto test_data = R"=====(
@@ -854,7 +884,7 @@ TEST_CASE("newfungible_abi_test", "[abis]") {
     verify_type_round_trip_conversion<newfungible>(abis, "newfungible", var);
 }
 
-TEST_CASE("updfungible_abi_test", "[abis]") {
+TEST_CASE_METHOD(abi_test, "updfungible_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
 
     auto test_data = R"=====(
@@ -900,7 +930,7 @@ TEST_CASE("updfungible_abi_test", "[abis]") {
     verify_type_round_trip_conversion<updfungible>(abis, "updfungible", var);
 }
 
-TEST_CASE("issuefungible_abi_test", "[abis]") {
+TEST_CASE_METHOD(abi_test, "issuefungible_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
 
     auto test_data = R"=====(
@@ -935,7 +965,7 @@ TEST_CASE("issuefungible_abi_test", "[abis]") {
     verify_type_round_trip_conversion<issuefungible>(abis, "issuefungible", var);
 }
 
-TEST_CASE("transferft_abi_test", "[abis]") {
+TEST_CASE_METHOD(abi_test, "transferft_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
 
     auto test_data = R"=====(
@@ -973,7 +1003,7 @@ TEST_CASE("transferft_abi_test", "[abis]") {
     verify_type_round_trip_conversion<transferft>(abis, "transferft", var);
 }
 
-TEST_CASE("addmeta_abi_test", "[abis]") {
+TEST_CASE_METHOD(abi_test, "addmeta_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
 
     auto test_data = R"=====(
@@ -1004,7 +1034,7 @@ TEST_CASE("addmeta_abi_test", "[abis]") {
     verify_type_round_trip_conversion<addmeta>(abis, "addmeta", var);
 }
 
-TEST_CASE("newsuspend_abi_test", "[abis]") {
+TEST_CASE_METHOD(abi_test, "newsuspend_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
     auto test_data = R"=======(
     {
@@ -1046,7 +1076,7 @@ TEST_CASE("newsuspend_abi_test", "[abis]") {
     verify_type_round_trip_conversion<newsuspend>(abis, "newsuspend", var);
 }
 
-TEST_CASE("cancelsuspend_abi_test", "[abis]") {
+TEST_CASE_METHOD(abi_test, "cancelsuspend_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
     auto test_data = R"=======(
     {
@@ -1063,7 +1093,7 @@ TEST_CASE("cancelsuspend_abi_test", "[abis]") {
     verify_type_round_trip_conversion<cancelsuspend>(abis, "cancelsuspend", var);
 }
 
-TEST_CASE("aprvsuspend_abi_test", "[abis]") {
+TEST_CASE_METHOD(abi_test, "aprvsuspend_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
     auto test_data = R"=======(
     {
@@ -1085,7 +1115,7 @@ TEST_CASE("aprvsuspend_abi_test", "[abis]") {
     verify_type_round_trip_conversion<aprvsuspend>(abis, "aprvsuspend", var);
 }
 
-TEST_CASE("execsuspend_abi_test", "[abis]") {
+TEST_CASE_METHOD(abi_test, "execsuspend_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
     auto test_data = R"=======(
     {
@@ -1105,7 +1135,7 @@ TEST_CASE("execsuspend_abi_test", "[abis]") {
     verify_type_round_trip_conversion<execsuspend>(abis, "execsuspend", var);
 }
 
-TEST_CASE("evt2pevt_abi_test", "[abis]") {
+TEST_CASE_METHOD(abi_test, "evt2pevt_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
     auto test_data = R"=======(
     {
@@ -1127,7 +1157,7 @@ TEST_CASE("evt2pevt_abi_test", "[abis]") {
     verify_type_round_trip_conversion<evt2pevt>(abis, "evt2pevt", var);
 }
 
-TEST_CASE("everipass_abi_test", "[abis]") {
+TEST_CASE_METHOD(abi_test, "everipass_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
     auto test_data = R"=======(
     {
@@ -1207,9 +1237,12 @@ TEST_CASE("everipass_abi_test", "[abis]") {
     CHECK_THROWS_AS(get_var(var), pack_exception);
     CHECK_NOTHROW(get_var(var_v2));
     CHECK(get_var(var_v2)["memo"] == "tttesttt");
+
+    // restore back
+    get_exec_ctx().set_version_unsafe("everipass", 1);
 }
 
-TEST_CASE("everipay_abi_test", "[abis]") {
+TEST_CASE_METHOD(abi_test, "everipay_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
     auto test_data = R"=======(
     {
@@ -1291,9 +1324,12 @@ TEST_CASE("everipay_abi_test", "[abis]") {
     CHECK_THROWS_AS(get_var(var), pack_exception);
     CHECK_NOTHROW(get_var(var_v2));
     CHECK(get_var(var_v2)["memo"] == "tttesttt");
+
+    // restore back
+    get_exec_ctx().set_version_unsafe("everipay", 1);
 }
 
-TEST_CASE("prodvote_abi_test", "[abis]") {
+TEST_CASE_METHOD(abi_test, "prodvote_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
     auto test_data = R"=======(
     {
@@ -1314,7 +1350,7 @@ TEST_CASE("prodvote_abi_test", "[abis]") {
     verify_type_round_trip_conversion<prodvote>(abis, "prodvote", var);
 }
 
-TEST_CASE("updsched_abi_test", "[abis]") {
+TEST_CASE_METHOD(abi_test, "updsched_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
     auto test_data = R"=======(
     {
@@ -1335,7 +1371,7 @@ TEST_CASE("updsched_abi_test", "[abis]") {
     verify_type_round_trip_conversion<updsched>(abis, "updsched", var);
 }
 
-TEST_CASE("newlock_abi_test", "[abis]") {
+TEST_CASE_METHOD(abi_test, "newlock_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
     auto test_data = R"=======(
     {
@@ -1492,7 +1528,7 @@ TEST_CASE("newlock_abi_test", "[abis]") {
     CHECK_THROWS_AS(var.as<newlock>(), bad_cast_exception);
 }
 
-TEST_CASE("aprvlock_abi_test", "[abis]") {
+TEST_CASE_METHOD(abi_test, "aprvlock_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
     auto test_data = R"=======(
     {
@@ -1516,7 +1552,7 @@ TEST_CASE("aprvlock_abi_test", "[abis]") {
     verify_type_round_trip_conversion<aprvlock>(abis, "aprvlock", var);
 }
 
-TEST_CASE("tryunlock_abi_test", "[abis]") {
+TEST_CASE_METHOD(abi_test, "tryunlock_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
     auto test_data = R"=======(
     {
@@ -1535,7 +1571,7 @@ TEST_CASE("tryunlock_abi_test", "[abis]") {
     verify_type_round_trip_conversion<tryunlock>(abis, "tryunlock", var);
 }
 
-TEST_CASE("recycleft_abi_test", "[abis]") {
+TEST_CASE_METHOD(abi_test, "recycleft_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
     auto test_data = R"=======(
     {
@@ -1610,7 +1646,7 @@ auto setpsvbonus_test_data = R"=====(
 }
 )=====";
 
-TEST_CASE("setpsvbonus_abi_test", "[abis]") {
+TEST_CASE_METHOD(abi_test, "setpsvbonus_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
 
     auto var = fc::json::from_string(setpsvbonus_test_data);
@@ -1653,7 +1689,7 @@ TEST_CASE("setpsvbonus_abi_test", "[abis]") {
     verify_type_round_trip_conversion<setpsvbonus>(abis, "setpsvbonus", var);
 }
 
-TEST_CASE("setpsvbonus_v2_abi_test", "[abis]") {
+TEST_CASE_METHOD(abi_test, "setpsvbonus_v2_abi_test", "[abis]") {
     auto& abis = get_evt_abi();
 
     auto var = fc::json::from_string(setpsvbonus_test_data);
@@ -1702,4 +1738,7 @@ TEST_CASE("setpsvbonus_v2_abi_test", "[abis]") {
     get_exec_ctx().set_version("setpsvbonus", 2);
     verify_byte_round_trip_conversion(abis, "setpsvbonus", var);
     verify_type_round_trip_conversion<setpsvbonus>(abis, "setpsvbonus", var);
+
+    // restore back
+    get_exec_ctx().set_version_unsafe("setpsvbonus", 1);
 }
