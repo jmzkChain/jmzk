@@ -7,7 +7,7 @@
 #include <chrono>
 #include <evt/chain/token_database.hpp>
 #include <evt/chain/transaction_context.hpp>
-#include <evt/chain/execution_context_impl.hpp>
+#include <evt/chain/execution_context_mock.hpp>
 #include <evt/testing/tester.hpp>
 #include <fc/io/json.hpp>
 #include <random>
@@ -106,7 +106,7 @@ get_trx_meta(controller& control, const action& act, const std::vector<name>& au
 
 auto&
 get_exec_ctx() {
-    static auto exec_ctx = evt_execution_context();
+    static auto exec_ctx = evt_execution_context_mock();
     return exec_ctx;
 }
 

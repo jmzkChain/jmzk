@@ -1612,8 +1612,8 @@ EVT_ACTION_IMPL_BEGIN(prodvote) {
         }
 
         auto limit = ::ceil(2.0 * sche.producers.size() / 3.0);
-        if(values.size() < limit) {
-            // if the number of votes is less than 2/3 producers
+        if(values.size() <= limit) {
+            // if the number of votes is equal or less than 2/3 producers
             // don't update
             return;
         }
