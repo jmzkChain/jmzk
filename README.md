@@ -36,8 +36,9 @@ everiToken currently supports the following operating systems:
 1. [MyEVT Wallet](http://myevt.io)
 
 ## Getting Started
+
 Please refer to [Developer Portal](https://www.everitoken.io/developers).
 
-## For production
+## For Production
 
-The blockchain API is not for Internet but for localhost. Our API do not provide rate limiter, security check, SSL and so on. We suggested anyone who wantto run a node to use a reverse proxy server like nginx to serve all the requests.
+The blockchain API is not for Internet but for localhost. Our API do not provide rate limiter, security check, SSL and so on. We suggested anyone who want to run a node to use a reverse proxy server like nginx to serve all the requests.
