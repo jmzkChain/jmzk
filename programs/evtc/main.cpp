@@ -38,7 +38,6 @@
 
 #include <evt/chain/config.hpp>
 #include <evt/chain/exceptions.hpp>
-#include <evt/chain/execution_context_impl.hpp>
 #include <evt/chain/contracts/types.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
 #include <evt/chain/contracts/evt_contract_abi.hpp>
@@ -50,6 +49,7 @@
 #include "help_text.hpp"
 #include "httpc.hpp"
 #include "localize.hpp"
+#include "execution_context_mock.hpp"
 
 using namespace std;
 using namespace evt;
@@ -312,8 +312,10 @@ call(const std::string& url,
 
 void
 set_execution_context(execution_context& exec_ctx) {
-    auto acts = call(get_evt_actions, fc::variant()).as<std::vector<action_ver>>();
-    exec_ctx.set_versions(acts);
+    auto acts = call(get_evt_actions, fc::variant()).as<std::vector<action_ver_type>>();
+    for(auto& av : acts) {
+        exec_ctx.set_version_unsafe(av.act, av.ver);
+    }
 }
 
 template <typename T>
@@ -1071,7 +1073,7 @@ struct set_suspend_subcommands {
             auto varsuspend = call(get_suspend_func, fc::mutable_variant_object("name", (proposal_name)name));
             auto suspend = suspend_def();
 
-            auto exec_ctx = evt_execution_context();
+            auto exec_ctx = evt_execution_context_mock();
             set_execution_context(exec_ctx);
 
             auto abi = abi_serializer(evt_contract_abi(), std::chrono::hours(1));
@@ -1366,7 +1368,7 @@ struct set_action_subcommand {
                 vardata = fc::json::from_string(data);
             }
 
-            auto exec_ctx = evt_execution_context();
+            auto exec_ctx = evt_execution_context_mock();
             set_execution_context(exec_ctx);
 
             auto type = exec_ctx.get_acttype_name((action_name)name);
