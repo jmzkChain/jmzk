@@ -1611,11 +1611,14 @@ EVT_ACTION_IMPL_BEGIN(prodvote) {
             }
         }
 
-        auto limit = ::ceil(2.0 * sche.producers.size() / 3.0);
-        if(values.size() <= limit) {
-            // if the number of votes is equal or less than 2/3 producers
-            // don't update
-            return;
+        auto limit = (int64_t)values.size(); 
+        if(values.size() != sche.producers.size()) {
+            limit = ::ceil(2.0 * sche.producers.size() / 3.0);
+            if((int64_t)values.size() <= limit) {
+                // if the number of votes is equal or less than 2/3 producers
+                // don't update
+                return;
+            }
         }
 
         if(!updact) {
@@ -1654,7 +1657,7 @@ EVT_ACTION_IMPL_BEGIN(prodvote) {
                 }
             }
             for(auto& it : map) {
-                if(it.second >= limit && it.first > cver) {
+                if(it.second >= limit) {
                     exec_ctx.set_version(act, it.first);
                     break;
                 }
