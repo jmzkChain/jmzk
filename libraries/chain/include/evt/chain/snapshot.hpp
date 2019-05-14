@@ -18,8 +18,9 @@ namespace evt { namespace chain {
  * Version 1: initial version with string identified sections and rows
  * Version 2: Token database upgrades to binary format
  * Version 3: Postgres upgrades to binary format and use zlib compress stream
+ * Version 4: Add seq to postgres and execution context to global property object
  */
-static const uint32_t current_snapshot_version = 3;
+static const uint32_t current_snapshot_version = 4;
 
 namespace detail {
 template <typename T>

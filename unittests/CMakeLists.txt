@@ -1,15 +1,13 @@
 add_executable(evt_unittests
     main.cpp
     abi_tests.cpp
-
     types_tests.cpp
-    execution_tests.cpp
 
     tokendb/basic_tests.cpp
     tokendb/runtime_tests.cpp
     tokendb/persist_tests.cpp
     tokendb/cache_tests.cpp
-
+    
     snapshot_tests.cpp
     
     contracts/token_tests.cpp

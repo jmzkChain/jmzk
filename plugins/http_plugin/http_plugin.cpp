@@ -581,6 +581,10 @@ http_plugin::plugin_initialize(const variables_map& options) {
             string lipstr = options.at("http-server-address").as<string>();
             string host   = lipstr.substr(0, lipstr.find(':'));
             string port   = lipstr.substr(host.size() + 1, lipstr.size());
+
+            if(port == "0") {
+                port = std::to_string(current_http_plugin_defaults.default_http_port);
+            }
             
             tcp::resolver::query query(tcp::v4(), host.c_str(), port.c_str());
 

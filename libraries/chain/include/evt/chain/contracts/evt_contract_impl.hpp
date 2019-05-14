@@ -1566,7 +1566,7 @@ EVT_ACTION_IMPL_BEGIN(prodvote) {
 
                 auto cver = exec_ctx.get_current_version(act);
                 auto mver = exec_ctx.get_max_version(act);
-                EVT_ASSERT2(pvact.value > cver && pvact.value <= exec_ctx.get_max_version(act), prodvote_value_exception,
+                EVT_ASSERT2(pvact.value >= cver && pvact.value <= exec_ctx.get_max_version(act), prodvote_value_exception,
                     "Provided version: {} for action: {} is not valid, should be in range ({},{}]", pvact.value, act, cver, mver);
                 updact = true;
             }
@@ -1589,6 +1589,7 @@ EVT_ACTION_IMPL_BEGIN(prodvote) {
             auto it = map->emplace(*pkey, pvact.value);
             if(it.second == false) {
                 // existed
+                EVT_ASSERT2(it.first->second != pvact.value, prodvote_value_exception, "Value voted for {} is the same as previous voted", pvact.key);
                 it.first->second = pvact.value;
             }
             tokendb_cache.put_token(token_type::prodvote, action_op::put, std::nullopt, pvact.key, *map);
@@ -1610,11 +1611,14 @@ EVT_ACTION_IMPL_BEGIN(prodvote) {
             }
         }
 
-        auto limit = ::ceil(2.0 * sche.producers.size() / 3.0);
-        if(values.size() < limit) {
-            // if the number of votes is less than 2/3 producers
-            // don't update
-            return;
+        auto limit = (int64_t)values.size(); 
+        if(values.size() != sche.producers.size()) {
+            limit = ::ceil(2.0 * sche.producers.size() / 3.0);
+            if((int64_t)values.size() <= limit) {
+                // if the number of votes is equal or less than 2/3 producers
+                // don't update
+                return;
+            }
         }
 
         if(!updact) {
@@ -1653,7 +1657,7 @@ EVT_ACTION_IMPL_BEGIN(prodvote) {
                 }
             }
             for(auto& it : map) {
-                if(it.second >= limit && exec_ctx.get_current_version(act) < it.first) {
+                if(it.second >= limit) {
                     exec_ctx.set_version(act, it.first);
                     break;
                 }

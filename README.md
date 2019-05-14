@@ -36,6 +36,9 @@ everiToken currently supports the following operating systems:
 1. [MyEVT Wallet](http://myevt.io)
 
 ## Getting Started
+
 Please refer to [Developer Portal](https://www.everitoken.io/developers).
 
-everiToken built on earlier work on EOSIO (https://github.com/EOSIO/eos) by Block.one. Thanks!
+## For Production
+
+The blockchain RPC interface is not deisgned for the Internet but for local network. And since RPC interface don't provide features like rate limititions, security checks and so on. It highly suggests anyone who wants to run a node to use a reverse proxy server like nginx to serve all the requests.

@@ -1004,6 +1004,19 @@ pg::add_fungible(trx_context& tctx, const fungible_def& ft) {
         tctx.trx_id()
         );
 
+    // support FT v1 reserved meta
+    if(!ft.metas.empty()) {
+        for(auto& m : ft.metas) {
+            auto am = addmeta();
+            am.key     = m.key;
+            am.value   = m.value;
+            am.creator = m.creator;
+
+            auto act = evt::chain::action(N128(.fungible), evt::chain::name128::from_number(ft.sym.id()), am);
+            add_meta(tctx, act);
+        }
+    }
+
     return PG_OK;
 }
 
