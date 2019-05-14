@@ -10,6 +10,7 @@
 #include <evt/chain/block_state.hpp>
 #include <evt/chain/genesis_state.hpp>
 #include <evt/chain/token_database.hpp>
+#include <evt/chain/execution_context.hpp>
 
 namespace chainbase {
 class database;
@@ -187,6 +188,8 @@ public:
 
     int64_t set_proposed_producers(vector<producer_key> producers);
     void    set_chain_config(const chain_config&);
+    void    set_action_versions(vector<action_ver> vers);
+    void    set_action_version(name action, int version);
 
     bool light_validation_allowed(bool replay_opts_disabled_by_policy) const;
     bool skip_auth_check() const;

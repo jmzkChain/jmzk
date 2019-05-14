@@ -195,7 +195,7 @@ struct controller_impl {
         , token_db_cache(token_db, cfg.db_config.object_cache_size)
         , conf(cfg)
         , chain_id(cfg.genesis.compute_chain_id())
-        , exec_ctx()
+        , exec_ctx(s)
         , read_mode(cfg.read_mode)
         , system_api(contracts::evt_contract_abi(), cfg.max_serialization_time) {
 
@@ -359,6 +359,7 @@ struct controller_impl {
             snapshot->validate();
 
             read_from_snapshot(snapshot);
+            initialize_execution_context();  // new actions maybe add
 
             auto end = blog.read_head();
             if(!end) {
@@ -377,6 +378,7 @@ struct controller_impl {
                 initialize_fork_db();  // set head to genesis state
                 initialize_token_db();
             }
+            initialize_execution_context();
 
             auto end = blog.read_head();
             if(!end) {
@@ -536,6 +538,11 @@ struct controller_impl {
         db.set_revision(head->block_num);
 
         initialize_database();
+    }
+
+    void
+    initialize_execution_context() {
+        exec_ctx.initialize();
     }
 
     void
@@ -1530,6 +1537,29 @@ controller::set_chain_config(const chain_config& config) {
     my->db.modify(gpo, [&](auto& gp) {
         gp.configuration = config;
     });
+}
+
+void
+controller::set_action_versions(vector<action_ver> vers) {
+    const auto& gpo = get_global_properties();
+    my->db.modify(gpo, [&](auto& gp) {
+        gp.action_vers.clear();
+        for(auto& av : vers) {
+            gp.action_vers.push_back(av);
+        }
+    }); 
+}
+
+void
+controller::set_action_version(name action, int version) {
+    const auto& gpo = get_global_properties();
+    my->db.modify(gpo, [&](auto& gp) {
+        for(auto& av : gp.action_vers) {
+            if(av.act == action) {
+                av.ver = version;
+            }
+        }
+    }); 
 }
 
 const producer_schedule_type&

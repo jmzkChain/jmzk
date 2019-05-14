@@ -1435,8 +1435,8 @@ read_only::get_abi(const get_abi_params&) const {
 
 const std::string&
 read_only::get_actions(const get_actions_params&) const {
-    static std::string             _actions_json;
-    static std::vector<action_ver> _actions;
+    static std::string                  _actions_json;
+    static std::vector<action_ver_type> _actions;
 
     auto acts = db.get_execution_context().get_current_actions();
     if(_actions.empty()) {
