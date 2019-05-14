@@ -41,4 +41,4 @@ Please refer to [Developer Portal](https://www.everitoken.io/developers).
 
 ## For Production
 
-The blockchain API is not for Internet but for localhost. Our API do not provide rate limiter, security check, SSL and so on. We suggested anyone who want to run a node to use a reverse proxy server like nginx to serve all the requests.
+The blockchain RPC interface is not deisgned for the Internet but for local network. And since RPC interface don't provide features like rate limititions, security checks and so on. It highly suggests anyone who wants to run a node to use a reverse proxy server like nginx to serve all the requests.
