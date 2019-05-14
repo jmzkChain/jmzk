@@ -65,6 +65,9 @@ def upload(file, block_id, block_num, block_time, postgres, bucket, aws_key, aws
     click.echo('Uploaded snapshot, took {} ms'.format(
                click.style(str(round((t2-t) * 1000)), fg='green')))
 
+    # remove original file
+    os.remove(file)
+
 
 @cli.command()
 @click.option('--name', '-n', required=True)
