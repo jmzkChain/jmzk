@@ -1051,7 +1051,7 @@ def create(ctx, net, http, host, http_port, arguments):
     entry = 'evtwd.sh --unix-socket-path=/opt/evt/data/wallet/evtwd.sock'
     ports = {}
     if http:
-        entry += ' --listen-http'
+        entry += ' --listen-http --http-server-address=0.0.0.0:9999'
         if http_port != 0:
             ports['9999/tcp'] = (host, http_port)
 
