@@ -172,8 +172,7 @@ auto create_metas_table = R"sql(CREATE SEQUENCE IF NOT EXISTS metas_id_seq;
                                     value      text                      NOT NULL,
                                     creator    character varying(57)     NOT NULL,
                                     trx_id     character(64)             NOT NULL,
-                                    created_at timestamp with time zone  NOT NULL  DEFAULT now(),
-                                    CONSTRAINT metas_pkey PRIMARY KEY (id)
+                                    created_at timestamp with time zone  NOT NULL  DEFAULT now()
                                 )
                                 WITH (
                                     OIDS = FALSE
@@ -1004,6 +1003,19 @@ pg::add_fungible(trx_context& tctx, const fungible_def& ft) {
         ft.total_supply.to_string(),
         tctx.trx_id()
         );
+
+    // support FT v1 reserved meta
+    if(!ft.metas.empty()) {
+        for(auto& m : ft.metas) {
+            auto am = addmeta();
+            am.key     = m.key;
+            am.value   = m.value;
+            am.creator = m.creator;
+
+            auto act = evt::chain::action(N128(.fungible), evt::chain::name128::from_number(ft.sym.id()), am);
+            add_meta(tctx, act);
+        }
+    }
 
     return PG_OK;
 }

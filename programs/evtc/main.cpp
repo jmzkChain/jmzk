@@ -38,7 +38,7 @@
 
 #include <evt/chain/config.hpp>
 #include <evt/chain/exceptions.hpp>
-#include <evt/chain/execution_context_impl.hpp>
+#include <evt/chain/execution_context_mock.hpp>
 #include <evt/chain/contracts/types.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
 #include <evt/chain/contracts/evt_contract_abi.hpp>
@@ -312,8 +312,10 @@ call(const std::string& url,
 
 void
 set_execution_context(execution_context& exec_ctx) {
-    auto acts = call(get_evt_actions, fc::variant()).as<std::vector<action_ver>>();
-    exec_ctx.set_versions(acts);
+    auto acts = call(get_evt_actions, fc::variant()).as<std::vector<action_ver_type>>();
+    for(auto& av : acts) {
+        exec_ctx.set_version_unsafe(av.act, av.ver);
+    }
 }
 
 template <typename T>
@@ -987,6 +989,18 @@ struct set_assets_subcommands {
     }
 };
 
+std::string
+try_get_meta_value_from_file(const std::string& file_or_str) {
+    if(fc::is_regular_file(file_or_str)) {
+        auto fs = std::ifstream(file_or_str);
+        auto str = std::string((std::istreambuf_iterator<char>(fs)), std::istreambuf_iterator<char>());
+        return str;
+    }
+    else {
+        return file_or_str;
+    }
+}
+
 struct set_meta_subcommands {
     string domain;
     string key;
@@ -998,7 +1012,7 @@ struct set_meta_subcommands {
     set_meta_subcommands(CLI::App* actionRoot) {
         auto addcmds = [&](auto subcmd) {
             subcmd->add_option("meta-key", metakey, localized("Key of the metadata"))->required();
-            subcmd->add_option("meta-value", metavalue, localized("Value of the metadata"))->required();
+            subcmd->add_option("meta-value", metavalue, localized("File or text of the metadata"))->required();
             subcmd->add_option("creator", creator, localized("Public key of the metadata creator"))->required();
             add_standard_transaction_options(subcmd);
         };
@@ -1009,7 +1023,7 @@ struct set_meta_subcommands {
         dmcmd->callback([this] {
             addmeta am;
             am.key = (meta_key)metakey;
-            am.value = metavalue;
+            am.value = try_get_meta_value_from_file(metavalue);
             am.creator = get_public_key(creator);
 
             auto act = create_action((domain_name)domain, N128(.meta), am);
@@ -1022,7 +1036,7 @@ struct set_meta_subcommands {
         gmcmd->callback([this] {
             addmeta am;
             am.key = (meta_key)metakey;
-            am.value = metavalue;
+            am.value = try_get_meta_value_from_file(metavalue);
             am.creator = get_public_key(creator);
 
             auto act = create_action(N128(.group), (domain_key)key, am);
@@ -1036,7 +1050,7 @@ struct set_meta_subcommands {
         tmcmd->callback([this] {
             addmeta am;
             am.key = (meta_key)metakey;
-            am.value = metavalue;
+            am.value = try_get_meta_value_from_file(metavalue);
             am.creator = get_public_key(creator);
 
             auto act = create_action((domain_name)domain, (domain_key)key, am);
@@ -1049,7 +1063,7 @@ struct set_meta_subcommands {
         fmcmd->callback([this] {
             addmeta am;
             am.key = (meta_key)metakey;
-            am.value = metavalue;
+            am.value = try_get_meta_value_from_file(metavalue);
             am.creator = get_public_key(creator);
 
             auto act = create_action(N128(.fungible), (domain_key)key, am);
@@ -1071,7 +1085,7 @@ struct set_suspend_subcommands {
             auto varsuspend = call(get_suspend_func, fc::mutable_variant_object("name", (proposal_name)name));
             auto suspend = suspend_def();
 
-            auto exec_ctx = evt_execution_context();
+            auto exec_ctx = evt_execution_context_mock();
             set_execution_context(exec_ctx);
 
             auto abi = abi_serializer(evt_contract_abi(), std::chrono::hours(1));
@@ -1366,7 +1380,7 @@ struct set_action_subcommand {
                 vardata = fc::json::from_string(data);
             }
 
-            auto exec_ctx = evt_execution_context();
+            auto exec_ctx = evt_execution_context_mock();
             set_execution_context(exec_ctx);
 
             auto type = exec_ctx.get_acttype_name((action_name)name);
