@@ -1701,6 +1701,17 @@ CLI::callback_t header_opt_callback = [](CLI::results_t res) {
     return true;
 };
 
+class EVTApp : public CLI::App {
+public:
+    EVTApp(std::string app_description = "", std::string app_name = "")
+        : CLI::App(app_description, app_name) {}
+
+public:
+    void
+    pre_callback() override {
+        ensure_evtwd_running(this);
+    }
+};
 
 int
 main(int argc, char** argv) {
@@ -1715,7 +1726,7 @@ main(int argc, char** argv) {
     context = evt::client::http::create_http_context();
     wallet_url = default_wallet_url;
 
-    CLI::App app{"Command Line Interface to everiToken Client"};
+    EVTApp app{"Command Line Interface to everiToken Client"};
     app.require_subcommand();
 
     app.add_option("-u,--url", url, localized("the http/https/unix-socket URL where evtd is running"))->capture_default_str();
@@ -1723,7 +1734,6 @@ main(int argc, char** argv) {
 
     app.add_option( "-r,--header", header_opt_callback, localized("pass specific HTTP header; repeat this option to pass multiple headers"));
     app.add_flag( "-n,--no-verify", no_verify, localized("don't verify peer certificate when using HTTPS"));
-    app.callback([&app]{ ensure_evtwd_running(&app);});
 
     bool verbose_errors = false;
     app.add_flag("-v,--verbose", verbose_errors, localized("output verbose actions on error"));
