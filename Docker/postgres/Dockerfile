@@ -25,7 +25,7 @@ ENV AUTH="trust"
 
 RUN mkdir -p $PGDATA
 RUN cp /usr/share/postgresql/postgresql.conf.sample $PGDATA/postgresql.conf
-RUN sed -i -e "s/#include_dir = 'conf.d'/include_dir = 'conf.d'/" $PGDATA/postgresql.conf
+RUN sed -i -e "s/#include_dir = ''/include_dir = 'conf.d'/" $PGDATA/postgresql.conf
 COPY conf.d $PGDATA/conf.d/
 
 RUN mkdir -p /docker-entrypoint-initdb.d
