@@ -135,7 +135,10 @@ read_only::get_group(const read_only::get_group_params& params) {
     READ_DB_TOKEN(token_type::group, std::nullopt, params.name, group, unknown_group_exception, "Cannot find group: {}", params.name);
 
     fc::to_variant(*group, var);
-    return var;
+
+    auto mvar = fc::mutable_variant_object(var);
+    mvar["address"] = address(N(.group), params.name, 0);
+    return mvar;
 }
 
 fc::variant
