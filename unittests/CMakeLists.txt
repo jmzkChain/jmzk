@@ -10,9 +10,9 @@ add_executable(evt_unittests
     
     snapshot_tests.cpp
     
-    contracts/token_tests.cpp
+    contracts/nft_tests.cpp
     contracts/group_tests.cpp
-    contracts/fungible_tests.cpp
+    contracts/ft_tests.cpp
     contracts/suspend_tests.cpp
     contracts/lock_tests.cpp
     contracts/bonus_tests.cpp
