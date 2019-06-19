@@ -317,6 +317,33 @@ struct passive_bonus_slim {
     passive_methods   methods;
 };
 
+struct stakepool_def {
+    asset total;
+
+    int r;
+    int t;
+    int q;
+    int w;
+};
+
+struct stake_def {
+    asset threshold;
+
+};
+
+struct validator_def {
+    account_name    name;
+    permission_name withdraw;
+    permission_name manage;
+    percent_slim    commission;
+
+    int64_t initial_net_value;
+    int64_t current_net_value;
+    int64_t total_units;
+
+    asset purchase_threshold;
+};
+
 struct newdomain {
     domain_name name;
     user_id     creator;
