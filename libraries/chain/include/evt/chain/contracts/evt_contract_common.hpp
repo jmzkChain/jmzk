@@ -213,10 +213,19 @@ get_db_prefix<token_def>(const token_def& v) {
         tokendb_cache.put_token(TYPE, action_op::put, get_db_prefix(VALUE), get_db_key(VALUE), VALUE); \
     }
 
-#define PUT_DB_ASSET(ADDR, VALUE)                                     \
-    {                                                                 \
-        auto dv = make_db_value(VALUE);                               \
-        tokendb.put_asset(ADDR, VALUE.sym.id(), dv.as_string_view()); \
+#define PUT_DB_ASSET(ADDR, VALUE)                                             \
+    while(1) {                                                                \
+        if(VALUE.sym.id() == EVT_SYM_ID) {                                    \
+            if constexpr(std::is_same_v<decltype(VALUE), property>) {         \
+                auto ps = property_stakes(VALUE);                             \
+                auto dv = make_db_value(ps);                                  \
+                tokendb.put_asset(ADDR, VALUE.sym.id(), dv.as_string_view()); \
+                break;                                                        \
+            }                                                                 \
+        }                                                                     \
+        auto dv = make_db_value(VALUE);                                       \
+        tokendb.put_asset(ADDR, VALUE.sym.id(), dv.as_string_view());         \
+        break;                                                                \
     }
 
 #define READ_DB_TOKEN(TYPE, PREFIX, KEY, VPTR, EXCEPTION, FORMAT, ...)      \
@@ -242,6 +251,14 @@ get_db_prefix<token_def>(const token_def& v) {
         .created_index = context.get_index_of_trx()                           \
     }
 
+#define MAKE_PROPERTY_STAKES(AMOUNT, SYM)                                     \
+    property_stakes(property {                                                \
+        .amount = AMOUNT,                                                     \
+        .sym = SYM,                                                           \
+        .created_at = context.control.pending_block_time().sec_since_epoch(), \
+        .created_index = context.get_index_of_trx(),                          \
+    })
+
 #define CHECK_SYM(VALUEREF, PROVIDED) \
     EVT_ASSERT2(VALUEREF.sym == PROVIDED, asset_symbol_exception, "Provided symbol({}) is invalid, expected: {}", PROVIDED, VALUEREF.sym);
 
@@ -261,7 +278,12 @@ get_db_prefix<token_def>(const token_def& v) {
     {                                                                       \
         auto str = std::string();                                           \
         if(!tokendb.read_asset(ADDR, SYM.id(), str, true /* no throw */)) { \
-            VALUEREF = MAKE_PROPERTY(0, SYM);                               \
+            if constexpr(std::is_same_v<decltype(VALUEREF), property>) {    \
+                VALUEREF = MAKE_PROPERTY(0, SYM);                           \
+            }                                                               \
+            else {                                                          \
+                VALUEREF = MAKE_PROPERTY_STAKES(0, SYM);                    \
+            }                                                               \
             context.add_new_ft_holder(                                      \
                 ft_holder { .addr = ADDR, .sym_id = SYM.id() });            \
         }                                                                   \
@@ -275,7 +297,12 @@ get_db_prefix<token_def>(const token_def& v) {
     {                                                                       \
         auto str = std::string();                                           \
         if(!tokendb.read_asset(ADDR, SYM.id(), str, true /* no throw */)) { \
-            VALUEREF = MAKE_PROPERTY(0, SYM);                               \
+            if constexpr(std::is_same_v<decltype(VALUEREF), property>){     \
+                VALUEREF = MAKE_PROPERTY(0, SYM);                           \
+            }                                                               \
+            else {                                                          \
+                VALUEREF = MAKE_PROPERTY_STAKES(0, SYM);                    \
+            }                                                               \
         }                                                                   \
         else {                                                              \
             extract_db_value(str, VALUEREF);                                \

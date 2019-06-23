@@ -320,19 +320,6 @@ struct stakepool_def {
     asset          purchase_threshold;
 };
 
-enum class stake_type {
-    demand = 0, fixed
-};
-
-struct stakeshare_def {
-    account_name   validator;
-    int64_t        units;
-    int32_t        net_value;
-    time_point_sec purchase_time;
-    stake_type     type;
-    int32_t        fixed_hours;
-};
-
 struct validator_def {
     account_name   name;
     user_id        creator;
