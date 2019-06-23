@@ -12,8 +12,8 @@
 #include <fc/reflect/reflect.hpp>
 #include <fc/filesystem.hpp>
 #include <evt/chain/types.hpp>
-#include <evt/chain/asset.hpp>
 #include <evt/chain/address.hpp>
+#include <evt/chain/asset.hpp>
 #include <evt/chain/config.hpp>
 
 namespace rocksdb {

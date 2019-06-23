@@ -8,6 +8,7 @@
 
 #include <evt/chain/address.hpp>
 #include <evt/chain/asset.hpp>
+#include <evt/chain/property.hpp>
 #include <evt/chain/percent_slim.hpp>
 #include <evt/chain/chain_config.hpp>
 #include <evt/chain/config.hpp>
@@ -62,15 +63,6 @@ using address_list    = small_vector<address_type, 4>;
 using conf_key        = evt::chain::conf_key;
 using percent_type    = evt::chain::percent_type;
 using percent_slim    = evt::chain::percent_slim;
-
-// represent for property for one symbol in one account
-// also records the create time
-struct property {
-    int64_t  amount;        // amount for asset
-    symbol   sym;           // symbol
-    uint32_t created_at;    // utc seconds
-    uint32_t created_index; // action index at that time
-};
 
 struct token_def {
     token_def() = default;
@@ -318,30 +310,41 @@ struct passive_bonus_slim {
 };
 
 struct stakepool_def {
-    asset total;
+    int32_t r;
+    int32_t t;
+    int32_t q;
+    int32_t w;
 
-    int r;
-    int t;
-    int q;
-    int w;
+    time_point_sec begin_time;
+    asset          total;
+    asset          purchase_threshold;
 };
 
-struct stake_def {
-    asset threshold;
+enum class stake_type {
+    demand = 0, fixed
+};
 
+struct stakeshare_def {
+    account_name   validator;
+    int64_t        units;
+    int32_t        net_value;
+    time_point_sec purchase_time;
+    stake_type     type;
+    int32_t        fixed_hours;
 };
 
 struct validator_def {
-    account_name    name;
+    account_name   name;
+    user_id        creator;
+    time_point_sec create_time;
+    
     permission_name withdraw;
     permission_name manage;
     percent_slim    commission;
 
-    int64_t initial_net_value;
-    int64_t current_net_value;
+    int32_t initial_net_value;
+    int32_t current_net_value;
     int64_t total_units;
-
-    asset purchase_threshold;
 };
 
 struct newdomain {
@@ -659,7 +662,6 @@ struct recvpsvbonus {
 
 }}}  // namespace evt::chain::contracts
 
-FC_REFLECT(evt::chain::contracts::property, (amount)(sym)(created_at)(created_index));
 FC_REFLECT(evt::chain::contracts::token_def, (domain)(name)(owner)(metas));
 FC_REFLECT(evt::chain::contracts::key_weight, (key)(weight));
 FC_REFLECT(evt::chain::contracts::authorizer_weight, (ref)(weight));
@@ -692,6 +694,9 @@ FC_REFLECT_ENUM(evt::chain::contracts::passive_method_type, (within_amount)(outs
 FC_REFLECT(evt::chain::contracts::passive_method, (action)(method));
 FC_REFLECT(evt::chain::contracts::passive_bonus, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods)(round)(deadline));
 FC_REFLECT(evt::chain::contracts::passive_bonus_slim, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(methods));
+
+FC_REFLECT(evt::chain::contracts::stakepool_def, (r)(t)(q)(w)(begin_time)(total)(purchase_threshold));
+FC_REFLECT(evt::chain::contracts::validator_def, (name)(creator)(create_time)(withdraw)(manage)(commission)(initial_net_value)(current_net_value)(total_units));
 
 FC_REFLECT(evt::chain::contracts::newdomain, (name)(creator)(issue)(transfer)(manage));
 FC_REFLECT(evt::chain::contracts::issuetoken, (domain)(names)(owner));
