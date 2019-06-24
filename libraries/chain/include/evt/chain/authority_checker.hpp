@@ -789,6 +789,23 @@ struct check_authority<N(distpsvbonus)> {
     }
 };
 
+template<>
+struct check_authority<N(newvalidator)> {
+    template <typename Type>
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        try {
+            auto& nv     = act.data_as<add_clr_t<Type>>();
+            auto  vistor = authority_checker::weight_tally_visitor(checker);
+            if(vistor(nv.creator, 1) == 1) {
+                return true;
+            }
+        }
+        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `newvalidator` type.");
+        return false;
+    }
+};
+
 }  // namespace internal
 
 }}  // namespace evt::chain

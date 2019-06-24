@@ -21,3 +21,4 @@ struct apply_action {};
 #include <evt/chain/contracts/evt_contract_bonus.hpp>
 #include <evt/chain/contracts/evt_contract_evtlink.hpp>
 #include <evt/chain/contracts/evt_contract_utils.hpp>
+#include <evt/chain/contracts/evt_contract_staking.hpp>

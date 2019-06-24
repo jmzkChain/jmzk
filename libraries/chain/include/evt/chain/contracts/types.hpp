@@ -324,10 +324,11 @@ struct validator_def {
     account_name   name;
     user_id        creator;
     time_point_sec create_time;
+    time_point_sec last_updated_time;
     
-    permission_name withdraw;
-    permission_name manage;
-    percent_slim    commission;
+    permission_def withdraw;
+    permission_def manage;
+    percent_slim   commission;
 
     int32_t initial_net_value;
     int32_t current_net_value;
@@ -647,6 +648,24 @@ struct recvpsvbonus {
     uint32_t                         rule_index;
 };
 
+struct newvalidator {
+    account_name   name;
+    user_id        creator;
+    
+    permission_def withdraw;
+    permission_def manage;
+    percent_slim   commission;
+
+    EVT_ACTION_VER1(newvalidator);
+};
+
+struct staketokens {
+    account_name validator;
+    asset        amount;
+    stake_type   type;
+    int32_t      fixed_hours;
+};
+
 }}}  // namespace evt::chain::contracts
 
 FC_REFLECT(evt::chain::contracts::token_def, (domain)(name)(owner)(metas));
@@ -683,7 +702,7 @@ FC_REFLECT(evt::chain::contracts::passive_bonus, (sym_id)(rate)(base_charge)(cha
 FC_REFLECT(evt::chain::contracts::passive_bonus_slim, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(methods));
 
 FC_REFLECT(evt::chain::contracts::stakepool_def, (r)(t)(q)(w)(begin_time)(total)(purchase_threshold));
-FC_REFLECT(evt::chain::contracts::validator_def, (name)(creator)(create_time)(withdraw)(manage)(commission)(initial_net_value)(current_net_value)(total_units));
+FC_REFLECT(evt::chain::contracts::validator_def, (name)(creator)(create_time)(last_updated_time)(withdraw)(manage)(commission)(initial_net_value)(current_net_value)(total_units));
 
 FC_REFLECT(evt::chain::contracts::newdomain, (name)(creator)(issue)(transfer)(manage));
 FC_REFLECT(evt::chain::contracts::issuetoken, (domain)(names)(owner));
@@ -720,3 +739,5 @@ FC_REFLECT(evt::chain::contracts::tryunlock, (name)(executor));
 FC_REFLECT(evt::chain::contracts::setpsvbonus, (sym)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods));
 FC_REFLECT(evt::chain::contracts::setpsvbonus_v2, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods));
 FC_REFLECT(evt::chain::contracts::distpsvbonus, (sym_id)(deadline)(final_receiver));
+FC_REFLECT(evt::chain::contracts::newvalidator, (name)(creator)(withdraw)(manage)(commission));
+FC_REFLECT(evt::chain::contracts::staketokens, (validator)(amount)(type)(fixed_hours));

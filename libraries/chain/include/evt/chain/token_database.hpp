@@ -42,7 +42,8 @@ enum class token_type {
     evtlink,
     psvbonus,
     psvbonus_dist,
-    max_value = psvbonus_dist
+    validator,
+    max_value = validator
 };
 
 enum class action_op {

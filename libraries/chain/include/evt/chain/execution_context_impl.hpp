@@ -280,7 +280,8 @@ using evt_execution_context = execution_context_impl<
                                   contracts::tryunlock,
                                   contracts::setpsvbonus,
                                   contracts::setpsvbonus_v2,
-                                  contracts::distpsvbonus
+                                  contracts::distpsvbonus,
+                                  contracts::newvalidator
                               >;
 
 }}  // namespace evt::chain

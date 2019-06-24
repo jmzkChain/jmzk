@@ -22,7 +22,8 @@ const char* section_names[] = {
     ".prodvote",
     ".evtlink",
     ".psvbonus",
-    ".psvbonus-dist"
+    ".psvbonus-dist",
+    ".validator"
 };
 
 void
