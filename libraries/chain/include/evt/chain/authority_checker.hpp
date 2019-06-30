@@ -357,6 +357,23 @@ public:
     }
 
     bool
+    satisfied_key(const public_key_type& pkey) {
+        using namespace internal;
+
+        // Save the current used keys; if we do not satisfy this authority, the newly used keys aren't actually used
+        auto KeyReverter = fc::make_scoped_exit([this, keys = used_keys_]() mutable {
+            used_keys_ = keys;
+        });
+
+        auto vistor = weight_tally_visitor(this);
+        if(vistor(pkey, 1) > 0) {
+            KeyReverter.cancel();
+            return true;
+        }
+        return false;
+    }
+
+    bool
     all_keys_used() const { return used_keys_.all(); }
 
     public_keys_set
