@@ -11,6 +11,7 @@ namespace evt { namespace chain {
 // also records the create time
 struct property {
     int64_t  amount;        // amount for asset
+    int64_t  frozen_amount; // frozen amount for asset
     symbol   sym;           // symbol
     uint32_t created_at;    // utc seconds
     uint32_t created_index; // action index at that time
@@ -23,7 +24,7 @@ enum class stake_type {
 struct stakeshare_def {
     account_name   validator;
     int64_t        units;
-    int32_t        net_value;
+    int64_t        net_value;
     time_point_sec purchase_time;
     stake_type     type;
     int32_t        fixed_hours;

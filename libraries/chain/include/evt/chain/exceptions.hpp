@@ -248,7 +248,8 @@ FC_DECLARE_DERIVED_EXCEPTION( bonus_symbol_exception,         bonus_exception,  
 FC_DECLARE_DERIVED_EXCEPTION( staking_exception,             action_exception,  3041100, "Staking exception" );
 FC_DECLARE_DERIVED_EXCEPTION( unknown_validator_exception,   staking_exception, 3041101, "Unknown validator exception" );
 FC_DECLARE_DERIVED_EXCEPTION( validator_duplicate_exception, staking_exception, 3041102, "Duplicate validator exception" );
-
+FC_DECLARE_DERIVED_EXCEPTION( staking_amount_exception,      staking_exception, 3041103, "Invalid staking amount exception" );
+FC_DECLARE_DERIVED_EXCEPTION( staking_type_exception,        staking_exception, 3041104, "Invalid staking type exception" );
 
 FC_DECLARE_DERIVED_EXCEPTION( producer_exception,                      chain_exception,    3050000, "Producer exception" );
 FC_DECLARE_DERIVED_EXCEPTION( producer_priv_key_not_found,             producer_exception, 3050001, "Producer private key is not available" );

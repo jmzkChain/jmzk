@@ -330,8 +330,8 @@ struct validator_def {
     permission_def manage;
     percent_slim   commission;
 
-    int32_t initial_net_value;
-    int32_t current_net_value;
+    asset   initial_net_value;
+    asset   current_net_value;
     int64_t total_units;
 };
 

@@ -448,6 +448,42 @@ transfer_fungible(apply_context& context,
     }
 }
 
+void
+freeze_fungible(apply_context& context, const address& addr, asset total) {
+    DECLARE_TOKEN_DB()
+
+    auto sym = total.sym();
+
+    property prop;
+    READ_DB_ASSET(addr, sym, prop);
+
+    EVT_ASSERT2(prop.amount >= total.amount(), balance_exception,
+        "Address: {} does not have enough balance({}) left.", addr, total);
+
+    prop.amount -= total.amount();
+    prop.forzen_amount += total.amount();
+
+    PUT_DB_ASSET(addr, prop);
+}
+
+void
+unfreeze_fungible(apply_context& context, const address& addr, asset total) {
+    DECLARE_TOKEN_DB()
+
+    auto sym = total.sym();
+
+    property prop;
+    READ_DB_ASSET(addr, sym, prop);
+
+    EVT_ASSERT2(prop.forzen_amount >= total.amount(), balance_exception,
+        "Address: {} does not have enough forzen balance({}) left.", addr, total);
+
+    prop.amount += total.amount();
+    prop.forzen_amount -= total.amount();
+
+    PUT_DB_ASSET(addr, prop);
+}
+
 }  // namespace internal
 
 }}} // namespace evt::chain::contracts

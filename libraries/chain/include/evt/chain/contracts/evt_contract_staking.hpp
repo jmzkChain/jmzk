@@ -15,7 +15,7 @@ EVT_ACTION_IMPL_BEGIN(newvalidator) {
 
     auto nvact = context.act.data_as<ACT>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.validator), nvact.name), action_authorize_exception, "Invalid authorization fields in action(domain and key).");
+        EVT_ASSERT(context.has_authorized(N128(.staking), nvact.name), action_authorize_exception, "Invalid authorization fields in action(domain and key).");
 
         check_name_reserved(nvact.name);
 
@@ -56,6 +56,29 @@ EVT_ACTION_IMPL_BEGIN(newvalidator) {
 }
 EVT_ACTION_IMPL_END()
 
+EVT_ACTION_IMPL_BEGIN(staketokens) {
+    using namespace internal;
 
+    auto stact = context.act.data_as<ACT>();
+    try {
+        EVT_ASSERT(context.has_authorized(N128(.staking), stact.validator), action_authorize_exception, "Invalid authorization fields in action(domain and key).");
+
+        DECLARE_TOKEN_DB()
+
+        auto validator = make_empty_cache_ptr<validator_def>();
+        READ_DB_TOKEN(token_type::validator, std::nullopt, stact.validator, validator, unknown_validator_exception,
+            "Cannot find validator: {}", stact.validator);
+
+        EVT_ASSERT2(stact.amount >= validator.current_net_value, staking_amount_exception, "Needs to stake at least one unit");
+
+        auto units = (int64_t)boost::multiprecision::floor(real_type(stact.amount.amount()) / real_type(validator.current_net_value.amount()));
+        auto total = asset(units * validator.current_net_value.amount(), evt_sym());
+
+        validator.total_units += units;
+
+    }
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+}
+EVT_ACTION_IMPL_END()
 
 }}} // namespace evt::chain::contracts
