@@ -41,6 +41,7 @@ extern std::string evt_unittests_dir;
 #define MAKE_PROPERTY(AMOUNT, SYM) \
     property {                     \
         .amount = AMOUNT,          \
+        .frozen_amount = 0,        \
         .sym = SYM,                \
         .created_at = 0,           \
         .created_index = 0         \

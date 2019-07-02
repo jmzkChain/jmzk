@@ -24,7 +24,7 @@ enum class stake_type {
 struct stakeshare_def {
     account_name   validator;
     int64_t        units;
-    int64_t        net_value;
+    asset          net_value;
     time_point_sec purchase_time;
     stake_type     type;
     int32_t        fixed_hours;

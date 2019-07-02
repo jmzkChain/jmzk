@@ -186,6 +186,18 @@ get_db_key<passive_bonus_slim>(const passive_bonus_slim& pbs) {
     return get_psvbonus_db_key(pbs.sym_id, kPsvBonusSlim);
 }
 
+template<>
+name128
+get_db_key<stakepool_def>(const stakepool_def& v) {
+    return v.total.sym().id();
+}
+
+template<>
+name128
+get_db_key<validator_def>(const validator_def& v) {
+    return v.name;
+}
+
 template<typename T>
 std::optional<name128>
 get_db_prefix(const T& v) {
@@ -234,7 +246,7 @@ get_db_prefix<token_def>(const token_def& v) {
         VPTR = tokendb_cache.template read_token<vtype>(TYPE, PREFIX, KEY); \
     }                                                                       \
     catch(token_database_exception&) {                                      \
-        EVT_THROW2(EXCEPTION, FORMAT, __VA_ARGS__);                         \
+        EVT_THROW2(EXCEPTION, FORMAT, ##__VA_ARGS__);                       \
     }
     
 #define READ_DB_TOKEN_NO_THROW(TYPE, PREFIX, KEY, VPTR)                                          \
@@ -246,6 +258,7 @@ get_db_prefix<token_def>(const token_def& v) {
 #define MAKE_PROPERTY(AMOUNT, SYM)                                            \
     property {                                                                \
         .amount = AMOUNT,                                                     \
+        .frozen_amount = 0,                                                   \
         .sym = SYM,                                                           \
         .created_at = context.control.pending_block_time().sec_since_epoch(), \
         .created_index = context.get_index_of_trx()                           \
@@ -254,6 +267,7 @@ get_db_prefix<token_def>(const token_def& v) {
 #define MAKE_PROPERTY_STAKES(AMOUNT, SYM)                                     \
     property_stakes(property {                                                \
         .amount = AMOUNT,                                                     \
+        .frozen_amount = 0,                                                   \
         .sym = SYM,                                                           \
         .created_at = context.control.pending_block_time().sec_since_epoch(), \
         .created_index = context.get_index_of_trx(),                          \
@@ -461,7 +475,7 @@ freeze_fungible(apply_context& context, const address& addr, asset total) {
         "Address: {} does not have enough balance({}) left.", addr, total);
 
     prop.amount -= total.amount();
-    prop.forzen_amount += total.amount();
+    prop.frozen_amount += total.amount();
 
     PUT_DB_ASSET(addr, prop);
 }
@@ -475,11 +489,11 @@ unfreeze_fungible(apply_context& context, const address& addr, asset total) {
     property prop;
     READ_DB_ASSET(addr, sym, prop);
 
-    EVT_ASSERT2(prop.forzen_amount >= total.amount(), balance_exception,
+    EVT_ASSERT2(prop.frozen_amount >= total.amount(), balance_exception,
         "Address: {} does not have enough forzen balance({}) left.", addr, total);
 
     prop.amount += total.amount();
-    prop.forzen_amount -= total.amount();
+    prop.frozen_amount -= total.amount();
 
     PUT_DB_ASSET(addr, prop);
 }

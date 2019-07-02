@@ -29,6 +29,7 @@ initialize_evt_org(token_database& tokendb, const genesis_state& genesis) {
         auto addr = address(N(.fungible), name128::from_number(EVT_SYM_ID), 0);
         auto prop = property_stakes(property {
                         .amount = genesis.evt.total_supply.amount(),
+                        .frozen_amount = 0,
                         .sym = evt_sym(),
                         .created_at = genesis.initial_timestamp.sec_since_epoch(),
                         .created_index = 0
