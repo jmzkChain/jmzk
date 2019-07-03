@@ -127,35 +127,54 @@ EVT_ACTION_IMPL_BEGIN(unstaketkns) {
 
     auto ustact = context.act.data_as<ACT>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.staking), stact.validator), action_authorize_exception, "Invalid authorization fields in action(domain and key).");
+        EVT_ASSERT(context.has_authorized(N128(.staking), ustact.validator), action_authorize_exception, "Invalid authorization fields in action(domain and key).");
 
         DECLARE_TOKEN_DB()
 
         EVT_ASSERT2(ustact.units > 0, staking_units_exception, "Unstake units should be large than 0");
 
         auto prop = property_stakes();
-        READ_DB_ASSET(stact.staker, evt_sym(), prop);
+        READ_DB_ASSET(ustact.staker, evt_sym(), prop);
 
         auto validator = make_empty_cache_ptr<validator_def>();
-        READ_DB_TOKEN(token_type::validator, std::nullopt, stact.validator, validator, unknown_validator_exception,
-            "Cannot find validator: {}", stact.validator);
+        READ_DB_TOKEN(token_type::validator, std::nullopt, ustact.validator, validator, unknown_validator_exception,
+            "Cannot find validator: {}", ustact.validator);
 
         int64_t frozen_amount = 0, bonus_amount = 0, remainning_units = ustact.units;
-        
-        for(auto& s : prop.stake_shares) {
+    
+        uint i = 0u;
+        for(; i < prop.stake_shares.size(); i++) {
+            auto& s = prop.stake_shares[i];
             if(s.validator != ustact.validator) {
                 continue;
             }
-            switch(s.type) {
-            case stake_type::demand: {
-                auto amount = s.net_value.amount() * s.units;
-                frozen_amount += amount;
 
+            if(s.type == stake_type::fixed) {
+                if(s.purchase_time + fc::hours(s.fixed_hours) < context.control.pending_block_time()) {
+                    continue;
+                }
             }
-            case stake_type::fixed: {
 
+            auto units  = std::min(s.units, remainning_units);
+            auto amount = s.net_value.amount() * units;
+            auto diff   = (validator->current_net_value.amount() - s.net_value.amount()) * units;
+            frozen_amount    += amount;
+            bonus_amount     += diff;
+            remainning_units -= units;
+            s.units          -= units;
+
+            if(remainning_units == 0) {
+                break;
             }
-            }  // switch
+        }
+
+        EVT_ASSERT2(remainning_units == 0, staking_not_enough_exception, "Don't have enough staking units");
+
+        if(prop.stake_shares[i].units == 0) {
+            i++;
+        }
+        if(i > 0) {
+            prop.stake_shares.erase(prop.stake_shares.begin(), prop.stake_shares.begin() + i);
         }
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
