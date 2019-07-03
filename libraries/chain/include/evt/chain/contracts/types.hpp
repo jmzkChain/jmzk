@@ -659,14 +659,22 @@ struct newvalidator {
     EVT_ACTION_VER1(newvalidator);
 };
 
-struct staketokens {
+struct staketkns {
     user_id      staker;
     account_name validator;
     asset        amount;
     stake_type   type;
     int32_t      fixed_hours;
 
-    EVT_ACTION_VER1(staketokens);
+    EVT_ACTION_VER1(staketkns);
+};
+
+struct unstaketkns {
+    user_id      staker;
+    account_name validator;
+    int64_t      units;
+
+    EVT_ACTION_VER1(unstaketkns);
 };
 
 }}}  // namespace evt::chain::contracts
@@ -743,4 +751,5 @@ FC_REFLECT(evt::chain::contracts::setpsvbonus, (sym)(rate)(base_charge)(charge_t
 FC_REFLECT(evt::chain::contracts::setpsvbonus_v2, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods));
 FC_REFLECT(evt::chain::contracts::distpsvbonus, (sym_id)(deadline)(final_receiver));
 FC_REFLECT(evt::chain::contracts::newvalidator, (name)(creator)(withdraw)(manage)(commission));
-FC_REFLECT(evt::chain::contracts::staketokens, (staker)(validator)(amount)(type)(fixed_hours));
+FC_REFLECT(evt::chain::contracts::staketkns, (staker)(validator)(amount)(type)(fixed_hours));
+FC_REFLECT(evt::chain::contracts::unstaketkns, (staker)(validator)(units));

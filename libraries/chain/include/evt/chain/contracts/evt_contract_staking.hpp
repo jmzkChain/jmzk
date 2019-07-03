@@ -56,7 +56,7 @@ EVT_ACTION_IMPL_BEGIN(newvalidator) {
 }
 EVT_ACTION_IMPL_END()
 
-EVT_ACTION_IMPL_BEGIN(staketokens) {
+EVT_ACTION_IMPL_BEGIN(staketkns) {
     using namespace internal;
 
     auto stact = context.act.data_as<ACT>();
@@ -117,6 +117,46 @@ EVT_ACTION_IMPL_BEGIN(staketokens) {
         UPD_DB_TOKEN(token_type::stakepool, *stakepool);
         UPD_DB_TOKEN(token_type::validator, *validator);
         PUT_DB_ASSET(stact.staker, prop);
+    }
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+}
+EVT_ACTION_IMPL_END()
+
+EVT_ACTION_IMPL_BEGIN(unstaketkns) {
+    using namespace internal;
+
+    auto ustact = context.act.data_as<ACT>();
+    try {
+        EVT_ASSERT(context.has_authorized(N128(.staking), stact.validator), action_authorize_exception, "Invalid authorization fields in action(domain and key).");
+
+        DECLARE_TOKEN_DB()
+
+        EVT_ASSERT2(ustact.units > 0, staking_units_exception, "Unstake units should be large than 0");
+
+        auto prop = property_stakes();
+        READ_DB_ASSET(stact.staker, evt_sym(), prop);
+
+        auto validator = make_empty_cache_ptr<validator_def>();
+        READ_DB_TOKEN(token_type::validator, std::nullopt, stact.validator, validator, unknown_validator_exception,
+            "Cannot find validator: {}", stact.validator);
+
+        int64_t frozen_amount = 0, bonus_amount = 0, remainning_units = ustact.units;
+        
+        for(auto& s : prop.stake_shares) {
+            if(s.validator != ustact.validator) {
+                continue;
+            }
+            switch(s.type) {
+            case stake_type::demand: {
+                auto amount = s.net_value.amount() * s.units;
+                frozen_amount += amount;
+
+            }
+            case stake_type::fixed: {
+
+            }
+            }  // switch
+        }
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }

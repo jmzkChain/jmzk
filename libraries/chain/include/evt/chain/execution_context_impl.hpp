@@ -282,7 +282,8 @@ using evt_execution_context = execution_context_impl<
                                   contracts::setpsvbonus_v2,
                                   contracts::distpsvbonus,
                                   contracts::newvalidator,
-                                  contracts::staketokens
+                                  contracts::staketkns,
+                                  contracts::unstaketkns
                               >;
 
 }}  // namespace evt::chain

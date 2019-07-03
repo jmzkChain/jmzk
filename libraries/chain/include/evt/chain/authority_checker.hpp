@@ -807,7 +807,7 @@ struct check_authority<N(newvalidator)> {
 };
 
 template<>
-struct check_authority<N(staketokens)> {
+struct check_authority<N(staketkns)> {
     template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
@@ -818,7 +818,24 @@ struct check_authority<N(staketokens)> {
                 return true;
             }
         }
-        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `staketokens` type.");
+        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `staketkns` type.");
+        return false;
+    }
+};
+
+template<>
+struct check_authority<N(unstaketkns)> {
+    template <typename Type>
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        try {
+            auto& st     = act.data_as<add_clr_t<Type>>();
+            auto  vistor = authority_checker::weight_tally_visitor(checker);
+            if(vistor(st.staker, 1) == 1) {
+                return true;
+            }
+        }
+        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `unstaketkns` type.");
         return false;
     }
 };
