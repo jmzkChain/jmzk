@@ -1,10 +1,10 @@
 FROM postgres:11.3
 
-LABEL author="Harry <harrywong@live.com>" maintainer="Harry <harrywong@live.com>" version="1.2.0" \
+LABEL author="Harry <harrywong@live.com>" maintainer="Harry <harrywong@live.com>" version="1.2.1" \
   description="This is customized PostgreSQL image with pg_pathman support"
 
 ARG POSTGRES_DEV_VERSION=11
-ARG PATHMAN_VERSION=1.5.3
+ARG PATHMAN_VERSION=1.5.8
 
 RUN set -x \
 	&& apt-get update && apt-get install -y --no-install-recommends ca-certificates wget unzip make postgresql-server-dev-${POSTGRES_DEV_VERSION} gcc libc6-dev libssl-dev libkrb5-dev \
