@@ -670,9 +670,10 @@ struct staketkns {
 };
 
 struct unstaketkns {
-    user_id      staker;
-    account_name validator;
-    int64_t      units;
+    user_id        staker;
+    account_name   validator;
+    int64_t        units;
+    symbol_id_type sym_id;
 
     EVT_ACTION_VER1(unstaketkns);
 };
@@ -752,4 +753,4 @@ FC_REFLECT(evt::chain::contracts::setpsvbonus_v2, (sym_id)(rate)(base_charge)(ch
 FC_REFLECT(evt::chain::contracts::distpsvbonus, (sym_id)(deadline)(final_receiver));
 FC_REFLECT(evt::chain::contracts::newvalidator, (name)(creator)(withdraw)(manage)(commission));
 FC_REFLECT(evt::chain::contracts::staketkns, (staker)(validator)(amount)(type)(fixed_hours));
-FC_REFLECT(evt::chain::contracts::unstaketkns, (staker)(validator)(units));
+FC_REFLECT(evt::chain::contracts::unstaketkns, (staker)(validator)(units)(sym_id));

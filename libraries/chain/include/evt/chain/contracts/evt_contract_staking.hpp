@@ -65,8 +65,11 @@ EVT_ACTION_IMPL_BEGIN(staketkns) {
 
         DECLARE_TOKEN_DB()
 
+        auto sym  = stact.amount.sym();
+        EVT_ASSERT2(sym == evt_sym(), staking_symbol_exception, "Only EVT is supported to stake currently");
+
         auto prop = property_stakes();
-        READ_DB_ASSET(stact.staker, evt_sym(), prop);
+        READ_DB_ASSET(stact.staker, sym, prop);
         EVT_ASSERT2(prop.amount >= stact.amount.amount(), staking_amount_exception, "Don't have enough balance to stake");
 
         switch(stact.type) {
@@ -87,13 +90,13 @@ EVT_ACTION_IMPL_BEGIN(staketkns) {
         EVT_ASSERT2(stact.amount >= validator->current_net_value, staking_amount_exception, "Needs to stake at least one unit");
 
         auto stakepool = make_empty_cache_ptr<stakepool_def>();
-        READ_DB_TOKEN(token_type::stakepool, std::nullopt, name128::from_number(EVT_SYM_ID), stakepool, staking_exception,
+        READ_DB_TOKEN(token_type::stakepool, std::nullopt, name128::from_number(sym.id()), stakepool, staking_exception,
             "Cannot find stakepool");
 
         EVT_ASSERT2(stact.amount >= stakepool->purchase_threshold, staking_amount_exception, "Needs to stake more than purchase threshold in stakepool");
 
         auto units = (int64_t)boost::multiprecision::floor(real_type(stact.amount.amount()) / real_type(validator->current_net_value.amount()));
-        auto total = asset(units * validator->current_net_value.amount(), evt_sym());
+        auto total = asset(units * validator->current_net_value.amount(), sym);
 
         // add units to validator
         validator->total_units += units;
@@ -128,6 +131,7 @@ EVT_ACTION_IMPL_BEGIN(unstaketkns) {
     auto ustact = context.act.data_as<ACT>();
     try {
         EVT_ASSERT(context.has_authorized(N128(.staking), ustact.validator), action_authorize_exception, "Invalid authorization fields in action(domain and key).");
+        EVT_ASSERT2(ustact.sym_id == evt_sym().id(), staking_symbol_exception, "Only EVT is supported to unstake currently");
 
         DECLARE_TOKEN_DB()
 
@@ -140,8 +144,9 @@ EVT_ACTION_IMPL_BEGIN(unstaketkns) {
         READ_DB_TOKEN(token_type::validator, std::nullopt, ustact.validator, validator, unknown_validator_exception,
             "Cannot find validator: {}", ustact.validator);
 
+        // check and unfreeze shares
         int64_t frozen_amount = 0, bonus_amount = 0, remainning_units = ustact.units;
-    
+        
         uint i = 0u;
         for(; i < prop.stake_shares.size(); i++) {
             auto& s = prop.stake_shares[i];
@@ -167,9 +172,24 @@ EVT_ACTION_IMPL_BEGIN(unstaketkns) {
                 break;
             }
         }
-
         EVT_ASSERT2(remainning_units == 0, staking_not_enough_exception, "Don't have enough staking units");
 
+        // unfreeze property
+        prop.amount        += frozen_amount;
+        prop.frozen_amount -= frozen_amount;
+        PUT_DB_ASSET(ustact.staker, prop);
+
+        // transfer bonus from FT's initial pool
+        auto addr = get_fungible_address(evt_sym());
+
+        try {
+            transfer_fungible(context, addr, ustact.staker, asset(bonus_amount, evt_sym()), N(unstaketkns), false /* pay charge */);
+        }
+        catch(balance_exception&) {
+            EVT_THROW2(fungible_supply_exception, "Exceeds total supply of fungible with sym id: {}.", ustact.sym_id);
+        }
+        
+        // remove shares
         if(prop.stake_shares[i].units == 0) {
             i++;
         }

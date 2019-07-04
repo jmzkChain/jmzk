@@ -253,6 +253,7 @@ FC_DECLARE_DERIVED_EXCEPTION( staking_type_exception,        staking_exception, 
 FC_DECLARE_DERIVED_EXCEPTION( staking_hours_exception,       staking_exception, 3041105, "Invalid staking hours exception" );
 FC_DECLARE_DERIVED_EXCEPTION( staking_units_exception,       staking_exception, 3041106, "Invalid staking units exception" );
 FC_DECLARE_DERIVED_EXCEPTION( staking_not_enough_exception,  staking_exception, 3041107, "Not enough staking units exception" );
+FC_DECLARE_DERIVED_EXCEPTION( staking_symbol_exception,      staking_exception, 3041107, "Invalid staking asset symbol exception" );
 
 FC_DECLARE_DERIVED_EXCEPTION( producer_exception,                      chain_exception,    3050000, "Producer exception" );
 FC_DECLARE_DERIVED_EXCEPTION( producer_priv_key_not_found,             producer_exception, 3050001, "Producer private key is not available" );
