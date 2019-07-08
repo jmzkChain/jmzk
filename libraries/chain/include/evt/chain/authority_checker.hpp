@@ -840,6 +840,23 @@ struct check_authority<N(unstaketkns)> {
     }
 };
 
+template<>
+struct check_authority<N(toactivetkns)> {
+    template <typename Type>
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        try {
+            auto& st     = act.data_as<add_clr_t<Type>>();
+            auto  vistor = authority_checker::weight_tally_visitor(checker);
+            if(vistor(st.staker, 1) == 1) {
+                return true;
+            }
+        }
+        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `toactivetkns` type.");
+        return false;
+    }
+};
+
 }  // namespace internal
 
 }}  // namespace evt::chain

@@ -9,7 +9,7 @@ namespace evt { namespace chain { namespace contracts {
 namespace mp = boost::multiprecision;
 
 /**
- * Implements newvalidator actions
+ * Implements newvalidator, staketkns, unstaketkns and toactivetkns actions
  */
 
 EVT_ACTION_IMPL_BEGIN(newvalidator) {
