@@ -7,6 +7,7 @@
 #include <chainbase/chainbase.hpp>
 #include <evt/chain/block_timestamp.hpp>
 #include <evt/chain/chain_config.hpp>
+#include <evt/chain/chain_stake_config.hpp>
 #include <evt/chain/execution_context.hpp>
 #include <evt/chain/incremental_merkle.hpp>
 #include <evt/chain/producer_schedule.hpp>
@@ -30,6 +31,7 @@ class global_property_object
     optional<block_num_type>      proposed_schedule_block_num;
     shared_producer_schedule_type proposed_schedule;
     chain_config                  configuration;
+    chain_stake_config            stake_configuration;
     shared_action_vers            action_vers;
 };
 
@@ -66,4 +68,4 @@ CHAINBASE_SET_INDEX_TYPE(evt::chain::global_property_object, evt::chain::global_
 CHAINBASE_SET_INDEX_TYPE(evt::chain::dynamic_global_property_object, evt::chain::dynamic_global_property_multi_index);
 
 FC_REFLECT(evt::chain::dynamic_global_property_object, (global_action_sequence));
-FC_REFLECT(evt::chain::global_property_object, (proposed_schedule_block_num)(proposed_schedule)(configuration)(action_vers));
+FC_REFLECT(evt::chain::global_property_object, (proposed_schedule_block_num)(proposed_schedule)(configuration)(stake_configuration)(action_vers));

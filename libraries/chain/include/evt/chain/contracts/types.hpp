@@ -335,6 +335,10 @@ struct validator_def {
     int64_t total_units;
 };
 
+enum class unstake_op {
+    propose = 0, cancel, settle
+};
+
 struct newdomain {
     domain_name name;
     user_id     creator;
@@ -664,7 +668,7 @@ struct staketkns {
     account_name validator;
     asset        amount;
     stake_type   type;
-    int32_t      fixed_hours;
+    int32_t      fixed_days;
 
     EVT_ACTION_VER1(staketkns);
 };
@@ -674,6 +678,7 @@ struct unstaketkns {
     account_name   validator;
     int64_t        units;
     symbol_id_type sym_id;
+    unstake_op     op;
 
     EVT_ACTION_VER1(unstaketkns);
 };
@@ -715,6 +720,7 @@ FC_REFLECT(evt::chain::contracts::passive_bonus_slim, (sym_id)(rate)(base_charge
 
 FC_REFLECT(evt::chain::contracts::stakepool_def, (r)(t)(q)(w)(begin_time)(total)(purchase_threshold));
 FC_REFLECT(evt::chain::contracts::validator_def, (name)(creator)(create_time)(last_updated_time)(withdraw)(manage)(commission)(initial_net_value)(current_net_value)(total_units));
+FC_REFLECT_ENUM(evt::chain::contracts::unstake_op, (propose)(cancel)(settle));
 
 FC_REFLECT(evt::chain::contracts::newdomain, (name)(creator)(issue)(transfer)(manage));
 FC_REFLECT(evt::chain::contracts::issuetoken, (domain)(names)(owner));
@@ -752,5 +758,5 @@ FC_REFLECT(evt::chain::contracts::setpsvbonus, (sym)(rate)(base_charge)(charge_t
 FC_REFLECT(evt::chain::contracts::setpsvbonus_v2, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods));
 FC_REFLECT(evt::chain::contracts::distpsvbonus, (sym_id)(deadline)(final_receiver));
 FC_REFLECT(evt::chain::contracts::newvalidator, (name)(creator)(withdraw)(manage)(commission));
-FC_REFLECT(evt::chain::contracts::staketkns, (staker)(validator)(amount)(type)(fixed_hours));
-FC_REFLECT(evt::chain::contracts::unstaketkns, (staker)(validator)(units)(sym_id));
+FC_REFLECT(evt::chain::contracts::staketkns, (staker)(validator)(amount)(type)(fixed_days));
+FC_REFLECT(evt::chain::contracts::unstaketkns, (staker)(validator)(units)(sym_id)(op));
