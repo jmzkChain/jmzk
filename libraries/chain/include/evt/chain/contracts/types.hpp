@@ -684,8 +684,9 @@ struct unstaketkns {
 };
 
 struct toactivetkns {
-    user_id      staker;
-    account_name validator;
+    user_id        staker;
+    account_name   validator;
+    symbol_id_type sym_id;
 
     EVT_ACTION_VER1(toactivetkns);
 };
@@ -767,4 +768,4 @@ FC_REFLECT(evt::chain::contracts::distpsvbonus, (sym_id)(deadline)(final_receive
 FC_REFLECT(evt::chain::contracts::newvalidator, (name)(creator)(withdraw)(manage)(commission));
 FC_REFLECT(evt::chain::contracts::staketkns, (staker)(validator)(amount)(type)(fixed_days));
 FC_REFLECT(evt::chain::contracts::unstaketkns, (staker)(validator)(units)(sym_id)(op));
-FC_REFLECT(evt::chain::contracts::toactivetkns, (staker)(validator));
+FC_REFLECT(evt::chain::contracts::toactivetkns, (staker)(validator)(sym_id));

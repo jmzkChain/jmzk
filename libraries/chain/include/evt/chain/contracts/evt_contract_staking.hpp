@@ -127,6 +127,67 @@ EVT_ACTION_IMPL_BEGIN(staketkns) {
 }
 EVT_ACTION_IMPL_END()
 
+EVT_ACTION_IMPL_BEGIN(toactivetkns) {
+    using namespace internal;
+    namespace mp = boost::multiprecision;
+
+    auto tatact = context.act.data_as<ACT>();
+    try {
+        EVT_ASSERT(context.has_authorized(N128(.staking), tatact.validator), action_authorize_exception, "Invalid authorization fields in action(domain and key).");
+
+        DECLARE_TOKEN_DB()
+
+        EVT_ASSERT2(tatact.sym_id == EVT_SYM_ID, staking_symbol_exception, "Only EVT is supported to stake currently");
+
+        auto prop = property_stakes();
+        READ_DB_ASSET(tatact.staker, evt_sym(), prop);
+
+        auto& conf = context.control.get_global_properties().stake_configuration;
+
+        int64_t diff_amount = 0, diff_units = 0;
+        for(auto& s : prop.stake_shares) {
+            if(s.type == stake_type::active) {
+                continue;
+            }
+            if(s.time + fc::hours(s.fixed_days) < context.control.pending_block_time()) {
+                // not expired
+                continue;
+            }
+
+            auto months = (int)::floor(s.fixed_days / 30);
+            auto roi    = mp::exp(mp::log(real_type(months) / conf.fixed_R)) / conf.fixed_T;
+
+            auto new_uints = (int64_t)mp::floor(real_type(s.units) * (1 + roi));
+            diff_amount += s.net_value.amount() * (new_uints - s.units);
+            diff_units  += (new_uints - s.units);
+
+            s.units = new_uints;
+        }
+        EVT_ASSERT2(diff_amount > 0, staking_active_exception, "There're no shares can be actived currently");
+
+        // update pool
+        auto stakepool = make_empty_cache_ptr<stakepool_def>();
+        READ_DB_TOKEN(token_type::stakepool, std::nullopt, name128::from_number(tatact.sym_id), stakepool, staking_exception,
+            "Cannot find stakepool");
+
+        stakepool->total += asset(diff_amount, evt_sym());
+
+        // update validator
+        auto validator = make_empty_cache_ptr<validator_def>();
+        READ_DB_TOKEN(token_type::validator, std::nullopt, tatact.validator, validator, unknown_validator_exception,
+            "Cannot find validator: {}", tatact.validator);
+
+        validator->total_units += diff_units;
+
+        // update database
+        UPD_DB_TOKEN(token_type::stakepool, *stakepool);
+        UPD_DB_TOKEN(token_type::validator, *validator);
+        PUT_DB_ASSET(tatact.staker, prop);
+    }
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+}
+EVT_ACTION_IMPL_END()
+
 EVT_ACTION_IMPL_BEGIN(unstaketkns) {
     using namespace internal;
 
