@@ -78,6 +78,16 @@ public:
     using get_lock_params = get_suspend_params;
     fc::variant get_lock(const get_lock_params& params);
 
+    struct get_stakingpool_params {
+        symbol_id_type sym_id;
+    };
+    fc::variant get_stakingpool(const get_stakingpool_params& params);
+
+    struct get_validator_params {
+        validator_name name;
+    };
+    fc::variant get_validator(const get_validator_params& params);
+
 private:
     const controller& db_;
 };
