@@ -310,10 +310,12 @@ struct passive_bonus_slim {
 };
 
 struct stakepool_def {
-    int32_t r;
-    int32_t t;
-    int32_t q;
-    int32_t w;
+    symbol_id_type sym_id;
+
+    int32_t parameter_r;
+    int32_t parameter_t;
+    int32_t parameter_q;
+    int32_t parameter_w;
 
     time_point_sec begin_time;
     asset          total;
@@ -650,6 +652,32 @@ struct recvpsvbonus {
     symbol_id_type                   sym_id;
     small_vector<public_key_type, 2> receivers;
     uint32_t                         rule_index;
+
+    EVT_ACTION_VER1(recvpsvbonus);
+};
+
+struct newstakepool {
+    symbol_id_type sym_id;
+
+    asset   purchase_threshold;
+    int32_t parameter_r;
+    int32_t parameter_t;
+    int32_t parameter_q;
+    int32_t parameter_w;
+
+    EVT_ACTION_VER1(newstakepool);
+};
+
+struct updstakepool {
+    symbol_id_type sym_id;
+
+    asset   purchase_threshold;
+    int32_t parameter_r;
+    int32_t parameter_t;
+    int32_t parameter_q;
+    int32_t parameter_w;
+
+    EVT_ACTION_VER1(updstakepool);
 };
 
 struct newvalidator {
@@ -726,7 +754,7 @@ FC_REFLECT(evt::chain::contracts::passive_method, (action)(method));
 FC_REFLECT(evt::chain::contracts::passive_bonus, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods)(round)(deadline));
 FC_REFLECT(evt::chain::contracts::passive_bonus_slim, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(methods));
 
-FC_REFLECT(evt::chain::contracts::stakepool_def, (r)(t)(q)(w)(begin_time)(total)(purchase_threshold));
+FC_REFLECT(evt::chain::contracts::stakepool_def, (sym_id)(parameter_r)(parameter_t)(parameter_q)(parameter_w)(begin_time)(total)(purchase_threshold));
 FC_REFLECT(evt::chain::contracts::validator_def, (name)(creator)(create_time)(last_updated_time)(withdraw)(manage)(commission)(initial_net_value)(current_net_value)(total_units));
 FC_REFLECT_ENUM(evt::chain::contracts::unstake_op, (propose)(cancel)(settle));
 
@@ -765,6 +793,8 @@ FC_REFLECT(evt::chain::contracts::tryunlock, (name)(executor));
 FC_REFLECT(evt::chain::contracts::setpsvbonus, (sym)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods));
 FC_REFLECT(evt::chain::contracts::setpsvbonus_v2, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods));
 FC_REFLECT(evt::chain::contracts::distpsvbonus, (sym_id)(deadline)(final_receiver));
+FC_REFLECT(evt::chain::contracts::newstakepool, (sym_id)(parameter_r)(parameter_t)(parameter_q)(parameter_w)(purchase_threshold));
+FC_REFLECT(evt::chain::contracts::updstakepool, (sym_id)(parameter_r)(parameter_t)(parameter_q)(parameter_w)(purchase_threshold));
 FC_REFLECT(evt::chain::contracts::newvalidator, (name)(creator)(withdraw)(manage)(commission));
 FC_REFLECT(evt::chain::contracts::staketkns, (staker)(validator)(amount)(type)(fixed_days));
 FC_REFLECT(evt::chain::contracts::unstaketkns, (staker)(validator)(units)(sym_id)(op));

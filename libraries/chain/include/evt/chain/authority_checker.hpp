@@ -790,6 +790,24 @@ struct check_authority<N(distpsvbonus)> {
 };
 
 template<>
+struct check_authority<N(newstakepool)> {
+    template <typename Type>
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        return checker->satisfied_fungible_permission<kManage>(get_symbol_id(act.key), act);
+    }
+};
+
+template<>
+struct check_authority<N(updstakepool)> {
+    template <typename Type>
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        return checker->satisfied_fungible_permission<kManage>(get_symbol_id(act.key), act);
+    }
+};
+
+template<>
 struct check_authority<N(newvalidator)> {
     template <typename Type>
     static bool

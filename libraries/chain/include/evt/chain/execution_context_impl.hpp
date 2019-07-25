@@ -281,6 +281,8 @@ using evt_execution_context = execution_context_impl<
                                   contracts::setpsvbonus,
                                   contracts::setpsvbonus_v2,
                                   contracts::distpsvbonus,
+                                  contracts::newstakepool,
+                                  contracts::updstakepool,
                                   contracts::newvalidator,
                                   contracts::staketkns,
                                   contracts::unstaketkns,

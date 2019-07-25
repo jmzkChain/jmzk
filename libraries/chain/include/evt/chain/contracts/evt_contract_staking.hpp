@@ -9,8 +9,68 @@ namespace evt { namespace chain { namespace contracts {
 namespace mp = boost::multiprecision;
 
 /**
- * Implements newvalidator, staketkns, unstaketkns and toactivetkns actions
+ * Implements newstakepool, updstakepool, newvalidator, staketkns, unstaketkns and toactivetkns actions
  */
+
+EVT_ACTION_IMPL_BEGIN(newstakepool) {
+    using namespace internal;
+
+    auto nsact = context.act.data_as<ACT>();
+    try {
+        EVT_ASSERT(context.has_authorized(N128(.fungible), nsact.sym_id), action_authorize_exception, "Invalid authorization fields in action(domain and key).");
+
+        DECLARE_TOKEN_DB()
+
+        EVT_ASSERT2(nsact.sym_id == EVT_SYM_ID, staking_symbol_exception, "Only EVT is supported to stake currently");
+        EVT_ASSERT2(!tokendb.exists_token(token_type::stakepool, std::nullopt, name128::from_number(nsact.sym_id)), stakepool_duplicate_exception,
+            "Stakepool with sym id: {} already exists.", nsact.sym_id);
+        EVT_ASSERT2(nsact.sym_id == nsact.purchase_threshold.sym().id(), symbol_type_exception,
+            "Purchase threshold's symbol should match stake pool");
+
+        auto stakepool               = stakepool_def();
+        stakepool.sym_id             = nsact.sym_id;
+        stakepool.parameter_r        = nsact.parameter_r;
+        stakepool.parameter_t        = nsact.parameter_t;
+        stakepool.parameter_q        = nsact.parameter_q;
+        stakepool.parameter_w        = nsact.parameter_w;
+        stakepool.begin_time         = context.control.pending_block_time();
+        stakepool.total              = asset(0, nsact.purchase_threshold.sym());
+        stakepool.purchase_threshold = nsact.purchase_threshold;
+        
+        ADD_DB_TOKEN(token_type::stakepool, stakepool);
+    }
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+}
+EVT_ACTION_IMPL_END()
+
+EVT_ACTION_IMPL_BEGIN(updstakepool) {
+    using namespace internal;
+
+    auto usact = context.act.data_as<ACT>();
+    try {
+        EVT_ASSERT(context.has_authorized(N128(.fungible), usact.sym_id), action_authorize_exception, "Invalid authorization fields in action(domain and key).");
+
+        DECLARE_TOKEN_DB()
+
+        EVT_ASSERT2(usact.sym_id == EVT_SYM_ID, staking_symbol_exception, "Only EVT is supported to stake currently");
+        EVT_ASSERT2(usact.sym_id == usact.purchase_threshold.sym().id(), symbol_type_exception,
+            "Purchase threshold's symbol should match stake pool");
+
+        auto stakepool = make_empty_cache_ptr<stakepool_def>();
+        READ_DB_TOKEN(token_type::stakepool, std::nullopt, name128::from_number(usact.sym_id), stakepool, unknown_stakepool_exception,
+            "Cannot find stakepool with sym id: {}", usact.sym_id);
+
+        stakepool->parameter_r        = usact.parameter_r;
+        stakepool->parameter_t        = usact.parameter_t;
+        stakepool->parameter_q        = usact.parameter_q;
+        stakepool->parameter_w        = usact.parameter_w;
+        stakepool->purchase_threshold = usact.purchase_threshold;
+        
+        UPD_DB_TOKEN(token_type::stakepool, *stakepool);
+    }
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+}
+EVT_ACTION_IMPL_END()
 
 EVT_ACTION_IMPL_BEGIN(newvalidator) {
     using namespace internal;
@@ -92,7 +152,7 @@ EVT_ACTION_IMPL_BEGIN(staketkns) {
         EVT_ASSERT2(stact.amount >= validator->current_net_value, staking_amount_exception, "Needs to stake at least one unit");
 
         auto stakepool = make_empty_cache_ptr<stakepool_def>();
-        READ_DB_TOKEN(token_type::stakepool, std::nullopt, name128::from_number(sym.id()), stakepool, staking_exception,
+        READ_DB_TOKEN(token_type::stakepool, std::nullopt, name128::from_number(sym.id()), stakepool, unknown_stakepool_exception,
             "Cannot find stakepool");
 
         EVT_ASSERT2(stact.amount >= stakepool->purchase_threshold, staking_amount_exception, "Needs to stake more than purchase threshold in stakepool");
