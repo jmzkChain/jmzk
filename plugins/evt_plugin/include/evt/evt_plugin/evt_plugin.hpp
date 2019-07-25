@@ -84,7 +84,7 @@ public:
     fc::variant get_stakingpool(const get_stakingpool_params& params);
 
     struct get_validator_params {
-        validator_name name;
+        proposal_name name;
     };
     fc::variant get_validator(const get_validator_params& params);
 

@@ -22,7 +22,7 @@ EVT_ACTION_IMPL_BEGIN(newvalidator) {
         check_name_reserved(nvact.name);
 
         DECLARE_TOKEN_DB()
-        EVT_ASSERT2(!tokendb.exists_token(token_type::validator, N128(.validator), nvact.name), validator_duplicate_exception,
+        EVT_ASSERT2(!tokendb.exists_token(token_type::validator, std::nullopt, nvact.name), validator_duplicate_exception,
             "validator {} already exists.", nvact.name);
 
         EVT_ASSERT(nvact.withdraw.name == "withdraw", permission_type_exception,
