@@ -189,7 +189,7 @@ get_db_key<passive_bonus_slim>(const passive_bonus_slim& pbs) {
 template<>
 name128
 get_db_key<stakepool_def>(const stakepool_def& v) {
-    return v.total.sym().id();
+    return v.sym_id;
 }
 
 template<>
