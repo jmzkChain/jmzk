@@ -61,6 +61,21 @@ evt_contract_abi() {
         }
     });
 
+    evt_abi.enums.emplace_back( enum_def {
+        "stake_type", "uint64", {
+            "active",
+            "fixed"
+        }
+    });
+
+    evt_abi.enums.emplace_back( enum_def {
+        "unstake_op", "uint64", {
+            "propose",
+            "cancel",
+            "settle"
+        }
+    });
+
     // structures def
     evt_abi.structs.emplace_back( struct_def {
         "void", "", {}
@@ -488,6 +503,66 @@ evt_contract_abi() {
            {"sym_id", "symbol_id_type"},
            {"deadline", "time_point"},
            {"final_receiver", "address?"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "newstakepool", "", {
+           {"sym_id", "symbol_id_type"},
+           {"purchase_threshold", "asset"},
+           {"parameter_r", "int32"},
+           {"parameter_t", "int32"},
+           {"parameter_q", "int32"},
+           {"parameter_w", "int32"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "updstakepool", "", {
+           {"sym_id", "symbol_id_type"},
+           {"purchase_threshold", "asset"},
+           {"parameter_r", "int32"},
+           {"parameter_t", "int32"},
+           {"parameter_q", "int32"},
+           {"parameter_w", "int32"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "newvalidator", "", {
+           {"name", "account_name"},
+           {"creator", "user_id"},
+           {"withdraw", "permission_def"},
+           {"manage", "permission_def"},
+           {"commission", "percent_slim"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "staketkns", "", {
+           {"staker", "user_id"},
+           {"validator", "account_name"},
+           {"amount", "asset"},
+           {"type", "stake_type"},
+           {"fixed_days", "int32"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "unstaketkns", "", {
+           {"staker", "user_id"},
+           {"validator", "account_name"},
+           {"units", "int64"},
+           {"sym_id", "symbol_id_type"},
+           {"op", "unstake_op"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "toactivetkns", "", {
+           {"staker", "user_id"},
+           {"validator", "account_name"},
+           {"sym_id", "symbol_id_type"}
         }
     });
 

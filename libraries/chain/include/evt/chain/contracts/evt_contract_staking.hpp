@@ -17,7 +17,7 @@ EVT_ACTION_IMPL_BEGIN(newstakepool) {
 
     auto nsact = context.act.data_as<ACT>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.fungible), nsact.sym_id), action_authorize_exception, "Invalid authorization fields in action(domain and key).");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(nsact.sym_id)), action_authorize_exception, "Invalid authorization fields in action(domain and key).");
 
         DECLARE_TOKEN_DB()
 
@@ -38,6 +38,7 @@ EVT_ACTION_IMPL_BEGIN(newstakepool) {
         stakepool.purchase_threshold = nsact.purchase_threshold;
         
         ADD_DB_TOKEN(token_type::stakepool, stakepool);
+        // READ_DB_TOKEN(token_type::stakepool, std::nullopt, name128::from_number(nsact.sym_id), stakepool, unknown_stakepool_exception,"Cannot find stakepool");
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -48,7 +49,7 @@ EVT_ACTION_IMPL_BEGIN(updstakepool) {
 
     auto usact = context.act.data_as<ACT>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.fungible), usact.sym_id), action_authorize_exception, "Invalid authorization fields in action(domain and key).");
+        EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(usact.sym_id)), action_authorize_exception, "Invalid authorization fields in action(domain and key).");
 
         DECLARE_TOKEN_DB()
 
@@ -57,7 +58,7 @@ EVT_ACTION_IMPL_BEGIN(updstakepool) {
             "Purchase threshold's symbol should match stake pool");
 
         auto stakepool = make_empty_cache_ptr<stakepool_def>();
-        READ_DB_TOKEN(token_type::stakepool, std::nullopt, name128::from_number(usact.sym_id), stakepool, unknown_stakepool_exception,
+        READ_DB_TOKEN(token_type::stakepool, std::nullopt, usact.sym_id, stakepool, unknown_stakepool_exception,
             "Cannot find stakepool with sym id: {}", usact.sym_id);
 
         stakepool->parameter_r        = usact.parameter_r;
@@ -82,7 +83,7 @@ EVT_ACTION_IMPL_BEGIN(newvalidator) {
         check_name_reserved(nvact.name);
 
         DECLARE_TOKEN_DB()
-        EVT_ASSERT2(!tokendb.exists_token(token_type::validator, N128(.validator), nvact.name), validator_duplicate_exception,
+        EVT_ASSERT2(!tokendb.exists_token(token_type::validator, std::nullopt, nvact.name), validator_duplicate_exception,
             "validator {} already exists.", nvact.name);
 
         EVT_ASSERT(nvact.withdraw.name == "withdraw", permission_type_exception,
@@ -152,7 +153,7 @@ EVT_ACTION_IMPL_BEGIN(staketkns) {
         EVT_ASSERT2(stact.amount >= validator->current_net_value, staking_amount_exception, "Needs to stake at least one unit");
 
         auto stakepool = make_empty_cache_ptr<stakepool_def>();
-        READ_DB_TOKEN(token_type::stakepool, std::nullopt, name128::from_number(sym.id()), stakepool, unknown_stakepool_exception,
+        READ_DB_TOKEN(token_type::stakepool, std::nullopt, sym.id(), stakepool, unknown_stakepool_exception,
             "Cannot find stakepool");
 
         EVT_ASSERT2(stact.amount >= stakepool->purchase_threshold, staking_amount_exception, "Needs to stake more than purchase threshold in stakepool");
@@ -209,25 +210,27 @@ EVT_ACTION_IMPL_BEGIN(toactivetkns) {
             if(s.type == stake_type::active) {
                 continue;
             }
-            if(s.time + fc::hours(s.fixed_days) < context.control.pending_block_time()) {
+            if(s.time + fc::days(s.fixed_days) > context.control.pending_block_time()) {
                 // not expired
                 continue;
             }
 
-            auto months = (int)::floor(s.fixed_days / 30);
-            auto roi    = mp::exp(mp::log(real_type(months) / conf.fixed_R)) / conf.fixed_T;
+            auto months = (real_type)s.fixed_days / 30;
+            auto roi    = mp::exp(mp::log(months / conf.fixed_R)) / conf.fixed_T;
 
             auto new_uints = (int64_t)mp::floor(real_type(s.units) * (1 + roi));
             diff_amount += s.net_value.amount() * (new_uints - s.units);
             diff_units  += (new_uints - s.units);
 
             s.units = new_uints;
+            s.type = stake_type::active;
+            s.fixed_days = 0;
         }
-        EVT_ASSERT2(diff_amount > 0, staking_active_exception, "There're no shares can be actived currently");
+        // EVT_ASSERT2(diff_amount > 0, staking_active_exception, "There're no shares can be actived currently");
 
         // update pool
         auto stakepool = make_empty_cache_ptr<stakepool_def>();
-        READ_DB_TOKEN(token_type::stakepool, std::nullopt, name128::from_number(tatact.sym_id), stakepool, staking_exception,
+        READ_DB_TOKEN(token_type::stakepool, std::nullopt, tatact.sym_id, stakepool, staking_exception,
             "Cannot find stakepool");
 
         stakepool->total += asset(diff_amount, evt_sym());
