@@ -794,7 +794,7 @@ struct check_authority<N(newstakepool)> {
     template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
-        return checker->satisfied_fungible_permission<kIssue>(get_symbol_id(act.key), act);
+        return checker->satisfied_group(checker->get_control().get_genesis_state().evt_org.name());
     }
 };
 
@@ -803,7 +803,7 @@ struct check_authority<N(updstakepool)> {
     template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
-        return checker->satisfied_fungible_permission<kIssue>(get_symbol_id(act.key), act);
+        return checker->satisfied_group(checker->get_control().get_genesis_state().evt_org.name());
     }
 };
 

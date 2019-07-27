@@ -78,13 +78,13 @@ public:
     using get_lock_params = get_suspend_params;
     fc::variant get_lock(const get_lock_params& params);
 
-    struct get_stakingpool_params {
+    struct get_stakepool_params {
         symbol_id_type sym_id;
     };
-    fc::variant get_stakingpool(const get_stakingpool_params& params);
+    fc::variant get_stakepool(const get_stakepool_params& params);
 
     struct get_validator_params {
-        proposal_name name;
+        account_name name;
     };
     fc::variant get_validator(const get_validator_params& params);
 
@@ -126,3 +126,5 @@ FC_REFLECT(evt::evt_apis::read_only::get_fungible_params, (id));
 FC_REFLECT(evt::evt_apis::read_only::get_fungible_balance_params, (address)(sym_id));
 FC_REFLECT(evt::evt_apis::read_only::get_fungible_psvbonus_params, (id));
 FC_REFLECT(evt::evt_apis::read_only::get_suspend_params, (name));
+FC_REFLECT(evt::evt_apis::read_only::get_stakepool_params, (sym_id));
+FC_REFLECT(evt::evt_apis::read_only::get_validator_params, (name));

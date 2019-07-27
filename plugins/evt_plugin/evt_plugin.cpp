@@ -274,6 +274,30 @@ read_only::get_lock(const get_lock_params& params) {
     return var;
 }
 
+fc::variant
+read_only::get_stakepool(const get_stakepool_params& params) {
+    DECLARE_TOKEN_DB();
+
+    auto var  = variant();
+    auto pool = make_empty_cache_ptr<stakepool_def>();
+    READ_DB_TOKEN(token_type::stakepool, std::nullopt, params.sym_id, pool, unknown_stakepool_exception, "Cannot find stakepool with sym id: {}", params.sym_id);
+
+    fc::to_variant(*pool, var);
+    return var;
+}
+
+fc::variant
+read_only::get_validator(const get_validator_params& params) {
+    DECLARE_TOKEN_DB();
+
+    auto var  = variant();
+    auto validator = make_empty_cache_ptr<validator_def>();
+    READ_DB_TOKEN(token_type::validator, std::nullopt, params.name, validator, unknown_lock_exception, "Cannot find validator: {}", params.name);
+
+    fc::to_variant(*validator, var);
+    return var;
+}
+
 }  // namespace evt_apis
 
 }  // namespace evt

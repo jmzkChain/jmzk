@@ -12,7 +12,7 @@ TEST_CASE_METHOD(contracts_test, "newstakepool_test", "[contracts]") {
     }
     )=====";
 
-    auto var   = fc::json::from_string(test_data);
+    auto var = fc::json::from_string(test_data);
 
     signed_transaction trx;
     trx.actions.emplace_back(my_tester->get_action(N(newstakepool), N128(.fungible), N128(1), var.get_object()));
@@ -52,7 +52,7 @@ TEST_CASE_METHOD(contracts_test, "updstakepool_test", "[contracts]") {
     }
     )=====";
 
-    auto var   = fc::json::from_string(test_data);
+    auto var = fc::json::from_string(test_data);
 
     signed_transaction trx;
     trx.actions.emplace_back(my_tester->get_action(N(updstakepool), N128(.fungible), N128(1), var.get_object()));
@@ -151,7 +151,7 @@ TEST_CASE_METHOD(contracts_test, "staketkns_test", "[contracts]") {
     CHECK_NOTHROW(my_tester->push_action(N(staketkns), N128(.staking), N128(validator), var.get_object(), key_seeds, payer));
 
     my_tester->produce_blocks();
-    my_tester->produce_block(fc::days(stk.fixed_days+1));
+    my_tester->produce_block(fc::days(stk.fixed_days + 1));
 }
 
 TEST_CASE_METHOD(contracts_test, "toactivetkns_test", "[contracts]") {
@@ -163,7 +163,7 @@ TEST_CASE_METHOD(contracts_test, "toactivetkns_test", "[contracts]") {
     }
     )=====";
 
-    auto var   = fc::json::from_string(test_data);
+    auto var    = fc::json::from_string(test_data);
     auto tatk   = var.as<toactivetkns>();
     tatk.staker = key;
     to_variant(tatk, var);
@@ -185,8 +185,8 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts]") {
     }
     )=====";
 
-    auto var   = fc::json::from_string(test_data);
-    auto unstk = var.as<unstaketkns>();
+    auto var     = fc::json::from_string(test_data);
+    auto unstk   = var.as<unstaketkns>();
     unstk.staker = key;
     to_variant(unstk, var);
 
