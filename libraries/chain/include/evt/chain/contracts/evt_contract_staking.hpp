@@ -171,7 +171,7 @@ EVT_ACTION_IMPL_BEGIN(staketkns) {
         auto share       = stakeshare_def();
         share.validator  = stact.validator;
         share.units      = units;
-        share.net_value  = total;
+        share.net_value  = validator->current_net_value;
         share.time       = context.control.pending_block_time();
         share.type       = stact.type;
         share.fixed_days = stact.fixed_days;
@@ -215,8 +215,8 @@ EVT_ACTION_IMPL_BEGIN(toactivetkns) {
                 continue;
             }
 
-            auto months = (real_type)s.fixed_days / 30;
-            auto roi    = mp::exp(mp::log(months / conf.fixed_R)) / conf.fixed_T;
+            real_type months = (real_type)s.fixed_days / 30;
+            real_type roi    = mp::exp(mp::log10(months / conf.fixed_R)) / conf.fixed_T;
 
             auto new_uints = (int64_t)mp::floor(real_type(s.units) * (1 + roi));
             diff_amount += s.net_value.amount() * (new_uints - s.units);
@@ -275,14 +275,20 @@ EVT_ACTION_IMPL_BEGIN(unstaketkns) {
             auto remainning_units = ustact.units;
 
             uint i = 0u;
+            uint l = 0u;
+            std::vector<std::pair<uint, uint> > segments;
             for(; i < prop.stake_shares.size(); i++) {
                 auto& s = prop.stake_shares[i];
                 if(s.validator != ustact.validator) {
+                    if(l<i) segments.emplace_back(std::make_pair(l,i));
+                    l=i+1;
                     continue;
                 }
 
                 // only active shares can be proposed
                 if(s.type != stake_type::active) {
+                    if(l<i) segments.emplace_back(std::make_pair(l,i));
+                    l=i+1;
                     continue;
                 }
 
@@ -305,9 +311,11 @@ EVT_ACTION_IMPL_BEGIN(unstaketkns) {
             // remove empty stake shares
             if(prop.stake_shares[i].units == 0) {
                 i++;
+                segments.emplace_back(std::make_pair(l,i));
             }
-            if(i > 0) {
-                prop.stake_shares.erase(prop.stake_shares.begin(), prop.stake_shares.begin() + i);
+            std::reverse(segments.begin(), segments.end());
+            for(auto &seg : segments){
+                prop.stake_shares.erase(prop.stake_shares.begin()+seg.first, prop.stake_shares.begin()+seg.second);
             }
             break;
         }
@@ -315,9 +323,13 @@ EVT_ACTION_IMPL_BEGIN(unstaketkns) {
             auto remainning_units = ustact.units;
 
             uint i = 0u;
+            uint l = 0u;
+            std::vector<std::pair<uint, uint> > segments;
             for(; i < prop.pending_shares.size(); i++) {
                 auto& s = prop.pending_shares[i];
                 if(s.validator != ustact.validator) {
+                    if(l<i) segments.emplace_back(std::make_pair(l,i));
+                    l=i+1;
                     continue;
                 }
 
@@ -329,7 +341,7 @@ EVT_ACTION_IMPL_BEGIN(unstaketkns) {
                 auto units = std::min(s.units, remainning_units);
                 s.units   -= units;
                 remainning_units -= units;
-                prop.pending_shares.back().units = units;
+                prop.stake_shares.back().units = units;
 
                 if(remainning_units == 0) {
                     break;
@@ -337,27 +349,37 @@ EVT_ACTION_IMPL_BEGIN(unstaketkns) {
             }
             EVT_ASSERT2(remainning_units == 0, staking_not_enough_exception, "Don't have enough pending staking units");
 
-            // remove empty pending shares
+            // remove empty stake shares
             if(prop.pending_shares[i].units == 0) {
                 i++;
+                segments.emplace_back(std::make_pair(l,i));
             }
-            if(i > 0) {
-                prop.pending_shares.erase(prop.pending_shares.begin(), prop.pending_shares.begin() + i);
+            
+            std::reverse(segments.begin(), segments.end());
+            for(auto &seg : segments){
+                prop.pending_shares.erase(prop.pending_shares.begin()+seg.first, prop.pending_shares.begin()+seg.second);
             }
+
             break;
         }
         case unstake_op::settle: {
             int64_t frozen_amount = 0, bonus_amount = 0, remainning_units = ustact.units;
 
             uint i = 0u;
+            uint l = 0u;
+            std::vector<std::pair<uint, uint> > segments;
             for(; i < prop.pending_shares.size(); i++) {
                 auto& s = prop.pending_shares[i];
                 if(s.validator != ustact.validator) {
+                    if(l<i) segments.emplace_back(std::make_pair(l,i));
+                    l=i+1;
                     continue;
                 }
 
                 // only expired pending unstake shares can be settled
                 if(s.time + fc::days(conf.unstake_pending_days) < context.control.pending_block_time()) {
+                    if(l<i) segments.emplace_back(std::make_pair(l,i));
+                    l=i+1;
                     continue;
                 }
 
@@ -394,12 +416,14 @@ EVT_ACTION_IMPL_BEGIN(unstaketkns) {
                 EVT_THROW2(fungible_supply_exception, "Exceeds total supply of fungible with sym id: {}.", ustact.sym_id);
             }
 
-            // remove empty pending shares
-            if(prop.pending_shares[i].units == 0) {
+            // remove empty stake shares
+            if(prop.stake_shares[i].units == 0) {
                 i++;
+                segments.emplace_back(std::make_pair(l,i));
             }
-            if(i > 0) {
-                prop.pending_shares.erase(prop.pending_shares.begin(), prop.pending_shares.begin() + i);
+            std::reverse(segments.begin(), segments.end());
+            for(auto &seg : segments){
+                prop.stake_shares.erase(prop.stake_shares.begin()+seg.first, prop.stake_shares.begin()+seg.second);
             }
             break;
         }

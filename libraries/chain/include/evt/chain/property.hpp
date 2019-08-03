@@ -48,4 +48,4 @@ FC_REFLECT(evt::chain::property, (amount)(sym)(created_at)(created_index));
 FC_REFLECT_ENUM(evt::chain::stake_type, (active)(fixed));
 FC_REFLECT_ENUM(evt::chain::stake_status, (staked)(pending_unstake));
 FC_REFLECT(evt::chain::stakeshare_def, (validator)(units)(net_value)(time)(type)(fixed_days));
-FC_REFLECT_DERIVED(evt::chain::property_stakes, (evt::chain::property), (stake_shares));
+FC_REFLECT_DERIVED(evt::chain::property_stakes, (evt::chain::property), (stake_shares)(pending_shares));
