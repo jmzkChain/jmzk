@@ -32,6 +32,7 @@ TEST_CASE_METHOD(contracts_test, "newstakepool_test", "[contracts]") {
     stakepool_def stakepool_;
     READ_TOKEN(stakepool, 1, stakepool_);
 
+    // check data
     CHECK(stakepool_.sym_id == 1);
     CHECK(stakepool_.purchase_threshold == asset(500'000, symbol(5, 1)));
     CHECK(stakepool_.parameter_r == 5);
@@ -72,6 +73,7 @@ TEST_CASE_METHOD(contracts_test, "updstakepool_test", "[contracts]") {
     stakepool_def stakepool_;
     READ_TOKEN(stakepool, 1, stakepool_);
 
+    // check data
     CHECK(stakepool_.sym_id == 1);
     CHECK(stakepool_.purchase_threshold == asset(500'000, symbol(5, 1)));
     CHECK(stakepool_.parameter_r == 2);
@@ -121,6 +123,7 @@ TEST_CASE_METHOD(contracts_test, "newvalidator_test", "[contracts]") {
     validator_def validator_;
     READ_TOKEN(validator, nvd.name, validator_);
 
+    // check data
     CHECK((std::string)validator_.commission == "0.59");
 
     my_tester->produce_blocks();
@@ -145,11 +148,13 @@ TEST_CASE_METHOD(contracts_test, "staketkns_test", "[contracts]") {
     auto& tokendb = my_tester->control->token_db();
     CHECK(EXISTS_TOKEN(validator, "validator"));
 
+    // active type with fixed_days
     CHECK_THROWS_AS(my_tester->push_action(N(staketkns), N128(.staking), N128(validator), var.get_object(), key_seeds, payer), staking_days_exception);
 
     stk.fixed_days = 0;
     to_variant(stk, var);
 
+    // correct: active type
     CHECK_NOTHROW(my_tester->push_action(N(staketkns), N128(.staking), N128(validator), var.get_object(), key_seeds, payer));
 
     validator_def validator_;
@@ -163,7 +168,7 @@ TEST_CASE_METHOD(contracts_test, "staketkns_test", "[contracts]") {
     stk.type = stake_type::fixed;
     stk.fixed_days = 9000;
     to_variant(stk, var);
-
+    // correct: fiexd type with 9000 days
     CHECK_NOTHROW(my_tester->push_action(N(staketkns), N128(.staking), N128(validator), var.get_object(), key_seeds, payer));
 
     READ_TOKEN(validator, "validator", validator_);
@@ -206,16 +211,16 @@ TEST_CASE_METHOD(contracts_test, "toactivetkns_test", "[contracts]") {
 
     real_type months = (real_type)9000/30 ;
 
-
     real_type roi    = mp::exp(mp::log10(months / conf.fixed_R)) / conf.fixed_T;
 
     int64_t diff_units = (int64_t)mp::floor(real_type(5) * roi);
     int64_t diff_amount  = 100'000 * diff_units;
 
+    // check diff units
     READ_TOKEN(validator, "validator", validator_);
     CHECK(validator_.total_units-pre_validator_units == diff_units);
 
-
+    // check diff amounts
     READ_TOKEN(stakepool, 1, stakepool_);
     CHECK(stakepool_.total.amount()-pre_stakepool_amout == diff_amount);
 
@@ -244,6 +249,7 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts]") {
 
     CHECK_NOTHROW(my_tester->push_action(N(unstaketkns), N128(.staking), N128(validator), var.get_object(), key_seeds, payer));
 
+    // proposed and check pending_shares' total units
     auto prop = property_stakes();
     READ_DB_ASSET(unstk.staker, evt_sym(), prop);
     int64_t pre_amount = prop.amount;
@@ -251,7 +257,6 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts]") {
     for(auto &stake : prop.pending_shares) {
         total_units += stake.units;
     }
-
     CHECK(total_units == 5);
 
     unstk.op = unstake_op::cancel;
@@ -260,6 +265,7 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts]") {
 
     my_tester->produce_blocks();
 
+    // canceled and check pending_shares' total units
     READ_DB_ASSET(unstk.staker, evt_sym(), prop);
     total_units = 0;
     for(auto &stake : prop.pending_shares) {
@@ -272,6 +278,7 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts]") {
 
     CHECK_NOTHROW(my_tester->push_action(N(unstaketkns), N128(.staking), N128(validator), var.get_object(), key_seeds, payer));
 
+    // proposed again and check pending_shares' total units
     READ_DB_ASSET(unstk.staker, evt_sym(), prop);
     total_units = 0;
     for(auto &stake : prop.pending_shares) {
@@ -284,6 +291,7 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts]") {
 
     CHECK_NOTHROW(my_tester->push_action(N(unstaketkns), N128(.staking), N128(validator), var.get_object(), key_seeds, payer));
 
+    // settled again and check pending_shares' total units
     READ_DB_ASSET(unstk.staker, evt_sym(), prop);
     total_units = 0;
     for(auto &stake : prop.pending_shares) {
