@@ -248,6 +248,7 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts]") {
     CHECK(EXISTS_TOKEN(validator, "validator"));
 
     CHECK_NOTHROW(my_tester->push_action(N(unstaketkns), N128(.staking), N128(validator), var.get_object(), key_seeds, payer));
+    my_tester->produce_blocks();
 
     // proposed and check pending_shares' total units
     auto prop = property_stakes();
@@ -258,6 +259,8 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts]") {
         total_units += stake.units;
     }
     CHECK(total_units == 5);
+    CHECK(prop.pending_shares.size() == 1);
+    CHECK(prop.stake_shares.size() == 1);
 
     unstk.op = unstake_op::cancel;
     to_variant(unstk, var);
@@ -270,13 +273,21 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts]") {
     total_units = 0;
     for(auto &stake : prop.pending_shares) {
         total_units += stake.units;
+        std::cout<<"gg "<<stake.units<<std::endl;
     }
     CHECK(total_units == 0);
+    CHECK(prop.pending_shares.size() == 0);
+    CHECK(prop.stake_shares.size() == 2);
 
     unstk.op = unstake_op::propose;
     to_variant(unstk, var);
 
     CHECK_NOTHROW(my_tester->push_action(N(unstaketkns), N128(.staking), N128(validator), var.get_object(), key_seeds, payer));
+
+    auto& conf = my_tester->control->get_global_properties().stake_configuration;
+
+    my_tester->produce_blocks();
+    my_tester->produce_block(fc::days(conf.unstake_pending_days + 1));
 
     // proposed again and check pending_shares' total units
     READ_DB_ASSET(unstk.staker, evt_sym(), prop);
@@ -285,6 +296,8 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts]") {
         total_units += stake.units;
     }
     CHECK(total_units == 5);
+    CHECK(prop.pending_shares.size() == 1);
+    CHECK(prop.stake_shares.size() == 2);
 
     unstk.op = unstake_op::settle;
     to_variant(unstk, var);
@@ -298,8 +311,35 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts]") {
         total_units += stake.units;
     }
     CHECK(total_units == 0);
+    CHECK(prop.pending_shares.size() == 0);
+    CHECK(prop.stake_shares.size() == 2);
 
     CHECK(prop.amount-pre_amount == 500000);
 
     my_tester->produce_blocks();
+
+    READ_DB_ASSET(unstk.staker, evt_sym(), prop);
+    CHECK(prop.stake_shares.size() == 2);
+    auto s = prop.stake_shares[0];
+    s.units = 5;
+    prop.stake_shares =  {s,s,s,s,s,s};
+    prop.stake_shares[0].type = stake_type::fixed;
+    prop.stake_shares[2].type = stake_type::fixed;
+    prop.stake_shares[4].type = stake_type::fixed;
+    PUT_DB_ASSET(unstk.staker, prop);
+
+    unstk.op = unstake_op::propose;
+    unstk.units = 12;
+    to_variant(unstk, var);
+
+    CHECK_NOTHROW(my_tester->push_action(N(unstaketkns), N128(.staking), N128(validator), var.get_object(), key_seeds, payer));
+
+    READ_DB_ASSET(unstk.staker, evt_sym(), prop);
+    total_units = 0;
+    for(auto &stake : prop.stake_shares) {
+        total_units += stake.units;
+    }
+    CHECK(total_units == 18);
+    CHECK(prop.stake_shares.size() == 4);
 }
+

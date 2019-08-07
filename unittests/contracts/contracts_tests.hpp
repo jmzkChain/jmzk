@@ -69,6 +69,22 @@ extern std::string evt_unittests_dir;
         }                                                                   \
     }
 
+#define PUT_DB_ASSET(ADDR, VALUE)                                             \
+    while(1) {                                                                \
+        if(VALUE.sym.id() == EVT_SYM_ID) {                                    \
+            if constexpr(std::is_same_v<decltype(VALUE), property>) {         \
+                auto ps = property_stakes(VALUE);                             \
+                auto dv = make_db_value(ps);                                  \
+                tokendb.put_asset(ADDR, VALUE.sym.id(), dv.as_string_view()); \
+                break;                                                        \
+            }                                                                 \
+        }                                                                     \
+        auto dv = make_db_value(VALUE);                                       \
+        tokendb.put_asset(ADDR, VALUE.sym.id(), dv.as_string_view());         \
+        break;                                                                \
+    }
+
+
 class contracts_test {
 public:
     contracts_test() {
