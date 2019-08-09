@@ -119,6 +119,35 @@ EVT_ACTION_IMPL_BEGIN(newvalidator) {
 }
 EVT_ACTION_IMPL_END()
 
+EVT_ACTION_IMPL_BEGIN(valiwithdraw) {
+    using namespace internal;
+
+    auto vwact = context.act.data_as<ACT>();
+    try {
+        EVT_ASSERT(context.has_authorized(N128(.staking), vwact.name), action_authorize_exception, "Invalid authorization fields in action(domain and key).");
+
+        DECLARE_TOKEN_DB()
+
+        auto sym = vwact.amount.sym();
+        EVT_ASSERT2(sym == evt_sym(), staking_symbol_exception, "Only EVT is supported to withdraw currently");
+
+        auto validator = make_empty_cache_ptr<validator_def>();
+        READ_DB_TOKEN(token_type::validator, std::nullopt, vwact.name, validator, unknown_validator_exception,
+            "Cannot find validator: {}", vwact.name);
+
+        auto vaddr = get_validator_address(vwact.name, EVT_SYM_ID);
+
+        try {
+            transfer_fungible(context, vaddr, vwact.addr, vwact.amount, N(valiwithdraw), false /* pay charge */);
+        }
+        catch(balance_exception&) {
+            EVT_THROW2(staking_exception, "Exceeds total bonus received.");
+        }
+    }
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+}
+EVT_ACTION_IMPL_END()
+
 EVT_ACTION_IMPL_BEGIN(staketkns) {
     using namespace internal;
 
@@ -128,7 +157,7 @@ EVT_ACTION_IMPL_BEGIN(staketkns) {
 
         DECLARE_TOKEN_DB()
 
-        auto sym  = stact.amount.sym();
+        auto sym = stact.amount.sym();
         EVT_ASSERT2(sym == evt_sym(), staking_symbol_exception, "Only EVT is supported to stake currently");
 
         auto prop = property_stakes();
@@ -258,6 +287,7 @@ EVT_ACTION_IMPL_END()
 
 EVT_ACTION_IMPL_BEGIN(unstaketkns) {
     using namespace internal;
+    namespace mp = boost::multiprecision;
 
     auto ustact = context.act.data_as<ACT>();
     try {
@@ -312,7 +342,7 @@ EVT_ACTION_IMPL_BEGIN(unstaketkns) {
         case unstake_op::cancel: {
             auto remainning_units = ustact.units;
 
-             for(auto &s : prop.pending_shares) {
+            for(auto &s : prop.pending_shares) {
                 if(s.validator != ustact.validator) {
                     continue;
                 }
@@ -338,9 +368,13 @@ EVT_ACTION_IMPL_BEGIN(unstaketkns) {
             break;
         }
         case unstake_op::settle: {
-            int64_t frozen_amount = 0, bonus_amount = 0, remainning_units = ustact.units;
+            int64_t frozen_amount = 0, bonus_amount = 0, vbonus_amount = 0, remainning_units = ustact.units;
+            
+            auto validator = make_empty_cache_ptr<validator_def>();
+            READ_DB_TOKEN(token_type::validator, std::nullopt, ustact.validator, validator, unknown_validator_exception,
+                "Cannot find validator: {}", ustact.validator);
 
-             for(auto &s : prop.pending_shares) {
+            for(auto &s : prop.pending_shares) {
                 if(s.validator != ustact.validator) {
                     continue;
                 }
@@ -356,15 +390,13 @@ EVT_ACTION_IMPL_BEGIN(unstaketkns) {
                 remainning_units -= units;
 
                 // update amounts
-                auto validator = make_empty_cache_ptr<validator_def>();
-                READ_DB_TOKEN(token_type::validator, std::nullopt, ustact.validator, validator, unknown_validator_exception,
-                    "Cannot find validator: {}", ustact.validator);
-
                 auto amount = s.net_value.amount() * units;
                 auto diff   = (validator->current_net_value.amount() - s.net_value.amount()) * units;
+                auto vbonus = (int64_t)mp::floor(diff * validator->commission.value());
 
                 frozen_amount += amount;
-                bonus_amount  += diff;
+                bonus_amount  += (diff - vbonus);
+                vbonus_amount += vbonus;
             }
             EVT_ASSERT2(remainning_units == 0, staking_not_enough_exception, "Don't have enough pending staking units");
 
@@ -374,10 +406,12 @@ EVT_ACTION_IMPL_BEGIN(unstaketkns) {
             PUT_DB_ASSET(ustact.staker, prop);
 
             // transfer bonus from FT's initial pool
-            auto addr = get_fungible_address(evt_sym());
+            auto addr  = get_fungible_address(evt_sym());
+            auto vaddr = get_validator_address(ustact.validator, EVT_SYM_ID);
 
             try {
                 transfer_fungible(context, addr, ustact.staker, asset(bonus_amount, evt_sym()), N(unstaketkns), false /* pay charge */);
+                transfer_fungible(context, addr, vaddr, asset(vbonus_amount, evt_sym()), N(unstaketkns), false /* pay charge */);
             }
             catch(balance_exception&) {
                 EVT_THROW2(fungible_supply_exception, "Exceeds total supply of fungible with sym id: {}.", ustact.sym_id);
