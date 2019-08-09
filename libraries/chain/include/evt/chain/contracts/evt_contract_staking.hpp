@@ -215,18 +215,23 @@ EVT_ACTION_IMPL_BEGIN(toactivetkns) {
                 continue;
             }
 
-            real_type months = (real_type)s.fixed_days / 30;
-            real_type roi    = mp::exp(mp::log10(months / conf.fixed_R)) / conf.fixed_T;
+            auto months = (real_type)s.fixed_days / 30;
+            auto roi    = mp::exp(mp::log10(months / conf.fixed_R)) / conf.fixed_T;
 
-            auto new_uints = (int64_t)mp::floor(real_type(s.units) * (1 + roi));
+            auto new_uints = (int64_t)mp::floor(real_type(s.units) * (roi + 1));
             diff_amount += s.net_value.amount() * (new_uints - s.units);
             diff_units  += (new_uints - s.units);
 
-            s.units = new_uints;
-            s.type = stake_type::active;
+            s.units      = new_uints;
+            s.type       = stake_type::active;
             s.fixed_days = 0;
         }
-        // EVT_ASSERT2(diff_amount > 0, staking_active_exception, "There're no shares can be actived currently");
+
+        PUT_DB_ASSET(tatact.staker, prop);
+        if(diff_units == 0) {
+            // no diff amount, no need to update pool and validator
+            return;
+        }
 
         // update pool
         auto stakepool = make_empty_cache_ptr<stakepool_def>();
@@ -245,7 +250,7 @@ EVT_ACTION_IMPL_BEGIN(toactivetkns) {
         // update database
         UPD_DB_TOKEN(token_type::stakepool, *stakepool);
         UPD_DB_TOKEN(token_type::validator, *validator);
-        PUT_DB_ASSET(tatact.staker, prop);
+
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
@@ -301,7 +306,7 @@ EVT_ACTION_IMPL_BEGIN(unstaketkns) {
             EVT_ASSERT2(remainning_units == 0, staking_not_enough_exception, "Don't have enough staking units");
 
             // remove empty stake shares
-            prop.stake_shares.erase(std::remove_if(prop.stake_shares.begin(), prop.stake_shares.end(), [](stakeshare_def share){ return share.units==0;}), prop.stake_shares.end());
+            prop.stake_shares.erase(std::remove_if(prop.stake_shares.begin(), prop.stake_shares.end(), [](auto& share){ return share.units == 0;}), prop.stake_shares.end());
             break;
         }
         case unstake_op::cancel: {
@@ -329,7 +334,7 @@ EVT_ACTION_IMPL_BEGIN(unstaketkns) {
             EVT_ASSERT2(remainning_units == 0, staking_not_enough_exception, "Don't have enough pending staking units");
 
             // remove empty stake shares
-            prop.pending_shares.erase(std::remove_if(prop.pending_shares.begin(), prop.pending_shares.end(), [](stakeshare_def share){ return share.units==0;}), prop.pending_shares.end());
+            prop.pending_shares.erase(std::remove_if(prop.pending_shares.begin(), prop.pending_shares.end(), [](auto& share){ return share.units == 0;}), prop.pending_shares.end());
             break;
         }
         case unstake_op::settle: {
@@ -379,7 +384,7 @@ EVT_ACTION_IMPL_BEGIN(unstaketkns) {
             }
 
             // remove empty stake shares
-            prop.pending_shares.erase(std::remove_if(prop.pending_shares.begin(), prop.pending_shares.end(), [](stakeshare_def share){ return share.units==0;}), prop.pending_shares.end());
+            prop.pending_shares.erase(std::remove_if(prop.pending_shares.begin(), prop.pending_shares.end(), [](auto& share){ return share.units == 0;}), prop.pending_shares.end());
             break;
         }
         };  // switch
