@@ -78,8 +78,8 @@ const static int default_demand_T = -67;
 const static int default_demand_Q = 1000;
 const static int default_demand_W = -3;
 
-const static int default_fixed_R = 500;
-const static int default_fixed_T = 500;
+const static int default_fixed_R = 300;
+const static int default_fixed_T = 5;
 
 const static int default_unstake_pending_days = 21;
 

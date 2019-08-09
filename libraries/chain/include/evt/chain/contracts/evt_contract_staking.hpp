@@ -171,7 +171,7 @@ EVT_ACTION_IMPL_BEGIN(staketkns) {
         auto share       = stakeshare_def();
         share.validator  = stact.validator;
         share.units      = units;
-        share.net_value  = total;
+        share.net_value  = validator->current_net_value;
         share.time       = context.control.pending_block_time();
         share.type       = stact.type;
         share.fixed_days = stact.fixed_days;
@@ -215,8 +215,8 @@ EVT_ACTION_IMPL_BEGIN(toactivetkns) {
                 continue;
             }
 
-            auto months = (real_type)s.fixed_days / 30;
-            auto roi    = mp::exp(mp::log(months / conf.fixed_R)) / conf.fixed_T;
+            real_type months = (real_type)s.fixed_days / 30;
+            real_type roi    = mp::exp(mp::log10(months / conf.fixed_R)) / conf.fixed_T;
 
             auto new_uints = (int64_t)mp::floor(real_type(s.units) * (1 + roi));
             diff_amount += s.net_value.amount() * (new_uints - s.units);
@@ -274,9 +274,7 @@ EVT_ACTION_IMPL_BEGIN(unstaketkns) {
         case unstake_op::propose: {
             auto remainning_units = ustact.units;
 
-            uint i = 0u;
-            for(; i < prop.stake_shares.size(); i++) {
-                auto& s = prop.stake_shares[i];
+            for(auto &s : prop.stake_shares) {
                 if(s.validator != ustact.validator) {
                     continue;
                 }
@@ -303,20 +301,13 @@ EVT_ACTION_IMPL_BEGIN(unstaketkns) {
             EVT_ASSERT2(remainning_units == 0, staking_not_enough_exception, "Don't have enough staking units");
 
             // remove empty stake shares
-            if(prop.stake_shares[i].units == 0) {
-                i++;
-            }
-            if(i > 0) {
-                prop.stake_shares.erase(prop.stake_shares.begin(), prop.stake_shares.begin() + i);
-            }
+            prop.stake_shares.erase(std::remove_if(prop.stake_shares.begin(), prop.stake_shares.end(), [](stakeshare_def share){ return share.units==0;}), prop.stake_shares.end());
             break;
         }
         case unstake_op::cancel: {
             auto remainning_units = ustact.units;
 
-            uint i = 0u;
-            for(; i < prop.pending_shares.size(); i++) {
-                auto& s = prop.pending_shares[i];
+             for(auto &s : prop.pending_shares) {
                 if(s.validator != ustact.validator) {
                     continue;
                 }
@@ -329,7 +320,7 @@ EVT_ACTION_IMPL_BEGIN(unstaketkns) {
                 auto units = std::min(s.units, remainning_units);
                 s.units   -= units;
                 remainning_units -= units;
-                prop.pending_shares.back().units = units;
+                prop.stake_shares.back().units = units;
 
                 if(remainning_units == 0) {
                     break;
@@ -337,27 +328,20 @@ EVT_ACTION_IMPL_BEGIN(unstaketkns) {
             }
             EVT_ASSERT2(remainning_units == 0, staking_not_enough_exception, "Don't have enough pending staking units");
 
-            // remove empty pending shares
-            if(prop.pending_shares[i].units == 0) {
-                i++;
-            }
-            if(i > 0) {
-                prop.pending_shares.erase(prop.pending_shares.begin(), prop.pending_shares.begin() + i);
-            }
+            // remove empty stake shares
+            prop.pending_shares.erase(std::remove_if(prop.pending_shares.begin(), prop.pending_shares.end(), [](stakeshare_def share){ return share.units==0;}), prop.pending_shares.end());
             break;
         }
         case unstake_op::settle: {
             int64_t frozen_amount = 0, bonus_amount = 0, remainning_units = ustact.units;
 
-            uint i = 0u;
-            for(; i < prop.pending_shares.size(); i++) {
-                auto& s = prop.pending_shares[i];
+             for(auto &s : prop.pending_shares) {
                 if(s.validator != ustact.validator) {
                     continue;
                 }
 
                 // only expired pending unstake shares can be settled
-                if(s.time + fc::days(conf.unstake_pending_days) < context.control.pending_block_time()) {
+                if(s.time + fc::days(conf.unstake_pending_days) > context.control.pending_block_time()) {
                     continue;
                 }
 
@@ -394,13 +378,8 @@ EVT_ACTION_IMPL_BEGIN(unstaketkns) {
                 EVT_THROW2(fungible_supply_exception, "Exceeds total supply of fungible with sym id: {}.", ustact.sym_id);
             }
 
-            // remove empty pending shares
-            if(prop.pending_shares[i].units == 0) {
-                i++;
-            }
-            if(i > 0) {
-                prop.pending_shares.erase(prop.pending_shares.begin(), prop.pending_shares.begin() + i);
-            }
+            // remove empty stake shares
+            prop.pending_shares.erase(std::remove_if(prop.pending_shares.begin(), prop.pending_shares.end(), [](stakeshare_def share){ return share.units==0;}), prop.pending_shares.end());
             break;
         }
         };  // switch
