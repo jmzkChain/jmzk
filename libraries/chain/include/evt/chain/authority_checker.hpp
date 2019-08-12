@@ -27,7 +27,7 @@ class authority_checker;
 
 namespace internal {
 
-enum permission_type { kIssue = 0, kTransfer, kManage };
+enum permission_type { kIssue = 0, kTransfer, kManage, kWithdraw };
 enum toke_type { kNFT = 0, kFT };
 
 template<uint64_t>
@@ -149,6 +149,22 @@ private:
         }
         else if constexpr(Permission == kManage) {
             cb(fungible->manage);
+        }
+    }
+
+    template<int Permission>
+    void
+    get_validator_permission(const account_name& validator_name, std::function<void(const permission_def&)>&& cb) {
+        using namespace internal;
+
+        auto validator = make_empty_cache_ptr<validator_def>();
+        READ_DB_TOKEN(token_type::validator, std::nullopt, validator_name, validator, unknown_validator_exception, "Cannot find validator: {}", validator_name);
+
+        if constexpr(Permission == kWithdraw) {
+            cb(validator->withdraw);
+        }
+        else if constexpr(Permission == kManage) {
+            cb(validator->manage);
         }
     }
 
@@ -329,6 +345,18 @@ private:
 
         bool result = false;
         get_fungible_permission<Permission>(sym_id, [&](const auto& permission) {
+            result = satisfied_permission<kFT>(permission, action);
+        });
+        return result;
+    }
+
+    template<int Permission>
+    bool
+    satisfied_validator_permission(const account_name& validator, const action& action) {
+        using namespace internal;
+
+        bool result = false;
+        get_validator_permission<Permission>(validator, [&](const auto& permission) {
             result = satisfied_permission<kFT>(permission, action);
         });
         return result;
@@ -821,6 +849,15 @@ struct check_authority<N(newvalidator)> {
         }
         EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `newvalidator` type.");
         return false;
+    }
+};
+
+template<>
+struct check_authority<N(valiwithdraw)> {
+    template <typename Type>
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        return checker->satisfied_validator_permission<kWithdraw>(act.key, act);
     }
 };
 

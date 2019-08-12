@@ -694,7 +694,7 @@ struct newvalidator {
 struct valiwithdraw {
     account_name name;
     address_type addr;
-    asset_type   amount;
+    asset        amount;
 
     EVT_ACTION_VER1(valiwithdraw);
 };
