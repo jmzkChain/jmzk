@@ -691,6 +691,14 @@ struct newvalidator {
     EVT_ACTION_VER1(newvalidator);
 };
 
+struct valiwithdraw {
+    account_name name;
+    address_type addr;
+    asset        amount;
+
+    EVT_ACTION_VER1(valiwithdraw);
+};
+
 struct staketkns {
     user_id      staker;
     account_name validator;
@@ -796,6 +804,7 @@ FC_REFLECT(evt::chain::contracts::distpsvbonus, (sym_id)(deadline)(final_receive
 FC_REFLECT(evt::chain::contracts::newstakepool, (sym_id)(purchase_threshold)(parameter_r)(parameter_t)(parameter_q)(parameter_w));
 FC_REFLECT(evt::chain::contracts::updstakepool, (sym_id)(purchase_threshold)(parameter_r)(parameter_t)(parameter_q)(parameter_w));
 FC_REFLECT(evt::chain::contracts::newvalidator, (name)(creator)(withdraw)(manage)(commission));
+FC_REFLECT(evt::chain::contracts::valiwithdraw, (name)(addr)(amount));
 FC_REFLECT(evt::chain::contracts::staketkns, (staker)(validator)(amount)(type)(fixed_days));
 FC_REFLECT(evt::chain::contracts::unstaketkns, (staker)(validator)(units)(sym_id)(op));
 FC_REFLECT(evt::chain::contracts::toactivetkns, (staker)(validator)(sym_id));

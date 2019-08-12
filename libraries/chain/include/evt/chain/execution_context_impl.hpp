@@ -284,6 +284,7 @@ using evt_execution_context = execution_context_impl<
                                   contracts::newstakepool,
                                   contracts::updstakepool,
                                   contracts::newvalidator,
+                                  contracts::valiwithdraw,
                                   contracts::staketkns,
                                   contracts::unstaketkns,
                                   contracts::toactivetkns

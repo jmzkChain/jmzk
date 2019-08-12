@@ -345,6 +345,11 @@ get_psvbonus_address(symbol_id_type sym_id, uint32_t round) {
     return address(N(.psvbonus), name128::from_number(sym_id), round);
 }
 
+address
+get_validator_address(name128& validator, symbol_id_type sym_id) {
+    return address(N(.validator), validator, sym_id);
+}
+
 // from, bonus
 std::pair<int64_t, int64_t>
 calculate_passive_bonus(token_database_cache& tokendb_cache,
