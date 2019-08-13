@@ -107,13 +107,15 @@ TEST_CASE_METHOD(contracts_test, "newvalidator_test", "[contracts]") {
           }
         ]
       },
-      "commission": "0.59"
+      "commission": "0.5"
     }
     )=====";
 
     auto var    = fc::json::from_string(test_data);
     auto nvd    = var.as<newvalidator>();
     nvd.creator = key;
+    nvd.withdraw.authorizers[0].ref.set_account(key);
+    nvd.manage.authorizers[0].ref.set_account(key);
     to_variant(nvd, var);
 
     CHECK_NOTHROW(my_tester->push_action(N(newvalidator), N128(.staking), N128(validator), var.get_object(), key_seeds, payer));
@@ -124,7 +126,7 @@ TEST_CASE_METHOD(contracts_test, "newvalidator_test", "[contracts]") {
     READ_TOKEN(validator, nvd.name, validator_);
 
     // check data
-    CHECK((std::string)validator_.commission == "0.59");
+    CHECK((std::string)validator_.commission == "0.5");
 
     my_tester->produce_blocks();
 }
@@ -245,6 +247,7 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts]") {
     to_variant(unstk, var);
 
     auto& tokendb = my_tester->control->token_db();
+    auto& tokendb_cache = my_tester->control->token_db_cache();
     CHECK(EXISTS_TOKEN(validator, "validator"));
 
     CHECK_NOTHROW(my_tester->push_action(N(unstaketkns), N128(.staking), N128(validator), var.get_object(), key_seeds, payer));
@@ -302,6 +305,13 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts]") {
     unstk.op = unstake_op::settle;
     to_variant(unstk, var);
 
+    // update validator
+    auto validator = make_empty_cache_ptr<validator_def>();
+    READ_DB_TOKEN(token_type::validator, std::nullopt, unstk.validator, validator, unknown_validator_exception,
+            "Cannot find validator: {}", unstk.validator);
+    validator->current_net_value = asset(200000, evt_sym());
+    UPD_DB_TOKEN(validator,  N128(validator), *validator);
+
     CHECK_NOTHROW(my_tester->push_action(N(unstaketkns), N128(.staking), N128(validator), var.get_object(), key_seeds, payer));
 
     // settled again and check pending_shares' total units
@@ -343,3 +353,31 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts]") {
     CHECK(prop.stake_shares.size() == 4);
 }
 
+TEST_CASE_METHOD(contracts_test, "valiwithdraw_test", "[contracts]") {
+    auto test_data = R"=====(
+    {
+      "name": "validator",
+      "addr": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+      "amount": "1.00000 S#1"
+    }
+    )=====";
+
+    auto var    = fc::json::from_string(test_data);
+    auto vwd   = var.as<valiwithdraw>();
+    vwd.addr = key;
+    to_variant(vwd, var);
+
+    auto& tokendb       = my_tester->control->token_db();
+
+    asset pre_ast;
+    READ_DB_ASSET(vwd.addr, evt_sym(), pre_ast);
+
+    CHECK_NOTHROW(my_tester->push_action(N(valiwithdraw), N128(.staking), N128(validator), var.get_object(), key_seeds, payer));
+
+    asset ast;
+    READ_DB_ASSET(vwd.addr, evt_sym(), ast);
+
+    CHECK(ast.amount() - pre_ast.amount() == 100000);
+
+    my_tester->produce_blocks();
+}
