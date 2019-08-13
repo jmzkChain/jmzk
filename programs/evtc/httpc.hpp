@@ -146,6 +146,8 @@ const std::string get_fungible_balance_func  = evt_func_base + "/get_fungible_ba
 const std::string get_fungible_psvbonus_func = evt_func_base + "/get_fungible_psvbonus"; 
 const std::string get_suspend_func           = evt_func_base + "/get_suspend";
 const std::string get_lock_func              = evt_func_base + "/get_lock";
+const std::string get_stakepool_func         = evt_func_base + "/get_stakepool";
+const std::string get_validator_func         = evt_func_base + "/get_validator";
 
 const std::string history_func_base       = "/v1/history";
 const std::string get_my_domains          = history_func_base + "/get_domains";

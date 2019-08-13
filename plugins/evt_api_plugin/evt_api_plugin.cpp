@@ -63,6 +63,8 @@ evt_api_plugin::plugin_startup() {
                                              EVT_RO_CALL(get_fungible_psvbonus, 200),
                                              EVT_RO_CALL(get_suspend, 200),
                                              EVT_RO_CALL(get_lock, 200),
+                                             EVT_RO_CALL(get_stakepool, 200),
+                                             EVT_RO_CALL(get_validator, 200)
                                          });
 }
 
