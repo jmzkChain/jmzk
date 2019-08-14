@@ -7,6 +7,9 @@ env:
     BUILD_JOBS: "docker-build-jobs"
 
 phases:
+  install:
+    runtime-versions:
+      Docker: 18
   pre_build:
     commands:
       - echo Logging into Docker Hub...
