@@ -298,6 +298,18 @@ read_only::get_validator(const get_validator_params& params) {
     return var;
 }
 
+fc::variant
+read_only::get_staking_shares(const get_staking_shares_params& params) {
+    DECLARE_TOKEN_DB();
+
+    auto var  = variant();
+    auto prop = property_stakes();
+    READ_DB_ASSET(params.address, evt_sym(), prop);
+
+    fc::to_variant(prop, var);
+    return var;
+}
+
 }  // namespace evt_apis
 
 }  // namespace evt

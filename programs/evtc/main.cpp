@@ -1403,20 +1403,20 @@ struct set_validator_subcommands {
 struct set_stakepool_subcommands {
     int sym_id;
     string purchase_threshold;
-    int parameter_r;
-    int parameter_t;
-    int parameter_q;
-    int parameter_w;
+    int para_r;
+    int para_t;
+    int para_q;
+    int para_w;
 
     set_stakepool_subcommands(CLI::App* actionRoot) {
         auto nspcmd = actionRoot->add_subcommand("create", localized("create a new stakepool"));
 
         nspcmd->add_option("sym_id", sym_id, localized("sym_id of stakepool"))->required();
-        nspcmd->add_option("purchase_threshold", purchase_threshold, localized("purchase threshold of stakepool"))->required();
-        nspcmd->add_option("parameter_r", parameter_r, localized("parameter r of stakepool"))->required();
-        nspcmd->add_option("parameter_t", parameter_t, localized("parameter t of stakepool"))->required();
-        nspcmd->add_option("parameter_q", parameter_q, localized("parameter q of stakepool"))->required();
-        nspcmd->add_option("parameter_w", parameter_w, localized("parameter w of stakepool"))->required();
+        nspcmd->add_option("--purchase-threshold", purchase_threshold, localized("purchase threshold of stakepool"))->required();
+        nspcmd->add_option("--para-r", para_r, localized("parameter r of stakepool"))->required();
+        nspcmd->add_option("--para-t", para_t, localized("parameter t of stakepool"))->required();
+        nspcmd->add_option("--para-q", para_q, localized("parameter q of stakepool"))->required();
+        nspcmd->add_option("--para-w", para_w, localized("parameter w of stakepool"))->required();
 
         add_standard_transaction_options(nspcmd);
 
@@ -1425,10 +1425,10 @@ struct set_stakepool_subcommands {
 
             nsp.sym_id             = sym_id;
             nsp.purchase_threshold = asset::from_string(purchase_threshold);
-            nsp.parameter_r        = parameter_r;
-            nsp.parameter_t        = parameter_t;
-            nsp.parameter_q        = parameter_q;
-            nsp.parameter_w        = parameter_w;
+            nsp.parameter_r        = para_r;
+            nsp.parameter_t        = para_t;
+            nsp.parameter_q        = para_q;
+            nsp.parameter_w        = para_w;
 
             auto act = create_action(N128(.fungible), (domain_key)std::to_string(nsp.sym_id), nsp);
             send_actions({act});
@@ -1437,11 +1437,11 @@ struct set_stakepool_subcommands {
         auto upspcmd = actionRoot->add_subcommand("update", localized("update a stakepool"));
 
         upspcmd->add_option("sym_id", sym_id, localized("sym_id of stakepool"))->required();
-        upspcmd->add_option("purchase_threshold", purchase_threshold, localized("purchase threshold of stakepool"))->required();
-        upspcmd->add_option("parameter_r", parameter_r, localized("parameter r of stakepool"))->required();
-        upspcmd->add_option("parameter_t", parameter_t, localized("parameter t of stakepool"))->required();
-        upspcmd->add_option("parameter_q", parameter_q, localized("parameter q of stakepool"))->required();
-        upspcmd->add_option("parameter_w", parameter_w, localized("parameter w of stakepool"))->required();
+        upspcmd->add_option("--purchase-threshold", purchase_threshold, localized("purchase threshold of stakepool"))->required();
+        upspcmd->add_option("--para-r", para_r, localized("parameter r of stakepool"))->required();
+        upspcmd->add_option("--para-t", para_t, localized("parameter t of stakepool"))->required();
+        upspcmd->add_option("--para-q", para_q, localized("parameter q of stakepool"))->required();
+        upspcmd->add_option("--para-w", para_w, localized("parameter w of stakepool"))->required();
 
         add_standard_transaction_options(upspcmd);
 
@@ -1450,10 +1450,10 @@ struct set_stakepool_subcommands {
 
             upsp.sym_id             = sym_id;
             upsp.purchase_threshold = asset::from_string(purchase_threshold);
-            upsp.parameter_r        = parameter_r;
-            upsp.parameter_t        = parameter_t;
-            upsp.parameter_q        = parameter_q;
-            upsp.parameter_w        = parameter_w;
+            upsp.parameter_r        = para_r;
+            upsp.parameter_t        = para_t;
+            upsp.parameter_q        = para_q;
+            upsp.parameter_w        = para_w;
 
             auto act = create_action(N128(.fungible), (domain_key)std::to_string(upsp.sym_id), upsp);
             send_actions({act});
@@ -1741,6 +1741,20 @@ struct set_get_validator_subcommand {
         gvlcmd->callback([this] {
             auto arg = fc::mutable_variant_object("name", name);
             print_info(call(get_validator_func, arg));
+        });
+    }
+};
+
+struct set_get_staking_shares_subcommand {
+    string address;
+
+    set_get_staking_shares_subcommand(CLI::App* actionRoot) {
+        auto gsscmd = actionRoot->add_subcommand("shares", localized("Retrieve staking shares information"));
+        gsscmd->add_option("address", address, localized("Address for query"))->required();
+
+        gsscmd->callback([this] {
+            auto arg = fc::mutable_variant_object("address", address);
+            print_info(call(get_staking_shares_func, arg));
         });
     }
 };
@@ -2038,16 +2052,17 @@ main(int argc, char** argv) {
         std::cout << fc::json::to_pretty_string(call(get_block_func, arg)) << std::endl;
     });
 
-    set_get_domain_subcommand    get_domain(get);
-    set_get_token_subcommand     get_token(get);
-    set_get_group_subcommand     get_group(get);
-    set_get_fungible_subcommand  get_fungible(get);
-    set_get_my_subcommands       get_my(get);
-    set_get_history_subcommands  get_history(get);
-    set_get_suspend_subcommand   get_suspend(get);
-    set_get_lock_subcommand      get_lock(get);
-    set_get_stakepool_subcommand get_stakepool(get);
-    set_get_validator_subcommand get_validator(get);
+    set_get_domain_subcommand         get_domain(get);
+    set_get_token_subcommand          get_token(get);
+    set_get_group_subcommand          get_group(get);
+    set_get_fungible_subcommand       get_fungible(get);
+    set_get_my_subcommands            get_my(get);
+    set_get_history_subcommands       get_history(get);
+    set_get_suspend_subcommand        get_suspend(get);
+    set_get_lock_subcommand           get_lock(get);
+    set_get_stakepool_subcommand      get_stakepool(get);
+    set_get_validator_subcommand      get_validator(get);
+    set_get_staking_shares_subcommand get_staking_shares(get);
 
     // get transaction
     string   trx_id;

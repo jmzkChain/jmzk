@@ -143,11 +143,12 @@ const std::string get_tokens_func            = evt_func_base + "/get_tokens";
 const std::string get_group_func             = evt_func_base + "/get_group";
 const std::string get_fungible_func          = evt_func_base + "/get_fungible";
 const std::string get_fungible_balance_func  = evt_func_base + "/get_fungible_balance";
-const std::string get_fungible_psvbonus_func = evt_func_base + "/get_fungible_psvbonus"; 
+const std::string get_fungible_psvbonus_func = evt_func_base + "/get_fungible_psvbonus";
 const std::string get_suspend_func           = evt_func_base + "/get_suspend";
 const std::string get_lock_func              = evt_func_base + "/get_lock";
 const std::string get_stakepool_func         = evt_func_base + "/get_stakepool";
 const std::string get_validator_func         = evt_func_base + "/get_validator";
+const std::string get_staking_shares_func    = evt_func_base + "/get_staking_shares";
 
 const std::string history_func_base       = "/v1/history";
 const std::string get_my_domains          = history_func_base + "/get_domains";
