@@ -1360,6 +1360,24 @@ read_only::trx_json_to_digest(const trx_json_to_digest_params& params) const {
     return result;
 }
 
+read_only::trx_json_to_bin_result
+read_only::trx_json_to_bin(const trx_json_to_bin_params& params) const {
+    auto result = trx_json_to_bin_result();
+    auto trx    = std::make_shared<transaction>();
+    try {
+        db.get_abi_serializer().from_variant(params, *trx, db.get_execution_context());
+    }
+    EVT_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid transaction");
+
+    auto temp = bytes(1024 * 1024);
+    auto ds   = fc::datastream<char*>(temp.data(), temp.size());
+    fc::raw::pack(ds, *trx);
+
+    temp.resize(ds.tellp());
+    result.binargs = std::move(temp);
+    return result;
+}
+
 read_only::get_required_keys_result
 read_only::get_required_keys(const get_required_keys_params& params) const {
     auto trx = transaction();
