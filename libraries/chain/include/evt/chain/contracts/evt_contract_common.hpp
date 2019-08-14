@@ -121,10 +121,13 @@ check_name_reserved(const name128& name) {
 }
 
 inline void
-check_address_reserved(const address& addr) {
+check_address_reserved(const address& addr, bool throw_on_reserved = true) {
     switch(addr.type()) {
     case address::reserved_t: {
-        EVT_THROW(address_reserved_exception, "Address is reserved and cannot be used here");
+        if(throw_on_reserved) {
+            EVT_THROW(address_reserved_exception, "Address is reserved and cannot be used here");
+        }
+        return;
     }
     case address::public_key_t: {
         return;
