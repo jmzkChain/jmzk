@@ -157,7 +157,7 @@ TEST_CASE_METHOD(contracts_test, "everipay_test", "[contracts]") {
 
     // payee is not valid
     ep.payee = address();
-    CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer), address_reserved_exception);
+    CHECK_NOTHROW(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer));
 
     // correct
     ep.payee = poorer;
