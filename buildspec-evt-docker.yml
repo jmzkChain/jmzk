@@ -11,7 +11,7 @@ env:
 phases:
   install:
     runtime-versions:
-      Docker: 18
+      docker: 18
   pre_build:
     commands:
       - echo Logging into Docker Hub...
