@@ -362,12 +362,12 @@ TEST_CASE_METHOD(contracts_test, "valiwithdraw_test", "[contracts]") {
     }
     )=====";
 
-    auto var    = fc::json::from_string(test_data);
-    auto vwd   = var.as<valiwithdraw>();
+    auto var = fc::json::from_string(test_data);
+    auto vwd = var.as<valiwithdraw>();
     vwd.addr = key;
     to_variant(vwd, var);
 
-    auto& tokendb       = my_tester->control->token_db();
+    auto& tokendb = my_tester->control->token_db();
 
     asset pre_ast;
     READ_DB_ASSET(vwd.addr, evt_sym(), pre_ast);
@@ -377,7 +377,7 @@ TEST_CASE_METHOD(contracts_test, "valiwithdraw_test", "[contracts]") {
     asset ast;
     READ_DB_ASSET(vwd.addr, evt_sym(), ast);
 
-    CHECK(ast.amount() - pre_ast.amount() == 100000);
+    CHECK(ast.amount()- pre_ast.amount() == 100000);
 
     my_tester->produce_blocks();
 }
