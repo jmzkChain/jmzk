@@ -38,6 +38,20 @@ extern std::string evt_unittests_dir;
         evt::chain::extract_db_value(str, VALUEREF); \
     }
 
+#define READ_DB_TOKEN(TYPE, PREFIX, KEY, VPTR, EXCEPTION, FORMAT, ...)      \
+    try {                                                                   \
+        using vtype = typename decltype(VPTR)::element_type;                \
+        VPTR = tokendb_cache.template read_token<vtype>(TYPE, PREFIX, KEY); \
+    }                                                                       \
+    catch(token_database_exception&) {                                      \
+        EVT_THROW2(EXCEPTION, FORMAT, ##__VA_ARGS__);                       \
+    }
+
+#define UPD_DB_TOKEN(TYPE, NAME, VALUE)                                                                         \
+    {                                                                                                     \
+        tokendb_cache.put_token(evt::chain::token_type::TYPE, action_op::update, std::nullopt, NAME, VALUE); \
+    }
+
 #define MAKE_PROPERTY(AMOUNT, SYM) \
     property {                     \
         .amount = AMOUNT,          \

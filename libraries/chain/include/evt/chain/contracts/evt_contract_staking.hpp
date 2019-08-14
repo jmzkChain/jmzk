@@ -336,6 +336,7 @@ EVT_ACTION_IMPL_BEGIN(unstaketkns) {
             EVT_ASSERT2(remainning_units == 0, staking_not_enough_exception, "Don't have enough staking units");
 
             // remove empty stake shares
+
             prop.stake_shares.erase(std::remove_if(prop.stake_shares.begin(), prop.stake_shares.end(), [](auto& share){ return share.units == 0;}), prop.stake_shares.end());
             break;
         }

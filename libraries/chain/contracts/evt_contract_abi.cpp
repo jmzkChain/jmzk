@@ -566,6 +566,14 @@ evt_contract_abi() {
         }
     });
 
+    evt_abi.structs.emplace_back( struct_def {
+        "valiwithdraw", "", {
+           {"name", "account_name"},
+           {"addr", "address"},
+           {"amount", "asset"}
+        }
+    });
+
     // abi_def fields
     evt_abi.structs.emplace_back( struct_def {
         "field_def", "", {
