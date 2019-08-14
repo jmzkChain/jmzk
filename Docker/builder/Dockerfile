@@ -1,6 +1,6 @@
 FROM debian:buster-slim
 
-LABEL author="Harry <harrywong@live.com>" maintainer="Harry <harrywong@live.com>" version="1.5.0" \
+LABEL author="Harry <harrywong@live.com>" maintainer="Harry <harrywong@live.com>" version="1.6.0" \
   description="This is a base image for building everitoken/evt"
 
 RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
@@ -72,12 +72,12 @@ RUN git clone -b master https://github.com/everitoken/breakpad.git \
     && make -j$(nproc) install \
     && cd .. && rm -rf breakpad
 
-RUN wget https://ftp.postgresql.org/pub/source/v11.3/postgresql-11.3.tar.gz -O - | tar -xz \
-    && cd postgresql-11.3 \
+RUN wget https://ftp.postgresql.org/pub/source/v11.5/postgresql-11.5.tar.gz -O - | tar -xz \
+    && cd postgresql-11.5 \
     && ./configure --prefix=/usr/local \
     && make -C src/include install \
     && make -C src/interfaces install \
-    && cd .. && rm -rf postgresql-11.3
+    && cd .. && rm -rf postgresql-11.5
 
 RUN git clone --depth 1 -b r1.13 git://github.com/mongodb/mongo-c-driver \
     && cd mongo-c-driver \

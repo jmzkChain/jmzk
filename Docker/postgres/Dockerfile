@@ -1,6 +1,6 @@
-FROM postgres:11.3
+FROM postgres:11.5
 
-LABEL author="Harry <harrywong@live.com>" maintainer="Harry <harrywong@live.com>" version="1.2.1" \
+LABEL author="Harry <harrywong@live.com>" maintainer="Harry <harrywong@live.com>" version="1.3.0" \
   description="This is customized PostgreSQL image with pg_pathman support"
 
 ARG POSTGRES_DEV_VERSION=11
