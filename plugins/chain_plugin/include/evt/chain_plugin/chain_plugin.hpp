@@ -105,6 +105,10 @@ public:
     };
     trx_json_to_digest_result trx_json_to_digest(const trx_json_to_digest_params& params) const;
 
+    using trx_json_to_bin_params = fc::variant_object;
+    using trx_json_to_bin_result = abi_json_to_bin_result;
+    trx_json_to_bin_result trx_json_to_bin(const trx_json_to_bin_params& params) const;
+
     struct get_required_keys_params {
         fc::variant      transaction;
         public_keys_set  available_keys;

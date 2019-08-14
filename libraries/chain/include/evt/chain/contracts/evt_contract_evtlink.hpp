@@ -74,7 +74,7 @@ EVT_ACTION_IMPL_BEGIN(everipay) {
 
     auto& epact = context.act.data_as<add_clr_t<ACT>>();
     try {
-        check_address_reserved(epact.payee);
+        check_address_reserved(epact.payee, false /* throw_on_reserved */);
 
         DECLARE_TOKEN_DB()
 
