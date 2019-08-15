@@ -13,7 +13,7 @@ struct validator_context {
     account_name name;
 };
 
-struct staking_context {
+class staking_context {
 public:
     uint32_t period_version   = 0;  ///< sequentially incrementing version number
     uint32_t period_start_num = 0;
@@ -21,3 +21,5 @@ public:
 };
 
 }}  // namespace evt::chain
+
+FC_REFLECT(evt::chain::staking_context, (period_version)(period_start_num)(cycle_version));

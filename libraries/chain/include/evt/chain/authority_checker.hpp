@@ -862,6 +862,15 @@ struct check_authority<N(valiwithdraw)> {
 };
 
 template<>
+struct check_authority<N(recvstkbonus)> {
+    template <typename Type>
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        return checker->satisfied_validator_permission<kWithdraw>(act.key, act);
+    }
+};
+
+template<>
 struct check_authority<N(staketkns)> {
     template <typename Type>
     static bool

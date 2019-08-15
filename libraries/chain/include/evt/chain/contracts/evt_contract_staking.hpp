@@ -253,7 +253,7 @@ EVT_ACTION_IMPL_BEGIN(toactivetkns) {
             }
 
             auto months = (real_type)s.fixed_days / 30;
-            auto roi    = mp::exp(mp::log10(months / stakepool->fixed_r)) / stakepool->fixed_t;
+            auto roi    = mp::exp(mp::log10(months / stakepool->fixed_r / 1000)) / stakepool->fixed_t / 1000;
 
             auto new_uints = (int64_t)mp::floor(real_type(s.units) * (roi + 1));
             diff_amount += s.net_value.amount() * (new_uints - s.units);
@@ -305,9 +305,7 @@ EVT_ACTION_IMPL_BEGIN(unstaketkns) {
         auto prop = property_stakes();
         READ_DB_ASSET(ustact.staker, evt_sym(), prop);
 
-        // check and unfreeze shares
-
-        auto& conf = context.control.get_global_properties().stake_configuration;
+        auto& conf = context.control.get_global_properties().staking_configuration;
 
         switch(ustact.op) {
         case unstake_op::propose: {
@@ -436,9 +434,55 @@ EVT_ACTION_IMPL_BEGIN(unstaketkns) {
 EVT_ACTION_IMPL_END()
 
 EVT_ACTION_IMPL_BEGIN(recvstkbonus) {
-    
+    using namespace internal;
+    namespace mp = boost::multiprecision;
 
+    auto rsbact = context.act.data_as<ACT>();
+    try {
+        EVT_ASSERT(context.has_authorized(N128(.staking), rsbact.validator), action_authorize_exception, "Invalid authorization fields in action(domain and key).");
+        EVT_ASSERT2(rsbact.sym_id == evt_sym().id(), staking_symbol_exception, "Only EVT is supported to unstake currently");
 
+        DECLARE_TOKEN_DB()
+
+        auto& ctx  = context.control.get_global_properties().staking_ctx;
+        auto& conf = context.control.get_global_properties().staking_configuration;
+        auto  curr_block_num = context.control.pending_block_state()->block_num;
+
+        FC_ASSERT(ctx.period_start_num <= curr_block_num);
+        FC_ASSERT(ctx.period_start_num + conf.cycles_per_period * conf.blocks_per_cycle > curr_block_num);
+        
+        auto begin = ctx.period_start_num + (conf.cycles_per_period - 1) * conf.blocks_per_cycle;
+        auto end   = ctx.period_start_num + conf.cycles_per_period * conf.blocks_per_cycle;
+        EVT_ASSERT2(curr_block_num >= begin && curr_block_num < end, staking_timeing_exception,
+            "Invalid timing for receiving staking bonus, block number should between [{},{}).", begin, end);
+
+        auto validator = make_empty_cache_ptr<validator_def>();
+        READ_DB_TOKEN(token_type::validator, std::nullopt, rsbact.validator, validator, unknown_validator_exception,
+            "Cannot find validator: {}", rsbact.validator);
+
+        auto stakepool = make_empty_cache_ptr<stakepool_def>();
+        READ_DB_TOKEN(token_type::stakepool, std::nullopt, rsbact.sym_id, stakepool, staking_exception,
+            "Cannot find stakepool");
+
+        auto seconds  = (context.control.pending_block_time() - stakepool->begin_time).to_seconds();
+        auto days     = (real_type)seconds / (24 * 60 * 60);
+        auto year_roi = mp::exp(-mp::log10(stakepool->total.to_real() / stakepool->demand_r / 1000) / stakepool->demand_q  / 1000 + days * stakepool->demand_w / 1000)
+            * mp::pow(real_type(10), real_type(stakepool->demand_t) / 1000);
+        auto roi      = year_roi * (context.control.pending_block_time() - validator->last_updated_time).to_seconds() / (365 * 24 * 60 * 60);
+
+        auto new_net_value = (int64_t)mp::floor((real_type)validator->current_net_value.amount() * (1 + roi));
+        auto diff_amount   = (new_net_value - validator->current_net_value.amount()) * validator->total_units;
+
+        validator->current_net_value = asset(new_net_value, evt_sym());
+        validator->last_updated_time = context.control.pending_block_time();
+
+        stakepool->total += asset(diff_amount, evt_sym());
+
+        // update database
+        UPD_DB_TOKEN(token_type::stakepool, *stakepool);
+        UPD_DB_TOKEN(token_type::validator, *validator);
+    }
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 EVT_ACTION_IMPL_END()
 

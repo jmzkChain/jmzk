@@ -710,6 +710,13 @@ struct valiwithdraw {
     EVT_ACTION_VER1(valiwithdraw);
 };
 
+struct recvstkbonus {
+    account_name   validator;
+    symbol_id_type sym_id;
+
+    EVT_ACTION_VER1(recvstkbonus);
+};
+
 struct staketkns {
     user_id      staker;
     account_name validator;
@@ -736,11 +743,6 @@ struct toactivetkns {
     symbol_id_type sym_id;
 
     EVT_ACTION_VER1(toactivetkns);
-};
-
-struct recvstkbonus {
-    account_name   validator;
-    symbol_id_type sym_id;
 };
 
 }}}  // namespace evt::chain::contracts

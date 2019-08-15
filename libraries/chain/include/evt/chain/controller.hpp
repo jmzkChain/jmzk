@@ -24,6 +24,7 @@ class fork_database;
 class apply_context;
 class charge_manager;
 class execution_context;
+class staking_context;
 class token_database_cache;
 
 struct controller_impl;
