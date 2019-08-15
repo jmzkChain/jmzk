@@ -7,10 +7,12 @@ TEST_CASE_METHOD(contracts_test, "newstakepool_test", "[contracts]") {
     {
       "sym_id": 1,
       "purchase_threshold": "5.00000 S#1",
-      "parameter_r": 5,
-      "parameter_t": 5,
-      "parameter_q": 5,
-      "parameter_w": 5
+      "demand_r": 5,
+      "demand_t": 5,
+      "demand_q": 5,
+      "demand_w": 5,
+      "fixed_r": 5,
+      "fixed_t": 5
     }
     )=====";
 
@@ -35,10 +37,10 @@ TEST_CASE_METHOD(contracts_test, "newstakepool_test", "[contracts]") {
     // check data
     CHECK(stakepool_.sym_id == 1);
     CHECK(stakepool_.purchase_threshold == asset(500'000, symbol(5, 1)));
-    CHECK(stakepool_.parameter_r == 5);
-    CHECK(stakepool_.parameter_t == 5);
-    CHECK(stakepool_.parameter_q == 5);
-    CHECK(stakepool_.parameter_w == 5);
+    CHECK(stakepool_.demand_r == 5);
+    CHECK(stakepool_.demand_t == 5);
+    CHECK(stakepool_.demand_q == 5);
+    CHECK(stakepool_.demand_w == 5);
 
     my_tester->produce_blocks();
 }
@@ -48,10 +50,12 @@ TEST_CASE_METHOD(contracts_test, "updstakepool_test", "[contracts]") {
     {
       "sym_id": 1,
       "purchase_threshold": "5.00000 S#1",
-      "parameter_r": 2,
-      "parameter_t": 2,
-      "parameter_q": 2,
-      "parameter_w": 2
+      "demand_r": 2,
+      "demand_t": 2,
+      "demand_q": 2,
+      "demand_w": 2,
+      "fixed_r": 300,
+      "fixed_t": 5
     }
     )=====";
 
@@ -76,10 +80,12 @@ TEST_CASE_METHOD(contracts_test, "updstakepool_test", "[contracts]") {
     // check data
     CHECK(stakepool_.sym_id == 1);
     CHECK(stakepool_.purchase_threshold == asset(500'000, symbol(5, 1)));
-    CHECK(stakepool_.parameter_r == 2);
-    CHECK(stakepool_.parameter_t == 2);
-    CHECK(stakepool_.parameter_q == 2);
-    CHECK(stakepool_.parameter_w == 2);
+    CHECK(stakepool_.demand_r == 2);
+    CHECK(stakepool_.demand_t == 2);
+    CHECK(stakepool_.demand_q == 2);
+    CHECK(stakepool_.demand_w == 2);
+    CHECK(stakepool_.fixed_r == 300);
+    CHECK(stakepool_.fixed_t == 5);
 
     my_tester->produce_blocks();
 }
@@ -213,7 +219,7 @@ TEST_CASE_METHOD(contracts_test, "toactivetkns_test", "[contracts]") {
 
     real_type months = (real_type)9000/30 ;
 
-    real_type roi    = mp::exp(mp::log10(months / conf.fixed_R)) / conf.fixed_T;
+    real_type roi    = mp::exp(mp::log10(months / stakepool_.fixed_r)) / stakepool_.fixed_t;
 
     int64_t diff_units = (int64_t)mp::floor(real_type(5) * roi);
     int64_t diff_amount  = 100'000 * diff_units;

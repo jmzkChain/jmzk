@@ -780,7 +780,7 @@ FC_REFLECT(evt::chain::contracts::passive_method, (action)(method));
 FC_REFLECT(evt::chain::contracts::passive_bonus, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods)(round)(deadline));
 FC_REFLECT(evt::chain::contracts::passive_bonus_slim, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(methods));
 
-FC_REFLECT(evt::chain::contracts::stakepool_def, (sym_id)(demand_r)(demand_t)(demand_q)(demand_w)(begin_time)(total)(purchase_threshold));
+FC_REFLECT(evt::chain::contracts::stakepool_def, (sym_id)(demand_r)(demand_t)(demand_q)(demand_w)(fixed_r)(fixed_t)(begin_time)(total)(purchase_threshold));
 FC_REFLECT(evt::chain::contracts::validator_def, (name)(creator)(create_time)(last_updated_time)(withdraw)(manage)(commission)(initial_net_value)(current_net_value)(total_units));
 FC_REFLECT_ENUM(evt::chain::contracts::unstake_op, (propose)(cancel)(settle));
 
@@ -819,8 +819,8 @@ FC_REFLECT(evt::chain::contracts::tryunlock, (name)(executor));
 FC_REFLECT(evt::chain::contracts::setpsvbonus, (sym)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods));
 FC_REFLECT(evt::chain::contracts::setpsvbonus_v2, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods));
 FC_REFLECT(evt::chain::contracts::distpsvbonus, (sym_id)(deadline)(final_receiver));
-FC_REFLECT(evt::chain::contracts::newstakepool, (sym_id)(purchase_threshold)(demand_r)(demand_t)(demand_q)(demand_w)(fixed_r));
-FC_REFLECT(evt::chain::contracts::updstakepool, (sym_id)(purchase_threshold)(demand_r)(demand_t)(demand_q)(demand_w)(fixed_t));
+FC_REFLECT(evt::chain::contracts::newstakepool, (sym_id)(purchase_threshold)(demand_r)(demand_t)(demand_q)(demand_w)(fixed_r)(fixed_t));
+FC_REFLECT(evt::chain::contracts::updstakepool, (sym_id)(purchase_threshold)(demand_r)(demand_t)(demand_q)(demand_w)(fixed_r)(fixed_t));
 FC_REFLECT(evt::chain::contracts::newvalidator, (name)(creator)(withdraw)(manage)(commission)(rsa_pubkey));
 FC_REFLECT(evt::chain::contracts::valiwithdraw, (name)(addr)(amount));
 FC_REFLECT(evt::chain::contracts::staketkns, (staker)(validator)(amount)(type)(fixed_days));
