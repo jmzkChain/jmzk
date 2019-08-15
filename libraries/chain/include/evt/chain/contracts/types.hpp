@@ -688,6 +688,8 @@ struct newvalidator {
     permission_def manage;
     percent_slim   commission;
 
+    optional<bytes> rsa_pubkey;
+
     EVT_ACTION_VER1(newvalidator);
 };
 
@@ -725,6 +727,11 @@ struct toactivetkns {
     symbol_id_type sym_id;
 
     EVT_ACTION_VER1(toactivetkns);
+};
+
+struct recvstkbonus {
+    account_name   validator;
+    symbol_id_type sym_id;
 };
 
 }}}  // namespace evt::chain::contracts
@@ -803,8 +810,9 @@ FC_REFLECT(evt::chain::contracts::setpsvbonus_v2, (sym_id)(rate)(base_charge)(ch
 FC_REFLECT(evt::chain::contracts::distpsvbonus, (sym_id)(deadline)(final_receiver));
 FC_REFLECT(evt::chain::contracts::newstakepool, (sym_id)(purchase_threshold)(parameter_r)(parameter_t)(parameter_q)(parameter_w));
 FC_REFLECT(evt::chain::contracts::updstakepool, (sym_id)(purchase_threshold)(parameter_r)(parameter_t)(parameter_q)(parameter_w));
-FC_REFLECT(evt::chain::contracts::newvalidator, (name)(creator)(withdraw)(manage)(commission));
+FC_REFLECT(evt::chain::contracts::newvalidator, (name)(creator)(withdraw)(manage)(commission)(rsa_pubkey));
 FC_REFLECT(evt::chain::contracts::valiwithdraw, (name)(addr)(amount));
 FC_REFLECT(evt::chain::contracts::staketkns, (staker)(validator)(amount)(type)(fixed_days));
 FC_REFLECT(evt::chain::contracts::unstaketkns, (staker)(validator)(units)(sym_id)(op));
 FC_REFLECT(evt::chain::contracts::toactivetkns, (staker)(validator)(sym_id));
+FC_REFLECT(evt::chain::contracts::recvstkbonus, (validator)(sym_id));

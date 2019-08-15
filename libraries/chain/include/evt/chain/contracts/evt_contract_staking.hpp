@@ -86,6 +86,8 @@ EVT_ACTION_IMPL_BEGIN(newvalidator) {
         EVT_ASSERT2(!tokendb.exists_token(token_type::validator, std::nullopt, nvact.name), validator_duplicate_exception,
             "validator {} already exists.", nvact.name);
 
+        EVT_ASSERT2(!nvact.rsa_pubkey.has_value(), staking_rsa_pubkey_exception, "RSA public key should be left empty currently");
+
         EVT_ASSERT(nvact.withdraw.name == "withdraw", permission_type_exception,
             "Name ${name} does not match with the name of withdraw permission.", ("name",nvact.withdraw.name));
         EVT_ASSERT(nvact.withdraw.threshold > 0 && validate(nvact.withdraw), permission_type_exception,
@@ -428,6 +430,13 @@ EVT_ACTION_IMPL_BEGIN(unstaketkns) {
         PUT_DB_ASSET(ustact.staker, prop);
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+}
+EVT_ACTION_IMPL_END()
+
+EVT_ACTION_IMPL_BEGIN(recvstkbonus) {
+    
+
+
 }
 EVT_ACTION_IMPL_END()
 
