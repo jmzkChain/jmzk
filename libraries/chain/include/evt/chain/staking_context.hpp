@@ -17,9 +17,8 @@ class staking_context {
 public:
     uint32_t period_version   = 0;  ///< sequentially incrementing version number
     uint32_t period_start_num = 0;
-    uint32_t cycle_version    = 0;
 };
 
 }}  // namespace evt::chain
 
-FC_REFLECT(evt::chain::staking_context, (period_version)(period_start_num)(cycle_version));
+FC_REFLECT(evt::chain::staking_context, (period_version)(period_start_num));

@@ -536,6 +536,7 @@ evt_contract_abi() {
         "newvalidator", "", {
            {"name", "account_name"},
            {"creator", "user_id"},
+           {"signer", "public_key"},
            {"withdraw", "permission_def"},
            {"manage", "permission_def"},
            {"commission", "percent_slim"},

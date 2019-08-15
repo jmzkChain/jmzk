@@ -40,7 +40,9 @@ EVT_ACTION_IMPL_BEGIN(newstakepool) {
         stakepool.purchase_threshold = nsact.purchase_threshold;
         
         ADD_DB_TOKEN(token_type::stakepool, stakepool);
-        // READ_DB_TOKEN(token_type::stakepool, std::nullopt, name128::from_number(nsact.sym_id), stakepool, unknown_stakepool_exception,"Cannot find stakepool");
+
+        // set initial staking context
+        context.control.set_initial_staking_period();
     }
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }

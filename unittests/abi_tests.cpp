@@ -1751,6 +1751,7 @@ TEST_CASE_METHOD(abi_test, "newvalidator_abi_test", "[abis]") {
     {
       "name": "validator",
       "creator": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+      "signer": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
       "withdraw" : {
         "name" : "withdraw",
         "threshold" : 1,
@@ -1778,6 +1779,7 @@ TEST_CASE_METHOD(abi_test, "newvalidator_abi_test", "[abis]") {
 
     CHECK("validator" == nvd.name);
     CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)nvd.creator);
+    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)nvd.signer);
 
     CHECK("0.59" == (std::string)nvd.commission);
 

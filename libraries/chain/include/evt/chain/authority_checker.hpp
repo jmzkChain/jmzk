@@ -211,7 +211,15 @@ private:
             }
         }
         return;
-    } 
+    }
+
+    void
+    get_validator(const account_name& validator_name, std::function<void(const validator_def&)>&& cb) {
+        auto validator = make_empty_cache_ptr<validator_def>();
+        READ_DB_TOKEN(token_type::validator, std::nullopt, validator_name, validator, unknown_validator_exception, "Cannot find validator: {}", validator_name);
+
+        cb(*validator);
+    }
 
 private:
     bool
@@ -866,7 +874,15 @@ struct check_authority<N(recvstkbonus)> {
     template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
-        return checker->satisfied_validator_permission<kWithdraw>(act.key, act);
+        bool result = false;
+        checker->get_validator(act.key, [&](const auto& validator) {
+            auto& key    = validator.signer;
+            auto  vistor = authority_checker::weight_tally_visitor(checker);
+            if(vistor(validator.signer, 1) == 1) {
+                result = true;
+            }
+        });
+        return result;
     }
 };
 

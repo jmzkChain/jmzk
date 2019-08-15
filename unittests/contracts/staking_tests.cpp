@@ -95,6 +95,7 @@ TEST_CASE_METHOD(contracts_test, "newvalidator_test", "[contracts]") {
     {
       "name": "validator",
       "creator": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+      "signer": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
       "withdraw" : {
         "name" : "withdraw",
         "threshold" : 1,
@@ -120,6 +121,7 @@ TEST_CASE_METHOD(contracts_test, "newvalidator_test", "[contracts]") {
     auto var    = fc::json::from_string(test_data);
     auto nvd    = var.as<newvalidator>();
     nvd.creator = key;
+    nvd.signer  = key;
     nvd.withdraw.authorizers[0].ref.set_account(key);
     nvd.manage.authorizers[0].ref.set_account(key);
     to_variant(nvd, var);
@@ -215,14 +217,13 @@ TEST_CASE_METHOD(contracts_test, "toactivetkns_test", "[contracts]") {
 
     CHECK_NOTHROW(my_tester->push_action(N(toactivetkns), N128(.staking), N128(validator), var.get_object(), key_seeds, payer));
 
-    auto& conf = my_tester->control->get_global_properties().stake_configuration;
+    auto& conf = my_tester->control->get_global_properties().staking_configuration;
 
     real_type months = (real_type)9000/30 ;
-
     real_type roi    = mp::exp(mp::log10(months / stakepool_.fixed_r)) / stakepool_.fixed_t;
 
-    int64_t diff_units = (int64_t)mp::floor(real_type(5) * roi);
-    int64_t diff_amount  = 100'000 * diff_units;
+    int64_t diff_units  = (int64_t)mp::floor(real_type(5) * roi);
+    int64_t diff_amount = 100'000 * diff_units;
 
     // check diff units
     READ_TOKEN(validator, "validator", validator_);
@@ -293,7 +294,7 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts]") {
 
     CHECK_NOTHROW(my_tester->push_action(N(unstaketkns), N128(.staking), N128(validator), var.get_object(), key_seeds, payer));
 
-    auto& conf = my_tester->control->get_global_properties().stake_configuration;
+    auto& conf = my_tester->control->get_global_properties().staking_configuration;
 
     my_tester->produce_blocks();
     my_tester->produce_block(fc::days(conf.unstake_pending_days + 1));

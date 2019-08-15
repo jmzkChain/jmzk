@@ -1360,6 +1360,7 @@ struct set_validator_subcommands {
 
         nvdcmd->add_option("name", name, localized("Name of validator"))->required();
         nvdcmd->add_option("creator", creator, localized("addresse of creator"))->required();
+        nvdcmd->add_option("signer", addr, localized("addresse of signer"))->required();
         nvdcmd->add_option("withdraw", withdraw, localized("JSON string or filename defining WITHDRAW permission"))->capture_default_str();
         nvdcmd->add_option("manage", manage, localized("JSON string or filename defining MANAGE permission"))->capture_default_str();
         nvdcmd->add_option("commission", commission, localized("commission of validator"))->required();
@@ -1367,12 +1368,12 @@ struct set_validator_subcommands {
         add_standard_transaction_options(nvdcmd);
 
         nvdcmd->callback([this] {
-            auto nvd = newvalidator();
-
+            auto nvd       = newvalidator();
             nvd.name       = (name128)name;
             nvd.creator    = get_public_key(creator);
-            nvd.withdraw   = (withdraw == "default") ? get_default_permission("withdraw", nvd.creator) : parse_permission(withdraw);
-            nvd.manage     = (manage == "default") ? get_default_permission("manage", nvd.creator) : parse_permission(manage);
+            nvd.signer     = get_public_key(addr);
+            nvd.withdraw   = (withdraw == "default") ? get_default_permission("withdraw", signer) : parse_permission(withdraw);
+            nvd.manage     = (manage == "default") ? get_default_permission("manage", signer) : parse_permission(manage);
             nvd.commission = percent_slim::from_string(commission);
 
             auto act = create_action(N128(.staking), (domain_key)nvd.name, nvd);
@@ -1388,11 +1389,10 @@ struct set_validator_subcommands {
         add_standard_transaction_options(vwdcmd);
 
         vwdcmd->callback([this] {
-            auto vwd = valiwithdraw();
-
-            vwd.name    = (name128)name;
-            vwd.addr = get_address(addr);
-            vwd.amount  = asset::from_string(amount);
+            auto vwd   = valiwithdraw();
+            vwd.name   = (name128)name;
+            vwd.addr   = get_address(addr);
+            vwd.amount = asset::from_string(amount);
 
             auto act = create_action(N128(.staking), (domain_key)vwd.name, vwd);
             send_actions({act});
