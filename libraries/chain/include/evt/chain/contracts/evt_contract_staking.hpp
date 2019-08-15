@@ -29,10 +29,12 @@ EVT_ACTION_IMPL_BEGIN(newstakepool) {
 
         auto stakepool               = stakepool_def();
         stakepool.sym_id             = nsact.sym_id;
-        stakepool.parameter_r        = nsact.parameter_r;
-        stakepool.parameter_t        = nsact.parameter_t;
-        stakepool.parameter_q        = nsact.parameter_q;
-        stakepool.parameter_w        = nsact.parameter_w;
+        stakepool.demand_r           = nsact.demand_r;
+        stakepool.demand_t           = nsact.demand_t;
+        stakepool.demand_q           = nsact.demand_q;
+        stakepool.demand_w           = nsact.demand_w;
+        stakepool.fixed_r            = nsact.fixed_r;
+        stakepool.fixed_t            = nsact.fixed_t;
         stakepool.begin_time         = context.control.pending_block_time();
         stakepool.total              = asset(0, nsact.purchase_threshold.sym());
         stakepool.purchase_threshold = nsact.purchase_threshold;
@@ -61,10 +63,12 @@ EVT_ACTION_IMPL_BEGIN(updstakepool) {
         READ_DB_TOKEN(token_type::stakepool, std::nullopt, usact.sym_id, stakepool, unknown_stakepool_exception,
             "Cannot find stakepool with sym id: {}", usact.sym_id);
 
-        stakepool->parameter_r        = usact.parameter_r;
-        stakepool->parameter_t        = usact.parameter_t;
-        stakepool->parameter_q        = usact.parameter_q;
-        stakepool->parameter_w        = usact.parameter_w;
+        stakepool->demand_r           = usact.demand_r;
+        stakepool->demand_t           = usact.demand_t;
+        stakepool->demand_q           = usact.demand_q;
+        stakepool->demand_w           = usact.demand_w;
+        stakepool->fixed_r            = usact.fixed_r;
+        stakepool->fixed_t            = usact.fixed_t;
         stakepool->purchase_threshold = usact.purchase_threshold;
         
         UPD_DB_TOKEN(token_type::stakepool, *stakepool);
@@ -234,7 +238,9 @@ EVT_ACTION_IMPL_BEGIN(toactivetkns) {
         auto prop = property_stakes();
         READ_DB_ASSET(tatact.staker, evt_sym(), prop);
 
-        auto& conf = context.control.get_global_properties().stake_configuration;
+        auto stakepool = make_empty_cache_ptr<stakepool_def>();
+        READ_DB_TOKEN(token_type::stakepool, std::nullopt, tatact.sym_id, stakepool, staking_exception,
+            "Cannot find stakepool");
 
         int64_t diff_amount = 0, diff_units = 0;
         for(auto& s : prop.stake_shares) {
@@ -247,7 +253,7 @@ EVT_ACTION_IMPL_BEGIN(toactivetkns) {
             }
 
             auto months = (real_type)s.fixed_days / 30;
-            auto roi    = mp::exp(mp::log10(months / conf.fixed_R)) / conf.fixed_T;
+            auto roi    = mp::exp(mp::log10(months / stakepool->fixed_r)) / stakepool->fixed_t;
 
             auto new_uints = (int64_t)mp::floor(real_type(s.units) * (roi + 1));
             diff_amount += s.net_value.amount() * (new_uints - s.units);
@@ -265,10 +271,6 @@ EVT_ACTION_IMPL_BEGIN(toactivetkns) {
         }
 
         // update pool
-        auto stakepool = make_empty_cache_ptr<stakepool_def>();
-        READ_DB_TOKEN(token_type::stakepool, std::nullopt, tatact.sym_id, stakepool, staking_exception,
-            "Cannot find stakepool");
-
         stakepool->total += asset(diff_amount, evt_sym());
 
         // update validator

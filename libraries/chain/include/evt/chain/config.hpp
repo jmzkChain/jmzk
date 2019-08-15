@@ -73,15 +73,10 @@ const static int irreversible_threshold_percent = 70 * percent_1;
 
 const static int default_evt_link_expired_secs = 20;  // 20s -> total: 40s
 
-const static int default_demand_R = 5000;
-const static int default_demand_T = -67;
-const static int default_demand_Q = 1000;
-const static int default_demand_W = -3;
-
-const static int default_fixed_R = 300;
-const static int default_fixed_T = 5;
-
+// staking parameters
 const static int default_unstake_pending_days = 21;
+const static int default_cycles_per_period    = 256;
+const static int default_blocks_per_phase     = 12;
 
 }}}  // namespace evt::chain::config
 
