@@ -155,12 +155,14 @@ TEST_CASE_METHOD(contracts_test, "everipay_test", "[contracts]") {
     ep.payee = address(".hi", "test", 123);
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer), address_reserved_exception);
 
-    // payee is not valid
+    // correct, payee is reserved address
     ep.payee = address();
     CHECK_NOTHROW(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer));
 
     // correct
+    ep.link.add_segment(evt_link::segment(evt_link::link_id, "KIJHNHFMJDFFUDDD"));
     ep.payee = poorer;
+    sign_link(ep.link);
     CHECK_NOTHROW(my_tester->push_action(action(N128(.fungible), N128(1), ep), key_seeds, payer));
 
     // correct
@@ -231,7 +233,7 @@ TEST_CASE_METHOD(contracts_test, "everipay_test", "[contracts]") {
     ep_v2.link   = ep.link;
     ep_v2.payee  = poorer;
     ep_v2.number = asset::from_string("0.50000 S#1");
-    ep_v2.memo   = "tttesttt";
+    // ep_v2.memo   = "tttesttt";
 
     // version not upgrade
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.fungible), N128(1), ep_v2), key_seeds, payer), raw_unpack_exception);

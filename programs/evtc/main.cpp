@@ -1403,20 +1403,24 @@ struct set_validator_subcommands {
 struct set_stakepool_subcommands {
     int sym_id;
     string purchase_threshold;
-    int para_r;
-    int para_t;
-    int para_q;
-    int para_w;
+    int demand_r;
+    int demand_t;
+    int demand_q;
+    int demand_w;
+    int fixed_r;
+    int fixed_t;
 
     set_stakepool_subcommands(CLI::App* actionRoot) {
         auto nspcmd = actionRoot->add_subcommand("create", localized("create a new stakepool"));
 
         nspcmd->add_option("sym_id", sym_id, localized("sym_id of stakepool"))->required();
         nspcmd->add_option("--purchase-threshold", purchase_threshold, localized("purchase threshold of stakepool"))->required();
-        nspcmd->add_option("--para-r", para_r, localized("parameter r of stakepool"))->required();
-        nspcmd->add_option("--para-t", para_t, localized("parameter t of stakepool"))->required();
-        nspcmd->add_option("--para-q", para_q, localized("parameter q of stakepool"))->required();
-        nspcmd->add_option("--para-w", para_w, localized("parameter w of stakepool"))->required();
+        nspcmd->add_option("--demand-r", demand_r, localized("demand r of stakepool"))->required();
+        nspcmd->add_option("--demand-t", demand_t, localized("demand t of stakepool"))->required();
+        nspcmd->add_option("--demand-q", demand_q, localized("demand q of stakepool"))->required();
+        nspcmd->add_option("--demand-w", demand_w, localized("demand w of stakepool"))->required();
+        nspcmd->add_option("--fixed-r", fixed_r, localized("fixed r of stakepool"))->required();
+        nspcmd->add_option("--fixed-t", fixed_t, localized("fixed t of stakepool"))->required();
 
         add_standard_transaction_options(nspcmd);
 
@@ -1425,10 +1429,12 @@ struct set_stakepool_subcommands {
 
             nsp.sym_id             = sym_id;
             nsp.purchase_threshold = asset::from_string(purchase_threshold);
-            nsp.parameter_r        = para_r;
-            nsp.parameter_t        = para_t;
-            nsp.parameter_q        = para_q;
-            nsp.parameter_w        = para_w;
+            nsp.demand_r           = demand_r;
+            nsp.demand_t           = demand_t;
+            nsp.demand_q           = demand_q;
+            nsp.demand_w           = demand_w;
+            nsp.fixed_r            = fixed_r;
+            nsp.fixed_t            = fixed_t;
 
             auto act = create_action(N128(.fungible), (domain_key)std::to_string(nsp.sym_id), nsp);
             send_actions({act});
@@ -1438,10 +1444,12 @@ struct set_stakepool_subcommands {
 
         upspcmd->add_option("sym_id", sym_id, localized("sym_id of stakepool"))->required();
         upspcmd->add_option("--purchase-threshold", purchase_threshold, localized("purchase threshold of stakepool"))->required();
-        upspcmd->add_option("--para-r", para_r, localized("parameter r of stakepool"))->required();
-        upspcmd->add_option("--para-t", para_t, localized("parameter t of stakepool"))->required();
-        upspcmd->add_option("--para-q", para_q, localized("parameter q of stakepool"))->required();
-        upspcmd->add_option("--para-w", para_w, localized("parameter w of stakepool"))->required();
+        upspcmd->add_option("--demand-r", demand_r, localized("demand r of stakepool"))->required();
+        upspcmd->add_option("--demand-t", demand_t, localized("demand t of stakepool"))->required();
+        upspcmd->add_option("--demand-q", demand_q, localized("demand q of stakepool"))->required();
+        upspcmd->add_option("--demand-w", demand_w, localized("demand w of stakepool"))->required();
+        upspcmd->add_option("--fixed-r", fixed_r, localized("fixed r of stakepool"))->required();
+        upspcmd->add_option("--fixed-t", fixed_t, localized("fixed t of stakepool"))->required();
 
         add_standard_transaction_options(upspcmd);
 
@@ -1450,10 +1458,12 @@ struct set_stakepool_subcommands {
 
             upsp.sym_id             = sym_id;
             upsp.purchase_threshold = asset::from_string(purchase_threshold);
-            upsp.parameter_r        = para_r;
-            upsp.parameter_t        = para_t;
-            upsp.parameter_q        = para_q;
-            upsp.parameter_w        = para_w;
+            upsp.demand_r           = demand_r;
+            upsp.demand_t           = demand_t;
+            upsp.demand_q           = demand_q;
+            upsp.demand_w           = demand_w;
+            upsp.fixed_r            = fixed_r;
+            upsp.fixed_t            = fixed_t;
 
             auto act = create_action(N128(.fungible), (domain_key)std::to_string(upsp.sym_id), upsp);
             send_actions({act});

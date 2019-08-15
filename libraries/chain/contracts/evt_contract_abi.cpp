@@ -510,10 +510,12 @@ evt_contract_abi() {
         "newstakepool", "", {
            {"sym_id", "symbol_id_type"},
            {"purchase_threshold", "asset"},
-           {"parameter_r", "int32"},
-           {"parameter_t", "int32"},
-           {"parameter_q", "int32"},
-           {"parameter_w", "int32"}
+           {"demand_r", "int32"},
+           {"demand_t", "int32"},
+           {"demand_q", "int32"},
+           {"demand_w", "int32"},
+           {"fixed_r", "int32"},
+           {"fixed_t", "int32"}
         }
     });
 
@@ -521,10 +523,12 @@ evt_contract_abi() {
         "updstakepool", "", {
            {"sym_id", "symbol_id_type"},
            {"purchase_threshold", "asset"},
-           {"parameter_r", "int32"},
-           {"parameter_t", "int32"},
-           {"parameter_q", "int32"},
-           {"parameter_w", "int32"}
+           {"demand_r", "int32"},
+           {"demand_t", "int32"},
+           {"demand_q", "int32"},
+           {"demand_w", "int32"},
+           {"fixed_r", "int32"},
+           {"fixed_t", "int32"}
         }
     });
 
@@ -534,7 +538,8 @@ evt_contract_abi() {
            {"creator", "user_id"},
            {"withdraw", "permission_def"},
            {"manage", "permission_def"},
-           {"commission", "percent_slim"}
+           {"commission", "percent_slim"},
+           {"rsa_pubkey", "bytes?"}
         }
     });
 

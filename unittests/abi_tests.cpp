@@ -1921,10 +1921,12 @@ TEST_CASE_METHOD(abi_test, "newstakepool_abi_test", "[abis]") {
     {
       "sym_id": 3,
       "purchase_threshold": "5.00000 S#3",
-      "parameter_r": 5,
-      "parameter_t": 5,
-      "parameter_q": 5,
-      "parameter_w": 5
+      "demand_r": 5,
+      "demand_t": 5,
+      "demand_q": 5,
+      "demand_w": 5,
+      "fixed_r": 5,
+      "fixed_t": 5
     }
     )=====";
 
@@ -1933,20 +1935,24 @@ TEST_CASE_METHOD(abi_test, "newstakepool_abi_test", "[abis]") {
 
     CHECK(3 == nstkp.sym_id);
     CHECK(asset(500000, symbol(5,3)) == nstkp.purchase_threshold);
-    CHECK(5 == nstkp.parameter_r);
-    CHECK(5 == nstkp.parameter_t);
-    CHECK(5 == nstkp.parameter_q);
-    CHECK(5 == nstkp.parameter_w);
+    CHECK(5 == nstkp.demand_r);
+    CHECK(5 == nstkp.demand_t);
+    CHECK(5 == nstkp.demand_q);
+    CHECK(5 == nstkp.demand_w);
+    CHECK(5 == nstkp.fixed_r);
+    CHECK(5 == nstkp.fixed_t);
 
     auto var2 = verify_byte_round_trip_conversion(abis, "newstakepool", var);
     auto nstkp2 = var2.as<newstakepool>();
 
     CHECK(3 == nstkp2.sym_id);
     CHECK(asset(500000, symbol(5,3)) == nstkp2.purchase_threshold);
-    CHECK(5 == nstkp2.parameter_r);
-    CHECK(5 == nstkp2.parameter_t);
-    CHECK(5 == nstkp2.parameter_q);
-    CHECK(5 == nstkp2.parameter_w);
+    CHECK(5 == nstkp2.demand_r);
+    CHECK(5 == nstkp2.demand_t);
+    CHECK(5 == nstkp2.demand_q);
+    CHECK(5 == nstkp2.demand_w);
+    CHECK(5 == nstkp2.fixed_r);
+    CHECK(5 == nstkp2.fixed_t);
 
     verify_type_round_trip_conversion<newstakepool>(abis, "newstakepool", var);
 }
@@ -1958,10 +1964,12 @@ TEST_CASE_METHOD(abi_test, "updstakepool_abi_test", "[abis]") {
     {
       "sym_id": 3,
       "purchase_threshold": "5.00000 S#3",
-      "parameter_r": 5,
-      "parameter_t": 5,
-      "parameter_q": 5,
-      "parameter_w": 5
+      "demand_r": 5,
+      "demand_t": 5,
+      "demand_q": 5,
+      "demand_w": 5,
+      "fixed_r": 5,
+      "fixed_t": 5
     }
     )=====";
 
@@ -1970,20 +1978,24 @@ TEST_CASE_METHOD(abi_test, "updstakepool_abi_test", "[abis]") {
 
     CHECK(3 == upstkp.sym_id);
     CHECK(asset(500000, symbol(5,3)) == upstkp.purchase_threshold);
-    CHECK(5 == upstkp.parameter_r);
-    CHECK(5 == upstkp.parameter_t);
-    CHECK(5 == upstkp.parameter_q);
-    CHECK(5 == upstkp.parameter_w);
+    CHECK(5 == upstkp.demand_r);
+    CHECK(5 == upstkp.demand_t);
+    CHECK(5 == upstkp.demand_q);
+    CHECK(5 == upstkp.demand_w);
+    CHECK(5 == upstkp.fixed_r);
+    CHECK(5 == upstkp.fixed_t);
 
     auto var2 = verify_byte_round_trip_conversion(abis, "newstakepool", var);
     auto upstkp2 = var2.as<newstakepool>();
 
     CHECK(3 == upstkp2.sym_id);
     CHECK(asset(500000, symbol(5,3)) == upstkp2.purchase_threshold);
-    CHECK(5 == upstkp2.parameter_r);
-    CHECK(5 == upstkp2.parameter_t);
-    CHECK(5 == upstkp2.parameter_q);
-    CHECK(5 == upstkp2.parameter_w);
+    CHECK(5 == upstkp2.demand_r);
+    CHECK(5 == upstkp2.demand_t);
+    CHECK(5 == upstkp2.demand_q);
+    CHECK(5 == upstkp2.demand_w);
+    CHECK(5 == upstkp2.fixed_r);
+    CHECK(5 == upstkp2.fixed_t);
 
     verify_type_round_trip_conversion<updstakepool>(abis, "newstakepool", var);
 }
