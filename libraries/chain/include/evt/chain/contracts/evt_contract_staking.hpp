@@ -255,12 +255,12 @@ EVT_ACTION_IMPL_BEGIN(toactivetkns) {
                 continue;
             }
 
-            auto months = (real_type)s.fixed_days / 30;
-            auto roi    = mp::exp(mp::log10(months / stakepool->fixed_r / 1000)) / ((real_type)stakepool->fixed_t / 1000);
+            auto days = (real_type)s.fixed_days;
+            auto roi  = mp::exp(mp::log10(days / (stakepool->fixed_r / 1000))) / ((real_type)stakepool->fixed_t / 1000);
 
             auto new_uints = (int64_t)mp::floor(real_type(s.units) * (roi + 1));
-            diff_amount += s.net_value.amount() * (new_uints - s.units);
-            diff_units  += (new_uints - s.units);
+            diff_amount   += s.net_value.amount() * (new_uints - s.units);
+            diff_units    += (new_uints - s.units);
 
             s.units      = new_uints;
             s.type       = stake_type::active;
@@ -423,6 +423,19 @@ EVT_ACTION_IMPL_BEGIN(unstaketkns) {
                 EVT_THROW2(fungible_supply_exception, "Exceeds total supply of fungible with sym id: {}.", ustact.sym_id);
             }
 
+            // update pool
+            auto stakepool = make_empty_cache_ptr<stakepool_def>();
+            READ_DB_TOKEN(token_type::stakepool, std::nullopt, ustact.sym_id, stakepool, staking_exception,
+                "Cannot find stakepool");
+            stakepool->total -= asset(frozen_amount + bonus_amount, evt_sym());
+
+            // update validator
+            validator->total_units -= ustact.units;
+
+            // update database
+            UPD_DB_TOKEN(token_type::stakepool, *stakepool);
+            UPD_DB_TOKEN(token_type::validator, *validator);
+
             // remove empty stake shares
             prop.pending_shares.erase(std::remove_if(prop.pending_shares.begin(), prop.pending_shares.end(), [](auto& share){ return share.units == 0;}), prop.pending_shares.end());
             break;
@@ -467,11 +480,11 @@ EVT_ACTION_IMPL_BEGIN(recvstkbonus) {
         READ_DB_TOKEN(token_type::stakepool, std::nullopt, rsbact.sym_id, stakepool, staking_exception,
             "Cannot find stakepool");
 
-        real_type seconds  = (context.control.pending_block_time() - stakepool->begin_time).to_seconds();
-        real_type days     = (real_type)seconds / (24 * 60 * 60);
-        real_type year_roi = mp::exp(-mp::log10(stakepool->total.to_real() / stakepool->demand_r / 1000)) / ((real_type)stakepool->demand_q  / 1000 + days * stakepool->demand_w / 1000)
+        auto seconds  = (context.control.pending_block_time() - stakepool->begin_time).to_seconds();
+        auto days     = (real_type)seconds / (24 * 60 * 60);
+        auto year_roi = mp::exp(-mp::log10(stakepool->total.to_real() / (stakepool->demand_r / 1000)) / ((real_type)stakepool->demand_q  / 1000) + days * stakepool->demand_w / 1000)
             * mp::pow(real_type(10), real_type(stakepool->demand_t) / 1000);
-        real_type roi      = year_roi * (context.control.pending_block_time() - validator->last_updated_time).to_seconds() / (365 * 24 * 60 * 60);
+        auto roi      = year_roi * (context.control.pending_block_time() - validator->last_updated_time).to_seconds() / (365 * 24 * 60 * 60);
 
         auto new_net_value = (int64_t)mp::floor((real_type)validator->current_net_value.amount() * (1 + roi));
         auto diff_amount   = (new_net_value - validator->current_net_value.amount()) * validator->total_units;
