@@ -580,6 +580,13 @@ evt_contract_abi() {
         }
     });
 
+    evt_abi.structs.emplace_back( struct_def {
+        "recvstkbonus", "", {
+           {"validator", "account_name"},
+           {"sym_id", "symbol_id_type"}
+        }
+    });
+
     // abi_def fields
     evt_abi.structs.emplace_back( struct_def {
         "field_def", "", {

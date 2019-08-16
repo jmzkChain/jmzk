@@ -1042,7 +1042,7 @@ struct set_assets_subcommands {
         unstkcmd->add_option("staker", staker, localized("Address of the staker"))->required();
         unstkcmd->add_option("validator", validator, localized("name of the validator"))->required();
         unstkcmd->add_option("units", units, localized("units to unstake"))->required();
-        unstkcmd->add_option("sym_id", sym_id, localized("symbol_id of assets to unstake"))->required();
+        unstkcmd->add_option("id", sym_id, localized("symbol_id of assets to unstake"))->required();
         unstkcmd->add_option("op", op, localized("unstake option"))->required();
 
         add_standard_transaction_options(unstkcmd);
@@ -1064,7 +1064,7 @@ struct set_assets_subcommands {
         auto tatkcmd = actionRoot->add_subcommand("toactive", localized("make your fixed stake active"));
         tatkcmd->add_option("staker", staker, localized("Address of the staker"))->required();
         tatkcmd->add_option("validator", validator, localized("name of the validator"))->required();
-        tatkcmd->add_option("sym_id", sym_id, localized("symbol_id of assets"))->required();
+        tatkcmd->add_option("id", sym_id, localized("symbol_id of assets"))->required();
 
         add_standard_transaction_options(tatkcmd);
 
@@ -1354,6 +1354,8 @@ struct set_validator_subcommands {
     string commission;
     string addr;
     string amount;
+    string validator;
+    int    sym_id;
 
     set_validator_subcommands(CLI::App* actionRoot) {
         auto nvdcmd = actionRoot->add_subcommand("create", localized("create a new validator"));
@@ -1372,8 +1374,8 @@ struct set_validator_subcommands {
             nvd.name       = (name128)name;
             nvd.creator    = get_public_key(creator);
             nvd.signer     = get_public_key(addr);
-            nvd.withdraw   = (withdraw == "default") ? get_default_permission("withdraw", signer) : parse_permission(withdraw);
-            nvd.manage     = (manage == "default") ? get_default_permission("manage", signer) : parse_permission(manage);
+            nvd.withdraw   = (withdraw == "default") ? get_default_permission("withdraw", nvd.signer) : parse_permission(withdraw);
+            nvd.manage     = (manage == "default") ? get_default_permission("manage", nvd.signer) : parse_permission(manage);
             nvd.commission = percent_slim::from_string(commission);
 
             auto act = create_action(N128(.staking), (domain_key)nvd.name, nvd);
@@ -1397,6 +1399,22 @@ struct set_validator_subcommands {
             auto act = create_action(N128(.staking), (domain_key)vwd.name, vwd);
             send_actions({act});
         });
+
+        auto rsbcmd = actionRoot->add_subcommand("recvbonus", localized("recvbonus of a validator"));
+
+        rsbcmd->add_option("validator", validator, localized("Name of validator to recvbonus"))->required();
+        rsbcmd->add_option("id", sym_id, localized("sym id to recvbonus"))->required();
+
+        add_standard_transaction_options(rsbcmd);
+
+        rsbcmd->callback([this] {
+            auto rsb   = recvstkbonus();
+            rsb.validator = (name128)validator;
+            rsb.sym_id    = sym_id;
+
+            auto act = create_action(N128(.staking), (domain_key)rsb.validator, rsb);
+            send_actions({act});
+        });
     }
 };
 
@@ -1413,7 +1431,7 @@ struct set_stakepool_subcommands {
     set_stakepool_subcommands(CLI::App* actionRoot) {
         auto nspcmd = actionRoot->add_subcommand("create", localized("create a new stakepool"));
 
-        nspcmd->add_option("sym_id", sym_id, localized("sym_id of stakepool"))->required();
+        nspcmd->add_option("id", sym_id, localized("sym_id of stakepool"))->required();
         nspcmd->add_option("--purchase-threshold", purchase_threshold, localized("purchase threshold of stakepool"))->required();
         nspcmd->add_option("--demand-r", demand_r, localized("demand r of stakepool"))->required();
         nspcmd->add_option("--demand-t", demand_t, localized("demand t of stakepool"))->required();
@@ -1442,7 +1460,7 @@ struct set_stakepool_subcommands {
 
         auto upspcmd = actionRoot->add_subcommand("update", localized("update a stakepool"));
 
-        upspcmd->add_option("sym_id", sym_id, localized("sym_id of stakepool"))->required();
+        upspcmd->add_option("id", sym_id, localized("sym_id of stakepool"))->required();
         upspcmd->add_option("--purchase-threshold", purchase_threshold, localized("purchase threshold of stakepool"))->required();
         upspcmd->add_option("--demand-r", demand_r, localized("demand r of stakepool"))->required();
         upspcmd->add_option("--demand-t", demand_t, localized("demand t of stakepool"))->required();
@@ -1732,7 +1750,7 @@ struct set_get_stakepool_subcommand {
 
     set_get_stakepool_subcommand(CLI::App* actionRoot) {
         auto gspcmd = actionRoot->add_subcommand("stakepool", localized("Retrieve a stakepool information"));
-        gspcmd->add_option("sym_id", sym_id, localized("Name of stakepool to be retrieved"))->required();
+        gspcmd->add_option("id", sym_id, localized("Name of stakepool to be retrieved"))->required();
 
         gspcmd->callback([this] {
             auto arg = fc::mutable_variant_object("sym_id", sym_id);
@@ -1903,7 +1921,7 @@ struct set_get_history_subcommands {
         });
 
         auto funcmd = hiscmd->add_subcommand("fungible", localized("Retrieve fungible actions history"));
-        funcmd->add_option("sym_id", sym_id, localized("Symbol Id to be retrieved"))->required();
+        funcmd->add_option("id", sym_id, localized("Symbol Id to be retrieved"))->required();
         funcmd->add_option("address", addr, localized("Address involved in fungible actions"));
         funcmd->add_option("--skip,-s", skip, localized("How many records should be skipped"));
         funcmd->add_option("--take,-t", take, localized("How many records should be returned"));
