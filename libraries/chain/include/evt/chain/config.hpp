@@ -77,6 +77,7 @@ const static int default_evt_link_expired_secs = 20;  // 20s -> total: 40s
 const static int default_unstake_pending_days = 21;
 const static int default_cycles_per_period    = 256;
 const static int default_blocks_per_cycle     = 12;
+const static int default_staking_threshold    = 100000;
 
 }}}  // namespace evt::chain::config
 

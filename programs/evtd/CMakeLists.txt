@@ -50,6 +50,7 @@ target_link_libraries(evtd
     PRIVATE http_client_plugin
     PRIVATE evt_chain
     PRIVATE fc
+    PRIVATE -Wl,${whole_archive_flag} staking_plugin -Wl,${no_whole_archive_flag}
     PRIVATE -Wl,${whole_archive_flag} producer_api_plugin -Wl,${no_whole_archive_flag}
     PRIVATE -Wl,${whole_archive_flag} chain_api_plugin -Wl,${no_whole_archive_flag}
     PRIVATE -Wl,${whole_archive_flag} net_api_plugin -Wl,${no_whole_archive_flag}

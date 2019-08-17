@@ -482,6 +482,8 @@ EVT_ACTION_IMPL_BEGIN(recvstkbonus) {
         READ_DB_TOKEN(token_type::validator, std::nullopt, rsbact.validator, validator, unknown_validator_exception,
             "Cannot find validator: {}", rsbact.validator);
 
+        EVT_ASSERT2(validator->total_units >= conf.staking_threshold, staking_symbol_exception, "Need at least {} units to start receiving staking rewards", conf.staking_threshold);
+
         auto stakepool = make_empty_cache_ptr<stakepool_def>();
         READ_DB_TOKEN(token_type::stakepool, std::nullopt, rsbact.sym_id, stakepool, staking_exception,
             "Cannot find stakepool");
