@@ -678,14 +678,14 @@ struct newstakepool {
 struct updstakepool {
     symbol_id_type sym_id;
 
-    asset   purchase_threshold;
-    int32_t demand_r;
-    int32_t demand_t;
-    int32_t demand_q;
-    int32_t demand_w;
+    optional<asset>   purchase_threshold;
+    optional<int32_t> demand_r;
+    optional<int32_t> demand_t;
+    optional<int32_t> demand_q;
+    optional<int32_t> demand_w;
 
-    int32_t fixed_r;
-    int32_t fixed_t;
+    optional<int32_t> fixed_r;
+    optional<int32_t> fixed_t;
 
     EVT_ACTION_VER1(updstakepool);
 };

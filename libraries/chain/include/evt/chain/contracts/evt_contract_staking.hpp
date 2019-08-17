@@ -58,20 +58,26 @@ EVT_ACTION_IMPL_BEGIN(updstakepool) {
         DECLARE_TOKEN_DB()
 
         EVT_ASSERT2(usact.sym_id == EVT_SYM_ID, staking_symbol_exception, "Only EVT is supported to stake currently");
-        EVT_ASSERT2(usact.sym_id == usact.purchase_threshold.sym().id(), symbol_type_exception,
-            "Purchase threshold's symbol should match stake pool");
+
 
         auto stakepool = make_empty_cache_ptr<stakepool_def>();
         READ_DB_TOKEN(token_type::stakepool, std::nullopt, usact.sym_id, stakepool, unknown_stakepool_exception,
             "Cannot find stakepool with sym id: {}", usact.sym_id);
 
-        stakepool->demand_r           = usact.demand_r;
-        stakepool->demand_t           = usact.demand_t;
-        stakepool->demand_q           = usact.demand_q;
-        stakepool->demand_w           = usact.demand_w;
-        stakepool->fixed_r            = usact.fixed_r;
-        stakepool->fixed_t            = usact.fixed_t;
-        stakepool->purchase_threshold = usact.purchase_threshold;
+        if(usact.purchase_threshold.has_value()) {
+            EVT_ASSERT2(usact.sym_id == usact.purchase_threshold->sym().id(), symbol_type_exception,
+                "Purchase threshold's symbol should match stake pool");
+            stakepool->purchase_threshold = *usact.purchase_threshold;
+        }
+
+        #define CHECK_N_UPDATE(prop) if(usact.prop.has_value()) { stakepool->prop = *usact.prop; }
+
+        CHECK_N_UPDATE(demand_r);
+        CHECK_N_UPDATE(demand_t);
+        CHECK_N_UPDATE(demand_q);
+        CHECK_N_UPDATE(demand_w);
+        CHECK_N_UPDATE(fixed_r);
+        CHECK_N_UPDATE(fixed_t);
         
         UPD_DB_TOKEN(token_type::stakepool, *stakepool);
     }
@@ -194,7 +200,7 @@ EVT_ACTION_IMPL_BEGIN(staketkns) {
         READ_DB_TOKEN(token_type::stakepool, std::nullopt, sym.id(), stakepool, unknown_stakepool_exception,
             "Cannot find stakepool");
 
-        EVT_ASSERT2(stact.amount >= stakepool->purchase_threshold, staking_amount_exception, "Needs to stake more than purchase threshold in stakepool");
+        EVT_ASSERT2(stact.amount >= stakepool->purchase_threshold, staking_amount_exception, "Needs to stake at least the same as purchase threshold in stakepool: {}", stakepool->purchase_threshold);
 
         auto units = (int64_t)mp::floor(real_type(stact.amount.amount()) / real_type(validator->current_net_value.amount()));
         auto total = asset(units * validator->current_net_value.amount(), sym);

@@ -851,8 +851,8 @@ struct set_fungible_subcommands {
     string sym_name;
     string sym;
     string creator;
-    string issue    = "default";
-    string manage   = "default";
+    string issue = "default";
+    string manage = "default";
     string total_supply = "";
     string address;
     string number;
@@ -969,7 +969,7 @@ struct set_assets_subcommands {
     string      validator;
     string      amount;
     string      type;
-    int         days;
+    int         days = 0;
     int         units;
     int         sym_id;
     string      op;
@@ -1019,8 +1019,8 @@ struct set_assets_subcommands {
         stkcmd->add_option("staker", staker, localized("Address of the staker"))->required();
         stkcmd->add_option("validator", validator, localized("name of the validator"))->required();
         stkcmd->add_option("amount", amount, localized("amount of stake asset"))->required();
-        stkcmd->add_option("type", type, localized("type of stake"))->required();
-        stkcmd->add_option("days", days, localized("fixed days of stake"))->required();
+        stkcmd->add_option("type", type, localized("type of stake, 'active' or 'fixed'"))->required();
+        stkcmd->add_option("days", days, localized("fixed days of stake, only set when type is fixed"));
 
         add_standard_transaction_options(stkcmd);
 
@@ -1363,9 +1363,9 @@ struct set_validator_subcommands {
         nvdcmd->add_option("name", name, localized("Name of validator"))->required();
         nvdcmd->add_option("creator", creator, localized("addresse of creator"))->required();
         nvdcmd->add_option("signer", addr, localized("addresse of signer"))->required();
+        nvdcmd->add_option("commission", commission, localized("commission of validator"))->required();
         nvdcmd->add_option("withdraw", withdraw, localized("JSON string or filename defining WITHDRAW permission"))->capture_default_str();
         nvdcmd->add_option("manage", manage, localized("JSON string or filename defining MANAGE permission"))->capture_default_str();
-        nvdcmd->add_option("commission", commission, localized("commission of validator"))->required();
 
         add_standard_transaction_options(nvdcmd);
 
@@ -1420,25 +1420,25 @@ struct set_validator_subcommands {
 
 struct set_stakepool_subcommands {
     int sym_id;
-    string purchase_threshold;
-    int demand_r;
-    int demand_t;
-    int demand_q;
-    int demand_w;
-    int fixed_r;
-    int fixed_t;
+    string purchase_threshold = "50.00000 S#1";
+    int demand_r = 50000000;
+    int demand_t = -670;
+    int demand_q = 10000;
+    int demand_w = -1;
+    int fixed_r  = 150000;
+    int fixed_t  = 5000;
 
     set_stakepool_subcommands(CLI::App* actionRoot) {
         auto nspcmd = actionRoot->add_subcommand("create", localized("create a new stakepool"));
 
         nspcmd->add_option("id", sym_id, localized("sym_id of stakepool"))->required();
-        nspcmd->add_option("--purchase-threshold", purchase_threshold, localized("purchase threshold of stakepool"))->required();
-        nspcmd->add_option("--demand-r", demand_r, localized("demand r of stakepool"))->required();
-        nspcmd->add_option("--demand-t", demand_t, localized("demand t of stakepool"))->required();
-        nspcmd->add_option("--demand-q", demand_q, localized("demand q of stakepool"))->required();
-        nspcmd->add_option("--demand-w", demand_w, localized("demand w of stakepool"))->required();
-        nspcmd->add_option("--fixed-r", fixed_r, localized("fixed r of stakepool"))->required();
-        nspcmd->add_option("--fixed-t", fixed_t, localized("fixed t of stakepool"))->required();
+        nspcmd->add_option("purchase-threshold", purchase_threshold, localized("purchase threshold of stakepool"))->capture_default_str();
+        nspcmd->add_option("--demand-r", demand_r, localized("demand r of stakepool"))->capture_default_str();
+        nspcmd->add_option("--demand-t", demand_t, localized("demand t of stakepool"))->capture_default_str();
+        nspcmd->add_option("--demand-q", demand_q, localized("demand q of stakepool"))->capture_default_str();
+        nspcmd->add_option("--demand-w", demand_w, localized("demand w of stakepool"))->capture_default_str();
+        nspcmd->add_option("--fixed-r", fixed_r, localized("fixed r of stakepool"))->capture_default_str();
+        nspcmd->add_option("--fixed-t", fixed_t, localized("fixed t of stakepool"))->capture_default_str();
 
         add_standard_transaction_options(nspcmd);
 
@@ -1461,13 +1461,13 @@ struct set_stakepool_subcommands {
         auto upspcmd = actionRoot->add_subcommand("update", localized("update a stakepool"));
 
         upspcmd->add_option("id", sym_id, localized("sym_id of stakepool"))->required();
-        upspcmd->add_option("--purchase-threshold", purchase_threshold, localized("purchase threshold of stakepool"))->required();
-        upspcmd->add_option("--demand-r", demand_r, localized("demand r of stakepool"))->required();
-        upspcmd->add_option("--demand-t", demand_t, localized("demand t of stakepool"))->required();
-        upspcmd->add_option("--demand-q", demand_q, localized("demand q of stakepool"))->required();
-        upspcmd->add_option("--demand-w", demand_w, localized("demand w of stakepool"))->required();
-        upspcmd->add_option("--fixed-r", fixed_r, localized("fixed r of stakepool"))->required();
-        upspcmd->add_option("--fixed-t", fixed_t, localized("fixed t of stakepool"))->required();
+        upspcmd->add_option("purchase-threshold", purchase_threshold, localized("purchase threshold of stakepool"))->capture_default_str();
+        upspcmd->add_option("--demand-r", demand_r, localized("demand r of stakepool"))->capture_default_str();
+        upspcmd->add_option("--demand-t", demand_t, localized("demand t of stakepool"))->capture_default_str();
+        upspcmd->add_option("--demand-q", demand_q, localized("demand q of stakepool"))->capture_default_str();
+        upspcmd->add_option("--demand-w", demand_w, localized("demand w of stakepool"))->capture_default_str();
+        upspcmd->add_option("--fixed-r", fixed_r, localized("fixed r of stakepool"))->capture_default_str();
+        upspcmd->add_option("--fixed-t", fixed_t, localized("fixed t of stakepool"))->capture_default_str();
 
         add_standard_transaction_options(upspcmd);
 
