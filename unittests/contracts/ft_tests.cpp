@@ -337,7 +337,7 @@ TEST_CASE_METHOD(contracts_test, "issuefungible_test", "[contracts]") {
     to_variant(issfg, var); 
     my_tester->push_action(N(issuefungible), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer);
 
-    issfg.number = asset::from_string(string("15.00000 S#0"));
+    issfg.number = asset::from_string(string("15.00000 S#333"));
     to_variant(issfg, var);
     CHECK_THROWS_AS(my_tester->push_action(N(issuefungible), N128(.fungible),(name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer), action_authorize_exception);
 

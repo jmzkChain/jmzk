@@ -522,13 +522,13 @@ evt_contract_abi() {
     evt_abi.structs.emplace_back( struct_def {
         "updstakepool", "", {
            {"sym_id", "symbol_id_type"},
-           {"purchase_threshold", "asset"},
-           {"demand_r", "int32"},
-           {"demand_t", "int32"},
-           {"demand_q", "int32"},
-           {"demand_w", "int32"},
-           {"fixed_r", "int32"},
-           {"fixed_t", "int32"}
+           {"purchase_threshold", "asset?"},
+           {"demand_r", "int32?"},
+           {"demand_t", "int32?"},
+           {"demand_q", "int32?"},
+           {"demand_w", "int32?"},
+           {"fixed_r", "int32?"},
+           {"fixed_t", "int32?"}
         }
     });
 

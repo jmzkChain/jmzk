@@ -825,7 +825,7 @@ TEST_CASE_METHOD(abi_test, "newfungible_abi_test", "[abis]") {
           }
         ]
       },
-      "total_supply":"12.00000 S#0"
+      "total_supply":"12.00000 S#1"
     }
     )=====";
 
@@ -852,8 +852,8 @@ TEST_CASE_METHOD(abi_test, "newfungible_abi_test", "[abis]") {
     CHECK(1 == newfg.manage.authorizers[0].weight);
 
     CHECK(1200000 == newfg.total_supply.amount());
-    CHECK("5,S#0" == newfg.total_supply.sym().to_string());
-    CHECK("12.00000 S#0" == newfg.total_supply.to_string());
+    CHECK("5,S#1" == newfg.total_supply.sym().to_string());
+    CHECK("12.00000 S#1" == newfg.total_supply.to_string());
 
     auto var2 = verify_byte_round_trip_conversion(abis, "newfungible", var);
 
@@ -878,8 +878,8 @@ TEST_CASE_METHOD(abi_test, "newfungible_abi_test", "[abis]") {
     CHECK(1 == newfg2.manage.authorizers[0].weight);
 
     CHECK(1200000 == newfg2.total_supply.amount());
-    CHECK("5,S#0" == newfg2.total_supply.sym().to_string());
-    CHECK("12.00000 S#0" == newfg2.total_supply.to_string());
+    CHECK("5,S#1" == newfg2.total_supply.sym().to_string());
+    CHECK("12.00000 S#1" == newfg2.total_supply.to_string());
 
     verify_type_round_trip_conversion<newfungible>(abis, "newfungible", var);
 }

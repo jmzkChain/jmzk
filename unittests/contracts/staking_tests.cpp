@@ -146,7 +146,7 @@ TEST_CASE_METHOD(contracts_test, "staketkns_test", "[contracts][staking]") {
     {
       "staker": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
       "validator": "validator",
-      "amount" : "5000.00000 S#1",
+      "amount" : "500000.00000 S#1",
       "type": "active",
       "fixed_days": 5
     }
@@ -174,11 +174,11 @@ TEST_CASE_METHOD(contracts_test, "staketkns_test", "[contracts][staking]") {
 
     validator_def validator_;
     READ_TOKEN(validator, "validator", validator_);
-    CHECK(validator_.total_units == 5000);
+    CHECK(validator_.total_units == 500000);
 
     stakepool_def stakepool_;
     READ_TOKEN(stakepool, 1, stakepool_);
-    CHECK(stakepool_.total == asset(5000'00000, evt_sym()));
+    CHECK(stakepool_.total == asset(500000'00000, evt_sym()));
 
     stk.type = stake_type::fixed;
     stk.fixed_days = 30;
@@ -187,10 +187,10 @@ TEST_CASE_METHOD(contracts_test, "staketkns_test", "[contracts][staking]") {
     CHECK_NOTHROW(my_tester->push_action(N(staketkns), N128(.staking), N128(validator), var.get_object(), key_seeds, payer));
 
     READ_TOKEN(validator, "validator", validator_);
-    CHECK(validator_.total_units == 10000);
+    CHECK(validator_.total_units == 1'000'000);
 
     READ_TOKEN(stakepool, 1, stakepool_);
-    CHECK(stakepool_.total == asset(10000'00000, evt_sym()));
+    CHECK(stakepool_.total == asset(1'000'000'00000, evt_sym()));
 
     my_tester->produce_blocks();
     my_tester->produce_block(fc::days(stk.fixed_days + 1));
@@ -222,8 +222,8 @@ TEST_CASE_METHOD(contracts_test, "toactivetkns_test", "[contracts][staking]") {
 
     CHECK_NOTHROW(my_tester->push_action(N(toactivetkns), N128(.staking), N128(validator), var.get_object(), key_seeds, payer));
 
-    auto appro_roi      = real_type(0.0994);
-    int64_t diff_units  = (int64_t)mp::floor(real_type(5000) * appro_roi);
+    auto appro_roi      = real_type(0.0994194096);
+    int64_t diff_units  = (int64_t)mp::floor(real_type(500000) * appro_roi);
     int64_t diff_amount = 1'00000 * diff_units;
 
     // check diff units
@@ -243,7 +243,7 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts][staking]") {
     {
       "staker": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
       "validator": "validator",
-      "units" : 2000,
+      "units" : 200000,
       "sym_id": 1,
       "op": "propose"
     }
@@ -293,8 +293,8 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts][staking]") {
     my_tester->produce_blocks();
 
     READ_DB_ASSET(unstk.staker, evt_sym(), prop);
-    CHECK(sum_pending_units(prop) == 2000);
-    CHECK(sum_units(prop) == pre_units - 2000);
+    CHECK(sum_pending_units(prop) == 200000);
+    CHECK(sum_units(prop) == pre_units - 200000);
     CHECK(prop.pending_shares.size() == 1);
     CHECK(prop.stake_shares.size() == 2);
 
@@ -313,7 +313,7 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts][staking]") {
 
     // propose again
     unstk.op    = unstake_op::propose;
-    unstk.units = 3000;
+    unstk.units = 300000;
     to_variant(unstk, var);
 
     CHECK_NOTHROW(my_tester->push_action(N(unstaketkns), N128(.staking), N128(validator), var.get_object(), key_seeds, payer));
@@ -321,8 +321,8 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts][staking]") {
     my_tester->produce_blocks();
 
     READ_DB_ASSET(unstk.staker, evt_sym(), prop);
-    CHECK(sum_pending_units(prop) == 3000);
-    CHECK(sum_units(prop) == pre_units - 3000);
+    CHECK(sum_pending_units(prop) == 300000);
+    CHECK(sum_units(prop) == pre_units - 300000);
     CHECK(prop.pending_shares.size() == 1);
     CHECK(prop.stake_shares.size() == 2);
 
@@ -330,7 +330,7 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts][staking]") {
     auto validator = make_empty_cache_ptr<validator_def>();
     READ_DB_TOKEN(token_type::validator, std::nullopt, unstk.validator, validator, unknown_validator_exception,
             "Cannot find validator: {}", unstk.validator);
-    validator->current_net_value = asset(2'00000, evt_sym());
+    validator->current_net_value = asset::from_integer(2, nav_sym());
     UPD_DB_TOKEN(validator,  N128(validator), *validator);
     my_tester->produce_blocks();
 
@@ -347,23 +347,23 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts][staking]") {
 
     READ_DB_ASSET(unstk.staker, evt_sym(), prop);
     CHECK(sum_pending_units(prop) == 0);
-    CHECK(sum_units(prop) == pre_units - 3000);
+    CHECK(sum_units(prop) == pre_units - 300000);
     CHECK(prop.pending_shares.size() == 0);
     CHECK(prop.stake_shares.size() == 2);
-    CHECK(prop.amount - pre_amount == 3000'00000);  // net value doubled
+    CHECK(prop.amount - pre_amount == 300000'00000);  // net value doubled
 
     // check stakepool
     READ_TOKEN(stakepool, 1, stakepool_);
-    CHECK(pre_stakepool_amout - stakepool_.total.amount() == 4500'00000); // 3000 + 1500(another 1500 is for validator)
+    CHECK(pre_stakepool_amout - stakepool_.total.amount() == 450000'00000); // 300'000 + 150'000(another 150'000 is for validator)
 
     // check validator
     READ_TOKEN(validator, "validator", validator_);
-    CHECK(pre_validator_units - validator_.total_units == 3000);
+    CHECK(pre_validator_units - validator_.total_units == 300'000);
 
     auto vaddr = address(N(.validator), validator_.name, EVT_SYM_ID);
     auto vprop = property();
     READ_DB_ASSET(vaddr, evt_sym(), vprop);
-    CHECK(vprop.amount == 1500'00000);  // 50% commission
+    CHECK(vprop.amount == 150'000'00000);  // 50% commission
 
     my_tester->produce_blocks();
 
@@ -443,7 +443,7 @@ TEST_CASE_METHOD(contracts_test, "recvstkbonus_test", "[contracts][staking]") {
     CHECK(validator->signer == key);
     
     // reset validator's net value
-    validator->current_net_value = asset(1'00000, evt_sym());
+    validator->current_net_value = asset::from_integer(1, nav_sym());
     UPD_DB_TOKEN(validator,  N128(validator), *validator);
     my_tester->produce_blocks();
 
@@ -453,9 +453,10 @@ TEST_CASE_METHOD(contracts_test, "recvstkbonus_test", "[contracts][staking]") {
     my_tester->produce_blocks((conf.cycles_per_period - 2) * conf.blocks_per_cycle);
 
     // calculate roi
-    auto yroi = 0.2143;
+    auto yroi = 0.17541;
     auto roi  = yroi * (my_tester->control->pending_block_time() - validator->last_updated_time).to_seconds() / (365.0 * 24 * 60 * 60);
 
+    INFO(stakepool_.total);
     INFO(yroi);
     INFO(roi);
     INFO((my_tester->control->pending_block_time() - stakepool_.begin_time).to_seconds());
@@ -465,7 +466,7 @@ TEST_CASE_METHOD(contracts_test, "recvstkbonus_test", "[contracts][staking]") {
     
     READ_DB_TOKEN(token_type::validator, std::nullopt, rsb.validator, validator, unknown_validator_exception,
                   "Cannot find validator: {}", rsb.validator);
-    CHECK(validator->current_net_value.amount() == Approx(1'00000 * (1 + roi)).margin(5));
+    CHECK(validator->current_net_value.to_double() == Approx(1 * (1 + roi)));
 
     READ_TOKEN(stakepool, 1, stakepool_);
     CHECK(stakepool_.total.amount() / 1'00000.0 - pre_amount / 1'00000.0 == Approx(validator->total_units * roi).margin(1));

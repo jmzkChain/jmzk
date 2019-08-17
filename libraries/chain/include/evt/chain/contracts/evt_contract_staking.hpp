@@ -124,8 +124,8 @@ EVT_ACTION_IMPL_BEGIN(newvalidator) {
         validator.manage            = std::move(nvact.manage);
         validator.commission        = nvact.commission;
 
-        validator.initial_net_value = asset(1'00000, evt_sym());
-        validator.current_net_value = asset(1'00000, evt_sym());;
+        validator.initial_net_value = asset::from_integer(1, nav_sym());
+        validator.current_net_value = asset::from_integer(1, nav_sym());
         validator.total_units       = 0;
         
         ADD_DB_TOKEN(token_type::validator, validator);
@@ -177,7 +177,7 @@ EVT_ACTION_IMPL_BEGIN(staketkns) {
 
         auto prop = property_stakes();
         READ_DB_ASSET(stact.staker, sym, prop);
-        EVT_ASSERT2(prop.amount >= stact.amount.amount(), staking_amount_exception, "Don't have enough balance to stake");
+        EVT_ASSERT2(prop.amount >= stact.amount.amount(), balance_exception, "Don't have enough balance to stake");
 
         switch(stact.type) {
         case stake_type::active: {
@@ -194,7 +194,7 @@ EVT_ACTION_IMPL_BEGIN(staketkns) {
         READ_DB_TOKEN(token_type::validator, std::nullopt, stact.validator, validator, unknown_validator_exception,
             "Cannot find validator: {}", stact.validator);
 
-        EVT_ASSERT2(stact.amount >= validator->current_net_value, staking_amount_exception, "Needs to stake at least one unit");
+        EVT_ASSERT2(stact.amount.to_real() >= validator->current_net_value.to_real(), staking_amount_exception, "Needs to stake at least one unit");
 
         auto stakepool = make_empty_cache_ptr<stakepool_def>();
         READ_DB_TOKEN(token_type::stakepool, std::nullopt, sym.id(), stakepool, unknown_stakepool_exception,
@@ -202,8 +202,8 @@ EVT_ACTION_IMPL_BEGIN(staketkns) {
 
         EVT_ASSERT2(stact.amount >= stakepool->purchase_threshold, staking_amount_exception, "Needs to stake at least the same as purchase threshold in stakepool: {}", stakepool->purchase_threshold);
 
-        auto units = (int64_t)mp::floor(real_type(stact.amount.amount()) / real_type(validator->current_net_value.amount()));
-        auto total = asset(units * validator->current_net_value.amount(), sym);
+        auto units = (int64_t)mp::floor(stact.amount.to_real() / validator->current_net_value.to_real());
+        auto total = asset((int64_t)mp::ceil(validator->current_net_value.to_real() * units * std::pow(10, sym.precision())), sym);
 
         // add units to validator
         validator->total_units += units;
@@ -265,7 +265,7 @@ EVT_ACTION_IMPL_BEGIN(toactivetkns) {
             auto roi  = mp::exp(mp::log10(days / (stakepool->fixed_r / 1000))) / ((real_type)stakepool->fixed_t / 1000);
 
             auto new_uints = (int64_t)mp::floor(real_type(s.units) * (roi + 1));
-            diff_amount   += s.net_value.amount() * (new_uints - s.units);
+            diff_amount   += (int64_t)mp::floor(s.net_value.to_real() * (new_uints - s.units) * std::pow(10, evt_sym().precision()));
             diff_units    += (new_uints - s.units);
 
             s.units      = new_uints;
@@ -402,9 +402,9 @@ EVT_ACTION_IMPL_BEGIN(unstaketkns) {
                 remainning_units -= units;
 
                 // update amounts
-                auto amount = s.net_value.amount() * units;
-                auto diff   = (validator->current_net_value.amount() - s.net_value.amount()) * units;
-                auto vbonus = (int64_t)mp::floor(diff * validator->commission.value());
+                auto amount = (int64_t)mp::floor(s.net_value.to_real() * units * std::pow(10, evt_sym().precision()));
+                auto diff   = (int64_t)mp::floor((validator->current_net_value.to_real() - s.net_value.to_real()) * units * std::pow(10, evt_sym().precision()));
+                auto vbonus = (int64_t)mp::floor(validator->commission.value() * diff);
 
                 frozen_amount += amount;
                 bonus_amount  += (diff - vbonus);
@@ -494,10 +494,11 @@ EVT_ACTION_IMPL_BEGIN(recvstkbonus) {
             * mp::pow(real_type(10), real_type(stakepool->demand_t) / 1000);
         auto roi      = year_roi * (context.control.pending_block_time() - validator->last_updated_time).to_seconds() / (365 * 24 * 60 * 60);
 
-        auto new_net_value = (int64_t)mp::floor((real_type)validator->current_net_value.amount() * (1 + roi));
-        auto diff_amount   = (new_net_value - validator->current_net_value.amount()) * validator->total_units;
+        auto new_net_value_amount = (int64_t)mp::floor((real_type)validator->current_net_value.amount() * (1 + roi));
+        auto new_net_value        = asset(new_net_value_amount, nav_sym());
+        auto diff_amount          = (int64_t)mp::round((new_net_value.to_real() - validator->current_net_value.to_real()) * validator->total_units * std::pow(10, evt_sym().precision()));
 
-        validator->current_net_value = asset(new_net_value, evt_sym());
+        validator->current_net_value = new_net_value;
         validator->last_updated_time = context.control.pending_block_time();
 
         stakepool->total += asset(diff_amount, evt_sym());
