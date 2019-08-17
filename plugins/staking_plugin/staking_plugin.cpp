@@ -96,7 +96,7 @@ staking_plugin_impl::applied_block(const block_state_ptr& bs) {
     auto ptrx = std::make_shared<packed_transaction>(trx);
     app().get_method<chain::plugin_interface::incoming::methods::transaction_async>()(std::make_shared<transaction_metadata>(ptrx), true, [](const auto& result) -> void {
         if(result.template contains<fc::exception_ptr>()) {
-            wlog("Push trx failed: ${e}", ("e",*result.template get<fc::exception_ptr>()));
+            wlog("Push trx failed: ${e}", ("e",result.template get<fc::exception_ptr>()->to_string()));
         }
         else {
             ilog("Received staking bonus");
