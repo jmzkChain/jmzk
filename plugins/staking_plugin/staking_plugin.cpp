@@ -44,12 +44,17 @@ public:
     uint32_t       last_recv_period_start_num_;
     controller&    db_;
     staking_config config_;
+    bool           init_ = true;
 
     std::optional<boost::signals2::scoped_connection> accepted_block_connection_;
 };
 
 void
 staking_plugin_impl::applied_block(const block_state_ptr& bs) {
+    if(init_) {
+        return;
+    }
+
     auto curr_block_num = db_.pending_block_state()->block_num;
 
     auto& ctx  = db_.get_global_properties().staking_ctx;
@@ -91,7 +96,7 @@ staking_plugin_impl::applied_block(const block_state_ptr& bs) {
     auto ptrx = std::make_shared<packed_transaction>(trx);
     app().get_method<chain::plugin_interface::incoming::methods::transaction_async>()(std::make_shared<transaction_metadata>(ptrx), true, [](const auto& result) -> void {
         if(result.template contains<fc::exception_ptr>()) {
-            wlog("Push trx failed", ("e",*result.template get<fc::exception_ptr>()));
+            wlog("Push trx failed: ${e}", ("e",*result.template get<fc::exception_ptr>()));
         }
         else {
             ilog("Received staking bonus");
@@ -122,9 +127,9 @@ staking_plugin::~staking_plugin() {}
 void
 staking_plugin::set_program_options(options_description&, options_description& cfg) {
     cfg.add_options()
-        ("validator", bpo::value<std::string>(), "Registered validator for staking.")
+        ("staking-validator", bpo::value<std::string>(), "Registered validator for staking.")
         ("staking-payer", bpo::value<std::string>(), "Payer address for pushing trx.")
-        ("signature-provider", boost::program_options::value<vector<string>>()->composing()->multitoken(),
+        ("staking-signature-provider", boost::program_options::value<vector<string>>()->composing()->multitoken(),
             "Key=Value pairs in the form <public-key>=<provider-spec>\n"
             "Where:\n"
             "   <public-key>    \tis a string form of a vaild EVT public key\n\n"
@@ -132,7 +137,7 @@ staking_plugin::set_program_options(options_description&, options_description& c
             "   <provider-type> \tis KEY, or EVTWD\n\n"
             "   KEY:<data>      \tis a string form of a valid EVT private key which maps to the provided public key\n\n"
             "   EVTWD:<data>    \tis the URL where evtwd is available and the approptiate wallet(s) are unlocked")
-        ("evtwd-provider-timeout", boost::program_options::value<int32_t>()->default_value(5), "Limits the maximum time (in milliseconds) that is allowed for pushing staking trx to a evtwd provider for signing")
+        ("staking-evtwd-provider-timeout", boost::program_options::value<int32_t>()->default_value(5), "Limits the maximum time (in milliseconds) that is allowed for pushing staking trx to a evtwd provider for signing")
     ;
 }
 
@@ -168,10 +173,10 @@ staking_plugin::plugin_initialize(const variables_map& options) {
 
     auto config = staking_plugin_impl::staking_config();
     try {
-        config.validator = options["validator"].as<std::string>();
-        config.payer     = public_key_type(options["payer"].as<std::string>());
+        config.validator = options["staking-validator"].as<std::string>();
+        config.payer     = public_key_type(options["staking-payer"].as<std::string>());
 
-        if(options.count("signature-provider")) {
+        if(options.count("staking-signature-provider")) {
             const std::vector<std::string> key_spec_pairs = options["signature-provider"].as<std::vector<std::string>>();
             for(const auto& key_spec_pair : key_spec_pairs) {
                 try {
@@ -200,7 +205,7 @@ staking_plugin::plugin_initialize(const variables_map& options) {
             }
         }
 
-        config.evtwd_provider_timeout_us = fc::milliseconds(options.at("evtwd-provider-timeout").as<int32_t>());
+        config.evtwd_provider_timeout_us = fc::milliseconds(options.at("staking-evtwd-provider-timeout").as<int32_t>());
     }
     FC_LOG_AND_RETHROW();
 
@@ -210,6 +215,7 @@ staking_plugin::plugin_initialize(const variables_map& options) {
 void
 staking_plugin::plugin_startup() {
     ilog("starting staking_plugin");
+    my_->init_ = false;
 }
 
 void
