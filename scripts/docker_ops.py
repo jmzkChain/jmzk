@@ -1030,7 +1030,7 @@ def init(ctx):
 @click.option('--host', '-h', default='127.0.0.1', help='Host address for evtwd (only works when http is enabled)')
 @click.option('--http-port', '-p', default=9999, help='Expose port for rpc request, set 0 for not expose (only works when http is enabled)')
 @click.pass_context
-def create(ctx, net, http, host, http_port, arguments):
+def create(ctx, net, type, http, host, http_port, arguments):
     name = ctx.obj['name']
     volume_name = '{}-data-volume'.format(name)
 
