@@ -123,6 +123,7 @@ chain_api_plugin::plugin_startup() {
                           CHAIN_RO_CALL(get_transaction_ids_for_block, 200),
                           CHAIN_RO_CALL(get_abi, 200),
                           CHAIN_RO_CALL(get_actions, 200),
+                          CHAIN_RO_CALL(get_staking, 200),
                           CHAIN_RW_CALL_ASYNC(push_block, chain_apis::read_write::push_block_results, 202),
                           CHAIN_RW_CALL_ASYNC(push_transaction, chain_apis::read_write::push_transaction_results, 202),
                           CHAIN_RW_CALL_ASYNC(push_transactions, chain_apis::read_write::push_transactions_results, 202)});

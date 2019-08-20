@@ -329,6 +329,11 @@ get_info() {
     return ::call(url, get_info_func, fc::variant()).as<evt::chain_apis::read_only::get_info_results>();
 }
 
+evt::chain_apis::read_only::get_staking_result
+get_staking() {
+    return ::call(url, get_staking_func, fc::variant()).as<evt::chain_apis::read_only::get_staking_result>();
+}
+
 public_key_type
 get_public_key(const std::string& key_or_ref) {
     static std::optional<fc::variant> pkeys;
@@ -2049,6 +2054,11 @@ main(int argc, char** argv) {
     // get info
     get->add_subcommand("info", localized("Get current blockchain information"))->callback([] {
         std::cout << fc::json::to_pretty_string(get_info()) << std::endl;
+    });
+
+    // get staking
+    get->add_subcommand("staking", localized("Get current blockchain information"))->callback([] {
+        std::cout << fc::json::to_pretty_string(get_staking()) << std::endl;
     });
 
     // get db info
