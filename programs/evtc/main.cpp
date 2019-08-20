@@ -143,9 +143,12 @@ print_info(const fc::variant& info, int indent = 0) {
 
             auto i = 1;
             for(auto& a : arr) {
-                if(indent == 0) {
-                    cerr << "(" << i << " of " << size << ")" << endl;
+                for(int i = 0; i < indent; i++) {
+                    cerr << "    ";
                 }
+                // if(indent == 0) {
+                cerr << "(" << i << " of " << size << ")" << endl;
+                // }
                 print_info(a, indent);
                 i++;
             }
@@ -1774,14 +1777,14 @@ struct set_get_validator_subcommand {
 };
 
 struct set_get_staking_shares_subcommand {
-    string address;
+    string addr;
 
     set_get_staking_shares_subcommand(CLI::App* actionRoot) {
         auto gsscmd = actionRoot->add_subcommand("shares", localized("Retrieve staking shares information"));
-        gsscmd->add_option("address", address, localized("Address for query"))->required();
+        gsscmd->add_option("address", addr, localized("Address for query"))->required();
 
         gsscmd->callback([this] {
-            auto arg = fc::mutable_variant_object("address", address);
+            auto arg = fc::mutable_variant_object("address", get_address(addr));
             print_info(call(get_staking_shares_func, arg));
         });
     }

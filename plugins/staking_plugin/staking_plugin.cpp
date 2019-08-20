@@ -111,10 +111,6 @@ void
 staking_plugin_impl::init(const staking_config& config) {
     config_ = config;
 
-    for(auto& pair : config_.signature_providers) {
-        ilog("${k}", ("k",pair.first));
-    }
-
     auto& chain_plug = app().get_plugin<chain_plugin>();
     auto& chain      = chain_plug.chain();
 
@@ -181,7 +177,7 @@ staking_plugin::plugin_initialize(const variables_map& options) {
         config.payer     = public_key_type(options["staking-payer"].as<std::string>());
 
         if(options.count("staking-signature-provider")) {
-            const std::vector<std::string> key_spec_pairs = options["staking-signature-provider"].as<std::vector<std::string>>();
+            const auto& key_spec_pairs = options["staking-signature-provider"].as<std::vector<std::string>>();
             for(const auto& key_spec_pair : key_spec_pairs) {
                 try {
                     auto delim = key_spec_pair.find("=");
@@ -215,6 +211,9 @@ staking_plugin::plugin_initialize(const variables_map& options) {
                 }
             }
         }
+
+        EVT_ASSERT(config.signature_providers.find(config.payer) != config.signature_providers.cend(),
+            plugin_config_exception, "Must provide signature provider for payer");
 
         config.evtwd_provider_timeout_us = fc::milliseconds(options.at("staking-evtwd-provider-timeout").as<int32_t>());
     }
