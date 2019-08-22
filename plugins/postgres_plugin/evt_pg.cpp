@@ -13,9 +13,20 @@
 #include <evt/chain/block_header.hpp>
 #include <evt/chain/exceptions.hpp>
 #include <evt/chain/snapshot.hpp>
+#include <evt/chain/controller.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
+#include <evt/chain/token_database_cache.hpp>
 #include <evt/postgres_plugin/copy_context.hpp>
 #include <evt/postgres_plugin/trx_context.hpp>
+
+#define READ_DB_TOKEN(TYPE, PREFIX, KEY, VPTR, EXCEPTION, FORMAT, ...) \
+    try {                                                              \
+        using vtype = typename decltype(VPTR)::element_type;           \
+        VPTR = cache.template read_token<vtype>(TYPE, PREFIX, KEY);    \
+    }                                                                  \
+    catch(token_database_exception&) {                                 \
+        EVT_THROW2(EXCEPTION, FORMAT, __VA_ARGS__);                    \
+    }
 
 namespace evt {
 
@@ -289,6 +300,33 @@ auto create_ft_holders_table = R"sql(CREATE TABLE IF NOT EXISTS public.ft_holder
                                      )
                                      TABLESPACE pg_default;)sql";
 
+auto create_validators_table = R"sql(CREATE TABLE IF NOT EXISTS public.validators
+                                     (
+                                         id           integer                 NOT NULL,
+                                         name         character varying(21)   NOT NULL,
+                                         created_at timestamp with time zone  NOT NULL  DEFAULT now(),
+                                         CONSTRAINT   validators_pkey PRIMARY KEY (id)
+                                     )
+                                     WITH (
+                                         OIDS = FALSE
+                                     )
+                                     TABLESPACE pg_default;)sql";
+
+auto update_validator_table = R"sql(CREATE TABLE IF NOT EXISTS public.netvalues
+                                     (
+                                         id           bigint                  NOT NULL,
+                                         validator_id integer                 NOT NULL,              
+                                         net_value    decimal(14)             NOT NULL,
+                                         total_units  bigint                  NOT NULL,
+                                         created_at timestamp with time zone  NOT NULL  DEFAULT now(),
+                                         CONSTRAINT   netvalues_pkey PRIMARY KEY (id)
+                                     )
+                                     WITH (
+                                         OIDS = FALSE
+                                     )
+                                     TABLESPACE pg_default;)sql";
+
+
 
 struct table {
     std::string name;
@@ -305,7 +343,9 @@ table tables[] = {
     { "tokens",       false },
     { "groups",       false },
     { "fungibles",    false },
-    { "ft_holders",   false }
+    { "ft_holders",   false },
+    { "validators",   false },
+    { "nervalues",    false }
 };
 
 template<typename Iterator>
@@ -548,7 +588,8 @@ pg::prepare_tables() {
         create_tokens_table,
         create_groups_table,
         create_fungibles_table,
-        create_ft_holders_table
+        create_ft_holders_table,
+        create_validators_table
     };
     for(auto stmt : stmts) {
         auto r = PQexec(conn_, stmt);
@@ -1077,6 +1118,60 @@ pg::upd_fungible(trx_context& tctx, const updfungible_v2& uf) {
     return PG_OK;
 }
 
+PREPARE_SQL_ONCE(nvl_plan, "INSERT INTO validators VALUES($1, $2, now());");
+PREPARE_SQL_ONCE(uvl_plan, "INSERT INTO netvalues VALUES(DEFAULT, $1, $2, $3, now());");
+
+int
+pg::add_validator(trx_context& tctx, const newvalidator& nvl) {
+    int validator_id = validators.size();
+
+    fmt::format_to(tctx.trx_buf_,
+        fmt("EXECUTE nvl_plan('{}, {}');\n"),
+        validator_id,
+        (std::string)nvl.name
+        );
+
+    fmt::format_to(tctx.trx_buf_,
+        fmt("EXECUTE uvl_plan('{}, {}, {}');\n"),
+        validator_id,
+        1.00000,
+        0
+        );
+
+    validator vl;
+    vl.name      = (std::string)nvl.name;
+    vl.id        = validator_id;
+    vl.net_value = 1.00000;
+    vl.units     = 0;
+
+    validators.emplace_back(vl);
+
+    return PG_OK;
+}
+
+int
+pg::upd_validators(trx_context& tctx, const controller& control) {
+    for(auto& validator : validators) {
+        auto  name      = validator.name;
+        auto& cache     = control.token_db_cache();
+        auto  validator_ = make_empty_cache_ptr<validator_def>();
+        READ_DB_TOKEN(token_type::validator, std::nullopt, name, validator_, unknown_validator_exception,
+                      "Cannot find validator: {}", name);
+        if(validator_->current_net_value.to_double() == validator.net_value && validator_->total_units == validator.units) continue;
+
+        validator.net_value = validator_->current_net_value.to_double();
+        validator.units     = validator_->total_units;
+
+        fmt::format_to(tctx.trx_buf_,
+          fmt("EXECUTE uvl_plan('{}, {}, {}');\n"),
+          validator.id,
+          validator.net_value,
+          validator.units
+          );
+    }
+
+    return PG_OK;
+}
 
 PREPARE_SQL_ONCE(am_plan,  "INSERT INTO metas VALUES(DEFAULT, $1, $2, $3, $4, now());");
 PREPARE_SQL_ONCE(amd_plan, "UPDATE domains SET metas = array_append(metas, $1) WHERE name = $2;");

@@ -325,6 +325,7 @@ postgres_plugin_impl::process_action(const action& act, trx_context& tctx) {
     case_act(destroytoken, del_token);
     case_act(newgroup,     add_group);
     case_act(updategroup,  upd_group);
+    case_act(newvalidator, add_validator);
     case N(newfungible): {
         exec_ctx_.invoke_action<newfungible>(act, [&](const auto& nf) {
             auto& cache = control_.token_db_cache();
@@ -367,6 +368,17 @@ postgres_plugin_impl::process_action(const action& act, trx_context& tctx) {
         });
         break;
     }
+    // case N(recvstkbonus): {
+    //     exec_ctx_.invoke_action<recvstkbonus>(act, [&](const auto& rb) {
+    //         auto& cache = control_.token_db_cache();
+    //         auto validator = make_empty_cache_ptr<validator_def>();
+    //         READ_DB_TOKEN(token_type::validator, std::nullopt, rb.validator, validator, unknown_validator_exception,
+    //             "Cannot find validator: {}", rb.validator);
+
+    //         db_.upd_validator(tctx, *validator);
+    //     });
+    //     break;
+    // }
     }; // switch
 }
 
@@ -392,10 +404,16 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
         }
     }
 
-    auto actx      = add_context(cctx, control_.get_chain_id(), control_.get_abi_serializer(), control_.get_execution_context());
+    auto& conf     = control_.get_global_properties().staking_configuration;
+    auto  actx     = add_context(cctx, control_.get_chain_id(), control_.get_abi_serializer(), control_.get_execution_context());
     actx.block_id  = id;
     actx.block_num = (int)block->block_num;
     actx.ts        = (std::string)block->header.timestamp.to_time_point();
+
+    // update all the validators
+    if(actx.block_num%(conf.cycles_per_period * conf.blocks_per_cycle)  == conf.blocks_per_cycle) {
+        db_.upd_validators(tctx, control_);
+    }
 
     db_.add_block(actx, block);
 
