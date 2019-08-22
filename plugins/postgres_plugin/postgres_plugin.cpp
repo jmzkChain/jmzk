@@ -110,6 +110,8 @@ public:
     std::thread      consume_thread_;
     std::atomic_bool done_ = false;
 
+    std::vector<validator> validators;
+
     std::optional<boost::signals2::scoped_connection> accepted_block_connection_;
     std::optional<boost::signals2::scoped_connection> irreversible_block_connection_;
     std::optional<boost::signals2::scoped_connection> applied_transaction_connection_;
@@ -367,6 +369,21 @@ postgres_plugin_impl::process_action(const action& act, trx_context& tctx) {
         });
         break;
     }
+    case N(newvalidator): {
+        exec_ctx_.invoke_action<newvalidator>(act, [&](const auto& nvl) {
+            int validator_id = validators.size();
+
+            validator vl;
+            vl.name      = (std::string)nvl.name;
+            vl.id        = validator_id;
+            vl.net_value = 1.00000;
+            vl.units     = 0;
+
+            validators.emplace_back(vl);
+            db_.add_validator(tctx, vl);
+        });
+        break;
+    }
     }; // switch
 }
 
@@ -392,10 +409,29 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
         }
     }
 
-    auto actx      = add_context(cctx, control_.get_chain_id(), control_.get_abi_serializer(), control_.get_execution_context());
+    auto& conf     = control_.get_global_properties().staking_configuration;
+    auto& ctx      = control_.get_global_properties().staking_ctx;
+    auto  actx     = add_context(cctx, control_.get_chain_id(), control_.get_abi_serializer(), control_.get_execution_context());
     actx.block_id  = id;
     actx.block_num = (int)block->block_num;
     actx.ts        = (std::string)block->header.timestamp.to_time_point();
+
+    // update all the validators
+    if(actx.block_num  == (int)ctx.period_start_num ) {
+        for(auto& vl : validators) {
+            auto  name      = vl.name;
+            auto& cache     = control_.token_db_cache();
+            auto  vl_ = make_empty_cache_ptr<validator_def>();
+            READ_DB_TOKEN(token_type::validator, std::nullopt, name, vl_, unknown_validator_exception,
+                          "Cannot find validator: {}", name);
+            if(vl_->current_net_value.to_double() == vl.net_value && vl_->total_units == vl.units) continue;
+
+            vl.net_value = vl_->current_net_value.to_double();
+            vl.units     = vl_->total_units;
+
+            db_.upd_validator(tctx, vl);
+        }
+    }
 
     db_.add_block(actx, block);
 

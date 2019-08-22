@@ -45,6 +45,13 @@ using ft_holders_t = chain::small_vector_base<chain::ft_holder>;
 struct copy_context;
 struct trx_context;
 
+struct validator {
+    std::string name;
+    int id;
+    double net_value;
+    int64_t units;
+};
+
 struct add_context : boost::noncopyable {
 public:
     add_context(copy_context& cctx, const chain_id_t& chain_id, const abi_t& abi, const exec_ctx_t& exec_ctx)
@@ -131,6 +138,9 @@ public:
     int add_fungible(trx_context&, const fungible_def&);
     int upd_fungible(trx_context&, const updfungible&);
     int upd_fungible(trx_context&, const updfungible_v2&);
+
+    int add_validator(trx_context& tctx, const validator& vl);
+    int upd_validator(trx_context& tctx, const validator& vl);
 
     int add_meta(trx_context&, const action_t&);
 

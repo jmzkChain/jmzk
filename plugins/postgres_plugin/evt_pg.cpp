@@ -289,6 +289,34 @@ auto create_ft_holders_table = R"sql(CREATE TABLE IF NOT EXISTS public.ft_holder
                                      )
                                      TABLESPACE pg_default;)sql";
 
+auto create_validators_table = R"sql(CREATE TABLE IF NOT EXISTS public.validators
+                                     (
+                                         id           integer                 NOT NULL,
+                                         name         character varying(21)   NOT NULL,
+                                         created_at timestamp with time zone  NOT NULL  DEFAULT now(),
+                                         CONSTRAINT   validators_pkey PRIMARY KEY (id)
+                                     )
+                                     WITH (
+                                         OIDS = FALSE
+                                     )
+                                     TABLESPACE pg_default;)sql";
+
+auto create_netvalues_table = R"sql(CREATE SEQUENCE IF NOT EXISTS netvalues_id_seq;
+                                    CREATE TABLE IF NOT EXISTS public.netvalues
+                                     (
+                                         id           bigint                  NOT NULL  DEFAULT nextval('netvalues_id_seq'),
+                                         validator_id integer                 NOT NULL,              
+                                         net_value    decimal(14)             NOT NULL,
+                                         total_units  bigint                  NOT NULL,
+                                         created_at timestamp with time zone  NOT NULL  DEFAULT now(),
+                                         CONSTRAINT   netvalues_pkey PRIMARY KEY (id)
+                                     )
+                                     WITH (
+                                         OIDS = FALSE
+                                     )
+                                     TABLESPACE pg_default;)sql";
+
+
 
 struct table {
     std::string name;
@@ -305,7 +333,9 @@ table tables[] = {
     { "tokens",       false },
     { "groups",       false },
     { "fungibles",    false },
-    { "ft_holders",   false }
+    { "ft_holders",   false },
+    { "validators",   false },
+    { "netvalues",    false }
 };
 
 template<typename Iterator>
@@ -548,7 +578,9 @@ pg::prepare_tables() {
         create_tokens_table,
         create_groups_table,
         create_fungibles_table,
-        create_ft_holders_table
+        create_ft_holders_table,
+        create_validators_table,
+        create_netvalues_table
     };
     for(auto stmt : stmts) {
         auto r = PQexec(conn_, stmt);
@@ -1077,6 +1109,31 @@ pg::upd_fungible(trx_context& tctx, const updfungible_v2& uf) {
     return PG_OK;
 }
 
+PREPARE_SQL_ONCE(nvl_plan, "INSERT INTO validators VALUES($1, $2, now());");
+PREPARE_SQL_ONCE(uvl_plan, "INSERT INTO netvalues VALUES(DEFAULT, $1, $2, $3, now());");
+
+int
+pg::add_validator(trx_context& tctx, const validator& vl) {
+    fmt::format_to(tctx.trx_buf_,
+                   fmt("EXECUTE nvl_plan({}, '{}');\n"),
+                   vl.id,
+                   vl.name);
+
+    upd_validator(tctx, vl);
+
+    return PG_OK;
+}
+
+int
+pg::upd_validator(trx_context& tctx, const validator& vl) {
+  fmt::format_to(tctx.trx_buf_,
+                 fmt("EXECUTE uvl_plan({}, {}, {});\n"),
+                 vl.id,
+                 vl.net_value,
+                 vl.units);
+
+    return PG_OK;
+}
 
 PREPARE_SQL_ONCE(am_plan,  "INSERT INTO metas VALUES(DEFAULT, $1, $2, $3, $4, now());");
 PREPARE_SQL_ONCE(amd_plan, "UPDATE domains SET metas = array_append(metas, $1) WHERE name = $2;");
