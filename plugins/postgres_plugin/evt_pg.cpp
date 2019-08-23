@@ -95,8 +95,8 @@ auto create_blocks_table = R"sql(CREATE TABLE IF NOT EXISTS public.blocks
 auto create_trxs_table = R"sql(CREATE TABLE IF NOT EXISTS public.transactions
                                (
                                    trx_id        character(64)            NOT NULL,
+                                   trx_num       integer                  NOT NULL,
                                    seq_num       integer                  NOT NULL,
-                                   block_id      character(64)            NOT NULL,
                                    block_num     integer                  NOT NULL,
                                    action_count  integer                  NOT NULL,
                                    timestamp     timestamp with time zone NOT NULL,
@@ -132,9 +132,8 @@ auto create_trxs_table = R"sql(CREATE TABLE IF NOT EXISTS public.transactions
 
 auto create_actions_table = R"sql(CREATE TABLE IF NOT EXISTS public.actions
                                   (
-                                      block_id   character(64)            NOT NULL,
+                                      trx_num    integer                  NOT NULL,
                                       block_num  integer                  NOT NULL,
-                                      trx_id     character(64)            NOT NULL,
                                       seq_num    integer                  NOT NULL,
                                       global_seq bigint                   NOT NULL,
                                       name       character varying(13)    NOT NULL,
@@ -147,9 +146,9 @@ auto create_actions_table = R"sql(CREATE TABLE IF NOT EXISTS public.actions
                                       OIDS = FALSE
                                   )
                                   TABLESPACE pg_default;
-                                  CREATE INDEX IF NOT EXISTS actions_trx_id_index
+                                  CREATE INDEX IF NOT EXISTS actions_trx_num_index
                                       ON public.actions USING btree
-                                      (trx_id)
+                                      (trx_num)
                                       TABLESPACE pg_default;
                                   CREATE INDEX IF NOT EXISTS actions_global_seq_index
                                       ON public.actions USING btree
@@ -171,7 +170,7 @@ auto create_metas_table = R"sql(CREATE SEQUENCE IF NOT EXISTS metas_id_seq;
                                     key        character varying(21)     NOT NULL,
                                     value      text                      NOT NULL,
                                     creator    character varying(57)     NOT NULL,
-                                    trx_id     character(64)             NOT NULL,
+                                    trx_num    integer                   NOT NULL,
                                     created_at timestamp with time zone  NOT NULL  DEFAULT now(),
                                     CONSTRAINT metas_pkey PRIMARY KEY (id)
                                 )
@@ -188,7 +187,7 @@ auto create_domains_table = R"sql(CREATE TABLE IF NOT EXISTS public.domains
                                       transfer   jsonb                       NOT NULL,
                                       manage     jsonb                       NOT NULL,
                                       metas      integer[]                   NOT NULL,
-                                      trx_id     character(64)               NOT NULL,
+                                      trx_num    integer                     NOT NULL,
                                       created_at timestamp with time zone    NOT NULL  DEFAULT now(),
                                       CONSTRAINT domains_pkey PRIMARY KEY (name)
                                   )
@@ -212,7 +211,7 @@ auto create_tokens_table = R"sql(CREATE TABLE IF NOT EXISTS public.tokens
                                      name       character varying(21)       NOT NULL,
                                      owner      character(53)[]             NOT NULL,
                                      metas      integer[]                   NOT NULL,
-                                     trx_id     character(64)               NOT NULL,
+                                     trx_num    integer                     NOT NULL,
                                      created_at timestamp with time zone    NOT NULL  DEFAULT now(),
                                      CONSTRAINT tokens_pkey PRIMARY KEY (id)
                                  )
@@ -231,7 +230,7 @@ auto create_groups_table = R"sql(CREATE TABLE IF NOT EXISTS public.groups
                                      key        character(53)               NOT NULL,
                                      def        jsonb                       NOT NULL,
                                      metas      integer[]                   NOT NULL,
-                                     trx_id     character(64)               NOT NULL,
+                                     trx_num    integer                     NOT NULL,
                                      created_at timestamp with time zone    NOT NULL  DEFAULT now(),
                                      CONSTRAINT groups_pkey PRIMARY KEY (name)
                                  )
@@ -260,7 +259,7 @@ auto create_fungibles_table = R"sql(CREATE TABLE IF NOT EXISTS public.fungibles
                                         manage       jsonb                       NOT NULL,
                                         total_supply character varying(32)       NOT NULL,
                                         metas        integer[]                   NOT NULL,
-                                        trx_id       character(64)               NOT NULL,
+                                        trx_num      integer                     NOT NULL,
                                         created_at   timestamp with time zone    NOT NULL  DEFAULT now(),
                                         CONSTRAINT   fungibles_pkey PRIMARY KEY (sym_id)
                                     )
@@ -301,10 +300,9 @@ auto create_validators_table = R"sql(CREATE TABLE IF NOT EXISTS public.validator
                                      )
                                      TABLESPACE pg_default;)sql";
 
-auto create_netvalues_table = R"sql(CREATE SEQUENCE IF NOT EXISTS netvalues_id_seq;
-                                    CREATE TABLE IF NOT EXISTS public.netvalues
+auto create_netvalues_table = R"sql(CREATE TABLE IF NOT EXISTS public.netvalues
                                      (
-                                         id           bigint                  NOT NULL  DEFAULT nextval('netvalues_id_seq'),
+                                         id           bigint                  NOT NULL,
                                          validator_id integer                 NOT NULL,              
                                          net_value    decimal(14)             NOT NULL,
                                          total_units  bigint                  NOT NULL,
@@ -717,15 +715,15 @@ pg::add_block(add_context& actx, const block_ptr block) {
 }
 
 int
-pg::add_trx(add_context& actx, const trx_recept_t& trx, const trx_t& strx, int seq_num, int elapsed, int charge) {
+pg::add_trx(add_context& actx, const trx_recept_t& trx, const trx_t& strx, int seq_num, int trx_num, int elapsed, int charge) {
     using namespace internal;
 
     auto& cctx = actx.cctx;
     fmt::format_to(cctx.trxs_copy_,
-        fmt("{}\t{:d}\t{}\t{}\t{:d}\t{}\t{}\t{:d}\t{}\tt\t{}\t{}\t"),
+        fmt("{}\t{}\t{:d}\t{}\t{:d}\t{}\t{}\t{:d}\t{}\tt\t{}\t{}\t"),
         strx.id().str(),
+        trx_num,
         seq_num,
-        actx.block_id,
         actx.block_num,
         (int32_t)strx.actions.size(),
         actx.ts,
@@ -770,7 +768,7 @@ pg::add_trx(add_context& actx, const trx_recept_t& trx, const trx_t& strx, int s
 }
 
 int
-pg::add_action(add_context& actx, const act_trace_t& act_trace, const std::string& trx_id, int seq_num) {
+pg::add_action(add_context& actx, const act_trace_t& act_trace, int seq_num, int64_t trx_num) {
     using namespace internal;
 
     auto& act     = act_trace.act;
@@ -778,10 +776,9 @@ pg::add_action(add_context& actx, const act_trace_t& act_trace, const std::strin
     auto  data    = actx.abi.binary_to_variant(acttype, act.data, actx.exec_ctx);
 
     fmt::format_to(actx.cctx.actions_copy_,
-        fmt("{}\t{:d}\t{}\t{:d}\t{:d}\t{}\t{}\t{}\t{}\tnow\n"),
-        actx.block_id,
+        fmt("{}\t{:d}\t{:d}\t{:d}\t{}\t{}\t{}\t{}\tnow\n"),
+        trx_num,
         actx.block_num,
-        trx_id,
         seq_num,
         act_trace.receipt.global_sequence,
         act.name.to_string(),
@@ -894,7 +891,7 @@ pg::add_domain(trx_context& tctx, const newdomain& nd) {
         fc::json::to_string(issue),
         fc::json::to_string(transfer),
         fc::json::to_string(manage),
-        tctx.trx_id()
+        tctx.trx_num()
         );
 
     return PG_OK;
@@ -954,7 +951,7 @@ pg::add_tokens(trx_context& tctx, const issuetoken& it) {
             domain,
             (std::string)name,
             owners,
-            tctx.trx_id()
+            tctx.trx_num()
             );
     }
     return PG_OK;
@@ -1004,7 +1001,7 @@ pg::add_group(trx_context& tctx, const newgroup& ng) {
         (std::string)ng.name,
         (std::string)ng.group.key(),
         fc::json::to_string(def["root"]),
-        tctx.trx_id()
+        tctx.trx_num()
         );
 
     return PG_OK;
@@ -1036,7 +1033,7 @@ pg::add_fungible(trx_context& tctx, const fungible_def& ft) {
     fc::to_variant(ft.manage, manage);
 
     fmt::format_to(tctx.trx_buf_,
-        fmt("EXECUTE nf_plan('{}','{}','{}',{:d},'{}','{}','{}','{}','{}','{}');\n"),
+        fmt("EXECUTE nf_plan('{}','{}','{}',{:d},'{}','{}','{}','{}','{}','{:d}');\n"),
         (std::string)ft.name,
         (std::string)ft.sym_name,
         (std::string)ft.sym,
@@ -1046,7 +1043,7 @@ pg::add_fungible(trx_context& tctx, const fungible_def& ft) {
         fc::json::to_string(transfer),
         fc::json::to_string(manage),
         ft.total_supply.to_string(),
-        tctx.trx_id()
+        tctx.trx_num()
         );
 
     // support FT v1 reserved meta
@@ -1147,7 +1144,7 @@ pg::add_meta(trx_context& tctx, const action_t& act) {
 
     auto& am = act.data_as<const addmeta&>();
 
-    fmt::format_to(tctx.trx_buf_, fmt("EXECUTE am_plan('{}','{}','{}','{}');\n"), (std::string)am.key, escape_string(am.value), am.creator.to_string(), tctx.trx_id());
+    fmt::format_to(tctx.trx_buf_, fmt("EXECUTE am_plan('{}','{}','{}','{}');\n"), (std::string)am.key, escape_string(am.value), am.creator.to_string(), tctx.trx_num());
     if(act.domain == N128(.fungible)) {
         // fungibles
         fmt::format_to(tctx.trx_buf_, fmt("EXECUTE amf_plan(lastval(),{});\n"), boost::lexical_cast<int64_t>((std::string)act.key));   

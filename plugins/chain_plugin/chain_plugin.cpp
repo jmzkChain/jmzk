@@ -1497,7 +1497,7 @@ read_only::get_staking(const get_staking_params& params) const{
         ctx.period_version,
         ctx.period_start_num,
         ctx.period_start_num + conf.cycles_per_period * conf.blocks_per_cycle,
-        validators
+        std::move(validators)
     };
 }
 

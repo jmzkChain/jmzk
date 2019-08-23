@@ -23,6 +23,8 @@ public:
 
     void set_trx_id(const std::string& trx_id) { trx_id_ = trx_id; }
     const std::string_view& trx_id() const { return trx_id_; }
+    void set_trx_num(const int64_t trx_num) { trx_num_ = trx_num; }
+    const int64_t trx_num() const { return trx_num_; }
 
 private:
     fmt::memory_buffer trx_buf_;
@@ -30,6 +32,7 @@ private:
 private:
     pg&              db_;
     std::string_view trx_id_;
+    int64_t          trx_num_;
 
 private:
     friend class pg;
