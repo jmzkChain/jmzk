@@ -579,6 +579,7 @@ def detailmongo(ctx):
 
 def check_evt_image():
     missing_evt = False
+    missing_evt_staking = False
     missing_evt_mainnet = False
     try:
         client.images.get('everitoken/evt:latest')
@@ -590,9 +591,14 @@ def check_evt_image():
     except docker.errors.ImageNotFound:
         missing_evt_mainnet = True
 
-    if missing_evt and missing_evt_mainnet:
-        click.echo('Nither find image: {} or {}, please pull one first'.format(
-            green('everitoken/evt:latest'), green('everitoken/evt-mainnet:latest')))
+    try:
+        client.images.get('everitoken/evt-staking:latest')
+    except docker.errors.ImageNotFound:
+        missing_evt_staking = True
+
+    if missing_evt and missing_evt_mainnet and missing_evt_staking:
+        click.echo('Nither find image: {}, {} and {}, please pull one first'.format(
+            green('everitoken/evt:latest'), green('everitoken/evt-mainnet:latest'),  green('everitoken/evt-staking:latest')))
 
 
 @cli.group()
@@ -1024,7 +1030,7 @@ def init(ctx):
 @click.option('--host', '-h', default='127.0.0.1', help='Host address for evtwd (only works when http is enabled)')
 @click.option('--http-port', '-p', default=9999, help='Expose port for rpc request, set 0 for not expose (only works when http is enabled)')
 @click.pass_context
-def create(ctx, net, http, host, http_port, arguments):
+def create(ctx, net, type, http, host, http_port, arguments):
     name = ctx.obj['name']
     volume_name = '{}-data-volume'.format(name)
 
@@ -1043,7 +1049,7 @@ def create(ctx, net, http, host, http_port, arguments):
         client.volumes.get(volume_name)
     except docker.errors.ImageNotFound:
         click.echo(
-            '{}} image is not found, please use docker pull image first'.foramt(image))
+            '{}} image is not found, please use docker pull image first'.format(image))
         return
     except docker.errors.NotFound:
         click.echo(
