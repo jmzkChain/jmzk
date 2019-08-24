@@ -12,7 +12,7 @@ namespace evt { namespace chain {
 class percent_slim : public fc::reflect_init {
 public:
     static constexpr uint32_t kMaxAmount = 100'000u;
-    static constexpr uint32_t kPrecision  = 5;
+    static constexpr uint32_t kPrecision = 5;
 
 public:
     percent_slim() = default;

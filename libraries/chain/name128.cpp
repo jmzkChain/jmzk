@@ -3,7 +3,6 @@
  *  @copyright defined in evt/LICENSE.txt
  */
 #include <evt/chain/name128.hpp>
-#include <boost/algorithm/string.hpp>
 #include <evt/chain/exceptions.hpp>
 #include <fc/variant.hpp>
 

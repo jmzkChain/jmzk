@@ -825,7 +825,7 @@ TEST_CASE_METHOD(abi_test, "newfungible_abi_test", "[abis]") {
           }
         ]
       },
-      "total_supply":"12.00000 S#0"
+      "total_supply":"12.00000 S#1"
     }
     )=====";
 
@@ -852,8 +852,8 @@ TEST_CASE_METHOD(abi_test, "newfungible_abi_test", "[abis]") {
     CHECK(1 == newfg.manage.authorizers[0].weight);
 
     CHECK(1200000 == newfg.total_supply.amount());
-    CHECK("5,S#0" == newfg.total_supply.sym().to_string());
-    CHECK("12.00000 S#0" == newfg.total_supply.to_string());
+    CHECK("5,S#1" == newfg.total_supply.sym().to_string());
+    CHECK("12.00000 S#1" == newfg.total_supply.to_string());
 
     auto var2 = verify_byte_round_trip_conversion(abis, "newfungible", var);
 
@@ -878,8 +878,8 @@ TEST_CASE_METHOD(abi_test, "newfungible_abi_test", "[abis]") {
     CHECK(1 == newfg2.manage.authorizers[0].weight);
 
     CHECK(1200000 == newfg2.total_supply.amount());
-    CHECK("5,S#0" == newfg2.total_supply.sym().to_string());
-    CHECK("12.00000 S#0" == newfg2.total_supply.to_string());
+    CHECK("5,S#1" == newfg2.total_supply.sym().to_string());
+    CHECK("12.00000 S#1" == newfg2.total_supply.to_string());
 
     verify_type_round_trip_conversion<newfungible>(abis, "newfungible", var);
 }
@@ -1741,4 +1741,263 @@ TEST_CASE_METHOD(abi_test, "setpsvbonus_v2_abi_test", "[abis]") {
 
     // restore back
     get_exec_ctx().set_version_unsafe("setpsvbonus", 1);
+}
+
+
+TEST_CASE_METHOD(abi_test, "newvalidator_abi_test", "[abis]") {
+    auto& abis = get_evt_abi();
+
+    auto test_data = R"=====(
+    {
+      "name": "validator",
+      "creator": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+      "signer": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+      "withdraw" : {
+        "name" : "withdraw",
+        "threshold" : 1,
+        "authorizers": [{
+            "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+            "weight": 1
+          }
+        ]
+      },
+      "manage" : {
+        "name" : "manage",
+        "threshold" : 1,
+        "authorizers": [{
+            "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+            "weight": 1
+          }
+        ]
+      },
+      "commission": "0.59"
+    }
+    )=====";
+
+    auto var   = fc::json::from_string(test_data);
+    auto nvd = var.as<newvalidator>();
+
+    CHECK("validator" == nvd.name);
+    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)nvd.creator);
+    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)nvd.signer);
+
+    CHECK("0.59" == (std::string)nvd.commission);
+
+    CHECK("withdraw" == nvd.withdraw.name);
+    CHECK(1 == nvd.withdraw.threshold);
+    REQUIRE(1 == nvd.withdraw.authorizers.size());
+    CHECK(nvd.withdraw.authorizers[0].ref.is_account_ref());
+    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)nvd.withdraw.authorizers[0].ref.get_account());
+    CHECK(1 == nvd.withdraw.authorizers[0].weight);
+
+    CHECK("manage" == nvd.manage.name);
+    CHECK(1 == nvd.manage.threshold);
+    REQUIRE(1 == nvd.manage.authorizers.size());
+    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)nvd.withdraw.authorizers[0].ref.get_account());
+    CHECK(1 == nvd.manage.authorizers[0].weight);
+
+    auto var2 = verify_byte_round_trip_conversion(abis, "newvalidator", var);
+    auto nvd2 = var2.as<newvalidator>();
+
+    CHECK("validator" == nvd2.name);
+    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)nvd2.creator);
+
+    CHECK("0.59" == (std::string)nvd2.commission);
+
+    CHECK("withdraw" == nvd2.withdraw.name);
+    CHECK(1 == nvd2.withdraw.threshold);
+    REQUIRE(1 == nvd2.withdraw.authorizers.size());
+    CHECK(nvd2.withdraw.authorizers[0].ref.is_account_ref());
+    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)nvd2.withdraw.authorizers[0].ref.get_account());
+    CHECK(1 == nvd2.withdraw.authorizers[0].weight);
+
+    CHECK("manage" == nvd2.manage.name);
+    CHECK(1 == nvd2.manage.threshold);
+    REQUIRE(1 == nvd2.manage.authorizers.size());
+    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)nvd2.withdraw.authorizers[0].ref.get_account());
+    CHECK(1 == nvd2.manage.authorizers[0].weight);
+
+    verify_type_round_trip_conversion<newvalidator>(abis, "newvalidator", var);
+}
+
+TEST_CASE_METHOD(abi_test, "staketkns_abi_test", "[abis]") {
+    auto& abis = get_evt_abi();
+
+    auto test_data = R"=====(
+    {
+      "staker": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+      "validator": "validator",
+      "amount" : "5.00000 S#3",
+      "type": "active",
+      "fixed_days": 5
+    }
+    )=====";
+
+    auto var   = fc::json::from_string(test_data);
+    auto stk = var.as<staketkns>();
+
+    CHECK("validator" == stk.validator);
+    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)stk.staker);
+    CHECK(asset(500000, symbol(5,3)) == stk.amount);
+    CHECK(stk.type == stake_type::active);
+    CHECK(stk.fixed_days == 5);
+
+    auto var2 = verify_byte_round_trip_conversion(abis, "staketkns", var);
+    auto stk2 = var2.as<staketkns>();
+
+    CHECK("validator" == stk2.validator);
+    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)stk2.staker);
+    CHECK(asset(500000, symbol(5,3)) == stk2.amount);
+    CHECK(stk2.type == stake_type::active);
+    CHECK(stk2.fixed_days == 5);
+
+    verify_type_round_trip_conversion<staketkns>(abis, "staketkns", var);
+}
+
+TEST_CASE_METHOD(abi_test, "unstaketkns_abi_test", "[abis]") {
+    auto& abis = get_evt_abi();
+
+    auto test_data = R"=====(
+    {
+      "staker": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+      "validator": "validator",
+      "units" : 5,
+      "sym_id": 3,
+      "op": "propose"
+    }
+    )=====";
+
+    auto var   = fc::json::from_string(test_data);
+    auto unstk = var.as<unstaketkns>();
+
+    CHECK("validator" == unstk.validator);
+    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)unstk.staker);
+    CHECK(5 == unstk.units);
+    CHECK(unstk.sym_id == 3);
+    CHECK(unstk.op == unstake_op::propose);
+
+    auto var2 = verify_byte_round_trip_conversion(abis, "unstaketkns", var);
+    auto unstk2 = var2.as<unstaketkns>();
+
+    CHECK("validator" == unstk.validator);
+    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)unstk2.staker);
+    CHECK(5 == unstk2.units);
+    CHECK(unstk2.sym_id == 3);
+    CHECK(unstk2.op == unstake_op::propose);
+
+    verify_type_round_trip_conversion<unstaketkns>(abis, "unstaketkns", var);
+}
+
+TEST_CASE_METHOD(abi_test, "toactivetkns_abi_test", "[abis]") {
+    auto& abis = get_evt_abi();
+
+    auto test_data = R"=====(
+    {
+      "staker": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+      "validator": "validator",
+      "sym_id": 3
+    }
+    )=====";
+
+    auto var   = fc::json::from_string(test_data);
+    auto tatk = var.as<toactivetkns>();
+
+    CHECK("validator" == tatk.validator);
+    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)tatk.staker);
+    CHECK(tatk.sym_id == 3);
+
+    auto var2 = verify_byte_round_trip_conversion(abis, "toactivetkns", var);
+    auto tatk2 = var2.as<toactivetkns>();
+
+    CHECK("validator" == tatk2.validator);
+    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)tatk2.staker);
+    CHECK(tatk2.sym_id == 3);
+
+    verify_type_round_trip_conversion<toactivetkns>(abis, "toactivetkns", var);
+}
+
+TEST_CASE_METHOD(abi_test, "newstakepool_abi_test", "[abis]") {
+    auto& abis = get_evt_abi();
+
+    auto test_data = R"=====(
+    {
+      "sym_id": 3,
+      "purchase_threshold": "5.00000 S#3",
+      "demand_r": 5,
+      "demand_t": 5,
+      "demand_q": 5,
+      "demand_w": 5,
+      "fixed_r": 5,
+      "fixed_t": 5
+    }
+    )=====";
+
+    auto var   = fc::json::from_string(test_data);
+    auto nstkp = var.as<newstakepool>();
+
+    CHECK(3 == nstkp.sym_id);
+    CHECK(asset(500000, symbol(5,3)) == nstkp.purchase_threshold);
+    CHECK(5 == nstkp.demand_r);
+    CHECK(5 == nstkp.demand_t);
+    CHECK(5 == nstkp.demand_q);
+    CHECK(5 == nstkp.demand_w);
+    CHECK(5 == nstkp.fixed_r);
+    CHECK(5 == nstkp.fixed_t);
+
+    auto var2 = verify_byte_round_trip_conversion(abis, "newstakepool", var);
+    auto nstkp2 = var2.as<newstakepool>();
+
+    CHECK(3 == nstkp2.sym_id);
+    CHECK(asset(500000, symbol(5,3)) == nstkp2.purchase_threshold);
+    CHECK(5 == nstkp2.demand_r);
+    CHECK(5 == nstkp2.demand_t);
+    CHECK(5 == nstkp2.demand_q);
+    CHECK(5 == nstkp2.demand_w);
+    CHECK(5 == nstkp2.fixed_r);
+    CHECK(5 == nstkp2.fixed_t);
+
+    verify_type_round_trip_conversion<newstakepool>(abis, "newstakepool", var);
+}
+
+TEST_CASE_METHOD(abi_test, "updstakepool_abi_test", "[abis]") {
+    auto& abis = get_evt_abi();
+
+    auto test_data = R"=====(
+    {
+      "sym_id": 3,
+      "purchase_threshold": "5.00000 S#3",
+      "demand_r": 5,
+      "demand_t": 5,
+      "demand_q": 5,
+      "demand_w": 5,
+      "fixed_r": 5,
+      "fixed_t": 5
+    }
+    )=====";
+
+    auto var   = fc::json::from_string(test_data);
+    auto upstkp = var.as<updstakepool>();
+
+    CHECK(3 == upstkp.sym_id);
+    CHECK(asset(500000, symbol(5,3)) == upstkp.purchase_threshold);
+    CHECK(5 == upstkp.demand_r);
+    CHECK(5 == upstkp.demand_t);
+    CHECK(5 == upstkp.demand_q);
+    CHECK(5 == upstkp.demand_w);
+    CHECK(5 == upstkp.fixed_r);
+    CHECK(5 == upstkp.fixed_t);
+
+    auto var2 = verify_byte_round_trip_conversion(abis, "newstakepool", var);
+    auto upstkp2 = var2.as<newstakepool>();
+
+    CHECK(3 == upstkp2.sym_id);
+    CHECK(asset(500000, symbol(5,3)) == upstkp2.purchase_threshold);
+    CHECK(5 == upstkp2.demand_r);
+    CHECK(5 == upstkp2.demand_t);
+    CHECK(5 == upstkp2.demand_q);
+    CHECK(5 == upstkp2.demand_w);
+    CHECK(5 == upstkp2.fixed_r);
+    CHECK(5 == upstkp2.fixed_t);
+
+    verify_type_round_trip_conversion<updstakepool>(abis, "newstakepool", var);
 }

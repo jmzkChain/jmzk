@@ -143,9 +143,12 @@ print_info(const fc::variant& info, int indent = 0) {
 
             auto i = 1;
             for(auto& a : arr) {
-                if(indent == 0) {
-                    cerr << "(" << i << " of " << size << ")" << endl;
+                for(int i = 0; i < indent; i++) {
+                    cerr << "    ";
                 }
+                // if(indent == 0) {
+                cerr << "(" << i << " of " << size << ")" << endl;
+                // }
                 print_info(a, indent);
                 i++;
             }
@@ -381,6 +384,26 @@ get_address(const std::string& addr_or_ref) {
     catch(...) {
         FC_ASSERT(false, "Not valid key reference");
     }
+}
+
+stake_type
+get_stake_type(const std::string& type) {
+    FC_ASSERT(type == "active" || type == "fixed", "Not valid stake type");
+    if(type == "active")
+        return stake_type::active;
+    else
+        return stake_type::fixed;
+}
+
+unstake_op
+get_unstake_op(const std::string& op){
+    FC_ASSERT(op == "propose" || op == "cancel" || op == "settle", "Not valid stake type");
+    if(op == "propose")
+        return unstake_op::propose;
+    else if(op == "cancel")
+        return unstake_op::cancel;
+    else
+        return unstake_op::settle;
 }
 
 void
@@ -831,8 +854,8 @@ struct set_fungible_subcommands {
     string sym_name;
     string sym;
     string creator;
-    string issue    = "default";
-    string manage   = "default";
+    string issue = "default";
+    string manage = "default";
     string total_supply = "";
     string address;
     string number;
@@ -945,6 +968,15 @@ struct set_assets_subcommands {
     std::string number;
     string      memo;
 
+    string      staker;
+    string      validator;
+    string      amount;
+    string      type;
+    int         days = 0;
+    int         units;
+    int         sym_id;
+    string      op;
+
     set_assets_subcommands(CLI::App* actionRoot) {
         auto tfcmd = actionRoot->add_subcommand("transfer", localized("Transfer asset between addresses"));
         tfcmd->add_option("from", from, localized("Address where asset transfering from"))->required();
@@ -983,6 +1015,71 @@ struct set_assets_subcommands {
             FC_ASSERT(ep.number.sym() == evt_sym(), "Only EVT can be converted to Pinned EVT");
 
             auto act = create_action(N128(.fungible), (domain_key)std::to_string(ep.number.sym().id()), ep);
+            send_actions({act});
+        });
+
+        auto stkcmd = actionRoot->add_subcommand("stake", localized("stake your assets to some a validator"));
+        stkcmd->add_option("staker", staker, localized("Address of the staker"))->required();
+        stkcmd->add_option("validator", validator, localized("name of the validator"))->required();
+        stkcmd->add_option("amount", amount, localized("amount of stake asset"))->required();
+        stkcmd->add_option("type", type, localized("type of stake, 'active' or 'fixed'"))->required();
+        stkcmd->add_option("days", days, localized("fixed days of stake, only set when type is fixed"));
+
+        add_standard_transaction_options(stkcmd);
+
+        stkcmd->callback([this] {
+            staketkns stk;
+            stk.staker     = get_public_key(staker);
+            stk.validator  = (name128)validator;
+            stk.amount     = asset::from_string(amount);
+            stk.type       = get_stake_type(type);
+            stk.fixed_days = days;
+
+            FC_ASSERT(stk.amount.sym() == evt_sym(), "Only EVT is supported to stake currently");
+
+            auto act = create_action(N128(.staking), (domain_key)stk.validator, stk);
+            send_actions({act});
+        });
+
+        auto unstkcmd = actionRoot->add_subcommand("unstake", localized("unstake your assets of some a validator"));
+        unstkcmd->add_option("staker", staker, localized("Address of the staker"))->required();
+        unstkcmd->add_option("validator", validator, localized("name of the validator"))->required();
+        unstkcmd->add_option("units", units, localized("units to unstake"))->required();
+        unstkcmd->add_option("id", sym_id, localized("symbol_id of assets to unstake"))->required();
+        unstkcmd->add_option("op", op, localized("unstake option"))->required();
+
+        add_standard_transaction_options(unstkcmd);
+
+        unstkcmd->callback([this] {
+            unstaketkns unstk;
+            unstk.staker     = get_public_key(staker);
+            unstk.validator  = (name128)validator;
+            unstk.units      = units;
+            unstk.sym_id     = sym_id;
+            unstk.op         = get_unstake_op(op);
+
+            FC_ASSERT(unstk.sym_id == evt_sym().id(), "Only EVT is supported to unstake currently");
+
+            auto act = create_action(N128(.staking), (domain_key)unstk.validator, unstk);
+            send_actions({act});
+        });
+
+        auto tatkcmd = actionRoot->add_subcommand("toactive", localized("make your fixed stake active"));
+        tatkcmd->add_option("staker", staker, localized("Address of the staker"))->required();
+        tatkcmd->add_option("validator", validator, localized("name of the validator"))->required();
+        tatkcmd->add_option("id", sym_id, localized("symbol_id of assets"))->required();
+
+        add_standard_transaction_options(tatkcmd);
+
+        tatkcmd->callback([this] {
+            toactivetkns tatk;
+            tatk.staker     = get_public_key(staker);
+            tatk.validator  = (name128)validator;
+            tatk.sym_id     = sym_id;
+
+            FC_ASSERT(tatk.sym_id == evt_sym().id(), "Only EVT is supported to stake currently");
+
+            auto act = create_action(N128(.staking), (domain_key)tatk.validator, tatk);
             send_actions({act});
         });
 
@@ -1188,6 +1285,7 @@ struct set_lock_subcommands {
 
     set_lock_subcommands(CLI::App* actionRoot) {
         auto lacmd = actionRoot->add_subcommand("assets", localized("Lock assets for further operations"));
+
         lacmd->add_option("name", name, localized("Name of lock proposal"))->required();
         lacmd->add_option("time", time, localized("Unlock time since from now"))->required();
         lacmd->add_option("deadline", deadline, localized("Deadline time since from now"))->required();
@@ -1246,6 +1344,149 @@ struct set_lock_subcommands {
             al.data     = evt::chain::void_t();
 
             auto act = create_action(N128(.lock), (domain_key)al.name, al);
+            send_actions({act});
+        });
+    }
+};
+
+struct set_validator_subcommands {
+    string name;
+    string creator;
+    string withdraw = "default";
+    string manage   = "default";
+    string commission;
+    string addr;
+    string amount;
+    string validator;
+    int    sym_id;
+
+    set_validator_subcommands(CLI::App* actionRoot) {
+        auto nvdcmd = actionRoot->add_subcommand("create", localized("create a new validator"));
+
+        nvdcmd->add_option("name", name, localized("Name of validator"))->required();
+        nvdcmd->add_option("creator", creator, localized("addresse of creator"))->required();
+        nvdcmd->add_option("signer", addr, localized("addresse of signer"))->required();
+        nvdcmd->add_option("commission", commission, localized("commission of validator"))->required();
+        nvdcmd->add_option("withdraw", withdraw, localized("JSON string or filename defining WITHDRAW permission"))->capture_default_str();
+        nvdcmd->add_option("manage", manage, localized("JSON string or filename defining MANAGE permission"))->capture_default_str();
+
+        add_standard_transaction_options(nvdcmd);
+
+        nvdcmd->callback([this] {
+            auto nvd       = newvalidator();
+            nvd.name       = (name128)name;
+            nvd.creator    = get_public_key(creator);
+            nvd.signer     = get_public_key(addr);
+            nvd.withdraw   = (withdraw == "default") ? get_default_permission("withdraw", nvd.signer) : parse_permission(withdraw);
+            nvd.manage     = (manage == "default") ? get_default_permission("manage", nvd.signer) : parse_permission(manage);
+            nvd.commission = percent_slim::from_string(commission);
+
+            auto act = create_action(N128(.staking), (domain_key)nvd.name, nvd);
+            send_actions({act});
+        });
+
+        auto vwdcmd = actionRoot->add_subcommand("withdraw", localized("withdraw from a validator"));
+
+        vwdcmd->add_option("name", name, localized("Name of validator to withdraw form"))->required();
+        vwdcmd->add_option("address", addr, localized("Address to withdraw to"))->required();
+        vwdcmd->add_option("amount", amount, localized("amount to withdraw"))->required();
+
+        add_standard_transaction_options(vwdcmd);
+
+        vwdcmd->callback([this] {
+            auto vwd   = valiwithdraw();
+            vwd.name   = (name128)name;
+            vwd.addr   = get_address(addr);
+            vwd.amount = asset::from_string(amount);
+
+            auto act = create_action(N128(.staking), (domain_key)vwd.name, vwd);
+            send_actions({act});
+        });
+
+        auto rsbcmd = actionRoot->add_subcommand("recvbonus", localized("recvbonus of a validator"));
+
+        rsbcmd->add_option("validator", validator, localized("Name of validator to recvbonus"))->required();
+        rsbcmd->add_option("id", sym_id, localized("sym id to recvbonus"))->required();
+
+        add_standard_transaction_options(rsbcmd);
+
+        rsbcmd->callback([this] {
+            auto rsb   = recvstkbonus();
+            rsb.validator = (name128)validator;
+            rsb.sym_id    = sym_id;
+
+            auto act = create_action(N128(.staking), (domain_key)rsb.validator, rsb);
+            send_actions({act});
+        });
+    }
+};
+
+struct set_stakepool_subcommands {
+    int sym_id;
+    string purchase_threshold = "50.00000 S#1";
+    int demand_r = 50000000;
+    int demand_t = -670;
+    int demand_q = 10000;
+    int demand_w = -1;
+    int fixed_r  = 150000;
+    int fixed_t  = 5000;
+
+    set_stakepool_subcommands(CLI::App* actionRoot) {
+        auto nspcmd = actionRoot->add_subcommand("create", localized("create a new stakepool"));
+
+        nspcmd->add_option("id", sym_id, localized("sym_id of stakepool"))->required();
+        nspcmd->add_option("purchase-threshold", purchase_threshold, localized("purchase threshold of stakepool"))->capture_default_str();
+        nspcmd->add_option("--demand-r", demand_r, localized("demand r of stakepool"))->capture_default_str();
+        nspcmd->add_option("--demand-t", demand_t, localized("demand t of stakepool"))->capture_default_str();
+        nspcmd->add_option("--demand-q", demand_q, localized("demand q of stakepool"))->capture_default_str();
+        nspcmd->add_option("--demand-w", demand_w, localized("demand w of stakepool"))->capture_default_str();
+        nspcmd->add_option("--fixed-r", fixed_r, localized("fixed r of stakepool"))->capture_default_str();
+        nspcmd->add_option("--fixed-t", fixed_t, localized("fixed t of stakepool"))->capture_default_str();
+
+        add_standard_transaction_options(nspcmd);
+
+        nspcmd->callback([this] {
+            auto nsp = newstakepool();
+
+            nsp.sym_id             = sym_id;
+            nsp.purchase_threshold = asset::from_string(purchase_threshold);
+            nsp.demand_r           = demand_r;
+            nsp.demand_t           = demand_t;
+            nsp.demand_q           = demand_q;
+            nsp.demand_w           = demand_w;
+            nsp.fixed_r            = fixed_r;
+            nsp.fixed_t            = fixed_t;
+
+            auto act = create_action(N128(.fungible), (domain_key)std::to_string(nsp.sym_id), nsp);
+            send_actions({act});
+        });
+
+        auto upspcmd = actionRoot->add_subcommand("update", localized("update a stakepool"));
+
+        upspcmd->add_option("id", sym_id, localized("sym_id of stakepool"))->required();
+        upspcmd->add_option("purchase-threshold", purchase_threshold, localized("purchase threshold of stakepool"))->capture_default_str();
+        upspcmd->add_option("--demand-r", demand_r, localized("demand r of stakepool"))->capture_default_str();
+        upspcmd->add_option("--demand-t", demand_t, localized("demand t of stakepool"))->capture_default_str();
+        upspcmd->add_option("--demand-q", demand_q, localized("demand q of stakepool"))->capture_default_str();
+        upspcmd->add_option("--demand-w", demand_w, localized("demand w of stakepool"))->capture_default_str();
+        upspcmd->add_option("--fixed-r", fixed_r, localized("fixed r of stakepool"))->capture_default_str();
+        upspcmd->add_option("--fixed-t", fixed_t, localized("fixed t of stakepool"))->capture_default_str();
+
+        add_standard_transaction_options(upspcmd);
+
+        upspcmd->callback([this] {
+            auto upsp = updstakepool();
+
+            upsp.sym_id             = sym_id;
+            upsp.purchase_threshold = asset::from_string(purchase_threshold);
+            upsp.demand_r           = demand_r;
+            upsp.demand_t           = demand_t;
+            upsp.demand_q           = demand_q;
+            upsp.demand_w           = demand_w;
+            upsp.fixed_r            = fixed_r;
+            upsp.fixed_t            = fixed_t;
+
+            auto act = create_action(N128(.fungible), (domain_key)std::to_string(upsp.sym_id), upsp);
             send_actions({act});
         });
     }
@@ -1507,6 +1748,48 @@ struct set_get_suspend_subcommand {
     }
 };
 
+struct set_get_stakepool_subcommand {
+    int sym_id;
+
+    set_get_stakepool_subcommand(CLI::App* actionRoot) {
+        auto gspcmd = actionRoot->add_subcommand("stakepool", localized("Retrieve a stakepool information"));
+        gspcmd->add_option("id", sym_id, localized("Name of stakepool to be retrieved"))->required();
+
+        gspcmd->callback([this] {
+            auto arg = fc::mutable_variant_object("sym_id", sym_id);
+            print_info(call(get_stakepool_func, arg));
+        });
+    }
+};
+
+struct set_get_validator_subcommand {
+    string name;
+
+    set_get_validator_subcommand(CLI::App* actionRoot) {
+        auto gvlcmd = actionRoot->add_subcommand("validator", localized("Retrieve a validator information"));
+        gvlcmd->add_option("name", name, localized("Name of validator to be retrieved"))->required();
+
+        gvlcmd->callback([this] {
+            auto arg = fc::mutable_variant_object("name", name);
+            print_info(call(get_validator_func, arg));
+        });
+    }
+};
+
+struct set_get_staking_shares_subcommand {
+    string addr;
+
+    set_get_staking_shares_subcommand(CLI::App* actionRoot) {
+        auto gsscmd = actionRoot->add_subcommand("shares", localized("Retrieve staking shares information"));
+        gsscmd->add_option("address", addr, localized("Address for query"))->required();
+
+        gsscmd->callback([this] {
+            auto arg = fc::mutable_variant_object("address", get_address(addr));
+            print_info(call(get_staking_shares_func, arg));
+        });
+    }
+};
+
 struct set_get_lock_subcommand {
     string name;
 
@@ -1641,7 +1924,7 @@ struct set_get_history_subcommands {
         });
 
         auto funcmd = hiscmd->add_subcommand("fungible", localized("Retrieve fungible actions history"));
-        funcmd->add_option("sym_id", sym_id, localized("Symbol Id to be retrieved"))->required();
+        funcmd->add_option("id", sym_id, localized("Symbol Id to be retrieved"))->required();
         funcmd->add_option("address", addr, localized("Address involved in fungible actions"));
         funcmd->add_option("--skip,-s", skip, localized("How many records should be skipped"));
         funcmd->add_option("--take,-t", take, localized("How many records should be returned"));
@@ -1800,14 +2083,17 @@ main(int argc, char** argv) {
         std::cout << fc::json::to_pretty_string(call(get_block_func, arg)) << std::endl;
     });
 
-    set_get_domain_subcommand   get_domain(get);
-    set_get_token_subcommand    get_token(get);
-    set_get_group_subcommand    get_group(get);
-    set_get_fungible_subcommand get_fungible(get);
-    set_get_my_subcommands      get_my(get);
-    set_get_history_subcommands get_history(get); 
-    set_get_suspend_subcommand  get_suspend(get);
-    set_get_lock_subcommand     get_lock(get);
+    set_get_domain_subcommand         get_domain(get);
+    set_get_token_subcommand          get_token(get);
+    set_get_group_subcommand          get_group(get);
+    set_get_fungible_subcommand       get_fungible(get);
+    set_get_my_subcommands            get_my(get);
+    set_get_history_subcommands       get_history(get);
+    set_get_suspend_subcommand        get_suspend(get);
+    set_get_lock_subcommand           get_lock(get);
+    set_get_stakepool_subcommand      get_stakepool(get);
+    set_get_validator_subcommand      get_validator(get);
+    set_get_staking_shares_subcommand get_staking_shares(get);
 
     // get transaction
     string   trx_id;
@@ -1904,6 +2190,18 @@ main(int argc, char** argv) {
     lock->require_subcommand();
 
     auto set_lock = set_lock_subcommands(lock);
+
+    //validator
+    auto validator = app.add_subcommand("validator", localized("actions about validator"));
+    validator->require_subcommand();
+
+    auto set_validator = set_validator_subcommands(validator);
+
+    //stakepool
+    auto stakepool = app.add_subcommand("stakepool", localized("action about stakepool"));
+    stakepool->require_subcommand();
+
+    auto set_stakepool = set_stakepool_subcommands(stakepool);
 
     // producer
     auto producer = app.add_subcommand("producer", localized("Votes for producers"));

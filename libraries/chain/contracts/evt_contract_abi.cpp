@@ -61,6 +61,21 @@ evt_contract_abi() {
         }
     });
 
+    evt_abi.enums.emplace_back( enum_def {
+        "stake_type", "uint64", {
+            "active",
+            "fixed"
+        }
+    });
+
+    evt_abi.enums.emplace_back( enum_def {
+        "unstake_op", "uint64", {
+            "propose",
+            "cancel",
+            "settle"
+        }
+    });
+
     // structures def
     evt_abi.structs.emplace_back( struct_def {
         "void", "", {}
@@ -488,6 +503,87 @@ evt_contract_abi() {
            {"sym_id", "symbol_id_type"},
            {"deadline", "time_point"},
            {"final_receiver", "address?"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "newstakepool", "", {
+           {"sym_id", "symbol_id_type"},
+           {"purchase_threshold", "asset"},
+           {"demand_r", "int32"},
+           {"demand_t", "int32"},
+           {"demand_q", "int32"},
+           {"demand_w", "int32"},
+           {"fixed_r", "int32"},
+           {"fixed_t", "int32"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "updstakepool", "", {
+           {"sym_id", "symbol_id_type"},
+           {"purchase_threshold", "asset?"},
+           {"demand_r", "int32?"},
+           {"demand_t", "int32?"},
+           {"demand_q", "int32?"},
+           {"demand_w", "int32?"},
+           {"fixed_r", "int32?"},
+           {"fixed_t", "int32?"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "newvalidator", "", {
+           {"name", "account_name"},
+           {"creator", "user_id"},
+           {"signer", "public_key"},
+           {"withdraw", "permission_def"},
+           {"manage", "permission_def"},
+           {"commission", "percent_slim"},
+           {"rsa_pubkey", "bytes?"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "staketkns", "", {
+           {"staker", "user_id"},
+           {"validator", "account_name"},
+           {"amount", "asset"},
+           {"type", "stake_type"},
+           {"fixed_days", "int32"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "unstaketkns", "", {
+           {"staker", "user_id"},
+           {"validator", "account_name"},
+           {"units", "int64"},
+           {"sym_id", "symbol_id_type"},
+           {"op", "unstake_op"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "toactivetkns", "", {
+           {"staker", "user_id"},
+           {"validator", "account_name"},
+           {"sym_id", "symbol_id_type"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "valiwithdraw", "", {
+           {"name", "account_name"},
+           {"addr", "address"},
+           {"amount", "asset"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "recvstkbonus", "", {
+           {"validator", "account_name"},
+           {"sym_id", "symbol_id_type"}
         }
     });
 

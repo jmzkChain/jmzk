@@ -40,6 +40,8 @@ public:
         max_pay_str      = 94,
         address          = 95,
         fixed_amount_str = 97,
+        memo             = 98,
+        redirect_url     = 99,
         link_id          = 156
     };
 

@@ -24,6 +24,7 @@ class fork_database;
 class apply_context;
 class charge_manager;
 class execution_context;
+class staking_context;
 class token_database_cache;
 
 struct controller_impl;
@@ -190,6 +191,7 @@ public:
     void    set_chain_config(const chain_config&);
     void    set_action_versions(vector<action_ver> vers);
     void    set_action_version(name action, int version);
+    void    set_initial_staking_period();
 
     bool light_validation_allowed(bool replay_opts_disabled_by_policy) const;
     bool skip_auth_check() const;

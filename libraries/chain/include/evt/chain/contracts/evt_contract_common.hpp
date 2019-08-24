@@ -189,6 +189,18 @@ get_db_key<passive_bonus_slim>(const passive_bonus_slim& pbs) {
     return get_psvbonus_db_key(pbs.sym_id, kPsvBonusSlim);
 }
 
+template<>
+name128
+get_db_key<stakepool_def>(const stakepool_def& v) {
+    return v.sym_id;
+}
+
+template<>
+name128
+get_db_key<validator_def>(const validator_def& v) {
+    return v.name;
+}
+
 template<typename T>
 std::optional<name128>
 get_db_prefix(const T& v) {
@@ -216,10 +228,19 @@ get_db_prefix<token_def>(const token_def& v) {
         tokendb_cache.put_token(TYPE, action_op::put, get_db_prefix(VALUE), get_db_key(VALUE), VALUE); \
     }
 
-#define PUT_DB_ASSET(ADDR, VALUE)                                     \
-    {                                                                 \
-        auto dv = make_db_value(VALUE);                               \
-        tokendb.put_asset(ADDR, VALUE.sym.id(), dv.as_string_view()); \
+#define PUT_DB_ASSET(ADDR, VALUE)                                             \
+    while(1) {                                                                \
+        if(VALUE.sym.id() == EVT_SYM_ID) {                                    \
+            if constexpr(std::is_same_v<decltype(VALUE), property>) {         \
+                auto ps = property_stakes(VALUE);                             \
+                auto dv = make_db_value(ps);                                  \
+                tokendb.put_asset(ADDR, VALUE.sym.id(), dv.as_string_view()); \
+                break;                                                        \
+            }                                                                 \
+        }                                                                     \
+        auto dv = make_db_value(VALUE);                                       \
+        tokendb.put_asset(ADDR, VALUE.sym.id(), dv.as_string_view());         \
+        break;                                                                \
     }
 
 #define READ_DB_TOKEN(TYPE, PREFIX, KEY, VPTR, EXCEPTION, FORMAT, ...)      \
@@ -228,7 +249,7 @@ get_db_prefix<token_def>(const token_def& v) {
         VPTR = tokendb_cache.template read_token<vtype>(TYPE, PREFIX, KEY); \
     }                                                                       \
     catch(token_database_exception&) {                                      \
-        EVT_THROW2(EXCEPTION, FORMAT, __VA_ARGS__);                         \
+        EVT_THROW2(EXCEPTION, FORMAT, ##__VA_ARGS__);                       \
     }
     
 #define READ_DB_TOKEN_NO_THROW(TYPE, PREFIX, KEY, VPTR)                                          \
@@ -240,10 +261,20 @@ get_db_prefix<token_def>(const token_def& v) {
 #define MAKE_PROPERTY(AMOUNT, SYM)                                            \
     property {                                                                \
         .amount = AMOUNT,                                                     \
+        .frozen_amount = 0,                                                   \
         .sym = SYM,                                                           \
         .created_at = context.control.pending_block_time().sec_since_epoch(), \
         .created_index = context.get_index_of_trx()                           \
     }
+
+#define MAKE_PROPERTY_STAKES(AMOUNT, SYM)                                     \
+    property_stakes(property {                                                \
+        .amount = AMOUNT,                                                     \
+        .frozen_amount = 0,                                                   \
+        .sym = SYM,                                                           \
+        .created_at = context.control.pending_block_time().sec_since_epoch(), \
+        .created_index = context.get_index_of_trx(),                          \
+    })
 
 #define CHECK_SYM(VALUEREF, PROVIDED) \
     EVT_ASSERT2(VALUEREF.sym == PROVIDED, asset_symbol_exception, "Provided symbol({}) is invalid, expected: {}", PROVIDED, VALUEREF.sym);
@@ -264,7 +295,12 @@ get_db_prefix<token_def>(const token_def& v) {
     {                                                                       \
         auto str = std::string();                                           \
         if(!tokendb.read_asset(ADDR, SYM.id(), str, true /* no throw */)) { \
-            VALUEREF = MAKE_PROPERTY(0, SYM);                               \
+            if constexpr(std::is_same_v<decltype(VALUEREF), property>) {    \
+                VALUEREF = MAKE_PROPERTY(0, SYM);                           \
+            }                                                               \
+            else {                                                          \
+                VALUEREF = MAKE_PROPERTY_STAKES(0, SYM);                    \
+            }                                                               \
             context.add_new_ft_holder(                                      \
                 ft_holder { .addr = ADDR, .sym_id = SYM.id() });            \
         }                                                                   \
@@ -278,7 +314,12 @@ get_db_prefix<token_def>(const token_def& v) {
     {                                                                       \
         auto str = std::string();                                           \
         if(!tokendb.read_asset(ADDR, SYM.id(), str, true /* no throw */)) { \
-            VALUEREF = MAKE_PROPERTY(0, SYM);                               \
+            if constexpr(std::is_same_v<decltype(VALUEREF), property>){     \
+                VALUEREF = MAKE_PROPERTY(0, SYM);                           \
+            }                                                               \
+            else {                                                          \
+                VALUEREF = MAKE_PROPERTY_STAKES(0, SYM);                    \
+            }                                                               \
         }                                                                   \
         else {                                                              \
             extract_db_value(str, VALUEREF);                                \
@@ -305,6 +346,11 @@ get_fungible_address(symbol sym) {
 address
 get_psvbonus_address(symbol_id_type sym_id, uint32_t round) {
     return address(N(.psvbonus), name128::from_number(sym_id), round);
+}
+
+address
+get_validator_address(name128& validator, symbol_id_type sym_id) {
+    return address(N(.validator), validator, sym_id);
 }
 
 // from, bonus
@@ -422,6 +468,42 @@ transfer_fungible(apply_context& context,
         context.add_generated_action(action(N128(.fungible), name128::from_number(sym.id()), pbact))
             .set_index(context.exec_ctx.index_of<paybonus>());
     }
+}
+
+void
+freeze_fungible(apply_context& context, const address& addr, asset total) {
+    DECLARE_TOKEN_DB()
+
+    auto sym = total.sym();
+
+    property prop;
+    READ_DB_ASSET(addr, sym, prop);
+
+    EVT_ASSERT2(prop.amount >= total.amount(), balance_exception,
+        "Address: {} does not have enough balance({}) left.", addr, total);
+
+    prop.amount -= total.amount();
+    prop.frozen_amount += total.amount();
+
+    PUT_DB_ASSET(addr, prop);
+}
+
+void
+unfreeze_fungible(apply_context& context, const address& addr, asset total) {
+    DECLARE_TOKEN_DB()
+
+    auto sym = total.sym();
+
+    property prop;
+    READ_DB_ASSET(addr, sym, prop);
+
+    EVT_ASSERT2(prop.frozen_amount >= total.amount(), balance_exception,
+        "Address: {} does not have enough forzen balance({}) left.", addr, total);
+
+    prop.amount += total.amount();
+    prop.frozen_amount -= total.amount();
+
+    PUT_DB_ASSET(addr, prop);
 }
 
 }  // namespace internal
