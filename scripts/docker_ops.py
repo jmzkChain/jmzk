@@ -1049,7 +1049,7 @@ def create(ctx, net, type, http, host, http_port, arguments):
         client.volumes.get(volume_name)
     except docker.errors.ImageNotFound:
         click.echo(
-            '{}} image is not found, please use docker pull image first'.format(image))
+            '{} image is not found, please use docker pull image first'.format(image))
         return
     except docker.errors.NotFound:
         click.echo(
