@@ -12,6 +12,7 @@
 #include <evt/chain/block_state.hpp>
 #include <evt/chain/execution_context.hpp>
 #include <evt/chain/transaction.hpp>
+#include <evt/chain/controller.hpp>
 #include <evt/chain/contracts/types.hpp>
 
 struct pg_conn;
@@ -26,6 +27,7 @@ struct abi_serializer;
 }  // namespace contracts
 }  // namespace chain
 
+using namespace chain;
 using namespace evt::chain::contracts;
 
 #define PG_OK   1
@@ -132,6 +134,9 @@ public:
     int upd_fungible(trx_context&, const updfungible&);
     int upd_fungible(trx_context&, const updfungible_v2&);
 
+    int add_validator(trx_context& tctx, const newvalidator& nvl);
+    int upd_validators(trx_context& tctx, const controller& control);
+
     int add_meta(trx_context&, const action_t&);
 
     int add_ft_holders(trx_context&, const ft_holders_t&);
@@ -143,6 +148,14 @@ private:
     pg_conn*    conn_;
     std::string last_sync_block_id_;
     int         prepared_stmts_;
+
+    struct validator {
+        std::string name;
+        int id;
+        double net_value;
+        int64_t units;
+    };
+    std::vector<validator> validators;
 };
 
 }  // namespace evt
