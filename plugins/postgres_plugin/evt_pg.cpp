@@ -301,7 +301,11 @@ auto create_validators_table = R"sql(CREATE SEQUENCE IF NOT EXISTS validator_id_
                                      WITH (
                                          OIDS = FALSE
                                      )
-                                     TABLESPACE pg_default;)sql";
+                                     TABLESPACE pg_default;
+                                     CREATE INDEX IF NOT EXISTS validators_name_index
+                                         ON public.validators USING btree
+                                         (name)
+                                         TABLESPACE pg_default;)sql";
 
 auto create_netvalues_table = R"sql(CREATE SEQUENCE IF NOT EXISTS netvalue_id_seq AS bigint;
                                     CREATE TABLE IF NOT EXISTS public.netvalues
