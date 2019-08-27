@@ -579,6 +579,7 @@ def detailmongo(ctx):
 
 def check_evt_image():
     missing_evt = False
+    missing_evt_staking = False
     missing_evt_mainnet = False
     try:
         client.images.get('everitoken/evt:latest')
@@ -590,9 +591,14 @@ def check_evt_image():
     except docker.errors.ImageNotFound:
         missing_evt_mainnet = True
 
-    if missing_evt and missing_evt_mainnet:
-        click.echo('Nither find image: {} or {}, please pull one first'.format(
-            green('everitoken/evt:latest'), green('everitoken/evt-mainnet:latest')))
+    try:
+        client.images.get('everitoken/evt-staking:latest')
+    except docker.errors.ImageNotFound:
+        missing_evt_staking = True
+
+    if missing_evt and missing_evt_mainnet and missing_evt_staking:
+        click.echo('Nither find image: {}, {} and {}, please pull one first'.format(
+            green('everitoken/evt:latest'), green('everitoken/evt-mainnet:latest'),  green('everitoken/evt-staking:latest')))
 
 
 @cli.group()
@@ -857,7 +863,7 @@ def getsnapshot(ctx, snapshot):
 
 @evtd.command()
 @click.argument('arguments', nargs=-1)
-@click.option('--type', '-t', default='testnet', type=click.Choice(['testnet', 'mainnet']), help='Type of the image')
+@click.option('--type', '-t', default='testnet', type=click.Choice(['testnet', 'mainnet', 'staking']), help='Type of the image')
 @click.option('--net', '-n', default='evt-net', help='Name of the network for the environment')
 @click.option('--http-port', '-p', default=8888, help='Expose port for rpc request, set 0 for not expose')
 @click.option('--p2p-port', default=7888, help='Expose port for p2p network, set 0 for not expose')
@@ -877,8 +883,13 @@ def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_db, post
 
     if type == 'testnet':
         image = 'everitoken/evt:latest'
-    else:
+    elif type == 'mainnet':
         image = 'everitoken/evt-mainnet:latest'
+    elif type == 'staking':
+        image = 'everitoken/evt-staking:latest'
+    else:
+        click.echo('Unknown image type')
+        return
 
     try:
         client.images.get(image)
@@ -888,7 +899,7 @@ def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_db, post
         client.volumes.get(volume2_name)
     except docker.errors.ImageNotFound:
         click.echo(
-            'Some necessary elements are not found, please run `evtd init` first')
+            '{} image is not found, please use docker pull image first'.format(image))
         return
     except docker.errors.NotFound:
         click.echo(
@@ -1014,20 +1025,31 @@ def init(ctx):
 @evtwd.command()
 @click.argument('arguments', nargs=-1)
 @click.option('--net', '-n', default='evt-net', help='Name of the network for the environment')
+@click.option('--type', '-t', default='testnet', type=click.Choice(['testnet', 'mainnet', 'staking']), help='Type of the image')
 @click.option('--http/--no-http', default=False, help='Whether to enable http server')
 @click.option('--host', '-h', default='127.0.0.1', help='Host address for evtwd (only works when http is enabled)')
 @click.option('--http-port', '-p', default=9999, help='Expose port for rpc request, set 0 for not expose (only works when http is enabled)')
 @click.pass_context
-def create(ctx, net, http, host, http_port, arguments):
+def create(ctx, net, type, http, host, http_port, arguments):
     name = ctx.obj['name']
     volume_name = '{}-data-volume'.format(name)
 
+    if type == 'testnet':
+        image = 'everitoken/evt:latest'
+    elif type == 'mainnet':
+        image = 'everitoken/evt-mainnet:latest'
+    elif type == 'staking':
+        image = 'everitoken/evt-staking:latest'
+    else:
+        click.echo('Unknown image type')
+        return
+
     try:
-        client.images.get('everitoken/evt:latest')
+        client.images.get(image)
         client.volumes.get(volume_name)
     except docker.errors.ImageNotFound:
         click.echo(
-            'Some necessary elements are not found, please run `evtwd init` first')
+            '{} image is not found, please use docker pull image first'.format(image))
         return
     except docker.errors.NotFound:
         click.echo(
@@ -1062,7 +1084,7 @@ def create(ctx, net, http, host, http_port, arguments):
     if arguments is not None and len(arguments) > 0:
         entry += ' ' + ' '.join(arguments)
 
-    client.containers.create('everitoken/evt:latest', None, name=name, detach=True,
+    client.containers.create(image, None, name=name, detach=True,
                              network=net,
                              ports=ports,
                              volumes={volume_name: {

@@ -6,6 +6,9 @@ env:
     LOGIN_PASSWORD: "docker-password"
 
 phases:
+  install:
+    runtime-versions:
+      docker: 18
   pre_build:
     commands:
       - echo Logging into Docker Hub...
