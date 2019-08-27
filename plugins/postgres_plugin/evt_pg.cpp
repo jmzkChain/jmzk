@@ -28,8 +28,9 @@ namespace evt {
  * - 1.3.0  add `ft_holders` table
  * - 1.3.1  add serveral indexes for better query performance
  * - 1.4.0  update `fungibles` to support transfer permission
+ * - 1.5.0  add `validators` and `netvalues` tables
  */
-static auto pg_version = "1.4.0";
+static auto pg_version = "1.5.0";
 
 namespace internal {
 
