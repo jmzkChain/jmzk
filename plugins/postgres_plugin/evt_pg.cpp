@@ -159,7 +159,7 @@ auto create_actions_table = R"sql(CREATE TABLE IF NOT EXISTS public.actions
                                       TABLESPACE pg_default;
                                   CREATE INDEX IF NOT EXISTS actions_data_index
                                       ON public.actions USING gin
-                                      (data jsonb_path_ops)
+                                      (data)
                                       TABLESPACE pg_default;
                                   CREATE INDEX IF NOT EXISTS actions_filter_index
                                       ON public.actions USING btree
