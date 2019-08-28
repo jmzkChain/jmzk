@@ -13,20 +13,10 @@
 #include <evt/chain/block_header.hpp>
 #include <evt/chain/exceptions.hpp>
 #include <evt/chain/snapshot.hpp>
-#include <evt/chain/controller.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
-#include <evt/chain/token_database_cache.hpp>
 #include <evt/postgres_plugin/copy_context.hpp>
 #include <evt/postgres_plugin/trx_context.hpp>
 
-#define READ_DB_TOKEN(TYPE, PREFIX, KEY, VPTR, EXCEPTION, FORMAT, ...) \
-    try {                                                              \
-        using vtype = typename decltype(VPTR)::element_type;           \
-        VPTR = cache.template read_token<vtype>(TYPE, PREFIX, KEY);    \
-    }                                                                  \
-    catch(token_database_exception&) {                                 \
-        EVT_THROW2(EXCEPTION, FORMAT, __VA_ARGS__);                    \
-    }
 
 namespace evt {
 
@@ -38,8 +28,9 @@ namespace evt {
  * - 1.3.0  add `ft_holders` table
  * - 1.3.1  add serveral indexes for better query performance
  * - 1.4.0  update `fungibles` to support transfer permission
+ * - 1.5.0  add `validators` and `netvalues` tables
  */
-static auto pg_version = "1.4.0";
+static auto pg_version = "1.5.0";
 
 namespace internal {
 
@@ -168,17 +159,17 @@ auto create_actions_table = R"sql(CREATE TABLE IF NOT EXISTS public.actions
                                       TABLESPACE pg_default;
                                   CREATE INDEX IF NOT EXISTS actions_data_index
                                       ON public.actions USING gin
-                                      (data jsonb_path_ops)
+                                      (data)
                                       TABLESPACE pg_default;
                                   CREATE INDEX IF NOT EXISTS actions_filter_index
                                       ON public.actions USING btree
                                       (domain, key, name)
                                       TABLESPACE pg_default;)sql";
 
-auto create_metas_table = R"sql(CREATE SEQUENCE IF NOT EXISTS metas_id_seq;
+auto create_metas_table = R"sql(CREATE SEQUENCE IF NOT EXISTS metas_id_seq AS bigint;
                                 CREATE TABLE IF NOT EXISTS metas
                                 (
-                                    id         integer                   NOT NULL  DEFAULT nextval('metas_id_seq'),
+                                    id         bigint                    NOT NULL  DEFAULT nextval('metas_id_seq'),
                                     key        character varying(21)     NOT NULL,
                                     value      text                      NOT NULL,
                                     creator    character varying(57)     NOT NULL,
@@ -300,9 +291,10 @@ auto create_ft_holders_table = R"sql(CREATE TABLE IF NOT EXISTS public.ft_holder
                                      )
                                      TABLESPACE pg_default;)sql";
 
-auto create_validators_table = R"sql(CREATE TABLE IF NOT EXISTS public.validators
+auto create_validators_table = R"sql(CREATE SEQUENCE IF NOT EXISTS validator_id_seq AS integer;
+                                     CREATE TABLE IF NOT EXISTS public.validators
                                      (
-                                         id           integer                 NOT NULL,
+                                         id           integer                 NOT NULL  DEFAULT nextval('validator_id_seq'),
                                          name         character varying(21)   NOT NULL,
                                          created_at timestamp with time zone  NOT NULL  DEFAULT now(),
                                          CONSTRAINT   validators_pkey PRIMARY KEY (id)
@@ -310,27 +302,36 @@ auto create_validators_table = R"sql(CREATE TABLE IF NOT EXISTS public.validator
                                      WITH (
                                          OIDS = FALSE
                                      )
-                                     TABLESPACE pg_default;)sql";
+                                     TABLESPACE pg_default;
+                                     CREATE INDEX IF NOT EXISTS validators_name_index
+                                         ON public.validators USING btree
+                                         (name)
+                                         TABLESPACE pg_default;)sql";
 
-auto update_validator_table = R"sql(CREATE TABLE IF NOT EXISTS public.netvalues
-                                     (
-                                         id           bigint                  NOT NULL,
-                                         validator_id integer                 NOT NULL,              
-                                         net_value    decimal(14)             NOT NULL,
-                                         total_units  bigint                  NOT NULL,
-                                         created_at timestamp with time zone  NOT NULL  DEFAULT now(),
-                                         CONSTRAINT   netvalues_pkey PRIMARY KEY (id)
-                                     )
-                                     WITH (
-                                         OIDS = FALSE
-                                     )
-                                     TABLESPACE pg_default;)sql";
+auto create_netvalues_table = R"sql(CREATE SEQUENCE IF NOT EXISTS netvalue_id_seq AS bigint;
+                                    CREATE TABLE IF NOT EXISTS public.netvalues
+                                    (
+                                        id           bigint                  NOT NULL  DEFAULT nextval('netvalue_id_seq'),
+                                        validator_id integer                 NOT NULL,              
+                                        net_value    decimal(14,12)          NOT NULL,
+                                        total_units  bigint                  NOT NULL,
+                                        created_at timestamp with time zone  NOT NULL  DEFAULT now(),
+                                        CONSTRAINT   netvalues_pkey PRIMARY KEY (id)
+                                    )
+                                    WITH (
+                                        OIDS = FALSE
+                                    )
+                                    TABLESPACE pg_default;)sql";
 
 
 
 struct table {
     std::string name;
     bool        partitioned;
+};
+
+struct sequence {
+    std::string name;
 };
 
 table tables[] = {
@@ -345,7 +346,13 @@ table tables[] = {
     { "fungibles",    false },
     { "ft_holders",   false },
     { "validators",   false },
-    { "nervalues",    false }
+    { "netvalues",    false }
+};
+
+sequence sequences[] = {
+    { "metas_id_seq"     },
+    { "validator_id_seq" },
+    { "netvalue_id_seq"  }
 };
 
 template<typename Iterator>
@@ -569,7 +576,11 @@ pg::drop_all_tables() {
 
 int
 pg::drop_all_sequences() {
-    drop_sequence("metas_id_seq");
+    using namespace internal;
+
+    for(auto s : sequences) {
+        drop_sequence(s.name);
+    }
 
     return PG_OK;
 }
@@ -589,7 +600,8 @@ pg::prepare_tables() {
         create_groups_table,
         create_fungibles_table,
         create_ft_holders_table,
-        create_validators_table
+        create_validators_table,
+        create_netvalues_table
     };
     for(auto stmt : stmts) {
         auto r = PQexec(conn_, stmt);
@@ -1118,57 +1130,34 @@ pg::upd_fungible(trx_context& tctx, const updfungible_v2& uf) {
     return PG_OK;
 }
 
-PREPARE_SQL_ONCE(nvl_plan, "INSERT INTO validators VALUES($1, $2, now());");
-PREPARE_SQL_ONCE(uvl_plan, "INSERT INTO netvalues VALUES(DEFAULT, $1, $2, $3, now());");
+PREPARE_SQL_ONCE(iv_plan,  "INSERT INTO validators VALUES(DEFAULT, $1, now());");
+PREPARE_SQL_ONCE(inv_plan, "INSERT INTO netvalues  VALUES(DEFAULT, $1, $2, $3, now());");
 
 int
 pg::add_validator(trx_context& tctx, const newvalidator& nvl) {
-    int validator_id = validators.size();
-
     fmt::format_to(tctx.trx_buf_,
-        fmt("EXECUTE nvl_plan('{}, {}');\n"),
-        validator_id,
+        fmt("EXECUTE iv_plan('{}');\n"),
         (std::string)nvl.name
         );
 
     fmt::format_to(tctx.trx_buf_,
-        fmt("EXECUTE uvl_plan('{}, {}, {}');\n"),
-        validator_id,
-        1.00000,
-        0
+        fmt("EXECUTE inv_plan(lastval(),{},{});\n"),
+        1,  /* net value */
+        0   /* shares */
         );
-
-    validator vl;
-    vl.name      = (std::string)nvl.name;
-    vl.id        = validator_id;
-    vl.net_value = 1.00000;
-    vl.units     = 0;
-
-    validators.emplace_back(vl);
 
     return PG_OK;
 }
 
+PREPARE_SQL_ONCE(inv2_plan, "INSERT INTO netvalues VALUES(DEFAULT, (SELECT id from validators where name = $1), $2, $3, now());");
 int
-pg::upd_validators(trx_context& tctx, const controller& control) {
-    for(auto& validator : validators) {
-        auto  name      = validator.name;
-        auto& cache     = control.token_db_cache();
-        auto  validator_ = make_empty_cache_ptr<validator_def>();
-        READ_DB_TOKEN(token_type::validator, std::nullopt, name, validator_, unknown_validator_exception,
-                      "Cannot find validator: {}", name);
-        if(validator_->current_net_value.to_double() == validator.net_value && validator_->total_units == validator.units) continue;
-
-        validator.net_value = validator_->current_net_value.to_double();
-        validator.units     = validator_->total_units;
-
-        fmt::format_to(tctx.trx_buf_,
-          fmt("EXECUTE uvl_plan('{}, {}, {}');\n"),
-          validator.id,
-          validator.net_value,
-          validator.units
-          );
-    }
+pg::upd_validator(trx_context& tctx, const validator_t& vldt) {
+    fmt::format_to(tctx.trx_buf_,
+      fmt("EXECUTE inv2_plan('{}',{},{});\n"),
+      (std::string)vldt.name,
+      vldt.current_net_value.to_string(),
+      vldt.total_units
+      );
 
     return PG_OK;
 }

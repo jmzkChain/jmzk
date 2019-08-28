@@ -23,6 +23,7 @@ using boost::condition_variable_any;
 #include <fc/variant.hpp>
 #include <fc/time.hpp>
 #include <fmt/format.h>
+#include <llvm/ADT/StringSet.h>
 
 #include <evt/chain/config.hpp>
 #include <evt/chain/controller.hpp>
@@ -77,6 +78,7 @@ public:
     void process_irreversible_block(const block_state_ptr, std::deque<transaction_trace_ptr>& traces, copy_context& cctx, trx_context& tctx);
     
     void process_action(const action&, trx_context& tctx);
+    void update_validators(trx_context&);
 
     void verify_last_block(const std::string& prev_block_id);
     void verify_no_blocks();
@@ -109,6 +111,8 @@ public:
 
     std::thread      consume_thread_;
     std::atomic_bool done_ = false;
+
+    llvm::StringSet<llvm::MallocAllocator> changed_validators_;
 
     std::optional<boost::signals2::scoped_connection> accepted_block_connection_;
     std::optional<boost::signals2::scoped_connection> irreversible_block_connection_;
@@ -333,7 +337,7 @@ postgres_plugin_impl::process_action(const action& act, trx_context& tctx) {
             READ_DB_TOKEN(token_type::fungible, std::nullopt, nf.sym.id(), ft, unknown_fungible_exception,
                 "Cannot find FT with sym id: {}", nf.sym.id());
 
-            db_.add_fungible(tctx, *ft); 
+            db_.add_fungible(tctx, *ft);
         });
         break;
     }
@@ -368,18 +372,45 @@ postgres_plugin_impl::process_action(const action& act, trx_context& tctx) {
         });
         break;
     }
-    // case N(recvstkbonus): {
-    //     exec_ctx_.invoke_action<recvstkbonus>(act, [&](const auto& rb) {
-    //         auto& cache = control_.token_db_cache();
-    //         auto validator = make_empty_cache_ptr<validator_def>();
-    //         READ_DB_TOKEN(token_type::validator, std::nullopt, rb.validator, validator, unknown_validator_exception,
-    //             "Cannot find validator: {}", rb.validator);
-
-    //         db_.upd_validator(tctx, *validator);
-    //     });
-    //     break;
-    // }
+    case N(recvstkbonus): {
+        exec_ctx_.invoke_action<recvstkbonus>(act, [&](const auto& rb) {
+            changed_validators_.insert(rb.validator.to_string());
+        });
+        break;
+    }
+    case N(staketkns): {
+        exec_ctx_.invoke_action<staketkns>(act, [&](const auto& st) {
+            changed_validators_.insert(st.validator.to_string());
+        });
+        break;
+    }
+    case N(unstaketkns): {
+        exec_ctx_.invoke_action<unstaketkns>(act, [&](const auto& ust) {
+            changed_validators_.insert(ust.validator.to_string());
+        });
+        break;
+    }
+    case N(toactivetkns): {
+        exec_ctx_.invoke_action<toactivetkns>(act, [&](const auto& tat) {
+            changed_validators_.insert(tat.validator.to_string());
+        });
+        break;
+    }
     }; // switch
+}
+
+void
+postgres_plugin_impl::update_validators(trx_context& tctx) {
+    for(auto& v : changed_validators_) {
+        auto& cache = control_.token_db_cache();
+        auto  vldt  = make_empty_cache_ptr<validator_def>();
+        auto  name  = v.first().str();
+        READ_DB_TOKEN(token_type::validator, std::nullopt, name, vldt, unknown_validator_exception,
+            "Cannot find validator with name: {}", name);
+
+        db_.upd_validator(tctx, *vldt);
+    }
+    changed_validators_.clear();
 }
 
 void
@@ -404,16 +435,12 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
         }
     }
 
-    auto& conf     = control_.get_global_properties().staking_configuration;
+
+    auto& sctx     = control_.get_global_properties().staking_ctx;
     auto  actx     = add_context(cctx, control_.get_chain_id(), control_.get_abi_serializer(), control_.get_execution_context());
     actx.block_id  = id;
     actx.block_num = (int)block->block_num;
     actx.ts        = (std::string)block->header.timestamp.to_time_point();
-
-    // update all the validators
-    if(actx.block_num%(conf.cycles_per_period * conf.blocks_per_cycle)  == conf.blocks_per_cycle) {
-        db_.upd_validators(tctx, control_);
-    }
 
     db_.add_block(actx, block);
 
@@ -459,6 +486,11 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
 
         db_.add_trx(actx, trx, strx, trx_num, elapsed, charge);
         ++trx_num;
+    }
+
+    // update all the validators
+    if(actx.block_num == sctx.period_start_num) {
+        update_validators(tctx);
     }
 
     ++processed_;

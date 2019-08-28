@@ -43,6 +43,7 @@ using chain_id_t   = chain::chain_id_type;
 using trx_recept_t = chain::transaction_receipt;
 using trx_t        = chain::signed_transaction;
 using ft_holders_t = chain::small_vector_base<chain::ft_holder>;
+using validator_t  = chain::contracts::validator_def;
 
 struct copy_context;
 struct trx_context;
@@ -55,7 +56,7 @@ public:
 public:
     copy_context&     cctx;
     std::string_view  block_id;
-    int               block_num;
+    uint32_t          block_num;
     std::string       ts;
     const chain_id_t& chain_id;
     const abi_t&      abi;
@@ -135,7 +136,7 @@ public:
     int upd_fungible(trx_context&, const updfungible_v2&);
 
     int add_validator(trx_context& tctx, const newvalidator& nvl);
-    int upd_validators(trx_context& tctx, const controller& control);
+    int upd_validator(trx_context& tctx, const validator_t& vldt);
 
     int add_meta(trx_context&, const action_t&);
 

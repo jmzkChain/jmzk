@@ -55,7 +55,7 @@ staking_plugin_impl::applied_block(const block_state_ptr& bs) {
         return;
     }
 
-    auto curr_block_num = db_.pending_block_state()->block_num;
+    auto curr_block_num = bs->block_num;
 
     auto& ctx  = db_.get_global_properties().staking_ctx;
     auto& conf = db_.get_global_properties().staking_configuration;
@@ -83,10 +83,10 @@ staking_plugin_impl::applied_block(const block_state_ptr& bs) {
     auto trx = signed_transaction();
     trx.actions.emplace_back(action(N128(.staking), config_.validator, recv));
 
-    trx.expiration = db_.head_block_time() + fc::seconds(30);
+    trx.expiration = db_.fork_db_head_block_time() + fc::seconds(30);
     trx.payer      = config_.payer;
     trx.max_charge = 10000;
-    trx.set_reference_block(db_.head_block_id());
+    trx.set_reference_block(db_.fork_db_head_block_id());
 
     auto digest = trx.sig_digest(db_.get_chain_id());
     for(auto& pair : config_.signature_providers) {
@@ -177,7 +177,7 @@ staking_plugin::plugin_initialize(const variables_map& options) {
         config.payer     = public_key_type(options["staking-payer"].as<std::string>());
 
         if(options.count("staking-signature-provider")) {
-            const std::vector<std::string> key_spec_pairs = options["signature-provider"].as<std::vector<std::string>>();
+            const auto& key_spec_pairs = options["staking-signature-provider"].as<std::vector<std::string>>();
             for(const auto& key_spec_pair : key_spec_pairs) {
                 try {
                     auto delim = key_spec_pair.find("=");
@@ -193,10 +193,17 @@ staking_plugin::plugin_initialize(const variables_map& options) {
                     auto pubkey = public_key_type(pub_key_str);
 
                     if(spec_type_str == "KEY") {
-                        config.signature_providers[pubkey] = make_key_signature_provider(private_key_type(spec_data));
+                        auto privkey = private_key_type(spec_data);
+                        config.signature_providers[pubkey] = make_key_signature_provider(privkey);
+                        FC_ASSERT(privkey.get_public_key() == pubkey,
+                            "Public key provided with private key should be paired, provided: {p1}, expected: {p2}", ("p1", privkey.get_public_key())("p2",pubkey));
+
                     }
                     else if(spec_type_str == "EVTWD") {
                         config.signature_providers[pubkey] = make_evtwd_signature_provider(my_, spec_data, pubkey);
+                    }
+                    else {
+                        EVT_THROW(plugin_config_exception, "Invalid key provider");
                     }
                 }
                 catch(...) {
@@ -204,6 +211,9 @@ staking_plugin::plugin_initialize(const variables_map& options) {
                 }
             }
         }
+
+        EVT_ASSERT(config.signature_providers.find(config.payer) != config.signature_providers.cend(),
+            plugin_config_exception, "Must provide signature provider for payer");
 
         config.evtwd_provider_timeout_us = fc::milliseconds(options.at("staking-evtwd-provider-timeout").as<int32_t>());
     }

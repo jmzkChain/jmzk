@@ -9,6 +9,9 @@ env:
     AWS_SECRET: "symbols-aws-secret"
 
 phases:
+  install:
+    runtime-versions:
+      docker: 18
   pre_build:
     commands:
       - echo Logging into Docker Hub...

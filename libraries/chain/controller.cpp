@@ -1781,12 +1781,11 @@ controller::get_required_keys(const transaction& trx, const public_keys_set& can
                    "${name} action in domain: ${domain} with key: ${key} authorized failed",
                    ("domain", act.domain)("key", act.key)("name", act.name));
     }
-
-    auto keys = checker.used_keys();
     if(trx.payer.type() == address::public_key_t) {
-        keys.emplace(trx.payer.get_public_key());
+        EVT_ASSERT(checker.satisfied_key(trx.payer.get_public_key()), unsatisfied_authorization, "Payer authorized failed");
     }
-    return keys;
+
+    return checker.used_keys();
 }
 
 public_keys_set
@@ -1797,12 +1796,11 @@ controller::get_suspend_required_keys(const transaction& trx, const public_keys_
     for(const auto& act : trx.actions) {
         checker.satisfied(act);
     }
-
-    auto keys = checker.used_keys();
     if(trx.payer.type() == address::public_key_t) {
-        keys.emplace(trx.payer.get_public_key());
+        checker.satisfied_key(trx.payer.get_public_key());
     }
-    return keys;
+
+    return checker.used_keys();;
 }
 
 public_keys_set
