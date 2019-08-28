@@ -23,6 +23,7 @@ using boost::condition_variable_any;
 #include <fc/variant.hpp>
 #include <fc/time.hpp>
 #include <fmt/format.h>
+#include <llvm/ADT/StringSet.h>
 
 #include <evt/chain/config.hpp>
 #include <evt/chain/controller.hpp>
@@ -77,6 +78,7 @@ public:
     void process_irreversible_block(const block_state_ptr, std::deque<transaction_trace_ptr>& traces, copy_context& cctx, trx_context& tctx);
     
     void process_action(const action&, trx_context& tctx);
+    void update_validators(trx_context&);
 
     void verify_last_block(const std::string& prev_block_id);
     void verify_no_blocks();
@@ -110,7 +112,7 @@ public:
     std::thread      consume_thread_;
     std::atomic_bool done_ = false;
 
-    std::vector<validator> validators;
+    llvm::StringSet<llvm::MallocAllocator> changed_validators_;
 
     std::optional<boost::signals2::scoped_connection> accepted_block_connection_;
     std::optional<boost::signals2::scoped_connection> irreversible_block_connection_;
@@ -327,6 +329,7 @@ postgres_plugin_impl::process_action(const action& act, trx_context& tctx) {
     case_act(destroytoken, del_token);
     case_act(newgroup,     add_group);
     case_act(updategroup,  upd_group);
+    case_act(newvalidator, add_validator);
     case N(newfungible): {
         exec_ctx_.invoke_action<newfungible>(act, [&](const auto& nf) {
             auto& cache = control_.token_db_cache();
@@ -334,7 +337,7 @@ postgres_plugin_impl::process_action(const action& act, trx_context& tctx) {
             READ_DB_TOKEN(token_type::fungible, std::nullopt, nf.sym.id(), ft, unknown_fungible_exception,
                 "Cannot find FT with sym id: {}", nf.sym.id());
 
-            db_.add_fungible(tctx, *ft); 
+            db_.add_fungible(tctx, *ft);
         });
         break;
     }
@@ -369,22 +372,45 @@ postgres_plugin_impl::process_action(const action& act, trx_context& tctx) {
         });
         break;
     }
-    case N(newvalidator): {
-        exec_ctx_.invoke_action<newvalidator>(act, [&](const auto& nvl) {
-            int validator_id = validators.size();
-
-            validator vl;
-            vl.name      = (std::string)nvl.name;
-            vl.id        = validator_id;
-            vl.net_value = 1.00000;
-            vl.units     = 0;
-
-            validators.emplace_back(vl);
-            db_.add_validator(tctx, vl);
+    case N(recvstkbonus): {
+        exec_ctx_.invoke_action<recvstkbonus>(act, [&](const auto& rb) {
+            changed_validators_.insert(rb.validator.to_string());
+        });
+        break;
+    }
+    case N(staketkns): {
+        exec_ctx_.invoke_action<staketkns>(act, [&](const auto& st) {
+            changed_validators_.insert(st.validator.to_string());
+        });
+        break;
+    }
+    case N(unstaketkns): {
+        exec_ctx_.invoke_action<unstaketkns>(act, [&](const auto& ust) {
+            changed_validators_.insert(ust.validator.to_string());
+        });
+        break;
+    }
+    case N(toactivetkns): {
+        exec_ctx_.invoke_action<toactivetkns>(act, [&](const auto& tat) {
+            changed_validators_.insert(tat.validator.to_string());
         });
         break;
     }
     }; // switch
+}
+
+void
+postgres_plugin_impl::update_validators(trx_context& tctx) {
+    for(auto& v : changed_validators_) {
+        auto& cache = control_.token_db_cache();
+        auto  vldt  = make_empty_cache_ptr<validator_def>();
+        auto  name  = v.first().str();
+        READ_DB_TOKEN(token_type::validator, std::nullopt, name, vldt, unknown_validator_exception,
+            "Cannot find validator with name: {}", name);
+
+        db_.upd_validator(tctx, *vldt);
+    }
+    changed_validators_.clear();
 }
 
 void
@@ -409,29 +435,11 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
         }
     }
 
-    auto& conf     = control_.get_global_properties().staking_configuration;
-    auto& ctx      = control_.get_global_properties().staking_ctx;
+    auto& sctx     = control_.get_global_properties().staking_ctx;
     auto  actx     = add_context(cctx, control_.get_chain_id(), control_.get_abi_serializer(), control_.get_execution_context());
     actx.block_id  = id;
     actx.block_num = (int)block->block_num;
     actx.ts        = (std::string)block->header.timestamp.to_time_point();
-
-    // update all the validators
-    if(actx.block_num  == (int)ctx.period_start_num ) {
-        for(auto& vl : validators) {
-            auto  name      = vl.name;
-            auto& cache     = control_.token_db_cache();
-            auto  vl_ = make_empty_cache_ptr<validator_def>();
-            READ_DB_TOKEN(token_type::validator, std::nullopt, name, vl_, unknown_validator_exception,
-                          "Cannot find validator: {}", name);
-            if(vl_->current_net_value.to_double() == vl.net_value && vl_->total_units == vl.units) continue;
-
-            vl.net_value = vl_->current_net_value.to_double();
-            vl.units     = vl_->total_units;
-
-            db_.upd_validator(tctx, vl);
-        }
-    }
 
     db_.add_block(actx, block);
 
@@ -479,6 +487,11 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
         db_.add_trx(actx, trx, strx, trx_num, all_trx_num, elapsed, charge);
         ++trx_num;
         ++all_trx_num;
+    }
+
+    // update all the validators
+    if(actx.block_num == sctx.period_start_num) {
+        update_validators(tctx);
     }
 
     ++processed_;

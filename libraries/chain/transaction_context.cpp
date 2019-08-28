@@ -190,7 +190,7 @@ transaction_context::check_paid() const {
         }
         auto& keys = trx_meta->recover_keys(control.get_chain_id());
         if(keys.find(payer.get_public_key()) == keys.end()) {
-            EVT_THROW(payer_exception, "Payer: ${p} needs to sign this transaction.", ("p",payer));
+            EVT_THROW(payer_exception, "Payer ${p} needs to sign this transaction. keys: ${keys}", ("p",payer)("keys",keys));
         }
         break;
     }
