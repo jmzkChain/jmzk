@@ -582,7 +582,7 @@ postgres_plugin::~postgres_plugin() {}
 
 bool
 postgres_plugin::enabled() const {
-    return my_->configured_;
+    return my_ && my_->configured_;
 }
 
 const std::string&
