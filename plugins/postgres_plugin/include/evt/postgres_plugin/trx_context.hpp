@@ -22,7 +22,10 @@ public:
     }
 
     void set_trx_id(const std::string& trx_id) { trx_id_ = trx_id; }
+    void set_timestamp(const std::string& timestamp) { timestamp_ = timestamp; }
+    
     const std::string_view& trx_id() const { return trx_id_; }
+    const std::string_view& timestamp() const { return timestamp_; }
 
 private:
     fmt::memory_buffer trx_buf_;
@@ -30,6 +33,7 @@ private:
 private:
     pg&              db_;
     std::string_view trx_id_;
+    std::string_view timestamp_;
 
 private:
     friend class pg;
