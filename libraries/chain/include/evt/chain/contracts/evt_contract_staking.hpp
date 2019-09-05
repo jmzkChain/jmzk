@@ -22,7 +22,7 @@ EVT_ACTION_IMPL_BEGIN(newstakepool) {
         DECLARE_TOKEN_DB()
 
         EVT_ASSERT2(nsact.sym_id == EVT_SYM_ID, staking_symbol_exception, "Only EVT is supported to stake currently");
-        EVT_ASSERT2(!tokendb.exists_token(token_type::stakepool, std::nullopt, name128::from_number(nsact.sym_id)), stakepool_duplicate_exception,
+        EVT_ASSERT2(!tokendb.exists_token(token_type::stakepool, std::nullopt, nsact.sym_id), stakepool_duplicate_exception,
             "Stakepool with sym id: {} already exists.", nsact.sym_id);
         EVT_ASSERT2(nsact.sym_id == nsact.purchase_threshold.sym().id(), symbol_type_exception,
             "Purchase threshold's symbol should match stake pool");

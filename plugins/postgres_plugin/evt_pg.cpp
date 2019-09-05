@@ -1209,7 +1209,7 @@ int
 pg::backup(const std::shared_ptr<chain::snapshot_writer>& snapshot) const {
     using namespace internal;
 
-    for(auto t : tables) {
+    for(const auto& t : tables) {
         dlog("Backuping ${t} table", ("t",t.name));
         snapshot->write_section(fmt::format("pg-{}", t.name), [this, &t](auto& writer) {
             auto stmt = std::string();
@@ -1219,7 +1219,6 @@ pg::backup(const std::shared_ptr<chain::snapshot_writer>& snapshot) const {
             else {
                 stmt = fmt::format("COPY (SELECT * from {}) TO STDOUT WITH BINARY;", t.name);
             }
-            
 
             auto r = PQexec(conn_, stmt.c_str());
             EVT_ASSERT(PQresultStatus(r) == PGRES_COPY_OUT, chain::postgres_exec_exception, "Not expected COPY response, detail: ${s}", ("s",PQerrorMessage(conn_)));
@@ -1244,6 +1243,23 @@ pg::backup(const std::shared_ptr<chain::snapshot_writer>& snapshot) const {
         dlog("Backuping ${t} table - OK", ("t",t.name));
     }
 
+    for(const auto& s : sequences) {
+        dlog("Backuping ${s} sequence", ("s",s.name));
+        snapshot->write_section(fmt::format("pg-seq-{}", s.name), [this, &s](auto& writer) {
+            auto stmt = fmt::format("SELECT last_value from {}", s.name);
+
+            auto r = PQexec(conn_, stmt.c_str());
+            EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK && PQntuples(r) == 1, chain::postgres_exec_exception, "Get latest sequence value failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+
+            auto v  = PQgetvalue(r, 0, 0);
+            auto iv = std::stoll(v);
+            writer.add_row((const char*)&iv, sizeof(iv));  // seq
+
+            PQclear(r);
+        });
+        dlog("Backuping ${s} sequence - OK", ("s",s.name));
+    }
+
     return PG_OK;
 }
 
@@ -1254,7 +1270,7 @@ pg::restore(const std::shared_ptr<chain::snapshot_reader>& snapshot) {
     prepare_tables();
     prepare_stmts();
 
-    for(auto t : tables) {
+    for(const auto& t : tables) {
         dlog("Restoring ${t} table", ("t",t.name));
         snapshot->read_section(fmt::format("pg-{}", t.name), [this, &t](auto& reader) {
             auto stmt = fmt::format("COPY {} FROM STDIN WITH BINARY;", t.name);
@@ -1282,6 +1298,21 @@ pg::restore(const std::shared_ptr<chain::snapshot_reader>& snapshot) {
             PQclear(r2);
         });
         dlog("Restoring ${t} table - OK", ("t",t.name));
+    }
+
+    for(const auto& s : sequences) {
+        dlog("Restoring ${s} sequence", ("s",s.name));
+        snapshot->read_section(fmt::format("pg-seq-{}", s.name), [this, &s](auto& reader) {
+            auto seq = 0ll;
+            reader.read_row((char*)&seq, sizeof(seq));
+
+            auto stmt = fmt::format("SELECT setval('{}', {});", s.name, seq);
+            auto r    = PQexec(conn_, stmt.c_str());
+            EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK && PQntuples(r) == 1, chain::postgres_exec_exception, "Get latest sequence value failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+
+            PQclear(r);
+        });
+        dlog("Restoring ${s} sequence - OK", ("s",s.name));
     }
 
     return PG_OK;
