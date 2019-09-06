@@ -699,8 +699,6 @@ struct newvalidator {
     permission_def  manage;
     percent_slim    commission;
 
-    optional<bytes> rsa_pubkey;
-
     EVT_ACTION_VER1(newvalidator);
 };
 
@@ -823,7 +821,7 @@ FC_REFLECT(evt::chain::contracts::setpsvbonus_v2, (sym_id)(rate)(base_charge)(ch
 FC_REFLECT(evt::chain::contracts::distpsvbonus, (sym_id)(deadline)(final_receiver));
 FC_REFLECT(evt::chain::contracts::newstakepool, (sym_id)(purchase_threshold)(demand_r)(demand_t)(demand_q)(demand_w)(fixed_r)(fixed_t));
 FC_REFLECT(evt::chain::contracts::updstakepool, (sym_id)(purchase_threshold)(demand_r)(demand_t)(demand_q)(demand_w)(fixed_r)(fixed_t));
-FC_REFLECT(evt::chain::contracts::newvalidator, (name)(creator)(signer)(withdraw)(manage)(commission)(rsa_pubkey));
+FC_REFLECT(evt::chain::contracts::newvalidator, (name)(creator)(signer)(withdraw)(manage)(commission));
 FC_REFLECT(evt::chain::contracts::valiwithdraw, (name)(addr)(amount));
 FC_REFLECT(evt::chain::contracts::staketkns, (staker)(validator)(amount)(type)(fixed_days));
 FC_REFLECT(evt::chain::contracts::unstaketkns, (staker)(validator)(units)(sym_id)(op));

@@ -106,6 +106,7 @@ get_half_curve_order() {
     static private_key_secret half_order = _get_half_curve_order();
     return half_order;
 }
+
 }  // namespace detail
 
 public_key
