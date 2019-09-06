@@ -442,6 +442,7 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
     actx.ts        = (std::string)block->header.timestamp.to_time_point();
 
     db_.add_block(actx, block);
+    tctx.set_timestamp(actx.ts);
 
     // transactions
     auto trx_num = 0;
@@ -467,8 +468,7 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
                     }
 
                     tctx.set_trx_id(str_trx_id);
-                    tctx.set_timestamp(actx.ts);
-
+                    
                     auto act_num = 0;
                     for(auto& act_trace : trace->action_traces) {
                         db_.add_action(actx, act_trace, str_trx_id, act_num);

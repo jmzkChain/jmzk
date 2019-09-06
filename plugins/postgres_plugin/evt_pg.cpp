@@ -1152,6 +1152,7 @@ pg::add_validator(trx_context& tctx, const newvalidator& nvl) {
 }
 
 PREPARE_SQL_ONCE(inv2_plan, "INSERT INTO netvalues VALUES(DEFAULT, (SELECT id from validators where name = $1), $2, $3, $4, now());");
+
 int
 pg::upd_validator(trx_context& tctx, const validator_t& vldt) {
     fmt::format_to(tctx.trx_buf_,
