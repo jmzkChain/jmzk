@@ -339,7 +339,7 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts][staking]") {
     to_variant(unstk, var);
     CHECK_THROWS_AS(my_tester->push_action(N(unstaketkns), N128(.staking), N128(validator), var.get_object(), key_seeds, payer), staking_not_enough_exception);
 
-    // exceed pending days
+    // exceed pending days: 8
     my_tester->produce_block(fc::days(conf.unstake_pending_days + 1));
 
     // ok
@@ -449,7 +449,7 @@ TEST_CASE_METHOD(contracts_test, "recvstkbonus_test", "[contracts][staking]") {
 
     // pump days
     auto& conf = my_tester->control->get_global_properties().staking_configuration;
-    my_tester->produce_block(fc::days(37));  // total days: 31 + 22 + 37 = 90 days
+    my_tester->produce_block(fc::days(51));  // total days: 31 + 8 + 51 = 90 days
     my_tester->produce_blocks((conf.cycles_per_period - 2) * conf.blocks_per_cycle);
 
     // calculate roi
