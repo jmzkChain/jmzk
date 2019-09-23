@@ -78,7 +78,6 @@ auto create_blocks_table = R"sql(CREATE TABLE IF NOT EXISTS public.blocks
                                      trx_merkle_root character(64)            NOT NULL,
                                      trx_count       integer                  NOT NULL,
                                      producer        character varying(21)    NOT NULL,
-                                     pending         boolean                  NOT NULL DEFAULT true,
                                      created_at      timestamp with time zone NOT NULL DEFAULT now(),
                                      CONSTRAINT      blocks_pkey PRIMARY KEY (block_id)
                                  )
@@ -103,7 +102,6 @@ auto create_trxs_table = R"sql(CREATE TABLE IF NOT EXISTS public.transactions
                                    expiration    timestamp with time zone NOT NULL,
                                    max_charge    integer                  NOT NULL,
                                    payer         character(53)            NOT NULL,
-                                   pending       boolean                  NOT NULL DEFAULT true,
                                    type          character varying(7)     NOT NULL,
                                    status        character varying(9)     NOT NULL,
                                    signatures    character(101)[]         NOT NULL,
@@ -580,6 +578,7 @@ pg::prepare_stats() {
     auto tctx = new_trx_context();
     add_stat(tctx, "version", pg_version);
     add_stat(tctx, "last_sync_block_id", "");
+    add_stat(tctx, "last_irreversible_block_id", "");
 
     tctx.commit();
     return PG_OK;
