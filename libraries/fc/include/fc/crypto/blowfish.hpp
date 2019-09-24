@@ -140,6 +140,12 @@ struct sblock {
         m_uir ^= b.m_uir;
         return *this;
     }
+    // Operators
+    sblock& operator=(const sblock& rhs) {
+        m_uil = rhs.m_uil;
+        m_uir = rhs.m_uir;
+        return *this;
+    }
     unsigned int m_uil, m_uir;
 };
 
