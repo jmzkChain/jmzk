@@ -130,15 +130,16 @@ auto create_trxs_table = R"sql(CREATE TABLE IF NOT EXISTS public.transactions
 
 auto create_actions_table = R"sql(CREATE TABLE IF NOT EXISTS public.actions
                                   (
-                                      block_id   character(64)            NOT NULL,
-                                      block_num  integer                  NOT NULL,
-                                      trx_id     character(64)            NOT NULL,
-                                      seq_num    integer                  NOT NULL,
-                                      global_seq bigint                   NOT NULL,
-                                      name       character varying(13)    NOT NULL,
-                                      domain     character varying(21)    NOT NULL,
-                                      key        character varying(21)    NOT NULL,
-                                      data       jsonb                    NOT NULL,
+                                      block_id          character(64)            NOT NULL,
+                                      block_num         integer                  NOT NULL,
+                                      trx_id            character(64)            NOT NULL,
+                                      seq_num           integer                  NOT NULL,
+                                      global_seq        bigint                   NOT NULL,
+                                      name              character varying(13)    NOT NULL,
+                                      domain            character varying(21)    NOT NULL,
+                                      key               character varying(21)    NOT NULL,
+                                      data              jsonb                    NOT NULL,
+                                      related_addresses integer[]                NOT NULL,
                                       created_at timestamp with time zone NOT NULL DEFAULT now()
                                   )
                                   WITH (
@@ -275,17 +276,24 @@ auto create_fungibles_table = R"sql(CREATE TABLE IF NOT EXISTS public.fungibles
                                         (created_at)
                                         TABLESPACE pg_default;)sql";
 
-auto create_ft_holders_table = R"sql(CREATE TABLE IF NOT EXISTS public.ft_holders
-                                     (
+auto create_ft_holders_table = R"sql(CREATE SEQUENCE IF NOT EXISTS ft_holders_id_seq;
+                                     CREATE TABLE IF NOT EXISTS public.ft_holders
+                                     (  
+                                         id         integer                   NOT NULL  DEFAULT nextval('ft_holders_id_seq'),
                                          address    character(53)             NOT NULL,
                                          sym_ids    bigint[]                  NOT NULL,
                                          created_at timestamp with time zone  NOT NULL  DEFAULT now(),
-                                         CONSTRAINT ft_holders_pkey PRIMARY KEY (address)
+                                         CONSTRAINT ft_holders_pkey PRIMARY KEY (id)
                                      )
                                      WITH (
                                          OIDS = FALSE
                                      )
-                                     TABLESPACE pg_default;)sql";
+                                     TABLESPACE pg_default;
+                                     CREATE INDEX IF NOT EXISTS ft_holders_address_index
+                                        ON public.ft_holders USING btree
+                                        (address)
+                                        TABLESPACE pg_default;)sql";
+
 
 
 struct table {
@@ -1110,7 +1118,7 @@ pg::add_meta(trx_context& tctx, const action_t& act) {
     return PG_OK;
 }
 
-PREPARE_SQL_ONCE(afh_plan, "INSERT INTO ft_holders VALUES($1, $2, now()) ON CONFLICT (address) DO UPDATE SET sym_ids = array_append(ft_holders.sym_ids, excluded.sym_ids[1]);");
+PREPARE_SQL_ONCE(afh_plan, "INSERT INTO ft_holders VALUES(DEFAULT, $1, $2, now()) ON CONFLICT (address) DO UPDATE SET sym_ids = array_append(ft_holders.sym_ids, excluded.sym_ids[1]);");
 
 int
 pg::add_ft_holders(trx_context& tctx, const ft_holders_t& holders) {
