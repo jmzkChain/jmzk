@@ -1597,6 +1597,125 @@ struct set_producer_subcommands {
     }
 };
 
+dist_rule
+parse_rule(const string& str) {
+    vector<string> strs;
+    boost::split(strs, str, boost::is_any_of(":"));
+    FC_ASSERT(strs.size() >= 3);
+
+    auto dr = dist_rule();
+
+    dist_receiver receiver;
+    if(strs[1].substr(0, 1) == "@") {
+        receiver = get_address(strs[1]);
+    }
+    else {
+        receiver = dist_stack_receiver(asset::from_string(strs[1]));
+    }
+
+    if(strs[0] == "fixed") {
+        auto rule     = dist_fixed_rule();
+        rule.receiver = receiver;
+        rule.amount   = asset::from_string(strs[2]);
+        dr            = rule;
+    }
+    else if(strs[0] == "percent") {
+        auto rule     = dist_percent_rule();
+        rule.receiver = receiver;
+        rule.percent  = (percent_slim::from_string(strs[2])).value();
+        dr            = rule;
+    }
+    else {
+        auto rule     = dist_rpercent_rule();
+        rule.receiver = receiver;
+        rule.percent  = (percent_slim::from_string(strs[2])).value();
+        dr            = rule;
+    }
+    return dr;
+}
+
+passive_method
+parse_method(const string& str) {
+    vector<string> strs;
+    boost::split(strs, str, boost::is_any_of(":"));
+    FC_ASSERT(strs.size() >= 2);
+
+    if(strs[1] == "within") {
+        return passive_method(strs[0], passive_method_type::within_amount);
+    }
+    else {
+        return passive_method(strs[0], passive_method_type::outside_amount);
+    }
+}
+
+struct set_psvbonus_subcommands {
+    string         sym;
+    string         rate;
+    string         base_charge;
+    string         charge_threshold;
+    string         minimum_charge;
+    string         dist_threshold;
+    vector<string> rules;
+    vector<string> methods;
+    int64_t        sym_id;
+    string         final_receiver;
+    string         deadline;
+
+    set_psvbonus_subcommands(CLI::App* actionRoot) {
+        auto spcmd = actionRoot->add_subcommand("set", localized("set passive bonus for one fungible token"));
+        spcmd->add_option("sym", sym, localized("symbol of bonus"))->required();
+        spcmd->add_option("rate", rate, localized("Rate of fees according to the amount of transaction"))->required();
+        spcmd->add_option("base_charge", base_charge, localized("The optional addition fees outside the rate for every transaction"))->required();
+        spcmd->add_option("dist_threshold", dist_threshold, localized("Only the profit collected is large than this value, can the managers start one round of distribution"))->required();
+        spcmd->add_option("--rules", rules, localized("Multiple levels of distribution rules are supported on everiToken"))->required();
+        spcmd->add_option("--methods", methods, localized("within_amount and outside_amount are the possible values for each action"))->required();
+        spcmd->add_option("--charge_threshold", charge_threshold, localized("The maximum of the total fees"));
+        spcmd->add_option("--minimum_charge", minimum_charge, localized("The minimum of the total fees"));
+
+        add_standard_transaction_options(spcmd);
+
+        spcmd->callback([this] {
+            auto spact           = setpsvbonus();
+            spact.sym            = symbol::from_string(sym);
+            spact.rate           = (percent_slim::from_string(rate)).value();
+            spact.base_charge    = asset::from_string(base_charge);
+            spact.dist_threshold = asset::from_string(dist_threshold);
+            if(minimum_charge != "")
+                spact.minimum_charge = asset::from_string(minimum_charge);
+            if(charge_threshold != "")
+                spact.charge_threshold = asset::from_string(charge_threshold);
+            for(auto& rl : rules) {
+                spact.rules.emplace_back(parse_rule(rl));
+            }
+
+            for(auto& mt : methods) {
+                spact.methods.emplace_back(parse_method(mt));
+            }
+
+            auto act = create_action(N128(.bonus), (domain_key)std::to_string(spact.sym.id()), spact);
+            send_actions({act});
+        });
+
+        auto dpcmd = actionRoot->add_subcommand("dist", localized("start one distribution of bonus"));
+        dpcmd->add_option("sym_id", sym_id, localized("symbol id of bonus"))->required();
+        dpcmd->add_option("deadline", deadline, localized("deadline of this distribution"))->required();
+        dpcmd->add_option("final_receiver", final_receiver, localized("final receiver"));
+
+        add_standard_transaction_options(dpcmd);
+
+        dpcmd->callback([this] {
+            auto dpact     = distpsvbonus();
+            dpact.sym_id   = sym_id;
+            dpact.deadline = parse_time_point_str(deadline);
+            if(final_receiver != "")
+                dpact.final_receiver = get_address(final_receiver);
+
+            auto act = create_action(N128(.psvbonus), (domain_key)std::to_string(dpact.sym_id), dpact);
+            send_actions({act});
+        });
+    }
+};
+
 struct set_action_subcommand {
     string name;
     string domain;
@@ -2198,7 +2317,7 @@ main(int argc, char** argv) {
     auto set_validator = set_validator_subcommands(validator);
 
     //stakepool
-    auto stakepool = app.add_subcommand("stakepool", localized("action about stakepool"));
+    auto stakepool = app.add_subcommand("stakepool", localized("actions about stakepool"));
     stakepool->require_subcommand();
 
     auto set_stakepool = set_stakepool_subcommands(stakepool);
@@ -2208,6 +2327,12 @@ main(int argc, char** argv) {
     producer->require_subcommand();
 
     auto set_producer = set_producer_subcommands(producer);
+
+    // psvbonus
+    auto psvbonus = app.add_subcommand("psvbonus", localized("actions about passive bonus"));
+    psvbonus->require_subcommand();
+
+    auto set_psvbonus = set_psvbonus_subcommands(psvbonus);
 
     // action
     auto action = app.add_subcommand("action", localized("Raw operations for actions"));
