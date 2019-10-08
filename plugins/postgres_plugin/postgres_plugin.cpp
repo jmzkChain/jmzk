@@ -442,6 +442,7 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
     actx.ts        = (std::string)block->header.timestamp.to_time_point();
 
     db_.add_block(actx, block);
+    tctx.set_timestamp(actx.ts);
 
     // transactions
     auto        trx_num     = 0;
@@ -584,7 +585,7 @@ postgres_plugin::~postgres_plugin() {}
 
 bool
 postgres_plugin::enabled() const {
-    return my_->configured_;
+    return my_ && my_->configured_;
 }
 
 const std::string&

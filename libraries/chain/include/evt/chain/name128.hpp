@@ -194,9 +194,8 @@ using uint128_t = __uint128_t;
 template <>
 struct hash<evt::chain::name128> : private hash<uint128_t> {
     using argument_type = evt::chain::name128;
-    using result_type   = typename hash<uint128_t>::result_type;
 
-    result_type
+    std::size_t
     operator()(const argument_type& name) const noexcept {
         return hash<uint128_t>::operator()(name.value);
     }

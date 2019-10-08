@@ -310,11 +310,12 @@ auto create_validators_table = R"sql(CREATE SEQUENCE IF NOT EXISTS validator_id_
 auto create_netvalues_table = R"sql(CREATE SEQUENCE IF NOT EXISTS netvalue_id_seq AS bigint;
                                     CREATE TABLE IF NOT EXISTS public.netvalues
                                     (
-                                        id           bigint                  NOT NULL  DEFAULT nextval('netvalue_id_seq'),
-                                        validator_id integer                 NOT NULL,              
-                                        net_value    decimal(14,12)          NOT NULL,
-                                        total_units  bigint                  NOT NULL,
-                                        created_at timestamp with time zone  NOT NULL  DEFAULT now(),
+                                        id           bigint                   NOT NULL  DEFAULT nextval('netvalue_id_seq'),
+                                        validator_id integer                  NOT NULL,              
+                                        net_value    decimal(14,12)           NOT NULL,
+                                        total_units  bigint                   NOT NULL,
+                                        timestamp    timestamp with time zone NOT NULL,
+                                        created_at   timestamp with time zone NOT NULL  DEFAULT now(),
                                         CONSTRAINT   netvalues_pkey PRIMARY KEY (id)
                                     )
                                     WITH (
@@ -1129,7 +1130,7 @@ pg::upd_fungible(trx_context& tctx, const updfungible_v2& uf) {
 }
 
 PREPARE_SQL_ONCE(iv_plan,  "INSERT INTO validators VALUES(DEFAULT, $1, now());");
-PREPARE_SQL_ONCE(inv_plan, "INSERT INTO netvalues  VALUES(DEFAULT, $1, $2, $3, now());");
+PREPARE_SQL_ONCE(inv_plan, "INSERT INTO netvalues  VALUES(DEFAULT, $1, $2, $3, $4, now());");
 
 int
 pg::add_validator(trx_context& tctx, const newvalidator& nvl) {
@@ -1139,22 +1140,25 @@ pg::add_validator(trx_context& tctx, const newvalidator& nvl) {
         );
 
     fmt::format_to(tctx.trx_buf_,
-        fmt("EXECUTE inv_plan(lastval(),{},{});\n"),
+        fmt("EXECUTE inv_plan(lastval(),{},{},'{}');\n"),
         1,  /* net value */
-        0   /* shares */
+        0   /* shares */,
+        tctx.timestamp()
         );
 
     return PG_OK;
 }
 
-PREPARE_SQL_ONCE(inv2_plan, "INSERT INTO netvalues VALUES(DEFAULT, (SELECT id from validators where name = $1), $2, $3, now());");
+PREPARE_SQL_ONCE(inv2_plan, "INSERT INTO netvalues VALUES(DEFAULT, (SELECT id from validators where name = $1), $2, $3, $4, now());");
+
 int
 pg::upd_validator(trx_context& tctx, const validator_t& vldt) {
     fmt::format_to(tctx.trx_buf_,
-      fmt("EXECUTE inv2_plan('{}',{},{});\n"),
+      fmt("EXECUTE inv2_plan('{}',{},{},'{}');\n"),
       (std::string)vldt.name,
       vldt.current_net_value.to_string(),
-      vldt.total_units
+      vldt.total_units,
+      tctx.timestamp()
       );
 
     return PG_OK;
@@ -1207,7 +1211,7 @@ int
 pg::backup(const std::shared_ptr<chain::snapshot_writer>& snapshot) const {
     using namespace internal;
 
-    for(auto t : tables) {
+    for(const auto& t : tables) {
         dlog("Backuping ${t} table", ("t",t.name));
         snapshot->write_section(fmt::format("pg-{}", t.name), [this, &t](auto& writer) {
             auto stmt = std::string();
@@ -1217,7 +1221,6 @@ pg::backup(const std::shared_ptr<chain::snapshot_writer>& snapshot) const {
             else {
                 stmt = fmt::format("COPY (SELECT * from {}) TO STDOUT WITH BINARY;", t.name);
             }
-            
 
             auto r = PQexec(conn_, stmt.c_str());
             EVT_ASSERT(PQresultStatus(r) == PGRES_COPY_OUT, chain::postgres_exec_exception, "Not expected COPY response, detail: ${s}", ("s",PQerrorMessage(conn_)));
@@ -1242,6 +1245,23 @@ pg::backup(const std::shared_ptr<chain::snapshot_writer>& snapshot) const {
         dlog("Backuping ${t} table - OK", ("t",t.name));
     }
 
+    for(const auto& s : sequences) {
+        dlog("Backuping ${s} sequence", ("s",s.name));
+        snapshot->write_section(fmt::format("pg-seq-{}", s.name), [this, &s](auto& writer) {
+            auto stmt = fmt::format("SELECT last_value from {}", s.name);
+
+            auto r = PQexec(conn_, stmt.c_str());
+            EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK && PQntuples(r) == 1, chain::postgres_exec_exception, "Get latest sequence value failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+
+            auto v  = PQgetvalue(r, 0, 0);
+            auto iv = std::stoll(v);
+            writer.add_row((const char*)&iv, sizeof(iv));  // seq
+
+            PQclear(r);
+        });
+        dlog("Backuping ${s} sequence - OK", ("s",s.name));
+    }
+
     return PG_OK;
 }
 
@@ -1252,7 +1272,7 @@ pg::restore(const std::shared_ptr<chain::snapshot_reader>& snapshot) {
     prepare_tables();
     prepare_stmts();
 
-    for(auto t : tables) {
+    for(const auto& t : tables) {
         dlog("Restoring ${t} table", ("t",t.name));
         snapshot->read_section(fmt::format("pg-{}", t.name), [this, &t](auto& reader) {
             auto stmt = fmt::format("COPY {} FROM STDIN WITH BINARY;", t.name);
@@ -1280,6 +1300,21 @@ pg::restore(const std::shared_ptr<chain::snapshot_reader>& snapshot) {
             PQclear(r2);
         });
         dlog("Restoring ${t} table - OK", ("t",t.name));
+    }
+
+    for(const auto& s : sequences) {
+        dlog("Restoring ${s} sequence", ("s",s.name));
+        snapshot->read_section(fmt::format("pg-seq-{}", s.name), [this, &s](auto& reader) {
+            auto seq = 0ll;
+            reader.read_row((char*)&seq, sizeof(seq));
+
+            auto stmt = fmt::format("SELECT setval('{}', {});", s.name, seq);
+            auto r    = PQexec(conn_, stmt.c_str());
+            EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK && PQntuples(r) == 1, chain::postgres_exec_exception, "Get latest sequence value failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+
+            PQclear(r);
+        });
+        dlog("Restoring ${s} sequence - OK", ("s",s.name));
     }
 
     return PG_OK;
