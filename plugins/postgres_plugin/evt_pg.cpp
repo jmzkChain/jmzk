@@ -80,7 +80,6 @@ auto create_blocks_table = R"sql(CREATE TABLE IF NOT EXISTS public.blocks
                                      trx_merkle_root character(64)            NOT NULL,
                                      trx_count       integer                  NOT NULL,
                                      producer        character varying(21)    NOT NULL,
-                                     pending         boolean                  NOT NULL DEFAULT true,
                                      created_at      timestamp with time zone NOT NULL DEFAULT now(),
                                      CONSTRAINT      blocks_pkey PRIMARY KEY (block_id)
                                  )
@@ -105,7 +104,6 @@ auto create_trxs_table = R"sql(CREATE TABLE IF NOT EXISTS public.transactions
                                    expiration    timestamp with time zone NOT NULL,
                                    max_charge    integer                  NOT NULL,
                                    payer         character(53)            NOT NULL,
-                                   pending       boolean                  NOT NULL DEFAULT true,
                                    type          character varying(7)     NOT NULL,
                                    status        character varying(9)     NOT NULL,
                                    signatures    character(101)[]         NOT NULL,
@@ -278,17 +276,23 @@ auto create_fungibles_table = R"sql(CREATE TABLE IF NOT EXISTS public.fungibles
                                         (created_at)
                                         TABLESPACE pg_default;)sql";
 
-auto create_ft_holders_table = R"sql(CREATE TABLE IF NOT EXISTS public.ft_holders
-                                     (
+auto create_ft_holders_table = R"sql(CREATE SEQUENCE IF NOT EXISTS ft_holders_id_seq;
+                                     CREATE TABLE IF NOT EXISTS public.ft_holders
+                                     (  
+                                         id         integer                   NOT NULL  DEFAULT nextval('ft_holders_id_seq'),
                                          address    character(53)             NOT NULL,
                                          sym_ids    bigint[]                  NOT NULL,
                                          created_at timestamp with time zone  NOT NULL  DEFAULT now(),
-                                         CONSTRAINT ft_holders_pkey PRIMARY KEY (address)
+                                         CONSTRAINT ft_holders_pkey PRIMARY KEY (id)
                                      )
                                      WITH (
                                          OIDS = FALSE
                                      )
-                                     TABLESPACE pg_default;)sql";
+                                     TABLESPACE pg_default;
+                                     CREATE INDEX IF NOT EXISTS ft_holders_address_index
+                                        ON public.ft_holders USING btree
+                                        (address)
+                                        TABLESPACE pg_default;)sql";
 
 auto create_validators_table = R"sql(CREATE SEQUENCE IF NOT EXISTS validator_id_seq AS integer;
                                      CREATE TABLE IF NOT EXISTS public.validators
@@ -633,6 +637,7 @@ pg::prepare_stats() {
     auto tctx = new_trx_context();
     add_stat(tctx, "version", pg_version);
     add_stat(tctx, "last_sync_block_id", "");
+    add_stat(tctx, "last_irreversible_block_id", "");
 
     tctx.commit();
     return PG_OK;
@@ -1197,7 +1202,7 @@ pg::add_meta(trx_context& tctx, const action_t& act) {
     return PG_OK;
 }
 
-PREPARE_SQL_ONCE(afh_plan, "INSERT INTO ft_holders VALUES($1, $2, now()) ON CONFLICT (address) DO UPDATE SET sym_ids = array_append(ft_holders.sym_ids, excluded.sym_ids[1]);");
+PREPARE_SQL_ONCE(afh_plan, "INSERT INTO ft_holders VALUES(DEFAULT, $1, $2, now()) ON CONFLICT (address) DO UPDATE SET sym_ids = array_append(ft_holders.sym_ids, excluded.sym_ids[1]);");
 
 int
 pg::add_ft_holders(trx_context& tctx, const ft_holders_t& holders) {
