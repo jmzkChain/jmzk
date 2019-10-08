@@ -430,36 +430,36 @@ pg_query::get_fungibles_resume(int id, pg_result const* r) {
     return response_ok(id, results);
 }
 
-auto ga_plan0 = R"sql(SELECT actions.trx_id, name, domain, key, data, transactions.timestamp
+auto ga_plan0 = R"sql(SELECT transactions.trx_id, name, domain, key, data, transactions.timestamp
                       FROM actions
-                      JOIN transactions ON actions.trx_id = transactions.trx_id
+                      JOIN transactions ON actions.trx_num = transactions.trx_num
                       WHERE domain = $1
                       ORDER BY actions.global_seq {0}
                       LIMIT $2 OFFSET $3
                       )sql";
 
 // with key filter
-auto ga_plan1 = R"sql(SELECT actions.trx_id, name, domain, key, data, transactions.timestamp
+auto ga_plan1 = R"sql(SELECT transactions.trx_id, name, domain, key, data, transactions.timestamp
                       FROM actions
-                      JOIN transactions ON actions.trx_id = transactions.trx_id
+                      JOIN transactions ON actions.trx_num = transactions.trx_num
                       WHERE domain = $1 AND key = $2
                       ORDER BY actions.global_seq {0}
                       LIMIT $3 OFFSET $4
                       )sql";
 
 // with name filter
-auto ga_plan2 = R"sql(SELECT actions.trx_id, name, domain, key, data, transactions.timestamp
+auto ga_plan2 = R"sql(SELECT transactions.trx_id, name, domain, key, data, transactions.timestamp
                       FROM actions
-                      JOIN transactions ON actions.trx_id = transactions.trx_id
+                      JOIN transactions ON actions.trx_num = transactions.trx_num
                       WHERE domain = $1 AND name = ANY($2)
                       ORDER BY actions.global_seq {0}
                       LIMIT $3 OFFSET $4
                       )sql";
 
 // with key and name filter
-auto ga_plan3 = R"sql(SELECT actions.trx_id, name, domain, key, data, transactions.timestamp
+auto ga_plan3 = R"sql(SELECT transactions.trx_id, name, domain, key, data, transactions.timestamp
                       FROM actions
-                      JOIN transactions ON actions.trx_id = transactions.trx_id
+                      JOIN transactions ON actions.trx_num = transactions.trx_num
                       WHERE domain = $1 AND key = $2 AND name = ANY($3)
                       ORDER BY actions.global_seq {0}
                       LIMIT $4 OFFSET $5
@@ -582,9 +582,9 @@ pg_query::get_actions_resume(int id, pg_result const* r) {
     return response_ok(id, fmt::to_string(builder));
 }
 
-auto gfa_plan0 = R"sql(SELECT actions.trx_id, name, domain, key, data, transactions.timestamp
+auto gfa_plan0 = R"sql(SELECT transactions.trx_id, name, domain, key, data, transactions.timestamp
                        FROM actions
-                       JOIN transactions ON actions.trx_id = transactions.trx_id
+                       JOIN transactions ON actions.trx_num = transactions.trx_num
                        WHERE
                            domain = '.fungible'
                            AND key = $1
@@ -594,9 +594,9 @@ auto gfa_plan0 = R"sql(SELECT actions.trx_id, name, domain, key, data, transacti
                        )sql";
 
 // with address filter
-auto gfa_plan1 = R"sql(SELECT actions.trx_id, name, domain, key, data, transactions.timestamp
+auto gfa_plan1 = R"sql(SELECT transactions.trx_id, name, domain, key, data, transactions.timestamp
                        FROM actions
-                       JOIN transactions ON actions.trx_id = transactions.trx_id
+                       JOIN transactions ON actions.trx_num = transactions.trx_num
                        WHERE
                            domain = '.fungible'
                            AND key = $1
@@ -753,7 +753,7 @@ pg_query::get_fungibles_balance_resume(int id, pg_result const* r) {
     return response_ok(id, vars);
 }
 
-PREPARE_SQL_ONCE(gtrx_plan, "SELECT block_num, trx_id FROM transactions WHERE trx_id = $1;");
+PREPARE_SQL_ONCE(gtrx_plan, "SELECT block_id, trx_id FROM transactions WHERE trx_id = $1;");
 
 int
 pg_query::get_transaction_async(int id, const read_only::get_transaction_params& params) {
@@ -776,9 +776,8 @@ pg_query::get_transaction_resume(int id, pg_result const* r) {
 
     auto trx_id = transaction_id_type(std::string(PQgetvalue(r, 0, 1), PQgetlength(r, 0, 1)));
     for(int i = 0; i < n; i++) {
-        auto block_num = boost::lexical_cast<uint32_t>(PQgetvalue(r, i, 0));
-
-        auto block = chain_.fetch_block_by_number(block_num);
+        auto block_id = std::string(PQgetvalue(r, i, 0));
+        auto block    = chain_.fetch_block_by_id(block_id_type(block_id));
         if(!block) {
             continue;
         }
@@ -791,8 +790,8 @@ pg_query::get_transaction_resume(int id, pg_result const* r) {
                 abi.to_variant(tx.trx, var, exec_ctx);
 
                 auto mv = fc::mutable_variant_object(var);
-                mv["block_num"] = block_num;
-                mv["block_id"]  = block->id();
+                mv["block_num"] = block->block_num();
+                mv["block_id"]  = block_id;
 
                 return response_ok(id, mv);
             }
@@ -801,8 +800,8 @@ pg_query::get_transaction_resume(int id, pg_result const* r) {
     EVT_THROW(chain::unknown_transaction_exception, "Cannot find transaction: ${t}", ("t", trx_id));
 }
 
-PREPARE_SQL_ONCE(gtrxs_plan0, "SELECT block_num, trx_id FROM transactions WHERE keys && $1 ORDER BY timestamp DESC LIMIT $2 OFFSET $3;")
-PREPARE_SQL_ONCE(gtrxs_plan1, "SELECT block_num, trx_id FROM transactions WHERE keys && $1 ORDER BY timestamp ASC  LIMIT $2 OFFSET $3;")
+PREPARE_SQL_ONCE(gtrxs_plan0, "SELECT block_id, trx_id FROM transactions WHERE keys && $1 ORDER BY timestamp DESC LIMIT $2 OFFSET $3;")
+PREPARE_SQL_ONCE(gtrxs_plan1, "SELECT block_id, trx_id FROM transactions WHERE keys && $1 ORDER BY timestamp ASC  LIMIT $2 OFFSET $3;")
 
 int
 pg_query::get_transactions_async(int id, const read_only::get_transactions_params& params) {
@@ -844,10 +843,10 @@ pg_query::get_transactions_resume(int id, pg_result const* r) {
 
     auto results = fc::variants();
     for(int i = 0; i < n; i++) {
-        auto trx_id    = transaction_id_type(std::string(PQgetvalue(r, i, 1), PQgetlength(r, i, 1)));
-        auto block_num = boost::lexical_cast<uint32_t>(PQgetvalue(r, i, 0));
+        auto trx_id   = transaction_id_type(std::string(PQgetvalue(r, i, 1), PQgetlength(r, i, 1)));
+        auto block_id = std::string(PQgetvalue(r, i, 0));
+        auto block    = chain_.fetch_block_by_id(block_id_type(block_id));
 
-        auto block = chain_.fetch_block_by_number(block_num);
         if(!block) {
             continue;
         }
@@ -860,8 +859,8 @@ pg_query::get_transactions_resume(int id, pg_result const* r) {
                 abi.to_variant(tx.trx, var, exec_ctx);
 
                 auto mv = fc::mutable_variant_object(var);
-                mv["block_num"] = block_num;
-                mv["block_id"]  = block->id();
+                mv["block_num"] = block->block_num();
+                mv["block_id"]  = block_id;
 
                 results.emplace_back(mv);
                 break;
@@ -914,10 +913,10 @@ pg_query::get_fungible_ids_resume(int id, pg_result const* r) {
     return response_ok(id, fmt::to_string(buf));
 }
 
-PREPARE_SQL_ONCE(gta_plan, R"sql(SELECT actions.trx_id, name, domain, key, data, transactions.timestamp
+PREPARE_SQL_ONCE(gta_plan, R"sql(SELECT transactions.trx_id, name, domain, key, data, transactions.timestamp
                                  FROM actions
-                                 JOIN transactions ON actions.trx_id = transactions.trx_id
-                                 WHERE actions.trx_id = $1
+                                 JOIN transactions ON actions.trx_num = transactions.trx_num
+                                 WHERE transactions.trx_id = $1
                                  ORDER BY actions.seq_num ASC
                                  )sql");
 

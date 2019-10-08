@@ -205,7 +205,13 @@ postgres_plugin_impl::consume_queues() {
 
             auto cctx = db_.new_copy_context();
             auto tctx = db_.new_trx_context();
-            auto back = std::get<BlockPtr>(bqueue.back()); 
+            auto back = std::get<BlockPtr>(bqueue.back());
+
+            // get latest trx num
+            int64_t trx_num = 0;
+            db_.get_latest_trx_num(trx_num);
+            tctx.set_trx_num(trx_num);
+
             // process block states
             while(true) {
                 if(bqueue.empty()) {
@@ -272,7 +278,7 @@ postgres_plugin_impl::process_irreversible_block(const block_state_ptr block, st
             // add it manually
             _process_block(block, traces, cctx, tctx);
         }
-        db_.set_block_irreversible(tctx, block->id);
+        db_.upd_stat(tctx, "last_irreversible_block_id", block->id.str());
     }
     catch(fc::exception& e) {
         elog("Exception while processing irreversible block ${e}", ("e", e.to_string()));
@@ -445,13 +451,16 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
     tctx.set_timestamp(actx.ts);
 
     // transactions
-    auto trx_num = 0;
+    auto trx_seq_num = 0;
     for(const auto& trx : block->block->transactions) {
-        auto& strx       = trx.trx.get_signed_transaction();
-        auto  trx_id     = strx.id();
-        auto  str_trx_id = strx.id().str();
-        auto  elapsed    = 0;
-        auto  charge     = 0;
+        auto& strx    = trx.trx.get_signed_transaction();
+        auto  trx_id  = strx.id();
+        auto  elapsed = 0;
+        auto  charge  = 0;
+
+        tctx.set_trx_num(tctx.trx_num() + 1);
+        db_.add_trx(actx, trx, strx, trx_seq_num, tctx.trx_num(), elapsed, charge);
+        ++trx_seq_num;
 
         if(trx.status == transaction_receipt_header::executed && !strx.actions.empty()) {
             auto it = traces.begin();
@@ -467,11 +476,9 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
                         break;
                     }
 
-                    tctx.set_trx_id(str_trx_id);
-                    
                     auto act_num = 0;
                     for(auto& act_trace : trace->action_traces) {
-                        db_.add_action(actx, act_trace, str_trx_id, act_num);
+                        db_.add_action(actx, act_trace, act_num, tctx.trx_num());
                         process_action(act_trace.act, tctx);
                         if(!act_trace.new_ft_holders.empty()) {
                             db_.add_ft_holders(tctx, act_trace.new_ft_holders);
@@ -483,9 +490,6 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
                 it++;
             }
         }
-
-        db_.add_trx(actx, trx, strx, trx_num, elapsed, charge);
-        ++trx_num;
     }
 
     // update all the validators
@@ -541,12 +545,13 @@ postgres_plugin_impl::init(bool init_db) {
         
         if(part_limit_ != 0) {
             db_.create_partitions("public.blocks", "block_num", part_limit_, part_num_);
-            db_.create_partitions("public.transactions", "block_num", part_limit_, part_num_);
-            db_.create_partitions("public.actions", "block_num", part_limit_, part_num_);
+            db_.create_partitions("public.transactions", "trx_num", part_limit_, part_num_);
+            db_.create_partitions("public.actions", "global_seq", part_limit_, part_num_);
         }
 
         // HACK: Add EVT and PEVT manually
         auto tctx = db_.new_trx_context();
+        tctx.set_trx_num(0);
 
         auto gs = chain::genesis_state();
         db_.add_fungible(tctx, gs.get_evt_ft());

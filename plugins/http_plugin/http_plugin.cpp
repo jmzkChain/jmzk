@@ -651,7 +651,7 @@ http_plugin::plugin_initialize(const variables_map& options) {
         my->http_no_response             = options.at("http-no-response").as<bool>();
         verbose_http_errors              = options.at("verbose-http-errors").as<bool>();
 
-        FC_ASSERT(my->max_deferred_connection_size < std::numeric_limits<int32_t>::max());
+        FC_ASSERT(my->max_deferred_connection_size < (uint32_t)std::numeric_limits<int32_t>::max());
 
         //watch out for the returns above when adding new code here
     }
