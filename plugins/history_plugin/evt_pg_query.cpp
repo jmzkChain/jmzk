@@ -430,36 +430,36 @@ pg_query::get_fungibles_resume(int id, pg_result const* r) {
     return response_ok(id, results);
 }
 
-auto ga_plan0 = R"sql(SELECT actions.trx_id, name, domain, key, data, transactions.timestamp
+auto ga_plan0 = R"sql(SELECT transactions.trx_id, name, domain, key, data, transactions.timestamp
                       FROM actions
-                      JOIN transactions ON actions.trx_id = transactions.trx_id
+                      JOIN transactions ON actions.trx_num = transactions.trx_num
                       WHERE domain = $1
                       ORDER BY actions.global_seq {0}
                       LIMIT $2 OFFSET $3
                       )sql";
 
 // with key filter
-auto ga_plan1 = R"sql(SELECT actions.trx_id, name, domain, key, data, transactions.timestamp
+auto ga_plan1 = R"sql(SELECT transactions.trx_id, name, domain, key, data, transactions.timestamp
                       FROM actions
-                      JOIN transactions ON actions.trx_id = transactions.trx_id
+                      JOIN transactions ON actions.trx_num = transactions.trx_num
                       WHERE domain = $1 AND key = $2
                       ORDER BY actions.global_seq {0}
                       LIMIT $3 OFFSET $4
                       )sql";
 
 // with name filter
-auto ga_plan2 = R"sql(SELECT actions.trx_id, name, domain, key, data, transactions.timestamp
+auto ga_plan2 = R"sql(SELECT transactions.trx_id, name, domain, key, data, transactions.timestamp
                       FROM actions
-                      JOIN transactions ON actions.trx_id = transactions.trx_id
+                      JOIN transactions ON actions.trx_num = transactions.trx_num
                       WHERE domain = $1 AND name = ANY($2)
                       ORDER BY actions.global_seq {0}
                       LIMIT $3 OFFSET $4
                       )sql";
 
 // with key and name filter
-auto ga_plan3 = R"sql(SELECT actions.trx_id, name, domain, key, data, transactions.timestamp
+auto ga_plan3 = R"sql(SELECT transactions.trx_id, name, domain, key, data, transactions.timestamp
                       FROM actions
-                      JOIN transactions ON actions.trx_id = transactions.trx_id
+                      JOIN transactions ON actions.trx_num = transactions.trx_num
                       WHERE domain = $1 AND key = $2 AND name = ANY($3)
                       ORDER BY actions.global_seq {0}
                       LIMIT $4 OFFSET $5
@@ -582,9 +582,9 @@ pg_query::get_actions_resume(int id, pg_result const* r) {
     return response_ok(id, fmt::to_string(builder));
 }
 
-auto gfa_plan0 = R"sql(SELECT actions.trx_id, name, domain, key, data, transactions.timestamp
+auto gfa_plan0 = R"sql(SELECT transactions.trx_id, name, domain, key, data, transactions.timestamp
                        FROM actions
-                       JOIN transactions ON actions.trx_id = transactions.trx_id
+                       JOIN transactions ON actions.trx_num = transactions.trx_num
                        WHERE
                            domain = '.fungible'
                            AND key = $1
@@ -594,9 +594,9 @@ auto gfa_plan0 = R"sql(SELECT actions.trx_id, name, domain, key, data, transacti
                        )sql";
 
 // with address filter
-auto gfa_plan1 = R"sql(SELECT actions.trx_id, name, domain, key, data, transactions.timestamp
+auto gfa_plan1 = R"sql(SELECT transactions.trx_id, name, domain, key, data, transactions.timestamp
                        FROM actions
-                       JOIN transactions ON actions.trx_id = transactions.trx_id
+                       JOIN transactions ON actions.trx_num = transactions.trx_num
                        WHERE
                            domain = '.fungible'
                            AND key = $1
@@ -914,10 +914,10 @@ pg_query::get_fungible_ids_resume(int id, pg_result const* r) {
     return response_ok(id, fmt::to_string(buf));
 }
 
-PREPARE_SQL_ONCE(gta_plan, R"sql(SELECT actions.trx_id, name, domain, key, data, transactions.timestamp
+PREPARE_SQL_ONCE(gta_plan, R"sql(SELECT transactions.trx_id, name, domain, key, data, transactions.timestamp
                                  FROM actions
-                                 JOIN transactions ON actions.trx_id = transactions.trx_id
-                                 WHERE actions.trx_id = $1
+                                 JOIN transactions ON actions.trx_num = transactions.trx_num
+                                 WHERE transactions.trx_id = $1
                                  ORDER BY actions.seq_num ASC
                                  )sql");
 

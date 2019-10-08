@@ -445,7 +445,8 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
     tctx.set_timestamp(actx.ts);
 
     // transactions
-    auto trx_num = 0;
+    auto        trx_num     = 0;
+    static auto all_trx_num = 0;
     for(const auto& trx : block->block->transactions) {
         auto& strx       = trx.trx.get_signed_transaction();
         auto  trx_id     = strx.id();
@@ -467,11 +468,11 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
                         break;
                     }
 
-                    tctx.set_trx_id(str_trx_id);
-                    
+                    tctx.set_trx_num(all_trx_num);
+
                     auto act_num = 0;
                     for(auto& act_trace : trace->action_traces) {
-                        db_.add_action(actx, act_trace, str_trx_id, act_num);
+                        db_.add_action(actx, act_trace, act_num, all_trx_num);
                         process_action(act_trace.act, tctx);
                         if(!act_trace.new_ft_holders.empty()) {
                             db_.add_ft_holders(tctx, act_trace.new_ft_holders);
@@ -484,8 +485,9 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
             }
         }
 
-        db_.add_trx(actx, trx, strx, trx_num, elapsed, charge);
+        db_.add_trx(actx, trx, strx, trx_num, all_trx_num, elapsed, charge);
         ++trx_num;
+        ++all_trx_num;
     }
 
     // update all the validators

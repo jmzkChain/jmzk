@@ -1486,10 +1486,8 @@ read_only::get_staking(const get_staking_params& params) const{
     db.token_db().read_tokens_range(token_type::validator, ".validator", 0, [&](auto& key, auto&& value) {
         auto var = fc::variant();
 
-        validator_slim validator;
-        extract_db_value(value, validator);
-
-        validators.emplace_back(validator);
+        validators.emplace_back();
+        extract_db_value(value, validators.back());
 
         return true;
     });
@@ -1499,7 +1497,7 @@ read_only::get_staking(const get_staking_params& params) const{
         ctx.period_version,
         ctx.period_start_num,
         ctx.period_start_num + conf.cycles_per_period * conf.blocks_per_cycle,
-        validators
+        std::move(validators)
     };
 }
 

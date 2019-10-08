@@ -290,6 +290,6 @@ FC_REFLECT(evt::chain_apis::read_only::get_suspend_required_keys_result, (requir
 FC_REFLECT(evt::chain_apis::read_only::get_charge_params, (transaction)(sigs_num));
 FC_REFLECT(evt::chain_apis::read_only::get_charge_result, (charge));
 FC_REFLECT(evt::chain_apis::read_only::validator_slim, (current_net_value)(total_units));
-FC_REFLECT(evt::chain_apis::read_only::get_staking_result, (period_version)(period_start_num)(validators));
+FC_REFLECT(evt::chain_apis::read_only::get_staking_result, (period_version)(period_start_num)(next_period_num)(validators));
 FC_REFLECT(evt::chain_apis::read_only::get_transaction_ids_for_block_params, (block_id));
 FC_REFLECT(evt::chain_apis::read_write::push_transaction_results, (transaction_id)(processed));

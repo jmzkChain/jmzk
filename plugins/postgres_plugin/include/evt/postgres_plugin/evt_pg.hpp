@@ -110,8 +110,8 @@ public:
 
 public:
     static int add_block(add_context&, const block_ptr);
-    static int add_trx(add_context&, const trx_recept_t&, const trx_t&, int seq_num, int elapsed, int charge);
-    static int add_action(add_context&, const act_trace_t&, const std::string& trx_id, int seq_num);
+    static int add_trx(add_context&, const trx_recept_t&, const trx_t&, int seq_num, int trx_num, int elapsed, int charge);
+    static int add_action(add_context&, const act_trace_t&, int seq_num, int64_t trx_num);
     
     int get_latest_block_id(std::string& block_id) const;
     int set_block_irreversible(trx_context&, const block_id_t& block_id);
@@ -149,6 +149,7 @@ private:
     pg_conn*    conn_;
     std::string last_sync_block_id_;
     int         prepared_stmts_;
+
 };
 
 }  // namespace evt
