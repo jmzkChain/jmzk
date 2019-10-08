@@ -114,7 +114,7 @@ public:
     static int add_action(add_context&, const act_trace_t&, int seq_num, int64_t trx_num);
     
     int get_latest_block_id(std::string& block_id) const;
-    int set_block_irreversible(trx_context&, const block_id_t& block_id);
+    int get_latest_trx_num(int64_t& trx_num) const;
     int exists_block(const std::string& block_id) const;
 
     int add_stat(trx_context&, const std::string& key, const std::string& value);

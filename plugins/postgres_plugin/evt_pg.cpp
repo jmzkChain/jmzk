@@ -29,8 +29,9 @@ namespace evt {
  * - 1.3.1  add serveral indexes for better query performance
  * - 1.4.0  update `fungibles` to support transfer permission
  * - 1.5.0  add `validators` and `netvalues` tables
+ * - 2.0.0  remove `pending` field and add `trx_num` field to save storage
  */
-static auto pg_version = "1.5.0";
+static auto pg_version = "2.0.0";
 
 namespace internal {
 
@@ -60,7 +61,7 @@ struct insert_prepare {
 
 auto create_stats_table = R"sql(CREATE TABLE IF NOT EXISTS public.stats
                                 (
-                                    key         character varying(21)    NOT NULL,
+                                    key         character varying(64)    NOT NULL,
                                     value       character varying(64)    NOT NULL,
                                     created_at  timestamp with time zone NOT NULL DEFAULT now(),
                                     updated_at  timestamp with time zone NOT NULL DEFAULT now(),
@@ -96,9 +97,9 @@ auto create_blocks_table = R"sql(CREATE TABLE IF NOT EXISTS public.blocks
 auto create_trxs_table = R"sql(CREATE TABLE IF NOT EXISTS public.transactions
                                (
                                    trx_id        character(64)            NOT NULL,
-                                   trx_num       integer                  NOT NULL,
+                                   trx_num       bigint                   NOT NULL,
                                    seq_num       integer                  NOT NULL,
-                                   block_num     integer                  NOT NULL,
+                                   block_id      character(64)            NOT NULL,
                                    action_count  integer                  NOT NULL,
                                    timestamp     timestamp with time zone NOT NULL,
                                    expiration    timestamp with time zone NOT NULL,
@@ -118,9 +119,9 @@ auto create_trxs_table = R"sql(CREATE TABLE IF NOT EXISTS public.transactions
                                    OIDS = FALSE
                                )
                                TABLESPACE pg_default;
-                               CREATE INDEX IF NOT EXISTS transactions_block_num_index
+                               CREATE INDEX IF NOT EXISTS transactions_block_id_index
                                    ON public.transactions USING btree
-                                   (block_num)
+                                   (block_id)
                                    TABLESPACE pg_default;
                                CREATE INDEX IF NOT EXISTS transactions_timestamp_index
                                    ON transactions USING btree
@@ -132,14 +133,14 @@ auto create_trxs_table = R"sql(CREATE TABLE IF NOT EXISTS public.transactions
 
 auto create_actions_table = R"sql(CREATE TABLE IF NOT EXISTS public.actions
                                   (
-                                      trx_num    integer                  NOT NULL,
-                                      block_num  integer                  NOT NULL,
-                                      seq_num    integer                  NOT NULL,
-                                      global_seq bigint                   NOT NULL,
-                                      name       character varying(13)    NOT NULL,
-                                      domain     character varying(21)    NOT NULL,
-                                      key        character varying(21)    NOT NULL,
-                                      data       jsonb                    NOT NULL,
+                                      trx_num            integer                  NOT NULL,
+                                      seq_num            integer                  NOT NULL,
+                                      global_seq         bigint                   NOT NULL,
+                                      name               character varying(13)    NOT NULL,
+                                      domain             character varying(21)    NOT NULL,
+                                      key                character varying(21)    NOT NULL,
+                                      data               jsonb                    NOT NULL,
+                                      related_ft_holders integer[]                NOT NULL,
                                       created_at timestamp with time zone NOT NULL DEFAULT now()
                                   )
                                   WITH (
@@ -276,7 +277,7 @@ auto create_fungibles_table = R"sql(CREATE TABLE IF NOT EXISTS public.fungibles
                                         (created_at)
                                         TABLESPACE pg_default;)sql";
 
-auto create_ft_holders_table = R"sql(CREATE SEQUENCE IF NOT EXISTS ft_holders_id_seq;
+auto create_ft_holders_table = R"sql(CREATE SEQUENCE IF NOT EXISTS ft_holders_id_seq AS integer;
                                      CREATE TABLE IF NOT EXISTS public.ft_holders
                                      (  
                                          id         integer                   NOT NULL  DEFAULT nextval('ft_holders_id_seq'),
@@ -289,7 +290,7 @@ auto create_ft_holders_table = R"sql(CREATE SEQUENCE IF NOT EXISTS ft_holders_id
                                          OIDS = FALSE
                                      )
                                      TABLESPACE pg_default;
-                                     CREATE INDEX IF NOT EXISTS ft_holders_address_index
+                                     CREATE UNIQUE INDEX IF NOT EXISTS ft_holders_address_index
                                         ON public.ft_holders USING btree
                                         (address)
                                         TABLESPACE pg_default;)sql";
@@ -354,9 +355,10 @@ table tables[] = {
 };
 
 sequence sequences[] = {
-    { "metas_id_seq"     },
-    { "validator_id_seq" },
-    { "netvalue_id_seq"  }
+    { "metas_id_seq"      },
+    { "ft_holders_id_seq" },
+    { "validator_id_seq"  },
+    { "netvalue_id_seq"   }
 };
 
 template<typename Iterator>
@@ -730,7 +732,7 @@ pg::commit_trx_context(trx_context& tctx) {
 int
 pg::add_block(add_context& actx, const block_ptr block) {
     fmt::format_to(actx.cctx.blocks_copy_,
-        fmt("{}\t{:d}\t{}\t{}\t{}\t{:d}\t{}\tt\tnow\n"),
+        fmt("{}\t{:d}\t{}\t{}\t{}\t{:d}\t{}\tnow\n"),
         actx.block_id,
         actx.block_num,
         block->header.previous.str(),
@@ -748,11 +750,11 @@ pg::add_trx(add_context& actx, const trx_recept_t& trx, const trx_t& strx, int s
 
     auto& cctx = actx.cctx;
     fmt::format_to(cctx.trxs_copy_,
-        fmt("{}\t{}\t{:d}\t{}\t{:d}\t{}\t{}\t{:d}\t{}\tt\t{}\t{}\t"),
+        fmt("{}\t{:d}\t{:d}\t{}\t{:d}\t{}\t{}\t{:d}\t{}\t{}\t{}\t"),
         strx.id().str(),
         trx_num,
         seq_num,
-        actx.block_num,
+        actx.block_id,
         (int32_t)strx.actions.size(),
         actx.ts,
         (std::string)strx.expiration,
@@ -804,9 +806,8 @@ pg::add_action(add_context& actx, const act_trace_t& act_trace, int seq_num, int
     auto  data    = actx.abi.binary_to_variant(acttype, act.data, actx.exec_ctx);
 
     fmt::format_to(actx.cctx.actions_copy_,
-        fmt("{}\t{:d}\t{:d}\t{:d}\t{}\t{}\t{}\t{}\tnow\n"),
+        fmt("{:d}\t{:d}\t{:d}\t{}\t{}\t{}\t{}\t{{}}\tnow\n"),
         trx_num,
-        actx.block_num,
         seq_num,
         act_trace.receipt.global_sequence,
         act.name.to_string(),
@@ -837,6 +838,24 @@ pg::get_latest_block_id(std::string& block_id) const {
     return PG_OK;
 }
 
+PREPARE_SQL_ONCE(gtn_plan, "SELECT trx_num FROM transactions ORDER BY trx_num DESC LIMIT 1;");
+
+int
+pg::get_latest_trx_num(int64_t& trx_num) const {
+    auto r = PQexec(conn_, "EXECUTE gtn_plan;");
+    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_exec_exception, "Get latest trx num failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+
+    if(PQntuples(r) == 0) {
+        return PG_FAIL;
+    }
+
+    auto v = PQgetvalue(r, 0, 0);
+    trx_num = boost::lexical_cast<int64_t>(v);
+
+    PQclear(r);
+    return PG_OK;
+}
+
 PREPARE_SQL_ONCE(eb_plan, "SELECT block_id FROM blocks WHERE block_id = $1;");
 
 int
@@ -854,17 +873,6 @@ pg::exists_block(const std::string& block_id) const {
     PQclear(r);
     return PG_OK;
 }
-
-PREPARE_SQL_ONCE(sbi_plan, "UPDATE blocks SET pending = false WHERE block_num = $1");
-PREPARE_SQL_ONCE(sti_plan, "UPDATE transactions SET pending = false WHERE block_num = $1")
-
-int
-pg::set_block_irreversible(trx_context& tctx, const block_id_t& block_id) {
-    auto num = chain::block_header::num_from_id(block_id);
-    fmt::format_to(tctx.trx_buf_, fmt("EXECUTE sbi_plan({0});\nEXECUTE sti_plan({0});\n"), num);
-    return PG_OK;
-}
-
 
 PREPARE_SQL_ONCE(as_plan, "INSERT INTO stats VALUES($1, $2, now(), now())");
 
@@ -895,7 +903,7 @@ pg::read_stat(const std::string& key, std::string& value) const {
     return PG_OK;
 }
 
-PREPARE_SQL_ONCE(us_plan, "UPDATE stats SET value = $1 WHERE key = $2");
+PREPARE_SQL_ONCE(us_plan, "UPDATE stats SET value = $1, updated_at = now() WHERE key = $2");
 
 int
 pg::upd_stat(trx_context& tctx, const std::string& key, const std::string& value) {
@@ -913,7 +921,7 @@ pg::add_domain(trx_context& tctx, const newdomain& nd) {
     fc::to_variant(nd.manage, manage);
 
     fmt::format_to(tctx.trx_buf_,
-        fmt("EXECUTE nd_plan('{}','{}','{}','{}','{}','{}');\n"),
+        fmt("EXECUTE nd_plan('{}','{}','{}','{}','{}',{});\n"),
         (std::string)nd.name,
         (std::string)nd.creator,
         fc::json::to_string(issue),
@@ -975,7 +983,7 @@ pg::add_tokens(trx_context& tctx, const issuetoken& it) {
     auto domain = (std::string)it.domain;
     for(auto& name : it.names) {
         fmt::format_to(tctx.trx_buf_,
-            fmt("EXECUTE it_plan('{0}:{1}','{0}','{1}','{2}','{3}');\n"),
+            fmt("EXECUTE it_plan('{0}:{1}','{0}','{1}','{2}',{3});\n"),
             domain,
             (std::string)name,
             owners,
@@ -1025,7 +1033,7 @@ pg::add_group(trx_context& tctx, const newgroup& ng) {
     fc::to_variant(ng.group, def);
 
     fmt::format_to(tctx.trx_buf_,
-        fmt("EXECUTE ng_plan('{}','{}','{}','{}');\n"),
+        fmt("EXECUTE ng_plan('{}','{}','{}',{});\n"),
         (std::string)ng.name,
         (std::string)ng.group.key(),
         fc::json::to_string(def["root"]),
@@ -1061,7 +1069,7 @@ pg::add_fungible(trx_context& tctx, const fungible_def& ft) {
     fc::to_variant(ft.manage, manage);
 
     fmt::format_to(tctx.trx_buf_,
-        fmt("EXECUTE nf_plan('{}','{}','{}',{:d},'{}','{}','{}','{}','{}','{:d}');\n"),
+        fmt("EXECUTE nf_plan('{}','{}','{}',{:d},'{}','{}','{}','{}','{}',{:d});\n"),
         (std::string)ft.name,
         (std::string)ft.sym_name,
         (std::string)ft.sym,
