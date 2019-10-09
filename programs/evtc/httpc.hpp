@@ -102,6 +102,7 @@ fc::variant do_http_call(
 const std::string chain_func_base             = "/v1/chain";
 const std::string get_info_func               = chain_func_base + "/get_info";
 const std::string get_db_info_func            = chain_func_base + "/get_db_info";
+const std::string get_charge_info_func        = chain_func_base + "/get_charge_info";
 const std::string push_txn_func               = chain_func_base + "/push_transaction";
 const std::string push_txns_func              = chain_func_base + "/push_transactions";
 const std::string json_to_bin_func            = chain_func_base + "/abi_json_to_bin";
