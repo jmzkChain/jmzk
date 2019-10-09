@@ -2178,6 +2178,11 @@ main(int argc, char** argv) {
         std::cout << fc::json::to_pretty_string(get_info()) << std::endl;
     });
 
+    // get charge info
+    get->add_subcommand("chargeinfo", localized("Get current charge parameters"))->callback([] {
+        std::cout << fc::json::to_pretty_string(call(get_charge_info_func, fc::variant())) << std::endl;
+    });
+
     // get staking
     get->add_subcommand("staking", localized("Get current blockchain information"))->callback([] {
         std::cout << fc::json::to_pretty_string(get_staking()) << std::endl;
