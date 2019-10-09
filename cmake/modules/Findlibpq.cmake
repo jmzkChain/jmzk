@@ -11,7 +11,7 @@ find_path(LIBPQ_INCLUDE_DIR
   HINTS /usr/local/opt/libpq/include)
 
 find_library(LIBPQ_LIBRARIES
-  NAMES libpq.a
+  NAMES libpq.so libpq.dylib
   HINTS ${LIBPQ_ROOT_DIR}/lib
   HINTS /usr/local/opt/libpq/lib)
 

@@ -25,7 +25,7 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     endif()
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL 8.0 OR CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 8.0)
-        set_property(TARGET rocksdb PROPERTY COMPILE_FLAGS "-Wno-shadow")
+        set_property(TARGET rocksdb PROPERTY COMPILE_FLAGS "-Wno-shadow -Wno-defaulted-function-deleted")
     endif()
 endif()
 
