@@ -206,8 +206,6 @@ struct controller_impl {
 
     ~controller_impl() {
         pending.reset();
-        db.flush();
-        reversible_blocks.flush();
     }
 
     /**
