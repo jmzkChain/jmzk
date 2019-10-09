@@ -8,6 +8,7 @@
 
 #include <evt/chain/address.hpp>
 #include <evt/chain/asset.hpp>
+#include <evt/chain/property.hpp>
 #include <evt/chain/percent_slim.hpp>
 #include <evt/chain/chain_config.hpp>
 #include <evt/chain/config.hpp>
@@ -62,15 +63,6 @@ using address_list    = small_vector<address_type, 4>;
 using conf_key        = evt::chain::conf_key;
 using percent_type    = evt::chain::percent_type;
 using percent_slim    = evt::chain::percent_slim;
-
-// represent for property for one symbol in one account
-// also records the create time
-struct property {
-    int64_t  amount;        // amount for asset
-    symbol   sym;           // symbol
-    uint32_t created_at;    // utc seconds
-    uint32_t created_index; // action index at that time
-};
 
 struct token_def {
     token_def() = default;
@@ -317,6 +309,42 @@ struct passive_bonus_slim {
     passive_methods   methods;
 };
 
+struct stakepool_def {
+    symbol_id_type sym_id;
+
+    int32_t demand_r;
+    int32_t demand_t;
+    int32_t demand_q;
+    int32_t demand_w;
+
+    int32_t fixed_r;
+    int32_t fixed_t;
+
+    time_point_sec begin_time;
+    asset          total;
+    asset          purchase_threshold;
+};
+
+struct validator_def {
+    account_name   name;
+    user_id        creator;
+    time_point_sec create_time;
+    time_point_sec last_updated_time;
+    
+    public_key_type signer;
+    permission_def  withdraw;
+    permission_def  manage;
+    percent_slim    commission;
+
+    asset   initial_net_value;
+    asset   current_net_value;
+    int64_t total_units;
+};
+
+enum class unstake_op {
+    propose = 0, cancel, settle
+};
+
 struct newdomain {
     domain_name name;
     user_id     creator;
@@ -523,8 +551,8 @@ struct everipass {
 };
 
 struct everipass_v2 {
-    evt_link link;
-    string   memo;
+    evt_link         link;
+    optional<string> memo;
 
     EVT_ACTION_VER2(everipass, everipass_v2);
 };
@@ -538,10 +566,10 @@ struct everipay {
 };
 
 struct everipay_v2 {
-    evt_link link;
-    address  payee;
-    asset    number;
-    string   memo;
+    evt_link         link;
+    address          payee;
+    asset            number;
+    optional<string> memo;
 
     EVT_ACTION_VER2(everipay, everipay_v2);
 };
@@ -628,11 +656,97 @@ struct recvpsvbonus {
     symbol_id_type                   sym_id;
     small_vector<public_key_type, 2> receivers;
     uint32_t                         rule_index;
+
+    EVT_ACTION_VER1(recvpsvbonus);
+};
+
+struct newstakepool {
+    symbol_id_type sym_id;
+
+    asset   purchase_threshold;
+    int32_t demand_r;
+    int32_t demand_t;
+    int32_t demand_q;
+    int32_t demand_w;
+
+    int32_t fixed_r;
+    int32_t fixed_t;
+
+    EVT_ACTION_VER1(newstakepool);
+};
+
+struct updstakepool {
+    symbol_id_type sym_id;
+
+    optional<asset>   purchase_threshold;
+    optional<int32_t> demand_r;
+    optional<int32_t> demand_t;
+    optional<int32_t> demand_q;
+    optional<int32_t> demand_w;
+
+    optional<int32_t> fixed_r;
+    optional<int32_t> fixed_t;
+
+    EVT_ACTION_VER1(updstakepool);
+};
+
+struct newvalidator {
+    account_name   name;
+    user_id        creator;
+    
+    public_key_type signer;
+    permission_def  withdraw;
+    permission_def  manage;
+    percent_slim    commission;
+
+    EVT_ACTION_VER1(newvalidator);
+};
+
+struct valiwithdraw {
+    account_name name;
+    address_type addr;
+    asset        amount;
+
+    EVT_ACTION_VER1(valiwithdraw);
+};
+
+struct recvstkbonus {
+    account_name   validator;
+    symbol_id_type sym_id;
+
+    EVT_ACTION_VER1(recvstkbonus);
+};
+
+struct staketkns {
+    user_id      staker;
+    account_name validator;
+    asset        amount;
+    stake_type   type;
+    int32_t      fixed_days;
+
+    EVT_ACTION_VER1(staketkns);
+};
+
+struct unstaketkns {
+    user_id        staker;
+    account_name   validator;
+    int64_t        units;
+    symbol_id_type sym_id;
+    unstake_op     op;
+
+    EVT_ACTION_VER1(unstaketkns);
+};
+
+struct toactivetkns {
+    user_id        staker;
+    account_name   validator;
+    symbol_id_type sym_id;
+
+    EVT_ACTION_VER1(toactivetkns);
 };
 
 }}}  // namespace evt::chain::contracts
 
-FC_REFLECT(evt::chain::contracts::property, (amount)(sym)(created_at)(created_index));
 FC_REFLECT(evt::chain::contracts::token_def, (domain)(name)(owner)(metas));
 FC_REFLECT(evt::chain::contracts::key_weight, (key)(weight));
 FC_REFLECT(evt::chain::contracts::authorizer_weight, (ref)(weight));
@@ -665,6 +779,10 @@ FC_REFLECT_ENUM(evt::chain::contracts::passive_method_type, (within_amount)(outs
 FC_REFLECT(evt::chain::contracts::passive_method, (action)(method));
 FC_REFLECT(evt::chain::contracts::passive_bonus, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods)(round)(deadline));
 FC_REFLECT(evt::chain::contracts::passive_bonus_slim, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(methods));
+
+FC_REFLECT(evt::chain::contracts::stakepool_def, (sym_id)(demand_r)(demand_t)(demand_q)(demand_w)(fixed_r)(fixed_t)(begin_time)(total)(purchase_threshold));
+FC_REFLECT(evt::chain::contracts::validator_def, (name)(creator)(create_time)(last_updated_time)(signer)(withdraw)(manage)(commission)(initial_net_value)(current_net_value)(total_units));
+FC_REFLECT_ENUM(evt::chain::contracts::unstake_op, (propose)(cancel)(settle));
 
 FC_REFLECT(evt::chain::contracts::newdomain, (name)(creator)(issue)(transfer)(manage));
 FC_REFLECT(evt::chain::contracts::issuetoken, (domain)(names)(owner));
@@ -701,3 +819,11 @@ FC_REFLECT(evt::chain::contracts::tryunlock, (name)(executor));
 FC_REFLECT(evt::chain::contracts::setpsvbonus, (sym)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods));
 FC_REFLECT(evt::chain::contracts::setpsvbonus_v2, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods));
 FC_REFLECT(evt::chain::contracts::distpsvbonus, (sym_id)(deadline)(final_receiver));
+FC_REFLECT(evt::chain::contracts::newstakepool, (sym_id)(purchase_threshold)(demand_r)(demand_t)(demand_q)(demand_w)(fixed_r)(fixed_t));
+FC_REFLECT(evt::chain::contracts::updstakepool, (sym_id)(purchase_threshold)(demand_r)(demand_t)(demand_q)(demand_w)(fixed_r)(fixed_t));
+FC_REFLECT(evt::chain::contracts::newvalidator, (name)(creator)(signer)(withdraw)(manage)(commission));
+FC_REFLECT(evt::chain::contracts::valiwithdraw, (name)(addr)(amount));
+FC_REFLECT(evt::chain::contracts::staketkns, (staker)(validator)(amount)(type)(fixed_days));
+FC_REFLECT(evt::chain::contracts::unstaketkns, (staker)(validator)(units)(sym_id)(op));
+FC_REFLECT(evt::chain::contracts::toactivetkns, (staker)(validator)(sym_id));
+FC_REFLECT(evt::chain::contracts::recvstkbonus, (validator)(sym_id));

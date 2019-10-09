@@ -36,7 +36,7 @@ public:
         hana::for_each(act_types, [&](auto& act) {
             auto i = index_of(act);
             type_names_[i].emplace_back(decltype(+act)::type::get_type_name());
-            assert(type_names_[i].size() == decltype(+act)::type::get_version());
+            assert(type_names_[i].size() == (uint32_t)decltype(+act)::type::get_version());
         });
 
         act_names_arr_ = hana::unpack(act_names_, [](auto ...i) {
@@ -180,7 +180,7 @@ public:
         auto range  = hana::make_range(hana::int_c<0>, hana::length(act_names_));
         auto result = std::optional<opt_type>();
         hana::for_each(range, [&](auto i) {
-            if(i() == actindex) {
+            if(static_cast<int>(i()) == actindex) {
                 result = fn(i);
             }
         });
@@ -280,7 +280,15 @@ using evt_execution_context = execution_context_impl<
                                   contracts::tryunlock,
                                   contracts::setpsvbonus,
                                   contracts::setpsvbonus_v2,
-                                  contracts::distpsvbonus
+                                  contracts::distpsvbonus,
+                                  contracts::newstakepool,
+                                  contracts::updstakepool,
+                                  contracts::newvalidator,
+                                  contracts::valiwithdraw,
+                                  contracts::recvstkbonus,
+                                  contracts::staketkns,
+                                  contracts::unstaketkns,
+                                  contracts::toactivetkns
                               >;
 
 }}  // namespace evt::chain

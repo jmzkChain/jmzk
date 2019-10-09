@@ -9,8 +9,9 @@
 
 namespace evt { namespace chain {
 
-#define EVT_SYM_ID  1
-#define PEVT_SYM_ID 2
+#define EMPTY_SYM_ID 0
+#define EVT_SYM_ID   1
+#define PEVT_SYM_ID  2
 
 class symbol : public fc::reflect_init {
 private:
@@ -79,6 +80,11 @@ pevt_sym() {
     return symbol(5, PEVT_SYM_ID);
 }
 
+static constexpr symbol
+nav_sym() {  // net asset value
+    return symbol(12, EMPTY_SYM_ID);
+}
+
 /**
 
 asset includes amount and currency symbol
@@ -89,6 +95,7 @@ with amount = 10 and symbol(4,"CUR")
 */
 struct asset : public fc::reflect_init {
 public:
+    struct integer{};
     static constexpr int64_t max_amount = (1LL << 62) - 1;
 
 public:
@@ -105,7 +112,8 @@ public:
     bool is_amount_within_range() const { return -max_amount <= amount_ && amount_ <= max_amount; }
     bool is_valid() const { return is_amount_within_range() && sym_.valid(); }
 
-    real_type to_real() const { return real_type(amount_) / boost::multiprecision::pow(real_type(10), precision()); }
+    real_type to_real()   const { return real_type(amount_) / boost::multiprecision::pow(real_type(10), precision()); }
+    double    to_double() const { return (double)amount_ / std::pow(10, precision()); }
 
     uint32_t symbol_id() const { return sym_.id(); };
     uint8_t  precision() const { return sym_.precision(); };
@@ -115,6 +123,7 @@ public:
 
 public:
     static asset from_string(const string& from);
+    static asset from_integer(share_type a, symbol s);
     string       to_string() const;
 
     explicit operator string() const {

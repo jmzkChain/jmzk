@@ -1082,7 +1082,7 @@ def main(url, start_evtd, evtd_path, public_key, private_key):
 
         p = subprocess.Popen([evtd_path, '-e', '--http-validate-host=false',  '--plugin=evt::postgres_plugin',
                               '--plugin=evt::history_plugin', '--plugin=evt::history_api_plugin', '--plugin=evt::chain_api_plugin', '--plugin=evt::evt_api_plugin',
-                              '--plugin=evt::evt_link_plugin', '--producer-name=evt', '--delete-all-blocks', '--replay-blockchain', '-d', './tmp', '--postgres-uri=postgresql://postgres@localhost:5432/evt'],
+                              '--plugin=evt::evt_link_plugin', '--producer-name=evt', '--delete-all-blocks', '-d', './tmp', '--postgres-uri=postgresql://postgres@localhost:5432/evt'],
                              stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=evtdout, shell=False)
         
         # wait for evtd to initialize

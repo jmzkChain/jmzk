@@ -51,7 +51,7 @@ percent_slim::from_string(const string& from) {
         if(dot_pos != string::npos) {
             p = s.size() - dot_pos - 1;
             EVT_ASSERT2(p <= kPrecision, percent_type_exception,
-                "Exceed percent's precision: {}", kPrecision);
+                "Exceed percent max precision: {}", kPrecision);
         }
 
         // Parse amount

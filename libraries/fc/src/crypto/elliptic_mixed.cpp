@@ -14,6 +14,7 @@
 
 namespace fc { namespace ecc {
 namespace detail {
+
 const secp256k1_context_t*
 _get_context() {
     static secp256k1_context_t* ctx = secp256k1_context_create(SECP256K1_CONTEXT_VERIFY | SECP256K1_CONTEXT_SIGN);
@@ -25,6 +26,7 @@ _init_lib() {
     static const secp256k1_context_t* ctx    = _get_context();
     static int                        init_o = init_openssl();
 }
+
 }  // namespace detail
 
 static const private_key_secret empty_priv;

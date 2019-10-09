@@ -66,6 +66,7 @@ aes_encoder::encode(const char* plaintxt, uint32_t plaintext_len, char* ciphertx
     FC_ASSERT((uint)ciphertext_len == plaintext_len, "", ("ciphertext_len", ciphertext_len)("plaintext_len", plaintext_len));
     return ciphertext_len;
 }
+
 #if 0
 uint32_t aes_encoder::final_encode( char* ciphertxt )
 {
@@ -113,8 +114,7 @@ aes_decoder::init(const fc::sha256& key, const fc::uint128& init_value) {
     EVP_CIPHER_CTX_set_padding(my->ctx, 0);
 }
 
-aes_decoder::~aes_decoder() {
-}
+aes_decoder::~aes_decoder() {}
 
 uint32_t
 aes_decoder::decode(const char* ciphertxt, uint32_t ciphertxt_len, char* plaintext) {
@@ -129,6 +129,7 @@ aes_decoder::decode(const char* ciphertxt, uint32_t ciphertxt_len, char* plainte
     FC_ASSERT(ciphertxt_len == (uint)plaintext_len, "", ("ciphertxt_len", ciphertxt_len)("plaintext_len", plaintext_len));
     return plaintext_len;
 }
+
 #if 0
 uint32_t aes_decoder::final_decode( char* plaintext )
 {

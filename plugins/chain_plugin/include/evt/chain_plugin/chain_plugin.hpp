@@ -9,6 +9,7 @@
 #include <evt/chain/version.hpp>
 #include <evt/chain/controller.hpp>
 #include <evt/chain/transaction.hpp>
+#include <evt/chain/staking_context.hpp>
 #include <evt/chain/plugin_interface.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
 
@@ -39,7 +40,9 @@ using chain::public_key_type;
 using chain::public_keys_set;
 using chain::transaction_id_type;
 using chain::version;
+using chain::asset;
 using chain::contracts::abi_serializer;
+using chain::contracts::validator_def;
 
 namespace chain_apis {
 struct empty {};
@@ -76,6 +79,16 @@ public:
     };
     get_info_results get_info(const get_info_params&) const;
 
+    using get_charge_info_params = empty;
+
+    struct get_charge_info_results {
+        uint32_t base_network_charge_factor;
+        uint32_t base_storage_charge_factor;
+        uint32_t base_cpu_charge_factor;
+        uint32_t global_charge_factor;
+    };
+    get_charge_info_results get_charge_info(const get_charge_info_params&) const;
+
     struct producer_info {
         name producer_name;
     };
@@ -104,6 +117,10 @@ public:
         transaction_id_type id;
     };
     trx_json_to_digest_result trx_json_to_digest(const trx_json_to_digest_params& params) const;
+
+    using trx_json_to_bin_params = fc::variant_object;
+    using trx_json_to_bin_result = abi_json_to_bin_result;
+    trx_json_to_bin_result trx_json_to_bin(const trx_json_to_bin_params& params) const;
 
     struct get_required_keys_params {
         fc::variant      transaction;
@@ -167,6 +184,19 @@ public:
 
     using get_actions_params = empty;
     const std::string& get_actions(const get_actions_params&) const;
+
+    using get_staking_params = empty;
+    struct validator_slim {
+        asset   current_net_value;
+        int64_t total_units;
+    };
+    struct get_staking_result {
+        uint32_t period_version ; 
+        uint32_t period_start_num;
+        uint32_t next_period_num;
+        std::vector<validator_slim> validators;
+    };
+    get_staking_result get_staking(const get_staking_params& params) const;
 
     using get_db_info_params = empty;
     std::string get_db_info(const get_db_info_params&) const;
@@ -253,6 +283,7 @@ FC_REFLECT(evt::chain_apis::empty, );
 FC_REFLECT(evt::chain_apis::read_only::get_info_results,
           (server_version)(chain_id)(evt_api_version)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)
           (head_block_id)(head_block_time)(head_block_producer)(enabled_plugins)(server_version_string));
+FC_REFLECT(evt::chain_apis::read_only::get_charge_info_results, (base_network_charge_factor)(base_storage_charge_factor)(base_cpu_charge_factor)(global_charge_factor));
 FC_REFLECT(evt::chain_apis::read_only::get_block_params, (block_num_or_id));
 FC_REFLECT(evt::chain_apis::read_only::get_block_header_state_params, (block_num_or_id));
 FC_REFLECT(evt::chain_apis::read_only::get_transaction_params, (block_num)(id));
@@ -269,5 +300,7 @@ FC_REFLECT(evt::chain_apis::read_only::get_suspend_required_keys_params, (name)(
 FC_REFLECT(evt::chain_apis::read_only::get_suspend_required_keys_result, (required_keys));
 FC_REFLECT(evt::chain_apis::read_only::get_charge_params, (transaction)(sigs_num));
 FC_REFLECT(evt::chain_apis::read_only::get_charge_result, (charge));
+FC_REFLECT(evt::chain_apis::read_only::validator_slim, (current_net_value)(total_units));
+FC_REFLECT(evt::chain_apis::read_only::get_staking_result, (period_version)(period_start_num)(next_period_num)(validators));
 FC_REFLECT(evt::chain_apis::read_only::get_transaction_ids_for_block_params, (block_id));
 FC_REFLECT(evt::chain_apis::read_write::push_transaction_results, (transaction_id)(processed));

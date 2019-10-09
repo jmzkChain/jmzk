@@ -245,6 +245,21 @@ FC_DECLARE_DERIVED_EXCEPTION( bonus_unreached_dist_threshold, bonus_exception,  
 FC_DECLARE_DERIVED_EXCEPTION( bonus_method_exception,         bonus_exception,  3041012, "Invalid method for passive bonus" );
 FC_DECLARE_DERIVED_EXCEPTION( bonus_symbol_exception,         bonus_exception,  3041013, "Invalid symbol in bonus definition" );
 
+FC_DECLARE_DERIVED_EXCEPTION( staking_exception,             action_exception,  3041100, "Staking exception" );
+FC_DECLARE_DERIVED_EXCEPTION( unknown_validator_exception,   staking_exception, 3041101, "Unknown validator" );
+FC_DECLARE_DERIVED_EXCEPTION( validator_duplicate_exception, staking_exception, 3041102, "Duplicate validator" );
+FC_DECLARE_DERIVED_EXCEPTION( staking_amount_exception,      staking_exception, 3041103, "Invalid staking amount" );
+FC_DECLARE_DERIVED_EXCEPTION( staking_type_exception,        staking_exception, 3041104, "Invalid staking type" );
+FC_DECLARE_DERIVED_EXCEPTION( staking_days_exception,        staking_exception, 3041105, "Invalid staking days" );
+FC_DECLARE_DERIVED_EXCEPTION( staking_units_exception,       staking_exception, 3041106, "Invalid staking units" );
+FC_DECLARE_DERIVED_EXCEPTION( staking_not_enough_exception,  staking_exception, 3041107, "Not enough staking units" );
+FC_DECLARE_DERIVED_EXCEPTION( staking_symbol_exception,      staking_exception, 3041107, "Invalid staking asset symbol" );
+FC_DECLARE_DERIVED_EXCEPTION( staking_status_exception,      staking_exception, 3041108, "Invalid staking status" );
+FC_DECLARE_DERIVED_EXCEPTION( staking_active_exception,      staking_exception, 3041109, "Cannot active shares" );
+FC_DECLARE_DERIVED_EXCEPTION( stakepool_duplicate_exception, staking_exception, 3041110, "Duplicate stakepool" );
+FC_DECLARE_DERIVED_EXCEPTION( unknown_stakepool_exception,   staking_exception, 3041111, "Unknown stakepool" );
+FC_DECLARE_DERIVED_EXCEPTION( staking_timeing_exception,     staking_exception, 3041112, "Invliad timing for operation" );
+
 FC_DECLARE_DERIVED_EXCEPTION( producer_exception,                      chain_exception,    3050000, "Producer exception" );
 FC_DECLARE_DERIVED_EXCEPTION( producer_priv_key_not_found,             producer_exception, 3050001, "Producer private key is not available" );
 FC_DECLARE_DERIVED_EXCEPTION( missing_pending_block_state,             producer_exception, 3050002, "Pending block state is missing" );

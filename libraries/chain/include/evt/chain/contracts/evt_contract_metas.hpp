@@ -1,3 +1,9 @@
+/**
+ *  @file
+ *  @copyright defined in evt/LICENSE.txt
+ */
+#pragma once
+
 #include <boost/hana/at.hpp>
 #include <boost/hana/at_key.hpp>
 #include <boost/hana/integral_constant.hpp>

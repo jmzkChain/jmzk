@@ -9,9 +9,14 @@
 
 namespace evt { namespace chain { namespace contracts {
 
+/**
+ * Hisotry
+ * 4.1.1: Update memo field in everipass v2 and everipay v2 to be optional
+ */
+
 static auto evt_abi_version       = 4;
 static auto evt_abi_minor_version = 1;
-static auto evt_abi_patch_version = 0;
+static auto evt_abi_patch_version = 1;
 
 version
 evt_contract_abi_version() {
@@ -53,6 +58,21 @@ evt_contract_abi() {
         "passive_method_type", "uint8", {
             "within_amount",
             "outside_amount"
+        }
+    });
+
+    evt_abi.enums.emplace_back( enum_def {
+        "stake_type", "uint64", {
+            "active",
+            "fixed"
+        }
+    });
+
+    evt_abi.enums.emplace_back( enum_def {
+        "unstake_op", "uint64", {
+            "propose",
+            "cancel",
+            "settle"
         }
     });
 
@@ -382,7 +402,7 @@ evt_contract_abi() {
     evt_abi.structs.emplace_back( struct_def {
         "everipass_v2", "", {
            {"link", "evt_link"},
-           {"memo", "string"}
+           {"memo", "string?"}
         }
     });
 
@@ -399,7 +419,7 @@ evt_contract_abi() {
            {"link", "evt_link"},
            {"payee", "address"},
            {"number", "asset"},
-           {"memo", "string"}
+           {"memo", "string?"}
         }
     });
 
@@ -483,6 +503,86 @@ evt_contract_abi() {
            {"sym_id", "symbol_id_type"},
            {"deadline", "time_point"},
            {"final_receiver", "address?"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "newstakepool", "", {
+           {"sym_id", "symbol_id_type"},
+           {"purchase_threshold", "asset"},
+           {"demand_r", "int32"},
+           {"demand_t", "int32"},
+           {"demand_q", "int32"},
+           {"demand_w", "int32"},
+           {"fixed_r", "int32"},
+           {"fixed_t", "int32"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "updstakepool", "", {
+           {"sym_id", "symbol_id_type"},
+           {"purchase_threshold", "asset?"},
+           {"demand_r", "int32?"},
+           {"demand_t", "int32?"},
+           {"demand_q", "int32?"},
+           {"demand_w", "int32?"},
+           {"fixed_r", "int32?"},
+           {"fixed_t", "int32?"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "newvalidator", "", {
+           {"name", "account_name"},
+           {"creator", "user_id"},
+           {"signer", "public_key"},
+           {"withdraw", "permission_def"},
+           {"manage", "permission_def"},
+           {"commission", "percent_slim"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "staketkns", "", {
+           {"staker", "user_id"},
+           {"validator", "account_name"},
+           {"amount", "asset"},
+           {"type", "stake_type"},
+           {"fixed_days", "int32"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "unstaketkns", "", {
+           {"staker", "user_id"},
+           {"validator", "account_name"},
+           {"units", "int64"},
+           {"sym_id", "symbol_id_type"},
+           {"op", "unstake_op"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "toactivetkns", "", {
+           {"staker", "user_id"},
+           {"validator", "account_name"},
+           {"sym_id", "symbol_id_type"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "valiwithdraw", "", {
+           {"name", "account_name"},
+           {"addr", "address"},
+           {"amount", "asset"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
+        "recvstkbonus", "", {
+           {"validator", "account_name"},
+           {"sym_id", "symbol_id_type"}
         }
     });
 

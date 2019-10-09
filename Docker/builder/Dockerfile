@@ -1,12 +1,12 @@
 FROM debian:buster-slim
 
-LABEL author="Harry <harrywong@live.com>" maintainer="Harry <harrywong@live.com>" version="1.5.0" \
+LABEL author="Harry <harrywong@live.com>" maintainer="Harry <harrywong@live.com>" version="1.6.0" \
   description="This is a base image for building everitoken/evt"
 
 RUN echo 'APT::Install-Recommends 0;' >> /etc/apt/apt.conf.d/01norecommends \
     && echo 'APT::Install-Suggests 0;' >> /etc/apt/apt.conf.d/01norecommends \
     && apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -y sudo wget curl net-tools ccache ninja-build ca-certificates \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y sudo wget curl cmake net-tools ccache ninja-build ca-certificates \
        unzip gnupg git make libtool autoconf automake m4 openssl libssl1.1 libssl-dev libgmp-dev zlib1g-dev \
        libreadline-dev gcc-8 g++-8 llvm-7 llvm-7-dev
 
@@ -21,10 +21,6 @@ RUN update-alternatives --install /usr/bin/gcc-ranlib gcc-ranlib /usr/bin/gcc-ra
 
 RUN update-alternatives --set cc  /usr/bin/gcc
 RUN update-alternatives --set c++ /usr/bin/g++
-
-RUN wget --no-check-certificate https://github.com/Kitware/CMake/releases/download/v3.13.1/cmake-3.13.1-Linux-x86_64.sh -O cmake-latest-Linux-x86_64.sh \
-    && bash cmake-latest-Linux-x86_64.sh --prefix=/usr/local --exclude-subdir --skip-license \
-    && rm cmake-latest-Linux-x86_64.sh
 
 RUN git clone --depth 1 --single-branch --branch master https://github.com/lz4/lz4.git \
     && cd lz4 \
@@ -43,12 +39,12 @@ RUN wget https://dl.bintray.com/boostorg/release/1.69.0/source/boost_1_69_0.tar.
        --with-serialization --with-chrono --with-test --with-context --with-locale --with-coroutine --with-iostreams toolset=gcc link=shared install \
     && cd .. && rm -rf boost_1_69_0
 
-RUN wget https://github.com/01org/tbb/archive/2019_U5.tar.gz -O - | tar -xz \
-    && cd tbb-2019_U5 \
+RUN wget https://github.com/01org/tbb/archive/2019_U8.tar.gz -O - | tar -xz \
+    && cd tbb-2019_U8 \
     && make tbb -j${nproc} \
     && sudo cp build/*release/*.so* /usr/local/lib \
     && sudo cp -R include/tbb /usr/local/include \
-    && cd .. && rm -rf tbb-2019_U5
+    && cd .. && rm -rf tbb-2019_U8
 
 RUN git clone --depth 1 git://github.com/cryptonomex/secp256k1-zkp \
     && cd secp256k1-zkp \
@@ -76,12 +72,12 @@ RUN git clone -b master https://github.com/everitoken/breakpad.git \
     && make -j$(nproc) install \
     && cd .. && rm -rf breakpad
 
-RUN wget https://ftp.postgresql.org/pub/source/v11.1/postgresql-11.1.tar.gz -O - | tar -xz \
-    && cd postgresql-11.1 \
+RUN wget https://ftp.postgresql.org/pub/source/v11.5/postgresql-11.5.tar.gz -O - | tar -xz \
+    && cd postgresql-11.5 \
     && ./configure --prefix=/usr/local \
     && make -C src/include install \
     && make -C src/interfaces install \
-    && cd .. && rm -rf postgresql-11.1
+    && cd .. && rm -rf postgresql-11.5
 
 RUN git clone --depth 1 -b r1.13 git://github.com/mongodb/mongo-c-driver \
     && cd mongo-c-driver \

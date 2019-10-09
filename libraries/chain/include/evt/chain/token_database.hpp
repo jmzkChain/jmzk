@@ -12,8 +12,8 @@
 #include <fc/reflect/reflect.hpp>
 #include <fc/filesystem.hpp>
 #include <evt/chain/types.hpp>
-#include <evt/chain/asset.hpp>
 #include <evt/chain/address.hpp>
+#include <evt/chain/asset.hpp>
 #include <evt/chain/config.hpp>
 
 namespace rocksdb {
@@ -42,7 +42,9 @@ enum class token_type {
     evtlink,
     psvbonus,
     psvbonus_dist,
-    max_value = psvbonus_dist
+    validator,
+    stakepool,
+    max_value = stakepool
 };
 
 enum class action_op {

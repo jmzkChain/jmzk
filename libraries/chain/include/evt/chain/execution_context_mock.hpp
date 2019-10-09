@@ -34,7 +34,7 @@ public:
         hana::for_each(act_types, [&](auto& act) {
             auto i = index_of(act);
             type_names_[i].emplace_back(decltype(+act)::type::get_type_name());
-            assert(type_names_[i].size() == decltype(+act)::type::get_version());
+            assert(type_names_[i].size() == (uint32_t)decltype(+act)::type::get_version());
             curr_vers_[i] = 1;  // ver starts from 1
         });
 
@@ -206,41 +206,49 @@ private:
 };
 
 using evt_execution_context_mock = execution_context_mock<
-                                      contracts::newdomain,
-                                      contracts::updatedomain,
-                                      contracts::issuetoken,
-                                      contracts::transfer,
-                                      contracts::destroytoken,
-                                      contracts::newgroup,
-                                      contracts::updategroup,
-                                      contracts::newfungible,
-                                      contracts::newfungible_v2,
-                                      contracts::updfungible,
-                                      contracts::updfungible_v2,
-                                      contracts::issuefungible,
-                                      contracts::transferft,
-                                      contracts::recycleft,
-                                      contracts::destroyft,
-                                      contracts::evt2pevt,
-                                      contracts::addmeta,
-                                      contracts::newsuspend,
-                                      contracts::cancelsuspend,
-                                      contracts::aprvsuspend,
-                                      contracts::execsuspend,
-                                      contracts::paycharge,
-                                      contracts::paybonus,
-                                      contracts::everipass,
-                                      contracts::everipass_v2,
-                                      contracts::everipay,
-                                      contracts::everipay_v2,
-                                      contracts::prodvote,
-                                      contracts::updsched,
-                                      contracts::newlock,
-                                      contracts::aprvlock,
-                                      contracts::tryunlock,
-                                      contracts::setpsvbonus,
-                                      contracts::setpsvbonus_v2,
-                                      contracts::distpsvbonus
-                                  >;
+                                       contracts::newdomain,
+                                       contracts::updatedomain,
+                                       contracts::issuetoken,
+                                       contracts::transfer,
+                                       contracts::destroytoken,
+                                       contracts::newgroup,
+                                       contracts::updategroup,
+                                       contracts::newfungible,
+                                       contracts::newfungible_v2,
+                                       contracts::updfungible,
+                                       contracts::updfungible_v2,
+                                       contracts::issuefungible,
+                                       contracts::transferft,
+                                       contracts::recycleft,
+                                       contracts::destroyft,
+                                       contracts::evt2pevt,
+                                       contracts::addmeta,
+                                       contracts::newsuspend,
+                                       contracts::cancelsuspend,
+                                       contracts::aprvsuspend,
+                                       contracts::execsuspend,
+                                       contracts::paycharge,
+                                       contracts::paybonus,
+                                       contracts::everipass,
+                                       contracts::everipass_v2,
+                                       contracts::everipay,
+                                       contracts::everipay_v2,
+                                       contracts::prodvote,
+                                       contracts::updsched,
+                                       contracts::newlock,
+                                       contracts::aprvlock,
+                                       contracts::tryunlock,
+                                       contracts::setpsvbonus,
+                                       contracts::setpsvbonus_v2,
+                                       contracts::distpsvbonus,
+                                       contracts::newstakepool,
+                                       contracts::updstakepool,
+                                       contracts::newvalidator,
+                                       contracts::valiwithdraw,
+                                       contracts::recvstkbonus,
+                                       contracts::staketkns,
+                                       contracts::unstaketkns,
+                                       contracts::toactivetkns
+                                   >;
 
 }}  // namespace evt::chain

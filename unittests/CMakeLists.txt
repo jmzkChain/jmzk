@@ -2,6 +2,7 @@ add_executable(evt_unittests
     main.cpp
     abi_tests.cpp
     types_tests.cpp
+    crypto_tests.cpp
 
     tokendb/basic_tests.cpp
     tokendb/runtime_tests.cpp
@@ -10,14 +11,15 @@ add_executable(evt_unittests
     
     snapshot_tests.cpp
     
-    contracts/token_tests.cpp
+    contracts/nft_tests.cpp
     contracts/group_tests.cpp
-    contracts/fungible_tests.cpp
+    contracts/ft_tests.cpp
     contracts/suspend_tests.cpp
     contracts/lock_tests.cpp
     contracts/bonus_tests.cpp
     contracts/utils_tests.cpp
     contracts/evtlink_tests.cpp
+    contracts/staking_tests.cpp
     )
 
 target_link_libraries(evt_unittests PRIVATE

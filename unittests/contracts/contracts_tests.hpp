@@ -38,9 +38,24 @@ extern std::string evt_unittests_dir;
         evt::chain::extract_db_value(str, VALUEREF); \
     }
 
+#define READ_DB_TOKEN(TYPE, PREFIX, KEY, VPTR, EXCEPTION, FORMAT, ...)      \
+    try {                                                                   \
+        using vtype = typename decltype(VPTR)::element_type;                \
+        VPTR = tokendb_cache.template read_token<vtype>(TYPE, PREFIX, KEY); \
+    }                                                                       \
+    catch(token_database_exception&) {                                      \
+        EVT_THROW2(EXCEPTION, FORMAT, ##__VA_ARGS__);                       \
+    }
+
+#define UPD_DB_TOKEN(TYPE, NAME, VALUE)                                                                         \
+    {                                                                                                     \
+        tokendb_cache.put_token(evt::chain::token_type::TYPE, action_op::update, std::nullopt, NAME, VALUE); \
+    }
+
 #define MAKE_PROPERTY(AMOUNT, SYM) \
     property {                     \
         .amount = AMOUNT,          \
+        .frozen_amount = 0,        \
         .sym = SYM,                \
         .created_at = 0,           \
         .created_index = 0         \
@@ -67,6 +82,22 @@ extern std::string evt_unittests_dir;
             extract_db_value(str, VALUEREF);                                \
         }                                                                   \
     }
+
+#define PUT_DB_ASSET(ADDR, VALUE)                                             \
+    while(1) {                                                                \
+        if(VALUE.sym.id() == EVT_SYM_ID) {                                    \
+            if constexpr(std::is_same_v<decltype(VALUE), property>) {         \
+                auto ps = property_stakes(VALUE);                             \
+                auto dv = make_db_value(ps);                                  \
+                tokendb.put_asset(ADDR, VALUE.sym.id(), dv.as_string_view()); \
+                break;                                                        \
+            }                                                                 \
+        }                                                                     \
+        auto dv = make_db_value(VALUE);                                       \
+        tokendb.put_asset(ADDR, VALUE.sym.id(), dv.as_string_view());         \
+        break;                                                                \
+    }
+
 
 class contracts_test {
 public:

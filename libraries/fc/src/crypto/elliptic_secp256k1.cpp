@@ -22,7 +22,9 @@
 #include "_elliptic_impl_priv.hpp"
 
 namespace fc { namespace ecc {
+
 namespace detail {
+
 const secp256k1_context_t*
 _get_context() {
     static secp256k1_context_t* ctx = secp256k1_context_create(SECP256K1_CONTEXT_VERIFY | SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_RANGEPROOF | SECP256K1_CONTEXT_COMMIT);
@@ -48,6 +50,12 @@ public:
         _init_lib();
     }
 
+    public_key_impl&
+    operator=(const public_key_impl& rhs) {
+        _key = rhs._key;
+        return *this;
+    }
+
     public_key_data _key;
 };
 
@@ -58,6 +66,7 @@ fc::sha256                   _right(const fc::sha512& v);
 const ec_group&              get_curve();
 const private_key_secret&    get_curve_order();
 const private_key_secret&    get_half_curve_order();
+
 }  // namespace detail
 
 static const public_key_data    empty_pub{};

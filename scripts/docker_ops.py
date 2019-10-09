@@ -263,8 +263,9 @@ def upgrade(ctx, data_volume):
 @click.option('--host', '-h', default='127.0.0.1', help='Host address for postgres')
 @click.option('--password', '-x', default='', help='Password for \'postgres\' user, leave empty to disable password (anyone can login)')
 @click.option('--data-volume', '-d', default=None, help='Set one host path for data folder in postgres instead using volume')
+@click.option('--shm-size', default='1g', help='Shared memory size for container')
 @click.pass_context
-def create(ctx, net, port, host, password, data_volume):
+def create(ctx, net, port, host, password, data_volume, shm_size):
     name = ctx.obj['name']
     image = 'everitoken/postgres:latest'
     volume_name = '{}-data-volume'.format(name)
@@ -319,7 +320,8 @@ def create(ctx, net, port, host, password, data_volume):
                              environment={
                                  'AUTH': auth,
                                  'POSTGRES_PASSWORD': password
-                             })
+                             },
+                             shm_size=shm_size)
     click.echo('{} container is created'.format(green(name)))
 
     if len(password) > 0:
@@ -577,6 +579,7 @@ def detailmongo(ctx):
 
 def check_evt_image():
     missing_evt = False
+    missing_evt_staking = False
     missing_evt_mainnet = False
     try:
         client.images.get('everitoken/evt:latest')
@@ -588,9 +591,14 @@ def check_evt_image():
     except docker.errors.ImageNotFound:
         missing_evt_mainnet = True
 
-    if missing_evt and missing_evt_mainnet:
-        click.echo('Nither find image: {} or {}, please pull one first'.format(
-            green('everitoken/evt:latest'), green('everitoken/evt-mainnet:latest')))
+    try:
+        client.images.get('everitoken/evt-staking:latest')
+    except docker.errors.ImageNotFound:
+        missing_evt_staking = True
+
+    if missing_evt and missing_evt_mainnet and missing_evt_staking:
+        click.echo('Nither find image: {}, {} and {}, please pull one first'.format(
+            green('everitoken/evt:latest'), green('everitoken/evt-mainnet:latest'),  green('everitoken/evt-staking:latest')))
 
 
 @cli.group()
@@ -855,7 +863,7 @@ def getsnapshot(ctx, snapshot):
 
 @evtd.command()
 @click.argument('arguments', nargs=-1)
-@click.option('--type', '-t', default='testnet', type=click.Choice(['testnet', 'mainnet']), help='Type of the image')
+@click.option('--type', '-t', default='testnet', type=click.Choice(['testnet', 'mainnet', 'staking']), help='Type of the image')
 @click.option('--net', '-n', default='evt-net', help='Name of the network for the environment')
 @click.option('--http-port', '-p', default=8888, help='Expose port for rpc request, set 0 for not expose')
 @click.option('--p2p-port', default=7888, help='Expose port for p2p network, set 0 for not expose')
@@ -864,8 +872,9 @@ def getsnapshot(ctx, snapshot):
 @click.option('--postgres-db', default=None, help='Name of database in postgres, if set, postgres and history plugins will be enabled')
 @click.option('--postgres-pass', default='', help='Password for postgres')
 @click.option('--data-volume', '-d', default=None, help='Set one host path for data folder in evtd instead using volume')
+@click.option('--shm-size', default='1g', help='Shared memory size for container')
 @click.pass_context
-def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_db, postgres_pass, data_volume, type, arguments):
+def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_db, postgres_pass, data_volume, type, shm_size, arguments):
     name = ctx.obj['name']
     volume_name = '{}-data-volume'.format(name)
     volume2_name = '{}-snapshots-volume'.format(name)
@@ -874,8 +883,13 @@ def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_db, post
 
     if type == 'testnet':
         image = 'everitoken/evt:latest'
-    else:
+    elif type == 'mainnet':
         image = 'everitoken/evt-mainnet:latest'
+    elif type == 'staking':
+        image = 'everitoken/evt-staking:latest'
+    else:
+        click.echo('Unknown image type')
+        return
 
     try:
         client.images.get(image)
@@ -885,7 +899,7 @@ def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_db, post
         client.volumes.get(volume2_name)
     except docker.errors.ImageNotFound:
         click.echo(
-            'Some necessary elements are not found, please run `evtd init` first')
+            '{} image is not found, please use docker pull image first'.format(image))
         return
     except docker.errors.NotFound:
         click.echo(
@@ -952,6 +966,7 @@ def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_db, post
                              entrypoint=entry,
                              cap_add=['SYS_PTRACE'],
                              security_opt=['apparmor:unconfined'],
+                             shm_size=shm_size
                              )
     click.echo('{} container is created'.format(green(name)))
 
@@ -1010,20 +1025,31 @@ def init(ctx):
 @evtwd.command()
 @click.argument('arguments', nargs=-1)
 @click.option('--net', '-n', default='evt-net', help='Name of the network for the environment')
+@click.option('--type', '-t', default='testnet', type=click.Choice(['testnet', 'mainnet', 'staking']), help='Type of the image')
 @click.option('--http/--no-http', default=False, help='Whether to enable http server')
 @click.option('--host', '-h', default='127.0.0.1', help='Host address for evtwd (only works when http is enabled)')
 @click.option('--http-port', '-p', default=9999, help='Expose port for rpc request, set 0 for not expose (only works when http is enabled)')
 @click.pass_context
-def create(ctx, net, http, host, http_port, arguments):
+def create(ctx, net, type, http, host, http_port, arguments):
     name = ctx.obj['name']
     volume_name = '{}-data-volume'.format(name)
 
+    if type == 'testnet':
+        image = 'everitoken/evt:latest'
+    elif type == 'mainnet':
+        image = 'everitoken/evt-mainnet:latest'
+    elif type == 'staking':
+        image = 'everitoken/evt-staking:latest'
+    else:
+        click.echo('Unknown image type')
+        return
+
     try:
-        client.images.get('everitoken/evt:latest')
+        client.images.get(image)
         client.volumes.get(volume_name)
     except docker.errors.ImageNotFound:
         click.echo(
-            'Some necessary elements are not found, please run `evtwd init` first')
+            '{} image is not found, please use docker pull image first'.format(image))
         return
     except docker.errors.NotFound:
         click.echo(
@@ -1051,14 +1077,14 @@ def create(ctx, net, http, host, http_port, arguments):
     entry = 'evtwd.sh --unix-socket-path=/opt/evt/data/wallet/evtwd.sock'
     ports = {}
     if http:
-        entry += ' --listen-http'
+        entry += ' --listen-http --http-server-address=0.0.0.0:9999'
         if http_port != 0:
             ports['9999/tcp'] = (host, http_port)
 
     if arguments is not None and len(arguments) > 0:
         entry += ' ' + ' '.join(arguments)
 
-    client.containers.create('everitoken/evt:latest', None, name=name, detach=True,
+    client.containers.create(image, None, name=name, detach=True,
                              network=net,
                              ports=ports,
                              volumes={volume_name: {

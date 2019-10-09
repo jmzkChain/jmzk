@@ -27,7 +27,7 @@ class authority_checker;
 
 namespace internal {
 
-enum permission_type { kIssue = 0, kTransfer, kManage };
+enum permission_type { kIssue = 0, kTransfer, kManage, kWithdraw };
 enum toke_type { kNFT = 0, kFT };
 
 template<uint64_t>
@@ -152,6 +152,22 @@ private:
         }
     }
 
+    template<int Permission>
+    void
+    get_validator_permission(const account_name& validator_name, std::function<void(const permission_def&)>&& cb) {
+        using namespace internal;
+
+        auto validator = make_empty_cache_ptr<validator_def>();
+        READ_DB_TOKEN(token_type::validator, std::nullopt, validator_name, validator, unknown_validator_exception, "Cannot find validator: {}", validator_name);
+
+        if constexpr(Permission == kWithdraw) {
+            cb(validator->withdraw);
+        }
+        else if constexpr(Permission == kManage) {
+            cb(validator->manage);
+        }
+    }
+
     void
     get_group(const group_name& name, std::function<void(const group_def&)>&& cb) {
         auto group = make_empty_cache_ptr<group_def>();
@@ -195,7 +211,15 @@ private:
             }
         }
         return;
-    } 
+    }
+
+    void
+    get_validator(const account_name& validator_name, std::function<void(const validator_def&)>&& cb) {
+        auto validator = make_empty_cache_ptr<validator_def>();
+        READ_DB_TOKEN(token_type::validator, std::nullopt, validator_name, validator, unknown_validator_exception, "Cannot find validator: {}", validator_name);
+
+        cb(*validator);
+    }
 
 private:
     bool
@@ -334,6 +358,18 @@ private:
         return result;
     }
 
+    template<int Permission>
+    bool
+    satisfied_validator_permission(const account_name& validator, const action& action) {
+        using namespace internal;
+
+        bool result = false;
+        get_validator_permission<Permission>(validator, [&](const auto& permission) {
+            result = satisfied_permission<kFT>(permission, action);
+        });
+        return result;
+    }
+
 public:
     bool
     satisfied(const action& act) {
@@ -350,6 +386,23 @@ public:
         bool result = exec_ctx_.invoke<check_authority, bool>(act.index_, act, this);
 
         if(result) {
+            KeyReverter.cancel();
+            return true;
+        }
+        return false;
+    }
+
+    bool
+    satisfied_key(const public_key_type& pkey) {
+        using namespace internal;
+
+        // Save the current used keys; if we do not satisfy this authority, the newly used keys aren't actually used
+        auto KeyReverter = fc::make_scoped_exit([this, keys = used_keys_]() mutable {
+            used_keys_ = keys;
+        });
+
+        auto vistor = weight_tally_visitor(this);
+        if(vistor(pkey, 1) > 0) {
             KeyReverter.cancel();
             return true;
         }
@@ -786,6 +839,118 @@ struct check_authority<N(distpsvbonus)> {
     static bool
     invoke(const action& act, authority_checker* checker) {
         return checker->satisfied_fungible_permission<kManage>(get_symbol_id(act.key), act);
+    }
+};
+
+template<>
+struct check_authority<N(newstakepool)> {
+    template <typename Type>
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        return checker->satisfied_group(checker->get_control().get_genesis_state().evt_org.name());
+    }
+};
+
+template<>
+struct check_authority<N(updstakepool)> {
+    template <typename Type>
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        return checker->satisfied_group(checker->get_control().get_genesis_state().evt_org.name());
+    }
+};
+
+template<>
+struct check_authority<N(newvalidator)> {
+    template <typename Type>
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        try {
+            auto& nv     = act.data_as<add_clr_t<Type>>();
+            auto  vistor = authority_checker::weight_tally_visitor(checker);
+            if(vistor(nv.creator, 1) == 1) {
+                return true;
+            }
+        }
+        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `newvalidator` type.");
+        return false;
+    }
+};
+
+template<>
+struct check_authority<N(valiwithdraw)> {
+    template <typename Type>
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        return checker->satisfied_validator_permission<kWithdraw>(act.key, act);
+    }
+};
+
+template<>
+struct check_authority<N(recvstkbonus)> {
+    template <typename Type>
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        bool result = false;
+        checker->get_validator(act.key, [&](const auto& validator) {
+            auto& key    = validator.signer;
+            auto  vistor = authority_checker::weight_tally_visitor(checker);
+            if(vistor(validator.signer, 1) == 1) {
+                result = true;
+            }
+        });
+        return result;
+    }
+};
+
+template<>
+struct check_authority<N(staketkns)> {
+    template <typename Type>
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        try {
+            auto& st     = act.data_as<add_clr_t<Type>>();
+            auto  vistor = authority_checker::weight_tally_visitor(checker);
+            if(vistor(st.staker, 1) == 1) {
+                return true;
+            }
+        }
+        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `staketkns` type.");
+        return false;
+    }
+};
+
+template<>
+struct check_authority<N(unstaketkns)> {
+    template <typename Type>
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        try {
+            auto& st     = act.data_as<add_clr_t<Type>>();
+            auto  vistor = authority_checker::weight_tally_visitor(checker);
+            if(vistor(st.staker, 1) == 1) {
+                return true;
+            }
+        }
+        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `unstaketkns` type.");
+        return false;
+    }
+};
+
+template<>
+struct check_authority<N(toactivetkns)> {
+    template <typename Type>
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        try {
+            auto& st     = act.data_as<add_clr_t<Type>>();
+            auto  vistor = authority_checker::weight_tally_visitor(checker);
+            if(vistor(st.staker, 1) == 1) {
+                return true;
+            }
+        }
+        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `toactivetkns` type.");
+        return false;
     }
 };
 

@@ -40,6 +40,11 @@ symbol::to_string() const {
     return str;
 }
 
+asset
+asset::from_integer(share_type a, symbol s) {
+    return asset(a * std::pow(10, s.precision()), s);
+}
+
 string
 asset::to_string() const {
     auto sign = amount_ < 0 ? "-" : "";
@@ -58,8 +63,11 @@ asset::to_string() const {
 
     str.insert(0, sign);
 
-    str.append(" S#");
-    str.append(fc::to_string(sym_.id()));
+    // special for symbol id with 0(aka. empty symbol)
+    if(sym_.id() > 0) {
+        str.append(" S#");
+        str.append(fc::to_string(sym_.id()));
+    }
     return str;
 }
 

@@ -27,12 +27,13 @@ initialize_evt_org(token_database& tokendb, const genesis_state& genesis) {
         tokendb.put_token(token_type::fungible, action_op::add, std::nullopt, PEVT_SYM_ID, v2.as_string_view());
 
         auto addr = address(N(.fungible), name128::from_number(EVT_SYM_ID), 0);
-        auto prop = property {
+        auto prop = property_stakes(property {
                         .amount = genesis.evt.total_supply.amount(),
+                        .frozen_amount = 0,
                         .sym = evt_sym(),
                         .created_at = genesis.initial_timestamp.sec_since_epoch(),
                         .created_index = 0
-                    };
+                    });
         auto v3 = make_db_value(prop);
         tokendb.put_asset(addr, EVT_SYM_ID, v3.as_string_view());
     }

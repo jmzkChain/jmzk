@@ -26,9 +26,10 @@ namespace evt { namespace chain { namespace contracts {
 
 namespace internal {
 
-const char* ALPHABETS  = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ$+-/:*";
-const int   MAX_BYTES  = 240;  // 195 / ((42 ^ 2) / 2048)
-const char* URI_SCHEMA = "https://evt.li/";
+const char* ALPHABETS   = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ$+-/:*";
+const int   MAX_BYTES   = 240;  // 195 / ((42 ^ 2) / 2048)
+const char* URI_SCHEMA  = "https://evt.li/";
+const char* URI_SCHEMA2 = "evtlink://";
 
 template<typename T>
 bytes
@@ -149,6 +150,9 @@ evt_link::parse_from_evtli(const std::string& str) {
     size_t start = 0;
     if(memcmp(str.data(), URI_SCHEMA, strlen(URI_SCHEMA)) == 0) {
         start = strlen(URI_SCHEMA);
+    }
+    else if(memcmp(str.data(), URI_SCHEMA2, strlen(URI_SCHEMA2)) == 0) {
+        start = strlen(URI_SCHEMA2);
     }
 
     auto d = str.find_first_of('_', start);

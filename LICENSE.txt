@@ -19,6 +19,8 @@ Catch(https://github.com/catchorg/Catch2)
 sparesehash-c11(https://github.com/sparsehash/sparsehash-c11)
 libcuckoo(https://github.com/efficient/libcuckoo)
 {fmt}(http://fmtlib.net/latest/index.html)
+sss(https://github.com/dsprenkels/sss)
+randombytes(https://github.com/dsprenkels/randombytes)
 
 1.EOSIO
 
@@ -75,6 +77,14 @@ Apache License Version 2.0, Copyright (C) 2013, Carnegie Mellon University and I
 14. {fmt}
 
 BSD 2-Clause "Simplified" License
+
+15. sss
+
+MIT License, Copyright (c) 2017 Daan Sprenkels <hello@dsprenkels.com>
+
+16. randombytes
+
+MIT License, Copyright (c) 2017 Daan Sprenkels <hello@dsprenkels.com>
 
 Terms of the MIT License:
 -----------------------------------------------------------------------------

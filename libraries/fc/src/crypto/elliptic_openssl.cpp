@@ -91,6 +91,7 @@ private_key::operator=(const private_key& pk) {
     my = pk.my;
     return *this;
 }
+
 static void*
 ecies_key_derivation(const void* input, size_t ilen, void* output, size_t* olen) {
     if(*olen < SHA512_DIGEST_LENGTH) {

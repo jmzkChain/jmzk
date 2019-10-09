@@ -206,8 +206,6 @@ struct controller_impl {
 
     ~controller_impl() {
         pending.reset();
-        db.flush();
-        reversible_blocks.flush();
     }
 
     /**
@@ -865,6 +863,10 @@ struct controller_impl {
 
             clear_expired_input_transactions();
         }
+
+        // update staking context
+        check_and_update_staking_ctx();
+
         guard_pending.cancel();
     }  // start_block
 
@@ -1152,6 +1154,21 @@ struct controller_impl {
         auto        now             = self.pending_block_time();
         while((!dedupe_index.empty()) && (now > fc::time_point(dedupe_index.begin()->expiration))) {
             transaction_idx.remove(*dedupe_index.begin());
+        }
+    }
+
+    void
+    check_and_update_staking_ctx() {
+        EVT_ASSERT(pending.has_value(), block_validate_exception, "it is not valid to check and update staking context when there is no pending block");
+
+        const auto& gpo  = db.get<global_property_object>();
+        const auto& conf = gpo.staking_configuration;
+        const auto& ctx  = gpo.staking_ctx;
+        if(pending->_pending_block_state->block_num == ctx.period_start_num + conf.cycles_per_period * conf.blocks_per_cycle) {
+            db.modify(gpo, [&](auto& gp) {
+                gp.staking_ctx.period_version   = gp.staking_ctx.period_version + 1;
+                gp.staking_ctx.period_start_num = pending->_pending_block_state->block_num;
+            });
         }
     }
 
@@ -1491,12 +1508,14 @@ controller::set_proposed_producers(vector<producer_key> producers) {
     auto        cur_block_num = head_block_num() + 1;
 
     if(gpo.proposed_schedule_block_num.has_value()) {
-        if(*gpo.proposed_schedule_block_num != cur_block_num)
+        if(*gpo.proposed_schedule_block_num != cur_block_num) {
             return -1;  // there is already a proposed schedule set in a previous block, wait for it to become pending
+        }
 
         if(std::equal(producers.begin(), producers.end(),
-                      gpo.proposed_schedule.producers.begin(), gpo.proposed_schedule.producers.end()))
+                      gpo.proposed_schedule.producers.begin(), gpo.proposed_schedule.producers.end())) {
             return -1;  // the proposed producer schedule does not change
+        }
     }
 
     producer_schedule_type sch;
@@ -1517,8 +1536,9 @@ controller::set_proposed_producers(vector<producer_key> producers) {
         sch.version             = pending_sch.version + 1;
     }
 
-    if(std::equal(producers.begin(), producers.end(), begin, end))
+    if(std::equal(producers.begin(), producers.end(), begin, end)) {
         return -1;  // the producer schedule would not change
+    }
 
     sch.producers = std::move(producers);
 
@@ -1547,7 +1567,7 @@ controller::set_action_versions(vector<action_ver> vers) {
         for(auto& av : vers) {
             gp.action_vers.push_back(av);
         }
-    }); 
+    });
 }
 
 void
@@ -1559,7 +1579,16 @@ controller::set_action_version(name action, int version) {
                 av.ver = version;
             }
         }
-    }); 
+    });
+}
+
+void
+controller::set_initial_staking_period() {
+    const auto& gpo = get_global_properties();
+    my->db.modify(gpo, [&](auto& gp) {
+        gp.staking_ctx.period_version   = 1;
+        gp.staking_ctx.period_start_num = pending_block_state()->block_num;
+    });
 }
 
 const producer_schedule_type&
@@ -1750,12 +1779,11 @@ controller::get_required_keys(const transaction& trx, const public_keys_set& can
                    "${name} action in domain: ${domain} with key: ${key} authorized failed",
                    ("domain", act.domain)("key", act.key)("name", act.name));
     }
-
-    auto keys = checker.used_keys();
     if(trx.payer.type() == address::public_key_t) {
-        keys.emplace(trx.payer.get_public_key());
+        EVT_ASSERT(checker.satisfied_key(trx.payer.get_public_key()), unsatisfied_authorization, "Payer authorized failed");
     }
-    return keys;
+
+    return checker.used_keys();
 }
 
 public_keys_set
@@ -1766,12 +1794,11 @@ controller::get_suspend_required_keys(const transaction& trx, const public_keys_
     for(const auto& act : trx.actions) {
         checker.satisfied(act);
     }
-
-    auto keys = checker.used_keys();
     if(trx.payer.type() == address::public_key_t) {
-        keys.emplace(trx.payer.get_public_key());
+        checker.satisfied_key(trx.payer.get_public_key());
     }
-    return keys;
+
+    return checker.used_keys();;
 }
 
 public_keys_set

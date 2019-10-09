@@ -409,6 +409,7 @@ TEST_CASE("test_percent_slim", "[types]") {
     CHECK_THROWS_AS(percent_slim::from_string("0.000001"), percent_type_exception);
     CHECK_THROWS_AS(percent_slim::from_string("1.00001"), percent_type_exception);
     CHECK_THROWS_AS(percent_slim::from_string("0.100a"), percent_type_exception);
+    CHECK_THROWS_AS(percent_slim::from_string("-0.1"), percent_type_exception);
 }
 
 

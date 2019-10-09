@@ -102,6 +102,7 @@ fc::variant do_http_call(
 const std::string chain_func_base             = "/v1/chain";
 const std::string get_info_func               = chain_func_base + "/get_info";
 const std::string get_db_info_func            = chain_func_base + "/get_db_info";
+const std::string get_charge_info_func        = chain_func_base + "/get_charge_info";
 const std::string push_txn_func               = chain_func_base + "/push_transaction";
 const std::string push_txns_func              = chain_func_base + "/push_transactions";
 const std::string json_to_bin_func            = chain_func_base + "/abi_json_to_bin";
@@ -113,6 +114,7 @@ const std::string get_suspend_required_keys   = chain_func_base + "/get_suspend_
 const std::string get_charge                  = chain_func_base + "/get_charge";
 const std::string get_evt_actions             = chain_func_base + "/get_actions";
 const std::string get_evt_abi                 = chain_func_base + "/get_abi";
+const std::string get_staking_func            = chain_func_base + "/get_staking";
 
 const std::string get_node_apis = "/v1/node/get_supported_apis";
 
@@ -143,9 +145,12 @@ const std::string get_tokens_func            = evt_func_base + "/get_tokens";
 const std::string get_group_func             = evt_func_base + "/get_group";
 const std::string get_fungible_func          = evt_func_base + "/get_fungible";
 const std::string get_fungible_balance_func  = evt_func_base + "/get_fungible_balance";
-const std::string get_fungible_psvbonus_func = evt_func_base + "/get_fungible_psvbonus"; 
+const std::string get_fungible_psvbonus_func = evt_func_base + "/get_fungible_psvbonus";
 const std::string get_suspend_func           = evt_func_base + "/get_suspend";
 const std::string get_lock_func              = evt_func_base + "/get_lock";
+const std::string get_stakepool_func         = evt_func_base + "/get_stakepool";
+const std::string get_validator_func         = evt_func_base + "/get_validator";
+const std::string get_staking_shares_func    = evt_func_base + "/get_staking_shares";
 
 const std::string history_func_base       = "/v1/history";
 const std::string get_my_domains          = history_func_base + "/get_domains";

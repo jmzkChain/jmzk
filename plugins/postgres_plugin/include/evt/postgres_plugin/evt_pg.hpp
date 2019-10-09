@@ -12,6 +12,7 @@
 #include <evt/chain/block_state.hpp>
 #include <evt/chain/execution_context.hpp>
 #include <evt/chain/transaction.hpp>
+#include <evt/chain/controller.hpp>
 #include <evt/chain/contracts/types.hpp>
 
 struct pg_conn;
@@ -26,6 +27,7 @@ struct abi_serializer;
 }  // namespace contracts
 }  // namespace chain
 
+using namespace chain;
 using namespace evt::chain::contracts;
 
 #define PG_OK   1
@@ -41,6 +43,7 @@ using chain_id_t   = chain::chain_id_type;
 using trx_recept_t = chain::transaction_receipt;
 using trx_t        = chain::signed_transaction;
 using ft_holders_t = chain::small_vector_base<chain::ft_holder>;
+using validator_t  = chain::contracts::validator_def;
 
 struct copy_context;
 struct trx_context;
@@ -53,7 +56,7 @@ public:
 public:
     copy_context&     cctx;
     std::string_view  block_id;
-    int               block_num;
+    uint32_t          block_num;
     std::string       ts;
     const chain_id_t& chain_id;
     const abi_t&      abi;
@@ -107,11 +110,11 @@ public:
 
 public:
     static int add_block(add_context&, const block_ptr);
-    static int add_trx(add_context&, const trx_recept_t&, const trx_t&, int seq_num, int elapsed, int charge);
-    static int add_action(add_context&, const act_trace_t&, const std::string& trx_id, int seq_num);
+    static int add_trx(add_context&, const trx_recept_t&, const trx_t&, int seq_num, int trx_num, int elapsed, int charge);
+    static int add_action(add_context&, const act_trace_t&, int seq_num, int64_t trx_num);
     
     int get_latest_block_id(std::string& block_id) const;
-    int set_block_irreversible(trx_context&, const block_id_t& block_id);
+    int get_latest_trx_num(int64_t& trx_num) const;
     int exists_block(const std::string& block_id) const;
 
     int add_stat(trx_context&, const std::string& key, const std::string& value);
@@ -132,6 +135,9 @@ public:
     int upd_fungible(trx_context&, const updfungible&);
     int upd_fungible(trx_context&, const updfungible_v2&);
 
+    int add_validator(trx_context& tctx, const newvalidator& nvl);
+    int upd_validator(trx_context& tctx, const validator_t& vldt);
+
     int add_meta(trx_context&, const action_t&);
 
     int add_ft_holders(trx_context&, const ft_holders_t&);
@@ -143,6 +149,7 @@ private:
     pg_conn*    conn_;
     std::string last_sync_block_id_;
     int         prepared_stmts_;
+
 };
 
 }  // namespace evt
