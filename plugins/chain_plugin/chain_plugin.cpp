@@ -13,13 +13,14 @@
 #include <fc/variant.hpp>
 
 #include <evt/chain/block_log.hpp>
-#include <evt/chain/config.hpp>
+#include <evt/chain/global_property_object.hpp>
 #include <evt/chain/exceptions.hpp>
 #include <evt/chain/fork_database.hpp>
 #include <evt/chain/reversible_block_object.hpp>
 #include <evt/chain/types.hpp>
 #include <evt/chain/genesis_state.hpp>
 #include <evt/chain/snapshot.hpp>
+#include <evt/chain/global_property_object.hpp>
 #include <evt/chain/contracts/evt_contract_abi.hpp>
 #include <evt/chain/contracts/evt_link.hpp>
 #include <evt/chain/contracts/evt_link_object.hpp>
@@ -1092,6 +1093,17 @@ read_only::get_info(const read_only::get_info_params&) const {
     };
 }
 
+read_only::get_charge_info_results
+read_only::get_charge_info(const read_only::get_charge_info_params&) const{
+    auto &gp = db.get_global_properties();
+    return {
+        gp.configuration.base_network_charge_factor,
+        gp.configuration.base_storage_charge_factor,
+        gp.configuration.base_cpu_charge_factor,
+        gp.configuration.global_charge_factor
+    };
+}
+
 fc::variant
 read_only::get_block(const read_only::get_block_params& params) const {
     auto block = signed_block_ptr();
@@ -1477,6 +1489,27 @@ read_only::get_actions(const get_actions_params&) const {
 
         return _actions_json;
     }
+}
+
+read_only::get_staking_result 
+read_only::get_staking(const get_staking_params& params) const{
+    std::vector<validator_slim> validators;
+    db.token_db().read_tokens_range(token_type::validator, ".validator", 0, [&](auto& key, auto&& value) {
+        auto var = fc::variant();
+
+        validators.emplace_back();
+        extract_db_value(value, validators.back());
+
+        return true;
+    });
+    auto& conf = db.get_global_properties().staking_configuration;
+    auto& ctx  = db.get_global_properties().staking_ctx;
+    return { 
+        ctx.period_version,
+        ctx.period_start_num,
+        ctx.period_start_num + conf.cycles_per_period * conf.blocks_per_cycle,
+        std::move(validators)
+    };
 }
 
 std::string

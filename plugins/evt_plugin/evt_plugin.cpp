@@ -292,7 +292,7 @@ read_only::get_validator(const get_validator_params& params) {
 
     auto var  = variant();
     auto validator = make_empty_cache_ptr<validator_def>();
-    READ_DB_TOKEN(token_type::validator, std::nullopt, params.name, validator, unknown_lock_exception, "Cannot find validator: {}", params.name);
+    READ_DB_TOKEN(token_type::validator, std::nullopt, params.name, validator, unknown_validator_exception, "Cannot find validator: {}", params.name);
 
     fc::to_variant(*validator, var);
     return var;

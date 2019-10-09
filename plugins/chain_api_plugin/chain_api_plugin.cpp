@@ -111,6 +111,7 @@ chain_api_plugin::plugin_startup() {
                           CHAIN_RO_CALL(get_block, 200),
                           CHAIN_RO_CALL(get_block_header_state, 200),
                           CHAIN_RO_CALL(get_head_block_header_state, 200),
+                          CHAIN_RO_CALL(get_charge_info, 200),
                           CHAIN_RO_CALL(get_transaction, 200),
                           CHAIN_RO_CALL(get_trx_id_for_link_id, 200),
                           CHAIN_RO_CALL(abi_json_to_bin, 200),
@@ -123,6 +124,7 @@ chain_api_plugin::plugin_startup() {
                           CHAIN_RO_CALL(get_transaction_ids_for_block, 200),
                           CHAIN_RO_CALL(get_abi, 200),
                           CHAIN_RO_CALL(get_actions, 200),
+                          CHAIN_RO_CALL(get_staking, 200),
                           CHAIN_RW_CALL_ASYNC(push_block, chain_apis::read_write::push_block_results, 202),
                           CHAIN_RW_CALL_ASYNC(push_transaction, chain_apis::read_write::push_transaction_results, 202),
                           CHAIN_RW_CALL_ASYNC(push_transactions, chain_apis::read_write::push_transactions_results, 202)});

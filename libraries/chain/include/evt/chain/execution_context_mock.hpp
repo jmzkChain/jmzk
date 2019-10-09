@@ -34,7 +34,7 @@ public:
         hana::for_each(act_types, [&](auto& act) {
             auto i = index_of(act);
             type_names_[i].emplace_back(decltype(+act)::type::get_type_name());
-            assert(type_names_[i].size() == decltype(+act)::type::get_version());
+            assert(type_names_[i].size() == (uint32_t)decltype(+act)::type::get_version());
             curr_vers_[i] = 1;  // ver starts from 1
         });
 

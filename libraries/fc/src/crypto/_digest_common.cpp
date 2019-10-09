@@ -30,6 +30,7 @@ shift_l(const char* in, char* out, std::size_t n, unsigned int i) {
         out8[p] = (in8[p] << i) | (in8[p + 1] >> (8 - i));
     out8[p] = in8[p] << i;
 }
+
 static void
 shift_r(const uint8_t* in, uint8_t* out, std::size_t n, unsigned int i) {
     if(i < n) {

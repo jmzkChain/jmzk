@@ -156,9 +156,8 @@ namespace std {
 template <>
 struct hash<evt::chain::name> : private hash<uint64_t> {
     using argument_type = evt::chain::name;
-    using result_type   = typename hash<uint64_t>::result_type;
 
-    result_type
+    std::size_t
     operator()(const argument_type& name) const noexcept {
         return hash<uint64_t>::operator()(name.value);
     }
