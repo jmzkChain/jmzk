@@ -258,8 +258,7 @@ FC_DECLARE_DERIVED_EXCEPTION( staking_status_exception,      staking_exception, 
 FC_DECLARE_DERIVED_EXCEPTION( staking_active_exception,      staking_exception, 3041109, "Cannot active shares" );
 FC_DECLARE_DERIVED_EXCEPTION( stakepool_duplicate_exception, staking_exception, 3041110, "Duplicate stakepool" );
 FC_DECLARE_DERIVED_EXCEPTION( unknown_stakepool_exception,   staking_exception, 3041111, "Unknown stakepool" );
-FC_DECLARE_DERIVED_EXCEPTION( staking_rsa_pubkey_exception,  staking_exception, 3041112, "Invalid RSA public key for validator" );
-FC_DECLARE_DERIVED_EXCEPTION( staking_timeing_exception,     staking_exception, 3041113, "Invliad timing for operation" );
+FC_DECLARE_DERIVED_EXCEPTION( staking_timeing_exception,     staking_exception, 3041112, "Invliad timing for operation" );
 
 FC_DECLARE_DERIVED_EXCEPTION( producer_exception,                      chain_exception,    3050000, "Producer exception" );
 FC_DECLARE_DERIVED_EXCEPTION( producer_priv_key_not_found,             producer_exception, 3050001, "Producer private key is not available" );

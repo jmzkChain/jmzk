@@ -17,6 +17,7 @@
 #include <evt/postgres_plugin/copy_context.hpp>
 #include <evt/postgres_plugin/trx_context.hpp>
 
+
 namespace evt {
 
 /*
@@ -27,8 +28,10 @@ namespace evt {
  * - 1.3.0  add `ft_holders` table
  * - 1.3.1  add serveral indexes for better query performance
  * - 1.4.0  update `fungibles` to support transfer permission
+ * - 1.5.0  add `validators` and `netvalues` tables
+ * - 2.0.0  remove `pending` field and add `trx_num` field to save storage
  */
-static auto pg_version = "1.4.0";
+static auto pg_version = "2.0.0";
 
 namespace internal {
 
@@ -58,7 +61,7 @@ struct insert_prepare {
 
 auto create_stats_table = R"sql(CREATE TABLE IF NOT EXISTS public.stats
                                 (
-                                    key         character varying(21)    NOT NULL,
+                                    key         character varying(64)    NOT NULL,
                                     value       character varying(64)    NOT NULL,
                                     created_at  timestamp with time zone NOT NULL DEFAULT now(),
                                     updated_at  timestamp with time zone NOT NULL DEFAULT now(),
@@ -78,7 +81,6 @@ auto create_blocks_table = R"sql(CREATE TABLE IF NOT EXISTS public.blocks
                                      trx_merkle_root character(64)            NOT NULL,
                                      trx_count       integer                  NOT NULL,
                                      producer        character varying(21)    NOT NULL,
-                                     pending         boolean                  NOT NULL DEFAULT true,
                                      created_at      timestamp with time zone NOT NULL DEFAULT now(),
                                      CONSTRAINT      blocks_pkey PRIMARY KEY (block_id)
                                  )
@@ -95,15 +97,14 @@ auto create_blocks_table = R"sql(CREATE TABLE IF NOT EXISTS public.blocks
 auto create_trxs_table = R"sql(CREATE TABLE IF NOT EXISTS public.transactions
                                (
                                    trx_id        character(64)            NOT NULL,
+                                   trx_num       bigint                   NOT NULL,
                                    seq_num       integer                  NOT NULL,
-                                   block_id      character(64)            NOT NULL,
                                    block_num     integer                  NOT NULL,
                                    action_count  integer                  NOT NULL,
                                    timestamp     timestamp with time zone NOT NULL,
                                    expiration    timestamp with time zone NOT NULL,
                                    max_charge    integer                  NOT NULL,
                                    payer         character(53)            NOT NULL,
-                                   pending       boolean                  NOT NULL DEFAULT true,
                                    type          character varying(7)     NOT NULL,
                                    status        character varying(9)     NOT NULL,
                                    signatures    character(101)[]         NOT NULL,
@@ -132,24 +133,23 @@ auto create_trxs_table = R"sql(CREATE TABLE IF NOT EXISTS public.transactions
 
 auto create_actions_table = R"sql(CREATE TABLE IF NOT EXISTS public.actions
                                   (
-                                      block_id   character(64)            NOT NULL,
-                                      block_num  integer                  NOT NULL,
-                                      trx_id     character(64)            NOT NULL,
-                                      seq_num    integer                  NOT NULL,
-                                      global_seq bigint                   NOT NULL,
-                                      name       character varying(13)    NOT NULL,
-                                      domain     character varying(21)    NOT NULL,
-                                      key        character varying(21)    NOT NULL,
-                                      data       jsonb                    NOT NULL,
+                                      trx_num            integer                  NOT NULL,
+                                      seq_num            integer                  NOT NULL,
+                                      global_seq         bigint                   NOT NULL,
+                                      name               character varying(13)    NOT NULL,
+                                      domain             character varying(21)    NOT NULL,
+                                      key                character varying(21)    NOT NULL,
+                                      data               jsonb                    NOT NULL,
+                                      related_ft_holders integer[]                NOT NULL,
                                       created_at timestamp with time zone NOT NULL DEFAULT now()
                                   )
                                   WITH (
                                       OIDS = FALSE
                                   )
                                   TABLESPACE pg_default;
-                                  CREATE INDEX IF NOT EXISTS actions_trx_id_index
+                                  CREATE INDEX IF NOT EXISTS actions_trx_num_index
                                       ON public.actions USING btree
-                                      (trx_id)
+                                      (trx_num)
                                       TABLESPACE pg_default;
                                   CREATE INDEX IF NOT EXISTS actions_global_seq_index
                                       ON public.actions USING btree
@@ -157,21 +157,21 @@ auto create_actions_table = R"sql(CREATE TABLE IF NOT EXISTS public.actions
                                       TABLESPACE pg_default;
                                   CREATE INDEX IF NOT EXISTS actions_data_index
                                       ON public.actions USING gin
-                                      (data jsonb_path_ops)
+                                      (data)
                                       TABLESPACE pg_default;
                                   CREATE INDEX IF NOT EXISTS actions_filter_index
                                       ON public.actions USING btree
                                       (domain, key, name)
                                       TABLESPACE pg_default;)sql";
 
-auto create_metas_table = R"sql(CREATE SEQUENCE IF NOT EXISTS metas_id_seq;
+auto create_metas_table = R"sql(CREATE SEQUENCE IF NOT EXISTS metas_id_seq AS bigint;
                                 CREATE TABLE IF NOT EXISTS metas
                                 (
-                                    id         integer                   NOT NULL  DEFAULT nextval('metas_id_seq'),
+                                    id         bigint                    NOT NULL  DEFAULT nextval('metas_id_seq'),
                                     key        character varying(21)     NOT NULL,
                                     value      text                      NOT NULL,
                                     creator    character varying(57)     NOT NULL,
-                                    trx_id     character(64)             NOT NULL,
+                                    trx_num    integer                   NOT NULL,
                                     created_at timestamp with time zone  NOT NULL  DEFAULT now(),
                                     CONSTRAINT metas_pkey PRIMARY KEY (id)
                                 )
@@ -188,7 +188,7 @@ auto create_domains_table = R"sql(CREATE TABLE IF NOT EXISTS public.domains
                                       transfer   jsonb                       NOT NULL,
                                       manage     jsonb                       NOT NULL,
                                       metas      integer[]                   NOT NULL,
-                                      trx_id     character(64)               NOT NULL,
+                                      trx_num    integer                     NOT NULL,
                                       created_at timestamp with time zone    NOT NULL  DEFAULT now(),
                                       CONSTRAINT domains_pkey PRIMARY KEY (name)
                                   )
@@ -212,7 +212,7 @@ auto create_tokens_table = R"sql(CREATE TABLE IF NOT EXISTS public.tokens
                                      name       character varying(21)       NOT NULL,
                                      owner      character(53)[]             NOT NULL,
                                      metas      integer[]                   NOT NULL,
-                                     trx_id     character(64)               NOT NULL,
+                                     trx_num    integer                     NOT NULL,
                                      created_at timestamp with time zone    NOT NULL  DEFAULT now(),
                                      CONSTRAINT tokens_pkey PRIMARY KEY (id)
                                  )
@@ -231,7 +231,7 @@ auto create_groups_table = R"sql(CREATE TABLE IF NOT EXISTS public.groups
                                      key        character(53)               NOT NULL,
                                      def        jsonb                       NOT NULL,
                                      metas      integer[]                   NOT NULL,
-                                     trx_id     character(64)               NOT NULL,
+                                     trx_num    integer                     NOT NULL,
                                      created_at timestamp with time zone    NOT NULL  DEFAULT now(),
                                      CONSTRAINT groups_pkey PRIMARY KEY (name)
                                  )
@@ -260,7 +260,7 @@ auto create_fungibles_table = R"sql(CREATE TABLE IF NOT EXISTS public.fungibles
                                         manage       jsonb                       NOT NULL,
                                         total_supply character varying(32)       NOT NULL,
                                         metas        integer[]                   NOT NULL,
-                                        trx_id       character(64)               NOT NULL,
+                                        trx_num      integer                     NOT NULL,
                                         created_at   timestamp with time zone    NOT NULL  DEFAULT now(),
                                         CONSTRAINT   fungibles_pkey PRIMARY KEY (sym_id)
                                     )
@@ -277,22 +277,66 @@ auto create_fungibles_table = R"sql(CREATE TABLE IF NOT EXISTS public.fungibles
                                         (created_at)
                                         TABLESPACE pg_default;)sql";
 
-auto create_ft_holders_table = R"sql(CREATE TABLE IF NOT EXISTS public.ft_holders
-                                     (
+auto create_ft_holders_table = R"sql(CREATE SEQUENCE IF NOT EXISTS ft_holders_id_seq AS integer;
+                                     CREATE TABLE IF NOT EXISTS public.ft_holders
+                                     (  
+                                         id         integer                   NOT NULL  DEFAULT nextval('ft_holders_id_seq'),
                                          address    character(53)             NOT NULL,
                                          sym_ids    bigint[]                  NOT NULL,
                                          created_at timestamp with time zone  NOT NULL  DEFAULT now(),
-                                         CONSTRAINT ft_holders_pkey PRIMARY KEY (address)
+                                         CONSTRAINT ft_holders_pkey PRIMARY KEY (id)
                                      )
                                      WITH (
                                          OIDS = FALSE
                                      )
-                                     TABLESPACE pg_default;)sql";
+                                     TABLESPACE pg_default;
+                                     CREATE UNIQUE INDEX IF NOT EXISTS ft_holders_address_index
+                                        ON public.ft_holders USING btree
+                                        (address)
+                                        TABLESPACE pg_default;)sql";
+
+auto create_validators_table = R"sql(CREATE SEQUENCE IF NOT EXISTS validator_id_seq AS integer;
+                                     CREATE TABLE IF NOT EXISTS public.validators
+                                     (
+                                         id           integer                 NOT NULL  DEFAULT nextval('validator_id_seq'),
+                                         name         character varying(21)   NOT NULL,
+                                         created_at timestamp with time zone  NOT NULL  DEFAULT now(),
+                                         CONSTRAINT   validators_pkey PRIMARY KEY (id)
+                                     )
+                                     WITH (
+                                         OIDS = FALSE
+                                     )
+                                     TABLESPACE pg_default;
+                                     CREATE INDEX IF NOT EXISTS validators_name_index
+                                         ON public.validators USING btree
+                                         (name)
+                                         TABLESPACE pg_default;)sql";
+
+auto create_netvalues_table = R"sql(CREATE SEQUENCE IF NOT EXISTS netvalue_id_seq AS bigint;
+                                    CREATE TABLE IF NOT EXISTS public.netvalues
+                                    (
+                                        id           bigint                   NOT NULL  DEFAULT nextval('netvalue_id_seq'),
+                                        validator_id integer                  NOT NULL,              
+                                        net_value    decimal(14,12)           NOT NULL,
+                                        total_units  bigint                   NOT NULL,
+                                        timestamp    timestamp with time zone NOT NULL,
+                                        created_at   timestamp with time zone NOT NULL  DEFAULT now(),
+                                        CONSTRAINT   netvalues_pkey PRIMARY KEY (id)
+                                    )
+                                    WITH (
+                                        OIDS = FALSE
+                                    )
+                                    TABLESPACE pg_default;)sql";
+
 
 
 struct table {
     std::string name;
     bool        partitioned;
+};
+
+struct sequence {
+    std::string name;
 };
 
 table tables[] = {
@@ -305,7 +349,16 @@ table tables[] = {
     { "tokens",       false },
     { "groups",       false },
     { "fungibles",    false },
-    { "ft_holders",   false }
+    { "ft_holders",   false },
+    { "validators",   false },
+    { "netvalues",    false }
+};
+
+sequence sequences[] = {
+    { "metas_id_seq"      },
+    { "ft_holders_id_seq" },
+    { "validator_id_seq"  },
+    { "netvalue_id_seq"   }
 };
 
 template<typename Iterator>
@@ -529,7 +582,11 @@ pg::drop_all_tables() {
 
 int
 pg::drop_all_sequences() {
-    drop_sequence("metas_id_seq");
+    using namespace internal;
+
+    for(auto s : sequences) {
+        drop_sequence(s.name);
+    }
 
     return PG_OK;
 }
@@ -548,7 +605,9 @@ pg::prepare_tables() {
         create_tokens_table,
         create_groups_table,
         create_fungibles_table,
-        create_ft_holders_table
+        create_ft_holders_table,
+        create_validators_table,
+        create_netvalues_table
     };
     for(auto stmt : stmts) {
         auto r = PQexec(conn_, stmt);
@@ -580,6 +639,7 @@ pg::prepare_stats() {
     auto tctx = new_trx_context();
     add_stat(tctx, "version", pg_version);
     add_stat(tctx, "last_sync_block_id", "");
+    add_stat(tctx, "last_irreversible_block_id", "");
 
     tctx.commit();
     return PG_OK;
@@ -672,7 +732,7 @@ pg::commit_trx_context(trx_context& tctx) {
 int
 pg::add_block(add_context& actx, const block_ptr block) {
     fmt::format_to(actx.cctx.blocks_copy_,
-        fmt("{}\t{:d}\t{}\t{}\t{}\t{:d}\t{}\tt\tnow\n"),
+        fmt("{}\t{:d}\t{}\t{}\t{}\t{:d}\t{}\tnow\n"),
         actx.block_id,
         actx.block_num,
         block->header.previous.str(),
@@ -685,15 +745,15 @@ pg::add_block(add_context& actx, const block_ptr block) {
 }
 
 int
-pg::add_trx(add_context& actx, const trx_recept_t& trx, const trx_t& strx, int seq_num, int elapsed, int charge) {
+pg::add_trx(add_context& actx, const trx_recept_t& trx, const trx_t& strx, int seq_num, int trx_num, int elapsed, int charge) {
     using namespace internal;
 
     auto& cctx = actx.cctx;
     fmt::format_to(cctx.trxs_copy_,
-        fmt("{}\t{:d}\t{}\t{}\t{:d}\t{}\t{}\t{:d}\t{}\tt\t{}\t{}\t"),
+        fmt("{}\t{:d}\t{:d}\t{}\t{:d}\t{}\t{}\t{:d}\t{}\t{}\t{}\t"),
         strx.id().str(),
+        trx_num,
         seq_num,
-        actx.block_id,
         actx.block_num,
         (int32_t)strx.actions.size(),
         actx.ts,
@@ -738,7 +798,7 @@ pg::add_trx(add_context& actx, const trx_recept_t& trx, const trx_t& strx, int s
 }
 
 int
-pg::add_action(add_context& actx, const act_trace_t& act_trace, const std::string& trx_id, int seq_num) {
+pg::add_action(add_context& actx, const act_trace_t& act_trace, int seq_num, int64_t trx_num) {
     using namespace internal;
 
     auto& act     = act_trace.act;
@@ -746,10 +806,8 @@ pg::add_action(add_context& actx, const act_trace_t& act_trace, const std::strin
     auto  data    = actx.abi.binary_to_variant(acttype, act.data, actx.exec_ctx);
 
     fmt::format_to(actx.cctx.actions_copy_,
-        fmt("{}\t{:d}\t{}\t{:d}\t{:d}\t{}\t{}\t{}\t{}\tnow\n"),
-        actx.block_id,
-        actx.block_num,
-        trx_id,
+        fmt("{:d}\t{:d}\t{:d}\t{}\t{}\t{}\t{}\t{{}}\tnow\n"),
+        trx_num,
         seq_num,
         act_trace.receipt.global_sequence,
         act.name.to_string(),
@@ -780,6 +838,24 @@ pg::get_latest_block_id(std::string& block_id) const {
     return PG_OK;
 }
 
+PREPARE_SQL_ONCE(gtn_plan, "SELECT trx_num FROM transactions ORDER BY trx_num DESC LIMIT 1;");
+
+int
+pg::get_latest_trx_num(int64_t& trx_num) const {
+    auto r = PQexec(conn_, "EXECUTE gtn_plan;");
+    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_exec_exception, "Get latest trx num failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+
+    if(PQntuples(r) == 0) {
+        return PG_FAIL;
+    }
+
+    auto v = PQgetvalue(r, 0, 0);
+    trx_num = boost::lexical_cast<int64_t>(v);
+
+    PQclear(r);
+    return PG_OK;
+}
+
 PREPARE_SQL_ONCE(eb_plan, "SELECT block_id FROM blocks WHERE block_id = $1;");
 
 int
@@ -797,17 +873,6 @@ pg::exists_block(const std::string& block_id) const {
     PQclear(r);
     return PG_OK;
 }
-
-PREPARE_SQL_ONCE(sbi_plan, "UPDATE blocks SET pending = false WHERE block_num = $1");
-PREPARE_SQL_ONCE(sti_plan, "UPDATE transactions SET pending = false WHERE block_num = $1")
-
-int
-pg::set_block_irreversible(trx_context& tctx, const block_id_t& block_id) {
-    auto num = chain::block_header::num_from_id(block_id);
-    fmt::format_to(tctx.trx_buf_, fmt("EXECUTE sbi_plan({0});\nEXECUTE sti_plan({0});\n"), num);
-    return PG_OK;
-}
-
 
 PREPARE_SQL_ONCE(as_plan, "INSERT INTO stats VALUES($1, $2, now(), now())");
 
@@ -838,7 +903,7 @@ pg::read_stat(const std::string& key, std::string& value) const {
     return PG_OK;
 }
 
-PREPARE_SQL_ONCE(us_plan, "UPDATE stats SET value = $1 WHERE key = $2");
+PREPARE_SQL_ONCE(us_plan, "UPDATE stats SET value = $1, updated_at = now() WHERE key = $2");
 
 int
 pg::upd_stat(trx_context& tctx, const std::string& key, const std::string& value) {
@@ -856,13 +921,13 @@ pg::add_domain(trx_context& tctx, const newdomain& nd) {
     fc::to_variant(nd.manage, manage);
 
     fmt::format_to(tctx.trx_buf_,
-        fmt("EXECUTE nd_plan('{}','{}','{}','{}','{}','{}');\n"),
+        fmt("EXECUTE nd_plan('{}','{}','{}','{}','{}',{});\n"),
         (std::string)nd.name,
         (std::string)nd.creator,
         fc::json::to_string(issue),
         fc::json::to_string(transfer),
         fc::json::to_string(manage),
-        tctx.trx_id()
+        tctx.trx_num()
         );
 
     return PG_OK;
@@ -918,11 +983,11 @@ pg::add_tokens(trx_context& tctx, const issuetoken& it) {
     auto domain = (std::string)it.domain;
     for(auto& name : it.names) {
         fmt::format_to(tctx.trx_buf_,
-            fmt("EXECUTE it_plan('{0}:{1}','{0}','{1}','{2}','{3}');\n"),
+            fmt("EXECUTE it_plan('{0}:{1}','{0}','{1}','{2}',{3});\n"),
             domain,
             (std::string)name,
             owners,
-            tctx.trx_id()
+            tctx.trx_num()
             );
     }
     return PG_OK;
@@ -968,11 +1033,11 @@ pg::add_group(trx_context& tctx, const newgroup& ng) {
     fc::to_variant(ng.group, def);
 
     fmt::format_to(tctx.trx_buf_,
-        fmt("EXECUTE ng_plan('{}','{}','{}','{}');\n"),
+        fmt("EXECUTE ng_plan('{}','{}','{}',{});\n"),
         (std::string)ng.name,
         (std::string)ng.group.key(),
         fc::json::to_string(def["root"]),
-        tctx.trx_id()
+        tctx.trx_num()
         );
 
     return PG_OK;
@@ -1004,7 +1069,7 @@ pg::add_fungible(trx_context& tctx, const fungible_def& ft) {
     fc::to_variant(ft.manage, manage);
 
     fmt::format_to(tctx.trx_buf_,
-        fmt("EXECUTE nf_plan('{}','{}','{}',{:d},'{}','{}','{}','{}','{}','{}');\n"),
+        fmt("EXECUTE nf_plan('{}','{}','{}',{:d},'{}','{}','{}','{}','{}',{:d});\n"),
         (std::string)ft.name,
         (std::string)ft.sym_name,
         (std::string)ft.sym,
@@ -1014,7 +1079,7 @@ pg::add_fungible(trx_context& tctx, const fungible_def& ft) {
         fc::json::to_string(transfer),
         fc::json::to_string(manage),
         ft.total_supply.to_string(),
-        tctx.trx_id()
+        tctx.trx_num()
         );
 
     // support FT v1 reserved meta
@@ -1077,6 +1142,40 @@ pg::upd_fungible(trx_context& tctx, const updfungible_v2& uf) {
     return PG_OK;
 }
 
+PREPARE_SQL_ONCE(iv_plan,  "INSERT INTO validators VALUES(DEFAULT, $1, now());");
+PREPARE_SQL_ONCE(inv_plan, "INSERT INTO netvalues  VALUES(DEFAULT, $1, $2, $3, $4, now());");
+
+int
+pg::add_validator(trx_context& tctx, const newvalidator& nvl) {
+    fmt::format_to(tctx.trx_buf_,
+        fmt("EXECUTE iv_plan('{}');\n"),
+        (std::string)nvl.name
+        );
+
+    fmt::format_to(tctx.trx_buf_,
+        fmt("EXECUTE inv_plan(lastval(),{},{},'{}');\n"),
+        1,  /* net value */
+        0   /* shares */,
+        tctx.timestamp()
+        );
+
+    return PG_OK;
+}
+
+PREPARE_SQL_ONCE(inv2_plan, "INSERT INTO netvalues VALUES(DEFAULT, (SELECT id from validators where name = $1), $2, $3, $4, now());");
+
+int
+pg::upd_validator(trx_context& tctx, const validator_t& vldt) {
+    fmt::format_to(tctx.trx_buf_,
+      fmt("EXECUTE inv2_plan('{}',{},{},'{}');\n"),
+      (std::string)vldt.name,
+      vldt.current_net_value.to_string(),
+      vldt.total_units,
+      tctx.timestamp()
+      );
+
+    return PG_OK;
+}
 
 PREPARE_SQL_ONCE(am_plan,  "INSERT INTO metas VALUES(DEFAULT, $1, $2, $3, $4, now());");
 PREPARE_SQL_ONCE(amd_plan, "UPDATE domains SET metas = array_append(metas, $1) WHERE name = $2;");
@@ -1090,7 +1189,7 @@ pg::add_meta(trx_context& tctx, const action_t& act) {
 
     auto& am = act.data_as<const addmeta&>();
 
-    fmt::format_to(tctx.trx_buf_, fmt("EXECUTE am_plan('{}','{}','{}','{}');\n"), (std::string)am.key, escape_string(am.value), am.creator.to_string(), tctx.trx_id());
+    fmt::format_to(tctx.trx_buf_, fmt("EXECUTE am_plan('{}','{}','{}','{}');\n"), (std::string)am.key, escape_string(am.value), am.creator.to_string(), tctx.trx_num());
     if(act.domain == N128(.fungible)) {
         // fungibles
         fmt::format_to(tctx.trx_buf_, fmt("EXECUTE amf_plan(lastval(),{});\n"), boost::lexical_cast<int64_t>((std::string)act.key));   
@@ -1111,7 +1210,7 @@ pg::add_meta(trx_context& tctx, const action_t& act) {
     return PG_OK;
 }
 
-PREPARE_SQL_ONCE(afh_plan, "INSERT INTO ft_holders VALUES($1, $2, now()) ON CONFLICT (address) DO UPDATE SET sym_ids = array_append(ft_holders.sym_ids, excluded.sym_ids[1]);");
+PREPARE_SQL_ONCE(afh_plan, "INSERT INTO ft_holders VALUES(DEFAULT, $1, $2, now()) ON CONFLICT (address) DO UPDATE SET sym_ids = array_append(ft_holders.sym_ids, excluded.sym_ids[1]);");
 
 int
 pg::add_ft_holders(trx_context& tctx, const ft_holders_t& holders) {
@@ -1125,7 +1224,7 @@ int
 pg::backup(const std::shared_ptr<chain::snapshot_writer>& snapshot) const {
     using namespace internal;
 
-    for(auto t : tables) {
+    for(const auto& t : tables) {
         dlog("Backuping ${t} table", ("t",t.name));
         snapshot->write_section(fmt::format("pg-{}", t.name), [this, &t](auto& writer) {
             auto stmt = std::string();
@@ -1135,7 +1234,6 @@ pg::backup(const std::shared_ptr<chain::snapshot_writer>& snapshot) const {
             else {
                 stmt = fmt::format("COPY (SELECT * from {}) TO STDOUT WITH BINARY;", t.name);
             }
-            
 
             auto r = PQexec(conn_, stmt.c_str());
             EVT_ASSERT(PQresultStatus(r) == PGRES_COPY_OUT, chain::postgres_exec_exception, "Not expected COPY response, detail: ${s}", ("s",PQerrorMessage(conn_)));
@@ -1160,6 +1258,23 @@ pg::backup(const std::shared_ptr<chain::snapshot_writer>& snapshot) const {
         dlog("Backuping ${t} table - OK", ("t",t.name));
     }
 
+    for(const auto& s : sequences) {
+        dlog("Backuping ${s} sequence", ("s",s.name));
+        snapshot->write_section(fmt::format("pg-seq-{}", s.name), [this, &s](auto& writer) {
+            auto stmt = fmt::format("SELECT last_value from {}", s.name);
+
+            auto r = PQexec(conn_, stmt.c_str());
+            EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK && PQntuples(r) == 1, chain::postgres_exec_exception, "Get latest sequence value failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+
+            auto v  = PQgetvalue(r, 0, 0);
+            auto iv = std::stoll(v);
+            writer.add_row((const char*)&iv, sizeof(iv));  // seq
+
+            PQclear(r);
+        });
+        dlog("Backuping ${s} sequence - OK", ("s",s.name));
+    }
+
     return PG_OK;
 }
 
@@ -1170,7 +1285,7 @@ pg::restore(const std::shared_ptr<chain::snapshot_reader>& snapshot) {
     prepare_tables();
     prepare_stmts();
 
-    for(auto t : tables) {
+    for(const auto& t : tables) {
         dlog("Restoring ${t} table", ("t",t.name));
         snapshot->read_section(fmt::format("pg-{}", t.name), [this, &t](auto& reader) {
             auto stmt = fmt::format("COPY {} FROM STDIN WITH BINARY;", t.name);
@@ -1198,6 +1313,21 @@ pg::restore(const std::shared_ptr<chain::snapshot_reader>& snapshot) {
             PQclear(r2);
         });
         dlog("Restoring ${t} table - OK", ("t",t.name));
+    }
+
+    for(const auto& s : sequences) {
+        dlog("Restoring ${s} sequence", ("s",s.name));
+        snapshot->read_section(fmt::format("pg-seq-{}", s.name), [this, &s](auto& reader) {
+            auto seq = 0ll;
+            reader.read_row((char*)&seq, sizeof(seq));
+
+            auto stmt = fmt::format("SELECT setval('{}', {});", s.name, seq);
+            auto r    = PQexec(conn_, stmt.c_str());
+            EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK && PQntuples(r) == 1, chain::postgres_exec_exception, "Get latest sequence value failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+
+            PQclear(r);
+        });
+        dlog("Restoring ${s} sequence - OK", ("s",s.name));
     }
 
     return PG_OK;

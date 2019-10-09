@@ -9,6 +9,7 @@
 #include <evt/chain/version.hpp>
 #include <evt/chain/controller.hpp>
 #include <evt/chain/transaction.hpp>
+#include <evt/chain/staking_context.hpp>
 #include <evt/chain/plugin_interface.hpp>
 #include <evt/chain/contracts/abi_serializer.hpp>
 
@@ -39,7 +40,9 @@ using chain::public_key_type;
 using chain::public_keys_set;
 using chain::transaction_id_type;
 using chain::version;
+using chain::asset;
 using chain::contracts::abi_serializer;
+using chain::contracts::validator_def;
 
 namespace chain_apis {
 struct empty {};
@@ -172,6 +175,19 @@ public:
     using get_actions_params = empty;
     const std::string& get_actions(const get_actions_params&) const;
 
+    using get_staking_params = empty;
+    struct validator_slim {
+        asset   current_net_value;
+        int64_t total_units;
+    };
+    struct get_staking_result {
+        uint32_t period_version ; 
+        uint32_t period_start_num;
+        uint32_t next_period_num;
+        std::vector<validator_slim> validators;
+    };
+    get_staking_result get_staking(const get_staking_params& params) const;
+
     using get_db_info_params = empty;
     std::string get_db_info(const get_db_info_params&) const;
 };
@@ -273,5 +289,7 @@ FC_REFLECT(evt::chain_apis::read_only::get_suspend_required_keys_params, (name)(
 FC_REFLECT(evt::chain_apis::read_only::get_suspend_required_keys_result, (required_keys));
 FC_REFLECT(evt::chain_apis::read_only::get_charge_params, (transaction)(sigs_num));
 FC_REFLECT(evt::chain_apis::read_only::get_charge_result, (charge));
+FC_REFLECT(evt::chain_apis::read_only::validator_slim, (current_net_value)(total_units));
+FC_REFLECT(evt::chain_apis::read_only::get_staking_result, (period_version)(period_start_num)(next_period_num)(validators));
 FC_REFLECT(evt::chain_apis::read_only::get_transaction_ids_for_block_params, (block_id));
 FC_REFLECT(evt::chain_apis::read_write::push_transaction_results, (transaction_id)(processed));

@@ -113,6 +113,7 @@ const std::string get_suspend_required_keys   = chain_func_base + "/get_suspend_
 const std::string get_charge                  = chain_func_base + "/get_charge";
 const std::string get_evt_actions             = chain_func_base + "/get_actions";
 const std::string get_evt_abi                 = chain_func_base + "/get_abi";
+const std::string get_staking_func            = chain_func_base + "/get_staking";
 
 const std::string get_node_apis = "/v1/node/get_supported_apis";
 

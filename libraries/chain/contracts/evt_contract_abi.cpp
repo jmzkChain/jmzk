@@ -539,8 +539,7 @@ evt_contract_abi() {
            {"signer", "public_key"},
            {"withdraw", "permission_def"},
            {"manage", "permission_def"},
-           {"commission", "percent_slim"},
-           {"rsa_pubkey", "bytes?"}
+           {"commission", "percent_slim"}
         }
     });
 

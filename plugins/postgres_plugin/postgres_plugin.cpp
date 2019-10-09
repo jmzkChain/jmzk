@@ -23,6 +23,7 @@ using boost::condition_variable_any;
 #include <fc/variant.hpp>
 #include <fc/time.hpp>
 #include <fmt/format.h>
+#include <llvm/ADT/StringSet.h>
 
 #include <evt/chain/config.hpp>
 #include <evt/chain/controller.hpp>
@@ -77,6 +78,7 @@ public:
     void process_irreversible_block(const block_state_ptr, std::deque<transaction_trace_ptr>& traces, copy_context& cctx, trx_context& tctx);
     
     void process_action(const action&, trx_context& tctx);
+    void update_validators(trx_context&);
 
     void verify_last_block(const std::string& prev_block_id);
     void verify_no_blocks();
@@ -109,6 +111,8 @@ public:
 
     std::thread      consume_thread_;
     std::atomic_bool done_ = false;
+
+    llvm::StringSet<llvm::MallocAllocator> changed_validators_;
 
     std::optional<boost::signals2::scoped_connection> accepted_block_connection_;
     std::optional<boost::signals2::scoped_connection> irreversible_block_connection_;
@@ -201,7 +205,13 @@ postgres_plugin_impl::consume_queues() {
 
             auto cctx = db_.new_copy_context();
             auto tctx = db_.new_trx_context();
-            auto back = std::get<BlockPtr>(bqueue.back()); 
+            auto back = std::get<BlockPtr>(bqueue.back());
+
+            // get latest trx num
+            int64_t trx_num = 0;
+            db_.get_latest_trx_num(trx_num);
+            tctx.set_trx_num(trx_num);
+
             // process block states
             while(true) {
                 if(bqueue.empty()) {
@@ -268,7 +278,7 @@ postgres_plugin_impl::process_irreversible_block(const block_state_ptr block, st
             // add it manually
             _process_block(block, traces, cctx, tctx);
         }
-        db_.set_block_irreversible(tctx, block->id);
+        db_.upd_stat(tctx, "last_irreversible_block_id", block->id.str());
     }
     catch(fc::exception& e) {
         elog("Exception while processing irreversible block ${e}", ("e", e.to_string()));
@@ -325,6 +335,7 @@ postgres_plugin_impl::process_action(const action& act, trx_context& tctx) {
     case_act(destroytoken, del_token);
     case_act(newgroup,     add_group);
     case_act(updategroup,  upd_group);
+    case_act(newvalidator, add_validator);
     case N(newfungible): {
         exec_ctx_.invoke_action<newfungible>(act, [&](const auto& nf) {
             auto& cache = control_.token_db_cache();
@@ -332,7 +343,7 @@ postgres_plugin_impl::process_action(const action& act, trx_context& tctx) {
             READ_DB_TOKEN(token_type::fungible, std::nullopt, nf.sym.id(), ft, unknown_fungible_exception,
                 "Cannot find FT with sym id: {}", nf.sym.id());
 
-            db_.add_fungible(tctx, *ft); 
+            db_.add_fungible(tctx, *ft);
         });
         break;
     }
@@ -367,7 +378,45 @@ postgres_plugin_impl::process_action(const action& act, trx_context& tctx) {
         });
         break;
     }
+    case N(recvstkbonus): {
+        exec_ctx_.invoke_action<recvstkbonus>(act, [&](const auto& rb) {
+            changed_validators_.insert(rb.validator.to_string());
+        });
+        break;
+    }
+    case N(staketkns): {
+        exec_ctx_.invoke_action<staketkns>(act, [&](const auto& st) {
+            changed_validators_.insert(st.validator.to_string());
+        });
+        break;
+    }
+    case N(unstaketkns): {
+        exec_ctx_.invoke_action<unstaketkns>(act, [&](const auto& ust) {
+            changed_validators_.insert(ust.validator.to_string());
+        });
+        break;
+    }
+    case N(toactivetkns): {
+        exec_ctx_.invoke_action<toactivetkns>(act, [&](const auto& tat) {
+            changed_validators_.insert(tat.validator.to_string());
+        });
+        break;
+    }
     }; // switch
+}
+
+void
+postgres_plugin_impl::update_validators(trx_context& tctx) {
+    for(auto& v : changed_validators_) {
+        auto& cache = control_.token_db_cache();
+        auto  vldt  = make_empty_cache_ptr<validator_def>();
+        auto  name  = v.first().str();
+        READ_DB_TOKEN(token_type::validator, std::nullopt, name, vldt, unknown_validator_exception,
+            "Cannot find validator with name: {}", name);
+
+        db_.upd_validator(tctx, *vldt);
+    }
+    changed_validators_.clear();
 }
 
 void
@@ -392,21 +441,26 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
         }
     }
 
-    auto actx      = add_context(cctx, control_.get_chain_id(), control_.get_abi_serializer(), control_.get_execution_context());
+    auto& sctx     = control_.get_global_properties().staking_ctx;
+    auto  actx     = add_context(cctx, control_.get_chain_id(), control_.get_abi_serializer(), control_.get_execution_context());
     actx.block_id  = id;
     actx.block_num = (int)block->block_num;
     actx.ts        = (std::string)block->header.timestamp.to_time_point();
 
     db_.add_block(actx, block);
+    tctx.set_timestamp(actx.ts);
 
     // transactions
-    auto trx_num = 0;
+    auto trx_seq_num = 0;
     for(const auto& trx : block->block->transactions) {
-        auto& strx       = trx.trx.get_signed_transaction();
-        auto  trx_id     = strx.id();
-        auto  str_trx_id = strx.id().str();
-        auto  elapsed    = 0;
-        auto  charge     = 0;
+        auto& strx    = trx.trx.get_signed_transaction();
+        auto  trx_id  = strx.id();
+        auto  elapsed = 0;
+        auto  charge  = 0;
+
+        tctx.set_trx_num(tctx.trx_num() + 1);
+        db_.add_trx(actx, trx, strx, trx_seq_num, tctx.trx_num(), elapsed, charge);
+        ++trx_seq_num;
 
         if(trx.status == transaction_receipt_header::executed && !strx.actions.empty()) {
             auto it = traces.begin();
@@ -422,11 +476,9 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
                         break;
                     }
 
-                    tctx.set_trx_id(str_trx_id);
-
                     auto act_num = 0;
                     for(auto& act_trace : trace->action_traces) {
-                        db_.add_action(actx, act_trace, str_trx_id, act_num);
+                        db_.add_action(actx, act_trace, act_num, tctx.trx_num());
                         process_action(act_trace.act, tctx);
                         if(!act_trace.new_ft_holders.empty()) {
                             db_.add_ft_holders(tctx, act_trace.new_ft_holders);
@@ -438,9 +490,11 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
                 it++;
             }
         }
+    }
 
-        db_.add_trx(actx, trx, strx, trx_num, elapsed, charge);
-        ++trx_num;
+    // update all the validators
+    if(actx.block_num == sctx.period_start_num) {
+        update_validators(tctx);
     }
 
     ++processed_;
@@ -491,12 +545,13 @@ postgres_plugin_impl::init(bool init_db) {
         
         if(part_limit_ != 0) {
             db_.create_partitions("public.blocks", "block_num", part_limit_, part_num_);
-            db_.create_partitions("public.transactions", "block_num", part_limit_, part_num_);
-            db_.create_partitions("public.actions", "block_num", part_limit_, part_num_);
+            db_.create_partitions("public.transactions", "trx_num", part_limit_, part_num_);
+            db_.create_partitions("public.actions", "global_seq", part_limit_, part_num_);
         }
 
         // HACK: Add EVT and PEVT manually
         auto tctx = db_.new_trx_context();
+        tctx.set_trx_num(0);
 
         auto gs = chain::genesis_state();
         db_.add_fungible(tctx, gs.get_evt_ft());
@@ -533,7 +588,7 @@ postgres_plugin::~postgres_plugin() {}
 
 bool
 postgres_plugin::enabled() const {
-    return my_->configured_;
+    return my_ && my_->configured_;
 }
 
 const std::string&

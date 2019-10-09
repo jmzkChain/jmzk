@@ -339,7 +339,7 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts][staking]") {
     to_variant(unstk, var);
     CHECK_THROWS_AS(my_tester->push_action(N(unstaketkns), N128(.staking), N128(validator), var.get_object(), key_seeds, payer), staking_not_enough_exception);
 
-    // exceed pending days
+    // exceed pending days: 8
     my_tester->produce_block(fc::days(conf.unstake_pending_days + 1));
 
     // ok
@@ -377,7 +377,7 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts][staking]") {
     prop.stake_shares[4].type = stake_type::fixed;
     PUT_DB_ASSET(unstk.staker, prop);
 
-    unstk.op = unstake_op::propose;
+    unstk.op    = unstake_op::propose;
     unstk.units = 12;
     to_variant(unstk, var);
 
@@ -449,11 +449,11 @@ TEST_CASE_METHOD(contracts_test, "recvstkbonus_test", "[contracts][staking]") {
 
     // pump days
     auto& conf = my_tester->control->get_global_properties().staking_configuration;
-    my_tester->produce_block(fc::days(37));  // total days: 31 + 22 + 37 = 90 days
+    my_tester->produce_block(fc::days(51));  // total days: 31 + 8 + 51 = 90 days
     my_tester->produce_blocks((conf.cycles_per_period - 2) * conf.blocks_per_cycle);
 
     // calculate roi
-    auto yroi = 0.17541;
+    auto yroi = 0.175410021;
     auto roi  = yroi * (my_tester->control->pending_block_time() - validator->last_updated_time).to_seconds() / (365.0 * 24 * 60 * 60);
 
     INFO(stakepool_.total);
@@ -466,7 +466,7 @@ TEST_CASE_METHOD(contracts_test, "recvstkbonus_test", "[contracts][staking]") {
     
     READ_DB_TOKEN(token_type::validator, std::nullopt, rsb.validator, validator, unknown_validator_exception,
                   "Cannot find validator: {}", rsb.validator);
-    CHECK(validator->current_net_value.to_double() == Approx(1 * (1 + roi)));
+    CHECK(validator->current_net_value.to_double() == Approx(1 * (1 + roi)).margin(0.001));
 
     READ_TOKEN(stakepool, 1, stakepool_);
     CHECK(stakepool_.total.amount() / 1'00000.0 - pre_amount / 1'00000.0 == Approx(validator->total_units * roi).margin(1));
