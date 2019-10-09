@@ -111,6 +111,7 @@ chain_api_plugin::plugin_startup() {
                           CHAIN_RO_CALL(get_block, 200),
                           CHAIN_RO_CALL(get_block_header_state, 200),
                           CHAIN_RO_CALL(get_head_block_header_state, 200),
+                          CHAIN_RO_CALL(get_charge_info, 200),
                           CHAIN_RO_CALL(get_transaction, 200),
                           CHAIN_RO_CALL(get_trx_id_for_link_id, 200),
                           CHAIN_RO_CALL(abi_json_to_bin, 200),

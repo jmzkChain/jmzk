@@ -79,6 +79,16 @@ public:
     };
     get_info_results get_info(const get_info_params&) const;
 
+    using get_charge_info_params = empty;
+
+    struct get_charge_info_results {
+        uint32_t base_network_charge_factor;
+        uint32_t base_storage_charge_factor;
+        uint32_t base_cpu_charge_factor;
+        uint32_t global_charge_factor;
+    };
+    get_charge_info_results get_charge_info(const get_charge_info_params&) const;
+
     struct producer_info {
         name producer_name;
     };
@@ -273,6 +283,7 @@ FC_REFLECT(evt::chain_apis::empty, );
 FC_REFLECT(evt::chain_apis::read_only::get_info_results,
           (server_version)(chain_id)(evt_api_version)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)
           (head_block_id)(head_block_time)(head_block_producer)(enabled_plugins)(server_version_string));
+FC_REFLECT(evt::chain_apis::read_only::get_charge_info_results, (base_network_charge_factor)(base_storage_charge_factor)(base_cpu_charge_factor)(global_charge_factor));
 FC_REFLECT(evt::chain_apis::read_only::get_block_params, (block_num_or_id));
 FC_REFLECT(evt::chain_apis::read_only::get_block_header_state_params, (block_num_or_id));
 FC_REFLECT(evt::chain_apis::read_only::get_transaction_params, (block_num)(id));

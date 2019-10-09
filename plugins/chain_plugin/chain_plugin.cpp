@@ -13,7 +13,7 @@
 #include <fc/variant.hpp>
 
 #include <evt/chain/block_log.hpp>
-#include <evt/chain/config.hpp>
+#include <evt/chain/global_property_object.hpp>
 #include <evt/chain/exceptions.hpp>
 #include <evt/chain/fork_database.hpp>
 #include <evt/chain/reversible_block_object.hpp>
@@ -1090,6 +1090,17 @@ read_only::get_info(const read_only::get_info_params&) const {
         db.fork_db_head_block_producer(),
         get_enabled_plugins(),
         app().version_string()
+    };
+}
+
+read_only::get_charge_info_results
+read_only::get_charge_info(const read_only::get_charge_info_params&) const{
+    auto &gp = db.get_global_properties();
+    return {
+        gp.configuration.base_network_charge_factor,
+        gp.configuration.base_storage_charge_factor,
+        gp.configuration.base_cpu_charge_factor,
+        gp.configuration.global_charge_factor
     };
 }
 
