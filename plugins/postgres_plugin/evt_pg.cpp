@@ -99,7 +99,7 @@ auto create_trxs_table = R"sql(CREATE TABLE IF NOT EXISTS public.transactions
                                    trx_id        character(64)            NOT NULL,
                                    trx_num       bigint                   NOT NULL,
                                    seq_num       integer                  NOT NULL,
-                                   block_id      character(64)            NOT NULL,
+                                   block_num     integer                  NOT NULL,
                                    action_count  integer                  NOT NULL,
                                    timestamp     timestamp with time zone NOT NULL,
                                    expiration    timestamp with time zone NOT NULL,
@@ -119,9 +119,9 @@ auto create_trxs_table = R"sql(CREATE TABLE IF NOT EXISTS public.transactions
                                    OIDS = FALSE
                                )
                                TABLESPACE pg_default;
-                               CREATE INDEX IF NOT EXISTS transactions_block_id_index
+                               CREATE INDEX IF NOT EXISTS transactions_block_num_index
                                    ON public.transactions USING btree
-                                   (block_id)
+                                   (block_num)
                                    TABLESPACE pg_default;
                                CREATE INDEX IF NOT EXISTS transactions_timestamp_index
                                    ON transactions USING btree
@@ -754,7 +754,7 @@ pg::add_trx(add_context& actx, const trx_recept_t& trx, const trx_t& strx, int s
         strx.id().str(),
         trx_num,
         seq_num,
-        actx.block_id,
+        actx.block_num,
         (int32_t)strx.actions.size(),
         actx.ts,
         (std::string)strx.expiration,
