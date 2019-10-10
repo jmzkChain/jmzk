@@ -346,7 +346,6 @@ struct controller_impl {
         replay_head_time.reset();
     }
 
-
     void
     init(const snapshot_reader_ptr& snapshot) {
         token_db.open();
@@ -668,11 +667,6 @@ struct controller_impl {
     transaction_trace_ptr
     push_suspend_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline) {
         try {
-            auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks, this] {
-                in_trx_requiring_checks = old_value;
-            });
-            in_trx_requiring_checks = true;
-
             auto trx_context     = transaction_context(self, exec_ctx, trx);
             trx_context.deadline = deadline;
 
@@ -932,7 +926,7 @@ struct controller_impl {
                 // this implicitly asserts that all header fields (less the signature) are identical
                 EVT_ASSERT(producer_block_id == pending->_pending_block_state->header.id(),
                        block_validate_exception, "Block ID does not match",
-                       ("producer_block_id",producer_block_id)("validator_block_id",pending->_pending_block_state->header.id()));
+                       ("producer_block_id",producer_block_id)("validator_block_id",pending->_pending_block_state->header.id())("p",b)("p2",pending->_pending_block_state->block));
 
                 // We need to fill out the pending block state's block because that gets serialized in the reversible block log
                 // in the future we can optimize this by serializing the original and not the copy
