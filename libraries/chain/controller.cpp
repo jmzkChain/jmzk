@@ -1010,7 +1010,7 @@ struct controller_impl {
                 emit(self.irreversible_block, new_header_state);
             }
         }
-        FC_LOG_AND_RETHROW()
+        FC_CAPTURE_AND_RETHROW((b))
     }
 
     void
