@@ -1804,11 +1804,47 @@ controller::get_suspend_required_keys(const proposal_name& name, const public_ke
         my->token_db.read_token(token_type::suspend, std::nullopt, name, str);
     }
     catch(token_database_exception&) {
-        EVT_THROW2(unknown_lock_exception, "Cannot find suspend proposal: {}", name);
+        EVT_THROW2(unknown_suspend_exception, "Cannot find suspend proposal: {}", name);
     }
 
     extract_db_value(str, suspend);
     return get_suspend_required_keys(suspend.trx, candidate_keys);
+}
+
+public_keys_set
+controller::get_evtlink_signed_keys(const link_id_type& link_id) const {
+    auto link  = get_link_obj_for_link_id(link_id);
+    auto block = fetch_block_by_number(link.block_num);
+    for(auto& ptrx : block->transactions) {
+        auto& trx = ptrx.trx.get_transaction();
+        if(trx.id() != link.trx_id) {
+            continue;
+        }
+
+        auto keys = public_keys_set();
+        for(auto& act : trx.actions) {
+            if(act.name == N(everipay)) {
+                my->exec_ctx.invoke_action<everipay>(act, [&](const auto& ep) {
+                    auto l = ep.link;
+                    if(l.get_link_id() == link_id) {
+                        keys = l.restore_keys();
+                    }
+                });
+            }
+            else if(act.name == N(everipass)) {
+                my->exec_ctx.invoke_action<everipass>(act, [&](const auto& ep) {
+                    auto l = ep.link;
+                    if(l.get_link_id() == link_id) {
+                        keys = l.restore_keys();
+                    }
+                });
+            }
+        }
+
+        return keys;
+    }
+
+    EVT_THROW2(evt_link_existed_exception, "Cannot find EvtLink");
 }
 
 uint32_t
