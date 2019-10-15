@@ -93,6 +93,14 @@ public:
     };
     fc::variant get_staking_shares(const get_staking_shares_params& params);
 
+    struct get_evtlink_signed_keys_params {
+        bytes link_id;
+    };
+    struct get_evtlink_signed_keys_result {
+        public_keys_set  signed_keys;
+    };
+    get_evtlink_signed_keys_result get_evtlink_signed_keys(const get_evtlink_signed_keys_params& params) const;
+
 private:
     const controller& db_;
 };
@@ -134,3 +142,5 @@ FC_REFLECT(evt::evt_apis::read_only::get_suspend_params, (name));
 FC_REFLECT(evt::evt_apis::read_only::get_stakepool_params, (sym_id));
 FC_REFLECT(evt::evt_apis::read_only::get_validator_params, (name));
 FC_REFLECT(evt::evt_apis::read_only::get_staking_shares_params, (address));
+FC_REFLECT(evt::evt_apis::read_only::get_evtlink_signed_keys_params, (link_id));
+FC_REFLECT(evt::evt_apis::read_only::get_evtlink_signed_keys_result, (signed_keys));

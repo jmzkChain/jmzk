@@ -1914,6 +1914,20 @@ struct set_get_staking_shares_subcommand {
     }
 };
 
+struct set_get_evtlink_signed_keys_subcommand {
+    string link_id;
+
+    set_get_evtlink_signed_keys_subcommand(CLI::App* actionRoot) {
+        auto gsscmd = actionRoot->add_subcommand("evtlinkkeys", localized("Retrieve Evtlink signed keys"));
+        gsscmd->add_option("linkid", link_id, localized("id of Evtlink"))->required();
+
+        gsscmd->callback([this] {
+            auto arg = fc::mutable_variant_object("link_id", link_id);
+            print_info(call(get_evtlink_signed_keys_func, arg));
+        });
+    }
+};
+
 struct set_get_lock_subcommand {
     string name;
 
@@ -2217,17 +2231,18 @@ main(int argc, char** argv) {
         std::cout << fc::json::to_pretty_string(call(get_block_func, arg)) << std::endl;
     });
 
-    set_get_domain_subcommand         get_domain(get);
-    set_get_token_subcommand          get_token(get);
-    set_get_group_subcommand          get_group(get);
-    set_get_fungible_subcommand       get_fungible(get);
-    set_get_my_subcommands            get_my(get);
-    set_get_history_subcommands       get_history(get);
-    set_get_suspend_subcommand        get_suspend(get);
-    set_get_lock_subcommand           get_lock(get);
-    set_get_stakepool_subcommand      get_stakepool(get);
-    set_get_validator_subcommand      get_validator(get);
-    set_get_staking_shares_subcommand get_staking_shares(get);
+    set_get_domain_subcommand              get_domain(get);
+    set_get_token_subcommand               get_token(get);
+    set_get_group_subcommand               get_group(get);
+    set_get_fungible_subcommand            get_fungible(get);
+    set_get_my_subcommands                 get_my(get);
+    set_get_history_subcommands            get_history(get);
+    set_get_suspend_subcommand             get_suspend(get);
+    set_get_lock_subcommand                get_lock(get);
+    set_get_stakepool_subcommand           get_stakepool(get);
+    set_get_validator_subcommand           get_validator(get);
+    set_get_staking_shares_subcommand      get_staking_shares(get);
+    set_get_evtlink_signed_keys_subcommand get_evtlink_signed_keys(get);
 
     // get transaction
     string   trx_id;
