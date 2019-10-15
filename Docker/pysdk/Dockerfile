@@ -7,7 +7,6 @@ RUN git clone -b $branch https://github.com/everitoken/evt.git
 FROM everitoken/pyevt:latest as pyevt
 RUN python3 /pyevt/setup.py bdist_wheel
 
-FROM debian:buster-slim
 
 FROM everitoken/pyenv
 
