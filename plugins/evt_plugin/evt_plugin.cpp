@@ -310,6 +310,20 @@ read_only::get_staking_shares(const get_staking_shares_params& params) {
     return var;
 }
 
+read_only::get_evtlink_signed_keys_result
+read_only::get_evtlink_signed_keys(const get_evtlink_signed_keys_params& params) const {
+    if(params.link_id.size() != sizeof(link_id_type)) {
+        EVT_THROW(evt_link_id_exception, "EVT-Link id is not in proper length");
+    }
+
+    auto link_id = link_id_type();
+    memcpy(&link_id, params.link_id.data(), sizeof(link_id));
+
+    auto result        = get_evtlink_signed_keys_result();
+    result.signed_keys = db_.get_evtlink_signed_keys(link_id);
+    return result;
+}
+
 }  // namespace evt_apis
 
 }  // namespace evt

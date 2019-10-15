@@ -1831,14 +1831,6 @@ controller::get_evtlink_signed_keys(const link_id_type& link_id) const {
                     }
                 });
             }
-            else if(act.name == N(everipass)) {
-                my->exec_ctx.invoke_action<everipass>(act, [&](const auto& ep) {
-                    auto l = ep.link;
-                    if(l.get_link_id() == link_id) {
-                        keys = l.restore_keys();
-                    }
-                });
-            }
         }
 
         return keys;
