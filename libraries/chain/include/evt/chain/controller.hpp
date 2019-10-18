@@ -219,6 +219,7 @@ public:
     public_keys_set get_required_keys(const transaction& trx, const public_keys_set& candidate_keys) const;
     public_keys_set get_suspend_required_keys(const transaction& trx, const public_keys_set& candidate_keys) const;
     public_keys_set get_suspend_required_keys(const proposal_name& name, const public_keys_set& candidate_keys) const;
+    public_keys_set get_evtlink_signed_keys(const link_id_type& link_id) const;
 
     uint32_t get_charge(transaction&& trx, size_t signautres_num) const;
 

@@ -346,7 +346,6 @@ struct controller_impl {
         replay_head_time.reset();
     }
 
-
     void
     init(const snapshot_reader_ptr& snapshot) {
         token_db.open();
@@ -668,11 +667,6 @@ struct controller_impl {
     transaction_trace_ptr
     push_suspend_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline) {
         try {
-            auto reset_in_trx_requiring_checks = fc::make_scoped_exit([old_value=in_trx_requiring_checks, this] {
-                in_trx_requiring_checks = old_value;
-            });
-            in_trx_requiring_checks = true;
-
             auto trx_context     = transaction_context(self, exec_ctx, trx);
             trx_context.deadline = deadline;
 
@@ -932,7 +926,7 @@ struct controller_impl {
                 // this implicitly asserts that all header fields (less the signature) are identical
                 EVT_ASSERT(producer_block_id == pending->_pending_block_state->header.id(),
                        block_validate_exception, "Block ID does not match",
-                       ("producer_block_id",producer_block_id)("validator_block_id",pending->_pending_block_state->header.id()));
+                       ("producer_block_id",producer_block_id)("validator_block_id",pending->_pending_block_state->header.id())("p",b)("p2",pending->_pending_block_state->block));
 
                 // We need to fill out the pending block state's block because that gets serialized in the reversible block log
                 // in the future we can optimize this by serializing the original and not the copy
@@ -1010,7 +1004,7 @@ struct controller_impl {
                 emit(self.irreversible_block, new_header_state);
             }
         }
-        FC_LOG_AND_RETHROW()
+        FC_CAPTURE_AND_RETHROW((b))
     }
 
     void
@@ -1810,11 +1804,39 @@ controller::get_suspend_required_keys(const proposal_name& name, const public_ke
         my->token_db.read_token(token_type::suspend, std::nullopt, name, str);
     }
     catch(token_database_exception&) {
-        EVT_THROW2(unknown_lock_exception, "Cannot find suspend proposal: {}", name);
+        EVT_THROW2(unknown_suspend_exception, "Cannot find suspend proposal: {}", name);
     }
 
     extract_db_value(str, suspend);
     return get_suspend_required_keys(suspend.trx, candidate_keys);
+}
+
+public_keys_set
+controller::get_evtlink_signed_keys(const link_id_type& link_id) const {
+    auto link  = get_link_obj_for_link_id(link_id);
+    auto block = fetch_block_by_number(link.block_num);
+    for(auto& ptrx : block->transactions) {
+        auto& trx = ptrx.trx.get_transaction();
+        if(trx.id() != link.trx_id) {
+            continue;
+        }
+
+        auto keys = public_keys_set();
+        for(auto& act : trx.actions) {
+            if(act.name == N(everipay)) {
+                my->exec_ctx.invoke_action<everipay>(act, [&](const auto& ep) {
+                    auto l = ep.link;
+                    if(l.get_link_id() == link_id) {
+                        keys = l.restore_keys();
+                    }
+                });
+            }
+        }
+
+        return keys;
+    }
+
+    EVT_THROW2(evt_link_existed_exception, "Cannot find EvtLink");
 }
 
 uint32_t
