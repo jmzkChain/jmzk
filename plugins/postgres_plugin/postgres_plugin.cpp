@@ -458,10 +458,6 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
         auto  elapsed = 0;
         auto  charge  = 0;
 
-        tctx.set_trx_num(tctx.trx_num() + 1);
-        db_.add_trx(actx, trx, strx, trx_seq_num, tctx.trx_num(), elapsed, charge);
-        ++trx_seq_num;
-
         if(trx.status == transaction_receipt_header::executed && !strx.actions.empty()) {
             auto it = traces.begin();
             while(it != traces.end()) {
@@ -471,6 +467,10 @@ postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<tra
                 if(trace->id == trx_id) {
                     elapsed = (int)trace->elapsed.count();
                     charge  = (int)trace->charge;
+
+                    tctx.set_trx_num(tctx.trx_num() + 1);
+                    db_.add_trx(actx, trx, strx, trx_seq_num, tctx.trx_num(), elapsed, charge);
+                    ++trx_seq_num;
 
                     if(trace->action_traces.empty()) {
                         break;
