@@ -113,12 +113,16 @@ auto create_trxs_table = R"sql(CREATE TABLE IF NOT EXISTS public.transactions
                                    charge        integer                  NOT NULL,
                                    suspend_name  character varying(21),
                                    created_at    timestamp with time zone NOT NULL DEFAULT now(),
-                                   CONSTRAINT    transactions_pkey PRIMARY KEY (trx_id)
+                                   CONSTRAINT    transactions_pkey PRIMARY KEY (trx_num)
                                )
                                WITH (
                                    OIDS = FALSE
                                )
                                TABLESPACE pg_default;
+                               CREATE INDEX IF NOT EXISTS transactions_id_index
+                                   ON public.transactions USING btree
+                                   (trx_id)
+                                   TABLESPACE pg_default;
                                CREATE INDEX IF NOT EXISTS transactions_block_num_index
                                    ON public.transactions USING btree
                                    (block_num)
