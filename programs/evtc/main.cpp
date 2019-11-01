@@ -332,9 +332,9 @@ get_info() {
     return ::call(url, get_info_func, fc::variant()).as<evt::chain_apis::read_only::get_info_results>();
 }
 
-evt::chain_apis::read_only::get_staking_result
+fc::variant
 get_staking() {
-    return ::call(url, get_staking_func, fc::variant()).as<evt::chain_apis::read_only::get_staking_result>();
+    return ::call(url, get_staking_func, fc::variant());
 }
 
 public_key_type
@@ -2199,7 +2199,7 @@ main(int argc, char** argv) {
 
     // get staking
     get->add_subcommand("staking", localized("Get current blockchain information"))->callback([] {
-        std::cout << fc::json::to_pretty_string(get_staking()) << std::endl;
+        print_info(get_staking());
     });
 
     // get db info
