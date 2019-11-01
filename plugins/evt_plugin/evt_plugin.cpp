@@ -293,9 +293,15 @@ read_only::get_validator(const get_validator_params& params) {
     auto var  = variant();
     auto validator = make_empty_cache_ptr<validator_def>();
     READ_DB_TOKEN(token_type::validator, std::nullopt, params.name, validator, unknown_validator_exception, "Cannot find validator: {}", params.name);
-
     fc::to_variant(*validator, var);
-    return var;
+
+    auto mvar = fc::mutable_variant_object(var);
+    property prop;
+    READ_DB_ASSET_NO_THROW(address(N(.validator), validator->name, EVT_SYM_ID), symbol(5,EVT_SYM_ID), prop);
+    auto as  = asset(prop.amount, prop.sym);
+    mvar["profit"] = as;
+
+    return mvar;
 }
 
 fc::variant
