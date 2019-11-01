@@ -1497,8 +1497,14 @@ read_only::get_staking(const get_staking_params& params) const{
     db.token_db().read_tokens_range(token_type::validator, std::nullopt, 0, [&](auto& key, auto&& value) {
         auto var = fc::variant();
 
-        validators.emplace_back();
-        extract_db_value(value, validators.back());
+        validator_def validator;
+        extract_db_value(value, validator);
+
+        validators.emplace_back(validator_slim{
+            validator.name,
+            validator.current_net_value, 
+            validator.total_units
+        });
 
         return true;
     });
