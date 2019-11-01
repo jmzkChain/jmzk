@@ -1494,7 +1494,7 @@ read_only::get_actions(const get_actions_params&) const {
 read_only::get_staking_result 
 read_only::get_staking(const get_staking_params& params) const{
     std::vector<validator_slim> validators;
-    db.token_db().read_tokens_range(token_type::validator, ".validator", 0, [&](auto& key, auto&& value) {
+    db.token_db().read_tokens_range(token_type::validator, std::nullopt, 0, [&](auto& key, auto&& value) {
         auto var = fc::variant();
 
         validators.emplace_back();
