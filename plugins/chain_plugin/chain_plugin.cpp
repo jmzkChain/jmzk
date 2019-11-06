@@ -1495,12 +1495,10 @@ read_only::get_staking_result
 read_only::get_staking(const get_staking_params& params) const{
     std::vector<validator_slim> validators;
     db.token_db().read_tokens_range(token_type::validator, std::nullopt, 0, [&](auto& key, auto&& value) {
-        auto var = fc::variant();
-
         validator_def validator;
         extract_db_value(value, validator);
 
-        validators.emplace_back(validator_slim{
+        validators.emplace_back(validator_slim {
             validator.name,
             validator.current_net_value, 
             validator.total_units
@@ -1510,10 +1508,12 @@ read_only::get_staking(const get_staking_params& params) const{
     });
     auto& conf = db.get_global_properties().staking_configuration;
     auto& ctx  = db.get_global_properties().staking_ctx;
+
+    auto next_period_num = ctx.period_version == 0 ? 0 : ctx.period_start_num + conf.cycles_per_period * conf.blocks_per_cycle;
     return { 
         ctx.period_version,
         ctx.period_start_num,
-        ctx.period_start_num + conf.cycles_per_period * conf.blocks_per_cycle,
+        next_period_num,
         std::move(validators)
     };
 }
