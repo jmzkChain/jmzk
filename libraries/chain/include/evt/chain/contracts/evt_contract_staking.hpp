@@ -489,7 +489,9 @@ EVT_ACTION_IMPL_BEGIN(recvstkbonus) {
         auto days     = (real_type)seconds / (24 * 60 * 60);
         auto year_roi = mp::exp(-mp::log10(stakepool->total.to_real() / (stakepool->demand_r / 1000)) / ((real_type)stakepool->demand_q  / 1000) + days * stakepool->demand_w / 1000)
             * mp::pow(real_type(10), real_type(stakepool->demand_t) / 1000);
-        auto roi      = year_roi * (context.control.pending_block_time() - validator->last_updated_time).to_seconds() / (365 * 24 * 60 * 60);
+
+        auto time = (real_type)conf.cycles_per_period * conf.blocks_per_cycle * config::block_interval_ms / 1000;
+        auto roi  = mp::pow(year_roi + 1, time / (365 * 24 * 60 * 60)) - 1;
 
         auto new_net_value_amount = (int64_t)mp::floor((real_type)validator->current_net_value.amount() * (1 + roi));
         auto new_net_value        = asset(new_net_value_amount, nav_sym());

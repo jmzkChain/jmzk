@@ -450,11 +450,11 @@ TEST_CASE_METHOD(contracts_test, "recvstkbonus_test", "[contracts][staking]") {
     // pump days
     auto& conf = my_tester->control->get_global_properties().staking_configuration;
     my_tester->produce_block(fc::days(51));  // total days: 31 + 8 + 51 = 90 days
-    my_tester->produce_blocks((conf.cycles_per_period - 2) * conf.blocks_per_cycle);
+    my_tester->produce_blocks((conf.cycles_per_period - 1) * conf.blocks_per_cycle);
 
     // calculate roi
     auto yroi = 0.175410021;
-    auto roi  = yroi * (my_tester->control->pending_block_time() - validator->last_updated_time).to_seconds() / (365.0 * 24 * 60 * 60);
+    auto roi  = std::pow(1 + yroi, (76.8 / (365 * 24 * 60))) - 1;
 
     INFO(stakepool_.total);
     INFO(yroi);

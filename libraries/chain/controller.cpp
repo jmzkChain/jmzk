@@ -1158,6 +1158,12 @@ struct controller_impl {
         const auto& gpo  = db.get<global_property_object>();
         const auto& conf = gpo.staking_configuration;
         const auto& ctx  = gpo.staking_ctx;
+
+        if(ctx.period_version == 0) {
+            // staking is not enabled
+            return;
+        }
+
         if(pending->_pending_block_state->block_num == ctx.period_start_num + conf.cycles_per_period * conf.blocks_per_cycle) {
             db.modify(gpo, [&](auto& gp) {
                 gp.staking_ctx.period_version   = gp.staking_ctx.period_version + 1;

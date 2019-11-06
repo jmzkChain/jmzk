@@ -187,8 +187,9 @@ public:
 
     using get_staking_params = empty;
     struct validator_slim {
-        asset   current_net_value;
-        int64_t total_units;
+        account_name name;
+        asset        current_net_value;
+        int64_t      total_units;
     };
     struct get_staking_result {
         uint32_t period_version ; 
@@ -300,7 +301,7 @@ FC_REFLECT(evt::chain_apis::read_only::get_suspend_required_keys_params, (name)(
 FC_REFLECT(evt::chain_apis::read_only::get_suspend_required_keys_result, (required_keys));
 FC_REFLECT(evt::chain_apis::read_only::get_charge_params, (transaction)(sigs_num));
 FC_REFLECT(evt::chain_apis::read_only::get_charge_result, (charge));
-FC_REFLECT(evt::chain_apis::read_only::validator_slim, (current_net_value)(total_units));
+FC_REFLECT(evt::chain_apis::read_only::validator_slim, (name)(current_net_value)(total_units));
 FC_REFLECT(evt::chain_apis::read_only::get_staking_result, (period_version)(period_start_num)(next_period_num)(validators));
 FC_REFLECT(evt::chain_apis::read_only::get_transaction_ids_for_block_params, (block_id));
 FC_REFLECT(evt::chain_apis::read_write::push_transaction_results, (transaction_id)(processed));
