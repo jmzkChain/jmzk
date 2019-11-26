@@ -67,10 +67,11 @@ staking_plugin_impl::applied_block(const block_state_ptr& bs) {
     if(current_period_start_num_ < ctx.period_start_num) {
         // switch to next period
         current_period_start_num_ = ctx.period_start_num;
+        return;
     }
     else {
         // at this period but not received
-        if(curr_block_num < ctx.period_start_num + (conf.cycles_per_period - 1) * conf.blocks_per_cycle) {
+        if(curr_block_num <= ctx.period_start_num + (conf.cycles_per_period - 1) * conf.blocks_per_cycle) {
             // not receive cycle yet
             return;
         }
