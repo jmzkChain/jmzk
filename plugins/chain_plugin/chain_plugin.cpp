@@ -1501,7 +1501,8 @@ read_only::get_staking(const get_staking_params& params) const{
         validators.emplace_back(validator_slim {
             validator.name,
             validator.current_net_value, 
-            validator.total_units
+            validator.total_units,
+            validator.commission
         });
 
         return true;
