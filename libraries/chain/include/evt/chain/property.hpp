@@ -44,7 +44,7 @@ struct property_stakes : public property {
 
 }}  // namespace evt::chain
 
-FC_REFLECT(evt::chain::property, (amount)(sym)(created_at)(created_index));
+FC_REFLECT(evt::chain::property, (amount)(frozen_amount)(sym)(created_at)(created_index));
 FC_REFLECT_ENUM(evt::chain::stake_type, (active)(fixed));
 FC_REFLECT_ENUM(evt::chain::stake_status, (staked)(pending_unstake));
 FC_REFLECT(evt::chain::stakeshare_def, (validator)(units)(net_value)(time)(type)(fixed_days));

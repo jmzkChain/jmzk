@@ -228,19 +228,13 @@ get_db_prefix<token_def>(const token_def& v) {
         tokendb_cache.put_token(TYPE, action_op::put, get_db_prefix(VALUE), get_db_key(VALUE), VALUE); \
     }
 
-#define PUT_DB_ASSET(ADDR, VALUE)                                             \
-    while(1) {                                                                \
-        if(VALUE.sym.id() == EVT_SYM_ID) {                                    \
-            if constexpr(std::is_same_v<decltype(VALUE), property>) {         \
-                auto ps = property_stakes(VALUE);                             \
-                auto dv = make_db_value(ps);                                  \
-                tokendb.put_asset(ADDR, VALUE.sym.id(), dv.as_string_view()); \
-                break;                                                        \
-            }                                                                 \
-        }                                                                     \
-        auto dv = make_db_value(VALUE);                                       \
-        tokendb.put_asset(ADDR, VALUE.sym.id(), dv.as_string_view());         \
-        break;                                                                \
+#define PUT_DB_ASSET(ADDR, VALUE)                                     \
+    {                                                                 \
+        if constexpr(std::is_same_v<decltype(VALUE), property>) {     \
+            assert(VALUE.sym.id() != EVT_SYM_ID);                     \
+        }                                                             \
+        auto dv = make_db_value(VALUE);                               \
+        tokendb.put_asset(ADDR, VALUE.sym.id(), dv.as_string_view()); \
     }
 
 #define READ_DB_TOKEN(TYPE, PREFIX, KEY, VPTR, EXCEPTION, FORMAT, ...)      \
@@ -398,29 +392,27 @@ calculate_passive_bonus(token_database_cache& tokendb_cache,
     return std::make_pair(amount, 0l);
 }
 
+template<typename PROPERTY>
 void
-transfer_fungible(apply_context& context,
-                  const address& from,
-                  const address& to,
-                  const asset&   total,
-                  action_name    act,
-                  bool           pay_bonus = true) {
+transfer_fungible_internal(apply_context& context,
+                           const address& from,
+                           const address& to,
+                           const asset&   total,
+                           action_name    act,
+                           bool           pay_bonus) {
     using namespace boost::safe_numerics;
     DECLARE_TOKEN_DB()
 
-    property pfrom, pto;
+    PROPERTY pfrom, pto;
 
     auto sym = total.sym();
-    if(sym == pevt_sym()) {
-        // special process the situciation where sym is pevt_sym()
-        // evt2pevt action
+    if constexpr(std::is_same_v<PROPERTY, property_stakes>) {
         READ_DB_ASSET(from, evt_sym(), pfrom);
-        READ_DB_ASSET_NO_THROW(to, pevt_sym(), pto);
     }
     else {
         READ_DB_ASSET(from, sym, pfrom);
-        READ_DB_ASSET_NO_THROW(to, sym, pto);
     }
+    READ_DB_ASSET_NO_THROW(to, sym, pto);
 
     // fast path check
     EVT_ASSERT2(pfrom.amount >= total.amount(), balance_exception,
@@ -467,6 +459,22 @@ transfer_fungible(apply_context& context,
         };
         context.add_generated_action(action(N128(.fungible), name128::from_number(sym.id()), pbact))
             .set_index(context.exec_ctx.index_of<paybonus>());
+    }
+}
+
+void
+transfer_fungible(apply_context& context,
+                  const address& from,
+                  const address& to,
+                  const asset&   total,
+                  action_name    act,
+                  bool           pay_bonus = true) {
+    auto sym = total.sym();
+    if(sym == evt_sym() || sym == pevt_sym()) {
+        transfer_fungible_internal<property_stakes>(context, from, to, total, act, pay_bonus);
+    }
+    else {
+        transfer_fungible_internal<property>(context, from, to, total, act, pay_bonus);
     }
 }
 
