@@ -243,7 +243,7 @@ EVT_ACTION_IMPL_BEGIN(paycharge) {
     try {
         DECLARE_TOKEN_DB()
 
-        property evt, pevt;
+        property_stakes evt, pevt;
         READ_DB_ASSET_NO_THROW_NO_NEW(pcact.payer, pevt_sym(), pevt);
         auto paid = std::min((int64_t)pcact.charge, pevt.amount);
         if(paid > 0) {
@@ -265,7 +265,7 @@ EVT_ACTION_IMPL_BEGIN(paycharge) {
         auto  pbs  = context.control.pending_block_state();
         auto& prod = pbs->get_scheduled_producer(pbs->header.timestamp).block_signing_key;
 
-        property bp;
+        property_stakes bp;
         READ_DB_ASSET_NO_THROW(address(prod), evt_sym(), bp);
         // give charge to producer
         bp.amount += pcact.charge;
