@@ -53,13 +53,15 @@ add_library(evt_chain_lite SHARED
 )
 
 find_package(LLVM REQUIRED)
+find_package(luajit REQUIRED)
 
-target_link_libraries(evt_chain evt_utilities fc chainbase rocksdb fmt-header-only sparsehash sss ${LLVM_LIBRARIES})
+target_link_libraries(evt_chain evt_utilities fc chainbase rocksdb fmt-header-only sparsehash sss ${LLVM_LIBRARIES} ${LUAJIT_LIBRARIES})
 target_include_directories(evt_chain PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
     "${CMAKE_CURRENT_BINARY_DIR}/include"
     "${LLVM_INCLUDE_DIR}"
     "${LLVM_C_INCLUDE_DIR}"
+    "${LUAJIT_INCLUDE_DIR}"
 )
 
 target_link_libraries(evt_chain_lite fc_lite fmt-header-only sparsehash ${LLVM_LIBRARIES})
