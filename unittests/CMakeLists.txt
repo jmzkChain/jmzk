@@ -22,6 +22,7 @@ add_executable(evt_unittests
     contracts/evtlink_tests.cpp
     contracts/staking_tests.cpp
     )
+set_target_properties(evt_unittests PROPERTIES ENABLE_EXPORTS TRUE)
 
 target_link_libraries(evt_unittests PRIVATE
     appbase evt_chain evt_testing fc catch ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} ${Intl_LIBRARIES})
