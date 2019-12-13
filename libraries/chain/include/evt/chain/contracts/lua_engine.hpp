@@ -20,6 +20,7 @@ public:
 
 public:
     static const token_database& get_token_db();
+
 };
 
 }}}  // namespac evt::chain::contracts

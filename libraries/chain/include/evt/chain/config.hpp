@@ -79,6 +79,10 @@ const static int default_cycles_per_period    = 256;
 const static int default_blocks_per_cycle     = 12 * 3;  // 1 cycle = 3 phases
 const static int default_staking_threshold    = 100000;
 
+// lua filter
+const static int default_lua_checkcount  = 200;
+const static int default_lua_max_time_ms = 10;  // ms
+
 }}}  // namespace evt::chain::config
 
 template <typename Number>
