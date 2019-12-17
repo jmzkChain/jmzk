@@ -33,6 +33,9 @@ add_library(evt_chain
     contracts/evt_org.cpp
     contracts/evt_contract_abi.cpp
     contracts/abi_serializer.cpp
+    
+    contracts/lua_engine.cpp
+    contracts/lua_db.cpp
 )
 
 add_library(evt_chain_lite SHARED

@@ -1,6 +1,9 @@
 #include <catch/catch.hpp>
 
 #include <lua.hpp>
+#include <evt/testing/tester.hpp>
+#include <evt/chain/contracts/lua_engine.hpp>
+#include <evt/chain/contracts/lua_db.hpp>
 
 extern "C" {
 
@@ -21,7 +24,7 @@ static void lua_hook(lua_State* L, lua_Debug* ar) {
     }
 }
 
-TEST_CASE("test_debug", "[luajit]") {
+TEST_CASE("test_lua_debug", "[luajit]") {
     auto L = luaL_newstate();
     REQUIRE(L != nullptr);
 
@@ -62,4 +65,49 @@ TEST_CASE("test_debug", "[luajit]") {
     int a = 1, b = 2;
     int c = ladd(a, b);
     REQUIRE(c == 3);
+}
+
+extern std::string evt_unittests_dir;
+
+TEST_CASE("test_lua_db", "[luajit]") {
+    using namespace evt::testing;
+
+    auto basedir = evt_unittests_dir + "/tokendb_tests";
+    if(!fc::exists(basedir)) {
+        fc::create_directories(basedir);
+    }
+
+    auto cfg = evt::chain::controller::config();
+    cfg.blocks_dir            = basedir + "/blocks";
+    cfg.state_dir             = basedir + "/state";
+    cfg.db_config.db_path     = basedir + "/tokendb";
+    cfg.contracts_console     = true;
+    cfg.charge_free_mode      = false;
+    cfg.loadtest_mode         = false;
+
+    cfg.genesis.initial_timestamp = fc::time_point::now();
+    cfg.genesis.initial_key       = tester::get_public_key("evt");
+    
+    auto mytester = std::make_unique<tester>(cfg);
+    auto& tokendb = mytester->control->token_db();
+    evt::chain::contracts::lua_engine::set_token_db(tokendb);
+
+    auto L = luaL_newstate();
+    REQUIRE(L != nullptr);
+
+    luaopen_db(L);
+    lua_setglobal(L, "db");
+    
+    auto script = R"===(
+        local t = db.readtoken("dm-tkdb-test", "t1")
+        print(t)
+    )===";
+
+    auto r = luaL_loadstring(L, script);
+    REQUIRE(r == LUA_OK);
+
+    auto r2 = lua_pcall(L, 0, 0, 0);
+    REQUIRE(r2 == LUA_ERRRUN);
+
+    printf("error: %s\n", lua_tostring(L,-1));
 }
