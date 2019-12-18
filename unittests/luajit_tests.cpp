@@ -1,9 +1,11 @@
 #include <catch/catch.hpp>
 
 #include <lua.hpp>
+#include <fc/io/json.hpp>
 #include <evt/testing/tester.hpp>
 #include <evt/chain/contracts/lua_engine.hpp>
 #include <evt/chain/contracts/lua_db.hpp>
+#include <evt/chain/contracts/lua_json.hpp>
 
 extern "C" {
 
@@ -71,6 +73,7 @@ extern std::string evt_unittests_dir;
 
 TEST_CASE("test_lua_db", "[luajit]") {
     using namespace evt::testing;
+    using namespace evt::chain::contracts;
 
     auto basedir = evt_unittests_dir + "/tokendb_tests";
     if(!fc::exists(basedir)) {
@@ -92,22 +95,55 @@ TEST_CASE("test_lua_db", "[luajit]") {
     auto& tokendb = mytester->control->token_db();
     evt::chain::contracts::lua_engine::set_token_db(tokendb);
 
+
+    const char* test_data = R"=====(
+    {
+        "domain": "tkdomain",
+        "name": "tktoken",
+        "owner": [
+          "EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
+          "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+        ],
+        "metas": [
+            { "key": "tm1", "value": "hello1", "creator": "[A] EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" },
+            { "key": "tm2", "value": "hello2", "creator": "[A] EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2" }
+        ]
+    }
+    )=====";
+
+    {
+        auto vt = fc::json::from_string(test_data);
+        auto tt = token_def();
+        fc::from_variant(vt, tt);
+        auto dt = make_db_value(tt);
+        tokendb.put_token(token_type::token, action_op::put, tt.domain, tt.name, dt.as_string_view());
+    }
+    
     auto L = luaL_newstate();
     REQUIRE(L != nullptr);
 
+    luaL_openlibs(L);
+
     luaopen_db(L);
     lua_setglobal(L, "db");
+
+    luaopen_json(L);
+    lua_setglobal(L, "json");
     
     auto script = R"===(
-        local t = db.readtoken("dm-tkdb-test", "t1")
-        print(t)
+        local t = db.readtoken("tkdomain", "tktoken")
+        local jt = json.serialize(t)
+        print(t, jt)
     )===";
 
     auto r = luaL_loadstring(L, script);
     REQUIRE(r == LUA_OK);
 
     auto r2 = lua_pcall(L, 0, 0, 0);
-    REQUIRE(r2 == LUA_ERRRUN);
+    CHECK(r2 == LUA_OK);
 
-    printf("error: %s\n", lua_tostring(L,-1));
+    if(r2 != LUA_OK) {
+        printf("error: %s\n", lua_tostring(L,-1));
+    }
+
 }

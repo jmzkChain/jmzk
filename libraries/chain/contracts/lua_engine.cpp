@@ -52,7 +52,8 @@ lua_engine::invoke_filter(const token_database& tokendb, const action& act, cons
     G_STARTTS = fc::time_point::now().time_since_epoch().count();
     
     auto L = internal::setup_luastate();
-
+    
+    
 }
 
 void

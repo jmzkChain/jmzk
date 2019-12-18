@@ -1,4 +1,6 @@
 #include <evt/chain/contracts/lua_db.hpp>
+
+#include <fc/io/json.hpp>
 #include <evt/chain/contracts/lua_engine.hpp>
 #include <evt/chain/contracts/types.hpp>
 #include <evt/chain/token_database.hpp>
@@ -26,43 +28,17 @@ readtoken(lua_State* L) {
     db.read_token(token_type::token, domain, name, str);
     extract_db_value(str, t);
 
-    lua_newtable(L);
-    // domain
-    lua_pushstring(L, domain);
-    lua_setfield(L, -2, "domain");
-    // name
-    lua_pushstring(L, name);
-    lua_setfield(L, -2, "name");
-    // owners
-    lua_newtable(L);
-    int i = 1;
-    for(auto& owner : t.owner) {
-        auto o = (std::string)owner;
-        lua_pushstring(L, o.c_str());
-        lua_rawseti(L, -2, i++);
+    auto json = fc::json::to_string(fc::variant(t));
+    lua_getglobal(L, "json");
+    lua_getfield(L, -1, "deserialize");
+    lua_pushstring(L, json.c_str());
+    
+    auto r = lua_pcall(L, 1, 1, 0);
+    if(r == LUA_OK) {
+        return 1;
     }
-    lua_setfield(L, -2, "owners");
-    // metas
-    lua_newtable(L);
-    i = 1;
-    for(auto& meta : t.metas) {
-        lua_newtable(L);
-        auto k = (std::string)meta.key;
-        lua_pushstring(L, k.c_str());
-        lua_setfield(L, -2, "key");
 
-        lua_pushstring(L, meta.value.c_str());
-        lua_setfield(L, -2, "value");
-
-        auto c = meta.creator.to_string();
-        lua_pushstring(L, c.c_str());
-        lua_setfield(L, -2, "creator");
-
-        lua_rawseti(L, -2, i++);
-    }
-    lua_setfield(L, -2, "metas");
-
-    return 1;
+    return lua_error(L);
 }
 
 static int

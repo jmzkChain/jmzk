@@ -36,6 +36,7 @@ add_library(evt_chain
     
     contracts/lua_engine.cpp
     contracts/lua_db.cpp
+    contracts/lua_json.cpp
 )
 
 add_library(evt_chain_lite SHARED

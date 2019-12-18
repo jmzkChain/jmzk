@@ -11,10 +11,9 @@ namespace internal {
 
 using namespace rapidjson;
 
-class LuaHandler : public BaseReaderHandler<UTF8<>, LuaHandler> {
+class lua_handler : public BaseReaderHandler<UTF8<>, lua_handler> {
 public:
-    LuaHandler(lua_State* L, bool is_args) : L_(L), is_args_(is_args)
-    { }
+    lua_handler(lua_State* L, bool is_args) : L_(L), is_args_(is_args) { }
 
 public:
     bool Null();
@@ -33,7 +32,7 @@ public:
     bool EndArray(SizeType);
 
 private:
-    int TableInsert();
+    int table_append();
 
 private:
     enum Type {
@@ -46,7 +45,7 @@ private:
 };
 
 int
-LuaHandler::TableInsert() {
+lua_handler::table_append() {
     if(types_.empty()) {
 #ifndef NDEBUG
         auto top = lua_gettop(L_);
@@ -73,14 +72,14 @@ LuaHandler::TableInsert() {
 }
 
 bool
-LuaHandler::StartObject() {
+lua_handler::StartObject() {
     lua_newtable(L_);
     types_.push(kObject);
     return true;
 }
 
 bool
-LuaHandler::EndObject(SizeType) {
+lua_handler::EndObject(SizeType) {
     if(types_.empty()) {
         return false;
     }
@@ -88,19 +87,19 @@ LuaHandler::EndObject(SizeType) {
         return false;
     }
     types_.pop();
-    TableInsert();
+    table_append();
     return true;
 }
 
 bool
-LuaHandler::StartArray() {
+lua_handler::StartArray() {
     lua_newtable(L_);
     types_.push(kArray);
     return true;
 }
 
 bool
-LuaHandler::EndArray(SizeType len) {
+lua_handler::EndArray(SizeType len) {
     if(types_.empty()) {
         return false;
     }
@@ -108,7 +107,7 @@ LuaHandler::EndArray(SizeType len) {
         return false;
     }
     types_.pop();
-    TableInsert();
+    table_append();
 
     if(types_.size() == 0 && is_args_) {
         // end root array
@@ -120,7 +119,7 @@ LuaHandler::EndArray(SizeType len) {
 }
 
 bool
-LuaHandler::Key(const char* str, SizeType len, bool copy) {
+lua_handler::Key(const char* str, SizeType len, bool copy) {
     if(types_.top() != kObject) {
         return false;
     }
@@ -129,64 +128,64 @@ LuaHandler::Key(const char* str, SizeType len, bool copy) {
 }
 
 bool
-LuaHandler::Null() {
+lua_handler::Null() {
     lua_pushnil(L_);
-    TableInsert();
+    table_append();
     return true;
 }
 
 bool
-LuaHandler::Bool(bool b) {
+lua_handler::Bool(bool b) {
     lua_pushboolean(L_, b);
-    TableInsert();
+    table_append();
     return true;
 }
 
 bool
-LuaHandler::Int(int i) {
+lua_handler::Int(int i) {
     lua_pushinteger(L_, i);
-    TableInsert();
+    table_append();
     return true;
 }
 
 bool
-LuaHandler::Uint(unsigned int i) {
+lua_handler::Uint(unsigned int i) {
     lua_pushinteger(L_, i);
-    TableInsert();
+    table_append();
     return true;
 }
 
 bool
-LuaHandler::Int64(int64_t i) {
+lua_handler::Int64(int64_t i) {
     lua_pushinteger(L_, i);
-    TableInsert();
+    table_append();
     return true;
 }
 
 bool
-LuaHandler::Uint64(uint64_t i) {
+lua_handler::Uint64(uint64_t i) {
     lua_pushinteger(L_, i);
-    TableInsert();
+    table_append();
     return true;
 }
 
 bool
-LuaHandler::Double(double d) {
+lua_handler::Double(double d) {
     lua_pushnumber(L_, d);
-    TableInsert();
+    table_append();
     return true;
 }
 
 bool
-LuaHandler::RawNumber(const char* str, SizeType len, bool copy) {
+lua_handler::RawNumber(const char* str, SizeType len, bool copy) {
     assert(false);
     return false;
 }
 
 bool
-LuaHandler::String(const char* ch, SizeType len, bool copy) {
+lua_handler::String(const char* ch, SizeType len, bool copy) {
     lua_pushlstring(L_, ch, len);
-    TableInsert();
+    table_append();
     return true;
 }
 
@@ -198,52 +197,52 @@ enum PackError {
 };
 
 template <template<typename> typename TWriterBase, typename TWriter = TWriterBase<StringBuffer>>
-class LuaPacker {
+class lua_packer {
 public:
-    LuaPacker(lua_State* L, StringBuffer& sb, bool is_args) : L_(L),
-                                                              writer_(sb),
-                                                              is_args_(is_args)
+    lua_packer(lua_State* L, StringBuffer& sb, bool is_args) : L_(L),
+                                                               writer_(sb),
+                                                               is_args_(is_args)
     { }
 
 public:
     int
-    Pack() {
+    pack() {
         if(lua_type(L_, -1) != LUA_TTABLE) {
             err_ = kRootNotTable;
-            return KYOTO_FAIL;
+            return 0;
         }
-        auto r = PackTable(true);
+        auto r = pack_table(true);
         if(!r) {
-            return KYOTO_FAIL;
+            return 0;
         }
         assert(writer_.IsComplete());
-        return KYOTO_OK;
+        return 1;
     }
 
     int GetError() { return err_; }
 
 private:
     int
-    PackTable(bool is_root = false) {
+    pack_table(bool is_root = false) {
         assert(lua_type(L_, -1) == LUA_TTABLE);
         if(is_root && is_args_) {
             // special pack the args table
-            return PackArray(true);
+            return pack_array(true);
         }
 
         lua_rawgeti(L_, -1, 1);
         if(lua_type(L_, -1) != LUA_TNIL) {
             lua_pop(L_, 1);
-            return PackArray();
+            return pack_array();
         }
         else {
             lua_pop(L_, 1);
-            return PackMap();
+            return pack_map();
         }
     }
 
     int
-    PackMap() {
+    pack_map() {
         writer_.StartObject();
         lua_pushnil(L_);
         while(lua_next(L_, -2) != 0) {
@@ -251,47 +250,47 @@ private:
             auto tk = lua_type(L_, -2);
             if(tk != LUA_TSTRING) {
                 err_ = kKeyNotString;
-                return KYOTO_FAIL;
+                return 0;
             }
             writer_.Key(lua_tostring(L_, -2));
             auto r = 0;
             switch(tv) {
             case LUA_TNIL: {
-                r = PackNil();
+                r = pack_nil();
                 break;
             }
             case LUA_TBOOLEAN: {
-                r = PackBool();
+                r = pack_bool();
                 break;
             }
             case LUA_TNUMBER: {
-                r = PackNumber();
+                r = pack_number();
                 break;
             }
             case LUA_TSTRING: {
-                r = PackString();
+                r = pack_string();
                 break;
             }
             case LUA_TTABLE: {
-                r = PackTable();
+                r = pack_table();
                 break;
             }
             default: {
                 err_ = kValueTypeNotValid;
-                return KYOTO_FAIL;
+                return 0;
             }
             } // switch
             if(!r) {
-                return KYOTO_FAIL;
+                return 0;
             }
         }
         writer_.EndObject();
         lua_pop(L_, 1);
-        return KYOTO_OK;
+        return 1;
     }
 
     int
-    PackArray(bool is_root = false) {
+    pack_array(bool is_root = false) {
 #ifndef NDEBUG
         auto top = lua_gettop(L_);
 #endif
@@ -302,7 +301,7 @@ private:
             lua_pushstring(L_, "n");
             lua_rawget(L_, -2);
             if(lua_type(L_, -1) != LUA_TNUMBER) {
-                return KYOTO_FAIL;
+                return 0;
             }
             n = (size_t)lua_tonumber(L_, -1);
             lua_pop(L_, 1);
@@ -317,32 +316,32 @@ private:
             auto r = 0;
             switch(tv) {
             case LUA_TNIL: {
-                r = PackNil();
+                r = pack_nil();
                 break;
             }
             case LUA_TBOOLEAN: {
-                r = PackBool();
+                r = pack_bool();
                 break;
             }
             case LUA_TNUMBER: {
-                r = PackNumber();
+                r = pack_number();
                 break;
             }
             case LUA_TSTRING: {
-                r = PackString();
+                r = pack_string();
                 break;
             }
             case LUA_TTABLE: {
-                r = PackTable();
+                r = pack_table();
                 break;
             }
             default: {
                 err_ = kValueTypeNotValid;
-                return KYOTO_FAIL;
+                return 0;
             }
             } // switch
             if(!r) {
-                return KYOTO_FAIL;
+                return 0;
             }
         }
         writer_.EndArray();
@@ -351,49 +350,49 @@ private:
         assert(top == top2);
 #endif
         lua_pop(L_, 1);
-        return KYOTO_OK;
+        return 1;
     }
 
     int
-    PackString() {
+    pack_string() {
         size_t sz;
         auto s = lua_tolstring(L_, -1, &sz);
         if(s == nullptr) {
-            return KYOTO_FAIL;
+            return 0;
         }
         writer_.String(s, sz, true);
         lua_pop(L_, 1);
-        return KYOTO_OK;
+        return 1;
     }
 
     int
-    PackNumber() {
+    pack_number() {
         auto n = lua_tonumber(L_, -1);
         writer_.Double(n);
         lua_pop(L_, 1);
-        return KYOTO_OK;
+        return 1;
     }
 
     int
-    PackBool() {
+    pack_bool() {
         auto b = lua_toboolean(L_, -1);
         writer_.Bool(b);
         lua_pop(L_, 1);
-        return KYOTO_OK;
+        return 1;
     }
 
     int
-    PackNil() {
+    pack_nil() {
         writer_.Null();
         lua_pop(L_, 1);
-        return KYOTO_OK;
+        return 1;
     }
 
 private:
-    lua_State*  L_;
-    TWriter     writer_;
-    PackError   err_;
-    bool        is_args_;
+    lua_State* L_;
+    TWriter    writer_;
+    PackError  err_;
+    bool       is_args_;
 };
 
 } // namespace internal
@@ -403,7 +402,7 @@ extern "C" {
 static int
 ldeserialize(lua_State* L) {
     using namespace rapidjson;
-    using namespace internal;
+    using namespace ::internal;
 
     bool args = false;
     if(lua_gettop(L) > 1) {
@@ -415,7 +414,7 @@ ldeserialize(lua_State* L) {
     lua_pop(L, 1);
 
     Reader reader;
-    LuaHandler handler(L, args);
+    lua_handler handler(L, args);
     StringStream ss(json);
     if(!reader.Parse(ss, handler)) {
         auto e = reader.GetParseErrorCode();
@@ -441,19 +440,19 @@ lserialize(lua_State* L) {
     lua_settop(L, 1);
 
     using namespace rapidjson;
-    using namespace internal;
+    using namespace ::internal;
 
     StringBuffer sb;
     auto r = 0;
     auto err = 0;
     if(!pretty) {
-        LuaPacker<Writer> packer(L, sb, args);
-        r = packer.Pack();
+        lua_packer<Writer> packer(L, sb, args);
+        r = packer.pack();
         err = packer.GetError();
     }
     else {
-        LuaPacker<PrettyWriter> packer(L, sb, args);
-        r = packer.Pack();
+        lua_packer<PrettyWriter> packer(L, sb, args);
+        r = packer.pack();
         err = packer.GetError();
     }
 
@@ -485,7 +484,7 @@ luaopen_json(lua_State* L) {
     luaL_Reg l[] = {
         { "deserialize", ldeserialize },
         { "serialize", lserialize },
-        { NULL, NULL}
+        { NULL, NULL }
     };
     luaL_newlib(L, l);
     return 1;
