@@ -21,6 +21,7 @@ add_executable(evt_unittests
     contracts/utils_tests.cpp
     contracts/evtlink_tests.cpp
     contracts/staking_tests.cpp
+    contracts/multi_actions_tests.cpp
     )
 set_target_properties(evt_unittests PROPERTIES ENABLE_EXPORTS TRUE)
 

@@ -63,9 +63,10 @@ public:
 
     small_vector<action_receipt, 4> executed;
 
-    bool      is_input  = false;
-    uint32_t  charge    = 0;
-    uint64_t  net_limit = 0;
+    bool      is_input    = false;
+    bool      is_implicit = false;
+    uint32_t  charge      = 0;
+    uint64_t  net_limit   = 0;
     uint64_t& net_usage;  // reference to trace->net_usage
 
     fc::time_point deadline = fc::time_point::maximum();

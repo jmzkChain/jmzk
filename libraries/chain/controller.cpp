@@ -743,11 +743,6 @@ struct controller_impl {
                     trx_context.init_for_input_trx(skip_recording);
                 }
 
-                if(!self.skip_auth_check() && !trx->implicit) {
-                    const auto& keys = trx->recover_keys(chain_id);
-                    check_authorization(keys, trn);
-                }
-
                 trx_context.exec();
                 trx_context.finalize();  // Automatically rounds up network and CPU usage in trace and bills payers if successful
 

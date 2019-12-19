@@ -69,6 +69,7 @@ transaction_context::init(uint64_t initial_net_usage) {
 
 void
 transaction_context::init_for_implicit_trx() {
+    is_implicit = true;
     init(0);
 }
 
@@ -96,7 +97,14 @@ void
 transaction_context::exec() {
     EVT_ASSERT(is_initialized, transaction_exception, "must first initialize");
 
+    const auto& keys  = trx_meta->recover_keys(control.get_chain_id());
+    const bool  check = !control.skip_auth_check() && !this->is_implicit && !trace->is_suspend;
+
     for(auto& act : trx.actions) {
+        if(check) {
+            control.check_authorization(keys, act);
+        }
+
         auto& at = trace->action_traces.emplace_back();
         dispatch_action(at, act);
 
