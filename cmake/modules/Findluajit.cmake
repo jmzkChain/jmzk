@@ -10,7 +10,7 @@ find_path(LUAJIT_INCLUDE_DIR
   HINTS ${LUAJIT_ROOT_DIR}/include)
 
 find_library(LUAJIT_LIBRARIES
-  NAMES libluajit-5.1.so
+  NAMES luajit-5.1
   HINTS ${LUAJIT_ROOT_DIR}/lib)
 
 string(CONCAT LUAJIT_INCLUDE_DIR ${LUAJIT_INCLUDE_DIR} "/luajit-2.1")

@@ -25,6 +25,12 @@ add_executable(evt_unittests
     )
 set_target_properties(evt_unittests PROPERTIES ENABLE_EXPORTS TRUE)
 
+find_package(Jemalloc QUIET)
+if(JEMALLOC_FOUND)
+    message(STATUS "Found jemalloc; compiling evt_unittests with jemalloc")
+    list(APPEND PLATFORM_SPECIFIC_LIBS jemalloc)
+endif()
+
 target_link_libraries(evt_unittests PRIVATE
     appbase evt_chain evt_testing fc catch ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} ${Intl_LIBRARIES})
 
