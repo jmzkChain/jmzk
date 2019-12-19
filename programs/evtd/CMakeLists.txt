@@ -62,10 +62,6 @@ target_link_libraries(evtd
     PRIVATE ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS}
 )
 
-if(ENABLE_MONGODB_SUPPORT)
-    target_link_libraries(evtd PRIVATE -Wl,${whole_archive_flag} mongo_db_plugin -Wl,${no_whole_archive_flag})
-endif()
-
 if(ENABLE_POSTGRES_SUPPORT)
     target_link_libraries(evtd
         PRIVATE -Wl,${whole_archive_flag} postgres_plugin -Wl,${no_whole_archive_flag}

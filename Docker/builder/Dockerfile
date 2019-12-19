@@ -79,17 +79,10 @@ RUN wget https://ftp.postgresql.org/pub/source/v11.5/postgresql-11.5.tar.gz -O -
     && make -C src/interfaces install \
     && cd .. && rm -rf postgresql-11.5
 
-RUN git clone --depth 1 -b r1.13 git://github.com/mongodb/mongo-c-driver \
-    && cd mongo-c-driver \
-    && cmake -H. -Bbuild -DCMAKE_BUILD_TYPE=Release -DENABLE_SSL=OPENSSL -DENABLE_STATIC=OFF -DENABLE_BSON=ON -DENABLE_TESTS=OFF \
-    && cmake --build build --target install \
-    && cd .. && rm -rf mongo-c-driver
-
-RUN git clone --depth 1 -b releases/stable git://github.com/mongodb/mongo-cxx-driver \
-    && cd mongo-cxx-driver \
-    && cmake -H. -Bbuild -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release  -DCMAKE_INSTALL_PREFIX=/usr/local\
-    && cmake --build build --target install \
-    && cd .. && rm -rf mongo-cxx-driver
+RUN git clone https://github.com/openresty/luajit2.git \
+    && cd luajit2 \
+    && make -j$(nproc) install \
+    && cd .. && rm -rf luajit2
 
 RUN cp /usr/bin/ccache /usr/local/bin/
 RUN ln -s ccache /usr/local/bin/gcc

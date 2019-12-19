@@ -3,7 +3,6 @@ cmake_minimum_required(VERSION 3.5)
 # Defines everiToken library target.
 project(EVT)
 
-option(ENABLE_MONGODB_SUPPORT   "Build with mongodb support, this enables both mongo_db_plugin and history_plugin" OFF)
 option(ENABLE_POSTGRES_SUPPORT  "Build with postgres support, this enables postgres_plugin" OFF)
 option(ENABLE_BREAKPAD_SUPPORT  "Build with breakpad support, this enables minidump when crash" OFF)
 option(ENABLE_BIND_LIBRARIES    "Build bind libraries" OFF)

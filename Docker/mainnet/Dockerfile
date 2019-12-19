@@ -11,7 +11,7 @@ RUN git clone -b $branch https://github.com/everitoken/evt.git --recursive \
        -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/tmp/build \
        -DCMAKE_C_COMPILER=/usr/bin/gcc -DCMAKE_CXX_COMPILER=/usr/bin/g++ \
        -DCMAKE_AR=/usr/bin/gcc-ar -DCMAKE_RANLIB=/usr/bin/gcc-ranlib \
-       -DSecp256k1_ROOT_DIR=/usr/local -DENABLE_MONGODB_SUPPORT=OFF \
+       -DSecp256k1_ROOT_DIR=/usr/local \
        -DENABLE_POSTGRES_SUPPORT=ON -DENABLE_BREAKPAD_SUPPORT=ON -DENABLE_MAINNET_BUILD=ON \
        -DENABLE_BUILD_LTO=OFF -DEVT_ROOT_KEY=$rootkey
 RUN ninja -C /tmp/build -j $bjobs evtd evtwd evtc && ninja -C /tmp/build install
