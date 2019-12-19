@@ -196,7 +196,7 @@ enum PackError {
     kNotValidArray = -4
 };
 
-template <template<typename> typename TWriterBase, typename TWriter = TWriterBase<StringBuffer>>
+template <typename TWriter>
 class lua_packer {
 public:
     lua_packer(lua_State* L, StringBuffer& sb, bool is_args) : L_(L),
@@ -446,12 +446,12 @@ lserialize(lua_State* L) {
     auto r = 0;
     auto err = 0;
     if(!pretty) {
-        lua_packer<Writer> packer(L, sb, args);
+        lua_packer<Writer<StringBuffer>> packer(L, sb, args);
         r = packer.pack();
         err = packer.GetError();
     }
     else {
-        lua_packer<PrettyWriter> packer(L, sb, args);
+        lua_packer<PrettyWriter<StringBuffer>> packer(L, sb, args);
         r = packer.pack();
         err = packer.GetError();
     }

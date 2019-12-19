@@ -31,6 +31,12 @@ if(JEMALLOC_FOUND)
     list(APPEND PLATFORM_SPECIFIC_LIBS jemalloc)
 endif()
 
+if(UNIX)
+    if(APPLE)
+        set_target_properties(evt_unittests PROPERTIES LINK_FLAGS "${LUAJIT_LINK_FLAGS}")
+    endif()
+endif()
+
 target_link_libraries(evt_unittests PRIVATE
     appbase evt_chain evt_testing fc catch ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} ${Intl_LIBRARIES})
 
