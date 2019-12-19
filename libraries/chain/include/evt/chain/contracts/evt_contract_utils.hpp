@@ -7,7 +7,7 @@
 namespace evt { namespace chain { namespace contracts {
 
 /**
- * Implements addmeta, paycharge, paybonus, prodvote and updsched actions
+ * Implements addmeta, paycharge, paybonus, prodvote, updsched, addscript and updscript actions
  */
 
 namespace internal {
@@ -454,5 +454,50 @@ EVT_ACTION_IMPL_BEGIN(updsched) {
     EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
 EVT_ACTION_IMPL_END()
+
+EVT_ACTION_IMPL_BEGIN(newscript) {
+    using namespace internal;
+
+    auto asact = context.act.data_as<ACT>();
+    try {
+        EVT_ASSERT(context.has_authorized(N128(.script), asact.name), action_authorize_exception,
+            "Invalid authorization fields in action(domain and key).");
+
+        DECLARE_TOKEN_DB()
+        EVT_ASSERT2(!tokendb.exists_token(token_type::script, std::nullopt, asact.name), script_duplicate_exception,
+                "Script: {} already exists.", asact.name);
+
+        auto script    = script_def();
+        script.name    = asact.name;
+        script.content = asact.content;
+        script.creator = asact.creator;
+
+        ADD_DB_TOKEN(token_type::script, script);
+    }
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+}
+EVT_ACTION_IMPL_END()
+
+EVT_ACTION_IMPL_BEGIN(updscript) {
+    using namespace internal;
+
+    auto usact = context.act.data_as<ACT>();
+    try {
+        EVT_ASSERT(context.has_authorized(N128(.script), usact.name), action_authorize_exception,
+            "Invalid authorization fields in action(domain and key).");
+
+        DECLARE_TOKEN_DB()
+
+        auto script = make_empty_cache_ptr<script_def>();
+        READ_DB_TOKEN(token_type::script, std::nullopt, usact.name, script, unknown_script_exception,"Cannot find script: {}", usact.name);
+
+        script->content = usact.content;
+
+        UPD_DB_TOKEN(token_type::script, *script);
+    }
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+}
+EVT_ACTION_IMPL_END()
+
 
 }}} // namespace evt::chain::contracts
