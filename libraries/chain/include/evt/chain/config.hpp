@@ -80,8 +80,10 @@ const static int default_blocks_per_cycle     = 12 * 3;  // 1 cycle = 3 phases
 const static int default_staking_threshold    = 100000;
 
 // lua filter
-const static int default_lua_checkcount  = 200;
-const static int default_lua_max_time_ms = 10;  // ms
+const static int  default_lua_checkcount  = 200;
+const static int  default_lua_max_time_ms = 10;  // ms
+const static auto lua_token_database_key  = "TOKENDB";
+const static auto lua_start_timestamp_key = "STARTTS";
 
 }}}  // namespace evt::chain::config
 

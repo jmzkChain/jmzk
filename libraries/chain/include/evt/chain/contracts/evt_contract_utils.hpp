@@ -463,6 +463,8 @@ EVT_ACTION_IMPL_BEGIN(newscript) {
         EVT_ASSERT(context.has_authorized(N128(.script), asact.name), action_authorize_exception,
             "Invalid authorization fields in action(domain and key).");
 
+        check_name_reserved(asact.name);
+
         DECLARE_TOKEN_DB()
         EVT_ASSERT2(!tokendb.exists_token(token_type::script, std::nullopt, asact.name), script_duplicate_exception,
                 "Script: {} already exists.", asact.name);

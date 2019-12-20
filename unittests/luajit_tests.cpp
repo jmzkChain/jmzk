@@ -3,6 +3,7 @@
 #include <lua.hpp>
 #include <fc/io/json.hpp>
 #include <evt/testing/tester.hpp>
+#include <evt/chain/token_database_cache.hpp>
 #include <evt/chain/contracts/lua_engine.hpp>
 #include <evt/chain/contracts/lua_db.hpp>
 #include <evt/chain/contracts/lua_json.hpp>
@@ -93,8 +94,6 @@ TEST_CASE("test_lua_db", "[luajit]") {
     
     auto mytester = std::make_unique<tester>(cfg);
     auto& tokendb = mytester->control->token_db();
-    evt::chain::contracts::lua_engine::set_token_db(tokendb);
-
 
     const char* test_data = R"=====(
     {
@@ -130,6 +129,10 @@ TEST_CASE("test_lua_db", "[luajit]") {
     luaopen_json(L);
     lua_setglobal(L, "json");
     
+    auto tokendb_cache = mytester->control->token_db_cache();
+    lua_pushlightuserdata(L, (void*)&tokendb_cache);
+    lua_setfield(L, LUA_REGISTRYINDEX, config::lua_token_database_key);
+
     auto script = R"===(
         local t = db.readtoken("tkdomain", "tktoken")
         local jt = json.serialize(t)

@@ -1,12 +1,22 @@
 #include <evt/chain/contracts/lua_db.hpp>
 
 #include <fc/io/json.hpp>
+#include <evt/chain/exceptions.hpp>
+#include <evt/chain/token_database_cache.hpp>
 #include <evt/chain/contracts/lua_engine.hpp>
 #include <evt/chain/contracts/types.hpp>
-#include <evt/chain/token_database.hpp>
 
 using namespace evt::chain;
 using namespace evt::chain::contracts;
+
+#define READ_DB_TOKEN(TYPE, PREFIX, KEY, VPTR, EXCEPTION, FORMAT, ...) \
+    try {                                                              \
+        using vtype = typename decltype(VPTR)::element_type;           \
+        VPTR = db.template read_token<vtype>(TYPE, PREFIX, KEY);       \
+    }                                                                  \
+    catch(token_database_exception&) {                                 \
+        EVT_THROW2(EXCEPTION, FORMAT, ##__VA_ARGS__);                  \
+    }
 
 extern "C" {
 
@@ -21,14 +31,16 @@ readtoken(lua_State* L) {
 
     lua_pop(L, 2);
 
-    auto& db  = lua_engine::get_token_db();
-    auto  str = std::string();
-    auto  t   = token_def();
+    lua_getfield(L, LUA_REGISTRYINDEX, config::lua_token_database_key);
+    FC_ASSERT(lua_islightuserdata(L, -1));
 
-    db.read_token(token_type::token, domain, name, str);
-    extract_db_value(str, t);
+    auto& db = *(token_database_cache*)lua_touserdata(L, -1);
+    lua_pop(L, 1);
 
-    auto json = fc::json::to_string(fc::variant(t));
+    auto token =  make_empty_cache_ptr<token_def>();
+    READ_DB_TOKEN(token_type::token, domain, name, token, unknown_token_exception,"Cannot token '{}' in '{}'", name, domain);
+
+    auto json = fc::json::to_string(fc::variant(*token));
     lua_getglobal(L, "json");
     lua_getfield(L, -1, "deserialize");
     lua_pushstring(L, json.c_str());

@@ -5,10 +5,11 @@
 #pragma once
 
 #include <string>
+#include <evt/chain/types.hpp>
 
 namespace evt { namespace chain {
 
-class token_database;
+class controller;
 struct action;
 
 namespace contracts {
@@ -18,11 +19,7 @@ public:
     lua_engine();
 
 public:
-    void invoke_filter(const token_database& tokendb, const action& act, const std::string& filter_fuc);
-
-public:
-    static void set_token_db(const token_database& tokendb);
-    static const token_database& get_token_db();
+    bool invoke_filter(const controller& control, const action& act, const script_name& script);
 
 };
 
