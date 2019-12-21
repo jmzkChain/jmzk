@@ -260,6 +260,13 @@ FC_DECLARE_DERIVED_EXCEPTION( stakepool_duplicate_exception, staking_exception, 
 FC_DECLARE_DERIVED_EXCEPTION( unknown_stakepool_exception,   staking_exception, 3041111, "Unknown stakepool" );
 FC_DECLARE_DERIVED_EXCEPTION( staking_timeing_exception,     staking_exception, 3041112, "Invliad timing for operation" );
 
+FC_DECLARE_DERIVED_EXCEPTION( script_exception,                action_exception, 3041200, "Script exception" );
+FC_DECLARE_DERIVED_EXCEPTION( unknown_script_exception,        script_exception, 3041201, "Unknown script" );
+FC_DECLARE_DERIVED_EXCEPTION( script_duplicate_exception,      script_exception, 3041202, "Duplicate script" );
+FC_DECLARE_DERIVED_EXCEPTION( script_load_exceptoin,           script_exception, 3041203, "Load script failed" );
+FC_DECLARE_DERIVED_EXCEPTION( script_execution_exceptoin,      script_exception, 3041204, "An error occurred when executing the script" );
+FC_DECLARE_DERIVED_EXCEPTION( script_invalid_result_exceptoin, script_exception, 3041205, "Invalid result returned from script" );
+
 FC_DECLARE_DERIVED_EXCEPTION( producer_exception,                      chain_exception,    3050000, "Producer exception" );
 FC_DECLARE_DERIVED_EXCEPTION( producer_priv_key_not_found,             producer_exception, 3050001, "Producer private key is not available" );
 FC_DECLARE_DERIVED_EXCEPTION( missing_pending_block_state,             producer_exception, 3050002, "Pending block state is missing" );

@@ -288,7 +288,9 @@ using evt_execution_context = execution_context_impl<
                                   contracts::recvstkbonus,
                                   contracts::staketkns,
                                   contracts::unstaketkns,
-                                  contracts::toactivetkns
+                                  contracts::toactivetkns,
+                                  contracts::newscript,
+                                  contracts::updscript
                               >;
 
 }}  // namespace evt::chain

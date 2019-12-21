@@ -32,6 +32,7 @@ if(UNIX)
     if(APPLE)
         set(whole_archive_flag "-force_load")
         set(no_whole_archive_flag "")
+        set_target_properties(evtd PROPERTIES LINK_FLAGS "${LUAJIT_LINK_FLAGS}")
     else()
         set(whole_archive_flag "--whole-archive")
         set(no_whole_archive_flag "--no-whole-archive")
@@ -61,10 +62,6 @@ target_link_libraries(evtd
     PRIVATE -Wl,${whole_archive_flag} trafficgen_plugin -Wl,${no_whole_archive_flag}
     PRIVATE ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS}
 )
-
-if(ENABLE_MONGODB_SUPPORT)
-    target_link_libraries(evtd PRIVATE -Wl,${whole_archive_flag} mongo_db_plugin -Wl,${no_whole_archive_flag})
-endif()
 
 if(ENABLE_POSTGRES_SUPPORT)
     target_link_libraries(evtd

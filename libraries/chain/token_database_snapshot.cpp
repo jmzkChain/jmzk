@@ -24,7 +24,8 @@ const char* section_names[] = {
     ".psvbonus",
     ".psvbonus-dist",
     ".validator",
-    ".stakepool"
+    ".stakepool",
+    ".script"
 };
 
 void

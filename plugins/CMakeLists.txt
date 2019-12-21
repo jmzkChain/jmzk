@@ -15,12 +15,6 @@ add_subdirectory(evt_link_plugin)
 add_subdirectory(bnet_plugin)
 add_subdirectory(trafficgen_plugin)
 
-if(ENABLE_MONGODB_SUPPORT)
-    add_subdirectory(mongo_db_plugin)
-else()
-    message(STATUS "Not enabled mongo_db suuport, mongo_db_plugin will be omitted.")
-endif()
-
 if(ENABLE_POSTGRES_SUPPORT)
     add_subdirectory(postgres_plugin)
     add_subdirectory(history_plugin)

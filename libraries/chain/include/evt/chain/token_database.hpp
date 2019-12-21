@@ -44,7 +44,8 @@ enum class token_type {
     psvbonus_dist,
     validator,
     stakepool,
-    max_value = stakepool
+    script,
+    max_value = script
 };
 
 enum class action_op {

@@ -3,7 +3,6 @@ cmake_minimum_required(VERSION 3.5)
 # Defines everiToken library target.
 project(EVT)
 
-option(ENABLE_MONGODB_SUPPORT   "Build with mongodb support, this enables both mongo_db_plugin and history_plugin" OFF)
 option(ENABLE_POSTGRES_SUPPORT  "Build with postgres support, this enables postgres_plugin" OFF)
 option(ENABLE_BREAKPAD_SUPPORT  "Build with breakpad support, this enables minidump when crash" OFF)
 option(ENABLE_BIND_LIBRARIES    "Build bind libraries" OFF)
@@ -30,14 +29,15 @@ set(CMAKE_CXX_EXTENSIONS  ON)
 set(CXX_STANDARD_REQUIRED ON)
 
 set(VERSION_MAJOR 4)
-set(VERSION_MINOR 1)
-set(VERSION_PATCH 6)
+set(VERSION_MINOR 2)
+set(VERSION_PATCH 0)
 
 set(CLI_CLIENT_EXECUTABLE_NAME evtc)
 set(GUI_CLIENT_EXECUTABLE_NAME evt)
 set(CUSTOM_URL_SCHEME "gcs")
 set(INSTALLER_APP_ID "0E523427-37A8-4368-8D5E-AC17FC845110")
 set(CMAKE_SKIP_INSTALL_ALL_DEPENDENCY true)
+SET(LUAJIT_LINK_FLAGS "-pagezero_size 10000 -image_base 100000000")
 
 # http://stackoverflow.com/a/18369825
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")

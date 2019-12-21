@@ -120,6 +120,7 @@ using proposal_name   = name128;
 using fungible_name   = name128;
 using symbol_name     = name128;
 using conf_key        = name128;
+using script_name     = name128;
 using user_id         = public_key_type;
 
 template<int Precision>

@@ -221,6 +221,14 @@ private:
         cb(*validator);
     }
 
+    void
+    get_script(const script_name& script_name, std::function<void(const script_def&)>&& cb) {
+        auto script = make_empty_cache_ptr<script_def>();
+        READ_DB_TOKEN(token_type::script, std::nullopt, script_name, script, unknown_script_exception, "Cannot find script: {}", script_name);
+
+        cb(*script);
+    }
+
 private:
     bool
     satisfied_node(const group& group, const group::node& node, uint32_t depth) {
@@ -953,6 +961,40 @@ struct check_authority<N(toactivetkns)> {
         return false;
     }
 };
+
+template<>
+struct check_authority<N(newscript)> {
+    template <typename Type>
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        try {
+            auto& as     = act.data_as<add_clr_t<Type>>();
+            auto  vistor = authority_checker::weight_tally_visitor(checker);
+            if(vistor(as.creator, 1) == 1) {
+                return true;
+            }
+        }
+        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `addscript` type.");
+        return false;
+    }
+};
+
+template<>
+struct check_authority<N(updscript)> {
+    template <typename Type>
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        bool result = false;
+        checker->get_script(act.key, [&](const auto& script) {
+            auto  vistor = authority_checker::weight_tally_visitor(checker);
+            if(vistor(script.creator, 1) == 1) {
+                result = true;
+            }
+        });
+        return result;
+    }
+};
+
 
 }  // namespace internal
 

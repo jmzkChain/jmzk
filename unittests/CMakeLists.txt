@@ -10,6 +10,7 @@ add_executable(evt_unittests
     tokendb/cache_tests.cpp
     
     snapshot_tests.cpp
+    luajit_tests.cpp
     
     contracts/nft_tests.cpp
     contracts/group_tests.cpp
@@ -22,6 +23,19 @@ add_executable(evt_unittests
     contracts/staking_tests.cpp
     contracts/multi_actions_tests.cpp
     )
+set_target_properties(evt_unittests PROPERTIES ENABLE_EXPORTS TRUE)
+
+find_package(Jemalloc QUIET)
+if(JEMALLOC_FOUND)
+    message(STATUS "Found jemalloc; compiling evt_unittests with jemalloc")
+    list(APPEND PLATFORM_SPECIFIC_LIBS jemalloc)
+endif()
+
+if(UNIX)
+    if(APPLE)
+        set_target_properties(evt_unittests PROPERTIES LINK_FLAGS "${LUAJIT_LINK_FLAGS}")
+    endif()
+endif()
 
 target_link_libraries(evt_unittests PRIVATE
     appbase evt_chain evt_testing fc catch ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} ${Intl_LIBRARIES})
