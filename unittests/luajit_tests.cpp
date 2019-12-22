@@ -10,13 +10,15 @@
 
 extern "C" {
 
-int __attribute__ ((visibility("default"))) __attribute__ ((noinline)) ladd(int a, int b) {
+int __attribute__ ((visibility("default"))) __attribute__ ((noinline))
+ladd(int a, int b) {
     return a + b;
 }
 
-}
+}  // extern "C"
 
-static void lua_hook(lua_State* L, lua_Debug* ar) {
+static void
+lua_hook(lua_State* L, lua_Debug* ar) {
     static int count = 0;
 
     lua_getinfo(L, "nS", ar);
@@ -26,6 +28,19 @@ static void lua_hook(lua_State* L, lua_Debug* ar) {
         luaL_error(L, "exceed hook count");
     }
 }
+
+static int
+traceback(lua_State* L) {
+    const char* msg = lua_tostring(L, 1);
+    if(msg) {
+        luaL_traceback(L, L, msg, 1);
+    }
+    else {
+        lua_pushliteral(L, "(no error message)");
+    }
+    return 1;
+}
+
 
 TEST_CASE("test_lua_debug", "[luajit]") {
     auto L = luaL_newstate();
@@ -129,6 +144,10 @@ TEST_CASE("test_lua_db", "[luajit]") {
     luaopen_json(L);
     lua_setglobal(L, "json");
     
+    // push traceback function to provide custom error message
+    lua_pushcfunction(L, traceback);
+    assert(lua_gettop(L) == 1);
+
     auto tokendb_cache = mytester->control->token_db_cache();
     lua_pushlightuserdata(L, (void*)&tokendb_cache);
     lua_setfield(L, LUA_REGISTRYINDEX, config::lua_token_database_key);
@@ -148,5 +167,102 @@ TEST_CASE("test_lua_db", "[luajit]") {
     if(r2 != LUA_OK) {
         printf("error: %s\n", lua_tostring(L,-1));
     }
+}
 
+TEST_CASE("test_lua_engine", "[luajit]") {
+    using namespace evt::testing;
+    using namespace evt::chain::contracts;
+
+    auto basedir = evt_unittests_dir + "/tokendb_tests";
+    if(!fc::exists(basedir)) {
+        fc::create_directories(basedir);
+    }
+
+    auto cfg = evt::chain::controller::config();
+    cfg.blocks_dir            = basedir + "/blocks";
+    cfg.state_dir             = basedir + "/state";
+    cfg.db_config.db_path     = basedir + "/tokendb";
+    cfg.contracts_console     = true;
+    cfg.charge_free_mode      = false;
+    cfg.loadtest_mode         = false;
+
+    cfg.genesis.initial_timestamp = fc::time_point::now();
+    cfg.genesis.initial_key       = tester::get_public_key("evt");
+    
+    auto mytester = std::make_unique<tester>(cfg);
+    auto& tokendb = mytester->control->token_db_cache();
+
+    const char* test_data = R"====(
+    {
+        "domain": "tkdomain",
+        "name": "tktoken",
+        "owner": [
+          "EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
+          "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+        ],
+        "metas": [
+            { "key": "tm1", "value": "hello1", "creator": "[A] EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" },
+            { "key": "tm2", "value": "hello2", "creator": "[A] EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2" }
+        ]
+    }
+    )====";
+
+    const char* loader = R"===(
+        local filter_fn, act = ...
+
+        return filter_fn(act)
+    )===";
+
+    const char* script = R"===(
+        local act = ...
+        if act.name ~= 'transferft' then
+            error('only transferft is allowed')
+        end
+        
+        if act.data.memo == 'haha' then
+            error('invalid memo')
+        end
+
+        local token = db.readtoken(act.domain, act.key)
+        for i, v in ipairs(token.metas) do
+            if v.key == 'tm3' then
+                error('meta key with tm3 is not allowed to be transferred')
+            end
+        end
+
+        return true
+    )===";
+
+    auto vt = fc::json::from_string(test_data);
+    auto tt = token_def();
+    fc::from_variant(vt, tt);
+    auto ptt = tokendb.put_token<token_def&, true>(token_type::token, action_op::put, tt.domain, tt.name, tt);
+
+    auto sl = script_def();
+    sl.content = loader;
+    tokendb.put_token(token_type::script, action_op::put, std::nullopt, N128(.loader), sl);
+    
+    auto ss = script_def();
+    ss.content = script;
+    tokendb.put_token(token_type::script, action_op::put, std::nullopt, N128(script), ss);
+
+    auto engine = lua_engine();
+
+    auto tf = transferft();
+    tf.memo = "haha";
+    auto act = action("tkdomain", "tktoken", tf);
+    // memo is invalid
+    CHECK_THROWS_AS(engine.invoke_filter(*mytester->control, act, "script"), script_execution_exceptoin);
+
+    tf.memo = "lala";
+    act = action("tkdomain", "tktoken", tf);
+
+    ptt->metas.push_back(meta("tm3", "nonce", authorizer_ref()));
+    tokendb.put_token(token_type::token, action_op::put, tt.domain, tt.name, *ptt);
+    // metadata is invalid
+    CHECK_THROWS_AS(engine.invoke_filter(*mytester->control, act, "script"), script_execution_exceptoin);
+
+    ptt->metas.erase(ptt->metas.end() - 1);
+    tokendb.put_token(token_type::token, action_op::put, tt.domain, tt.name, *ptt);
+    CHECK_NOTHROW(engine.invoke_filter(*mytester->control, act, "script"));
 }

@@ -45,7 +45,7 @@ readtoken(lua_State* L) {
     lua_getfield(L, -1, "deserialize");
     lua_pushstring(L, json.c_str());
     
-    auto r = lua_pcall(L, 1, 1, 0);
+    auto r = lua_pcall(L, 1, 1, 1);
     if(r == LUA_OK) {
         return 1;
     }

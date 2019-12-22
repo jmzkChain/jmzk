@@ -8,6 +8,7 @@
 
 #include <fc/time.hpp>
 #include <fc/scoped_exit.hpp>
+#include <fc/io/json.hpp>
 
 #include <evt/chain/config.hpp>
 #include <evt/chain/controller.hpp>
@@ -17,6 +18,7 @@
 #include <evt/chain/contracts/lua_db.hpp>
 #include <evt/chain/contracts/lua_json.hpp>
 #include <evt/chain/contracts/types.hpp>
+#include <evt/chain/contracts/abi_serializer.hpp>
 
 namespace evt { namespace chain { namespace contracts {
 
@@ -121,6 +123,8 @@ setup_luastate(token_database_cache& tokendb_cache, int checks) {
 
 }  // namespace internal
 
+lua_engine::lua_engine() {}
+
 bool
 lua_engine::invoke_filter(const controller& control, const action& act, const script_name& script) {
     using namespace internal;
@@ -128,19 +132,42 @@ lua_engine::invoke_filter(const controller& control, const action& act, const sc
     auto& tokendb_cache = control.token_db_cache();
     
     auto ss = make_empty_cache_ptr<script_def>();
-    READ_DB_TOKEN(token_type::script, std::nullopt, N128(.loader), ss, unknown_script_exception,"Cannot find script: {}", script);
+    READ_DB_TOKEN(token_type::script, std::nullopt, script, ss, unknown_script_exception,"Cannot find script: {}", script);
 
-    auto L   = internal::setup_luastate(tokendb_cache, !control.skip_trx_checks());
+    auto L = internal::setup_luastate(tokendb_cache, !control.skip_trx_checks());
+    assert(lua_gettop(L) == 2); // traceback, loader
+
     auto rev = fc::make_scoped_exit([L]() mutable {
         lua_close(L);
         L = nullptr;
     });
 
+    // load filter script
     auto r = luaL_loadstring(L, ss->content.c_str());
     EVT_ASSERT2(r == LUA_OK, script_load_exceptoin, "Load '{}' script failed: {}", script, lua_tostring(L, -1));
+    assert(lua_gettop(L) == 3); // traceback, loader, filter
+
+    // push action
+    auto& abi = control.get_abi_serializer();
+    auto  var = fc::variant();
+    abi.to_variant(act, var, control.get_execution_context());
+
+    auto json = fc::json::to_string(var);
+    lua_getglobal(L, "json");
+    lua_getfield(L, -1, "deserialize");
+    lua_pushstring(L, json.c_str());
     
-    auto rr = lua_pcall(L, 1, 1, 1);
-    EVT_ASSERT2(rr == LUA_OK, script_execution_exceptoin, "Lua script executed failed: {}", lua_tostring(L, -1));
+    auto r2 = lua_pcall(L, 1, 1, 1);
+    EVT_ASSERT2(r2 == LUA_OK, script_execution_exceptoin, "Convert action to json failed: {}", lua_tostring(L, -1));
+    
+    // remove json object from stack
+    lua_copy(L, -1, -2);
+    lua_pop(L, 1);
+    assert(lua_gettop(L) == 4); // traceback, loader, filter, act
+
+    // call filter
+    auto r3 = lua_pcall(L, 2, 1, 1);
+    EVT_ASSERT2(r3 == LUA_OK, script_execution_exceptoin, "Lua script executed failed: {}", lua_tostring(L, -1));
 
     EVT_ASSERT2(lua_gettop(L) >= 2, script_invalid_result_exceptoin, "No result is returned from script, should at least be one");
     EVT_ASSERT2(lua_isboolean(L, -1), script_invalid_result_exceptoin, "Result returned from lua filter should be boolean value");      
