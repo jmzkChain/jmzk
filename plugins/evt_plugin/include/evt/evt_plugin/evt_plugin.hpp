@@ -101,6 +101,11 @@ public:
     };
     get_evtlink_signed_keys_result get_evtlink_signed_keys(const get_evtlink_signed_keys_params& params) const;
 
+    struct get_script_params {
+        script_name name;
+    };
+    fc::variant get_script(const get_script_params& params) const;
+
 private:
     const controller& db_;
 };
@@ -144,3 +149,4 @@ FC_REFLECT(evt::evt_apis::read_only::get_validator_params, (name));
 FC_REFLECT(evt::evt_apis::read_only::get_staking_shares_params, (address));
 FC_REFLECT(evt::evt_apis::read_only::get_evtlink_signed_keys_params, (link_id));
 FC_REFLECT(evt::evt_apis::read_only::get_evtlink_signed_keys_result, (signed_keys));
+FC_REFLECT(evt::evt_apis::read_only::get_script_params, (name));

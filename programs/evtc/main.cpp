@@ -1759,6 +1759,49 @@ struct set_action_subcommand {
     }
 };
 
+struct set_script_subcommand {
+    string name;
+    string content;
+    string creator;
+
+    set_script_subcommand(CLI::App* actionRoot) {
+        auto nscmd = actionRoot->add_subcommand("create", localized("create a new script to the chain"));
+        nscmd->add_option("name", name, localized("Name of script to create"))->required();
+        nscmd->add_option("content", content, localized("content of script"))->required();
+        nscmd->add_option("creator", creator, localized("creator of script"))->required();
+
+        add_standard_transaction_options(nscmd);
+
+        nscmd->callback([this] {
+            auto nsp = newscript();
+
+            nsp.name    = name;
+            nsp.content = content;
+            nsp.creator = get_public_key(creator);
+
+            auto act = create_action(N128(.script), (domain_key)nsp.name, nsp);
+            send_actions({act});
+        });
+
+        auto upspcmd = actionRoot->add_subcommand("update", localized("update a script"));
+
+        upspcmd->add_option("name", name, localized("name of script"))->required();
+        upspcmd->add_option("content", content, localized("content of script"))->required();
+
+        add_standard_transaction_options(upspcmd);
+
+        upspcmd->callback([this] {
+            auto upsp = updscript();
+
+            upsp.name    = name;
+            upsp.content = content;
+
+            auto act = create_action(N128(.script), (domain_key)upsp.name, upsp);
+            send_actions({act});
+        });
+    }
+};
+
 struct set_get_domain_subcommand {
     string name;
 
@@ -1938,6 +1981,20 @@ struct set_get_lock_subcommand {
         gdcmd->callback([this] {
             auto arg = fc::mutable_variant_object("name", name);
             print_info(call(get_lock_func, arg));
+        });
+    }
+};
+
+struct set_get_script_subcommand{
+    string name;
+
+    set_get_script_subcommand(CLI::App* actionRoot) {
+        auto gscmd = actionRoot->add_subcommand("script", localized("Retrieved a script"));
+        gscmd->add_option("name", name, localized("Name of script to be retrieved"))->required();
+
+        gscmd->callback([this] {
+            auto arg = fc::mutable_variant_object("name", name);
+            print_info(call(get_script_func, arg));
         });
     }
 };
@@ -2243,6 +2300,7 @@ main(int argc, char** argv) {
     set_get_validator_subcommand           get_validator(get);
     set_get_staking_shares_subcommand      get_staking_shares(get);
     set_get_evtlink_signed_keys_subcommand get_evtlink_signed_keys(get);
+    set_get_script_subcommand              get_script(get);
 
     // get transaction
     string   trx_id;
@@ -2369,6 +2427,12 @@ main(int argc, char** argv) {
     action->require_subcommand();
 
     auto set_action = set_action_subcommand(action);
+
+    // script
+    auto script = app.add_subcommand("script", localized("Raw operations for scripts"));
+    script->require_subcommand();
+
+    auto set_script = set_script_subcommand(script);
 
     // Wallet subcommand
     auto wallet = app.add_subcommand("wallet", localized("Interact with local wallet"));
