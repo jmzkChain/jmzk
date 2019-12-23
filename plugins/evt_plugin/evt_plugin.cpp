@@ -330,6 +330,18 @@ read_only::get_evtlink_signed_keys(const get_evtlink_signed_keys_params& params)
     return result;
 }
 
+fc::variant
+read_only::get_script(const get_script_params& params) const {
+    DECLARE_TOKEN_DB();
+
+    auto var  = variant();
+    auto script = make_empty_cache_ptr<script_def>();
+    READ_DB_TOKEN(token_type::script, std::nullopt, params.name, script, unknown_script_exception, "Cannot find script: {}", params.name);
+    to_variant(*script, var);
+
+    return var;
+}
+
 }  // namespace evt_apis
 
 }  // namespace evt

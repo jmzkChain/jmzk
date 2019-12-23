@@ -152,6 +152,7 @@ const std::string get_stakepool_func           = evt_func_base + "/get_stakepool
 const std::string get_validator_func           = evt_func_base + "/get_validator";
 const std::string get_staking_shares_func      = evt_func_base + "/get_staking_shares";
 const std::string get_evtlink_signed_keys_func = evt_func_base + "/get_evtlink_signed_keys";
+const std::string get_script_func              = evt_func_base + "/get_script";
 
 const std::string history_func_base       = "/v1/history";
 const std::string get_my_domains          = history_func_base + "/get_domains";
