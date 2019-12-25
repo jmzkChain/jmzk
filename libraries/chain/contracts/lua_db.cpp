@@ -38,14 +38,46 @@ readtoken(lua_State* L) {
     lua_pop(L, 1);
 
     auto token =  make_empty_cache_ptr<token_def>();
-    READ_DB_TOKEN(token_type::token, domain, name, token, unknown_token_exception,"Cannot token '{}' in '{}'", name, domain);
+    READ_DB_TOKEN(token_type::token, domain, name, token, unknown_token_exception,"Cannot find token '{}' in '{}'", name, domain);
 
     auto json = fc::json::to_string(fc::variant(*token));
     lua_getglobal(L, "json");
     lua_getfield(L, -1, "deserialize");
     lua_pushstring(L, json.c_str());
     
-    auto r = lua_pcall(L, 1, 1, 1);
+    auto r = lua_pcall(L, 1, 1, 0);
+    if(r == LUA_OK) {
+        return 1;
+    }
+
+    return lua_error(L);
+}
+
+static int
+readdomain(lua_State* L) {
+    if(lua_gettop(L) > 1) {
+        lua_settop(L, 1);
+    }
+
+    auto dname = luaL_checklstring(L, -1, nullptr);
+
+    lua_pop(L, 1);
+
+    lua_getfield(L, LUA_REGISTRYINDEX, config::lua_token_database_key);
+    FC_ASSERT(lua_islightuserdata(L, -1));
+
+    auto& db = *(token_database_cache*)lua_touserdata(L, -1);
+    lua_pop(L, 1);
+
+    auto domain =  make_empty_cache_ptr<domain_def>();
+    READ_DB_TOKEN(token_type::domain, std::nullopt, dname, domain, unknown_domain_exception,"Cannot find domain '{}'", dname);
+
+    auto json = fc::json::to_string(fc::variant(*domain));
+    lua_getglobal(L, "json");
+    lua_getfield(L, -1, "deserialize");
+    lua_pushstring(L, json.c_str());
+    
+    auto r = lua_pcall(L, 1, 1, 0);
     if(r == LUA_OK) {
         return 1;
     }
@@ -83,10 +115,16 @@ lreadtoken(lua_State* L) {
     return wrap_exceptions(L, readtoken);
 }
 
+static int
+lreaddomain(lua_State* L) {
+    return wrap_exceptions(L, readdomain);
+}
+
 int
 luaopen_db(lua_State* L) {
     luaL_Reg l[] = {
         { "readtoken", lreadtoken },
+        { "readdoamin", lreaddomain },
         { NULL, NULL}
     };
     luaL_newlib(L, l);

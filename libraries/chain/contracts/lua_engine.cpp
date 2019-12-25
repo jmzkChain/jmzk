@@ -61,6 +61,35 @@ traceback(lua_State* L) {
     return 1;
 }
 
+static int
+requirex(lua_State* L) {
+    if(lua_gettop(L) > 1) {
+        lua_settop(L, 1);
+    }
+
+    auto module = luaL_checklstring(L, -1, nullptr);
+    lua_pop(L, 1);
+
+    lua_getfield(L, LUA_REGISTRYINDEX, config::lua_token_database_key);
+    FC_ASSERT(lua_islightuserdata(L, -1));
+
+    auto& tokendb_cache = *(token_database_cache*)lua_touserdata(L, -1);
+    lua_pop(L, 1);
+
+    auto script = make_empty_cache_ptr<script_def>();
+    READ_DB_TOKEN(token_type::script, std::nullopt, module, script, unknown_script_exception, "Cannot find module script: {}", module);
+
+    auto r = luaL_loadstring(L, script->content.c_str());
+    EVT_ASSERT2(r == LUA_OK, script_load_exceptoin, "Load module '{}' script failed: {}", module, lua_tostring(L, -1));
+
+    auto r2 = lua_pcall(L, 0, 1, 0);
+    if(lua_type(L, -1) != LUA_TTABLE) {
+        return luaL_error(L, "module should return a table");
+    }
+
+    return 1;
+}
+
 static lua_State*
 setup_luastate(token_database_cache& tokendb_cache, int checks) {
     auto L = luaL_newstate();
@@ -105,6 +134,10 @@ setup_luastate(token_database_cache& tokendb_cache, int checks) {
 
     luaopen_json(L);
     lua_setglobal(L, "json");
+
+    // add requirex function
+    lua_pushcfunction(L, requirex);
+    lua_setglobal(L, "requirex");
 
     // push traceback function to provide custom error message
     lua_pushcfunction(L, traceback);

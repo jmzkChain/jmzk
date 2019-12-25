@@ -233,18 +233,65 @@ TEST_CASE("test_lua_engine", "[luajit]") {
         return true
     )===";
 
+    const char* script2 = R"===(
+        local i = 0
+        while true do
+            i = i + 1
+        end
+    )===";
+
+    const char* script3 = R"===(
+        local haha = {}
+
+        function haha.add(a, b)
+            return a + b
+        end
+
+        return haha
+    )===";
+
+    const char* script4 = R"===(
+        local haha = {}
+
+        function haha.add(a, b)
+            return a + b
+        end
+    )===";
+
+    const char* script5 = R"===(
+        local haha = requirex("script3")
+        if haha.add(1, 2) == 3 then
+            return true
+        end
+        return false
+    )===";
+
+    const char* script6 = R"===(
+        local haha = requirex("script4")
+        if haha.add(1, 2) == 3 then
+            return true
+        end
+        return false
+    )===";
+
     auto vt = fc::json::from_string(test_data);
     auto tt = token_def();
     fc::from_variant(vt, tt);
     auto ptt = tokendb.put_token<token_def&, true>(token_type::token, action_op::put, tt.domain, tt.name, tt);
 
-    auto sl = script_def();
-    sl.content = loader;
-    tokendb.put_token(token_type::script, action_op::put, std::nullopt, N128(.loader), sl);
-    
-    auto ss = script_def();
-    ss.content = script;
-    tokendb.put_token(token_type::script, action_op::put, std::nullopt, N128(script), ss);
+    auto add_script = [&](auto name, auto script) {
+        auto sl = script_def();
+        sl.content = script;
+        tokendb.put_token(token_type::script, action_op::put, std::nullopt, name, sl);
+    };
+
+    add_script(".loader", loader);
+    add_script("script",  script);
+    add_script("script2", script2);
+    add_script("script3", script3);
+    add_script("script4", script4);
+    add_script("script5", script5);
+    add_script("script6", script6);
 
     auto engine = lua_engine();
 
@@ -265,4 +312,9 @@ TEST_CASE("test_lua_engine", "[luajit]") {
     ptt->metas.erase(ptt->metas.end() - 1);
     tokendb.put_token(token_type::token, action_op::put, tt.domain, tt.name, *ptt);
     CHECK_NOTHROW(engine.invoke_filter(*mytester->control, act, "script"));
+
+    CHECK_THROWS_AS(engine.invoke_filter(*mytester->control, act, "script2"), script_execution_exceptoin);
+
+    CHECK_THROWS_AS(engine.invoke_filter(*mytester->control, act, "script6"), script_execution_exceptoin);
+    CHECK_NOTHROW(engine.invoke_filter(*mytester->control, act, "script5"));
 }
