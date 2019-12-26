@@ -64,7 +64,9 @@ get_evt_sym(const genesis_state& genesis) {
     auto issue = permission_def();
     issue.name = N(issue);
     issue.threshold = 1;
-    issue.authorizers.emplace_back(authorizer_weight(authorizer_ref(group_name(N128(.everiToken))), 1));
+    auto ref = authorizer_ref();
+    ref.set_group(N128(.everiToken));
+    issue.authorizers.emplace_back(authorizer_weight(ref, 1));
 
     auto manage = permission_def();
     manage.name = N(manage);

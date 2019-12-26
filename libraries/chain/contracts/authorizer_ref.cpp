@@ -23,6 +23,10 @@ authorizer_ref::to_string() const {
         auto& name = this->get_group();
         return fmt::format("[G] {}", (std::string)name);
     }
+    case authorizer_ref::script_t: {
+        auto& name = this->get_script();
+        return fmt::format("[S] {}", (std::string)name);
+    }
     default: {
         EVT_ASSERT(false, authorizer_ref_type_exception, "Not valid ref type: ${type}", ("type",this->type()));
     }
@@ -60,6 +64,10 @@ from_variant(const fc::variant& v, authorizer_ref& ref) {
             ref.set_group(name);
         }
         return;
+    }
+    else if(boost::starts_with(str, "[S] ")) {
+        auto name = (script_name)(str.substr(4));
+        ref.set_script(name);
     }
     EVT_ASSERT(false, authorizer_ref_type_exception, "Unknown authorizer ref prefix: ${prefix}", ("prefix",str.substr(0,4)));
 }

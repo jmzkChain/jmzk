@@ -17,6 +17,7 @@
 #include <evt/chain/types.hpp>
 #include <evt/chain/producer_schedule.hpp>
 #include <evt/chain/contracts/types.hpp>
+#include <evt/chain/contracts/lua_engine.hpp>
 #include <evt/utilities/parallel_markers.hpp>
 
 namespace evt { namespace chain {
@@ -378,6 +379,12 @@ private:
         return result;
     }
 
+    bool
+    satisfied_script(const script_name& name, const action& action) {
+        auto engine = lua_engine();
+        return engine.invoke_filter(control_, action, name);
+    }
+
 public:
     bool
     satisfied(const action& act) {
@@ -703,6 +710,9 @@ struct check_authority<N(addmeta)> {
                     }
                 });
                 break;
+            }
+            case authorizer_ref::script_t: {
+                auto& name = ref.get_script();
             }
             }  // switch
             return ref_result;
