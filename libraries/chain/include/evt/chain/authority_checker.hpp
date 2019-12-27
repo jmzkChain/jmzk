@@ -62,6 +62,7 @@ private:
 
     token_database_cache&           tokendb_cache_;
     boost::dynamic_bitset<uint64_t> used_keys_;
+    bool                            check_script_;
 
 public:
     struct weight_tally_visitor {
@@ -106,13 +107,14 @@ public:
     template<uint64_t> friend struct internal::check_authority;
 
 public:
-    authority_checker(const controller& control, const evt_execution_context& exec_ctx, const public_keys_set& signing_keys, uint32_t max_recursion_depth)
+    authority_checker(const controller& control, const evt_execution_context& exec_ctx, const public_keys_set& signing_keys, uint32_t max_recursion_depth, bool check_script = true)
         : control_(control)
         , exec_ctx_(exec_ctx)
         , signing_keys_(signing_keys)
         , max_recursion_depth_(max_recursion_depth)
         , tokendb_cache_(control.token_db_cache())
-        , used_keys_(signing_keys.size(), false) {}
+        , used_keys_(signing_keys.size(), false)
+        , check_script_(check_script) {}
 
 private:
     template<int Permission>
@@ -329,6 +331,16 @@ private:
             case authorizer_ref::group_t: {
                 auto& name = ref.get_group();
                 ref_result = satisfied_group(name);
+                break;
+            }
+            case authorizer_ref::script_t: {
+                if(!check_script_) {
+                    ref_result = true;
+                    break;
+                }
+                auto& name   = ref.get_script();
+                auto  engine = lua_engine();
+                ref_result   = engine.invoke_filter(control_, action, name);
                 break;
             }
             }  // switch
@@ -711,9 +723,6 @@ struct check_authority<N(addmeta)> {
                 });
                 break;
             }
-            case authorizer_ref::script_t: {
-                auto& name = ref.get_script();
-            }
             }  // switch
             return ref_result;
         }
@@ -978,8 +987,13 @@ struct check_authority<N(newscript)> {
     static bool
     invoke(const action& act, authority_checker* checker) {
         try {
+            if(act.key.reserved()) {
+                return checker->satisfied_group(checker->get_control().get_genesis_state().evt_org.name());
+            }
+
             auto& as     = act.data_as<add_clr_t<Type>>();
             auto  vistor = authority_checker::weight_tally_visitor(checker);
+
             if(vistor(as.creator, 1) == 1) {
                 return true;
             }
@@ -994,8 +1008,12 @@ struct check_authority<N(updscript)> {
     template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
+        if(act.key.reserved()) {
+            return checker->satisfied_group(checker->get_control().get_genesis_state().evt_org.name());
+        }
+        
         bool result = false;
-        checker->get_script(act.key, [&](const auto& script) {
+        checker->get_script(act.key, [&](const auto& script) {           
             auto  vistor = authority_checker::weight_tally_visitor(checker);
             if(vistor(script.creator, 1) == 1) {
                 result = true;

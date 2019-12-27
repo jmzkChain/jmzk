@@ -1767,7 +1767,7 @@ controller::is_known_unexpired_transaction(const transaction_id_type& id) const 
 public_keys_set
 controller::get_required_keys(const transaction& trx, const public_keys_set& candidate_keys) const {
     const static uint32_t max_authority_depth = my->conf.genesis.initial_configuration.max_authority_depth;
-    auto checker = authority_checker(*this, my->exec_ctx, candidate_keys, max_authority_depth);
+    auto checker = authority_checker(*this, my->exec_ctx, candidate_keys, max_authority_depth, false /* check script */);
 
     for(const auto& act : trx.actions) {
         EVT_ASSERT(checker.satisfied(act), unsatisfied_authorization,
@@ -1784,7 +1784,7 @@ controller::get_required_keys(const transaction& trx, const public_keys_set& can
 public_keys_set
 controller::get_suspend_required_keys(const transaction& trx, const public_keys_set& candidate_keys) const {
     const static uint32_t max_authority_depth = my->conf.genesis.initial_configuration.max_authority_depth;
-    auto checker = authority_checker(*this, my->exec_ctx, candidate_keys, max_authority_depth);
+    auto checker = authority_checker(*this, my->exec_ctx, candidate_keys, max_authority_depth, false /* check script */);
 
     for(const auto& act : trx.actions) {
         checker.satisfied(act);

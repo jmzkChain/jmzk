@@ -1767,16 +1767,21 @@ struct set_script_subcommand {
     set_script_subcommand(CLI::App* actionRoot) {
         auto nscmd = actionRoot->add_subcommand("create", localized("create a new script to the chain"));
         nscmd->add_option("name", name, localized("Name of script to create"))->required();
-        nscmd->add_option("content", content, localized("content of script"))->required();
-        nscmd->add_option("creator", creator, localized("creator of script"))->required();
+        nscmd->add_option("content", content, localized("Lua program string or filename defining the script"))->required();
+        nscmd->add_option("creator", creator, localized("Creator of script"))->required();
 
         add_standard_transaction_options(nscmd);
 
         nscmd->callback([this] {
             auto nsp = newscript();
 
-            nsp.name    = name;
-            nsp.content = content;
+            nsp.name = name;
+            if(fc::is_regular_file(content)) {
+                fc::read_file_contents(content, nsp.content);
+            }
+            else {
+                nsp.content = content;
+            }
             nsp.creator = get_public_key(creator);
 
             auto act = create_action(N128(.script), (domain_key)nsp.name, nsp);
@@ -1786,15 +1791,20 @@ struct set_script_subcommand {
         auto upspcmd = actionRoot->add_subcommand("update", localized("update a script"));
 
         upspcmd->add_option("name", name, localized("name of script"))->required();
-        upspcmd->add_option("content", content, localized("content of script"))->required();
+        upspcmd->add_option("content", content, localized("Lua program string or filename defining the script"))->required();
 
         add_standard_transaction_options(upspcmd);
 
         upspcmd->callback([this] {
             auto upsp = updscript();
 
-            upsp.name    = name;
-            upsp.content = content;
+            upsp.name = name;
+            if(fc::is_regular_file(content)) {
+                fc::read_file_contents(content, upsp.content);
+            }
+            else {
+                upsp.content = content;
+            }
 
             auto act = create_action(N128(.script), (domain_key)upsp.name, upsp);
             send_actions({act});

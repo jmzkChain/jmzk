@@ -68,6 +68,7 @@ from_variant(const fc::variant& v, authorizer_ref& ref) {
     else if(boost::starts_with(str, "[S] ")) {
         auto name = (script_name)(str.substr(4));
         ref.set_script(name);
+        return;
     }
     EVT_ASSERT(false, authorizer_ref_type_exception, "Unknown authorizer ref prefix: ${prefix}", ("prefix",str.substr(0,4)));
 }

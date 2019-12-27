@@ -106,6 +106,12 @@ auto make_permission_checker = [](const auto& tokendb) {
                 EVT_ASSERT(dbexisted, unknown_group_exception, "Group ${name} does not exist.", ("name", name));
                 break;
             }
+            case authorizer_ref::script_t: {
+                auto& name = ref.get_script();
+                auto dbexisted = tokendb.exists_token(token_type::script, std::nullopt, name);
+                EVT_ASSERT(dbexisted, unknown_script_exception, "Script ${name} does not exist.", ("name", name));
+                break;
+            }
             default: {
                 EVT_ASSERT(false, authorizer_ref_type_exception, "Authorizer ref is not valid.");
             }
