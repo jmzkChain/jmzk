@@ -74,7 +74,9 @@ block_header_state::generate_next(block_timestamp_type when) const {
     result.bft_irreversible_blocknum           = bft_irreversible_blocknum;
 
     result.producer_to_last_implied_irb[prokey.producer_name] = result.dpos_proposed_irreversible_blocknum;
-    result.dpos_irreversible_blocknum                         = result.calc_dpos_last_irreversible();
+
+    auto plib = result.calc_dpos_last_irreversible();
+    result.dpos_irreversible_blocknum = plib > dpos_irreversible_blocknum ? plib : dpos_irreversible_blocknum;
 
     /// grow the confirmed count
     static_assert(std::numeric_limits<uint8_t>::max() >= (config::max_producers * 2 / 3) + 1, "8bit confirmations may not be able to hold all of the needed confirmations");
