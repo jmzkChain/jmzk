@@ -605,6 +605,15 @@ struct check_authority<N(evt2pevt)> {
 };
 
 template<>
+struct check_authority<N(blackaddr)> {
+    template <typename Type>
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        return checker->satisfied_fungible_permission<kManage>(get_symbol_id(act.key), act);
+    }
+};
+
+template<>
 struct check_authority<N(newsuspend)> {
     template <typename Type>
     static bool

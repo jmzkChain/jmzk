@@ -122,6 +122,11 @@ public:
     }
 
     friend bool
+    operator<(const address& a, const address& b) {
+        return utilities::common::less_comparator<storage_type>::apply(a.storage_, b.storage_);
+    }
+
+    friend bool
     operator==(const address& a, const public_key_type& b) {
         return a.type() == public_key_t && a.get_public_key() == b;
     }

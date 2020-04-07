@@ -263,6 +263,7 @@ using evt_execution_context = execution_context_impl<
                                   contracts::destroyft,
                                   contracts::evt2pevt,
                                   contracts::addmeta,
+                                  contracts::blackaddr,
                                   contracts::newsuspend,
                                   contracts::cancelsuspend,
                                   contracts::aprvsuspend,

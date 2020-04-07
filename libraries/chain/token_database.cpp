@@ -124,7 +124,8 @@ name128 action_key_prefixes[] = {
     N128(.psvbonus),
     N128(.psvbonus-dist),
     N128(.validator),
-    N128(.stakepool)
+    N128(.stakepool),
+    N128(.blackaddrs),
 };
 
 static_assert(sizeof(action_key_prefixes) / sizeof(name128) == (int)token_type::max_value + 1);

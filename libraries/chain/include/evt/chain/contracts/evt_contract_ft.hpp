@@ -247,4 +247,34 @@ EVT_ACTION_IMPL_BEGIN(evt2pevt) {
 }
 EVT_ACTION_IMPL_END()
 
+EVT_ACTION_IMPL_BEGIN(blackaddr) {
+    using namespace internal;
+
+    auto& baact = context.act.data_as<add_clr_t<ACT>>();
+
+    try {
+        EVT_ASSERT(context.has_authorized(N128(.fungible), name128::from_number(baact.sym_id)), action_authorize_exception,
+            "Invalid authorization fields in action(domain and key).");
+
+        DECLARE_TOKEN_DB()
+
+        auto blacks = make_empty_cache_ptr<blackaddrs>();
+        READ_DB_TOKEN_NO_THROW(token_type::blackaddrs, std::nullopt, baact.sym_id, blacks);
+
+        if(blacks) {
+            EVT_ASSERT2(blacks->addrs.find(baact.addr) == blacks->addrs.end(), address_is_blacked_exception, "Address: {} is already blacked", baact.addr);
+            blacks->addrs.emplace(baact.addr);
+            UPD_DB_TOKEN(token_type::blackaddrs, *blacks);
+        }
+        else {
+            auto nblacks = blackaddrs();
+            nblacks.addrs.emplace(baact.addr);
+            ADD_DB_TOKEN(token_type::blackaddrs, nblacks);
+        }
+    }
+    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+}
+EVT_ACTION_IMPL_END()
+
+
 }}} // namespace evt::chain::contracts

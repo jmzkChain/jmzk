@@ -40,6 +40,34 @@ struct eq_comparator {
     }
 };
 
+template<typename Storage>
+struct less_comparator {
+    struct visitor : public fc::visitor<bool> {
+        visitor(const Storage &b)
+            : b_(b) {}
+
+        template<typename ValueType>
+        bool
+        operator()(const ValueType& a) const {
+            const auto& b = b_.template get<ValueType>();
+            return a < b;
+        }
+
+        const Storage& b_;
+    };
+
+    static bool
+    apply(const Storage& a, const Storage& b) {
+        if(a.which() < b.which()) {
+            return true;
+        }
+        else if(a.which() == b.which()) {
+            return a.visit(visitor(b));
+        }
+        return false;
+    }
+};
+
 }}}
 
 #endif // COMMON_HPP

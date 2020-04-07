@@ -60,9 +60,11 @@ using group_def       = group;
 using balance_type    = evt::chain::asset;
 using address_type    = evt::chain::address;
 using address_list    = small_vector<address_type, 4>;
+using address_set     = fc::flat_set<address_type, std::less<address_type>, fc::small_vector<address_type, 4>>;
 using conf_key        = evt::chain::conf_key;
 using percent_type    = evt::chain::percent_type;
 using percent_slim    = evt::chain::percent_slim;
+using script_name     = evt::chain::script_name;
 
 struct token_def {
     token_def() = default;
@@ -150,6 +152,11 @@ struct fungible_def {
     asset total_supply;
     
     meta_list metas;
+};
+
+struct blackaddrs {
+    symbol_id_type sym_id;
+    address_set    addrs;
 };
 
 enum class suspend_status {
@@ -343,6 +350,12 @@ struct validator_def {
 
 enum class unstake_op {
     propose = 0, cancel, settle
+};
+
+struct script_def {
+    script_name name;
+    string      content;
+    user_id     creator;
 };
 
 struct newdomain {
@@ -745,6 +758,28 @@ struct toactivetkns {
     EVT_ACTION_VER1(toactivetkns);
 };
 
+struct newscript {
+    script_name name;
+    string      content;
+    user_id     creator;
+
+    EVT_ACTION_VER1(newscript);
+};
+
+struct updscript {
+    script_name name;
+    string      content;
+
+    EVT_ACTION_VER1(updscript);
+};
+
+struct blackaddr {
+    symbol_id_type sym_id;
+    address_type   addr;
+
+    EVT_ACTION_VER1(blackaddr);
+};
+
 }}}  // namespace evt::chain::contracts
 
 FC_REFLECT(evt::chain::contracts::token_def, (domain)(name)(owner)(metas));
@@ -754,6 +789,7 @@ FC_REFLECT(evt::chain::contracts::permission_def, (name)(threshold)(authorizers)
 FC_REFLECT(evt::chain::contracts::domain_def, (name)(creator)(create_time)(issue)(transfer)(manage)(metas));
 FC_REFLECT(evt::chain::contracts::fungible_def_genesis, (name)(sym_name)(sym)(creator)(create_time)(issue)(manage)(total_supply)(metas));
 FC_REFLECT(evt::chain::contracts::fungible_def, (name)(sym_name)(sym)(creator)(create_time)(issue)(transfer)(manage)(total_supply)(metas));
+FC_REFLECT(evt::chain::contracts::blackaddrs, (sym_id)(addrs));
 
 FC_REFLECT_ENUM(evt::chain::contracts::suspend_status, (proposed)(executed)(failed)(cancelled));
 FC_REFLECT(evt::chain::contracts::suspend_def, (name)(proposer)(status)(trx)(signed_keys)(signatures));
@@ -783,6 +819,8 @@ FC_REFLECT(evt::chain::contracts::passive_bonus_slim, (sym_id)(rate)(base_charge
 FC_REFLECT(evt::chain::contracts::stakepool_def, (sym_id)(demand_r)(demand_t)(demand_q)(demand_w)(fixed_r)(fixed_t)(begin_time)(total)(purchase_threshold));
 FC_REFLECT(evt::chain::contracts::validator_def, (name)(creator)(create_time)(last_updated_time)(signer)(withdraw)(manage)(commission)(initial_net_value)(current_net_value)(total_units));
 FC_REFLECT_ENUM(evt::chain::contracts::unstake_op, (propose)(cancel)(settle));
+
+FC_REFLECT(evt::chain::contracts::script_def, (name)(content)(creator));
 
 FC_REFLECT(evt::chain::contracts::newdomain, (name)(creator)(issue)(transfer)(manage));
 FC_REFLECT(evt::chain::contracts::issuetoken, (domain)(names)(owner));
@@ -827,3 +865,6 @@ FC_REFLECT(evt::chain::contracts::staketkns, (staker)(validator)(amount)(type)(f
 FC_REFLECT(evt::chain::contracts::unstaketkns, (staker)(validator)(units)(sym_id)(op));
 FC_REFLECT(evt::chain::contracts::toactivetkns, (staker)(validator)(sym_id));
 FC_REFLECT(evt::chain::contracts::recvstkbonus, (validator)(sym_id));
+FC_REFLECT(evt::chain::contracts::newscript, (name)(content)(creator));
+FC_REFLECT(evt::chain::contracts::updscript, (name)(content));
+FC_REFLECT(evt::chain::contracts::blackaddr, (sym_id)(addr));

@@ -182,6 +182,7 @@ FC_DECLARE_DERIVED_EXCEPTION( fungible_address_exception,       fungible_excepti
 FC_DECLARE_DERIVED_EXCEPTION( math_overflow_exception,          fungible_exception, 3040407, "Operations resulted in overflow." );
 FC_DECLARE_DERIVED_EXCEPTION( balance_exception,                fungible_exception, 3040408, "Not enough balance left." );
 FC_DECLARE_DERIVED_EXCEPTION( fungible_cannot_update_exception, fungible_exception, 3040409, "Some parts of this FT cannot be updated due to some limitations" );
+FC_DECLARE_DERIVED_EXCEPTION( address_is_blacked_exception,     fungible_exception, 3040410, "This address is blacked" );
 
 FC_DECLARE_DERIVED_EXCEPTION( suspend_exception,                   action_exception,  3040500, "Suspend exception" );
 FC_DECLARE_DERIVED_EXCEPTION( unknown_suspend_exception,           suspend_exception, 3040501, "Suspend transaction does not exist." );

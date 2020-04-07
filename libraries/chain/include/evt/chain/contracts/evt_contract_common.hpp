@@ -164,6 +164,12 @@ get_db_key<fungible_def>(const fungible_def& v) {
 
 template<>
 name128
+get_db_key<blackaddrs>(const blackaddrs& v) {
+    return v.sym_id;
+}
+
+template<>
+name128
 get_db_key<evt_link_object>(const evt_link_object& v) {
     return v.link_id;
 }
