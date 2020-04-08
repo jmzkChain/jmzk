@@ -111,7 +111,7 @@ public:
             s /= 1000'000;
         }
 #else
-        if(control_.head_block_num() >= 100) {
+        if(control_.head_block_num() >= 1) {
             s /= 1000'000;
         }
 #endif

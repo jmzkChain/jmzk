@@ -398,6 +398,25 @@ calculate_passive_bonus(token_database_cache& tokendb_cache,
     return std::make_pair(amount, 0l);
 }
 
+void
+check_address_blacked(token_database_cache& tokendb_cache, symbol_id_type sym_id, const address& addr) {
+    switch(addr.type()) {
+    case address::reserved_t:
+    case address::generated_t: {
+        return;
+    }
+    case address::public_key_t: {
+        auto blacks = make_empty_cache_ptr<blackaddrs>();
+        READ_DB_TOKEN_NO_THROW(token_type::blackaddrs, std::nullopt, sym_id, blacks);
+        if(blacks == nullptr) {
+            return;
+        }
+
+        EVT_ASSERT2(blacks->addrs.find(addr) == blacks->addrs.end(), address_is_blacked_exception, "Address: {} is blocked", addr);
+    }
+    }  // switch
+}
+
 template<typename PROPERTY>
 void
 transfer_fungible_internal(apply_context& context,
@@ -409,9 +428,12 @@ transfer_fungible_internal(apply_context& context,
     using namespace boost::safe_numerics;
     DECLARE_TOKEN_DB()
 
+    auto sym = total.sym();
+    check_address_blacked(tokendb_cache, sym.id(), from);
+    check_address_blacked(tokendb_cache, sym.id(), to);
+
     PROPERTY pfrom, pto;
 
-    auto sym = total.sym();
     if constexpr(std::is_same_v<PROPERTY, property_stakes>) {
         READ_DB_ASSET(from, evt_sym(), pfrom);
     }
@@ -476,6 +498,7 @@ transfer_fungible(apply_context& context,
                   action_name    act,
                   bool           pay_bonus = true) {
     auto sym = total.sym();
+    
     if(sym == evt_sym() || sym == pevt_sym()) {
         transfer_fungible_internal<property_stakes>(context, from, to, total, act, pay_bonus);
     }

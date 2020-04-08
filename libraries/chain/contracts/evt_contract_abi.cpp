@@ -352,6 +352,13 @@ evt_contract_abi() {
     });
 
     evt_abi.structs.emplace_back( struct_def {
+        "blackaddr", "", {
+            {"sym_id", "symbol_id_type"},
+            {"addr", "address"}
+        }
+    });
+
+    evt_abi.structs.emplace_back( struct_def {
         "newsuspend", "", {
             {"name", "proposal_name"},
             {"proposer", "user_id"},

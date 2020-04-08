@@ -261,13 +261,14 @@ EVT_ACTION_IMPL_BEGIN(blackaddr) {
         auto blacks = make_empty_cache_ptr<blackaddrs>();
         READ_DB_TOKEN_NO_THROW(token_type::blackaddrs, std::nullopt, baact.sym_id, blacks);
 
-        if(blacks) {
-            EVT_ASSERT2(blacks->addrs.find(baact.addr) == blacks->addrs.end(), address_is_blacked_exception, "Address: {} is already blacked", baact.addr);
+        if(blacks != nullptr) {
+            EVT_ASSERT2(blacks->addrs.find(baact.addr) == blacks->addrs.end(), address_is_blacked_exception, "Address: {} is already in black-list", baact.addr);
             blacks->addrs.emplace(baact.addr);
             UPD_DB_TOKEN(token_type::blackaddrs, *blacks);
         }
         else {
             auto nblacks = blackaddrs();
+            nblacks.sym_id = baact.sym_id;
             nblacks.addrs.emplace(baact.addr);
             ADD_DB_TOKEN(token_type::blackaddrs, nblacks);
         }

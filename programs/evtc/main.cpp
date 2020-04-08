@@ -965,6 +965,21 @@ struct set_fungible_subcommands {
             auto act = create_action(N128(.fungible), (domain_key)std::to_string(dfact.number.sym().id()), dfact);
             send_actions({act});
         });
+
+        auto bacmd = actionRoot->add_subcommand("black", localized("Black specific address"));
+        bacmd->add_option("sym_id", sym_id, localized("Symbol id of fungible"))->required();
+        bacmd->add_option("address", address, localized("Address to receive issued asset"))->required();
+
+        add_standard_transaction_options(bacmd);
+
+        bacmd->callback([this] {
+            blackaddr baact;
+            baact.sym_id = sym_id;
+            baact.addr   = get_address(address);
+
+            auto act = create_action(N128(.fungible), (domain_key)std::to_string(sym_id), baact);
+            send_actions({act});
+        });
     }
 };
 

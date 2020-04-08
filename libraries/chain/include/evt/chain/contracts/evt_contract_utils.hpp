@@ -243,6 +243,8 @@ EVT_ACTION_IMPL_BEGIN(paycharge) {
     try {
         DECLARE_TOKEN_DB()
 
+        check_address_blacked(tokendb_cache, EVT_SYM_ID, pcact.payer);
+
         property_stakes evt, pevt;
         READ_DB_ASSET_NO_THROW_NO_NEW(pcact.payer, pevt_sym(), pevt);
         auto paid = std::min((int64_t)pcact.charge, pevt.amount);
