@@ -1529,7 +1529,7 @@ struct set_producer_subcommands {
     string  producer;
     string  confkey;
     int64_t confvalue;
-    bool    postgres;
+    bool    postgres = false;
     string  prodsjson;
 
     vector<string> prodkeys;
