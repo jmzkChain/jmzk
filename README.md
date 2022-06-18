@@ -1,6 +1,4 @@
-![jmzkChain Logo]
-
-## **World's First Token-customized Blockchain for the Token Economy and for Everyone.**
+## **World's First Blockchain and the Boost Engine for Regulation and Security.**
 
 ![Build Status](https://codebuild.us-east-2.amazonaws.com/badges?uuid=eyJlbmNyeXB0ZWREYXRhIjoiTFFYVEF1UDVXaVZrWGNUOVlKSnphcElOMFBzZUFjZ0QwZHpoNCtseVdFdTVoa3hHeWpOQ1ZzWk51bUVHTXlIRjk4Z1d4UFJrUmVyQ2xVaWhHSkxabURJPSIsIml2UGFyYW1ldGVyU3BlYyI6IkFIWFJNOHZsVjZGOThuVzQiLCJtYXRlcmlhbFNldFNlcmlhbCI6MX0%3D&branch=master)
 
