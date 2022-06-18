@@ -1,15 +1,15 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
-#include <evt/chain/types.hpp>
+#include <jmzk/chain/types.hpp>
 
-namespace evt { namespace chain { namespace contracts {
+namespace jmzk { namespace chain { namespace contracts {
 
 using type_name   = string;
 using field_name  = string;
-using action_name = evt::chain::action_name;
+using action_name = jmzk::chain::action_name;
 
 struct type_def {
 public:
@@ -112,11 +112,11 @@ public:
     vector<enum_def>    enums;
 };
 
-}}}  // namespace evt::chain::contracts
+}}}  // namespace jmzk::chain::contracts
 
-FC_REFLECT(evt::chain::contracts::type_def, (new_type_name)(type));
-FC_REFLECT(evt::chain::contracts::field_def, (name)(type));
-FC_REFLECT(evt::chain::contracts::struct_def, (name)(base)(fields));
-FC_REFLECT(evt::chain::contracts::variant_def, (name)(fields));
-FC_REFLECT(evt::chain::contracts::enum_def, (name)(integer)(fields));
-FC_REFLECT(evt::chain::contracts::abi_def, (types)(structs)(variants)(enums));
+FC_REFLECT(jmzk::chain::contracts::type_def, (new_type_name)(type));
+FC_REFLECT(jmzk::chain::contracts::field_def, (name)(type));
+FC_REFLECT(jmzk::chain::contracts::struct_def, (name)(base)(fields));
+FC_REFLECT(jmzk::chain::contracts::variant_def, (name)(fields));
+FC_REFLECT(jmzk::chain::contracts::enum_def, (name)(integer)(fields));
+FC_REFLECT(jmzk::chain::contracts::abi_def, (types)(structs)(variants)(enums));

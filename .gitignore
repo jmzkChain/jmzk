@@ -42,13 +42,13 @@ build-*/
 cmake-build-*/
 diff/
 
-bind/pyevt/build
-bind/pyevt/dist
-bind/pyevt/pyevt.egg-info
+bind/pyjmzk/build
+bind/pyjmzk/dist
+bind/pyjmzk/pyjmzk.egg-info
 
 sdks/pysdk/build
 sdks/pysdk/dist
-sdks/pysdk/pyevtsdk.egg-info
+sdks/pysdk/pyjmzksdk.egg-info
 
 loadtest/trafficgen/build
 loadtest/trafficgen/dist

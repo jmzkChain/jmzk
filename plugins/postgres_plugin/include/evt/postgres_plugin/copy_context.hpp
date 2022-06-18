@@ -1,15 +1,15 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
 #include <string>
 #include <memory>
 #include <fmt/format.h>
-#include <evt/postgres_plugin/evt_pg.hpp>
+#include <jmzk/postgres_plugin/jmzk_pg.hpp>
 
-namespace evt {
+namespace jmzk {
 
 struct copy_context : boost::noncopyable {
 public:
@@ -33,4 +33,4 @@ private:
     friend class pg;
 };
 
-}  // namespace evt
+}  // namespace jmzk

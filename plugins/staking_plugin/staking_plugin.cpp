@@ -1,18 +1,18 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/staking_plugin/staking_plugin.hpp>
+#include <jmzk/staking_plugin/staking_plugin.hpp>
 
-#include <evt/chain/types.hpp>
-#include <evt/chain/global_property_object.hpp>
-#include <evt/chain/plugin_interface.hpp>
-#include <evt/chain/contracts/types.hpp>
+#include <jmzk/chain/types.hpp>
+#include <jmzk/chain/global_property_object.hpp>
+#include <jmzk/chain/plugin_interface.hpp>
+#include <jmzk/chain/contracts/types.hpp>
 
-namespace evt {
+namespace jmzk {
 
-using namespace evt::chain;
-using namespace evt::chain::contracts;
+using namespace jmzk::chain;
+using namespace jmzk::chain::contracts;
 
 static appbase::abstract_plugin& _staking_plugin = app().register_plugin<staking_plugin>();
 
@@ -22,7 +22,7 @@ public:
 
     struct staking_config {
         account_name     validator;
-        fc::microseconds evtwd_provider_timeout_us;
+        fc::microseconds jmzkwd_provider_timeout_us;
         public_key_type  payer;
 
         std::map<chain::public_key_type, signature_provider_type> signature_providers;
@@ -79,7 +79,7 @@ staking_plugin_impl::applied_block(const block_state_ptr& bs) {
 
     auto recv      = recvstkbonus();
     recv.validator = config_.validator;
-    recv.sym_id    = EVT_SYM_ID;
+    recv.sym_id    = jmzk_SYM_ID;
 
     auto trx = signed_transaction();
     trx.actions.emplace_back(action(N128(.staking), config_.validator, recv));
@@ -133,12 +133,12 @@ staking_plugin::set_program_options(options_description&, options_description& c
         ("staking-signature-provider", boost::program_options::value<vector<string>>()->composing()->multitoken(),
             "Key=Value pairs in the form <public-key>=<provider-spec>\n"
             "Where:\n"
-            "   <public-key>    \tis a string form of a vaild EVT public key\n\n"
+            "   <public-key>    \tis a string form of a vaild jmzk public key\n\n"
             "   <provider-spec> \tis a string in the form <provider-type>:<data>\n\n"
-            "   <provider-type> \tis KEY, or EVTWD\n\n"
-            "   KEY:<data>      \tis a string form of a valid EVT private key which maps to the provided public key\n\n"
-            "   EVTWD:<data>    \tis the URL where evtwd is available and the approptiate wallet(s) are unlocked")
-        ("staking-evtwd-provider-timeout", boost::program_options::value<int32_t>()->default_value(5), "Limits the maximum time (in milliseconds) that is allowed for pushing staking trx to a evtwd provider for signing")
+            "   <provider-type> \tis KEY, or jmzkWD\n\n"
+            "   KEY:<data>      \tis a string form of a valid jmzk private key which maps to the provided public key\n\n"
+            "   jmzkWD:<data>    \tis the URL where jmzkwd is available and the approptiate wallet(s) are unlocked")
+        ("staking-jmzkwd-provider-timeout", boost::program_options::value<int32_t>()->default_value(5), "Limits the maximum time (in milliseconds) that is allowed for pushing staking trx to a jmzkwd provider for signing")
     ;
 }
 
@@ -150,17 +150,17 @@ make_key_signature_provider(const private_key_type& key) {
 }
 
 static staking_plugin_impl::signature_provider_type
-make_evtwd_signature_provider(const std::shared_ptr<staking_plugin_impl>& impl, const string& url_str, const public_key_type pubkey) {
-    auto evtwd_url = fc::url(url_str);
+make_jmzkwd_signature_provider(const std::shared_ptr<staking_plugin_impl>& impl, const string& url_str, const public_key_type pubkey) {
+    auto jmzkwd_url = fc::url(url_str);
     std::weak_ptr<staking_plugin_impl> weak_impl = impl;
 
-    return [weak_impl, evtwd_url, pubkey](const chain::digest_type& digest) {
+    return [weak_impl, jmzkwd_url, pubkey](const chain::digest_type& digest) {
         auto impl = weak_impl.lock();
         if(impl) {
             fc::variant params;
             fc::to_variant(std::make_pair(digest, pubkey), params);
-            auto deadline = impl->config_.evtwd_provider_timeout_us.count() >= 0 ? fc::time_point::now() + impl->config_.evtwd_provider_timeout_us : fc::time_point::maximum();
-            return app().get_plugin<http_client_plugin>().get_client().post_sync(evtwd_url, params, deadline).as<chain::signature_type>();
+            auto deadline = impl->config_.jmzkwd_provider_timeout_us.count() >= 0 ? fc::time_point::now() + impl->config_.jmzkwd_provider_timeout_us : fc::time_point::maximum();
+            return app().get_plugin<http_client_plugin>().get_client().post_sync(jmzkwd_url, params, deadline).as<chain::signature_type>();
         }
         else {
             return signature_type();
@@ -182,12 +182,12 @@ staking_plugin::plugin_initialize(const variables_map& options) {
             for(const auto& key_spec_pair : key_spec_pairs) {
                 try {
                     auto delim = key_spec_pair.find("=");
-                    EVT_ASSERT(delim != std::string::npos, plugin_config_exception, "Missing \"=\" in the key spec pair");
+                    jmzk_ASSERT(delim != std::string::npos, plugin_config_exception, "Missing \"=\" in the key spec pair");
                     auto pub_key_str = key_spec_pair.substr(0, delim);
                     auto spec_str    = key_spec_pair.substr(delim + 1);
 
                     auto spec_delim = spec_str.find(":");
-                    EVT_ASSERT(spec_delim != std::string::npos, plugin_config_exception, "Missing \":\" in the key spec pair");
+                    jmzk_ASSERT(spec_delim != std::string::npos, plugin_config_exception, "Missing \":\" in the key spec pair");
                     auto spec_type_str = spec_str.substr(0, spec_delim);
                     auto spec_data     = spec_str.substr(spec_delim + 1);
 
@@ -200,11 +200,11 @@ staking_plugin::plugin_initialize(const variables_map& options) {
                             "Public key provided with private key should be paired, provided: {p1}, expected: {p2}", ("p1", privkey.get_public_key())("p2",pubkey));
 
                     }
-                    else if(spec_type_str == "EVTWD") {
-                        config.signature_providers[pubkey] = make_evtwd_signature_provider(my_, spec_data, pubkey);
+                    else if(spec_type_str == "jmzkWD") {
+                        config.signature_providers[pubkey] = make_jmzkwd_signature_provider(my_, spec_data, pubkey);
                     }
                     else {
-                        EVT_THROW(plugin_config_exception, "Invalid key provider");
+                        jmzk_THROW(plugin_config_exception, "Invalid key provider");
                     }
                 }
                 catch(...) {
@@ -213,10 +213,10 @@ staking_plugin::plugin_initialize(const variables_map& options) {
             }
         }
 
-        EVT_ASSERT(config.signature_providers.find(config.payer) != config.signature_providers.cend(),
+        jmzk_ASSERT(config.signature_providers.find(config.payer) != config.signature_providers.cend(),
             plugin_config_exception, "Must provide signature provider for payer");
 
-        config.evtwd_provider_timeout_us = fc::milliseconds(options.at("staking-evtwd-provider-timeout").as<int32_t>());
+        config.jmzkwd_provider_timeout_us = fc::milliseconds(options.at("staking-jmzkwd-provider-timeout").as<int32_t>());
     }
     FC_LOG_AND_RETHROW();
 
@@ -235,4 +235,4 @@ staking_plugin::plugin_shutdown() {
     my_.reset();
 }
 
-} // namespace evt
+} // namespace jmzk

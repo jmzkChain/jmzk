@@ -1,10 +1,10 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/wallet_plugin/se_wallet.hpp>
-#include <evt/wallet_plugin/macos_user_auth.h>
-#include <evt/chain/exceptions.hpp>
+#include <jmzk/wallet_plugin/se_wallet.hpp>
+#include <jmzk/wallet_plugin/macos_user_auth.h>
+#include <jmzk/chain/exceptions.hpp>
 
 #include <fc/crypto/openssl.hpp>
 
@@ -15,7 +15,7 @@
 
 #include <future>
 
-namespace evt { namespace wallet {
+namespace jmzk { namespace wallet {
 
 using namespace fc::crypto::r1;
 
@@ -243,7 +243,7 @@ struct se_wallet_impl {
 
         promise<bool> prom;
         future<bool>  fut = prom.get_future();
-        macos_user_auth(auth_callback, &prom, CFSTR("remove a key from your EVT wallet"));
+        macos_user_auth(auth_callback, &prom, CFSTR("remove a key from your jmzk wallet"));
         if(!fut.get())
             FC_THROW_EXCEPTION(chain::wallet_invalid_password_exception, "Local user authentication failed");
 
@@ -287,7 +287,7 @@ check_signed() {
 
     if(is_valid != errSecSuccess) {
         wlog("Application does not have a valid signature; Secure Enclave support disabled");
-        EVT_THROW(secure_enclave_exception, "");
+        jmzk_THROW(secure_enclave_exception, "");
     }
 }
 
@@ -322,7 +322,7 @@ se_wallet::se_wallet()
         }
     }
 
-    EVT_THROW(secure_enclave_exception, "Secure Enclave not supported on this hardware");
+    jmzk_THROW(secure_enclave_exception, "Secure Enclave not supported on this hardware");
 }
 
 se_wallet::~se_wallet() {
@@ -340,7 +340,7 @@ se_wallet::is_locked() const {
 
 void
 se_wallet::lock() {
-    EVT_ASSERT(!is_locked(), wallet_locked_exception, "You can not lock an already locked wallet");
+    jmzk_ASSERT(!is_locked(), wallet_locked_exception, "You can not lock an already locked wallet");
     my->locked = true;
 }
 
@@ -348,7 +348,7 @@ void
 se_wallet::unlock(string password) {
     promise<bool> prom;
     future<bool>  fut = prom.get_future();
-    macos_user_auth(detail::auth_callback, &prom, CFSTR("unlock your EVT wallet"));
+    macos_user_auth(detail::auth_callback, &prom, CFSTR("unlock your jmzk wallet"));
     if(!fut.get())
         FC_THROW_EXCEPTION(chain::wallet_invalid_password_exception, "Local user authentication failed");
     my->locked = false;
@@ -388,7 +388,7 @@ se_wallet::create_key(string key_type) {
 
 bool
 se_wallet::remove_key(string key) {
-    EVT_ASSERT(!is_locked(), wallet_locked_exception, "You can not remove a key from a locked wallet");
+    jmzk_ASSERT(!is_locked(), wallet_locked_exception, "You can not remove a key from a locked wallet");
     return my->remove_key(key);
 }
 
@@ -397,4 +397,4 @@ se_wallet::try_sign_digest(const digest_type digest, const public_key_type publi
     return my->try_sign_digest(digest, public_key);
 }
 
-}}  // namespace evt::wallet
+}}  // namespace jmzk::wallet

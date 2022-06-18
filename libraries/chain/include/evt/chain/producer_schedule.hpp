@@ -1,13 +1,13 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <chainbase/chainbase.hpp>
-#include <evt/chain/config.hpp>
-#include <evt/chain/types.hpp>
+#include <jmzk/chain/config.hpp>
+#include <jmzk/chain/types.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 /**
  *  Used as part of the producer_schedule_type, mapps the producer name to their key.
@@ -100,8 +100,8 @@ operator!=(const producer_schedule_type& a, const producer_schedule_type& b) {
     return !(a == b);
 }
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
-FC_REFLECT(evt::chain::producer_key, (producer_name)(block_signing_key));
-FC_REFLECT(evt::chain::producer_schedule_type, (version)(producers));
-FC_REFLECT(evt::chain::shared_producer_schedule_type, (version)(producers));
+FC_REFLECT(jmzk::chain::producer_key, (producer_name)(block_signing_key));
+FC_REFLECT(jmzk::chain::producer_schedule_type, (version)(producers));
+FC_REFLECT(jmzk::chain::shared_producer_schedule_type, (version)(producers));

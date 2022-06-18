@@ -12,12 +12,12 @@ TEST_CASE_METHOD(contracts_test, "newdomain_test", "[contracts]") {
     const char* test_data = R"=====(
         {
           "name" : "domain",
-          "creator" : "EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
+          "creator" : "jmzk5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
           "issue" : {
             "name" : "issue",
             "threshold" : 1,
             "authorizers": [{
-                "ref": "[A] EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
+                "ref": "[A] jmzk5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
                 "weight": 1
               }
             ]
@@ -35,7 +35,7 @@ TEST_CASE_METHOD(contracts_test, "newdomain_test", "[contracts]") {
             "name": "manage",
             "threshold": 1,
             "authorizers": [{
-                "ref": "[A] EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
+                "ref": "[A] jmzk5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
                 "weight": 1
               }
             ]
@@ -99,7 +99,7 @@ TEST_CASE_METHOD(contracts_test, "issuetoken_test", "[contracts]") {
           "t5"
         ],
         "owner": [
-          "EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2"
+          "jmzk5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2"
         ]
     }
     )=====";
@@ -120,7 +120,7 @@ TEST_CASE_METHOD(contracts_test, "issuetoken_test", "[contracts]") {
 
     CHECK_THROWS_AS(my_tester->push_action(N(issuetoken), name128(get_domain_name()), N128(.issue), var.get_object(), key_seeds, address(N(.domain), name128(get_domain_name()), 0)), charge_exceeded_exception);
 
-    my_tester->add_money(address(N(.domain), name128(get_domain_name()), 0), asset(10'000'000, symbol(5, EVT_SYM_ID)));
+    my_tester->add_money(address(N(.domain), name128(get_domain_name()), 0), asset(10'000'000, symbol(5, jmzk_SYM_ID)));
     my_tester->push_action(N(issuetoken), name128(get_domain_name()), N128(.issue), var.get_object(), key_seeds, address(N(.domain), name128(get_domain_name()), 0));
 
     istk.domain = get_domain_name(1);
@@ -169,8 +169,8 @@ TEST_CASE_METHOD(contracts_test, "transfer_test", "[contracts]") {
       "domain": "cookie",
       "name": "t1",
       "to": [
-        "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
-        "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+        "jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+        "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
       ],
       "memo":"memo"
     }
@@ -201,8 +201,8 @@ TEST_CASE_METHOD(contracts_test, "transfer_test", "[contracts]") {
     CHECK_THROWS_AS(my_tester->push_action(N(transfer), name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer), address_reserved_exception);
 
     trf.to.clear();
-    trf.to.emplace_back("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX");
-    trf.to.emplace_back("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV");
+    trf.to.emplace_back("jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX");
+    trf.to.emplace_back("jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV");
     to_variant(trf, var);
     my_tester->push_action(N(transfer), name128(get_domain_name()), N128(t1), var.get_object(), key_seeds, payer);
 

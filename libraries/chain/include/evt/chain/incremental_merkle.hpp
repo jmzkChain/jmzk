@@ -1,13 +1,13 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
-#include <evt/chain/merkle.hpp>
-#include <evt/chain/types.hpp>
+#include <jmzk/chain/merkle.hpp>
+#include <jmzk/chain/types.hpp>
 #include <fc/io/raw.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 namespace detail {
 
@@ -264,6 +264,6 @@ public:
 typedef incremental_merkle_impl<digest_type>                incremental_merkle;
 typedef incremental_merkle_impl<digest_type, shared_vector> shared_incremental_merkle;
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
-FC_REFLECT(evt::chain::incremental_merkle, (_active_nodes)(_node_count));
+FC_REFLECT(jmzk::chain::incremental_merkle, (_active_nodes)(_node_count));

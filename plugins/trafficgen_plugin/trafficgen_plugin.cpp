@@ -1,35 +1,35 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/trafficgen_plugin/trafficgen_plugin.hpp>
+#include <jmzk/trafficgen_plugin/trafficgen_plugin.hpp>
 
 #include <signal.h>
 #include <boost/asio/post.hpp>
 
-#include <evt/chain/exceptions.hpp>
-#include <evt/chain/transaction.hpp>
-#include <evt/chain/token_database.hpp>
+#include <jmzk/chain/exceptions.hpp>
+#include <jmzk/chain/transaction.hpp>
+#include <jmzk/chain/token_database.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
 
-#include <evt/chain_plugin/chain_plugin.hpp>
-#include <evt/chain/plugin_interface.hpp>
-#include <evt/chain/exceptions.hpp>
-#include <evt/chain/types.hpp>
+#include <jmzk/chain_plugin/chain_plugin.hpp>
+#include <jmzk/chain/plugin_interface.hpp>
+#include <jmzk/chain/exceptions.hpp>
+#include <jmzk/chain/types.hpp>
 
-namespace evt {
+namespace jmzk {
 
 static appbase::abstract_plugin& _trafficgen_plugin = app().register_plugin<trafficgen_plugin>();
 
-using evt::chain::address;
-using evt::chain::action;
-using evt::chain::block_id_type;
-using evt::chain::block_state_ptr;
-using evt::chain::packed_transaction_ptr;
-using evt::chain::private_key_type;
-using evt::chain::transaction_metadata;
+using jmzk::chain::address;
+using jmzk::chain::action;
+using jmzk::chain::block_id_type;
+using jmzk::chain::block_state_ptr;
+using jmzk::chain::packed_transaction_ptr;
+using jmzk::chain::private_key_type;
+using jmzk::chain::transaction_metadata;
 
 class trafficgen_plugin_impl : public std::enable_shared_from_this<trafficgen_plugin_impl> {
 public:
@@ -76,8 +76,8 @@ trafficgen_plugin_impl::init() {
 
 void
 trafficgen_plugin_impl::push_trx(const action& act, const block_id_type& id) {
-    using namespace evt::chain;
-    using namespace evt::chain::contracts;
+    using namespace jmzk::chain;
+    using namespace jmzk::chain::contracts;
 
     auto now = fc::time_point::now();
     auto trx = signed_transaction();
@@ -99,8 +99,8 @@ trafficgen_plugin_impl::push_trx(const action& act, const block_id_type& id) {
 
 int
 trafficgen_plugin_impl::pre_nft_setup(const block_id_type& id) {
-    using namespace evt::chain;
-    using namespace evt::chain::contracts;
+    using namespace jmzk::chain;
+    using namespace jmzk::chain::contracts;
 
     auto& tdb = db_.token_db();
     if(tdb.exists_token(token_type::domain, std::nullopt, "tttesttt")) {
@@ -163,8 +163,8 @@ trafficgen_plugin_impl::pre_nft_setup(const block_id_type& id) {
 
 void
 trafficgen_plugin_impl::pre_ft_generate(const block_id_type& id) {
-    using namespace evt::chain;
-    using namespace evt::chain::contracts;
+    using namespace jmzk::chain;
+    using namespace jmzk::chain::contracts;
 
     ilog("Generating ft ptrxs...");
 
@@ -172,7 +172,7 @@ trafficgen_plugin_impl::pre_ft_generate(const block_id_type& id) {
 
     auto tt   = transferft();
     tt.from   = from_addr_;
-    tt.number = asset(10, evt_sym());
+    tt.number = asset(10, jmzk_sym());
     tt.memo   = "FROM THE NEW WORLD";
 
     auto ttact = action(N128(.fungible), N128(1), tt);
@@ -201,8 +201,8 @@ trafficgen_plugin_impl::pre_ft_generate(const block_id_type& id) {
 
 void
 trafficgen_plugin_impl::pre_nft_generate(const block_id_type& id) {
-    using namespace evt::chain;
-    using namespace evt::chain::contracts;
+    using namespace jmzk::chain;
+    using namespace jmzk::chain::contracts;
 
     ilog("Generating nft ptrxs...");
 
@@ -302,7 +302,7 @@ trafficgen_plugin::plugin_initialize(const variables_map& options) {
     my_->start_num_ = options.at("traffic-start-num").as<uint32_t>();
     my_->total_num_ = options.at("traffic-total").as<size_t>();
 
-    EVT_ASSERT(my_->total_num_ <= 200'000, chain::plugin_config_exception, "Total number of generating transactions cannot be large than 200'000");
+    jmzk_ASSERT(my_->total_num_ <= 200'000, chain::plugin_config_exception, "Total number of generating transactions cannot be large than 200'000");
 
     if(options.count("traffic-from") && options.count("traffic-from-priv")) {
         my_->from_addr_ = address(options.at("traffic-from").as<std::string>());
@@ -312,7 +312,7 @@ trafficgen_plugin::plugin_initialize(const variables_map& options) {
 
     if(options.count("traffic-type")) {
         auto type = options.at("traffic-type").as<std::string>();
-        EVT_ASSERT(type == "ft" || type == "nft", chain::plugin_config_exception, "Not valid value for --traffic-type option");
+        jmzk_ASSERT(type == "ft" || type == "nft", chain::plugin_config_exception, "Not valid value for --traffic-type option");
         my_->type_ = type;
     }
 }
@@ -328,4 +328,4 @@ trafficgen_plugin::plugin_shutdown() {
     my_.reset();
 }
 
-}  // namespace evt
+}  // namespace jmzk

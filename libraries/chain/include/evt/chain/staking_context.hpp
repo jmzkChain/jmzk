@@ -1,13 +1,13 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
 */
 #pragma once
 #include <chainbase/chainbase.hpp>
-#include <evt/chain/config.hpp>
-#include <evt/chain/types.hpp>
+#include <jmzk/chain/config.hpp>
+#include <jmzk/chain/types.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 struct validator_context {
     account_name name;
@@ -19,6 +19,6 @@ public:
     uint32_t period_start_num = 0;
 };
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
-FC_REFLECT(evt::chain::staking_context, (period_version)(period_start_num));
+FC_REFLECT(jmzk::chain::staking_context, (period_version)(period_start_num));

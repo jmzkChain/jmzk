@@ -1,12 +1,12 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
-#include <evt/chain/config.hpp>
-#include <evt/chain/types.hpp>
+#include <jmzk/chain/config.hpp>
+#include <jmzk/chain/types.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 struct chain_staking_config {
     int32_t unstake_pending_days = config::default_unstake_pending_days;
@@ -15,6 +15,6 @@ struct chain_staking_config {
     int32_t staking_threshold    = config::default_staking_threshold;
 };
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
-FC_REFLECT(evt::chain::chain_staking_config, (unstake_pending_days)(cycles_per_period)(blocks_per_cycle)(staking_threshold));
+FC_REFLECT(jmzk::chain::chain_staking_config, (unstake_pending_days)(cycles_per_period)(blocks_per_cycle)(staking_threshold));

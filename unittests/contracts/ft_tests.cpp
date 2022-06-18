@@ -11,15 +11,15 @@ auto CHECK_EQUAL = [](auto& lhs, auto& rhs) {
 TEST_CASE_METHOD(contracts_test, "newfungible_test", "[contracts]") {
     const char* test_data = R"=====(
     {
-      "name": "EVT",
-      "sym_name": "EVT",
+      "name": "jmzk",
+      "sym_name": "jmzk",
       "sym": "5,S#3",
-      "creator": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+      "creator": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
       "issue" : {
         "name" : "issue",
         "threshold" : 1,
         "authorizers": [{
-            "ref": "[A] EVT6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
+            "ref": "[A] jmzk6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
             "weight": 1
           }
         ]
@@ -28,7 +28,7 @@ TEST_CASE_METHOD(contracts_test, "newfungible_test", "[contracts]") {
         "name": "manage",
         "threshold": 1,
         "authorizers": [{
-            "ref": "[A] EVT6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
+            "ref": "[A] jmzk6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
             "weight": 1
           }
         ]
@@ -39,7 +39,7 @@ TEST_CASE_METHOD(contracts_test, "newfungible_test", "[contracts]") {
 
     auto var            = fc::json::from_string(test_data);
     auto fungible_payer = address(N(.domain), ".fungible", 0);
-    my_tester->add_money(fungible_payer, asset(10'000'000, symbol(5, EVT_SYM_ID)));
+    my_tester->add_money(fungible_payer, asset(10'000'000, symbol(5, jmzk_SYM_ID)));
     auto& tokendb = my_tester->control->token_db();
     auto& cache = my_tester->control->token_db_cache();
 
@@ -84,15 +84,15 @@ TEST_CASE_METHOD(contracts_test, "newfungible_test", "[contracts]") {
 TEST_CASE_METHOD(contracts_test, "newfungible_v2_test", "[contracts]") {
     const char* test_data = R"=====(
     {
-      "name": "EVT",
-      "sym_name": "EVT",
+      "name": "jmzk",
+      "sym_name": "jmzk",
       "sym": "5,S#5",
-      "creator": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+      "creator": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
       "issue" : {
         "name" : "issue",
         "threshold" : 1,
         "authorizers": [{
-            "ref": "[A] EVT6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
+            "ref": "[A] jmzk6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
             "weight": 1
           }
         ]
@@ -110,7 +110,7 @@ TEST_CASE_METHOD(contracts_test, "newfungible_v2_test", "[contracts]") {
         "name": "manage",
         "threshold": 1,
         "authorizers": [{
-            "ref": "[A] EVT6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
+            "ref": "[A] jmzk6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
             "weight": 1
           }
         ]
@@ -121,7 +121,7 @@ TEST_CASE_METHOD(contracts_test, "newfungible_v2_test", "[contracts]") {
 
     auto var            = fc::json::from_string(test_data);
     auto fungible_payer = address(N(.domain), ".fungible", 0);
-    my_tester->add_money(fungible_payer, asset(10'000'000, symbol(get_sym_id(2), EVT_SYM_ID)));
+    my_tester->add_money(fungible_payer, asset(10'000'000, symbol(get_sym_id(2), jmzk_SYM_ID)));
     auto& tokendb = my_tester->control->token_db();
     auto& cache = my_tester->control->token_db_cache();
 
@@ -177,7 +177,7 @@ TEST_CASE_METHOD(contracts_test, "updfungible_test", "[contracts]") {
         "name" : "issue",
         "threshold" : 1,
         "authorizers": [{
-            "ref": "[A] EVT6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
+            "ref": "[A] jmzk6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
             "weight": 2
           }
         ]
@@ -186,7 +186,7 @@ TEST_CASE_METHOD(contracts_test, "updfungible_test", "[contracts]") {
         "name": "manage",
         "threshold": 1,
         "authorizers": [{
-            "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+            "ref": "[A] jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
             "weight": 1
           }
         ]
@@ -234,7 +234,7 @@ TEST_CASE_METHOD(contracts_test, "updfungible_v2_test", "[contracts]") {
         "name" : "issue",
         "threshold" : 1,
         "authorizers": [{
-            "ref": "[A] EVT6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
+            "ref": "[A] jmzk6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
             "weight": 2
           }
         ]
@@ -252,7 +252,7 @@ TEST_CASE_METHOD(contracts_test, "updfungible_v2_test", "[contracts]") {
         "name": "manage",
         "threshold": 1,
         "authorizers": [{
-            "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+            "ref": "[A] jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
             "weight": 1
           }
         ]
@@ -299,7 +299,7 @@ TEST_CASE_METHOD(contracts_test, "updfungible_v2_test", "[contracts]") {
 TEST_CASE_METHOD(contracts_test, "issuefungible_test", "[contracts]") {
     const char* test_data = R"=====(
     {
-      "address": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+      "address": "jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
       "number" : "12.00000 S#1",
       "memo": "memo"
     }
@@ -366,8 +366,8 @@ TEST_CASE_METHOD(contracts_test, "issuefungible_test", "[contracts]") {
 TEST_CASE_METHOD(contracts_test, "transferft_test", "[contracts]") {
     const char* test_data = R"=====(
     {
-      "from": "EVT6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
-      "to": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+      "from": "jmzk6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
+      "to": "jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
       "number" : "12.00000 S#0",
       "memo": "memo"
     }
@@ -408,7 +408,7 @@ TEST_CASE_METHOD(contracts_test, "transferft_test", "[contracts]") {
     payer2 = address(N(.fungible), name128::from_number(get_sym_id()), 0);
     CHECK_THROWS_AS(my_tester->push_action(N(transferft), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer2), charge_exceeded_exception);
 
-    my_tester->add_money(payer2, asset(100'000'000, evt_sym()));
+    my_tester->add_money(payer2, asset(100'000'000, jmzk_sym()));
     my_tester->push_action(N(transferft), N128(.fungible), (name128)std::to_string(get_sym_id()), var.get_object(), key_seeds, payer2);
 
     auto& tokendb = my_tester->control->token_db();
@@ -427,7 +427,7 @@ TEST_CASE_METHOD(contracts_test, "transferft_test", "[contracts]") {
 TEST_CASE_METHOD(contracts_test, "recycleft_test", "[contracts]") {
     const char* test_data = R"=======(
     {
-        "address": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+        "address": "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
         "number": "5.00000 S#1",
         "memo": "memo"
     }
@@ -471,7 +471,7 @@ TEST_CASE_METHOD(contracts_test, "recycleft_test", "[contracts]") {
 TEST_CASE_METHOD(contracts_test, "destroyft_test", "[contracts]") {
     const char* test_data = R"=======(
     {
-        "address": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+        "address": "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
         "number": "5.00000 S#1",
         "memo": "memo"
     }
@@ -510,44 +510,44 @@ TEST_CASE_METHOD(contracts_test, "destroyft_test", "[contracts]") {
     CHECK(100000 == ast_to_after.amount - ast_to_before.amount);
 }
 
-TEST_CASE_METHOD(contracts_test, "evt2pevt_test", "[contracts]") {
+TEST_CASE_METHOD(contracts_test, "jmzk2pjmzk_test", "[contracts]") {
     const char* test_data = R"=======(
     {
-        "from": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
-        "to": "EVT548LviBDF6EcknKnKUMeaPUrZN2uhfCB1XrwHsURZngakYq9Vx",
+        "from": "jmzk6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
+        "to": "jmzk548LviBDF6EcknKnKUMeaPUrZN2uhfCB1XrwHsURZngakYq9Vx",
         "number": "5.00000 S#4",
         "memo": "memo"
     }
     )=======";
 
     auto  var     = fc::json::from_string(test_data);
-    auto  e2p     = var.as<evt2pevt>();
+    auto  e2p     = var.as<jmzk2pjmzk>();
     auto& tokendb = my_tester->control->token_db();
 
     e2p.from = payer;
     to_variant(e2p, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(evt2pevt), N128(.fungible), (name128)std::to_string(evt_sym().id()), var.get_object(), key_seeds, payer), asset_symbol_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(jmzk2pjmzk), N128(.fungible), (name128)std::to_string(jmzk_sym().id()), var.get_object(), key_seeds, payer), asset_symbol_exception);
 
     e2p.number = asset::from_string(string("5.00000 S#1"));
     e2p.to = address();
     to_variant(e2p, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(evt2pevt), N128(.fungible), (name128)std::to_string(evt_sym().id()), var.get_object(), key_seeds, payer), address_reserved_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(jmzk2pjmzk), N128(.fungible), (name128)std::to_string(jmzk_sym().id()), var.get_object(), key_seeds, payer), address_reserved_exception);
 
     e2p.to = address(".hi", "test", 123);
     to_variant(e2p, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(evt2pevt), N128(.fungible), (name128)std::to_string(evt_sym().id()), var.get_object(), key_seeds, payer), address_reserved_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(jmzk2pjmzk), N128(.fungible), (name128)std::to_string(jmzk_sym().id()), var.get_object(), key_seeds, payer), address_reserved_exception);
 
     e2p.number = asset::from_string(string("5.000000 S#1"));
     e2p.to = key;
     to_variant(e2p, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(evt2pevt), N128(.fungible), (name128)std::to_string(evt_sym().id()), var.get_object(), key_seeds, payer), asset_symbol_exception);
+    CHECK_THROWS_AS(my_tester->push_action(N(jmzk2pjmzk), N128(.fungible), (name128)std::to_string(jmzk_sym().id()), var.get_object(), key_seeds, payer), asset_symbol_exception);
 
     e2p.number = asset::from_string(string("5.00000 S#1"));
     to_variant(e2p, var);
-    my_tester->push_action(N(evt2pevt), N128(.fungible), (name128)std::to_string(evt_sym().id()), var.get_object(), key_seeds, payer);
+    my_tester->push_action(N(jmzk2pjmzk), N128(.fungible), (name128)std::to_string(jmzk_sym().id()), var.get_object(), key_seeds, payer);
 
     asset ast;
-    READ_DB_ASSET(key, pevt_sym(), ast);
+    READ_DB_ASSET(key, pjmzk_sym(), ast);
     CHECK(500000 == ast.amount());
 
     auto tf   = var.as<transferft>();
@@ -556,7 +556,7 @@ TEST_CASE_METHOD(contracts_test, "evt2pevt_test", "[contracts]") {
     tf.number = asset(50, symbol(5,2));
 
     to_variant(tf, var);
-    CHECK_THROWS_AS(my_tester->push_action(N(transferft), N128(.fungible), (name128)std::to_string(pevt_sym().id()), var.get_object(), key_seeds, payer), unsatisfied_authorization);
+    CHECK_THROWS_AS(my_tester->push_action(N(transferft), N128(.fungible), (name128)std::to_string(pjmzk_sym().id()), var.get_object(), key_seeds, payer), unsatisfied_authorization);
 
     my_tester->produce_blocks();
 }
@@ -602,7 +602,7 @@ TEST_CASE_METHOD(contracts_test, "group_addr_test", "[contracts]") {
     auto tf   = transferft();
     tf.from   = payer;
     tf.to     = addr1;
-    tf.number = asset(1000, evt_sym());
+    tf.number = asset(1000, jmzk_sym());
     tf.memo   = "hello";
 
     // transfer to group address

@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <stdint.h>
@@ -28,9 +28,9 @@
 #include <fc/io/raw.hpp>
 #include <fc/io/varint.hpp>
 
-#include <evt/chain/name.hpp>
-#include <evt/chain/name128.hpp>
-#include <evt/chain/chain_id_type.hpp>
+#include <jmzk/chain/name.hpp>
+#include <jmzk/chain/name128.hpp>
+#include <jmzk/chain/chain_id_type.hpp>
 
 #define OBJECT_CTOR1(NAME)                                   \
     NAME() = delete;                                         \
@@ -54,7 +54,7 @@ public:                                                                \
     BOOST_PP_OVERLOAD(OBJECT_CTOR, __VA_ARGS__) \
     (__VA_ARGS__)
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 using std::all_of;
 using std::deque;
 using std::enable_shared_from_this;
@@ -171,11 +171,11 @@ using bytes               = vector<char>;
  */
 typedef fc::small_vector<std::pair<uint16_t, vector<char>>, 2> extensions_type;
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
 FC_REFLECT_ENUM(
-    evt::chain::object_type,
+    jmzk::chain::object_type,
     (null_object_type)(global_property_object_type)(dynamic_global_property_object_type)
     (block_summary_object_type)(transaction_object_type)(reversible_block_object_type)
     (OBJECT_TYPE_COUNT));
-FC_REFLECT(evt::chain::void_t, );
+FC_REFLECT(jmzk::chain::void_t, );

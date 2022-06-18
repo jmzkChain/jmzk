@@ -1,7 +1,7 @@
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/genesis_state_root_key.cpp.in ${CMAKE_CURRENT_BINARY_DIR}/genesis_state_root_key.cpp)
 
 ## SORT .cpp by most likely to change / break compile
-add_library(evt_chain
+add_library(jmzk_chain
     address.cpp
     asset.cpp
     percent_slim.cpp
@@ -29,9 +29,9 @@ add_library(evt_chain
 
     contracts/authorizer_ref.cpp
     contracts/group.cpp
-    contracts/evt_link.cpp
-    contracts/evt_org.cpp
-    contracts/evt_contract_abi.cpp
+    contracts/jmzk_link.cpp
+    contracts/jmzk_org.cpp
+    contracts/jmzk_contract_abi.cpp
     contracts/abi_serializer.cpp
     
     contracts/lua_engine.cpp
@@ -39,7 +39,7 @@ add_library(evt_chain
     contracts/lua_json.cpp
 )
 
-add_library(evt_chain_lite SHARED
+add_library(jmzk_chain_lite SHARED
     address.cpp
     asset.cpp
     percent_slim.cpp
@@ -52,15 +52,15 @@ add_library(evt_chain_lite SHARED
     contracts/abi_serializer.cpp
     contracts/group.cpp
     contracts/authorizer_ref.cpp
-    contracts/evt_link.cpp
-    contracts/evt_contract_abi.cpp
+    contracts/jmzk_link.cpp
+    contracts/jmzk_contract_abi.cpp
 )
 
 find_package(LLVM REQUIRED)
 find_package(luajit REQUIRED)
 
-target_link_libraries(evt_chain evt_utilities fc chainbase rocksdb fmt-header-only sparsehash sss ${LLVM_LIBRARIES} ${LUAJIT_LIBRARIES})
-target_include_directories(evt_chain PUBLIC
+target_link_libraries(jmzk_chain jmzk_utilities fc chainbase rocksdb fmt-header-only sparsehash sss ${LLVM_LIBRARIES} ${LUAJIT_LIBRARIES})
+target_include_directories(jmzk_chain PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
     "${CMAKE_CURRENT_BINARY_DIR}/include"
     "${LLVM_INCLUDE_DIR}"
@@ -68,8 +68,8 @@ target_include_directories(evt_chain PUBLIC
     "${LUAJIT_INCLUDE_DIR}"
 )
 
-target_link_libraries(evt_chain_lite fc_lite fmt-header-only sparsehash ${LLVM_LIBRARIES})
-target_include_directories(evt_chain_lite PUBLIC
+target_link_libraries(jmzk_chain_lite fc_lite fmt-header-only sparsehash ${LLVM_LIBRARIES})
+target_include_directories(jmzk_chain_lite PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
     "${CMAKE_CURRENT_BINARY_DIR}/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/../chainbase/include" 
@@ -78,22 +78,22 @@ target_include_directories(evt_chain_lite PUBLIC
     "${LLVM_C_INCLUDE_DIR}"
 )
 
-target_compile_definitions(evt_chain PUBLIC FMT_STRING_ALIAS=1)
+target_compile_definitions(jmzk_chain PUBLIC FMT_STRING_ALIAS=1)
 
 # find_package(TBB)
 
 if(ENABLE_MAINNET_BUILD)
-    target_compile_definitions(evt_chain PUBLIC MAINNET_BUILD)
+    target_compile_definitions(jmzk_chain PUBLIC MAINNET_BUILD)
 endif()
 
-install(TARGETS evt_chain
+install(TARGETS jmzk_chain
     RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} OPTIONAL
     LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} OPTIONAL
     ARCHIVE DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} OPTIONAL
 )
-install_directory_permissions( DIRECTORY ${CMAKE_INSTALL_FULL_INCLUDEDIR}/evt/chain )
+install_directory_permissions( DIRECTORY ${CMAKE_INSTALL_FULL_INCLUDEDIR}/jmzk/chain )
 
-install(TARGETS evt_chain_lite
+install(TARGETS jmzk_chain_lite
     RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} OPTIONAL
     LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} OPTIONAL
     ARCHIVE DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} OPTIONAL

@@ -4,9 +4,9 @@
  */
 #include <appbase/application.hpp>
 
-#include <evt/wallet_plugin/yubihsm_wallet.hpp>
-#include <evt/chain/exceptions.hpp>
-#include <evt/wallet_plugin/yubihsm.h>
+#include <jmzk/wallet_plugin/yubihsm_wallet.hpp>
+#include <jmzk/chain/exceptions.hpp>
+#include <jmzk/wallet_plugin/yubihsm.h>
 
 #include <fc/crypto/openssl.hpp>
 
@@ -18,7 +18,7 @@
 
 #include <dlfcn.h>
 
-namespace evt { namespace wallet {
+namespace jmzk { namespace wallet {
 
 using namespace fc::crypto::r1;
 
@@ -261,7 +261,7 @@ struct yubihsm_wallet_impl {
             FC_THROW_EXCEPTION(chain::wallet_exception, "Cannot create caps mask");
 
         try {
-            if((rc = api.util_generate_key_ec(session, &new_key_id, "evtwd created key", authkey_domains, &creation_caps, YH_ALGO_EC_P256)))
+            if((rc = api.util_generate_key_ec(session, &new_key_id, "jmzkwd created key", authkey_domains, &creation_caps, YH_ALGO_EC_P256)))
                 FC_THROW_EXCEPTION(chain::wallet_exception, "yh_util_generate_key_ec failed: ${m}", ("m", api.strerror(rc)));
             return populate_key_map_with_keyid(new_key_id)->first;
         }
@@ -356,4 +356,4 @@ yubihsm_wallet::try_sign_digest(const digest_type digest, const public_key_type 
     return my->try_sign_digest(digest, public_key);
 }
 
-}}  // namespace evt::wallet
+}}  // namespace jmzk::wallet

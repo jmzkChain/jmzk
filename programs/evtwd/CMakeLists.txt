@@ -1,4 +1,4 @@
-add_executable(evtwd main.cpp)
+add_executable(jmzkwd main.cpp)
 
 if(UNIX AND NOT APPLE)
     set(rt_library rt)
@@ -6,18 +6,18 @@ endif()
 
 find_package(Jemalloc QUIET)
 if(JEMALLOC_FOUND)
-    message(STATUS "Found jemalloc; compiling evtwd with jemalloc")
+    message(STATUS "Found jemalloc; compiling jmzkwd with jemalloc")
     list(APPEND PLATFORM_SPECIFIC_LIBS jemalloc)
 endif()
 
-target_link_libraries(evtwd
+target_link_libraries(jmzkwd
     PRIVATE appbase
     PRIVATE wallet_api_plugin wallet_plugin
     PRIVATE http_plugin
-    PRIVATE evt_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS}
+    PRIVATE jmzk_chain fc ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS}
 )
 
 install(
-    TARGETS evtwd
+    TARGETS jmzkwd
     RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} OPTIONAL
 )

@@ -1,15 +1,15 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
 #include <string>
 #include <fc/reflect/reflect.hpp>
 #include <fc/variant.hpp>
-#include <evt/chain/types.hpp>
+#include <jmzk/chain/types.hpp>
 
-namespace evt { namespace chain { namespace contracts {
+namespace jmzk { namespace chain { namespace contracts {
 
 struct authorizer_ref {
 public:
@@ -80,15 +80,15 @@ private:
     friend struct fc::reflector<authorizer_ref>;
 };
 
-}}}  // namespac evt::chain::contracts
+}}}  // namespac jmzk::chain::contracts
 
 namespace fc {
 
 class variant;
-void to_variant(const evt::chain::contracts::authorizer_ref& ref, fc::variant& v);
-void from_variant(const fc::variant& v, evt::chain::contracts::authorizer_ref& ref);
+void to_variant(const jmzk::chain::contracts::authorizer_ref& ref, fc::variant& v);
+void from_variant(const fc::variant& v, jmzk::chain::contracts::authorizer_ref& ref);
 
 }  // namespace fc
 
-FC_REFLECT(evt::chain::contracts::authorizer_ref::script_name_t, (name));
-FC_REFLECT(evt::chain::contracts::authorizer_ref, (storage_));
+FC_REFLECT(jmzk::chain::contracts::authorizer_ref::script_name_t, (name));
+FC_REFLECT(jmzk::chain::contracts::authorizer_ref, (storage_));

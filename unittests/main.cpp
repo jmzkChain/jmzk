@@ -7,7 +7,7 @@
 
 #include <llvm/ADT/StringMap.h>
 
-std::string evt_unittests_dir = "tmp/evt_unittests";
+std::string jmzk_unittests_dir = "tmp/jmzk_unittests";
 
 CATCH_TRANSLATE_EXCEPTION(fc::exception& e) {
     return e.to_detail_string();
@@ -15,13 +15,13 @@ CATCH_TRANSLATE_EXCEPTION(fc::exception& e) {
 
 int
 main(int argc, char* argv[]) {
-    if(fc::exists(evt_unittests_dir)) {
-        fc::remove_all(evt_unittests_dir);
+    if(fc::exists(jmzk_unittests_dir)) {
+        fc::remove_all(jmzk_unittests_dir);
     }
     fc::logger::get().set_log_level(fc::log_level(fc::log_level::error));
 
     auto result = Catch::Session().run(argc, argv);
 
-    fc::remove_all(evt_unittests_dir);
+    fc::remove_all(jmzk_unittests_dir);
     return result;
 }

@@ -1,17 +1,17 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/chain/exceptions.hpp>
-#include <evt/chain_api_plugin/chain_api_plugin.hpp>
+#include <jmzk/chain/exceptions.hpp>
+#include <jmzk/chain_api_plugin/chain_api_plugin.hpp>
 
 #include <fc/io/json.hpp>
 
-namespace evt {
+namespace jmzk {
 
 static appbase::abstract_plugin& _chain_api_plugin = app().register_plugin<chain_api_plugin>();
 
-using namespace evt;
+using namespace jmzk;
 
 class chain_api_plugin_impl {
 public:
@@ -134,4 +134,4 @@ chain_api_plugin::plugin_startup() {
 void
 chain_api_plugin::plugin_shutdown() {}
 
-}  // namespace evt
+}  // namespace jmzk

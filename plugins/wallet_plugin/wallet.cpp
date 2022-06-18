@@ -1,8 +1,8 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/wallet_plugin/wallet.hpp>
+#include <jmzk/wallet_plugin/wallet.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -24,14 +24,14 @@
 #include <boost/range/adaptor/map.hpp>
 #include <boost/range/algorithm/copy.hpp>
 
-#include <evt/chain/exceptions.hpp>
+#include <jmzk/chain/exceptions.hpp>
 
 #ifndef WIN32
 #include <sys/stat.h>
 #include <sys/types.h>
 #endif
 
-namespace evt {
+namespace jmzk {
 namespace wallet {
 
 namespace detail {
@@ -135,7 +135,7 @@ public:
     private_key_type
     get_private_key(const public_key_type& id) const {
         auto has_key = try_get_private_key(id);
-        EVT_ASSERT(has_key, chain::key_nonexistent_exception, "Key doesn't exist!");
+        jmzk_ASSERT(has_key, chain::key_nonexistent_exception, "Key doesn't exist!");
         return *has_key;
     }
 
@@ -146,14 +146,14 @@ public:
     bool
     import_key(string wif_key) {
         private_key_type            priv(wif_key);
-        evt::chain::public_key_type wif_pub_key = priv.get_public_key();
+        jmzk::chain::public_key_type wif_pub_key = priv.get_public_key();
 
         auto itr = _keys.find(wif_pub_key);
         if(itr == _keys.end()) {
             _keys[wif_pub_key] = priv;
             return true;
         }
-        EVT_THROW(chain::key_exist_exception, "Key already in wallet");
+        jmzk_THROW(chain::key_exist_exception, "Key already in wallet");
     }
 
     // Removes a key from the wallet
@@ -168,7 +168,7 @@ public:
             _keys.erase(pub);
             return true;
         }
-        EVT_THROW(chain::key_nonexistent_exception, "Key not in wallet");
+        jmzk_THROW(chain::key_nonexistent_exception, "Key not in wallet");
     }
 
     string
@@ -180,7 +180,7 @@ public:
         if(key_type == "K1")
             priv_key = fc::crypto::private_key::generate<fc::ecc::private_key_shim>();
         else
-            EVT_THROW(chain::unsupported_key_type_exception, "Key type \"${kt}\" not supported by software wallet", ("kt", key_type));
+            jmzk_THROW(chain::unsupported_key_type_exception, "Key type \"${kt}\" not supported by software wallet", ("kt", key_type));
 
         import_key((string)priv_key);
         return (string)priv_key.get_public_key();
@@ -229,7 +229,7 @@ public:
             ofstream outfile{wallet_filename};
             if(!outfile) {
                 elog("Unable to open file: ${fn}", ("fn", wallet_filename));
-                EVT_THROW(wallet_exception, "Unable to open file: ${fn}", ("fn", wallet_filename));
+                jmzk_THROW(wallet_exception, "Unable to open file: ${fn}", ("fn", wallet_filename));
             }
             outfile.write(data.c_str(), data.length());
             outfile.flush();
@@ -255,9 +255,9 @@ public:
     const string _default_key_type          = "K1";
 };
 
-}}}  // namespace evt::wallet::detail
+}}}  // namespace jmzk::wallet::detail
 
-namespace evt { namespace wallet {
+namespace jmzk { namespace wallet {
 
 soft_wallet::soft_wallet(const wallet_data& initial_data)
     : my(new detail::soft_wallet_impl(*this, initial_data)) {}
@@ -276,7 +276,7 @@ soft_wallet::get_wallet_filename() const {
 
 bool
 soft_wallet::import_key(string wif_key) {
-    EVT_ASSERT(!is_locked(), wallet_locked_exception, "Unable to import key on a locked wallet");
+    jmzk_ASSERT(!is_locked(), wallet_locked_exception, "Unable to import key on a locked wallet");
 
     if(my->import_key(wif_key)) {
         save_wallet_file();
@@ -287,7 +287,7 @@ soft_wallet::import_key(string wif_key) {
 
 bool
 soft_wallet::remove_key(string key) {
-    EVT_ASSERT(!is_locked(), wallet_locked_exception, "Unable to import key on a locked wallet");
+    jmzk_ASSERT(!is_locked(), wallet_locked_exception, "Unable to import key on a locked wallet");
 
     if(my->remove_key(key)) {
         save_wallet_file();
@@ -298,7 +298,7 @@ soft_wallet::remove_key(string key) {
 
 string
 soft_wallet::create_key(string key_type) {
-    EVT_ASSERT(!is_locked(), wallet_locked_exception, "Unable to import key on a locked wallet");
+    jmzk_ASSERT(!is_locked(), wallet_locked_exception, "Unable to import key on a locked wallet");
 
     string ret = my->create_key(key_type);
     save_wallet_file();
@@ -333,7 +333,7 @@ soft_wallet::encrypt_keys() {
 void
 soft_wallet::lock() {
     try {
-        EVT_ASSERT(!is_locked(), wallet_locked_exception, "Unable to lock a locked wallet");
+        jmzk_ASSERT(!is_locked(), wallet_locked_exception, "Unable to lock a locked wallet");
         encrypt_keys();
         for(auto key : my->_keys)
             key.second = private_key_type();
@@ -356,7 +356,7 @@ soft_wallet::unlock(string password) {
         my->_keys     = std::move(pk.keys);
         my->_checksum = pk.checksum;
     }
-    EVT_RETHROW_EXCEPTIONS(chain::wallet_invalid_password_exception,
+    jmzk_RETHROW_EXCEPTIONS(chain::wallet_invalid_password_exception,
                            "Invalid password for wallet: \"${wallet_name}\"", ("wallet_name", get_wallet_filename()))
 }
 
@@ -369,27 +369,27 @@ soft_wallet::check_password(string password) {
         auto pk        = fc::raw::unpack<plain_keys>(decrypted);
         FC_ASSERT(pk.checksum == pw);
     }
-    EVT_RETHROW_EXCEPTIONS(chain::wallet_invalid_password_exception,
+    jmzk_RETHROW_EXCEPTIONS(chain::wallet_invalid_password_exception,
                            "Invalid password for wallet: \"${wallet_name}\"", ("wallet_name", get_wallet_filename()))
 }
 
 void
 soft_wallet::set_password(string password) {
     if(!is_new())
-        EVT_ASSERT(!is_locked(), wallet_locked_exception, "The wallet must be unlocked before the password can be set");
+        jmzk_ASSERT(!is_locked(), wallet_locked_exception, "The wallet must be unlocked before the password can be set");
     my->_checksum = fc::sha512::hash(password.c_str(), password.size());
     lock();
 }
 
 map<public_key_type, private_key_type>
 soft_wallet::list_keys() {
-    EVT_ASSERT(!is_locked(), wallet_locked_exception, "Unable to list public keys of a locked wallet");
+    jmzk_ASSERT(!is_locked(), wallet_locked_exception, "Unable to list public keys of a locked wallet");
     return my->_keys;
 }
 
 flat_set<public_key_type>
 soft_wallet::list_public_keys() {
-    EVT_ASSERT(!is_locked(), wallet_locked_exception, "Unable to list public keys of a locked wallet");
+    jmzk_ASSERT(!is_locked(), wallet_locked_exception, "Unable to list public keys of a locked wallet");
     flat_set<public_key_type> keys;
     boost::copy(my->_keys | boost::adaptors::map_keys, std::inserter(keys, keys.end()));
     return keys;
@@ -408,7 +408,7 @@ soft_wallet::try_sign_digest(const digest_type digest, const public_key_type pub
 pair<public_key_type, private_key_type>
 soft_wallet::get_private_key_from_password(string account, string role, string password) const {
     auto seed = account + role + password;
-    EVT_ASSERT(seed.size(), wallet_exception, "seed should not be empty");
+    jmzk_ASSERT(seed.size(), wallet_exception, "seed should not be empty");
     auto secret = fc::sha256::hash(seed.c_str(), seed.size());
     auto priv   = private_key_type::regenerate<fc::ecc::private_key_shim>(secret);
     return std::make_pair(priv.get_public_key(), priv);
@@ -419,4 +419,4 @@ soft_wallet::set_wallet_filename(string wallet_filename) {
     my->_wallet_filename = wallet_filename;
 }
 
-}}  // namespace evt::wallet
+}}  // namespace jmzk::wallet

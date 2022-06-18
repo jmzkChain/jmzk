@@ -1,15 +1,15 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
-#include <evt/http_plugin/http_plugin.hpp>
-#include <evt/producer_plugin/producer_plugin.hpp>
+#include <jmzk/http_plugin/http_plugin.hpp>
+#include <jmzk/producer_plugin/producer_plugin.hpp>
 
 #include <appbase/application.hpp>
 
-namespace evt {
+namespace jmzk {
 
 using namespace appbase;
 
@@ -34,4 +34,4 @@ public:
 private:
 };
 
-}  // namespace evt
+}  // namespace jmzk

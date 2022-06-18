@@ -24,12 +24,12 @@
 #include <fc/variant.hpp>
 #include <fc/network/platform_root_ca.hpp>
 
-#include <evt/chain/exceptions.hpp>
-#include <evt/chain_plugin/chain_plugin.hpp>
-#include <evt/http_plugin/http_plugin.hpp>
+#include <jmzk/chain/exceptions.hpp>
+#include <jmzk/chain_plugin/chain_plugin.hpp>
+#include <jmzk/http_plugin/http_plugin.hpp>
 
 using boost::asio::ip::tcp;
-namespace evt { namespace client { namespace http {
+namespace jmzk { namespace client { namespace http {
 
 namespace detail {
 class http_context_impl {
@@ -166,7 +166,7 @@ resolve_url(const http_context& context, const parsed_url& url) {
         is_loopback = is_loopback && addr.is_loopback();
 
         if(resolved_port) {
-            EVT_ASSERT(*resolved_port == port, chain::resolved_to_multiple_ports, "Service name \"${port}\" resolved to multiple ports and this is not supported!", ("port", url.port));
+            jmzk_ASSERT(*resolved_port == port, chain::resolved_to_multiple_ports, "Service name \"${port}\" resolved to multiple ports and this is not supported!", ("port", url.port));
         }
         else {
             resolved_port = port;
@@ -308,8 +308,8 @@ do_http_call(const connection_param& cp,
             else if(url.path.compare(0, net_func_base.size(), net_func_base) == 0) {
                 throw chain::missing_net_api_plugin_exception(FC_LOG_MESSAGE(error, "Net API plugin is not enabled"));
             }
-            else if(url.path.compare(0, evt_func_base.size(), evt_func_base) == 0) {
-                throw chain::missing_evt_api_plugin_exception(FC_LOG_MESSAGE(error, "EVT API plugin is not enabled"));
+            else if(url.path.compare(0, jmzk_func_base.size(), jmzk_func_base) == 0) {
+                throw chain::missing_jmzk_api_plugin_exception(FC_LOG_MESSAGE(error, "jmzk API plugin is not enabled"));
             }
             else if(url.path.compare(0, history_func_base.size(), history_func_base) == 0) {
                 throw chain::missing_history_api_plugin_exception(FC_LOG_MESSAGE(error, "History API plugin is not enabled"));
@@ -320,7 +320,7 @@ do_http_call(const connection_param& cp,
         }
     }
     else {
-        auto&& error_info = response_result.as<evt::error_results>().error;
+        auto&& error_info = response_result.as<jmzk::error_results>().error;
         // Construct fc exception from error
         auto& error_details = error_info.details;
 
@@ -337,4 +337,4 @@ do_http_call(const connection_param& cp,
     return response_result;
 }
 
-}}}  // namespace evt::client::http
+}}}  // namespace jmzk::client::http

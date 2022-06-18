@@ -8,7 +8,7 @@ import unittest
 
 import click
 
-from pyevt import abi, ecc, libevt
+from pyjmzk import abi, ecc, libjmzk
 
 from . import action, api, base, transaction
 
@@ -30,7 +30,7 @@ group_json_raw = '''
    "name":"5jxX",
    "group":{
       "name":"5jxXg",
-      "key":"EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+      "key":"jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
       "root":{
          "threshold":6,
          "weight":0,
@@ -41,17 +41,17 @@ group_json_raw = '''
                "weight":3,
                "nodes":[
                   {
-                     "key":"EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+                     "key":"jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
                      "weight":1
                   },
                   {
-                     "key":"EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+                     "key":"jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
                      "weight":1
                   }
                ]
             },
             {
-               "key":"EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+               "key":"jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
                "weight":3
             },
             {
@@ -59,11 +59,11 @@ group_json_raw = '''
                "weight":3,
                "nodes":[
                   {
-                     "key":"EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+                     "key":"jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
                      "weight":1
                   },
                   {
-                     "key":"EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+                     "key":"jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
                      "weight":2
                   }
                ]
@@ -78,7 +78,7 @@ group_json_raw = '''
 class Test(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        libevt.init_lib()
+        libjmzk.init_lib()
 
     def test_action_newdomain(self):
         name = fake_name()
@@ -417,9 +417,9 @@ def main(url, public_key, private_key):
     TG = transaction.TrxGenerator(url=url, payer=public_key)
     global user
     user = base.User.from_string(public_key, private_key)
-    global api, EvtAsset, AG
+    global api, jmzkAsset, AG
     api = api.Api(url)
-    EvtAsset = base.EvtAsset
+    jmzkAsset = base.jmzkAsset
     AG = action.ActionGenerator()
 
     suite = unittest.TestLoader().loadTestsFromTestCase(Test)

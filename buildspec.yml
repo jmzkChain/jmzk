@@ -24,10 +24,10 @@ phases:
       - ctest --verbose
 artifacts:
   files:
-    - 'build/bind/libevt/libevt.so'
-    - 'build/libraries/chain/libevt_chain_lite.so'
-    - 'build/libraries/fc/libfc_lite.so'
+    - "build/bind/libjmzk/libjmzk.so"
+    - "build/libraries/chain/libjmzk_chain_lite.so"
+    - "build/libraries/fc/libfc_lite.so"
   discard-paths: yes
 cache:
   paths:
-    - 'build/.ccache/**/*'
+    - "build/.ccache/**/*"

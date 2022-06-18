@@ -1,32 +1,32 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <boost/core/typeinfo.hpp>
 #include <fc/exception/exception.hpp>
 
-#define EVT_ASSERT(expr, exc_type, FORMAT, ...)            \
+#define jmzk_ASSERT(expr, exc_type, FORMAT, ...)            \
     FC_MULTILINE_MACRO_BEGIN                               \
     if(!(expr))                                            \
         FC_THROW_EXCEPTION(exc_type, FORMAT, __VA_ARGS__); \
     FC_MULTILINE_MACRO_END
 
-#define EVT_ASSERT2(expr, exc_type, FORMAT, ...)              \
+#define jmzk_ASSERT2(expr, exc_type, FORMAT, ...)              \
     FC_MULTILINE_MACRO_BEGIN                                  \
     if(!(expr))                                               \
         FC_THROW_EXCEPTION2(exc_type, FORMAT, ##__VA_ARGS__); \
     FC_MULTILINE_MACRO_END
 
-#define EVT_THROW(exc_type, FORMAT, ...)  throw exc_type(FC_LOG_MESSAGE(error, FORMAT, __VA_ARGS__));
-#define EVT_THROW2(exc_type, FORMAT, ...) throw exc_type(FC_LOG_MESSAGE2(error, FORMAT, ##__VA_ARGS__));
+#define jmzk_THROW(exc_type, FORMAT, ...)  throw exc_type(FC_LOG_MESSAGE(error, FORMAT, __VA_ARGS__));
+#define jmzk_THROW2(exc_type, FORMAT, ...) throw exc_type(FC_LOG_MESSAGE2(error, FORMAT, ##__VA_ARGS__));
 
 /**
  * Macro inspired from FC_RETHROW_EXCEPTIONS
  * The main difference here is that if the exception caught isn't of type "chain_exception"
  * This macro will rethrow the exception as the specified "exception_type"
  */
-#define EVT_RETHROW_EXCEPTIONS(exception_type, FORMAT, ...)                                                 \
+#define jmzk_RETHROW_EXCEPTIONS(exception_type, FORMAT, ...)                                                 \
     catch(const boost::interprocess::bad_alloc&) {                                                          \
         throw;                                                                                              \
     }                                                                                                       \
@@ -51,7 +51,7 @@
         throw fc::unhandled_exception(FC_LOG_MESSAGE(warn, FORMAT, __VA_ARGS__), std::current_exception()); \
     }
 
-#define EVT_RETHROW_EXCEPTIONS2(exception_type, FORMAT, ...)                                                 \
+#define jmzk_RETHROW_EXCEPTIONS2(exception_type, FORMAT, ...)                                                 \
     catch(const boost::interprocess::bad_alloc&) {                                                           \
         throw;                                                                                               \
     }                                                                                                        \
@@ -81,7 +81,7 @@
  * The main difference here is that if the exception caught isn't of type "chain_exception"
  * This macro will rethrow the exception as the specified "exception_type"
  */
-#define EVT_CAPTURE_AND_RETHROW(exception_type, ...)                                                               \
+#define jmzk_CAPTURE_AND_RETHROW(exception_type, ...)                                                               \
     catch(const boost::interprocess::bad_alloc&) {                                                                 \
         throw;                                                                                                     \
     }                                                                                                              \
@@ -105,12 +105,12 @@
                                       std::current_exception());                                                   \
     }
 
-#define EVT_RECODE_EXC(cause_type, effect_type)    \
+#define jmzk_RECODE_EXC(cause_type, effect_type)    \
     catch(const cause_type& e) {                   \
         throw(effect_type(e.what(), e.get_log())); \
     }
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 FC_DECLARE_EXCEPTION( chain_exception, 3000000, "blockchain exception" );
 
@@ -138,7 +138,7 @@ FC_DECLARE_DERIVED_EXCEPTION( tx_receipt_inconsistent_status,  transaction_excep
 FC_DECLARE_DERIVED_EXCEPTION( tx_no_action,                    transaction_exception, 3030008, "transaction should have at least one normal action." );
 FC_DECLARE_DERIVED_EXCEPTION( deadline_exception,              transaction_exception, 3030009, "transaction is timeout." );
 FC_DECLARE_DERIVED_EXCEPTION( max_charge_exceeded_exception,   transaction_exception, 3030010, "exceeded max charge paid");
-FC_DECLARE_DERIVED_EXCEPTION( charge_exceeded_exception,       transaction_exception, 3030011, "exceeded remaining EVT & Pinned EVT tokens" );
+FC_DECLARE_DERIVED_EXCEPTION( charge_exceeded_exception,       transaction_exception, 3030011, "exceeded remaining jmzk & Pinned jmzk tokens" );
 FC_DECLARE_DERIVED_EXCEPTION( payer_exception,                 transaction_exception, 3030012, "Invalid payer" );
 FC_DECLARE_DERIVED_EXCEPTION( too_many_tx_at_once,             transaction_exception, 3030013, "Pushing too many transactions at once" );
 FC_DECLARE_DERIVED_EXCEPTION( tx_too_big,                      transaction_exception, 3030014, "Transaction is too big" );
@@ -200,16 +200,16 @@ FC_DECLARE_DERIVED_EXCEPTION( meta_key_exception,     meta_exception,   3040601,
 FC_DECLARE_DERIVED_EXCEPTION( meta_value_exception,   meta_exception,   3040602, "Invalid meta value" );
 FC_DECLARE_DERIVED_EXCEPTION( meta_involve_exception, meta_exception,   3040603, "Creator is not involved." );
 
-FC_DECLARE_DERIVED_EXCEPTION( evt_link_exception,            action_exception,   3040700, "EVT-Link exception" );
-FC_DECLARE_DERIVED_EXCEPTION( evt_link_no_key_exception,     evt_link_exception, 3040701, "Specific segment key is not in this evt-link." );
-FC_DECLARE_DERIVED_EXCEPTION( evt_link_version_exception,    evt_link_exception, 3040702, "EVT-Link version is not valid.");
-FC_DECLARE_DERIVED_EXCEPTION( evt_link_id_exception,         evt_link_exception, 3040703, "EVT-Link id is not valid.");
-FC_DECLARE_DERIVED_EXCEPTION( evt_link_dupe_exception,       evt_link_exception, 3040704, "Duplicate EVT-Link.");
-FC_DECLARE_DERIVED_EXCEPTION( evt_link_type_exception,       evt_link_exception, 3040705, "Invalid EVT-Link type.");
-FC_DECLARE_DERIVED_EXCEPTION( evt_link_expiration_exception, evt_link_exception, 3040706, "EVT-Link is expired.");
-FC_DECLARE_DERIVED_EXCEPTION( evt_link_existed_exception,    evt_link_exception, 3040707, "EVT-Link is not existed.");
-FC_DECLARE_DERIVED_EXCEPTION( everipass_exception,           evt_link_exception, 3040708, "everiPass failed.");
-FC_DECLARE_DERIVED_EXCEPTION( everipay_exception,            evt_link_exception, 3040709, "everiPay failed.");
+FC_DECLARE_DERIVED_EXCEPTION( jmzk_link_exception,            action_exception,   3040700, "jmzk-Link exception" );
+FC_DECLARE_DERIVED_EXCEPTION( jmzk_link_no_key_exception,     jmzk_link_exception, 3040701, "Specific segment key is not in this jmzk-link." );
+FC_DECLARE_DERIVED_EXCEPTION( jmzk_link_version_exception,    jmzk_link_exception, 3040702, "jmzk-Link version is not valid.");
+FC_DECLARE_DERIVED_EXCEPTION( jmzk_link_id_exception,         jmzk_link_exception, 3040703, "jmzk-Link id is not valid.");
+FC_DECLARE_DERIVED_EXCEPTION( jmzk_link_dupe_exception,       jmzk_link_exception, 3040704, "Duplicate jmzk-Link.");
+FC_DECLARE_DERIVED_EXCEPTION( jmzk_link_type_exception,       jmzk_link_exception, 3040705, "Invalid jmzk-Link type.");
+FC_DECLARE_DERIVED_EXCEPTION( jmzk_link_expiration_exception, jmzk_link_exception, 3040706, "jmzk-Link is expired.");
+FC_DECLARE_DERIVED_EXCEPTION( jmzk_link_existed_exception,    jmzk_link_exception, 3040707, "jmzk-Link is not existed.");
+FC_DECLARE_DERIVED_EXCEPTION( everipass_exception,           jmzk_link_exception, 3040708, "everiPass failed.");
+FC_DECLARE_DERIVED_EXCEPTION( everipay_exception,            jmzk_link_exception, 3040709, "everiPay failed.");
 
 FC_DECLARE_DERIVED_EXCEPTION( prodvote_exception,          action_exception,   3040800, "Producer vote exception" );
 FC_DECLARE_DERIVED_EXCEPTION( prodvote_key_exception,      prodvote_exception, 3040801, "Unknown prodvote conf key.");
@@ -329,7 +329,7 @@ FC_DECLARE_DERIVED_EXCEPTION( plugin_exception,                      chain_excep
 FC_DECLARE_DERIVED_EXCEPTION( missing_chain_api_plugin_exception,    plugin_exception, 3130001, "Missing Chain API Plugin" );
 FC_DECLARE_DERIVED_EXCEPTION( missing_wallet_api_plugin_exception,   plugin_exception, 3130002, "Missing Wallet API Plugin" );
 FC_DECLARE_DERIVED_EXCEPTION( missing_net_api_plugin_exception,      plugin_exception, 3130003, "Missing Net API Plugin" );
-FC_DECLARE_DERIVED_EXCEPTION( missing_evt_api_plugin_exception,      plugin_exception, 3130004, "Missing EVT API Plugin" );
+FC_DECLARE_DERIVED_EXCEPTION( missing_jmzk_api_plugin_exception,      plugin_exception, 3130004, "Missing jmzk API Plugin" );
 FC_DECLARE_DERIVED_EXCEPTION( missing_history_api_plugin_exception,  plugin_exception, 3130005, "Missing History API Plugin" );
 FC_DECLARE_DERIVED_EXCEPTION( plugin_config_exception,               plugin_exception, 3130006, "Incorrect plugin configuration" );
 FC_DECLARE_DERIVED_EXCEPTION( missing_chain_plugin_exception,        plugin_exception, 3130008, "Missing Chain Plugin" );
@@ -381,10 +381,10 @@ FC_DECLARE_DERIVED_EXCEPTION( invalid_http_request,          http_exception,  31
 FC_DECLARE_DERIVED_EXCEPTION( exceed_deferred_request,       http_exception,  3180007, "exceed max http deferred request" );
 FC_DECLARE_DERIVED_EXCEPTION( alloc_deferred_fail,           http_exception,  3180008, "Failed to alloc deferred id" );
 
-FC_DECLARE_DERIVED_EXCEPTION( evt_link_plugin_exception,            chain_exception, 3190000, "evt-link plugin exception" );
-FC_DECLARE_DERIVED_EXCEPTION( evt_link_not_existed_now_excetpion,   evt_link_plugin_exception, 3190001, "EVT-Link is not existed currently" );
-FC_DECLARE_DERIVED_EXCEPTION( evt_link_already_watched_exception,   evt_link_plugin_exception, 3190002, "EVT-Link is already watched" );
-FC_DECLARE_DERIVED_EXCEPTION( exceed_evt_link_watch_time_exception, evt_link_plugin_exception, 3190003, "Exceed EVT-Link watch time" );
+FC_DECLARE_DERIVED_EXCEPTION( jmzk_link_plugin_exception,            chain_exception, 3190000, "jmzk-link plugin exception" );
+FC_DECLARE_DERIVED_EXCEPTION( jmzk_link_not_existed_now_excetpion,   jmzk_link_plugin_exception, 3190001, "jmzk-Link is not existed currently" );
+FC_DECLARE_DERIVED_EXCEPTION( jmzk_link_already_watched_exception,   jmzk_link_plugin_exception, 3190002, "jmzk-Link is already watched" );
+FC_DECLARE_DERIVED_EXCEPTION( exceed_jmzk_link_watch_time_exception, jmzk_link_plugin_exception, 3190003, "Exceed jmzk-Link watch time" );
 
 FC_DECLARE_DERIVED_EXCEPTION( resource_exhausted_exception, chain_exception, 3200000, "Resource exhausted exception" );
 FC_DECLARE_DERIVED_EXCEPTION( tx_net_usage_exceeded,        resource_exhausted_exception, 3200001, "Transaction exceeded the current network usage limit imposed on the transaction" );
@@ -427,4 +427,4 @@ FC_DECLARE_DERIVED_EXCEPTION( unknown_action_exception, execution_exception, 324
 FC_DECLARE_DERIVED_EXCEPTION( action_index_exception,   execution_exception, 3240002, "Invalid action index exception" );
 FC_DECLARE_DERIVED_EXCEPTION( action_version_exception, execution_exception, 3240003, "Invalid action version exception" );
 
-}} // evt::chain
+}} // jmzk::chain

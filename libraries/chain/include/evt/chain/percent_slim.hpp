@@ -1,13 +1,13 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <fmt/format.h>
-#include <evt/chain/exceptions.hpp>
-#include <evt/chain/types.hpp>
+#include <jmzk/chain/exceptions.hpp>
+#include <jmzk/chain/types.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 class percent_slim : public fc::reflect_init {
 public:
@@ -20,7 +20,7 @@ public:
 
     explicit percent_slim(uint32_t v)
         : v_(v) {
-        EVT_ASSERT(is_amount_within_range(), percent_type_exception, "magnitude of percent_slim value must be less than 10^5");
+        jmzk_ASSERT(is_amount_within_range(), percent_type_exception, "magnitude of percent_slim value must be less than 10^5");
     }
 
     percent_slim(const percent_type& p) {
@@ -59,27 +59,27 @@ public:
 
     void
     reflector_init() const {
-        EVT_ASSERT(is_amount_within_range(), percent_type_exception, "magnitude of percent_slim amount must be less than 10^5");
+        jmzk_ASSERT(is_amount_within_range(), percent_type_exception, "magnitude of percent_slim amount must be less than 10^5");
     }    
 
 private:
     fc::unsigned_int v_;
 };
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
 namespace fc {
 
 inline void
-to_variant(const evt::chain::percent_slim& var, fc::variant& vo) {
+to_variant(const jmzk::chain::percent_slim& var, fc::variant& vo) {
     vo = var.to_string();
 }
 
 inline void
-from_variant(const fc::variant& var, evt::chain::percent_slim& vo) {
-    vo = evt::chain::percent_slim::from_string(var.get_string());
+from_variant(const fc::variant& var, jmzk::chain::percent_slim& vo) {
+    vo = jmzk::chain::percent_slim::from_string(var.get_string());
 }
 
 }  // namespace fc
 
-FC_REFLECT(evt::chain::percent_slim, (v_));
+FC_REFLECT(jmzk::chain::percent_slim, (v_));

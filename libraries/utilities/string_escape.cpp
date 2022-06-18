@@ -1,12 +1,12 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 
-#include <evt/utilities/string_escape.hpp>
+#include <jmzk/utilities/string_escape.hpp>
 #include <sstream>
 
-namespace evt { namespace utilities {
+namespace jmzk { namespace utilities {
 
   std::string escape_string_for_c_source_code(const std::string& input)
   {
@@ -51,5 +51,5 @@ namespace evt { namespace utilities {
     return escaped_string.str();
   }
 
-} } // end namespace evt::utilities
+} } // end namespace jmzk::utilities
 

@@ -1,10 +1,10 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
-namespace evt { namespace chain { namespace contracts {
+namespace jmzk { namespace chain { namespace contracts {
 
 /**
  * Implements setpsvbonus and distpsvbonus actions
@@ -18,14 +18,14 @@ enum class bonus_check_type {
 };
 
 auto check_n_rtn = [](auto& asset, auto sym, auto ctype) -> decltype(asset) {
-    EVT_ASSERT2(asset.sym() == sym, bonus_asset_exception, "Invalid symbol of assets, expected: {}, provided:  {}", sym, asset.sym());
+    jmzk_ASSERT2(asset.sym() == sym, bonus_asset_exception, "Invalid symbol of assets, expected: {}, provided:  {}", sym, asset.sym());
     switch(ctype) {
     case bonus_check_type::natural: {
-        EVT_ASSERT2(asset.amount() >= 0, bonus_asset_exception, "Invalid amount of assets, must be natural number. Provided: {}", asset);
+        jmzk_ASSERT2(asset.amount() >= 0, bonus_asset_exception, "Invalid amount of assets, must be natural number. Provided: {}", asset);
         break;
     }
     case bonus_check_type::positive: {
-        EVT_ASSERT2(asset.amount() > 0, bonus_asset_exception, "Invalid amount of assets, must be positive. Provided: {}", asset);
+        jmzk_ASSERT2(asset.amount() > 0, bonus_asset_exception, "Invalid amount of assets, must be positive. Provided: {}", asset);
         break;
     }
     }  // switch
@@ -38,7 +38,7 @@ check_bonus_receiver(const token_database& tokendb, const dist_receiver& receive
     switch(receiver.type()) {
     case dist_receiver_type::address: {
         auto& addr = receiver.get<address>();
-        EVT_ASSERT2(addr.is_public_key(), bonus_receiver_exception, "Only public key address can be used for receiving bonus now.");
+        jmzk_ASSERT2(addr.is_public_key(), bonus_receiver_exception, "Only public key address can be used for receiving bonus now.");
         break;
     }
     case dist_receiver_type::ftholders: {
@@ -46,7 +46,7 @@ check_bonus_receiver(const token_database& tokendb, const dist_receiver& receive
         auto  sym_id = sr.threshold.symbol_id();
 
         check_n_rtn(sr.threshold, sr.threshold.sym(), bonus_check_type::natural);
-        EVT_ASSERT2(tokendb.exists_token(token_type::fungible, std::nullopt, sym_id),
+        jmzk_ASSERT2(tokendb.exists_token(token_type::fungible, std::nullopt, sym_id),
             bonus_receiver_exception, "Provided bonus tokens, which has sym id: {}, used for receiving is not existed", sym_id);
         break;
     }
@@ -69,7 +69,7 @@ check_bonus_rules(const token_database& tokendb, const T& rules, asset amount) {
     for(auto& rule : rules) {
         switch(rule.type()) {
         case dist_rule_type::fixed: {
-            EVT_ASSERT2(remain_percent == 0, bonus_rules_order_exception,
+            jmzk_ASSERT2(remain_percent == 0, bonus_rules_order_exception,
                 "Rule #{} is not valid, fix rule should be defined in front of remain-percent rules", index);
             auto& fr  = rule.template get<dist_rule_type::fixed>();
             // check receiver
@@ -77,13 +77,13 @@ check_bonus_rules(const token_database& tokendb, const T& rules, asset amount) {
             // check sym and > 0
             auto& frv = check_n_rtn(fr.amount, sym, bonus_check_type::positive);
             // check large than remain
-            EVT_ASSERT2(frv.amount() <= remain, bonus_rules_exception,
+            jmzk_ASSERT2(frv.amount() <= remain, bonus_rules_exception,
                 "Rule #{} is not valid, its required amount: {} is large than remainning: {}", index, frv, asset(remain, sym));
             remain -= frv.amount();
             break;
         }
         case dist_rule_type::percent: {
-            EVT_ASSERT2(remain_percent == 0, bonus_rules_order_exception,
+            jmzk_ASSERT2(remain_percent == 0, bonus_rules_order_exception,
                 "Rule #{} is not valid, percent rule should be defined in front of remain-percent rules", index);
             auto& pr = rule.template get<dist_rule_type::percent>();
             // check receiver
@@ -91,33 +91,33 @@ check_bonus_rules(const token_database& tokendb, const T& rules, asset amount) {
 
             auto p = (percent_type)pr.percent;
             // check valid precent
-            EVT_ASSERT2(p > 0 && p <= 1, bonus_percent_value_exception,
+            jmzk_ASSERT2(p > 0 && p <= 1, bonus_percent_value_exception,
                 "Rule #{} is not valid, precent value should be in range (0,1]", index);
             auto prv = (int64_t)boost::multiprecision::floor(p * real_type(amount.amount()));
             // check large than remain
-            EVT_ASSERT2(prv <= remain, bonus_rules_exception,
+            jmzk_ASSERT2(prv <= remain, bonus_rules_exception,
                 "Rule #{} is not valid, its required amount: {} is large than remainning: {}", index, asset(prv, sym), asset(remain, sym));
             // check percent result is large than minial unit of asset
-            EVT_ASSERT2(prv >= 1, bonus_percent_result_exception,
+            jmzk_ASSERT2(prv >= 1, bonus_percent_result_exception,
                 "Rule #{} is not valid, the amount for this rule shoule be as least large than one unit of asset, but it's zero now.", index);
             remain -= prv;
             break;
         }
         case dist_rule_type::remaining_percent: {
-            EVT_ASSERT2(remain > 0, bonus_rules_exception, "There's no bonus left for reamining-percent rule to distribute");
+            jmzk_ASSERT2(remain > 0, bonus_rules_exception, "There's no bonus left for reamining-percent rule to distribute");
             auto& pr = rule.template get<dist_rule_type::remaining_percent>();
             // check receiver
             check_bonus_receiver(tokendb, pr.receiver);
 
             auto p = (percent_type)pr.percent;
             // check valid precent
-            EVT_ASSERT2(p > 0 && p <= 1, bonus_percent_value_exception, "Precent value should be in range (0,1]");
+            jmzk_ASSERT2(p > 0 && p <= 1, bonus_percent_value_exception, "Precent value should be in range (0,1]");
             auto prv = (int64_t)boost::multiprecision::floor(p * real_type(remain));
             // check percent result is large than minial unit of asset
-            EVT_ASSERT2(prv >= 1, bonus_percent_result_exception,
+            jmzk_ASSERT2(prv >= 1, bonus_percent_result_exception,
                 "Rule #{} is not valid, the amount for this rule shoule be as least large than one unit of asset, but it's zero now.", index);
             remain_percent += p;
-            EVT_ASSERT2(remain_percent <= 1, bonus_percent_value_exception, "Sum of remaining percents is large than 100%, current: {}", get_percent_string(remain_percent));
+            jmzk_ASSERT2(remain_percent <= 1, bonus_percent_value_exception, "Sum of remaining percents is large than 100%, current: {}", get_percent_string(remain_percent));
             break;
         }
         }  // switch
@@ -125,7 +125,7 @@ check_bonus_rules(const token_database& tokendb, const T& rules, asset amount) {
     }
 
     if(remain > 0) {
-        EVT_ASSERT2(remain_percent == 1, bonus_rules_not_fullfill,
+        jmzk_ASSERT2(remain_percent == 1, bonus_rules_not_fullfill,
             "Rules are not fullfill amount, total: {}, remains: {}, remains precent fill: {}", amount, asset(remain, sym), get_percent_string(remain_percent));
     }
 }
@@ -134,7 +134,7 @@ void
 check_passive_methods(const execution_context& exec_ctx, const passive_methods& methods) {
     for(auto& it : methods) {
         // check if it's a valid action
-        EVT_ASSERT2(it.action == N(transferft) || it.action == N(everipay), bonus_method_exception,
+        jmzk_ASSERT2(it.action == N(transferft) || it.action == N(everipay), bonus_method_exception,
             "Only `transferft` and `everipay` are valid for method options");
     }
 }
@@ -175,20 +175,20 @@ to_rules_v2(const dist_rules& rules_v1) {
 
 } // namespace internal
 
-EVT_ACTION_IMPL_BEGIN(setpsvbonus) {
+jmzk_ACTION_IMPL_BEGIN(setpsvbonus) {
     using namespace internal;
 
     auto spbact = context.act.data_as<ACT>();
     try {
         auto sym_id = 0u;
-        if constexpr (EVT_ACTION_VER() == 1) {
+        if constexpr (jmzk_ACTION_VER() == 1) {
             sym_id = spbact.sym.id();
-            EVT_ASSERT(context.has_authorized(N128(.bonus), name128::from_number(sym_id)), action_authorize_exception,
+            jmzk_ASSERT(context.has_authorized(N128(.bonus), name128::from_number(sym_id)), action_authorize_exception,
                 "Invalid authorization fields in action(domain and key).");
         }
         else {
             sym_id = spbact.sym_id;
-            EVT_ASSERT(context.has_authorized(N128(.psvbonus), name128::from_number(spbact.sym_id)), action_authorize_exception,
+            jmzk_ASSERT(context.has_authorized(N128(.psvbonus), name128::from_number(spbact.sym_id)), action_authorize_exception,
                 "Invalid authorization fields in action(domain and key).");
         }
 
@@ -198,19 +198,19 @@ EVT_ACTION_IMPL_BEGIN(setpsvbonus) {
         READ_DB_TOKEN(token_type::fungible, std::nullopt, sym_id, fungible, unknown_fungible_exception,
             "Cannot find FT with sym id: {}", sym_id);
 
-        if constexpr (EVT_ACTION_VER() == 1) {
-            EVT_ASSERT2(fungible->sym == spbact.sym, bonus_symbol_exception, "Symbol provided is not the same as FT");
+        if constexpr (jmzk_ACTION_VER() == 1) {
+            jmzk_ASSERT2(fungible->sym == spbact.sym, bonus_symbol_exception, "Symbol provided is not the same as FT");
         }
         auto sym = fungible->sym;
 
-        EVT_ASSERT(sym != evt_sym(), bonus_symbol_exception, "Passive bonus cannot be registered in EVT");
-        EVT_ASSERT(sym != pevt_sym(), bonus_symbol_exception, "Passive bonus cannot be registered in Pinned EVT");
+        jmzk_ASSERT(sym != jmzk_sym(), bonus_symbol_exception, "Passive bonus cannot be registered in jmzk");
+        jmzk_ASSERT(sym != pjmzk_sym(), bonus_symbol_exception, "Passive bonus cannot be registered in Pinned jmzk");
 
-        EVT_ASSERT2(!tokendb.exists_token(token_type::psvbonus, std::nullopt, get_psvbonus_db_key(sym.id(), kPsvBonus)),
+        jmzk_ASSERT2(!tokendb.exists_token(token_type::psvbonus, std::nullopt, get_psvbonus_db_key(sym.id(), kPsvBonus)),
             bonus_dupe_exception, "It's now allowd to update passive bonus currently.");
 
         auto rate = (percent_type)spbact.rate;
-        EVT_ASSERT2(rate > 0 && rate <= 1, bonus_percent_value_exception,
+        jmzk_ASSERT2(rate > 0 && rate <= 1, bonus_percent_value_exception,
             "Rate of passive bonus should be in range (0,1]");
 
         auto pb   = passive_bonus();
@@ -224,16 +224,16 @@ EVT_ACTION_IMPL_BEGIN(setpsvbonus) {
         if(spbact.minimum_charge.has_value()) {
             pb.minimum_charge = check_n_rtn(*spbact.minimum_charge, sym, bonus_check_type::natural);
             if(spbact.charge_threshold.has_value()) {
-                EVT_ASSERT2(*spbact.minimum_charge < *spbact.charge_threshold, bonus_rules_exception,
+                jmzk_ASSERT2(*spbact.minimum_charge < *spbact.charge_threshold, bonus_rules_exception,
                     "Minimum charge should be less than charge threshold");
             }
         }
         pb.dist_threshold = check_n_rtn(spbact.dist_threshold, sym, bonus_check_type::positive);
 
-        EVT_ASSERT2(spbact.rules.size() > 0, bonus_rules_exception, "Rules for passive bonus cannot be empty");
+        jmzk_ASSERT2(spbact.rules.size() > 0, bonus_rules_exception, "Rules for passive bonus cannot be empty");
         check_bonus_rules(tokendb, spbact.rules, spbact.dist_threshold);
 
-        if constexpr (EVT_ACTION_VER() == 1) {
+        if constexpr (jmzk_ACTION_VER() == 1) {
             pb.rules = to_rules_v2(spbact.rules);
         }
         else {
@@ -261,9 +261,9 @@ EVT_ACTION_IMPL_BEGIN(setpsvbonus) {
         }
         ADD_DB_TOKEN(token_type::psvbonus, pbs);
     }
-    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+    jmzk_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
-EVT_ACTION_IMPL_END()
+jmzk_ACTION_IMPL_END()
 
 namespace internal {
 
@@ -342,12 +342,12 @@ get_psvbonus_dist_db_key(uint64_t sym_id, uint64_t round) {
 
 }  // namespace internal
 
-EVT_ACTION_IMPL_BEGIN(distpsvbonus) {
+jmzk_ACTION_IMPL_BEGIN(distpsvbonus) {
     using namespace internal;
 
     auto spbact = context.act.data_as<ACT>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.psvbonus), name128::from_number(spbact.sym_id)), action_authorize_exception,
+        jmzk_ASSERT(context.has_authorized(N128(.psvbonus), name128::from_number(spbact.sym_id)), action_authorize_exception,
             "Invalid authorization fields in action(domain and key).");
 
         DECLARE_TOKEN_DB()
@@ -360,7 +360,7 @@ EVT_ACTION_IMPL_BEGIN(distpsvbonus) {
 
         property pbonus;
         READ_DB_ASSET_NO_THROW(get_psvbonus_address(spbact.sym_id, 0), sym, pbonus);
-        EVT_ASSERT2(pbonus.amount >= pb->dist_threshold.amount(), bonus_unreached_dist_threshold,
+        jmzk_ASSERT2(pbonus.amount >= pb->dist_threshold.amount(), bonus_unreached_dist_threshold,
             "Distribution threshold: {} is unreached, current: {}", pb->dist_threshold, asset(pbonus.amount, sym));
 
         auto bd = bonusdist();
@@ -408,11 +408,11 @@ EVT_ACTION_IMPL_BEGIN(distpsvbonus) {
         // transfer all the FTs from cllected address to distribute address of current round
         transfer_fungible(context, get_psvbonus_address(spbact.sym_id, 0), get_psvbonus_address(spbact.sym_id, pb->round), asset(pbonus.amount, pbonus.sym), N(distpsvbonus), false /* pay bonus */);
     }
-    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+    jmzk_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
-EVT_ACTION_IMPL_END()
+jmzk_ACTION_IMPL_END()
 
-}}} // namespace evt::chain::contracts
+}}} // namespace jmzk::chain::contracts
 
-FC_REFLECT(evt::chain::contracts::internal::holder_dist, (sym_id)(slim)(coll)(total));
-FC_REFLECT(evt::chain::contracts::internal::bonusdist, (created_at)(created_index)(holders)(deadline)(final_receiver));
+FC_REFLECT(jmzk::chain::contracts::internal::holder_dist, (sym_id)(slim)(coll)(total));
+FC_REFLECT(jmzk::chain::contracts::internal::bonusdist, (created_at)(created_index)(holders)(deadline)(final_receiver));

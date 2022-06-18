@@ -1,25 +1,25 @@
 #include <catch/catch.hpp>
 
-#include <evt/chain/token_database.hpp>
-#include <evt/chain/global_property_object.hpp>
-#include <evt/chain/contracts/evt_link_object.hpp>
-#include <evt/testing/tester.hpp>
-#include <evt/chain/token_database_cache.hpp>
+#include <jmzk/chain/token_database.hpp>
+#include <jmzk/chain/global_property_object.hpp>
+#include <jmzk/chain/contracts/jmzk_link_object.hpp>
+#include <jmzk/testing/tester.hpp>
+#include <jmzk/chain/token_database_cache.hpp>
 
-using namespace evt;
+using namespace jmzk;
 using namespace chain;
 using namespace contracts;
 using namespace testing;
 using namespace fc;
 using namespace crypto;
 
-extern std::string evt_unittests_dir;
+extern std::string jmzk_unittests_dir;
 
 #define EXISTS_TOKEN(TYPE, NAME) \
-    tokendb.exists_token(evt::chain::token_type::TYPE, std::nullopt, NAME)
+    tokendb.exists_token(jmzk::chain::token_type::TYPE, std::nullopt, NAME)
 
 #define EXISTS_TOKEN2(TYPE, DOMAIN, NAME) \
-    tokendb.exists_token(evt::chain::token_type::TYPE, DOMAIN, NAME)
+    tokendb.exists_token(jmzk::chain::token_type::TYPE, DOMAIN, NAME)
 
 #define EXISTS_ASSET(ADDR, SYM) \
     tokendb.exists_asset(ADDR, SYM.id())
@@ -27,15 +27,15 @@ extern std::string evt_unittests_dir;
 #define READ_TOKEN(TYPE, NAME, VALUEREF) \
     { \
         auto str = std::string(); \
-        tokendb.read_token(evt::chain::token_type::TYPE, std::nullopt, NAME, str); \
-        evt::chain::extract_db_value(str, VALUEREF); \
+        tokendb.read_token(jmzk::chain::token_type::TYPE, std::nullopt, NAME, str); \
+        jmzk::chain::extract_db_value(str, VALUEREF); \
     }
 
 #define READ_TOKEN2(TYPE, DOMAIN, NAME, VALUEREF) \
     { \
         auto str = std::string(); \
-        tokendb.read_token(evt::chain::token_type::TYPE, DOMAIN, NAME, str); \
-        evt::chain::extract_db_value(str, VALUEREF); \
+        tokendb.read_token(jmzk::chain::token_type::TYPE, DOMAIN, NAME, str); \
+        jmzk::chain::extract_db_value(str, VALUEREF); \
     }
 
 #define READ_DB_TOKEN(TYPE, PREFIX, KEY, VPTR, EXCEPTION, FORMAT, ...)      \
@@ -44,12 +44,12 @@ extern std::string evt_unittests_dir;
         VPTR = tokendb_cache.template read_token<vtype>(TYPE, PREFIX, KEY); \
     }                                                                       \
     catch(token_database_exception&) {                                      \
-        EVT_THROW2(EXCEPTION, FORMAT, ##__VA_ARGS__);                       \
+        jmzk_THROW2(EXCEPTION, FORMAT, ##__VA_ARGS__);                       \
     }
 
 #define UPD_DB_TOKEN(TYPE, NAME, VALUE)                                                                         \
     {                                                                                                     \
-        tokendb_cache.put_token(evt::chain::token_type::TYPE, action_op::update, std::nullopt, NAME, VALUE); \
+        tokendb_cache.put_token(jmzk::chain::token_type::TYPE, action_op::update, std::nullopt, NAME, VALUE); \
     }
 
 #define MAKE_PROPERTY(AMOUNT, SYM) \
@@ -69,7 +69,7 @@ extern std::string evt_unittests_dir;
         extract_db_value(str, VALUEREF);                                                                \
     }                                                                                                   \
     catch(token_database_exception&) {                                                                  \
-        EVT_THROW2(balance_exception, "There's no balance left in {} with sym id: {}", ADDR, SYM.id()); \
+        jmzk_THROW2(balance_exception, "There's no balance left in {} with sym id: {}", ADDR, SYM.id()); \
     }
 
 #define READ_DB_ASSET_NO_THROW(ADDR, SYM, VALUEREF)                         \
@@ -85,7 +85,7 @@ extern std::string evt_unittests_dir;
 
 #define PUT_DB_ASSET(ADDR, VALUE)                                             \
     while(1) {                                                                \
-        if(VALUE.sym.id() == EVT_SYM_ID) {                                    \
+        if(VALUE.sym.id() == jmzk_SYM_ID) {                                    \
             if constexpr(std::is_same_v<decltype(VALUE), property>) {         \
                 auto ps = property_stakes(VALUE);                             \
                 auto dv = make_db_value(ps);                                  \
@@ -102,7 +102,7 @@ extern std::string evt_unittests_dir;
 class contracts_test {
 public:
     contracts_test() {
-        auto basedir = evt_unittests_dir + "/contracts_tests";
+        auto basedir = jmzk_unittests_dir + "/contracts_tests";
         if(!fc::exists(basedir)) {
             fc::create_directories(basedir);
         }
@@ -118,15 +118,15 @@ public:
         cfg.max_serialization_time = std::chrono::hours(1);
 
         cfg.genesis.initial_timestamp = fc::time_point::now();
-        cfg.genesis.initial_key       = tester::get_public_key("evt");
-        auto privkey                  = tester::get_private_key("evt");
+        cfg.genesis.initial_key       = tester::get_public_key("jmzk");
+        auto privkey                  = tester::get_private_key("jmzk");
         my_tester.reset(new tester(cfg));
 
         my_tester->block_signing_private_keys.insert(std::make_pair(cfg.genesis.initial_key, privkey));
 
         key_seeds.push_back(N(key));
-        key_seeds.push_back("evt");
-        key_seeds.push_back("evt2");
+        key_seeds.push_back("jmzk");
+        key_seeds.push_back("jmzk2");
         key_seeds.push_back(N(payer));
         key_seeds.push_back(N(poorer));
 
@@ -135,7 +135,7 @@ public:
         payer       = address(tester::get_public_key(N(payer)));
         poorer      = address(tester::get_public_key(N(poorer)));
 
-        my_tester->add_money(payer, asset(1'000'000'000'000, evt_sym()));
+        my_tester->add_money(payer, asset(1'000'000'000'000, jmzk_sym()));
 
         ti = 0;
     }

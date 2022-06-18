@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
@@ -12,7 +12,7 @@
 #include <boost/algorithm/string.hpp>
 
 // This fixes the issue in safe_numerics in boost 1.69
-#include <evt/chain/workaround/boost/safe_numerics/exception.hpp>
+#include <jmzk/chain/workaround/boost/safe_numerics/exception.hpp>
 #include <boost/safe_numerics/checked_default.hpp>
 #include <boost/safe_numerics/checked_integer.hpp>
 
@@ -20,27 +20,27 @@
 #include <fc/crypto/ripemd160.hpp>
 #include <fc/crypto/city.hpp>
 
-#include <evt/chain/apply_context.hpp>
-#include <evt/chain/token_database.hpp>
-#include <evt/chain/token_database_cache.hpp>
-#include <evt/chain/transaction_context.hpp>
-#include <evt/chain/global_property_object.hpp>
-#include <evt/chain/dense_hash.hpp>
-#include <evt/chain/contracts/types.hpp>
-#include <evt/chain/contracts/evt_link.hpp>
-#include <evt/chain/contracts/evt_link_object.hpp>
+#include <jmzk/chain/apply_context.hpp>
+#include <jmzk/chain/token_database.hpp>
+#include <jmzk/chain/token_database_cache.hpp>
+#include <jmzk/chain/transaction_context.hpp>
+#include <jmzk/chain/global_property_object.hpp>
+#include <jmzk/chain/dense_hash.hpp>
+#include <jmzk/chain/contracts/types.hpp>
+#include <jmzk/chain/contracts/jmzk_link.hpp>
+#include <jmzk/chain/contracts/jmzk_link_object.hpp>
 
-namespace evt { namespace chain { namespace contracts {
+namespace jmzk { namespace chain { namespace contracts {
 
-#define EVT_ACTION_IMPL_BEGIN(name)                   \
+#define jmzk_ACTION_IMPL_BEGIN(name)                   \
     template<>                                        \
     struct apply_action<N(name)> {                    \
         template<typename ACT>                        \
         static void invoke(apply_context& context)
 
-#define EVT_ACTION_IMPL_END() };
+#define jmzk_ACTION_IMPL_END() };
 
-#define EVT_ACTION_VER() ACT::get_version()
+#define jmzk_ACTION_VER() ACT::get_version()
 
 namespace internal {
 
@@ -58,7 +58,7 @@ validate(const permission_def& permission) {
 
 inline bool
 validate(const group& group, const group::node& node) {
-    EVT_ASSERT(node.validate(), group_type_exception, "Node is invalid: ${node}", ("node",node));
+    jmzk_ASSERT(node.validate(), group_type_exception, "Node is invalid: ${node}", ("node",node));
     if(!node.is_leaf()) {
         auto total_weight = 0u;
         auto result = true;
@@ -80,8 +80,8 @@ validate(const group& group, const group::node& node) {
 
 inline bool
 validate(const group& group) {
-    EVT_ASSERT(!group.name().empty(), group_type_exception, "Group name cannot be empty.");
-    EVT_ASSERT(!group.empty(), group_type_exception, "Root node does not exist.");
+    jmzk_ASSERT(!group.name().empty(), group_type_exception, "Group name cannot be empty.");
+    jmzk_ASSERT(!group.empty(), group_type_exception, "Root node does not exist.");
     auto& root = group.root();
     return validate(group, root);
 }
@@ -96,24 +96,24 @@ auto make_permission_checker = [](const auto& tokendb) {
                 continue;
             }
             case authorizer_ref::owner_t: {
-                EVT_ASSERT(allowed_owner, permission_type_exception,
+                jmzk_ASSERT(allowed_owner, permission_type_exception,
                     "Owner group does not show up in ${name} permission, and it only appears in Transfer.", ("name", p.name));
                 continue;  
             }
             case authorizer_ref::group_t: {
                 auto& name = ref.get_group();
                 auto dbexisted = tokendb.exists_token(token_type::group, std::nullopt, name);
-                EVT_ASSERT(dbexisted, unknown_group_exception, "Group ${name} does not exist.", ("name", name));
+                jmzk_ASSERT(dbexisted, unknown_group_exception, "Group ${name} does not exist.", ("name", name));
                 break;
             }
             case authorizer_ref::script_t: {
                 auto& name = ref.get_script();
                 auto dbexisted = tokendb.exists_token(token_type::script, std::nullopt, name);
-                EVT_ASSERT(dbexisted, unknown_script_exception, "Script ${name} does not exist.", ("name", name));
+                jmzk_ASSERT(dbexisted, unknown_script_exception, "Script ${name} does not exist.", ("name", name));
                 break;
             }
             default: {
-                EVT_ASSERT(false, authorizer_ref_type_exception, "Authorizer ref is not valid.");
+                jmzk_ASSERT(false, authorizer_ref_type_exception, "Authorizer ref is not valid.");
             }
             }  // switch
         }
@@ -123,7 +123,7 @@ auto make_permission_checker = [](const auto& tokendb) {
 
 inline void
 check_name_reserved(const name128& name) {
-    EVT_ASSERT(!name.empty() && !name.reserved(), name_reserved_exception, "Name starting with '.' is reserved for system usages.");
+    jmzk_ASSERT(!name.empty() && !name.reserved(), name_reserved_exception, "Name starting with '.' is reserved for system usages.");
 }
 
 inline void
@@ -131,7 +131,7 @@ check_address_reserved(const address& addr, bool throw_on_reserved = true) {
     switch(addr.type()) {
     case address::reserved_t: {
         if(throw_on_reserved) {
-            EVT_THROW(address_reserved_exception, "Address is reserved and cannot be used here");
+            jmzk_THROW(address_reserved_exception, "Address is reserved and cannot be used here");
         }
         return;
     }
@@ -145,7 +145,7 @@ check_address_reserved(const address& addr, bool throw_on_reserved = true) {
                 return;
             }
         }
-        EVT_THROW(address_reserved_exception, "Address is reserved and cannot be used here");
+        jmzk_THROW(address_reserved_exception, "Address is reserved and cannot be used here");
     }
     }  // switch
 }
@@ -170,7 +170,7 @@ get_db_key<fungible_def>(const fungible_def& v) {
 
 template<>
 name128
-get_db_key<evt_link_object>(const evt_link_object& v) {
+get_db_key<jmzk_link_object>(const jmzk_link_object& v) {
     return v.link_id;
 }
 
@@ -237,7 +237,7 @@ get_db_prefix<token_def>(const token_def& v) {
 #define PUT_DB_ASSET(ADDR, VALUE)                                     \
     {                                                                 \
         if constexpr(std::is_same_v<decltype(VALUE), property>) {     \
-            assert(VALUE.sym.id() != EVT_SYM_ID);                     \
+            assert(VALUE.sym.id() != jmzk_SYM_ID);                     \
         }                                                             \
         auto dv = make_db_value(VALUE);                               \
         tokendb.put_asset(ADDR, VALUE.sym.id(), dv.as_string_view()); \
@@ -249,7 +249,7 @@ get_db_prefix<token_def>(const token_def& v) {
         VPTR = tokendb_cache.template read_token<vtype>(TYPE, PREFIX, KEY); \
     }                                                                       \
     catch(token_database_exception&) {                                      \
-        EVT_THROW2(EXCEPTION, FORMAT, ##__VA_ARGS__);                       \
+        jmzk_THROW2(EXCEPTION, FORMAT, ##__VA_ARGS__);                       \
     }
     
 #define READ_DB_TOKEN_NO_THROW(TYPE, PREFIX, KEY, VPTR)                                          \
@@ -277,7 +277,7 @@ get_db_prefix<token_def>(const token_def& v) {
     })
 
 #define CHECK_SYM(VALUEREF, PROVIDED) \
-    EVT_ASSERT2(VALUEREF.sym == PROVIDED, asset_symbol_exception, "Provided symbol({}) is invalid, expected: {}", PROVIDED, VALUEREF.sym);
+    jmzk_ASSERT2(VALUEREF.sym == PROVIDED, asset_symbol_exception, "Provided symbol({}) is invalid, expected: {}", PROVIDED, VALUEREF.sym);
 
 #define READ_DB_ASSET(ADDR, SYM, VALUEREF)                                                              \
     try {                                                                                               \
@@ -287,7 +287,7 @@ get_db_prefix<token_def>(const token_def& v) {
         extract_db_value(str, VALUEREF);                                                                \
     }                                                                                                   \
     catch(token_database_exception&) {                                                                  \
-        EVT_THROW2(balance_exception, "There's no balance left in {} with sym id: {}", ADDR, SYM.id()); \
+        jmzk_THROW2(balance_exception, "There's no balance left in {} with sym id: {}", ADDR, SYM.id()); \
     }                                                                                                   \
     CHECK_SYM(VALUEREF, SYM);
 
@@ -413,7 +413,7 @@ transfer_fungible_internal(apply_context& context,
 
     auto sym = total.sym();
     if constexpr(std::is_same_v<PROPERTY, property_stakes>) {
-        READ_DB_ASSET(from, evt_sym(), pfrom);
+        READ_DB_ASSET(from, jmzk_sym(), pfrom);
     }
     else {
         READ_DB_ASSET(from, sym, pfrom);
@@ -421,23 +421,23 @@ transfer_fungible_internal(apply_context& context,
     READ_DB_ASSET_NO_THROW(to, sym, pto);
 
     // fast path check
-    EVT_ASSERT2(pfrom.amount >= total.amount(), balance_exception,
+    jmzk_ASSERT2(pfrom.amount >= total.amount(), balance_exception,
         "Address: {} does not have enough balance({}) left.", from, total);
 
     int64_t actual_amount = total.amount(), receive_amount = total.amount(), bonus_amount = 0;
-    // evt and pevt cannot have passive bonus
-    if(sym.id() > PEVT_SYM_ID && pay_bonus) {
+    // jmzk and pjmzk cannot have passive bonus
+    if(sym.id() > Pjmzk_SYM_ID && pay_bonus) {
         // check and calculate if fungible has passive bonus settings
         std::tie(actual_amount, bonus_amount) = calculate_passive_bonus(tokendb_cache, sym.id(), total.amount(), act);
         receive_amount = actual_amount - bonus_amount;
     }
 
-    EVT_ASSERT2(pfrom.amount >= actual_amount, balance_exception,
+    jmzk_ASSERT2(pfrom.amount >= actual_amount, balance_exception,
         "There's not enough balance({}) within address: {}.", asset(actual_amount, sym), from);
 
     auto r1 = checked::subtract<int64_t>(pfrom.amount, actual_amount);
     auto r2 = checked::add<int64_t>(pto.amount, receive_amount);
-    EVT_ASSERT(!r1.exception() && !r2.exception(), math_overflow_exception, "Opeartions resulted in overflows.");
+    jmzk_ASSERT(!r1.exception() && !r2.exception(), math_overflow_exception, "Opeartions resulted in overflows.");
     
     // update payee and payer
     pfrom.amount -= actual_amount;
@@ -454,7 +454,7 @@ transfer_fungible_internal(apply_context& context,
         READ_DB_ASSET_NO_THROW(addr, sym, pbonus);
 
         auto r = checked::add<int64_t>(pbonus.amount, bonus_amount);
-        EVT_ASSERT2(!r.exception(), math_overflow_exception, "Opeartions resulted in overflows.");
+        jmzk_ASSERT2(!r.exception(), math_overflow_exception, "Opeartions resulted in overflows.");
 
         pbonus.amount += bonus_amount;
         PUT_DB_ASSET(addr, pbonus);
@@ -476,7 +476,7 @@ transfer_fungible(apply_context& context,
                   action_name    act,
                   bool           pay_bonus = true) {
     auto sym = total.sym();
-    if(sym == evt_sym() || sym == pevt_sym()) {
+    if(sym == jmzk_sym() || sym == pjmzk_sym()) {
         transfer_fungible_internal<property_stakes>(context, from, to, total, act, pay_bonus);
     }
     else {
@@ -493,7 +493,7 @@ freeze_fungible(apply_context& context, const address& addr, asset total) {
     property prop;
     READ_DB_ASSET(addr, sym, prop);
 
-    EVT_ASSERT2(prop.amount >= total.amount(), balance_exception,
+    jmzk_ASSERT2(prop.amount >= total.amount(), balance_exception,
         "Address: {} does not have enough balance({}) left.", addr, total);
 
     prop.amount -= total.amount();
@@ -511,7 +511,7 @@ unfreeze_fungible(apply_context& context, const address& addr, asset total) {
     property prop;
     READ_DB_ASSET(addr, sym, prop);
 
-    EVT_ASSERT2(prop.frozen_amount >= total.amount(), balance_exception,
+    jmzk_ASSERT2(prop.frozen_amount >= total.amount(), balance_exception,
         "Address: {} does not have enough forzen balance({}) left.", addr, total);
 
     prop.amount += total.amount();
@@ -522,4 +522,4 @@ unfreeze_fungible(apply_context& context, const address& addr, asset total) {
 
 }  // namespace internal
 
-}}} // namespace evt::chain::contracts
+}}} // namespace jmzk::chain::contracts

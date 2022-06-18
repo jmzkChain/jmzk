@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <chrono>
@@ -9,14 +9,14 @@
 #include <fc/variant_object.hpp>
 #include <fc/scoped_exit.hpp>
 
-#include <evt/chain/config.hpp>
-#include <evt/chain/exceptions.hpp>
-#include <evt/chain/execution_context.hpp>
-#include <evt/chain/trace.hpp>
-#include <evt/chain/contracts/abi_types.hpp>
-#include <evt/chain/contracts/types.hpp>
+#include <jmzk/chain/config.hpp>
+#include <jmzk/chain/exceptions.hpp>
+#include <jmzk/chain/execution_context.hpp>
+#include <jmzk/chain/trace.hpp>
+#include <jmzk/chain/contracts/abi_types.hpp>
+#include <jmzk/chain/contracts/types.hpp>
 
-namespace evt { namespace chain { namespace contracts {
+namespace jmzk { namespace chain { namespace contracts {
 
 using namespace fc;
 
@@ -554,9 +554,9 @@ struct abi_from_variant {
         auto        h  = ctx.enter_scope();
         const auto& vo = v.get_object();
 
-        EVT_ASSERT(vo.contains("name"), action_type_exception, "Missing name");
-        EVT_ASSERT(vo.contains("domain"), action_type_exception, "Missing domain");
-        EVT_ASSERT(vo.contains("key"), action_type_exception, "Missing key");
+        jmzk_ASSERT(vo.contains("name"), action_type_exception, "Missing name");
+        jmzk_ASSERT(vo.contains("domain"), action_type_exception, "Missing domain");
+        jmzk_ASSERT(vo.contains("key"), action_type_exception, "Missing key");
         from_variant(vo["name"], act.name);
         from_variant(vo["domain"], act.domain);
         from_variant(vo["key"], act.key);
@@ -589,7 +589,7 @@ struct abi_from_variant {
             }
         }
 
-        EVT_ASSERT(valid_empty_data || !act.data.empty(), packed_transaction_type_exception,
+        jmzk_ASSERT(valid_empty_data || !act.data.empty(), packed_transaction_type_exception,
                    "Failed to deserialize data for ${name}", ("name", act.name));
     }
 
@@ -597,8 +597,8 @@ struct abi_from_variant {
     extract(const variant& v, packed_transaction& ptrx, abi_traverse_context& ctx) {
         auto        h  = ctx.enter_scope();
         const auto& vo = v.get_object();
-        EVT_ASSERT(vo.contains("signatures"), packed_transaction_type_exception, "Missing signatures");
-        EVT_ASSERT(vo.contains("compression"), packed_transaction_type_exception, "Missing compression");
+        jmzk_ASSERT(vo.contains("signatures"), packed_transaction_type_exception, "Missing signatures");
+        jmzk_ASSERT(vo.contains("compression"), packed_transaction_type_exception, "Missing compression");
 
         auto signatures  = signatures_type();
         auto compression = packed_transaction::compression_type();
@@ -613,7 +613,7 @@ struct abi_from_variant {
             ptrx = packed_transaction(std::move(packed_trx), std::move(signatures), compression);
         }
         else {
-            EVT_ASSERT(vo.contains("transaction"), packed_transaction_type_exception, "Missing transaction");
+            jmzk_ASSERT(vo.contains("transaction"), packed_transaction_type_exception, "Missing transaction");
             
             auto trx = signed_transaction();
             extract(vo["transaction"], trx, ctx);
@@ -693,4 +693,4 @@ abi_serializer::from_variant(const variant& v, T& o, const execution_context& ex
     FC_RETHROW_EXCEPTIONS(error, "Failed to deserialize variant", ("variant", v))
 }
 
-}}}  // namespace evt::chain::contracts
+}}}  // namespace jmzk::chain::contracts

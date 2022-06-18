@@ -11,26 +11,26 @@
 #include <fc/log/logger.hpp>
 #include <fc/variant.hpp>
 
-#include <evt/chain/controller.hpp>
-#include <evt/chain/token_database.hpp>
-#include <evt/chain/contracts/types.hpp>
-#include <evt/chain/contracts/evt_link_object.hpp>
-#include <evt/testing/tester.hpp>
+#include <jmzk/chain/controller.hpp>
+#include <jmzk/chain/token_database.hpp>
+#include <jmzk/chain/contracts/types.hpp>
+#include <jmzk/chain/contracts/jmzk_link_object.hpp>
+#include <jmzk/testing/tester.hpp>
 
-using namespace evt;
+using namespace jmzk;
 using namespace chain;
 using namespace contracts;
 using namespace testing;
 using namespace fc;
 using namespace crypto;
 
-extern std::string evt_unittests_dir;
+extern std::string jmzk_unittests_dir;
 
 class tokendb_test {
 public:
-    //tokendb_test() : tokendb(evt_unittests_dir + "/tokendb_tests") {
+    //tokendb_test() : tokendb(jmzk_unittests_dir + "/tokendb_tests") {
     tokendb_test() {
-        auto basedir = evt_unittests_dir + "/tokendb_tests";
+        auto basedir = jmzk_unittests_dir + "/tokendb_tests";
         if(!fc::exists(basedir)) {
             fc::create_directories(basedir);
         }
@@ -44,8 +44,8 @@ public:
         cfg.loadtest_mode         = false;
 
         cfg.genesis.initial_timestamp = fc::time_point::now();
-        cfg.genesis.initial_key       = tester::get_public_key("evt");
-        auto privkey                  = tester::get_private_key("evt");
+        cfg.genesis.initial_key       = tester::get_public_key("jmzk");
+        auto privkey                  = tester::get_private_key("jmzk");
         my_tester.reset(new tester(cfg));
 
         my_tester->block_signing_private_keys.insert(std::make_pair(cfg.genesis.initial_key, privkey));
@@ -60,10 +60,10 @@ protected:
 };
 
 #define EXISTS_TOKEN(TYPE, NAME) \
-    tokendb.exists_token(evt::chain::token_type::TYPE, std::nullopt, NAME)
+    tokendb.exists_token(jmzk::chain::token_type::TYPE, std::nullopt, NAME)
 
 #define EXISTS_TOKEN2(TYPE, DOMAIN, NAME) \
-    tokendb.exists_token(evt::chain::token_type::TYPE, DOMAIN, NAME)
+    tokendb.exists_token(jmzk::chain::token_type::TYPE, DOMAIN, NAME)
 
 #define EXISTS_ASSET(ADDR, SYMID) \
     tokendb.exists_asset(ADDR, SYMID)
@@ -71,22 +71,22 @@ protected:
 #define READ_TOKEN(TYPE, NAME, VALUEREF) \
     { \
         auto str = std::string(); \
-        tokendb.read_token(evt::chain::token_type::TYPE, std::nullopt, NAME, str); \
-        evt::chain::extract_db_value(str, VALUEREF); \
+        tokendb.read_token(jmzk::chain::token_type::TYPE, std::nullopt, NAME, str); \
+        jmzk::chain::extract_db_value(str, VALUEREF); \
     }
 
 #define READ_TOKEN2(TYPE, DOMAIN, NAME, VALUEREF) \
     { \
         auto str = std::string(); \
-        tokendb.read_token(evt::chain::token_type::TYPE, DOMAIN, NAME, str); \
-        evt::chain::extract_db_value(str, VALUEREF); \
+        tokendb.read_token(jmzk::chain::token_type::TYPE, DOMAIN, NAME, str); \
+        jmzk::chain::extract_db_value(str, VALUEREF); \
     }
 
 #define READ_ASSET(ADDR, SYM, VALUEREF) \
     { \
         auto str = std::string(); \
         tokendb.read_asset(ADDR, SYM, str); \
-        evt::chain::extract_db_value(str, VALUEREF); \
+        jmzk::chain::extract_db_value(str, VALUEREF); \
     }
 
 #define READ_ASSET_NO_THROW(ADDR, SYM, VALUEREF)                        \
@@ -102,43 +102,43 @@ protected:
 
 #define ADD_TOKEN(TYPE, KEY, DATA) \
     { \
-        auto dbvalue = evt::chain::make_db_value(DATA); \
-        tokendb.put_token(evt::chain::token_type::TYPE, evt::chain::action_op::add, std::nullopt, KEY, dbvalue.as_string_view()); \
+        auto dbvalue = jmzk::chain::make_db_value(DATA); \
+        tokendb.put_token(jmzk::chain::token_type::TYPE, jmzk::chain::action_op::add, std::nullopt, KEY, dbvalue.as_string_view()); \
     }
 
 #define UPDATE_TOKEN(TYPE, KEY, DATA) \
     { \
-        auto dbvalue = evt::chain::make_db_value(DATA); \
-        tokendb.put_token(evt::chain::token_type::TYPE, evt::chain::action_op::update, std::nullopt, KEY, dbvalue.as_string_view()); \
+        auto dbvalue = jmzk::chain::make_db_value(DATA); \
+        tokendb.put_token(jmzk::chain::token_type::TYPE, jmzk::chain::action_op::update, std::nullopt, KEY, dbvalue.as_string_view()); \
     }
 
 #define PUT_TOKEN(TYPE, KEY, DATA) \
     { \
-        auto dbvalue = evt::chain::make_db_value(DATA); \
-        tokendb.put_token(evt::chain::token_type::TYPE, evt::chain::action_op::put, std::nullopt, KEY, dbvalue.as_string_view()); \
+        auto dbvalue = jmzk::chain::make_db_value(DATA); \
+        tokendb.put_token(jmzk::chain::token_type::TYPE, jmzk::chain::action_op::put, std::nullopt, KEY, dbvalue.as_string_view()); \
     }
 
 #define ADD_TOKEN2(TYPE, DOMAIN, KEY, DATA) \
     { \
-        auto dbvalue = evt::chain::make_db_value(DATA); \
-        tokendb.put_token(evt::chain::token_type::TYPE, evt::chain::action_op::add, DOMAIN, KEY, dbvalue.as_string_view()); \
+        auto dbvalue = jmzk::chain::make_db_value(DATA); \
+        tokendb.put_token(jmzk::chain::token_type::TYPE, jmzk::chain::action_op::add, DOMAIN, KEY, dbvalue.as_string_view()); \
     }
 
 #define UPDATE_TOKEN2(TYPE, DOMAIN, KEY, DATA) \
     { \
-        auto dbvalue = evt::chain::make_db_value(DATA); \
-        tokendb.put_token(evt::chain::token_type::TYPE, evt::chain::action_op::update, DOMAIN, KEY, dbvalue.as_string_view()); \
+        auto dbvalue = jmzk::chain::make_db_value(DATA); \
+        tokendb.put_token(jmzk::chain::token_type::TYPE, jmzk::chain::action_op::update, DOMAIN, KEY, dbvalue.as_string_view()); \
     }
 
 #define PUT_TOKEN2(TYPE, DOMAIN, KEY, DATA) \
     { \
-        auto dbvalue = evt::chain::make_db_value(DATA); \
-        tokendb.put_token(evt::chain::token_type::TYPE, evt::chain::action_op::put, DOMAIN, KEY, dbvalue.as_string_view()); \
+        auto dbvalue = jmzk::chain::make_db_value(DATA); \
+        tokendb.put_token(jmzk::chain::token_type::TYPE, jmzk::chain::action_op::put, DOMAIN, KEY, dbvalue.as_string_view()); \
     }
 
 #define PUT_ASSET(ADDR, SYMID, DATA) \
     { \
-        auto dbvalue = evt::chain::make_db_value(DATA); \
+        auto dbvalue = jmzk::chain::make_db_value(DATA); \
         tokendb.put_asset(ADDR, SYMID, dbvalue.as_string_view()); \
     }
 

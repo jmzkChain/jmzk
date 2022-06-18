@@ -1,12 +1,12 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <boost/signals2/signal.hpp>
-#include <evt/chain/block_state.hpp>
+#include <jmzk/chain/block_state.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 using boost::signals2::signal;
 
@@ -76,4 +76,4 @@ private:
     unique_ptr<fork_database_impl> my;
 };
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain

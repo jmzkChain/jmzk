@@ -1,17 +1,17 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/chain/apply_context.hpp>
+#include <jmzk/chain/apply_context.hpp>
 
 #include <algorithm>
-#include <evt/chain/controller.hpp>
-#include <evt/chain/execution_context_impl.hpp>
-#include <evt/chain/transaction_context.hpp>
-#include <evt/chain/global_property_object.hpp>
-#include <evt/chain/contracts/evt_contract.hpp>
+#include <jmzk/chain/controller.hpp>
+#include <jmzk/chain/execution_context_impl.hpp>
+#include <jmzk/chain/transaction_context.hpp>
+#include <jmzk/chain/global_property_object.hpp>
+#include <jmzk/chain/contracts/jmzk_contract.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 static inline void
 print_debug(const action_trace& ar) {
@@ -104,4 +104,4 @@ apply_context::next_global_sequence() {
     return p.global_action_sequence;
 }
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain

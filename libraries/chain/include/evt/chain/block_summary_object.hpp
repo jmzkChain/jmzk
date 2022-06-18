@@ -1,12 +1,12 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
-#include <evt/chain/multi_index_includes.hpp>
-#include <evt/chain/types.hpp>
+#include <jmzk/chain/multi_index_includes.hpp>
+#include <jmzk/chain/types.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 /**
  *  @brief tracks minimal information about past blocks to implement TaPOS
  *  @ingroup object
@@ -32,7 +32,7 @@ using block_summary_multi_index = chainbase::shared_multi_index_container<
         //      block_id)>
         >>;
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
-CHAINBASE_SET_INDEX_TYPE(evt::chain::block_summary_object, evt::chain::block_summary_multi_index);
-FC_REFLECT(evt::chain::block_summary_object, (block_id));
+CHAINBASE_SET_INDEX_TYPE(jmzk::chain::block_summary_object, jmzk::chain::block_summary_multi_index);
+FC_REFLECT(jmzk::chain::block_summary_object, (block_id));

@@ -1,12 +1,12 @@
-#include <evt/chain/token_database_snapshot.hpp>
+#include <jmzk/chain/token_database_snapshot.hpp>
 
 #include <string.h>
 #include <vector>
 #include <fmt/format.h>
 #include <rocksdb/db.h>
-#include <evt/chain/token_database.hpp>
+#include <jmzk/chain/token_database.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 namespace internal {
 
@@ -20,7 +20,7 @@ const char* section_names[] = {
     ".lock",
     ".fungible",
     ".prodvote",
-    ".evtlink",
+    ".jmzklink",
     ".psvbonus",
     ".psvbonus-dist",
     ".validator",
@@ -176,7 +176,7 @@ token_database_snapshot::add_to_snapshot(snapshot_writer_ptr writer, const token
         add_tokens(writer, db, domains);
         add_assets(writer, db, symbol_ids);
     }
-    EVT_CAPTURE_AND_RETHROW(token_database_snapshot_exception);
+    jmzk_CAPTURE_AND_RETHROW(token_database_snapshot_exception);
 }
 
 void
@@ -197,7 +197,7 @@ token_database_snapshot::read_from_snapshot(snapshot_reader_ptr reader, token_da
         read_tokens(reader, db, domains);
         read_assets(reader, db, symbol_ids);        
     }
-    EVT_CAPTURE_AND_RETHROW(token_database_snapshot_exception);
+    jmzk_CAPTURE_AND_RETHROW(token_database_snapshot_exception);
 }
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain

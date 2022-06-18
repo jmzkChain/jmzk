@@ -1,8 +1,8 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/evt_link_plugin/evt_link_plugin.hpp>
+#include <jmzk/jmzk_link_plugin/jmzk_link_plugin.hpp>
 
 #include <deque>
 #include <tuple>
@@ -14,43 +14,43 @@
 #include <fc/io/json.hpp>
 #include <fc/crypto/city.hpp>
 
-#include <evt/chain_plugin/chain_plugin.hpp>
-#include <evt/chain/plugin_interface.hpp>
-#include <evt/chain/exceptions.hpp>
-#include <evt/chain/types.hpp>
-#include <evt/chain/contracts/evt_link.hpp>
-#include <evt/chain/contracts/evt_link_object.hpp>
+#include <jmzk/chain_plugin/chain_plugin.hpp>
+#include <jmzk/chain/plugin_interface.hpp>
+#include <jmzk/chain/exceptions.hpp>
+#include <jmzk/chain/types.hpp>
+#include <jmzk/chain/contracts/jmzk_link.hpp>
+#include <jmzk/chain/contracts/jmzk_link_object.hpp>
 
-namespace evt {
+namespace jmzk {
 
-static appbase::abstract_plugin& _evt_link_plugin = app().register_plugin<evt_link_plugin>();
+static appbase::abstract_plugin& _jmzk_link_plugin = app().register_plugin<jmzk_link_plugin>();
 
-using evt::chain::bytes;
-using evt::chain::link_id_type;
-using evt::chain::block_state_ptr;
-using evt::chain::transaction_trace_ptr;
-using evt::chain::contracts::evt_link;
-using evt::chain::contracts::everipay;
+using jmzk::chain::bytes;
+using jmzk::chain::link_id_type;
+using jmzk::chain::block_state_ptr;
+using jmzk::chain::transaction_trace_ptr;
+using jmzk::chain::contracts::jmzk_link;
+using jmzk::chain::contracts::everipay;
 
 using boost::asio::steady_timer;
 using steady_timer_ptr = std::shared_ptr<steady_timer>;
 
-struct evt_link_id_hasher {
+struct jmzk_link_id_hasher {
     size_t
     operator()(const link_id_type& id) const {
         return fc::city_hash_size_t((const char*)&id, sizeof(id));
     }
 };
 
-class evt_link_plugin_impl : public std::enable_shared_from_this<evt_link_plugin_impl> {
+class jmzk_link_plugin_impl : public std::enable_shared_from_this<jmzk_link_plugin_impl> {
 public:
     using deferred_pair = std::pair<deferred_id, steady_timer_ptr>;
     enum { kDeferredId = 0, kTimer };
 
 public:
-    evt_link_plugin_impl(controller& db)
+    jmzk_link_plugin_impl(controller& db)
         : db_(db) {}
-    ~evt_link_plugin_impl();
+    ~jmzk_link_plugin_impl();
 
 public:
     void init();
@@ -69,13 +69,13 @@ public:
     std::atomic_bool init_{false};
     uint32_t         timeout_;
 
-    std::unordered_multimap<link_id_type, deferred_pair, evt_link_id_hasher> link_ids_;
+    std::unordered_multimap<link_id_type, deferred_pair, jmzk_link_id_hasher> link_ids_;
 
     std::optional<boost::signals2::scoped_connection> accepted_block_connection_;
 };
 
 void
-evt_link_plugin_impl::applied_block(const block_state_ptr& bs) {
+jmzk_link_plugin_impl::applied_block(const block_state_ptr& bs) {
     if(link_ids_.empty()) {
         return;
     }
@@ -103,13 +103,13 @@ evt_link_plugin_impl::applied_block(const block_state_ptr& bs) {
 
 template<typename T>
 void
-evt_link_plugin_impl::response(const link_id_type& link_id, T&& response_fun) {
+jmzk_link_plugin_impl::response(const link_id_type& link_id, T&& response_fun) {
     auto sz = link_ids_.count(link_id);
     if(sz == 0) {
         return;
     }
     auto json = response_fun();
-    auto wptr = std::weak_ptr<evt_link_plugin_impl>(shared_from_this());
+    auto wptr = std::weak_ptr<jmzk_link_plugin_impl>(shared_from_this());
     boost::asio::post(app().get_io_service(), [wptr, json, link_id] {
         auto self = wptr.lock();
         if(!self) {
@@ -128,13 +128,13 @@ evt_link_plugin_impl::response(const link_id_type& link_id, T&& response_fun) {
 }
 
 void
-evt_link_plugin_impl::add_and_schedule(const link_id_type& link_id, deferred_id id) {
+jmzk_link_plugin_impl::add_and_schedule(const link_id_type& link_id, deferred_id id) {
     auto it = link_ids_.emplace(link_id, std::make_pair(id, std::make_shared<steady_timer>(app().get_io_service())));
 
     auto timer = std::get<kTimer>(it->second);
     timer->expires_from_now(std::chrono::milliseconds(timeout_));
     
-    auto wptr = std::weak_ptr<evt_link_plugin_impl>(shared_from_this());
+    auto wptr = std::weak_ptr<jmzk_link_plugin_impl>(shared_from_this());
     timer->async_wait([wptr, link_id](auto& ec) {
         auto self = wptr.lock();
         if(self && ec != boost::asio::error::operation_aborted) {
@@ -152,10 +152,10 @@ evt_link_plugin_impl::add_and_schedule(const link_id_type& link_id, deferred_id 
             self->link_ids_.erase(link_id);
 
             try {
-                EVT_THROW(chain::exceed_evt_link_watch_time_exception, "Exceed EVT-Link watch time: ${time} ms", ("time",self->timeout_));
+                jmzk_THROW(chain::exceed_jmzk_link_watch_time_exception, "Exceed jmzk-Link watch time: ${time} ms", ("time",self->timeout_));
             }
             catch(...) {
-                http_plugin::handle_exception("evt_link", "get_trx_id_for_link_id", "", [&ids](auto code, auto body) {
+                http_plugin::handle_exception("jmzk_link", "get_trx_id_for_link_id", "", [&ids](auto code, auto body) {
                     for(auto id : ids) {
                         app().get_plugin<http_plugin>().set_deferred_response(id, code, body);
                     }
@@ -166,7 +166,7 @@ evt_link_plugin_impl::add_and_schedule(const link_id_type& link_id, deferred_id 
 }
 
 void
-evt_link_plugin_impl::get_trx_id_for_link_id(const link_id_type& link_id, deferred_id id) {
+jmzk_link_plugin_impl::get_trx_id_for_link_id(const link_id_type& link_id, deferred_id id) {
     // try to fetch from chain first
     try {
         auto obj = db_.get_link_obj_for_link_id(link_id);
@@ -183,14 +183,14 @@ evt_link_plugin_impl::get_trx_id_for_link_id(const link_id_type& link_id, deferr
 
         app().get_plugin<http_plugin>().set_deferred_response(id, 200, fc::json::to_string(vo));
     }
-    catch(const chain::evt_link_existed_exception&) {
+    catch(const chain::jmzk_link_existed_exception&) {
         // cannot find now, put into map
         add_and_schedule(link_id, id);
     }
 }
 
 void
-evt_link_plugin_impl::init() {
+jmzk_link_plugin_impl::init() {
     init_ = true;
 
     auto& chain_plug = app().get_plugin<chain_plugin>();
@@ -201,37 +201,37 @@ evt_link_plugin_impl::init() {
     }));
 }
 
-evt_link_plugin_impl::~evt_link_plugin_impl() {}
+jmzk_link_plugin_impl::~jmzk_link_plugin_impl() {}
 
-evt_link_plugin::evt_link_plugin() {}
-evt_link_plugin::~evt_link_plugin() {}
+jmzk_link_plugin::jmzk_link_plugin() {}
+jmzk_link_plugin::~jmzk_link_plugin() {}
 
 void
-evt_link_plugin::set_program_options(options_description&, options_description& cfg) {
+jmzk_link_plugin::set_program_options(options_description&, options_description& cfg) {
     cfg.add_options()
-        ("evt-link-timeout", bpo::value<uint32_t>()->default_value(5000), "Max time waitting for the deferred request.")
+        ("jmzk-link-timeout", bpo::value<uint32_t>()->default_value(5000), "Max time waitting for the deferred request.")
     ;
 }
 
 void
-evt_link_plugin::plugin_initialize(const variables_map& options) {
-    my_ = std::make_shared<evt_link_plugin_impl>(app().get_plugin<chain_plugin>().chain());
-    my_->timeout_ = options.at("evt-link-timeout").as<uint32_t>();
+jmzk_link_plugin::plugin_initialize(const variables_map& options) {
+    my_ = std::make_shared<jmzk_link_plugin_impl>(app().get_plugin<chain_plugin>().chain());
+    my_->timeout_ = options.at("jmzk-link-timeout").as<uint32_t>();
     my_->init();
 }
 
 void
-evt_link_plugin::plugin_startup() {
-    ilog("starting evt_link_plugin");
+jmzk_link_plugin::plugin_startup() {
+    ilog("starting jmzk_link_plugin");
 
-    app().get_plugin<http_plugin>().add_deferred_handler("/v1/evt_link/get_trx_id_for_link_id", [&](auto, auto body, auto id) {
+    app().get_plugin<http_plugin>().add_deferred_handler("/v1/jmzk_link/get_trx_id_for_link_id", [&](auto, auto body, auto id) {
         try {
             auto var = fc::json::from_string(body);
             auto b   = bytes();
             fc::from_variant(var["link_id"], b);
 
             if(b.size() != sizeof(link_id_type)) {
-                EVT_THROW(chain::evt_link_id_exception, "EVT-Link id is not in proper length");
+                jmzk_THROW(chain::jmzk_link_id_exception, "jmzk-Link id is not in proper length");
             }
 
             auto link_id = link_id_type();
@@ -240,7 +240,7 @@ evt_link_plugin::plugin_startup() {
             my_->get_trx_id_for_link_id(link_id, id);
         }
         catch(...) {
-            http_plugin::handle_exception("evt_link", "get_trx_id_for_link_id", body, [id](auto code, auto body) {
+            http_plugin::handle_exception("jmzk_link", "get_trx_id_for_link_id", body, [id](auto code, auto body) {
                 app().get_plugin<http_plugin>().set_deferred_response(id, code, body);
             });
         }
@@ -250,9 +250,9 @@ evt_link_plugin::plugin_startup() {
 }
 
 void
-evt_link_plugin::plugin_shutdown() {
+jmzk_link_plugin::plugin_shutdown() {
     my_->accepted_block_connection_.reset();
     my_.reset();
 }
 
-}  // namespace evt
+}  // namespace jmzk

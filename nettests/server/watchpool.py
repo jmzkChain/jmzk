@@ -50,7 +50,7 @@ def compare_block_num(body, node_info, link_info):
 
 def get_trx_id_for_link_id(node_info, link_info):
     post_cb(
-        url=node_info.url + '/v1/evt_link/get_trx_id_for_link_id',
+        url=node_info.url + '/v1/jmzk_link/get_trx_id_for_link_id',
         callback=compare_block_num,
         args=(node_info, link_info),
         method='POST',

@@ -26,7 +26,7 @@ public_key::public_key(const signature& c, const sha256& digest, bool check_cano
 
 static public_key::storage_type
 parse_base58(const std::string& base58str) {
-    constexpr auto prefix = config::public_key_evt_prefix;
+    constexpr auto prefix = config::public_key_jmzk_prefix;
     FC_ASSERT(prefix_matches(prefix, base58str));
 
     auto sub_str       = base58str.substr(const_strlen(prefix));
@@ -62,7 +62,7 @@ public_key::operator std::string() const {
     auto data_str = _storage.visit(base58str_visitor<storage_type, config::public_key_prefix, 0>());
 
     FC_ASSERT(_storage.which() == 0);
-    return std::string(config::public_key_evt_prefix) + data_str;
+    return std::string(config::public_key_jmzk_prefix) + data_str;
 }
 
 std::ostream&

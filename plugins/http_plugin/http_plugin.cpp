@@ -1,8 +1,8 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/http_plugin/http_plugin.hpp>
+#include <jmzk/http_plugin/http_plugin.hpp>
 
 #include <memory>
 #include <optional>
@@ -24,10 +24,10 @@
 #include <websocketpp/logger/stub.hpp>
 #include <websocketpp/server.hpp>
 
-#include <evt/chain/exceptions.hpp>
-#include <evt/http_plugin/local_endpoint.hpp>
+#include <jmzk/chain/exceptions.hpp>
+#include <jmzk/http_plugin/local_endpoint.hpp>
 
-namespace evt {
+namespace jmzk {
 
 static appbase::abstract_plugin& _http_plugin = app().register_plugin<http_plugin>();
 
@@ -191,15 +191,15 @@ public:
 
             fc::ec_key ecdh = EC_KEY_new_by_curve_name(NID_secp384r1);
             if(!ecdh)
-                EVT_THROW(chain::http_exception, "Failed to set NID_secp384r1");
+                jmzk_THROW(chain::http_exception, "Failed to set NID_secp384r1");
             if(SSL_CTX_set_tmp_ecdh(ctx->native_handle(), (EC_KEY*)ecdh) != 1)
-                EVT_THROW(chain::http_exception, "Failed to set ECDH PFS");
+                jmzk_THROW(chain::http_exception, "Failed to set ECDH PFS");
 
             if(SSL_CTX_set_cipher_list(ctx->native_handle(),
                                        "EECDH+ECDSA+AESGCM:EECDH+aRSA+AESGCM:EECDH+ECDSA+SHA384:EECDH+ECDSA+SHA256:AES256:"
                                        "!DHE:!RSA:!AES128:!RC4:!DES:!3DES:!DSS:!SRP:!PSK:!EXP:!MD5:!LOW:!aNULL:!eNULL")
                != 1)
-                EVT_THROW(chain::http_exception, "Failed to set HTTPS cipher list");
+                jmzk_THROW(chain::http_exception, "Failed to set HTTPS cipher list");
         }
         catch(const fc::exception& e) {
             elog("https server initialization error: ${w}", ("w", e.to_detail_string()));
@@ -254,7 +254,7 @@ public:
     deferred_id
     alloc_deferred_id(typename websocketpp::server<T>::connection_ptr con) {
         if(http_conn_count + https_conn_count >= max_deferred_connection_size) {
-            EVT_THROW2(chain::exceed_deferred_request, "Exceed max allowed deferred connections, max: {}", max_deferred_connection_size);
+            jmzk_THROW2(chain::exceed_deferred_request, "Exceed max allowed deferred connections, max: {}", max_deferred_connection_size);
         }
 
         if constexpr (std::is_same_v<T, http_config>) {
@@ -283,7 +283,7 @@ public:
                 }
             }
         }
-        EVT_THROW2(chain::alloc_deferred_fail,
+        jmzk_THROW2(chain::alloc_deferred_fail,
             "Alloc deferred id failed, http index: {}, https index: {}", http_conn_index, https_conn_index);
     }
 
@@ -919,4 +919,4 @@ http_plugin::get_supported_apis() const {
     return result;
 }
 
-}  // namespace evt
+}  // namespace jmzk

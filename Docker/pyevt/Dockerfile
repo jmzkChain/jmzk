@@ -1,20 +1,20 @@
-FROM everitoken/builder:latest as builder
+FROM jmzkChain/builder:latest as builder
 ARG branch=master
 
-RUN git clone -b $branch https://github.com/everitoken/evt.git --recursive \
-    && cd evt && echo "$branch:$(git rev-parse HEAD)" > /etc/evt-version \
+RUN git clone -b $branch https://github.com/jmzkChain/jmzk.git --recursive \
+    && cd jmzk && echo "$branch:$(git rev-parse HEAD)" > /etc/jmzk-version \
     && cmake -H. -B"/tmp/build" -G"Ninja" -DCMAKE_BUILD_TYPE=Release \
-       -DCMAKE_INSTALL_PREFIX=/usr/local  -DSecp256k1_ROOT_DIR=/usr/local -DENABLE_BIND_LIBRARIES=ON
-RUN ninja -C /tmp/build -j $(nproc) libevt && ninja -C /tmp/build install
+    -DCMAKE_INSTALL_PREFIX=/usr/local  -DSecp256k1_ROOT_DIR=/usr/local -DENABLE_BIND_LIBRARIES=ON
+RUN ninja -C /tmp/build -j $(nproc) libjmzk && ninja -C /tmp/build install
 
-FROM everitoken/pyenv:latest
+FROM jmzkChain/pyenv:latest
 
-WORKDIR /pyevt
+WORKDIR /pyjmzk
 COPY --from=builder /usr/local/lib/*.so* /usr/local/lib/
-COPY --from=builder /evt/bind/pyevt ./
+COPY --from=builder /jmzk/bind/pyjmzk ./
 
 ENV LD_LIBRARY_PATH /usr/local/lib
 ENV PATH /usr/sbin:/usr/bin:/sbin:/bin
 
-ENTRYPOINT ["python3", "-m", "pyevt.unit_test"]
+ENTRYPOINT ["python3", "-m", "pyjmzk.unit_test"]
 

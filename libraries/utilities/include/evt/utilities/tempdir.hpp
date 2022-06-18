@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
@@ -8,8 +8,8 @@
 
 #include <fc/filesystem.hpp>
 
-namespace evt { namespace utilities {
+namespace jmzk { namespace utilities {
 
 fc::path temp_directory_path();
 
-} } // evt::utilities
+} } // jmzk::utilities

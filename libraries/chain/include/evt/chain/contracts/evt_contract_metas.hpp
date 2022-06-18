@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
@@ -11,7 +11,7 @@
 #include <boost/hana/pair.hpp>
 #include <boost/hana/tuple.hpp>
 
-namespace evt { namespace chain { namespace contracts {
+namespace jmzk { namespace chain { namespace contracts {
 
 enum class reserved_meta_key {
     disable_destroy = 0,
@@ -68,7 +68,7 @@ auto check_reserved_meta = [](const auto& act, const auto& metas) {
                     result = true;
                 }
                 else {
-                    EVT_THROW(meta_value_exception, "Meta-Value is not valid for `bool` type");
+                    jmzk_THROW(meta_value_exception, "Meta-Value is not valid for `bool` type");
                 }
             }
         }
@@ -76,4 +76,4 @@ auto check_reserved_meta = [](const auto& act, const auto& metas) {
     return result;
 };
 
-}}}  // namespace evt::chain::contracts
+}}}  // namespace jmzk::chain::contracts

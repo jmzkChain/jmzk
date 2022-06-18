@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/evt/trafficgen_plugin/*.hpp")
+file(GLOB HEADERS "include/jmzk/trafficgen_plugin/*.hpp")
 add_library( trafficgen_plugin
              trafficgen_plugin.cpp
              ${HEADERS} )

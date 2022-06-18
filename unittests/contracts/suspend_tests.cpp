@@ -12,7 +12,7 @@ TEST_CASE_METHOD(contracts_test, "failsuspend_test", "[contracts]") {
     const char* test_data = R"=======(
     {
         "name": "testsuspend",
-        "proposer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
+        "proposer": "jmzk6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
         "trx": {
             "expiration": "2021-07-04T05:14:12",
             "ref_block_num": "3432",
@@ -31,12 +31,12 @@ TEST_CASE_METHOD(contracts_test, "failsuspend_test", "[contracts]") {
     const char* newdomain_test_data = R"=====(
         {
           "name" : "domain",
-          "creator" : "EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
+          "creator" : "jmzk5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
           "issue" : {
             "name" : "issue",
             "threshold" : 1,
             "authorizers": [{
-                "ref": "[A] EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
+                "ref": "[A] jmzk5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
                 "weight": 1
               }
             ]
@@ -54,7 +54,7 @@ TEST_CASE_METHOD(contracts_test, "failsuspend_test", "[contracts]") {
             "name": "manage",
             "threshold": 1,
             "authorizers": [{
-                "ref": "[A] EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
+                "ref": "[A] jmzk5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
                 "weight": 1
               }
             ]
@@ -82,7 +82,7 @@ TEST_CASE_METHOD(contracts_test, "failsuspend_test", "[contracts]") {
     const char* execute_test_data = R"=======(
     {
         "name": "testsuspend",
-        "executor": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3"
+        "executor": "jmzk6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3"
     }
     )=======";
 
@@ -150,7 +150,7 @@ TEST_CASE_METHOD(contracts_test, "successsuspend_test", "[contracts]") {
     const char* test_data = R"=======(
     {
         "name": "testsuspend",
-        "proposer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
+        "proposer": "jmzk6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
         "trx": {
             "expiration": "2021-07-04T05:14:12",
             "ref_block_num": "3432",
@@ -171,12 +171,12 @@ TEST_CASE_METHOD(contracts_test, "successsuspend_test", "[contracts]") {
     const char* newdomain_test_data = R"=====(
         {
           "name" : "domain",
-          "creator" : "EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
+          "creator" : "jmzk5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
           "issue" : {
             "name" : "issue",
             "threshold" : 1,
             "authorizers": [{
-                "ref": "[A] EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
+                "ref": "[A] jmzk5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
                 "weight": 1
               }
             ]
@@ -194,7 +194,7 @@ TEST_CASE_METHOD(contracts_test, "successsuspend_test", "[contracts]") {
             "name": "manage",
             "threshold": 1,
             "authorizers": [{
-                "ref": "[A] EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
+                "ref": "[A] jmzk5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
                 "weight": 1
               }
             ]
@@ -250,7 +250,7 @@ TEST_CASE_METHOD(contracts_test, "successsuspend_test", "[contracts]") {
     const char* execute_test_data = R"=======(
     {
         "name": "testsuspend",
-        "executor": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3"
+        "executor": "jmzk6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3"
     }
     )=======";
 

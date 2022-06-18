@@ -1,32 +1,32 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <string>
-#include <libevt/evt.h>
+#include <libjmzk/jmzk.h>
 #include <fc/io/raw.hpp>
 
 #define CATCH_AND_RETURN(err)         \
     catch(fc::exception& e) {         \
-        evt_set_last_error(e.code()); \
+        jmzk_set_last_error(e.code()); \
         return err;                   \
     }                                 \
     catch(...) {                      \
-        evt_set_last_error(-1);       \
+        jmzk_set_last_error(-1);       \
         return err;                   \
     }
 
 template <typename T>
-evt_data_t*
-get_evt_data(const T& val) {
+jmzk_data_t*
+get_jmzk_data(const T& val) {
     auto rsz = fc::raw::pack_size<T>(val);
-    auto sz  = sizeof(evt_data_t) + rsz;
+    auto sz  = sizeof(jmzk_data_t) + rsz;
 
-    auto data = (evt_data_t*)malloc(sz);
+    auto data = (jmzk_data_t*)malloc(sz);
     data->sz  = rsz;
 
     auto ds = fc::datastream<char*>(data->buf, rsz);
@@ -37,14 +37,14 @@ get_evt_data(const T& val) {
 
 template <typename T>
 int
-extract_data(evt_data_t* data, T& val) {
+extract_data(jmzk_data_t* data, T& val) {
     auto ds = fc::datastream<char*>(data->buf, data->sz);
     try {
         fc::raw::unpack(ds, val);
     }
-    CATCH_AND_RETURN(EVT_INVALID_BINARY)
+    CATCH_AND_RETURN(jmzk_INVALID_BINARY)
 
-    return EVT_OK;
+    return jmzk_OK;
 }
 
 inline char*

@@ -1,6 +1,6 @@
-FROM everitoken/pyenv:latest
+FROM jmzkChain/pyenv:latest
 
-RUN wget https://github.com/everitoken/evt/raw/master/scripts/snapshot_ops.py
+RUN wget https://github.com/jmzkChain/jmzk/raw/master/scripts/snapshot_ops.py
 
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8

@@ -1,15 +1,15 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 
 #pragma once
 
-#include <evt/chain_plugin/chain_plugin.hpp>
-#include <evt/http_client_plugin/http_client_plugin.hpp>
+#include <jmzk/chain_plugin/chain_plugin.hpp>
+#include <jmzk/http_client_plugin/http_client_plugin.hpp>
 #include <appbase/application.hpp>
 
-namespace evt {
+namespace jmzk {
 
 using boost::signals2::signal;
 
@@ -73,9 +73,9 @@ private:
     std::shared_ptr<class producer_plugin_impl> my;
 };
 
-}  // namespace evt
+}  // namespace jmzk
 
-FC_REFLECT(evt::producer_plugin::runtime_options, (max_transaction_time)(max_irreversible_block_age)(produce_time_offset_us)(last_block_time_offset_us));
-FC_REFLECT(evt::producer_plugin::integrity_hash_information, (head_block_num)(head_block_id)(head_block_time)(integrity_hash));
-FC_REFLECT(evt::producer_plugin::snapshot_information, (head_block_num)(head_block_id)(head_block_time)(snapshot_name)(snapshot_size)(postgres));
-FC_REFLECT(evt::producer_plugin::create_snapshot_options, (postgres));
+FC_REFLECT(jmzk::producer_plugin::runtime_options, (max_transaction_time)(max_irreversible_block_age)(produce_time_offset_us)(last_block_time_offset_us));
+FC_REFLECT(jmzk::producer_plugin::integrity_hash_information, (head_block_num)(head_block_id)(head_block_time)(integrity_hash));
+FC_REFLECT(jmzk::producer_plugin::snapshot_information, (head_block_num)(head_block_id)(head_block_time)(snapshot_name)(snapshot_size)(postgres));
+FC_REFLECT(jmzk::producer_plugin::create_snapshot_options, (postgres));

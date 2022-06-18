@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
@@ -12,16 +12,16 @@
 
 #include <boost/hana.hpp>
 
-#include <evt/chain/controller.hpp>
-#include <evt/chain/execution_context.hpp>
-#include <evt/chain/exceptions.hpp>
-#include <evt/chain/types.hpp>
-#include <evt/chain/global_property_object.hpp>
-#include <evt/chain/contracts/types.hpp>
+#include <jmzk/chain/controller.hpp>
+#include <jmzk/chain/execution_context.hpp>
+#include <jmzk/chain/exceptions.hpp>
+#include <jmzk/chain/types.hpp>
+#include <jmzk/chain/global_property_object.hpp>
+#include <jmzk/chain/contracts/types.hpp>
 
 namespace hana = boost::hana;
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 template<typename ... ACTTYPE>
 class execution_context_impl : public execution_context {
@@ -90,7 +90,7 @@ public:
     index_of(name act) const override {
         auto& arr = act_names_arr_;
         auto it   = std::lower_bound(std::cbegin(arr), std::cend(arr), act.value);
-        EVT_ASSERT(it != std::cend(arr) && *it == act.value, unknown_action_exception, "Unknown action: ${act}", ("act", act));
+        jmzk_ASSERT(it != std::cend(arr) && *it == act.value, unknown_action_exception, "Unknown action: ${act}", ("act", act));
 
         return std::distance(std::cbegin(arr), it);
     }
@@ -110,7 +110,7 @@ public:
         auto cver  = get_curr_ver(index);
         auto mver  = type_names_[index].size();
 
-        EVT_ASSERT2(newver > cver && newver <= (int)mver, action_version_exception, "New version should be in range ({},{}]", cver, mver);
+        jmzk_ASSERT2(newver > cver && newver <= (int)mver, action_version_exception, "New version should be in range ({},{}]", cver, mver);
 
         auto old_ver = cver;
         chain_.set_action_version(act, newver);
@@ -185,7 +185,7 @@ public:
             }
         });
 
-        EVT_ASSERT(result.has_value(), action_index_exception, "Invalid action index: ${act}", ("act", actindex));
+        jmzk_ASSERT(result.has_value(), action_index_exception, "Invalid action index: ${act}", ("act", actindex));
         if constexpr (!std::is_void<RType>::value) {
             return *result;
         }
@@ -245,7 +245,7 @@ private:
     std::array<small_vector<std::string, 4>, hana::length(act_names_)> type_names_;
 };
 
-using evt_execution_context = execution_context_impl<
+using jmzk_execution_context = execution_context_impl<
                                   contracts::newdomain,
                                   contracts::updatedomain,
                                   contracts::issuetoken,
@@ -261,7 +261,7 @@ using evt_execution_context = execution_context_impl<
                                   contracts::transferft,
                                   contracts::recycleft,
                                   contracts::destroyft,
-                                  contracts::evt2pevt,
+                                  contracts::jmzk2pjmzk,
                                   contracts::addmeta,
                                   contracts::newsuspend,
                                   contracts::cancelsuspend,
@@ -293,4 +293,4 @@ using evt_execution_context = execution_context_impl<
                                   contracts::updscript
                               >;
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain

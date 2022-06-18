@@ -76,8 +76,8 @@ def get_files(folder):
 
 @cli.command()
 @click.option('--folder', '-f', type=click.Path(exists=True), required=True)
-@click.option('--bucket', '-b', default='evt-symbols')
-@click.option('--ref', '-r', default='evt')
+@click.option('--bucket', '-b', default='jmzk-symbols')
+@click.option('--ref', '-r', default='jmzk')
 @click.option('--aws-key', '-k', required=True)
 @click.option('--aws-secret', '-s', required=True)
 def upload(folder, bucket, ref, aws_key, aws_secret):
@@ -88,11 +88,11 @@ def upload(folder, bucket, ref, aws_key, aws_secret):
     s3 = session.resource('s3')
 
     files = []
-    for f in get_files(pathlib.Path(folder) / 'evtd'):
+    for f in get_files(pathlib.Path(folder) / 'jmzkd'):
         files.append(f)
-    for f in get_files(pathlib.Path(folder) / 'evtc'):
+    for f in get_files(pathlib.Path(folder) / 'jmzkc'):
         files.append(f)
-    for f in get_files(pathlib.Path(folder) / 'evtwd'):
+    for f in get_files(pathlib.Path(folder) / 'jmzkwd'):
         files.append(f)
 
     t = time.monotonic()

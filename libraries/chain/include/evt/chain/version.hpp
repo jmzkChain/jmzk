@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <stdint.h>
@@ -10,7 +10,7 @@
 #include <fc/reflect/reflect.hpp>
 #include <fc/variant.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 class version {
 public:
@@ -47,17 +47,17 @@ public:
     std::string vstr_;
 };
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
 namespace fc {
 
 inline void
-to_variant(const evt::chain::version& version, fc::variant& v) {
+to_variant(const jmzk::chain::version& version, fc::variant& v) {
     v = version.vstr_;
 }
 
 inline void
-from_variant(const fc::variant& v, evt::chain::version& version) {
+from_variant(const fc::variant& v, jmzk::chain::version& version) {
     version.vstr_ = v.get_string();
     std::stringstream ss(version.vstr_);
     std::string item;
@@ -74,4 +74,4 @@ from_variant(const fc::variant& v, evt::chain::version& version) {
 
 }  // namespace fc
 
-FC_REFLECT(evt::chain::version, (v_));
+FC_REFLECT(jmzk::chain::version, (v_));

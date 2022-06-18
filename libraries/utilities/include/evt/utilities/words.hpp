@@ -1,10 +1,10 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
-namespace evt { namespace words {
+namespace jmzk { namespace words {
 
 typedef const char* const_char_ptr;
 extern const const_char_ptr word_list[];

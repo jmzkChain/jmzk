@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <optional>
@@ -9,11 +9,11 @@
 #include <fc/variant.hpp>
 #include <fc/reflect/reflect.hpp>
 #include <fc/crypto/sha256.hpp>
-#include <evt/chain/types.hpp>
+#include <jmzk/chain/types.hpp>
 
-namespace evt { namespace chain { namespace contracts {
+namespace jmzk { namespace chain { namespace contracts {
 
-class evt_link {
+class jmzk_link {
 public:
     struct segment {
         segment() = default;
@@ -57,7 +57,7 @@ public:
     using signatures_type = fc::flat_set<signature_type, std::less<signature_type>, fc::small_vector<signature_type, 2>>;
 
 public:
-    static evt_link parse_from_evtli(const std::string& str);
+    static jmzk_link parse_from_jmzkli(const std::string& str);
     std::string to_string(int prefix = 0) const;
 
 public:
@@ -88,18 +88,18 @@ private:
     signatures_type signatures_;
 
 private:
-    friend struct fc::reflector<evt_link>;
+    friend struct fc::reflector<jmzk_link>;
 };
 
-}}}  // namespac evt::chain::contracts
+}}}  // namespac jmzk::chain::contracts
 
 namespace fc {
 
 class variant;
-void to_variant(const evt::chain::contracts::evt_link& link, fc::variant& v);
-void from_variant(const fc::variant& v, evt::chain::contracts::evt_link& link);
+void to_variant(const jmzk::chain::contracts::jmzk_link& link, fc::variant& v);
+void from_variant(const fc::variant& v, jmzk::chain::contracts::jmzk_link& link);
 
 }  // namespace fc
 
-FC_REFLECT(evt::chain::contracts::evt_link::segment, (key)(intv)(strv));
-FC_REFLECT(evt::chain::contracts::evt_link, (header_)(segments_)(signatures_));
+FC_REFLECT(jmzk::chain::contracts::jmzk_link::segment, (key)(intv)(strv));
+FC_REFLECT(jmzk::chain::contracts::jmzk_link, (header_)(segments_)(signatures_));

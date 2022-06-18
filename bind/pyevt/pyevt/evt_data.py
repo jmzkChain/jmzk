@@ -1,16 +1,16 @@
 from io import StringIO
 
-from . import evt_exception, libevt
+from . import jmzk_exception, libjmzk
 
 
-class EvtData:
+class jmzkData:
     def __init__(self, data):
         self.data = data
-        self.evt = libevt.check_lib_init()
+        self.jmzk = libjmzk.check_lib_init()
 
     def __del__(self):
-        ret = self.evt.lib.evt_free(self.data)
-        evt_exception.evt_exception_raiser(ret)
+        ret = self.jmzk.lib.jmzk_free(self.data)
+        jmzk_exception.jmzk_exception_raiser(ret)
 
     def to_hex_string(self):
         hstr = StringIO()

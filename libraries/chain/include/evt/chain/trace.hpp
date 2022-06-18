@@ -1,14 +1,14 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
-#include <evt/chain/action.hpp>
-#include <evt/chain/action_receipt.hpp>
-#include <evt/chain/block.hpp>
+#include <jmzk/chain/action.hpp>
+#include <jmzk/chain/action_receipt.hpp>
+#include <jmzk/chain/block.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 struct ft_holder {
 public:
@@ -60,8 +60,8 @@ struct transaction_trace {
     std::exception_ptr           except_ptr;
 };
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
-FC_REFLECT(evt::chain::ft_holder, (addr)(sym_id));
-FC_REFLECT(evt::chain::action_trace, (receipt)(act)(elapsed)(console)(trx_id)(block_num)(block_time)(producer_block_id)(except)(generated_actions)(new_ft_holders));
-FC_REFLECT(evt::chain::transaction_trace, (id)(receipt)(elapsed)(is_suspend)(action_traces)(charge)(net_usage)(except));
+FC_REFLECT(jmzk::chain::ft_holder, (addr)(sym_id));
+FC_REFLECT(jmzk::chain::action_trace, (receipt)(act)(elapsed)(console)(trx_id)(block_num)(block_time)(producer_block_id)(except)(generated_actions)(new_ft_holders));
+FC_REFLECT(jmzk::chain::transaction_trace, (id)(receipt)(elapsed)(is_suspend)(action_traces)(charge)(net_usage)(except));

@@ -1,8 +1,8 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/producer_plugin/producer_plugin.hpp>
+#include <jmzk/producer_plugin/producer_plugin.hpp>
 
 #include <algorithm>
 #include <iostream>
@@ -21,12 +21,12 @@
 #include <fc/scoped_exit.hpp>
 #include <fc/smart_ref_impl.hpp>
 
-#include <evt/chain/global_property_object.hpp>
-#include <evt/chain/plugin_interface.hpp>
-#include <evt/chain/snapshot.hpp>
+#include <jmzk/chain/global_property_object.hpp>
+#include <jmzk/chain/plugin_interface.hpp>
+#include <jmzk/chain/snapshot.hpp>
 
 #ifdef POSTGRES_SUPPORT
-#include <evt/postgres_plugin/postgres_plugin.hpp>
+#include <jmzk/postgres_plugin/postgres_plugin.hpp>
 #endif
 
 namespace bmi = boost::multi_index;
@@ -55,12 +55,12 @@ fc::logger       _log;
 const fc::string trx_trace_logger_name("transaction_tracing");
 fc::logger       _trx_trace_log;
 
-namespace evt {
+namespace jmzk {
 
 static appbase::abstract_plugin& _producer_plugin = app().register_plugin<producer_plugin>();
 
-using namespace evt::chain;
-using namespace evt::chain::plugin_interface;
+using namespace jmzk::chain;
+using namespace jmzk::chain::plugin_interface;
 
 namespace {
 bool
@@ -123,7 +123,7 @@ public:
     boost::program_options::variables_map _options;
     bool                                  _production_enabled    = false;
     bool                                  _pause_production      = false;
-    uint32_t                              _production_skip_flags = 0;  //evt::chain::skip_nothing;
+    uint32_t                              _production_skip_flags = 0;  //jmzk::chain::skip_nothing;
 
     using signature_provider_type = std::function<chain::signature_type(chain::digest_type)>;
     std::map<chain::public_key_type, signature_provider_type> _signature_providers;
@@ -138,7 +138,7 @@ public:
     int32_t          _produce_time_offset_us = 0;
     int32_t          _last_block_time_offset_us = 0;
     fc::time_point   _irreversible_block_time;
-    fc::microseconds _evtwd_provider_timeout_us;
+    fc::microseconds _jmzkwd_provider_timeout_us;
 
     time_point _last_signed_block_time;
     time_point _start_time            = fc::time_point::now();
@@ -293,7 +293,7 @@ public:
 
         fc_dlog(_log, "received incoming block ${id}", ("id", id));
 
-        EVT_ASSERT(block->timestamp < (fc::time_point::now() + fc::seconds(7)), block_from_the_future,
+        jmzk_ASSERT(block->timestamp < (fc::time_point::now() + fc::seconds(7)), block_from_the_future,
             "received a block from the future, ignoring it: ${id}", ("id", id));
 
         chain::controller& chain = chain_plug->chain();
@@ -489,12 +489,12 @@ public:
 };
 
 void
-new_chain_banner(const evt::chain::controller& db) {
+new_chain_banner(const jmzk::chain::controller& db) {
     std::cerr << "\n"
                  "************************************\n"
                  "*                                  *\n"
                  "*   --------- NEW CHAIN --------   *\n"
-                 "*   -  Welcome to everiToken!  -   *\n"
+                 "*   -  Welcome to jmzkChain!  -   *\n"
                  "*   ----------------------------   *\n"
                  "*                                  *\n"
                  "************************************\n"
@@ -538,12 +538,12 @@ producer_plugin::set_program_options(
             {std::string(default_priv_key.get_public_key()) + "=KEY:" + std::string(default_priv_key)}, std::string(default_priv_key.get_public_key()) + "=KEY:" + std::string(default_priv_key)),
             "Key=Value pairs in the form <public-key>=<provider-spec>\n"
             "Where:\n"
-            "   <public-key>    \tis a string form of a vaild EVT public key\n\n"
+            "   <public-key>    \tis a string form of a vaild jmzk public key\n\n"
             "   <provider-spec> \tis a string in the form <provider-type>:<data>\n\n"
-            "   <provider-type> \tis KEY, or EVTWD\n\n"
-            "   KEY:<data>      \tis a string form of a valid EVT private key which maps to the provided public key\n\n"
-            "   EVTWD:<data>    \tis the URL where evtwd is available and the approptiate wallet(s) are unlocked")
-         ("evtwd-provider-timeout", boost::program_options::value<int32_t>()->default_value(5), "Limits the maximum time (in milliseconds) that is allowed for sending blocks to a evtwd provider for signing")
+            "   <provider-type> \tis KEY, or jmzkWD\n\n"
+            "   KEY:<data>      \tis a string form of a valid jmzk private key which maps to the provided public key\n\n"
+            "   jmzkWD:<data>    \tis the URL where jmzkwd is available and the approptiate wallet(s) are unlocked")
+         ("jmzkwd-provider-timeout", boost::program_options::value<int32_t>()->default_value(5), "Limits the maximum time (in milliseconds) that is allowed for sending blocks to a jmzkwd provider for signing")
          ("produce-time-offset-us", boost::program_options::value<int32_t>()->default_value(0),
             "offset of non last block producing time in microseconds. Negative number results in blocks to go out sooner, and positive number results in blocks to go out later")
          ("last-block-time-offset-us", boost::program_options::value<int32_t>()->default_value(0),
@@ -566,7 +566,7 @@ chain::signature_type
 producer_plugin::sign_compact(const chain::public_key_type& key, const fc::sha256& digest) const {
     if(key != chain::public_key_type()) {
         auto private_key_itr = my->_signature_providers.find(key);
-        EVT_ASSERT(private_key_itr != my->_signature_providers.end(), producer_priv_key_not_found, "Local producer has no private key in config.ini corresponding to public key ${key}", ("key", key));
+        jmzk_ASSERT(private_key_itr != my->_signature_providers.end(), producer_priv_key_not_found, "Local producer has no private key in config.ini corresponding to public key ${key}", ("key", key));
 
         return private_key_itr->second(digest);
     }
@@ -595,17 +595,17 @@ make_key_signature_provider(const private_key_type& key) {
 }
 
 static producer_plugin_impl::signature_provider_type
-make_evtwd_signature_provider(const std::shared_ptr<producer_plugin_impl>& impl, const string& url_str, const public_key_type pubkey) {
-    auto evtwd_url = fc::url(url_str);
+make_jmzkwd_signature_provider(const std::shared_ptr<producer_plugin_impl>& impl, const string& url_str, const public_key_type pubkey) {
+    auto jmzkwd_url = fc::url(url_str);
     std::weak_ptr<producer_plugin_impl> weak_impl = impl;
 
-    return [weak_impl, evtwd_url, pubkey](const chain::digest_type& digest) {
+    return [weak_impl, jmzkwd_url, pubkey](const chain::digest_type& digest) {
         auto impl = weak_impl.lock();
         if(impl) {
             fc::variant params;
             fc::to_variant(std::make_pair(digest, pubkey), params);
-            auto deadline = impl->_evtwd_provider_timeout_us.count() >= 0 ? fc::time_point::now() + impl->_evtwd_provider_timeout_us : fc::time_point::maximum();
-            return app().get_plugin<http_client_plugin>().get_client().post_sync(evtwd_url, params, deadline).as<chain::signature_type>();
+            auto deadline = impl->_jmzkwd_provider_timeout_us.count() >= 0 ? fc::time_point::now() + impl->_jmzkwd_provider_timeout_us : fc::time_point::maximum();
+            return app().get_plugin<http_client_plugin>().get_client().post_sync(jmzkwd_url, params, deadline).as<chain::signature_type>();
         }
         else {
             return signature_type();
@@ -620,7 +620,7 @@ producer_plugin::plugin_initialize(const boost::program_options::variables_map& 
 
     try {
         my->chain_plug = app().find_plugin<chain_plugin>();
-        EVT_ASSERT(my->chain_plug, plugin_config_exception, "chain_plugin not found");
+        jmzk_ASSERT(my->chain_plug, plugin_config_exception, "chain_plugin not found");
 
         my->_options = &options;
         LOAD_VALUE_SET(options, "producer-name", my->_producers, types::account_name)
@@ -645,12 +645,12 @@ producer_plugin::plugin_initialize(const boost::program_options::variables_map& 
             for(const auto& key_spec_pair : key_spec_pairs) {
                 try {
                     auto delim = key_spec_pair.find("=");
-                    EVT_ASSERT(delim != std::string::npos, plugin_config_exception, "Missing \"=\" in the key spec pair");
+                    jmzk_ASSERT(delim != std::string::npos, plugin_config_exception, "Missing \"=\" in the key spec pair");
                     auto pub_key_str = key_spec_pair.substr(0, delim);
                     auto spec_str    = key_spec_pair.substr(delim + 1);
 
                     auto spec_delim = spec_str.find(":");
-                    EVT_ASSERT(spec_delim != std::string::npos, plugin_config_exception, "Missing \":\" in the key spec pair");
+                    jmzk_ASSERT(spec_delim != std::string::npos, plugin_config_exception, "Missing \":\" in the key spec pair");
                     auto spec_type_str = spec_str.substr(0, spec_delim);
                     auto spec_data     = spec_str.substr(spec_delim + 1);
 
@@ -659,8 +659,8 @@ producer_plugin::plugin_initialize(const boost::program_options::variables_map& 
                     if(spec_type_str == "KEY") {
                         my->_signature_providers[pubkey] = make_key_signature_provider(private_key_type(spec_data));
                     }
-                    else if(spec_type_str == "EVTWD") {
-                        my->_signature_providers[pubkey] = make_evtwd_signature_provider(my, spec_data, pubkey);
+                    else if(spec_type_str == "jmzkWD") {
+                        my->_signature_providers[pubkey] = make_jmzkwd_signature_provider(my, spec_data, pubkey);
                     }
                 }
                 catch(...) {
@@ -669,7 +669,7 @@ producer_plugin::plugin_initialize(const boost::program_options::variables_map& 
             }
         }
 
-        my->_evtwd_provider_timeout_us = fc::milliseconds(options.at("evtwd-provider-timeout").as<int32_t>());
+        my->_jmzkwd_provider_timeout_us = fc::milliseconds(options.at("jmzkwd-provider-timeout").as<int32_t>());
 
         my->_produce_time_offset_us = options.at("produce-time-offset-us").as<int32_t>();
 
@@ -691,7 +691,7 @@ producer_plugin::plugin_initialize(const boost::program_options::variables_map& 
                 my->_snapshots_dir = sd;
             }
 
-            EVT_ASSERT(fc::is_directory(my->_snapshots_dir), snapshot_directory_not_found_exception,
+            jmzk_ASSERT(fc::is_directory(my->_snapshots_dir), snapshot_directory_not_found_exception,
                        "No such directory '${dir}'", ("dir", my->_snapshots_dir.generic_string()));
         }
 
@@ -727,10 +727,10 @@ producer_plugin::plugin_startup() {
 
         chain::controller& chain = my->chain_plug->chain();
 
-        EVT_ASSERT(my->_producers.empty() || chain.get_read_mode() == chain::db_read_mode::SPECULATIVE, plugin_config_exception,
+        jmzk_ASSERT(my->_producers.empty() || chain.get_read_mode() == chain::db_read_mode::SPECULATIVE, plugin_config_exception,
             "node cannot have any producer-name configured because block production is impossible when read_mode is not \"speculative\"");
 
-        EVT_ASSERT(my->_producers.empty() || chain.get_validation_mode() == chain::validation_mode::FULL, plugin_config_exception,
+        jmzk_ASSERT(my->_producers.empty() || chain.get_validation_mode() == chain::validation_mode::FULL, plugin_config_exception,
             "node cannot have any producer-name configured because block production is not safe when validation_mode is not \"full\"");
 
         my->_accepted_block_connection.emplace(chain.accepted_block.connect([this](const auto& bsp) { my->on_block(bsp); }));
@@ -752,7 +752,7 @@ producer_plugin::plugin_startup() {
                 if(chain.head_block_num() == 0) {
                     new_chain_banner(chain);
                 }
-                //_production_skip_flags |= evt::chain::skip_undo_history_check;
+                //_production_skip_flags |= jmzk::chain::skip_undo_history_check;
             }
         }
 
@@ -886,7 +886,7 @@ producer_plugin::create_snapshot(const create_snapshot_options& options) const {
     auto head_id       = chain.head_block_id();
     auto snapshot_path = (my->_snapshots_dir / fc::format_string("snapshot-${id}.bin", fc::mutable_variant_object()("id", head_id))).generic_string();
 
-    EVT_ASSERT(!fc::is_regular_file(snapshot_path), snapshot_exists_exception,
+    jmzk_ASSERT(!fc::is_regular_file(snapshot_path), snapshot_exists_exception,
                "snapshot named ${name} already exists", ("name", snapshot_path));
 
     auto snap_out = std::ofstream(snapshot_path, (std::ios::out | std::ios::binary));
@@ -897,7 +897,7 @@ producer_plugin::create_snapshot(const create_snapshot_options& options) const {
     chain.write_snapshot(writer);
     if(options.postgres) {
 #ifdef POSTGRES_SUPPORT
-        if(app().find_plugin("evt::postgres_plugin") == nullptr) {
+        if(app().find_plugin("jmzk::postgres_plugin") == nullptr) {
             wlog("Cannot find postgres plugin, don't write postgres into snapshot");
         }
         else {
@@ -1332,12 +1332,12 @@ producer_plugin_impl::schedule_production_loop() {
 
         if(deadline > fc::time_point::now()) {
             // ship this block off no later than its deadline
-            EVT_ASSERT(chain.pending_block_state(), missing_pending_block_state, "producing without pending_block_state, start_block succeeded");
+            jmzk_ASSERT(chain.pending_block_state(), missing_pending_block_state, "producing without pending_block_state, start_block succeeded");
             _timer.expires_at(epoch + boost::posix_time::microseconds( deadline.time_since_epoch().count()));
             fc_dlog(_log, "Scheduling Block Production on Normal Block #${num} for ${time}", ("num", chain.pending_block_state()->block_num)("time", deadline));
         }
         else {
-            EVT_ASSERT(chain.pending_block_state(), missing_pending_block_state, "producing without pending_block_state");
+            jmzk_ASSERT(chain.pending_block_state(), missing_pending_block_state, "producing without pending_block_state");
             auto expect_time = chain.pending_block_time() - fc::microseconds(config::block_interval_us);
             // ship this block off up to 1 block time earlier or immediately
             if(fc::time_point::now() >= expect_time) {
@@ -1363,7 +1363,7 @@ producer_plugin_impl::schedule_production_loop() {
     }
     else if(_pending_block_mode == pending_block_mode::speculating && !_producers.empty() && !production_disabled_by_policy()) {
         fc_dlog(_log, "Specualtive Block Created; Scheduling Speculative/Production Change");
-        EVT_ASSERT(chain.pending_block_state(), missing_pending_block_state, "speculating without pending_block_state");
+        jmzk_ASSERT(chain.pending_block_state(), missing_pending_block_state, "speculating without pending_block_state");
         const auto& pbs = chain.pending_block_state();
         schedule_delayed_production_loop(weak_this, pbs->header.timestamp);
     }
@@ -1458,15 +1458,15 @@ maybe_make_debug_time_logger() -> optional<decltype(make_debug_time_logger())> {
 
 void
 producer_plugin_impl::produce_block() {
-    EVT_ASSERT(_pending_block_mode == pending_block_mode::producing, producer_exception, "called produce_block while not actually producing");
+    jmzk_ASSERT(_pending_block_mode == pending_block_mode::producing, producer_exception, "called produce_block while not actually producing");
 
     chain::controller& chain = chain_plug->chain();
     const auto&        pbs   = chain.pending_block_state();
     const auto&        hbs   = chain.head_block_state();
-    EVT_ASSERT(pbs, missing_pending_block_state, "pending_block_state does not exist but it should, another plugin may have corrupted it");
+    jmzk_ASSERT(pbs, missing_pending_block_state, "pending_block_state does not exist but it should, another plugin may have corrupted it");
     auto signature_provider_itr = _signature_providers.find(pbs->block_signing_key);
 
-    EVT_ASSERT(signature_provider_itr != _signature_providers.end(), producer_priv_key_not_found, "Attempting to produce a block for which we don't have the private key");
+    jmzk_ASSERT(signature_provider_itr != _signature_providers.end(), producer_priv_key_not_found, "Attempting to produce a block for which we don't have the private key");
 
     //idump( (fc::time_point::now() - chain.pending_block_time()) );
     chain.finalize_block();
@@ -1491,4 +1491,4 @@ producer_plugin_impl::produce_block() {
          ("confs", new_bs->header.confirmed));
 }
 
-}  // namespace evt
+}  // namespace jmzk

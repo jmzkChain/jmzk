@@ -1,8 +1,8 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/chain/controller.hpp>
+#include <jmzk/chain/controller.hpp>
 
 #include <chainbase/chainbase.hpp>
 #include <fmt/format.h>
@@ -11,28 +11,28 @@
 #include <fc/scoped_exit.hpp>
 #include <fc/variant_object.hpp>
 
-#include <evt/chain/authority_checker.hpp>
-#include <evt/chain/block_log.hpp>
-#include <evt/chain/charge_manager.hpp>
-#include <evt/chain/chain_snapshot.hpp>
-#include <evt/chain/execution_context_impl.hpp>
-#include <evt/chain/fork_database.hpp>
-#include <evt/chain/snapshot.hpp>
-#include <evt/chain/token_database.hpp>
-#include <evt/chain/token_database_cache.hpp>
-#include <evt/chain/token_database_snapshot.hpp>
-#include <evt/chain/transaction_context.hpp>
-#include <evt/chain/contracts/abi_serializer.hpp>
-#include <evt/chain/contracts/evt_contract_abi.hpp>
-#include <evt/chain/contracts/evt_org.hpp>
+#include <jmzk/chain/authority_checker.hpp>
+#include <jmzk/chain/block_log.hpp>
+#include <jmzk/chain/charge_manager.hpp>
+#include <jmzk/chain/chain_snapshot.hpp>
+#include <jmzk/chain/execution_context_impl.hpp>
+#include <jmzk/chain/fork_database.hpp>
+#include <jmzk/chain/snapshot.hpp>
+#include <jmzk/chain/token_database.hpp>
+#include <jmzk/chain/token_database_cache.hpp>
+#include <jmzk/chain/token_database_snapshot.hpp>
+#include <jmzk/chain/transaction_context.hpp>
+#include <jmzk/chain/contracts/abi_serializer.hpp>
+#include <jmzk/chain/contracts/jmzk_contract_abi.hpp>
+#include <jmzk/chain/contracts/jmzk_org.hpp>
 
-#include <evt/chain/block_summary_object.hpp>
-#include <evt/chain/global_property_object.hpp>
-#include <evt/chain/transaction_object.hpp>
-#include <evt/chain/reversible_block_object.hpp>
-#include <evt/chain/contracts/evt_link_object.hpp>
+#include <jmzk/chain/block_summary_object.hpp>
+#include <jmzk/chain/global_property_object.hpp>
+#include <jmzk/chain/transaction_object.hpp>
+#include <jmzk/chain/reversible_block_object.hpp>
+#include <jmzk/chain/contracts/jmzk_link_object.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 using controller_index_set = index_set<
    global_property_multi_index,
@@ -143,7 +143,7 @@ struct controller_impl {
     token_database_cache     token_db_cache;
     controller::config       conf;
     chain_id_type            chain_id;
-    evt_execution_context    exec_ctx;
+    jmzk_execution_context    exec_ctx;
 
 
     bool                     replaying = false;
@@ -164,14 +164,14 @@ struct controller_impl {
     void
     pop_block() {
         auto prev = fork_db.get_block(head->header.previous);
-        EVT_ASSERT(prev, block_validate_exception, "attempt to pop beyond last irreversible block");
+        jmzk_ASSERT(prev, block_validate_exception, "attempt to pop beyond last irreversible block");
 
         if(const auto* b = reversible_blocks.find<reversible_block_object,by_num>(head->block_num)) {
             reversible_blocks.remove(*b);
         }
 
         if(read_mode == db_read_mode::SPECULATIVE) {
-            EVT_ASSERT(head->block, block_validate_exception, "attempting to pop a block that was sparsely loaded from a snapshot");
+            jmzk_ASSERT(head->block, block_validate_exception, "attempting to pop a block that was sparsely loaded from a snapshot");
             for(const auto& t : head->trxs) {
                 unapplied_transactions[t->signed_id] = t;
             }
@@ -197,7 +197,7 @@ struct controller_impl {
         , chain_id(cfg.genesis.compute_chain_id())
         , exec_ctx(s)
         , read_mode(cfg.read_mode)
-        , system_api(contracts::evt_contract_abi(), cfg.max_serialization_time) {
+        , system_api(contracts::jmzk_contract_abi(), cfg.max_serialization_time) {
 
         fork_db.irreversible.connect([&](auto b) {
             on_irreversible(b);
@@ -249,19 +249,19 @@ struct controller_impl {
         auto        append_to_blog = false;
         if(!log_head) {
             if(s->block) {
-                EVT_ASSERT(s->block_num == blog.first_block_num(), block_log_exception, "block log has no blocks and is appending the wrong first block.  Expected ${expected}, but received: ${actual}",
+                jmzk_ASSERT(s->block_num == blog.first_block_num(), block_log_exception, "block log has no blocks and is appending the wrong first block.  Expected ${expected}, but received: ${actual}",
                            ("expected", fmt::format("{:n}", blog.first_block_num()))("actual", fmt::format("{:n}", s->block_num)));
                 append_to_blog = true;
             }
             else {
-                EVT_ASSERT(s->block_num == blog.first_block_num() - 1, block_log_exception, "block log has no blocks and is not properly set up to start after the snapshot");
+                jmzk_ASSERT(s->block_num == blog.first_block_num() - 1, block_log_exception, "block log has no blocks and is not properly set up to start after the snapshot");
             }
         }
         else {
             auto lh_block_num = log_head->block_num();
             if(s->block_num > lh_block_num) {
-                EVT_ASSERT(s->block_num - 1 == lh_block_num, unlinkable_block_exception, "unlinkable block", ("s->block_num",fmt::format("{:n}", s->block_num))("lh_block_num",fmt::format("{:n}", lh_block_num)));
-                EVT_ASSERT(s->block->previous == log_head->id(), unlinkable_block_exception, "irreversible doesn't link to block log head");
+                jmzk_ASSERT(s->block_num - 1 == lh_block_num, unlinkable_block_exception, "unlinkable block", ("s->block_num",fmt::format("{:n}", s->block_num))("lh_block_num",fmt::format("{:n}", lh_block_num)));
+                jmzk_ASSERT(s->block->previous == log_head->id(), unlinkable_block_exception, "irreversible doesn't link to block log head");
                 append_to_blog = true;
             }
         }
@@ -294,7 +294,7 @@ struct controller_impl {
                     // otherwise, assert the one odd case where initializing a chain
                     // from genesis creates and applies the first block automatically.
                     // when syncing from another chain, this is pushed in again
-                    EVT_ASSERT(!head || head->block_num == 1, block_validate_exception, "Attempting to re-apply an irreversible block that was not the implied genesis block");
+                    jmzk_ASSERT(!head || head->block_num == 1, block_validate_exception, "Attempting to re-apply an irreversible block that was not the implied genesis block");
                 }
 
                 fork_db.mark_in_current_chain(head, true);
@@ -352,7 +352,7 @@ struct controller_impl {
 
         bool report_integrity_hash = !!snapshot;
         if(snapshot) {
-            EVT_ASSERT(!head, fork_database_exception, "");
+            jmzk_ASSERT(!head, fork_database_exception, "");
             snapshot->validate();
 
             read_from_snapshot(snapshot);
@@ -366,7 +366,7 @@ struct controller_impl {
                 replay();
             }
             else {
-                EVT_ASSERT(end->block_num() == head->block_num, fork_database_exception,
+                jmzk_ASSERT(end->block_num() == head->block_num, fork_database_exception,
                            "Block log is provided with snapshot but does not contain the head block from the snapshot");
             }
         }
@@ -390,27 +390,27 @@ struct controller_impl {
         const auto& ubi    = reversible_blocks.get_index<reversible_block_index, by_num>();
         auto        objitr = ubi.rbegin();
         if(objitr != ubi.rend()) {
-            EVT_ASSERT(objitr->blocknum == head->block_num, fork_database_exception,
+            jmzk_ASSERT(objitr->blocknum == head->block_num, fork_database_exception,
                        "reversible block database is inconsistent with fork database, replay blockchain",
                        ("head", head->block_num)("unconfimed", objitr->blocknum));
         }
         else {
             auto end = blog.read_head();
-            EVT_ASSERT(!end || end->block_num() == head->block_num, fork_database_exception,
+            jmzk_ASSERT(!end || end->block_num() == head->block_num, fork_database_exception,
                        "fork database exists but reversible block database does not, replay blockchain",
                        ("blog_head", end->block_num())("head", head->block_num));
         }
 
-        EVT_ASSERT(db.revision() >= head->block_num, fork_database_exception, "fork database is inconsistent with shared memory",
+        jmzk_ASSERT(db.revision() >= head->block_num, fork_database_exception, "fork database is inconsistent with shared memory",
                    ("db", db.revision())("head", head->block_num));
 
         if(db.revision() > head->block_num) {
             wlog("warning: database revision (${db}) is greater than head block number (${head}), "
                  "attempting to undo pending changes",
                  ("db", db.revision())("head", head->block_num));
-            EVT_ASSERT(token_db.savepoints_size() > 0, token_database_exception,
+            jmzk_ASSERT(token_db.savepoints_size() > 0, token_database_exception,
                 "token database is inconsistent with fork database: don't have any savepoints to pop");
-            EVT_ASSERT(token_db.latest_savepoint_seq() == db.revision(), token_database_exception,
+            jmzk_ASSERT(token_db.latest_savepoint_seq() == db.revision(), token_database_exception,
                 "token database(${seq}) is inconsistent with fork database(${db})",
                 ("seq",token_db.latest_savepoint_seq())("db",db.revision()));
         }
@@ -424,8 +424,8 @@ struct controller_impl {
             ilog("database initialized with hash: ${hash}", ("hash", hash));
         }
 
-        // add workaround to evt & pevt in evt-3.3.2
-        update_evt_org(token_db, conf.genesis);
+        // add workaround to jmzk & pjmzk in jmzk-3.3.2
+        update_jmzk_org(token_db, conf.genesis);
     }
 
     void
@@ -563,7 +563,7 @@ struct controller_impl {
 
     void
     initialize_token_db() {
-        initialize_evt_org(token_db, conf.genesis);
+        initialize_jmzk_org(token_db, conf.genesis);
     }
 
     /**
@@ -581,7 +581,7 @@ struct controller_impl {
                 auto new_bsp = fork_db.add(pending->_pending_block_state, true);
                 emit(self.accepted_block_header, pending->_pending_block_state);
                 head = fork_db.head();
-                EVT_ASSERT(new_bsp == head, fork_database_exception, "committed block did not become the new head in fork database");
+                jmzk_ASSERT(new_bsp == head, fork_database_exception, "committed block did not become the new head in fork database");
             }
 
             if(!replaying) {
@@ -648,7 +648,7 @@ struct controller_impl {
 
         auto checker = authority_checker(self, exec_ctx, signed_keys, conf.max_authority_depth);
         for(const auto& act : trx.actions) {
-            EVT_ASSERT(checker.satisfied(act), unsatisfied_authorization,
+            jmzk_ASSERT(checker.satisfied(act), unsatisfied_authorization,
                        "${name} action in domain: ${domain} with key: ${key} authorized failed",
                        ("domain", act.domain)("key", act.key)("name", act.name));
         }
@@ -659,7 +659,7 @@ struct controller_impl {
         auto& conf = db.get<global_property_object>().configuration;
 
         auto checker = authority_checker(self, exec_ctx, signed_keys, conf.max_authority_depth);
-        EVT_ASSERT(checker.satisfied(act), unsatisfied_authorization,
+        jmzk_ASSERT(checker.satisfied(act), unsatisfied_authorization,
                    "${name} action in domain: ${domain} with key: ${key} authorized failed",
                    ("domain", act.domain)("key", act.key)("name", act.name));
     }
@@ -724,7 +724,7 @@ struct controller_impl {
     transaction_trace_ptr
     push_transaction(const transaction_metadata_ptr& trx,
                      fc::time_point                  deadline) {
-        EVT_ASSERT(deadline != fc::time_point(), transaction_exception, "deadline cannot be uninitialized");
+        jmzk_ASSERT(deadline != fc::time_point(), transaction_exception, "deadline cannot be uninitialized");
 
         transaction_trace_ptr trace;
         try {
@@ -802,14 +802,14 @@ struct controller_impl {
 
     void
     start_block(block_timestamp_type when, uint16_t confirm_block_count, controller::block_status s, const optional<block_id_type>& producer_block_id) {
-        EVT_ASSERT(!pending.has_value(), block_validate_exception, "pending block already exists");
+        jmzk_ASSERT(!pending.has_value(), block_validate_exception, "pending block already exists");
 
         auto guard_pending = fc::make_scoped_exit([this]() {
             pending.reset();
         });
 
         if(!self.skip_db_sessions(s)) {
-            EVT_ASSERT(db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
+            jmzk_ASSERT(db.revision() == head->block_num, database_exception, "db revision is not on par with head block",
                 ("db.revision()", db.revision())("controller_head_block", head->block_num)("fork_db_head_block", fork_db.head()->block_num) );
 
             pending.emplace(maybe_session(db, token_db));
@@ -871,7 +871,7 @@ struct controller_impl {
     apply_block(const signed_block_ptr& b, controller::block_status s) {
         try {
             try {
-                EVT_ASSERT(b->block_extensions.size() == 0, block_validate_exception, "no supported extensions");
+                jmzk_ASSERT(b->block_extensions.size() == 0, block_validate_exception, "no supported extensions");
                 auto producer_block_id = b->id();
                 start_block(b->timestamp, b->confirmed, s, producer_block_id);
 
@@ -891,7 +891,7 @@ struct controller_impl {
                         continue;
                     }
                     else {
-                        EVT_THROW(block_validate_exception, "encountered unexpected receipt type");
+                        jmzk_THROW(block_validate_exception, "encountered unexpected receipt type");
                     }
 
                     auto transaction_failed = trace && trace->except;
@@ -899,16 +899,16 @@ struct controller_impl {
                         edump((*trace));
                         throw *trace->except;
                     }
-                    EVT_ASSERT(pending->_pending_block_state->block->transactions.size() > 0,
+                    jmzk_ASSERT(pending->_pending_block_state->block->transactions.size() > 0,
                                block_validate_exception, "expected a receipt",
                                ("block", *b)("expected_receipt", receipt)
                                );
-                    EVT_ASSERT(pending->_pending_block_state->block->transactions.size() == num_pending_receipts + 1,
+                    jmzk_ASSERT(pending->_pending_block_state->block->transactions.size() == num_pending_receipts + 1,
                                block_validate_exception, "expected receipt was not added",
                                ("block", *b)("expected_receipt", receipt)
                                );
                     auto& r = pending->_pending_block_state->block->transactions.back();
-                    EVT_ASSERT(r == static_cast<const transaction_receipt_header&>(receipt),
+                    jmzk_ASSERT(r == static_cast<const transaction_receipt_header&>(receipt),
                                block_validate_exception, "receipt does not match",
                               ("producer_receipt", receipt)("validator_receipt", pending->_pending_block_state->block->transactions.back())
                               );
@@ -919,7 +919,7 @@ struct controller_impl {
                 finalize_block();
 
                 // this implicitly asserts that all header fields (less the signature) are identical
-                EVT_ASSERT(producer_block_id == pending->_pending_block_state->header.id(),
+                jmzk_ASSERT(producer_block_id == pending->_pending_block_state->header.id(),
                        block_validate_exception, "Block ID does not match",
                        ("producer_block_id",producer_block_id)("validator_block_id",pending->_pending_block_state->header.id())("p",b)("p2",pending->_pending_block_state->block));
 
@@ -948,15 +948,15 @@ struct controller_impl {
     void
     push_block(const signed_block_ptr& b) {
         auto s = controller::block_status::complete;
-        EVT_ASSERT(!pending.has_value(), block_validate_exception, "it is not valid to push a block when there is a pending block");
+        jmzk_ASSERT(!pending.has_value(), block_validate_exception, "it is not valid to push a block when there is a pending block");
 
         auto reset_prod_light_validation = fc::make_scoped_exit([old_value=trusted_producer_light_validation, this]() {
             trusted_producer_light_validation = old_value;
         });
 
         try {
-            EVT_ASSERT(b, block_validate_exception, "trying to push empty block");
-            EVT_ASSERT(s != controller::block_status::incomplete, block_validate_exception, "invalid block status for a completed block");
+            jmzk_ASSERT(b, block_validate_exception, "trying to push empty block");
+            jmzk_ASSERT(s != controller::block_status::incomplete, block_validate_exception, "invalid block status for a completed block");
             emit(self.pre_accepted_block, b);
 
             auto new_header_state = fork_db.add(b, false);
@@ -978,11 +978,11 @@ struct controller_impl {
         self.validate_db_available_size();
         self.validate_reversible_available_size();
 
-        EVT_ASSERT(!pending.has_value(), block_validate_exception, "it is not valid to push a block when there is a pending block");
+        jmzk_ASSERT(!pending.has_value(), block_validate_exception, "it is not valid to push a block when there is a pending block");
 
         try {
-            EVT_ASSERT(b, block_validate_exception, "trying to push empty block");
-            EVT_ASSERT(s != controller::block_status::incomplete, block_validate_exception, "invalid block status for a completed block");
+            jmzk_ASSERT(b, block_validate_exception, "trying to push empty block");
+            jmzk_ASSERT(s != controller::block_status::incomplete, block_validate_exception, "invalid block status for a completed block");
             emit(self.pre_accepted_block, b);
 
             const bool skip_validate_signee = !conf.force_all_checks;
@@ -1027,7 +1027,7 @@ struct controller_impl {
                 fork_db.mark_in_current_chain(*itr, false);
                 pop_block();
             }
-            EVT_ASSERT(self.head_block_id() == branches.second.back()->header.previous, fork_database_exception,
+            jmzk_ASSERT(self.head_block_id() == branches.second.back()->header.previous, fork_database_exception,
                       "loss of sync between fork_db and chainbase during fork switch");  // _should_ never fail
 
             for(auto ritr = branches.first.rbegin(); ritr != branches.first.rend(); ++ritr) {
@@ -1055,7 +1055,7 @@ struct controller_impl {
                         fork_db.mark_in_current_chain(*itr, false);
                         pop_block();
                     }
-                    EVT_ASSERT(self.head_block_id() == branches.second.back()->header.previous, fork_database_exception,
+                    jmzk_ASSERT(self.head_block_id() == branches.second.back()->header.previous, fork_database_exception,
                               "loss of sync between fork_db and chainbase during fork switch reversal");  // _should_ never fail
 
                     // re-apply good blocks
@@ -1113,7 +1113,7 @@ struct controller_impl {
 
     void
     finalize_block() {
-        EVT_ASSERT(pending.has_value(), block_validate_exception, "it is not valid to finalize when there is no pending block");
+        jmzk_ASSERT(pending.has_value(), block_validate_exception, "it is not valid to finalize when there is no pending block");
         try {
             set_action_merkle();
             set_trx_merkle();
@@ -1148,7 +1148,7 @@ struct controller_impl {
 
     void
     check_and_update_staking_ctx() {
-        EVT_ASSERT(pending.has_value(), block_validate_exception, "it is not valid to check and update staking context when there is no pending block");
+        jmzk_ASSERT(pending.has_value(), block_validate_exception, "it is not valid to check and update staking context when there is no pending block");
 
         const auto& gpo  = db.get<global_property_object>();
         const auto& conf = gpo.staking_configuration;
@@ -1279,8 +1279,8 @@ controller::push_block(const signed_block_ptr& b) {
 transaction_trace_ptr
 controller::push_transaction(const transaction_metadata_ptr& trx, fc::time_point deadline) {
     validate_db_available_size();
-    EVT_ASSERT(get_read_mode() != chain::db_read_mode::READ_ONLY, transaction_type_exception, "push transaction not allowed in read-only mode");
-    EVT_ASSERT(trx && !trx->implicit, transaction_type_exception, "Implicit transaction not allowed");
+    jmzk_ASSERT(get_read_mode() != chain::db_read_mode::READ_ONLY, transaction_type_exception, "push transaction not allowed in read-only mode");
+    jmzk_ASSERT(trx && !trx->implicit, transaction_type_exception, "Implicit transaction not allowed");
     return my->push_transaction(trx, deadline);
 }
 
@@ -1358,13 +1358,13 @@ controller::pending_block_state() const {
 }
 time_point
 controller::pending_block_time() const {
-    EVT_ASSERT(my->pending.has_value(), block_validate_exception, "no pending block");
+    jmzk_ASSERT(my->pending.has_value(), block_validate_exception, "no pending block");
     return my->pending->_pending_block_state->header.timestamp;
 }
 
 optional<block_id_type>
 controller::pending_producer_block_id() const {
-   EVT_ASSERT(my->pending.has_value(), block_validate_exception, "no pending block");
+   jmzk_ASSERT(my->pending.has_value(), block_validate_exception, "no pending block");
    return my->pending->_producer_block_id;
 }
 
@@ -1446,7 +1446,7 @@ controller::get_block_id_for_num(uint32_t block_num) const {
 
         auto signed_blk = my->blog.read_block_by_num(block_num);
 
-        EVT_ASSERT(BOOST_LIKELY(signed_blk != nullptr), unknown_block_exception,
+        jmzk_ASSERT(BOOST_LIKELY(signed_blk != nullptr), unknown_block_exception,
                    "Could not find block: ${block}", ("block", block_num));
 
         return signed_blk->id();
@@ -1454,16 +1454,16 @@ controller::get_block_id_for_num(uint32_t block_num) const {
     FC_CAPTURE_AND_RETHROW((block_num))
 }
 
-evt_link_object
+jmzk_link_object
 controller::get_link_obj_for_link_id(const link_id_type& link_id) const {
-    evt_link_object link_obj;
+    jmzk_link_object link_obj;
 
     auto str = std::string();
     try {
-        my->token_db.read_token(token_type::evtlink, std::nullopt, link_id, str);
+        my->token_db.read_token(token_type::jmzklink, std::nullopt, link_id, str);
     }
     catch(token_database_exception&) {
-        EVT_THROW2(evt_link_existed_exception, "Cannot find EvtLink with id: {}", fc::to_hex((char*)&link_id, sizeof(link_id)));
+        jmzk_THROW2(jmzk_link_existed_exception, "Cannot find jmzkLink with id: {}", fc::to_hex((char*)&link_id, sizeof(link_id)));
     }
 
     extract_db_value(str, link_obj);
@@ -1475,7 +1475,7 @@ controller::get_block_num_for_trx_id(const transaction_id_type& trx_id) const {
     if(const auto* t = my->db.find<transaction_object, by_trx_id>(trx_id)) {
         return t->block_num;
     }
-    EVT_THROW(unknown_transaction_exception, "Transaction: ${t} is not existed", ("t",trx_id));
+    jmzk_THROW(unknown_transaction_exception, "Transaction: ${t} is not existed", ("t",trx_id));
 }
 
 fc::sha256
@@ -1488,7 +1488,7 @@ controller::calculate_integrity_hash() const {
 
 void
 controller::write_snapshot(const snapshot_writer_ptr& snapshot) const {
-    EVT_ASSERT(!my->pending.has_value(), block_validate_exception, "cannot take a consistent snapshot with a pending block");
+    jmzk_ASSERT(!my->pending.has_value(), block_validate_exception, "cannot take a consistent snapshot with a pending block");
     return my->add_to_snapshot(snapshot);
 }
 
@@ -1700,7 +1700,7 @@ controller::get_abi_serializer() const {
 unapplied_transactions_type&
 controller::get_unapplied_transactions() const {
     if(my->read_mode != db_read_mode::SPECULATIVE) {
-        EVT_ASSERT(my->unapplied_transactions.empty(), transaction_exception,
+        jmzk_ASSERT(my->unapplied_transactions.empty(), transaction_exception,
             "not empty unapplied_transactions in non-speculative mode"); //should never happen
     }
     return my->unapplied_transactions;
@@ -1718,12 +1718,12 @@ controller::validate_expiration(const transaction& trx) const {
     try {
         const auto& chain_configuration = get_global_properties().configuration;
 
-        EVT_ASSERT(time_point(trx.expiration) >= pending_block_time(),
+        jmzk_ASSERT(time_point(trx.expiration) >= pending_block_time(),
                    expired_tx_exception,
                    "transaction has expired, "
                    "expiration is ${trx.expiration} and pending block time is ${pending_block_time}",
                    ("trx.expiration", trx.expiration)("pending_block_time", pending_block_time()));
-        EVT_ASSERT(time_point(trx.expiration) <= pending_block_time() + fc::seconds(chain_configuration.max_transaction_lifetime),
+        jmzk_ASSERT(time_point(trx.expiration) <= pending_block_time() + fc::seconds(chain_configuration.max_transaction_lifetime),
                    tx_exp_too_far_exception,
                    "Transaction expiration is too far in the future relative to the reference time of ${reference_time}, "
                    "expiration is ${trx.expiration} and the maximum transaction lifetime is ${max_til_exp} seconds",
@@ -1738,7 +1738,7 @@ controller::validate_tapos(const transaction& trx) const {
         const auto& tapos_block_summary = db().get<block_summary_object>((uint16_t)trx.ref_block_num);
 
         //Verify TaPoS block summary has correct ID prefix, and that this block's time is not past the expiration
-        EVT_ASSERT(trx.verify_reference_block(tapos_block_summary.block_id), invalid_ref_block_exception,
+        jmzk_ASSERT(trx.verify_reference_block(tapos_block_summary.block_id), invalid_ref_block_exception,
                    "Transaction's reference block did not match. Is this transaction from a different fork?",
                    ("tapos_summary", tapos_block_summary));
     }
@@ -1749,14 +1749,14 @@ void
 controller::validate_db_available_size() const {
    const auto free = db().get_segment_manager()->get_free_memory();
    const auto guard = my->conf.state_guard_size;
-   EVT_ASSERT(free >= guard, database_guard_exception, "database free: ${f}, guard size: ${g}", ("f", free)("g",guard));
+   jmzk_ASSERT(free >= guard, database_guard_exception, "database free: ${f}, guard size: ${g}", ("f", free)("g",guard));
 }
 
 void
 controller::validate_reversible_available_size() const {
    const auto free = my->reversible_blocks.get_segment_manager()->get_free_memory();
    const auto guard = my->conf.reversible_guard_size;
-   EVT_ASSERT(free >= guard, reversible_guard_exception, "reversible free: ${f}, guard size: ${g}", ("f", free)("g",guard));
+   jmzk_ASSERT(free >= guard, reversible_guard_exception, "reversible free: ${f}, guard size: ${g}", ("f", free)("g",guard));
 }
 
 bool
@@ -1770,12 +1770,12 @@ controller::get_required_keys(const transaction& trx, const public_keys_set& can
     auto checker = authority_checker(*this, my->exec_ctx, candidate_keys, max_authority_depth, false /* check script */);
 
     for(const auto& act : trx.actions) {
-        EVT_ASSERT(checker.satisfied(act), unsatisfied_authorization,
+        jmzk_ASSERT(checker.satisfied(act), unsatisfied_authorization,
                    "${name} action in domain: ${domain} with key: ${key} authorized failed",
                    ("domain", act.domain)("key", act.key)("name", act.name));
     }
     if(trx.payer.type() == address::public_key_t) {
-        EVT_ASSERT(checker.satisfied_key(trx.payer.get_public_key()), unsatisfied_authorization, "Payer authorized failed");
+        jmzk_ASSERT(checker.satisfied_key(trx.payer.get_public_key()), unsatisfied_authorization, "Payer authorized failed");
     }
 
     return checker.used_keys();
@@ -1805,7 +1805,7 @@ controller::get_suspend_required_keys(const proposal_name& name, const public_ke
         my->token_db.read_token(token_type::suspend, std::nullopt, name, str);
     }
     catch(token_database_exception&) {
-        EVT_THROW2(unknown_suspend_exception, "Cannot find suspend proposal: {}", name);
+        jmzk_THROW2(unknown_suspend_exception, "Cannot find suspend proposal: {}", name);
     }
 
     extract_db_value(str, suspend);
@@ -1813,7 +1813,7 @@ controller::get_suspend_required_keys(const proposal_name& name, const public_ke
 }
 
 public_keys_set
-controller::get_evtlink_signed_keys(const link_id_type& link_id) const {
+controller::get_jmzklink_signed_keys(const link_id_type& link_id) const {
     auto link  = get_link_obj_for_link_id(link_id);
     auto block = fetch_block_by_number(link.block_num);
     for(auto& ptrx : block->transactions) {
@@ -1837,7 +1837,7 @@ controller::get_evtlink_signed_keys(const link_id_type& link_id) const {
         return keys;
     }
 
-    EVT_THROW2(evt_link_existed_exception, "Cannot find EvtLink");
+    jmzk_THROW2(jmzk_link_existed_exception, "Cannot find jmzkLink");
 }
 
 uint32_t
@@ -1847,4 +1847,4 @@ controller::get_charge(transaction&& trx, size_t signautres_num) const {
     return charge.calculate(ptrx, signautres_num);
 }
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain

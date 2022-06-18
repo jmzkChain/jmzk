@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <functional>
@@ -9,15 +9,15 @@
 #include <string>
 #include <string_view>
 #include <boost/noncopyable.hpp>
-#include <evt/chain/block_state.hpp>
-#include <evt/chain/execution_context.hpp>
-#include <evt/chain/transaction.hpp>
-#include <evt/chain/controller.hpp>
-#include <evt/chain/contracts/types.hpp>
+#include <jmzk/chain/block_state.hpp>
+#include <jmzk/chain/execution_context.hpp>
+#include <jmzk/chain/transaction.hpp>
+#include <jmzk/chain/controller.hpp>
+#include <jmzk/chain/contracts/types.hpp>
 
 struct pg_conn;
 
-namespace evt {
+namespace jmzk {
 namespace chain {
 class snapshot_writer;
 class snapshot_reader;
@@ -28,7 +28,7 @@ struct abi_serializer;
 }  // namespace chain
 
 using namespace chain;
-using namespace evt::chain::contracts;
+using namespace jmzk::chain::contracts;
 
 #define PG_OK   1
 #define PG_FAIL 0
@@ -152,4 +152,4 @@ private:
 
 };
 
-}  // namespace evt
+}  // namespace jmzk

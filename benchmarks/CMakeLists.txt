@@ -1,6 +1,6 @@
 find_package( benchmark REQUIRED )
 
-add_executable( evt_benchmarks 
+add_executable( jmzk_benchmarks 
     main.cpp
     json.cpp
     actions.cpp
@@ -11,5 +11,5 @@ add_executable( evt_benchmarks
     sha256/fc.cpp
     sha256/cgminer.cpp
     )
-target_link_libraries( evt_benchmarks evt_chain evt_testing fc ${BENCHMARK_LIBRARIES} )
+target_link_libraries( jmzk_benchmarks jmzk_chain jmzk_testing fc ${BENCHMARK_LIBRARIES} )
 # target_link_libraries( cryptopp )

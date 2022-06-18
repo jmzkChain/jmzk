@@ -2,11 +2,11 @@
 
 #include <lua.hpp>
 #include <fc/io/json.hpp>
-#include <evt/testing/tester.hpp>
-#include <evt/chain/token_database_cache.hpp>
-#include <evt/chain/contracts/lua_engine.hpp>
-#include <evt/chain/contracts/lua_db.hpp>
-#include <evt/chain/contracts/lua_json.hpp>
+#include <jmzk/testing/tester.hpp>
+#include <jmzk/chain/token_database_cache.hpp>
+#include <jmzk/chain/contracts/lua_engine.hpp>
+#include <jmzk/chain/contracts/lua_db.hpp>
+#include <jmzk/chain/contracts/lua_json.hpp>
 
 extern "C" {
 
@@ -85,18 +85,18 @@ TEST_CASE("test_lua_debug", "[luajit]") {
     REQUIRE(c == 3);
 }
 
-extern std::string evt_unittests_dir;
+extern std::string jmzk_unittests_dir;
 
 TEST_CASE("test_lua_db", "[luajit]") {
-    using namespace evt::testing;
-    using namespace evt::chain::contracts;
+    using namespace jmzk::testing;
+    using namespace jmzk::chain::contracts;
 
-    auto basedir = evt_unittests_dir + "/tokendb_tests";
+    auto basedir = jmzk_unittests_dir + "/tokendb_tests";
     if(!fc::exists(basedir)) {
         fc::create_directories(basedir);
     }
 
-    auto cfg = evt::chain::controller::config();
+    auto cfg = jmzk::chain::controller::config();
     cfg.blocks_dir            = basedir + "/blocks";
     cfg.state_dir             = basedir + "/state";
     cfg.db_config.db_path     = basedir + "/tokendb";
@@ -105,7 +105,7 @@ TEST_CASE("test_lua_db", "[luajit]") {
     cfg.loadtest_mode         = false;
 
     cfg.genesis.initial_timestamp = fc::time_point::now();
-    cfg.genesis.initial_key       = tester::get_public_key("evt");
+    cfg.genesis.initial_key       = tester::get_public_key("jmzk");
     
     auto mytester = std::make_unique<tester>(cfg);
     auto& tokendb = mytester->control->token_db();
@@ -115,12 +115,12 @@ TEST_CASE("test_lua_db", "[luajit]") {
         "domain": "tkdomain",
         "name": "tktoken",
         "owner": [
-          "EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
-          "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+          "jmzk5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
+          "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
         ],
         "metas": [
-            { "key": "tm1", "value": "hello1", "creator": "[A] EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" },
-            { "key": "tm2", "value": "hello2", "creator": "[A] EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2" }
+            { "key": "tm1", "value": "hello1", "creator": "[A] jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" },
+            { "key": "tm2", "value": "hello2", "creator": "[A] jmzk5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2" }
         ]
     }
     )=====";
@@ -170,15 +170,15 @@ TEST_CASE("test_lua_db", "[luajit]") {
 }
 
 TEST_CASE("test_lua_engine", "[luajit]") {
-    using namespace evt::testing;
-    using namespace evt::chain::contracts;
+    using namespace jmzk::testing;
+    using namespace jmzk::chain::contracts;
 
-    auto basedir = evt_unittests_dir + "/tokendb_tests";
+    auto basedir = jmzk_unittests_dir + "/tokendb_tests";
     if(!fc::exists(basedir)) {
         fc::create_directories(basedir);
     }
 
-    auto cfg = evt::chain::controller::config();
+    auto cfg = jmzk::chain::controller::config();
     cfg.blocks_dir            = basedir + "/blocks";
     cfg.state_dir             = basedir + "/state";
     cfg.db_config.db_path     = basedir + "/tokendb";
@@ -187,7 +187,7 @@ TEST_CASE("test_lua_engine", "[luajit]") {
     cfg.loadtest_mode         = false;
 
     cfg.genesis.initial_timestamp = fc::time_point::now();
-    cfg.genesis.initial_key       = tester::get_public_key("evt");
+    cfg.genesis.initial_key       = tester::get_public_key("jmzk");
     
     auto mytester = std::make_unique<tester>(cfg);
     auto& tokendb = mytester->control->token_db_cache();
@@ -197,12 +197,12 @@ TEST_CASE("test_lua_engine", "[luajit]") {
         "domain": "tkdomain",
         "name": "tktoken",
         "owner": [
-          "EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
-          "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+          "jmzk5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
+          "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
         ],
         "metas": [
-            { "key": "tm1", "value": "hello1", "creator": "[A] EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" },
-            { "key": "tm2", "value": "hello2", "creator": "[A] EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2" }
+            { "key": "tm1", "value": "hello1", "creator": "[A] jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" },
+            { "key": "tm2", "value": "hello2", "creator": "[A] jmzk5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2" }
         ]
     }
     )====";

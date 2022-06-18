@@ -1,17 +1,17 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/chain/exceptions.hpp>
-#include <evt/history_api_plugin/history_api_plugin.hpp>
+#include <jmzk/chain/exceptions.hpp>
+#include <jmzk/history_api_plugin/history_api_plugin.hpp>
 
 #include <fc/io/json.hpp>
 
-namespace evt {
+namespace jmzk {
 
 static appbase::abstract_plugin& _history_api_plugin = app().register_plugin<history_api_plugin>();
 
-using namespace evt;
+using namespace jmzk;
 
 class history_api_plugin_impl {
 public:
@@ -87,4 +87,4 @@ history_api_plugin::plugin_startup() {
 void
 history_api_plugin::plugin_shutdown() {}
 
-}  // namespace evt
+}  // namespace jmzk

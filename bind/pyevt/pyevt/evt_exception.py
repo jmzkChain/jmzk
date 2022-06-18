@@ -1,29 +1,29 @@
-from . import libevt
+from . import libjmzk
 
 
-class EVTErrCode:
-    EVT_OK = 0
-    EVT_INTERNAL_ERROR = -1
-    EVT_INVALID_ARGUMENT = -2
-    EVT_INVALID_PRIVATE_KEY = -3
-    EVT_INVALID_PUBLIC_KEY = -4
-    EVT_INVALID_SIGNATURE = -5
-    EVT_INVALID_HASH = -6
-    EVT_INVALID_ACTION = -7
-    EVT_INVALID_BINARY = -8
-    EVT_INVALID_JSON = -9
-    EVT_INVALID_ADDRESS = -10
-    EVT_SIZE_NOT_EQUALS = -11
-    EVT_DATA_NOT_EQUALS = -12
-    EVT_INVALID_LINK = -13
-    EVT_NOT_INIT = -15
+class jmzkErrCode:
+    jmzk_OK = 0
+    jmzk_INTERNAL_ERROR = -1
+    jmzk_INVALID_ARGUMENT = -2
+    jmzk_INVALID_PRIVATE_KEY = -3
+    jmzk_INVALID_PUBLIC_KEY = -4
+    jmzk_INVALID_SIGNATURE = -5
+    jmzk_INVALID_HASH = -6
+    jmzk_INVALID_ACTION = -7
+    jmzk_INVALID_BINARY = -8
+    jmzk_INVALID_JSON = -9
+    jmzk_INVALID_ADDRESS = -10
+    jmzk_SIZE_NOT_EQUALS = -11
+    jmzk_DATA_NOT_EQUALS = -12
+    jmzk_INVALID_LINK = -13
+    jmzk_NOT_INIT = -15
 
 
-class EVTException(Exception):
+class jmzkException(Exception):
     def __init__(self, err):
-        if err == 'EVT_INTERNAL_ERROR':
-            evt = libevt.check_lib_init()
-            code = evt.evt_last_error()
+        if err == 'jmzk_INTERNAL_ERROR':
+            jmzk = libjmzk.check_lib_init()
+            code = jmzk.jmzk_last_error()
 
             errmsg = '{}: {}'.format(err, code)
             super().__init__(self, errmsg)
@@ -31,110 +31,110 @@ class EVTException(Exception):
             super().__init__(self, err)
 
 
-class EVTInternalErrorException(Exception):
+class jmzkInternalErrorException(Exception):
     def __init__(self):
-        err = 'EVT_INTERNAL_ERROR'
+        err = 'jmzk_INTERNAL_ERROR'
         super().__init__(self, err)
 
 
-class EVTInvalidArgumentException(Exception):
+class jmzkInvalidArgumentException(Exception):
     def __init__(self):
-        err = 'EVT_INVALID_ARGUMENT'
+        err = 'jmzk_INVALID_ARGUMENT'
         super().__init__(self, err)
 
 
-class EVTInvalidPrivateKeyException(Exception):
+class jmzkInvalidPrivateKeyException(Exception):
     def __init__(self):
-        err = 'EVT_INVALID_PRIVATE_KEY'
+        err = 'jmzk_INVALID_PRIVATE_KEY'
         super().__init__(self, err)
 
 
-class EVTInvalidPublicKeyException(Exception):
+class jmzkInvalidPublicKeyException(Exception):
     def __init__(self):
-        err = 'EVT_INVALID_PUBLIC_KEY'
+        err = 'jmzk_INVALID_PUBLIC_KEY'
         super().__init__(self, err)
 
 
-class EVTInvalidSignatureException(Exception):
+class jmzkInvalidSignatureException(Exception):
     def __init__(self):
-        err = 'EVT_INVALID_SIGNATURE'
+        err = 'jmzk_INVALID_SIGNATURE'
         super().__init__(self, err)
 
 
-class EVTInvalidHashException(Exception):
+class jmzkInvalidHashException(Exception):
     def __init__(self):
-        err = 'EVT_INVALID_HASH'
+        err = 'jmzk_INVALID_HASH'
         super().__init__(self, err)
 
 
-class EVTInvalidActionException(Exception):
+class jmzkInvalidActionException(Exception):
     def __init__(self):
-        err = 'EVT_INVALID_ACTION'
+        err = 'jmzk_INVALID_ACTION'
         super().__init__(self, err)
 
 
-class EVTInvalidBinaryException(Exception):
+class jmzkInvalidBinaryException(Exception):
     def __init__(self):
-        err = 'EVT_INVALID_BINARY'
+        err = 'jmzk_INVALID_BINARY'
         super().__init__(self, err)
 
 
-class EVTInvalidJsonException(Exception):
+class jmzkInvalidJsonException(Exception):
     def __init__(self):
-        err = 'EVT_INVALID_JSON'
+        err = 'jmzk_INVALID_JSON'
         super().__init__(self, err)
 
 
-class EVTInvalidAddressException(Exception):
+class jmzkInvalidAddressException(Exception):
     def __init__(self):
-        err = 'EVT_INVALID_ADDRESS'
+        err = 'jmzk_INVALID_ADDRESS'
         super().__init__(self, err)
 
 
-class EVTSizeNotEqualsException(Exception):
+class jmzkSizeNotEqualsException(Exception):
     def __init__(self):
-        err = 'EVT_SIZE_NOT_EQUALS'
+        err = 'jmzk_SIZE_NOT_EQUALS'
         super().__init__(self, err)
 
 
-class EVTDataNotEqualsException(Exception):
+class jmzkDataNotEqualsException(Exception):
     def __init__(self):
-        err = 'EVT_DATA_NOT_EQUALS'
+        err = 'jmzk_DATA_NOT_EQUALS'
         super().__init__(self, err)
 
 
-class EVTInvalidLinkException(Exception):
+class jmzkInvalidLinkException(Exception):
     def __init__(self):
-        err = 'EVT_INVALID_LINK'
+        err = 'jmzk_INVALID_LINK'
         super().__init__(self, err)
 
 
-class EVTNotInitException(Exception):
+class jmzkNotInitException(Exception):
     def __init__(self):
-        err = 'EVT_NOT_INIT'
+        err = 'jmzk_NOT_INIT'
         super().__init__(self, err)
 
 
 ex_map = {
-    EVTErrCode.EVT_INTERNAL_ERROR: EVTInternalErrorException,
-    EVTErrCode.EVT_INVALID_ARGUMENT: EVTInvalidArgumentException,
-    EVTErrCode.EVT_INVALID_PRIVATE_KEY: EVTInvalidPrivateKeyException,
-    EVTErrCode.EVT_INVALID_PUBLIC_KEY: EVTInvalidPublicKeyException,
-    EVTErrCode.EVT_INVALID_SIGNATURE: EVTInvalidSignatureException,
-    EVTErrCode.EVT_INVALID_HASH: EVTInvalidHashException,
-    EVTErrCode.EVT_INVALID_ACTION: EVTInvalidActionException,
-    EVTErrCode.EVT_INVALID_BINARY: EVTInvalidBinaryException,
-    EVTErrCode.EVT_INVALID_JSON: EVTInvalidJsonException,
-    EVTErrCode.EVT_INVALID_ADDRESS: EVTInvalidAddressException,
-    EVTErrCode.EVT_INVALID_LINK: EVTInvalidLinkException,
-    EVTErrCode.EVT_SIZE_NOT_EQUALS: EVTSizeNotEqualsException,
-    EVTErrCode.EVT_DATA_NOT_EQUALS: EVTDataNotEqualsException,
-    EVTErrCode.EVT_NOT_INIT: EVTNotInitException
+    jmzkErrCode.jmzk_INTERNAL_ERROR: jmzkInternalErrorException,
+    jmzkErrCode.jmzk_INVALID_ARGUMENT: jmzkInvalidArgumentException,
+    jmzkErrCode.jmzk_INVALID_PRIVATE_KEY: jmzkInvalidPrivateKeyException,
+    jmzkErrCode.jmzk_INVALID_PUBLIC_KEY: jmzkInvalidPublicKeyException,
+    jmzkErrCode.jmzk_INVALID_SIGNATURE: jmzkInvalidSignatureException,
+    jmzkErrCode.jmzk_INVALID_HASH: jmzkInvalidHashException,
+    jmzkErrCode.jmzk_INVALID_ACTION: jmzkInvalidActionException,
+    jmzkErrCode.jmzk_INVALID_BINARY: jmzkInvalidBinaryException,
+    jmzkErrCode.jmzk_INVALID_JSON: jmzkInvalidJsonException,
+    jmzkErrCode.jmzk_INVALID_ADDRESS: jmzkInvalidAddressException,
+    jmzkErrCode.jmzk_INVALID_LINK: jmzkInvalidLinkException,
+    jmzkErrCode.jmzk_SIZE_NOT_EQUALS: jmzkSizeNotEqualsException,
+    jmzkErrCode.jmzk_DATA_NOT_EQUALS: jmzkDataNotEqualsException,
+    jmzkErrCode.jmzk_NOT_INIT: jmzkNotInitException
 }
 
 
-def evt_exception_raiser(error_code):
-    if error_code == EVTErrCode.EVT_OK:
+def jmzk_exception_raiser(error_code):
+    if error_code == jmzkErrCode.jmzk_OK:
         return
     if error_code in ex_map:
         raise ex_map[error_code]

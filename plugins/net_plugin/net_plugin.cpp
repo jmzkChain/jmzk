@@ -1,9 +1,9 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/net_plugin/net_plugin.hpp>
-#include <evt/net_plugin/protocol.hpp>
+#include <jmzk/net_plugin/net_plugin.hpp>
+#include <jmzk/net_plugin/protocol.hpp>
 
 #include <boost/asio/read.hpp>
 #include <boost/asio/write.hpp>
@@ -20,21 +20,21 @@
 #include <fc/crypto/rand.hpp>
 #include <fc/exception/exception.hpp>
 
-#include <evt/chain/types.hpp>
-#include <evt/chain/controller.hpp>
-#include <evt/chain/exceptions.hpp>
-#include <evt/chain/block.hpp>
-#include <evt/chain/plugin_interface.hpp>
-#include <evt/chain/multi_index_includes.hpp>
-#include <evt/producer_plugin/producer_plugin.hpp>
+#include <jmzk/chain/types.hpp>
+#include <jmzk/chain/controller.hpp>
+#include <jmzk/chain/exceptions.hpp>
+#include <jmzk/chain/block.hpp>
+#include <jmzk/chain/plugin_interface.hpp>
+#include <jmzk/chain/multi_index_includes.hpp>
+#include <jmzk/producer_plugin/producer_plugin.hpp>
 
-using namespace evt::chain::plugin_interface::compat;
+using namespace jmzk::chain::plugin_interface::compat;
 
 namespace fc {
 extern std::unordered_map<std::string, logger>& get_logger_map();
 }
 
-namespace evt {
+namespace jmzk {
 static appbase::abstract_plugin& _net_plugin = app().register_plugin<net_plugin>();
 
 using std::vector;
@@ -46,7 +46,7 @@ using boost::multi_index_container;
 
 using fc::time_point;
 using fc::time_point_sec;
-using evt::chain::transaction_id_type;
+using jmzk::chain::transaction_id_type;
 
 class connection;
 
@@ -363,10 +363,10 @@ struct peer_block_state {
 };
 
 typedef multi_index_container<
-    evt::peer_block_state,
+    jmzk::peer_block_state,
     indexed_by<
-        ordered_unique<tag<by_id>, member<evt::peer_block_state, block_id_type, &evt::peer_block_state::id>, sha256_less>,
-        ordered_unique<tag<by_block_num>, member<evt::peer_block_state, uint32_t, &evt::peer_block_state::block_num>>>>
+        ordered_unique<tag<by_id>, member<jmzk::peer_block_state, block_id_type, &jmzk::peer_block_state::id>, sha256_less>,
+        ordered_unique<tag<by_block_num>, member<jmzk::peer_block_state, uint32_t, &jmzk::peer_block_state::block_num>>>>
     peer_block_state_index;
 
 struct update_block_num {
@@ -446,7 +446,7 @@ public:
         }
         else {  // postpone real_time write_queue if sync queue is not empty
             fill_out_buffer(bufs, _write_queue);
-            EVT_ASSERT(_write_queue_size == 0, plugin_exception, "write queue size expected to be zero");
+            jmzk_ASSERT(_write_queue_size == 0, plugin_exception, "write queue size expected to be zero");
         }
     }
 
@@ -630,16 +630,16 @@ struct msg_handler : public fc::visitor<void> {
         , c(conn) {}
 
     void operator()(const signed_block& msg) const {
-        EVT_ASSERT(false, plugin_config_exception, "operator()(signed_block&&) should be called");
+        jmzk_ASSERT(false, plugin_config_exception, "operator()(signed_block&&) should be called");
     }
     void operator()(signed_block& msg) const {
-        EVT_ASSERT(false, plugin_config_exception, "operator()(signed_block&&) should be called");
+        jmzk_ASSERT(false, plugin_config_exception, "operator()(signed_block&&) should be called");
     }
     void operator()(const packed_transaction& msg) const {
-        EVT_ASSERT(false, plugin_config_exception, "operator()(packed_transaction&&) should be called");
+        jmzk_ASSERT(false, plugin_config_exception, "operator()(packed_transaction&&) should be called");
     }
     void operator()(packed_transaction& msg) const {
-        EVT_ASSERT(false, plugin_config_exception, "operator()(packed_transaction&&) should be called");
+        jmzk_ASSERT(false, plugin_config_exception, "operator()(packed_transaction&&) should be called");
     }
 
     void operator()(signed_block&& msg) const {
@@ -1239,7 +1239,7 @@ sync_manager::sync_manager(uint32_t req_span)
     , source()
     , state(in_sync) {
     chain_plug = app().find_plugin<chain_plugin>();
-    EVT_ASSERT(chain_plug, chain::missing_chain_plugin_exception, "");
+    jmzk_ASSERT(chain_plug, chain::missing_chain_plugin_exception, "");
 }
 
 constexpr auto
@@ -2087,7 +2087,7 @@ net_plugin_impl::start_read_message(const connection_ptr& conn) {
                                 fc_elog(logger, "async_read_some callback: bytes_transfered = ${bt}, buffer.bytes_to_write = ${btw}",
                                      ("bt", bytes_transferred)("btw", conn->pending_message_buffer.bytes_to_write()));
                             }
-                            EVT_ASSERT(bytes_transferred <= conn->pending_message_buffer.bytes_to_write(), plugin_exception, "");
+                            jmzk_ASSERT(bytes_transferred <= conn->pending_message_buffer.bytes_to_write(), plugin_exception, "");
                             conn->pending_message_buffer.advance_write_ptr(bytes_transferred);
                             while(conn->pending_message_buffer.bytes_to_read() > 0) {
                                 uint32_t bytes_in_buffer = conn->pending_message_buffer.bytes_to_read();
@@ -2534,7 +2534,7 @@ net_plugin_impl::handle_message(const connection_ptr& c, const packed_transactio
     fc_dlog(logger, "got a packed transaction, cancel wait");
     peer_ilog(c, "received packed_transaction");
     controller& cc = my_impl->chain_plug->chain();
-    if(cc.get_read_mode() == evt::db_read_mode::READ_ONLY) {
+    if(cc.get_read_mode() == jmzk::db_read_mode::READ_ONLY) {
         fc_dlog(logger, "got a txn in read-only mode - dropping");
         return;
     }
@@ -2939,7 +2939,7 @@ net_plugin::set_program_options(options_description& /*cli*/, options_descriptio
         ("p2p-server-address", bpo::value<string>(), "An externally accessible host:port for identifying this node. Defaults to p2p-listen-endpoint.")
         ("p2p-peer-address", bpo::value<vector<string>>()->composing(), "The public endpoint of a peer node to connect to. Use multiple p2p-peer-address options as needed to compose a network.")
         ("p2p-max-nodes-per-host", bpo::value<int>()->default_value(def_max_nodes_per_host), "Maximum number of client nodes from any single IP address")
-        ("agent-name", bpo::value<string>()->default_value("\"EVT Test Agent\""), "The name supplied to identify this node amongst the peers.")
+        ("agent-name", bpo::value<string>()->default_value("\"jmzk Test Agent\""), "The name supplied to identify this node amongst the peers.")
         ("allowed-connection", bpo::value<vector<string>>()->multitoken()->default_value({"any"}, "any"),
             "Can be 'any' or 'producers' or 'specified' or 'none'. If 'specified', peer-key must be specified at least once. If only 'producers', peer-key is not required. 'producers' and 'specified' may be combined.")
         ("peer-key", bpo::value<vector<string>>()->composing()->multitoken(), "Optional public key of peer allowed to connect.  May be used multiple times.")
@@ -3019,7 +3019,7 @@ net_plugin::plugin_initialize(const variables_map& options) {
         }
 
         if(my->allowed_connections & net_plugin_impl::Specified)
-            EVT_ASSERT(options.count("peer-key"),
+            jmzk_ASSERT(options.count("peer-key"),
                        plugin_config_exception,
                        "At least one peer-key must accompany 'allowed-connection=specified'");
 
@@ -3040,7 +3040,7 @@ net_plugin::plugin_initialize(const variables_map& options) {
         }
 
         my->chain_plug = app().find_plugin<chain_plugin>();
-        EVT_ASSERT(my->chain_plug, chain::missing_chain_plugin_exception, "");
+        jmzk_ASSERT(my->chain_plug, chain::missing_chain_plugin_exception, "");
         my->chain_id = my->chain_plug->get_chain_id();
         fc::rand_pseudo_bytes(my->node_id.data(), my->node_id.data_size());
         fc_ilog(logger, "my node_id is ${id}", ("id", my->node_id));
@@ -3241,4 +3241,4 @@ net_plugin_impl::to_protocol_version(uint16_t v) {
     return 0;
 }
 
-}  // namespace evt
+}  // namespace jmzk

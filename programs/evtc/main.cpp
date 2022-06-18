@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 
 #include <iostream>
@@ -36,14 +36,14 @@
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
 
-#include <evt/chain/config.hpp>
-#include <evt/chain/exceptions.hpp>
-#include <evt/chain/execution_context_mock.hpp>
-#include <evt/chain/contracts/types.hpp>
-#include <evt/chain/contracts/abi_serializer.hpp>
-#include <evt/chain/contracts/evt_contract_abi.hpp>
-#include <evt/chain_plugin/chain_plugin.hpp>
-#include <evt/utilities/key_conversion.hpp>
+#include <jmzk/chain/config.hpp>
+#include <jmzk/chain/exceptions.hpp>
+#include <jmzk/chain/execution_context_mock.hpp>
+#include <jmzk/chain/contracts/types.hpp>
+#include <jmzk/chain/contracts/abi_serializer.hpp>
+#include <jmzk/chain/contracts/jmzk_contract_abi.hpp>
+#include <jmzk/chain_plugin/chain_plugin.hpp>
+#include <jmzk/utilities/key_conversion.hpp>
 
 #include "CLI11.hpp"
 #include "config.hpp"
@@ -52,20 +52,20 @@
 #include "localize.hpp"
 
 using namespace std;
-using namespace evt;
-using namespace evt::chain;
-using namespace evt::chain::contracts;
-using namespace evt::utilities;
-using namespace evt::client::help;
-using namespace evt::client::http;
-using namespace evt::client::localize;
-using namespace evt::client::config;
+using namespace jmzk;
+using namespace jmzk::chain;
+using namespace jmzk::chain::contracts;
+using namespace jmzk::utilities;
+using namespace jmzk::client::help;
+using namespace jmzk::client::http;
+using namespace jmzk::client::localize;
+using namespace jmzk::client::config;
 using namespace boost::filesystem;
 
 FC_DECLARE_EXCEPTION(explained_exception, 9000000, "explained exception, see error log");
 FC_DECLARE_EXCEPTION(localized_exception, 10000000, "an error occured");
 
-#define EVTC_ASSERT(TEST, ...)                                \
+#define jmzkC_ASSERT(TEST, ...)                                \
     FC_EXPAND_MACRO(                                          \
         FC_MULTILINE_MACRO_BEGIN if(UNLIKELY(!(TEST))) {      \
             std::cerr << localized(__VA_ARGS__) << std::endl; \
@@ -87,9 +87,9 @@ determine_home_directory() {
     return home;
 }
 
-string program            = "evtc";
+string program            = "jmzkc";
 string url                = "http://127.0.0.1:8888";
-string default_wallet_url = "unix://" + fc::path(determine_home_directory() / "evt-wallet/evtwd.sock").to_native_ansi_path();
+string default_wallet_url = "unix://" + fc::path(determine_home_directory() / "jmzk-wallet/jmzkwd.sock").to_native_ansi_path();
 string wallet_url; //to be set to default_wallet_url in main
 
 bool no_verify = false;
@@ -199,7 +199,7 @@ print_result(const fc::variant& result) {
             cerr << status << " transaction: " << transaction_id << std::endl;
             cerr << "total elapsed: " << processed["elapsed"].as_string() << " us" << std::endl;
 
-            cerr << "total charge: " << asset(processed["charge"].as_int64(), evt_sym()) << std::endl;
+            cerr << "total charge: " << asset(processed["charge"].as_int64(), jmzk_sym()) << std::endl;
 
             if(status == "failed") {
                 auto soft_except = processed["except"].as<std::optional<fc::exception>>();
@@ -251,7 +251,7 @@ parse_time_span_str(const string& str) {
     }
 }
 
-evt::client::http::http_context context;
+jmzk::client::http::http_context context;
 
 void
 add_standard_transaction_options(CLI::App* cmd) {
@@ -283,16 +283,16 @@ call(const std::string& url,
      const T&           v,
      bool               raw_response = false) {
     try {
-        evt::client::http::connection_param *cp = new evt::client::http::connection_param(context, parse_url(url) + path,
+        jmzk::client::http::connection_param *cp = new jmzk::client::http::connection_param(context, parse_url(url) + path,
             no_verify ? false : true, headers, raw_response);
 
-        return evt::client::http::do_http_call(*cp, fc::variant(v), print_request, print_response);
+        return jmzk::client::http::do_http_call(*cp, fc::variant(v), print_request, print_response);
     }
     catch(boost::system::system_error& e) {
         if(url == ::url)
-            std::cerr << localized("Failed to connect to evtd at ${u}; is evtd running?", ("u", url)) << std::endl;
+            std::cerr << localized("Failed to connect to jmzkd at ${u}; is jmzkd running?", ("u", url)) << std::endl;
         else if(url == ::wallet_url)
-            std::cerr << localized("Failed to connect to evtwd at ${u}; is evtwd running?", ("u", url)) << std::endl;
+            std::cerr << localized("Failed to connect to jmzkwd at ${u}; is jmzkwd running?", ("u", url)) << std::endl;
         throw connection_exception(fc::log_messages{FC_LOG_MESSAGE(error, e.what())});
     }
 }
@@ -315,7 +315,7 @@ call(const std::string& url,
 
 void
 set_execution_context(execution_context& exec_ctx) {
-    auto acts = call(get_evt_actions, fc::variant()).as<std::vector<action_ver_type>>();
+    auto acts = call(get_jmzk_actions, fc::variant()).as<std::vector<action_ver_type>>();
     for(auto& av : acts) {
         exec_ctx.set_version_unsafe(av.act, av.ver);
     }
@@ -327,9 +327,9 @@ create_action(const domain_name& domain, const domain_key& key, const T& value) 
     return action(domain, key, value);
 }
 
-evt::chain_apis::read_only::get_info_results
+jmzk::chain_apis::read_only::get_info_results
 get_info() {
-    return ::call(url, get_info_func, fc::variant()).as<evt::chain_apis::read_only::get_info_results>();
+    return ::call(url, get_info_func, fc::variant()).as<jmzk::chain_apis::read_only::get_info_results>();
 }
 
 fc::variant
@@ -424,7 +424,7 @@ sign_transaction(signed_transaction& trx, const chain_id_type& chain_id) {
 }
 
 void
-set_transaction_header(signed_transaction& trx, const evt::chain_apis::read_only::get_info_results& info) {
+set_transaction_header(signed_transaction& trx, const jmzk::chain_apis::read_only::get_info_results& info) {
     trx.expiration = info.head_block_time + tx_expiration;
 
     // Set tapos, default to last irreversible block if it's not specified by the user
@@ -436,7 +436,7 @@ set_transaction_header(signed_transaction& trx, const evt::chain_apis::read_only
             ref_block_id = ref_block["id"].as<block_id_type>();
         }
     }
-    EVT_RETHROW_EXCEPTIONS(invalid_ref_block_exception, "Invalid reference block num or id: ${block_num_or_id}", ("block_num_or_id", tx_ref_block_num_or_id));
+    jmzk_RETHROW_EXCEPTIONS(invalid_ref_block_exception, "Invalid reference block num or id: ${block_num_or_id}", ("block_num_or_id", tx_ref_block_num_or_id));
     trx.set_reference_block(ref_block_id);
 
     trx.max_charge = max_charge;
@@ -476,7 +476,7 @@ push_transaction(signed_transaction& trx, packed_transaction::compression_type c
 
     if(get_charge_only) {
         auto c = call(get_charge, fc::mutable_variant_object("transaction",(transaction)trx)("sigs_num",trx.signatures.size()));
-        return fc::variant(asset(c["charge"].as_int64(), evt_sym()));
+        return fc::variant(asset(c["charge"].as_int64(), jmzk_sym()));
     }
 
     if(!tx_dont_broadcast) {
@@ -525,15 +525,15 @@ try_local_port(uint32_t duration) {
     auto start_time = duration_cast<std::chrono::milliseconds>(system_clock::now().time_since_epoch()).count();
     while(!local_port_used()) {
         if(duration_cast<std::chrono::milliseconds>(system_clock::now().time_since_epoch()).count() - start_time > duration) {
-            std::cerr << "Unable to connect to evtwd, if evtwd is running please kill the process and try again.\n";
-            throw connection_exception(fc::log_messages{FC_LOG_MESSAGE(error, "Unable to connect to evtwd")});
+            std::cerr << "Unable to connect to jmzkwd, if jmzkwd is running please kill the process and try again.\n";
+            throw connection_exception(fc::log_messages{FC_LOG_MESSAGE(error, "Unable to connect to jmzkwd")});
         }
     }
 }
 
 void
-ensure_evtwd_running(CLI::App* app) {
-    // version, net do not require evtwd
+ensure_jmzkwd_running(CLI::App* app) {
+    // version, net do not require jmzkwd
     if(tx_skip_sign || app->got_subcommand("version") || app->got_subcommand("net")) {
         return;
     }
@@ -562,13 +562,13 @@ next:
 
     auto bin_path = boost::dll::program_location();
     bin_path.remove_filename();
-    // This extra check is necessary when running evtc like this: ./evtc ...
+    // This extra check is necessary when running jmzkc like this: ./jmzkc ...
     if(bin_path.filename_is_dot()) {
         bin_path.remove_filename();
     }
-    bin_path.append("evtwd"); // if evtc and evtwd are in the same installation directory
+    bin_path.append("jmzkwd"); // if jmzkc and jmzkwd are in the same installation directory
     if(!boost::filesystem::exists(bin_path)) {
-        bin_path.remove_filename().remove_filename().append("evtwd").append("evtwd");
+        bin_path.remove_filename().remove_filename().append("jmzkwd").append("jmzkwd");
     }
 
     if(boost::filesystem::exists(bin_path)) {
@@ -576,16 +576,16 @@ next:
 
         auto pargs = vector<std::string>();
         pargs.push_back("--unix-socket-path");
-        pargs.push_back(fc::path(determine_home_directory() / "evt-wallet/evtwd.sock").to_native_ansi_path());
+        pargs.push_back(fc::path(determine_home_directory() / "jmzk-wallet/jmzkwd.sock").to_native_ansi_path());
 
         // namespace bp = boost::process;
-        // ::boost::process::child evtwd(binPath, pargs,
+        // ::boost::process::child jmzkwd(binPath, pargs,
         //                               bp::std_in.close(),
         //                               bp::std_out > bp::null,
         //                               bp::std_err > bp::null);
-        // if(evtwd.running()) {
+        // if(jmzkwd.running()) {
         //     std::cerr << binPath << " launched" << std::endl;
-        //     evtwd.detach();
+        //     jmzkwd.detach();
         //     try_local_port(2000);
         // }
         // else {
@@ -616,7 +616,7 @@ next:
             }
         }
         else if(pid < 0) {
-            std::cerr << "Cannot fork to start evtwd" << std::endl;
+            std::cerr << "Cannot fork to start jmzkwd" << std::endl;
         }
         else {
             std::cerr << bin_path << " launched" << std::endl;
@@ -625,7 +625,7 @@ next:
     }
     else {
         std::cerr << "No wallet service listening on " << wallet_url
-                  << ". Cannot automatically start evtwd because evtwd was not found." << std::endl;
+                  << ". Cannot automatically start jmzkwd because jmzkwd was not found." << std::endl;
     }
 }
 
@@ -647,7 +647,7 @@ auto parse_permission = [](auto& jsonOrFile) {
         parsedPermission.as(permission);
         return permission;
     }
-    EVT_RETHROW_EXCEPTIONS(permission_type_exception, "Fail to parse Permission JSON")
+    jmzk_RETHROW_EXCEPTIONS(permission_type_exception, "Fail to parse Permission JSON")
 };
 
 auto parse_group = [](auto& jsonOrFile) {
@@ -657,7 +657,7 @@ auto parse_group = [](auto& jsonOrFile) {
         parsedGroup.as(group);
         return group;
     }
-    EVT_RETHROW_EXCEPTIONS(group_type_exception, "Fail to parse Group JSON")
+    jmzk_RETHROW_EXCEPTIONS(group_type_exception, "Fail to parse Group JSON")
 };
 
 auto get_default_permission = [](const auto& pname, const auto& pkey) {
@@ -823,7 +823,7 @@ struct set_group_subcommands {
                 auto parsedGroup = json_from_file_or_string(json);
                 parsedGroup.as(ng.group);
             }
-            EVT_RETHROW_EXCEPTIONS(group_type_exception, "Fail to parse Group JSON")
+            jmzk_RETHROW_EXCEPTIONS(group_type_exception, "Fail to parse Group JSON")
             ng.group.name_ = name;
 
             auto act = create_action(N128(.group), (domain_key)ng.name, ng);
@@ -845,7 +845,7 @@ struct set_group_subcommands {
                 auto parsedGroup = json_from_file_or_string(json);
                 parsedGroup.as(ug.group);
             }
-            EVT_RETHROW_EXCEPTIONS(group_type_exception, "Fail to parse Group JSON")
+            jmzk_RETHROW_EXCEPTIONS(group_type_exception, "Fail to parse Group JSON")
             ug.group.name_ = name;
 
             auto act = create_action(N128(.group), (domain_key)ug.name, ug);
@@ -890,7 +890,7 @@ struct set_fungible_subcommands {
             nf.manage       = (manage == "default") ? get_default_permission("manage", nf.creator) : parse_permission(manage);
             nf.total_supply = asset::from_string(total_supply);
 
-            EVT_ASSERT(nf.total_supply.sym() == nf.sym, asset_type_exception, "Symbol and asset should be match");
+            jmzk_ASSERT(nf.total_supply.sym() == nf.sym, asset_type_exception, "Symbol and asset should be match");
 
             auto act = create_action(N128(.fungible), (domain_key)std::to_string(nf.sym.id()), nf);
             send_actions({act});
@@ -1002,7 +1002,7 @@ struct set_assets_subcommands {
             send_actions({act});
         });
 
-        auto epcmd = actionRoot->add_subcommand("2pevt", localized("Convert EVT tokens to Pinned EVT tokens"));
+        auto epcmd = actionRoot->add_subcommand("2pjmzk", localized("Convert jmzk tokens to Pinned jmzk tokens"));
         epcmd->add_option("from", from, localized("Address where asset transfering from"))->required();
         epcmd->add_option("to", to, localized("Address where asset transfering to"))->required();
         epcmd->add_option("number", number, localized("Number of transfer asset"))->required();
@@ -1011,13 +1011,13 @@ struct set_assets_subcommands {
         add_standard_transaction_options(epcmd);
 
         epcmd->callback([this] {
-            evt2pevt ep;
+            jmzk2pjmzk ep;
             ep.from   = get_address(from);
             ep.to     = get_address(to);
             ep.number = asset::from_string(number);
             ep.memo   = memo;
 
-            FC_ASSERT(ep.number.sym() == evt_sym(), "Only EVT can be converted to Pinned EVT");
+            FC_ASSERT(ep.number.sym() == jmzk_sym(), "Only jmzk can be converted to Pinned jmzk");
 
             auto act = create_action(N128(.fungible), (domain_key)std::to_string(ep.number.sym().id()), ep);
             send_actions({act});
@@ -1040,7 +1040,7 @@ struct set_assets_subcommands {
             stk.type       = get_stake_type(type);
             stk.fixed_days = days;
 
-            FC_ASSERT(stk.amount.sym() == evt_sym(), "Only EVT is supported to stake currently");
+            FC_ASSERT(stk.amount.sym() == jmzk_sym(), "Only jmzk is supported to stake currently");
 
             auto act = create_action(N128(.staking), (domain_key)stk.validator, stk);
             send_actions({act});
@@ -1063,7 +1063,7 @@ struct set_assets_subcommands {
             unstk.sym_id     = sym_id;
             unstk.op         = get_unstake_op(op);
 
-            FC_ASSERT(unstk.sym_id == evt_sym().id(), "Only EVT is supported to unstake currently");
+            FC_ASSERT(unstk.sym_id == jmzk_sym().id(), "Only jmzk is supported to unstake currently");
 
             auto act = create_action(N128(.staking), (domain_key)unstk.validator, unstk);
             send_actions({act});
@@ -1082,7 +1082,7 @@ struct set_assets_subcommands {
             tatk.validator  = (name128)validator;
             tatk.sym_id     = sym_id;
 
-            FC_ASSERT(tatk.sym_id == evt_sym().id(), "Only EVT is supported to stake currently");
+            FC_ASSERT(tatk.sym_id == jmzk_sym().id(), "Only jmzk is supported to stake currently");
 
             auto act = create_action(N128(.staking), (domain_key)tatk.validator, tatk);
             send_actions({act});
@@ -1187,10 +1187,10 @@ struct set_suspend_subcommands {
             auto varsuspend = call(get_suspend_func, fc::mutable_variant_object("name", (proposal_name)name));
             auto suspend = suspend_def();
 
-            auto exec_ctx = evt_execution_context_mock();
+            auto exec_ctx = jmzk_execution_context_mock();
             set_execution_context(exec_ctx);
 
-            auto abi = abi_serializer(evt_contract_abi(), std::chrono::hours(1));
+            auto abi = abi_serializer(jmzk_contract_abi(), std::chrono::hours(1));
             abi.from_variant(varsuspend, suspend, exec_ctx);
 
             auto public_keys = call(wallet_url, wallet_public_keys);
@@ -1346,7 +1346,7 @@ struct set_lock_subcommands {
 
             al.name     = (name128)name;
             al.approver = get_public_key(approver);
-            al.data     = evt::chain::void_t();
+            al.data     = jmzk::chain::void_t();
 
             auto act = create_action(N128(.lock), (domain_key)al.name, al);
             send_actions({act});
@@ -1672,7 +1672,7 @@ struct set_psvbonus_subcommands {
         spcmd->add_option("rate", rate, localized("Rate of fees according to the amount of transaction"))->required();
         spcmd->add_option("base_charge", base_charge, localized("The optional addition fees outside the rate for every transaction"))->required();
         spcmd->add_option("dist_threshold", dist_threshold, localized("Only the profit collected is large than this value, can the managers start one round of distribution"))->required();
-        spcmd->add_option("--rules", rules, localized("Multiple levels of distribution rules are supported on everiToken"))->required();
+        spcmd->add_option("--rules", rules, localized("Multiple levels of distribution rules are supported on jmzkChain"))->required();
         spcmd->add_option("--methods", methods, localized("within_amount and outside_amount are the possible values for each action"))->required();
         spcmd->add_option("--charge_threshold", charge_threshold, localized("The maximum of the total fees"));
         spcmd->add_option("--minimum_charge", minimum_charge, localized("The minimum of the total fees"));
@@ -1745,12 +1745,12 @@ struct set_action_subcommand {
                 vardata = fc::json::from_string(data);
             }
 
-            auto exec_ctx = evt_execution_context_mock();
+            auto exec_ctx = jmzk_execution_context_mock();
             set_execution_context(exec_ctx);
 
             auto type = exec_ctx.get_acttype_name((action_name)name);
 
-            auto abi = abi_serializer(evt_contract_abi(), std::chrono::hours(1));
+            auto abi = abi_serializer(jmzk_contract_abi(), std::chrono::hours(1));
             auto rawdata = abi.variant_to_binary(type, vardata, exec_ctx);
 
             auto act = action((action_name)name, (domain_name)domain, (domain_key)key, rawdata);
@@ -1967,16 +1967,16 @@ struct set_get_staking_shares_subcommand {
     }
 };
 
-struct set_get_evtlink_signed_keys_subcommand {
+struct set_get_jmzklink_signed_keys_subcommand {
     string link_id;
 
-    set_get_evtlink_signed_keys_subcommand(CLI::App* actionRoot) {
-        auto gsscmd = actionRoot->add_subcommand("evtlinkkeys", localized("Retrieve Evtlink signed keys"));
-        gsscmd->add_option("linkid", link_id, localized("id of Evtlink"))->required();
+    set_get_jmzklink_signed_keys_subcommand(CLI::App* actionRoot) {
+        auto gsscmd = actionRoot->add_subcommand("jmzklinkkeys", localized("Retrieve jmzklink signed keys"));
+        gsscmd->add_option("linkid", link_id, localized("id of jmzklink"))->required();
 
         gsscmd->callback([this] {
             auto arg = fc::mutable_variant_object("link_id", link_id);
-            print_info(call(get_evtlink_signed_keys_func, arg));
+            print_info(call(get_jmzklink_signed_keys_func, arg));
         });
     }
 };
@@ -2189,15 +2189,15 @@ CLI::callback_t header_opt_callback = [](CLI::results_t res) {
     return true;
 };
 
-class EVTApp : public CLI::App {
+class jmzkApp : public CLI::App {
 public:
-    EVTApp(std::string app_description = "", std::string app_name = "")
+    jmzkApp(std::string app_description = "", std::string app_name = "")
         : CLI::App(app_description, app_name) {}
 
 public:
     void
     pre_callback() override {
-        ensure_evtwd_running(this);
+        ensure_jmzkwd_running(this);
     }
 };
 
@@ -2211,14 +2211,14 @@ main(int argc, char** argv) {
     setlocale(LC_ALL, "");
     bindtextdomain(locale_domain, locale_path);
     textdomain(locale_domain);
-    context = evt::client::http::create_http_context();
+    context = jmzk::client::http::create_http_context();
     wallet_url = default_wallet_url;
 
-    EVTApp app{"Command Line Interface to everiToken Client"};
+    jmzkApp app{"Command Line Interface to jmzkChain Client"};
     app.require_subcommand();
 
-    app.add_option("-u,--url", url, localized("the http/https/unix-socket URL where evtd is running"))->capture_default_str();
-    app.add_option("--wallet-url", wallet_url, localized("the http/https/unix-socket URL where evtwd is running"))->capture_default_str();
+    app.add_option("-u,--url", url, localized("the http/https/unix-socket URL where jmzkd is running"))->capture_default_str();
+    app.add_option("--wallet-url", wallet_url, localized("the http/https/unix-socket URL where jmzkwd is running"))->capture_default_str();
 
     app.add_option( "-r,--header", header_opt_callback, localized("pass specific HTTP header; repeat this option to pass multiple headers"));
     app.add_flag( "-n,--no-verify", no_verify, localized("don't verify peer certificate when using HTTPS"));
@@ -2234,7 +2234,7 @@ main(int argc, char** argv) {
     version->require_subcommand();
 
     version->add_subcommand("client", localized("Retrieve version information of the client"))->callback([] {
-        std::cout << localized("Build version: ${ver}", ("ver", evt::client::config::version_str)) << std::endl;
+        std::cout << localized("Build version: ${ver}", ("ver", jmzk::client::config::version_str)) << std::endl;
     });
 
     // Create subcommand
@@ -2276,12 +2276,12 @@ main(int argc, char** argv) {
 
     // get actions
     get->add_subcommand("actions", localized("Get current actions"))->callback([] {
-        std::cout << fc::json::to_pretty_string(call(get_evt_actions, fc::variant())) << std::endl;
+        std::cout << fc::json::to_pretty_string(call(get_jmzk_actions, fc::variant())) << std::endl;
     });
 
     // get abi
     get->add_subcommand("abi", localized("Get current ABI"))->callback([] {
-        std::cout << fc::json::to_pretty_string(call(get_evt_abi, fc::variant())) << std::endl;
+        std::cout << fc::json::to_pretty_string(call(get_jmzk_abi, fc::variant())) << std::endl;
     });
 
     // get apis
@@ -2309,7 +2309,7 @@ main(int argc, char** argv) {
     set_get_stakepool_subcommand           get_stakepool(get);
     set_get_validator_subcommand           get_validator(get);
     set_get_staking_shares_subcommand      get_staking_shares(get);
-    set_get_evtlink_signed_keys_subcommand get_evtlink_signed_keys(get);
+    set_get_jmzklink_signed_keys_subcommand get_jmzklink_signed_keys(get);
     set_get_script_subcommand              get_script(get);
 
     // get transaction
@@ -2511,7 +2511,7 @@ main(int argc, char** argv) {
             wallet_key = private_key_type(wallet_key_str);
         }
         catch(...) {
-            EVT_THROW(private_key_type_exception, "Invalid private key: ${private_key}", ("private_key", wallet_key_str))
+            jmzk_THROW(private_key_type_exception, "Invalid private key: ${private_key}", ("private_key", wallet_key_str))
         }
         public_key_type pubkey = wallet_key.get_public_key();
 
@@ -2539,7 +2539,7 @@ main(int argc, char** argv) {
             pubkey = public_key_type( wallet_rm_key_str );
         }
         catch (...) {
-            EVT_THROW(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", wallet_rm_key_str))
+            jmzk_THROW(public_key_type_exception, "Invalid public key: ${public_key}", ("public_key", wallet_rm_key_str))
         }
         fc::variants vs = {fc::variant(wallet_name), fc::variant(wallet_pw), fc::variant(wallet_rm_key_str)};
         call(wallet_url, wallet_remove_key, vs);
@@ -2589,11 +2589,11 @@ main(int argc, char** argv) {
         std::cout << fc::json::to_pretty_string(v) << std::endl;
     });
 
-    // stop evtwd
-    auto stopEvtwd = wallet->add_subcommand("stop", localized("Stop evtwd (doesn't work with evtd)."));
-    stopEvtwd->callback([] {
-        const auto& v = call(wallet_url, evtwd_stop);
-        if (!v.is_object() || v.get_object().size() != 0) { //on success evtwd responds with empty object
+    // stop jmzkwd
+    auto stopjmzkwd = wallet->add_subcommand("stop", localized("Stop jmzkwd (doesn't work with jmzkd)."));
+    stopjmzkwd->callback([] {
+        const auto& v = call(wallet_url, jmzkwd_stop);
+        if (!v.is_object() || v.get_object().size() != 0) { //on success jmzkwd responds with empty object
             std::cerr << fc::json::to_pretty_string(v) << std::endl;
         }
         else {
@@ -2621,7 +2621,7 @@ main(int argc, char** argv) {
         std::optional<chain_id_type> chain_id;
 
         if(str_chain_id.size() == 0) {
-            ilog("grabbing chain_id from evtd");
+            ilog("grabbing chain_id from jmzkd");
             auto info = get_info();
             chain_id = info.chain_id;
         }
@@ -2674,7 +2674,7 @@ main(int argc, char** argv) {
                 trx_var = fc::json::from_string(trx_to_push);
             }
         }
-        EVT_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON")
+        jmzk_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON")
         signed_transaction trx        = trx_var.as<signed_transaction>();
         auto               trx_result = call(push_txn_func, packed_transaction(trx, packed_transaction::none));
         std::cout << fc::json::to_pretty_string(trx_result) << std::endl;
@@ -2688,7 +2688,7 @@ main(int argc, char** argv) {
         try {
             trx_var = fc::json::from_string(trxsJson);
         }
-        EVT_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON")
+        jmzk_RETHROW_EXCEPTIONS(transaction_type_exception, "Fail to parse transaction JSON")
         auto trxs_result = call(push_txns_func, trx_var);
         std::cout << fc::json::to_pretty_string(trxs_result) << std::endl;
     });

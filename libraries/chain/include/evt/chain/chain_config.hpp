@@ -1,12 +1,12 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
-#include <evt/chain/config.hpp>
-#include <evt/chain/types.hpp>
+#include <jmzk/chain/config.hpp>
+#include <jmzk/chain/types.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 /**
  * @brief Producer-voted blockchain configuration parameters
@@ -29,7 +29,7 @@ struct chain_config {
     uint32_t max_transaction_lifetime;         ///< the maximum number of seconds that an input transaction's expiration can be ahead of the time of the block in which it is first included
     uint16_t max_authority_depth;              ///< recursion depth limit for checking if an authority is satisfied
 
-    uint32_t evt_link_expired_secs;
+    uint32_t jmzk_link_expired_secs;
 
     void validate() const;
 
@@ -49,7 +49,7 @@ struct chain_config {
                    << "Max Transaction Lifetime: " << c.max_transaction_lifetime << ", "
                    << "Max Authority Depth: " << c.max_authority_depth << ", "
 
-                   << "EVT-Link expried secs: " << c.evt_link_expired_secs << "\n";
+                   << "jmzk-Link expried secs: " << c.jmzk_link_expired_secs << "\n";
     }
 
     friend inline bool
@@ -64,7 +64,7 @@ struct chain_config {
                         lhs.global_charge_factor,
                         lhs.max_transaction_lifetime,
                         lhs.max_authority_depth,
-                        lhs.evt_link_expired_secs
+                        lhs.jmzk_link_expired_secs
                         )
                ==
                std::tie(lhs.max_block_net_usage,
@@ -77,7 +77,7 @@ struct chain_config {
                         lhs.global_charge_factor,
                         lhs.max_transaction_lifetime,
                         lhs.max_authority_depth,
-                        lhs.evt_link_expired_secs
+                        lhs.jmzk_link_expired_secs
                         );
     };
 
@@ -87,11 +87,11 @@ struct chain_config {
     }
 };
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
-FC_REFLECT(evt::chain::chain_config,
+FC_REFLECT(jmzk::chain::chain_config,
           (max_block_net_usage)(target_block_net_usage_pct)
           (max_transaction_net_usage)(base_per_transaction_net_usage)
           (base_network_charge_factor)(base_storage_charge_factor)(base_cpu_charge_factor)(global_charge_factor)
-          (max_transaction_lifetime)(max_authority_depth)(evt_link_expired_secs)
+          (max_transaction_lifetime)(max_authority_depth)(jmzk_link_expired_secs)
           );

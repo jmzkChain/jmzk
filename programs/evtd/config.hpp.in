@@ -1,13 +1,13 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  *
  * \warning This file is machine generated. DO NOT EDIT.  See config.hpp.in for changes.
  */
 #pragma once
 
-namespace evt { namespace evtd { namespace config {
+namespace jmzk { namespace jmzkd { namespace config {
 
-constexpr uint64_t version = 0x${evtd_BUILD_VERSION};
+constexpr uint64_t version = 0x${jmzkd_BUILD_VERSION};
 
-}}}  // namespace evt::evtd::config
+}}}  // namespace jmzk::jmzkd::config

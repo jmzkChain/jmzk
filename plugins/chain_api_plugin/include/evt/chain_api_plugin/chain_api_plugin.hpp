@@ -1,16 +1,16 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
-#include <evt/chain_plugin/chain_plugin.hpp>
-#include <evt/http_plugin/http_plugin.hpp>
+#include <jmzk/chain_plugin/chain_plugin.hpp>
+#include <jmzk/http_plugin/http_plugin.hpp>
 
 #include <appbase/application.hpp>
-#include <evt/chain/controller.hpp>
+#include <jmzk/chain/controller.hpp>
 
-namespace evt {
-using evt::chain::controller;
+namespace jmzk {
+using jmzk::chain::controller;
 using std::unique_ptr;
 using namespace appbase;
 
@@ -31,4 +31,4 @@ private:
     unique_ptr<class chain_api_plugin_impl> my;
 };
 
-}  // namespace evt
+}  // namespace jmzk

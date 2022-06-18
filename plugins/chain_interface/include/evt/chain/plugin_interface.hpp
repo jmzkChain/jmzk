@@ -1,19 +1,19 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
 #include <appbase/channel.hpp>
 #include <appbase/method.hpp>
 
-#include <evt/chain/block.hpp>
-#include <evt/chain/block_state.hpp>
-#include <evt/chain/trace.hpp>
-#include <evt/chain/transaction_metadata.hpp>
+#include <jmzk/chain/block.hpp>
+#include <jmzk/chain/block_state.hpp>
+#include <jmzk/chain/trace.hpp>
+#include <jmzk/chain/transaction_metadata.hpp>
 
-namespace evt { namespace chain { namespace plugin_interface {
-using namespace evt::chain;
+namespace jmzk { namespace chain { namespace plugin_interface {
+using namespace jmzk::chain;
 using namespace appbase;
 
 template<typename T>
@@ -58,4 +58,4 @@ namespace channels {
 using transaction_ack = channel_decl<struct accepted_transaction_tag, std::pair<fc::exception_ptr, transaction_metadata_ptr>>;
 }}  // namespace compat::channels
 
-}}}  // namespace evt::chain::plugin_interface
+}}}  // namespace jmzk::chain::plugin_interface

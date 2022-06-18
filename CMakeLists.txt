@@ -1,16 +1,16 @@
 cmake_minimum_required(VERSION 3.5)
 
-# Defines everiToken library target.
-project(EVT)
+# Defines jmzkChain library target.
+project(jmzk)
 
 option(ENABLE_POSTGRES_SUPPORT  "Build with postgres support, this enables postgres_plugin" OFF)
 option(ENABLE_BREAKPAD_SUPPORT  "Build with breakpad support, this enables minidump when crash" OFF)
 option(ENABLE_BIND_LIBRARIES    "Build bind libraries" OFF)
 option(ENABLE_BENCHMARKS        "Build benchmarks" OFF)
-option(ENABLE_COVERAGE_TESTING  "Build EVT for code coverage analysis" OFF)
+option(ENABLE_COVERAGE_TESTING  "Build jmzk for code coverage analysis" OFF)
 option(ENABLE_TESTING           "Enable testing targets" ON)
 option(ENABLE_COLOR_OUTPUT      "Enable diagnostics color output from compiler" ON)
-option(ENABLE_MAINNET_BUILD     "Build EVT for Mainnet" OFF)
+option(ENABLE_MAINNET_BUILD     "Build jmzk for Mainnet" OFF)
 option(ENABLE_BUILD_LTO         "Enable LTO when build" OFF)
 option(ENABLE_FULL_STATIC_BUILD "Enable full static build" OFF)
 
@@ -22,7 +22,7 @@ include(VersionMacros)
 include(SetupTargetMacros)
 include(InstallDirectoryPermissions)
 
-set(BLOCKCHAIN_NAME "EVT")
+set(BLOCKCHAIN_NAME "jmzk")
 
 set(CMAKE_CXX_STANDARD    17)
 set(CMAKE_CXX_EXTENSIONS  ON)
@@ -32,8 +32,8 @@ set(VERSION_MAJOR 4)
 set(VERSION_MINOR 2)
 set(VERSION_PATCH 0)
 
-set(CLI_CLIENT_EXECUTABLE_NAME evtc)
-set(GUI_CLIENT_EXECUTABLE_NAME evt)
+set(CLI_CLIENT_EXECUTABLE_NAME jmzkc)
+set(GUI_CLIENT_EXECUTABLE_NAME jmzk)
 set(CUSTOM_URL_SCHEME "gcs")
 set(INSTALLER_APP_ID "0E523427-37A8-4368-8D5E-AC17FC845110")
 set(CMAKE_SKIP_INSTALL_ALL_DEPENDENCY true)
@@ -51,7 +51,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 endif()
 
 if(WIN32)
-    message(FATAL_ERROR "EVT IS NOT SUPPORT BUILDING ON WIN32")
+    message(FATAL_ERROR "jmzk IS NOT SUPPORT BUILDING ON WIN32")
 endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS "ON")
@@ -167,22 +167,22 @@ if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 endif()
 
 if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug" OR ENABLE_BREAKPAD_SUPPORT)
-    message(STATUS "Build EVT with symbols")
+    message(STATUS "Build jmzk with symbols")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 endif()
 
 if(ENABLE_BUILD_LTO)
-    message(STATUS "Build EVT with link-time optimization")
+    message(STATUS "Build jmzk with link-time optimization")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fuse-linker-plugin -flto -ffat-lto-objects")
 endif()
 
 include_directories(libraries/rocksdb/include)
 
-if("${EVT_ROOT_KEY}" STREQUAL "")
-   set(EVT_ROOT_KEY "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV")
+if("${jmzk_ROOT_KEY}" STREQUAL "")
+   set(jmzk_ROOT_KEY "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV")
 endif()
 
-message( STATUS "Using '${EVT_ROOT_KEY}' as public key for evt account" )
+message( STATUS "Using '${jmzk_ROOT_KEY}' as public key for jmzk account" )
 
 if(ENABLE_TESTING)
     enable_testing()

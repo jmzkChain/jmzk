@@ -116,10 +116,10 @@ def detail(name):
 @click.option('--prefix', '-p', help='Prefix of snapshots to list')
 def snapshots(prefix):
     try:
-        client.images.get('everitoken/snapshot:latest')
+        client.images.get('jmzkChain/snapshot:latest')
     except docker.errors.ImageNotFound:
         click.echo('Pulling latest snapshot image...')
-        client.images.pull('everitoken/snapshot', 'latest')
+        client.images.pull('jmzkChain/snapshot', 'latest')
         click.echo('Pulled latest snapshot image')
 
     if prefix is not None:
@@ -127,7 +127,7 @@ def snapshots(prefix):
     else:
         entry = 'list'
 
-    container = client.containers.run('everitoken/snapshot:latest', entry, detach=True)
+    container = client.containers.run('jmzkChain/snapshot:latest', entry, detach=True)
     container.wait()
     logs = container.logs().decode('utf-8')
 
@@ -136,7 +136,7 @@ def snapshots(prefix):
 
 
 @cli.group('network')
-@click.option('--name', '-n', default='evt-net', help='Name of the network for the environment')
+@click.option('--name', '-n', default='jmzk-net', help='Name of the network for the environment')
 @click.pass_context
 def network(ctx, name):
     ctx.ensure_object(dict)
@@ -182,12 +182,12 @@ def init(ctx):
     name = ctx.obj['name']
 
     try:
-        client.images.get('everitoken/postgres:latest')
+        client.images.get('jmzkChain/postgres:latest')
         click.echo('{} already exists, no need to fetch it again'.format(
-            green('everitoken/postgres:latest')))
+            green('jmzkChain/postgres:latest')))
     except docker.errors.ImageNotFound:
         click.echo('Pulling latest postgres image...')
-        client.images.pull('everitoken/postgres', 'latest')
+        client.images.pull('jmzkChain/postgres', 'latest')
         click.echo('Pulled latest postgres image')
 
     volume_name = '{}-data-volume'.format(name)
@@ -206,7 +206,7 @@ def init(ctx):
 @click.pass_context
 def upgrade(ctx, data_volume):
     name = ctx.obj['name']
-    image = 'everitoken/postgres:latest'
+    image = 'jmzkChain/postgres:latest'
     volume_name = '{}-data-volume'.format(name)
     volume2_name = '{}-config-volume'.format(name)
 
@@ -258,7 +258,7 @@ def upgrade(ctx, data_volume):
 
 
 @postgres.command()
-@click.option('--net', '-n', default='evt-net', help='Name of the network for the environment')
+@click.option('--net', '-n', default='jmzk-net', help='Name of the network for the environment')
 @click.option('--port', '-p', default=5432, help='Expose port for postgres')
 @click.option('--host', '-h', default='127.0.0.1', help='Host address for postgres')
 @click.option('--password', '-x', default='', help='Password for \'postgres\' user, leave empty to disable password (anyone can login)')
@@ -267,7 +267,7 @@ def upgrade(ctx, data_volume):
 @click.pass_context
 def create(ctx, net, port, host, password, data_volume, shm_size):
     name = ctx.obj['name']
-    image = 'everitoken/postgres:latest'
+    image = 'jmzkChain/postgres:latest'
     volume_name = '{}-data-volume'.format(name)
 
     if data_volume is not None:
@@ -330,7 +330,7 @@ def create(ctx, net, port, host, password, data_volume, shm_size):
 
 
 @postgres.command()
-@click.argument('dbname', default='evt')
+@click.argument('dbname', default='jmzk')
 @click.pass_context
 def createdb(ctx, dbname):
     name = ctx.obj['name']
@@ -441,44 +441,44 @@ def detailpostgres(ctx):
     ctx.invoke(detail, name=ctx.obj['name'])
 
 
-def check_evt_image():
-    missing_evt = False
-    missing_evt_staking = False
-    missing_evt_mainnet = False
+def check_jmzk_image():
+    missing_jmzk = False
+    missing_jmzk_staking = False
+    missing_jmzk_mainnet = False
     try:
-        client.images.get('everitoken/evt:latest')
+        client.images.get('jmzkChain/jmzk:latest')
     except docker.errors.ImageNotFound:
-        missing_evt = True
+        missing_jmzk = True
 
     try:
-        client.images.get('everitoken/evt-mainnet:latest')
+        client.images.get('jmzkChain/jmzk-mainnet:latest')
     except docker.errors.ImageNotFound:
-        missing_evt_mainnet = True
+        missing_jmzk_mainnet = True
 
     try:
-        client.images.get('everitoken/evt-staking:latest')
+        client.images.get('jmzkChain/jmzk-staking:latest')
     except docker.errors.ImageNotFound:
-        missing_evt_staking = True
+        missing_jmzk_staking = True
 
-    if missing_evt and missing_evt_mainnet and missing_evt_staking:
+    if missing_jmzk and missing_jmzk_mainnet and missing_jmzk_staking:
         click.echo('Nither find image: {}, {} and {}, please pull one first'.format(
-            green('everitoken/evt:latest'), green('everitoken/evt-mainnet:latest'),  green('everitoken/evt-staking:latest')))
+            green('jmzkChain/jmzk:latest'), green('jmzkChain/jmzk-mainnet:latest'),  green('jmzkChain/jmzk-staking:latest')))
 
 
 @cli.group()
-@click.option('--name', '-n', default='evtd', help='Name of the container running evtd')
+@click.option('--name', '-n', default='jmzkd', help='Name of the container running jmzkd')
 @click.pass_context
-def evtd(ctx, name):
+def jmzkd(ctx, name):
     ctx.ensure_object(dict)
     ctx.obj['name'] = name
 
 
-@evtd.command()
+@jmzkd.command()
 @click.pass_context
 def init(ctx):
     name = ctx.obj['name']
 
-    check_evt_image()
+    check_jmzk_image()
 
     volume_name = '{}-data-volume'.format(name)
     volume2_name = '{}-snapshots-volume'.format(name)
@@ -499,9 +499,9 @@ def init(ctx):
         click.echo('{} volume is created'.format(green(volume2_name)))
 
 
-@evtd.command('export', help='Export reversible blocks to one backup file')
+@jmzkd.command('export', help='Export reversible blocks to one backup file')
 @click.option('--file', '-f', default='rev-{}.logs'.format(datetime.now().strftime('%Y-%m-%d')), help='Backup file name of reversible blocks')
-@click.option('--data-volume', '-d', default=None, help='Set one host path for data folder in evtd instead using volume')
+@click.option('--data-volume', '-d', default=None, help='Set one host path for data folder in jmzkd instead using volume')
 @click.pass_context
 def exportrb(ctx, file, data_volume):
     name = ctx.obj['name']
@@ -527,12 +527,12 @@ def exportrb(ctx, file, data_volume):
         return
 
     image = container.image
-    folder = '/opt/evt/data/reversible'
+    folder = '/opt/jmzk/data/reversible'
 
-    command = '/bin/bash -c \'mkdir -p {0} && /opt/evt/bin/evtd.sh --export-reversible-blocks={0}/{1}\''.format(
+    command = '/bin/bash -c \'mkdir -p {0} && /opt/jmzk/bin/jmzkd.sh --export-reversible-blocks={0}/{1}\''.format(
         folder, file)
     container = client.containers.run(image, command, detach=True,
-                                      volumes={volume_name: {'bind': '/opt/evt/data', 'mode': 'rw'}})
+                                      volumes={volume_name: {'bind': '/opt/jmzk/data', 'mode': 'rw'}})
     container.wait()
     logs = container.logs().decode('utf-8')
     if 'node_management_success' in logs:
@@ -543,9 +543,9 @@ def exportrb(ctx, file, data_volume):
         click.echo(container.logs())
 
 
-@evtd.command('import', help='Import reversible blocks from backup file')
+@jmzkd.command('import', help='Import reversible blocks from backup file')
 @click.option('--file', '-f', default='rev-{}.logs'.format(datetime.now().strftime('%Y-%m-%d')), help='Backup file name of reversible blocks')
-@click.option('--data-volume', '-d', default=None, help='Set one host path for data folder in evtd instead using volume')
+@click.option('--data-volume', '-d', default=None, help='Set one host path for data folder in jmzkd instead using volume')
 @click.pass_context
 def importrb(ctx, file, data_volume):
     name = ctx.obj['name']
@@ -571,11 +571,11 @@ def importrb(ctx, file, data_volume):
         return
 
     image = container.image
-    folder = '/opt/evt/data/reversible'
+    folder = '/opt/jmzk/data/reversible'
 
-    command = 'evtd.sh --import-reversible-blocks={0}/{1}'.format(folder, file)
+    command = 'jmzkd.sh --import-reversible-blocks={0}/{1}'.format(folder, file)
     container = client.containers.run(image, command, detach=True,
-                                      volumes={volume_name: {'bind': '/opt/evt/data', 'mode': 'rw'}})
+                                      volumes={volume_name: {'bind': '/opt/jmzk/data', 'mode': 'rw'}})
     container.wait()
     logs = container.logs().decode('utf-8')
     if 'node_management_success' in logs:
@@ -586,7 +586,7 @@ def importrb(ctx, file, data_volume):
         click.echo(container.logs())
 
 
-@evtd.command()
+@jmzkd.command()
 @click.option('--all/--no-all', '-a', default=False, help='Clear both container and volume, otherwise only clear container')
 @click.pass_context
 def clear(ctx, all):
@@ -624,7 +624,7 @@ def clear(ctx, all):
         click.echo('{} volume does not exist'.format(green(volume2_name)))
 
 
-@evtd.command()
+@jmzkd.command()
 @click.option('--postgres/--no-postgres', '-p', default=False, help='Whether export postgres data into snapshot (postgres plugin should be enabled)')
 @click.option('--upload/--no-upload', '-u', default=False, help='Whether upload to S3')
 @click.option('--aws-key', '-k', default='')
@@ -632,14 +632,14 @@ def clear(ctx, all):
 @click.pass_context
 def snapshot(ctx, postgres, upload, aws_key, aws_secret):
     name = ctx.obj['name']
-    image = 'everitoken/snapshot:latest'
+    image = 'jmzkChain/snapshot:latest'
     volume_name = '{}-snapshots-volume'.format(name)
 
     try:
         client.images.get(image)
     except docker.errors.ImageNotFound:
         click.echo('Pulling latest snapshot image...')
-        client.images.pull('everitoken/snapshot', 'latest')
+        client.images.pull('jmzkChain/snapshot', 'latest')
         click.echo('Pulled latest snapshot image')
 
     try:
@@ -657,7 +657,7 @@ def snapshot(ctx, postgres, upload, aws_key, aws_secret):
     else:
         p = ''
 
-    entry = '/opt/evt/bin/evtc -u unix:///opt/evt/data/evtd.sock producer snapshot {}'.format(
+    entry = '/opt/jmzk/bin/jmzkc -u unix:///opt/jmzk/data/jmzkd.sock producer snapshot {}'.format(
         p)
     code, result = container.exec_run(entry)
 
@@ -697,45 +697,45 @@ def snapshot(ctx, postgres, upload, aws_key, aws_secret):
     container.remove()
 
 
-@evtd.command()
+@jmzkd.command()
 @click.argument('snapshot')
 @click.pass_context
 def getsnapshot(ctx, snapshot):
     name = ctx.obj['name']
-    image = 'everitoken/snapshot:latest'
+    image = 'jmzkChain/snapshot:latest'
     volume_name = '{}-snapshots-volume'.format(name)
 
     try:
         client.images.get(image)
     except docker.errors.ImageNotFound:
         click.echo('Pulling latest snapshot image...')
-        client.images.pull('everitoken/snapshot', 'latest')
+        client.images.pull('jmzkChain/snapshot', 'latest')
         click.echo('Pulled latest snapshot image')
 
     sid = snapshot[8:]
     entry = 'fetch --name={} --file=/data/{}'.format(snapshot, sid)
 
-    container = client.containers.run('everitoken/snapshot:latest', entry, detach=True,
+    container = client.containers.run('jmzkChain/snapshot:latest', entry, detach=True,
                                       volumes={volume_name: {'bind': '/data', 'mode': 'rw'}})
     container.wait()
     logs = container.logs().decode('utf-8')
 
     container.remove()
     click.echo(logs, nl=False)
-    click.echo('Create evtd with this snapshot via \'--snapshot=/opt/evt/snapshots/{}\''.format(sid))
+    click.echo('Create jmzkd with this snapshot via \'--snapshot=/opt/jmzk/snapshots/{}\''.format(sid))
 
 
-@evtd.command()
+@jmzkd.command()
 @click.argument('arguments', nargs=-1)
 @click.option('--type', '-t', default='testnet', type=click.Choice(['testnet', 'mainnet', 'staking']), help='Type of the image')
-@click.option('--net', '-n', default='evt-net', help='Name of the network for the environment')
+@click.option('--net', '-n', default='jmzk-net', help='Name of the network for the environment')
 @click.option('--http-port', '-p', default=8888, help='Expose port for rpc request, set 0 for not expose')
 @click.option('--p2p-port', default=7888, help='Expose port for p2p network, set 0 for not expose')
-@click.option('--host', '-h', default='127.0.0.1', help='Host address for evtd')
+@click.option('--host', '-h', default='127.0.0.1', help='Host address for jmzkd')
 @click.option('--postgres-name', '-g', default='pg', help='Container name or host address of postgres')
 @click.option('--postgres-db', default=None, help='Name of database in postgres, if set, postgres and history plugins will be enabled')
 @click.option('--postgres-pass', default='', help='Password for postgres')
-@click.option('--data-volume', '-d', default=None, help='Set one host path for data folder in evtd instead using volume')
+@click.option('--data-volume', '-d', default=None, help='Set one host path for data folder in jmzkd instead using volume')
 @click.option('--shm-size', default='1g', help='Shared memory size for container')
 @click.pass_context
 def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_db, postgres_pass, data_volume, type, shm_size, arguments):
@@ -746,11 +746,11 @@ def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_db, post
         volume_name = data_volume
 
     if type == 'testnet':
-        image = 'everitoken/evt:latest'
+        image = 'jmzkChain/jmzk:latest'
     elif type == 'mainnet':
-        image = 'everitoken/evt-mainnet:latest'
+        image = 'jmzkChain/jmzk-mainnet:latest'
     elif type == 'staking':
-        image = 'everitoken/evt-staking:latest'
+        image = 'jmzkChain/jmzk-staking:latest'
     else:
         click.echo('Unknown image type')
         return
@@ -767,7 +767,7 @@ def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_db, post
         return
     except docker.errors.NotFound:
         click.echo(
-            'Some necessary elements are not found, please run `evtd init` first')
+            'Some necessary elements are not found, please run `jmzkd init` first')
         return
 
     create = False
@@ -780,7 +780,7 @@ def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_db, post
             create = True
         else:
             click.echo(
-                '{} container already exists and is running, cannot restart, run `evtd stop` first'.format(green(name)))
+                '{} container already exists and is running, cannot restart, run `jmzkd stop` first'.format(green(name)))
             return
     except docker.errors.NotFound:
         create = True
@@ -788,7 +788,7 @@ def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_db, post
     if not create:
         return
 
-    entry = 'evtd.sh --http-server-address=0.0.0.0:8888 --p2p-listen-endpoint=0.0.0.0:7888'
+    entry = 'jmzkd.sh --http-server-address=0.0.0.0:8888 --p2p-listen-endpoint=0.0.0.0:7888'
     if postgres_db is not None:
         try:
             container = client.containers.get(postgres_name)
@@ -803,7 +803,7 @@ def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_db, post
 
         click.echo('{}, {}, {} are enabled'.format(green('postgres_plugin'), green(
             'history_plugin'), green('history_api_plugin')))
-        entry += ' --plugin=evt::postgres_plugin --plugin=evt::history_plugin --plugin=evt::history_api_plugin'
+        entry += ' --plugin=jmzk::postgres_plugin --plugin=jmzk::history_plugin --plugin=jmzk::history_api_plugin'
 
         if len(postgres_pass) == 0:
             entry += ' --postgres-uri=postgresql://postgres@{}:{}/{}'.format(
@@ -823,9 +823,9 @@ def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_db, post
     client.containers.create(image, None, name=name, detach=True, network=net,
                              ports=ports,
                              volumes={volume_name: {
-                                 'bind': '/opt/evt/data', 'mode': 'rw'},
+                                 'bind': '/opt/jmzk/data', 'mode': 'rw'},
                                  volume2_name: {
-                                 'bind': '/opt/evt/snapshots', 'mode': 'rw'},
+                                 'bind': '/opt/jmzk/snapshots', 'mode': 'rw'},
                              },
                              entrypoint=entry,
                              cap_add=['SYS_PTRACE'],
@@ -835,46 +835,46 @@ def create(ctx, net, http_port, p2p_port, host, postgres_name, postgres_db, post
     click.echo('{} container is created'.format(green(name)))
 
 
-@evtd.command('start')
+@jmzkd.command('start')
 @click.pass_context
-def startevtd(ctx):
+def startjmzkd(ctx):
     ctx.invoke(start, name=ctx.obj['name'])
 
 
-@evtd.command('stop')
+@jmzkd.command('stop')
 @click.pass_context
-def stopevtd(ctx):
+def stopjmzkd(ctx):
     ctx.invoke(stop, name=ctx.obj['name'])
 
 
-@evtd.command('logs')
+@jmzkd.command('logs')
 @click.option('--tail', '-t', default=100, help='Output specified number of lines at the end of logs')
 @click.option('--stream/--no-stream', '-s', default=False, help='Stream the output')
 @click.pass_context
-def evtdlogs(ctx, tail, stream):
+def jmzkdlogs(ctx, tail, stream):
     ctx.forward(logs, name=ctx.obj['name'])
 
 
-@evtd.command('detail')
+@jmzkd.command('detail')
 @click.pass_context
-def detailevtd(ctx):
+def detailjmzkd(ctx):
     ctx.invoke(detail, name=ctx.obj['name'])
 
 
 @cli.group()
-@click.option('--name', '-n', default='evtwd', help='Name of the container running evtwd')
+@click.option('--name', '-n', default='jmzkwd', help='Name of the container running jmzkwd')
 @click.pass_context
-def evtwd(ctx, name):
+def jmzkwd(ctx, name):
     ctx.ensure_object(dict)
     ctx.obj['name'] = name
 
 
-@evtwd.command()
+@jmzkwd.command()
 @click.pass_context
 def init(ctx):
     name = ctx.obj['name']
 
-    check_evt_image()
+    check_jmzk_image()
 
     volume_name = '{}-data-volume'.format(name)
     try:
@@ -886,12 +886,12 @@ def init(ctx):
         click.echo('{} volume is created'.format(green(volume_name)))
 
 
-@evtwd.command()
+@jmzkwd.command()
 @click.argument('arguments', nargs=-1)
-@click.option('--net', '-n', default='evt-net', help='Name of the network for the environment')
+@click.option('--net', '-n', default='jmzk-net', help='Name of the network for the environment')
 @click.option('--type', '-t', default='testnet', type=click.Choice(['testnet', 'mainnet', 'staking']), help='Type of the image')
 @click.option('--http/--no-http', default=False, help='Whether to enable http server')
-@click.option('--host', '-h', default='127.0.0.1', help='Host address for evtwd (only works when http is enabled)')
+@click.option('--host', '-h', default='127.0.0.1', help='Host address for jmzkwd (only works when http is enabled)')
 @click.option('--http-port', '-p', default=9999, help='Expose port for rpc request, set 0 for not expose (only works when http is enabled)')
 @click.pass_context
 def create(ctx, net, type, http, host, http_port, arguments):
@@ -899,11 +899,11 @@ def create(ctx, net, type, http, host, http_port, arguments):
     volume_name = '{}-data-volume'.format(name)
 
     if type == 'testnet':
-        image = 'everitoken/evt:latest'
+        image = 'jmzkChain/jmzk:latest'
     elif type == 'mainnet':
-        image = 'everitoken/evt-mainnet:latest'
+        image = 'jmzkChain/jmzk-mainnet:latest'
     elif type == 'staking':
-        image = 'everitoken/evt-staking:latest'
+        image = 'jmzkChain/jmzk-staking:latest'
     else:
         click.echo('Unknown image type')
         return
@@ -917,7 +917,7 @@ def create(ctx, net, type, http, host, http_port, arguments):
         return
     except docker.errors.NotFound:
         click.echo(
-            'Some necessary elements are not found, please run `evtwd init` first')
+            'Some necessary elements are not found, please run `jmzkwd init` first')
         return
 
     create = False
@@ -930,7 +930,7 @@ def create(ctx, net, type, http, host, http_port, arguments):
             create = True
         else:
             click.echo(
-                '{} container already exists and running, cannot restart, run `evtwd stop` first'.format(green(name)))
+                '{} container already exists and running, cannot restart, run `jmzkwd stop` first'.format(green(name)))
             return
     except docker.errors.NotFound:
         create = True
@@ -938,7 +938,7 @@ def create(ctx, net, type, http, host, http_port, arguments):
     if not create:
         return
 
-    entry = 'evtwd.sh --unix-socket-path=/opt/evt/data/wallet/evtwd.sock'
+    entry = 'jmzkwd.sh --unix-socket-path=/opt/jmzk/data/wallet/jmzkwd.sock'
     ports = {}
     if http:
         entry += ' --listen-http --http-server-address=0.0.0.0:9999'
@@ -952,13 +952,13 @@ def create(ctx, net, type, http, host, http_port, arguments):
                              network=net,
                              ports=ports,
                              volumes={volume_name: {
-                                 'bind': '/opt/evt/data', 'mode': 'rw'}},
+                                 'bind': '/opt/jmzk/data', 'mode': 'rw'}},
                              entrypoint=entry
                              )
     click.echo('{} container is created'.format(green(name)))
 
 
-@evtwd.command()
+@jmzkwd.command()
 @click.option('--all/--no-all', '-a', default=False, help='Clear both container and volume, otherwise only clear container')
 @click.pass_context
 def clear(ctx, all):
@@ -988,29 +988,29 @@ def clear(ctx, all):
         click.echo('{} volume does not exist'.format(green(volume_name)))
 
 
-@evtwd.command('start')
+@jmzkwd.command('start')
 @click.pass_context
-def startevtwd(ctx):
+def startjmzkwd(ctx):
     ctx.invoke(start, name=ctx.obj['name'])
 
 
-@evtwd.command('stop')
+@jmzkwd.command('stop')
 @click.pass_context
-def stopevtwd(ctx):
+def stopjmzkwd(ctx):
     ctx.invoke(stop, name=ctx.obj['name'])
 
 
-@evtwd.command('logs')
+@jmzkwd.command('logs')
 @click.option('--tail', '-t', default=100, help='Output specified number of lines at the end of logs')
 @click.option('--stream/--no-stream', '-s', default=False, help='Stream the output')
 @click.pass_context
-def evtwdlogs(ctx, tail, stream):
+def jmzkwdlogs(ctx, tail, stream):
     ctx.forward(logs, name=ctx.obj['name'])
 
 
-@evtwd.command('detail')
+@jmzkwd.command('detail')
 @click.pass_context
-def detailevtwd(ctx):
+def detailjmzkwd(ctx):
     ctx.invoke(detail, name=ctx.obj['name'])
 
 
@@ -1019,30 +1019,30 @@ def detailevtwd(ctx):
     help_option_names=[]
 ))
 @click.argument('commands', nargs=-1, type=click.UNPROCESSED)
-@click.option('--evtwd', '-w', default='evtwd', help='Name of evtwd container')
-@click.option('--net', '-n', default='evt-net', help='Name of the network for the environment')
-def evtc(commands, evtwd, net):
+@click.option('--jmzkwd', '-w', default='jmzkwd', help='Name of jmzkwd container')
+@click.option('--net', '-n', default='jmzk-net', help='Name of the network for the environment')
+def jmzkc(commands, jmzkwd, net):
     import subprocess
     import sys
 
     try:
-        container = client.containers.get(evtwd)
+        container = client.containers.get(jmzkwd)
     except docker.errors.ImageNotFound:
         click.echo(
-            'evtc: Some necessary elements are not found, please run `evtwd init` first')
+            'jmzkc: Some necessary elements are not found, please run `jmzkwd init` first')
         return
     except docker.errors.NotFound:
         click.echo(
-            'Some necessary elements are not found, please run `evtwd init` first')
+            'Some necessary elements are not found, please run `jmzkwd init` first')
         return
 
     if container.status != 'running':
         click.echo(
-            '{} container is not running, please start it first'.format(green('evtwd')))
+            '{} container is not running, please start it first'.format(green('jmzkwd')))
         return
 
     commands = map(lambda x: '"{}"'.format(x) if ' ' in x else x, commands)
-    args = 'docker exec -i {} /opt/evt/bin/evtc --wallet-url=unix://opt/evt/data/wallet/evtwd.sock {}'.format(evtwd, ' '.join(commands))
+    args = 'docker exec -i {} /opt/jmzk/bin/jmzkc --wallet-url=unix://opt/jmzk/data/wallet/jmzkwd.sock {}'.format(jmzkwd, ' '.join(commands))
 
     proc = subprocess.Popen(args, stdin=sys.stdin, stdout=sys.stdout, stderr=sys.stdout, shell=True)
     proc.wait()

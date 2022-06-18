@@ -1,18 +1,18 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <appbase/application.hpp>
-#include <evt/chain/contracts/types.hpp>
-#include <evt/chain/transaction.hpp>
+#include <jmzk/chain/contracts/types.hpp>
+#include <jmzk/chain/transaction.hpp>
 #include <fc/variant.hpp>
 
 namespace fc {
 class variant;
 }
 
-namespace evt {
+namespace jmzk {
 using namespace appbase;
 
 namespace wallet {
@@ -45,4 +45,4 @@ private:
     std::unique_ptr<wallet_manager> wallet_manager_ptr;
 };
 
-}  // namespace evt
+}  // namespace jmzk

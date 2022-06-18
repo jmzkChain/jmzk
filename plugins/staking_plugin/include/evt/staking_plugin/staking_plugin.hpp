@@ -1,16 +1,16 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
-#include <evt/chain_plugin/chain_plugin.hpp>
-#include <evt/http_client_plugin/http_client_plugin.hpp>
+#include <jmzk/chain_plugin/chain_plugin.hpp>
+#include <jmzk/http_client_plugin/http_client_plugin.hpp>
 
 #include <appbase/application.hpp>
-#include <evt/chain/controller.hpp>
+#include <jmzk/chain/controller.hpp>
 
-namespace evt {
-using evt::chain::controller;
+namespace jmzk {
+using jmzk::chain::controller;
 using namespace appbase;
 
 class staking_plugin : public plugin<staking_plugin> {
@@ -30,4 +30,4 @@ private:
     std::shared_ptr<class staking_plugin_impl> my_;
 };
 
-}  // namespace evt
+}  // namespace jmzk

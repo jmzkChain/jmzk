@@ -1,14 +1,14 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 
 #include <benchmark/benchmark.h>
 #include <chrono>
-#include <evt/chain/token_database.hpp>
-#include <evt/chain/transaction_context.hpp>
-#include <evt/chain/execution_context_mock.hpp>
-#include <evt/testing/tester.hpp>
+#include <jmzk/chain/token_database.hpp>
+#include <jmzk/chain/transaction_context.hpp>
+#include <jmzk/chain/execution_context_mock.hpp>
+#include <jmzk/testing/tester.hpp>
 #include <fc/io/json.hpp>
 #include <random>
 
@@ -16,16 +16,16 @@
  * Benchmarks for actions to measure the caclulation complexity
  */
 
-using namespace evt::chain;
-using namespace evt::chain::contracts;
+using namespace jmzk::chain;
+using namespace jmzk::chain::contracts;
 
-static std::unique_ptr<evt::testing::tester>
+static std::unique_ptr<jmzk::testing::tester>
 create_tester() {
-    using namespace evt::testing;
+    using namespace jmzk::testing;
 
     fc::logger::get().set_log_level(fc::log_level(fc::log_level::error));
 
-    auto dir = fc::path("/tmp/evt_benchmarks");
+    auto dir = fc::path("/tmp/jmzk_benchmarks");
     if(fc::exists(dir)) {
         fc::remove_all(dir);
     }
@@ -43,8 +43,8 @@ create_tester() {
     cfg.loadtest_mode         = true;
 
     cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
-    cfg.genesis.initial_key       = tester::get_public_key("evt");
-    auto privkey                  = tester::get_private_key("evt");
+    cfg.genesis.initial_key       = tester::get_public_key("jmzk");
+    auto privkey                  = tester::get_private_key("jmzk");
 
     auto t = std::make_unique<tester>(cfg);
     t->block_signing_private_keys.insert(std::make_pair(cfg.genesis.initial_key, privkey));
@@ -88,7 +88,7 @@ get_nonce_key(const char* prefix) {
         n.push_back('a' + dist(dre));
     }
 
-    return evt::testing::tester::get_public_key(name(n));
+    return jmzk::testing::tester::get_public_key(name(n));
 }
 
 static transaction_metadata_ptr
@@ -97,7 +97,7 @@ get_trx_meta(controller& control, const action& act, const std::vector<name>& au
     signed_trx.actions.emplace_back(act);
 
     for(auto& auth : auths) {
-        auto privkey = evt::testing::tester::get_private_key(auth);
+        auto privkey = jmzk::testing::tester::get_private_key(auth);
         signed_trx.sign(privkey, control.get_chain_id());
     }
 
@@ -106,7 +106,7 @@ get_trx_meta(controller& control, const action& act, const std::vector<name>& au
 
 auto&
 get_exec_ctx() {
-    static auto exec_ctx = evt_execution_context_mock();
+    static auto exec_ctx = jmzk_execution_context_mock();
     return exec_ctx;
 }
 
@@ -118,12 +118,12 @@ get_trx_ctx(controller& control, transaction_metadata_ptr trx_meta) {
 const char* ndjson = R"=====(
 {
   "name" : "cookie",
-  "creator" : "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+  "creator" : "jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
   "issue" : {
     "name" : "issue",
     "threshold" : 1,
     "authorizers": [{
-        "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+        "ref": "[A] jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
         "weight": 1
       }
     ]
@@ -141,7 +141,7 @@ const char* ndjson = R"=====(
     "name": "manage",
     "threshold": 1,
     "authorizers": [{
-        "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+        "ref": "[A] jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
         "weight": 1
       }
     ]
@@ -154,7 +154,7 @@ const char* ngjson = R"=====(
   "name" : "5jxX",
   "group" : {
     "name": "5jxXg",
-    "key": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+    "key": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
     "root": {
       "threshold": 6,
       "weight": 0,
@@ -163,24 +163,24 @@ const char* ngjson = R"=====(
           "threshold": 1,
           "weight": 3,
           "nodes": [{
-              "key": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+              "key": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
               "weight": 1
             },{
-              "key": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+              "key": "jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
               "weight": 1
             }
           ]
         },{
-          "key": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+          "key": "jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
           "weight": 3
         },{
           "threshold": 1,
           "weight": 3,
           "nodes": [{
-              "key": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+              "key": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
               "weight": 1
             },{
-              "key": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+              "key": "jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
               "weight": 2
             }
           ]
@@ -193,15 +193,15 @@ const char* ngjson = R"=====(
 
 const char* nfjson = R"=====(
 {
-  "name": "EVT",
-  "sym_name": "EVT",
+  "name": "jmzk",
+  "sym_name": "jmzk",
   "sym": "5,S#3",
-  "creator": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+  "creator": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
   "issue" : {
     "name" : "issue",
     "threshold" : 1,
     "authorizers": [{
-        "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+        "ref": "[A] jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
         "weight": 1
       }
     ]
@@ -210,7 +210,7 @@ const char* nfjson = R"=====(
     "name": "manage",
     "threshold": 1,
     "authorizers": [{
-        "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+        "ref": "[A] jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
         "weight": 1
       }
     ]
@@ -224,8 +224,8 @@ BM_Action_newdomain(benchmark::State& state) {
     auto tester = create_tester();
     auto var    = fc::json::from_string(ndjson);
     auto nd     = var.as<newdomain>();
-    nd.creator  = evt::testing::tester::get_public_key("evt");
-    auto auths  = std::vector<name>{N(evt)};
+    nd.creator  = jmzk::testing::tester::get_public_key("jmzk");
+    auto auths  = std::vector<name>{N(jmzk)};
 
     for(auto _ : state) {
         state.PauseTiming();
@@ -252,11 +252,11 @@ BM_Action_updatedomain(benchmark::State& state) {
     auto var    = fc::json::from_string(ndjson);
     auto nd     = var.as<newdomain>();
 
-    nd.creator = evt::testing::tester::get_public_key("evt");
+    nd.creator = jmzk::testing::tester::get_public_key("jmzk");
     nd.issue.authorizers[0].ref.set_account(nd.creator);
 
     auto ndact = action(nd.name, N128(.create), nd);
-    auto auths = std::vector<name>{N(evt)};
+    auto auths = std::vector<name>{N(jmzk)};
 
     auto ud     = updatedomain();
     ud.name     = nd.name;
@@ -292,12 +292,12 @@ BM_Action_issuetoken(benchmark::State& state) {
     auto var    = fc::json::from_string(ndjson);
     auto nd     = var.as<newdomain>();
 
-    nd.creator = evt::testing::tester::get_public_key("evt");
+    nd.creator = jmzk::testing::tester::get_public_key("jmzk");
     nd.name    = get_nonce_name("domain");
     nd.issue.authorizers[0].ref.set_account(nd.creator);
 
     auto ndact = action(nd.name, N128(.create), nd);
-    auto auths = std::vector<name>{N(evt)};
+    auto auths = std::vector<name>{N(jmzk)};
 
     tester->push_action(std::move(ndact), auths, address());
 
@@ -337,12 +337,12 @@ BM_Action_transfer(benchmark::State& state) {
     auto var    = fc::json::from_string(ndjson);
     auto nd     = var.as<newdomain>();
 
-    nd.creator = evt::testing::tester::get_public_key("evt");
+    nd.creator = jmzk::testing::tester::get_public_key("jmzk");
     nd.name    = get_nonce_name("domain");
     nd.issue.authorizers[0].ref.set_account(nd.creator);
 
     auto ndact = action(nd.name, N128(.create), nd);
-    auto auths = std::vector<name>{N(evt)};
+    auto auths = std::vector<name>{N(jmzk)};
 
     tester->push_action(std::move(ndact), auths, address());
 
@@ -389,12 +389,12 @@ BM_Action_destroytoken(benchmark::State& state) {
     auto var    = fc::json::from_string(ndjson);
     auto nd     = var.as<newdomain>();
 
-    nd.creator = evt::testing::tester::get_public_key("evt");
+    nd.creator = jmzk::testing::tester::get_public_key("jmzk");
     nd.name    = get_nonce_name("domain");
     nd.issue.authorizers[0].ref.set_account(nd.creator);
 
     auto ndact = action(nd.name, N128(.create), nd);
-    auto auths = std::vector<name>{N(evt)};
+    auto auths = std::vector<name>{N(jmzk)};
 
     tester->push_action(std::move(ndact), auths, address());
 
@@ -436,8 +436,8 @@ BM_Action_newgroup(benchmark::State& state) {
     auto tester   = create_tester();
     auto var      = fc::json::from_string(ngjson);
     auto ng       = var.as<newgroup>();
-    ng.group.key_ = evt::testing::tester::get_public_key("evt");
-    auto auths    = std::vector<name>{N(evt)};
+    ng.group.key_ = jmzk::testing::tester::get_public_key("jmzk");
+    auto auths    = std::vector<name>{N(jmzk)};
 
     for(auto _ : state) {
         state.PauseTiming();
@@ -464,11 +464,11 @@ BM_Action_updategroup(benchmark::State& state) {
     auto tester    = create_tester();
     auto var       = fc::json::from_string(ngjson);
     auto ng        = var.as<newgroup>();
-    ng.group.key_  = evt::testing::tester::get_public_key("evt");
+    ng.group.key_  = jmzk::testing::tester::get_public_key("jmzk");
     ng.name        = get_nonce_name("group");
     ng.group.name_ = ng.name;
     auto ngact     = action(N128(.group), ng.name, ng);
-    auto auths     = std::vector<name>{N(evt)};
+    auto auths     = std::vector<name>{N(jmzk)};
 
     auto ug = updategroup();
 
@@ -501,8 +501,8 @@ BM_Action_newfungible(benchmark::State& state) {
     auto tester = create_tester();
     auto var    = fc::json::from_string(nfjson);
     auto nf     = var.as<newfungible>();
-    nf.creator  = evt::testing::tester::get_public_key("evt");
-    auto auths  = std::vector<name>{N(evt)};
+    nf.creator  = jmzk::testing::tester::get_public_key("jmzk");
+    auto auths  = std::vector<name>{N(jmzk)};
     for(auto _ : state) {
         state.PauseTiming();
 
@@ -530,13 +530,13 @@ BM_Action_updfungible(benchmark::State& state) {
     auto tester     = create_tester();
     auto var        = fc::json::from_string(nfjson);
     auto nf         = var.as<newfungible>();
-    nf.creator      = evt::testing::tester::get_public_key("evt");
+    nf.creator      = jmzk::testing::tester::get_public_key("jmzk");
     nf.name         = get_nonce_sym();
     nf.sym_name     = get_nonce_sym();
     nf.sym          = symbol::from_string(string("5,S#") + get_nonce_sym());
     nf.total_supply = asset::from_string(string("100.00000 S#") + std::to_string(nf.sym.id()));
     auto nfact      = action(N128(.fungible), (name128)std::to_string(nf.sym.id()), nf);
-    auto auths      = std::vector<name>{N(evt)};
+    auto auths      = std::vector<name>{N(jmzk)};
     tester->push_action(std::move(nfact), auths, address());
 
     auto uf   = updfungible();
@@ -571,13 +571,13 @@ BM_Action_issuefungible(benchmark::State& state) {
     auto tester     = create_tester();
     auto var        = fc::json::from_string(nfjson);
     auto nf         = var.as<newfungible>();
-    nf.creator      = evt::testing::tester::get_public_key("evt");
+    nf.creator      = jmzk::testing::tester::get_public_key("jmzk");
     nf.name         = get_nonce_sym();
     nf.sym_name     = get_nonce_sym();
     nf.sym          = symbol::from_string(string("5,S#") + get_nonce_sym());
     nf.total_supply = asset::from_string(string("100.00000 S#") + std::to_string(nf.sym.id()));
     auto nfact      = action(N128(.fungible), (name128)std::to_string(nf.sym.id()), nf);
-    auto auths      = std::vector<name>{N(evt)};
+    auto auths      = std::vector<name>{N(jmzk)};
 
     tester->push_action(std::move(nfact), auths, address());
 
@@ -609,26 +609,26 @@ BM_Action_transferft(benchmark::State& state) {
     auto tester = create_tester();
     auto var    = fc::json::from_string(nfjson);
     auto nf     = var.as<newfungible>();
-    nf.creator  = evt::testing::tester::get_public_key("evt");
-    nf.issue.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
+    nf.creator  = jmzk::testing::tester::get_public_key("jmzk");
+    nf.issue.authorizers[0].ref.set_account(jmzk::testing::tester::get_public_key("jmzk"));
     nf.name         = get_nonce_sym();
     nf.sym_name     = get_nonce_sym();
     nf.sym          = symbol::from_string(string("5,S#") + get_nonce_sym());
     nf.total_supply = asset::from_string(string("100.00000 S#") + std::to_string(nf.sym.id()));
     auto nfact      = action(N128(.fungible), (name128)std::to_string(nf.sym.id()), nf);
-    auto auths      = std::vector<name>{N(evt)};
+    auto auths      = std::vector<name>{N(jmzk)};
 
     tester->push_action(std::move(nfact), auths, address());
 
     auto isf    = issuefungible();
     isf.number  = asset::from_string(string("100.00000 S#") + std::to_string(nf.sym.id()));
-    isf.address = address(evt::testing::tester::get_public_key("evt"));
+    isf.address = address(jmzk::testing::tester::get_public_key("jmzk"));
     auto isfact = action(N128(.fungible), (name128)std::to_string(nf.sym.id()), isf);
 
     tester->push_action(std::move(isfact), auths, address());
 
     auto tf   = transferft();
-    tf.from   = evt::testing::tester::get_public_key("evt");
+    tf.from   = jmzk::testing::tester::get_public_key("jmzk");
     tf.number = asset::from_string(string("0.00001 S#") + std::to_string(nf.sym.id()));
 
     for(auto _ : state) {
@@ -652,14 +652,14 @@ BM_Action_transferft(benchmark::State& state) {
 BENCHMARK(BM_Action_transferft);
 
 static void
-BM_Action_evt2pevt(benchmark::State& state) {
+BM_Action_jmzk2pjmzk(benchmark::State& state) {
     auto tester = create_tester();
 
-    auto auths = std::vector<name>{N(evt)};
-    tester->add_money(address(evt::testing::tester::get_public_key(N(evt))), asset(10000000, evt_sym()));
+    auto auths = std::vector<name>{N(jmzk)};
+    tester->add_money(address(jmzk::testing::tester::get_public_key(N(jmzk))), asset(10000000, jmzk_sym()));
 
-    auto e2p   = evt2pevt();
-    e2p.from   = address(evt::testing::tester::get_public_key(N(evt)));
+    auto e2p   = jmzk2pjmzk();
+    e2p.from   = address(jmzk::testing::tester::get_public_key(N(jmzk)));
     e2p.number = asset::from_string(string("0.00001 S#1"));
 
     for(auto _ : state) {
@@ -667,7 +667,7 @@ BM_Action_evt2pevt(benchmark::State& state) {
 
         e2p.to = get_nonce_key("");
 
-        auto e2pact   = action(N128(.fungible), std::to_string(evt_sym().id()), e2p);
+        auto e2pact   = action(N128(.fungible), std::to_string(jmzk_sym().id()), e2p);
         auto trx_meta = get_trx_meta(*tester->control, e2pact, auths);
         auto trx_ctx  = get_trx_ctx(*tester->control, trx_meta);
 
@@ -680,20 +680,20 @@ BM_Action_evt2pevt(benchmark::State& state) {
     }
     state.SetItemsProcessed(state.iterations());
 }
-BENCHMARK(BM_Action_evt2pevt);
+BENCHMARK(BM_Action_jmzk2pjmzk);
 
 static void
 BM_Action_fungible_addmeta(benchmark::State& state) {
     auto tester = create_tester();
     auto var    = fc::json::from_string(nfjson);
     auto nf     = var.as<newfungible>();
-    nf.creator  = evt::testing::tester::get_public_key("evt");
-    nf.issue.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
-    nf.manage.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
-    auto auths      = std::vector<name>{N(evt)};
+    nf.creator  = jmzk::testing::tester::get_public_key("jmzk");
+    nf.issue.authorizers[0].ref.set_account(jmzk::testing::tester::get_public_key("jmzk"));
+    nf.manage.authorizers[0].ref.set_account(jmzk::testing::tester::get_public_key("jmzk"));
+    auto auths      = std::vector<name>{N(jmzk)};
 
     auto am    = addmeta();
-    am.creator = evt::testing::tester::get_public_key("evt");
+    am.creator = jmzk::testing::tester::get_public_key("jmzk");
 
     for(auto _ : state) {
         state.PauseTiming();
@@ -725,11 +725,11 @@ BM_Action_group_addmeta(benchmark::State& state) {
     auto tester    = create_tester();
     auto var       = fc::json::from_string(ngjson);
     auto ng        = var.as<newgroup>();
-    ng.group.key_  = evt::testing::tester::get_public_key("evt");
-    auto auths     = std::vector<name>{N(evt)};
+    ng.group.key_  = jmzk::testing::tester::get_public_key("jmzk");
+    auto auths     = std::vector<name>{N(jmzk)};
 
     auto am    = addmeta();
-    am.creator = evt::testing::tester::get_public_key("evt");
+    am.creator = jmzk::testing::tester::get_public_key("jmzk");
 
     for(auto _ : state) {
         state.PauseTiming();
@@ -761,12 +761,12 @@ BM_Action_domain_addmeta(benchmark::State& state) {
     auto tester = create_tester();
     auto var    = fc::json::from_string(ndjson);
     auto nd     = var.as<newdomain>();
-    nd.creator  = evt::testing::tester::get_public_key("evt");
+    nd.creator  = jmzk::testing::tester::get_public_key("jmzk");
     nd.manage.authorizers[0].ref.set_account(nd.creator);
-    auto auths = std::vector<name>{N(evt)};
+    auto auths = std::vector<name>{N(jmzk)};
 
     auto am    = addmeta();
-    am.creator = evt::testing::tester::get_public_key("evt");
+    am.creator = jmzk::testing::tester::get_public_key("jmzk");
 
     for(auto _ : state) {
         state.PauseTiming();
@@ -798,9 +798,9 @@ BM_Action_token_addmeta(benchmark::State& state) {
     auto tester = create_tester();
     auto var    = fc::json::from_string(ndjson);
     auto nd     = var.as<newdomain>();
-    nd.creator  = evt::testing::tester::get_public_key("evt");
+    nd.creator  = jmzk::testing::tester::get_public_key("jmzk");
     nd.issue.authorizers[0].ref.set_account(nd.creator);
-    auto auths = std::vector<name>{N(evt)};
+    auto auths = std::vector<name>{N(jmzk)};
     nd.name    = get_nonce_name("domain");
     auto ndact = action(nd.name, N128(.create), nd);
 
@@ -820,7 +820,7 @@ BM_Action_token_addmeta(benchmark::State& state) {
     auto dist = std::uniform_int_distribution<int>(0, 999999);
 
     auto am    = addmeta();
-    am.creator = evt::testing::tester::get_public_key("evt");
+    am.creator = jmzk::testing::tester::get_public_key("jmzk");
 
     for(auto _ : state) {
         state.PauseTiming();
@@ -849,7 +849,7 @@ BM_Action_newsuspend(benchmark::State& state) {
     const char* test_data = R"=======(
       {
           "name": "testsuspend",
-          "proposer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
+          "proposer": "jmzk6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
           "trx": {
               "expiration": "2021-07-04T05:14:12",
               "ref_block_num": "3432",
@@ -863,9 +863,9 @@ BM_Action_newsuspend(benchmark::State& state) {
 
     auto var    = fc::json::from_string(test_data);
     auto ns     = var.as<newsuspend>();
-    ns.proposer = evt::testing::tester::get_public_key("evt");
+    ns.proposer = jmzk::testing::tester::get_public_key("jmzk");
 
-    auto auths = std::vector<name>{N(evt)};
+    auto auths = std::vector<name>{N(jmzk)};
 
     for(auto _ : state) {
         state.PauseTiming();
@@ -874,10 +874,10 @@ BM_Action_newsuspend(benchmark::State& state) {
         auto newdomain_var = fc::json::from_string(ndjson);
         auto newdom        = newdomain_var.as<newdomain>();
         newdom.name        = get_nonce_name("");
-        newdom.creator     = evt::testing::tester::get_public_key("evt");
-        newdom.issue.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
-        newdom.manage.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
-        newdom.transfer.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
+        newdom.creator     = jmzk::testing::tester::get_public_key("jmzk");
+        newdom.issue.authorizers[0].ref.set_account(jmzk::testing::tester::get_public_key("jmzk"));
+        newdom.manage.authorizers[0].ref.set_account(jmzk::testing::tester::get_public_key("jmzk"));
+        newdom.transfer.authorizers[0].ref.set_account(jmzk::testing::tester::get_public_key("jmzk"));
 
         for(int i = 0; i < state.range(0); i++) {
             newdom.name = get_nonce_name("");
@@ -907,7 +907,7 @@ BM_Action_newsuspend_serialiazition(benchmark::State& state) {
     const char* test_data = R"=======(
       {
           "name": "testsuspend",
-          "proposer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
+          "proposer": "jmzk6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
           "trx": {
               "expiration": "2021-07-04T05:14:12",
               "ref_block_num": "3432",
@@ -921,9 +921,9 @@ BM_Action_newsuspend_serialiazition(benchmark::State& state) {
 
     auto var    = fc::json::from_string(test_data);
     auto ns     = var.as<newsuspend>();
-    ns.proposer = evt::testing::tester::get_public_key("evt");
+    ns.proposer = jmzk::testing::tester::get_public_key("jmzk");
 
-    auto auths = std::vector<name>{N(evt)};
+    auto auths = std::vector<name>{N(jmzk)};
 
     for(auto _ : state) {
         state.PauseTiming();
@@ -932,10 +932,10 @@ BM_Action_newsuspend_serialiazition(benchmark::State& state) {
         auto newdomain_var = fc::json::from_string(ndjson);
         auto newdom        = newdomain_var.as<newdomain>();
         newdom.name        = get_nonce_name("");
-        newdom.creator     = evt::testing::tester::get_public_key("evt");
-        newdom.issue.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
-        newdom.manage.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
-        newdom.transfer.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
+        newdom.creator     = jmzk::testing::tester::get_public_key("jmzk");
+        newdom.issue.authorizers[0].ref.set_account(jmzk::testing::tester::get_public_key("jmzk"));
+        newdom.manage.authorizers[0].ref.set_account(jmzk::testing::tester::get_public_key("jmzk"));
+        newdom.transfer.authorizers[0].ref.set_account(jmzk::testing::tester::get_public_key("jmzk"));
 
         for(int i = 0; i < state.range(0); i++) {
             newdom.name = get_nonce_name("");
@@ -959,7 +959,7 @@ BM_Action_cancelsuspend(benchmark::State& state) {
     const char* test_data = R"=======(
       {
           "name": "testsuspend",
-          "proposer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
+          "proposer": "jmzk6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
           "trx": {
               "expiration": "2021-07-04T05:14:12",
               "ref_block_num": "3432",
@@ -973,7 +973,7 @@ BM_Action_cancelsuspend(benchmark::State& state) {
 
     auto var    = fc::json::from_string(test_data);
     auto ns     = var.as<newsuspend>();
-    ns.proposer = evt::testing::tester::get_public_key("evt");
+    ns.proposer = jmzk::testing::tester::get_public_key("jmzk");
 
     for(auto _ : state) {
         state.PauseTiming();
@@ -981,17 +981,17 @@ BM_Action_cancelsuspend(benchmark::State& state) {
         ns.name            = get_nonce_name("suspend");
         auto newdomain_var = fc::json::from_string(ndjson);
         auto newdom        = newdomain_var.as<newdomain>();
-        newdom.creator     = evt::testing::tester::get_public_key("evt");
-        newdom.issue.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
-        newdom.manage.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
-        newdom.transfer.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
+        newdom.creator     = jmzk::testing::tester::get_public_key("jmzk");
+        newdom.issue.authorizers[0].ref.set_account(jmzk::testing::tester::get_public_key("jmzk"));
+        newdom.manage.authorizers[0].ref.set_account(jmzk::testing::tester::get_public_key("jmzk"));
+        newdom.transfer.authorizers[0].ref.set_account(jmzk::testing::tester::get_public_key("jmzk"));
 
         for(int i = 0; i < state.range(0); i++) {
             newdom.name = get_nonce_name("");
             ns.trx.actions.push_back(action(newdom.name, N128(.create), newdom));
         }
         auto nsact = action(N128(.suspend), ns.name, ns);
-        auto auths = std::vector<name>{N(evt)};
+        auto auths = std::vector<name>{N(jmzk)};
 
         tester->push_action(std::move(nsact), auths, address());
 
@@ -1021,7 +1021,7 @@ BM_Action_aprvsuspend(benchmark::State& state) {
     const char* test_data = R"=======(
       {
           "name": "testsuspend",
-          "proposer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
+          "proposer": "jmzk6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
           "trx": {
               "expiration": "2021-07-04T05:14:12",
               "ref_block_num": "3432",
@@ -1035,21 +1035,21 @@ BM_Action_aprvsuspend(benchmark::State& state) {
 
     auto var    = fc::json::from_string(test_data);
     auto ns     = var.as<newsuspend>();
-    ns.proposer = evt::testing::tester::get_public_key("evt");
+    ns.proposer = jmzk::testing::tester::get_public_key("jmzk");
 
     for(auto _ : state) {
         state.PauseTiming();
 
         ns.name    = get_nonce_name("suspend");
-        auto auths = std::vector<name>{N(evt)};
+        auto auths = std::vector<name>{N(jmzk)};
 
         auto newdomain_var = fc::json::from_string(ndjson);
         auto newdom        = newdomain_var.as<newdomain>();
         newdom.name        = get_nonce_name("");
-        newdom.creator     = evt::testing::tester::get_public_key("evt");
-        newdom.issue.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
-        newdom.manage.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
-        newdom.transfer.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
+        newdom.creator     = jmzk::testing::tester::get_public_key("jmzk");
+        newdom.issue.authorizers[0].ref.set_account(jmzk::testing::tester::get_public_key("jmzk"));
+        newdom.manage.authorizers[0].ref.set_account(jmzk::testing::tester::get_public_key("jmzk"));
+        newdom.transfer.authorizers[0].ref.set_account(jmzk::testing::tester::get_public_key("jmzk"));
 
         for(int i = 0; i < state.range(0); i++) {
             newdom.name = get_nonce_name("");
@@ -1061,7 +1061,7 @@ BM_Action_aprvsuspend(benchmark::State& state) {
 
         auto as       = aprvsuspend();
         as.name       = ns.name;
-        auto sig      = evt::testing::tester::get_private_key("evt").sign(ns.trx.sig_digest(tester->control->get_chain_id()));
+        auto sig      = jmzk::testing::tester::get_private_key("jmzk").sign(ns.trx.sig_digest(tester->control->get_chain_id()));
         as.signatures = {sig};
 
         auto asact    = action(N128(.suspend), as.name, as);
@@ -1087,7 +1087,7 @@ BM_Action_execsuspend(benchmark::State& state) {
     const char* test_data = R"=======(
       {
           "name": "testsuspend",
-          "proposer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
+          "proposer": "jmzk6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
           "trx": {
               "expiration": "2021-07-04T05:14:12",
               "ref_block_num": "3432",
@@ -1101,21 +1101,21 @@ BM_Action_execsuspend(benchmark::State& state) {
 
     auto var    = fc::json::from_string(test_data);
     auto ns     = var.as<newsuspend>();
-    ns.proposer = evt::testing::tester::get_public_key("evt");
+    ns.proposer = jmzk::testing::tester::get_public_key("jmzk");
 
     for(auto _ : state) {
         state.PauseTiming();
 
         ns.name    = get_nonce_name("suspend");
-        auto auths = std::vector<name>{N(evt)};
+        auto auths = std::vector<name>{N(jmzk)};
 
         auto newdomain_var = fc::json::from_string(ndjson);
         auto newdom        = newdomain_var.as<newdomain>();
         newdom.name        = get_nonce_name("");
-        newdom.creator     = evt::testing::tester::get_public_key("evt");
-        newdom.issue.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
-        newdom.manage.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
-        newdom.transfer.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
+        newdom.creator     = jmzk::testing::tester::get_public_key("jmzk");
+        newdom.issue.authorizers[0].ref.set_account(jmzk::testing::tester::get_public_key("jmzk"));
+        newdom.manage.authorizers[0].ref.set_account(jmzk::testing::tester::get_public_key("jmzk"));
+        newdom.transfer.authorizers[0].ref.set_account(jmzk::testing::tester::get_public_key("jmzk"));
 
         for(int i = 0; i < state.range(0); i++) {
             newdom.name = get_nonce_name("");
@@ -1127,7 +1127,7 @@ BM_Action_execsuspend(benchmark::State& state) {
 
         auto as       = aprvsuspend();
         as.name       = ns.name;
-        auto sig      = evt::testing::tester::get_private_key("evt").sign(ns.trx.sig_digest(tester->control->get_chain_id()));
+        auto sig      = jmzk::testing::tester::get_private_key("jmzk").sign(ns.trx.sig_digest(tester->control->get_chain_id()));
         as.signatures = {sig};
 
         auto asact = action(N128(.suspend), as.name, as);
@@ -1135,7 +1135,7 @@ BM_Action_execsuspend(benchmark::State& state) {
 
         auto es     = execsuspend();
         es.name     = ns.name;
-        es.executor = evt::testing::tester::get_public_key("evt");
+        es.executor = jmzk::testing::tester::get_public_key("jmzk");
 
         auto esact    = action(N128(.suspend), es.name, es);
         auto trx_meta = get_trx_meta(*tester->control, esact, auths);
@@ -1161,11 +1161,11 @@ BM_Action_get_signature_keys(benchmark::State& state) {
     auto newdomain_var = fc::json::from_string(ndjson);
     auto newdom        = newdomain_var.as<newdomain>();
     newdom.name        = get_nonce_name("");
-    newdom.creator     = evt::testing::tester::get_public_key("evt");
+    newdom.creator     = jmzk::testing::tester::get_public_key("jmzk");
 
-    newdom.issue.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
-    newdom.manage.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
-    newdom.transfer.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
+    newdom.issue.authorizers[0].ref.set_account(jmzk::testing::tester::get_public_key("jmzk"));
+    newdom.manage.authorizers[0].ref.set_account(jmzk::testing::tester::get_public_key("jmzk"));
+    newdom.transfer.authorizers[0].ref.set_account(jmzk::testing::tester::get_public_key("jmzk"));
 
     auto trx = transaction();
 
@@ -1203,11 +1203,11 @@ BM_Action_trx_sig_digest(benchmark::State& state) {
     auto newdomain_var = fc::json::from_string(ndjson);
     auto newdom        = newdomain_var.as<newdomain>();
     newdom.name        = get_nonce_name("");
-    newdom.creator     = evt::testing::tester::get_public_key("evt");
+    newdom.creator     = jmzk::testing::tester::get_public_key("jmzk");
 
-    newdom.issue.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
-    newdom.manage.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
-    newdom.transfer.authorizers[0].ref.set_account(evt::testing::tester::get_public_key("evt"));
+    newdom.issue.authorizers[0].ref.set_account(jmzk::testing::tester::get_public_key("jmzk"));
+    newdom.manage.authorizers[0].ref.set_account(jmzk::testing::tester::get_public_key("jmzk"));
+    newdom.transfer.authorizers[0].ref.set_account(jmzk::testing::tester::get_public_key("jmzk"));
 
     auto trx = transaction();
 

@@ -1,21 +1,21 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <math.h>
 #include <tuple>
 
-#include <evt/chain/action.hpp>
-#include <evt/chain/config.hpp>
-#include <evt/chain/chain_config.hpp>
-#include <evt/chain/controller.hpp>
-#include <evt/chain/execution_context_impl.hpp>
-#include <evt/chain/global_property_object.hpp>
-#include <evt/chain/transaction.hpp>
-#include <evt/chain/contracts/types.hpp>
+#include <jmzk/chain/action.hpp>
+#include <jmzk/chain/config.hpp>
+#include <jmzk/chain/chain_config.hpp>
+#include <jmzk/chain/controller.hpp>
+#include <jmzk/chain/execution_context_impl.hpp>
+#include <jmzk/chain/global_property_object.hpp>
+#include <jmzk/chain/transaction.hpp>
+#include <jmzk/chain/contracts/types.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 using act_charge_result = std::tuple<uint32_t, uint32_t>;
 
@@ -60,7 +60,7 @@ struct get_act_charge {
 
 class charge_manager {
 public:
-    charge_manager(const controller& control, const evt_execution_context& exec_ctx)
+    charge_manager(const controller& control, const jmzk_execution_context& exec_ctx)
         : control_(control)
         , config_(control.get_global_properties().configuration)
         , exec_ctx_(exec_ctx) {}
@@ -87,7 +87,7 @@ public:
         using namespace internal;
         
         auto& trx = ptrx.get_transaction();
-        EVT_ASSERT(!trx.actions.empty(), tx_no_action, "There's not any actions in this transaction");
+        jmzk_ASSERT(!trx.actions.empty(), tx_no_action, "There's not any actions in this transaction");
 
         sig_num = std::max(sig_num, ptrx.get_signatures().size());
 
@@ -121,7 +121,7 @@ public:
 private:
     const controller&            control_;
     const chain_config&          config_;
-    const evt_execution_context& exec_ctx_;
+    const jmzk_execution_context& exec_ctx_;
 };
 
 namespace internal {
@@ -159,8 +159,8 @@ struct act_charge<N(issuefungible), T> : public base_act_charge {
     extra_factor(const action& act) {
         auto& ifact = act.data_as<add_clr_t<T>>();
         auto sym = ifact.number.sym();
-        // set charge to zero when issuing EVT
-        if(sym == evt_sym()) {
+        // set charge to zero when issuing jmzk
+        if(sym == jmzk_sym()) {
             return 0;
         }
         return 1;
@@ -169,4 +169,4 @@ struct act_charge<N(issuefungible), T> : public base_act_charge {
 
 }  // namespace internal
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain

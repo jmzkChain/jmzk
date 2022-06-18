@@ -94,13 +94,13 @@ TEST_CASE_METHOD(contracts_test, "newvalidator_test", "[contracts][staking]") {
     auto test_data = R"=====(
     {
       "name": "validator",
-      "creator": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
-      "signer": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+      "creator": "jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+      "signer": "jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
       "withdraw" : {
         "name" : "withdraw",
         "threshold" : 1,
         "authorizers": [{
-            "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+            "ref": "[A] jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
             "weight": 1
           }
         ]
@@ -109,7 +109,7 @@ TEST_CASE_METHOD(contracts_test, "newvalidator_test", "[contracts][staking]") {
         "name" : "manage",
         "threshold" : 1,
         "authorizers": [{
-            "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+            "ref": "[A] jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
             "weight": 1
           }
         ]
@@ -144,7 +144,7 @@ TEST_CASE_METHOD(contracts_test, "newvalidator_test", "[contracts][staking]") {
 TEST_CASE_METHOD(contracts_test, "staketkns_test", "[contracts][staking]") {
     auto test_data = R"=====(
     {
-      "staker": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+      "staker": "jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
       "validator": "validator",
       "amount" : "500000.00000 S#1",
       "type": "active",
@@ -163,7 +163,7 @@ TEST_CASE_METHOD(contracts_test, "staketkns_test", "[contracts][staking]") {
     // active type with fixed_days
     CHECK_THROWS_AS(my_tester->push_action(N(staketkns), N128(.staking), N128(validator), var.get_object(), key_seeds, payer), balance_exception);
 
-    my_tester->add_money(key, asset(10'000'000'00000, evt_sym()));
+    my_tester->add_money(key, asset(10'000'000'00000, jmzk_sym()));
     CHECK_THROWS_AS(my_tester->push_action(N(staketkns), N128(.staking), N128(validator), var.get_object(), key_seeds, payer), staking_days_exception);
 
     stk.fixed_days = 0;
@@ -178,7 +178,7 @@ TEST_CASE_METHOD(contracts_test, "staketkns_test", "[contracts][staking]") {
 
     stakepool_def stakepool_;
     READ_TOKEN(stakepool, 1, stakepool_);
-    CHECK(stakepool_.total == asset(500000'00000, evt_sym()));
+    CHECK(stakepool_.total == asset(500000'00000, jmzk_sym()));
 
     stk.type = stake_type::fixed;
     stk.fixed_days = 30;
@@ -190,7 +190,7 @@ TEST_CASE_METHOD(contracts_test, "staketkns_test", "[contracts][staking]") {
     CHECK(validator_.total_units == 1'000'000);
 
     READ_TOKEN(stakepool, 1, stakepool_);
-    CHECK(stakepool_.total == asset(1'000'000'00000, evt_sym()));
+    CHECK(stakepool_.total == asset(1'000'000'00000, jmzk_sym()));
 
     my_tester->produce_blocks();
     my_tester->produce_block(fc::days(stk.fixed_days + 1));
@@ -199,7 +199,7 @@ TEST_CASE_METHOD(contracts_test, "staketkns_test", "[contracts][staking]") {
 TEST_CASE_METHOD(contracts_test, "toactivetkns_test", "[contracts][staking]") {
     auto test_data = R"=====(
     {
-      "staker": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+      "staker": "jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
       "validator": "validator",
       "sym_id": 1
     }
@@ -241,7 +241,7 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts][staking]") {
 
     auto test_data = R"=====(
     {
-      "staker": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+      "staker": "jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
       "validator": "validator",
       "units" : 200000,
       "sym_id": 1,
@@ -284,7 +284,7 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts][staking]") {
     };
 
     auto prop = property_stakes();
-    READ_DB_ASSET(unstk.staker, evt_sym(), prop);
+    READ_DB_ASSET(unstk.staker, jmzk_sym(), prop);
     auto pre_amount = prop.amount;
     auto pre_units  = sum_units(prop);
 
@@ -292,7 +292,7 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts][staking]") {
     CHECK_NOTHROW(my_tester->push_action(N(unstaketkns), N128(.staking), N128(validator), var.get_object(), key_seeds, payer));
     my_tester->produce_blocks();
 
-    READ_DB_ASSET(unstk.staker, evt_sym(), prop);
+    READ_DB_ASSET(unstk.staker, jmzk_sym(), prop);
     CHECK(sum_pending_units(prop) == 200000);
     CHECK(sum_units(prop) == pre_units - 200000);
     CHECK(prop.pending_shares.size() == 1);
@@ -305,7 +305,7 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts][staking]") {
 
     my_tester->produce_blocks();
     
-    READ_DB_ASSET(unstk.staker, evt_sym(), prop);
+    READ_DB_ASSET(unstk.staker, jmzk_sym(), prop);
     CHECK(sum_pending_units(prop) == 0);
     CHECK(sum_units(prop) == pre_units);
     CHECK(prop.pending_shares.size() == 0);
@@ -320,7 +320,7 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts][staking]") {
 
     my_tester->produce_blocks();
 
-    READ_DB_ASSET(unstk.staker, evt_sym(), prop);
+    READ_DB_ASSET(unstk.staker, jmzk_sym(), prop);
     CHECK(sum_pending_units(prop) == 300000);
     CHECK(sum_units(prop) == pre_units - 300000);
     CHECK(prop.pending_shares.size() == 1);
@@ -345,7 +345,7 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts][staking]") {
     // ok
     CHECK_NOTHROW(my_tester->push_action(N(unstaketkns), N128(.staking), N128(validator), var.get_object(), key_seeds, payer));
 
-    READ_DB_ASSET(unstk.staker, evt_sym(), prop);
+    READ_DB_ASSET(unstk.staker, jmzk_sym(), prop);
     CHECK(sum_pending_units(prop) == 0);
     CHECK(sum_units(prop) == pre_units - 300000);
     CHECK(prop.pending_shares.size() == 0);
@@ -360,14 +360,14 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts][staking]") {
     READ_TOKEN(validator, "validator", validator_);
     CHECK(pre_validator_units - validator_.total_units == 300'000);
 
-    auto vaddr = address(N(.validator), validator_.name, EVT_SYM_ID);
+    auto vaddr = address(N(.validator), validator_.name, jmzk_SYM_ID);
     auto vprop = property();
-    READ_DB_ASSET(vaddr, evt_sym(), vprop);
+    READ_DB_ASSET(vaddr, jmzk_sym(), vprop);
     CHECK(vprop.amount == 150'000'00000);  // 50% commission
 
     my_tester->produce_blocks();
 
-    READ_DB_ASSET(unstk.staker, evt_sym(), prop);
+    READ_DB_ASSET(unstk.staker, jmzk_sym(), prop);
     CHECK(prop.stake_shares.size() == 2);
     auto s = prop.stake_shares[0];
     s.units = 5;
@@ -383,7 +383,7 @@ TEST_CASE_METHOD(contracts_test, "unstaketkns_test", "[contracts][staking]") {
 
     CHECK_NOTHROW(my_tester->push_action(N(unstaketkns), N128(.staking), N128(validator), var.get_object(), key_seeds, payer));
 
-    READ_DB_ASSET(unstk.staker, evt_sym(), prop);
+    READ_DB_ASSET(unstk.staker, jmzk_sym(), prop);
     CHECK(sum_units(prop) == 18);
     CHECK(prop.stake_shares.size() == 4);
 }
@@ -392,7 +392,7 @@ TEST_CASE_METHOD(contracts_test, "valiwithdraw_test", "[contracts][staking]") {
     auto test_data = R"=====(
     {
       "name": "validator",
-      "addr": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+      "addr": "jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
       "amount": "10.00000 S#1"
     }
     )=====";
@@ -405,12 +405,12 @@ TEST_CASE_METHOD(contracts_test, "valiwithdraw_test", "[contracts][staking]") {
     auto& tokendb = my_tester->control->token_db();
 
     asset pre_ast;
-    READ_DB_ASSET(vwd.addr, evt_sym(), pre_ast);
+    READ_DB_ASSET(vwd.addr, jmzk_sym(), pre_ast);
 
     CHECK_NOTHROW(my_tester->push_action(N(valiwithdraw), N128(.staking), N128(validator), var.get_object(), key_seeds, payer));
 
     asset ast;
-    READ_DB_ASSET(vwd.addr, evt_sym(), ast);
+    READ_DB_ASSET(vwd.addr, jmzk_sym(), ast);
 
     CHECK(ast.amount() - pre_ast.amount() == 10'00000);
 

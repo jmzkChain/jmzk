@@ -1,13 +1,13 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
 #include <string>
 
-namespace evt { namespace utilities {
+namespace jmzk { namespace utilities {
 
   std::string escape_string_for_c_source_code(const std::string& input);
 
-} } // end namespace evt::utilities
+} } // end namespace jmzk::utilities

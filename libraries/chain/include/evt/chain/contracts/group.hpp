@@ -1,17 +1,17 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
 #include <string>
 #include <functional>
 #include <fc/reflect/reflect.hpp>
-#include <evt/chain/types.hpp>
-#include <evt/chain/address.hpp>
-#include <evt/chain/contracts/metadata.hpp>
+#include <jmzk/chain/types.hpp>
+#include <jmzk/chain/address.hpp>
+#include <jmzk/chain/contracts/metadata.hpp>
 
-namespace evt { namespace chain { namespace contracts {
+namespace jmzk { namespace chain { namespace contracts {
 
 class group {
 public:
@@ -73,15 +73,15 @@ public:
     meta_list                        metas_;
 };
 
-}}}  // namespac evt::chain::contracts
+}}}  // namespac jmzk::chain::contracts
 
 namespace fc {
 
 class variant;
-void to_variant(const evt::chain::contracts::group& group, fc::variant& v);
-void from_variant(const fc::variant& v, evt::chain::contracts::group& group);
+void to_variant(const jmzk::chain::contracts::group& group, fc::variant& v);
+void from_variant(const fc::variant& v, jmzk::chain::contracts::group& group);
 
 }  // namespace fc
 
-FC_REFLECT(evt::chain::contracts::group::node, (weight)(threshold)(index)(size));
-FC_REFLECT(evt::chain::contracts::group, (name_)(key_)(nodes_)(keys_)(metas_));
+FC_REFLECT(jmzk::chain::contracts::group::node, (weight)(threshold)(index)(size));
+FC_REFLECT(jmzk::chain::contracts::group, (name_)(key_)(nodes_)(keys_)(metas_));

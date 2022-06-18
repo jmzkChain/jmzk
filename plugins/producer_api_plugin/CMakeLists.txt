@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/evt/producer_api_plugin/*.hpp")
+file(GLOB HEADERS "include/jmzk/producer_api_plugin/*.hpp")
 add_library( producer_api_plugin
              producer_api_plugin.cpp
              ${HEADERS} )

@@ -1,19 +1,19 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
-#include <evt/chain/types.hpp>
-#include <evt/wallet_plugin/wallet_api.hpp>
+#include <jmzk/chain/types.hpp>
+#include <jmzk/wallet_plugin/wallet_api.hpp>
 
 #include <fc/crypto/base58.hpp>
 #include <fc/real128.hpp>
 
 using namespace std;
-using namespace evt::chain;
+using namespace jmzk::chain;
 
-namespace evt { namespace wallet {
+namespace jmzk { namespace wallet {
 
 typedef uint16_t transaction_handle_type;
 
@@ -190,7 +190,7 @@ struct plain_keys {
     map<public_key_type, private_key_type> keys;
 };
 
-}}  // namespace evt::wallet
+}}  // namespace jmzk::wallet
 
-FC_REFLECT(evt::wallet::wallet_data, (cipher_keys))
-FC_REFLECT(evt::wallet::plain_keys, (checksum)(keys))
+FC_REFLECT(jmzk::wallet::wallet_data, (cipher_keys))
+FC_REFLECT(jmzk::wallet::plain_keys, (checksum)(keys))

@@ -127,7 +127,7 @@ TEST_CASE_METHOD(tokendb_test, "put_asset_svpt_test", "[tokendb]") {
     ADD_SAVEPOINT();
 
     // put asset
-    auto addr = public_key_type(std::string("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"));
+    auto addr = public_key_type(std::string("jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"));
     auto as = asset::from_string("1.00000 S#4");
     CHECK(!EXISTS_ASSET(addr, 4));
     PUT_ASSET(addr, 4, as);
@@ -164,17 +164,17 @@ TEST_CASE_METHOD(tokendb_test, "put_tokens_svpt_test", "[tokendb]") {
     tk1.name = "runtime-1";
     tk2.name = "runtime-2";
 
-    auto tkeys = evt::chain::token_keys_t();
+    auto tkeys = jmzk::chain::token_keys_t();
     tkeys.push_back(tk1.name);
     tkeys.push_back(tk2.name);
 
     auto data = small_vector<std::string_view, 4>();
-    data.push_back(evt::chain::make_db_value(tk1).as_string_view());
-    data.push_back(evt::chain::make_db_value(tk2).as_string_view());
+    data.push_back(jmzk::chain::make_db_value(tk1).as_string_view());
+    data.push_back(jmzk::chain::make_db_value(tk2).as_string_view());
 
     tokendb.put_tokens(
-            evt::chain::token_type::token,
-            evt::chain::action_op::put,
+            jmzk::chain::token_type::token,
+            jmzk::chain::action_op::put,
             "domain-rt-test",
             std::move(tkeys),
             data);

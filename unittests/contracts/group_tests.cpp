@@ -14,7 +14,7 @@ TEST_CASE_METHOD(contracts_test, "newgroup_test", "[contracts]") {
       "name" : "5jxX",
       "group" : {
         "name": "5jxXg",
-        "key": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+        "key": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
         "root": {
           "threshold": 6,
           "weight": 0,
@@ -22,24 +22,24 @@ TEST_CASE_METHOD(contracts_test, "newgroup_test", "[contracts]") {
               "threshold": 2,
               "weight": 6,
               "nodes": [{
-                  "key": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+                  "key": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
                   "weight": 1
                 },{
-                  "key": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+                  "key": "jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
                   "weight": 1
                 }
               ]
             },{
-              "key": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+              "key": "jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
               "weight": 3
             },{
               "threshold": 2,
               "weight": 3,
               "nodes": [{
-                  "key": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+                  "key": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
                   "weight": 1
                 },{
-                  "key": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+                  "key": "jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
                   "weight": 1
                 }
               ]
@@ -56,7 +56,7 @@ TEST_CASE_METHOD(contracts_test, "newgroup_test", "[contracts]") {
     auto& cache       = my_tester->control->token_db_cache();
 
     CHECK(!EXISTS_TOKEN(group, get_group_name()));
-    my_tester->add_money(group_payer, asset(10'000'000, symbol(5, EVT_SYM_ID)));
+    my_tester->add_money(group_payer, asset(10'000'000, symbol(5, jmzk_SYM_ID)));
 
     auto gp = var.as<newgroup>();
 
@@ -107,7 +107,7 @@ TEST_CASE_METHOD(contracts_test, "updategroup_test", "[contracts]") {
       "name" : "5jxX",
       "group" : {
         "name": "5jxXg",
-        "key": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+        "key": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
         "root": {
           "threshold": 5,
           "weight": 0,
@@ -115,24 +115,24 @@ TEST_CASE_METHOD(contracts_test, "updategroup_test", "[contracts]") {
               "threshold": 2,
               "weight": 2,
               "nodes": [{
-                  "key": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+                  "key": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
                   "weight": 1
                 },{
-                  "key": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+                  "key": "jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
                   "weight": 1
                 }
               ]
             },{
-              "key": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+              "key": "jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
               "weight": 1
             },{
               "threshold": 2,
               "weight": 2,
               "nodes": [{
-                  "key": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+                  "key": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
                   "weight": 1
                 },{
-                  "key": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+                  "key": "jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
                   "weight": 1
                 }
               ]
@@ -193,7 +193,7 @@ TEST_CASE_METHOD(contracts_test, "updatedomain_test", "[contracts]") {
         "name": "issue",
         "threshold": 2,
         "authorizers": [{
-          "ref": "[A] EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
+          "ref": "[A] jmzk5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
           "weight": 2
             }
         ]
@@ -211,7 +211,7 @@ TEST_CASE_METHOD(contracts_test, "updatedomain_test", "[contracts]") {
         "name": "manage",
         "threshold": 1,
         "authorizers": [{
-            "ref": "[A] EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
+            "ref": "[A] jmzk5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
             "weight": 1
           }
         ]
@@ -264,7 +264,7 @@ TEST_CASE_METHOD(contracts_test, "group_auth_test", "[contracts]") {
           "authorizers1"
         ],
         "owner": [
-          "EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2"
+          "jmzk5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2"
         ]
     }
     )=====";

@@ -45,11 +45,11 @@
  *
  */
 
-#include <evt/bnet_plugin/bnet_plugin.hpp>
-#include <evt/chain/controller.hpp>
-#include <evt/chain/trace.hpp>
-#include <evt/chain/multi_index_includes.hpp>
-#include <evt/chain_plugin/chain_plugin.hpp>
+#include <jmzk/bnet_plugin/bnet_plugin.hpp>
+#include <jmzk/chain/controller.hpp>
+#include <jmzk/chain/trace.hpp>
+#include <jmzk/chain/multi_index_includes.hpp>
+#include <jmzk/chain_plugin/chain_plugin.hpp>
 
 #include <fc/io/json.hpp>
 
@@ -63,17 +63,17 @@
 #include <boost/beast/core.hpp>
 #include <boost/beast/websocket.hpp>
 
-#include <evt/chain/plugin_interface.hpp>
+#include <jmzk/chain/plugin_interface.hpp>
 
 using tcp    = boost::asio::ip::tcp;
 namespace ws = boost::beast::websocket;
 
-namespace evt {
+namespace jmzk {
 using namespace chain;
 
 static appbase::abstract_plugin& _bnet_plugin = app().register_plugin<bnet_plugin>();
 
-}  // namespace evt
+}  // namespace jmzk
 
 namespace fc {
    extern std::unordered_map<std::string,logger>& get_logger_map();
@@ -107,12 +107,12 @@ std::string peer_log_format;
       plugin_logger.log( FC_LOG_MESSAGE( error, peer_log_format + FORMAT, __VA_ARGS__ (PEER->get_logger_variant())) ); \
   FC_MULTILINE_MACRO_END
 
-using evt::block_id_type;
-using evt::block_timestamp_type;
-using evt::chain_id_type;
-using evt::packed_transaction_ptr;
-using evt::public_key_type;
-using evt::signed_block_ptr;
+using jmzk::block_id_type;
+using jmzk::block_timestamp_type;
+using jmzk::chain_id_type;
+using jmzk::packed_transaction_ptr;
+using jmzk::public_key_type;
+using jmzk::signed_block_ptr;
 using std::string;
 using std::vector;
 using fc::sha256;
@@ -182,7 +182,7 @@ struct by_num;
 struct by_received;
 struct by_expired;
 
-namespace evt {
+namespace jmzk {
 using namespace chain::plugin_interface;
 
 class bnet_plugin_impl;
@@ -1066,7 +1066,7 @@ public:
         peer_ilog(this, "received signed_block_ptr");
         if(!b) {
             peer_elog(this, "bad signed_block_ptr : null pointer");
-            EVT_THROW(block_validate_exception, "bad block");
+            jmzk_THROW(block_validate_exception, "bad block");
         }
         status("received block " + std::to_string(b->block_num()));
         //ilog( "recv block ${n}", ("n", b->block_num()) );
@@ -1190,7 +1190,7 @@ public:
 
     void
     run() {
-        EVT_ASSERT(_acceptor.is_open(), plugin_exception, "unable top open listen socket");
+        jmzk_ASSERT(_acceptor.is_open(), plugin_exception, "unable top open listen socket");
         do_accept();
     }
 
@@ -1523,7 +1523,7 @@ bnet_plugin::plugin_shutdown() {
     wlog("done joining threads");
 
     my->for_each_session([](auto ses){
-        EVT_ASSERT(false, plugin_exception, "session ${ses} still active", ("ses", ses->_session_num));
+        jmzk_ASSERT(false, plugin_exception, "session ${ses} still active", ("ses", ses->_session_num));
     });
 
     // lifetime of _ioc is guarded by shared_ptr of bnet_plugin_impl
@@ -1639,7 +1639,7 @@ session::on(const packed_transaction_ptr& p) {
     peer_ilog(this, "received packed_transaction_ptr");
     if(!p) {
         peer_elog(this, "bad packed_transaction_ptr : null pointer");
-        EVT_THROW(transaction_exception, "bad transaction");
+        jmzk_THROW(transaction_exception, "bad transaction");
     }
 
     // ilog( "recv trx ${n}", ("n", id) );
@@ -1655,4 +1655,4 @@ session::on(const packed_transaction_ptr& p) {
     app().get_channel<incoming::channels::transaction>().publish(priority::low, ptr);
 }
 
-}  // namespace evt
+}  // namespace jmzk

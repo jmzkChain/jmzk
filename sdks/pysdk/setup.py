@@ -1,16 +1,16 @@
 from setuptools import find_packages, setup
 
 setup(
-    name='pyevtsdk',
+    name='pyjmzksdk',
     version='0.3',
-    author='everiToken',
-    author_email='help@everitoken.io',
-    description='Python SDK library for everiToken',
+    author='jmzkChain',
+    author_email='help@jmzkChain.io',
+    description='Python SDK library for jmzkChain',
     long_description=open('README.rst').read(),
     license='MIT',
-    url='https://github.com/everitoken/evt/tree/master/sdks/pysdk',
+    url='https://github.com/jmzkChain/jmzk/tree/master/sdks/pysdk',
     packages=find_packages(),
-    install_requires=['pyevt', 'requests'],
+    install_requires=['pyjmzk', 'requests'],
     classifiers=[
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: MIT License',

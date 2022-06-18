@@ -1,12 +1,12 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
-#include <evt/chain/types.hpp>
+#include <jmzk/chain/types.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 /**
  *  For each action dispatched this receipt is generated
@@ -18,6 +18,6 @@ struct action_receipt {
     digest_type digest() const { return digest_type::hash(*this); }
 };
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
-FC_REFLECT(evt::chain::action_receipt, (act_digest)(global_sequence));
+FC_REFLECT(jmzk::chain::action_receipt, (act_digest)(global_sequence));

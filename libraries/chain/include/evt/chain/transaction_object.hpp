@@ -1,15 +1,15 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/mem_fun.hpp>
 
-#include <evt/chain/transaction.hpp>
-#include <evt/chain/multi_index_includes.hpp>
+#include <jmzk/chain/transaction.hpp>
+#include <jmzk/chain/multi_index_includes.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 using boost::multi_index_container;
 using namespace boost::multi_index;
 /**
@@ -40,7 +40,7 @@ using transaction_multi_index = chainbase::shared_multi_index_container<
 
 typedef chainbase::generic_index<transaction_multi_index> transaction_index;
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
-CHAINBASE_SET_INDEX_TYPE(evt::chain::transaction_object, evt::chain::transaction_multi_index);
-FC_REFLECT(evt::chain::transaction_object, (expiration)(trx_id)(block_num));
+CHAINBASE_SET_INDEX_TYPE(jmzk::chain::transaction_object, jmzk::chain::transaction_multi_index);
+FC_REFLECT(jmzk::chain::transaction_object, (expiration)(trx_id)(block_num));

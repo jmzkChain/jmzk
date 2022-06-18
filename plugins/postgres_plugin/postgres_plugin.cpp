@@ -1,8 +1,8 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/postgres_plugin/postgres_plugin.hpp>
+#include <jmzk/postgres_plugin/postgres_plugin.hpp>
 
 #include <functional>
 #include <queue>
@@ -25,34 +25,34 @@ using boost::condition_variable_any;
 #include <fmt/format.h>
 #include <llvm/ADT/StringSet.h>
 
-#include <evt/chain/config.hpp>
-#include <evt/chain/controller.hpp>
-#include <evt/chain/exceptions.hpp>
-#include <evt/chain/execution_context.hpp>
-#include <evt/chain/execution_context_impl.hpp>
-#include <evt/chain/genesis_state.hpp>
-#include <evt/chain/plugin_interface.hpp>
-#include <evt/chain/snapshot.hpp>
-#include <evt/chain/transaction.hpp>
-#include <evt/chain/types.hpp>
-#include <evt/chain/token_database.hpp>
-#include <evt/chain/token_database_cache.hpp>
-#include <evt/chain/contracts/abi_serializer.hpp>
-#include <evt/chain/contracts/evt_contract_abi.hpp>
-#include <evt/utilities/spinlock.hpp>
+#include <jmzk/chain/config.hpp>
+#include <jmzk/chain/controller.hpp>
+#include <jmzk/chain/exceptions.hpp>
+#include <jmzk/chain/execution_context.hpp>
+#include <jmzk/chain/execution_context_impl.hpp>
+#include <jmzk/chain/genesis_state.hpp>
+#include <jmzk/chain/plugin_interface.hpp>
+#include <jmzk/chain/snapshot.hpp>
+#include <jmzk/chain/transaction.hpp>
+#include <jmzk/chain/types.hpp>
+#include <jmzk/chain/token_database.hpp>
+#include <jmzk/chain/token_database_cache.hpp>
+#include <jmzk/chain/contracts/abi_serializer.hpp>
+#include <jmzk/chain/contracts/jmzk_contract_abi.hpp>
+#include <jmzk/utilities/spinlock.hpp>
 
-#include <evt/postgres_plugin/evt_pg.hpp>
-#include <evt/postgres_plugin/copy_context.hpp>
-#include <evt/postgres_plugin/trx_context.hpp>
+#include <jmzk/postgres_plugin/jmzk_pg.hpp>
+#include <jmzk/postgres_plugin/copy_context.hpp>
+#include <jmzk/postgres_plugin/trx_context.hpp>
 
-namespace evt {
+namespace jmzk {
 
 using namespace chain;
 using namespace chain::contracts;
 using namespace chain::plugin_interface;
 
-using evt::utilities::spinlock;
-using evt::utilities::spinlock_guard;
+using jmzk::utilities::spinlock;
+using jmzk::utilities::spinlock_guard;
 
 static appbase::abstract_plugin& _postgres_plugin = app().register_plugin<postgres_plugin>();
 
@@ -63,7 +63,7 @@ private:
 public:
     postgres_plugin_impl(const controller& control)
         : control_(control)
-        , exec_ctx_(dynamic_cast<const evt_execution_context&>(control.get_execution_context())) {}
+        , exec_ctx_(dynamic_cast<const jmzk_execution_context&>(control.get_execution_context())) {}
     ~postgres_plugin_impl();
 
 public:
@@ -91,7 +91,7 @@ public:
     std::string connstr_;
 
     const controller&            control_;
-    const evt_execution_context& exec_ctx_;
+    const jmzk_execution_context& exec_ctx_;
 
     bool     configured_          = false;
     uint32_t last_sync_block_num_ = 0;
@@ -155,12 +155,12 @@ queuet(Q& tqueue, V&& v, spinlock& lock, condition_variable_any& cv) {
 
 void
 postgres_plugin_impl::applied_irreversible_block(const block_state_ptr& bsp) {
-    evt::internal::queueb(block_state_queue_, std::make_tuple(bsp, true), lock_, cond_, queue_size_);
+    jmzk::internal::queueb(block_state_queue_, std::make_tuple(bsp, true), lock_, cond_, queue_size_);
 }
 
 void
 postgres_plugin_impl::applied_block(const block_state_ptr& bsp) {
-    evt::internal::queueb(block_state_queue_, std::make_tuple(bsp, false), lock_, cond_, queue_size_);
+    jmzk::internal::queueb(block_state_queue_, std::make_tuple(bsp, false), lock_, cond_, queue_size_);
 }
 
 void
@@ -169,12 +169,12 @@ postgres_plugin_impl::applied_transaction(const transaction_trace_ptr& ttp) {
         ttp->receipt->status != transaction_receipt_header::soft_fail)) {
         return;
     }
-    evt::internal::queuet(transaction_trace_queue_, ttp, lock_, cond_);
+    jmzk::internal::queuet(transaction_trace_queue_, ttp, lock_, cond_);
 }
 
 void
 postgres_plugin_impl::consume_queues() {
-    using namespace evt::internal;
+    using namespace jmzk::internal;
 
     try {
         while(true) {
@@ -256,17 +256,17 @@ void
 postgres_plugin_impl::verify_last_block(const std::string& prev_block_id) {
     auto last_block_id = std::string();
     if(!db_.get_latest_block_id(last_block_id)) {
-        EVT_THROW(postgres_plugin_exception, "No blocks found in database");
+        jmzk_THROW(postgres_plugin_exception, "No blocks found in database");
     }
 
-    EVT_ASSERT(prev_block_id == last_block_id, postgres_plugin_exception,
+    jmzk_ASSERT(prev_block_id == last_block_id, postgres_plugin_exception,
         "Did not find expected block ${pid}, instead found ${id}", ("pid", prev_block_id)("id", last_block_id));
 }
 
 void
 postgres_plugin_impl::verify_no_blocks() {
     if(!db_.is_table_empty("blocks")) {
-        EVT_THROW(postgres_plugin_exception, "Existing blocks found in database");
+        jmzk_THROW(postgres_plugin_exception, "Existing blocks found in database");
     }
 }
 
@@ -322,7 +322,7 @@ postgres_plugin_impl::process_block(const block_state_ptr block, std::deque<tran
         VPTR = cache.template read_token<vtype>(TYPE, PREFIX, KEY);    \
     }                                                                  \
     catch(token_database_exception&) {                                 \
-        EVT_THROW2(EXCEPTION, FORMAT, __VA_ARGS__);                    \
+        jmzk_THROW2(EXCEPTION, FORMAT, __VA_ARGS__);                    \
     }
 
 void
@@ -365,10 +365,10 @@ postgres_plugin_impl::process_action(const action& act, trx_context& tctx) {
         exec_ctx_.invoke_action<everipass>(act, [&](const auto& ep) {
             auto  link  = ep.link;
             auto  flags = link.get_header();
-            auto& d     = *link.get_segment(evt_link::domain).strv;
-            auto& t     = *link.get_segment(evt_link::token).strv;
+            auto& d     = *link.get_segment(jmzk_link::domain).strv;
+            auto& t     = *link.get_segment(jmzk_link::token).strv;
 
-            if(flags & evt_link::destroy) {
+            if(flags & jmzk_link::destroy) {
                 auto dt   = destroytoken();
                 dt.domain = d;
                 dt.name   = t;
@@ -421,11 +421,11 @@ postgres_plugin_impl::update_validators(trx_context& tctx) {
 
 void
 postgres_plugin_impl::_process_block(const block_state_ptr block, std::deque<transaction_trace_ptr>& traces, copy_context& cctx, trx_context& tctx) {
-    using namespace evt::internal;
+    using namespace jmzk::internal;
 
     auto id = block->id.str();
     if(block->block_num <= last_sync_block_num_) {
-        EVT_ASSERT(db_.exists_block(id), postgres_sync_exception,
+        jmzk_ASSERT(db_.exists_block(id), postgres_sync_exception,
             "Block is not existed in postgres database, please use --clear-postgres option to clear states");
         return;
     }
@@ -517,7 +517,7 @@ postgres_plugin_impl::init(bool init_db) {
 
             last_sync_block_num_ = block_header::num_from_id(block_id_type(db_.last_sync_block_id()));
         }
-        EVT_RETHROW_EXCEPTIONS(evt::postgres_plugin_exception,
+        jmzk_RETHROW_EXCEPTIONS(jmzk::postgres_plugin_exception,
             "Check integrity of postgres database failed, please use --clear-postgres to clear database");
     }
 
@@ -549,17 +549,17 @@ postgres_plugin_impl::init(bool init_db) {
             db_.create_partitions("public.actions", "global_seq", part_limit_, part_num_);
         }
 
-        // HACK: Add EVT and PEVT manually
+        // HACK: Add jmzk and Pjmzk manually
         auto tctx = db_.new_trx_context();
         tctx.set_trx_num(0);
 
         auto gs = chain::genesis_state();
-        db_.add_fungible(tctx, gs.get_evt_ft());
-        db_.add_fungible(tctx, gs.get_pevt_ft());
+        db_.add_fungible(tctx, gs.get_jmzk_ft());
+        db_.add_fungible(tctx, gs.get_pjmzk_ft());
 
         auto ng  = newgroup();
-        ng.name  = N128(.everiToken);
-        ng.group = gs.evt_org;
+        ng.name  = N128(.jmzkChain);
+        ng.group = gs.jmzk_org;
         db_.add_group(tctx, ng);
 
         tctx.commit();
@@ -615,7 +615,7 @@ postgres_plugin::write_snapshot(const std::shared_ptr<chain::snapshot_writer>& s
 void
 postgres_plugin::set_program_options(options_description& cli, options_description& cfg) {
     cfg.add_options()
-        ("postgres-queue-size,q", bpo::value<uint>()->default_value(5120), "The queue size between evtd and postgres plugin thread.")
+        ("postgres-queue-size,q", bpo::value<uint>()->default_value(5120), "The queue size between jmzkd and postgres plugin thread.")
         ("postgres-uri,p", bpo::value<std::string>(), 
             "PostgreSQL connection string, see: https://www.postgresql.org/docs/11/libpq-connect.html#LIBPQ-CONNSTRING for more detail.")
         ("clear-postgres", bpo::bool_switch()->default_value(false), "clear postgres database, use --delete-all-blocks option will force set this option")
@@ -642,7 +642,7 @@ postgres_plugin::plugin_initialize(const variables_map& options) {
                 ilog("Replay requested: wiping postgres database on startup");
                 delete_state = true;
             }
-            EVT_ASSERT(delete_state, postgres_plugin_exception,
+            jmzk_ASSERT(delete_state, postgres_plugin_exception,
                 "--clear-postgres option should be used with --(hard-)replay-blockchain");
         }
 
@@ -673,7 +673,7 @@ postgres_plugin::plugin_initialize(const variables_map& options) {
 
         if(options.count("snapshot")) {
             auto snapshot_path = options.at("snapshot").as<bfs::path>();
-            EVT_ASSERT(fc::exists(snapshot_path), plugin_config_exception,
+            jmzk_ASSERT(fc::exists(snapshot_path), plugin_config_exception,
                        "Cannot load snapshot, ${name} does not exist", ("name", snapshot_path.generic_string()));
 
             // recover genesis information from the snapshot
@@ -682,7 +682,7 @@ postgres_plugin::plugin_initialize(const variables_map& options) {
             reader->validate();
 
             if(reader->has_section("pg-blocks")) {
-                EVT_ASSERT(delete_state, postgres_plugin_exception, "Snapshot can only be used to initialize an empty database, please use --delete-all-blcoks or --clear-postgres option.");
+                jmzk_ASSERT(delete_state, postgres_plugin_exception, "Snapshot can only be used to initialize an empty database, please use --delete-all-blcoks or --clear-postgres option.");
                 my_->db_.restore(reader);
                 delete_state = false;
             }
@@ -698,7 +698,7 @@ postgres_plugin::plugin_initialize(const variables_map& options) {
         my_->consume_thread_ = std::thread([this] { my_->consume_queues(); });
     }
     else {
-        wlog("evt::postgres_plugin configured, but no --postgres-uri specified.");
+        wlog("jmzk::postgres_plugin configured, but no --postgres-uri specified.");
         wlog("postgres_plugin disabled.");
     }
 }
@@ -714,4 +714,4 @@ postgres_plugin::plugin_shutdown() {
     my_.reset();
 }
 
-}  // namespace evt
+}  // namespace jmzk

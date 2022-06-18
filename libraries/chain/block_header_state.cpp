@@ -1,12 +1,12 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/chain/block_header_state.hpp>
-#include <evt/chain/exceptions.hpp>
+#include <jmzk/chain/block_header_state.hpp>
+#include <jmzk/chain/exceptions.hpp>
 #include <limits>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 bool
 block_header_state::is_active_producer(const account_name& n) const {
@@ -46,7 +46,7 @@ block_header_state::generate_next(block_timestamp_type when) const {
     block_header_state result;
 
     if(when != block_timestamp_type()) {
-        EVT_ASSERT(when > header.timestamp, block_validate_exception, "next block must be in the future");
+        jmzk_ASSERT(when > header.timestamp, block_validate_exception, "next block must be in the future");
     }
     else {
         (when = header.timestamp).slot++;
@@ -136,8 +136,8 @@ block_header_state::maybe_promote_pending() {
 
 void
 block_header_state::set_new_producers(producer_schedule_type pending) {
-    EVT_ASSERT(pending.version == active_schedule.version + 1, producer_schedule_exception, "wrong producer schedule version specified");
-    EVT_ASSERT(pending_schedule.producers.size() == 0, producer_schedule_exception,
+    jmzk_ASSERT(pending.version == active_schedule.version + 1, producer_schedule_exception, "wrong producer schedule version specified");
+    jmzk_ASSERT(pending_schedule.producers.size() == 0, producer_schedule_exception,
               "cannot set new pending producers until last pending is confirmed");
     header.new_producers     = move(pending);
     pending_schedule_hash    = digest_type::hash(*header.new_producers);
@@ -155,18 +155,18 @@ block_header_state::set_new_producers(producer_schedule_type pending) {
  */
 block_header_state
 block_header_state::next(const signed_block_header& h, bool skip_validate_signee) const {
-    EVT_ASSERT(h.timestamp != block_timestamp_type(), block_validate_exception, "", ("h", h));
-    EVT_ASSERT(h.header_extensions.size() == 0, block_validate_exception, "no supported extensions");
+    jmzk_ASSERT(h.timestamp != block_timestamp_type(), block_validate_exception, "", ("h", h));
+    jmzk_ASSERT(h.header_extensions.size() == 0, block_validate_exception, "no supported extensions");
 
-    EVT_ASSERT(h.timestamp > header.timestamp, block_validate_exception, "block must be later in time");
-    EVT_ASSERT(h.previous == id, unlinkable_block_exception, "block must link to current state");
+    jmzk_ASSERT(h.timestamp > header.timestamp, block_validate_exception, "block must be later in time");
+    jmzk_ASSERT(h.previous == id, unlinkable_block_exception, "block must link to current state");
     auto result = generate_next(h.timestamp);
-    EVT_ASSERT(result.header.producer == h.producer,  wrong_producer, "wrong producer specified");
-    EVT_ASSERT(result.header.schedule_version == h.schedule_version, producer_schedule_exception, "schedule_version in signed block is corrupted");
+    jmzk_ASSERT(result.header.producer == h.producer,  wrong_producer, "wrong producer specified");
+    jmzk_ASSERT(result.header.schedule_version == h.schedule_version, producer_schedule_exception, "schedule_version in signed block is corrupted");
 
     auto itr = producer_to_last_produced.find(h.producer);
     if(itr != producer_to_last_produced.end()) {
-        EVT_ASSERT(itr->second < result.block_num - h.confirmed, producer_double_confirm, "producer ${prod} double-confirming known range", ("prod", h.producer));
+        jmzk_ASSERT(itr->second < result.block_num - h.confirmed, producer_double_confirm, "producer ${prod} double-confirming known range", ("prod", h.producer));
     }
 
     // FC_ASSERT( result.header.block_mroot == h.block_mroot, "mismatch block merkle root" );
@@ -179,7 +179,7 @@ block_header_state::next(const signed_block_header& h, bool skip_validate_signee
     auto was_pending_promoted = result.maybe_promote_pending();
 
     if(h.new_producers) {
-        EVT_ASSERT(!was_pending_promoted, producer_schedule_exception, "cannot set pending producer schedule in the same block in which pending was promoted to active");
+        jmzk_ASSERT(!was_pending_promoted, producer_schedule_exception, "cannot set pending producer schedule in the same block in which pending was promoted to active");
         result.set_new_producers(*h.new_producers);
     }
 
@@ -242,7 +242,7 @@ void
 block_header_state::sign(const std::function<signature_type(const digest_type&)>& signer) {
     auto d                    = sig_digest();
     header.producer_signature = signer(d);
-    EVT_ASSERT(block_signing_key == fc::crypto::public_key(header.producer_signature, d), wrong_signing_key, "block is signed with unexpected key");
+    jmzk_ASSERT(block_signing_key == fc::crypto::public_key(header.producer_signature, d), wrong_signing_key, "block is signed with unexpected key");
 }
 
 public_key_type
@@ -252,20 +252,20 @@ block_header_state::signee() const {
 
 void
 block_header_state::verify_signee(const public_key_type& signee) const {
-    EVT_ASSERT(block_signing_key == signee, wrong_signing_key, "block not signed by expected key", ("block_signing_key", block_signing_key)("signee", signee));
+    jmzk_ASSERT(block_signing_key == signee, wrong_signing_key, "block not signed by expected key", ("block_signing_key", block_signing_key)("signee", signee));
 }
 
 void
 block_header_state::add_confirmation(const header_confirmation& conf) {
     for(const auto& c : confirmations)
-        EVT_ASSERT(c.producer != conf.producer, producer_double_confirm, "block already confirmed by this producer");
+        jmzk_ASSERT(c.producer != conf.producer, producer_double_confirm, "block already confirmed by this producer");
 
     auto key = active_schedule.get_producer_key(conf.producer);
-    EVT_ASSERT(key != public_key_type(), producer_not_in_schedule, "producer not in current schedule");
+    jmzk_ASSERT(key != public_key_type(), producer_not_in_schedule, "producer not in current schedule");
     auto signer = fc::crypto::public_key(conf.producer_signature, sig_digest(), true);
-    EVT_ASSERT(signer == key, wrong_signing_key, "confirmation not signed by expected key");
+    jmzk_ASSERT(signer == key, wrong_signing_key, "confirmation not signed by expected key");
 
     confirmations.emplace_back(conf);
 }
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain

@@ -1,14 +1,14 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/chain/percent_slim.hpp>
+#include <jmzk/chain/percent_slim.hpp>
 
 // This fixes the issue in safe_numerics in boost 1.69
-#include <evt/chain/workaround/boost/safe_numerics/exception.hpp>
+#include <jmzk/chain/workaround/boost/safe_numerics/exception.hpp>
 #include <boost/safe_numerics/safe_integer.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 string
 percent_slim::to_string() const {
@@ -42,7 +42,7 @@ percent_slim::from_string(const string& from) {
         // Ensure that if decimal point is used (.), decimal fraction is specified
         auto dot_pos = s.find('.');
         if(dot_pos != string::npos) {
-            EVT_ASSERT((dot_pos != s.size() - 1), percent_type_exception,
+            jmzk_ASSERT((dot_pos != s.size() - 1), percent_type_exception,
                        "Missing decimal fraction after decimal point");
         }
 
@@ -50,7 +50,7 @@ percent_slim::from_string(const string& from) {
         auto p = 0u;
         if(dot_pos != string::npos) {
             p = s.size() - dot_pos - 1;
-            EVT_ASSERT2(p <= kPrecision, percent_type_exception,
+            jmzk_ASSERT2(p <= kPrecision, percent_type_exception,
                 "Exceed percent max precision: {}", kPrecision);
         }
 
@@ -64,8 +64,8 @@ percent_slim::from_string(const string& from) {
 
         return percent_slim((uint32_t)amount);
     }
-    EVT_CAPTURE_AND_RETHROW(percent_type_exception, (from));
+    jmzk_CAPTURE_AND_RETHROW(percent_type_exception, (from));
 }
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 

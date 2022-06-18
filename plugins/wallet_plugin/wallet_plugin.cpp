@@ -2,22 +2,22 @@
  *  @file
  *  @copyright defined in eos/LICENSE.txt
  */
-#include <evt/wallet_plugin/wallet_plugin.hpp>
+#include <jmzk/wallet_plugin/wallet_plugin.hpp>
 
 #include <chrono>
 
 #include <boost/filesystem/path.hpp>
 #include <fc/io/json.hpp>
 
-#include <evt/chain/exceptions.hpp>
-#include <evt/wallet_plugin/wallet_manager.hpp>
-#include <evt/wallet_plugin/yubihsm_wallet.hpp>
+#include <jmzk/chain/exceptions.hpp>
+#include <jmzk/wallet_plugin/wallet_manager.hpp>
+#include <jmzk/wallet_plugin/yubihsm_wallet.hpp>
 
 namespace fc {
 class variant;
 }
 
-namespace evt {
+namespace jmzk {
 
 static appbase::abstract_plugin& _wallet_plugin = app().register_plugin<wallet_plugin>();
 
@@ -61,7 +61,7 @@ wallet_plugin::plugin_initialize(const variables_map& options) {
         }
         if(options.count("unlock-timeout")) {
             auto timeout = options.at("unlock-timeout").as<int64_t>();
-            EVT_ASSERT(timeout > 0, chain::invalid_lock_timeout_exception, "Please specify a positive timeout ${t}", ("t", timeout));
+            jmzk_ASSERT(timeout > 0, chain::invalid_lock_timeout_exception, "Please specify a positive timeout ${t}", ("t", timeout));
             std::chrono::seconds t(timeout);
             wallet_manager_ptr->set_timeout(t);
         }
@@ -79,4 +79,4 @@ wallet_plugin::plugin_initialize(const variables_map& options) {
     FC_LOG_AND_RETHROW()
 }
 
-}  // namespace evt
+}  // namespace jmzk

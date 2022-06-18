@@ -1,63 +1,63 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 
-#include <evt/evt_plugin/evt_plugin.hpp>
+#include <jmzk/jmzk_plugin/jmzk_plugin.hpp>
 
 #include <fc/container/flat.hpp>
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
 
-#include <evt/chain/types.hpp>
-#include <evt/chain/asset.hpp>
-#include <evt/chain/address.hpp>
-#include <evt/chain/controller.hpp>
-#include <evt/chain/token_database.hpp>
-#include <evt/chain/token_database_cache.hpp>
-#include <evt/chain/contracts/evt_contract_abi.hpp>
+#include <jmzk/chain/types.hpp>
+#include <jmzk/chain/asset.hpp>
+#include <jmzk/chain/address.hpp>
+#include <jmzk/chain/controller.hpp>
+#include <jmzk/chain/token_database.hpp>
+#include <jmzk/chain/token_database_cache.hpp>
+#include <jmzk/chain/contracts/jmzk_contract_abi.hpp>
 
-namespace evt {
+namespace jmzk {
 
-static appbase::abstract_plugin& _evt_plugin = app().register_plugin<evt_plugin>();
+static appbase::abstract_plugin& _jmzk_plugin = app().register_plugin<jmzk_plugin>();
 
-using namespace evt;
-using namespace evt::chain;
+using namespace jmzk;
+using namespace jmzk::chain;
 
-class evt_plugin_impl {
+class jmzk_plugin_impl {
 public:
-    evt_plugin_impl(controller& db)
+    jmzk_plugin_impl(controller& db)
         : db_(db) {}
 
 public:
     controller& db_;
 };
 
-evt_plugin::evt_plugin() {}
-evt_plugin::~evt_plugin() {}
+jmzk_plugin::jmzk_plugin() {}
+jmzk_plugin::~jmzk_plugin() {}
 
-void evt_plugin::set_program_options(options_description& cli, options_description& cfg) {}
+void jmzk_plugin::set_program_options(options_description& cli, options_description& cfg) {}
 
-void evt_plugin::plugin_initialize(const variables_map& options) {}
+void jmzk_plugin::plugin_initialize(const variables_map& options) {}
 
 void
-evt_plugin::plugin_startup() {
-    this->my_.reset(new evt_plugin_impl(app().get_plugin<chain_plugin>().chain()));
+jmzk_plugin::plugin_startup() {
+    this->my_.reset(new jmzk_plugin_impl(app().get_plugin<chain_plugin>().chain()));
 }
 
-void evt_plugin::plugin_shutdown() {}
+void jmzk_plugin::plugin_shutdown() {}
 
-evt_apis::read_only
-evt_plugin::get_read_only_api() const {
-    return evt_apis::read_only(my_->db_);
+jmzk_apis::read_only
+jmzk_plugin::get_read_only_api() const {
+    return jmzk_apis::read_only(my_->db_);
 }
 
-evt_apis::read_write
-evt_plugin::get_read_write_api() {
-    return evt_apis::read_write();
+jmzk_apis::read_write
+jmzk_plugin::get_read_write_api() {
+    return jmzk_apis::read_write();
 }
 
-namespace evt_apis {
+namespace jmzk_apis {
 
 #define READ_DB_TOKEN(TYPE, PREFIX, KEY, VPTR, EXCEPTION, FORMAT, ...)      \
     try {                                                                   \
@@ -65,7 +65,7 @@ namespace evt_apis {
         VPTR = tokendb_cache.template read_token<vtype>(TYPE, PREFIX, KEY); \
     }                                                                       \
     catch(token_database_exception&) {                                      \
-        EVT_THROW2(EXCEPTION, FORMAT, __VA_ARGS__);                         \
+        jmzk_THROW2(EXCEPTION, FORMAT, __VA_ARGS__);                         \
     }
     
 #define MAKE_PROPERTY(AMOUNT, SYM) \
@@ -85,7 +85,7 @@ namespace evt_apis {
         extract_db_value(str, VALUEREF);                                                           \
     }                                                                                              \
     catch(token_database_exception&) {                                                             \
-        EVT_THROW2(balance_exception, "There's no balance left in {} with sym id: {}", ADDR, SYM); \
+        jmzk_THROW2(balance_exception, "There's no balance left in {} with sym id: {}", ADDR, SYM); \
     }
 
 #define READ_DB_ASSET_NO_THROW(ADDR, SYM, VALUEREF)                         \
@@ -165,7 +165,7 @@ read_only::get_tokens(const get_tokens_params& params) {
     }
     if(params.take.has_value()) {
         t = *params.take;
-        EVT_ASSERT(t <= 100, chain::exceed_query_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 100 per query");
+        jmzk_ASSERT(t <= 100, chain::exceed_query_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 100 per query");
     }
 
     int i = 0;
@@ -228,7 +228,7 @@ read_only::get_fungible_balance(const get_fungible_balance_params& params) {
         vars.emplace_back(std::move(var));
         return vars;
     }
-    EVT_THROW(unsupported_feature, "Read all the balance of fungibles tokens within one address is not supported in evt_plugin anymore, please refer to the history_plugin");
+    jmzk_THROW(unsupported_feature, "Read all the balance of fungibles tokens within one address is not supported in jmzk_plugin anymore, please refer to the history_plugin");
 }
 
 fc::variant
@@ -296,7 +296,7 @@ read_only::get_validator(const get_validator_params& params) {
     fc::to_variant(*validator, var);
 
     property prop;
-    READ_DB_ASSET_NO_THROW(address(N(.validator), validator->name, EVT_SYM_ID), symbol(5,EVT_SYM_ID), prop);
+    READ_DB_ASSET_NO_THROW(address(N(.validator), validator->name, jmzk_SYM_ID), symbol(5,jmzk_SYM_ID), prop);
 
     auto mvar = fc::mutable_variant_object(var);
     mvar["profit"] = asset(prop.amount, prop.sym);
@@ -310,23 +310,23 @@ read_only::get_staking_shares(const get_staking_shares_params& params) {
 
     auto var  = variant();
     auto prop = property_stakes();
-    READ_DB_ASSET(params.address, evt_sym(), prop);
+    READ_DB_ASSET(params.address, jmzk_sym(), prop);
 
     fc::to_variant(prop, var);
     return var;
 }
 
-read_only::get_evtlink_signed_keys_result
-read_only::get_evtlink_signed_keys(const get_evtlink_signed_keys_params& params) const {
+read_only::get_jmzklink_signed_keys_result
+read_only::get_jmzklink_signed_keys(const get_jmzklink_signed_keys_params& params) const {
     if(params.link_id.size() != sizeof(link_id_type)) {
-        EVT_THROW(evt_link_id_exception, "EVT-Link id is not in proper length");
+        jmzk_THROW(jmzk_link_id_exception, "jmzk-Link id is not in proper length");
     }
 
     auto link_id = link_id_type();
     memcpy(&link_id, params.link_id.data(), sizeof(link_id));
 
-    auto result        = get_evtlink_signed_keys_result();
-    result.signed_keys = db_.get_evtlink_signed_keys(link_id);
+    auto result        = get_jmzklink_signed_keys_result();
+    result.signed_keys = db_.get_jmzklink_signed_keys(link_id);
     return result;
 }
 
@@ -342,6 +342,6 @@ read_only::get_script(const get_script_params& params) const {
     return var;
 }
 
-}  // namespace evt_apis
+}  // namespace jmzk_apis
 
-}  // namespace evt
+}  // namespace jmzk

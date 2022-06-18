@@ -1,17 +1,17 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <appbase/application.hpp>
 
-#include <evt/chain_plugin/chain_plugin.hpp>
+#include <jmzk/chain_plugin/chain_plugin.hpp>
 
 namespace fc {
 class variant;
 }
 
-namespace evt {
+namespace jmzk {
 
 using namespace appbase;
 
@@ -43,4 +43,4 @@ private:
     bnet_ptr my;
 };
 
-}  // namespace evt
+}  // namespace jmzk

@@ -1,12 +1,12 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
-#include <evt/chain/types.hpp>
-#include <evt/chain/contracts/authorizer_ref.hpp>
+#include <jmzk/chain/types.hpp>
+#include <jmzk/chain/contracts/authorizer_ref.hpp>
 
-namespace evt { namespace chain { namespace contracts {
+namespace jmzk { namespace chain { namespace contracts {
 
 using meta_key   = name128;
 using meta_value = string;
@@ -24,6 +24,6 @@ struct meta {
 };
 using meta_list = small_vector<meta, 4>;
 
-}}}  // namespac evt::chain::contracts
+}}}  // namespac jmzk::chain::contracts
 
-FC_REFLECT(evt::chain::contracts::meta, (key)(value)(creator));
+FC_REFLECT(jmzk::chain::contracts::meta, (key)(value)(creator));

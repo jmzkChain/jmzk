@@ -1,12 +1,12 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
-#include <evt/chain/block_header.hpp>
-#include <evt/chain/incremental_merkle.hpp>
+#include <jmzk/chain/block_header.hpp>
+#include <jmzk/chain/incremental_merkle.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 /**
  *  @struct block_header_state
@@ -63,9 +63,9 @@ struct block_header_state {
     void            verify_signee(const public_key_type& signee)const;
 };
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
-FC_REFLECT(evt::chain::block_header_state,
+FC_REFLECT(jmzk::chain::block_header_state,
            (id)(block_num)(header)(dpos_proposed_irreversible_blocknum)(dpos_irreversible_blocknum)(bft_irreversible_blocknum)(pending_schedule_lib_num)
            (pending_schedule_hash)(pending_schedule)(active_schedule)(blockroot_merkle)(producer_to_last_produced)(producer_to_last_implied_irb)
            (block_signing_key)(confirm_count)(confirmations));

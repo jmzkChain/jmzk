@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <memory>
@@ -8,21 +8,21 @@
 
 #include <appbase/application.hpp>
 
-#include <evt/chain_plugin/chain_plugin.hpp>
-#include <evt/postgres_plugin/postgres_plugin.hpp>
-#include <evt/chain/types.hpp>
+#include <jmzk/chain_plugin/chain_plugin.hpp>
+#include <jmzk/postgres_plugin/postgres_plugin.hpp>
+#include <jmzk/chain/types.hpp>
 
-namespace evt {
+namespace jmzk {
 
 class history_plugin;
 
-using evt::chain::address;
-using evt::chain::action_name;
-using evt::chain::domain_name;
-using evt::chain::public_key_type;
-using evt::chain::symbol_id_type;
-using evt::chain::token_name;
-using evt::chain::transaction_id_type;
+using jmzk::chain::address;
+using jmzk::chain::action_name;
+using jmzk::chain::domain_name;
+using jmzk::chain::public_key_type;
+using jmzk::chain::symbol_id_type;
+using jmzk::chain::token_name;
+using jmzk::chain::transaction_id_type;
 
 namespace history_apis {
 
@@ -126,14 +126,14 @@ private:
     friend class history_apis::read_only;
 };
 
-}  // namespace evt
+}  // namespace jmzk
 
-FC_REFLECT_ENUM(evt::history_apis::direction, (asc)(desc));
-FC_REFLECT(evt::history_apis::read_only::get_params, (keys));
-FC_REFLECT(evt::history_apis::read_only::get_tokens_params, (keys)(domain));
-FC_REFLECT(evt::history_apis::read_only::get_actions_params, (domain)(key)(dire)(names)(skip)(take));
-FC_REFLECT(evt::history_apis::read_only::get_fungible_actions_params, (sym_id)(dire)(addr)(skip)(take));
-FC_REFLECT(evt::history_apis::read_only::get_fungibles_balance_params, (addr));
-FC_REFLECT(evt::history_apis::read_only::get_transaction_params, (id));
-FC_REFLECT(evt::history_apis::read_only::get_transactions_params, (keys)(dire)(skip)(take));
-FC_REFLECT(evt::history_apis::read_only::get_fungible_ids_params, (skip)(take));
+FC_REFLECT_ENUM(jmzk::history_apis::direction, (asc)(desc));
+FC_REFLECT(jmzk::history_apis::read_only::get_params, (keys));
+FC_REFLECT(jmzk::history_apis::read_only::get_tokens_params, (keys)(domain));
+FC_REFLECT(jmzk::history_apis::read_only::get_actions_params, (domain)(key)(dire)(names)(skip)(take));
+FC_REFLECT(jmzk::history_apis::read_only::get_fungible_actions_params, (sym_id)(dire)(addr)(skip)(take));
+FC_REFLECT(jmzk::history_apis::read_only::get_fungibles_balance_params, (addr));
+FC_REFLECT(jmzk::history_apis::read_only::get_transaction_params, (id));
+FC_REFLECT(jmzk::history_apis::read_only::get_transactions_params, (keys)(dire)(skip)(take));
+FC_REFLECT(jmzk::history_apis::read_only::get_fungible_ids_params, (skip)(take));

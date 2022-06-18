@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
@@ -11,7 +11,7 @@
 #include <fmt/format.h>
 #include <fc/reflect/reflect.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 using std::string;
 
 static constexpr uint64_t
@@ -42,7 +42,7 @@ string_to_name(const char* str) {
     return name;
 }
 
-#define N(X) evt::chain::string_to_name(#X)
+#define N(X) jmzk::chain::string_to_name(#X)
 
 struct name {
     uint64_t value = 0;
@@ -150,12 +150,12 @@ sort_names(std::vector<name>&& names) {
     return std::move(names);
 }
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
 namespace std {
 template <>
-struct hash<evt::chain::name> : private hash<uint64_t> {
-    using argument_type = evt::chain::name;
+struct hash<jmzk::chain::name> : private hash<uint64_t> {
+    using argument_type = jmzk::chain::name;
 
     std::size_t
     operator()(const argument_type& name) const noexcept {
@@ -168,24 +168,24 @@ struct hash<evt::chain::name> : private hash<uint64_t> {
 namespace fc {
 
 class variant;
-void to_variant(const evt::chain::name& name, fc::variant& v);
-void from_variant(const fc::variant& v, evt::chain::name& name);
+void to_variant(const jmzk::chain::name& name, fc::variant& v);
+void from_variant(const fc::variant& v, jmzk::chain::name& name);
 
 }  // namespace fc
 
 namespace fmt {
 
 template <>
-struct formatter<evt::chain::name> {
+struct formatter<jmzk::chain::name> {
     template <typename ParseContext>
     constexpr auto parse(ParseContext& ctx) { return ctx.begin(); }
 
     template <typename FormatContext>
-    auto format(const evt::chain::name& n, FormatContext &ctx) {
+    auto format(const jmzk::chain::name& n, FormatContext &ctx) {
         return format_to(ctx.begin(), n.to_string());
     }
 };
 
 }  // namespace fmt
 
-FC_REFLECT(evt::chain::name, (value));
+FC_REFLECT(jmzk::chain::name, (value));

@@ -1,11 +1,11 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
-#include <evt/chain/types.hpp>
+#include <jmzk/chain/types.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
    digest_type make_canonical_left(const digest_type& val);
    digest_type make_canonical_right(const digest_type& val);
@@ -23,4 +23,4 @@ namespace evt { namespace chain {
     */
    digest_type merkle( vector<digest_type> ids );
 
-} } /// evt::chain
+} } /// jmzk::chain

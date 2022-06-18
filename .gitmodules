@@ -1,10 +1,10 @@
 [submodule "libraries/chainbase"]
 	path = libraries/chainbase
-	url = https://github.com/everitoken/chainbase.git
+	url = https://github.com/jmzkChain/chainbase.git
         ignore = dirty
 [submodule "libraries/appbase"]
 	path = libraries/appbase
-	url = https://github.com/everitoken/appbase.git
+	url = https://github.com/jmzkChain/appbase.git
         ignore = dirty
 [submodule "libraries/rocksdb"]
 	path = libraries/rocksdb
@@ -12,7 +12,7 @@
 	branch = 5.15.fb
 [submodule "libraries/rapidjson"]
 	path = libraries/rapidjson
-	url = https://github.com/everitoken/rapidjson.git
+	url = https://github.com/jmzkChain/rapidjson.git
 [submodule "libraries/fmt"]
 	path = libraries/fmt
 	url = https://github.com/fmtlib/fmt.git

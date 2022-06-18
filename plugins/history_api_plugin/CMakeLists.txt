@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/evt/history_api_plugin/*.hpp")
+file(GLOB HEADERS "include/jmzk/history_api_plugin/*.hpp")
 add_library( history_api_plugin
              history_api_plugin.cpp
              ${HEADERS} )

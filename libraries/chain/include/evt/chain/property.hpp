@@ -1,11 +1,11 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
-#include <evt/chain/asset.hpp>
+#include <jmzk/chain/asset.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 // represent for property for one symbol in one account
 // also records the create time
@@ -42,10 +42,10 @@ struct property_stakes : public property {
     std::vector<stakeshare_def> pending_shares;
 };
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
-FC_REFLECT(evt::chain::property, (amount)(frozen_amount)(sym)(created_at)(created_index));
-FC_REFLECT_ENUM(evt::chain::stake_type, (active)(fixed));
-FC_REFLECT_ENUM(evt::chain::stake_status, (staked)(pending_unstake));
-FC_REFLECT(evt::chain::stakeshare_def, (validator)(units)(net_value)(time)(type)(fixed_days));
-FC_REFLECT_DERIVED(evt::chain::property_stakes, (evt::chain::property), (stake_shares)(pending_shares));
+FC_REFLECT(jmzk::chain::property, (amount)(frozen_amount)(sym)(created_at)(created_index));
+FC_REFLECT_ENUM(jmzk::chain::stake_type, (active)(fixed));
+FC_REFLECT_ENUM(jmzk::chain::stake_status, (staked)(pending_unstake));
+FC_REFLECT(jmzk::chain::stakeshare_def, (validator)(units)(net_value)(time)(type)(fixed_days));
+FC_REFLECT_DERIVED(jmzk::chain::property_stakes, (jmzk::chain::property), (stake_shares)(pending_shares));

@@ -6,10 +6,10 @@ from datetime import datetime
 import click
 from twisted.internet import reactor
 
-from pyevt import evt_link
-from pyevtsdk import api, base
-from pyevtsdk.action import ActionGenerator
-from pyevtsdk.transaction import TrxGenerator
+from pyjmzk import jmzk_link
+from pyjmzksdk import api, base
+from pyjmzksdk.action import ActionGenerator
+from pyjmzksdk.transaction import TrxGenerator
 from watchpool import WatchPool
 
 logger = logging.getLogger()
@@ -53,8 +53,8 @@ class PayEngine:
             print(resp)
             self.balance[user] = float(resp[2: resp.find(' ')])
 
-    def build_evt_link(self, user):
-        link = evt_link.EvtLink()
+    def build_jmzk_link(self, user):
+        link = jmzk_link.jmzkLink()
         link.set_header(5)
         link.set_timestamp(int(datetime.now().timestamp()))
         link.set_max_pay(1000000)
@@ -71,7 +71,7 @@ class PayEngine:
         if self.balance[user1] < self.balance[user2]:
             user1, user2 = user2, user1
 
-        user1_link = self.build_evt_link(user1)
+        user1_link = self.build_jmzk_link(user1)
         if self.wp.alive:
             self.wp.add_watch(user1_link.get_link_id().hex(), user1_link.get_timestamp())
 

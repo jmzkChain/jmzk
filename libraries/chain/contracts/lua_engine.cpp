@@ -1,8 +1,8 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/chain/contracts/lua_engine.hpp>
+#include <jmzk/chain/contracts/lua_engine.hpp>
 
 #include <lua.hpp>
 
@@ -10,17 +10,17 @@
 #include <fc/scoped_exit.hpp>
 #include <fc/io/json.hpp>
 
-#include <evt/chain/config.hpp>
-#include <evt/chain/controller.hpp>
-#include <evt/chain/exceptions.hpp>
-#include <evt/chain/token_database.hpp>
-#include <evt/chain/token_database_cache.hpp>
-#include <evt/chain/contracts/lua_db.hpp>
-#include <evt/chain/contracts/lua_json.hpp>
-#include <evt/chain/contracts/types.hpp>
-#include <evt/chain/contracts/abi_serializer.hpp>
+#include <jmzk/chain/config.hpp>
+#include <jmzk/chain/controller.hpp>
+#include <jmzk/chain/exceptions.hpp>
+#include <jmzk/chain/token_database.hpp>
+#include <jmzk/chain/token_database_cache.hpp>
+#include <jmzk/chain/contracts/lua_db.hpp>
+#include <jmzk/chain/contracts/lua_json.hpp>
+#include <jmzk/chain/contracts/types.hpp>
+#include <jmzk/chain/contracts/abi_serializer.hpp>
 
-namespace evt { namespace chain { namespace contracts {
+namespace jmzk { namespace chain { namespace contracts {
 
 namespace internal {
 
@@ -30,7 +30,7 @@ namespace internal {
         VPTR = tokendb_cache.template read_token<vtype>(TYPE, PREFIX, KEY); \
     }                                                                       \
     catch(token_database_exception&) {                                      \
-        EVT_THROW2(EXCEPTION, FORMAT, ##__VA_ARGS__);                       \
+        jmzk_THROW2(EXCEPTION, FORMAT, ##__VA_ARGS__);                       \
     }
 
 static void
@@ -80,7 +80,7 @@ requirex(lua_State* L) {
     READ_DB_TOKEN(token_type::script, std::nullopt, module, script, unknown_script_exception, "Cannot find module script: {}", module);
 
     auto r = luaL_loadstring(L, script->content.c_str());
-    EVT_ASSERT2(r == LUA_OK, script_load_exceptoin, "Load module '{}' script failed: {}", module, lua_tostring(L, -1));
+    jmzk_ASSERT2(r == LUA_OK, script_load_exceptoin, "Load module '{}' script failed: {}", module, lua_tostring(L, -1));
 
     auto r2 = lua_pcall(L, 0, 1, 0);
     if(lua_type(L, -1) != LUA_TTABLE) {
@@ -148,7 +148,7 @@ setup_luastate(token_database_cache& tokendb_cache, int checks) {
     READ_DB_TOKEN(token_type::script, std::nullopt, N128(.loader), script, unknown_script_exception, "Cannot find loader script");
 
     auto r = luaL_loadstring(L, script->content.c_str());
-    EVT_ASSERT2(r == LUA_OK, script_load_exceptoin, "Load loader script failed: {}", lua_tostring(L, -1));
+    jmzk_ASSERT2(r == LUA_OK, script_load_exceptoin, "Load loader script failed: {}", lua_tostring(L, -1));
 
     rev.cancel();
     return L;
@@ -177,7 +177,7 @@ lua_engine::invoke_filter(const controller& control, const action& act, const sc
 
     // load filter script
     auto r = luaL_loadstring(L, ss->content.c_str());
-    EVT_ASSERT2(r == LUA_OK, script_load_exceptoin, "Load '{}' script failed: {}", script, lua_tostring(L, -1));
+    jmzk_ASSERT2(r == LUA_OK, script_load_exceptoin, "Load '{}' script failed: {}", script, lua_tostring(L, -1));
     assert(lua_gettop(L) == 3); // traceback, loader, filter
 
     // push action
@@ -191,7 +191,7 @@ lua_engine::invoke_filter(const controller& control, const action& act, const sc
     lua_pushstring(L, json.c_str());
     
     auto r2 = lua_pcall(L, 1, 1, 1);
-    EVT_ASSERT2(r2 == LUA_OK, script_execution_exceptoin, "Convert action to json failed: {}", lua_tostring(L, -1));
+    jmzk_ASSERT2(r2 == LUA_OK, script_execution_exceptoin, "Convert action to json failed: {}", lua_tostring(L, -1));
     
     // remove json object from stack
     lua_copy(L, -1, -2);
@@ -200,12 +200,12 @@ lua_engine::invoke_filter(const controller& control, const action& act, const sc
 
     // call filter
     auto r3 = lua_pcall(L, 2, 1, 1);
-    EVT_ASSERT2(r3 == LUA_OK, script_execution_exceptoin, "Lua script executed failed: {}", lua_tostring(L, -1));
+    jmzk_ASSERT2(r3 == LUA_OK, script_execution_exceptoin, "Lua script executed failed: {}", lua_tostring(L, -1));
 
-    EVT_ASSERT2(lua_gettop(L) >= 2, script_invalid_result_exceptoin, "No result is returned from script, should at least be one");
-    EVT_ASSERT2(lua_isboolean(L, -1), script_invalid_result_exceptoin, "Result returned from lua filter should be boolean value");      
+    jmzk_ASSERT2(lua_gettop(L) >= 2, script_invalid_result_exceptoin, "No result is returned from script, should at least be one");
+    jmzk_ASSERT2(lua_isboolean(L, -1), script_invalid_result_exceptoin, "Result returned from lua filter should be boolean value");      
 
     return lua_toboolean(L, -1);
 }
 
-}}}  // namespac evt::chain::contracts
+}}}  // namespac jmzk::chain::contracts

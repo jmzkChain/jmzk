@@ -1,29 +1,29 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <appbase/application.hpp>
-#include <evt/chain_plugin/chain_plugin.hpp>
-#include <evt/chain/types.hpp>
-#include <evt/chain/contracts/types.hpp>
+#include <jmzk/chain_plugin/chain_plugin.hpp>
+#include <jmzk/chain/types.hpp>
+#include <jmzk/chain/contracts/types.hpp>
 
 namespace fc {
 class variant;
 }  // namespace fc
 
-namespace evt {
+namespace jmzk {
 
 namespace chain {
 class controller;
 }  // namespace chain
 
-class evt_plugin;
+class jmzk_plugin;
 
-namespace evt_apis {
+namespace jmzk_apis {
 
-using namespace evt::chain;
-using namespace evt::chain::contracts;
+using namespace jmzk::chain;
+using namespace jmzk::chain::contracts;
 
 class read_only {
 public:
@@ -93,13 +93,13 @@ public:
     };
     fc::variant get_staking_shares(const get_staking_shares_params& params);
 
-    struct get_evtlink_signed_keys_params {
+    struct get_jmzklink_signed_keys_params {
         bytes link_id;
     };
-    struct get_evtlink_signed_keys_result {
+    struct get_jmzklink_signed_keys_result {
         public_keys_set  signed_keys;
     };
-    get_evtlink_signed_keys_result get_evtlink_signed_keys(const get_evtlink_signed_keys_params& params) const;
+    get_jmzklink_signed_keys_result get_jmzklink_signed_keys(const get_jmzklink_signed_keys_params& params) const;
 
     struct get_script_params {
         script_name name;
@@ -112,14 +112,14 @@ private:
 
 class read_write {};
 
-}  // namespace evt_apis
+}  // namespace jmzk_apis
 
-class evt_plugin : public plugin<evt_plugin> {
+class jmzk_plugin : public plugin<jmzk_plugin> {
 public:
     APPBASE_PLUGIN_REQUIRES((chain_plugin))
 
-    evt_plugin();
-    virtual ~evt_plugin();
+    jmzk_plugin();
+    virtual ~jmzk_plugin();
 
     virtual void set_program_options(options_description& cli, options_description& cfg) override;
 
@@ -127,26 +127,26 @@ public:
     void plugin_startup();
     void plugin_shutdown();
 
-    evt_apis::read_only  get_read_only_api() const;
-    evt_apis::read_write get_read_write_api();
+    jmzk_apis::read_only  get_read_only_api() const;
+    jmzk_apis::read_write get_read_write_api();
 
 private:
-    std::unique_ptr<class evt_plugin_impl> my_;
+    std::unique_ptr<class jmzk_plugin_impl> my_;
 };
 
-}  // namespace evt
+}  // namespace jmzk
 
-FC_REFLECT(evt::evt_apis::read_only::get_domain_params, (name));
-FC_REFLECT(evt::evt_apis::read_only::get_group_params, (name));
-FC_REFLECT(evt::evt_apis::read_only::get_token_params, (domain)(name));
-FC_REFLECT(evt::evt_apis::read_only::get_tokens_params, (domain)(skip)(take));
-FC_REFLECT(evt::evt_apis::read_only::get_fungible_params, (id));
-FC_REFLECT(evt::evt_apis::read_only::get_fungible_balance_params, (address)(sym_id));
-FC_REFLECT(evt::evt_apis::read_only::get_fungible_psvbonus_params, (id));
-FC_REFLECT(evt::evt_apis::read_only::get_suspend_params, (name));
-FC_REFLECT(evt::evt_apis::read_only::get_stakepool_params, (sym_id));
-FC_REFLECT(evt::evt_apis::read_only::get_validator_params, (name));
-FC_REFLECT(evt::evt_apis::read_only::get_staking_shares_params, (address));
-FC_REFLECT(evt::evt_apis::read_only::get_evtlink_signed_keys_params, (link_id));
-FC_REFLECT(evt::evt_apis::read_only::get_evtlink_signed_keys_result, (signed_keys));
-FC_REFLECT(evt::evt_apis::read_only::get_script_params, (name));
+FC_REFLECT(jmzk::jmzk_apis::read_only::get_domain_params, (name));
+FC_REFLECT(jmzk::jmzk_apis::read_only::get_group_params, (name));
+FC_REFLECT(jmzk::jmzk_apis::read_only::get_token_params, (domain)(name));
+FC_REFLECT(jmzk::jmzk_apis::read_only::get_tokens_params, (domain)(skip)(take));
+FC_REFLECT(jmzk::jmzk_apis::read_only::get_fungible_params, (id));
+FC_REFLECT(jmzk::jmzk_apis::read_only::get_fungible_balance_params, (address)(sym_id));
+FC_REFLECT(jmzk::jmzk_apis::read_only::get_fungible_psvbonus_params, (id));
+FC_REFLECT(jmzk::jmzk_apis::read_only::get_suspend_params, (name));
+FC_REFLECT(jmzk::jmzk_apis::read_only::get_stakepool_params, (sym_id));
+FC_REFLECT(jmzk::jmzk_apis::read_only::get_validator_params, (name));
+FC_REFLECT(jmzk::jmzk_apis::read_only::get_staking_shares_params, (address));
+FC_REFLECT(jmzk::jmzk_apis::read_only::get_jmzklink_signed_keys_params, (link_id));
+FC_REFLECT(jmzk::jmzk_apis::read_only::get_jmzklink_signed_keys_result, (signed_keys));
+FC_REFLECT(jmzk::jmzk_apis::read_only::get_script_params, (name));

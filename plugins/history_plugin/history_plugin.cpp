@@ -1,13 +1,13 @@
-#include <evt/history_plugin/history_plugin.hpp>
+#include <jmzk/history_plugin/history_plugin.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
 #include <fc/variant_object.hpp>
 
-#include <evt/chain/contracts/evt_contract_abi.hpp>
-#include <evt/history_plugin/evt_pg_query.hpp>
+#include <jmzk/chain/contracts/jmzk_contract_abi.hpp>
+#include <jmzk/history_plugin/jmzk_pg_query.hpp>
 
-namespace evt {
+namespace jmzk {
 
 static appbase::abstract_plugin& _history_plugin = app().register_plugin<history_plugin>();
 
@@ -45,7 +45,7 @@ history_plugin::plugin_startup() {
         my_.reset(new history_plugin_impl());
     }
     else {
-        wlog("evt::postgres_plugin configured, but no --postgres-uri specified.");
+        wlog("jmzk::postgres_plugin configured, but no --postgres-uri specified.");
         wlog("history_plugin disabled.");
     }
 }
@@ -58,79 +58,79 @@ namespace history_apis {
 
 void
 read_only::get_tokens_async(int id, const get_tokens_params& params) {
-    EVT_ASSERT(plugin_.my_, chain::postgres_not_enabled_exception, "Postgres plugin is not enabled.");
+    jmzk_ASSERT(plugin_.my_, chain::postgres_not_enabled_exception, "Postgres plugin is not enabled.");
 
     plugin_.my_->pg_query_.get_tokens_async(id, params);
 }
 
 void
 read_only::get_domains_async(int id, const get_params& params) {
-    EVT_ASSERT(plugin_.my_, chain::postgres_not_enabled_exception, "Postgres plugin is not enabled.");
+    jmzk_ASSERT(plugin_.my_, chain::postgres_not_enabled_exception, "Postgres plugin is not enabled.");
 
     plugin_.my_->pg_query_.get_domains_async(id, params);
 }
 
 void
 read_only::get_groups_async(int id, const get_params& params) {
-    EVT_ASSERT(plugin_.my_, chain::postgres_not_enabled_exception, "Postgres plugin is not enabled.");
+    jmzk_ASSERT(plugin_.my_, chain::postgres_not_enabled_exception, "Postgres plugin is not enabled.");
 
     plugin_.my_->pg_query_.get_groups_async(id, params);
 }
 
 void
 read_only::get_fungibles_async(int id, const get_params& params) {
-    EVT_ASSERT(plugin_.my_, chain::postgres_not_enabled_exception, "Postgres plugin is not enabled.");
+    jmzk_ASSERT(plugin_.my_, chain::postgres_not_enabled_exception, "Postgres plugin is not enabled.");
 
     plugin_.my_->pg_query_.get_fungibles_async(id, params);
 }
 
 void
 read_only::get_actions_async(int id, const get_actions_params& params) {
-    EVT_ASSERT(plugin_.my_, chain::postgres_not_enabled_exception, "Postgres plugin is not enabled.");
+    jmzk_ASSERT(plugin_.my_, chain::postgres_not_enabled_exception, "Postgres plugin is not enabled.");
 
     plugin_.my_->pg_query_.get_actions_async(id, params);
 }
 
 void
 read_only::get_fungible_actions_async(int id, const get_fungible_actions_params& params) {
-    EVT_ASSERT(plugin_.my_, chain::postgres_not_enabled_exception, "Postgres plugin is not enabled.");
+    jmzk_ASSERT(plugin_.my_, chain::postgres_not_enabled_exception, "Postgres plugin is not enabled.");
 
     plugin_.my_->pg_query_.get_fungible_actions_async(id, params);
 }
 
 void
 read_only::get_fungibles_balance_async(int id, const get_fungibles_balance_params& params) {
-    EVT_ASSERT(plugin_.my_, chain::postgres_not_enabled_exception, "Postgres plugin is not enabled.");
+    jmzk_ASSERT(plugin_.my_, chain::postgres_not_enabled_exception, "Postgres plugin is not enabled.");
 
     plugin_.my_->pg_query_.get_fungibles_balance_async(id, params);
 }
 
 void
 read_only::get_transaction_async(int id, const get_transaction_params& params) {
-    EVT_ASSERT(plugin_.my_, chain::postgres_not_enabled_exception, "Postgres plugin is not enabled.");
+    jmzk_ASSERT(plugin_.my_, chain::postgres_not_enabled_exception, "Postgres plugin is not enabled.");
 
     plugin_.my_->pg_query_.get_transaction_async(id, params);
 }
 
 void
 read_only::get_transactions_async(int id, const get_transactions_params& params) {
-    EVT_ASSERT(plugin_.my_, chain::postgres_not_enabled_exception, "Postgres plugin is not enabled.");
+    jmzk_ASSERT(plugin_.my_, chain::postgres_not_enabled_exception, "Postgres plugin is not enabled.");
 
     plugin_.my_->pg_query_.get_transactions_async(id, params);
 }
 
 void
 read_only::get_fungible_ids_async(int id, const get_fungible_ids_params& params) {
-    EVT_ASSERT(plugin_.my_, chain::postgres_not_enabled_exception, "Postgres plugin is not enabled.");
+    jmzk_ASSERT(plugin_.my_, chain::postgres_not_enabled_exception, "Postgres plugin is not enabled.");
 
     plugin_.my_->pg_query_.get_fungible_ids_async(id, params);
 }
 
 void
 read_only::get_transaction_actions_async(int id, const get_transaction_actions_params& params) {
-    EVT_ASSERT(plugin_.my_, chain::postgres_not_enabled_exception, "Postgres plugin is not enabled.");
+    jmzk_ASSERT(plugin_.my_, chain::postgres_not_enabled_exception, "Postgres plugin is not enabled.");
 
     plugin_.my_->pg_query_.get_transaction_actions_async(id, params);
 }
 
-}}  // namespace evt::history_apis
+}}  // namespace jmzk::history_apis

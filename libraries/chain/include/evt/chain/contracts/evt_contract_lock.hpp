@@ -1,37 +1,37 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
-namespace evt { namespace chain { namespace contracts {
+namespace jmzk { namespace chain { namespace contracts {
 
 /**
  * Implements newlock, aprvlock and tryunlock actions
  */
 
-EVT_ACTION_IMPL_BEGIN(newlock) {
+jmzk_ACTION_IMPL_BEGIN(newlock) {
     using namespace internal;
 
     auto nlact = context.act.data_as<ACT>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.lock), nlact.name), action_authorize_exception, "Invalid authorization fields in action(domain and key).");
+        jmzk_ASSERT(context.has_authorized(N128(.lock), nlact.name), action_authorize_exception, "Invalid authorization fields in action(domain and key).");
 
         DECLARE_TOKEN_DB()
-        EVT_ASSERT(!tokendb.exists_token(token_type::lock, std::nullopt, nlact.name), lock_duplicate_exception,
+        jmzk_ASSERT(!tokendb.exists_token(token_type::lock, std::nullopt, nlact.name), lock_duplicate_exception,
             "Lock assets with same name: ${n} is already existed", ("n",nlact.name));
 
         auto now = context.control.pending_block_time();
-        EVT_ASSERT(nlact.unlock_time > now, lock_unlock_time_exception,
+        jmzk_ASSERT(nlact.unlock_time > now, lock_unlock_time_exception,
             "Now is ahead of unlock time, unlock time is ${u}, now is ${n}", ("u",nlact.unlock_time)("n",now));
-        EVT_ASSERT(nlact.deadline > now && nlact.deadline > nlact.unlock_time, lock_unlock_time_exception,
+        jmzk_ASSERT(nlact.deadline > now && nlact.deadline > nlact.unlock_time, lock_unlock_time_exception,
             "Now is ahead of unlock time or deadline, unlock time is ${u}, now is ${n}", ("u",nlact.unlock_time)("n",now));
 
         // check condition
         switch(nlact.condition.type()) {
         case lock_type::cond_keys: {
             auto& lck = nlact.condition.template get<lock_condkeys>();
-            EVT_ASSERT(lck.threshold > 0 && lck.cond_keys.size() >= lck.threshold, lock_condition_exception,
+            jmzk_ASSERT(lck.threshold > 0 && lck.cond_keys.size() >= lck.threshold, lock_condition_exception,
                 "Conditional keys for lock should not be empty or threshold should not be zero");
         }    
         }  // switch
@@ -45,7 +45,7 @@ EVT_ACTION_IMPL_BEGIN(newlock) {
         }
 
         // check assets(need to has authority)
-        EVT_ASSERT(nlact.assets.size() > 0, lock_assets_exception, "Assets for lock should not be empty");
+        jmzk_ASSERT(nlact.assets.size() > 0, lock_assets_exception, "Assets for lock should not be empty");
 
         auto has_fungible = false;
         auto keys         = context.trx_context.trx_meta->recover_keys(context.control.get_chain_id());
@@ -53,7 +53,7 @@ EVT_ACTION_IMPL_BEGIN(newlock) {
             switch(la.type()) {
             case asset_type::tokens: {
                 auto& tokens = la.template get<locknft_def>();
-                EVT_ASSERT(tokens.names.size() > 0, lock_assets_exception, "NFT assets should be provided.");
+                jmzk_ASSERT(tokens.names.size() > 0, lock_assets_exception, "NFT assets should be provided.");
 
                 auto tt   = transfer();
                 tt.domain = tokens.domain;
@@ -68,7 +68,7 @@ EVT_ACTION_IMPL_BEGIN(newlock) {
             case asset_type::fungible: {
                 auto& fungible = la.template get<lockft_def>();
 
-                EVT_ASSERT(fungible.amount.sym().id() != PEVT_SYM_ID, lock_assets_exception, "Pinned EVT cannot be used to be locked.");
+                jmzk_ASSERT(fungible.amount.sym().id() != Pjmzk_SYM_ID, lock_assets_exception, "Pinned jmzk cannot be used to be locked.");
                 has_fungible = true;
 
                 auto tf   = transferft();
@@ -85,14 +85,14 @@ EVT_ACTION_IMPL_BEGIN(newlock) {
         // check succeed and fail addresses(size should be match)
         if(has_fungible) {
             // because fungible assets cannot be transfer to multiple addresses.
-            EVT_ASSERT(nlact.succeed.size() == 1, lock_address_exception,
+            jmzk_ASSERT(nlact.succeed.size() == 1, lock_address_exception,
                 "Size of address for succeed situation should be only one when there's fungible assets needs to lock");
-            EVT_ASSERT(nlact.failed.size() == 1, lock_address_exception,
+            jmzk_ASSERT(nlact.failed.size() == 1, lock_address_exception,
                 "Size of address for failed situation should be only one when there's fungible assets needs to lock");
         }
         else {
-            EVT_ASSERT(nlact.succeed.size() > 0, lock_address_exception, "Size of address for succeed situation should not be empty");
-            EVT_ASSERT(nlact.failed.size() > 0, lock_address_exception, "Size of address for failed situation should not be empty");
+            jmzk_ASSERT(nlact.succeed.size() > 0, lock_address_exception, "Size of address for succeed situation should not be empty");
+            jmzk_ASSERT(nlact.failed.size() > 0, lock_address_exception, "Size of address for failed situation should not be empty");
         }
 
         // transfer assets to lock address
@@ -136,16 +136,16 @@ EVT_ACTION_IMPL_BEGIN(newlock) {
 
         ADD_DB_TOKEN(token_type::lock, lock);
     }
-    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+    jmzk_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
-EVT_ACTION_IMPL_END()
+jmzk_ACTION_IMPL_END()
 
-EVT_ACTION_IMPL_BEGIN(aprvlock) {
+jmzk_ACTION_IMPL_BEGIN(aprvlock) {
     using namespace internal;
 
     auto& alact = context.act.data_as<add_clr_t<ACT>>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.lock), alact.name), action_authorize_exception, "Invalid authorization fields in action(domain and key).");
+        jmzk_ASSERT(context.has_authorized(N128(.lock), alact.name), action_authorize_exception, "Invalid authorization fields in action(domain and key).");
 
         DECLARE_TOKEN_DB()
 
@@ -153,18 +153,18 @@ EVT_ACTION_IMPL_BEGIN(aprvlock) {
         READ_DB_TOKEN(token_type::lock, std::nullopt, alact.name, lock, unknown_lock_exception, "Cannot find lock proposal: {}", alact.name);
 
         auto now = context.control.pending_block_time();
-        EVT_ASSERT(lock->unlock_time > now, lock_expired_exception,
+        jmzk_ASSERT(lock->unlock_time > now, lock_expired_exception,
             "Now is ahead of unlock time, cannot approve anymore, unlock time is ${u}, now is ${n}", ("u",lock->unlock_time)("n",now));
 
         switch(lock->condition.type()) {
         case lock_type::cond_keys: {
-            EVT_ASSERT(alact.data.type() == lock_aprv_type::cond_key, lock_aprv_data_exception,
+            jmzk_ASSERT(alact.data.type() == lock_aprv_type::cond_key, lock_aprv_data_exception,
                 "Type of approve data is not conditional key");
             auto& lck = lock->condition.template get<lock_condkeys>();
 
-            EVT_ASSERT(std::find(lck.cond_keys.cbegin(), lck.cond_keys.cend(), alact.approver) != lck.cond_keys.cend(),
+            jmzk_ASSERT(std::find(lck.cond_keys.cbegin(), lck.cond_keys.cend(), alact.approver) != lck.cond_keys.cend(),
                 lock_aprv_data_exception, "Approver is not valid");
-            EVT_ASSERT(lock->signed_keys.find(alact.approver) == lock->signed_keys.cend(), lock_duplicate_key_exception,
+            jmzk_ASSERT(lock->signed_keys.find(alact.approver) == lock->signed_keys.cend(), lock_duplicate_key_exception,
                 "Approver is already signed this lock assets proposal");
         }
         }  // switch
@@ -172,16 +172,16 @@ EVT_ACTION_IMPL_BEGIN(aprvlock) {
         lock->signed_keys.emplace(alact.approver);
         UPD_DB_TOKEN(token_type::lock, *lock);
     }
-    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+    jmzk_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
-EVT_ACTION_IMPL_END()
+jmzk_ACTION_IMPL_END()
 
-EVT_ACTION_IMPL_BEGIN(tryunlock) {
+jmzk_ACTION_IMPL_BEGIN(tryunlock) {
     using namespace internal;
 
     auto& tuact = context.act.data_as<add_clr_t<ACT>>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.lock), tuact.name), action_authorize_exception,
+        jmzk_ASSERT(context.has_authorized(N128(.lock), tuact.name), action_authorize_exception,
             "Invalid authorization fields in action(domain and key).");
 
         DECLARE_TOKEN_DB()
@@ -190,7 +190,7 @@ EVT_ACTION_IMPL_BEGIN(tryunlock) {
         READ_DB_TOKEN(token_type::lock, std::nullopt, tuact.name, lock, unknown_lock_exception, "Cannot find lock proposal: {}", tuact.name);
 
         auto now = context.control.pending_block_time();
-        EVT_ASSERT(lock->unlock_time < now, lock_not_reach_unlock_time,
+        jmzk_ASSERT(lock->unlock_time < now, lock_not_reach_unlock_time,
             "Not reach unlock time, cannot unlock, unlock time is ${u}, now is ${n}", ("u",lock->unlock_time)("n",now));
 
         // std::add_pointer_t<decltype(lock.succeed)> pkeys = nullptr;
@@ -208,7 +208,7 @@ EVT_ACTION_IMPL_BEGIN(tryunlock) {
 
         if(pkeys == nullptr) {
             // not succeed
-            EVT_ASSERT(lock->deadline < now, lock_not_reach_deadline,
+            jmzk_ASSERT(lock->deadline < now, lock_not_reach_deadline,
                 "Not reach deadline and conditions are not satisfied, proposal is still avaiable.");
             pkeys        = &lock->failed;
             lock->status = lock_status::failed;
@@ -242,8 +242,8 @@ EVT_ACTION_IMPL_BEGIN(tryunlock) {
 
         UPD_DB_TOKEN(token_type::lock, *lock);
     }
-    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+    jmzk_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
-EVT_ACTION_IMPL_END()
+jmzk_ACTION_IMPL_END()
 
-}}} // namespace evt::chain::contracts
+}}} // namespace jmzk::chain::contracts

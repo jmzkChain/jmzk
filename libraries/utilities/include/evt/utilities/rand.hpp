@@ -1,13 +1,13 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #ifndef RAND_HPP
 #define RAND_HPP 1
 
 #include <algorithm>
 
-namespace evt { namespace utilities { namespace rand {
+namespace jmzk { namespace utilities { namespace rand {
 
 /// High performance random generator
 /// http://xorshift.di.unimi.it/
@@ -39,6 +39,6 @@ public:
     }
 };
 
-} } } //evt::utilities::rand
+} } } //jmzk::utilities::rand
 
 #endif // RAND_HPP

@@ -1,14 +1,14 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #include <algorithm>
-#include <evt/chain/block.hpp>
-#include <evt/chain/merkle.hpp>
+#include <jmzk/chain/block.hpp>
+#include <jmzk/chain/merkle.hpp>
 #include <fc/bitutil.hpp>
 #include <fc/io/raw.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 digest_type
 block_header::digest() const {
@@ -30,4 +30,4 @@ block_header::id() const {
     return result;
 }
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain

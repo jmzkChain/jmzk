@@ -26,7 +26,7 @@ def cli():
 @click.option('--block-num', '-n', default='')
 @click.option('--block-time', '-t', default='')
 @click.option('--postgres/--no-postgres', '-p', default=False)
-@click.option('--bucket', '-b', default='evt-snapshots')
+@click.option('--bucket', '-b', default='jmzk-snapshots')
 @click.option('--aws-key', '-k', required=True)
 @click.option('--aws-secret', '-s', required=True)
 def upload(file, block_id, block_num, block_time, postgres, bucket, aws_key, aws_secret):
@@ -71,7 +71,7 @@ def upload(file, block_id, block_num, block_time, postgres, bucket, aws_key, aws
 
 @cli.command()
 @click.option('--name', '-n', required=True)
-@click.option('--bucket', '-b', default='evt-snapshots')
+@click.option('--bucket', '-b', default='jmzk-snapshots')
 @click.option('--file', '-f', required=True)
 def fetch(name, bucket, file):
     s3 = boto3.resource('s3')
@@ -98,7 +98,7 @@ def fetch(name, bucket, file):
 
 @cli.command()
 @click.option('--prefix', '-p', help='Prefix of snapshots to list')
-@click.option('--bucket', '-b', default='evt-snapshots')
+@click.option('--bucket', '-b', default='jmzk-snapshots')
 def list(prefix, bucket):
     s3 = boto3.resource('s3')
     s3.meta.client.meta.events.register('choose-signer.s3.*', disable_signing)

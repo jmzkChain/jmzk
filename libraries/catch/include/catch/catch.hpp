@@ -2468,7 +2468,7 @@ namespace Catch {
         Totals operator - ( Totals const& other ) const;
         Totals& operator += ( Totals const& other );
 
-        Totals delta( Totals const& prevTotals ) const;
+        Totals delta( Totals const& prjmzkotals ) const;
 
         int error = 0;
         Counts assertions;
@@ -10324,7 +10324,7 @@ namespace Catch {
     }
 
     Totals RunContext::runTest(TestCase const& testCase) {
-        Totals prevTotals = m_totals;
+        Totals prjmzkotals = m_totals;
 
         std::string redirectedCout;
         std::string redirectedCerr;
@@ -10344,7 +10344,7 @@ namespace Catch {
             runCurrentTest(redirectedCout, redirectedCerr);
         } while (!m_testCaseTracker->isSuccessfullyCompleted() && !aborting());
 
-        Totals deltaTotals = m_totals.delta(prevTotals);
+        Totals deltaTotals = m_totals.delta(prjmzkotals);
         if (testInfo.expectedToFail() && deltaTotals.testCases.passed > 0) {
             deltaTotals.assertions.failed++;
             deltaTotals.testCases.passed--;
@@ -12606,8 +12606,8 @@ namespace Catch {
         return *this;
     }
 
-    Totals Totals::delta( Totals const& prevTotals ) const {
-        Totals diff = *this - prevTotals;
+    Totals Totals::delta( Totals const& prjmzkotals ) const {
+        Totals diff = *this - prjmzkotals;
         if( diff.assertions.failed > 0 )
             ++diff.testCases.failed;
         else if( diff.assertions.failedButOk > 0 )

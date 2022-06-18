@@ -1,7 +1,7 @@
 import datetime
 import json
 
-from pyevt import abi, ecc
+from pyjmzk import abi, ecc
 
 from . import action, api, base
 
@@ -24,8 +24,8 @@ class Transaction:
 
     def set_header(self, **kwargs):
         if 'url' in kwargs:
-            evtapi = api.Api(kwargs['url'])
-            info = json.loads(evtapi.get_info())
+            jmzkapi = api.Api(kwargs['url'])
+            info = json.loads(jmzkapi.get_info())
             chain_id_str = info['chain_id']
             block_id_str = info['head_block_id']
             self.chain_id = abi.ChainId.from_string(chain_id_str)
@@ -80,8 +80,8 @@ class Transaction:
 
 class TrxGenerator:
     def __init__(self, url, payer):
-        evtapi = api.Api(url)
-        info = json.loads(evtapi.get_info())
+        jmzkapi = api.Api(url)
+        info = json.loads(jmzkapi.get_info())
         chain_id_str = info['chain_id']
         block_id_str = info['head_block_id']
         self.chain_id = abi.ChainId.from_string(chain_id_str)

@@ -1,14 +1,14 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <any>
 #include <type_traits>
-#include <evt/chain/types.hpp>
-#include <evt/chain/exceptions.hpp>
+#include <jmzk/chain/types.hpp>
+#include <jmzk/chain/exceptions.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 class apply_context;
 class authority_checker;
@@ -94,7 +94,7 @@ public:
     data_as() const {
         if(!cache_.has_value()) {
             using raw_type = std::remove_const_t<std::remove_reference_t<T>>;
-            EVT_ASSERT(name == raw_type::get_action_name(), action_type_exception, "action name is not consistent with action struct");
+            jmzk_ASSERT(name == raw_type::get_action_name(), action_type_exception, "action name is not consistent with action struct");
             cache_ = std::make_any<raw_type>(fc::raw::unpack<raw_type>(data));
         }
         // no need to check name here, `any_cast` will throws exception if types don't match
@@ -111,6 +111,6 @@ private:
     friend class charge_manager;
 };
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
-FC_REFLECT(evt::chain::action, (name)(domain)(key)(data));
+FC_REFLECT(jmzk::chain::action, (name)(domain)(key)(data));

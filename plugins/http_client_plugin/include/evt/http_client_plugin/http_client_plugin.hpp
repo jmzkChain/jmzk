@@ -1,12 +1,12 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <appbase/application.hpp>
 #include <fc/network/http/http_client.hpp>
 
-namespace evt {
+namespace jmzk {
 using namespace appbase;
 using fc::http_client;
 
@@ -31,4 +31,4 @@ private:
     std::unique_ptr<http_client> my;
 };
 
-}  // namespace evt
+}  // namespace jmzk

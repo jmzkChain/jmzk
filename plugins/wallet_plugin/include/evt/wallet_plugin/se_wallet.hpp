@@ -1,12 +1,12 @@
 #pragma once
 
-#include <evt/chain/types.hpp>
-#include <evt/wallet_plugin/wallet_api.hpp>
+#include <jmzk/chain/types.hpp>
+#include <jmzk/wallet_plugin/wallet_api.hpp>
 
 using namespace std;
-using namespace evt::chain;
+using namespace jmzk::chain;
 
-namespace evt { namespace wallet {
+namespace jmzk { namespace wallet {
 
 namespace detail {
 struct se_wallet_impl;
@@ -38,4 +38,4 @@ private:
     std::unique_ptr<detail::se_wallet_impl> my;
 };
 
-}}  // namespace evt::wallet
+}}  // namespace jmzk::wallet

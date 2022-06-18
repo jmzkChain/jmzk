@@ -1,8 +1,8 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/chain/contracts/evt_link.hpp>
+#include <jmzk/chain/contracts/jmzk_link.hpp>
 
 #include <string.h>
 #include <algorithm>
@@ -12,7 +12,7 @@
 
 #include <fc/crypto/hex.hpp>
 #include <fc/crypto/elliptic.hpp>
-#include <evt/chain/exceptions.hpp>
+#include <jmzk/chain/exceptions.hpp>
 
 using namespace boost::multiprecision;
 
@@ -22,25 +22,25 @@ using namespace boost::multiprecision;
 using bigint_segs = number<cpp_int_backend<536, 536, unsigned_magnitude, checked, void>>;
 using bigint_sigs = number<cpp_int_backend<1560, 1560, unsigned_magnitude, checked, void>>;
 
-namespace evt { namespace chain { namespace contracts {
+namespace jmzk { namespace chain { namespace contracts {
 
 namespace internal {
 
 const char* ALPHABETS   = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ$+-/:*";
 const int   MAX_BYTES   = 240;  // 195 / ((42 ^ 2) / 2048)
-const char* URI_SCHEMA  = "https://evt.li/";
-const char* URI_SCHEMA2 = "evtlink://";
+const char* URI_SCHEMA  = "https://jmzk.li/";
+const char* URI_SCHEMA2 = "jmzklink://";
 
 template<typename T>
 bytes
 decode(const std::string& nums, uint pos, uint end) {
     auto num = T{0};
     auto pz  = nums.find_first_not_of('0', pos);
-    EVT_ASSERT(pz != string::npos, evt_link_exception, "Invalid EVT-Link");
+    jmzk_ASSERT(pz != string::npos, jmzk_link_exception, "Invalid jmzk-Link");
 
     for(auto i = pz; i < end; i++) {
         auto c = strchr(ALPHABETS, nums[i]);
-        FC_ASSERT(c != nullptr, "invalid character in evt-link");
+        FC_ASSERT(c != nullptr, "invalid character in jmzk-link");
         num *= 42;
         num += (c - ALPHABETS);
     }
@@ -55,40 +55,40 @@ decode(const std::string& nums, uint pos, uint end) {
     return b;
 }
 
-evt_link::segments_type
+jmzk_link::segments_type
 parse_segments(const bytes& b, uint16_t& header) {
     FC_ASSERT(b.size() > 2);
 
     auto h  = *(uint16_t*)&b[0];
     header  = boost::endian::big_to_native(h);
 
-    auto segs = evt_link::segments_type();
+    auto segs = jmzk_link::segments_type();
 
     auto i  = 2u;
     auto pk = 0u;
     while(i < b.size()) {
         auto k = (uint8_t)b[i];
-        EVT_ASSERT(k > pk, evt_link_exception, "Segments are not ordered by keys");
+        jmzk_ASSERT(k > pk, jmzk_link_exception, "Segments are not ordered by keys");
         pk = k;
 
         if(k <= 20) {
             FC_ASSERT(b.size() > i + 1); // value is 1 byte
             auto v = (uint8_t)b[i + 1];
-            segs.emplace(k, evt_link::segment(k, v));
+            segs.emplace(k, jmzk_link::segment(k, v));
 
             i += 2;
         }
         else if(k <= 40) {
             FC_ASSERT(b.size() > i + 2); // value is 2 byte
             auto v = *(uint16_t*)(&b[i] + 1);
-            segs.emplace(k, evt_link::segment(k, boost::endian::big_to_native(v)));
+            segs.emplace(k, jmzk_link::segment(k, boost::endian::big_to_native(v)));
 
             i += 3;
         }
         else if(k <= 90) {
             FC_ASSERT(b.size() > i + 4); // value is 4 byte
             auto v = *(uint32_t*)(&b[i] + 1);
-            segs.emplace(k, evt_link::segment(k, boost::endian::big_to_native(v)));
+            segs.emplace(k, jmzk_link::segment(k, boost::endian::big_to_native(v)));
 
             i += 5;
         }
@@ -108,25 +108,25 @@ parse_segments(const bytes& b, uint16_t& header) {
 
             if(sz > 0) {
                 FC_ASSERT(b.size() > i + s + sz);
-                segs.emplace(k, evt_link::segment(k, std::string(&b[i] + 1 + s, sz)));
+                segs.emplace(k, jmzk_link::segment(k, std::string(&b[i] + 1 + s, sz)));
             }
             else {
-                segs.emplace(k, evt_link::segment(k, std::string()));
+                segs.emplace(k, jmzk_link::segment(k, std::string()));
             }
 
             i += 1 + s + sz;
         }
         else {
-            EVT_THROW(evt_link_exception, "Invalid key type: ${k}", ("k",k));
+            jmzk_THROW(jmzk_link_exception, "Invalid key type: ${k}", ("k",k));
         }
     }
     return segs;
 }
 
-evt_link::signatures_type
+jmzk_link::signatures_type
 parse_signatures(const bytes& b) {
     FC_ASSERT(b.size() > 0 && b.size() % 65 == 0);
-    auto sigs = evt_link::signatures_type();
+    auto sigs = jmzk_link::signatures_type();
 
     for(auto i = 0u; i < b.size() / 65u; i++) {
         auto shim = fc::ecc::compact_signature();
@@ -140,12 +140,12 @@ parse_signatures(const bytes& b) {
 
 }  // namespace internal
 
-evt_link
-evt_link::parse_from_evtli(const std::string& str) {
+jmzk_link
+jmzk_link::parse_from_jmzkli(const std::string& str) {
     using namespace internal;
 
-    EVT_ASSERT(str.size() < 400, evt_link_exception, "Link is too long, max length allowed: 400");
-    EVT_ASSERT(str.size() > 20, evt_link_exception, "Link is too short");
+    jmzk_ASSERT(str.size() < 400, jmzk_link_exception, "Link is too long, max length allowed: 400");
+    jmzk_ASSERT(str.size() > 20, jmzk_link_exception, "Link is too short");
 
     size_t start = 0;
     if(memcmp(str.data(), URI_SCHEMA, strlen(URI_SCHEMA)) == 0) {
@@ -168,7 +168,7 @@ evt_link::parse_from_evtli(const std::string& str) {
         bsigs = decode<bigint_sigs>(str, d + 1, str.size());
     }
 
-    auto link = evt_link();
+    auto link = jmzk_link();
 
     link.segments_   = parse_segments(bsegs, link.header_);
     link.signatures_ = parse_signatures(bsigs);
@@ -176,23 +176,23 @@ evt_link::parse_from_evtli(const std::string& str) {
     return link;
 }
 
-const evt_link::segment&
-evt_link::get_segment(uint8_t key) const {
+const jmzk_link::segment&
+jmzk_link::get_segment(uint8_t key) const {
     auto it = segments_.find(key);
-    EVT_ASSERT(it != segments_.end(), evt_link_no_key_exception, "Cannot find segment for key: ${k}", ("k",key));
+    jmzk_ASSERT(it != segments_.end(), jmzk_link_no_key_exception, "Cannot find segment for key: ${k}", ("k",key));
 
     return it->second;
 }
 
 bool
-evt_link::has_segment(uint8_t key) const {
+jmzk_link::has_segment(uint8_t key) const {
     return segments_.find(key) != segments_.end();
 }
 
 link_id_type
-evt_link::get_link_id() const {
+jmzk_link::get_link_id() const {
     auto& seg = get_segment(link_id);
-    EVT_ASSERT(seg.strv && seg.strv->size() == sizeof(link_id_type), evt_link_id_exception, "Not valid link id in this EVT-Link");
+    jmzk_ASSERT(seg.strv && seg.strv->size() == sizeof(link_id_type), jmzk_link_id_exception, "Not valid link id in this jmzk-Link");
 
     auto id = link_id_type();
     memcpy(&id, seg.strv->data(), sizeof(id));
@@ -203,7 +203,7 @@ namespace internal {
 
 template<typename Stream>
 void
-write_segments_bytes(const evt_link& link, Stream& stream) {
+write_segments_bytes(const jmzk_link& link, Stream& stream) {
     auto h = boost::endian::native_to_big(link.get_header());
     static_assert(sizeof(h) == 2);  // uint16_t
     stream.write((char*)&h, sizeof(h));
@@ -261,7 +261,7 @@ private:
 
 template<typename Stream>
 void
-write_signatures_bytes(const evt_link& link, Stream& stream) {
+write_signatures_bytes(const jmzk_link& link, Stream& stream) {
     auto visitor = stream_visitor<Stream>(stream);
     for(auto& sig : link.get_signatures()) {
         sig.view(visitor);
@@ -296,7 +296,7 @@ encode(const bytes& b, size_t sz, std::string& str) {
 }  // namespace internal
 
 fc::sha256
-evt_link::digest() const {
+jmzk_link::digest() const {
     using namespace internal;
 
     auto enc = fc::sha256::encoder();
@@ -305,7 +305,7 @@ evt_link::digest() const {
 }
 
 std::string
-evt_link::to_string(int prefix) const {
+jmzk_link::to_string(int prefix) const {
     using namespace internal;
 
     auto temp = bytes(MAX_BYTES);
@@ -336,7 +336,7 @@ evt_link::to_string(int prefix) const {
 }
 
 public_keys_set
-evt_link::restore_keys() const {
+jmzk_link::restore_keys() const {
     auto hash = digest();
     auto keys = public_keys_set();
 
@@ -348,7 +348,7 @@ evt_link::restore_keys() const {
 }
 
 void
-evt_link::add_segment(const segment& seg) {
+jmzk_link::add_segment(const segment& seg) {
     auto it = segments_.emplace(seg.key, seg);
     if(!it.second) {
         // existed, replace old one
@@ -357,33 +357,33 @@ evt_link::add_segment(const segment& seg) {
 }
 
 void
-evt_link::remove_segment(uint8_t key) {
+jmzk_link::remove_segment(uint8_t key) {
     segments_.erase(key);
 }
 
 void
-evt_link::add_signature(const signature_type& sig) {
+jmzk_link::add_signature(const signature_type& sig) {
     signatures_.emplace(sig);
 }
 
 void
-evt_link::sign(const private_key_type& pkey) {
+jmzk_link::sign(const private_key_type& pkey) {
     signatures_.emplace(pkey.sign(digest()));
 }
 
-}}}  // namespac evt::chain::contracts
+}}}  // namespac jmzk::chain::contracts
 
 namespace fc {
 
-using evt::chain::contracts::evt_link;
+using jmzk::chain::contracts::jmzk_link;
 
 void
-from_variant(const fc::variant& v, evt_link& link) {
-    link = evt_link::parse_from_evtli(v.get_string());
+from_variant(const fc::variant& v, jmzk_link& link) {
+    link = jmzk_link::parse_from_jmzkli(v.get_string());
 }
 
 void
-to_variant(const evt::chain::contracts::evt_link& link, fc::variant& v) {
+to_variant(const jmzk::chain::contracts::jmzk_link& link, fc::variant& v) {
     auto vo   = fc::mutable_variant_object();
     auto segs = fc::variants();
     auto sigs = fc::variants();

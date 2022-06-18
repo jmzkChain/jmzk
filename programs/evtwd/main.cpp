@@ -1,13 +1,13 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #include <csignal>
 #include <appbase/application.hpp>
 
-#include <evt/http_plugin/http_plugin.hpp>
-#include <evt/wallet_api_plugin/wallet_api_plugin.hpp>
-#include <evt/wallet_plugin/wallet_plugin.hpp>
+#include <jmzk/http_plugin/http_plugin.hpp>
+#include <jmzk/wallet_api_plugin/wallet_api_plugin.hpp>
+#include <jmzk/wallet_plugin/wallet_plugin.hpp>
 
 #include <fc/exception/exception.hpp>
 #include <fc/log/logger_config.hpp>
@@ -17,7 +17,7 @@
 #include <pwd.h>
 
 using namespace appbase;
-using namespace evt;
+using namespace jmzk;
 
 bfs::path
 determine_home_directory() {
@@ -38,10 +38,10 @@ int
 main(int argc, char** argv) {
     try {
         bfs::path home = determine_home_directory();
-        app().set_default_data_dir(home / "evt-wallet");
-        app().set_default_config_dir(home / "evt-wallet");
+        app().set_default_data_dir(home / "jmzk-wallet");
+        app().set_default_config_dir(home / "jmzk-wallet");
         http_plugin::set_defaults({
-            .default_unix_socket_path = fc::path(app().data_dir() / "evtwd.sock").to_native_ansi_path(),
+            .default_unix_socket_path = fc::path(app().data_dir() / "jmzkwd.sock").to_native_ansi_path(),
             .default_http_port = 9999
         });
         app().register_plugin<wallet_api_plugin>();
@@ -49,7 +49,7 @@ main(int argc, char** argv) {
             return -1;
         }
         auto& http = app().get_plugin<http_plugin>();
-        http.add_handler("/v1/evtwd/stop", [](string, string, url_response_callback cb) { cb(200, "{}"); std::raise(SIGTERM); }, true /* local only */);
+        http.add_handler("/v1/jmzkwd/stop", [](string, string, url_response_callback cb) { cb(200, "{}"); std::raise(SIGTERM); }, true /* local only */);
         app().startup();
         app().exec();
     }

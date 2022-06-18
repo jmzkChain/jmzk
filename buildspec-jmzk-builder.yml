@@ -1,5 +1,5 @@
 version: 0.2
-       
+
 env:
   parameter-store:
     LOGIN_USERID: "docker-userid"
@@ -16,9 +16,9 @@ phases:
       - docker login -u $LOGIN_USERID -p $LOGIN_PASSWORD
   build:
     commands:
-      - echo Start building latest evt builder...
-      - cd Docker/builder && docker build . -t everitoken/builder:latest --build-arg bjobs=$BUILD_JOBS
+      - echo Start building latest jmzk builder...
+      - cd Docker/builder && docker build . -t jmzkChain/builder:latest --build-arg bjobs=$BUILD_JOBS
   post_build:
     commands:
       - echo Publish to Docker Hub...
-      - docker push everitoken/builder:latest
+      - docker push jmzkChain/builder:latest

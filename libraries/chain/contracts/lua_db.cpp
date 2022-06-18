@@ -1,13 +1,13 @@
-#include <evt/chain/contracts/lua_db.hpp>
+#include <jmzk/chain/contracts/lua_db.hpp>
 
 #include <fc/io/json.hpp>
-#include <evt/chain/exceptions.hpp>
-#include <evt/chain/token_database_cache.hpp>
-#include <evt/chain/contracts/lua_engine.hpp>
-#include <evt/chain/contracts/types.hpp>
+#include <jmzk/chain/exceptions.hpp>
+#include <jmzk/chain/token_database_cache.hpp>
+#include <jmzk/chain/contracts/lua_engine.hpp>
+#include <jmzk/chain/contracts/types.hpp>
 
-using namespace evt::chain;
-using namespace evt::chain::contracts;
+using namespace jmzk::chain;
+using namespace jmzk::chain::contracts;
 
 #define READ_DB_TOKEN(TYPE, PREFIX, KEY, VPTR, EXCEPTION, FORMAT, ...) \
     try {                                                              \
@@ -15,7 +15,7 @@ using namespace evt::chain::contracts;
         VPTR = db.template read_token<vtype>(TYPE, PREFIX, KEY);       \
     }                                                                  \
     catch(token_database_exception&) {                                 \
-        EVT_THROW2(EXCEPTION, FORMAT, ##__VA_ARGS__);                  \
+        jmzk_THROW2(EXCEPTION, FORMAT, ##__VA_ARGS__);                  \
     }
 
 extern "C" {
@@ -93,7 +93,7 @@ wrap_exceptions(lua_State *L, lua_CFunction f) {
     catch(const fc::unrecoverable_exception&) {
         return luaL_error(L, "unrecoverable exception");
     }
-    catch(evt::chain::chain_exception& e) {
+    catch(jmzk::chain::chain_exception& e) {
         auto err = e.what();
         return luaL_error(L, "chain error: %s", err);
     }

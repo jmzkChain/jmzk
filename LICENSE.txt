@@ -1,5 +1,5 @@
-Main code of EVT is MIT licensed.
-Copyright (C) 2018 everiToken AG.
+Main code of jmzk is MIT licensed.
+Copyright (C) 2018 jmzkChain AG.
 All rights reserved.
 
 Other Dependencies:

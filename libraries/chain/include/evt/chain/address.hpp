@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
@@ -8,11 +8,11 @@
 #include <fmt/format.h>
 #include <fc/reflect/reflect.hpp>
 #include <fc/variant.hpp>
-#include <evt/chain/types.hpp>
-#include <evt/chain/exceptions.hpp>
-#include <evt/utilities/common.hpp>
+#include <jmzk/chain/types.hpp>
+#include <jmzk/chain/exceptions.hpp>
+#include <jmzk/utilities/common.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 class address : public fc::reflect_init {
 public:
@@ -154,23 +154,23 @@ private:
     friend struct fc::reflector<address>;
 };
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
 namespace fc {
 
 class variant;
-void to_variant(const evt::chain::address& addr, fc::variant& v);
-void from_variant(const fc::variant& v, evt::chain::address& addr);
+void to_variant(const jmzk::chain::address& addr, fc::variant& v);
+void from_variant(const fc::variant& v, jmzk::chain::address& addr);
 
 template<>
 inline void
-to_variant<evt::chain::address>(const evt::chain::address& addr, fc::variant& v) {
+to_variant<jmzk::chain::address>(const jmzk::chain::address& addr, fc::variant& v) {
     to_variant(addr, v);
 }
 
 template<>
 inline void
-from_variant<evt::chain::address>(const fc::variant& v, evt::chain::address& addr) {
+from_variant<jmzk::chain::address>(const fc::variant& v, jmzk::chain::address& addr) {
     from_variant(v, addr);
 }
 
@@ -179,16 +179,16 @@ from_variant<evt::chain::address>(const fc::variant& v, evt::chain::address& add
 namespace fmt {
 
 template <>
-struct formatter<evt::chain::address> {
+struct formatter<jmzk::chain::address> {
     template <typename ParseContext>
     constexpr auto parse(ParseContext& ctx) { return ctx.begin(); }
 
     template <typename FormatContext>
-    auto format(const evt::chain::address& addr, FormatContext &ctx) {
+    auto format(const jmzk::chain::address& addr, FormatContext &ctx) {
         return format_to(ctx.begin(), addr.to_string());
     }
 };
 
 }  // namespace fmt
 
-FC_REFLECT(evt::chain::address, (storage_))
+FC_REFLECT(jmzk::chain::address, (storage_))

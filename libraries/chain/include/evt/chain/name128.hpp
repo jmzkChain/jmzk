@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
@@ -12,7 +12,7 @@
 #include <fc/reflect/reflect.hpp>
 #include <fc/io/raw.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 using uint128_t = __uint128_t;
 
@@ -178,7 +178,7 @@ string_to_name128(const char* str) {
     return name;
 }
 
-#define N128(X) evt::chain::string_to_name128(#X)
+#define N128(X) jmzk::chain::string_to_name128(#X)
 
 inline std::vector<name128>
 sort_names(std::vector<name128>&& names) {
@@ -186,14 +186,14 @@ sort_names(std::vector<name128>&& names) {
     return std::move(names);
 }
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
 namespace std {
 using uint128_t = __uint128_t;
 
 template <>
-struct hash<evt::chain::name128> : private hash<uint128_t> {
-    using argument_type = evt::chain::name128;
+struct hash<jmzk::chain::name128> : private hash<uint128_t> {
+    using argument_type = jmzk::chain::name128;
 
     std::size_t
     operator()(const argument_type& name) const noexcept {
@@ -207,12 +207,12 @@ namespace fc {
 
 class variant;
 
-void to_variant(const evt::chain::name128& name, fc::variant& v);
-void from_variant(const fc::variant& v, evt::chain::name128& name);
+void to_variant(const jmzk::chain::name128& name, fc::variant& v);
+void from_variant(const fc::variant& v, jmzk::chain::name128& name);
 
 namespace raw {
 
-using evt::chain::name128;
+using jmzk::chain::name128;
 
 template<>
 struct packer<name128> {
@@ -277,12 +277,12 @@ struct unpacker<name128> {
 namespace fmt {
 
 template <>
-struct formatter<evt::chain::name128> {
+struct formatter<jmzk::chain::name128> {
     template <typename ParseContext>
     constexpr auto parse(ParseContext& ctx) { return ctx.begin(); }
 
     template <typename FormatContext>
-    auto format(const evt::chain::name128& n, FormatContext &ctx) {
+    auto format(const jmzk::chain::name128& n, FormatContext &ctx) {
         return format_to(ctx.begin(), n.to_string());
     }
 };

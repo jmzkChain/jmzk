@@ -1,34 +1,34 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
 #include <boost/multiprecision/cpp_dec_float.hpp>
 
-#include <evt/chain/address.hpp>
-#include <evt/chain/asset.hpp>
-#include <evt/chain/property.hpp>
-#include <evt/chain/percent_slim.hpp>
-#include <evt/chain/chain_config.hpp>
-#include <evt/chain/config.hpp>
-#include <evt/chain/types.hpp>
-#include <evt/chain/transaction.hpp>
-#include <evt/chain/producer_schedule.hpp>
+#include <jmzk/chain/address.hpp>
+#include <jmzk/chain/asset.hpp>
+#include <jmzk/chain/property.hpp>
+#include <jmzk/chain/percent_slim.hpp>
+#include <jmzk/chain/chain_config.hpp>
+#include <jmzk/chain/config.hpp>
+#include <jmzk/chain/types.hpp>
+#include <jmzk/chain/transaction.hpp>
+#include <jmzk/chain/producer_schedule.hpp>
 
-#include <evt/chain/contracts/authorizer_ref.hpp>
-#include <evt/chain/contracts/group.hpp>
-#include <evt/chain/contracts/metadata.hpp>
-#include <evt/chain/contracts/evt_link.hpp>
+#include <jmzk/chain/contracts/authorizer_ref.hpp>
+#include <jmzk/chain/contracts/group.hpp>
+#include <jmzk/chain/contracts/metadata.hpp>
+#include <jmzk/chain/contracts/jmzk_link.hpp>
 
-namespace evt { namespace chain { namespace contracts {
+namespace jmzk { namespace chain { namespace contracts {
 
-#define EVT_ACTION(actname, version, acttypename)    \
+#define jmzk_ACTION(actname, version, acttypename)    \
     acttypename() = default;                         \
                                                      \
     static constexpr auto                            \
     get_action_name() {                              \
-        return evt::chain::name(N(actname));         \
+        return jmzk::chain::name(N(actname));         \
     }                                                \
                                                      \
     static std::string                               \
@@ -41,29 +41,29 @@ namespace evt { namespace chain { namespace contracts {
         return version;                              \
     }
 
-#define EVT_ACTION_VER1(actname)              EVT_ACTION(actname, 1, actname)
-#define EVT_ACTION_VER2(actname, acttypename) EVT_ACTION(actname, 2, acttypename)
-#define EVT_ACTION_VER3(actname, acttypename) EVT_ACTION(actname, 3, acttypename)
+#define jmzk_ACTION_VER1(actname)              jmzk_ACTION(actname, 1, actname)
+#define jmzk_ACTION_VER2(actname, acttypename) jmzk_ACTION(actname, 2, acttypename)
+#define jmzk_ACTION_VER3(actname, acttypename) jmzk_ACTION(actname, 3, acttypename)
 
-using domain_name     = evt::chain::domain_name;
-using domian_key      = evt::chain::domain_key;
-using token_name      = evt::chain::token_name;
-using permission_name = evt::chain::permission_name;
-using account_name    = evt::chain::account_name;
-using fungible_name   = evt::chain::fungible_name;
-using symbol_name     = evt::chain::symbol_name;
-using symbol_id_type  = evt::chain::symbol_id_type;
-using user_id         = evt::chain::public_key_type;
-using group_name      = evt::chain::group_name;
-using group_key       = evt::chain::address;
+using domain_name     = jmzk::chain::domain_name;
+using domian_key      = jmzk::chain::domain_key;
+using token_name      = jmzk::chain::token_name;
+using permission_name = jmzk::chain::permission_name;
+using account_name    = jmzk::chain::account_name;
+using fungible_name   = jmzk::chain::fungible_name;
+using symbol_name     = jmzk::chain::symbol_name;
+using symbol_id_type  = jmzk::chain::symbol_id_type;
+using user_id         = jmzk::chain::public_key_type;
+using group_name      = jmzk::chain::group_name;
+using group_key       = jmzk::chain::address;
 using group_def       = group;
-using balance_type    = evt::chain::asset;
-using address_type    = evt::chain::address;
+using balance_type    = jmzk::chain::asset;
+using address_type    = jmzk::chain::address;
 using address_list    = small_vector<address_type, 4>;
-using conf_key        = evt::chain::conf_key;
-using percent_type    = evt::chain::percent_type;
-using percent_slim    = evt::chain::percent_slim;
-using script_name     = evt::chain::script_name;
+using conf_key        = jmzk::chain::conf_key;
+using percent_type    = jmzk::chain::percent_type;
+using percent_slim    = jmzk::chain::percent_slim;
+using script_name     = jmzk::chain::script_name;
 
 struct token_def {
     token_def() = default;
@@ -360,7 +360,7 @@ struct newdomain {
     permission_def transfer;
     permission_def manage;
 
-    EVT_ACTION_VER1(newdomain);
+    jmzk_ACTION_VER1(newdomain);
 };
 
 struct issuetoken {
@@ -368,7 +368,7 @@ struct issuetoken {
     small_vector<token_name, 4> names;
     address_list                owner;
 
-    EVT_ACTION_VER1(issuetoken);
+    jmzk_ACTION_VER1(issuetoken);
 };
 
 struct transfer {
@@ -377,28 +377,28 @@ struct transfer {
     address_list to;
     string       memo;
 
-    EVT_ACTION_VER1(transfer);
+    jmzk_ACTION_VER1(transfer);
 };
 
 struct destroytoken {
     domain_name domain;
     token_name  name;
 
-    EVT_ACTION_VER1(destroytoken);
+    jmzk_ACTION_VER1(destroytoken);
 };
 
 struct newgroup {
     group_name name;
     group_def  group;
 
-    EVT_ACTION_VER1(newgroup);
+    jmzk_ACTION_VER1(newgroup);
 };
 
 struct updategroup {
     group_name name;
     group_def  group;
 
-    EVT_ACTION_VER1(updategroup);
+    jmzk_ACTION_VER1(updategroup);
 };
 
 struct updatedomain {
@@ -408,7 +408,7 @@ struct updatedomain {
     optional<permission_def> transfer;
     optional<permission_def> manage;
 
-    EVT_ACTION_VER1(updatedomain);
+    jmzk_ACTION_VER1(updatedomain);
 };
 
 struct newfungible {
@@ -422,7 +422,7 @@ struct newfungible {
 
     asset total_supply;
 
-    EVT_ACTION_VER1(newfungible);
+    jmzk_ACTION_VER1(newfungible);
 };
 
 struct newfungible_v2 {
@@ -437,7 +437,7 @@ struct newfungible_v2 {
 
     asset total_supply;
 
-    EVT_ACTION_VER2(newfungible, newfungible_v2);
+    jmzk_ACTION_VER2(newfungible, newfungible_v2);
 };
 
 struct updfungible {
@@ -446,7 +446,7 @@ struct updfungible {
     optional<permission_def> issue;
     optional<permission_def> manage;
 
-    EVT_ACTION_VER1(updfungible);
+    jmzk_ACTION_VER1(updfungible);
 };
 
 struct updfungible_v2 {
@@ -456,7 +456,7 @@ struct updfungible_v2 {
     optional<permission_def> transfer;
     optional<permission_def> manage;
 
-    EVT_ACTION_VER2(updfungible, updfungible_v2);
+    jmzk_ACTION_VER2(updfungible, updfungible_v2);
 };
 
 struct issuefungible {
@@ -464,7 +464,7 @@ struct issuefungible {
     asset        number;
     string       memo;
 
-    EVT_ACTION_VER1(issuefungible);
+    jmzk_ACTION_VER1(issuefungible);
 };
 
 struct transferft {
@@ -473,7 +473,7 @@ struct transferft {
     asset        number;
     string       memo;
 
-    EVT_ACTION_VER1(transferft);
+    jmzk_ACTION_VER1(transferft);
 };
 
 struct recycleft {
@@ -481,7 +481,7 @@ struct recycleft {
     asset        number;
     string       memo;
 
-    EVT_ACTION_VER1(recycleft);
+    jmzk_ACTION_VER1(recycleft);
 };
 
 struct destroyft {
@@ -489,16 +489,16 @@ struct destroyft {
     asset        number;
     string       memo;
 
-    EVT_ACTION_VER1(destroyft);
+    jmzk_ACTION_VER1(destroyft);
 };
 
-struct evt2pevt {
+struct jmzk2pjmzk {
     address_type from;
     address_type to;
     asset        number;
     string       memo;
 
-    EVT_ACTION_VER1(evt2pevt);
+    jmzk_ACTION_VER1(jmzk2pjmzk);
 };
 
 struct addmeta {
@@ -506,7 +506,7 @@ struct addmeta {
     meta_value     value;
     authorizer_ref creator;
 
-    EVT_ACTION_VER1(addmeta);
+    jmzk_ACTION_VER1(addmeta);
 };
 
 struct newsuspend {
@@ -514,71 +514,71 @@ struct newsuspend {
     user_id       proposer;
     transaction   trx;
 
-    EVT_ACTION_VER1(newsuspend);
+    jmzk_ACTION_VER1(newsuspend);
 };
 
 struct cancelsuspend {
     proposal_name name;
 
-    EVT_ACTION_VER1(cancelsuspend);
+    jmzk_ACTION_VER1(cancelsuspend);
 };
 
 struct aprvsuspend {
     proposal_name                   name;
     small_vector<signature_type, 4> signatures;
 
-    EVT_ACTION_VER1(aprvsuspend);
+    jmzk_ACTION_VER1(aprvsuspend);
 };
 
 struct execsuspend {
     proposal_name name;
     user_id       executor;
 
-    EVT_ACTION_VER1(execsuspend);
+    jmzk_ACTION_VER1(execsuspend);
 };
 
 struct paycharge {
     address  payer;
     uint32_t charge;
 
-    EVT_ACTION_VER1(paycharge);
+    jmzk_ACTION_VER1(paycharge);
 };
 
 struct paybonus {
     address payer;
     asset   amount;
 
-    EVT_ACTION_VER1(paybonus);
+    jmzk_ACTION_VER1(paybonus);
 };
 
 struct everipass {
-    evt_link link;
+    jmzk_link link;
 
-    EVT_ACTION_VER1(everipass);
+    jmzk_ACTION_VER1(everipass);
 };
 
 struct everipass_v2 {
-    evt_link         link;
+    jmzk_link         link;
     optional<string> memo;
 
-    EVT_ACTION_VER2(everipass, everipass_v2);
+    jmzk_ACTION_VER2(everipass, everipass_v2);
 };
 
 struct everipay {
-    evt_link link;
+    jmzk_link link;
     address  payee;
     asset    number;
 
-    EVT_ACTION_VER1(everipay);
+    jmzk_ACTION_VER1(everipay);
 };
 
 struct everipay_v2 {
-    evt_link         link;
+    jmzk_link         link;
     address          payee;
     asset            number;
     optional<string> memo;
 
-    EVT_ACTION_VER2(everipay, everipay_v2);
+    jmzk_ACTION_VER2(everipay, everipay_v2);
 };
 
 struct prodvote {
@@ -586,13 +586,13 @@ struct prodvote {
     conf_key     key;
     int64_t      value;
 
-    EVT_ACTION_VER1(prodvote);
+    jmzk_ACTION_VER1(prodvote);
 };
 
 struct updsched {
     vector<producer_key> producers;
 
-    EVT_ACTION_VER1(updsched);
+    jmzk_ACTION_VER1(updsched);
 };
 
 struct newlock {
@@ -607,7 +607,7 @@ struct newlock {
     small_vector<address, 4> succeed;
     small_vector<address, 4> failed;
 
-    EVT_ACTION_VER1(newlock);
+    jmzk_ACTION_VER1(newlock);
 };
 
 struct aprvlock {
@@ -615,14 +615,14 @@ struct aprvlock {
     user_id       approver;
     lock_aprvdata data;
 
-    EVT_ACTION_VER1(aprvlock);
+    jmzk_ACTION_VER1(aprvlock);
 };
 
 struct tryunlock {
     proposal_name name;
     user_id       executor;
 
-    EVT_ACTION_VER1(tryunlock);
+    jmzk_ACTION_VER1(tryunlock);
 };
 
 struct setpsvbonus {
@@ -635,7 +635,7 @@ struct setpsvbonus {
     dist_rules      rules;
     passive_methods methods;
 
-    EVT_ACTION_VER1(setpsvbonus);
+    jmzk_ACTION_VER1(setpsvbonus);
 };
 
 struct setpsvbonus_v2 {
@@ -648,7 +648,7 @@ struct setpsvbonus_v2 {
     dist_rules_v2   rules;
     passive_methods methods;
 
-    EVT_ACTION_VER2(setpsvbonus, setpsvbonus_v2);
+    jmzk_ACTION_VER2(setpsvbonus, setpsvbonus_v2);
 };
 
 struct distpsvbonus {
@@ -656,7 +656,7 @@ struct distpsvbonus {
     time_point        deadline;
     optional<address> final_receiver;
 
-    EVT_ACTION_VER1(distpsvbonus);
+    jmzk_ACTION_VER1(distpsvbonus);
 };
 
 struct recvpsvbonus {
@@ -664,7 +664,7 @@ struct recvpsvbonus {
     small_vector<public_key_type, 2> receivers;
     uint32_t                         rule_index;
 
-    EVT_ACTION_VER1(recvpsvbonus);
+    jmzk_ACTION_VER1(recvpsvbonus);
 };
 
 struct newstakepool {
@@ -679,7 +679,7 @@ struct newstakepool {
     int32_t fixed_r;
     int32_t fixed_t;
 
-    EVT_ACTION_VER1(newstakepool);
+    jmzk_ACTION_VER1(newstakepool);
 };
 
 struct updstakepool {
@@ -694,7 +694,7 @@ struct updstakepool {
     optional<int32_t> fixed_r;
     optional<int32_t> fixed_t;
 
-    EVT_ACTION_VER1(updstakepool);
+    jmzk_ACTION_VER1(updstakepool);
 };
 
 struct newvalidator {
@@ -706,7 +706,7 @@ struct newvalidator {
     permission_def  manage;
     percent_slim    commission;
 
-    EVT_ACTION_VER1(newvalidator);
+    jmzk_ACTION_VER1(newvalidator);
 };
 
 struct valiwithdraw {
@@ -714,14 +714,14 @@ struct valiwithdraw {
     address_type addr;
     asset        amount;
 
-    EVT_ACTION_VER1(valiwithdraw);
+    jmzk_ACTION_VER1(valiwithdraw);
 };
 
 struct recvstkbonus {
     account_name   validator;
     symbol_id_type sym_id;
 
-    EVT_ACTION_VER1(recvstkbonus);
+    jmzk_ACTION_VER1(recvstkbonus);
 };
 
 struct staketkns {
@@ -731,7 +731,7 @@ struct staketkns {
     stake_type   type;
     int32_t      fixed_days;
 
-    EVT_ACTION_VER1(staketkns);
+    jmzk_ACTION_VER1(staketkns);
 };
 
 struct unstaketkns {
@@ -741,7 +741,7 @@ struct unstaketkns {
     symbol_id_type sym_id;
     unstake_op     op;
 
-    EVT_ACTION_VER1(unstaketkns);
+    jmzk_ACTION_VER1(unstaketkns);
 };
 
 struct toactivetkns {
@@ -749,7 +749,7 @@ struct toactivetkns {
     account_name   validator;
     symbol_id_type sym_id;
 
-    EVT_ACTION_VER1(toactivetkns);
+    jmzk_ACTION_VER1(toactivetkns);
 };
 
 struct newscript {
@@ -757,99 +757,99 @@ struct newscript {
     string      content;
     user_id     creator;
 
-    EVT_ACTION_VER1(newscript);
+    jmzk_ACTION_VER1(newscript);
 };
 
 struct updscript {
     script_name name;
     string      content;
 
-    EVT_ACTION_VER1(updscript);
+    jmzk_ACTION_VER1(updscript);
 };
 
-}}}  // namespace evt::chain::contracts
+}}}  // namespace jmzk::chain::contracts
 
-FC_REFLECT(evt::chain::contracts::token_def, (domain)(name)(owner)(metas));
-FC_REFLECT(evt::chain::contracts::key_weight, (key)(weight));
-FC_REFLECT(evt::chain::contracts::authorizer_weight, (ref)(weight));
-FC_REFLECT(evt::chain::contracts::permission_def, (name)(threshold)(authorizers));
-FC_REFLECT(evt::chain::contracts::domain_def, (name)(creator)(create_time)(issue)(transfer)(manage)(metas));
-FC_REFLECT(evt::chain::contracts::fungible_def_genesis, (name)(sym_name)(sym)(creator)(create_time)(issue)(manage)(total_supply)(metas));
-FC_REFLECT(evt::chain::contracts::fungible_def, (name)(sym_name)(sym)(creator)(create_time)(issue)(transfer)(manage)(total_supply)(metas));
+FC_REFLECT(jmzk::chain::contracts::token_def, (domain)(name)(owner)(metas));
+FC_REFLECT(jmzk::chain::contracts::key_weight, (key)(weight));
+FC_REFLECT(jmzk::chain::contracts::authorizer_weight, (ref)(weight));
+FC_REFLECT(jmzk::chain::contracts::permission_def, (name)(threshold)(authorizers));
+FC_REFLECT(jmzk::chain::contracts::domain_def, (name)(creator)(create_time)(issue)(transfer)(manage)(metas));
+FC_REFLECT(jmzk::chain::contracts::fungible_def_genesis, (name)(sym_name)(sym)(creator)(create_time)(issue)(manage)(total_supply)(metas));
+FC_REFLECT(jmzk::chain::contracts::fungible_def, (name)(sym_name)(sym)(creator)(create_time)(issue)(transfer)(manage)(total_supply)(metas));
 
-FC_REFLECT_ENUM(evt::chain::contracts::suspend_status, (proposed)(executed)(failed)(cancelled));
-FC_REFLECT(evt::chain::contracts::suspend_def, (name)(proposer)(status)(trx)(signed_keys)(signatures));
+FC_REFLECT_ENUM(jmzk::chain::contracts::suspend_status, (proposed)(executed)(failed)(cancelled));
+FC_REFLECT(jmzk::chain::contracts::suspend_def, (name)(proposer)(status)(trx)(signed_keys)(signatures));
 
-FC_REFLECT_ENUM(evt::chain::contracts::asset_type, (tokens)(fungible));
-FC_REFLECT_ENUM(evt::chain::contracts::lock_status, (proposed)(succeed)(failed));
-FC_REFLECT(evt::chain::contracts::locknft_def, (domain)(names));
-FC_REFLECT(evt::chain::contracts::lockft_def, (from)(amount));
-FC_REFLECT_ENUM(evt::chain::contracts::lock_type, (cond_keys));
-FC_REFLECT(evt::chain::contracts::lock_condkeys, (threshold)(cond_keys));
-FC_REFLECT(evt::chain::contracts::lock_def, (name)(proposer)(status)(unlock_time)(deadline)(assets)(condition)(succeed)(failed)(signed_keys));
-FC_REFLECT_ENUM(evt::chain::contracts::lock_aprv_type, (cond_key));
+FC_REFLECT_ENUM(jmzk::chain::contracts::asset_type, (tokens)(fungible));
+FC_REFLECT_ENUM(jmzk::chain::contracts::lock_status, (proposed)(succeed)(failed));
+FC_REFLECT(jmzk::chain::contracts::locknft_def, (domain)(names));
+FC_REFLECT(jmzk::chain::contracts::lockft_def, (from)(amount));
+FC_REFLECT_ENUM(jmzk::chain::contracts::lock_type, (cond_keys));
+FC_REFLECT(jmzk::chain::contracts::lock_condkeys, (threshold)(cond_keys));
+FC_REFLECT(jmzk::chain::contracts::lock_def, (name)(proposer)(status)(unlock_time)(deadline)(assets)(condition)(succeed)(failed)(signed_keys));
+FC_REFLECT_ENUM(jmzk::chain::contracts::lock_aprv_type, (cond_key));
 
-FC_REFLECT_ENUM(evt::chain::contracts::dist_receiver_type, (address)(ftholders));
-FC_REFLECT(evt::chain::contracts::dist_stack_receiver, (threshold));
-FC_REFLECT_ENUM(evt::chain::contracts::dist_rule_type, (fixed)(percent)(remaining_percent));
-FC_REFLECT(evt::chain::contracts::dist_fixed_rule, (receiver)(amount));
-FC_REFLECT(evt::chain::contracts::dist_percent_rule, (receiver)(percent));
-FC_REFLECT(evt::chain::contracts::dist_rpercent_rule, (receiver)(percent));
-FC_REFLECT(evt::chain::contracts::dist_percent_rule_v2, (receiver)(percent));
-FC_REFLECT(evt::chain::contracts::dist_rpercent_rule_v2, (receiver)(percent));
-FC_REFLECT_ENUM(evt::chain::contracts::passive_method_type, (within_amount)(outside_amount));
-FC_REFLECT(evt::chain::contracts::passive_method, (action)(method));
-FC_REFLECT(evt::chain::contracts::passive_bonus, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods)(round)(deadline));
-FC_REFLECT(evt::chain::contracts::passive_bonus_slim, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(methods));
+FC_REFLECT_ENUM(jmzk::chain::contracts::dist_receiver_type, (address)(ftholders));
+FC_REFLECT(jmzk::chain::contracts::dist_stack_receiver, (threshold));
+FC_REFLECT_ENUM(jmzk::chain::contracts::dist_rule_type, (fixed)(percent)(remaining_percent));
+FC_REFLECT(jmzk::chain::contracts::dist_fixed_rule, (receiver)(amount));
+FC_REFLECT(jmzk::chain::contracts::dist_percent_rule, (receiver)(percent));
+FC_REFLECT(jmzk::chain::contracts::dist_rpercent_rule, (receiver)(percent));
+FC_REFLECT(jmzk::chain::contracts::dist_percent_rule_v2, (receiver)(percent));
+FC_REFLECT(jmzk::chain::contracts::dist_rpercent_rule_v2, (receiver)(percent));
+FC_REFLECT_ENUM(jmzk::chain::contracts::passive_method_type, (within_amount)(outside_amount));
+FC_REFLECT(jmzk::chain::contracts::passive_method, (action)(method));
+FC_REFLECT(jmzk::chain::contracts::passive_bonus, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods)(round)(deadline));
+FC_REFLECT(jmzk::chain::contracts::passive_bonus_slim, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(methods));
 
-FC_REFLECT(evt::chain::contracts::stakepool_def, (sym_id)(demand_r)(demand_t)(demand_q)(demand_w)(fixed_r)(fixed_t)(begin_time)(total)(purchase_threshold));
-FC_REFLECT(evt::chain::contracts::validator_def, (name)(creator)(create_time)(last_updated_time)(signer)(withdraw)(manage)(commission)(initial_net_value)(current_net_value)(total_units));
-FC_REFLECT_ENUM(evt::chain::contracts::unstake_op, (propose)(cancel)(settle));
+FC_REFLECT(jmzk::chain::contracts::stakepool_def, (sym_id)(demand_r)(demand_t)(demand_q)(demand_w)(fixed_r)(fixed_t)(begin_time)(total)(purchase_threshold));
+FC_REFLECT(jmzk::chain::contracts::validator_def, (name)(creator)(create_time)(last_updated_time)(signer)(withdraw)(manage)(commission)(initial_net_value)(current_net_value)(total_units));
+FC_REFLECT_ENUM(jmzk::chain::contracts::unstake_op, (propose)(cancel)(settle));
 
-FC_REFLECT(evt::chain::contracts::script_def, (name)(content)(creator));
+FC_REFLECT(jmzk::chain::contracts::script_def, (name)(content)(creator));
 
-FC_REFLECT(evt::chain::contracts::newdomain, (name)(creator)(issue)(transfer)(manage));
-FC_REFLECT(evt::chain::contracts::issuetoken, (domain)(names)(owner));
-FC_REFLECT(evt::chain::contracts::transfer, (domain)(name)(to)(memo));
-FC_REFLECT(evt::chain::contracts::destroytoken, (domain)(name));
-FC_REFLECT(evt::chain::contracts::newgroup, (name)(group));
-FC_REFLECT(evt::chain::contracts::updategroup, (name)(group));
-FC_REFLECT(evt::chain::contracts::updatedomain, (name)(issue)(transfer)(manage));
-FC_REFLECT(evt::chain::contracts::newfungible, (name)(sym_name)(sym)(creator)(issue)(manage)(total_supply));
-FC_REFLECT(evt::chain::contracts::newfungible_v2, (name)(sym_name)(sym)(creator)(issue)(transfer)(manage)(total_supply));
-FC_REFLECT(evt::chain::contracts::updfungible, (sym_id)(issue)(manage));
-FC_REFLECT(evt::chain::contracts::updfungible_v2, (sym_id)(issue)(transfer)(manage));
-FC_REFLECT(evt::chain::contracts::issuefungible, (address)(number)(memo));
-FC_REFLECT(evt::chain::contracts::transferft, (from)(to)(number)(memo));
-FC_REFLECT(evt::chain::contracts::recycleft, (address)(number)(memo));
-FC_REFLECT(evt::chain::contracts::destroyft, (address)(number)(memo));
-FC_REFLECT(evt::chain::contracts::evt2pevt, (from)(to)(number)(memo));
-FC_REFLECT(evt::chain::contracts::addmeta, (key)(value)(creator));
-FC_REFLECT(evt::chain::contracts::newsuspend, (name)(proposer)(trx));
-FC_REFLECT(evt::chain::contracts::cancelsuspend, (name));
-FC_REFLECT(evt::chain::contracts::aprvsuspend, (name)(signatures));
-FC_REFLECT(evt::chain::contracts::execsuspend, (name)(executor));
-FC_REFLECT(evt::chain::contracts::paycharge, (payer)(charge));
-FC_REFLECT(evt::chain::contracts::paybonus, (payer)(amount));
-FC_REFLECT(evt::chain::contracts::everipass, (link));
-FC_REFLECT(evt::chain::contracts::everipass_v2, (link)(memo));
-FC_REFLECT(evt::chain::contracts::everipay, (link)(payee)(number));
-FC_REFLECT(evt::chain::contracts::everipay_v2, (link)(payee)(number)(memo));
-FC_REFLECT(evt::chain::contracts::prodvote, (producer)(key)(value));
-FC_REFLECT(evt::chain::contracts::updsched, (producers));
-FC_REFLECT(evt::chain::contracts::newlock, (name)(proposer)(unlock_time)(deadline)(assets)(condition)(succeed)(failed));
-FC_REFLECT(evt::chain::contracts::aprvlock, (name)(approver)(data));
-FC_REFLECT(evt::chain::contracts::tryunlock, (name)(executor));
-FC_REFLECT(evt::chain::contracts::setpsvbonus, (sym)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods));
-FC_REFLECT(evt::chain::contracts::setpsvbonus_v2, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods));
-FC_REFLECT(evt::chain::contracts::distpsvbonus, (sym_id)(deadline)(final_receiver));
-FC_REFLECT(evt::chain::contracts::newstakepool, (sym_id)(purchase_threshold)(demand_r)(demand_t)(demand_q)(demand_w)(fixed_r)(fixed_t));
-FC_REFLECT(evt::chain::contracts::updstakepool, (sym_id)(purchase_threshold)(demand_r)(demand_t)(demand_q)(demand_w)(fixed_r)(fixed_t));
-FC_REFLECT(evt::chain::contracts::newvalidator, (name)(creator)(signer)(withdraw)(manage)(commission));
-FC_REFLECT(evt::chain::contracts::valiwithdraw, (name)(addr)(amount));
-FC_REFLECT(evt::chain::contracts::staketkns, (staker)(validator)(amount)(type)(fixed_days));
-FC_REFLECT(evt::chain::contracts::unstaketkns, (staker)(validator)(units)(sym_id)(op));
-FC_REFLECT(evt::chain::contracts::toactivetkns, (staker)(validator)(sym_id));
-FC_REFLECT(evt::chain::contracts::recvstkbonus, (validator)(sym_id));
-FC_REFLECT(evt::chain::contracts::newscript, (name)(content)(creator));
-FC_REFLECT(evt::chain::contracts::updscript, (name)(content));
+FC_REFLECT(jmzk::chain::contracts::newdomain, (name)(creator)(issue)(transfer)(manage));
+FC_REFLECT(jmzk::chain::contracts::issuetoken, (domain)(names)(owner));
+FC_REFLECT(jmzk::chain::contracts::transfer, (domain)(name)(to)(memo));
+FC_REFLECT(jmzk::chain::contracts::destroytoken, (domain)(name));
+FC_REFLECT(jmzk::chain::contracts::newgroup, (name)(group));
+FC_REFLECT(jmzk::chain::contracts::updategroup, (name)(group));
+FC_REFLECT(jmzk::chain::contracts::updatedomain, (name)(issue)(transfer)(manage));
+FC_REFLECT(jmzk::chain::contracts::newfungible, (name)(sym_name)(sym)(creator)(issue)(manage)(total_supply));
+FC_REFLECT(jmzk::chain::contracts::newfungible_v2, (name)(sym_name)(sym)(creator)(issue)(transfer)(manage)(total_supply));
+FC_REFLECT(jmzk::chain::contracts::updfungible, (sym_id)(issue)(manage));
+FC_REFLECT(jmzk::chain::contracts::updfungible_v2, (sym_id)(issue)(transfer)(manage));
+FC_REFLECT(jmzk::chain::contracts::issuefungible, (address)(number)(memo));
+FC_REFLECT(jmzk::chain::contracts::transferft, (from)(to)(number)(memo));
+FC_REFLECT(jmzk::chain::contracts::recycleft, (address)(number)(memo));
+FC_REFLECT(jmzk::chain::contracts::destroyft, (address)(number)(memo));
+FC_REFLECT(jmzk::chain::contracts::jmzk2pjmzk, (from)(to)(number)(memo));
+FC_REFLECT(jmzk::chain::contracts::addmeta, (key)(value)(creator));
+FC_REFLECT(jmzk::chain::contracts::newsuspend, (name)(proposer)(trx));
+FC_REFLECT(jmzk::chain::contracts::cancelsuspend, (name));
+FC_REFLECT(jmzk::chain::contracts::aprvsuspend, (name)(signatures));
+FC_REFLECT(jmzk::chain::contracts::execsuspend, (name)(executor));
+FC_REFLECT(jmzk::chain::contracts::paycharge, (payer)(charge));
+FC_REFLECT(jmzk::chain::contracts::paybonus, (payer)(amount));
+FC_REFLECT(jmzk::chain::contracts::everipass, (link));
+FC_REFLECT(jmzk::chain::contracts::everipass_v2, (link)(memo));
+FC_REFLECT(jmzk::chain::contracts::everipay, (link)(payee)(number));
+FC_REFLECT(jmzk::chain::contracts::everipay_v2, (link)(payee)(number)(memo));
+FC_REFLECT(jmzk::chain::contracts::prodvote, (producer)(key)(value));
+FC_REFLECT(jmzk::chain::contracts::updsched, (producers));
+FC_REFLECT(jmzk::chain::contracts::newlock, (name)(proposer)(unlock_time)(deadline)(assets)(condition)(succeed)(failed));
+FC_REFLECT(jmzk::chain::contracts::aprvlock, (name)(approver)(data));
+FC_REFLECT(jmzk::chain::contracts::tryunlock, (name)(executor));
+FC_REFLECT(jmzk::chain::contracts::setpsvbonus, (sym)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods));
+FC_REFLECT(jmzk::chain::contracts::setpsvbonus_v2, (sym_id)(rate)(base_charge)(charge_threshold)(minimum_charge)(dist_threshold)(rules)(methods));
+FC_REFLECT(jmzk::chain::contracts::distpsvbonus, (sym_id)(deadline)(final_receiver));
+FC_REFLECT(jmzk::chain::contracts::newstakepool, (sym_id)(purchase_threshold)(demand_r)(demand_t)(demand_q)(demand_w)(fixed_r)(fixed_t));
+FC_REFLECT(jmzk::chain::contracts::updstakepool, (sym_id)(purchase_threshold)(demand_r)(demand_t)(demand_q)(demand_w)(fixed_r)(fixed_t));
+FC_REFLECT(jmzk::chain::contracts::newvalidator, (name)(creator)(signer)(withdraw)(manage)(commission));
+FC_REFLECT(jmzk::chain::contracts::valiwithdraw, (name)(addr)(amount));
+FC_REFLECT(jmzk::chain::contracts::staketkns, (staker)(validator)(amount)(type)(fixed_days));
+FC_REFLECT(jmzk::chain::contracts::unstaketkns, (staker)(validator)(units)(sym_id)(op));
+FC_REFLECT(jmzk::chain::contracts::toactivetkns, (staker)(validator)(sym_id));
+FC_REFLECT(jmzk::chain::contracts::recvstkbonus, (validator)(sym_id));
+FC_REFLECT(jmzk::chain::contracts::newscript, (name)(content)(creator));
+FC_REFLECT(jmzk::chain::contracts::updscript, (name)(content));

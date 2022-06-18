@@ -1,13 +1,13 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <appbase/application.hpp>
-#include <evt/chain_plugin/chain_plugin.hpp>
-#include <evt/net_plugin/protocol.hpp>
+#include <jmzk/chain_plugin/chain_plugin.hpp>
+#include <jmzk/net_plugin/protocol.hpp>
 
-namespace evt {
+namespace jmzk {
 using namespace appbase;
 
 struct connection_status {
@@ -43,6 +43,6 @@ private:
     std::unique_ptr<class net_plugin_impl> my;
 };
 
-}  // namespace evt
+}  // namespace jmzk
 
-FC_REFLECT(evt::connection_status, (peer)(connecting)(syncing)(last_handshake))
+FC_REFLECT(jmzk::connection_status, (peer)(connecting)(syncing)(last_handshake))
