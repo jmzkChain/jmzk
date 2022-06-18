@@ -45,10 +45,10 @@ def run_the_traffic(index, host, max_user, regin_number, work_thread, path, para
         str(regin_number)+' -j '+str(work_thread) + \
         ' -m '+str(max_user)+' '+param
     print(command)
-    container = client.containers.run(image='everitoken/trafficgen',
+    container = client.containers.run(image='jmzkChain/trafficgen',
                                       command=command,
                                       name='trafficgen_'+str(index),
-                                      network='evt-net',
+                                      network='jmzk-net',
                                       hostname='127.0.0.1',
                                       detach=False,
                                       volumes={
@@ -67,11 +67,11 @@ def run_the_loadtest(index, host, log_dir, max_user, increase_rate, run_time, pa
         if(j == 0):
             command = ' --master --host='+host+' --no-web -c ' + \
                 str(max_user)+' -r '+str(increase_rate)+' -t '+str(run_time)
-            container = client.containers.run(image='everitoken/loadtest:latest',
+            container = client.containers.run(image='jmzkChain/loadtest:latest',
                                               command=command,
                                               name='loadtest_' +
                                               str(index)+'_'+str(j),
-                                              network='evt-net',
+                                              network='jmzk-net',
                                               hostname='127.0.0.1',
                                               ports={'9999': 9999},
                                               detach=True,
@@ -85,11 +85,11 @@ def run_the_loadtest(index, host, log_dir, max_user, increase_rate, run_time, pa
             print(ip)
             print(path)
             command = ' --slave --master-host='+str(ip)+' '
-            container = client.containers.run(image='everitoken/loadtest:latest',
+            container = client.containers.run(image='jmzkChain/loadtest:latest',
                                               command=command,
                                               name='loadtest_' +
                                               str(index)+'_'+str(j),
-                                              network='evt-net',
+                                              network='jmzk-net',
                                               hostname='127.0.0.1',
                                               # ports={"9999":9999},
                                               detach=True,
@@ -125,14 +125,14 @@ def run():
 @click.option('--max_user', help='the max number of user', type=click.IntRange(1, 10000000), default=15)
 @click.option('--increase_rate', help='the increase_rate of the user', type=click.IntRange(1, 10000000), default=1)
 @click.option('--run_time', help='the time locust run', type=click.IntRange(1, 1000000000), default=200)
-@click.option('--evt_host', help='the host of the string', type=str, default='http://evtd_0:8888')
+@click.option('--jmzk_host', help='the host of the string', type=str, default='http://jmzkd_0:8888')
 @click.option('--log_dir', help='the dir of the log file', type=click.Path('rw'), default='/home/harry/loadtest_logs')
 @click.option('--config_file', help='the config of the loadtest', type=click.Path('rw'), default='/home/harry/loadtest/loadtest.config')
 @click.option('--traffic_data_dir', help='the config of the loadtest', type=click.Path('rw'), default='/home/harry/traffic_data/')
 @click.option('--work_thread', help='the work thread for the traffic generator', type=click.IntRange(1, 10000000), default=4)
 @click.option('--regin_number', help='the work thread for the traffic generator', type=click.IntRange(1, 10000000), default=15)
 @click.option('--slave_number', help='the work thread for the traffic generator', type=click.IntRange(1, 10000000), default=4)
-def begin(max_user, increase_rate, run_time, evt_host, log_dir, config_file, traffic_data_dir, work_thread, regin_number, slave_number):
+def begin(max_user, increase_rate, run_time, jmzk_host, log_dir, config_file, traffic_data_dir, work_thread, regin_number, slave_number):
     i = 0
     f = open(config_file)
     line = f.readline()
@@ -144,10 +144,10 @@ def begin(max_user, increase_rate, run_time, evt_host, log_dir, config_file, tra
             path = os.path.join(traffic_data_dir, dir_name)
             if(not os.path.exists(path)):
                 os.mkdir(path, 0755)
-            run_the_traffic(i, evt_host, max_user,
+            run_the_traffic(i, jmzk_host, max_user,
                             regin_number, work_thread, path, line)
         print('begin run the loadtest index:'+str(i))
-        run_the_loadtest(i, evt_host, log_dir, max_user, increase_rate, run_time, os.path.join(
+        run_the_loadtest(i, jmzk_host, log_dir, max_user, increase_rate, run_time, os.path.join(
             traffic_data_dir, path_prefix), slave_number)
         items = os.listdir(traffic_data_dir)
         for item in items:

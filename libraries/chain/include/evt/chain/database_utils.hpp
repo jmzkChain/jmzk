@@ -1,14 +1,14 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
-#include <evt/chain/types.hpp>
+#include <jmzk/chain/types.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/crypto/base64.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 template <typename... Indices>
 class index_set;
@@ -93,7 +93,7 @@ public:
     }
 };
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
 namespace fc {
 
@@ -123,15 +123,15 @@ from_variant(const variant& v, blob& b) {
 
 template<typename T>
 void
-to_variant(const evt::chain::shared_vector<T>& sv, variant& v) {
+to_variant(const jmzk::chain::shared_vector<T>& sv, variant& v) {
     to_variant(std::vector<T>(sv.begin(), sv.end()), v);
 }
 
 template<typename T>
-void from_variant(const variant& v, evt::chain::shared_vector<T>& sv) {
+void from_variant(const variant& v, jmzk::chain::shared_vector<T>& sv) {
     std::vector<T> _v;
     from_variant(v, _v);
-    sv = evt::chain::shared_vector<T>(_v.begin(), _v.end(), sv.get_allocator());
+    sv = jmzk::chain::shared_vector<T>(_v.begin(), _v.end(), sv.get_allocator());
 }
 
 }  // namespace fc

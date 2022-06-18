@@ -1,16 +1,16 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/chain/asset.hpp>
+#include <jmzk/chain/asset.hpp>
 
 // This fixes the issue in safe_numerics in boost 1.69
-#include <evt/chain/workaround/boost/safe_numerics/exception.hpp>
+#include <jmzk/chain/workaround/boost/safe_numerics/exception.hpp>
 #include <boost/safe_numerics/safe_integer.hpp>
 #include <boost/rational.hpp>
 #include <fc/reflect/variant.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 symbol
 symbol::from_string(const string& from) {
@@ -19,17 +19,17 @@ symbol::from_string(const string& from) {
 
         // Find comma in order to split precision and symbol id
         auto c = s.find(',');
-        EVT_ASSERT(c != string::npos, symbol_type_exception, "Symbol's precision and id should be separated with comma");
+        jmzk_ASSERT(c != string::npos, symbol_type_exception, "Symbol's precision and id should be separated with comma");
         FC_ASSERT(s.substr(c + 1, 2) == "S#");
 
         auto p  = std::stoul(s.substr(0, c));
         auto id = std::stoul(s.substr(c + 3));
-        EVT_ASSERT(p <= max_precision, symbol_type_exception, "Exceed max precision");
-        EVT_ASSERT(id <= std::numeric_limits<uint32_t>::max(), symbol_type_exception, "Exceed max symbol id allowed");
+        jmzk_ASSERT(p <= max_precision, symbol_type_exception, "Exceed max precision");
+        jmzk_ASSERT(id <= std::numeric_limits<uint32_t>::max(), symbol_type_exception, "Exceed max symbol id allowed");
 
         return symbol(p, id);
     }
-    EVT_CAPTURE_AND_RETHROW(symbol_type_exception, (from));
+    jmzk_CAPTURE_AND_RETHROW(symbol_type_exception, (from));
 }
 
 string
@@ -80,7 +80,7 @@ asset::from_string(const string& from) {
 
         // Find space in order to split amount and symbol
         auto space_pos = s.find(' ');
-        EVT_ASSERT((space_pos != string::npos), asset_type_exception,
+        jmzk_ASSERT((space_pos != string::npos), asset_type_exception,
                    "Asset's amount and symbol should be separated with space");
         FC_ASSERT(s.substr(space_pos + 1, 2) == "S#");
 
@@ -90,7 +90,7 @@ asset::from_string(const string& from) {
         // Ensure that if decimal point is used (.), decimal fraction is specified
         auto dot_pos = amount_str.find('.');
         if(dot_pos != string::npos) {
-            EVT_ASSERT((dot_pos != amount_str.size() - 1), asset_type_exception,
+            jmzk_ASSERT((dot_pos != amount_str.size() - 1), asset_type_exception,
                        "Missing decimal fraction after decimal point");
         }
 
@@ -111,7 +111,7 @@ asset::from_string(const string& from) {
 
         return asset((int64_t)amount, symbol(precision, sym_id));
     }
-    EVT_CAPTURE_AND_RETHROW(asset_type_exception, (from));
+    jmzk_CAPTURE_AND_RETHROW(asset_type_exception, (from));
 }
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain

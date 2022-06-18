@@ -1,8 +1,8 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/history_plugin/evt_pg_query.hpp>
+#include <jmzk/history_plugin/jmzk_pg_query.hpp>
 
 #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
 
@@ -12,13 +12,13 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string.hpp>
 #include <fc/io/json.hpp>
-#include <evt/chain/block_header.hpp>
-#include <evt/chain/exceptions.hpp>
-#include <evt/chain/token_database.hpp>
-#include <evt/chain/contracts/abi_serializer.hpp>
-#include <evt/http_plugin/http_plugin.hpp>
+#include <jmzk/chain/block_header.hpp>
+#include <jmzk/chain/exceptions.hpp>
+#include <jmzk/chain/token_database.hpp>
+#include <jmzk/chain/contracts/abi_serializer.hpp>
+#include <jmzk/http_plugin/http_plugin.hpp>
 
-namespace evt {
+namespace jmzk {
 
 namespace internal {
 
@@ -117,7 +117,7 @@ pg_query::connect(const std::string& conn) {
     conn_ = PQconnectdb(conn.c_str());
 
     auto status = PQstatus(conn_);
-    EVT_ASSERT(status == CONNECTION_OK, chain::postgres_connection_exception, "Connect failed");
+    jmzk_ASSERT(status == CONNECTION_OK, chain::postgres_connection_exception, "Connect failed");
 
     socket_ = boost::asio::ip::tcp::socket(io_serv_, boost::asio::ip::tcp::v4(), PQsocket(conn_));
     return PG_OK;
@@ -136,7 +136,7 @@ int
 pg_query::prepare_stmts() {
     for(auto it : internal::prepare_register::instance().stmts) {
         auto r = PQprepare(conn_, it.first.c_str(), it.second.c_str(), 0, NULL);
-        EVT_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgres_exec_exception,
+        jmzk_ASSERT(PQresultStatus(r) == PGRES_COMMAND_OK, chain::postgres_exec_exception,
             "Prepare sql failed, sql: ${s}, detail: ${d}", ("s",it.second)("d",PQerrorMessage(conn_)));
         PQclear(r);
     }
@@ -173,7 +173,7 @@ pg_query::send_once() {
     }
 
     try {
-        EVT_THROW2(chain::postgres_send_exception,
+        jmzk_THROW2(chain::postgres_send_exception,
             "Send '{}' query command failed, try agian later, detail: {}", call_names[t.type], PQerrorMessage(conn_));
     }
     catch(...) {
@@ -195,7 +195,7 @@ pg_query::poll_read() {
     bool busy = false;
     while(1) {
         auto r = PQconsumeInput(conn_);
-        EVT_ASSERT(r, chain::postgres_poll_exception, "Poll messages from postgres failed, detail: ${d}", ("d",PQerrorMessage(conn_)));
+        jmzk_ASSERT(r, chain::postgres_poll_exception, "Poll messages from postgres failed, detail: ${d}", ("d",PQerrorMessage(conn_)));
 
         if(PQisBusy(conn_)) {
             busy = true;
@@ -310,7 +310,7 @@ int
 pg_query::get_tokens_resume(int id, pg_result const* r) {
     using namespace internal;
 
-    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get tokens failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    jmzk_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get tokens failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     auto n = PQntuples(r);
     if(n == 0) {
@@ -348,7 +348,7 @@ int
 pg_query::get_domains_resume(int id, pg_result const* r) {
     using namespace internal;
 
-    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get domains failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    jmzk_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get domains failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     auto n = PQntuples(r);
     if(n == 0) {
@@ -381,7 +381,7 @@ int
 pg_query::get_groups_resume(int id, pg_result const* r) {
     using namespace internal;
 
-    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get groups failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    jmzk_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get groups failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     auto n = PQntuples(r);
     if(n == 0) {
@@ -414,7 +414,7 @@ int
 pg_query::get_fungibles_resume(int id, pg_result const* r) {
     using namespace internal;
 
-    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get fungibles failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    jmzk_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get fungibles failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     auto n = PQntuples(r);
     if(n == 0) {
@@ -484,7 +484,7 @@ pg_query::get_actions_async(int id, const read_only::get_actions_params& params)
     }
     if(params.take.has_value()) {
         t = *params.take;
-        EVT_ASSERT(t <= 20, chain::exceed_query_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 20 per query");
+        jmzk_ASSERT(t <= 20, chain::exceed_query_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 20 per query");
     }
 
     auto stmt = std::string();
@@ -554,7 +554,7 @@ int
 pg_query::get_actions_resume(int id, pg_result const* r) {
     using namespace internal;
 
-    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get actions failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    jmzk_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get actions failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
     auto n = PQntuples(r);
     if(n == 0) {
         return response_ok(id, std::string("[]")); // return empty
@@ -588,7 +588,7 @@ auto gfa_plan0 = R"sql(SELECT transactions.trx_id, name, domain, key, data, tran
                        WHERE
                            domain = '.fungible'
                            AND key = $1
-                           AND name = ANY('{{"issuefungible","transferft","recycleft","evt2pevt","everipay","paybonus"}}')
+                           AND name = ANY('{{"issuefungible","transferft","recycleft","jmzk2pjmzk","everipay","paybonus"}}')
                        ORDER BY actions.created_at {0}, actions.seq_num {0}
                        LIMIT $2 OFFSET $3
                        )sql";
@@ -600,7 +600,7 @@ auto gfa_plan1 = R"sql(SELECT transactions.trx_id, name, domain, key, data, tran
                        WHERE
                            domain = '.fungible'
                            AND key = $1
-                           AND name = ANY('{{"issuefungible","transferft","recycleft","evt2pevt","everipay","paybonus"}}')
+                           AND name = ANY('{{"issuefungible","transferft","recycleft","jmzk2pjmzk","everipay","paybonus"}}')
                            AND (
                                data->>'address' = $2 OR
                                data->>'from' = $2 OR
@@ -628,7 +628,7 @@ pg_query::get_fungible_actions_async(int id, const read_only::get_fungible_actio
     }
     if(params.take.has_value()) {
         t = *params.take;
-        EVT_ASSERT(t <= 20, chain::exceed_query_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 20 per query");
+        jmzk_ASSERT(t <= 20, chain::exceed_query_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 20 per query");
     }
 
     auto stmt = std::string();
@@ -667,7 +667,7 @@ int
 pg_query::get_fungible_actions_resume(int id, pg_result const* r) {
     using namespace internal;
 
-    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get fungible actions failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    jmzk_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get fungible actions failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     auto n = PQntuples(r);
     if(n == 0) {
@@ -714,7 +714,7 @@ pg_query::get_fungibles_balance_async(int id, const read_only::get_fungibles_bal
         extract_db_value(str, VALUEREF);                                                              \
     }                                                                                                 \
     catch(token_database_exception&) {                                                                \
-        EVT_THROW2(balance_exception, "There's no balance left in {} with sym id: {}", ADDR, SYM_ID); \
+        jmzk_THROW2(balance_exception, "There's no balance left in {} with sym id: {}", ADDR, SYM_ID); \
     }
 
 int
@@ -723,7 +723,7 @@ pg_query::get_fungibles_balance_resume(int id, pg_result const* r) {
     using namespace boost::algorithm;
     using namespace chain;
 
-    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get transaction failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    jmzk_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get transaction failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     auto n = PQntuples(r);
     if(n == 0) {
@@ -767,11 +767,11 @@ int
 pg_query::get_transaction_resume(int id, pg_result const* r) {
     using namespace internal;
 
-    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get transaction failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    jmzk_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get transaction failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     auto n = PQntuples(r);
     if(n == 0) {
-        EVT_THROW(chain::unknown_transaction_exception, "Cannot find transaction");
+        jmzk_THROW(chain::unknown_transaction_exception, "Cannot find transaction");
     }
 
     auto trx_id = transaction_id_type(std::string(PQgetvalue(r, 0, 1), PQgetlength(r, 0, 1)));
@@ -797,7 +797,7 @@ pg_query::get_transaction_resume(int id, pg_result const* r) {
             }
         }
     }    
-    EVT_THROW(chain::unknown_transaction_exception, "Cannot find transaction: ${t}", ("t", trx_id));
+    jmzk_THROW(chain::unknown_transaction_exception, "Cannot find transaction: ${t}", ("t", trx_id));
 }
 
 PREPARE_SQL_ONCE(gtrxs_plan0, "SELECT block_num, trx_id FROM transactions WHERE keys && $1 ORDER BY timestamp DESC LIMIT $2 OFFSET $3;")
@@ -813,7 +813,7 @@ pg_query::get_transactions_async(int id, const read_only::get_transactions_param
     }
     if(params.take.has_value()) {
         t = *params.take;
-        EVT_ASSERT(t <= 20, chain::exceed_query_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 20 per query");
+        jmzk_ASSERT(t <= 20, chain::exceed_query_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 20 per query");
     }
 
     auto keys_buf = fmt::memory_buffer();
@@ -834,7 +834,7 @@ int
 pg_query::get_transactions_resume(int id, pg_result const* r) {
     using namespace internal;
 
-    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get transaction failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    jmzk_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get transaction failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     auto n = PQntuples(r);
     if(n == 0) {
@@ -882,7 +882,7 @@ pg_query::get_fungible_ids_async(int id, const read_only::get_fungible_ids_param
     }
     if(params.take.has_value()) {
         t = *params.take;
-        EVT_ASSERT(t <= 100, chain::exceed_query_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 100 per query");
+        jmzk_ASSERT(t <= 100, chain::exceed_query_limit_exception, "Exceed limit of max actions return allowed for each query, limit: 100 per query");
     }
 
     auto stmt = fmt::format(fmt("EXECUTE gfi_plan({},{});"), t, s);
@@ -893,7 +893,7 @@ int
 pg_query::get_fungible_ids_resume(int id, pg_result const* r) {
     using namespace internal;
 
-    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get fungible ids failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    jmzk_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get fungible ids failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     auto n = PQntuples(r);
     if(n == 0) {
@@ -932,11 +932,11 @@ int
 pg_query::get_transaction_actions_resume(int id, pg_result const* r) {
     using namespace internal;
 
-    EVT_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get transaction actions failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
+    jmzk_ASSERT(PQresultStatus(r) == PGRES_TUPLES_OK, chain::postgres_query_exception, "Get transaction actions failed, detail: ${s}", ("s",PQerrorMessage(conn_)));
 
     auto n = PQntuples(r);
     if(n == 0) {
-        EVT_THROW(chain::unknown_transaction_exception, "Cannot find transaction");
+        jmzk_THROW(chain::unknown_transaction_exception, "Cannot find transaction");
     }
 
     auto builder = fmt::memory_buffer();
@@ -961,4 +961,4 @@ pg_query::get_transaction_actions_resume(int id, pg_result const* r) {
     return response_ok(id, fmt::to_string(builder));
 }
 
-}  // namepsace evt
+}  // namepsace jmzk

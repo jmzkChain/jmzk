@@ -2,11 +2,11 @@
 #include <iosfwd>
 #include <boost/test/unit_test.hpp>
 #include <fc/io/json.hpp>
-#include <evt/chain/asset.hpp>
-#include <evt/chain/controller.hpp>
-#include <evt/chain/snapshot.hpp>
-#include <evt/chain/contracts/evt_contract_abi.hpp>
-#include <evt/chain/contracts/abi_serializer.hpp>
+#include <jmzk/chain/asset.hpp>
+#include <jmzk/chain/controller.hpp>
+#include <jmzk/chain/snapshot.hpp>
+#include <jmzk/chain/contracts/jmzk_contract_abi.hpp>
+#include <jmzk/chain/contracts/abi_serializer.hpp>
 
 #define REQUIRE_EQUAL_OBJECTS(left, right)                                                                                           \
     {                                                                                                                                \
@@ -23,7 +23,7 @@
         auto b = fc::variant(right);                                                                                     \
         BOOST_REQUIRE_EQUAL(true, a.is_object());                                                                        \
         BOOST_REQUIRE_EQUAL(true, b.is_object());                                                                        \
-        auto filtered = ::evt::testing::filter_fields(a.get_object(), b.get_object());                                 \
+        auto filtered = ::jmzk::testing::filter_fields(a.get_object(), b.get_object());                                 \
         BOOST_REQUIRE_EQUAL_COLLECTIONS(a.get_object().begin(), a.get_object().end(), filtered.begin(), filtered.end()); \
     }
 
@@ -61,9 +61,9 @@ struct print_log_value<fc::variant_object::entry> {
 
 }}}  // namespace boost::test_tools::tt_detail
 
-namespace evt { namespace testing {
+namespace jmzk { namespace testing {
 
-using namespace evt::chain;
+using namespace jmzk::chain;
 
 fc::variant_object filter_fields(const fc::variant_object& filter, const fc::variant_object& value);
 
@@ -234,7 +234,7 @@ public:
         vcfg.contracts_console     = false;
         
         vcfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
-        vcfg.genesis.initial_key       = get_public_key("evt");
+        vcfg.genesis.initial_key       = get_public_key("jmzk");
 
         validating_node = std::make_unique<controller>(vcfg);
         validating_node->add_indices();
@@ -347,4 +347,4 @@ struct fc_assert_exception_message_starts_with {
     string expected;
 };
 
-}}  // namespace evt::testing
+}}  // namespace jmzk::testing

@@ -1,11 +1,11 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
 */
 #pragma once
-#include <evt/chain/snapshot.hpp>
+#include <jmzk/chain/snapshot.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 class token_database;
 
@@ -16,4 +16,4 @@ void read_from_snapshot(snapshot_reader_ptr snapshot, token_database& db);
 
 }  // namespace token_database_snapshot
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain

@@ -1,6 +1,6 @@
-file(GLOB HEADERS "include/evt/postgres_plugin/*.hpp")
+file(GLOB HEADERS "include/jmzk/postgres_plugin/*.hpp")
 add_library( postgres_plugin
-             evt_pg.cpp
+             jmzk_pg.cpp
              postgres_plugin.cpp
              ${HEADERS} )
 
@@ -11,7 +11,7 @@ target_include_directories(postgres_plugin
       )
 
 target_link_libraries(postgres_plugin
-      PUBLIC chain_plugin evt_chain appbase fc fmt-header-only ${LIBPQ_LIBRARIES}
+      PUBLIC chain_plugin jmzk_chain appbase fc fmt-header-only ${LIBPQ_LIBRARIES}
       )
 
 target_compile_definitions(postgres_plugin PUBLIC FMT_STRING_ALIAS=1)

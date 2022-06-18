@@ -62,12 +62,12 @@ const char* sample_json() {
     auto json = R"(
     {
         "name": "test",
-        "issuer": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+        "issuer": "jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
         "issue": {
             "name": "issue",
             "threshold": 1,
             "authorizers": [{
-                "ref": "[A] EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+                "ref": "[A] jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
                 "weight": 1
             }]
         },
@@ -83,7 +83,7 @@ const char* sample_json() {
             "name": "manage",
             "threshold": 1,
             "authorizers": [{
-                "ref": "[A] EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+                "ref": "[A] jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
                 "weight": 1
             }]
         }

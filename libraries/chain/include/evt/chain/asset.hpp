@@ -1,17 +1,17 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <fmt/format.h>
-#include <evt/chain/exceptions.hpp>
-#include <evt/chain/types.hpp>
+#include <jmzk/chain/exceptions.hpp>
+#include <jmzk/chain/types.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 #define EMPTY_SYM_ID 0
-#define EVT_SYM_ID   1
-#define PEVT_SYM_ID  2
+#define jmzk_SYM_ID   1
+#define Pjmzk_SYM_ID  2
 
 class symbol : public fc::reflect_init {
 private:
@@ -22,7 +22,7 @@ public:
 
     constexpr symbol(uint8_t p, uint32_t id)
         : value_(0) {
-        EVT_ASSERT(p <= max_precision, symbol_type_exception, "Exceed max precision");
+        jmzk_ASSERT(p <= max_precision, symbol_type_exception, "Exceed max precision");
         value_  = ((uint64_t)p << 32);
         value_ |= id;
     }
@@ -66,18 +66,18 @@ public:
 
     void
     reflector_init() const {
-        EVT_ASSERT(valid(), symbol_type_exception, "invalid symbol");
+        jmzk_ASSERT(valid(), symbol_type_exception, "invalid symbol");
     }
 };
 
 static constexpr symbol
-evt_sym() {
-    return symbol(5, EVT_SYM_ID);
+jmzk_sym() {
+    return symbol(5, jmzk_SYM_ID);
 }
 
 static constexpr symbol
-pevt_sym() {
-    return symbol(5, PEVT_SYM_ID);
+pjmzk_sym() {
+    return symbol(5, Pjmzk_SYM_ID);
 }
 
 static constexpr symbol
@@ -104,8 +104,8 @@ public:
     asset(share_type a, symbol sym)
         : amount_(a)
         , sym_(sym) {
-        EVT_ASSERT(is_amount_within_range(), asset_type_exception, "magnitude of asset amount must be less than 2^62");
-        EVT_ASSERT(sym_.valid(), asset_type_exception, "invalid symbol");
+        jmzk_ASSERT(is_amount_within_range(), asset_type_exception, "magnitude of asset amount must be less than 2^62");
+        jmzk_ASSERT(sym_.valid(), asset_type_exception, "invalid symbol");
     }
 
 public:
@@ -132,14 +132,14 @@ public:
 
     asset&
     operator+=(const asset& o) {
-        EVT_ASSERT(sym() == o.sym(), asset_type_exception, "addition between two different asset is not allowed");
+        jmzk_ASSERT(sym() == o.sym(), asset_type_exception, "addition between two different asset is not allowed");
         amount_ += o.amount();
         return *this;
     }
 
     asset&
     operator-=(const asset& o) {
-        EVT_ASSERT(sym() == o.sym(), asset_type_exception, "addition between two different asset is not allowed");
+        jmzk_ASSERT(sym() == o.sym(), asset_type_exception, "addition between two different asset is not allowed");
         amount_ -= o.amount();
         return *this;
     }
@@ -153,7 +153,7 @@ public:
 
     friend bool
     operator<(const asset& a, const asset& b) {
-        EVT_ASSERT(a.sym() == b.sym(), asset_type_exception, "addition between two different asset is not allowed");
+        jmzk_ASSERT(a.sym() == b.sym(), asset_type_exception, "addition between two different asset is not allowed");
         return a.amount() < b.amount();
     }
 
@@ -171,13 +171,13 @@ public:
 
     friend asset
     operator-(const asset& a, const asset& b) {
-        EVT_ASSERT(a.sym() == b.sym(), asset_type_exception, "addition between two different asset is not allowed");
+        jmzk_ASSERT(a.sym() == b.sym(), asset_type_exception, "addition between two different asset is not allowed");
         return asset(a.amount() - b.amount(), a.sym());
     }
 
     friend asset
     operator+(const asset& a, const asset& b) {
-        EVT_ASSERT(a.sym() == b.sym(), asset_type_exception, "addition between two different asset is not allowed");
+        jmzk_ASSERT(a.sym() == b.sym(), asset_type_exception, "addition between two different asset is not allowed");
         return asset(a.amount() + b.amount(), a.sym());
     }
 
@@ -189,8 +189,8 @@ public:
 
     void
     reflector_init() const {
-        EVT_ASSERT(is_amount_within_range(), asset_type_exception, "magnitude of asset amount must be less than 2^62");
-        EVT_ASSERT(sym_.valid(), asset_type_exception, "invalid symbol");
+        jmzk_ASSERT(is_amount_within_range(), asset_type_exception, "magnitude of asset amount must be less than 2^62");
+        jmzk_ASSERT(sym_.valid(), asset_type_exception, "invalid symbol");
     }
 
 private:
@@ -198,28 +198,28 @@ private:
     symbol     sym_;
 };
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
 namespace fc {
 
 inline void
-to_variant(const evt::chain::symbol& var, fc::variant& vo) {
+to_variant(const jmzk::chain::symbol& var, fc::variant& vo) {
     vo = var.to_string();
 }
 
 inline void
-from_variant(const fc::variant& var, evt::chain::symbol& vo) {
-    vo = evt::chain::symbol::from_string(var.get_string());
+from_variant(const fc::variant& var, jmzk::chain::symbol& vo) {
+    vo = jmzk::chain::symbol::from_string(var.get_string());
 }
 
 inline void
-to_variant(const evt::chain::asset& var, fc::variant& vo) {
+to_variant(const jmzk::chain::asset& var, fc::variant& vo) {
     vo = var.to_string();
 }
 
 inline void
-from_variant(const fc::variant& var, evt::chain::asset& vo) {
-    vo = evt::chain::asset::from_string(var.get_string());
+from_variant(const fc::variant& var, jmzk::chain::asset& vo) {
+    vo = jmzk::chain::asset::from_string(var.get_string());
 }
 
 }  // namespace fc
@@ -227,28 +227,28 @@ from_variant(const fc::variant& var, evt::chain::asset& vo) {
 namespace fmt {
 
 template <>
-struct formatter<evt::chain::symbol> {
+struct formatter<jmzk::chain::symbol> {
     template <typename ParseContext>
     constexpr auto parse(ParseContext& ctx) { return ctx.begin(); }
 
     template <typename FormatContext>
-    auto format(const evt::chain::symbol& s, FormatContext &ctx) {
+    auto format(const jmzk::chain::symbol& s, FormatContext &ctx) {
         return format_to(ctx.begin(), s.to_string());
     }
 };
 
 template <>
-struct formatter<evt::chain::asset> {
+struct formatter<jmzk::chain::asset> {
     template <typename ParseContext>
     constexpr auto parse(ParseContext& ctx) { return ctx.begin(); }
 
     template <typename FormatContext>
-    auto format(const evt::chain::asset& a, FormatContext &ctx) {
+    auto format(const jmzk::chain::asset& a, FormatContext &ctx) {
         return format_to(ctx.begin(), a.to_string());
     }
 };
 
 }  // namespace fmt
 
-FC_REFLECT(evt::chain::symbol, (value_));
-FC_REFLECT(evt::chain::asset, (amount_)(sym_));
+FC_REFLECT(jmzk::chain::symbol, (value_));
+FC_REFLECT(jmzk::chain::asset, (amount_)(sym_));

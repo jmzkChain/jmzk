@@ -9,7 +9,7 @@
 namespace fc { namespace crypto {
 
 namespace config {
-constexpr const char* public_key_evt_prefix = "EVT";
+constexpr const char* public_key_jmzk_prefix = "jmzk";
 constexpr const char* public_key_prefix[]   = { "K1", "R1" };
 };  // namespace config
 

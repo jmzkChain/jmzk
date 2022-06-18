@@ -1,24 +1,24 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
-#include <evt/http_plugin/http_plugin.hpp>
-#include <evt/chain_plugin/chain_plugin.hpp>
+#include <jmzk/http_plugin/http_plugin.hpp>
+#include <jmzk/chain_plugin/chain_plugin.hpp>
 
 #include <appbase/application.hpp>
-#include <evt/chain/controller.hpp>
+#include <jmzk/chain/controller.hpp>
 
-namespace evt {
-using evt::chain::controller;
+namespace jmzk {
+using jmzk::chain::controller;
 using namespace appbase;
 
-class evt_link_plugin : public plugin<evt_link_plugin> {
+class jmzk_link_plugin : public plugin<jmzk_link_plugin> {
 public:
     APPBASE_PLUGIN_REQUIRES((chain_plugin)(http_plugin))
 
-    evt_link_plugin();
-    virtual ~evt_link_plugin();
+    jmzk_link_plugin();
+    virtual ~jmzk_link_plugin();
 
     virtual void set_program_options(options_description&, options_description&) override;
 
@@ -27,7 +27,7 @@ public:
     void plugin_shutdown();
 
 private:
-    std::shared_ptr<class evt_link_plugin_impl> my_;
+    std::shared_ptr<class jmzk_link_plugin_impl> my_;
 };
 
-}  // namespace evt
+}  // namespace jmzk

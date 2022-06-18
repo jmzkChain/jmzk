@@ -1,13 +1,13 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <appbase/application.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/reflect/reflect.hpp>
 
-namespace evt {
+namespace jmzk {
 using namespace appbase;
 
 using deferred_id = uint32_t;
@@ -188,9 +188,9 @@ struct error_results {
     error_info error;
 };
 
-}  // namespace evt
+}  // namespace jmzk
 
-FC_REFLECT(evt::error_results::error_info::error_detail, (message)(file)(line_number)(method));
-FC_REFLECT(evt::error_results::error_info, (code)(name)(what)(details));
-FC_REFLECT(evt::error_results, (code)(message)(error));
-FC_REFLECT(evt::http_plugin::get_supported_apis_result, (apis));
+FC_REFLECT(jmzk::error_results::error_info::error_detail, (message)(file)(line_number)(method));
+FC_REFLECT(jmzk::error_results::error_info, (code)(name)(what)(details));
+FC_REFLECT(jmzk::error_results, (code)(message)(error));
+FC_REFLECT(jmzk::http_plugin::get_supported_apis_result, (apis));

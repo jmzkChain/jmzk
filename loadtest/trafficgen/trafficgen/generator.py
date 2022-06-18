@@ -8,8 +8,8 @@ from collections import OrderedDict
 import click
 import tqdm
 
-from pyevtsdk.action import ActionGenerator
-from pyevtsdk.transaction import TrxGenerator
+from pyjmzksdk.action import ActionGenerator
+from pyjmzksdk.transaction import TrxGenerator
 
 from . import randompool, utils
 

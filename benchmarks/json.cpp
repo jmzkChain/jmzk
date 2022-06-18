@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 
 #include <benchmark/benchmark.h>
@@ -13,12 +13,12 @@
 auto json1 = R"(
 {
     "name": "test",
-    "issuer": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+    "issuer": "jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
     "issue": {
         "name": "issue",
         "threshold": 1,
         "authorizers": [{
-            "ref": "[A] EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+            "ref": "[A] jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
             "weight": 1
         }]
     },
@@ -34,7 +34,7 @@ auto json1 = R"(
         "name": "manage",
         "threshold": 1,
         "authorizers": [{
-            "ref": "[A] EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+            "ref": "[A] jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
             "weight": 1
         }]
     }
@@ -44,7 +44,7 @@ auto json1 = R"(
 auto json2 = R"(
 {
     "name": "testgroup",
-    "key": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+    "key": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
     "root": {
         "threshold": 6,
         "nodes": [
@@ -53,17 +53,17 @@ auto json2 = R"(
                 "weight": 3,
                 "nodes": [
                     {
-                        "key": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+                        "key": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
                         "weight": 1
                     },
                     {
-                        "key": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+                        "key": "jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
                         "weight": 1
                     }
                 ]
             },
             {
-                "key": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+                "key": "jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
                 "weight": 3
             },
             {
@@ -71,11 +71,11 @@ auto json2 = R"(
                 "weight": 3,
                 "nodes": [
                     {
-                        "key": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+                        "key": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
                         "weight": 1
                     },
                     {
-                        "key": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+                        "key": "jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
                         "weight": 1
                     }
                 ]

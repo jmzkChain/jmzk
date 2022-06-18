@@ -1,15 +1,15 @@
 /** 
  *  @file 
- *  @copyright defined in evt/LICENSE.txt 
+ *  @copyright defined in jmzk/LICENSE.txt 
  *
  * \warning This file is machine generated. DO NOT EDIT.  See config.hpp.in for changes.
  */
 #pragma once
 
-namespace evt { namespace client { namespace config {
+namespace jmzk { namespace client { namespace config {
 
-constexpr char version_str[] = "${evtc_BUILD_VERSION}";
+constexpr char version_str[] = "${jmzkc_BUILD_VERSION}";
 constexpr char locale_path[] = "${LOCALEDIR}";
 constexpr char locale_domain[] = "${LOCALEDOMAIN}";
 
-}}}  // namespace evt::client::config
+}}}  // namespace jmzk::client::config

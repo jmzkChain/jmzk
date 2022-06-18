@@ -1,16 +1,16 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/chain/address.hpp>
-#include <evt/chain/exceptions.hpp>
+#include <jmzk/chain/address.hpp>
+#include <jmzk/chain/exceptions.hpp>
 #include <fc/crypto/base58.hpp>
 #include <fc/crypto/ripemd160.hpp>
 #include <fc/io/datastream.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
-const std::string reserved_key = "EVT00000000000000000000000000000000000000000000000000";
+const std::string reserved_key = "jmzk00000000000000000000000000000000000000000000000000";
 
 namespace internal {
 
@@ -57,7 +57,7 @@ address::to_string() const {
         auto str = std::string();
         str.reserve(53);
 
-        str.append("EVT0");
+        str.append("jmzk0");
 
         auto gen = gen_wrapper();
         gen.prefix = this->get_prefix().value;
@@ -66,7 +66,7 @@ address::to_string() const {
         gen.checksum = gen.calculate_checksum();
 
         auto hash = fc::to_base58((char*)&gen, sizeof(gen));
-        EVT_ASSERT(hash.size() <= 53 - 4, address_type_exception, "Invalid generated values for address");
+        jmzk_ASSERT(hash.size() <= 53 - 4, address_type_exception, "Invalid generated values for address");
 
         str.append(53 - 4 - hash.size(), '0');
         str.append(std::move(hash));
@@ -74,7 +74,7 @@ address::to_string() const {
         return str;
     }
     default: {
-        EVT_ASSERT(false, address_type_exception, "Not valid address type: ${type}", ("type",type()));
+        jmzk_ASSERT(false, address_type_exception, "Not valid address type: ${type}", ("type",type()));
     }
     }  // switch
 }
@@ -82,7 +82,7 @@ address::to_string() const {
 address
 address::from_string(const std::string& str) {
     using namespace internal;
-    EVT_ASSERT(str.size() == 53, address_type_exception, "Address is not valid");
+    jmzk_ASSERT(str.size() == 53, address_type_exception, "Address is not valid");
 
     address addr;
     // fast path
@@ -98,7 +98,7 @@ address::from_string(const std::string& str) {
     auto hash = str.substr(str.find_first_not_of('0', 4));
     fc::from_base58(hash, (char*)&gen, sizeof(gen));
 
-    EVT_ASSERT(gen.checksum == gen.calculate_checksum(), address_type_exception, "Checksum doesn't match");
+    jmzk_ASSERT(gen.checksum == gen.calculate_checksum(), address_type_exception, "Checksum doesn't match");
     return address(gen.prefix, gen.key, gen.nonce);
 }
 
@@ -125,18 +125,18 @@ address::init_cache() const {
     }  // switch
 }
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
 namespace fc {
 
 void
-to_variant(const evt::chain::address& addr, fc::variant& v) {
+to_variant(const jmzk::chain::address& addr, fc::variant& v) {
     v = addr.to_string();
 }
 
 void
-from_variant(const fc::variant& v, evt::chain::address& addr) {
-    addr = evt::chain::address::from_string(v.get_string());
+from_variant(const fc::variant& v, jmzk::chain::address& addr) {
+    addr = jmzk::chain::address::from_string(v.get_string());
 }
 
 }  // namespace fc

@@ -1,14 +1,14 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
 #include <numeric>
-#include <evt/chain/action.hpp>
-#include <evt/chain/address.hpp>
+#include <jmzk/chain/action.hpp>
+#include <jmzk/chain/address.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 /**
  *  The transaction header contains the fixed-sized data
@@ -163,12 +163,12 @@ private:
 
 using packed_transaction_ptr = std::shared_ptr<packed_transaction>;
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
-FC_REFLECT(evt::chain::transaction_header, (expiration)(ref_block_num)(ref_block_prefix)(max_charge));
-FC_REFLECT_ENUM(evt::chain::transaction_ext, (suspend_name));
-FC_REFLECT_DERIVED(evt::chain::transaction, (evt::chain::transaction_header), (actions)(payer)(transaction_extensions));
-FC_REFLECT_DERIVED(evt::chain::signed_transaction, (evt::chain::transaction), (signatures));
-FC_REFLECT_ENUM(evt::chain::packed_transaction::compression_type, (none)(zlib));
+FC_REFLECT(jmzk::chain::transaction_header, (expiration)(ref_block_num)(ref_block_prefix)(max_charge));
+FC_REFLECT_ENUM(jmzk::chain::transaction_ext, (suspend_name));
+FC_REFLECT_DERIVED(jmzk::chain::transaction, (jmzk::chain::transaction_header), (actions)(payer)(transaction_extensions));
+FC_REFLECT_DERIVED(jmzk::chain::signed_transaction, (jmzk::chain::transaction), (signatures));
+FC_REFLECT_ENUM(jmzk::chain::packed_transaction::compression_type, (none)(zlib));
 // @ignore unpacked_trx
-FC_REFLECT(evt::chain::packed_transaction, (signatures)(compression)(packed_trx));
+FC_REFLECT(jmzk::chain::packed_transaction, (signatures)(compression)(packed_trx));

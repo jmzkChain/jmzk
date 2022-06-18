@@ -1,7 +1,7 @@
-file(GLOB HEADERS "include/evt/history_plugin/*.hpp")
+file(GLOB HEADERS "include/jmzk/history_plugin/*.hpp")
 add_library( history_plugin
              history_plugin.cpp
-             evt_pg_query.cpp
+             jmzk_pg_query.cpp
              ${HEADERS} )
 
 find_package(libpq REQUIRED)
@@ -12,7 +12,7 @@ target_include_directories(history_plugin
 )
 
 target_link_libraries(history_plugin
-    PUBLIC chain_plugin postgres_plugin evt_chain appbase fc fmt-header-only
+    PUBLIC chain_plugin postgres_plugin jmzk_chain appbase fc fmt-header-only
     PUBLIC ${LIBPQ_LIBRARIES}
 )
 

@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  *
  */
 #pragma once
@@ -8,7 +8,7 @@
 #ifndef COMMON_HPP
 #define COMMON_HPP
 
-namespace evt { namespace utilities { namespace common {
+namespace jmzk { namespace utilities { namespace common {
   template<typename I>
   std::string itoh(I n, size_t hlen = sizeof(I)<<1) {
      static const char* digits = "0123456789abcdef";

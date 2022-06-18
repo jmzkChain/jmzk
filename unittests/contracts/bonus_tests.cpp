@@ -1,5 +1,5 @@
 #include "contracts_tests.hpp"
-#include <evt/chain/address.hpp>
+#include <jmzk/chain/address.hpp>
 
 enum psvbonus_type { kPsvBonus = 0, kPsvBonusSlim };
 
@@ -20,19 +20,19 @@ auto CHECK_EQUAL = [](auto& lhs, auto& rhs) {
 
 TEST_CASE_METHOD(contracts_test, "passive_bonus_test", "[contracts]") {
     auto spb = setpsvbonus();
-    spb.sym = evt_sym();
+    spb.sym = jmzk_sym();
     spb.rate = 0.15;
     spb.base_charge = asset(0, get_sym());
     spb.dist_threshold = asset(1'00000, get_sym());  // 1.00000
 
     auto actkey   = name128::from_number(get_sym_id());
-    auto keyseeds = std::vector<name>{ N(evt), N(key2), N(payer) };
+    auto keyseeds = std::vector<name>{ N(jmzk), N(key2), N(payer) };
 
     // key of action is invalid
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.bonus), actkey, spb), keyseeds, payer), action_authorize_exception);
 
-    // evt cannot be used to set passive bonus
-    actkey = name128::from_number(EVT_SYM_ID);
+    // jmzk cannot be used to set passive bonus
+    actkey = name128::from_number(jmzk_SYM_ID);
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.bonus), actkey, spb), keyseeds, payer), unsatisfied_authorization);
 
     // symbol precision is invalid
@@ -93,7 +93,7 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_test", "[contracts]") {
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.bonus), actkey, spb), keyseeds, payer), bonus_rules_not_fullfill);
 
     auto rule3     = dist_percent_rule();
-    rule3.receiver = dist_stack_receiver(asset(-1'00000, evt_sym()));
+    rule3.receiver = dist_stack_receiver(asset(-1'00000, jmzk_sym()));
     rule3.percent  = percent_type("0.15");
     spb.rules.emplace_back(rule3);
 
@@ -105,7 +105,7 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_test", "[contracts]") {
     // bonus tokens cannot be found
     CHECK_THROWS_AS(my_tester->push_action(action(N128(.bonus), actkey, spb), keyseeds, payer), bonus_receiver_exception);
 
-    rule3.receiver = dist_stack_receiver(asset(1'00000, evt_sym()));
+    rule3.receiver = dist_stack_receiver(asset(1'00000, jmzk_sym()));
     rule3.percent  = percent_type("0.6");
     spb.rules[2]   = rule3;
     // exceed all the dist threshold 50 < (10 + 15 + 50*0.6)
@@ -200,7 +200,7 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_test", "[contracts]") {
     CHECK(pb.round == pb2->round);
     CHECK(pb.deadline == pb2->deadline);
 
-    CHECK(pb.rate.value() == evt::chain::percent_type("0.15"));
+    CHECK(pb.rate.value() == jmzk::chain::percent_type("0.15"));
 }
 
 TEST_CASE_METHOD(contracts_test, "passive_bonus_fees_test", "[contracts]") {
@@ -273,25 +273,25 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_fees_test", "[contracts]") {
         orig_from = from;
     }
 
-    auto link   = evt_link();
+    auto link   = jmzk_link();
     auto header = 0;
-    header |= evt_link::version1;
-    header |= evt_link::everiPay;
+    header |= jmzk_link::version1;
+    header |= jmzk_link::everiPay;
 
     auto head_ts = my_tester->control->head_block_time().sec_since_epoch();
 
     link.set_header(header);
-    link.add_segment(evt_link::segment(evt_link::timestamp, head_ts));
-    link.add_segment(evt_link::segment(evt_link::max_pay, 500'00000));
-    link.add_segment(evt_link::segment(evt_link::symbol_id, get_sym_id()));
-    link.add_segment(evt_link::segment(evt_link::link_id, "KIJHNHFMJDUKJUAA"));
+    link.add_segment(jmzk_link::segment(jmzk_link::timestamp, head_ts));
+    link.add_segment(jmzk_link::segment(jmzk_link::max_pay, 500'00000));
+    link.add_segment(jmzk_link::segment(jmzk_link::symbol_id, get_sym_id()));
+    link.add_segment(jmzk_link::segment(jmzk_link::link_id, "KIJHNHFMJDUKJUAA"));
 
     auto sign_link = [&](auto& l, auto key) {
         l.clear_signatures();
         l.sign(key);
     };
 
-    my_tester->add_money(tester::get_public_key(N(to4)), asset(10'00000, evt_sym()));
+    my_tester->add_money(tester::get_public_key(N(to4)), asset(10'00000, jmzk_sym()));
     sign_link(link, tester::get_private_key(N(key)));
 
     auto ep   = everipay();
@@ -342,7 +342,7 @@ TEST_CASE_METHOD(contracts_test, "passive_bonus_dist_test", "[contracts]") {
     auto bonus_addr = address(N(.psvbonus), actkey, 0);
 
     auto dpb     = distpsvbonus();
-    dpb.sym_id   = evt_sym().id();
+    dpb.sym_id   = jmzk_sym().id();
     dpb.deadline = my_tester->control->head_block_time();
 
     auto keyseeds = std::vector<name>{ N(key2), N(payer) };

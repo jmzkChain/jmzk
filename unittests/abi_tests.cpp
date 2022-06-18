@@ -10,23 +10,23 @@
 #include <fc/log/logger.hpp>
 #include <fc/variant.hpp>
 
-#include <evt/chain/execution_context_impl.hpp>
-#include <evt/chain/contracts/abi_serializer.hpp>
-#include <evt/chain/contracts/evt_contract_abi.hpp>
-#include <evt/chain/contracts/types.hpp>
-#include <evt/testing/tester.hpp>
+#include <jmzk/chain/execution_context_impl.hpp>
+#include <jmzk/chain/contracts/abi_serializer.hpp>
+#include <jmzk/chain/contracts/jmzk_contract_abi.hpp>
+#include <jmzk/chain/contracts/types.hpp>
+#include <jmzk/testing/tester.hpp>
 
-using namespace evt;
+using namespace jmzk;
 using namespace chain;
 using namespace contracts;
 using namespace testing;
 
-extern std::string evt_unittests_dir;
+extern std::string jmzk_unittests_dir;
 
 class abi_test {
 public:
     abi_test() {
-        auto basedir = evt_unittests_dir + "/abi_tests";
+        auto basedir = jmzk_unittests_dir + "/abi_tests";
         if(!fc::exists(basedir)) {
             fc::create_directories(basedir);
         }
@@ -42,8 +42,8 @@ public:
         cfg.max_serialization_time = std::chrono::hours(1);
 
         cfg.genesis.initial_timestamp = fc::time_point::now();
-        cfg.genesis.initial_key       = tester::get_public_key("evt");
-        auto privkey                  = tester::get_private_key("evt");
+        cfg.genesis.initial_key       = tester::get_public_key("jmzk");
+        auto privkey                  = tester::get_private_key("jmzk");
         my_tester.reset(new tester(cfg));
 
         my_tester->block_signing_private_keys.insert(std::make_pair(cfg.genesis.initial_key, privkey));
@@ -55,7 +55,7 @@ public:
 
 protected:
     auto& get_exec_ctx() { return my_tester->control->get_execution_context(); }
-    auto& get_evt_abi() { return my_tester->control->get_abi_serializer(); }
+    auto& get_jmzk_abi() { return my_tester->control->get_abi_serializer(); }
 
     // verify that round trip conversion, via bytes, reproduces the exact same data
     fc::variant
@@ -165,17 +165,17 @@ TEST_CASE_METHOD(abi_test, "optional_abi_test", "[abis]") {
 }
 
 TEST_CASE_METHOD(abi_test, "newdomain_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
 
     auto test_data = R"=====(
     {
       "name" : "cookie",
-      "creator" : "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+      "creator" : "jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
       "issue" : {
         "name" : "issue",
         "threshold" : 1,
         "authorizers": [{
-            "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+            "ref": "[A] jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
             "weight": 1
           }
         ]
@@ -193,7 +193,7 @@ TEST_CASE_METHOD(abi_test, "newdomain_abi_test", "[abis]") {
         "name": "manage",
         "threshold": 1,
         "authorizers": [{
-            "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+            "ref": "[A] jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
             "weight": 1
           }
         ]
@@ -204,13 +204,13 @@ TEST_CASE_METHOD(abi_test, "newdomain_abi_test", "[abis]") {
     auto var    = fc::json::from_string(test_data);
     auto newdom = var.as<newdomain>();
     CHECK("cookie" == newdom.name);
-    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)newdom.creator);
+    CHECK("jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)newdom.creator);
 
     CHECK("issue" == newdom.issue.name);
     CHECK(1 == newdom.issue.threshold);
     REQUIRE(1 == newdom.issue.authorizers.size());
     CHECK(newdom.issue.authorizers[0].ref.is_account_ref());
-    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)newdom.issue.authorizers[0].ref.get_account());
+    CHECK("jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)newdom.issue.authorizers[0].ref.get_account());
     CHECK(1 == newdom.issue.authorizers[0].weight);
 
     CHECK("transfer" == newdom.transfer.name);
@@ -223,7 +223,7 @@ TEST_CASE_METHOD(abi_test, "newdomain_abi_test", "[abis]") {
     CHECK(1 == newdom.manage.threshold);
     REQUIRE(1 == newdom.manage.authorizers.size());
     CHECK(newdom.manage.authorizers[0].ref.is_account_ref());
-    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)newdom.manage.authorizers[0].ref.get_account());
+    CHECK("jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)newdom.manage.authorizers[0].ref.get_account());
     CHECK(1 == newdom.manage.authorizers[0].weight);
 
     auto var2    = verify_byte_round_trip_conversion(abis, "newdomain", var);
@@ -255,7 +255,7 @@ TEST_CASE_METHOD(abi_test, "newdomain_abi_test", "[abis]") {
 }
 
 TEST_CASE_METHOD(abi_test, "updatedomain_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
 
     auto test_data = R"=====(
     {
@@ -264,7 +264,7 @@ TEST_CASE_METHOD(abi_test, "updatedomain_abi_test", "[abis]") {
         "name": "issue",
         "threshold": 2,
         "authorizers": [{
-          "ref": "[A] EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+          "ref": "[A] jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
           "weight": 1},{
             "ref": "[G] new-group",
             "weight": 1
@@ -282,7 +282,7 @@ TEST_CASE_METHOD(abi_test, "updatedomain_abi_test", "[abis]") {
     CHECK(2 == updom.issue->threshold);
     REQUIRE(2 == updom.issue->authorizers.size());
     REQUIRE(updom.issue->authorizers[0].ref.is_account_ref());
-    CHECK("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)updom.issue->authorizers[0].ref.get_account());
+    CHECK("jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)updom.issue->authorizers[0].ref.get_account());
     CHECK(1 == updom.issue->authorizers[0].weight);
 
     auto var2   = verify_byte_round_trip_conversion(abis, "updatedomain", var);
@@ -294,14 +294,14 @@ TEST_CASE_METHOD(abi_test, "updatedomain_abi_test", "[abis]") {
     CHECK(2 == updom2.issue->threshold);
     REQUIRE(2 == updom2.issue->authorizers.size());
     REQUIRE(updom2.issue->authorizers[0].ref.is_account_ref());
-    CHECK("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)updom2.issue->authorizers[0].ref.get_account());
+    CHECK("jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)updom2.issue->authorizers[0].ref.get_account());
     CHECK(1 == updom2.issue->authorizers[0].weight);
 
     verify_type_round_trip_conversion<updatedomain>(abis, "updatedomain", var);
 }
 
 TEST_CASE_METHOD(abi_test, "issuetoken_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
 
     auto test_data = R"=====(
     {
@@ -312,7 +312,7 @@ TEST_CASE_METHOD(abi_test, "issuetoken_abi_test", "[abis]") {
           "t3"
         ],
         "owner": [
-          "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK"
+          "jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK"
         ]
     }
     )=====";
@@ -328,7 +328,7 @@ TEST_CASE_METHOD(abi_test, "issuetoken_abi_test", "[abis]") {
     CHECK("t3" == istk.names[2]);
 
     REQUIRE(1 == istk.owner.size());
-    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)istk.owner[0]);
+    CHECK("jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)istk.owner[0]);
 
     auto var2  = verify_byte_round_trip_conversion(abis, "issuetoken", var);
     auto istk2 = var2.as<issuetoken>();
@@ -341,20 +341,20 @@ TEST_CASE_METHOD(abi_test, "issuetoken_abi_test", "[abis]") {
     CHECK("t3" == istk2.names[2]);
 
     REQUIRE(1 == istk2.owner.size());
-    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)istk2.owner[0]);
+    CHECK("jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)istk2.owner[0]);
 
     verify_type_round_trip_conversion<issuetoken>(abis, "issuetoken", var);
 }
 
 TEST_CASE_METHOD(abi_test, "transfer_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
 
     auto test_data = R"=====(
     {
       "domain": "cookie",
       "name": "t1",
       "to": [
-        "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"
+        "jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"
       ],
       "memo":"memo"
     }
@@ -367,7 +367,7 @@ TEST_CASE_METHOD(abi_test, "transfer_abi_test", "[abis]") {
     CHECK("t1" == trf.name);
 
     REQUIRE(1 == trf.to.size());
-    CHECK("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)trf.to[0]);
+    CHECK("jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)trf.to[0]);
     CHECK("memo" == trf.memo);
 
     auto var2 = verify_byte_round_trip_conversion(abis, "transfer", var);
@@ -377,14 +377,14 @@ TEST_CASE_METHOD(abi_test, "transfer_abi_test", "[abis]") {
     CHECK("t1" == trf2.name);
 
     REQUIRE(1 == trf2.to.size());
-    CHECK("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)trf2.to[0]);
+    CHECK("jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)trf2.to[0]);
     CHECK("memo" == trf2.memo);
 
     verify_type_round_trip_conversion<transfer>(abis, "transfer", var);
 }
 
 TEST_CASE_METHOD(abi_test, "destroytoken_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
 
     auto test_data = R"=====(
     {
@@ -409,14 +409,14 @@ TEST_CASE_METHOD(abi_test, "destroytoken_abi_test", "[abis]") {
 }
 
 TEST_CASE_METHOD(abi_test, "newgroup_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
 
     auto test_data = R"=====(
     {
       "name" : "5jxX",
       "group" : {
         "name": "5jxXg",
-        "key": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+        "key": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
         "root": {
           "threshold": 6,
           "weight": 0,
@@ -425,24 +425,24 @@ TEST_CASE_METHOD(abi_test, "newgroup_abi_test", "[abis]") {
               "threshold": 1,
               "weight": 3,
               "nodes": [{
-                  "key": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+                  "key": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
                   "weight": 1
                 },{
-                  "key": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+                  "key": "jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
                   "weight": 1
                 }
               ]
             },{
-              "key": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+              "key": "jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
               "weight": 3
             },{
               "threshold": 1,
               "weight": 3,
               "nodes": [{
-                  "key": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+                  "key": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
                   "weight": 1
                 },{
-                  "key": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+                  "key": "jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
                   "weight": 2
                 }
               ]
@@ -459,7 +459,7 @@ TEST_CASE_METHOD(abi_test, "newgroup_abi_test", "[abis]") {
     CHECK("5jxX" == newgrp.name);
 
     CHECK("5jxXg" == newgrp.group.name());
-    CHECK("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)newgrp.group.key());
+    CHECK("jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)newgrp.group.key());
 
     auto root = newgrp.group.root();
     REQUIRE(root.validate());
@@ -478,19 +478,19 @@ TEST_CASE_METHOD(abi_test, "newgroup_abi_test", "[abis]") {
     auto son0_son0 = newgrp.group.get_child_node(son0, 0);
     REQUIRE(son0_son0.validate());
     REQUIRE(son0_son0.is_leaf());
-    CHECK("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)newgrp.group.get_leaf_key(son0_son0));
+    CHECK("jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)newgrp.group.get_leaf_key(son0_son0));
     CHECK(1 == son0_son0.weight);
 
     auto son0_son1 = newgrp.group.get_child_node(son0, 1);
     REQUIRE(son0_son1.validate());
     REQUIRE(son0_son1.is_leaf());
-    CHECK("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)newgrp.group.get_leaf_key(son0_son1));
+    CHECK("jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)newgrp.group.get_leaf_key(son0_son1));
     CHECK(1 == son0_son1.weight);
 
     auto son1 = newgrp.group.get_child_node(root, 1);
     REQUIRE(son1.validate());
     REQUIRE(son1.is_leaf());
-    CHECK("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)newgrp.group.get_leaf_key(son1));
+    CHECK("jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)newgrp.group.get_leaf_key(son1));
     CHECK(3 == son1.weight);
 
     auto son2 = newgrp.group.get_child_node(root, 2);
@@ -502,13 +502,13 @@ TEST_CASE_METHOD(abi_test, "newgroup_abi_test", "[abis]") {
     auto son2_son0 = newgrp.group.get_child_node(son2, 0);
     REQUIRE(son2_son0.validate());
     REQUIRE(son2_son0.is_leaf());
-    CHECK("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)newgrp.group.get_leaf_key(son2_son0));
+    CHECK("jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)newgrp.group.get_leaf_key(son2_son0));
     CHECK(1 == son2_son0.weight);
 
     auto son2_son1 = newgrp.group.get_child_node(son2, 1);
     REQUIRE(son2_son1.validate());
     REQUIRE(son2_son1.is_leaf());
-    CHECK("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)newgrp.group.get_leaf_key(son2_son1));
+    CHECK("jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)newgrp.group.get_leaf_key(son2_son1));
     CHECK(2 == son2_son1.weight);
 
     auto var2    = verify_byte_round_trip_conversion(abis, "newgroup", var);
@@ -517,7 +517,7 @@ TEST_CASE_METHOD(abi_test, "newgroup_abi_test", "[abis]") {
     CHECK("5jxX" == newgrp2.name);
 
     CHECK("5jxXg" == newgrp2.group.name());
-    CHECK("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)newgrp2.group.key());
+    CHECK("jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)newgrp2.group.key());
 
     root = newgrp2.group.root();
     REQUIRE(root.validate());
@@ -536,19 +536,19 @@ TEST_CASE_METHOD(abi_test, "newgroup_abi_test", "[abis]") {
     son0_son0 = newgrp2.group.get_child_node(son0, 0);
     REQUIRE(son0_son0.validate());
     REQUIRE(son0_son0.is_leaf());
-    CHECK("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)newgrp2.group.get_leaf_key(son0_son0));
+    CHECK("jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)newgrp2.group.get_leaf_key(son0_son0));
     CHECK(1 == son0_son0.weight);
 
     son0_son1 = newgrp2.group.get_child_node(son0, 1);
     REQUIRE(son0_son1.validate());
     REQUIRE(son0_son1.is_leaf());
-    CHECK("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)newgrp2.group.get_leaf_key(son0_son1));
+    CHECK("jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)newgrp2.group.get_leaf_key(son0_son1));
     CHECK(1 == son0_son1.weight);
 
     son1 = newgrp2.group.get_child_node(root, 1);
     REQUIRE(son1.validate());
     REQUIRE(son1.is_leaf());
-    CHECK("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)newgrp2.group.get_leaf_key(son1));
+    CHECK("jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)newgrp2.group.get_leaf_key(son1));
     CHECK(3 == son1.weight);
 
     son2 = newgrp2.group.get_child_node(root, 2);
@@ -560,27 +560,27 @@ TEST_CASE_METHOD(abi_test, "newgroup_abi_test", "[abis]") {
     son2_son0 = newgrp2.group.get_child_node(son2, 0);
     REQUIRE(son2_son0.validate());
     REQUIRE(son2_son0.is_leaf());
-    CHECK("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)newgrp2.group.get_leaf_key(son2_son0));
+    CHECK("jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)newgrp2.group.get_leaf_key(son2_son0));
     CHECK(1 == son2_son0.weight);
 
     son2_son1 = newgrp2.group.get_child_node(son2, 1);
     REQUIRE(son2_son1.validate());
     REQUIRE(son2_son1.is_leaf());
-    CHECK("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)newgrp2.group.get_leaf_key(son2_son1));
+    CHECK("jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)newgrp2.group.get_leaf_key(son2_son1));
     CHECK(2 == son2_son1.weight);
 
     verify_type_round_trip_conversion<newgroup>(abis, "newgroup", var);
 }
 
 TEST_CASE_METHOD(abi_test, "updategroup_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
 
     auto test_data = R"=====(
     {
       "name" : "5jxX",
       "group" : {
         "name": "5jxXg",
-        "key": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+        "key": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
         "root": {
           "threshold": 6,
           "weight": 0,
@@ -589,24 +589,24 @@ TEST_CASE_METHOD(abi_test, "updategroup_abi_test", "[abis]") {
               "threshold": 1,
               "weight": 3,
               "nodes": [{
-                  "key": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+                  "key": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
                   "weight": 1
                 },{
-                  "key": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+                  "key": "jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
                   "weight": 1
                 }
               ]
             },{
-              "key": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+              "key": "jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
               "weight": 3
             },{
               "threshold": 1,
               "weight": 3,
               "nodes": [{
-                  "key": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+                  "key": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
                   "weight": 1
                 },{
-                  "key": "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+                  "key": "jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
                   "weight": 2
                 }
               ]
@@ -623,7 +623,7 @@ TEST_CASE_METHOD(abi_test, "updategroup_abi_test", "[abis]") {
     CHECK("5jxX" == upgrp.name);
 
     CHECK("5jxXg" == upgrp.group.name());
-    CHECK("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)upgrp.group.key());
+    CHECK("jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)upgrp.group.key());
 
     auto root = upgrp.group.root();
     REQUIRE(root.validate());
@@ -642,19 +642,19 @@ TEST_CASE_METHOD(abi_test, "updategroup_abi_test", "[abis]") {
     auto son0_son0 = upgrp.group.get_child_node(son0, 0);
     REQUIRE(son0_son0.validate());
     REQUIRE(son0_son0.is_leaf());
-    CHECK("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)upgrp.group.get_leaf_key(son0_son0));
+    CHECK("jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)upgrp.group.get_leaf_key(son0_son0));
     CHECK(1 == son0_son0.weight);
 
     auto son0_son1 = upgrp.group.get_child_node(son0, 1);
     REQUIRE(son0_son1.validate());
     REQUIRE(son0_son1.is_leaf());
-    CHECK("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)upgrp.group.get_leaf_key(son0_son1));
+    CHECK("jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)upgrp.group.get_leaf_key(son0_son1));
     CHECK(1 == son0_son1.weight);
 
     auto son1 = upgrp.group.get_child_node(root, 1);
     REQUIRE(son1.validate());
     REQUIRE(son1.is_leaf());
-    CHECK("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)upgrp.group.get_leaf_key(son1));
+    CHECK("jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)upgrp.group.get_leaf_key(son1));
     CHECK(3 == son1.weight);
 
     auto son2 = upgrp.group.get_child_node(root, 2);
@@ -666,13 +666,13 @@ TEST_CASE_METHOD(abi_test, "updategroup_abi_test", "[abis]") {
     auto son2_son0 = upgrp.group.get_child_node(son2, 0);
     REQUIRE(son2_son0.validate());
     REQUIRE(son2_son0.is_leaf());
-    CHECK("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)upgrp.group.get_leaf_key(son2_son0));
+    CHECK("jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)upgrp.group.get_leaf_key(son2_son0));
     CHECK(1 == son2_son0.weight);
 
     auto son2_son1 = upgrp.group.get_child_node(son2, 1);
     REQUIRE(son2_son1.validate());
     REQUIRE(son2_son1.is_leaf());
-    CHECK("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)upgrp.group.get_leaf_key(son2_son1));
+    CHECK("jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)upgrp.group.get_leaf_key(son2_son1));
     CHECK(2 == son2_son1.weight);
 
     auto var2   = verify_byte_round_trip_conversion(abis, "updategroup", var);
@@ -681,7 +681,7 @@ TEST_CASE_METHOD(abi_test, "updategroup_abi_test", "[abis]") {
     CHECK("5jxX" == upgrp2.name);
 
     CHECK("5jxXg" == upgrp2.group.name());
-    CHECK("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)upgrp2.group.key());
+    CHECK("jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)upgrp2.group.key());
 
     root = upgrp2.group.root();
     REQUIRE(root.validate());
@@ -700,19 +700,19 @@ TEST_CASE_METHOD(abi_test, "updategroup_abi_test", "[abis]") {
     son0_son0 = upgrp2.group.get_child_node(son0, 0);
     REQUIRE(son0_son0.validate());
     REQUIRE(son0_son0.is_leaf());
-    CHECK("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)upgrp2.group.get_leaf_key(son0_son0));
+    CHECK("jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)upgrp2.group.get_leaf_key(son0_son0));
     CHECK(1 == son0_son0.weight);
 
     son0_son1 = upgrp2.group.get_child_node(son0, 1);
     REQUIRE(son0_son1.validate());
     REQUIRE(son0_son1.is_leaf());
-    CHECK("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)upgrp2.group.get_leaf_key(son0_son1));
+    CHECK("jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)upgrp2.group.get_leaf_key(son0_son1));
     CHECK(1 == son0_son1.weight);
 
     son1 = upgrp2.group.get_child_node(root, 1);
     REQUIRE(son1.validate());
     REQUIRE(son1.is_leaf());
-    CHECK("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)upgrp2.group.get_leaf_key(son1));
+    CHECK("jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)upgrp2.group.get_leaf_key(son1));
     CHECK(3 == son1.weight);
 
     son2 = upgrp2.group.get_child_node(root, 2);
@@ -724,32 +724,32 @@ TEST_CASE_METHOD(abi_test, "updategroup_abi_test", "[abis]") {
     son2_son0 = upgrp2.group.get_child_node(son2, 0);
     REQUIRE(son2_son0.validate());
     REQUIRE(son2_son0.is_leaf());
-    CHECK("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)upgrp2.group.get_leaf_key(son2_son0));
+    CHECK("jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)upgrp2.group.get_leaf_key(son2_son0));
     CHECK(1 == son2_son0.weight);
 
     son2_son1 = upgrp2.group.get_child_node(son2, 1);
     REQUIRE(son2_son1.validate());
     REQUIRE(son2_son1.is_leaf());
-    CHECK("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)upgrp2.group.get_leaf_key(son2_son1));
+    CHECK("jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX" == (std::string)upgrp2.group.get_leaf_key(son2_son1));
     CHECK(2 == son2_son1.weight);
 
     verify_type_round_trip_conversion<updategroup>(abis, "updategroup", var);
 }
 
 TEST_CASE_METHOD(abi_test, "newfungible_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
 
     auto test_data = R"=====(
     {
-      "name": "EVT",
-      "sym_name": "EVT",
+      "name": "jmzk",
+      "sym_name": "jmzk",
       "sym": "5,S#15555244665",
-      "creator": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+      "creator": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
       "issue" : {
         "name" : "issue",
         "threshold" : 1,
         "authorizers": [{
-            "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+            "ref": "[A] jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
             "weight": 1
           }
         ]
@@ -758,7 +758,7 @@ TEST_CASE_METHOD(abi_test, "newfungible_abi_test", "[abis]") {
         "name": "manage",
         "threshold": 1,
         "authorizers": [{
-            "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+            "ref": "[A] jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
             "weight": 1
           }
         ]
@@ -772,15 +772,15 @@ TEST_CASE_METHOD(abi_test, "newfungible_abi_test", "[abis]") {
 
     test_data = R"=====(
     {
-      "name": "EVT",
-      "sym_name": "EVT",
+      "name": "jmzk",
+      "sym_name": "jmzk",
       "sym": "5,S#-1",
-      "creator": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+      "creator": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
       "issue" : {
         "name" : "issue",
         "threshold" : 1,
         "authorizers": [{
-            "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+            "ref": "[A] jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
             "weight": 1
           }
         ]
@@ -789,7 +789,7 @@ TEST_CASE_METHOD(abi_test, "newfungible_abi_test", "[abis]") {
         "name": "manage",
         "threshold": 1,
         "authorizers": [{
-            "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+            "ref": "[A] jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
             "weight": 1
           }
         ]
@@ -803,15 +803,15 @@ TEST_CASE_METHOD(abi_test, "newfungible_abi_test", "[abis]") {
 
     test_data = R"=====(
     {
-      "name": "EVT",
-      "sym_name": "EVT",
+      "name": "jmzk",
+      "sym_name": "jmzk",
       "sym": "5,S#1",
-      "creator": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+      "creator": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
       "issue" : {
         "name" : "issue",
         "threshold" : 1,
         "authorizers": [{
-            "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+            "ref": "[A] jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
             "weight": 1
           }
         ]
@@ -820,7 +820,7 @@ TEST_CASE_METHOD(abi_test, "newfungible_abi_test", "[abis]") {
         "name": "manage",
         "threshold": 1,
         "authorizers": [{
-            "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+            "ref": "[A] jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
             "weight": 1
           }
         ]
@@ -832,23 +832,23 @@ TEST_CASE_METHOD(abi_test, "newfungible_abi_test", "[abis]") {
     var   = fc::json::from_string(test_data);
     auto newfg = var.as<newfungible>();
 
-    CHECK("EVT" == newfg.name);
-    CHECK("EVT" == newfg.sym_name);
+    CHECK("jmzk" == newfg.name);
+    CHECK("jmzk" == newfg.sym_name);
     CHECK("5,S#1" == newfg.sym.to_string());
-    CHECK("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)newfg.creator);
+    CHECK("jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)newfg.creator);
 
     CHECK("issue" == newfg.issue.name);
     CHECK(1 == newfg.issue.threshold);
     REQUIRE(1 == newfg.issue.authorizers.size());
     CHECK(newfg.issue.authorizers[0].ref.is_account_ref());
-    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)newfg.issue.authorizers[0].ref.get_account());
+    CHECK("jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)newfg.issue.authorizers[0].ref.get_account());
     CHECK(1 == newfg.issue.authorizers[0].weight);
 
     CHECK("manage" == newfg.manage.name);
     CHECK(1 == newfg.manage.threshold);
     REQUIRE(1 == newfg.manage.authorizers.size());
     CHECK(newfg.manage.authorizers[0].ref.is_account_ref());
-    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)newfg.manage.authorizers[0].ref.get_account());
+    CHECK("jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)newfg.manage.authorizers[0].ref.get_account());
     CHECK(1 == newfg.manage.authorizers[0].weight);
 
     CHECK(1200000 == newfg.total_supply.amount());
@@ -859,22 +859,22 @@ TEST_CASE_METHOD(abi_test, "newfungible_abi_test", "[abis]") {
 
     auto newfg2 = var2.as<newfungible>();
 
-    CHECK("EVT" == newfg2.name);
-    CHECK("EVT" == newfg2.sym_name);
-    CHECK("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)newfg2.creator);
+    CHECK("jmzk" == newfg2.name);
+    CHECK("jmzk" == newfg2.sym_name);
+    CHECK("jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)newfg2.creator);
 
     CHECK("issue" == newfg2.issue.name);
     CHECK(1 == newfg2.issue.threshold);
     REQUIRE(1 == newfg2.issue.authorizers.size());
     CHECK(newfg2.issue.authorizers[0].ref.is_account_ref());
-    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)newfg2.issue.authorizers[0].ref.get_account());
+    CHECK("jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)newfg2.issue.authorizers[0].ref.get_account());
     CHECK(1 == newfg2.issue.authorizers[0].weight);
 
     CHECK("manage" == newfg2.manage.name);
     CHECK(1 == newfg2.manage.threshold);
     REQUIRE(1 == newfg2.manage.authorizers.size());
     CHECK(newfg2.manage.authorizers[0].ref.is_account_ref());
-    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)newfg2.manage.authorizers[0].ref.get_account());
+    CHECK("jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)newfg2.manage.authorizers[0].ref.get_account());
     CHECK(1 == newfg2.manage.authorizers[0].weight);
 
     CHECK(1200000 == newfg2.total_supply.amount());
@@ -885,7 +885,7 @@ TEST_CASE_METHOD(abi_test, "newfungible_abi_test", "[abis]") {
 }
 
 TEST_CASE_METHOD(abi_test, "updfungible_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
 
     auto test_data = R"=====(
     {
@@ -894,7 +894,7 @@ TEST_CASE_METHOD(abi_test, "updfungible_abi_test", "[abis]") {
         "name" : "issue2",
         "threshold" : 1,
         "authorizers": [{
-            "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+            "ref": "[A] jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
             "weight": 1
           }
         ]
@@ -911,7 +911,7 @@ TEST_CASE_METHOD(abi_test, "updfungible_abi_test", "[abis]") {
     CHECK(1 == updfg.issue->threshold);
     REQUIRE(1 == updfg.issue->authorizers.size());
     CHECK(updfg.issue->authorizers[0].ref.is_account_ref());
-    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)updfg.issue->authorizers[0].ref.get_account());
+    CHECK("jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)updfg.issue->authorizers[0].ref.get_account());
     CHECK(1 == updfg.issue->authorizers[0].weight);
 
     auto var2 = verify_byte_round_trip_conversion(abis, "updfungible", var);
@@ -924,18 +924,18 @@ TEST_CASE_METHOD(abi_test, "updfungible_abi_test", "[abis]") {
     CHECK(1 == updfg2.issue->threshold);
     REQUIRE(1 == updfg2.issue->authorizers.size());
     CHECK(updfg2.issue->authorizers[0].ref.is_account_ref());
-    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)updfg2.issue->authorizers[0].ref.get_account());
+    CHECK("jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)updfg2.issue->authorizers[0].ref.get_account());
     CHECK(1 == updfg2.issue->authorizers[0].weight);
 
     verify_type_round_trip_conversion<updfungible>(abis, "updfungible", var);
 }
 
 TEST_CASE_METHOD(abi_test, "issuefungible_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
 
     auto test_data = R"=====(
     {
-      "address": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+      "address": "jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
       "number" : "12.00000 S#1",
       "memo": "memo"
     }
@@ -944,7 +944,7 @@ TEST_CASE_METHOD(abi_test, "issuefungible_abi_test", "[abis]") {
     auto var   = fc::json::from_string(test_data);
     auto issfg = var.as<issuefungible>();
 
-    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)issfg.address);
+    CHECK("jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)issfg.address);
     CHECK("memo" == issfg.memo);
 
     CHECK(1200000 == issfg.number.amount());
@@ -955,7 +955,7 @@ TEST_CASE_METHOD(abi_test, "issuefungible_abi_test", "[abis]") {
 
     auto issfg2 = var2.as<issuefungible>();
 
-    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)issfg2.address);
+    CHECK("jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)issfg2.address);
     CHECK("memo" == issfg2.memo);
 
     CHECK(1200000 == issfg2.number.amount());
@@ -966,12 +966,12 @@ TEST_CASE_METHOD(abi_test, "issuefungible_abi_test", "[abis]") {
 }
 
 TEST_CASE_METHOD(abi_test, "transferft_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
 
     auto test_data = R"=====(
     {
-      "from": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
-      "to": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+      "from": "jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+      "to": "jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
       "number" : "12.00000 S#1",
       "memo": "memo"
     }
@@ -980,8 +980,8 @@ TEST_CASE_METHOD(abi_test, "transferft_abi_test", "[abis]") {
     auto var  = fc::json::from_string(test_data);
     auto trft = var.as<transferft>();
 
-    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)trft.from);
-    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)trft.to);
+    CHECK("jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)trft.from);
+    CHECK("jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)trft.to);
     CHECK("memo" == trft.memo);
 
     CHECK(1200000 == trft.number.amount());
@@ -992,8 +992,8 @@ TEST_CASE_METHOD(abi_test, "transferft_abi_test", "[abis]") {
 
     auto trft2 = var2.as<transferft>();
 
-    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)trft2.from);
-    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)trft2.to);
+    CHECK("jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)trft2.from);
+    CHECK("jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)trft2.to);
     CHECK("memo" == trft2.memo);
 
     CHECK(1200000 == trft2.number.amount());
@@ -1004,13 +1004,13 @@ TEST_CASE_METHOD(abi_test, "transferft_abi_test", "[abis]") {
 }
 
 TEST_CASE_METHOD(abi_test, "addmeta_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
 
     auto test_data = R"=====(
     {
       "key": "key",
       "value": "value",
-      "creator": "[A] EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+      "creator": "[A] jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
     }
     )=====";
 
@@ -1020,7 +1020,7 @@ TEST_CASE_METHOD(abi_test, "addmeta_abi_test", "[abis]") {
     CHECK("key" == admt.key);
     CHECK("value" == admt.value);
     CHECK(admt.creator.is_account_ref());
-    CHECK("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)admt.creator.get_account());
+    CHECK("jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)admt.creator.get_account());
 
     auto var2 = verify_byte_round_trip_conversion(abis, "addmeta", var);
 
@@ -1029,23 +1029,23 @@ TEST_CASE_METHOD(abi_test, "addmeta_abi_test", "[abis]") {
     CHECK("key" == admt2.key);
     CHECK("value" == admt2.value);
     CHECK(admt2.creator.is_account_ref());
-    CHECK("EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)admt2.creator.get_account());
+    CHECK("jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" == (std::string)admt2.creator.get_account());
 
     verify_type_round_trip_conversion<addmeta>(abis, "addmeta", var);
 }
 
 TEST_CASE_METHOD(abi_test, "newsuspend_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
     auto test_data = R"=======(
     {
         "name": "testsuspend",
-        "proposer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
+        "proposer": "jmzk6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
         "trx": {
             "expiration": "2018-07-04T05:14:12",
             "ref_block_num": "3432",
             "ref_block_prefix": "291678901",
             "max_charge": 10000,
-            "payer": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
+            "payer": "jmzk6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
             "actions": [
                 {
                     "name": "newdomain",
@@ -1063,7 +1063,7 @@ TEST_CASE_METHOD(abi_test, "newsuspend_abi_test", "[abis]") {
     auto ndact = var.as<newsuspend>();
 
     CHECK("testsuspend" == (std::string)ndact.name);
-    CHECK("EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3" == (std::string)ndact.proposer);
+    CHECK("jmzk6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3" == (std::string)ndact.proposer);
     CHECK("2018-07-04T05:14:12" == ndact.trx.expiration.to_iso_string());
     CHECK(3432 == ndact.trx.ref_block_num);
     CHECK(291678901 == ndact.trx.ref_block_prefix);
@@ -1077,7 +1077,7 @@ TEST_CASE_METHOD(abi_test, "newsuspend_abi_test", "[abis]") {
 }
 
 TEST_CASE_METHOD(abi_test, "cancelsuspend_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
     auto test_data = R"=======(
     {
         "name": "testsuspend"
@@ -1094,7 +1094,7 @@ TEST_CASE_METHOD(abi_test, "cancelsuspend_abi_test", "[abis]") {
 }
 
 TEST_CASE_METHOD(abi_test, "aprvsuspend_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
     auto test_data = R"=======(
     {
         "name": "test1530718665",
@@ -1116,11 +1116,11 @@ TEST_CASE_METHOD(abi_test, "aprvsuspend_abi_test", "[abis]") {
 }
 
 TEST_CASE_METHOD(abi_test, "execsuspend_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
     auto test_data = R"=======(
     {
         "name": "test1530718626",
-        "executor": "EVT548LviBDF6EcknKnKUMeaPUrZN2uhfCB1XrwHsURZngakYq9Vx"
+        "executor": "jmzk548LviBDF6EcknKnKUMeaPUrZN2uhfCB1XrwHsURZngakYq9Vx"
 
     }
     )=======";
@@ -1129,36 +1129,36 @@ TEST_CASE_METHOD(abi_test, "execsuspend_abi_test", "[abis]") {
     auto edact = var.as<execsuspend>();
 
     CHECK("test1530718626" == (std::string)edact.name);
-    CHECK((std::string)edact.executor == "EVT548LviBDF6EcknKnKUMeaPUrZN2uhfCB1XrwHsURZngakYq9Vx");
+    CHECK((std::string)edact.executor == "jmzk548LviBDF6EcknKnKUMeaPUrZN2uhfCB1XrwHsURZngakYq9Vx");
 
     verify_byte_round_trip_conversion(abis, "execsuspend", var);
     verify_type_round_trip_conversion<execsuspend>(abis, "execsuspend", var);
 }
 
-TEST_CASE_METHOD(abi_test, "evt2pevt_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+TEST_CASE_METHOD(abi_test, "jmzk2pjmzk_abi_test", "[abis]") {
+    auto& abis = get_jmzk_abi();
     auto test_data = R"=======(
     {
-        "from": "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
-        "to": "EVT548LviBDF6EcknKnKUMeaPUrZN2uhfCB1XrwHsURZngakYq9Vx",
+        "from": "jmzk6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3",
+        "to": "jmzk548LviBDF6EcknKnKUMeaPUrZN2uhfCB1XrwHsURZngakYq9Vx",
         "number": "5.00000 S#1",
         "memo": "memo"
     }
     )=======";
 
     auto var = fc::json::from_string(test_data);
-    auto e2p = var.as<evt2pevt>();
+    auto e2p = var.as<jmzk2pjmzk>();
 
-    CHECK("EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3" == (std::string)e2p.from);
-    CHECK("EVT548LviBDF6EcknKnKUMeaPUrZN2uhfCB1XrwHsURZngakYq9Vx" == (std::string)e2p.to);
+    CHECK("jmzk6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3" == (std::string)e2p.from);
+    CHECK("jmzk548LviBDF6EcknKnKUMeaPUrZN2uhfCB1XrwHsURZngakYq9Vx" == (std::string)e2p.to);
     CHECK((std::string)e2p.number.to_string() == "5.00000 S#1");
 
-    verify_byte_round_trip_conversion(abis, "evt2pevt", var);
-    verify_type_round_trip_conversion<evt2pevt>(abis, "evt2pevt", var);
+    verify_byte_round_trip_conversion(abis, "jmzk2pjmzk", var);
+    verify_type_round_trip_conversion<jmzk2pjmzk>(abis, "jmzk2pjmzk", var);
 }
 
 TEST_CASE_METHOD(abi_test, "everipass_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
     auto test_data = R"=======(
     {
         "link": "03XBY4E/KTS:PNHVA3JP9QG258F08JHYOYR5SLJGN0EA-C3J6S:2G:T1SX7WA14KH9ETLZ97TUX9R9JJA6+06$E/_PYNX-/152P4CTC:WKXLK$/7G-K:89+::2K4C-KZ2**HI-P8CYJ**XGFO1K5:$E*SOY8MFYWMNHP*BHX2U8$$FTFI81YDP1HT"
@@ -1171,10 +1171,10 @@ TEST_CASE_METHOD(abi_test, "everipass_abi_test", "[abis]") {
     auto& link = ep.link;
 
     CHECK(link.get_header() == 3);
-    CHECK(*link.get_segment(evt_link::timestamp).intv == 1532465234);
-    CHECK(link.get_segment(evt_link::domain).intv.has_value() == false);
-    CHECK(*link.get_segment(evt_link::domain).strv == "nd1532465232490");
-    CHECK(*link.get_segment(evt_link::token).strv == "tk3064930465.8381");
+    CHECK(*link.get_segment(jmzk_link::timestamp).intv == 1532465234);
+    CHECK(link.get_segment(jmzk_link::domain).intv.has_value() == false);
+    CHECK(*link.get_segment(jmzk_link::domain).strv == "nd1532465232490");
+    CHECK(*link.get_segment(jmzk_link::token).strv == "tk3064930465.8381");
 
     auto uid = std::string();
     uid.push_back((char)249);
@@ -1194,7 +1194,7 @@ TEST_CASE_METHOD(abi_test, "everipass_abi_test", "[abis]") {
     uid.push_back((char)117);
     uid.push_back((char)147);
 
-    CHECK(link.get_segment(evt_link::link_id).strv == uid);
+    CHECK(link.get_segment(jmzk_link::link_id).strv == uid);
 
     auto& sigs = link.get_signatures();
     CHECK(sigs.size() == 1);
@@ -1204,13 +1204,13 @@ TEST_CASE_METHOD(abi_test, "everipass_abi_test", "[abis]") {
     auto pkeys = link.restore_keys();
     CHECK(pkeys.size() == 1);
 
-    CHECK(pkeys.find(public_key_type(std::string("EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"))) != pkeys.end());
+    CHECK(pkeys.find(public_key_type(std::string("jmzk8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"))) != pkeys.end());
 
 
     // multiple versions tests
     auto get_var = [&](auto& var) {
         auto& exec_ctx = get_exec_ctx();
-        auto& abis = get_evt_abi();
+        auto& abis = get_jmzk_abi();
 
         auto type  = exec_ctx.get_acttype_name("everipass");
         auto bytes = abis.variant_to_binary(type, var, exec_ctx);
@@ -1243,11 +1243,11 @@ TEST_CASE_METHOD(abi_test, "everipass_abi_test", "[abis]") {
 }
 
 TEST_CASE_METHOD(abi_test, "everipay_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
     auto test_data = R"=======(
     {
         "link": "0UKDRJZA4Z9IR9TK4Q7BJP0SV-/$$XDADD03/37BOI3FPJ9C3_QUQ4A1GS9VJX-3MIKFBYFYHLZODIRRUAFEGFS6+*ZKN40BOMIY6/2CJGC04:VZFB8H3FZ91/TW*-8M02/GKDLUFE80HC8*LI",
-        "payee": "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC",
+        "payee": "jmzk8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC",
         "number": "5.00000 S#1"
     }
     )=======";
@@ -1258,10 +1258,10 @@ TEST_CASE_METHOD(abi_test, "everipay_abi_test", "[abis]") {
     auto& link = ep.link;
 
     CHECK(link.get_header() == 5);
-    CHECK(*link.get_segment(evt_link::timestamp).intv == 1532962996);
-    CHECK(link.get_segment(evt_link::symbol_id).strv.has_value() == false);
-    CHECK(*link.get_segment(evt_link::symbol_id).intv == 4);
-    CHECK(*link.get_segment(evt_link::max_pay).intv == 354);
+    CHECK(*link.get_segment(jmzk_link::timestamp).intv == 1532962996);
+    CHECK(link.get_segment(jmzk_link::symbol_id).strv.has_value() == false);
+    CHECK(*link.get_segment(jmzk_link::symbol_id).intv == 4);
+    CHECK(*link.get_segment(jmzk_link::max_pay).intv == 354);
 
     auto uid = std::string();
     uid.push_back((char)64);
@@ -1281,7 +1281,7 @@ TEST_CASE_METHOD(abi_test, "everipay_abi_test", "[abis]") {
     uid.push_back((char)118);
     uid.push_back((char)103);
 
-    CHECK(link.get_segment(evt_link::link_id).strv == uid);
+    CHECK(link.get_segment(jmzk_link::link_id).strv == uid);
 
     auto& sigs = link.get_signatures();
     CHECK(sigs.size() == 1);
@@ -1292,12 +1292,12 @@ TEST_CASE_METHOD(abi_test, "everipay_abi_test", "[abis]") {
     CHECK(pkeys.size() == 1);
 
     INFO(*pkeys.cbegin());
-    CHECK(pkeys.find(public_key_type(std::string("EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"))) != pkeys.end());
+    CHECK(pkeys.find(public_key_type(std::string("jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"))) != pkeys.end());
 
     // multiple versions tests
     auto get_var = [&](auto& var) {
         auto& exec_ctx = get_exec_ctx();
-        auto& abis = get_evt_abi();
+        auto& abis = get_jmzk_abi();
 
         auto type  = exec_ctx.get_acttype_name("everipay");
         auto bytes = abis.variant_to_binary(type, var, exec_ctx);
@@ -1330,7 +1330,7 @@ TEST_CASE_METHOD(abi_test, "everipay_abi_test", "[abis]") {
 }
 
 TEST_CASE_METHOD(abi_test, "prodvote_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
     auto test_data = R"=======(
     {
         "producer": "producer",
@@ -1351,12 +1351,12 @@ TEST_CASE_METHOD(abi_test, "prodvote_abi_test", "[abis]") {
 }
 
 TEST_CASE_METHOD(abi_test, "updsched_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
     auto test_data = R"=======(
     {
         "producers": [{
             "producer_name": "producer",
-            "block_signing_key": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
+            "block_signing_key": "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
         }]
     }
     )=======";
@@ -1365,18 +1365,18 @@ TEST_CASE_METHOD(abi_test, "updsched_abi_test", "[abis]") {
     auto us  = var.as<updsched>();
 
     CHECK(us.producers[0].producer_name == "producer");
-    CHECK((std::string)us.producers[0].block_signing_key == "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF");
+    CHECK((std::string)us.producers[0].block_signing_key == "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF");
 
     verify_byte_round_trip_conversion(abis, "updsched", var);
     verify_type_round_trip_conversion<updsched>(abis, "updsched", var);
 }
 
 TEST_CASE_METHOD(abi_test, "newlock_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
     auto test_data = R"=======(
     {
         "name": "lock",
-        "proposer": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+        "proposer": "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
         "unlock_time": "2018-06-09T09:06:27",
         "deadline": "2018-07-09T09:06:27",
         "assets": [{
@@ -1395,16 +1395,16 @@ TEST_CASE_METHOD(abi_test, "newlock_abi_test", "[abis]") {
             "data": {
                 "threshold": 2,
                 "cond_keys": [
-                    "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
-                    "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
+                    "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+                    "jmzk8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
                 ]
             }
         },
         "succeed": [
-            "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
+            "jmzk8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
         ],
         "failed": [
-            "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
+            "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
         ]
     }
     )=======";
@@ -1412,7 +1412,7 @@ TEST_CASE_METHOD(abi_test, "newlock_abi_test", "[abis]") {
     auto nl  = var.as<newlock>();
 
     CHECK(nl.name == "lock");
-    CHECK((std::string)nl.proposer == "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF");
+    CHECK((std::string)nl.proposer == "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF");
     CHECK("2018-06-09T09:06:27" == nl.unlock_time.to_iso_string());
     CHECK("2018-07-09T09:06:27" == nl.deadline.to_iso_string());
     CHECK(nl.assets[0].type() == asset_type::tokens);
@@ -1428,13 +1428,13 @@ TEST_CASE_METHOD(abi_test, "newlock_abi_test", "[abis]") {
     auto& lck = nl.condition.get<lock_condkeys>();
     CHECK(lck.threshold == 2);
     CHECK(lck.cond_keys.size() == 2);
-    CHECK((std::string)lck.cond_keys[0] == "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF");
-    CHECK((std::string)lck.cond_keys[1] == "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC");
+    CHECK((std::string)lck.cond_keys[0] == "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF");
+    CHECK((std::string)lck.cond_keys[1] == "jmzk8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC");
     
     CHECK(nl.succeed.size() == 1);
     CHECK(nl.failed.size() == 1);
-    CHECK((std::string)nl.succeed[0] == "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC");
-    CHECK((std::string)nl.failed[0] == "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF");
+    CHECK((std::string)nl.succeed[0] == "jmzk8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC");
+    CHECK((std::string)nl.failed[0] == "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF");
 
     verify_byte_round_trip_conversion(abis, "newlock", var);
     verify_type_round_trip_conversion<newlock>(abis, "newlock", var);
@@ -1453,7 +1453,7 @@ TEST_CASE_METHOD(abi_test, "newlock_abi_test", "[abis]") {
     auto test_data2 = R"=======(
     {
         "name": "lock",
-        "proposer": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+        "proposer": "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
         "unlock_time": "2018-06-09T09:06:27",
         "deadline": "2018-07-09T09:06:27",
         "assets": [{
@@ -1471,16 +1471,16 @@ TEST_CASE_METHOD(abi_test, "newlock_abi_test", "[abis]") {
             "data": {
                 "threshold": 2,
                 "cond_keys": [
-                    "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
-                    "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
+                    "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+                    "jmzk8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
                 ]
             }
         },
         "succeed": [
-            "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
+            "jmzk8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
         ],
         "failed": [
-            "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
+            "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
         ]
     }
     )=======";
@@ -1491,7 +1491,7 @@ TEST_CASE_METHOD(abi_test, "newlock_abi_test", "[abis]") {
     auto test_data3 = R"=======(
     {
         "name": "lock",
-        "proposer": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+        "proposer": "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
         "unlock_time": "2018-06-09T09:06:27",
         "deadline": "2018-07-09T09:06:27",
         "assets": [{
@@ -1510,16 +1510,16 @@ TEST_CASE_METHOD(abi_test, "newlock_abi_test", "[abis]") {
             "data": {
                 "threshold": 2,
                 "cond_keys": [
-                    "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
-                    "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
+                    "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+                    "jmzk8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
                 ]
             }
         },
         "succeed": [
-            "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
+            "jmzk8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
         ],
         "failed": [
-            "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
+            "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
         ]
     }
     )=======";
@@ -1529,11 +1529,11 @@ TEST_CASE_METHOD(abi_test, "newlock_abi_test", "[abis]") {
 }
 
 TEST_CASE_METHOD(abi_test, "aprvlock_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
     auto test_data = R"=======(
     {
         "name": "lock",
-        "approver": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+        "approver": "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
         "data": {
             "type": "cond_key",
             "data": {}
@@ -1545,7 +1545,7 @@ TEST_CASE_METHOD(abi_test, "aprvlock_abi_test", "[abis]") {
     auto al  = var.as<aprvlock>();
 
     CHECK(al.name == "lock");
-    CHECK((std::string)al.approver == "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF");
+    CHECK((std::string)al.approver == "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF");
     CHECK(al.data.type() == lock_aprv_type::cond_key);
 
     verify_byte_round_trip_conversion(abis, "aprvlock", var);
@@ -1553,11 +1553,11 @@ TEST_CASE_METHOD(abi_test, "aprvlock_abi_test", "[abis]") {
 }
 
 TEST_CASE_METHOD(abi_test, "tryunlock_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
     auto test_data = R"=======(
     {
         "name": "lock",
-        "executor": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
+        "executor": "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
     }
     )=======";
 
@@ -1565,17 +1565,17 @@ TEST_CASE_METHOD(abi_test, "tryunlock_abi_test", "[abis]") {
     auto ul  = var.as<tryunlock>();
 
     CHECK(ul.name == "lock");
-    CHECK((std::string)ul.executor == "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF");
+    CHECK((std::string)ul.executor == "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF");
 
     verify_byte_round_trip_conversion(abis, "tryunlock", var);
     verify_type_round_trip_conversion<tryunlock>(abis, "tryunlock", var);
 }
 
 TEST_CASE_METHOD(abi_test, "recycleft_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
     auto test_data = R"=======(
     {
-        "address": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+        "address": "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
         "number": "5.00000 S#1",
         "memo": "memo"
     }
@@ -1585,7 +1585,7 @@ TEST_CASE_METHOD(abi_test, "recycleft_abi_test", "[abis]") {
     auto rf  = var.as<recycleft>();
 
     CHECK(rf.number.to_string() == "5.00000 S#1");
-    CHECK((std::string)rf.address == "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF");
+    CHECK((std::string)rf.address == "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF");
 
     verify_byte_round_trip_conversion(abis, "recycleft", var);
     verify_type_round_trip_conversion<recycleft>(abis, "recycleft", var);
@@ -1605,7 +1605,7 @@ auto setpsvbonus_test_data = R"=====(
             "data": {
                 "receiver": {
                     "type": "address",
-                    "data": "EVT6U1bm7RexvukTvLgSfHJAhufjQ1i7x8uRfQ3qdG8TbnitKQya1"
+                    "data": "jmzk6U1bm7RexvukTvLgSfHJAhufjQ1i7x8uRfQ3qdG8TbnitKQya1"
                 },
                 "amount": "10.00000 S#3"
             }
@@ -1627,7 +1627,7 @@ auto setpsvbonus_test_data = R"=====(
             "data": {
                 "receiver": {
                     "type": "address",
-                    "data": "EVT5ChPfrwcAJrWzQbsCgGFvzdQGzMhFadxEpr6sKTL2ru12HH6K8"
+                    "data": "jmzk5ChPfrwcAJrWzQbsCgGFvzdQGzMhFadxEpr6sKTL2ru12HH6K8"
                 },
                 "percent": "0.99"
             }
@@ -1647,7 +1647,7 @@ auto setpsvbonus_test_data = R"=====(
 )=====";
 
 TEST_CASE_METHOD(abi_test, "setpsvbonus_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
 
     auto var = fc::json::from_string(setpsvbonus_test_data);
     auto psb = var.as<setpsvbonus>();
@@ -1664,19 +1664,19 @@ TEST_CASE_METHOD(abi_test, "setpsvbonus_abi_test", "[abis]") {
     CHECK(psb.rules[0].type() == dist_rule_type::fixed);
     auto& r1 = psb.rules[0].get<dist_fixed_rule>();
     CHECK(r1.receiver.type() == dist_receiver_type::address);
-    CHECK(r1.receiver.get<address>() == address(public_key_type("EVT6U1bm7RexvukTvLgSfHJAhufjQ1i7x8uRfQ3qdG8TbnitKQya1")));
+    CHECK(r1.receiver.get<address>() == address(public_key_type("jmzk6U1bm7RexvukTvLgSfHJAhufjQ1i7x8uRfQ3qdG8TbnitKQya1")));
     CHECK(r1.amount == asset(10'00000, symbol(5,3)));
 
     CHECK(psb.rules[1].type() == dist_rule_type::percent);
     auto& r2 = psb.rules[1].get<dist_percent_rule>();
     CHECK(r2.receiver.type() == dist_receiver_type::ftholders);
-    CHECK(r2.receiver.get<dist_stack_receiver>().threshold == asset(1'00000,evt_sym()));
+    CHECK(r2.receiver.get<dist_stack_receiver>().threshold == asset(1'00000,jmzk_sym()));
     CHECK(r2.percent.str() == "0.3");
 
     CHECK(psb.rules[2].type() == dist_rule_type::remaining_percent);
     auto& r3 = psb.rules[2].get<dist_rpercent_rule>();
     CHECK(r3.receiver.type() == dist_receiver_type::address);
-    CHECK(r3.receiver.get<address>() == address(public_key_type("EVT5ChPfrwcAJrWzQbsCgGFvzdQGzMhFadxEpr6sKTL2ru12HH6K8")));
+    CHECK(r3.receiver.get<address>() == address(public_key_type("jmzk5ChPfrwcAJrWzQbsCgGFvzdQGzMhFadxEpr6sKTL2ru12HH6K8")));
     CHECK(r3.percent.str() == "0.99");
 
     CHECK(psb.methods.size() == 2);
@@ -1690,7 +1690,7 @@ TEST_CASE_METHOD(abi_test, "setpsvbonus_abi_test", "[abis]") {
 }
 
 TEST_CASE_METHOD(abi_test, "setpsvbonus_v2_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
 
     auto var = fc::json::from_string(setpsvbonus_test_data);
     auto mv  = fc::mutable_variant_object(var);
@@ -1712,20 +1712,20 @@ TEST_CASE_METHOD(abi_test, "setpsvbonus_v2_abi_test", "[abis]") {
     CHECK(psb.rules[0].type() == dist_rule_type::fixed);
     auto& r1 = psb.rules[0].get<dist_fixed_rule>();
     CHECK(r1.receiver.type() == dist_receiver_type::address);
-    CHECK(r1.receiver.get<address>() == address(public_key_type("EVT6U1bm7RexvukTvLgSfHJAhufjQ1i7x8uRfQ3qdG8TbnitKQya1")));
+    CHECK(r1.receiver.get<address>() == address(public_key_type("jmzk6U1bm7RexvukTvLgSfHJAhufjQ1i7x8uRfQ3qdG8TbnitKQya1")));
     CHECK(r1.amount == asset(10'00000, symbol(5,3)));
 
     CHECK(psb.rules[1].type() == dist_rule_type::percent);
     auto& r2 = psb.rules[1].get<dist_percent_rule_v2>();
     CHECK(r2.receiver.type() == dist_receiver_type::ftholders);
-    CHECK(r2.receiver.get<dist_stack_receiver>().threshold == asset(1'00000,evt_sym()));
+    CHECK(r2.receiver.get<dist_stack_receiver>().threshold == asset(1'00000,jmzk_sym()));
     CHECK(r2.percent.value().str() == "0.3");
     CHECK(r2.percent.to_string() == "0.3");
 
     CHECK(psb.rules[2].type() == dist_rule_type::remaining_percent);
     auto& r3 = psb.rules[2].get<dist_rpercent_rule_v2>();
     CHECK(r3.receiver.type() == dist_receiver_type::address);
-    CHECK(r3.receiver.get<address>() == address(public_key_type("EVT5ChPfrwcAJrWzQbsCgGFvzdQGzMhFadxEpr6sKTL2ru12HH6K8")));
+    CHECK(r3.receiver.get<address>() == address(public_key_type("jmzk5ChPfrwcAJrWzQbsCgGFvzdQGzMhFadxEpr6sKTL2ru12HH6K8")));
     CHECK(r3.percent.value().str() == "0.99");
     CHECK(r3.percent.to_string() == "0.99");
 
@@ -1745,18 +1745,18 @@ TEST_CASE_METHOD(abi_test, "setpsvbonus_v2_abi_test", "[abis]") {
 
 
 TEST_CASE_METHOD(abi_test, "newvalidator_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
 
     auto test_data = R"=====(
     {
       "name": "validator",
-      "creator": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
-      "signer": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+      "creator": "jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+      "signer": "jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
       "withdraw" : {
         "name" : "withdraw",
         "threshold" : 1,
         "authorizers": [{
-            "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+            "ref": "[A] jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
             "weight": 1
           }
         ]
@@ -1765,7 +1765,7 @@ TEST_CASE_METHOD(abi_test, "newvalidator_abi_test", "[abis]") {
         "name" : "manage",
         "threshold" : 1,
         "authorizers": [{
-            "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+            "ref": "[A] jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
             "weight": 1
           }
         ]
@@ -1778,8 +1778,8 @@ TEST_CASE_METHOD(abi_test, "newvalidator_abi_test", "[abis]") {
     auto nvd = var.as<newvalidator>();
 
     CHECK("validator" == nvd.name);
-    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)nvd.creator);
-    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)nvd.signer);
+    CHECK("jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)nvd.creator);
+    CHECK("jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)nvd.signer);
 
     CHECK("0.59" == (std::string)nvd.commission);
 
@@ -1787,20 +1787,20 @@ TEST_CASE_METHOD(abi_test, "newvalidator_abi_test", "[abis]") {
     CHECK(1 == nvd.withdraw.threshold);
     REQUIRE(1 == nvd.withdraw.authorizers.size());
     CHECK(nvd.withdraw.authorizers[0].ref.is_account_ref());
-    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)nvd.withdraw.authorizers[0].ref.get_account());
+    CHECK("jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)nvd.withdraw.authorizers[0].ref.get_account());
     CHECK(1 == nvd.withdraw.authorizers[0].weight);
 
     CHECK("manage" == nvd.manage.name);
     CHECK(1 == nvd.manage.threshold);
     REQUIRE(1 == nvd.manage.authorizers.size());
-    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)nvd.withdraw.authorizers[0].ref.get_account());
+    CHECK("jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)nvd.withdraw.authorizers[0].ref.get_account());
     CHECK(1 == nvd.manage.authorizers[0].weight);
 
     auto var2 = verify_byte_round_trip_conversion(abis, "newvalidator", var);
     auto nvd2 = var2.as<newvalidator>();
 
     CHECK("validator" == nvd2.name);
-    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)nvd2.creator);
+    CHECK("jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)nvd2.creator);
 
     CHECK("0.59" == (std::string)nvd2.commission);
 
@@ -1808,24 +1808,24 @@ TEST_CASE_METHOD(abi_test, "newvalidator_abi_test", "[abis]") {
     CHECK(1 == nvd2.withdraw.threshold);
     REQUIRE(1 == nvd2.withdraw.authorizers.size());
     CHECK(nvd2.withdraw.authorizers[0].ref.is_account_ref());
-    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)nvd2.withdraw.authorizers[0].ref.get_account());
+    CHECK("jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)nvd2.withdraw.authorizers[0].ref.get_account());
     CHECK(1 == nvd2.withdraw.authorizers[0].weight);
 
     CHECK("manage" == nvd2.manage.name);
     CHECK(1 == nvd2.manage.threshold);
     REQUIRE(1 == nvd2.manage.authorizers.size());
-    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)nvd2.withdraw.authorizers[0].ref.get_account());
+    CHECK("jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)nvd2.withdraw.authorizers[0].ref.get_account());
     CHECK(1 == nvd2.manage.authorizers[0].weight);
 
     verify_type_round_trip_conversion<newvalidator>(abis, "newvalidator", var);
 }
 
 TEST_CASE_METHOD(abi_test, "staketkns_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
 
     auto test_data = R"=====(
     {
-      "staker": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+      "staker": "jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
       "validator": "validator",
       "amount" : "5.00000 S#3",
       "type": "active",
@@ -1837,7 +1837,7 @@ TEST_CASE_METHOD(abi_test, "staketkns_abi_test", "[abis]") {
     auto stk = var.as<staketkns>();
 
     CHECK("validator" == stk.validator);
-    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)stk.staker);
+    CHECK("jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)stk.staker);
     CHECK(asset(500000, symbol(5,3)) == stk.amount);
     CHECK(stk.type == stake_type::active);
     CHECK(stk.fixed_days == 5);
@@ -1846,7 +1846,7 @@ TEST_CASE_METHOD(abi_test, "staketkns_abi_test", "[abis]") {
     auto stk2 = var2.as<staketkns>();
 
     CHECK("validator" == stk2.validator);
-    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)stk2.staker);
+    CHECK("jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)stk2.staker);
     CHECK(asset(500000, symbol(5,3)) == stk2.amount);
     CHECK(stk2.type == stake_type::active);
     CHECK(stk2.fixed_days == 5);
@@ -1855,11 +1855,11 @@ TEST_CASE_METHOD(abi_test, "staketkns_abi_test", "[abis]") {
 }
 
 TEST_CASE_METHOD(abi_test, "unstaketkns_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
 
     auto test_data = R"=====(
     {
-      "staker": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+      "staker": "jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
       "validator": "validator",
       "units" : 5,
       "sym_id": 3,
@@ -1871,7 +1871,7 @@ TEST_CASE_METHOD(abi_test, "unstaketkns_abi_test", "[abis]") {
     auto unstk = var.as<unstaketkns>();
 
     CHECK("validator" == unstk.validator);
-    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)unstk.staker);
+    CHECK("jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)unstk.staker);
     CHECK(5 == unstk.units);
     CHECK(unstk.sym_id == 3);
     CHECK(unstk.op == unstake_op::propose);
@@ -1880,7 +1880,7 @@ TEST_CASE_METHOD(abi_test, "unstaketkns_abi_test", "[abis]") {
     auto unstk2 = var2.as<unstaketkns>();
 
     CHECK("validator" == unstk.validator);
-    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)unstk2.staker);
+    CHECK("jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)unstk2.staker);
     CHECK(5 == unstk2.units);
     CHECK(unstk2.sym_id == 3);
     CHECK(unstk2.op == unstake_op::propose);
@@ -1889,11 +1889,11 @@ TEST_CASE_METHOD(abi_test, "unstaketkns_abi_test", "[abis]") {
 }
 
 TEST_CASE_METHOD(abi_test, "toactivetkns_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
 
     auto test_data = R"=====(
     {
-      "staker": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+      "staker": "jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
       "validator": "validator",
       "sym_id": 3
     }
@@ -1903,21 +1903,21 @@ TEST_CASE_METHOD(abi_test, "toactivetkns_abi_test", "[abis]") {
     auto tatk = var.as<toactivetkns>();
 
     CHECK("validator" == tatk.validator);
-    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)tatk.staker);
+    CHECK("jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)tatk.staker);
     CHECK(tatk.sym_id == 3);
 
     auto var2 = verify_byte_round_trip_conversion(abis, "toactivetkns", var);
     auto tatk2 = var2.as<toactivetkns>();
 
     CHECK("validator" == tatk2.validator);
-    CHECK("EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)tatk2.staker);
+    CHECK("jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK" == (std::string)tatk2.staker);
     CHECK(tatk2.sym_id == 3);
 
     verify_type_round_trip_conversion<toactivetkns>(abis, "toactivetkns", var);
 }
 
 TEST_CASE_METHOD(abi_test, "newstakepool_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
 
     auto test_data = R"=====(
     {
@@ -1960,7 +1960,7 @@ TEST_CASE_METHOD(abi_test, "newstakepool_abi_test", "[abis]") {
 }
 
 TEST_CASE_METHOD(abi_test, "updstakepool_abi_test", "[abis]") {
-    auto& abis = get_evt_abi();
+    auto& abis = get_jmzk_abi();
 
     auto test_data = R"=====(
     {

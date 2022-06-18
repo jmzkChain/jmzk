@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #include <algorithm>
 #include <fc/bitutil.hpp>
@@ -12,11 +12,11 @@
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/range/adaptor/transformed.hpp>
 
-#include <evt/chain/exceptions.hpp>
-#include <evt/chain/transaction.hpp>
-#include <evt/chain/config.hpp>
+#include <jmzk/chain/exceptions.hpp>
+#include <jmzk/chain/transaction.hpp>
+#include <jmzk/chain/config.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 void
 transaction_header::set_reference_block(const block_id_type& reference_block) {
@@ -62,7 +62,7 @@ transaction::get_signature_keys(const signatures_base_type& signatures, const ch
         for(auto& sig : signatures) {
             auto successful_insertion                   = false;
             std::tie(std::ignore, successful_insertion) = recovered_pub_keys.emplace(sig, digest);
-            EVT_ASSERT(allow_duplicate_keys || successful_insertion, tx_duplicate_sig,
+            jmzk_ASSERT(allow_duplicate_keys || successful_insertion, tx_duplicate_sig,
                        "transaction includes more than one signature signed using the same key associated with public "
                        "key: ${key}",
                        ("key", public_key_type(sig, digest)));
@@ -97,7 +97,7 @@ packed_transaction::reflector_init() {
     if(unpacked_trx.expiration != time_point_sec()) {
         printf("boom!\n");
     }
-    EVT_ASSERT(unpacked_trx.expiration == time_point_sec(), tx_decompression_error, "packed_transaction already unpacked");
+    jmzk_ASSERT(unpacked_trx.expiration == time_point_sec(), tx_decompression_error, "packed_transaction already unpacked");
     local_unpack_transaction();
 }
 
@@ -105,14 +105,14 @@ uint32_t
 packed_transaction::get_unprunable_size() const {
     uint64_t size = config::fixed_net_overhead_of_packed_trx;
     size += packed_trx.size();
-    EVT_ASSERT(size <= std::numeric_limits<uint32_t>::max(), tx_too_big, "packed_transaction is too big");
+    jmzk_ASSERT(size <= std::numeric_limits<uint32_t>::max(), tx_too_big, "packed_transaction is too big");
     return static_cast<uint32_t>(size);
 }
 
 uint32_t
 packed_transaction::get_prunable_size() const {
     uint64_t size = fc::raw::pack_size(signatures);
-    EVT_ASSERT(size <= std::numeric_limits<uint32_t>::max(), tx_too_big, "packed_transaction is too big");
+    jmzk_ASSERT(size <= std::numeric_limits<uint32_t>::max(), tx_too_big, "packed_transaction is too big");
     return static_cast<uint32_t>(size);
 }
 
@@ -139,7 +139,7 @@ struct read_limiter {
     template <typename Sink>
     size_t
     write(Sink& sink, const char* s, size_t count) {
-        EVT_ASSERT(_total + count <= Limit, tx_decompression_error, "Exceeded maximum decompressed transaction size");
+        jmzk_ASSERT(_total + count <= Limit, tx_decompression_error, "Exceeded maximum decompressed transaction size");
         _total += count;
         return bio::write(sink, s, count);
     }
@@ -209,7 +209,7 @@ packed_transaction::local_unpack_transaction() {
             unpacked_trx = signed_transaction(zlib_decompress_transaction(packed_trx), signatures);
             break;
         default:
-            EVT_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
+            jmzk_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
         }
     }
     FC_CAPTURE_AND_RETHROW((compression)(packed_trx))
@@ -226,10 +226,10 @@ packed_transaction::local_pack_transaction() {
             packed_trx = zlib_compress_transaction(unpacked_trx);
             break;
         default:
-            EVT_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
+            jmzk_THROW(unknown_transaction_compression, "Unknown transaction compression algorithm");
         }
     }
     FC_CAPTURE_AND_RETHROW((compression))
 }
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain

@@ -1,18 +1,18 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
 #include <ostream>
 #include <optional>
-#include <evt/chain/database_utils.hpp>
-#include <evt/chain/exceptions.hpp>
+#include <jmzk/chain/database_utils.hpp>
+#include <jmzk/chain/exceptions.hpp>
 #include <fc/variant_object.hpp>
 #include <boost/core/demangle.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 /**
  * History:
  * Version 1: initial version with string identified sections and rows
@@ -253,7 +253,7 @@ struct row_validation_helper {
     apply(const T& data, F f) -> std::enable_if_t<is_chainbase_object_v<T>> {
         auto orig = data.id;
         f();
-        EVT_ASSERT(orig == data.id, snapshot_exception,
+        jmzk_ASSERT(orig == data.id, snapshot_exception,
                    "Snapshot for ${type} mutates row member \"id\" which is illegal",
                    ("type", boost::core::demangle(typeid(T).name())));
     }
@@ -531,4 +531,4 @@ private:
     fc::sha256::encoder& enc;
 };
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain

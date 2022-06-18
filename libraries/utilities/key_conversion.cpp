@@ -1,12 +1,12 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/utilities/key_conversion.hpp>
+#include <jmzk/utilities/key_conversion.hpp>
 #include <fc/crypto/base58.hpp>
 #include <fc/variant.hpp>
 
-namespace evt { namespace utilities {
+namespace jmzk { namespace utilities {
 
 std::string
 key_to_wif(const fc::sha256& secret) {
@@ -53,4 +53,4 @@ wif_to_key(const std::string& wif_key) {
     return std::optional<fc::ecc::private_key>();
 }
 
-}} // end namespace evt::utilities
+}} // end namespace jmzk::utilities

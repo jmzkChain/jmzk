@@ -15,8 +15,8 @@ from io import StringIO
 
 import click
 import grequests
-from pyevt import abi, ecc, evt_link, libevt
-from pyevtsdk import action, api, base, transaction, unit_test
+from pyjmzk import abi, ecc, jmzk_link, libjmzk
+from pyjmzksdk import action, api, base, transaction, unit_test
 
 
 def fake_name(prefix='test'):
@@ -36,7 +36,7 @@ group_json_raw = '''
    "name":"5jxX",
    "group":{
       "name":"5jxXg",
-      "key":"EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+      "key":"jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
       "root":{
          "threshold":6,
          "weight":0,
@@ -47,17 +47,17 @@ group_json_raw = '''
                "weight":3,
                "nodes":[
                   {
-                     "key":"EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+                     "key":"jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
                      "weight":1
                   },
                   {
-                     "key":"EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+                     "key":"jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
                      "weight":1
                   }
                ]
             },
             {
-               "key":"EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+               "key":"jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
                "weight":3
             },
             {
@@ -65,11 +65,11 @@ group_json_raw = '''
                "weight":3,
                "nodes":[
                   {
-                     "key":"EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+                     "key":"jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
                      "weight":1
                   },
                   {
-                     "key":"EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+                     "key":"jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
                      "weight":2
                   }
                ]
@@ -93,7 +93,7 @@ bonus_json_raw = '''
             "data": {
                 "receiver": {
                     "type": "address",
-                    "data": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+                    "data": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
                 },
                 "amount": "10.00000 S#3"
             }
@@ -115,7 +115,7 @@ bonus_json_raw = '''
             "data": {
                 "receiver": {
                     "type": "address",
-                    "data": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+                    "data": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
                 },
                 "percent": "1"
             }
@@ -137,13 +137,13 @@ bonus_json_raw = '''
 lock_json_raw = '''
 {
         "name": "ftlock",
-        "proposer": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+        "proposer": "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
         "unlock_time": "2020-06-09T09:06:27",
         "deadline": "2020-07-09T09:06:27",
         "assets": [{
             "type": "fungible",
             "data": {
-                "from": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+                "from": "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
                 "amount": "5.00000 S#3"
             }
         }],
@@ -152,27 +152,27 @@ lock_json_raw = '''
             "data": {
                 "threshold": 1,
                 "cond_keys": [
-                    "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
-                    "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
+                    "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+                    "jmzk8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
                 ]
             }
         },
         "succeed": [
         ],
         "failed": [
-            "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
+            "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
         ]
     }
 '''
 
 def pre_action():
     prodvote = AG.new_action(
-        'prodvote', producer='evt', key="action-everipay", value=2)
+        'prodvote', producer='jmzk', key="action-everipay", value=2)
 
     newdomain = AG.new_action(
         'newdomain', name=domain_name, creator=user.pub_key)
 
-    auth_A = base.AuthorizerWeight(base.AuthorizerRef('A', evt_pub), 1)
+    auth_A = base.AuthorizerWeight(base.AuthorizerRef('A', jmzk_pub), 1)
     updatedomain = AG.new_action('updatedomain', name=domain_name,
         manage=base.PermissionDef('manage', 1, [auth_A]))
 
@@ -182,9 +182,9 @@ def pre_action():
     destroytoken = AG.new_action(
         'destroytoken', domain=domain_name, name=token2_name)
 
-    pass_link = evt_link.EvtLink()
-    pass_link.set_header(evt_link.HeaderType.version1.value |
-                         evt_link.HeaderType.everiPass.value | evt_link.HeaderType.destroy.value)
+    pass_link = jmzk_link.jmzkLink()
+    pass_link.set_header(jmzk_link.HeaderType.version1.value |
+                         jmzk_link.HeaderType.everiPass.value | jmzk_link.HeaderType.destroy.value)
     pass_link.set_domain(domain_name)
     pass_link.set_token(token3_name)
     pass_link.set_timestamp(int(time.time()))
@@ -212,16 +212,16 @@ def pre_action():
         'issuefungible', address=base.Address().set_public_key(user.pub_key), number=asset(100), memo='goodluck')
 
     issuefungible2 = AG.new_action(
-        'issuefungible', address=base.Address().set_public_key(user.pub_key), number=base.EvtAsset(1000), memo='goodluck')
+        'issuefungible', address=base.Address().set_public_key(user.pub_key), number=base.jmzkAsset(1000), memo='goodluck')
 
     e2p = AG.new_action(
-        'evt2pevt', _from=base.Address().set_public_key(user.pub_key), to=base.Address().set_public_key(user.pub_key), number=base.EvtAsset(100), memo='goodluck')
+        'jmzk2pjmzk', _from=base.Address().set_public_key(user.pub_key), to=base.Address().set_public_key(user.pub_key), number=base.jmzkAsset(100), memo='goodluck')
 
-    pay_link = evt_link.EvtLink()
+    pay_link = jmzk_link.jmzkLink()
     pay_link.set_timestamp(int(time.time()))
     pay_link.set_max_pay(999999999)
-    pay_link.set_header(evt_link.HeaderType.version1.value |
-                        evt_link.HeaderType.everiPay.value)
+    pay_link.set_header(jmzk_link.HeaderType.version1.value |
+                        jmzk_link.HeaderType.everiPay.value)
     pay_link.set_symbol_id(sym_id)
     pay_link.set_link_id_rand()
     pay_link.sign(user.priv_key)
@@ -237,7 +237,7 @@ def pre_action():
 
     trx = TG.new_trx()
     trx.add_action(issuefungible2)
-    trx.add_sign(priv_evt)
+    trx.add_sign(priv_jmzk)
     trx.add_sign(user.priv_key)
     # trx.set_payer(user.pub_key.to_string())
 
@@ -266,7 +266,7 @@ def pre_action():
 
     trx = TG.new_trx()
     trx.add_action(issuefungible2)
-    trx.add_sign(priv_evt)
+    trx.add_sign(priv_jmzk)
     trx.add_sign(user.priv_key)
     trx.set_payer(user.pub_key.to_string())
     resp = api.push_transaction(trx.dumps())
@@ -280,7 +280,7 @@ def pre_action():
     trx.add_action(newgroup)
     trx.add_action(newfungible)
     trx.add_sign(user.priv_key)
-    trx.add_sign(priv_evt)
+    trx.add_sign(priv_jmzk)
     trx.set_payer(user.pub_key.to_string())
     resp = api.push_transaction(trx.dumps())
     print(resp)
@@ -318,7 +318,7 @@ def pre_action():
 
     trx = TG.new_trx()
     trx.add_action(setpsvbonus)
-    trx.add_sign(priv_evt)
+    trx.add_sign(priv_jmzk)
     trx.add_sign(user.priv_key)
     trx.set_payer(user.pub_key.to_string())
     resp = api.push_transaction(trx.dumps())
@@ -337,9 +337,9 @@ def pre_action():
 class Test(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        libevt.init_lib()
+        libjmzk.init_lib()
 
-    def _test_evt_link_response(self, resp):
+    def _test_jmzk_link_response(self, resp):
         j = json.loads(resp)
         self.assertTrue('trx_id' in j, msg=j)
         self.assertTrue('block_num' in j, msg=j)
@@ -351,16 +351,16 @@ class Test(unittest.TestCase):
         resp2 = api.get_transaction(json.dumps(req))
         self.assertEqual(resp2.status_code, 200, msg=resp2.content)
 
-    def test_evt_link_for_trx_id(self):
+    def test_jmzk_link_for_trx_id(self):
         symbol = base.Symbol(
             sym_name=sym_name, sym_id=sym_id, precision=sym_prec)
         asset = base.new_asset(symbol)
 
-        pay_link = evt_link.EvtLink()
+        pay_link = jmzk_link.jmzkLink()
         pay_link.set_timestamp(int(time.time()))
         pay_link.set_max_pay(999999999)
-        pay_link.set_header(evt_link.HeaderType.version1.value |
-                            evt_link.HeaderType.everiPay.value)
+        pay_link.set_header(jmzk_link.HeaderType.version1.value |
+                            jmzk_link.HeaderType.everiPay.value)
         pay_link.set_symbol_id(sym_id)
         pay_link.set_link_id_rand()
         pay_link.sign(user.priv_key)
@@ -379,18 +379,18 @@ class Test(unittest.TestCase):
         req['link_id'] = pay_link.get_link_id().hex()
         for i in range(1000):
             resp = api.get_trx_id_for_link_id(json.dumps(req)).text
-            self._test_evt_link_response(resp)
+            self._test_jmzk_link_response(resp)
 
-    def test_evt_link_for_trx_id2(self):
+    def test_jmzk_link_for_trx_id2(self):
         symbol = base.Symbol(
             sym_name=sym_name, sym_id=sym_id, precision=sym_prec)
         asset = base.new_asset(symbol)
 
-        pay_link = evt_link.EvtLink()
+        pay_link = jmzk_link.jmzkLink()
         pay_link.set_timestamp(int(time.time()))
         pay_link.set_max_pay(999999999)
-        pay_link.set_header(evt_link.HeaderType.version1.value |
-                            evt_link.HeaderType.everiPay.value)
+        pay_link.set_header(jmzk_link.HeaderType.version1.value |
+                            jmzk_link.HeaderType.everiPay.value)
         pay_link.set_symbol_id(sym_id)
         pay_link.set_link_id_rand()
         pay_link.sign(user.priv_key)
@@ -417,17 +417,17 @@ class Test(unittest.TestCase):
         api.push_transaction(trx.dumps())
 
         resp = f.result()
-        self._test_evt_link_response(resp)
+        self._test_jmzk_link_response(resp)
 
-    def test_evt_link_for_trx_id3(self):
+    def test_jmzk_link_for_trx_id3(self):
         symbol = base.Symbol(
             sym_name=sym_name, sym_id=sym_id, precision=sym_prec)
         asset = base.new_asset(symbol)
-        pay_link = evt_link.EvtLink()
+        pay_link = jmzk_link.jmzkLink()
         pay_link.set_timestamp(int(time.time()))
         pay_link.set_max_pay(999999999)
-        pay_link.set_header(evt_link.HeaderType.version1.value |
-                            evt_link.HeaderType.everiPay.value)
+        pay_link.set_header(jmzk_link.HeaderType.version1.value |
+                            jmzk_link.HeaderType.everiPay.value)
         pay_link.set_symbol_id(sym_id)
         pay_link.set_link_id_rand()
         pay_link.sign(user.priv_key)
@@ -436,7 +436,7 @@ class Test(unittest.TestCase):
             'link_id': 'd1680fea21a3c3d8ef555afd8fd8c903'
         }
 
-        url = 'http://127.0.0.1:8888/v1/evt_link/get_trx_id_for_link_id'
+        url = 'http://127.0.0.1:8888/v1/jmzk_link/get_trx_id_for_link_id'
 
         tasks = []
         for i in range(200):
@@ -447,15 +447,15 @@ class Test(unittest.TestCase):
         for resp in grequests.imap(tasks, size=1000):
             self.assertEqual(resp.status_code, 500, msg=resp.content)
 
-    def test_evt_link_for_trx_id4(self):
+    def test_jmzk_link_for_trx_id4(self):
         symbol = base.Symbol(
             sym_name=sym_name, sym_id=sym_id, precision=sym_prec)
         asset = base.new_asset(symbol)
-        pay_link = evt_link.EvtLink()
+        pay_link = jmzk_link.jmzkLink()
         pay_link.set_timestamp(int(time.time()))
         pay_link.set_max_pay(999999999)
-        pay_link.set_header(evt_link.HeaderType.version1.value |
-                            evt_link.HeaderType.everiPay.value)
+        pay_link.set_header(jmzk_link.HeaderType.version1.value |
+                            jmzk_link.HeaderType.everiPay.value)
         pay_link.set_symbol_id(sym_id)
         pay_link.set_link_id_rand()
         pay_link.sign(user.priv_key)
@@ -464,7 +464,7 @@ class Test(unittest.TestCase):
             'link_id': 'd1680fea21a3c3d8ef555afd8fd8c903'
         }
 
-        url = 'http://127.0.0.1:8888/v1/evt_link/get_trx_id_for_link_id'
+        url = 'http://127.0.0.1:8888/v1/jmzk_link/get_trx_id_for_link_id'
 
         tasks = []
         for i in range(1024):
@@ -835,7 +835,7 @@ class Test(unittest.TestCase):
     def test_get_fungible_actions(self):
         req = {
             'sym_id': 338422621,
-            'address': 'EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV',
+            'address': 'jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV',
             'dire': 'asc',
             'skip': 0,
             'take': 10
@@ -876,7 +876,7 @@ class Test(unittest.TestCase):
 
         req = {
             'sym_id': 338422621,
-            'address': 'EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV',
+            'address': 'jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV',
             'skip': 0,
             'take': 10
         }
@@ -896,7 +896,7 @@ class Test(unittest.TestCase):
 
         req = {
             'sym_id': 338422621,
-            'address': 'EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV',
+            'address': 'jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV',
             'dire': 'asc',
             'skip': 0,
             'take': 10
@@ -926,15 +926,15 @@ class Test(unittest.TestCase):
         self.assertTrue('key' in res_dict[0].keys(), msg=resp)
         self.assertTrue('data' in res_dict[0].keys(), msg=resp)
         self.assertTrue('timestamp' in res_dict[0].keys(), msg=resp)
-        self.assertTrue('evt2pevt' in resp, msg=resp)
+        self.assertTrue('jmzk2pjmzk' in resp, msg=resp)
 
     def test_get_history_transaction(self):
         prodvote = AG.new_action(
-        'prodvote', producer='evt', key="global-charge-factor", value=10000)
+        'prodvote', producer='jmzk', key="global-charge-factor", value=10000)
 
         trx = TG.new_trx()
         trx.add_action(prodvote)
-        trx.add_sign(priv_evt)
+        trx.add_sign(priv_jmzk)
         trx.add_sign(user.priv_key)
         trx.set_payer(user.pub_key.to_string())
         resp = api.push_transaction(trx.dumps())
@@ -970,7 +970,7 @@ class Test(unittest.TestCase):
     def test_get_history_transactions(self):
         req = {
             'keys': [
-                'EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK'
+                'jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK'
             ],
             'skip': 0,
             'take': 10
@@ -1007,11 +1007,11 @@ class Test(unittest.TestCase):
         symbol = base.Symbol(
             sym_name=sym_name, sym_id=sym_id, precision=sym_prec)
         asset = base.new_asset(symbol)
-        pay_link = evt_link.EvtLink()
+        pay_link = jmzk_link.jmzkLink()
         pay_link.set_timestamp(int(time.time()))
         pay_link.set_max_pay(999999999)
-        pay_link.set_header(evt_link.HeaderType.version1.value |
-                            evt_link.HeaderType.everiPay.value)
+        pay_link.set_header(jmzk_link.HeaderType.version1.value |
+                            jmzk_link.HeaderType.everiPay.value)
         pay_link.set_symbol_id(sym_id)
         pay_link.set_link_id_rand()
         pay_link.sign(user.priv_key)
@@ -1068,24 +1068,24 @@ class Test(unittest.TestCase):
 
 @click.command()
 @click.option('--url', '-u', default='http://127.0.0.1:8888')
-@click.option('--start-evtd', '-s', default=True)
-@click.option('--evtd-path', '-m', default='/home/laighno/Documents/evt/programs/evtd/evtd')
-@click.option('--public-key', '-p', type=str, default='EVT8CAme1QR2664bLQsVfrERBkXL3xEKsALMSfogGavaXFkaVVqR1')
+@click.option('--start-jmzkd', '-s', default=True)
+@click.option('--jmzkd-path', '-m', default='/home/laighno/Documents/jmzk/programs/jmzkd/jmzkd')
+@click.option('--public-key', '-p', type=str, default='jmzk8CAme1QR2664bLQsVfrERBkXL3xEKsALMSfogGavaXFkaVVqR1')
 @click.option('--private-key', '-k', type=str, default='5JFZQ7bRRuBJyh42uV5ELwswr2Bt3rfwmyEsyXAoUue18NUreAF')
-def main(url, start_evtd, evtd_path, public_key, private_key):
-    global evtdout
-    evtdout = None
+def main(url, start_jmzkd, jmzkd_path, public_key, private_key):
+    global jmzkdout
+    jmzkdout = None
 
     p = None
-    if start_evtd == True:
-        evtdout = open('/tmp/evt_api_tests_evtd.log', 'w')
+    if start_jmzkd == True:
+        jmzkdout = open('/tmp/jmzk_api_tests_jmzkd.log', 'w')
 
-        p = subprocess.Popen([evtd_path, '-e', '--http-validate-host=false',  '--plugin=evt::postgres_plugin',
-                              '--plugin=evt::history_plugin', '--plugin=evt::history_api_plugin', '--plugin=evt::chain_api_plugin', '--plugin=evt::evt_api_plugin',
-                              '--plugin=evt::evt_link_plugin', '--producer-name=evt', '--delete-all-blocks', '-d', './tmp', '--postgres-uri=postgresql://postgres@localhost:5432/evt'],
-                             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=evtdout, shell=False)
+        p = subprocess.Popen([jmzkd_path, '-e', '--http-validate-host=false',  '--plugin=jmzk::postgres_plugin',
+                              '--plugin=jmzk::history_plugin', '--plugin=jmzk::history_api_plugin', '--plugin=jmzk::chain_api_plugin', '--plugin=jmzk::jmzk_api_plugin',
+                              '--plugin=jmzk::jmzk_link_plugin', '--producer-name=jmzk', '--delete-all-blocks', '-d', './tmp', '--postgres-uri=postgresql://postgres@localhost:5432/jmzk'],
+                             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=jmzkdout, shell=False)
         
-        # wait for evtd to initialize
+        # wait for jmzkd to initialize
         time.sleep(3)
 
     try:
@@ -1108,10 +1108,10 @@ def main(url, start_evtd, evtd_path, public_key, private_key):
         global pub2, priv2
         pub2, priv2 = ecc.generate_new_pair()
 
-        global evt_pub, priv_evt
-        evt_pub = ecc.PublicKey.from_string(
-            'EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV')
-        priv_evt = ecc.PrivateKey.from_string(
+        global jmzk_pub, priv_jmzk
+        jmzk_pub = ecc.PublicKey.from_string(
+            'jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV')
+        priv_jmzk = ecc.PrivateKey.from_string(
             '5KQwrPbwdL6PhXujxW37FSSQZ1JiwsST4cqQzDeyXtP79zkvFD3')
 
         global TG
@@ -1120,9 +1120,9 @@ def main(url, start_evtd, evtd_path, public_key, private_key):
         global user
         user = base.User.from_string(public_key, private_key)
 
-        global api, EvtAsset, AG
+        global api, jmzkAsset, AG
         api = api.Api(url)
-        EvtAsset = base.EvtAsset
+        jmzkAsset = base.jmzkAsset
         AG = action.ActionGenerator()
 
         pre_action()
@@ -1133,8 +1133,8 @@ def main(url, start_evtd, evtd_path, public_key, private_key):
         if p is not None:
             p.kill()
 
-        if evtdout is not None:
-            evtdout.close()
+        if jmzkdout is not None:
+            jmzkdout.close()
 
 
 if __name__ == '__main__':

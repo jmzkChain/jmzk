@@ -1,13 +1,13 @@
-#include <evt/testing/tester.hpp>
+#include <jmzk/testing/tester.hpp>
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include <evt/chain/token_database.hpp>
+#include <jmzk/chain/token_database.hpp>
 
-using namespace evt::chain::contracts;
+using namespace jmzk::chain::contracts;
 
-namespace evt { namespace testing {
+namespace jmzk { namespace testing {
 
 bool
 expect_assert_message(const fc::exception& ex, string expected) {
@@ -44,7 +44,7 @@ base_tester::init(bool push_genesis) {
     cfg.max_serialization_time = std::chrono::hours(1);
 
     cfg.genesis.initial_timestamp = fc::time_point::from_iso_string("2020-01-01T00:00:00.000");
-    cfg.genesis.initial_key       = get_public_key("evt");
+    cfg.genesis.initial_key       = get_public_key("jmzk");
 
     open(nullptr);
 
@@ -366,7 +366,7 @@ base_tester::sync_with(base_tester& other) {
             auto block = a.control->fetch_block_by_number(i);
             if(block) {  //&& !b.control->is_known_block(block->id()) ) {
                 b.control->abort_block();
-                b.control->push_block(block);  //, evt::chain::validation_steps::created_block);
+                b.control->push_block(block);  //, jmzk::chain::validation_steps::created_block);
             }
         }
     };
@@ -387,7 +387,7 @@ base_tester::add_money(const address& addr, const asset& number) {
     auto s = tokendb.new_savepoint_session();
 
     auto str  = std::string();
-    if(number.sym() == evt_sym()) {
+    if(number.sym() == jmzk_sym()) {
         auto prop = property_stakes();
         prop.sym  = number.sym();
 
@@ -466,7 +466,7 @@ fc_assert_exception_message_starts_with::operator()(const fc::assert_exception& 
     return match;
 }
 
-}}  // namespace evt::testing
+}}  // namespace jmzk::testing
 
 std::ostream&
 operator<<(std::ostream& osm, const fc::variant& v) {

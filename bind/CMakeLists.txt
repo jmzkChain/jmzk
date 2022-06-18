@@ -1,1 +1,1 @@
-add_subdirectory(libevt)
+add_subdirectory(libjmzk)

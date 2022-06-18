@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/evt/wallet_api_plugin/*.hpp")
+file(GLOB HEADERS "include/jmzk/wallet_api_plugin/*.hpp")
 add_library( wallet_api_plugin
              wallet_api_plugin.cpp
              ${HEADERS} )

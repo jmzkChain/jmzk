@@ -1,8 +1,8 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/chain/token_database.hpp>
+#include <jmzk/chain/token_database.hpp>
 
 #ifndef __cpp_lib_string_view
 #define __cpp_lib_string_view
@@ -29,10 +29,10 @@
 #include <fc/io/raw.hpp>
 #include <fc/container/ring_vector.hpp>
 
-#include <evt/chain/config.hpp>
-#include <evt/chain/exceptions.hpp>
+#include <jmzk/chain/config.hpp>
+#include <jmzk/chain/exceptions.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 namespace internal {
 
@@ -45,7 +45,7 @@ namespace internal {
 #define SETPOINTER(type, p, x) (p = reinterpret_cast<type *>((reinterpret_cast<uintptr_t>(p) & static_cast<uintptr_t>(0xFFFF000000000000UL)) | reinterpret_cast<uintptr_t>(reinterpret_cast<const void*>(x))))
 #define GETPOINTER(type, p) (reinterpret_cast<type *>(reinterpret_cast<uintptr_t>(p) & static_cast<uintptr_t>(0x0000FFFFFFFFFFFFUL)))
 #else
-#error EVT can only be compiled in X86-64 architecture
+#error jmzk can only be compiled in X86-64 architecture
 #endif
 
 const char*  kAssetsColumnFamilyName = "Assets";
@@ -120,12 +120,12 @@ name128 action_key_prefixes[] = {
     N128(.lock),
     N128(.fungible),
     N128(.prodvote),
-    N128(.evtlink),
+    N128(.jmzklink),
     N128(.psvbonus),
     N128(.psvbonus-dist),
     N128(.validator),
     N128(.stakepool),
-    N128(.blackaddrs),
+    N128(.script)
 };
 
 static_assert(sizeof(action_key_prefixes) / sizeof(name128) == (int)token_type::max_value + 1);
@@ -520,7 +520,7 @@ token_database_impl::open(int load_persistence) {
     using namespace rocksdb;
     using namespace internal;
 
-    EVT_ASSERT(db_ == nullptr, token_database_exception, "Token database is already opened");
+    jmzk_ASSERT(db_ == nullptr, token_database_exception, "Token database is already opened");
 
     auto options = Options();
     options.OptimizeUniversalStyleCompaction();
@@ -565,7 +565,7 @@ token_database_impl::open(int load_persistence) {
         assets_options.prefix_extractor.reset(NewFixedPrefixTransform(kSymbolIdSize));
     }
     else {
-        EVT_THROW(token_database_exception, "Unknown token database profile");
+        jmzk_THROW(token_database_exception, "Unknown token database profile");
     }
 
     read_opts_.total_order_seek     = false;
@@ -583,7 +583,7 @@ token_database_impl::open(int load_persistence) {
         
         auto status  = DB::Open(options, config_.db_path.to_native_ansi_path(), columns, &handles, &db_);
         if(!status.ok()) {
-            EVT_THROW(token_database_rocksdb_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+            jmzk_THROW(token_database_rocksdb_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
         }
 
         assert(handles.size() == 1);
@@ -591,7 +591,7 @@ token_database_impl::open(int load_persistence) {
 
         status = db_->CreateColumnFamily(assets_options, kAssetsColumnFamilyName, &assets_handle_);
         if(!status.ok()) {
-            EVT_THROW(token_database_rocksdb_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+            jmzk_THROW(token_database_rocksdb_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
         }
 
         if(load_persistence) {
@@ -604,7 +604,7 @@ token_database_impl::open(int load_persistence) {
 
     auto status = DB::Open(options, config_.db_path.to_native_ansi_path(), columns, &handles, &db_);
     if(!status.ok()) {
-        EVT_THROW(token_database_rocksdb_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
+        jmzk_THROW(token_database_rocksdb_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
     }
 
     assert(handles.size() == 2);
@@ -742,7 +742,7 @@ token_database_impl::read_token(const name128& prefix, const name128& key, std::
             FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
         }
         if(!no_throw) {
-            EVT_THROW(unknown_token_database_key, "Cannot find key: ${k} with prefix: ${p}", ("k",key)("p",prefix));
+            jmzk_THROW(unknown_token_database_key, "Cannot find key: ${k} with prefix: ${p}", ("k",key)("p",prefix));
         }
         return false;
     }
@@ -764,7 +764,7 @@ token_database_impl::read_asset(const address& addr, const symbol_id_type sym_id
             FC_THROW_EXCEPTION(fc::unrecoverable_exception, "Rocksdb internal error: ${err}", ("err", status.getState()));
         }
         if(!no_throw) {
-            EVT_THROW2(unknown_token_database_key, "There's no balance of fungible with sym id: {} in address: {}", sym_id, addr);
+            jmzk_THROW2(unknown_token_database_key, "There's no balance of fungible with sym id: {} in address: {}", sym_id, addr);
         }
         return false;
     }
@@ -877,7 +877,7 @@ token_database_impl::add_savepoint(int64_t seq) {
     if(!savepoints_.empty()) {
         auto& b = savepoints_.back();
         if(b.seq >= seq) {
-            EVT_THROW(token_database_seq_not_valid, "Seq is not valid, prev: ${prev}, curr: ${curr}",
+            jmzk_THROW(token_database_seq_not_valid, "Seq is not valid, prev: ${prev}, curr: ${curr}",
                       ("prev", b.seq)("curr", seq));
         }
     }
@@ -956,7 +956,7 @@ token_database_impl::pop_savepoints(int64_t until) {
 
 void
 token_database_impl::pop_back_savepoint() {
-    EVT_ASSERT(!savepoints_.empty(), token_database_no_savepoint, "There's no savepoints anymore");
+    jmzk_ASSERT(!savepoints_.empty(), token_database_no_savepoint, "There's no savepoints anymore");
 
     auto it = std::move(savepoints_.back());
     savepoints_.pop_back();
@@ -968,14 +968,14 @@ token_database_impl::pop_back_savepoint() {
 void
 token_database_impl::squash() {
     using namespace internal;
-    EVT_ASSERT(savepoints_.size() >= 2, token_database_squash_exception, "Squash needs at least two savepoints.");
+    jmzk_ASSERT(savepoints_.size() >= 2, token_database_squash_exception, "Squash needs at least two savepoints.");
     
     auto n = savepoints_.back().node;
-    EVT_ASSERT(n.f.type == kRuntime, token_database_squash_exception, "Squash needs two realtime savepoints.");
+    jmzk_ASSERT(n.f.type == kRuntime, token_database_squash_exception, "Squash needs two realtime savepoints.");
 
     savepoints_.pop_back();
     auto n2 = savepoints_.back().node;
-    EVT_ASSERT(n2.f.type == kRuntime, token_database_squash_exception, "Squash needs two realtime savepoints.");
+    jmzk_ASSERT(n2.f.type == kRuntime, token_database_squash_exception, "Squash needs two realtime savepoints.");
 
     auto rt1 = GETPOINTER(rt_group, n.group);
     auto rt2 = GETPOINTER(rt_group, n2.group);
@@ -992,7 +992,7 @@ token_database_impl::squash() {
 
 int64_t
 token_database_impl::latest_savepoint_seq() const {
-    EVT_ASSERT(!savepoints_.empty(), token_database_no_savepoint, "There's no savepoints anymore");
+    jmzk_ASSERT(!savepoints_.empty(), token_database_no_savepoint, "There's no savepoints anymore");
     return savepoints_.back().seq;
 }
 
@@ -1209,7 +1209,7 @@ token_database_impl::rollback_pd_group(internal::pd_group* pd) {
 void
 token_database_impl::rollback_to_latest_savepoint() {
     using namespace internal;
-    EVT_ASSERT(!savepoints_.empty(), token_database_no_savepoint, "There's no savepoints anymore");
+    jmzk_ASSERT(!savepoints_.empty(), token_database_no_savepoint, "There's no savepoints anymore");
 
     auto  seq = savepoints_.back().seq;
     auto& n   = savepoints_.back().node;
@@ -1268,7 +1268,7 @@ token_database_impl::persist_savepoints() const {
         fs.flush();
         fs.close();
     }
-    EVT_CAPTURE_AND_RETHROW(token_database_persist_exception);
+    jmzk_CAPTURE_AND_RETHROW(token_database_persist_exception);
 }
 
 void
@@ -1417,7 +1417,7 @@ token_database_impl::load_savepoints(std::istream& is) {
 
     auto h = pd_header();
     fc::raw::unpack(is, h);
-    EVT_ASSERT(h.dirty_flag == 0, token_database_dirty_flag_exception, "checkpoints log file dirty flag set");
+    jmzk_ASSERT(h.dirty_flag == 0, token_database_dirty_flag_exception, "checkpoints log file dirty flag set");
 
     auto pds = std::vector<pd_group>();
     fc::raw::unpack(is, pds);
@@ -1610,10 +1610,10 @@ token_database::get_db_key(token_type type, const std::optional<name128>& domain
     return dkey.as_string();
 }
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
-FC_REFLECT(evt::chain::internal::pd_header, (dirty_flag));
-FC_REFLECT(evt::chain::internal::pd_action, (op)(type)(key)(value));
-FC_REFLECT(evt::chain::internal::pd_group,  (seq)(actions));
-FC_REFLECT(evt::chain::internal::wc_entry, (k)(v));
-FC_REFLECT(evt::chain::internal::wc_entry_pack, (seq)(vec));
+FC_REFLECT(jmzk::chain::internal::pd_header, (dirty_flag));
+FC_REFLECT(jmzk::chain::internal::pd_action, (op)(type)(key)(value));
+FC_REFLECT(jmzk::chain::internal::pd_group,  (seq)(actions));
+FC_REFLECT(jmzk::chain::internal::wc_entry, (k)(v));
+FC_REFLECT(jmzk::chain::internal::wc_entry_pack, (seq)(vec));

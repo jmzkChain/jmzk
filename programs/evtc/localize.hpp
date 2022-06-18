@@ -1,13 +1,13 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
 #include <fc/variant.hpp>
 #include <libintl.h>
 
-namespace evt { namespace client { namespace localize {
+namespace jmzk { namespace client { namespace localize {
 #if !defined(_)
 #define _(str) str
 #endif
@@ -26,4 +26,4 @@ localized_with_variant(const char* raw_fmt, const fc::variant_object& args) {
     }
     return std::string();
 }
-}}}  // namespace evt::client::localize
+}}}  // namespace jmzk::client::localize

@@ -12,7 +12,7 @@ TEST_CASE_METHOD(contracts_test, "newnftlock_test", "[contracts]") {
     const char* test_data = R"=======(
     {
         "name": "nftlock",
-        "proposer": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+        "proposer": "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
         "unlock_time": "2020-06-09T09:06:27",
         "deadline": "2020-07-09T09:06:27",
         "assets": [{
@@ -29,15 +29,15 @@ TEST_CASE_METHOD(contracts_test, "newnftlock_test", "[contracts]") {
             "data": {
                 "threshold": 1,
                 "cond_keys": [
-                    "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
-                    "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
+                    "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+                    "jmzk8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
                 ]
             }
         },
         "succeed": [
         ],
         "failed": [
-            "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
+            "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
         ]
     }
     )=======";
@@ -64,7 +64,7 @@ TEST_CASE_METHOD(contracts_test, "newnftlock_test", "[contracts]") {
 
     CHECK_THROWS_AS(my_tester->push_action(N(newlock), N128(.lock), N128(nftlock), var.get_object(), key_seeds, payer, 5'000'000), lock_address_exception);
 
-    nl.succeed = {public_key_type(std::string("EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"))};
+    nl.succeed = {public_key_type(std::string("jmzk8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"))};
     to_variant(nl, var);
 
     my_tester->push_action(N(newlock), N128(.lock), N128(nftlock), var.get_object(), key_seeds, payer, 5'000'000);
@@ -92,13 +92,13 @@ TEST_CASE_METHOD(contracts_test, "newftlock_test", "[contracts]") {
     const char* test_data = R"=======(
     {
         "name": "ftlock",
-        "proposer": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+        "proposer": "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
         "unlock_time": "2020-06-09T09:06:27",
         "deadline": "2020-07-09T09:06:27",
         "assets": [{
             "type": "fungible",
             "data": {
-                "from": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+                "from": "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
                 "amount": "5.00000 S#2"
             }
         }],
@@ -107,15 +107,15 @@ TEST_CASE_METHOD(contracts_test, "newftlock_test", "[contracts]") {
             "data": {
                 "threshold": 3,
                 "cond_keys": [
-                    "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
-                    "EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
+                    "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+                    "jmzk8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"
                 ]
             }
         },
         "succeed": [
         ],
         "failed": [
-            "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
+            "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
         ]
     }
     )=======";
@@ -161,7 +161,7 @@ TEST_CASE_METHOD(contracts_test, "newftlock_test", "[contracts]") {
     to_variant(nl, var);
     CHECK_THROWS_AS(my_tester->push_action(N(newlock), N128(.lock), N128(ftlock), var.get_object(), key_seeds, payer, 5'000'000), address_reserved_exception);
 
-    nl.succeed = {public_key_type(std::string("EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"))};
+    nl.succeed = {public_key_type(std::string("jmzk8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"))};
     to_variant(nl, var);
     my_tester->push_action(N(newlock), N128(.lock), N128(ftlock), var.get_object(), key_seeds, payer, 5'000'000);
 
@@ -187,7 +187,7 @@ TEST_CASE_METHOD(contracts_test, "aprvlock_test", "[contracts]") {
     const char* test_data = R"=======(
     {
         "name": "nftlock",
-        "approver": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
+        "approver": "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF",
         "data": {
             "type": "cond_key",
             "data": {}
@@ -230,7 +230,7 @@ TEST_CASE_METHOD(contracts_test, "tryunlock_test", "[contracts]") {
     const char* test_data = R"=======(
     {
         "name": "nftlock",
-        "executor": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
+        "executor": "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
     }
     )=======";
 
@@ -257,7 +257,7 @@ TEST_CASE_METHOD(contracts_test, "tryunlock_test", "[contracts]") {
     token_def tk;
     READ_TOKEN2(token, get_domain_name(), "t3", tk);
     CHECK(tk.owner.size() == 1);
-    CHECK(tk.owner[0] == public_key_type(std::string("EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC")));
+    CHECK(tk.owner[0] == public_key_type(std::string("jmzk8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC")));
 
     tul.name = N128(ftlock);
     to_variant(tul, var);
@@ -281,7 +281,7 @@ TEST_CASE_METHOD(contracts_test, "tryunlock_test", "[contracts]") {
 
     // failed address
     asset ast;
-    READ_DB_ASSET(address(public_key_type(std::string("EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"))), symbol(5, get_sym_id()), ast);
+    READ_DB_ASSET(address(public_key_type(std::string("jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"))), symbol(5, get_sym_id()), ast);
     CHECK(ast.amount() == 500000);
 
     my_tester->produce_blocks();

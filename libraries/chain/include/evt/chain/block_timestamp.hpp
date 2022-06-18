@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <stdint.h>
@@ -10,10 +10,10 @@
 #include <fc/string.hpp>
 #include <fc/exception/exception.hpp>
 
-#include <evt/chain/config.hpp>
-#include <evt/chain/exceptions.hpp>
+#include <jmzk/chain/config.hpp>
+#include <jmzk/chain/exceptions.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 /**
  * This class is used in the block headers to represent the block time
@@ -41,7 +41,7 @@ public:
 
     block_timestamp
     next() const {
-        EVT_ASSERT(std::numeric_limits<uint32_t>::max() - slot >= 1, fc::overflow_exception, "block timestamp overflow");
+        jmzk_ASSERT(std::numeric_limits<uint32_t>::max() - slot >= 1, fc::overflow_exception, "block timestamp overflow");
         auto result = block_timestamp(*this);
         result.slot += 1;
         return result;
@@ -106,20 +106,20 @@ private:
 
 typedef block_timestamp<config::block_interval_ms, config::block_timestamp_epoch> block_timestamp_type;
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
-FC_REFLECT(evt::chain::block_timestamp_type, (slot))
+FC_REFLECT(jmzk::chain::block_timestamp_type, (slot))
 
 namespace fc {
 template <uint16_t IntervalMs, uint64_t EpochMs>
 void
-to_variant(const evt::chain::block_timestamp<IntervalMs, EpochMs>& t, fc::variant& v) {
+to_variant(const jmzk::chain::block_timestamp<IntervalMs, EpochMs>& t, fc::variant& v) {
     to_variant((fc::time_point)t, v);
 }
 
 template <uint16_t IntervalMs, uint64_t EpochMs>
 void
-from_variant(const fc::variant& v, evt::chain::block_timestamp<IntervalMs, EpochMs>& t) {
+from_variant(const fc::variant& v, jmzk::chain::block_timestamp<IntervalMs, EpochMs>& t) {
     t = v.as<fc::time_point>();
 }
 }  // namespace fc

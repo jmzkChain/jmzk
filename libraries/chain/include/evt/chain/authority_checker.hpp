@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <functional>
@@ -10,16 +10,17 @@
 #include <boost/dynamic_bitset.hpp>
 #include <boost/range/algorithm/find.hpp>
 
-#include <evt/chain/controller.hpp>
-#include <evt/chain/config.hpp>
-#include <evt/chain/execution_context_impl.hpp>
-#include <evt/chain/token_database_cache.hpp>
-#include <evt/chain/types.hpp>
-#include <evt/chain/producer_schedule.hpp>
-#include <evt/chain/contracts/types.hpp>
-#include <evt/utilities/parallel_markers.hpp>
+#include <jmzk/chain/controller.hpp>
+#include <jmzk/chain/config.hpp>
+#include <jmzk/chain/execution_context_impl.hpp>
+#include <jmzk/chain/token_database_cache.hpp>
+#include <jmzk/chain/types.hpp>
+#include <jmzk/chain/producer_schedule.hpp>
+#include <jmzk/chain/contracts/types.hpp>
+#include <jmzk/chain/contracts/lua_engine.hpp>
+#include <jmzk/utilities/parallel_markers.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 using namespace contracts;
 
@@ -39,7 +40,7 @@ struct check_authority {};
         VPTR = tokendb_cache_.template read_token<vtype>(TYPE, PREFIX, KEY); \
     }                                                                        \
     catch(token_database_exception&) {                                       \
-        EVT_THROW2(EXCEPTION, FORMAT, __VA_ARGS__);                          \
+        jmzk_THROW2(EXCEPTION, FORMAT, __VA_ARGS__);                          \
     }
 
 }  // namespace internal
@@ -55,12 +56,13 @@ struct check_authority {};
 class authority_checker {
 private:
     const controller&            control_;
-    const evt_execution_context& exec_ctx_;
+    const jmzk_execution_context& exec_ctx_;
     const public_keys_set&       signing_keys_;
     const uint32_t               max_recursion_depth_;
 
     token_database_cache&           tokendb_cache_;
     boost::dynamic_bitset<uint64_t> used_keys_;
+    bool                            check_script_;
 
 public:
     struct weight_tally_visitor {
@@ -105,13 +107,14 @@ public:
     template<uint64_t> friend struct internal::check_authority;
 
 public:
-    authority_checker(const controller& control, const evt_execution_context& exec_ctx, const public_keys_set& signing_keys, uint32_t max_recursion_depth)
+    authority_checker(const controller& control, const jmzk_execution_context& exec_ctx, const public_keys_set& signing_keys, uint32_t max_recursion_depth, bool check_script = true)
         : control_(control)
         , exec_ctx_(exec_ctx)
         , signing_keys_(signing_keys)
         , max_recursion_depth_(max_recursion_depth)
         , tokendb_cache_(control.token_db_cache())
-        , used_keys_(signing_keys.size(), false) {}
+        , used_keys_(signing_keys.size(), false)
+        , check_script_(check_script) {}
 
 private:
     template<int Permission>
@@ -221,6 +224,14 @@ private:
         cb(*validator);
     }
 
+    void
+    get_script(const script_name& script_name, std::function<void(const script_def&)>&& cb) {
+        auto script = make_empty_cache_ptr<script_def>();
+        READ_DB_TOKEN(token_type::script, std::nullopt, script_name, script, unknown_script_exception, "Cannot find script: {}", script_name);
+
+        cb(*script);
+    }
+
 private:
     bool
     satisfied_node(const group& group, const group::node& node, uint32_t depth) {
@@ -322,6 +333,16 @@ private:
                 ref_result = satisfied_group(name);
                 break;
             }
+            case authorizer_ref::script_t: {
+                if(!check_script_) {
+                    ref_result = true;
+                    break;
+                }
+                auto& name   = ref.get_script();
+                auto  engine = lua_engine();
+                ref_result   = engine.invoke_filter(control_, action, name);
+                break;
+            }
             }  // switch
 
             if(ref_result) {
@@ -368,6 +389,12 @@ private:
             result = satisfied_permission<kFT>(permission, action);
         });
         return result;
+    }
+
+    bool
+    satisfied_script(const script_name& name, const action& action) {
+        auto engine = lua_engine();
+        return engine.invoke_filter(control_, action, name);
     }
 
 public:
@@ -446,7 +473,7 @@ struct check_authority<N(newdomain)> {
                 return true;
             }
         }
-        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `newdomain` type.");
+        jmzk_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `newdomain` type.");
         return false;
     }
 };
@@ -495,7 +522,7 @@ struct check_authority<N(newgroup)> {
                 return true;
             }
         }
-        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `newgroup` type.");
+        jmzk_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `newgroup` type.");
         return false;
     }
 };
@@ -538,7 +565,7 @@ struct check_authority<N(newfungible)> {
                 return true;
             }
         }
-        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transation data is not valid, data cannot cast to `newfungible` type");
+        jmzk_RETHROW_EXCEPTIONS(action_type_exception, "transation data is not valid, data cannot cast to `newfungible` type");
         return false;
     }
 };
@@ -596,7 +623,7 @@ struct check_authority<N(destroyft)> {
 
 
 template<>
-struct check_authority<N(evt2pevt)> {
+struct check_authority<N(jmzk2pjmzk)> {
     template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
@@ -625,7 +652,7 @@ struct check_authority<N(newsuspend)> {
                 return true;
             }
         }
-        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `newsuspend` type.");
+        jmzk_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `newsuspend` type.");
         return false;
     }
 };
@@ -668,7 +695,7 @@ struct check_authority<N(execsuspend)> {
                 return true;
             }
         }
-        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `execsuspend` type.");
+        jmzk_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `execsuspend` type.");
         return false;
     }
 };
@@ -708,7 +735,7 @@ struct check_authority<N(addmeta)> {
             }  // switch
             return ref_result;
         }
-        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `addmeta` type.");
+        jmzk_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `addmeta` type.");
     }
 };
 
@@ -749,7 +776,7 @@ struct check_authority<N(prodvote)> {
             });
             return result;
         }
-        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `prodvote` type.");
+        jmzk_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `prodvote` type.");
     }
 };
 
@@ -758,7 +785,7 @@ struct check_authority<N(updsched)> {
     template <typename Type>
     static bool
     invoke(const action&, authority_checker* checker) {
-        return checker->satisfied_group(checker->get_control().get_genesis_state().evt_org.name());
+        return checker->satisfied_group(checker->get_control().get_genesis_state().jmzk_org.name());
     }
 };
 
@@ -774,7 +801,7 @@ struct check_authority<N(newlock)> {
                 return true;
             }
         }
-        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `newlock` type.");
+        jmzk_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `newlock` type.");
         return false;
     }
 };
@@ -791,7 +818,7 @@ struct check_authority<N(aprvlock)> {
                 return true;
             }
         }
-        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `aprvlock` type.");
+        jmzk_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `aprvlock` type.");
         return false;
     }
 };
@@ -808,7 +835,7 @@ struct check_authority<N(tryunlock)> {
                 return true;
             }
         }
-        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `tryunlock` type.");
+        jmzk_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `tryunlock` type.");
         return false;
     }
 };
@@ -856,7 +883,7 @@ struct check_authority<N(newstakepool)> {
     template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
-        return checker->satisfied_group(checker->get_control().get_genesis_state().evt_org.name());
+        return checker->satisfied_group(checker->get_control().get_genesis_state().jmzk_org.name());
     }
 };
 
@@ -865,7 +892,7 @@ struct check_authority<N(updstakepool)> {
     template <typename Type>
     static bool
     invoke(const action& act, authority_checker* checker) {
-        return checker->satisfied_group(checker->get_control().get_genesis_state().evt_org.name());
+        return checker->satisfied_group(checker->get_control().get_genesis_state().jmzk_org.name());
     }
 };
 
@@ -881,7 +908,7 @@ struct check_authority<N(newvalidator)> {
                 return true;
             }
         }
-        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `newvalidator` type.");
+        jmzk_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `newvalidator` type.");
         return false;
     }
 };
@@ -924,7 +951,7 @@ struct check_authority<N(staketkns)> {
                 return true;
             }
         }
-        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `staketkns` type.");
+        jmzk_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `staketkns` type.");
         return false;
     }
 };
@@ -941,7 +968,7 @@ struct check_authority<N(unstaketkns)> {
                 return true;
             }
         }
-        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `unstaketkns` type.");
+        jmzk_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `unstaketkns` type.");
         return false;
     }
 };
@@ -958,11 +985,54 @@ struct check_authority<N(toactivetkns)> {
                 return true;
             }
         }
-        EVT_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `toactivetkns` type.");
+        jmzk_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `toactivetkns` type.");
         return false;
     }
 };
 
+template<>
+struct check_authority<N(newscript)> {
+    template <typename Type>
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        try {
+            if(act.key.reserved()) {
+                return checker->satisfied_group(checker->get_control().get_genesis_state().jmzk_org.name());
+            }
+
+            auto& as     = act.data_as<add_clr_t<Type>>();
+            auto  vistor = authority_checker::weight_tally_visitor(checker);
+
+            if(vistor(as.creator, 1) == 1) {
+                return true;
+            }
+        }
+        jmzk_RETHROW_EXCEPTIONS(action_type_exception, "transaction data is not valid, data cannot cast to `addscript` type.");
+        return false;
+    }
+};
+
+template<>
+struct check_authority<N(updscript)> {
+    template <typename Type>
+    static bool
+    invoke(const action& act, authority_checker* checker) {
+        if(act.key.reserved()) {
+            return checker->satisfied_group(checker->get_control().get_genesis_state().jmzk_org.name());
+        }
+        
+        bool result = false;
+        checker->get_script(act.key, [&](const auto& script) {           
+            auto  vistor = authority_checker::weight_tally_visitor(checker);
+            if(vistor(script.creator, 1) == 1) {
+                result = true;
+            }
+        });
+        return result;
+    }
+};
+
+
 }  // namespace internal
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain

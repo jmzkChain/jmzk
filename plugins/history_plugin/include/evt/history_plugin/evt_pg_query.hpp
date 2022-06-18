@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <queue>
@@ -8,15 +8,15 @@
 #include <boost/noncopyable.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
-#include <evt/chain/block_state.hpp>
-#include <evt/chain/transaction.hpp>
-#include <evt/chain/contracts/types.hpp>
-#include <evt/history_plugin/history_plugin.hpp>
+#include <jmzk/chain/block_state.hpp>
+#include <jmzk/chain/transaction.hpp>
+#include <jmzk/chain/contracts/types.hpp>
+#include <jmzk/history_plugin/history_plugin.hpp>
 
 struct pg_conn;
 struct pg_result;
 
-namespace evt {
+namespace jmzk {
 
 namespace chain {
 class controller;
@@ -25,8 +25,8 @@ struct abi_serializer;
 }  // namespace contracts
 }  // namespace chain
 
-using namespace evt::chain::contracts;
-using namespace evt::history_apis;
+using namespace jmzk::chain::contracts;
+using namespace jmzk::history_apis;
 
 #define PG_OK   1
 #define PG_FAIL 0
@@ -104,4 +104,4 @@ private:
     boost::asio::ip::tcp::socket socket_;
 };
 
-}  // namespace evt
+}  // namespace jmzk

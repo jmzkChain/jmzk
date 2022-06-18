@@ -1,10 +1,10 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
-namespace evt { namespace utilities {
+namespace jmzk { namespace utilities {
 
 template<size_t BlockSize=16, char PaddingChar=' '>
 class padding_ostream : public fc::buffered_ostream {
@@ -35,5 +35,5 @@ private:
    size_t bytes_out = 0;
 };
 
-} } //evt::utilities
+} } //jmzk::utilities
 

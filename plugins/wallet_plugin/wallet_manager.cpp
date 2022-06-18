@@ -1,16 +1,16 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #include <fc/crypto/sha256.hpp>
 #include <boost/algorithm/string.hpp>
 #include <appbase/application.hpp>
-#include <evt/chain/exceptions.hpp>
-#include <evt/wallet_plugin/wallet_manager.hpp>
-#include <evt/wallet_plugin/wallet.hpp>
-#include <evt/wallet_plugin/se_wallet.hpp>
+#include <jmzk/chain/exceptions.hpp>
+#include <jmzk/wallet_plugin/wallet_manager.hpp>
+#include <jmzk/wallet_plugin/wallet.hpp>
+#include <jmzk/wallet_plugin/se_wallet.hpp>
 
-namespace evt {
+namespace jmzk {
 namespace wallet {
 
 constexpr auto file_ext        = ".wallet";
@@ -50,7 +50,7 @@ wallet_manager::set_timeout(const std::chrono::seconds& t) {
     timeout = t;
     auto now = std::chrono::system_clock::now();
     timeout_time = now + timeout;
-    EVT_ASSERT(timeout_time >= now && timeout_time.time_since_epoch().count() > 0, invalid_lock_timeout_exception, "Overflow on timeout_time, specified ${t}, now ${now}, timeout_time ${timeout_time}",
+    jmzk_ASSERT(timeout_time >= now && timeout_time.time_since_epoch().count() > 0, invalid_lock_timeout_exception, "Overflow on timeout_time, specified ${t}, now ${now}, timeout_time ${timeout_time}",
         ("t", t.count())("now", now.time_since_epoch().count())("timeout_time", timeout_time.time_since_epoch().count()));
 }
 
@@ -69,12 +69,12 @@ std::string
 wallet_manager::create(const std::string& name) {
     check_timeout();
     
-    EVT_ASSERT(valid_filename(name), wallet_exception, "Invalid filename, path not allowed in wallet name ${n}", ("n", name));
+    jmzk_ASSERT(valid_filename(name), wallet_exception, "Invalid filename, path not allowed in wallet name ${n}", ("n", name));
 
     auto wallet_filename = dir / (name + file_ext);
 
     if(fc::exists(wallet_filename)) {
-        EVT_THROW(chain::wallet_exist_exception, "Wallet with name: '${n}' already exists at ${path}", ("n", name)("path", fc::path(wallet_filename)));
+        jmzk_THROW(chain::wallet_exist_exception, "Wallet with name: '${n}' already exists at ${path}", ("n", name)("path", fc::path(wallet_filename)));
     }
 
     auto password = gen_password();
@@ -91,7 +91,7 @@ wallet_manager::create(const std::string& name) {
     wallet->save_wallet_file();
 
     // If we have name in our map then remove it since we want the emplace below to replace.
-    // This can happen if the wallet file is removed while evtd is running.
+    // This can happen if the wallet file is removed while jmzkd is running.
     auto it = wallets.find(name);
     if(it != wallets.end()) {
         wallets.erase(it);
@@ -105,18 +105,18 @@ void
 wallet_manager::open(const std::string& name) {
     check_timeout();
 
-    EVT_ASSERT(valid_filename(name), wallet_exception, "Invalid filename, path not allowed in wallet name ${n}", ("n", name));
+    jmzk_ASSERT(valid_filename(name), wallet_exception, "Invalid filename, path not allowed in wallet name ${n}", ("n", name));
 
     wallet_data d;
     auto        wallet          = std::make_unique<soft_wallet>(d);
     auto        wallet_filename = dir / (name + file_ext);
     wallet->set_wallet_filename(wallet_filename.string());
     if(!wallet->load_wallet_file()) {
-        EVT_THROW(chain::wallet_nonexistent_exception, "Unable to open file: ${f}", ("f", wallet_filename.string()));
+        jmzk_THROW(chain::wallet_nonexistent_exception, "Unable to open file: ${f}", ("f", wallet_filename.string()));
     }
 
     // If we have name in our map then remove it since we want the emplace below to replace.
-    // This can happen if the wallet file is added while evtd is running.
+    // This can happen if the wallet file is added while jmzkd is running.
     auto it = wallets.find(name);
     if(it != wallets.end()) {
         wallets.erase(it);
@@ -144,10 +144,10 @@ wallet_manager::list_keys(const string& name, const string& pw) {
     check_timeout();
 
     if(wallets.count(name) == 0)
-        EVT_THROW(chain::wallet_nonexistent_exception, "Wallet not found: ${w}", ("w", name));
+        jmzk_THROW(chain::wallet_nonexistent_exception, "Wallet not found: ${w}", ("w", name));
     auto& w = wallets.at(name);
     if(w->is_locked())
-        EVT_THROW(chain::wallet_locked_exception, "Wallet is locked: ${w}", ("w", name));
+        jmzk_THROW(chain::wallet_locked_exception, "Wallet is locked: ${w}", ("w", name));
     w->check_password(pw);  //throws if bad password
     return w->list_keys();
 }
@@ -155,7 +155,7 @@ wallet_manager::list_keys(const string& name, const string& pw) {
 flat_set<public_key_type>
 wallet_manager::get_public_keys() {
     check_timeout();
-    EVT_ASSERT(!wallets.empty(), wallet_not_available_exception, "You don't have any wallet!");
+    jmzk_ASSERT(!wallets.empty(), wallet_not_available_exception, "You don't have any wallet!");
     flat_set<public_key_type> result;
     bool                      is_all_wallet_locked = true;
     for(const auto& i : wallets) {
@@ -164,14 +164,14 @@ wallet_manager::get_public_keys() {
         }
         is_all_wallet_locked &= i.second->is_locked();
     }
-    EVT_ASSERT(!is_all_wallet_locked, wallet_locked_exception, "You don't have any unlocked wallet!");
+    jmzk_ASSERT(!is_all_wallet_locked, wallet_locked_exception, "You don't have any unlocked wallet!");
     return result;
 }
 
 flat_set<signature_type>
 wallet_manager::get_my_signatures(const chain_id_type& chain_id) {
     check_timeout();
-    EVT_ASSERT(!wallets.empty(), wallet_not_available_exception, "You don't have any wallet!");
+    jmzk_ASSERT(!wallets.empty(), wallet_not_available_exception, "You don't have any wallet!");
     auto result = flat_set<signature_type>();
 
     bool is_all_wallet_locked = true;
@@ -184,7 +184,7 @@ wallet_manager::get_my_signatures(const chain_id_type& chain_id) {
         }
         is_all_wallet_locked &= i.second->is_locked();
     }
-    EVT_ASSERT(!is_all_wallet_locked, wallet_locked_exception, "You don't have any unlocked wallet!");
+    jmzk_ASSERT(!is_all_wallet_locked, wallet_locked_exception, "You don't have any unlocked wallet!");
     return result;
 }
 
@@ -202,7 +202,7 @@ void
 wallet_manager::lock(const std::string& name) {
     check_timeout();
     if(wallets.count(name) == 0) {
-        EVT_THROW(chain::wallet_nonexistent_exception, "Wallet not found: ${w}", ("w", name));
+        jmzk_THROW(chain::wallet_nonexistent_exception, "Wallet not found: ${w}", ("w", name));
     }
     auto& w = wallets.at(name);
     if(w->is_locked()) {
@@ -219,7 +219,7 @@ wallet_manager::unlock(const std::string& name, const std::string& password) {
     }
     auto& w = wallets.at(name);
     if(!w->is_locked()) {
-        EVT_THROW(chain::wallet_unlocked_exception, "Wallet is already unlocked: ${w}", ("w", name));
+        jmzk_THROW(chain::wallet_unlocked_exception, "Wallet is already unlocked: ${w}", ("w", name));
         return;
     }
     w->unlock(password);
@@ -229,11 +229,11 @@ void
 wallet_manager::import_key(const std::string& name, const std::string& wif_key) {
     check_timeout();
     if(wallets.count(name) == 0) {
-        EVT_THROW(chain::wallet_nonexistent_exception, "Wallet not found: ${w}", ("w", name));
+        jmzk_THROW(chain::wallet_nonexistent_exception, "Wallet not found: ${w}", ("w", name));
     }
     auto& w = wallets.at(name);
     if(w->is_locked()) {
-        EVT_THROW(chain::wallet_locked_exception, "Wallet is locked: ${w}", ("w", name));
+        jmzk_THROW(chain::wallet_locked_exception, "Wallet is locked: ${w}", ("w", name));
     }
     w->import_key(wif_key);
 }
@@ -242,11 +242,11 @@ void
 wallet_manager::remove_key(const std::string& name, const std::string& password, const std::string& key) {
     check_timeout();
     if(wallets.count(name) == 0) {
-        EVT_THROW(chain::wallet_nonexistent_exception, "Wallet not found: ${w}", ("w", name));
+        jmzk_THROW(chain::wallet_nonexistent_exception, "Wallet not found: ${w}", ("w", name));
     }
     auto& w = wallets.at(name);
     if(w->is_locked()) {
-        EVT_THROW(chain::wallet_locked_exception, "Wallet is locked: ${w}", ("w", name));
+        jmzk_THROW(chain::wallet_locked_exception, "Wallet is locked: ${w}", ("w", name));
     }
     w->check_password(password); //throws if bad password
     w->remove_key(key);
@@ -256,11 +256,11 @@ string
 wallet_manager::create_key(const std::string& name, const std::string& key_type) {
     check_timeout();
     if(wallets.count(name) == 0) {
-        EVT_THROW(chain::wallet_nonexistent_exception, "Wallet not found: ${w}", ("w", name));
+        jmzk_THROW(chain::wallet_nonexistent_exception, "Wallet not found: ${w}", ("w", name));
     }
     auto& w = wallets.at(name);
     if(w->is_locked()) {
-        EVT_THROW(chain::wallet_locked_exception, "Wallet is locked: ${w}", ("w", name));
+        jmzk_THROW(chain::wallet_locked_exception, "Wallet is locked: ${w}", ("w", name));
     }
 
     string upper_key_type = boost::to_upper_copy<std::string>(key_type);
@@ -285,7 +285,7 @@ wallet_manager::sign_transaction(const chain::signed_transaction& txn, const fla
             }
         }
         if(!found) {
-            EVT_THROW(chain::wallet_missing_pub_key_exception, "Public key not found in unlocked wallets ${k}", ("k", pk));
+            jmzk_THROW(chain::wallet_missing_pub_key_exception, "Public key not found in unlocked wallets ${k}", ("k", pk));
         }
     }
 
@@ -308,13 +308,13 @@ wallet_manager::sign_digest(const chain::digest_type& digest, const public_key_t
     }
     FC_LOG_AND_RETHROW();
 
-    EVT_THROW(chain::wallet_missing_pub_key_exception, "Public key not found in unlocked wallets ${k}", ("k", key));
+    jmzk_THROW(chain::wallet_missing_pub_key_exception, "Public key not found in unlocked wallets ${k}", ("k", key));
 }
 
 void
 wallet_manager::own_and_use_wallet(const string& name, std::unique_ptr<wallet_api>&& wallet) {
     if(wallets.find(name) != wallets.end()) {
-        EVT_THROW(wallet_exception, "Tried to use wallet name that already exists.");
+        jmzk_THROW(wallet_exception, "Tried to use wallet name that already exists.");
     }
     wallets.emplace(name, std::move(wallet));
 }
@@ -328,7 +328,7 @@ wallet_manager::start_lock_watch(std::shared_ptr<boost::asio::deadline_timer> t)
         if(ec != boost::system::error_code()) {
             if(rc.type() == bfs::file_not_found) {
                 appbase::app().quit();
-                EVT_THROW(wallet_exception, "Lock file removed while evtwd still running. Terminating...");
+                jmzk_THROW(wallet_exception, "Lock file removed while jmzkwd still running. Terminating...");
             }
         }
         t->expires_from_now(boost::posix_time::seconds(1));
@@ -338,20 +338,20 @@ wallet_manager::start_lock_watch(std::shared_ptr<boost::asio::deadline_timer> t)
 
 void
 wallet_manager::initialize_lock() {
-    //This is technically somewhat racy in here -- if multiple evtd are in this function at once.
+    //This is technically somewhat racy in here -- if multiple jmzkd are in this function at once.
     //I've considered that an acceptable tradeoff to maintain cross-platform boost constructs here
     lock_path = dir / "wallet.lock";
     {
         std::ofstream x(lock_path.string());
-        EVT_ASSERT(!x.fail(), wallet_exception, "Failed to open wallet lock file at ${f}", ("f", lock_path.string()));
+        jmzk_ASSERT(!x.fail(), wallet_exception, "Failed to open wallet lock file at ${f}", ("f", lock_path.string()));
     }
     wallet_dir_lock = std::make_unique<boost::interprocess::file_lock>(lock_path.string().c_str());
     if(!wallet_dir_lock->try_lock()) {
         wallet_dir_lock.reset();
-        EVT_THROW(wallet_exception, "Failed to lock access to wallet directory; is another evtwd running?");
+        jmzk_THROW(wallet_exception, "Failed to lock access to wallet directory; is another jmzkwd running?");
     }
     auto timer = std::make_shared<boost::asio::deadline_timer>(appbase::app().get_io_service(), boost::posix_time::seconds(1));
     start_lock_watch(timer);
 }
 
-}}  // namespace evt::wallet
+}}  // namespace jmzk::wallet

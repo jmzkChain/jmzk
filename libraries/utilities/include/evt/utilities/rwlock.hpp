@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
@@ -17,7 +17,7 @@
 #define RWLOCK_WAFLAG   0x02u
 #define RWLOCK_RCINCR   0x04u
 
-namespace evt { namespace utilities {
+namespace jmzk { namespace utilities {
 
 class scoped_lock : boost::noncopyable {
 public:
@@ -192,7 +192,7 @@ private:
     std::atomic_uint          rdr_cnt_and_flags_;
 };
 
-}}  // namespace evt::utilities
+}}  // namespace jmzk::utilities
 
 #undef cpu_relax
 #undef RWLOCK_WIFLAG

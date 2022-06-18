@@ -1,12 +1,12 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
-#include <evt/chain/exceptions.hpp>
+#include <jmzk/chain/exceptions.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 struct chain_snapshot_header {
     /**
@@ -23,13 +23,13 @@ struct chain_snapshot_header {
     validate() const {
         auto min = minimum_compatible_version;
         auto max = current_version;
-        EVT_ASSERT(version >= min && version <= max,
+        jmzk_ASSERT(version >= min && version <= max,
                    snapshot_validation_exception,
                    "Unsupported version of chain snapshot: ${version}. Supported version must be between ${min} and ${max} inclusive.",
                    ("version", version)("min", min)("max", max));
     }
 };
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
-FC_REFLECT(evt::chain::chain_snapshot_header, (version))
+FC_REFLECT(jmzk::chain::chain_snapshot_header, (version))

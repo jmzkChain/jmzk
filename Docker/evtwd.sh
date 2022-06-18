@@ -1,11 +1,11 @@
 #!/bin/sh
-cd /opt/evt/bin
+cd /opt/jmzk/bin
 
-if [ -f '/opt/evt/etc/evtwd/config.ini' ]; then
+if [ -f '/opt/jmzk/etc/jmzkwd/config.ini' ]; then
     echo
   else
-    mkdir /opt/evt/etc
-    mkdir /opt/evt/etc/evtwd
+    mkdir /opt/jmzk/etc
+    mkdir /opt/jmzk/etc/jmzkwd
 fi
 
 while :; do
@@ -20,12 +20,12 @@ while :; do
 done
 
 if [ ! "$CONFIG_DIR" ]; then
-    CONFIG_DIR="--config-dir=/opt/evt/etc/evtwd"
+    CONFIG_DIR="--config-dir=/opt/jmzk/etc/jmzkwd"
 else
     CONFIG_DIR=""
 fi
 
-WALLET_DIR="--wallet-dir=/opt/evt/data/wallet"
-DATA_DIR="--data-dir=/opt/evt/data/wallet"
+WALLET_DIR="--wallet-dir=/opt/jmzk/data/wallet"
+DATA_DIR="--data-dir=/opt/jmzk/data/wallet"
 
-exec /opt/evt/bin/evtwd $CONFIG_DIR $DATA_DIR $WALLET_DIR $@
+exec /opt/jmzk/bin/jmzkwd $CONFIG_DIR $DATA_DIR $WALLET_DIR $@

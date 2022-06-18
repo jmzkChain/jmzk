@@ -1,28 +1,28 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/chain/exceptions.hpp>
-#include <evt/chain/transaction.hpp>
-#include <evt/wallet_api_plugin/wallet_api_plugin.hpp>
-#include <evt/wallet_plugin/wallet_manager.hpp>
+#include <jmzk/chain/exceptions.hpp>
+#include <jmzk/chain/transaction.hpp>
+#include <jmzk/wallet_api_plugin/wallet_api_plugin.hpp>
+#include <jmzk/wallet_plugin/wallet_manager.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
 
 #include <chrono>
 
-namespace evt { namespace detail {
+namespace jmzk { namespace detail {
 struct wallet_api_plugin_empty {};
-}}  // namespace evt::detail
+}}  // namespace jmzk::detail
 
-FC_REFLECT(evt::detail::wallet_api_plugin_empty, );
+FC_REFLECT(jmzk::detail::wallet_api_plugin_empty, );
 
-namespace evt {
+namespace jmzk {
 
 static appbase::abstract_plugin& _wallet_api_plugin = app().register_plugin<wallet_api_plugin>();
 
-using namespace evt;
+using namespace jmzk;
 
 #define CALL(api_name, api_handle, call_name, INVOKE, http_response_code)                                                     \
     {                                                                                                                         \
@@ -56,21 +56,21 @@ using namespace evt;
 
 #define INVOKE_V_R(api_handle, call_name, in_param)                   \
     api_handle.call_name(fc::json::from_string(body).as<in_param>()); \
-    evt::detail::wallet_api_plugin_empty result;
+    jmzk::detail::wallet_api_plugin_empty result;
 
 #define INVOKE_V_R_R(api_handle, call_name, in_param0, in_param1)             \
     const auto& vs = fc::json::json::from_string(body).as<fc::variants>();    \
     api_handle.call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>()); \
-    evt::detail::wallet_api_plugin_empty result;
+    jmzk::detail::wallet_api_plugin_empty result;
 
 #define INVOKE_V_R_R_R(api_handle, call_name, in_param0, in_param1, in_param2)                          \
     const auto& vs = fc::json::json::from_string(body).as<fc::variants>();                              \
     api_handle.call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>(), vs.at(2).as<in_param2>()); \
-    evt::detail::wallet_api_plugin_empty result;
+    jmzk::detail::wallet_api_plugin_empty result;
 
 #define INVOKE_V_V(api_handle, call_name) \
     api_handle.call_name();               \
-    evt::detail::wallet_api_plugin_empty result;
+    jmzk::detail::wallet_api_plugin_empty result;
 
 void
 wallet_api_plugin::plugin_startup() {
@@ -133,4 +133,4 @@ wallet_api_plugin::plugin_initialize(const variables_map& options) {}
 #undef INVOKE_V_V
 #undef CALL
 
-}  // namespace evt
+}  // namespace jmzk

@@ -1,21 +1,21 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <memory>
 
 #include <appbase/application.hpp>
-#include <evt/chain_plugin/chain_plugin.hpp>
+#include <jmzk/chain_plugin/chain_plugin.hpp>
 
-namespace evt {
+namespace jmzk {
 
 namespace chain {
 class snapshot_writer;
 class snapshot_reader;
 }  // namespace chain
 
-using evt::chain::public_key_type;
+using jmzk::chain::public_key_type;
 
 class postgres_plugin : public plugin<postgres_plugin> {
 public:
@@ -42,4 +42,4 @@ private:
     std::unique_ptr<class postgres_plugin_impl> my_;
 };
 
-}  // namespace evt
+}  // namespace jmzk

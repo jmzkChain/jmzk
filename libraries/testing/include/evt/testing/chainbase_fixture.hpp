@@ -3,7 +3,7 @@
 
 #include <memory>
 
-namespace evt { namespace testing {
+namespace jmzk { namespace testing {
 
 /**
  * Utility class to create and tear down a temporary chainbase::database using RAII
@@ -26,4 +26,4 @@ struct chainbase_fixture {
     std::unique_ptr<chainbase::database> _db;
 };
 
-}}  // namespace evt::testing
+}}  // namespace jmzk::testing

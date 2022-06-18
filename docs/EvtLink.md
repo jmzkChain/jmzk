@@ -1,3 +1,3 @@
-![everiToken Logo](./logo.png)
+![jmzkChain Logo](./logo.png)
 
-Please visit [Developer Portal](https://everitoken.io/developers).
+Please visit [Developer Portal](https://jmzkChain.io/developers).

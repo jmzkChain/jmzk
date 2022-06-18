@@ -1,14 +1,14 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="pyevt",
+    name="pyjmzk",
     version="0.3",
-    author="everiToken",
-    author_email="help@everitoken.io",
-    description="Python bind library for everiToken",
+    author="jmzkChain",
+    author_email="help@jmzkChain.io",
+    description="Python bind library for jmzkChain",
     long_description=open("README.rst").read(),
     license="MIT",
-    url="https://github.com/everitoken/evt/tree/master/bind/pyevt",
+    url="https://github.com/jmzkChain/jmzk/tree/master/bind/pyjmzk",
     packages=find_packages(),
     install_requires=['cffi'],
     classifiers=[

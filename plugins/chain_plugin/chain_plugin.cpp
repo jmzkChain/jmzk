@@ -1,8 +1,8 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/chain_plugin/chain_plugin.hpp>
+#include <jmzk/chain_plugin/chain_plugin.hpp>
 
 #include <signal.h>
 #include <stdlib.h>
@@ -12,37 +12,37 @@
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
 
-#include <evt/chain/block_log.hpp>
-#include <evt/chain/global_property_object.hpp>
-#include <evt/chain/exceptions.hpp>
-#include <evt/chain/fork_database.hpp>
-#include <evt/chain/reversible_block_object.hpp>
-#include <evt/chain/types.hpp>
-#include <evt/chain/genesis_state.hpp>
-#include <evt/chain/snapshot.hpp>
-#include <evt/chain/global_property_object.hpp>
-#include <evt/chain/contracts/evt_contract_abi.hpp>
-#include <evt/chain/contracts/evt_link.hpp>
-#include <evt/chain/contracts/evt_link_object.hpp>
+#include <jmzk/chain/block_log.hpp>
+#include <jmzk/chain/global_property_object.hpp>
+#include <jmzk/chain/exceptions.hpp>
+#include <jmzk/chain/fork_database.hpp>
+#include <jmzk/chain/reversible_block_object.hpp>
+#include <jmzk/chain/types.hpp>
+#include <jmzk/chain/genesis_state.hpp>
+#include <jmzk/chain/snapshot.hpp>
+#include <jmzk/chain/global_property_object.hpp>
+#include <jmzk/chain/contracts/jmzk_contract_abi.hpp>
+#include <jmzk/chain/contracts/jmzk_link.hpp>
+#include <jmzk/chain/contracts/jmzk_link_object.hpp>
 
-#include <evt/utilities/key_conversion.hpp>
+#include <jmzk/utilities/key_conversion.hpp>
 
-namespace evt {
+namespace jmzk {
 
 namespace chain {
 
 std::ostream&
-operator<<(std::ostream& osm, evt::chain::db_read_mode m) {
-    if(m == evt::chain::db_read_mode::SPECULATIVE) {
+operator<<(std::ostream& osm, jmzk::chain::db_read_mode m) {
+    if(m == jmzk::chain::db_read_mode::SPECULATIVE) {
         osm << "speculative";
     }
-    else if(m == evt::chain::db_read_mode::HEAD) {
+    else if(m == jmzk::chain::db_read_mode::HEAD) {
         osm << "head";
     }
-    else if(m == evt::chain::db_read_mode::READ_ONLY) {
+    else if(m == jmzk::chain::db_read_mode::READ_ONLY) {
         osm << "read-only";
     }
-    else if(m == evt::chain::db_read_mode::IRREVERSIBLE) {
+    else if(m == jmzk::chain::db_read_mode::IRREVERSIBLE) {
         osm << "irreversible";
     }
 
@@ -52,7 +52,7 @@ operator<<(std::ostream& osm, evt::chain::db_read_mode m) {
 void
 validate(boost::any&                     v,
          const std::vector<std::string>& values,
-         evt::chain::db_read_mode* /* target_type */,
+         jmzk::chain::db_read_mode* /* target_type */,
          int) {
     using namespace boost::program_options;
 
@@ -64,16 +64,16 @@ validate(boost::any&                     v,
     std::string const& s = validators::get_single_string(values);
 
     if(s == "speculative") {
-        v = boost::any(evt::chain::db_read_mode::SPECULATIVE);
+        v = boost::any(jmzk::chain::db_read_mode::SPECULATIVE);
     }
     else if(s == "head") {
-        v = boost::any(evt::chain::db_read_mode::HEAD);
+        v = boost::any(jmzk::chain::db_read_mode::HEAD);
     }
     else if(s == "read-only") {
-        v = boost::any(evt::chain::db_read_mode::READ_ONLY);
+        v = boost::any(jmzk::chain::db_read_mode::READ_ONLY);
     }
     else if(s == "irreversible") {
-        v = boost::any(evt::chain::db_read_mode::IRREVERSIBLE);
+        v = boost::any(jmzk::chain::db_read_mode::IRREVERSIBLE);
     }
     else {
         throw validation_error(validation_error::invalid_option_value);
@@ -81,11 +81,11 @@ validate(boost::any&                     v,
 }
 
 std::ostream&
-operator<<(std::ostream& osm, evt::chain::validation_mode m) {
-    if(m == evt::chain::validation_mode::FULL) {
+operator<<(std::ostream& osm, jmzk::chain::validation_mode m) {
+    if(m == jmzk::chain::validation_mode::FULL) {
         osm << "full";
     }
-    else if(m == evt::chain::validation_mode::LIGHT) {
+    else if(m == jmzk::chain::validation_mode::LIGHT) {
         osm << "light";
     }
 
@@ -95,7 +95,7 @@ operator<<(std::ostream& osm, evt::chain::validation_mode m) {
 void
 validate(boost::any&                     v,
          const std::vector<std::string>& values,
-         evt::chain::validation_mode* /* target_type */,
+         jmzk::chain::validation_mode* /* target_type */,
          int) {
     using namespace boost::program_options;
 
@@ -107,10 +107,10 @@ validate(boost::any&                     v,
     std::string const& s = validators::get_single_string(values);
 
     if(s == "full") {
-        v = boost::any(evt::chain::validation_mode::FULL);
+        v = boost::any(jmzk::chain::validation_mode::FULL);
     }
     else if(s == "light") {
-        v = boost::any(evt::chain::validation_mode::LIGHT);
+        v = boost::any(jmzk::chain::validation_mode::LIGHT);
     }
     else {
         throw validation_error(validation_error::invalid_option_value);
@@ -118,11 +118,11 @@ validate(boost::any&                     v,
 }
 
 std::ostream&
-operator<<(std::ostream& osm, evt::chain::storage_profile m) {
-    if(m == evt::chain::storage_profile::disk) {
+operator<<(std::ostream& osm, jmzk::chain::storage_profile m) {
+    if(m == jmzk::chain::storage_profile::disk) {
         osm << "disk";
     }
-    else if(m == evt::chain::storage_profile::memory) {
+    else if(m == jmzk::chain::storage_profile::memory) {
         osm << "memory";
     }
 
@@ -132,7 +132,7 @@ operator<<(std::ostream& osm, evt::chain::storage_profile m) {
 void
 validate(boost::any&                     v,
          const std::vector<std::string>& values,
-         evt::chain::storage_profile* /* target_type */,
+         jmzk::chain::storage_profile* /* target_type */,
          int) {
     using namespace boost::program_options;
 
@@ -144,10 +144,10 @@ validate(boost::any&                     v,
     std::string const& s = validators::get_single_string(values);
 
     if(s == "disk") {
-        v = boost::any(evt::chain::storage_profile::disk);
+        v = boost::any(jmzk::chain::storage_profile::disk);
     }
     else if(s == "memory") {
-        v = boost::any(evt::chain::storage_profile::memory);
+        v = boost::any(jmzk::chain::storage_profile::memory);
     }
     else {
         throw validation_error(validation_error::invalid_option_value);
@@ -156,10 +156,10 @@ validate(boost::any&                     v,
 
 }  // namespace chain
 
-using namespace evt;
-using namespace evt::chain;
-using namespace evt::chain::config;
-using namespace evt::chain::plugin_interface;
+using namespace jmzk;
+using namespace jmzk::chain;
+using namespace jmzk::chain::config;
+using namespace jmzk::chain::plugin_interface;
 using boost::signals2::scoped_connection;
 using fc::flat_map;
 using fc::json;
@@ -238,9 +238,9 @@ public:
 
 chain_plugin::chain_plugin()
     :my(new chain_plugin_impl()) {
-    app().register_config_type<evt::chain::db_read_mode>();
-    app().register_config_type<evt::chain::validation_mode>();
-    app().register_config_type<evt::chain::storage_profile>();
+    app().register_config_type<jmzk::chain::db_read_mode>();
+    app().register_config_type<jmzk::chain::validation_mode>();
+    app().register_config_type<jmzk::chain::storage_profile>();
 }
 
 chain_plugin::~chain_plugin() {}
@@ -251,7 +251,7 @@ chain_plugin::set_program_options(options_description& cli, options_description&
         ("blocks-dir", bpo::value<bfs::path>()->default_value("blocks"), "the location of the blocks directory (absolute path or relative to application data dir)")
         ("token-db-dir", bpo::value<bfs::path>()->default_value("tokendb"), "the location of the token database directory (absolute path or relative to application data dir)")
         ("token-db-cache-size-mb", bpo::value<uint32_t>()->default_value(512), "the cache size of token database in MBytes")
-        ("token-db-profile", boost::program_options::value<evt::chain::storage_profile>()->default_value(evt::chain::storage_profile::disk),
+        ("token-db-profile", boost::program_options::value<jmzk::chain::storage_profile>()->default_value(jmzk::chain::storage_profile::disk),
             "Token database profile (\"disk\", or \"memory\").\n"
             "In \"disk\" profile database is optimized for the standard storage devices.\n"
             "In \"memory\" mode database is optimized for the usage in ultra-low latency devices like memory\n"
@@ -263,14 +263,14 @@ chain_plugin::set_program_options(options_description& cli, options_description&
         ("reversible-blocks-db-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_cache_size / (1024 * 1024)), "Maximum size (in MiB) of the reversible blocks database")
         ("reversible-blocks-db-guard-size-mb", bpo::value<uint64_t>()->default_value(config::default_reversible_guard_size / (1024 * 1024)), "Safely shut down node when free space remaining in the reverseible blocks database drops below this size (in MiB).")
         ("contracts-console", bpo::bool_switch()->default_value(false), "print contract's output to console")
-        ("read-mode", boost::program_options::value<evt::chain::db_read_mode>()->default_value(evt::chain::db_read_mode::SPECULATIVE),
+        ("read-mode", boost::program_options::value<jmzk::chain::db_read_mode>()->default_value(jmzk::chain::db_read_mode::SPECULATIVE),
             "Database read mode (\"speculative\", \"head\", or \"read-only\").\n"// or \"irreversible\").\n"
             "In \"speculative\" mode database contains changes done up to the head block plus changes made by transactions not yet included to the blockchain.\n"
             "In \"head\" mode database contains changes done up to the current head block.\n"
             "In \"read-only\" mode database contains incoming block changes but no speculative transaction processing.\n"
         )
         //"In \"irreversible\" mode database contains changes done up the current irreversible block.\n")
-        ("validation-mode", boost::program_options::value<evt::chain::validation_mode>()->default_value(evt::chain::validation_mode::FULL),
+        ("validation-mode", boost::program_options::value<jmzk::chain::validation_mode>()->default_value(jmzk::chain::validation_mode::FULL),
             "Chain validation mode (\"full\" or \"light\").\n"
             "In \"full\" mode all incoming blocks will be fully validated.\n"
             "In \"light\" mode all incoming blocks headers will be fully validated; transactions in those validated blocks will be trusted \n")
@@ -346,10 +346,10 @@ chain_plugin::plugin_initialize(const variables_map& options) {
 
     try {
         try {
-            genesis_state gs;  // Check if EVT_ROOT_KEY is bad
+            genesis_state gs;  // Check if jmzk_ROOT_KEY is bad
         }
         catch(const fc::exception&) {
-            elog("EVT_ROOT_KEY ('${root_key}') is invalid. Recompile with a valid public key.", ("root_key", genesis_state::evt_root_key));
+            elog("jmzk_ROOT_KEY ('${root_key}') is invalid. Recompile with a valid public key.", ("root_key", genesis_state::jmzk_root_key));
             throw;
         }
 
@@ -384,7 +384,7 @@ chain_plugin::plugin_initialize(const variables_map& options) {
                 auto item = fc::json::from_string(cp).as<std::pair<uint32_t, block_id_type>>();
                 auto itr  = my->loaded_checkpoints.find(item.first);
                 if(itr != my->loaded_checkpoints.end()) {
-                    EVT_ASSERT(itr->second == item.second, plugin_config_exception,
+                    jmzk_ASSERT(itr->second == item.second, plugin_config_exception,
                         "redefining existing checkpoint at block number ${num}: original: ${orig} new: ${new}",
                         ("num", item.first)("orig", itr->second)("new", item.second));
                 }
@@ -463,7 +463,7 @@ chain_plugin::plugin_initialize(const variables_map& options) {
                 ilog("Saved genesis JSON to '${path}'", ("path", p.generic_string()));
             }
 
-            EVT_THROW(extract_genesis_state_exception, "extracted genesis state from blocks.log");
+            jmzk_THROW(extract_genesis_state_exception, "extracted genesis state from blocks.log");
         }
 
         if(options.count("export-reversible-blocks")) {
@@ -478,7 +478,7 @@ chain_plugin::plugin_initialize(const variables_map& options) {
             else
                 ilog("Saved recovered blocks from reversible block database into '${path}'", ("path", p.generic_string()));
 
-            EVT_THROW(node_management_success, "exported reversible blocks");
+            jmzk_THROW(node_management_success, "exported reversible blocks");
         }
 
         if(options.at("delete-all-blocks").as<bool>()) {
@@ -533,7 +533,7 @@ chain_plugin::plugin_initialize(const variables_map& options) {
             else {
                 ilog("Exiting after fixing reversible blocks database...");
             }
-            EVT_THROW(fixed_reversible_db_exception, "fixed corrupted reversible blocks database");
+            jmzk_THROW(fixed_reversible_db_exception, "fixed corrupted reversible blocks database");
         }
         else if(options.at("truncate-at-block").as<uint32_t>() > 0) {
             wlog("The --truncate-at-block option can only be used with --fix-reversible-blocks without a replay or with --hard-replay-blockchain.");
@@ -546,7 +546,7 @@ chain_plugin::plugin_initialize(const variables_map& options) {
             import_reversible_blocks(my->chain_config->blocks_dir / config::reversible_blocks_dir_name,
                                      my->chain_config->reversible_cache_size, reversible_blocks_file);
 
-            EVT_THROW(node_management_success, "imported reversible blocks");
+            jmzk_THROW(node_management_success, "imported reversible blocks");
         }
 
         if(options.count("import-reversible-blocks")) {
@@ -555,7 +555,7 @@ chain_plugin::plugin_initialize(const variables_map& options) {
 
         if(options.count("snapshot")) {
             my->snapshot_path = options.at("snapshot").as<bfs::path>();
-            EVT_ASSERT(fc::exists(*my->snapshot_path), plugin_config_exception,
+            jmzk_ASSERT(fc::exists(*my->snapshot_path), plugin_config_exception,
                        "Cannot load snapshot, ${name} does not exist", ("name", my->snapshot_path->generic_string()));
 
             // recover genesis information from the snapshot
@@ -567,18 +567,18 @@ chain_plugin::plugin_initialize(const variables_map& options) {
             });
             infile.close();
 
-            EVT_ASSERT(options.count("genesis-json") == 0 && options.count("genesis-timestamp") == 0,
+            jmzk_ASSERT(options.count("genesis-json") == 0 && options.count("genesis-timestamp") == 0,
                        plugin_config_exception,
                        "--snapshot is incompatible with --genesis-json and --genesis-timestamp as the snapshot contains genesis information");
 
             auto shared_mem_path = my->chain_config->state_dir / "shared_memory.bin";
-            EVT_ASSERT(!fc::exists(shared_mem_path),
+            jmzk_ASSERT(!fc::exists(shared_mem_path),
                        plugin_config_exception,
                        "Snapshot can only be used to initialize an empty database.");
 
             if(fc::is_regular_file(my->blocks_dir / "blocks.log")) {
                 auto log_genesis = block_log::extract_genesis_state(my->blocks_dir);
-                EVT_ASSERT(log_genesis.compute_chain_id() == my->chain_config->genesis.compute_chain_id(),
+                jmzk_ASSERT(log_genesis.compute_chain_id() == my->chain_config->genesis.compute_chain_id(),
                            plugin_config_exception,
                            "Genesis information in blocks.log does not match genesis information in the snapshot");
             }
@@ -595,7 +595,7 @@ chain_plugin::plugin_initialize(const variables_map& options) {
 
             if(options.count("genesis-json")) {
                 genesis_file = options.at( "genesis-json" ).as<bfs::path>();
-                EVT_ASSERT(!fc::exists(my->blocks_dir / "blocks.log"),
+                jmzk_ASSERT(!fc::exists(my->blocks_dir / "blocks.log"),
                            plugin_config_exception,
                            "Genesis state can only be set on a fresh blockchain.");
 
@@ -604,7 +604,7 @@ chain_plugin::plugin_initialize(const variables_map& options) {
                     genesis_file = bfs::current_path() / genesis_file;
                 }
 
-                EVT_ASSERT(fc::is_regular_file(genesis_file),
+                jmzk_ASSERT(fc::is_regular_file(genesis_file),
                            plugin_config_exception,
                            "Specified genesis file '${genesis}' does not exist.",
                            ("genesis", genesis_file.generic_string()));
@@ -637,7 +637,7 @@ chain_plugin::plugin_initialize(const variables_map& options) {
                 }
             }
             else {
-                EVT_ASSERT(my->chain_config->genesis == *existing_genesis, plugin_config_exception,
+                jmzk_ASSERT(my->chain_config->genesis == *existing_genesis, plugin_config_exception,
                            "Genesis state provided via command line arguments does not match the existing genesis state in blocks.log. "
                            "It is not necessary to provide genesis state arguments when a blocks.log file already exists."
                            );
@@ -647,7 +647,7 @@ chain_plugin::plugin_initialize(const variables_map& options) {
 
         if(options.count("read-mode")) {
             my->chain_config->read_mode = options.at("read-mode").as<db_read_mode>();
-            EVT_ASSERT(my->chain_config->read_mode != db_read_mode::IRREVERSIBLE, plugin_config_exception, "irreversible mode not currently supported.");
+            jmzk_ASSERT(my->chain_config->read_mode != db_read_mode::IRREVERSIBLE, plugin_config_exception, "irreversible mode not currently supported.");
         }
 
         if(options.count("validation-mode")) {
@@ -682,7 +682,7 @@ chain_plugin::plugin_initialize(const variables_map& options) {
             auto itr = my->loaded_checkpoints.find(blk->block_num());
             if(itr != my->loaded_checkpoints.end()) {
                 auto id = blk->id();
-                EVT_ASSERT(itr->second == id, checkpoint_exception,
+                jmzk_ASSERT(itr->second == id, checkpoint_exception,
                            "Checkpoint does not match for block number ${num}: expected: ${expected} actual: ${actual}",
                            ("num", blk->block_num())("expected", itr->second)("actual", id));
             }
@@ -832,10 +832,10 @@ chain_plugin::recover_reversible_blocks(const fc::path& db_dir, uint32_t cache_s
     }
     else {
         auto reversible_dir_name = reversible_dir.filename().generic_string();
-        EVT_ASSERT(reversible_dir_name != ".", invalid_reversible_blocks_dir, "Invalid path to reversible directory");
+        jmzk_ASSERT(reversible_dir_name != ".", invalid_reversible_blocks_dir, "Invalid path to reversible directory");
         backup_dir = reversible_dir.parent_path() / reversible_dir_name.append("-").append(now);
 
-        EVT_ASSERT(!fc::exists(backup_dir),
+        jmzk_ASSERT(!fc::exists(backup_dir),
                    reversible_blocks_backup_dir_exist,
                    "Cannot move existing reversible directory to already existing directory '${backup_dir}'",
                    ("backup_dir", backup_dir));
@@ -872,7 +872,7 @@ chain_plugin::recover_reversible_blocks(const fc::path& db_dir, uint32_t cache_s
     }
     try {
         for(; itr != ubi.end(); ++itr) {
-            EVT_ASSERT(itr->blocknum == end + 1, gap_in_reversible_blocks_db,
+            jmzk_ASSERT(itr->blocknum == end + 1, gap_in_reversible_blocks_db,
                        "gap in reversible block database between ${end} and ${blocknum}",
                        ("end", end)("blocknum", itr->blocknum));
             reversible_blocks.write(itr->packedblock.data(), itr->packedblock.size());
@@ -932,7 +932,7 @@ chain_plugin::import_reversible_blocks(const fc::path& reversible_dir,
                 start = num;
             }
             else {
-                EVT_ASSERT(num == end + 1, gap_in_reversible_blocks_db,
+                jmzk_ASSERT(num == end + 1, gap_in_reversible_blocks_db,
                            "gap in reversible block database between ${end} and ${num}",
                            ("end", end)("num", num));
             }
@@ -978,7 +978,7 @@ chain_plugin::export_reversible_blocks(const fc::path& reversible_dir,
     }
     try {
         for(; itr != ubi.end(); ++itr) {
-            EVT_ASSERT(itr->blocknum == end + 1, gap_in_reversible_blocks_db,
+            jmzk_ASSERT(itr->blocknum == end + 1, gap_in_reversible_blocks_db,
                        "gap in reversible block database between ${end} and ${blocknum}",
                        ("end", end)("blocknum", itr->blocknum));
             signed_block                tmp;
@@ -1020,7 +1020,7 @@ chain_plugin::chain() const {
 
 chain::chain_id_type
 chain_plugin::get_chain_id() const {
-    EVT_ASSERT(my->chain_id.has_value(), chain_id_type_exception, "Chain ID has not been initialized yet");
+    jmzk_ASSERT(my->chain_id.has_value(), chain_id_type_exception, "Chain ID has not been initialized yet");
     return *my->chain_id;
 }
 
@@ -1081,7 +1081,7 @@ read_only::get_info(const read_only::get_info_params&) const {
     return {
         itoh(static_cast<uint32_t>(app().version())),
         db.get_chain_id(),
-        contracts::evt_contract_abi_version(),
+        contracts::jmzk_contract_abi_version(),
         db.fork_db_head_block_num(),
         db.last_irreversible_block_num(),
         db.last_irreversible_block_id(),
@@ -1107,7 +1107,7 @@ read_only::get_charge_info(const read_only::get_charge_info_params&) const{
 fc::variant
 read_only::get_block(const read_only::get_block_params& params) const {
     auto block = signed_block_ptr();
-    EVT_ASSERT(!params.block_num_or_id.empty() && params.block_num_or_id.size() <= 64,
+    jmzk_ASSERT(!params.block_num_or_id.empty() && params.block_num_or_id.size() <= 64,
         chain::block_id_type_exception, "Invalid Block number or ID, must be greater than 0 and less than 64 characters");
     try {
         if(params.block_num_or_id.size() == 64) {
@@ -1117,9 +1117,9 @@ read_only::get_block(const read_only::get_block_params& params) const {
             block = db.fetch_block_by_number(fc::to_uint64(params.block_num_or_id));
         }
     }
-    EVT_RETHROW_EXCEPTIONS(chain::block_id_type_exception, "Invalid block ID: ${block_num_or_id}", ("block_num_or_id", params.block_num_or_id))
+    jmzk_RETHROW_EXCEPTIONS(chain::block_id_type_exception, "Invalid block ID: ${block_num_or_id}", ("block_num_or_id", params.block_num_or_id))
 
-    EVT_ASSERT(block, unknown_block_exception, "Could not find block: ${block}", ("block", params.block_num_or_id));
+    jmzk_ASSERT(block, unknown_block_exception, "Could not find block: ${block}", ("block", params.block_num_or_id));
 
     auto pretty_output = fc::variant();
     db.get_abi_serializer().to_variant(*block, pretty_output, db.get_execution_context());
@@ -1148,10 +1148,10 @@ read_only::get_block_header_state(const get_block_header_state_params& params) c
         try {
             b = db.fetch_block_state_by_id(fc::variant(params.block_num_or_id).as<block_id_type>());
         }
-        EVT_RETHROW_EXCEPTIONS(chain::block_id_type_exception, "Invalid block ID: ${block_num_or_id}", ("block_num_or_id", params.block_num_or_id))
+        jmzk_RETHROW_EXCEPTIONS(chain::block_id_type_exception, "Invalid block ID: ${block_num_or_id}", ("block_num_or_id", params.block_num_or_id))
     }
 
-    EVT_ASSERT(b, unknown_block_exception, "Could not find reversible block: ${block}", ("block", params.block_num_or_id));
+    jmzk_ASSERT(b, unknown_block_exception, "Could not find reversible block: ${block}", ("block", params.block_num_or_id));
 
     fc::variant vo;
     fc::to_variant(static_cast<const block_header_state&>(*b), vo);
@@ -1161,7 +1161,7 @@ read_only::get_block_header_state(const get_block_header_state_params& params) c
 fc::variant
 read_only::get_head_block_header_state(const get_head_block_header_state_params& params) const {
     auto b = db.head_block_state();
-    EVT_ASSERT(b, unknown_block_exception, "Could not find head block");
+    jmzk_ASSERT(b, unknown_block_exception, "Could not find head block");
 
     fc::variant vo;
     fc::to_variant(static_cast<const block_header_state&>(*b), vo);
@@ -1178,7 +1178,7 @@ read_only::get_transaction(const get_transaction_params& params) {
         block_num = *params.block_num;
     }
     auto block = db.fetch_block_by_number(block_num);
-    EVT_ASSERT(block, unknown_block_exception, "Could not find head block");
+    jmzk_ASSERT(block, unknown_block_exception, "Could not find head block");
 
     for(auto& tx : block->transactions) {
         if(tx.trx.id() == params.id) {
@@ -1197,13 +1197,13 @@ read_only::get_transaction(const get_transaction_params& params) {
             return mv;
         }
     }
-    EVT_THROW(unknown_transaction_exception, "Cannot find transaction");
+    jmzk_THROW(unknown_transaction_exception, "Cannot find transaction");
 }
 
 fc::variant
 read_only::get_trx_id_for_link_id(const get_trx_id_for_link_id_params& params) const {
     if(params.link_id.size() != sizeof(link_id_type)) {
-        EVT_THROW(evt_link_id_exception, "EVT-Link id is not in proper length");
+        jmzk_THROW(jmzk_link_id_exception, "jmzk-Link id is not in proper length");
     }
 
     auto link_id = link_id_type();
@@ -1242,7 +1242,7 @@ read_write::push_transaction(const read_write::push_transaction_params& params, 
             db.get_abi_serializer().from_variant(params, *ptrx, exec_ctx);
             trx_meta = std::make_shared<transaction_metadata>(ptrx);
         }
-        EVT_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
+        jmzk_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid packed transaction")
 
         app().get_method<incoming::methods::transaction_async>()(trx_meta, true, [this, next, &exec_ctx](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
             if(result.contains<fc::exception_ptr>()) {
@@ -1328,7 +1328,7 @@ read_only::abi_json_to_bin(const read_only::abi_json_to_bin_params& params) cons
     try {
         result.binargs = abi.variant_to_binary(action_type, params.args, exec_ctx, shorten_abi_errors);
     }
-    EVT_RETHROW_EXCEPTIONS(chain::action_args_exception,
+    jmzk_RETHROW_EXCEPTIONS(chain::action_args_exception,
                            "'${args}' is invalid args for action '${action}'. expected '${proto}'",
                            ("args", params.args)("action", params.action)("proto", action_abi_to_variant(abi, action_type)))
     return result;
@@ -1355,7 +1355,7 @@ read_only::trx_json_to_digest(const trx_json_to_digest_params& params) const {
         try {
             db.get_abi_serializer().from_variant(params, *trx, db.get_execution_context());
         }
-        EVT_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid transaction");
+        jmzk_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid transaction");
 
         result.digest = trx->sig_digest(db.get_chain_id());
         result.id     = trx->id();
@@ -1379,7 +1379,7 @@ read_only::trx_json_to_bin(const trx_json_to_bin_params& params) const {
     try {
         db.get_abi_serializer().from_variant(params, *trx, db.get_execution_context());
     }
-    EVT_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid transaction");
+    jmzk_RETHROW_EXCEPTIONS(chain::packed_transaction_type_exception, "Invalid transaction");
 
     auto temp = bytes(1024 * 1024);
     auto ds   = fc::datastream<char*>(temp.data(), temp.size());
@@ -1396,7 +1396,7 @@ read_only::get_required_keys(const get_required_keys_params& params) const {
     try {
         db.get_abi_serializer().from_variant(params.transaction, trx, db.get_execution_context());
     }
-    EVT_RETHROW_EXCEPTIONS(chain::transaction_type_exception, "Invalid transaction");
+    jmzk_RETHROW_EXCEPTIONS(chain::transaction_type_exception, "Invalid transaction");
 
     auto result          = get_required_keys_result();
     result.required_keys = db.get_required_keys(trx, params.available_keys);
@@ -1417,7 +1417,7 @@ read_only::get_charge(const get_charge_params& params) const {
     try {
         db.get_abi_serializer().from_variant(params.transaction, trx, db.get_execution_context());
     }
-    EVT_RETHROW_EXCEPTIONS(chain::transaction_type_exception, "Invalid transaction");
+    jmzk_RETHROW_EXCEPTIONS(chain::transaction_type_exception, "Invalid transaction");
 
     auto result   = get_charge_result();
     result.charge = db.get_charge(std::move(trx), params.sigs_num);
@@ -1431,9 +1431,9 @@ read_only::get_transaction_ids_for_block(const get_transaction_ids_for_block_par
     try {
         block = db.fetch_block_by_id(params.block_id);
     }
-    EVT_RETHROW_EXCEPTIONS(chain::block_id_type_exception, "Invalid block ID: ${id}", ("id", params.block_id))
+    jmzk_RETHROW_EXCEPTIONS(chain::block_id_type_exception, "Invalid block ID: ${id}", ("id", params.block_id))
 
-    EVT_ASSERT(block, unknown_block_exception, "Could not find block: ${block}", ("id", params.block_id));
+    jmzk_ASSERT(block, unknown_block_exception, "Could not find block: ${block}", ("id", params.block_id));
 
     auto arr = fc::variants();
     for(auto& trx : block->transactions) {
@@ -1448,8 +1448,8 @@ read_only::get_abi(const get_abi_params&) const {
     static std::string _abi_json;
     
     if(_abi_json.empty()) {
-        auto abi = evt::chain::contracts::evt_contract_abi();
-        auto ver = evt::chain::contracts::evt_contract_abi_version();
+        auto abi = jmzk::chain::contracts::jmzk_contract_abi();
+        auto ver = jmzk::chain::contracts::jmzk_contract_abi_version();
 
         auto var = fc::variant();
         fc::to_variant(abi, var);
@@ -1525,4 +1525,4 @@ read_only::get_db_info(const get_db_info_params&) const {
 }
 
 }  // namespace chain_apis
-}  // namespace evt
+}  // namespace jmzk

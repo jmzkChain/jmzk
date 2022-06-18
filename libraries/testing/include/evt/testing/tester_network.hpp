@@ -4,7 +4,7 @@
 #include <boost/signals2/shared_connection_block.hpp>
 #include <boost/signals2/signal.hpp>
 
-namespace evt { namespace testing {
+namespace jmzk { namespace testing {
 using namespace boost::signals2;
 
 /**
@@ -45,4 +45,4 @@ protected:
     std::map<base_tester*, scoped_connection> blockchains;
 };
 
-}}  // namespace evt::testing
+}}  // namespace jmzk::testing

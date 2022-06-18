@@ -1,5 +1,5 @@
 version: 0.2
-       
+
 env:
   parameter-store:
     LOGIN_USERID: "docker-userid"
@@ -18,9 +18,9 @@ phases:
       - docker login -u $LOGIN_USERID -p $LOGIN_PASSWORD
   build:
     commands:
-      - echo Start building latest evt-mainnet...
-      - cd Docker/mainnet && docker build -t everitoken/evt-mainnet:latest --build-arg bjobs=$BUILD_JOBS --build-arg awskey="$AWS_KEY" --build-arg awssecret="$AWS_SECRET" .
+      - echo Start building latest jmzk...
+      - cd Docker && docker build -t jmzkChain/jmzk:latest --build-arg bjobs=$BUILD_JOBS --build-arg awskey="$AWS_KEY" --build-arg awssecret="$AWS_SECRET" .
   post_build:
     commands:
       - echo Publish to Docker Hub...
-      - docker push everitoken/evt-mainnet:latest
+      - docker push jmzkChain/jmzk:latest

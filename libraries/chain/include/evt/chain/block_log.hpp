@@ -1,13 +1,13 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <fc/filesystem.hpp>
-#include <evt/chain/block.hpp>
-#include <evt/chain/genesis_state.hpp>
+#include <jmzk/chain/block.hpp>
+#include <jmzk/chain/genesis_state.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 namespace detail {
 class block_log_impl;
@@ -79,4 +79,4 @@ private:
     std::unique_ptr<detail::block_log_impl> my;
 };
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain

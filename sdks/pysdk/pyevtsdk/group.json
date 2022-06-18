@@ -1,46 +1,46 @@
 {
-   "name":"5jxX",
-   "group":{
-      "name":"5jxXg",
-      "key":"EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
-      "root":{
-         "threshold":6,
-         "weight":0,
-         "nodes":[
+  "name": "5jxX",
+  "group": {
+    "name": "5jxXg",
+    "key": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+    "root": {
+      "threshold": 6,
+      "weight": 0,
+      "nodes": [
+        {
+          "type": "branch",
+          "threshold": 1,
+          "weight": 3,
+          "nodes": [
             {
-               "type":"branch",
-               "threshold":1,
-               "weight":3,
-               "nodes":[
-                  {
-                     "key":"EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
-                     "weight":1
-                  },
-                  {
-                     "key":"EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
-                     "weight":1
-                  }
-               ]
+              "key": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+              "weight": 1
             },
             {
-               "key":"EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
-               "weight":3
-            },
-            {
-               "threshold":1,
-               "weight":3,
-               "nodes":[
-                  {
-                     "key":"EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
-                     "weight":1
-                  },
-                  {
-                     "key":"EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
-                     "weight":2
-                  }
-               ]
+              "key": "jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+              "weight": 1
             }
-         ]
-      }
-   }
+          ]
+        },
+        {
+          "key": "jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+          "weight": 3
+        },
+        {
+          "threshold": 1,
+          "weight": 3,
+          "nodes": [
+            {
+              "key": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+              "weight": 1
+            },
+            {
+              "key": "jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+              "weight": 2
+            }
+          ]
+        }
+      ]
+    }
+  }
 }

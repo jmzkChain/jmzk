@@ -1,24 +1,24 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
-namespace evt { namespace chain { namespace contracts {
+namespace jmzk { namespace chain { namespace contracts {
 
 template<uint64_t>
 struct apply_action {};
 
-}}}  // namespace evt::chain::contracts
+}}}  // namespace jmzk::chain::contracts
 
-#include <evt/chain/contracts/evt_contract_common.hpp>
-#include <evt/chain/contracts/evt_contract_metas.hpp>
-#include <evt/chain/contracts/evt_contract_nft.hpp>
-#include <evt/chain/contracts/evt_contract_ft.hpp>
-#include <evt/chain/contracts/evt_contract_group.hpp>
-#include <evt/chain/contracts/evt_contract_lock.hpp>
-#include <evt/chain/contracts/evt_contract_suspend.hpp>
-#include <evt/chain/contracts/evt_contract_bonus.hpp>
-#include <evt/chain/contracts/evt_contract_evtlink.hpp>
-#include <evt/chain/contracts/evt_contract_utils.hpp>
-#include <evt/chain/contracts/evt_contract_staking.hpp>
+#include <jmzk/chain/contracts/jmzk_contract_common.hpp>
+#include <jmzk/chain/contracts/jmzk_contract_metas.hpp>
+#include <jmzk/chain/contracts/jmzk_contract_nft.hpp>
+#include <jmzk/chain/contracts/jmzk_contract_ft.hpp>
+#include <jmzk/chain/contracts/jmzk_contract_group.hpp>
+#include <jmzk/chain/contracts/jmzk_contract_lock.hpp>
+#include <jmzk/chain/contracts/jmzk_contract_suspend.hpp>
+#include <jmzk/chain/contracts/jmzk_contract_bonus.hpp>
+#include <jmzk/chain/contracts/jmzk_contract_jmzklink.hpp>
+#include <jmzk/chain/contracts/jmzk_contract_utils.hpp>
+#include <jmzk/chain/contracts/jmzk_contract_staking.hpp>

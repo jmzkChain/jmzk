@@ -1,14 +1,14 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #include <appbase/application.hpp>
 
-#include <evt/chain_plugin/chain_plugin.hpp>
-#include <evt/http_plugin/http_plugin.hpp>
-#include <evt/net_plugin/net_plugin.hpp>
-#include <evt/producer_plugin/producer_plugin.hpp>
-#include <evt/utilities/common.hpp>
+#include <jmzk/chain_plugin/chain_plugin.hpp>
+#include <jmzk/http_plugin/http_plugin.hpp>
+#include <jmzk/net_plugin/net_plugin.hpp>
+#include <jmzk/producer_plugin/producer_plugin.hpp>
+#include <jmzk/utilities/common.hpp>
 
 #include <fc/exception/exception.hpp>
 #include <fc/log/appender.hpp>
@@ -29,7 +29,7 @@
 #include "config.hpp"
 
 using namespace appbase;
-using namespace evt;
+using namespace jmzk;
 
 namespace fc {
 std::unordered_map<std::string, appender::ptr>& get_appender_map();
@@ -124,13 +124,13 @@ enum return_codes {
 int
 main(int argc, char** argv) {
     try {
-        app().set_version(evt::evtd::config::version);
+        app().set_version(jmzk::jmzkd::config::version);
 
         auto root = fc::app_path();
-        app().set_default_data_dir(root / "evt/evtd/data");
-        app().set_default_config_dir(root / "evt/evtd/config");
+        app().set_default_data_dir(root / "jmzk/jmzkd/data");
+        app().set_default_config_dir(root / "jmzk/jmzkd/config");
         http_plugin::set_defaults({
-            .default_unix_socket_path = "evtd.sock",
+            .default_unix_socket_path = "jmzkd.sock",
             .default_http_port = 8888
         });
 
@@ -148,10 +148,10 @@ main(int argc, char** argv) {
         google_breakpad::ExceptionHandler eh(descriptor, NULL, dump_callback, NULL, true, -1);
 #endif
 
-        ilog("evtd version ${ver}", ("ver", app().version_string()));
+        ilog("jmzkd version ${ver}", ("ver", app().version_string()));
         ilog("evd root is ${root}", ("root", root.string()));
-        ilog("evtd using configuration file ${c}", ("c", app().full_config_file_path().string()));
-        ilog("evtd data directory is ${d}", ("d", app().data_dir().string()));
+        ilog("jmzkd using configuration file ${c}", ("c", app().full_config_file_path().string()));
+        ilog("jmzkd data directory is ${d}", ("d", app().data_dir().string()));
 
         app().startup();
         app().exec();

@@ -1,7 +1,7 @@
 import json
 
-import pyevt
-from pyevt import abi, ecc, libevt, evt_link
+import pyjmzk
+from pyjmzk import abi, ecc, libjmzk, jmzk_link
 
 from . import base
 
@@ -86,9 +86,9 @@ class TransferFtAction(Action):
         super().__init__('transferft', '.fungible', key, data)
 
 
-class EVT2PEVTAction(Action):
+class jmzk2PjmzkAction(Action):
     def __init__(self, key, data):
-        super().__init__('evt2pevt', '.fungible', key, data)
+        super().__init__('jmzk2pjmzk', '.fungible', key, data)
 
 
 class NewSuspendAction(Action):
@@ -141,7 +141,7 @@ class ActionTypeErrorException(Exception):
 
 
 def get_action_from_abi_json(action, abi_json, domain=None, key=None):
-    libevt.init_lib()
+    libjmzk.init_lib()
     abi_dict = json.loads(abi_json)
     try:
         _bin = abi.json_to_bin(action, abi_json).to_hex_string()
@@ -172,8 +172,8 @@ def get_action_from_abi_json(action, abi_json, domain=None, key=None):
         return IssueFungibleAction(abi_dict['number'].split('#')[1], _bin)
     elif action == 'transferft':
         return TransferFtAction(abi_dict['number'].split('#')[1], _bin)
-    elif action == 'evt2pevt':
-        return EVT2PEVTAction(abi_dict['number'].split('#')[1], _bin)
+    elif action == 'jmzk2pjmzk':
+        return jmzk2PjmzkAction(abi_dict['number'].split('#')[1], _bin)
     elif action == 'newsuspend':
         return NewSuspendAction(abi_dict['name'], _bin)
     elif action == 'aprvsuspend':
@@ -283,10 +283,10 @@ class ActionGenerator:
             _from=str(_from), to=str(to), number=number, memo=memo)
         return get_action_from_abi_json('transferft', abi_json.dumps())
 
-    def evt2pevt(self, _from, to, number, memo):
-        abi_json = base.EVT2PEVTAbi(
+    def jmzk2pjmzk(self, _from, to, number, memo):
+        abi_json = base.jmzk2PjmzkAbi(
             _from=str(_from), to=str(to), number=number, memo=memo)
-        return get_action_from_abi_json('evt2pevt', abi_json.dumps())
+        return get_action_from_abi_json('jmzk2pjmzk', abi_json.dumps())
 
     def addmeta(self, meta_key, meta_value, creator, domain, key):
         abi_json = base.AddMetaAbi(meta_key, meta_value, creator.value())
@@ -309,12 +309,12 @@ class ActionGenerator:
         return get_action_from_abi_json('execsuspend', abi_json.dumps())
 
     def everipass(self, link):
-        everipass = evt_link.EvtLink.parse_from_evtli(link)
+        everipass = jmzk_link.jmzkLink.parse_from_jmzkli(link)
         abi_json = base.EveripassAbi(link)
         return get_action_from_abi_json('everipass', abi_json.dumps(), everipass.get_segment_str('domain'), everipass.get_segment_str('token'))
 
     def everipay(self, payee, number, link):
-        everipay = evt_link.EvtLink.parse_from_evtli(link)
+        everipay = jmzk_link.jmzkLink.parse_from_jmzkli(link)
         abi_json = base.EveripayAbi(str(payee), number, link)
         return get_action_from_abi_json('everipay', abi_json.dumps(), '.fungible', str(everipay.get_segment_int('symbol_id')))
 

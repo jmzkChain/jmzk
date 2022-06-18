@@ -1,17 +1,17 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 class token_database;
 struct genesis_state;
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
-namespace evt { namespace chain { namespace contracts {
+namespace jmzk { namespace chain { namespace contracts {
 
-void initialize_evt_org(token_database& token_db, const genesis_state& genesis);
-void update_evt_org(token_database& token_db, const genesis_state& genesis);
+void initialize_jmzk_org(token_database& token_db, const genesis_state& genesis);
+void update_jmzk_org(token_database& token_db, const genesis_state& genesis);
 
-}}}  // namespace evt::chain::contracts
+}}}  // namespace jmzk::chain::contracts

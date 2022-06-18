@@ -1,13 +1,13 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
-namespace evt { namespace chain { namespace contracts {
+namespace jmzk { namespace chain { namespace contracts {
 
 /**
- * Implements addmeta, paycharge, paybonus, prodvote and updsched actions
+ * Implements addmeta, paycharge, paybonus, prodvote, updsched, addscript and updscript actions
  */
 
 namespace internal {
@@ -127,12 +127,12 @@ check_duplicate_meta<group_def>(const group_def& v, const meta_key& key) {
 }
 
 auto check_meta_key_reserved = [](const auto& key) {
-    EVT_ASSERT(!key.reserved(), meta_key_exception, "Meta-key is reserved and cannot be used");
+    jmzk_ASSERT(!key.reserved(), meta_key_exception, "Meta-key is reserved and cannot be used");
 };
 
 }  // namespace internal
 
-EVT_ACTION_IMPL_BEGIN(addmeta) {
+jmzk_ACTION_IMPL_BEGIN(addmeta) {
     using namespace internal;
 
     const auto& act   = context.act;
@@ -146,13 +146,13 @@ EVT_ACTION_IMPL_BEGIN(addmeta) {
             auto gp = make_empty_cache_ptr<group_def>();
             READ_DB_TOKEN(token_type::group, std::nullopt, act.key, gp, unknown_group_exception, "Cannot find group: {}", act.key);
 
-            EVT_ASSERT2(!check_duplicate_meta(*gp, amact.key), meta_key_exception,"Metadata with key: {} already exists.", amact.key);
+            jmzk_ASSERT2(!check_duplicate_meta(*gp, amact.key), meta_key_exception,"Metadata with key: {} already exists.", amact.key);
             if(amact.creator.is_group_ref()) {
-                EVT_ASSERT(amact.creator.get_group() == gp->name_, meta_involve_exception, "Only group itself can add its own metadata");
+                jmzk_ASSERT(amact.creator.get_group() == gp->name_, meta_involve_exception, "Only group itself can add its own metadata");
             }
             else {
                 // check involved, only group manager(aka. group key) can add meta
-                EVT_ASSERT(check_involved_group(*gp, amact.creator.get_account()), meta_involve_exception,
+                jmzk_ASSERT(check_involved_group(*gp, amact.creator.get_account()), meta_involve_exception,
                     "Creator is not involved in group: ${name}.", ("name",act.key));
             }
             gp->metas_.emplace_back(meta(amact.key, amact.value, amact.creator));
@@ -160,25 +160,25 @@ EVT_ACTION_IMPL_BEGIN(addmeta) {
         }
         else if(act.domain == N128(.fungible)) {  // fungible
             if(amact.key.reserved()) {
-                EVT_ASSERT(check_reserved_meta(amact, fungible_metas), meta_key_exception, "Meta-key is reserved and cannot be used");
+                jmzk_ASSERT(check_reserved_meta(amact, fungible_metas), meta_key_exception, "Meta-key is reserved and cannot be used");
             }
 
             auto fungible = make_empty_cache_ptr<fungible_def>();
             READ_DB_TOKEN(token_type::fungible, std::nullopt, (symbol_id_type)std::stoul((std::string)act.key), fungible,
                 unknown_fungible_exception, "Cannot find fungible with symbol id: {}", act.key);
 
-            EVT_ASSERT(!check_duplicate_meta(*fungible, amact.key), meta_key_exception,
+            jmzk_ASSERT(!check_duplicate_meta(*fungible, amact.key), meta_key_exception,
                 "Metadata with key ${key} already exists.", ("key",amact.key));
             
             if(amact.creator.is_account_ref()) {
                 // check involved, only creator or person in `manage` permission can add meta
                 auto involved = check_involved_creator(*fungible, amact.creator.get_account())
                     || check_involved_fungible(tokendb_cache, *fungible, N(manage), amact.creator);
-                EVT_ASSERT(involved, meta_involve_exception, "Creator is not involved in fungible: ${name}.", ("name",act.key));
+                jmzk_ASSERT(involved, meta_involve_exception, "Creator is not involved in fungible: ${name}.", ("name",act.key));
             }
             else {
                 // check involved, only group in `manage` permission can add meta
-                EVT_ASSERT(check_involved_fungible(tokendb_cache, *fungible, N(manage), amact.creator), meta_involve_exception,
+                jmzk_ASSERT(check_involved_fungible(tokendb_cache, *fungible, N(manage), amact.creator), meta_involve_exception,
                     "Creator is not involved in fungible: ${name}.", ("name",act.key));
             }
             fungible->metas.emplace_back(meta(amact.key, amact.value, amact.creator));
@@ -186,17 +186,17 @@ EVT_ACTION_IMPL_BEGIN(addmeta) {
         }
         else if(act.key == N128(.meta)) {  // domain
             if(amact.key.reserved()) {
-                EVT_ASSERT(check_reserved_meta(amact, domain_metas), meta_key_exception, "Meta-key is reserved and cannot be used");
+                jmzk_ASSERT(check_reserved_meta(amact, domain_metas), meta_key_exception, "Meta-key is reserved and cannot be used");
             }
 
             auto domain = make_empty_cache_ptr<domain_def>();
             READ_DB_TOKEN(token_type::domain, std::nullopt, act.domain, domain, unknown_domain_exception,
                 "Cannot find domain: {}", act.domain);
 
-            EVT_ASSERT(!check_duplicate_meta(*domain, amact.key), meta_key_exception,
+            jmzk_ASSERT(!check_duplicate_meta(*domain, amact.key), meta_key_exception,
                 "Metadata with key ${key} already exists.", ("key",amact.key));
             // check involved, only person involved in `manage` permission can add meta
-            EVT_ASSERT(check_involved_domain(tokendb_cache, *domain, N(manage), amact.creator), meta_involve_exception,
+            jmzk_ASSERT(check_involved_domain(tokendb_cache, *domain, N(manage), amact.creator), meta_involve_exception,
                 "Creator is not involved in domain: ${name}.", ("name",act.key));
 
             domain->metas.emplace_back(meta(amact.key, amact.value, amact.creator));
@@ -208,9 +208,9 @@ EVT_ACTION_IMPL_BEGIN(addmeta) {
             auto token = make_empty_cache_ptr<token_def>();
             READ_DB_TOKEN(token_type::token, act.domain, act.key, token, unknown_token_exception, "Cannot find token: {} in {}", act.key, act.domain);
 
-            EVT_ASSERT(!check_token_destroy(*token), token_destroyed_exception, "Metadata cannot be added on destroyed token.");
-            EVT_ASSERT(!check_token_locked(*token), token_locked_exception, "Metadata cannot be added on locked token.");
-            EVT_ASSERT(!check_duplicate_meta(*token, amact.key), meta_key_exception, "Metadata with key ${key} already exists.", ("key",amact.key));
+            jmzk_ASSERT(!check_token_destroy(*token), token_destroyed_exception, "Metadata cannot be added on destroyed token.");
+            jmzk_ASSERT(!check_token_locked(*token), token_locked_exception, "Metadata cannot be added on locked token.");
+            jmzk_ASSERT(!check_duplicate_meta(*token, amact.key), meta_key_exception, "Metadata with key ${key} already exists.", ("key",amact.key));
 
             auto domain = make_empty_cache_ptr<domain_def>();
             READ_DB_TOKEN(token_type::domain, std::nullopt, act.domain, domain, unknown_domain_exception, "Cannot find domain: {}", amact.key);
@@ -220,70 +220,68 @@ EVT_ACTION_IMPL_BEGIN(addmeta) {
                 auto involved = check_involved_owner(*token, amact.creator.get_account())
                     || check_involved_domain(tokendb_cache, *domain, N(issue), amact.creator)
                     || check_involved_domain(tokendb_cache, *domain, N(transfer), amact.creator);
-                EVT_ASSERT(involved, meta_involve_exception, "Creator is not involved in token ${domain}-${name}.", ("domain",act.domain)("name",act.key));
+                jmzk_ASSERT(involved, meta_involve_exception, "Creator is not involved in token ${domain}-${name}.", ("domain",act.domain)("name",act.key));
             }
             else {
                 // check involved, only group involved in `issue` and `transfer` permissions can add meta
                 auto involved = check_involved_domain(tokendb_cache, *domain, N(issue), amact.creator)
                     || check_involved_domain(tokendb_cache, *domain, N(transfer), amact.creator);
-                EVT_ASSERT(involved, meta_involve_exception, "Creator is not involved in token ${domain}-${name}.", ("domain",act.domain)("name",act.key));
+                jmzk_ASSERT(involved, meta_involve_exception, "Creator is not involved in token ${domain}-${name}.", ("domain",act.domain)("name",act.key));
             }
             token->metas.emplace_back(meta(amact.key, amact.value, amact.creator));
             UPD_DB_TOKEN(token_type::token, *token);
         }
     }
-    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+    jmzk_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
-EVT_ACTION_IMPL_END()
+jmzk_ACTION_IMPL_END()
 
-EVT_ACTION_IMPL_BEGIN(paycharge) {
+jmzk_ACTION_IMPL_BEGIN(paycharge) {
     using namespace internal;
     
     auto& pcact = context.act.data_as<add_clr_t<ACT>>();
     try {
         DECLARE_TOKEN_DB()
 
-        check_address_blacked(tokendb_cache, EVT_SYM_ID, pcact.payer);
-
-        property_stakes evt, pevt;
-        READ_DB_ASSET_NO_THROW_NO_NEW(pcact.payer, pevt_sym(), pevt);
-        auto paid = std::min((int64_t)pcact.charge, pevt.amount);
+        property_stakes jmzk, pjmzk;
+        READ_DB_ASSET_NO_THROW_NO_NEW(pcact.payer, pjmzk_sym(), pjmzk);
+        auto paid = std::min((int64_t)pcact.charge, pjmzk.amount);
         if(paid > 0) {
-            pevt.amount -= paid;
-            PUT_DB_ASSET(pcact.payer, pevt);
+            pjmzk.amount -= paid;
+            PUT_DB_ASSET(pcact.payer, pjmzk);
         }
 
         if(paid < pcact.charge) {
-            READ_DB_ASSET_NO_THROW_NO_NEW(pcact.payer, evt_sym(), evt);
+            READ_DB_ASSET_NO_THROW_NO_NEW(pcact.payer, jmzk_sym(), jmzk);
             auto remain = pcact.charge - paid;
-            if(evt.amount < (int64_t)remain) {
-                EVT_THROW2(charge_exceeded_exception,"There are only {} and {} left, but charge is {}",
-                    asset(evt.amount, evt_sym()), asset(pevt.amount, pevt_sym()), asset(pcact.charge, evt_sym()));
+            if(jmzk.amount < (int64_t)remain) {
+                jmzk_THROW2(charge_exceeded_exception,"There are only {} and {} left, but charge is {}",
+                    asset(jmzk.amount, jmzk_sym()), asset(pjmzk.amount, pjmzk_sym()), asset(pcact.charge, jmzk_sym()));
             }
-            evt.amount -= remain;
-            PUT_DB_ASSET(pcact.payer, evt);
+            jmzk.amount -= remain;
+            PUT_DB_ASSET(pcact.payer, jmzk);
         }
 
         auto  pbs  = context.control.pending_block_state();
         auto& prod = pbs->get_scheduled_producer(pbs->header.timestamp).block_signing_key;
 
         property_stakes bp;
-        READ_DB_ASSET_NO_THROW(address(prod), evt_sym(), bp);
+        READ_DB_ASSET_NO_THROW(address(prod), jmzk_sym(), bp);
         // give charge to producer
         bp.amount += pcact.charge;
         PUT_DB_ASSET(prod, bp);
     }
-    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+    jmzk_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
-EVT_ACTION_IMPL_END()
+jmzk_ACTION_IMPL_END()
 
-EVT_ACTION_IMPL_BEGIN(paybonus) {
+jmzk_ACTION_IMPL_BEGIN(paybonus) {
     // empty body
     // will not execute here
     assert(false);
     return;
 }
-EVT_ACTION_IMPL_END()
+jmzk_ACTION_IMPL_END()
 
 namespace internal {
 
@@ -306,21 +304,21 @@ auto update_chain_config = [](auto& conf, auto key, auto v) {
         break;
     }
     default: {
-        EVT_THROW2(prodvote_key_exception, "Configuration key: {} is not valid", key);
+        jmzk_THROW2(prodvote_key_exception, "Configuration key: {} is not valid", key);
     }
     } // switch
 };
 
 }  // namespace internal
 
-EVT_ACTION_IMPL_BEGIN(prodvote) {
+jmzk_ACTION_IMPL_BEGIN(prodvote) {
     using namespace internal;
 
     auto& pvact = context.act.data_as<add_clr_t<ACT>>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.prodvote), pvact.key), action_authorize_exception,
+        jmzk_ASSERT(context.has_authorized(N128(.prodvote), pvact.key), action_authorize_exception,
             "Invalid authorization fields in action(domain and key).");
-        EVT_ASSERT(pvact.value > 0 && pvact.value < 1'000'000, prodvote_value_exception, "Invalid prodvote value: ${v}", ("v",pvact.value));
+        jmzk_ASSERT(pvact.value > 0 && pvact.value < 1'000'000, prodvote_value_exception, "Invalid prodvote value: ${v}", ("v",pvact.value));
 
         auto  conf     = context.control.get_global_properties().configuration;
         auto& sche     = context.control.active_producers();
@@ -339,19 +337,19 @@ EVT_ACTION_IMPL_BEGIN(prodvote) {
                     act = name(key.substr(7));
                 }
                 catch(name_type_exception&) {
-                    EVT_THROW2(prodvote_key_exception, "Invalid action name provided: {}", key.substr(7));
+                    jmzk_THROW2(prodvote_key_exception, "Invalid action name provided: {}", key.substr(7));
                 }
 
                 auto cver = exec_ctx.get_current_version(act);
                 auto mver = exec_ctx.get_max_version(act);
-                EVT_ASSERT2(pvact.value >= cver && pvact.value <= exec_ctx.get_max_version(act), prodvote_value_exception,
+                jmzk_ASSERT2(pvact.value >= cver && pvact.value <= exec_ctx.get_max_version(act), prodvote_value_exception,
                     "Provided version: {} for action: {} is not valid, should be in range ({},{}]", pvact.value, act, cver, mver);
                 updact = true;
             }
         }
 
         auto pkey = sche.get_producer_key(pvact.producer);
-        EVT_ASSERT(pkey.has_value(), prodvote_producer_exception, "${p} is not a valid producer", ("p",pvact.producer));
+        jmzk_ASSERT(pkey.has_value(), prodvote_producer_exception, "${p} is not a valid producer", ("p",pvact.producer));
 
         auto map = make_empty_cache_ptr<flat_map<public_key_type, int64_t>>();
         READ_DB_TOKEN_NO_THROW(token_type::prodvote, std::nullopt, pvact.key, map);
@@ -367,7 +365,7 @@ EVT_ACTION_IMPL_BEGIN(prodvote) {
             auto it = map->emplace(*pkey, pvact.value);
             if(it.second == false) {
                 // existed
-                EVT_ASSERT2(it.first->second != pvact.value, prodvote_value_exception, "Value voted for {} is the same as previous voted", pvact.key);
+                jmzk_ASSERT2(it.first->second != pvact.value, prodvote_value_exception, "Value voted for {} is the same as previous voted", pvact.key);
                 it.first->second = pvact.value;
             }
             tokendb_cache.put_token(token_type::prodvote, action_op::put, std::nullopt, pvact.key, *map);
@@ -442,19 +440,64 @@ EVT_ACTION_IMPL_BEGIN(prodvote) {
             }
         }
     }
-    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+    jmzk_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
-EVT_ACTION_IMPL_END()
+jmzk_ACTION_IMPL_END()
 
-EVT_ACTION_IMPL_BEGIN(updsched) {
+jmzk_ACTION_IMPL_BEGIN(updsched) {
     auto usact = context.act.data_as<ACT>();
     try {
-        EVT_ASSERT(context.has_authorized(N128(.prodsched), N128(.update)), action_authorize_exception,
+        jmzk_ASSERT(context.has_authorized(N128(.prodsched), N128(.update)), action_authorize_exception,
             "Invalid authorization fields in action(domain and key).");
         context.control.set_proposed_producers(std::move(usact.producers));
     }
-    EVT_CAPTURE_AND_RETHROW(tx_apply_exception);
+    jmzk_CAPTURE_AND_RETHROW(tx_apply_exception);
 }
-EVT_ACTION_IMPL_END()
+jmzk_ACTION_IMPL_END()
 
-}}} // namespace evt::chain::contracts
+jmzk_ACTION_IMPL_BEGIN(newscript) {
+    using namespace internal;
+
+    auto asact = context.act.data_as<ACT>();
+    try {
+        jmzk_ASSERT(context.has_authorized(N128(.script), asact.name), action_authorize_exception,
+            "Invalid authorization fields in action(domain and key).");
+
+        DECLARE_TOKEN_DB()
+        jmzk_ASSERT2(!tokendb.exists_token(token_type::script, std::nullopt, asact.name), script_duplicate_exception,
+                "Script: {} already exists.", asact.name);
+
+        auto script    = script_def();
+        script.name    = asact.name;
+        script.content = asact.content;
+        script.creator = asact.creator;
+
+        ADD_DB_TOKEN(token_type::script, script);
+    }
+    jmzk_CAPTURE_AND_RETHROW(tx_apply_exception);
+}
+jmzk_ACTION_IMPL_END()
+
+jmzk_ACTION_IMPL_BEGIN(updscript) {
+    using namespace internal;
+
+    auto usact = context.act.data_as<ACT>();
+    try {
+        jmzk_ASSERT(context.has_authorized(N128(.script), usact.name), action_authorize_exception,
+            "Invalid authorization fields in action(domain and key).");
+
+        DECLARE_TOKEN_DB()
+
+        auto script = make_empty_cache_ptr<script_def>();
+        READ_DB_TOKEN(token_type::script, std::nullopt, usact.name, script, unknown_script_exception,"Cannot find script: {}", usact.name);
+
+        script->content = usact.content;
+
+        UPD_DB_TOKEN(token_type::script, *script);
+    }
+    jmzk_CAPTURE_AND_RETHROW(tx_apply_exception);
+}
+jmzk_ACTION_IMPL_END()
+
+
+}}} // namespace jmzk::chain::contracts

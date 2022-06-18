@@ -6,8 +6,8 @@ import time
 import json
 import zmq
 
-from pyevt import abi, ecc, evt_link, libevt
-from pyevtsdk import action, api, base, transaction
+from pyjmzk import abi, ecc, jmzk_link, libjmzk
+from pyjmzksdk import action, api, base, transaction
 import requests
 
 import launch_nodes
@@ -53,7 +53,7 @@ class Test(unittest.TestCase):
             self.assertTrue(rep == 'Success', msg =rep)
 
     def test_1(self):
-        p = subprocess.Popen(['pumba', 'netem', '--tc-image', 'gaiadocker/iproute2', '--duration', '5m', 'delay', '--time', '1000', '--jitter', '500', 'evtd_0'],
+        p = subprocess.Popen(['pumba', 'netem', '--tc-image', 'gaiadocker/iproute2', '--duration', '5m', 'delay', '--time', '1000', '--jitter', '500', 'jmzkd_0'],
                              stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=False)
         time.sleep(2)
         self._test_block(20)
@@ -61,7 +61,7 @@ class Test(unittest.TestCase):
         p.kill()
 
     def test_2(self):
-        p = subprocess.Popen(['pumba', 'netem', '--tc-image', 'gaiadocker/iproute2', '--duration', '5m', 'loss', '--percent', '20', 'evtd_0'],
+        p = subprocess.Popen(['pumba', 'netem', '--tc-image', 'gaiadocker/iproute2', '--duration', '5m', 'loss', '--percent', '20', 'jmzkd_0'],
                              stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=False)
         time.sleep(2)
         self._test_block(20)
@@ -73,7 +73,7 @@ class Test(unittest.TestCase):
         cmd = ['pumba', 'netem', '--tc-image', 'gaiadocker/iproute2', '--duration', '5m', 'delay', '--time', '3000', '--jitter', '500']
         for i in range(5):
             cmd_t = cmd
-            cmd_t.append('evtd_{}'.format(i))
+            cmd_t.append('jmzkd_{}'.format(i))
             p = subprocess.Popen(cmd_t, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=False)
             subps.append(p)
         time.sleep(2)

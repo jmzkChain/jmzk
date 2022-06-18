@@ -1,21 +1,21 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/chain/contracts/group.hpp>
-#include <evt/chain/config.hpp>
+#include <jmzk/chain/contracts/group.hpp>
+#include <jmzk/chain/config.hpp>
 #include <limits>
 #include <fc/crypto/base58.hpp>
 #include <fc/crypto/sha256.hpp>
 #include <fc/crypto/ripemd160.hpp>
 #include <fc/variant.hpp>
-#include <evt/chain/exceptions.hpp>
+#include <jmzk/chain/exceptions.hpp>
 
-namespace evt { namespace chain { namespace contracts {
+namespace jmzk { namespace chain { namespace contracts {
 
 void
 group::visit_root(const visit_func& func) const {
-    EVT_ASSERT(nodes_.size() > 0, group_type_exception, "There's not any node defined in this group");
+    jmzk_ASSERT(nodes_.size() > 0, group_type_exception, "There's not any node defined in this group");
     return visit_node(nodes_[0], func);
 }
 
@@ -32,11 +32,11 @@ group::visit_node(const node& node, const visit_func& func) const {
     }
 }
 
-}}}  // namespac evt::chain::contracts
+}}}  // namespac jmzk::chain::contracts
 
 namespace fc {
-using namespace evt::chain;
-using namespace evt::chain::contracts;
+using namespace jmzk::chain;
+using namespace jmzk::chain::contracts;
 
 void
 to_variant(const group& group, const group::node& node, fc::variant& v) {
@@ -66,7 +66,7 @@ to_variant(const group& group, const group::node& node, fc::variant& v) {
 }
 
 void
-to_variant(const evt::chain::contracts::group& group, fc::variant& v) {
+to_variant(const jmzk::chain::contracts::group& group, fc::variant& v) {
     fc::mutable_variant_object mv;
     to_variant(group.name_, mv["name"]);
     to_variant(group.key_, mv["key"]);
@@ -77,7 +77,7 @@ to_variant(const evt::chain::contracts::group& group, fc::variant& v) {
 
 void
 from_variant(const fc::variant& v, group& group, group::node& node, uint32_t depth) {
-    EVT_ASSERT(depth < config::default_max_auth_depth, group_type_exception, "Exceeds max node depth");
+    jmzk_ASSERT(depth < config::default_max_auth_depth, group_type_exception, "Exceeds max node depth");
 
     auto& vo = v.get_object();
     if(vo.find("threshold") == vo.end()) {
@@ -88,7 +88,7 @@ from_variant(const fc::variant& v, group& group, group::node& node, uint32_t dep
         
         public_key_type key;
         from_variant(v["key"], key);
-        EVT_ASSERT(group.keys_.size() < std::numeric_limits<decltype(node.index)>::max(), group_type_exception, "Exceeds max keys limit");
+        jmzk_ASSERT(group.keys_.size() < std::numeric_limits<decltype(node.index)>::max(), group_type_exception, "Exceeds max keys limit");
         node.index = group.keys_.size();
         group.keys_.emplace_back(std::move(key));
         return;
@@ -103,8 +103,8 @@ from_variant(const fc::variant& v, group& group, group::node& node, uint32_t dep
     node.threshold = v["threshold"].as<weight_type>();
     
     auto& cvs = v["nodes"].get_array();
-    EVT_ASSERT(cvs.size() < std::numeric_limits<decltype(node.size)>::max(), group_type_exception, "Exceeds max child nodes limit");
-    EVT_ASSERT(group.nodes_.size() + cvs.size() < std::numeric_limits<decltype(node.index)>::max(), group_type_exception, "Exceeds max nodes limit");
+    jmzk_ASSERT(cvs.size() < std::numeric_limits<decltype(node.size)>::max(), group_type_exception, "Exceeds max child nodes limit");
+    jmzk_ASSERT(group.nodes_.size() + cvs.size() < std::numeric_limits<decltype(node.index)>::max(), group_type_exception, "Exceeds max nodes limit");
     node.index = group.nodes_.size();
     node.size = cvs.size();
 
@@ -117,12 +117,12 @@ from_variant(const fc::variant& v, group& group, group::node& node, uint32_t dep
 }
 
 void
-from_variant(const fc::variant& v, evt::chain::contracts::group& group) {
+from_variant(const fc::variant& v, jmzk::chain::contracts::group& group) {
     auto& vo = v.get_object();
     if(vo.find("name") != vo.end()) {
         from_variant(vo["name"], group.name_);
     }
-    EVT_ASSERT(!group.key_.is_generated(), group_type_exception, "Generated group key is not allowed here");
+    jmzk_ASSERT(!group.key_.is_generated(), group_type_exception, "Generated group key is not allowed here");
     from_variant(vo["key"], group.key_);
     group.nodes_.resize(1);
     from_variant(vo["root"], group, group.nodes_[0], 0);

@@ -1,13 +1,13 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/chain/contracts/authorizer_ref.hpp>
+#include <jmzk/chain/contracts/authorizer_ref.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <fmt/format.h>
-#include <evt/chain/exceptions.hpp>
+#include <jmzk/chain/exceptions.hpp>
 
-namespace evt { namespace chain { namespace contracts {
+namespace jmzk { namespace chain { namespace contracts {
 
 std::string
 authorizer_ref::to_string() const {
@@ -23,19 +23,23 @@ authorizer_ref::to_string() const {
         auto& name = this->get_group();
         return fmt::format("[G] {}", (std::string)name);
     }
+    case authorizer_ref::script_t: {
+        auto& name = this->get_script();
+        return fmt::format("[S] {}", (std::string)name);
+    }
     default: {
-        EVT_ASSERT(false, authorizer_ref_type_exception, "Not valid ref type: ${type}", ("type",this->type()));
+        jmzk_ASSERT(false, authorizer_ref_type_exception, "Not valid ref type: ${type}", ("type",this->type()));
     }
     }  // switch
 }
 
-}}}  // namespac evt::chain::contracts
+}}}  // namespac jmzk::chain::contracts
 
 namespace fc {
 
-using namespace evt::chain;
-using namespace evt::chain::contracts;
-using evt::chain::contracts::authorizer_ref;
+using namespace jmzk::chain;
+using namespace jmzk::chain::contracts;
+using jmzk::chain::contracts::authorizer_ref;
 
 void
 to_variant(const authorizer_ref& ref, fc::variant& v) {
@@ -45,7 +49,7 @@ to_variant(const authorizer_ref& ref, fc::variant& v) {
 void
 from_variant(const fc::variant& v, authorizer_ref& ref) {
     auto& str = v.get_string();
-    EVT_ASSERT(str.size() > 4, authorizer_ref_type_exception, "Not valid authorizer ref string");    
+    jmzk_ASSERT(str.size() > 4, authorizer_ref_type_exception, "Not valid authorizer ref string");    
     if(boost::starts_with(str, "[A] ")) {
         auto key = public_key_type(str.substr(4));
         ref.set_account(key);
@@ -61,7 +65,12 @@ from_variant(const fc::variant& v, authorizer_ref& ref) {
         }
         return;
     }
-    EVT_ASSERT(false, authorizer_ref_type_exception, "Unknown authorizer ref prefix: ${prefix}", ("prefix",str.substr(0,4)));
+    else if(boost::starts_with(str, "[S] ")) {
+        auto name = (script_name)(str.substr(4));
+        ref.set_script(name);
+        return;
+    }
+    jmzk_ASSERT(false, authorizer_ref_type_exception, "Unknown authorizer ref prefix: ${prefix}", ("prefix",str.substr(0,4)));
 }
 
 }  // namespace fc

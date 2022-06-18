@@ -1,30 +1,30 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/chain/genesis_state.hpp>
-#include <evt/chain/contracts/types.hpp>
+#include <jmzk/chain/genesis_state.hpp>
+#include <jmzk/chain/contracts/types.hpp>
 #include <fc/io/json.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 namespace internal {
 
 using namespace contracts;
 
 group_def
-get_evt_org() {
+get_jmzk_org() {
 
 #ifndef MAINNET_BUILD
     const char* def = R"(
     {
-        "name": ".everiToken",
-        "key": "EVT00000000000000000000000000000000000000000000000000",
+        "name": ".jmzkChain",
+        "key": "jmzk00000000000000000000000000000000000000000000000000",
         "root": {
             "threshold": 1,
             "nodes": [
-                { "weight": 1, "key": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" },
-                { "weight": 1, "key": "EVT7edNeLHSdfmhMTUZd3o3pTBoyPRZ4fjrKU74FxJR9NgZgNZK6J" }
+                { "weight": 1, "key": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV" },
+                { "weight": 1, "key": "jmzk7edNeLHSdfmhMTUZd3o3pTBoyPRZ4fjrKU74FxJR9NgZgNZK6J" }
             ]
         }
     }
@@ -32,16 +32,16 @@ get_evt_org() {
 #else
     const char* def = R"(
     {
-        "name": ".everiToken",
-        "key": "EVT00000000000000000000000000000000000000000000000000",
+        "name": ".jmzkChain",
+        "key": "jmzk00000000000000000000000000000000000000000000000000",
         "root": {
             "threshold": 19,
             "nodes": [
-                { "weight": 8, "key": "EVT6ZVMb3e69umQB4DQErvovx4fpy4ri2qMRmWnCjqCHRvzeWBYix" },
-                { "weight": 7, "key": "EVT8C5q7W6tieUb1z5e9NV9ohWorWKfHykZp46nVaqabNm5xPSpVe" },
-                { "weight": 5, "key": "EVT8PwjEmVji6xtNZdv8pNUuQyDavDyDcCQFDTZHDV4G6Vk9SMJUT" },
-                { "weight": 4, "key": "EVT6J3hLMqwVMpeCcQh74LJhVs9f23HHjr4AZBUTd9GtTMc7dgGeP" },
-                { "weight": 4, "key": "EVT8MSR6xwSoeDPAQDNZBTkDPvVjwEbuuiysMxdcMAz354WVaxCQu" }
+                { "weight": 8, "key": "jmzk6ZVMb3e69umQB4DQErvovx4fpy4ri2qMRmWnCjqCHRvzeWBYix" },
+                { "weight": 7, "key": "jmzk8C5q7W6tieUb1z5e9NV9ohWorWKfHykZp46nVaqabNm5xPSpVe" },
+                { "weight": 5, "key": "jmzk8PwjEmVji6xtNZdv8pNUuQyDavDyDcCQFDTZHDV4G6Vk9SMJUT" },
+                { "weight": 4, "key": "jmzk6J3hLMqwVMpeCcQh74LJhVs9f23HHjr4AZBUTd9GtTMc7dgGeP" },
+                { "weight": 4, "key": "jmzk8MSR6xwSoeDPAQDNZBTkDPvVjwEbuuiysMxdcMAz354WVaxCQu" }
             ]
         }
     }
@@ -53,38 +53,40 @@ get_evt_org() {
 }
 
 fungible_def_genesis
-get_evt_sym(const genesis_state& genesis) {
-    auto evt = fungible_def_genesis();
-    evt.name = "EVT";
-    evt.sym_name = "EVT";
-    evt.sym = evt_sym();
-    evt.creator = genesis.initial_key;
-    evt.create_time = genesis.initial_timestamp;
+get_jmzk_sym(const genesis_state& genesis) {
+    auto jmzk = fungible_def_genesis();
+    jmzk.name = "jmzk";
+    jmzk.sym_name = "jmzk";
+    jmzk.sym = jmzk_sym();
+    jmzk.creator = genesis.initial_key;
+    jmzk.create_time = genesis.initial_timestamp;
 
     auto issue = permission_def();
     issue.name = N(issue);
     issue.threshold = 1;
-    issue.authorizers.emplace_back(authorizer_weight(authorizer_ref(group_name(N128(.everiToken))), 1));
+    auto ref = authorizer_ref();
+    ref.set_group(N128(.jmzkChain));
+    issue.authorizers.emplace_back(authorizer_weight(ref, 1));
 
     auto manage = permission_def();
     manage.name = N(manage);
     manage.threshold = 0;
 
-    evt.issue  = issue;
-    evt.manage = manage;
+    jmzk.issue  = issue;
+    jmzk.manage = manage;
 
-    evt.total_supply = asset(100'000'000'000'000L, evt.sym);
-    return evt;
+    jmzk.total_supply = asset(100'000'000'000'000L, jmzk.sym);
+    return jmzk;
 }
 
 fungible_def_genesis
-get_pevt_sym(const genesis_state& genesis) {
-    auto pevt = fungible_def_genesis();
-    pevt.name = "Pinned.EVT";
-    pevt.sym_name = "PEVT";
-    pevt.sym = pevt_sym();
-    pevt.creator = genesis.initial_key;
-    pevt.create_time = genesis.initial_timestamp;
+get_pjmzk_sym(const genesis_state& genesis) {
+    auto pjmzk = fungible_def_genesis();
+    pjmzk.name = "Pinned.jmzk";
+    pjmzk.sym_name = "Pjmzk";
+    pjmzk.sym = pjmzk_sym();
+    pjmzk.creator = genesis.initial_key;
+    pjmzk.create_time = genesis.initial_timestamp;
 
     auto issue = permission_def();
     issue.name = N(issue);
@@ -94,11 +96,11 @@ get_pevt_sym(const genesis_state& genesis) {
     manage.name = N(manage);
     manage.threshold = 0;
 
-    pevt.issue  = issue;
-    pevt.manage = manage;
+    pjmzk.issue  = issue;
+    pjmzk.manage = manage;
 
-    pevt.total_supply = asset(0, pevt.sym);
-    return pevt;
+    pjmzk.total_supply = asset(0, pjmzk.sym);
+    return pjmzk;
 }
 
 auto upgrade_ft = [](auto& ftg, bool can_transfer) {
@@ -133,11 +135,11 @@ genesis_state::genesis_state() {
     using namespace internal;
 
     initial_timestamp = fc::time_point::from_iso_string("2018-05-31T12:00:00");
-    initial_key       = fc::variant(evt_root_key).as<public_key_type>();
+    initial_key       = fc::variant(jmzk_root_key).as<public_key_type>();
 
-    evt_org = get_evt_org();
-    evt     = get_evt_sym(*this);
-    pevt    = get_pevt_sym(*this);
+    jmzk_org = get_jmzk_org();
+    jmzk     = get_jmzk_sym(*this);
+    pjmzk    = get_pjmzk_sym(*this);
 }
 
 chain::chain_id_type
@@ -148,15 +150,15 @@ genesis_state::compute_chain_id() const {
 }
 
 fungible_def
-genesis_state::get_evt_ft() const {
+genesis_state::get_jmzk_ft() const {
     using namespace internal;
-    return upgrade_ft(evt, true);
+    return upgrade_ft(jmzk, true);
 }
 
 fungible_def
-genesis_state::get_pevt_ft() const {
+genesis_state::get_pjmzk_ft() const {
     using namespace internal;
-    return upgrade_ft(pevt, false);
+    return upgrade_ft(pjmzk, false);
 }
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain

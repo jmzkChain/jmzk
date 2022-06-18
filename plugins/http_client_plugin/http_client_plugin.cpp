@@ -1,13 +1,13 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #include <boost/algorithm/string/predicate.hpp>
-#include <evt/http_client_plugin/http_client_plugin.hpp>
-#include <evt/chain/exceptions.hpp>
+#include <jmzk/http_client_plugin/http_client_plugin.hpp>
+#include <jmzk/chain/exceptions.hpp>
 #include <fstream>
 
-namespace evt {
+namespace jmzk {
 
 http_client_plugin::http_client_plugin()
     : my(new http_client()) {}
@@ -35,7 +35,7 @@ http_client_plugin::plugin_initialize(const variables_map& options) {
                         std::stringstream sstr;
                         sstr << infile.rdbuf();
                         pem_str = sstr.str();
-                        EVT_ASSERT(boost::algorithm::starts_with(pem_str, "-----BEGIN CERTIFICATE-----\n"), chain::invalid_http_client_root_cert, "File does not appear to be a PEM encoded certificate");
+                        jmzk_ASSERT(boost::algorithm::starts_with(pem_str, "-----BEGIN CERTIFICATE-----\n"), chain::invalid_http_client_root_cert, "File does not appear to be a PEM encoded certificate");
                     }
                     catch(const fc::exception& e) {
                         elog("Failed to read PEM ${f} : ${e}", ("f", root_pem)("e", e.to_detail_string()));
@@ -64,4 +64,4 @@ void
 http_client_plugin::plugin_shutdown() {
 }
 
-}  // namespace evt
+}  // namespace jmzk

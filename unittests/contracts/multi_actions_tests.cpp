@@ -8,12 +8,12 @@ TEST_CASE_METHOD(contracts_test, "multi_actions_test", "[contracts]") {
     const char* test_data = R"=====(
         {
           "name" : "domain",
-          "creator" : "EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
+          "creator" : "jmzk5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
           "issue" : {
             "name" : "issue",
             "threshold" : 1,
             "authorizers": [{
-                "ref": "[A] EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
+                "ref": "[A] jmzk5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
                 "weight": 1
               }
             ]
@@ -31,7 +31,7 @@ TEST_CASE_METHOD(contracts_test, "multi_actions_test", "[contracts]") {
             "name": "manage",
             "threshold": 1,
             "authorizers": [{
-                "ref": "[A] EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
+                "ref": "[A] jmzk5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
                 "weight": 1
               }
             ]
@@ -68,7 +68,7 @@ TEST_CASE_METHOD(contracts_test, "multi_actions_test", "[contracts]") {
           "t5"
         ],
         "owner": [
-          "EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2"
+          "jmzk5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2"
         ]
     }
     )=====";
@@ -85,8 +85,8 @@ TEST_CASE_METHOD(contracts_test, "multi_actions_test", "[contracts]") {
       "domain": "cookie",
       "name": "t1",
       "to": [
-        "EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
-        "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+        "jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX",
+        "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
       ],
       "memo":"memo"
     }

@@ -1,20 +1,20 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/interprocess/sync/file_lock.hpp>
 #include <chrono>
-#include <evt/chain/transaction.hpp>
-#include <evt/wallet_plugin/wallet_api.hpp>
+#include <jmzk/chain/transaction.hpp>
+#include <jmzk/wallet_plugin/wallet_api.hpp>
 
 namespace fc {
 class variant;
 }
 
-namespace evt {
+namespace jmzk {
 namespace wallet {
 
 /// Provides associate of wallet name to wallet and manages the interaction with each wallet.
@@ -156,4 +156,4 @@ private:
     void initialize_lock();
 };
 
-}}  // namespace evt::wallet
+}}  // namespace jmzk::wallet

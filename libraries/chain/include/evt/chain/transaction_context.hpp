@@ -1,13 +1,13 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
-#include <evt/chain/execution_context_impl.hpp>
-#include <evt/chain/trace.hpp>
-#include <evt/chain/token_database.hpp>
+#include <jmzk/chain/execution_context_impl.hpp>
+#include <jmzk/chain/trace.hpp>
+#include <jmzk/chain/token_database.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 class controller;
 class transaction_metadata;
@@ -19,7 +19,7 @@ private:
 
 public:
     transaction_context(controller&                    control,
-                        evt_execution_context&         exec_ctx,
+                        jmzk_execution_context&         exec_ctx,
                         const transaction_metadata_ptr trx_meta,
                         fc::time_point                 start = fc::time_point::now());
 
@@ -50,7 +50,7 @@ private:
 
 public:
     controller&            control;
-    evt_execution_context& exec_ctx;
+    jmzk_execution_context& exec_ctx;
     
     optional<chainbase::database::session> undo_session;
     optional<token_database::session>      undo_token_session;
@@ -75,4 +75,4 @@ private:
     bool is_initialized = false;
 };
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain

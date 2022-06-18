@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
@@ -24,7 +24,7 @@ static inline unsigned short xchg_8(void *ptr, unsigned char x)
 
 #define BUSY 1
 
-namespace evt { namespace utilities {
+namespace jmzk { namespace utilities {
 
 class spinlock : boost::noncopyable {
 public:
@@ -79,7 +79,7 @@ private:
     spinlock& lock_;
 };
 
-}}  // namespace evt::utilities
+}}  // namespace jmzk::utilities
 
 #undef BUSY
 #undef barrier

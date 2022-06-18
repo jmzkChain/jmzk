@@ -1,8 +1,8 @@
 import json
 
-from pyevt import abi, address, ecc, libevt
+from pyjmzk import abi, address, ecc, libjmzk
 
-libevt.init_lib()
+libjmzk.init_lib()
 
 # Type and Structures
 
@@ -94,8 +94,8 @@ def new_asset(symbol):
     return value
 
 
-EvtSymbol = Symbol(sym_name='EVT', sym_id=1, precision=5)
-EvtAsset = new_asset(EvtSymbol)
+jmzkSymbol = Symbol(sym_name='jmzk', sym_id=1, precision=5)
+jmzkAsset = new_asset(jmzkSymbol)
 
 
 class AuthorizerWeight(BaseType):
@@ -242,7 +242,7 @@ class TransferFtAbi(BaseType):
         super().__init__(**args)
 
 
-class EVT2PEVTAbi(BaseType):
+class jmzk2PjmzkAbi(BaseType):
     def __init__(self, _from, to, number, memo):
         args = {'from': _from, 'to': to, 'number': number, 'memo': memo}
         super().__init__(**args)

@@ -1,14 +1,14 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
-#include <evt/chain_plugin/chain_plugin.hpp>
+#include <jmzk/chain_plugin/chain_plugin.hpp>
 
 #include <appbase/application.hpp>
 
-namespace evt {
+namespace jmzk {
 
 using namespace appbase;
 
@@ -33,4 +33,4 @@ private:
     std::shared_ptr<class trafficgen_plugin_impl> my_;
 };
 
-}  // namespace evt
+}  // namespace jmzk

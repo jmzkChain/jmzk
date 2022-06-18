@@ -1,14 +1,14 @@
 #include <stdint.h>
 #include <eos/utilities/git_revision.hpp>
 
-#define EVT_GIT_REVISION_SHA "@EVT_GIT_REVISION_SHA@"
-#define EVT_GIT_REVISION_UNIX_TIMESTAMP @EVT_GIT_REVISION_UNIX_TIMESTAMP@
-#define EVT_GIT_REVISION_DESCRIPTION "@EVT_GIT_REVISION_DESCRIPTION@"
+#define jmzk_GIT_REVISION_SHA "@jmzk_GIT_REVISION_SHA@"
+#define jmzk_GIT_REVISION_UNIX_TIMESTAMP @jmzk_GIT_REVISION_UNIX_TIMESTAMP@
+#define jmzk_GIT_REVISION_DESCRIPTION "@jmzk_GIT_REVISION_DESCRIPTION@"
 
-namespace evt { namespace utilities {
+namespace jmzk { namespace utilities {
 
-const char* const git_revision_sha = EVT_GIT_REVISION_SHA;
-const uint32_t git_revision_unix_timestamp = EVT_GIT_REVISION_UNIX_TIMESTAMP;
-const char* const git_revision_description = EVT_GIT_REVISION_DESCRIPTION;
+const char* const git_revision_sha = jmzk_GIT_REVISION_SHA;
+const uint32_t git_revision_unix_timestamp = jmzk_GIT_REVISION_UNIX_TIMESTAMP;
+const char* const git_revision_description = jmzk_GIT_REVISION_DESCRIPTION;
 
-} } // end namespace evt::utilities
+} } // end namespace jmzk::utilities

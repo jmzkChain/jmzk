@@ -1,30 +1,30 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/chain/exceptions.hpp>
-#include <evt/producer_api_plugin/producer_api_plugin.hpp>
+#include <jmzk/chain/exceptions.hpp>
+#include <jmzk/producer_api_plugin/producer_api_plugin.hpp>
 
 #include <fc/io/json.hpp>
 #include <fc/variant.hpp>
 
 #include <chrono>
 
-namespace evt { namespace detail {
+namespace jmzk { namespace detail {
 
 struct producer_api_plugin_response {
     std::string result;
 };
 
-}}  // namespace evt::detail
+}}  // namespace jmzk::detail
 
-FC_REFLECT(evt::detail::producer_api_plugin_response, (result));
+FC_REFLECT(jmzk::detail::producer_api_plugin_response, (result));
 
-namespace evt {
+namespace jmzk {
 
 static appbase::abstract_plugin& _producer_api_plugin = app().register_plugin<producer_api_plugin>();
 
-using namespace evt;
+using namespace jmzk;
 
 #define CALL(api_name, api_handle, call_name, INVOKE, http_response_code)           \
     {                                                                               \
@@ -54,16 +54,16 @@ using namespace evt;
 
 #define INVOKE_V_R(api_handle, call_name, in_param)                   \
     api_handle.call_name(fc::json::from_string(body).as<in_param>()); \
-    evt::detail::producer_api_plugin_response result{"ok"};
+    jmzk::detail::producer_api_plugin_response result{"ok"};
 
 #define INVOKE_V_R_R(api_handle, call_name, in_param0, in_param1)             \
     const auto& vs = fc::json::json::from_string(body).as<fc::variants>();    \
     api_handle.call_name(vs.at(0).as<in_param0>(), vs.at(1).as<in_param1>()); \
-    evt::detail::producer_api_plugin_response<std::string> result{"ok"};
+    jmzk::detail::producer_api_plugin_response<std::string> result{"ok"};
 
 #define INVOKE_V_V(api_handle, call_name) \
     api_handle.call_name();               \
-    evt::detail::producer_api_plugin_response result{"ok"};
+    jmzk::detail::producer_api_plugin_response result{"ok"};
 
 void
 producer_api_plugin::plugin_startup() {
@@ -100,4 +100,4 @@ producer_api_plugin::plugin_initialize(const variables_map& options) {}
 #undef INVOKE_V_V
 #undef CALL
 
-}  // namespace evt
+}  // namespace jmzk

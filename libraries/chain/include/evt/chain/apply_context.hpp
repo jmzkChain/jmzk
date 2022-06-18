@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <algorithm>
@@ -9,15 +9,15 @@
 #include <boost/noncopyable.hpp>
 #include <fmt/format.h>
 #include <fc/utility.hpp>
-#include <evt/chain/controller.hpp>
-#include <evt/chain/execution_context_impl.hpp>
-#include <evt/chain/transaction_context.hpp>
+#include <jmzk/chain/controller.hpp>
+#include <jmzk/chain/execution_context_impl.hpp>
+#include <jmzk/chain/transaction_context.hpp>
 
 namespace chainbase {
 class database;
 }
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 struct action_trace;
 class controller;
@@ -64,7 +64,7 @@ public:
 
 public:
     controller&             control;
-    evt_execution_context&  exec_ctx;
+    jmzk_execution_context&  exec_ctx;
     chainbase::database&    db;
     token_database&         token_db;
     token_database_cache&   token_db_cache;
@@ -77,4 +77,4 @@ private:
     small_vector<ft_holder, 2> _new_ft_holders;
 };
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain

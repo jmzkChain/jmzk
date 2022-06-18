@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <memory>
@@ -9,7 +9,7 @@
 #include <fc/variant.hpp>
 #include <fc/exception/exception.hpp>
 
-namespace evt { namespace client { namespace http {
+namespace jmzk { namespace client { namespace http {
 
 using std::string;
 using std::vector;
@@ -112,8 +112,8 @@ const std::string get_transaction_func        = chain_func_base + "/get_transact
 const std::string get_required_keys           = chain_func_base + "/get_required_keys";
 const std::string get_suspend_required_keys   = chain_func_base + "/get_suspend_required_keys";
 const std::string get_charge                  = chain_func_base + "/get_charge";
-const std::string get_evt_actions             = chain_func_base + "/get_actions";
-const std::string get_evt_abi                 = chain_func_base + "/get_abi";
+const std::string get_jmzk_actions             = chain_func_base + "/get_actions";
+const std::string get_jmzk_abi                 = chain_func_base + "/get_abi";
 const std::string get_staking_func            = chain_func_base + "/get_staking";
 
 const std::string get_node_apis = "/v1/node/get_supported_apis";
@@ -138,20 +138,21 @@ const std::string wallet_remove_key    = wallet_func_base + "/remove_key";
 const std::string wallet_create_key    = wallet_func_base + "/create_key";
 const std::string wallet_sign_trx      = wallet_func_base + "/sign_transaction";
 
-const std::string evt_func_base                = "/v1/evt";
-const std::string get_domain_func              = evt_func_base + "/get_domain";
-const std::string get_token_func               = evt_func_base + "/get_token";
-const std::string get_tokens_func              = evt_func_base + "/get_tokens";
-const std::string get_group_func               = evt_func_base + "/get_group";
-const std::string get_fungible_func            = evt_func_base + "/get_fungible";
-const std::string get_fungible_balance_func    = evt_func_base + "/get_fungible_balance";
-const std::string get_fungible_psvbonus_func   = evt_func_base + "/get_fungible_psvbonus";
-const std::string get_suspend_func             = evt_func_base + "/get_suspend";
-const std::string get_lock_func                = evt_func_base + "/get_lock";
-const std::string get_stakepool_func           = evt_func_base + "/get_stakepool";
-const std::string get_validator_func           = evt_func_base + "/get_validator";
-const std::string get_staking_shares_func      = evt_func_base + "/get_staking_shares";
-const std::string get_evtlink_signed_keys_func = evt_func_base + "/get_evtlink_signed_keys";
+const std::string jmzk_func_base                = "/v1/jmzk";
+const std::string get_domain_func              = jmzk_func_base + "/get_domain";
+const std::string get_token_func               = jmzk_func_base + "/get_token";
+const std::string get_tokens_func              = jmzk_func_base + "/get_tokens";
+const std::string get_group_func               = jmzk_func_base + "/get_group";
+const std::string get_fungible_func            = jmzk_func_base + "/get_fungible";
+const std::string get_fungible_balance_func    = jmzk_func_base + "/get_fungible_balance";
+const std::string get_fungible_psvbonus_func   = jmzk_func_base + "/get_fungible_psvbonus";
+const std::string get_suspend_func             = jmzk_func_base + "/get_suspend";
+const std::string get_lock_func                = jmzk_func_base + "/get_lock";
+const std::string get_stakepool_func           = jmzk_func_base + "/get_stakepool";
+const std::string get_validator_func           = jmzk_func_base + "/get_validator";
+const std::string get_staking_shares_func      = jmzk_func_base + "/get_staking_shares";
+const std::string get_jmzklink_signed_keys_func = jmzk_func_base + "/get_jmzklink_signed_keys";
+const std::string get_script_func              = jmzk_func_base + "/get_script";
 
 const std::string history_func_base       = "/v1/history";
 const std::string get_my_domains          = history_func_base + "/get_domains";
@@ -175,8 +176,8 @@ const std::string create_snapshot       = producer_func_base + "/create_snapshot
 const std::string get_integrity_hash    = producer_func_base + "/get_integrity_hash";
 
 
-const string evtwd_stop = "/v1/evtwd/stop";
+const string jmzkwd_stop = "/v1/jmzkwd/stop";
 
 FC_DECLARE_EXCEPTION(connection_exception, 1100000, "Connection Exception");
 
-}}}  // namespace evt::client::http
+}}}  // namespace jmzk::client::http

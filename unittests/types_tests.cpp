@@ -1,14 +1,14 @@
 #include <catch/catch.hpp>
 
-#include <evt/chain/address.hpp>
-#include <evt/chain/types.hpp>
-#include <evt/chain/token_database.hpp>
-#include <evt/chain/contracts/authorizer_ref.hpp>
-#include <evt/chain/contracts/evt_link.hpp>
-#include <evt/chain/contracts/types.hpp>
+#include <jmzk/chain/address.hpp>
+#include <jmzk/chain/types.hpp>
+#include <jmzk/chain/token_database.hpp>
+#include <jmzk/chain/contracts/authorizer_ref.hpp>
+#include <jmzk/chain/contracts/jmzk_link.hpp>
+#include <jmzk/chain/contracts/types.hpp>
 
-using namespace evt::chain;
-using namespace evt::chain::contracts;
+using namespace jmzk::chain;
+using namespace jmzk::chain::contracts;
 
 TEST_CASE("test_address", "[types]") {
     auto addr = address();
@@ -17,7 +17,7 @@ TEST_CASE("test_address", "[types]") {
     auto var1 = fc::variant();
     fc::to_variant(addr, var1);
     CHECK(var1.is_string());
-    CHECK(var1.get_string() == "EVT00000000000000000000000000000000000000000000000000");
+    CHECK(var1.get_string() == "jmzk00000000000000000000000000000000000000000000000000");
 
     address addr2;
     fc::from_variant(var1, addr2);
@@ -25,7 +25,7 @@ TEST_CASE("test_address", "[types]") {
 
     CHECK(addr == addr2);
 
-    auto keystr = std::string("EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3");
+    auto keystr = std::string("jmzk6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3");
     auto pkey   = public_key_type(keystr);
 
     addr = address(pkey);
@@ -33,7 +33,7 @@ TEST_CASE("test_address", "[types]") {
     auto var2 = fc::variant();
     fc::to_variant(addr, var2);
     CHECK(var2.is_string());
-    CHECK(var2.get_string() == "EVT6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3");
+    CHECK(var2.get_string() == "jmzk6bMPrzVm77XSjrTfZxEsbAuWPuJ9hCqGRLEhkTjANWuvWTbwe3");
 
     address addr3;
     fc::from_variant(var2, addr3);
@@ -62,16 +62,16 @@ TEST_CASE("test_link_1", "[types]") {
     auto str = "03XBY4E/KTS:PNHVA3JP9QG258F08JHYOYR5SLJGN0EA-C3J6S:2G:T1SX7WA1"
                "4KH9ETLZ97TUX9R9JJA6+06$E/_PYNX-/152P4CTC:WKXLK$/7G-K:89+::2K4"
                "C-KZ2**HI-P8CYJ**XGFO1K5:$E*SOY8MFYWMNHP*BHX2U8$$FTFI81YDP1HT";
-    auto link = evt_link::parse_from_evtli(str);
+    auto link = jmzk_link::parse_from_jmzkli(str);
     auto str2 = link.to_string();
     
     CHECK(str == str2);
 
     CHECK(link.get_header() == 3);
-    CHECK(*link.get_segment(evt_link::timestamp).intv == 1532465234);
-    CHECK(link.get_segment(evt_link::domain).intv.has_value() == false);
-    CHECK(*link.get_segment(evt_link::domain).strv == "nd1532465232490");
-    CHECK(*link.get_segment(evt_link::token).strv == "tk3064930465.8381");
+    CHECK(*link.get_segment(jmzk_link::timestamp).intv == 1532465234);
+    CHECK(link.get_segment(jmzk_link::domain).intv.has_value() == false);
+    CHECK(*link.get_segment(jmzk_link::domain).strv == "nd1532465232490");
+    CHECK(*link.get_segment(jmzk_link::token).strv == "tk3064930465.8381");
 
     auto uid = std::string();
     uid.push_back((char)249);
@@ -91,7 +91,7 @@ TEST_CASE("test_link_1", "[types]") {
     uid.push_back((char)117);
     uid.push_back((char)147);
 
-    CHECK(link.get_segment(evt_link::link_id).strv == uid);
+    CHECK(link.get_segment(jmzk_link::link_id).strv == uid);
 
     auto& sigs = link.get_signatures();
     CHECK(sigs.size() == 1);
@@ -101,24 +101,24 @@ TEST_CASE("test_link_1", "[types]") {
     auto pkeys = link.restore_keys();
     CHECK(pkeys.size() == 1);
 
-    CHECK(pkeys.find(public_key_type(std::string("EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"))) != pkeys.end());
+    CHECK(pkeys.find(public_key_type(std::string("jmzk8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"))) != pkeys.end());
 }
 
 TEST_CASE("test_link_2", "[types]") {
-    auto str = "https://evt.li/04OH4QSYU-9:0ISOMCF2AY*JO/O/7VTMZLC6W*F0NQ831F+60"
+    auto str = "https://jmzk.li/04OH4QSYU-9:0ISOMCF2AY*JO/O/7VTMZLC6W*F0NQ831F+60"
                "7/$9/9F/T6HT:FU*W99Q_PWV-SEQQOBAI6AXPY-32ZV:DTQ8BNCA$Z15-OHQ7*9O"
                "+CGUBIMTB261AT$6:*I+UKBHSQP3D84/JEZDG7BEJ5OUD$ZINCC24";
 
-    auto link = evt_link::parse_from_evtli(str);
+    auto link = jmzk_link::parse_from_jmzkli(str);
     auto str2 = link.to_string(1);
     
     CHECK(str == str2);
 
     CHECK(link.get_header() == 11);
-    CHECK(*link.get_segment(evt_link::timestamp).intv == 1532465608);
-    CHECK(link.get_segment(evt_link::domain).intv.has_value() == false);
-    CHECK(*link.get_segment(evt_link::domain).strv == "testdomain");
-    CHECK(*link.get_segment(evt_link::token).strv == "testtoken");
+    CHECK(*link.get_segment(jmzk_link::timestamp).intv == 1532465608);
+    CHECK(link.get_segment(jmzk_link::domain).intv.has_value() == false);
+    CHECK(*link.get_segment(jmzk_link::domain).strv == "testdomain");
+    CHECK(*link.get_segment(jmzk_link::token).strv == "testtoken");
 
     auto uid = std::string();
     uid.push_back((char)102);
@@ -138,7 +138,7 @@ TEST_CASE("test_link_2", "[types]") {
     uid.push_back((char)249);
     uid.push_back((char)168);
 
-    CHECK(link.get_segment(evt_link::link_id).strv == uid);
+    CHECK(link.get_segment(jmzk_link::link_id).strv == uid);
 
     auto& sigs = link.get_signatures();
     CHECK(sigs.size() == 1);
@@ -148,7 +148,7 @@ TEST_CASE("test_link_2", "[types]") {
     auto pkeys = link.restore_keys();
     CHECK(pkeys.size() == 1);
 
-    CHECK(pkeys.find(public_key_type(std::string("EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"))) != pkeys.end());
+    CHECK(pkeys.find(public_key_type(std::string("jmzk8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"))) != pkeys.end());
 }
 
 TEST_CASE("test_link_3", "[types]") {
@@ -158,16 +158,16 @@ TEST_CASE("test_link_3", "[types]") {
                "SK+N5*WJZ:6H3I$RLQZ*Y7-OO8G1060NLL5+RRVJTJXF0Y0:0MYM0/EF+/KJUY79G9WD8R0IVA2TA$2/1JLAS"
                "Y6$3M9-RP-6/YPM7:3P";
 
-    auto link = evt_link::parse_from_evtli(str);
+    auto link = jmzk_link::parse_from_jmzkli(str);
     auto str2 = link.to_string();
     
-    // CHECK(str == str2); because evtjs generated link doesn't guarantee the order of signatures
+    // CHECK(str == str2); because jmzkjs generated link doesn't guarantee the order of signatures
 
     CHECK(link.get_header() == 11);
-    CHECK(*link.get_segment(evt_link::timestamp).intv == 1532468461);
-    CHECK(link.get_segment(evt_link::domain).intv.has_value() == false);
-    CHECK(*link.get_segment(evt_link::domain).strv == "testdomain");
-    CHECK(*link.get_segment(evt_link::token).strv == "testtoken");
+    CHECK(*link.get_segment(jmzk_link::timestamp).intv == 1532468461);
+    CHECK(link.get_segment(jmzk_link::domain).intv.has_value() == false);
+    CHECK(*link.get_segment(jmzk_link::domain).strv == "testdomain");
+    CHECK(*link.get_segment(jmzk_link::token).strv == "testtoken");
 
     auto uid = std::string();
     uid.push_back((char)249);
@@ -187,7 +187,7 @@ TEST_CASE("test_link_3", "[types]") {
     uid.push_back((char)118);
     uid.push_back((char)82);
 
-    CHECK(link.get_segment(evt_link::link_id).strv == uid);
+    CHECK(link.get_segment(jmzk_link::link_id).strv == uid);
 
     auto& sigs = link.get_signatures();
     CHECK(sigs.size() == 3);
@@ -199,9 +199,9 @@ TEST_CASE("test_link_3", "[types]") {
     auto pkeys = link.restore_keys();
     CHECK(pkeys.size() == 3);
 
-    CHECK(pkeys.find(public_key_type(std::string("EVT8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"))) != pkeys.end());
-    CHECK(pkeys.find(public_key_type(std::string("EVT6MYSkiBHNDLxE6JfTmSA1FxwZCgBnBYvCo7snSQEQ2ySBtpC6s"))) != pkeys.end());
-    CHECK(pkeys.find(public_key_type(std::string("EVT7bUYEdpHiKcKT9Yi794MiwKzx5tGY3cHSh4DoCrL4B2LRjRgnt"))) != pkeys.end());
+    CHECK(pkeys.find(public_key_type(std::string("jmzk8HdQYD1xfKyD7Hyu2fpBUneamLMBXmP3qsYX6HoTw7yonpjWyC"))) != pkeys.end());
+    CHECK(pkeys.find(public_key_type(std::string("jmzk6MYSkiBHNDLxE6JfTmSA1FxwZCgBnBYvCo7snSQEQ2ySBtpC6s"))) != pkeys.end());
+    CHECK(pkeys.find(public_key_type(std::string("jmzk7bUYEdpHiKcKT9Yi794MiwKzx5tGY3cHSh4DoCrL4B2LRjRgnt"))) != pkeys.end());
 }
 
 TEST_CASE("test_name", "[types]") {
@@ -302,8 +302,8 @@ TEST_CASE("test_symbol", "[types]") {
     CHECK_THROWS_AS(symbol::from_string("3,#2"), symbol_type_exception);
     CHECK_THROWS_AS(symbol::from_string("3,2"), symbol_type_exception);
 
-    CHECK(evt_sym() == symbol(5, 1));
-    CHECK(pevt_sym() == symbol(5, 2));
+    CHECK(jmzk_sym() == symbol(5, 1));
+    CHECK(pjmzk_sym() == symbol(5, 2));
 }
 
 TEST_CASE("test_asset", "[types]") {

@@ -1,23 +1,23 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/chain/contracts/abi_serializer.hpp>
+#include <jmzk/chain/contracts/abi_serializer.hpp>
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <fc/io/raw.hpp>
 #include <fc/io/varint.hpp>
 
-#include <evt/chain/chain_config.hpp>
-#include <evt/chain/transaction.hpp>
-#include <evt/chain/asset.hpp>
-#include <evt/chain/percent_slim.hpp>
-#include <evt/chain/exceptions.hpp>
-#include <evt/chain/execution_context.hpp>
+#include <jmzk/chain/chain_config.hpp>
+#include <jmzk/chain/transaction.hpp>
+#include <jmzk/chain/asset.hpp>
+#include <jmzk/chain/percent_slim.hpp>
+#include <jmzk/chain/exceptions.hpp>
+#include <jmzk/chain/execution_context.hpp>
 
 using namespace boost;
 
-namespace evt { namespace chain { namespace contracts {
+namespace jmzk { namespace chain { namespace contracts {
 
 const size_t abi_serializer::max_recursion_depth;
 
@@ -119,7 +119,7 @@ abi_serializer::configure_built_in_types() {
     built_in_types_.emplace("authorizer_ref", pack_unpack<authorizer_ref>());
     built_in_types_.emplace("producer_schedule", pack_unpack<producer_schedule_type>());
     built_in_types_.emplace("extensions", pack_unpack<extensions_type>());
-    built_in_types_.emplace("evt_link", pack_unpack<evt_link>());
+    built_in_types_.emplace("jmzk_link", pack_unpack<jmzk_link>());
     
 }
 
@@ -143,15 +143,15 @@ abi_serializer::set_abi(const abi_def& abi) {
     }
 
     for(const auto& td : abi.types) {
-        EVT_ASSERT(_is_type(td.type), invalid_type_inside_abi, "invalid type ${type}", ("type", td.type));
-        EVT_ASSERT(!_is_type(td.new_type_name), duplicate_abi_type_def_exception, "type already exists", ("new_type_name", td.new_type_name));
+        jmzk_ASSERT(_is_type(td.type), invalid_type_inside_abi, "invalid type ${type}", ("type", td.type));
+        jmzk_ASSERT(!_is_type(td.new_type_name), duplicate_abi_type_def_exception, "type already exists", ("new_type_name", td.new_type_name));
         typedefs_[td.new_type_name] = td.type;
     }
 
-    EVT_ASSERT(typedefs_.size() == abi.types.size(), duplicate_abi_type_def_exception, "duplicate type definition detected");
-    EVT_ASSERT(structs_.size() == abi.structs.size(), duplicate_abi_struct_def_exception, "duplicate struct definition detected");
-    EVT_ASSERT(variants_.size() == abi.variants.size(), duplicate_abi_variant_def_exception, "duplicate variant definition detected");
-    EVT_ASSERT(enums_.size() == abi.enums.size(), duplicate_abi_enum_def_exception, "duplicate enum definition detected");
+    jmzk_ASSERT(typedefs_.size() == abi.types.size(), duplicate_abi_type_def_exception, "duplicate type definition detected");
+    jmzk_ASSERT(structs_.size() == abi.structs.size(), duplicate_abi_struct_def_exception, "duplicate struct definition detected");
+    jmzk_ASSERT(variants_.size() == abi.variants.size(), duplicate_abi_variant_def_exception, "duplicate variant definition detected");
+    jmzk_ASSERT(enums_.size() == abi.enums.size(), duplicate_abi_enum_def_exception, "duplicate enum definition detected");
 
     validate();
 }
@@ -170,7 +170,7 @@ abi_serializer::is_integer(const type_name& type) const {
 int
 abi_serializer::get_integer_size(const type_name& type) const {
     auto stype = type;
-    EVT_ASSERT(is_integer(type), invalid_type_inside_abi, "${stype} is not an integer type", ("stype", stype));
+    jmzk_ASSERT(is_integer(type), invalid_type_inside_abi, "${stype} is not an integer type", ("stype", stype));
     if(boost::starts_with(stype, "uint")) {
         return boost::lexical_cast<int>(stype.substr(4));
     }
@@ -246,7 +246,7 @@ abi_serializer::_is_type(const type_name& rtype) const {
 const struct_def&
 abi_serializer::get_struct(const type_name& type) const {
     auto itr = structs_.find(resolve_type(type));
-    EVT_ASSERT(itr != structs_.end(), invalid_type_inside_abi, "Unknown struct ${type}", ("type", type));
+    jmzk_ASSERT(itr != structs_.end(), invalid_type_inside_abi, "Unknown struct ${type}", ("type", type));
     return itr->second;
 }
 
@@ -257,7 +257,7 @@ abi_serializer::validate() const {
             auto types_seen = vector<type_name>{t.first, t.second};
             auto itr        = typedefs_.find(t.second);
             while(itr != typedefs_.end()) {
-                EVT_ASSERT(find(types_seen.begin(), types_seen.end(), itr->second) == types_seen.end(), abi_circular_def_exception, "Circular reference in type ${type}", ("type", t.first));
+                jmzk_ASSERT(find(types_seen.begin(), types_seen.end(), itr->second) == types_seen.end(), abi_circular_def_exception, "Circular reference in type ${type}", ("type", t.first));
                 types_seen.emplace_back(itr->second);
                 itr = typedefs_.find(itr->second);
             }
@@ -266,7 +266,7 @@ abi_serializer::validate() const {
     }
     for(const auto& t : typedefs_) {
         try {
-            EVT_ASSERT(_is_type(t.second), invalid_type_inside_abi, "${type}", ("type", t.second));
+            jmzk_ASSERT(_is_type(t.second), invalid_type_inside_abi, "${type}", ("type", t.second));
         }
         FC_CAPTURE_AND_RETHROW((t))
     }
@@ -277,14 +277,14 @@ abi_serializer::validate() const {
                 auto types_seen = vector<type_name>{current.name};
                 while(current.base != type_name()) {
                     const auto& base = get_struct(current.base);  //<-- force struct to inherit from another struct
-                    EVT_ASSERT(find(types_seen.begin(), types_seen.end(), base.name) == types_seen.end(), abi_circular_def_exception, "Circular reference in struct ${type}", ("type", s.second.name));
+                    jmzk_ASSERT(find(types_seen.begin(), types_seen.end(), base.name) == types_seen.end(), abi_circular_def_exception, "Circular reference in struct ${type}", ("type", s.second.name));
                     types_seen.emplace_back(base.name);
                     current = base;
                 }
             }
             for(const auto& field : s.second.fields) {
                 try {
-                    EVT_ASSERT(_is_type(field.type), invalid_type_inside_abi, "${type}", ("type", field.type));
+                    jmzk_ASSERT(_is_type(field.type), invalid_type_inside_abi, "${type}", ("type", field.type));
                 }
                 FC_CAPTURE_AND_RETHROW((field))
             }
@@ -294,14 +294,14 @@ abi_serializer::validate() const {
     for(const auto& v : variants_) {
         for(const auto& field : v.second.fields) {
             try {
-                EVT_ASSERT(_is_type(field.type), invalid_type_inside_abi, "${type}", ("type", field.type));
+                jmzk_ASSERT(_is_type(field.type), invalid_type_inside_abi, "${type}", ("type", field.type));
             }
             FC_CAPTURE_AND_RETHROW((field))
         }
     }
     for(const auto& et : enums_) {
         try {
-            EVT_ASSERT(_is_type(et.second.integer), invalid_type_inside_abi, "${type}", ("type", et.second.integer));
+            jmzk_ASSERT(_is_type(et.second.integer), invalid_type_inside_abi, "${type}", ("type", et.second.integer));
         }
         FC_CAPTURE_AND_RETHROW((et.second))
     }
@@ -327,7 +327,7 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
                                    fc::mutable_variant_object& obj, impl::binary_to_variant_context& ctx) const {
     auto h     = ctx.enter_scope();
     auto s_itr = structs_.find(type);
-    EVT_ASSERT(s_itr != structs_.end(), invalid_type_inside_abi, "Unknown type ${type}", ("type", ctx.maybe_shorten(type)));
+    jmzk_ASSERT(s_itr != structs_.end(), invalid_type_inside_abi, "Unknown type ${type}", ("type", ctx.maybe_shorten(type)));
 
     ctx.hint_struct_type_if_in_array(s_itr);
     const auto& st = s_itr->second;
@@ -338,7 +338,7 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
     for(auto i = 0u; i < st.fields.size(); ++i) {
         const auto& field = st.fields[i];
         if(!stream.remaining()) {
-            EVT_THROW(unpack_exception, "Stream unexpectedly ended; unable to unpack field '${f}' of struct '${p}'",
+            jmzk_THROW(unpack_exception, "Stream unexpectedly ended; unable to unpack field '${f}' of struct '${p}'",
                       ("f", ctx.maybe_shorten(field.name))("p", ctx.get_path_string()));
         }
         auto h1 = ctx.push_to_path(impl::field_path_item{.parent_itr = s_itr, .field_ordinal = i});
@@ -358,7 +358,7 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
         try {
             return btype->second.first(stream, is_array(rtype), is_optional(rtype));
         }
-        EVT_RETHROW_EXCEPTIONS(unpack_exception, "Unable to unpack ${class} type '${type}' while processing '${p}'",
+        jmzk_RETHROW_EXCEPTIONS(unpack_exception, "Unable to unpack ${class} type '${type}' while processing '${p}'",
                                ("class", is_array(rtype) ? "array of built-in" : is_optional(rtype) ? "optional of built-in" : "built-in")("type", ftype)("p", ctx.get_path_string()))
     }
 
@@ -369,7 +369,7 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
         try {
             fc::raw::unpack(stream, size);
         }
-        EVT_RETHROW_EXCEPTIONS(unpack_exception, "Unable to unpack size of array '${p}'", ("p", ctx.get_path_string()))
+        jmzk_RETHROW_EXCEPTIONS(unpack_exception, "Unable to unpack size of array '${p}'", ("p", ctx.get_path_string()))
 
         auto vars = fc::small_vector<fc::variant, 4>();
         auto h1   = ctx.push_to_path(impl::array_index_path_item{});
@@ -379,11 +379,11 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
             // QUESTION: Is it actually desired behavior to require the returned variant to not be null?
             //           This would disallow arrays of optionals in general (though if all optionals in the array were present it would be allowed).
             //           Is there any scenario in which the returned variant would be null other than in the case of an empty optional?
-            EVT_ASSERT(!v.is_null(), unpack_exception, "Invalid packed array '${p}'", ("p", ctx.get_path_string()));
+            jmzk_ASSERT(!v.is_null(), unpack_exception, "Invalid packed array '${p}'", ("p", ctx.get_path_string()));
             vars.emplace_back(std::move(v));
         }
         // QUESTION: Why would the assert below ever fail?
-        EVT_ASSERT(vars.size() == size.value, unpack_exception,
+        jmzk_ASSERT(vars.size() == size.value, unpack_exception,
                    "packed size does not match unpacked array size, packed size ${p} actual size ${a}", ("p", size)("a", vars.size()));
         
         return fc::variant(std::move(vars));
@@ -393,7 +393,7 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
         try {
             fc::raw::unpack(stream, flag);
         }
-        EVT_RETHROW_EXCEPTIONS(unpack_exception, "Unable to unpack presence flag of optional '${p}'", ("p", ctx.get_path_string()))
+        jmzk_RETHROW_EXCEPTIONS(unpack_exception, "Unable to unpack presence flag of optional '${p}'", ("p", ctx.get_path_string()))
         return flag ? _binary_to_variant(ftype, stream, ctx) : fc::variant();
     }
     else if(is_variant(rtype)) {
@@ -404,10 +404,10 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
         try {
             fc::raw::unpack(stream, i);
         }
-        EVT_RETHROW_EXCEPTIONS(unpack_exception, "Unable to unpack index of variant '${p}'", ("p", ctx.get_path_string()));
+        jmzk_RETHROW_EXCEPTIONS(unpack_exception, "Unable to unpack index of variant '${p}'", ("p", ctx.get_path_string()));
 
         auto& vt = v_itr->second;
-        EVT_ASSERT2((uint32_t)i < vt.fields.size(), unpack_exception, "Index of variant '{}' if not valid", ctx.get_path_string());
+        jmzk_ASSERT2((uint32_t)i < vt.fields.size(), unpack_exception, "Index of variant '{}' if not valid", ctx.get_path_string());
 
         auto vo = mutable_variant_object();
         auto h1 = ctx.push_to_path(impl::variant_path_item{.parent_itr = v_itr, .index = i});
@@ -424,7 +424,7 @@ abi_serializer::_binary_to_variant(const type_name& type, fc::datastream<const c
         auto& et = e_itr->second;
         auto  ev = _binary_to_variant(et.integer, stream, ctx);
         // we assume the enum is start at 0 and each item is increased by 1
-        EVT_ASSERT2(ev.as_uint64() < et.fields.size(), unpack_exception, "Value of enum '{}' is not valid", ctx.get_path_string());
+        jmzk_ASSERT2(ev.as_uint64() < et.fields.size(), unpack_exception, "Value of enum '{}' is not valid", ctx.get_path_string());
 
         return fc::variant(et.fields[ev.as_uint64()]);
     }
@@ -441,7 +441,7 @@ abi_serializer::_binary_to_variant(const type_name& type, const bytes& binary, i
     auto ds  = fc::datastream(binary.data(), binary.size());
     auto var = _binary_to_variant(type, ds, ctx);
     if(ds.remaining() > 0) {
-        EVT_THROW2(unpack_exception, "Binary buffer is not EOF after unpack variable, remaining: {} bytes.", ds.remaining());
+        jmzk_THROW2(unpack_exception, "Binary buffer is not EOF after unpack variable, remaining: {} bytes.", ds.remaining());
     }
     return var;
 }
@@ -502,10 +502,10 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
             auto& vo = var.get_object();
 
             auto check_field = [&](auto& vo, auto name, std::string type) {
-                EVT_ASSERT2(vo.contains(name), pack_exception,
+                jmzk_ASSERT2(vo.contains(name), pack_exception,
                     "Missing field '{}' in input object while processing variant '{}'", name, ctx.get_path_string());
                 if(type == "string") {
-                    EVT_ASSERT2(vo[name].is_string(), pack_exception,
+                    jmzk_ASSERT2(vo[name].is_string(), pack_exception,
                         "Invalid field '{}' in input object while processing variant '{}', it must be string type", name, ctx.get_path_string()); 
                 }
             };
@@ -521,7 +521,7 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
                 }
                 index++;
             }
-            EVT_ASSERT2(index < vt.fields.size(), pack_exception, "Invalid 'type' value of variant '{}'", ctx.get_path_string());
+            jmzk_ASSERT2(index < vt.fields.size(), pack_exception, "Invalid 'type' value of variant '{}'", ctx.get_path_string());
 
             fc::raw::pack(ds, (fc::unsigned_int)index);
 
@@ -542,7 +542,7 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
                 }
                 index++;
             }
-            EVT_ASSERT2(index < et.fields.size(), pack_exception, "Invalid value of enum '{}'", ctx.get_path_string());
+            jmzk_ASSERT2(index < et.fields.size(), pack_exception, "Invalid value of enum '{}'", ctx.get_path_string());
 
             _variant_to_binary(et.integer, fc::variant(index), ds, ctx);
         }
@@ -568,14 +568,14 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
                         _variant_to_binary(field.type, fc::variant(), ds, ctx);
                     }
                     else {
-                        EVT_THROW(pack_exception, "Missing field '${f}' in input object while processing struct '${p}'",
+                        jmzk_THROW(pack_exception, "Missing field '${f}' in input object while processing struct '${p}'",
                                   ("f", ctx.maybe_shorten(field.name))("p", ctx.get_path_string()));
                     }
                 }
             }
             else if(var.is_array()) {
                 const auto& va = var.get_array();
-                EVT_ASSERT(st.base == type_name(), invalid_type_inside_abi,
+                jmzk_ASSERT(st.base == type_name(), invalid_type_inside_abi,
                            "Using input array to specify the fields of the derived struct '${p}'; input arrays are currently only allowed for structs_ without a base",
                            ("p", ctx.get_path_string()));
                 for(uint32_t i = 0; i < st.fields.size(); ++i) {
@@ -585,17 +585,17 @@ abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var
                         _variant_to_binary(field.type, va[i], ds, ctx);
                     }
                     else {
-                        EVT_THROW(pack_exception, "Early end to input array specifying the fields of struct '${p}'; require input for field '${f}'",
+                        jmzk_THROW(pack_exception, "Early end to input array specifying the fields of struct '${p}'; require input for field '${f}'",
                                   ("p", ctx.get_path_string())("f", ctx.maybe_shorten(field.name)));
                     }
                 }
             }
             else {
-                EVT_THROW(pack_exception, "Unexpected input encountered while processing struct '${p}'", ("p", ctx.get_path_string()));
+                jmzk_THROW(pack_exception, "Unexpected input encountered while processing struct '${p}'", ("p", ctx.get_path_string()));
             }
         }
         else {
-            EVT_THROW(invalid_type_inside_abi, "Unknown type ${type}", ("type", ctx.maybe_shorten(type)));
+            jmzk_THROW(invalid_type_inside_abi, "Unknown type ${type}", ("type", ctx.maybe_shorten(type)));
         }
     }
     FC_CAPTURE_AND_RETHROW((type)(var))
@@ -605,7 +605,7 @@ bytes
 abi_serializer::_variant_to_binary(const type_name& type, const fc::variant& var, impl::variant_to_binary_context& ctx) const {
     try {
         auto h = ctx.enter_scope();
-        EVT_ASSERT2(_is_type(type), unknown_abi_type_exception, "Unknown type: {} in ABI", type);
+        jmzk_ASSERT2(_is_type(type), unknown_abi_type_exception, "Unknown type: {} in ABI", type);
 
         auto temp = bytes(1024 * 1024);
         auto ds   = fc::datastream<char*>(temp.data(), temp.size());
@@ -635,7 +635,7 @@ namespace impl {
 
 void
 abi_traverse_context::check_deadline() const {
-    EVT_ASSERT(std::chrono::steady_clock::now() < deadline, abi_serialization_deadline_exception,
+    jmzk_ASSERT(std::chrono::steady_clock::now() < deadline, abi_serialization_deadline_exception,
                "serialization time limit ${t}us exceeded", ("t", max_serialization_time.count()));
 }
 
@@ -646,7 +646,7 @@ abi_traverse_context::enter_scope() {
     };
 
     ++recursion_depth;
-    EVT_ASSERT(recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception,
+    jmzk_ASSERT(recursion_depth < abi_serializer::max_recursion_depth, abi_recursion_depth_exception,
                "recursive definition, max_recursion_depth ${r} ", ("r", abi_serializer::max_recursion_depth));
 
     check_deadline();
@@ -672,7 +672,7 @@ abi_traverse_context_with_path::set_path_root(const type_name& type) {
 fc::scoped_exit<std::function<void()>>
 abi_traverse_context_with_path::push_to_path(const path_item& item) {
     std::function<void()> callback = [this]() {
-        EVT_ASSERT(path.size() > 0, abi_exception,
+        jmzk_ASSERT(path.size() > 0, abi_exception,
                    "invariant failure in variant_to_binary_context: path is empty on scope exit");
         path.pop_back();
     };
@@ -683,11 +683,11 @@ abi_traverse_context_with_path::push_to_path(const path_item& item) {
 
 void
 abi_traverse_context_with_path::set_array_index_of_path_back(uint32_t i) {
-    EVT_ASSERT(path.size() > 0, abi_exception, "path is empty");
+    jmzk_ASSERT(path.size() > 0, abi_exception, "path is empty");
 
     auto& b = path.back();
 
-    EVT_ASSERT(b.contains<array_index_path_item>(), abi_exception, "trying to set array index without first pushing new array index item");
+    jmzk_ASSERT(b.contains<array_index_path_item>(), abi_exception, "trying to set array index without first pushing new array index item");
 
     b.get<array_index_path_item>().array_index = i;
 }
@@ -934,4 +934,4 @@ abi_traverse_context_with_path::maybe_shorten(const string& str) {
 
 }  // namespace impl
 
-}}}  // namespace evt::chain::contracts
+}}}  // namespace jmzk::chain::contracts

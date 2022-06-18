@@ -1,3 +1,3 @@
-add_subdirectory( evtd )
-add_subdirectory( evtc )
-add_subdirectory( evtwd )
+add_subdirectory( jmzkd )
+add_subdirectory( jmzkc )
+add_subdirectory( jmzkwd )

@@ -1,10 +1,10 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
-namespace evt { namespace utilities {
+namespace jmzk { namespace utilities {
 
 /**
  * @brief Return values in DataRange corresponding to matching Markers
@@ -40,4 +40,4 @@ filter_data_by_marker(DataRange data, MarkerRange markers, const Marker value) {
     return r;
 }
 
-}} // namespace evt::utilities
+}} // namespace jmzk::utilities

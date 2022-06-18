@@ -1,16 +1,16 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
-#include <evt/chain/transaction.hpp>
-#include <evt/chain/types.hpp>
+#include <jmzk/chain/transaction.hpp>
+#include <jmzk/chain/types.hpp>
 
 using namespace std;
-using namespace evt::chain;
+using namespace jmzk::chain;
 
-namespace evt { namespace wallet {
+namespace jmzk { namespace wallet {
 
 class wallet_api {
 public:
@@ -103,4 +103,4 @@ public:
     virtual std::optional<signature_type> try_sign_digest(const digest_type digest, const public_key_type public_key) = 0;
 };
 
-}}  // namespace evt::wallet
+}}  // namespace jmzk::wallet

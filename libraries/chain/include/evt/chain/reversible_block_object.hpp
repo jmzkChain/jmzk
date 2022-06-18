@@ -1,14 +1,14 @@
 
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
-#include <evt/chain/block_timestamp.hpp>
-#include <evt/chain/types.hpp>
-#include <evt/chain/multi_index_includes.hpp>
+#include <jmzk/chain/block_timestamp.hpp>
+#include <jmzk/chain/types.hpp>
+#include <jmzk/chain/multi_index_includes.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 class reversible_block_object : public chainbase::object<reversible_block_object_type, reversible_block_object> {
     OBJECT_CTOR(reversible_block_object, (packedblock))
@@ -45,7 +45,7 @@ struct reversible_block {
     string   packedblock;
 };
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
-CHAINBASE_SET_INDEX_TYPE(evt::chain::reversible_block_object, evt::chain::reversible_block_index);
-FC_REFLECT(evt::chain::reversible_block, (blocknum)(packedblock));
+CHAINBASE_SET_INDEX_TYPE(jmzk::chain::reversible_block_object, jmzk::chain::reversible_block_index);
+FC_REFLECT(jmzk::chain::reversible_block, (blocknum)(packedblock));

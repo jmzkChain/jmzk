@@ -1,9 +1,9 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/chain/fork_database.hpp>
-#include <evt/chain/exceptions.hpp>
+#include <jmzk/chain/fork_database.hpp>
+#include <jmzk/chain/exceptions.hpp>
 
 #include <boost/multi_index/composite_key.hpp>
 #include <boost/multi_index/hashed_index.hpp>
@@ -14,7 +14,7 @@
 #include <fc/io/fstream.hpp>
 #include <fstream>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 using boost::multi_index_container;
 using namespace boost::multi_index;
 
@@ -116,11 +116,11 @@ fork_database::~fork_database() {
 void
 fork_database::set(block_state_ptr s) {
     auto result = my->index.insert(s);
-    EVT_ASSERT(s->id == s->header.id(), fork_database_exception, "block state id (${id}) is different from block state header id (${hid})", ("id", string(s->id))("hid", string(s->header.id())));
+    jmzk_ASSERT(s->id == s->header.id(), fork_database_exception, "block state id (${id}) is different from block state header id (${hid})", ("id", string(s->id))("hid", string(s->header.id())));
 
-    // EVT_ASSERT( s->block_num == s->header.block_num() );
+    // jmzk_ASSERT( s->block_num == s->header.block_num() );
 
-    EVT_ASSERT(result.second, fork_database_exception, "unable to insert block state, duplicate state detected");
+    jmzk_ASSERT(result.second, fork_database_exception, "unable to insert block state, duplicate state detected");
     if(!my->head) {
         my->head = s;
     }
@@ -131,17 +131,17 @@ fork_database::set(block_state_ptr s) {
 
 block_state_ptr
 fork_database::add(const block_state_ptr& n, bool skip_validate_previous) {
-    EVT_ASSERT(n, fork_database_exception, "attempt to add null block state");
-    EVT_ASSERT(my->head, fork_db_block_not_found, "no head block set");
+    jmzk_ASSERT(n, fork_database_exception, "attempt to add null block state");
+    jmzk_ASSERT(my->head, fork_db_block_not_found, "no head block set");
 
     if(!skip_validate_previous) {
         auto prior = my->index.find(n->block->previous);
-        EVT_ASSERT(prior != my->index.end(), unlinkable_block_exception,
+        jmzk_ASSERT(prior != my->index.end(), unlinkable_block_exception,
             "unlinkable block", ("id", n->block->id())("previous", n->block->previous));
     }
 
     auto inserted = my->index.insert(n);
-    EVT_ASSERT(inserted.second, fork_database_exception, "duplicate block added?");
+    jmzk_ASSERT(inserted.second, fork_database_exception, "duplicate block added?");
 
     my->head = *my->index.get<by_lib_block_num>().begin();
 
@@ -157,18 +157,18 @@ fork_database::add(const block_state_ptr& n, bool skip_validate_previous) {
 
 block_state_ptr
 fork_database::add(signed_block_ptr b, bool skip_validate_signee) {
-    EVT_ASSERT(b, fork_database_exception, "attempt to add null block");
-    EVT_ASSERT(my->head, fork_database_exception, "no head block set");
+    jmzk_ASSERT(b, fork_database_exception, "attempt to add null block");
+    jmzk_ASSERT(my->head, fork_database_exception, "no head block set");
 
     const auto& by_id_idx = my->index.get<by_block_id>();
     auto        existing  = by_id_idx.find(b->id());
-    EVT_ASSERT(existing == by_id_idx.end(), fork_database_exception, "we already know about this block");
+    jmzk_ASSERT(existing == by_id_idx.end(), fork_database_exception, "we already know about this block");
 
     auto prior = by_id_idx.find(b->previous);
-    EVT_ASSERT(prior != by_id_idx.end(), unlinkable_block_exception, "unlinkable block", ("id", b->id())("previous", b->previous));
+    jmzk_ASSERT(prior != by_id_idx.end(), unlinkable_block_exception, "unlinkable block", ("id", b->id())("previous", b->previous));
 
     auto result = std::make_shared<block_state>(**prior, move(b), skip_validate_signee);
-    EVT_ASSERT(result, fork_database_exception , "fail to add new block state");
+    jmzk_ASSERT(result, fork_database_exception , "fail to add new block state");
     return add(result, true);
 }
 
@@ -190,13 +190,13 @@ fork_database::fetch_branch_from(const block_id_type& first, const block_id_type
     while(first_branch->block_num > second_branch->block_num) {
         result.first.push_back(first_branch);
         first_branch = get_block(first_branch->header.previous);
-        EVT_ASSERT(first_branch, fork_db_block_not_found, "block ${id} does not exist", ("id", string(first_branch->header.previous)));
+        jmzk_ASSERT(first_branch, fork_db_block_not_found, "block ${id} does not exist", ("id", string(first_branch->header.previous)));
     }
 
     while(second_branch->block_num > first_branch->block_num) {
         result.second.push_back(second_branch);
         second_branch = get_block(second_branch->header.previous);
-        EVT_ASSERT(second_branch, fork_db_block_not_found, "block ${id} does not exist", ("id", string(second_branch->header.previous)));
+        jmzk_ASSERT(second_branch, fork_db_block_not_found, "block ${id} does not exist", ("id", string(second_branch->header.previous)));
     }
 
     while(first_branch->header.previous != second_branch->header.previous) {
@@ -204,7 +204,7 @@ fork_database::fetch_branch_from(const block_id_type& first, const block_id_type
         result.second.push_back(second_branch);
         first_branch  = get_block(first_branch->header.previous);
         second_branch = get_block(second_branch->header.previous);
-        EVT_ASSERT(first_branch && second_branch, fork_db_block_not_found, 
+        jmzk_ASSERT(first_branch && second_branch, fork_db_block_not_found, 
                      "either block ${fid} or ${sid} does not exist", 
                      ("fid", string(first_branch->header.previous))("sid", string(second_branch->header.previous)));
     }
@@ -255,7 +255,7 @@ fork_database::mark_in_current_chain(const block_state_ptr& h, bool in_current_c
 
     auto& by_id_idx = my->index.get<by_block_id>();
     auto  itr       = by_id_idx.find(h->id);
-    EVT_ASSERT(itr != by_id_idx.end(), fork_db_block_not_found, "could not find block in fork database");
+    jmzk_ASSERT(itr != by_id_idx.end(), fork_db_block_not_found, "could not find block in fork database");
 
     by_id_idx.modify(
         itr, [&](auto& bsp) {  // Need to modify this way rather than directly so that Boost MultiIndex can re-sort
@@ -303,9 +303,9 @@ fork_database::get_block_in_current_chain_by_num(uint32_t n) const {
     const auto& numidx = my->index.get<by_block_num>();
     auto        nitr   = numidx.lower_bound(n);
     // following asserts removed so null can be returned
-    // EVT_ASSERT( nitr != numidx.end() && (*nitr)->block_num == n,
+    // jmzk_ASSERT( nitr != numidx.end() && (*nitr)->block_num == n,
     //           "could not find block in fork database with block number ${block_num}", ("block_num", n) );
-    // EVT_ASSERT( (*nitr)->in_current_chain == true,
+    // jmzk_ASSERT( (*nitr)->in_current_chain == true,
     //           "block (with block number ${block_num}) found in fork database is not in the current chain",
     //           ("block_num", n) );
     if(nitr == numidx.end() || (*nitr)->block_num != n || (*nitr)->in_current_chain != true)
@@ -316,7 +316,7 @@ fork_database::get_block_in_current_chain_by_num(uint32_t n) const {
 void
 fork_database::add(const header_confirmation& c) {
     auto b = get_block(c.block_id);
-    EVT_ASSERT(b, fork_db_block_not_found, "unable to find block id ${id}", ("id", c.block_id));
+    jmzk_ASSERT(b, fork_db_block_not_found, "unable to find block id ${id}", ("id", c.block_id));
     b->add_confirmation(c);
 
     if(b->bft_irreversible_blocknum < b->block_num
@@ -371,4 +371,4 @@ fork_database::set_bft_irreversible(block_id_type id) {
     }
 }
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain

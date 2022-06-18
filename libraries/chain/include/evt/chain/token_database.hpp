@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
 */
 #pragma once
 #include <functional>
@@ -11,17 +11,17 @@
 #include <boost/signals2/signal.hpp>
 #include <fc/reflect/reflect.hpp>
 #include <fc/filesystem.hpp>
-#include <evt/chain/types.hpp>
-#include <evt/chain/address.hpp>
-#include <evt/chain/asset.hpp>
-#include <evt/chain/config.hpp>
+#include <jmzk/chain/types.hpp>
+#include <jmzk/chain/address.hpp>
+#include <jmzk/chain/asset.hpp>
+#include <jmzk/chain/config.hpp>
 
 namespace rocksdb {
 class DB;
 class Slice;
 }  // namespace rocksdb
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 using read_value_func = std::function<bool(const std::string_view& key, std::string&&)>;
 
@@ -39,13 +39,13 @@ enum class token_type {
     lock,
     fungible,
     prodvote,
-    evtlink,
+    jmzklink,
     psvbonus,
     psvbonus_dist,
     validator,
     stakepool,
-    blackaddrs,
-    max_value = blackaddrs
+    script,
+    max_value = script
 };
 
 enum class action_op {
@@ -132,7 +132,7 @@ public:
         storage_profile profile           = storage_profile::disk;
         uint32_t        block_cache_size  = 256 * 1024 * 1024; // 256M
         uint32_t        object_cache_size = 256 * 1024 * 1024; // 256M
-        fc::path        db_path           = ::evt::chain::config::default_token_database_dir_name;
+        fc::path        db_path           = ::jmzk::chain::config::default_token_database_dir_name;
         bool            enable_stats      = true;
     };
 
@@ -236,6 +236,6 @@ private:
     friend class token_database_impl;
 };
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
-FC_REFLECT(evt::chain::token_database::config, (profile)(block_cache_size)(object_cache_size)(db_path));
+FC_REFLECT(jmzk::chain::token_database::config, (profile)(block_cache_size)(object_cache_size)(db_path));

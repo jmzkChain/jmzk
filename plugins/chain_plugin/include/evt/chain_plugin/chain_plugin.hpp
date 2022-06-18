@@ -1,18 +1,18 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <appbase/application.hpp>
-#include <evt/chain/asset.hpp>
-#include <evt/chain/block.hpp>
-#include <evt/chain/version.hpp>
-#include <evt/chain/controller.hpp>
-#include <evt/chain/transaction.hpp>
-#include <evt/chain/staking_context.hpp>
-#include <evt/chain/plugin_interface.hpp>
-#include <evt/chain/percent_slim.hpp>
-#include <evt/chain/contracts/abi_serializer.hpp>
+#include <jmzk/chain/asset.hpp>
+#include <jmzk/chain/block.hpp>
+#include <jmzk/chain/version.hpp>
+#include <jmzk/chain/controller.hpp>
+#include <jmzk/chain/transaction.hpp>
+#include <jmzk/chain/staking_context.hpp>
+#include <jmzk/chain/plugin_interface.hpp>
+#include <jmzk/chain/percent_slim.hpp>
+#include <jmzk/chain/contracts/abi_serializer.hpp>
 
 #include <fc/static_variant.hpp>
 
@@ -22,7 +22,7 @@ namespace fc {
 class variant;
 }
 
-namespace evt {
+namespace jmzk {
 using namespace appbase;
 using std::unique_ptr;
 using std::optional;
@@ -69,7 +69,7 @@ public:
     struct get_info_results {
         string             server_version;
         chain_id_type      chain_id;
-        version            evt_api_version;
+        version            jmzk_api_version;
         uint32_t           head_block_num              = 0;
         uint32_t           last_irreversible_block_num = 0;
         block_id_type      last_irreversible_block_id;
@@ -260,7 +260,7 @@ public:
     static bool import_reversible_blocks(const fc::path& reversible_dir, uint32_t cache_size, const fc::path& reversible_blocks_file);
 
     static bool export_reversible_blocks(const fc::path& reversible_dir, const fc::path& reversible_blocks_file);
-    // return true if --skip-transaction-signatures passed to evtd
+    // return true if --skip-transaction-signatures passed to jmzkd
     bool is_skipping_transaction_signatures() const;
 
     // Only call this after plugin_initialize()!
@@ -281,30 +281,30 @@ private:
     unique_ptr<class chain_plugin_impl> my;
 };
 
-}  // namespace evt
+}  // namespace jmzk
 
-FC_REFLECT(evt::chain_apis::empty, );
-FC_REFLECT(evt::chain_apis::read_only::get_info_results,
-          (server_version)(chain_id)(evt_api_version)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)
+FC_REFLECT(jmzk::chain_apis::empty, );
+FC_REFLECT(jmzk::chain_apis::read_only::get_info_results,
+          (server_version)(chain_id)(jmzk_api_version)(head_block_num)(last_irreversible_block_num)(last_irreversible_block_id)
           (head_block_id)(head_block_time)(head_block_producer)(enabled_plugins)(server_version_string));
-FC_REFLECT(evt::chain_apis::read_only::get_charge_info_results, (base_network_charge_factor)(base_storage_charge_factor)(base_cpu_charge_factor)(global_charge_factor));
-FC_REFLECT(evt::chain_apis::read_only::get_block_params, (block_num_or_id));
-FC_REFLECT(evt::chain_apis::read_only::get_block_header_state_params, (block_num_or_id));
-FC_REFLECT(evt::chain_apis::read_only::get_transaction_params, (block_num)(id));
-FC_REFLECT(evt::chain_apis::read_only::get_trx_id_for_link_id_params, (link_id));
-FC_REFLECT(evt::chain_apis::read_only::producer_info, (producer_name));
-FC_REFLECT(evt::chain_apis::read_only::abi_json_to_bin_params, (action)(args));
-FC_REFLECT(evt::chain_apis::read_only::abi_json_to_bin_result, (binargs));
-FC_REFLECT(evt::chain_apis::read_only::abi_bin_to_json_params, (action)(binargs));
-FC_REFLECT(evt::chain_apis::read_only::abi_bin_to_json_result, (args));
-FC_REFLECT(evt::chain_apis::read_only::trx_json_to_digest_result, (digest)(id));
-FC_REFLECT(evt::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys));
-FC_REFLECT(evt::chain_apis::read_only::get_required_keys_result, (required_keys));
-FC_REFLECT(evt::chain_apis::read_only::get_suspend_required_keys_params, (name)(available_keys));
-FC_REFLECT(evt::chain_apis::read_only::get_suspend_required_keys_result, (required_keys));
-FC_REFLECT(evt::chain_apis::read_only::get_charge_params, (transaction)(sigs_num));
-FC_REFLECT(evt::chain_apis::read_only::get_charge_result, (charge));
-FC_REFLECT(evt::chain_apis::read_only::validator_slim, (name)(current_net_value)(total_units)(commission));
-FC_REFLECT(evt::chain_apis::read_only::get_staking_result, (period_version)(period_start_num)(next_period_num)(validators));
-FC_REFLECT(evt::chain_apis::read_only::get_transaction_ids_for_block_params, (block_id));
-FC_REFLECT(evt::chain_apis::read_write::push_transaction_results, (transaction_id)(processed));
+FC_REFLECT(jmzk::chain_apis::read_only::get_charge_info_results, (base_network_charge_factor)(base_storage_charge_factor)(base_cpu_charge_factor)(global_charge_factor));
+FC_REFLECT(jmzk::chain_apis::read_only::get_block_params, (block_num_or_id));
+FC_REFLECT(jmzk::chain_apis::read_only::get_block_header_state_params, (block_num_or_id));
+FC_REFLECT(jmzk::chain_apis::read_only::get_transaction_params, (block_num)(id));
+FC_REFLECT(jmzk::chain_apis::read_only::get_trx_id_for_link_id_params, (link_id));
+FC_REFLECT(jmzk::chain_apis::read_only::producer_info, (producer_name));
+FC_REFLECT(jmzk::chain_apis::read_only::abi_json_to_bin_params, (action)(args));
+FC_REFLECT(jmzk::chain_apis::read_only::abi_json_to_bin_result, (binargs));
+FC_REFLECT(jmzk::chain_apis::read_only::abi_bin_to_json_params, (action)(binargs));
+FC_REFLECT(jmzk::chain_apis::read_only::abi_bin_to_json_result, (args));
+FC_REFLECT(jmzk::chain_apis::read_only::trx_json_to_digest_result, (digest)(id));
+FC_REFLECT(jmzk::chain_apis::read_only::get_required_keys_params, (transaction)(available_keys));
+FC_REFLECT(jmzk::chain_apis::read_only::get_required_keys_result, (required_keys));
+FC_REFLECT(jmzk::chain_apis::read_only::get_suspend_required_keys_params, (name)(available_keys));
+FC_REFLECT(jmzk::chain_apis::read_only::get_suspend_required_keys_result, (required_keys));
+FC_REFLECT(jmzk::chain_apis::read_only::get_charge_params, (transaction)(sigs_num));
+FC_REFLECT(jmzk::chain_apis::read_only::get_charge_result, (charge));
+FC_REFLECT(jmzk::chain_apis::read_only::validator_slim, (name)(current_net_value)(total_units)(commission));
+FC_REFLECT(jmzk::chain_apis::read_only::get_staking_result, (period_version)(period_start_num)(next_period_num)(validators));
+FC_REFLECT(jmzk::chain_apis::read_only::get_transaction_ids_for_block_params, (block_id));
+FC_REFLECT(jmzk::chain_apis::read_write::push_transaction_results, (transaction_id)(processed));

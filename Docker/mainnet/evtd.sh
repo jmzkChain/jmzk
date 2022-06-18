@@ -1,12 +1,12 @@
 #!/bin/sh
-cd /opt/evt/bin
+cd /opt/jmzk/bin
 
-if [ -f '/opt/evt/etc/evtd/config.ini' ]; then
+if [ -f '/opt/jmzk/etc/jmzkd/config.ini' ]; then
     echo
   else
-    mkdir /opt/evt/etc
-    mkdir /opt/evt/etc/evtd
-    cp /config.ini /opt/evt/etc/evtd
+    mkdir /opt/jmzk/etc
+    mkdir /opt/jmzk/etc/jmzkd
+    cp /config.ini /opt/jmzk/etc/jmzkd
 fi
 
 while :; do
@@ -21,12 +21,12 @@ while :; do
 done
 
 if [ ! "$CONFIG_DIR" ]; then
-    CONFIG_DIR="--config-dir=/opt/evt/etc/evtd"
+    CONFIG_DIR="--config-dir=/opt/jmzk/etc/jmzkd"
 else
     CONFIG_DIR=""
 fi
 
-DATA_DIR="--data-dir=/opt/evt/data"
-SNAPSHOTS_DIR="--snapshots-dir=/opt/evt/snapshots"
+DATA_DIR="--data-dir=/opt/jmzk/data"
+SNAPSHOTS_DIR="--snapshots-dir=/opt/jmzk/snapshots"
 
-exec /opt/evt/bin/evtd $CONFIG_DIR $DATA_DIR $SNAPSHOTS_DIR $@
+exec /opt/jmzk/bin/jmzkd $CONFIG_DIR $DATA_DIR $SNAPSHOTS_DIR $@

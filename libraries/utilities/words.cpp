@@ -1,11 +1,11 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #include <stdint.h>
-#include <evt/utilities/words.hpp>
+#include <jmzk/utilities/words.hpp>
 
-namespace evt { namespace words {
+namespace jmzk { namespace words {
 
 const const_char_ptr word_list[] = { 
 "a",
@@ -49761,4 +49761,4 @@ void hide_unused_warning() {
   (void)word_list; 
 }
 
-} } // evt::words
+} } // jmzk::words

@@ -3,7 +3,7 @@
 TEST_CASE_METHOD(contracts_test, "prodvote_test", "[contracts]") {
     const char* test_data = R"=======(
     {
-        "producer": "evt",
+        "producer": "jmzk",
         "key": "key",
         "value": 123456789
     }
@@ -67,7 +67,7 @@ TEST_CASE_METHOD(contracts_test, "prodvote_test", "[contracts]") {
 TEST_CASE_METHOD(contracts_test, "charge_test", "[contracts]") {
     const char* test_data = R"=====(
     {
-      "address": "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+      "address": "jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
       "number" : "12.00000 S#3",
       "memo": "memo"
     }
@@ -84,7 +84,7 @@ TEST_CASE_METHOD(contracts_test, "charge_test", "[contracts]") {
 
     property prodasset_before;
     property prodasset_after;
-    READ_DB_ASSET(prod, evt_sym(), prodasset_before);
+    READ_DB_ASSET(prod, jmzk_sym(), prodasset_before);
 
     issfg.number  = asset::from_string(string("5.00000 S#") + std::to_string(get_sym_id()));
     issfg.address = key;
@@ -105,7 +105,7 @@ TEST_CASE_METHOD(contracts_test, "charge_test", "[contracts]") {
 
     my_tester->produce_blocks();
 
-    READ_DB_ASSET(prod, evt_sym(), prodasset_after);
+    READ_DB_ASSET(prod, jmzk_sym(), prodasset_after);
 
     CHECK(trace->charge == prodasset_after.amount - prodasset_before.amount);
 }
@@ -118,13 +118,13 @@ TEST_CASE_METHOD(contracts_test, "empty_action_test", "[contracts]") {
 }
 
 TEST_CASE_METHOD(contracts_test, "addmeta_test", "[contracts]") {
-    my_tester->add_money(payer, asset(10'000'000, symbol(5, EVT_SYM_ID)));
+    my_tester->add_money(payer, asset(10'000'000, symbol(5, jmzk_SYM_ID)));
 
     const char* test_data = R"=====(
     {
       "key": "key",
       "value": "value'f\"\n\t",
-      "creator": "[A] EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+      "creator": "[A] jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
     }
     )=====";
 
@@ -171,12 +171,12 @@ TEST_CASE_METHOD(contracts_test, "addmeta_test", "[contracts]") {
     const char* domain_data = R"=====(
         {
           "name" : "gdomain",
-          "creator" : "EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
+          "creator" : "jmzk5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
           "issue" : {
             "name" : "issue",
             "threshold" : 1,
             "authorizers": [{
-                "ref": "[A] EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
+                "ref": "[A] jmzk5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
                 "weight": 1
               }
             ]
@@ -194,7 +194,7 @@ TEST_CASE_METHOD(contracts_test, "addmeta_test", "[contracts]") {
             "name": "manage",
             "threshold": 1,
             "authorizers": [{
-                "ref": "[A] EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
+                "ref": "[A] jmzk5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2",
                 "weight": 1
               }
             ]
@@ -221,7 +221,7 @@ TEST_CASE_METHOD(contracts_test, "addmeta_test", "[contracts]") {
           "t3"
         ],
         "owner": [
-          "EVT5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2"
+          "jmzk5ve9Ezv9vLZKp1NmRzvB5ZoZ21YZ533BSB2Ai2jLzzMep6biU2"
         ]
     }
     )=====";
@@ -233,15 +233,15 @@ TEST_CASE_METHOD(contracts_test, "addmeta_test", "[contracts]") {
 
     const char* fg_data = R"=====(
     {
-      "name": "GEVT",
-      "sym_name": "GEVT",
+      "name": "Gjmzk",
+      "sym_name": "Gjmzk",
       "sym": "5,S#4",
-      "creator": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+      "creator": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
       "issue" : {
         "name" : "issue",
         "threshold" : 1,
         "authorizers": [{
-            "ref": "[A] EVT6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
+            "ref": "[A] jmzk6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
             "weight": 1
           }
         ]
@@ -250,7 +250,7 @@ TEST_CASE_METHOD(contracts_test, "addmeta_test", "[contracts]") {
         "name": "manage",
         "threshold": 1,
         "authorizers": [{
-            "ref": "[A] EVT6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
+            "ref": "[A] jmzk6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
             "weight": 1
           }
         ]
@@ -284,7 +284,7 @@ TEST_CASE_METHOD(contracts_test, "updsched_test", "[contracts]") {
     {
         "producers": [{
             "producer_name": "producer",
-            "block_signing_key": "EVT7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
+            "block_signing_key": "jmzk7rbe5ZqAEtwQT6Tw39R29vojFqrCQasK3nT5s2pEzXh1BABXHF"
         }]
     }
     )=======";
@@ -293,7 +293,7 @@ TEST_CASE_METHOD(contracts_test, "updsched_test", "[contracts]") {
     auto us   = var.as<updsched>();
     auto& tokendb = my_tester->control->token_db();
 
-    us.producers[0].block_signing_key = tester::get_public_key("evt");
+    us.producers[0].block_signing_key = tester::get_public_key("jmzk");
     to_variant(us, var);
 
     signed_transaction trx;

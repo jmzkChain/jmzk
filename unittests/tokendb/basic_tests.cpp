@@ -7,7 +7,7 @@ const char* domain_data = R"=====(
         "name" : "issue",
         "threshold" : 1,
         "authorizers": [{
-            "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+            "ref": "[A] jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
             "weight": 1
           }
         ]
@@ -25,7 +25,7 @@ const char* domain_data = R"=====(
         "name": "manage",
         "threshold": 1,
         "authorizers": [{
-            "ref": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
+            "ref": "[A] jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK",
             "weight": 1
           }
         ]
@@ -33,7 +33,7 @@ const char* domain_data = R"=====(
       "metas":[{
       	"key": "key",
       	"value": "value",
-      	"creator": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK"
+      	"creator": "[A] jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK"
       }]
     }
     )=====";
@@ -43,27 +43,27 @@ const char* token_data = R"=====(
       	"domain": "domain",
         "name": "t1",
         "owner": [
-          "EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK"
+          "jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK"
         ],
         "metas":[{
       	"key": "key",
       	"value": "value",
-      	"creator": "[A] EVT546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK"
+      	"creator": "[A] jmzk546WaW3zFAxEEEkYKjDiMvg3CHRjmWX2XdNxEhi69RpdKuQRSK"
       }]
     }
     )=====";
 
 const char* fungible_data = R"=====(
     {
-      "name": "EVT",
-      "sym_name": "EVT",
+      "name": "jmzk",
+      "sym_name": "jmzk",
       "sym": "5,S#3",
-      "creator": "EVT6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
+      "creator": "jmzk6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV",
       "issue" : {
         "name" : "issue",
         "threshold" : 1,
         "authorizers": [{
-            "ref": "[A] EVT6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
+            "ref": "[A] jmzk6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
             "weight": 1
           }
         ]
@@ -72,7 +72,7 @@ const char* fungible_data = R"=====(
         "name": "manage",
         "threshold": 1,
         "authorizers": [{
-            "ref": "[A] EVT6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
+            "ref": "[A] jmzk6NPexVQjcb2FJZJohZHsQ22rRRtHziH8yPfyj2zwnJV74Ycp2p",
             "weight": 1
           }
         ]
@@ -198,7 +198,7 @@ TEST_CASE_METHOD(tokendb_test, "put_asset_test", "[tokendb]") {
     CHECK(EXISTS_TOKEN(fungible, 3));
 
     // put asset
-    auto addr = public_key_type(std::string("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"));
+    auto addr = public_key_type(std::string("jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"));
     auto as = asset::from_string("1.00000 S#3");
     CHECK(!EXISTS_ASSET(addr, 3));
     PUT_ASSET(addr, 3, as);
@@ -217,17 +217,17 @@ TEST_CASE_METHOD(tokendb_test, "put_tokens_test", "[tokendb]") {
     tk1.name = "basic-1";
     tk2.name = "basic-2";
 
-    auto tkeys = evt::chain::token_keys_t();
+    auto tkeys = jmzk::chain::token_keys_t();
     tkeys.push_back(tk1.name);
     tkeys.push_back(tk2.name);
     
     auto data = small_vector<std::string_view, 4>();
-    data.push_back(evt::chain::make_db_value(tk1).as_string_view());
-    data.push_back(evt::chain::make_db_value(tk2).as_string_view());
+    data.push_back(jmzk::chain::make_db_value(tk1).as_string_view());
+    data.push_back(jmzk::chain::make_db_value(tk2).as_string_view());
 
     tokendb.put_tokens(
-            evt::chain::token_type::token,
-            evt::chain::action_op::put,
+            jmzk::chain::token_type::token,
+            jmzk::chain::action_op::put,
             "dm-tkdb-test",
             std::move(tkeys),
             data);

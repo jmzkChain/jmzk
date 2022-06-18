@@ -1,5 +1,5 @@
 version: 0.2
-       
+
 env:
   parameter-store:
     LOGIN_USERID: "docker-userid"
@@ -16,8 +16,8 @@ phases:
   build:
     commands:
       - echo Start building latest pysdk Docker image...
-      - cd Docker && docker build pysdk -t everitoken/pysdk:latest
+      - cd Docker && docker build pysdk -t jmzkChain/pysdk:latest
   post_build:
     commands:
       - echo Publish to Docker Hub...
-      - docker push everitoken/pysdk:latest
+      - docker push jmzkChain/pysdk:latest

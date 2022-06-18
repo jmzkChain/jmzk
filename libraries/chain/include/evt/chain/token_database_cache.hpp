@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
 */
 #pragma once
 #include <memory>
@@ -8,9 +8,9 @@
 #include <fc/io/datastream.hpp>
 #include <fc/io/raw.hpp>
 #include <rocksdb/cache.h>
-#include <evt/chain/token_database.hpp>
+#include <jmzk/chain/token_database.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 class token_database_cache {
 public:
@@ -64,7 +64,7 @@ public:
         auto h = cache_->Lookup(k);
         if(h != nullptr) {
             auto entry = (cache_entry<T>*)cache_->Value(h);
-            EVT_ASSERT2(entry->ti == boost::typeindex::type_id<T>(), token_database_cache_exception,
+            jmzk_ASSERT2(entry->ti == boost::typeindex::type_id<T>(), token_database_cache_exception,
                 "Types are not matched between cache({}) and query({})", entry->ti.pretty_name(), boost::typeindex::type_id<T>().pretty_name());
             return std::unique_ptr<T, cache_deleter<T>>(&entry->data, cache_deleter<T>(this, h));
         }
@@ -94,7 +94,7 @@ public:
         auto h = cache_->Lookup(k);
         if(h != nullptr) {
             auto entry = (cache_entry<T>*)cache_->Value(h);
-            EVT_ASSERT2(entry->ti == boost::typeindex::type_id<T>(), token_database_cache_exception,
+            jmzk_ASSERT2(entry->ti == boost::typeindex::type_id<T>(), token_database_cache_exception,
                 "Types are not matched between cache({}) and query({})", entry->ti.pretty_name(), boost::typeindex::type_id<T>().pretty_name());
             return std::unique_ptr<T, cache_deleter<T>>(&entry->data, cache_deleter<T>(this, h));
         }
@@ -111,9 +111,9 @@ public:
         auto h = cache_->Lookup(k);
         if(h != nullptr) {
             auto entry = (entry_t*)cache_->Value(h);
-            EVT_ASSERT2(entry->ti == boost::typeindex::type_id<T>(), token_database_cache_exception,
+            jmzk_ASSERT2(entry->ti == boost::typeindex::type_id<T>(), token_database_cache_exception,
                 "Types are not matched between cache({}) and query({})", entry->ti.pretty_name(), boost::typeindex::type_id<T>().pretty_name());
-            EVT_ASSERT2(&entry->data == &data, token_database_cache_exception,
+            jmzk_ASSERT2(&entry->data == &data, token_database_cache_exception,
                 "Provided updated data object should be the same as original one in cache");
         }
 
@@ -165,4 +165,4 @@ auto make_empty_cache_ptr = [] {
     return std::unique_ptr<T, token_database_cache::cache_deleter<T>>(nullptr);
 };
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain

@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
@@ -12,7 +12,7 @@ namespace fc {
 class variant;
 }  // namespace fc
 
-namespace evt {
+namespace jmzk {
 
 class net_plugin_impl;
 struct handshake_message;
@@ -50,19 +50,19 @@ private:
 
     friend class fc::variant;
 
-    friend class evt::chain_apis::read_only;
+    friend class jmzk::chain_apis::read_only;
 
-    friend class evt::net_plugin_impl;
-    friend struct evt::handshake_message;
+    friend class jmzk::net_plugin_impl;
+    friend struct jmzk::handshake_message;
 
     friend struct ::hello; // TODO: Rushed hack to support bnet_plugin. Need a better solution.
 };
 
 }  // namespace chain
-}  // namespace evt
+}  // namespace jmzk
 
 namespace fc {
 class variant;
-void to_variant(const evt::chain::chain_id_type& cid, fc::variant& v);
-void from_variant(const fc::variant& v, evt::chain::chain_id_type& cid);
+void to_variant(const jmzk::chain::chain_id_type& cid, fc::variant& v);
+void from_variant(const fc::variant& v, jmzk::chain::chain_id_type& cid);
 }  // namespace fc

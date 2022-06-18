@@ -1,4 +1,4 @@
-file(GLOB HEADERS "include/evt/net_plugin/*.hpp")
+file(GLOB HEADERS "include/jmzk/net_plugin/*.hpp")
 add_library( net_plugin
              net_plugin.cpp
              ${HEADERS} )

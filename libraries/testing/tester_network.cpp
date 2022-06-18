@@ -1,6 +1,6 @@
-#include <evt/testing/tester_network.hpp>
+#include <jmzk/testing/tester_network.hpp>
 
-namespace evt { namespace testing {
+namespace jmzk { namespace testing {
 
 void
 tester_network::connect_blockchain(base_tester& new_blockchain) {
@@ -41,8 +41,8 @@ tester_network::propagate_block(const signed_block& block, const base_tester& sk
     //  for (const auto &pair : blockchains) {
     //     if (pair.first == &skip_blockchain) continue;
     //     boost::signals2::shared_connection_block blocker(pair.second);
-    //     pair.first->control->push_block(block, evt::chain::validation_steps::created_block);
+    //     pair.first->control->push_block(block, jmzk::chain::validation_steps::created_block);
     //  }
 }
 
-}}  // namespace evt::testing
+}}  // namespace jmzk::testing

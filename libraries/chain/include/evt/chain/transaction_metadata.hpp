@@ -1,14 +1,14 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <boost/noncopyable.hpp>
-#include <evt/chain/block.hpp>
-#include <evt/chain/trace.hpp>
-#include <evt/chain/transaction.hpp>
+#include <jmzk/chain/block.hpp>
+#include <jmzk/chain/trace.hpp>
+#include <jmzk/chain/transaction.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 /**
  *  This data structure should store context-free cached data about a transaction such as
@@ -46,4 +46,4 @@ public:
 
 using transaction_metadata_ptr = std::shared_ptr<transaction_metadata>;
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain

@@ -2,7 +2,7 @@ import random
 import string
 import time
 
-from pyevtsdk import base
+from pyjmzksdk import base
 
 ITEM_TYPES = ['domain', 'group', 'fungible', 'token']
 REQUIREMENTS = {

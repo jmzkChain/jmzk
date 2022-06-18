@@ -1,21 +1,21 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
-#include <evt/chain/name128.hpp>
-#include <evt/chain/exceptions.hpp>
+#include <jmzk/chain/name128.hpp>
+#include <jmzk/chain/exceptions.hpp>
 #include <fc/variant.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 void
 name128::set(const char* str) {
     const auto len = strnlen(str, 22);
-    EVT_ASSERT(len <= 21, name128_type_exception, "Name128 is longer than 21 characters (${name}) ",
+    jmzk_ASSERT(len <= 21, name128_type_exception, "Name128 is longer than 21 characters (${name}) ",
                ("name", std::string(str)));
-    EVT_ASSERT(len > 0, name128_type_exception, "Name128 cannot be empty");
+    jmzk_ASSERT(len > 0, name128_type_exception, "Name128 cannot be empty");
     value = string_to_name128(str);
-    EVT_ASSERT(to_string() == std::string(str), name128_type_exception,
+    jmzk_ASSERT(to_string() == std::string(str), name128_type_exception,
                "Name128 not properly normalized (name: ${name}, normalized: ${normalized}) ",
                ("name", std::string(str))("normalized", to_string()));
 }
@@ -23,10 +23,10 @@ name128::set(const char* str) {
 void
 name128::set(const std::string& str) {
     const auto len = str.size();
-    EVT_ASSERT(len <= 21, name128_type_exception, "Name128 is longer than 21 characters (${name}) ",
+    jmzk_ASSERT(len <= 21, name128_type_exception, "Name128 is longer than 21 characters (${name}) ",
                ("name", str));
     value = string_to_name128(str.c_str());
-    EVT_ASSERT(to_string() == str, name128_type_exception,
+    jmzk_ASSERT(to_string() == str, name128_type_exception,
                "Name128 not properly normalized (name: ${name}, normalized: ${normalized}) ",
                ("name", str)("normalized", to_string()));
 }
@@ -99,17 +99,17 @@ name128::from_number(uint64_t v) {
     return r;
 }
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
 
 namespace fc {
 
 void
-to_variant(const evt::chain::name128& name, fc::variant& v) {
+to_variant(const jmzk::chain::name128& name, fc::variant& v) {
     v = std::string(name);
 }
 void
-from_variant(const fc::variant& v, evt::chain::name128& name) {
+from_variant(const fc::variant& v, jmzk::chain::name128& name) {
     name = v.get_string();
 }
 

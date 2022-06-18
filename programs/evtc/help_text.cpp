@@ -1,6 +1,6 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #include "help_text.hpp"
 #include "localize.hpp"
@@ -8,7 +8,7 @@
 #include <regex>
 #include <fc/io/json.hpp>
 
-using namespace evt::client::localize;
+using namespace jmzk::client::localize;
 
 const char* help_regex_error = _("Error locating help text: ${code} ${what}"); 
 
@@ -32,10 +32,10 @@ auto smatch_to_variant(const std::smatch& smatch) {
 const std::map<int64_t, std::string> error_advice = {};
 
 
-namespace evt { namespace client { namespace help {
+namespace jmzk { namespace client { namespace help {
 bool print_recognized_errors(const fc::exception& e, const bool verbose_errors) {
-   // evt recognized error code is from 3000000 to 3999999
-   // refer to libraries/chain/include/evt/chain/exceptions.hpp
+   // jmzk recognized error code is from 3000000 to 3999999
+   // refer to libraries/chain/include/jmzk/chain/exceptions.hpp
    if (e.code() >= 3000000 && e.code() <= 3999999) {
       std::string advice, explanation, stack_trace;
 

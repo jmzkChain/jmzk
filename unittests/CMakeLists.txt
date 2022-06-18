@@ -1,4 +1,4 @@
-add_executable(evt_unittests
+add_executable(jmzk_unittests
     main.cpp
     abi_tests.cpp
     types_tests.cpp
@@ -10,6 +10,7 @@ add_executable(evt_unittests
     tokendb/cache_tests.cpp
     
     snapshot_tests.cpp
+    luajit_tests.cpp
     
     contracts/nft_tests.cpp
     contracts/group_tests.cpp
@@ -18,14 +19,27 @@ add_executable(evt_unittests
     contracts/lock_tests.cpp
     contracts/bonus_tests.cpp
     contracts/utils_tests.cpp
-    contracts/evtlink_tests.cpp
+    contracts/jmzklink_tests.cpp
     contracts/staking_tests.cpp
     contracts/multi_actions_tests.cpp
     )
+set_target_properties(jmzk_unittests PROPERTIES ENABLE_EXPORTS TRUE)
 
-target_link_libraries(evt_unittests PRIVATE
-    appbase evt_chain evt_testing fc catch ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} ${Intl_LIBRARIES})
+find_package(Jemalloc QUIET)
+if(JEMALLOC_FOUND)
+    message(STATUS "Found jemalloc; compiling jmzk_unittests with jemalloc")
+    list(APPEND PLATFORM_SPECIFIC_LIBS jemalloc)
+endif()
 
-add_test(NAME evt_unittests
-         COMMAND unittests/evt_unittests
+if(UNIX)
+    if(APPLE)
+        set_target_properties(jmzk_unittests PROPERTIES LINK_FLAGS "${LUAJIT_LINK_FLAGS}")
+    endif()
+endif()
+
+target_link_libraries(jmzk_unittests PRIVATE
+    appbase jmzk_chain jmzk_testing fc catch ${CMAKE_DL_LIBS} ${PLATFORM_SPECIFIC_LIBS} ${Intl_LIBRARIES})
+
+add_test(NAME jmzk_unittests
+         COMMAND unittests/jmzk_unittests
          WORKING_DIRECTORY ${CMAKE_BINARY_DIR})

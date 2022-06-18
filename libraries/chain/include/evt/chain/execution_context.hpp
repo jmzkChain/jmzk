@@ -1,15 +1,15 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 
 #include <boost/noncopyable.hpp>
-#include <evt/chain/exceptions.hpp>
-#include <evt/chain/types.hpp>
-#include <evt/chain/contracts/types.hpp>
+#include <jmzk/chain/exceptions.hpp>
+#include <jmzk/chain/types.hpp>
+#include <jmzk/chain/contracts/types.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 struct action_ver {
     name   act;
@@ -41,7 +41,7 @@ public:
 template<typename T>
 using add_clr_t = typename std::add_const<typename std::add_lvalue_reference<T>::type>::type;
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
-FC_REFLECT(evt::chain::action_ver, (act)(ver));
-FC_REFLECT(evt::chain::action_ver_type, (act)(ver)(type));
+FC_REFLECT(jmzk::chain::action_ver, (act)(ver));
+FC_REFLECT(jmzk::chain::action_ver_type, (act)(ver)(type));

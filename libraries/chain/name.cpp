@@ -1,22 +1,22 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #include <boost/algorithm/string.hpp>
-#include <evt/chain/exceptions.hpp>
-#include <evt/chain/name.hpp>
+#include <jmzk/chain/exceptions.hpp>
+#include <jmzk/chain/name.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/variant.hpp>
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 void
 name::set(const char* str) {
     const auto len = strnlen(str, 14);
-    EVT_ASSERT(len <= 13, name_type_exception, "Name is longer than 13 characters (${name}) ", ("name", string(str)));
-    EVT_ASSERT(len > 0, name_type_exception, "Name cannot be empty");
+    jmzk_ASSERT(len <= 13, name_type_exception, "Name is longer than 13 characters (${name}) ", ("name", string(str)));
+    jmzk_ASSERT(len > 0, name_type_exception, "Name cannot be empty");
     value = string_to_name(str);
-    EVT_ASSERT(to_string() == string(str), name_type_exception,
+    jmzk_ASSERT(to_string() == string(str), name_type_exception,
                "Name not properly normalized (name: ${name}, normalized: ${normalized}) ",
                ("name", string(str))("normalized", to_string()));
 }
@@ -39,17 +39,17 @@ name::operator string() const {
     return str;
 }
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
 namespace fc {
 
 void
-to_variant(const evt::chain::name& name, fc::variant& v) {
+to_variant(const jmzk::chain::name& name, fc::variant& v) {
     v = std::string(name);
 }
 
 void
-from_variant(const fc::variant& v, evt::chain::name& name) {
+from_variant(const fc::variant& v, jmzk::chain::name& name) {
     name = v.get_string();
 }
 

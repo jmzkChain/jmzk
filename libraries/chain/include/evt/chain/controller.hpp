@@ -1,22 +1,22 @@
 /**
  *  @file
- *  @copyright defined in evt/LICENSE.txt
+ *  @copyright defined in jmzk/LICENSE.txt
  */
 #pragma once
 #include <chrono>
 #include <functional>
 #include <map>
 #include <boost/signals2/signal.hpp>
-#include <evt/chain/block_state.hpp>
-#include <evt/chain/genesis_state.hpp>
-#include <evt/chain/token_database.hpp>
-#include <evt/chain/execution_context.hpp>
+#include <jmzk/chain/block_state.hpp>
+#include <jmzk/chain/genesis_state.hpp>
+#include <jmzk/chain/token_database.hpp>
+#include <jmzk/chain/execution_context.hpp>
 
 namespace chainbase {
 class database;
 }
 
-namespace evt { namespace chain {
+namespace jmzk { namespace chain {
 
 using unapplied_transactions_type = map<transaction_id_type, transaction_metadata_ptr>;
 
@@ -39,11 +39,11 @@ class snapshot_reader;
 
 namespace contracts {
 struct abi_serializer;
-struct evt_link_object;
+struct jmzk_link_object;
 }  // namespace contracts
 
 using contracts::abi_serializer;
-using contracts::evt_link_object;
+using contracts::jmzk_link_object;
 
 enum class db_read_mode {
     SPECULATIVE,
@@ -172,7 +172,7 @@ public:
     block_state_ptr fetch_block_state_by_id(block_id_type id) const;
 
     block_id_type   get_block_id_for_num(uint32_t block_num) const;
-    evt_link_object get_link_obj_for_link_id(const link_id_type&) const;
+    jmzk_link_object get_link_obj_for_link_id(const link_id_type&) const;
     uint32_t        get_block_num_for_trx_id(const transaction_id_type& trx_id) const;
 
     fc::sha256 calculate_integrity_hash() const;
@@ -219,7 +219,7 @@ public:
     public_keys_set get_required_keys(const transaction& trx, const public_keys_set& candidate_keys) const;
     public_keys_set get_suspend_required_keys(const transaction& trx, const public_keys_set& candidate_keys) const;
     public_keys_set get_suspend_required_keys(const proposal_name& name, const public_keys_set& candidate_keys) const;
-    public_keys_set get_evtlink_signed_keys(const link_id_type& link_id) const;
+    public_keys_set get_jmzklink_signed_keys(const link_id_type& link_id) const;
 
     uint32_t get_charge(transaction&& trx, size_t signautres_num) const;
 
@@ -229,9 +229,9 @@ private:
     std::unique_ptr<controller_impl> my;
 };
 
-}}  // namespace evt::chain
+}}  // namespace jmzk::chain
 
-FC_REFLECT(evt::chain::controller::config,
+FC_REFLECT(jmzk::chain::controller::config,
            (blocks_dir)
            (state_dir)
            (state_size)

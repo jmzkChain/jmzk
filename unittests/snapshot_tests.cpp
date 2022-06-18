@@ -3,23 +3,23 @@
 #include <catch/catch.hpp>
 #include <fc/filesystem.hpp>
 
-#include <evt/chain/token_database.hpp>
-#include <evt/chain/token_database_snapshot.hpp>
-#include <evt/chain/contracts/types.hpp>
+#include <jmzk/chain/token_database.hpp>
+#include <jmzk/chain/token_database_snapshot.hpp>
+#include <jmzk/chain/contracts/types.hpp>
 
-using namespace evt;
+using namespace jmzk;
 using namespace chain;
 using namespace contracts;
 
-extern std::string evt_unittests_dir;
+extern std::string jmzk_unittests_dir;
 
 string token_db_snapshot_;
 
 #define EXISTS_TOKEN(TYPE, NAME) \
-    tokendb.exists_token(evt::chain::token_type::TYPE, std::nullopt, NAME)
+    tokendb.exists_token(jmzk::chain::token_type::TYPE, std::nullopt, NAME)
 
 #define EXISTS_TOKEN2(TYPE, DOMAIN, NAME) \
-    tokendb.exists_token(evt::chain::token_type::TYPE, DOMAIN, NAME)
+    tokendb.exists_token(jmzk::chain::token_type::TYPE, DOMAIN, NAME)
 
 #define EXISTS_ASSET(ADDR, SYM_ID) \
     tokendb.exists_asset(ADDR, SYM_ID)
@@ -27,15 +27,15 @@ string token_db_snapshot_;
 #define READ_TOKEN(TYPE, NAME, VALUEREF) \
     { \
         auto str = std::string(); \
-        tokendb.read_token(evt::chain::token_type::TYPE, std::nullopt, NAME, str); \
-        evt::chain::extract_db_value(str, VALUEREF); \
+        tokendb.read_token(jmzk::chain::token_type::TYPE, std::nullopt, NAME, str); \
+        jmzk::chain::extract_db_value(str, VALUEREF); \
     }
 
 #define READ_TOKEN2(TYPE, DOMAIN, NAME, VALUEREF) \
     { \
         auto str = std::string(); \
-        tokendb.read_token(evt::chain::token_type::TYPE, DOMAIN, NAME, str); \
-        evt::chain::extract_db_value(str, VALUEREF); \
+        tokendb.read_token(jmzk::chain::token_type::TYPE, DOMAIN, NAME, str); \
+        jmzk::chain::extract_db_value(str, VALUEREF); \
     }
 
 #define READ_DB_ASSET(ADDR, SYM_ID, VALUEREF)                                                           \
@@ -46,18 +46,18 @@ string token_db_snapshot_;
         extract_db_value(str, VALUEREF);                                                                \
     }                                                                                                   \
     catch(token_database_exception&) {                                                                  \
-        EVT_THROW2(balance_exception, "There's no balance left in {} with sym id: {}", ADDR, SYM_ID);   \
+        jmzk_THROW2(balance_exception, "There's no balance left in {} with sym id: {}", ADDR, SYM_ID);   \
     }
 
 #define PUT_DB_TOKEN(TYPE, PREFIX, KEY, VALUE)                                                             \
     {                                                                                                      \
         auto dv = make_db_value(VALUE);                                                                    \
-        tokendb.put_token(evt::chain::token_type::TYPE, action_op::put, PREFIX, KEY, dv.as_string_view()); \
+        tokendb.put_token(jmzk::chain::token_type::TYPE, action_op::put, PREFIX, KEY, dv.as_string_view()); \
     }
 
 auto get_db_config = []{
     auto c       = token_database::config();
-    auto basedir = evt_unittests_dir + "/tokendb_tests";
+    auto basedir = jmzk_unittests_dir + "/tokendb_tests";
     c.db_path    = basedir + "/tokendb";
     return c;
 };
@@ -70,7 +70,7 @@ TEST_CASE("snapshot_pretest", "[snapshot]") {
     CHECK(EXISTS_TOKEN2(token, "dm-tkdb-test", "basic-1"));
     CHECK(EXISTS_TOKEN2(token, "dm-tkdb-test", "basic-2"));
 
-    auto addr = public_key_type(std::string("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"));
+    auto addr = public_key_type(std::string("jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"));
     CHECK(EXISTS_ASSET(addr, 3));
 }
 
@@ -109,7 +109,7 @@ TEST_CASE("snapshot_load_test", "[snapshot]") {
     CHECK(EXISTS_TOKEN2(token, "dm-tkdb-test", "basic-1"));
     CHECK(EXISTS_TOKEN2(token, "dm-tkdb-test", "basic-2"));
 
-    auto addr = public_key_type(std::string("EVT8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"));
+    auto addr = public_key_type(std::string("jmzk8MGU4aKiVzqMtWi9zLpu8KuTHZWjQQrX475ycSxEkLd6aBpraX"));
     CHECK(EXISTS_ASSET(addr, 3));
     CHECK(EXISTS_TOKEN(domain, "snapshot-domain"));
 }

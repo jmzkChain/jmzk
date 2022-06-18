@@ -23,7 +23,7 @@ def cli():
 
 @cli.command()
 @click.argument('name', type=click.Path(exists=True))
-@click.option('--bucket', '-b', default='evt-crashes')
+@click.option('--bucket', '-b', default='jmzk-crashes')
 @click.option('--aws-key', '-k', required=True)
 @click.option('--aws-secret', '-s', required=True)
 def upload(name, bucket, aws_key, aws_secret):
@@ -45,9 +45,9 @@ def upload(name, bucket, aws_key, aws_secret):
 @cli.command()
 @click.argument('filename', type=click.Path(exists=True))
 @click.option('--type', '-t', default='testnet')
-@click.option('--temp', '-f', default='/tmp/evt-symbols')
+@click.option('--temp', '-f', default='/tmp/jmzk-symbols')
 @click.option('--output', '-o', default='.')
-@click.option('--bucket', '-b', default='evt-crashes')
+@click.option('--bucket', '-b', default='jmzk-crashes')
 @click.option('--aws-key', '-k', required=True)
 @click.option('--aws-secret', '-s', required=True)
 def analysis(filename, type, temp, output, bucket, aws_key, aws_secret):
@@ -68,9 +68,9 @@ def analysis(filename, type, temp, output, bucket, aws_key, aws_secret):
         click.echo(r.stderr)
         exit(-1)
 
-    match = re.search(r'evtd, (\w+)', r.stdout.decode('utf-8'))
+    match = re.search(r'jmzkd, (\w+)', r.stdout.decode('utf-8'))
     if match is None:
-        click.echo('Cannot find checksum of evtd, failed')
+        click.echo('Cannot find checksum of jmzkd, failed')
         exit(-1)
 
     checksum = match.group(1)
@@ -80,17 +80,17 @@ def analysis(filename, type, temp, output, bucket, aws_key, aws_secret):
     s3.meta.client.meta.events.register('choose-signer.s3.*', disable_signing)
 
     if type == 'testnet':
-        folder = 'evt'
+        folder = 'jmzk'
     else:
-        folder = 'evt-mainnet'
+        folder = 'jmzk-mainnet'
 
-    f1 = '{}/evtd/{}/evtd.dbg'.format(folder, checksum)
-    f2 = '{}/evtd/{}/evtd.sym'.format(folder, checksum)
+    f1 = '{}/jmzkd/{}/jmzkd.dbg'.format(folder, checksum)
+    f2 = '{}/jmzkd/{}/jmzkd.sym'.format(folder, checksum)
 
     if not os.path.exists(temp):
         os.mkdir(temp)
 
-    folder1 = os.path.join(temp, 'evtd')
+    folder1 = os.path.join(temp, 'jmzkd')
     if not os.path.exists(folder1):
         os.mkdir(folder1)
 
@@ -98,21 +98,21 @@ def analysis(filename, type, temp, output, bucket, aws_key, aws_secret):
     if not os.path.exists(folder2):
         os.mkdir(folder2)
 
-    o1 = os.path.join(folder2, 'evtd.dbg')
-    o2 = os.path.join(folder2, 'evtd.sym')
+    o1 = os.path.join(folder2, 'jmzkd.dbg')
+    o2 = os.path.join(folder2, 'jmzkd.sym')
 
     try:
         if not os.path.exists(o1):
             click.echo('Fetching {} to {}...'.format(f1, o1))
-            s3.Bucket('evt-symbols').download_file(f1, o1)
+            s3.Bucket('jmzk-symbols').download_file(f1, o1)
 
         if not os.path.exists(o2):
             click.echo('Fetching {} to {}...'.format(f2, o2))
-            s3.Bucket('evt-symbols').download_file(f2, o2)
+            s3.Bucket('jmzk-symbols').download_file(f2, o2)
     except ClientError as e:
         if e.response['Error']['Code'] == '404':
             click.echo(
-                'Cannot find symbol files for evtd with checksum: {}.'.format(checksum))
+                'Cannot find symbol files for jmzkd with checksum: {}.'.format(checksum))
         else:
             raise
 
